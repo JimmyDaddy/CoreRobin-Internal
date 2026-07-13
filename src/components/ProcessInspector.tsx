@@ -64,16 +64,18 @@ export function ProcessInspector({
 
   const protectedReason = detail?.protectedReason ?? detail?.identityError;
   const canTerminate = detail?.canTerminate && detail.key !== null;
+  const displayName = detail?.name ?? selected.name;
+  const displayUser = detail?.user ?? selected.user;
 
   return (
     <aside className="inspector panel" aria-live="polite">
       <header className="inspector-header">
         <div className="process-avatar" aria-hidden="true">
-          {selected.name.slice(0, 1).toUpperCase() || "?"}
+          {displayName.slice(0, 1).toUpperCase() || "?"}
         </div>
         <div className="inspector-title">
-          <h2 title={selected.name}>{selected.name || "未命名进程"}</h2>
-          <span>PID {selected.pid} · {selected.user ?? "未知用户"}</span>
+          <h2 title={displayName}>{displayName || "未命名进程"}</h2>
+          <span>PID {selected.pid} · {displayUser ?? "未知用户"}</span>
         </div>
         {selected.protected ? (
           <span className="safe-badge"><ShieldCheck size={13} />受保护</span>
@@ -137,7 +139,7 @@ export function ProcessInspector({
         {protectedReason ? (
           <p className="action-guard"><ShieldCheck size={14} />{protectedReason}</p>
         ) : (
-          <p className="action-guard">操作前会重新读取高精度启动标识，防止 PID 复用误杀。</p>
+          <p className="action-guard">操作前会再次核验高精度启动标识，以降低 PID 复用导致的误操作风险。</p>
         )}
         <button
           type="button"

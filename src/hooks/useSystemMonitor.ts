@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getSystemSnapshot } from "../api";
 import type { CommandError, HistoryPoint, SystemSnapshot } from "../types";
-import { memoryUsagePercent, normalizeCommandError } from "../utils";
+import {
+  assertSupportedSnapshotSchema,
+  memoryUsagePercent,
+  normalizeCommandError,
+} from "../utils";
 
 const MAX_HISTORY_POINTS = 300;
 
@@ -23,9 +27,7 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
     requestInFlight.current = true;
     try {
       const nextSnapshot = await getSystemSnapshot();
-      if (nextSnapshot.schemaVersion !== 1) {
-        throw new Error(`不支持的数据版本：${nextSnapshot.schemaVersion}`);
-      }
+      assertSupportedSnapshotSchema(nextSnapshot);
       if (nextSnapshot.sequence <= lastSequence.current) {
         return;
       }

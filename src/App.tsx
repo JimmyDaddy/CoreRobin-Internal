@@ -26,6 +26,7 @@ import type {
   CommandError,
   ProcessAction,
   ProcessDetail,
+  ProcessKey,
   ProcessRow,
   ProcessSortKey,
   SortDirection,
@@ -34,13 +35,22 @@ import {
   formatBytes,
   formatPercent,
   formatRate,
+  detailMatchesProcess,
   memoryUsagePercent,
   normalizeCommandError,
   processIdentity,
+  processKeysEqual,
 } from "./utils";
 import "./App.css";
 
 type ActiveView = "overview" | "processes";
+
+interface PendingProcessAction {
+  action: ProcessAction;
+  selectionIdentity: string;
+  key: ProcessKey;
+  detail: ProcessDetail;
+}
 
 function App() {
   const {
@@ -61,7 +71,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<ProcessSortKey>("cpu");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
-  const [pendingAction, setPendingAction] = useState<ProcessAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingProcessAction | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -73,6 +83,7 @@ function App() {
     [selectedIdentity, snapshot],
   );
   const selectionMissing = selectedIdentity !== null && !selectedProcess;
+  const activeDetail = detailMatchesProcess(detail, selectedProcess) ? detail : null;
 
   useEffect(() => {
     if (!snapshot || selectedIdentity !== null) return;
@@ -101,6 +112,7 @@ function App() {
     void getProcessDetail({
       pid: selectedProcess.pid,
       snapshotStartTime: selectedProcess.startTime,
+      snapshotBirthToken: selectedProcess.birthToken,
     })
       .then((nextDetail) => {
         if (!cancelled) setDetail(nextDetail);
@@ -135,14 +147,41 @@ function App() {
   const selectProcess = useCallback((process: ProcessRow) => {
     setSelectedIdentity(processIdentity(process));
     setLastSelected(process);
+    setPendingAction(null);
     setNotice(null);
   }, []);
 
+  const beginProcessAction = useCallback(
+    (action: ProcessAction) => {
+      if (!selectedIdentity || !activeDetail?.key) return;
+      setPendingAction({
+        action,
+        selectionIdentity: selectedIdentity,
+        key: activeDetail.key,
+        detail: activeDetail,
+      });
+    },
+    [activeDetail, selectedIdentity],
+  );
+
   const handleAction = async () => {
-    if (!pendingAction || !detail?.key) return;
+    if (!pendingAction) return;
+    const currentKey = activeDetail?.key ?? null;
+    if (
+      selectedIdentity !== pendingAction.selectionIdentity ||
+      !processKeysEqual(currentKey, pendingAction.key)
+    ) {
+      setNotice("目标进程身份已经变化，操作已取消。请重新选择并确认。");
+      setPendingAction(null);
+      return;
+    }
+
     setSubmittingAction(true);
     try {
-      const result = await executeProcessAction({ key: detail.key, action: pendingAction });
+      const result = await executeProcessAction({
+        key: pendingAction.key,
+        action: pendingAction.action,
+      });
       setNotice(result.message);
       setPendingAction(null);
       await refreshNow();
@@ -190,8 +229,6 @@ function App() {
       ? null
       : snapshot.network.receivedBytesPerSecond +
         snapshot.network.transmittedBytesPerSecond;
-  const processForDialog = selectedProcess ?? lastSelected;
-
   return (
     <div className="app-shell">
       <nav className="sidebar" aria-label="主导航">
@@ -315,11 +352,11 @@ function App() {
           <ProcessInspector
             selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
             selectionMissing={selectionMissing}
-            detail={detail}
+            detail={activeDetail}
             detailError={detailError}
             detailLoading={detailLoading}
             capabilities={snapshot.capabilities}
-            onAction={setPendingAction}
+            onAction={beginProcessAction}
           />
         </div>
 
@@ -331,11 +368,10 @@ function App() {
         </footer>
       </div>
 
-      {pendingAction && processForDialog && detail ? (
+      {pendingAction ? (
         <ConfirmActionDialog
-          action={pendingAction}
-          process={processForDialog}
-          detail={detail}
+          action={pendingAction.action}
+          detail={pendingAction.detail}
           submitting={submittingAction}
           onCancel={() => setPendingAction(null)}
           onConfirm={() => void handleAction()}

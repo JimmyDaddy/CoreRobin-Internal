@@ -6,7 +6,7 @@ use sysinfo::{
 };
 
 use crate::error::CommandError;
-use crate::identity::read_birth_token;
+use crate::identity::{ensure_birth_token, read_birth_token};
 use crate::models::{
     Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot, NetworkSnapshot,
     ProcessAction, ProcessActionRequest, ProcessActionResult, ProcessDetail, ProcessDetailRequest,
@@ -105,6 +105,7 @@ impl SystemMonitor {
                 let disk_usage = process.disk_usage();
                 ProcessRow {
                     pid,
+                    birth_token: read_birth_token(pid).ok(),
                     parent_pid: process.parent().map(|parent| parent.as_u32()),
                     start_time: process.start_time(),
                     run_time_seconds: process.run_time(),
@@ -192,6 +193,10 @@ impl SystemMonitor {
         &mut self,
         request: ProcessDetailRequest,
     ) -> Result<ProcessDetail, CommandError> {
+        if let Some(expected) = request.snapshot_birth_token.as_deref() {
+            ensure_birth_token(request.pid, expected)?;
+        }
+
         let pid = sysinfo::Pid::from_u32(request.pid);
         let pids = [pid];
         self.system.refresh_processes_specifics(
@@ -221,12 +226,25 @@ impl SystemMonitor {
         }
 
         let protected_reason = protected_reason(request.pid, self.own_pid);
-        let identity = read_birth_token(request.pid);
-        let identity_error = identity.as_ref().err().map(|error| error.message.clone());
-        let key = identity.ok().map(|birth_token| ProcessKey {
-            pid: request.pid,
-            birth_token,
-        });
+        let (key, identity_error) = match request.snapshot_birth_token.as_deref() {
+            Some(expected) => {
+                let birth_token = ensure_birth_token(request.pid, expected)?;
+                (
+                    Some(ProcessKey {
+                        pid: request.pid,
+                        birth_token,
+                    }),
+                    None,
+                )
+            }
+            None => (
+                None,
+                Some(
+                    "The sampled process did not expose a precise identity; process actions are disabled."
+                        .to_owned(),
+                ),
+            ),
+        };
         let command_line = (!process.cmd().is_empty()).then(|| {
             process
                 .cmd()
@@ -269,13 +287,7 @@ impl SystemMonitor {
             return Err(CommandError::new("protected_process", reason));
         }
 
-        let current_birth_token = read_birth_token(request.key.pid)?;
-        if current_birth_token != request.key.birth_token {
-            return Err(CommandError::new(
-                "stale_process",
-                "The PID now belongs to a different process; no action was taken.",
-            ));
-        }
+        ensure_birth_token(request.key.pid, &request.key.birth_token)?;
 
         let pid = sysinfo::Pid::from_u32(request.key.pid);
         let pids = [pid];
@@ -287,6 +299,10 @@ impl SystemMonitor {
         let process = self.system.process(pid).ok_or_else(|| {
             CommandError::new("process_exited", "The process has already exited.")
         })?;
+
+        // macOS signals are PID-based. Recheck after refreshing and immediately
+        // before sending the signal to minimize the remaining platform race.
+        ensure_birth_token(request.key.pid, &request.key.birth_token)?;
 
         let sent = match request.action {
             ProcessAction::RequestClose => {

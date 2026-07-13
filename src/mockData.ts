@@ -1,10 +1,11 @@
-import type {
-  ProcessActionRequest,
-  ProcessActionResult,
-  ProcessDetail,
-  ProcessDetailRequest,
-  ProcessRow,
-  SystemSnapshot,
+import {
+  SNAPSHOT_SCHEMA_VERSION,
+  type ProcessActionRequest,
+  type ProcessActionResult,
+  type ProcessDetail,
+  type ProcessDetailRequest,
+  type ProcessRow,
+  type SystemSnapshot,
 } from "./types";
 
 let sequence = 0;
@@ -14,6 +15,7 @@ const startTime = Math.floor(launchedAt / 1_000) - 12_300;
 const baseProcesses: ProcessRow[] = [
   {
     pid: 48_102,
+    birthToken: `mock:48102:${startTime}`,
     parentPid: 48_000,
     startTime,
     runTimeSeconds: 7_200,
@@ -28,6 +30,7 @@ const baseProcesses: ProcessRow[] = [
   },
   {
     pid: 932,
+    birthToken: `mock:932:${startTime - 2_000}`,
     parentPid: 1,
     startTime: startTime - 2_000,
     runTimeSeconds: 9_200,
@@ -42,6 +45,7 @@ const baseProcesses: ProcessRow[] = [
   },
   {
     pid: 388,
+    birthToken: `mock:388:${startTime - 80_000}`,
     parentPid: 1,
     startTime: startTime - 80_000,
     runTimeSeconds: 91_000,
@@ -56,6 +60,7 @@ const baseProcesses: ProcessRow[] = [
   },
   {
     pid: 46_177,
+    birthToken: `mock:46177:${startTime - 400}`,
     parentPid: 46_100,
     startTime: startTime - 400,
     runTimeSeconds: 4_900,
@@ -70,6 +75,7 @@ const baseProcesses: ProcessRow[] = [
   },
   {
     pid: 1,
+    birthToken: `mock:1:${startTime - 200_000}`,
     parentPid: null,
     startTime: startTime - 200_000,
     runTimeSeconds: 240_000,
@@ -92,7 +98,7 @@ export function getMockSnapshot(): SystemSnapshot {
   const warmingUp = sequence === 1;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     sequence,
     sampledAtMs: Date.now(),
     sampleIntervalMs: 1_000,
@@ -155,17 +161,21 @@ export function getMockSnapshot(): SystemSnapshot {
 export function getMockProcessDetail(request: ProcessDetailRequest): ProcessDetail {
   const process = baseProcesses.find(
     (candidate) =>
-      candidate.pid === request.pid && candidate.startTime === request.snapshotStartTime,
+      candidate.pid === request.pid &&
+      candidate.startTime === request.snapshotStartTime &&
+      candidate.birthToken === request.snapshotBirthToken,
   );
   if (!process) {
     throw { code: "process_exited", message: "进程已经退出。" };
   }
 
   const protectedReason = process.protected ? "这是受保护的系统进程。" : null;
+  const birthToken = process.birthToken;
+  const hasVerifiableIdentity = birthToken !== null;
   return {
-    key: process.protected
+    key: process.protected || birthToken === null
       ? null
-      : { pid: process.pid, birthToken: `mock:${process.pid}:${process.startTime}` },
+      : { pid: process.pid, birthToken },
     pid: process.pid,
     parentPid: process.parentPid,
     startTime: process.startTime,
@@ -181,9 +191,9 @@ export function getMockProcessDetail(request: ProcessDetailRequest): ProcessDeta
         ? "/opt/homebrew/bin/node"
         : `/Applications/${process.name}.app/Contents/MacOS/${process.name}`,
     commandLine: process.name === "node" ? "node ./scripts/build.mjs --watch" : process.name,
-    canTerminate: !process.protected,
+    canTerminate: !process.protected && hasVerifiableIdentity,
     protectedReason,
-    identityError: null,
+    identityError: hasVerifiableIdentity ? null : "无法核验该进程的高精度身份。",
   };
 }
 

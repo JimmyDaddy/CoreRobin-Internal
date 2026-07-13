@@ -1,11 +1,10 @@
 import { AlertOctagon, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import type { ProcessAction, ProcessDetail, ProcessRow } from "../types";
+import type { ProcessAction, ProcessDetail } from "../types";
 
 interface ConfirmActionDialogProps {
   action: ProcessAction;
-  process: ProcessRow;
   detail: ProcessDetail;
   submitting: boolean;
   onCancel: () => void;
@@ -14,17 +13,16 @@ interface ConfirmActionDialogProps {
 
 export function ConfirmActionDialog({
   action,
-  process,
   detail,
   submitting,
   onCancel,
   onConfirm,
 }: ConfirmActionDialogProps) {
-  const confirmButton = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
   const force = action === "force_kill";
 
   useEffect(() => {
-    confirmButton.current?.focus();
+    cancelButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !submitting) onCancel();
     };
@@ -55,17 +53,16 @@ export function ConfirmActionDialog({
         </header>
 
         <dl className="confirm-target">
-          <div><dt>进程</dt><dd>{process.name}</dd></div>
-          <div><dt>PID</dt><dd>{process.pid}</dd></div>
+          <div><dt>进程</dt><dd>{detail.name}</dd></div>
+          <div><dt>PID</dt><dd>{detail.pid}</dd></div>
           <div><dt>用户</dt><dd>{detail.user ?? "未知"}</dd></div>
           <div><dt>启动时间</dt><dd>{new Date(detail.startTime * 1_000).toLocaleString()}</dd></div>
         </dl>
 
-        <p className="identity-note">确认时将再次校验 PID 与高精度启动标识；若身份变化，操作会被拒绝。</p>
+        <p className="identity-note">发送信号前会再次校验高精度启动标识；检测到身份变化时将拒绝，以降低 PID 复用导致的误操作风险。</p>
         <footer>
-          <button type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>取消</button>
+          <button ref={cancelButton} type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>取消</button>
           <button
-            ref={confirmButton}
             type="button"
             className={`button ${force ? "button--danger" : "button--primary"}`}
             disabled={submitting}

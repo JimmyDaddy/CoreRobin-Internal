@@ -1,11 +1,23 @@
-import type {
-  CommandError,
-  ProcessRow,
-  ProcessSortKey,
-  SortDirection,
+import {
+  SNAPSHOT_SCHEMA_VERSION,
+  type CommandError,
+  type ProcessDetail,
+  type ProcessKey,
+  type ProcessRow,
+  type ProcessSortKey,
+  type SortDirection,
+  type SystemSnapshot,
 } from "./types";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+export function assertSupportedSnapshotSchema(
+  snapshot: Pick<SystemSnapshot, "schemaVersion">,
+): void {
+  if (snapshot.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
+    throw new Error(`不支持的数据版本：${snapshot.schemaVersion}`);
+  }
+}
 
 export function formatBytes(bytes: number, maximumFractionDigits = 1): string {
   if (!Number.isFinite(bytes) || bytes <= 0) {
@@ -112,8 +124,35 @@ export function sortAndFilterProcesses(
   });
 }
 
-export function processIdentity(process: Pick<ProcessRow, "pid" | "startTime">): string {
-  return `${process.pid}:${process.startTime}`;
+export function processIdentity(
+  process: Pick<ProcessRow, "pid" | "startTime" | "birthToken">,
+): string {
+  return `${process.pid}:${process.birthToken ?? `fallback:${process.startTime}`}`;
+}
+
+export function detailMatchesProcess(
+  detail: Pick<ProcessDetail, "pid" | "startTime" | "key"> | null,
+  process: Pick<ProcessRow, "pid" | "startTime" | "birthToken"> | null,
+): boolean {
+  return Boolean(
+    detail &&
+      process &&
+      detail.pid === process.pid &&
+      detail.startTime === process.startTime &&
+      (detail.key?.birthToken ?? null) === process.birthToken,
+  );
+}
+
+export function processKeysEqual(
+  left: ProcessKey | null,
+  right: ProcessKey | null,
+): boolean {
+  return Boolean(
+    left &&
+      right &&
+      left.pid === right.pid &&
+      left.birthToken === right.birthToken,
+  );
 }
 
 export function normalizeCommandError(error: unknown): CommandError {

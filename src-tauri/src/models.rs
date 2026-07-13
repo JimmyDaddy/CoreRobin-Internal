@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 1;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +78,7 @@ pub struct NetworkSnapshot {
 #[serde(rename_all = "camelCase")]
 pub struct ProcessRow {
     pub pid: u32,
+    pub birth_token: Option<String>,
     pub parent_pid: Option<u32>,
     pub start_time: u64,
     pub run_time_seconds: u64,
@@ -112,6 +113,7 @@ pub struct ProcessKey {
 pub struct ProcessDetailRequest {
     pub pid: u32,
     pub snapshot_start_time: u64,
+    pub snapshot_birth_token: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

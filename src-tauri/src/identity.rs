@@ -23,6 +23,21 @@ pub fn read_birth_token(pid: u32) -> Result<String, CommandError> {
     ))
 }
 
+pub fn ensure_birth_token(pid: u32, expected: &str) -> Result<String, CommandError> {
+    verify_birth_token(expected, read_birth_token(pid)?)
+}
+
+fn verify_birth_token(expected: &str, current: String) -> Result<String, CommandError> {
+    if current == expected {
+        Ok(current)
+    } else {
+        Err(CommandError::new(
+            "stale_process",
+            "The PID now belongs to a different process; no action was taken.",
+        ))
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn read_macos_birth_token(pid: u32) -> Result<String, CommandError> {
     use std::mem;
@@ -121,7 +136,7 @@ fn read_windows_birth_token(pid: u32) -> Result<String, CommandError> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_linux_start_ticks;
+    use super::{parse_linux_start_ticks, verify_birth_token};
 
     #[test]
     fn parses_linux_start_ticks_when_command_contains_spaces() {
@@ -132,5 +147,19 @@ mod tests {
     #[test]
     fn rejects_malformed_linux_stat() {
         assert_eq!(parse_linux_start_ticks("123 malformed"), None);
+    }
+
+    #[test]
+    fn rejects_a_stale_birth_token() {
+        let error = verify_birth_token("expected", "replacement".to_owned()).unwrap_err();
+        assert_eq!(error.code, "stale_process");
+    }
+
+    #[test]
+    fn accepts_the_same_birth_token() {
+        assert_eq!(
+            verify_birth_token("expected", "expected".to_owned()).unwrap(),
+            "expected"
+        );
     }
 }

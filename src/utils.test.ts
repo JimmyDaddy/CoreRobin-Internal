@@ -2,16 +2,20 @@ import { describe, expect, it } from "vitest";
 
 import type { ProcessRow } from "./types";
 import {
+  assertSupportedSnapshotSchema,
+  detailMatchesProcess,
   formatBytes,
   formatRate,
   memoryUsagePercent,
   processDiskRate,
   processIdentity,
+  processKeysEqual,
   sortAndFilterProcesses,
 } from "./utils";
 
 const processFixture = (overrides: Partial<ProcessRow>): ProcessRow => ({
   pid: 1,
+  birthToken: null,
   parentPid: null,
   startTime: 100,
   runTimeSeconds: 10,
@@ -27,6 +31,13 @@ const processFixture = (overrides: Partial<ProcessRow>): ProcessRow => ({
 });
 
 describe("resource formatting", () => {
+  it("accepts only the current snapshot schema", () => {
+    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 2 })).not.toThrow();
+    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 1 })).toThrow(
+      "不支持的数据版本：1",
+    );
+  });
+
   it("formats binary byte units", () => {
     expect(formatBytes(1_073_741_824)).toBe("1 GB");
   });
@@ -69,8 +80,42 @@ describe("process collection", () => {
     ).toEqual(["Docker", "Code Helper", "node"]);
   });
 
-  it("uses start time as part of selection identity", () => {
-    expect(processIdentity(processes[0])).toBe("30:100");
-    expect(processIdentity({ ...processes[0], startTime: 101 })).not.toBe("30:100");
+  it("prefers the native birth token for selection identity", () => {
+    const process = { ...processes[0], birthToken: "macos:100:42" };
+    expect(processIdentity(process)).toBe("30:macos:100:42");
+    expect(processIdentity({ ...process, startTime: 101 })).toBe(
+      "30:macos:100:42",
+    );
+  });
+
+  it("falls back to start time when native identity is unavailable", () => {
+    expect(processIdentity(processes[0])).toBe("30:fallback:100");
+    expect(processIdentity({ ...processes[0], startTime: 101 })).not.toBe(
+      "30:fallback:100",
+    );
+  });
+
+  it("does not bind stale detail or action keys to a replacement process", () => {
+    const process = processFixture({
+      pid: 30,
+      birthToken: "macos:100:42",
+      startTime: 100,
+    });
+    const matchingKey = { pid: 30, birthToken: "macos:100:42" };
+    const replacementKey = { pid: 30, birthToken: "macos:100:99" };
+
+    expect(
+      detailMatchesProcess(
+        { pid: 30, startTime: 100, key: matchingKey },
+        process,
+      ),
+    ).toBe(true);
+    expect(
+      detailMatchesProcess(
+        { pid: 30, startTime: 100, key: replacementKey },
+        process,
+      ),
+    ).toBe(false);
+    expect(processKeysEqual(matchingKey, replacementKey)).toBe(false);
   });
 });

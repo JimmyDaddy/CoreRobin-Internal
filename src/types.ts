@@ -1,3 +1,5 @@
+export const SNAPSHOT_SCHEMA_VERSION = 2;
+
 export interface SystemSnapshot {
   schemaVersion: number;
   sequence: number;
@@ -58,6 +60,7 @@ export interface NetworkSnapshot {
 
 export interface ProcessRow {
   pid: number;
+  birthToken: string | null;
   parentPid: number | null;
   startTime: number;
   runTimeSeconds: number;
@@ -86,6 +89,7 @@ export interface ProcessKey {
 export interface ProcessDetailRequest {
   pid: number;
   snapshotStartTime: number;
+  snapshotBirthToken: string | null;
 }
 
 export interface ProcessDetail {
