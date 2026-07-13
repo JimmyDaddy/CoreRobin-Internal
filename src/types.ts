@@ -175,5 +175,15 @@ export interface HistoryPoint {
   memoryPercent: number;
 }
 
+export interface ProcessHistoryPoint {
+  sequence: number;
+  timestamp: number;
+  cpuPercent: number | null;
+  memoryBytes: number;
+  diskReadBytesPerSecond: number | null;
+  diskWriteBytesPerSecond: number | null;
+}
+
 export type ProcessSortKey = "cpu" | "memory" | "disk" | "name";
 export type SortDirection = "ascending" | "descending";
+export type ProcessViewMode = "flat" | "tree";

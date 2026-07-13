@@ -27,7 +27,15 @@ import { MetricCard } from "./components/MetricCard";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
+import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
+import {
+  defaultProcessExplorerPreferences,
+  loadProcessExplorerPreferences,
+  pruneExpandedIdentities,
+  saveProcessExplorerPreferences,
+  type ProcessExplorerPreferences,
+} from "./processExplorer";
 import type {
   CommandError,
   ProcessAction,
@@ -35,8 +43,6 @@ import type {
   ProcessDetail,
   ProcessKey,
   ProcessRow,
-  ProcessSortKey,
-  SortDirection,
 } from "./types";
 import {
   formatBytes,
@@ -76,9 +82,8 @@ function App() {
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
   const [detailError, setDetailError] = useState<CommandError | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<ProcessSortKey>("cpu");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
+  const [processPreferences, setProcessPreferences] =
+    useState<ProcessExplorerPreferences>(loadProcessExplorerPreferences);
   const [pendingAction, setPendingAction] = useState<PendingProcessAction | null>(null);
   const [preparingAction, setPreparingAction] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -88,6 +93,7 @@ function App() {
   const activeDetailKeyRef = useRef<ProcessKey | null>(null);
   const preparingActionRef = useRef(false);
   const submittingActionRef = useRef(false);
+  const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
 
   const selectedProcess = useMemo(
     () =>
@@ -100,6 +106,36 @@ function App() {
   const activeDetail = detailMatchesProcess(detail, selectedProcess) ? detail : null;
   selectedIdentityRef.current = selectedIdentity;
   activeDetailKeyRef.current = activeDetail?.key ?? null;
+
+  const updateProcessPreferences = useCallback(
+    (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
+      setProcessPreferences((current) => ({ ...current, ...update }));
+    },
+    [],
+  );
+
+  useEffect(() => {
+    saveProcessExplorerPreferences(processPreferences);
+  }, [processPreferences]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    setProcessPreferences((current) => {
+      const expandedIdentities = pruneExpandedIdentities(
+        current.expandedIdentities,
+        snapshot.processes,
+      );
+      if (
+        expandedIdentities.length === current.expandedIdentities.length &&
+        expandedIdentities.every(
+          (identity, index) => identity === current.expandedIdentities[index],
+        )
+      ) {
+        return current;
+      }
+      return { ...current, expandedIdentities };
+    });
+  }, [snapshot]);
 
   useEffect(() => {
     if (!snapshot || selectedIdentity !== null) return;
@@ -398,11 +434,13 @@ function App() {
                   processes={snapshot.processes}
                   selectedIdentity={selectedIdentity}
                   onSelect={selectProcess}
-                  query={query}
-                  onQueryChange={setQuery}
-                  sortKey={sortKey}
-                  direction={sortDirection}
-                  onSortChange={(key, direction) => { setSortKey(key); setSortDirection(direction); }}
+                  query={processPreferences.query}
+                  onQueryChange={(query) => updateProcessPreferences({ query })}
+                  sortKey={processPreferences.sortKey}
+                  direction={processPreferences.sortDirection}
+                  onSortChange={(sortKey, sortDirection) =>
+                    updateProcessPreferences({ sortKey, sortDirection })
+                  }
                 />
               </>
             ) : (
@@ -410,11 +448,28 @@ function App() {
                 processes={snapshot.processes}
                 selectedIdentity={selectedIdentity}
                 onSelect={selectProcess}
-                query={query}
-                onQueryChange={setQuery}
-                sortKey={sortKey}
-                direction={sortDirection}
-                onSortChange={(key, direction) => { setSortKey(key); setSortDirection(direction); }}
+                query={processPreferences.query}
+                onQueryChange={(query) => updateProcessPreferences({ query })}
+                sortKey={processPreferences.sortKey}
+                direction={processPreferences.sortDirection}
+                onSortChange={(sortKey, sortDirection) =>
+                  updateProcessPreferences({ sortKey, sortDirection })
+                }
+                viewMode={processPreferences.viewMode}
+                onViewModeChange={(viewMode) =>
+                  updateProcessPreferences({ viewMode })
+                }
+                expandedIdentities={processPreferences.expandedIdentities}
+                onExpandedIdentitiesChange={(expandedIdentities) =>
+                  updateProcessPreferences({ expandedIdentities })
+                }
+                followSelection={processPreferences.followSelection}
+                onFollowSelectionChange={(followSelection) =>
+                  updateProcessPreferences({ followSelection })
+                }
+                onResetPreferences={() =>
+                  setProcessPreferences(defaultProcessExplorerPreferences())
+                }
               />
             )}
           </main>
@@ -425,6 +480,7 @@ function App() {
             detail={activeDetail}
             detailError={detailError}
             detailLoading={detailLoading}
+            history={selectedHistory}
             capabilities={snapshot.capabilities}
             bestEffortOptIn={bestEffortOptIn}
             preparingAction={preparingAction}

@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import type { SelectedProcessHistory } from "../processExplorer";
 import type {
   Capabilities,
   CommandError,
@@ -18,6 +19,7 @@ import type {
   ProcessRow,
 } from "../types";
 import { formatBytes, formatDuration, formatPercent, statusLabel } from "../utils";
+import { ProcessHistory } from "./ProcessHistory";
 
 interface ProcessInspectorProps {
   selected: ProcessRow | null;
@@ -25,6 +27,7 @@ interface ProcessInspectorProps {
   detail: ProcessDetail | null;
   detailError: CommandError | null;
   detailLoading: boolean;
+  history: SelectedProcessHistory | null;
   capabilities: Capabilities;
   bestEffortOptIn: boolean;
   preparingAction: boolean;
@@ -38,6 +41,7 @@ export function ProcessInspector({
   detail,
   detailError,
   detailLoading,
+  history,
   capabilities,
   bestEffortOptIn,
   preparingAction,
@@ -47,11 +51,14 @@ export function ProcessInspector({
   if (selectionMissing) {
     return (
       <aside className="inspector panel">
-        <div className="inspector-empty">
+        <div className="inspector-exit" role="status">
           <XCircle size={24} />
-          <strong>进程已经退出</strong>
-          <span>旧选择不会自动绑定到复用该 PID 的新进程。</span>
+          <span>
+            <strong>进程已经退出</strong>
+            <small>旧选择不会自动绑定到复用该 PID 的新进程。</small>
+          </span>
         </div>
+        <ProcessHistory history={history} />
       </aside>
     );
   }
@@ -81,7 +88,7 @@ export function ProcessInspector({
     canTerminate && targetingAllowed && control.forceKill.enabled;
 
   return (
-    <aside className="inspector panel" aria-live="polite">
+    <aside className="inspector panel">
       <header className="inspector-header">
         <div className="process-avatar" aria-hidden="true">
           {displayName.slice(0, 1).toUpperCase() || "?"}
@@ -113,11 +120,13 @@ export function ProcessInspector({
         </div>
       ) : null}
 
+      <ProcessHistory history={history} />
+
       {detailLoading ? (
-        <div className="detail-loading"><LoaderCircle className="spin" size={17} />正在核验进程身份…</div>
+        <div className="detail-loading" role="status"><LoaderCircle className="spin" size={17} />正在核验进程身份…</div>
       ) : null}
       {detailError ? (
-        <div className="detail-error"><AlertTriangle size={16} />{detailError.message}</div>
+        <div className="detail-error" role="alert"><AlertTriangle size={16} />{detailError.message}</div>
       ) : null}
 
       {detail ? (

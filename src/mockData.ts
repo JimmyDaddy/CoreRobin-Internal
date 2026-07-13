@@ -14,8 +14,9 @@ import {
 let sequence = 0;
 let leaseSequence = 0;
 const mockLeases = new Map<string, ProcessControlLease>();
-const launchedAt = Date.now();
-const startTime = Math.floor(launchedAt / 1_000) - 12_300;
+// Keep demo identities stable across browser reloads so view preferences can be
+// exercised without implying that a reused PID is the same process.
+const startTime = 1_750_000_000;
 
 const baseProcesses: ProcessRow[] = [
   {
@@ -34,9 +35,24 @@ const baseProcesses: ProcessRow[] = [
     protected: false,
   },
   {
+    pid: 48_000,
+    birthToken: `mock:48000:${startTime - 1_000}`,
+    parentPid: 1,
+    startTime: startTime - 1_000,
+    runTimeSeconds: 8_200,
+    name: "Terminal",
+    user: "developer",
+    status: "Sleep",
+    cpuPercent: 3.8,
+    memoryBytes: 162_529_280,
+    diskReadBytesPerSecond: 34_000,
+    diskWriteBytesPerSecond: 18_000,
+    protected: false,
+  },
+  {
     pid: 932,
     birthToken: `mock:932:${startTime - 2_000}`,
-    parentPid: 1,
+    parentPid: 99_999,
     startTime: startTime - 2_000,
     runTimeSeconds: 9_200,
     name: "Docker Desktop",
@@ -79,6 +95,21 @@ const baseProcesses: ProcessRow[] = [
     protected: false,
   },
   {
+    pid: 46_100,
+    birthToken: `mock:46100:${startTime - 800}`,
+    parentPid: 1,
+    startTime: startTime - 800,
+    runTimeSeconds: 5_300,
+    name: "Code",
+    user: "developer",
+    status: "Sleep",
+    cpuPercent: 8.4,
+    memoryBytes: 536_870_912,
+    diskReadBytesPerSecond: 104_000,
+    diskWriteBytesPerSecond: 220_000,
+    protected: false,
+  },
+  {
     pid: 1,
     birthToken: `mock:1:${startTime - 200_000}`,
     parentPid: null,
@@ -89,8 +120,8 @@ const baseProcesses: ProcessRow[] = [
     status: "Sleep",
     cpuPercent: 0.2,
     memoryBytes: 26_214_400,
-    diskReadBytesPerSecond: 0,
-    diskWriteBytesPerSecond: 0,
+    diskReadBytesPerSecond: 2_400,
+    diskWriteBytesPerSecond: 1_200,
     protected: true,
   },
 ];
@@ -146,14 +177,31 @@ export function getMockSnapshot(): SystemSnapshot {
       transmittedBytesPerSecond: warmingUp ? null : 890_000,
       interfaceCount: 7,
     },
-    processes: baseProcesses.map((process, index) => ({
-      ...process,
-      cpuPercent:
-        process.cpuPercent === null
-          ? null
-          : Math.max(0, process.cpuPercent + Math.sin(phase + index) * 4),
-      runTimeSeconds: process.runTimeSeconds + sequence,
-    })),
+    processes: baseProcesses.map((process, index) => {
+      const resourcePhase = phase + index * 0.73;
+      const fluctuateRate = (value: number | null, offset: number): number | null => {
+        if (warmingUp || value === null) return null;
+        return Math.max(
+          0,
+          Math.round(value * (1 + Math.sin(resourcePhase + offset) * 0.08)),
+        );
+      };
+
+      return {
+        ...process,
+        cpuPercent:
+          process.cpuPercent === null
+            ? null
+            : Math.max(0, process.cpuPercent + Math.sin(resourcePhase) * 4),
+        memoryBytes: Math.max(
+          0,
+          Math.round(process.memoryBytes * (1 + Math.sin(resourcePhase + 0.35) * 0.012)),
+        ),
+        diskReadBytesPerSecond: fluctuateRate(process.diskReadBytesPerSecond, 0.7),
+        diskWriteBytesPerSecond: fluctuateRate(process.diskWriteBytesPerSecond, 1.4),
+        runTimeSeconds: process.runTimeSeconds + sequence,
+      };
+    }),
     capabilities: {
       platform: "macos",
       processControl: {
