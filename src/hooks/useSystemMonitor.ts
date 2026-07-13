@@ -1,0 +1,89 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { getSystemSnapshot } from "../api";
+import type { CommandError, HistoryPoint, SystemSnapshot } from "../types";
+import { memoryUsagePercent, normalizeCommandError } from "../utils";
+
+const MAX_HISTORY_POINTS = 300;
+
+export function useSystemMonitor(refreshIntervalMs = 1_000) {
+  const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [error, setError] = useState<CommandError | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const lastSequence = useRef(0);
+  const requestInFlight = useRef(false);
+
+  const refreshNow = useCallback(async () => {
+    if (requestInFlight.current) {
+      return;
+    }
+
+    requestInFlight.current = true;
+    try {
+      const nextSnapshot = await getSystemSnapshot();
+      if (nextSnapshot.schemaVersion !== 1) {
+        throw new Error(`不支持的数据版本：${nextSnapshot.schemaVersion}`);
+      }
+      if (nextSnapshot.sequence <= lastSequence.current) {
+        return;
+      }
+
+      lastSequence.current = nextSnapshot.sequence;
+      setSnapshot(nextSnapshot);
+      setError(null);
+      if (nextSnapshot.cpu.usagePercent !== null) {
+        setHistory((current) => [
+          ...current.slice(-(MAX_HISTORY_POINTS - 1)),
+          {
+            timestamp: nextSnapshot.sampledAtMs,
+            cpuPercent: nextSnapshot.cpu.usagePercent ?? 0,
+            memoryPercent: memoryUsagePercent(
+              nextSnapshot.memory.usedBytes,
+              nextSnapshot.memory.totalBytes,
+            ),
+          },
+        ]);
+      }
+    } catch (caughtError) {
+      setError(normalizeCommandError(caughtError));
+    } finally {
+      setLoading(false);
+      requestInFlight.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (paused) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const tick = async () => {
+      await refreshNow();
+      if (!cancelled) {
+        timeout = setTimeout(tick, refreshIntervalMs);
+      }
+    };
+    void tick();
+
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [paused, refreshIntervalMs, refreshNow]);
+
+  return {
+    snapshot,
+    history,
+    error,
+    paused,
+    setPaused,
+    loading,
+    refreshNow,
+  };
+}
