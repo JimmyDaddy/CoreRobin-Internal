@@ -1,13 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import {
+  createMockProcessControlLease,
   executeMockProcessAction,
   getMockProcessDetail,
   getMockSnapshot,
+  releaseMockProcessControlLease,
 } from "./mockData";
 import type {
   ProcessActionRequest,
   ProcessActionResult,
+  ProcessControlLease,
+  ProcessControlLeaseReleaseRequest,
+  ProcessControlLeaseRequest,
   ProcessDetail,
   ProcessDetailRequest,
   SystemSnapshot,
@@ -50,4 +55,23 @@ export async function executeProcessAction(
     return executeMockProcessAction(request);
   }
   return invoke<ProcessActionResult>("execute_process_action", { request });
+}
+
+export async function createProcessControlLease(
+  request: ProcessControlLeaseRequest,
+): Promise<ProcessControlLease> {
+  if (canUseDevelopmentMock()) {
+    return createMockProcessControlLease(request);
+  }
+  return invoke<ProcessControlLease>("create_process_control_lease", { request });
+}
+
+export async function releaseProcessControlLease(
+  request: ProcessControlLeaseReleaseRequest,
+): Promise<void> {
+  if (canUseDevelopmentMock()) {
+    releaseMockProcessControlLease(request);
+    return;
+  }
+  return invoke<void>("release_process_control_lease", { request });
 }

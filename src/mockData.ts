@@ -2,6 +2,9 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
   type ProcessActionRequest,
   type ProcessActionResult,
+  type ProcessControlLease,
+  type ProcessControlLeaseReleaseRequest,
+  type ProcessControlLeaseRequest,
   type ProcessDetail,
   type ProcessDetailRequest,
   type ProcessRow,
@@ -9,6 +12,8 @@ import {
 } from "./types";
 
 let sequence = 0;
+let leaseSequence = 0;
+const mockLeases = new Map<string, ProcessControlLease>();
 const launchedAt = Date.now();
 const startTime = Math.floor(launchedAt / 1_000) - 12_300;
 
@@ -151,8 +156,20 @@ export function getMockSnapshot(): SystemSnapshot {
     })),
     capabilities: {
       platform: "macos",
-      requestClose: true,
-      forceKill: true,
+      processControl: {
+        targeting: "best_effort_pid",
+        requestClose: {
+          enabled: true,
+          semantic: "sigterm",
+          disabledReason: null,
+        },
+        forceKill: {
+          enabled: true,
+          semantic: "sigkill",
+          disabledReason: null,
+        },
+        leaseTtlMs: 60_000,
+      },
       requiresConfirmation: true,
     },
   };
@@ -197,12 +214,67 @@ export function getMockProcessDetail(request: ProcessDetailRequest): ProcessDeta
   };
 }
 
+export function createMockProcessControlLease(
+  request: ProcessControlLeaseRequest,
+): ProcessControlLease {
+  if (!request.acknowledgeBestEffort) {
+    throw {
+      code: "best_effort_confirmation_required",
+      message: "请先确认 macOS 的 best-effort PID 定位限制。",
+    };
+  }
+  const process = baseProcesses.find(
+    (candidate) =>
+      candidate.pid === request.key.pid &&
+      candidate.birthToken === request.key.birthToken,
+  );
+  if (!process) {
+    throw { code: "stale_process", message: "进程身份已经变化。" };
+  }
+
+  leaseSequence += 1;
+  const lease: ProcessControlLease = {
+    id: `mock-lease-${leaseSequence}`,
+    key: request.key,
+    action: request.action,
+    targeting: "best_effort_pid",
+    expiresAtMs: Date.now() + 60_000,
+  };
+  mockLeases.set(lease.id, lease);
+  return lease;
+}
+
+export function releaseMockProcessControlLease(
+  request: ProcessControlLeaseReleaseRequest,
+): void {
+  mockLeases.delete(request.leaseId);
+}
+
 export function executeMockProcessAction(
   request: ProcessActionRequest,
 ): ProcessActionResult {
+  const lease = mockLeases.get(request.leaseId);
+  mockLeases.delete(request.leaseId);
+  if (!lease) {
+    throw {
+      code: "control_lease_unavailable",
+      message: "本次进程确认已经使用或取消。",
+    };
+  }
+  if (
+    lease.expiresAtMs <= Date.now() ||
+    lease.action !== request.action ||
+    lease.key.pid !== request.key.pid ||
+    lease.key.birthToken !== request.key.birthToken
+  ) {
+    throw {
+      code: "control_lease_mismatch",
+      message: "进程确认与当前操作不匹配，未发送信号。",
+    };
+  }
   return {
     signalSent: true,
-    outcome: "signal_sent",
+    outcome: "still_running",
     message:
       request.action === "request_close"
         ? "已发送结束请求，正在等待进程退出。"

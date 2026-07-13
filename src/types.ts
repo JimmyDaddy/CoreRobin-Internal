@@ -1,4 +1,4 @@
-export const SNAPSHOT_SCHEMA_VERSION = 2;
+export const SNAPSHOT_SCHEMA_VERSION = 3;
 
 export interface SystemSnapshot {
   schemaVersion: number;
@@ -76,9 +76,28 @@ export interface ProcessRow {
 
 export interface Capabilities {
   platform: string;
-  requestClose: boolean;
-  forceKill: boolean;
+  processControl: ProcessControlCapabilities;
   requiresConfirmation: boolean;
+}
+
+export type ProcessControlTargeting =
+  | "stable_handle"
+  | "best_effort_pid"
+  | "unavailable";
+
+export type ProcessActionSemantic = "sigterm" | "sigkill" | "terminate_process";
+
+export interface ProcessActionCapability {
+  enabled: boolean;
+  semantic: ProcessActionSemantic | null;
+  disabledReason: string | null;
+}
+
+export interface ProcessControlCapabilities {
+  targeting: ProcessControlTargeting;
+  requestClose: ProcessActionCapability;
+  forceKill: ProcessActionCapability;
+  leaseTtlMs: number;
 }
 
 export interface ProcessKey {
@@ -113,14 +132,35 @@ export interface ProcessDetail {
 
 export type ProcessAction = "request_close" | "force_kill";
 
+export interface ProcessControlLeaseRequest {
+  key: ProcessKey;
+  action: ProcessAction;
+  acknowledgeBestEffort: boolean;
+}
+
+export interface ProcessControlLease {
+  id: string;
+  key: ProcessKey;
+  action: ProcessAction;
+  targeting: ProcessControlTargeting;
+  expiresAtMs: number;
+}
+
+export interface ProcessControlLeaseReleaseRequest {
+  leaseId: string;
+}
+
 export interface ProcessActionRequest {
+  leaseId: string;
   key: ProcessKey;
   action: ProcessAction;
 }
 
+export type ProcessActionOutcome = "exited" | "still_running" | "already_exited";
+
 export interface ProcessActionResult {
   signalSent: boolean;
-  outcome: string;
+  outcome: ProcessActionOutcome;
   message: string;
 }
 

@@ -26,5 +26,8 @@ sysinfo = { version = "=0.39.6", default-features = false, features = ["disk", "
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { version = "1", features = ["event", "process"] }
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }

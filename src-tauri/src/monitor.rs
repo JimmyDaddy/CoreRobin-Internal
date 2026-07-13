@@ -2,15 +2,15 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{
     CpuRefreshKind, Disks, MINIMUM_CPU_UPDATE_INTERVAL, Networks, ProcessRefreshKind,
-    ProcessesToUpdate, Signal, System, UpdateKind, Users,
+    ProcessesToUpdate, System, UpdateKind, Users,
 };
 
 use crate::error::CommandError;
 use crate::identity::{ensure_birth_token, read_birth_token};
 use crate::models::{
     Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot, NetworkSnapshot,
-    ProcessAction, ProcessActionRequest, ProcessActionResult, ProcessDetail, ProcessDetailRequest,
-    ProcessKey, ProcessRow, SNAPSHOT_SCHEMA_VERSION, SystemSnapshot, VolumeSnapshot,
+    ProcessControlCapabilities, ProcessDetail, ProcessDetailRequest, ProcessKey, ProcessRow,
+    SNAPSHOT_SCHEMA_VERSION, SystemSnapshot, VolumeSnapshot,
 };
 
 pub struct SystemMonitor {
@@ -22,10 +22,11 @@ pub struct SystemMonitor {
     sequence: u64,
     last_sample: Instant,
     own_pid: u32,
+    process_control_capabilities: ProcessControlCapabilities,
 }
 
 impl SystemMonitor {
-    pub fn new() -> Self {
+    pub fn new(process_control_capabilities: ProcessControlCapabilities) -> Self {
         let mut system = System::new();
         system.refresh_cpu_list(CpuRefreshKind::everything());
         system.refresh_cpu_usage();
@@ -54,6 +55,7 @@ impl SystemMonitor {
             sequence: 0,
             last_sample: Instant::now(),
             own_pid: std::process::id(),
+            process_control_capabilities,
         }
     }
 
@@ -185,7 +187,11 @@ impl SystemMonitor {
                 interface_count: self.networks.list().len(),
             },
             processes,
-            capabilities: capabilities(),
+            capabilities: Capabilities {
+                platform: std::env::consts::OS.to_owned(),
+                process_control: self.process_control_capabilities.clone(),
+                requires_confirmation: true,
+            },
         }
     }
 
@@ -273,80 +279,12 @@ impl SystemMonitor {
                 .exe()
                 .map(|path| path.to_string_lossy().into_owned()),
             command_line,
-            can_terminate: protected_reason.is_none() && identity_error.is_none(),
+            can_terminate: protected_reason.is_none()
+                && identity_error.is_none()
+                && (self.process_control_capabilities.request_close.enabled
+                    || self.process_control_capabilities.force_kill.enabled),
             protected_reason: protected_reason.map(str::to_owned),
             identity_error,
-        })
-    }
-
-    pub fn execute_action(
-        &mut self,
-        request: ProcessActionRequest,
-    ) -> Result<ProcessActionResult, CommandError> {
-        if let Some(reason) = protected_reason(request.key.pid, self.own_pid) {
-            return Err(CommandError::new("protected_process", reason));
-        }
-
-        ensure_birth_token(request.key.pid, &request.key.birth_token)?;
-
-        let pid = sysinfo::Pid::from_u32(request.key.pid);
-        let pids = [pid];
-        self.system.refresh_processes_specifics(
-            ProcessesToUpdate::Some(&pids),
-            true,
-            ProcessRefreshKind::nothing().without_tasks(),
-        );
-        let process = self.system.process(pid).ok_or_else(|| {
-            CommandError::new("process_exited", "The process has already exited.")
-        })?;
-
-        // macOS signals are PID-based. Recheck after refreshing and immediately
-        // before sending the signal to minimize the remaining platform race.
-        ensure_birth_token(request.key.pid, &request.key.birth_token)?;
-
-        let sent = match request.action {
-            ProcessAction::RequestClose => {
-                #[cfg(windows)]
-                {
-                    return Err(CommandError::new(
-                        "unsupported_action",
-                        "Windows does not provide a universal graceful close operation for arbitrary processes.",
-                    ));
-                }
-
-                #[cfg(not(windows))]
-                {
-                    process.kill_with(Signal::Term).ok_or_else(|| {
-                        CommandError::new(
-                            "unsupported_action",
-                            "This platform does not support a TERM request.",
-                        )
-                    })?
-                }
-            }
-            ProcessAction::ForceKill => process.kill(),
-        };
-
-        if !sent {
-            return Err(CommandError::new(
-                "permission_denied",
-                "The operating system rejected the process action.",
-            ));
-        }
-
-        Ok(ProcessActionResult {
-            signal_sent: true,
-            outcome: "signal_sent".to_owned(),
-            message: match request.action {
-                ProcessAction::RequestClose => {
-                    "Close request sent. Pulse will keep watching for the process to exit."
-                        .to_owned()
-                }
-                ProcessAction::ForceKill => {
-                    "Force-kill request sent. Pulse will keep watching for the process to exit."
-                        .to_owned()
-                }
-            },
         })
     }
 }
@@ -360,16 +298,7 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .without_tasks()
 }
 
-fn capabilities() -> Capabilities {
-    Capabilities {
-        platform: std::env::consts::OS.to_owned(),
-        request_close: !cfg!(windows),
-        force_kill: true,
-        requires_confirmation: true,
-    }
-}
-
-fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
+pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
     if pid == own_pid {
         Some("Pulse cannot terminate itself.")
     } else if pid <= 1 {

@@ -13,9 +13,15 @@ import {
   RefreshCw,
   Settings2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { executeProcessAction, getProcessDetail, isDesktopRuntime } from "./api";
+import {
+  createProcessControlLease,
+  executeProcessAction,
+  getProcessDetail,
+  isDesktopRuntime,
+  releaseProcessControlLease,
+} from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
 import { MetricCard } from "./components/MetricCard";
 import { ProcessInspector } from "./components/ProcessInspector";
@@ -25,6 +31,7 @@ import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import type {
   CommandError,
   ProcessAction,
+  ProcessControlLease,
   ProcessDetail,
   ProcessKey,
   ProcessRow,
@@ -49,6 +56,7 @@ interface PendingProcessAction {
   action: ProcessAction;
   selectionIdentity: string;
   key: ProcessKey;
+  lease: ProcessControlLease;
   detail: ProcessDetail;
 }
 
@@ -72,8 +80,14 @@ function App() {
   const [sortKey, setSortKey] = useState<ProcessSortKey>("cpu");
   const [sortDirection, setSortDirection] = useState<SortDirection>("descending");
   const [pendingAction, setPendingAction] = useState<PendingProcessAction | null>(null);
+  const [preparingAction, setPreparingAction] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [bestEffortOptIn, setBestEffortOptIn] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const selectedIdentityRef = useRef(selectedIdentity);
+  const activeDetailKeyRef = useRef<ProcessKey | null>(null);
+  const preparingActionRef = useRef(false);
+  const submittingActionRef = useRef(false);
 
   const selectedProcess = useMemo(
     () =>
@@ -84,6 +98,8 @@ function App() {
   );
   const selectionMissing = selectedIdentity !== null && !selectedProcess;
   const activeDetail = detailMatchesProcess(detail, selectedProcess) ? detail : null;
+  selectedIdentityRef.current = selectedIdentity;
+  activeDetailKeyRef.current = activeDetail?.key ?? null;
 
   useEffect(() => {
     if (!snapshot || selectedIdentity !== null) return;
@@ -127,7 +143,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedProcess?.pid, selectedProcess?.startTime]);
+  }, [selectedProcess?.birthToken, selectedProcess?.pid, selectedProcess?.startTime]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -144,41 +160,93 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [setPaused]);
 
-  const selectProcess = useCallback((process: ProcessRow) => {
-    setSelectedIdentity(processIdentity(process));
-    setLastSelected(process);
-    setPendingAction(null);
-    setNotice(null);
+  const discardPendingAction = useCallback((pending: PendingProcessAction | null) => {
+    if (!pending) return;
+    void releaseProcessControlLease({ leaseId: pending.lease.id }).catch(() => undefined);
   }, []);
 
-  const beginProcessAction = useCallback(
-    (action: ProcessAction) => {
-      if (!selectedIdentity || !activeDetail?.key) return;
-      setPendingAction({
-        action,
-        selectionIdentity: selectedIdentity,
-        key: activeDetail.key,
-        detail: activeDetail,
-      });
+  const cancelPendingAction = useCallback(() => {
+    discardPendingAction(pendingAction);
+    setPendingAction(null);
+  }, [discardPendingAction, pendingAction]);
+
+  const selectProcess = useCallback(
+    (process: ProcessRow) => {
+      discardPendingAction(pendingAction);
+      setSelectedIdentity(processIdentity(process));
+      setLastSelected(process);
+      setPendingAction(null);
+      setNotice(null);
     },
-    [activeDetail, selectedIdentity],
+    [discardPendingAction, pendingAction],
+  );
+
+  const beginProcessAction = useCallback(
+    async (action: ProcessAction) => {
+      if (
+        preparingActionRef.current ||
+        !selectedIdentity ||
+        !activeDetail?.key
+      ) {
+        return;
+      }
+
+      const selectionIdentity = selectedIdentity;
+      const key = activeDetail.key;
+      preparingActionRef.current = true;
+      setPreparingAction(true);
+      setNotice(null);
+      try {
+        const lease = await createProcessControlLease({
+          key,
+          action,
+          acknowledgeBestEffort:
+            snapshot?.capabilities.processControl.targeting !== "best_effort_pid" ||
+            bestEffortOptIn,
+        });
+        if (
+          selectedIdentityRef.current !== selectionIdentity ||
+          !processKeysEqual(activeDetailKeyRef.current, key)
+        ) {
+          await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
+          setNotice("目标进程身份已经变化，操作已取消。请重新选择并确认。");
+          return;
+        }
+        setPendingAction({
+          action,
+          selectionIdentity,
+          key,
+          lease,
+          detail: activeDetail,
+        });
+      } catch (caughtError) {
+        setNotice(normalizeCommandError(caughtError).message);
+      } finally {
+        preparingActionRef.current = false;
+        setPreparingAction(false);
+      }
+    },
+    [activeDetail, bestEffortOptIn, selectedIdentity, snapshot?.capabilities.processControl.targeting],
   );
 
   const handleAction = async () => {
-    if (!pendingAction) return;
+    if (!pendingAction || submittingActionRef.current) return;
     const currentKey = activeDetail?.key ?? null;
     if (
       selectedIdentity !== pendingAction.selectionIdentity ||
       !processKeysEqual(currentKey, pendingAction.key)
     ) {
+      await releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
       setNotice("目标进程身份已经变化，操作已取消。请重新选择并确认。");
       setPendingAction(null);
       return;
     }
 
+    submittingActionRef.current = true;
     setSubmittingAction(true);
     try {
       const result = await executeProcessAction({
+        leaseId: pendingAction.lease.id,
         key: pendingAction.key,
         action: pendingAction.action,
       });
@@ -187,9 +255,11 @@ function App() {
       await refreshNow();
     } catch (caughtError) {
       const actionError = normalizeCommandError(caughtError);
+      void releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
       setNotice(actionError.message);
       setPendingAction(null);
     } finally {
+      submittingActionRef.current = false;
       setSubmittingAction(false);
     }
   };
@@ -356,7 +426,10 @@ function App() {
             detailError={detailError}
             detailLoading={detailLoading}
             capabilities={snapshot.capabilities}
-            onAction={beginProcessAction}
+            bestEffortOptIn={bestEffortOptIn}
+            preparingAction={preparingAction}
+            onBestEffortOptInChange={setBestEffortOptIn}
+            onAction={(action) => void beginProcessAction(action)}
           />
         </div>
 
@@ -372,8 +445,14 @@ function App() {
         <ConfirmActionDialog
           action={pendingAction.action}
           detail={pendingAction.detail}
+          targeting={pendingAction.lease.targeting}
+          semantic={
+            pendingAction.action === "request_close"
+              ? snapshot.capabilities.processControl.requestClose.semantic
+              : snapshot.capabilities.processControl.forceKill.semantic
+          }
           submitting={submittingAction}
-          onCancel={() => setPendingAction(null)}
+          onCancel={cancelPendingAction}
           onConfirm={() => void handleAction()}
         />
       ) : null}

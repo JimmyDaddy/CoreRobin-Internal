@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 2;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 3;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -96,9 +96,43 @@ pub struct ProcessRow {
 #[serde(rename_all = "camelCase")]
 pub struct Capabilities {
     pub platform: String,
-    pub request_close: bool,
-    pub force_kill: bool,
+    pub process_control: ProcessControlCapabilities,
     pub requires_confirmation: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Some variants are constructed only by other target-specific backends.
+pub enum ProcessControlTargeting {
+    StableHandle,
+    BestEffortPid,
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Windows-only semantics are intentionally absent on Unix builds.
+pub enum ProcessActionSemantic {
+    Sigterm,
+    Sigkill,
+    TerminateProcess,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessActionCapability {
+    pub enabled: bool,
+    pub semantic: Option<ProcessActionSemantic>,
+    pub disabled_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessControlCapabilities {
+    pub targeting: ProcessControlTargeting,
+    pub request_close: ProcessActionCapability,
+    pub force_kill: ProcessActionCapability,
+    pub lease_ttl_ms: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -137,7 +171,7 @@ pub struct ProcessDetail {
     pub identity_error: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ProcessAction {
     RequestClose,
@@ -146,15 +180,48 @@ pub enum ProcessAction {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProcessActionRequest {
+pub struct ProcessControlLeaseRequest {
     pub key: ProcessKey,
     pub action: ProcessAction,
+    pub acknowledge_best_effort: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProcessControlLease {
+    pub id: String,
+    pub key: ProcessKey,
+    pub action: ProcessAction,
+    pub targeting: ProcessControlTargeting,
+    pub expires_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessControlLeaseReleaseRequest {
+    pub lease_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessActionRequest {
+    pub lease_id: String,
+    pub key: ProcessKey,
+    pub action: ProcessAction,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessActionOutcome {
+    Exited,
+    StillRunning,
+    AlreadyExited,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ProcessActionResult {
     pub signal_sent: bool,
-    pub outcome: String,
+    pub outcome: ProcessActionOutcome,
     pub message: String,
 }

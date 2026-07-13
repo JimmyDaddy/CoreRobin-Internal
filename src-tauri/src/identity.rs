@@ -70,10 +70,17 @@ fn read_macos_birth_token(pid: u32) -> Result<String, CommandError> {
 #[cfg(target_os = "linux")]
 fn read_linux_birth_token(pid: u32) -> Result<String, CommandError> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).map_err(|error| {
-        CommandError::new(
-            "identity_unavailable",
-            format!("Unable to read /proc process identity: {error}"),
-        )
+        if error.kind() == std::io::ErrorKind::NotFound {
+            CommandError::new(
+                "process_exited",
+                "The selected process is no longer running.",
+            )
+        } else {
+            CommandError::new(
+                "identity_unavailable",
+                format!("Unable to read /proc process identity: {error}"),
+            )
+        }
     })?;
     let start_ticks = parse_linux_start_ticks(&stat).ok_or_else(|| {
         CommandError::new(
@@ -97,10 +104,8 @@ fn parse_linux_start_ticks(stat: &str) -> Option<u64> {
 
 #[cfg(windows)]
 fn read_windows_birth_token(pid: u32) -> Result<String, CommandError> {
-    use windows_sys::Win32::Foundation::{CloseHandle, FILETIME};
-    use windows_sys::Win32::System::Threading::{
-        GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-    };
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
     if handle.is_null() {
@@ -109,6 +114,20 @@ fn read_windows_birth_token(pid: u32) -> Result<String, CommandError> {
             "Windows denied access to the process creation time.",
         ));
     }
+
+    let result = windows_birth_token_from_handle(handle);
+    unsafe {
+        CloseHandle(handle);
+    }
+    result
+}
+
+#[cfg(windows)]
+pub(crate) fn windows_birth_token_from_handle(
+    handle: windows_sys::Win32::Foundation::HANDLE,
+) -> Result<String, CommandError> {
+    use windows_sys::Win32::Foundation::FILETIME;
+    use windows_sys::Win32::System::Threading::GetProcessTimes;
 
     let mut creation = FILETIME {
         dwLowDateTime: 0,
@@ -119,9 +138,6 @@ fn read_windows_birth_token(pid: u32) -> Result<String, CommandError> {
     let mut user = creation;
     let succeeded =
         unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) != 0 };
-    unsafe {
-        CloseHandle(handle);
-    }
 
     if !succeeded {
         return Err(CommandError::new(

@@ -26,6 +26,9 @@ interface ProcessInspectorProps {
   detailError: CommandError | null;
   detailLoading: boolean;
   capabilities: Capabilities;
+  bestEffortOptIn: boolean;
+  preparingAction: boolean;
+  onBestEffortOptInChange: (enabled: boolean) => void;
   onAction: (action: ProcessAction) => void;
 }
 
@@ -36,6 +39,9 @@ export function ProcessInspector({
   detailError,
   detailLoading,
   capabilities,
+  bestEffortOptIn,
+  preparingAction,
+  onBestEffortOptInChange,
   onAction,
 }: ProcessInspectorProps) {
   if (selectionMissing) {
@@ -63,9 +69,16 @@ export function ProcessInspector({
   }
 
   const protectedReason = detail?.protectedReason ?? detail?.identityError;
-  const canTerminate = detail?.canTerminate && detail.key !== null;
+  const canTerminate = Boolean(detail?.canTerminate && detail.key !== null);
   const displayName = detail?.name ?? selected.name;
   const displayUser = detail?.user ?? selected.user;
+  const control = capabilities.processControl;
+  const bestEffort = control.targeting === "best_effort_pid";
+  const targetingAllowed = !bestEffort || bestEffortOptIn;
+  const requestCloseEnabled =
+    canTerminate && targetingAllowed && control.requestClose.enabled;
+  const forceKillEnabled =
+    canTerminate && targetingAllowed && control.forceKill.enabled;
 
   return (
     <aside className="inspector panel" aria-live="polite">
@@ -138,21 +151,37 @@ export function ProcessInspector({
       <div className="inspector-actions">
         {protectedReason ? (
           <p className="action-guard"><ShieldCheck size={14} />{protectedReason}</p>
+        ) : control.targeting === "stable_handle" ? (
+          <p className="action-guard"><ShieldCheck size={14} />确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。</p>
+        ) : control.targeting === "unavailable" ? (
+          <p className="action-guard"><AlertTriangle size={14} />{control.forceKill.disabledReason ?? control.requestClose.disabledReason ?? "此平台暂不支持安全的进程控制。"}</p>
         ) : (
-          <p className="action-guard">操作前会再次核验高精度启动标识，以降低 PID 复用导致的误操作风险。</p>
+          <div className="best-effort-guard">
+            <p><AlertTriangle size={14} /><span>macOS 无法为任意进程提供可发信号的稳定句柄。Pulse 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。</span></p>
+            <label>
+              <input
+                type="checkbox"
+                checked={bestEffortOptIn}
+                onChange={(event) => onBestEffortOptInChange(event.target.checked)}
+              />
+              本次运行中允许 best-effort 进程操作
+            </label>
+          </div>
         )}
         <button
           type="button"
           className="button button--secondary"
-          disabled={!canTerminate || !capabilities.requestClose}
+          disabled={!requestCloseEnabled || preparingAction}
+          title={control.requestClose.disabledReason ?? undefined}
           onClick={() => onAction("request_close")}
         >
-          请求结束
+          {preparingAction ? "正在绑定…" : "请求结束"}
         </button>
         <button
           type="button"
           className="button button--danger-ghost"
-          disabled={!canTerminate || !capabilities.forceKill}
+          disabled={!forceKillEnabled || preparingAction}
+          title={control.forceKill.disabledReason ?? undefined}
           onClick={() => onAction("force_kill")}
         >
           强制结束…
