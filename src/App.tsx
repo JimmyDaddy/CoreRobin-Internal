@@ -533,6 +533,11 @@ function App() {
                 connectionsError={connectionsError}
                 connectionsLoading={connectionsLoading}
                 onRefreshConnections={() => void refreshConnections()}
+                processes={snapshot.processes}
+                onSelectProcess={(process) => {
+                  selectProcess(process);
+                  setActiveView("processes");
+                }}
               />
             )}
           </main>

@@ -7,6 +7,7 @@ import {
   networkHistorySegments,
   networkHistoryWindow,
   networkInterfaceRate,
+  resolveNetworkConnectionOwners,
   sortNetworkInterfaces,
   visibleNetworkInterfaces,
 } from "./networkExplorer";
@@ -14,6 +15,7 @@ import type {
   HistoryPoint,
   NetworkConnection,
   NetworkInterfaceSnapshot,
+  ProcessRow,
 } from "./types";
 
 function interfaceFixture(
@@ -47,6 +49,7 @@ const connectionFixtures: NetworkConnection[] = [
     localEndpoint: { address: "127.0.0.1", port: 4_000 },
     remoteEndpoint: { address: "203.0.113.10", port: 443 },
     state: "established",
+    associatedPids: [42],
   },
   {
     protocol: "tcp",
@@ -54,6 +57,7 @@ const connectionFixtures: NetworkConnection[] = [
     localEndpoint: { address: "::", port: 8_080 },
     remoteEndpoint: null,
     state: "listen",
+    associatedPids: [],
   },
   {
     protocol: "udp",
@@ -61,6 +65,7 @@ const connectionFixtures: NetworkConnection[] = [
     localEndpoint: { address: "0.0.0.0", port: 53 },
     remoteEndpoint: null,
     state: "unconnected",
+    associatedPids: [],
   },
 ];
 
@@ -86,6 +91,33 @@ describe("network connections", () => {
       "[::]:8080",
     );
     expect(formatNetworkEndpoint(null)).toBe("—");
+  });
+
+  it("resolves reported owners against the current process snapshot", () => {
+    const process = {
+      pid: 42,
+      birthToken: "test:42",
+      parentPid: 1,
+      startTime: 100,
+      runTimeSeconds: 10,
+      name: "pulse-test",
+      user: "tester",
+      status: "Run",
+      cpuPercent: 1,
+      memoryBytes: 1_024,
+      diskReadBytesPerSecond: 0,
+      diskWriteBytesPerSecond: 0,
+      protected: false,
+    } satisfies ProcessRow;
+    const connection = {
+      ...connectionFixtures[0],
+      associatedPids: [99, 42, 42],
+    };
+
+    expect(resolveNetworkConnectionOwners(connection, [process])).toEqual({
+      processes: [process],
+      unavailablePids: [99],
+    });
   });
 });
 

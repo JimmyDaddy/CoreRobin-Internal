@@ -3,7 +3,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::error::CommandError;
 use crate::models::{
     NetworkAddressFamily, NetworkConnection, NetworkConnectionState, NetworkConnectionSummary,
-    NetworkConnectionsSnapshot, NetworkEndpoint, NetworkTransportProtocol,
+    NetworkConnectionsSnapshot, NetworkEndpoint, NetworkProcessAttribution,
+    NetworkTransportProtocol,
 };
 
 const MAX_CONNECTION_ROWS: usize = 500;
@@ -50,6 +51,7 @@ fn build_snapshot(
         sampled_at_ms,
         summary,
         connections,
+        process_attribution: process_attribution(),
         truncated,
         skipped_entry_count,
     }
@@ -69,6 +71,9 @@ fn summarize_connections(connections: &[NetworkConnection]) -> NetworkConnection
             NetworkConnectionState::Established => summary.established_count += 1,
             NetworkConnectionState::Listen => summary.listening_count += 1,
             _ => {}
+        }
+        if !connection.associated_pids.is_empty() {
+            summary.attributed_count += 1;
         }
     }
     summary
@@ -114,6 +119,23 @@ fn protocol_rank(protocol: NetworkTransportProtocol) -> u8 {
     }
 }
 
+fn process_attribution() -> NetworkProcessAttribution {
+    #[cfg(windows)]
+    {
+        NetworkProcessAttribution::Available
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        NetworkProcessAttribution::Partial
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    {
+        NetworkProcessAttribution::Unavailable
+    }
+}
+
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 fn collect_supported_connections() -> Result<(Vec<NetworkConnection>, usize), CommandError> {
     use netstat2::{AddressFamilyFlags, ProtocolFlags};
@@ -143,10 +165,7 @@ fn socket_results(
     address_families: netstat2::AddressFamilyFlags,
     protocols: netstat2::ProtocolFlags,
 ) -> Result<Vec<Result<netstat2::SocketInfo, netstat2::error::Error>>, netstat2::error::Error> {
-    #[cfg(target_os = "linux")]
-    let iterator = netstat2::iterate_sockets_info_without_pids(address_families, protocols)?;
-
-    #[cfg(any(target_os = "macos", windows))]
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
     let iterator = netstat2::iterate_sockets_info(address_families, protocols)?;
 
     Ok(iterator.collect())
@@ -155,6 +174,10 @@ fn socket_results(
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 fn connection_from_socket(socket: netstat2::SocketInfo) -> NetworkConnection {
     use netstat2::ProtocolSocketInfo;
+
+    let mut associated_pids = socket.associated_pids;
+    associated_pids.sort_unstable();
+    associated_pids.dedup();
 
     match socket.protocol_socket_info {
         ProtocolSocketInfo::Tcp(tcp) => {
@@ -167,6 +190,7 @@ fn connection_from_socket(socket: netstat2::SocketInfo) -> NetworkConnection {
                 local_endpoint: endpoint(tcp.local_addr, tcp.local_port),
                 remote_endpoint,
                 state: tcp_state(tcp.state),
+                associated_pids,
             }
         }
         ProtocolSocketInfo::Udp(udp) => NetworkConnection {
@@ -175,6 +199,7 @@ fn connection_from_socket(socket: netstat2::SocketInfo) -> NetworkConnection {
             local_endpoint: endpoint(udp.local_addr, udp.local_port),
             remote_endpoint: None,
             state: NetworkConnectionState::Unconnected,
+            associated_pids,
         },
     }
 }
@@ -236,12 +261,13 @@ mod tests {
             },
             remote_endpoint: None,
             state,
+            associated_pids: Vec::new(),
         }
     }
 
     #[test]
     fn summarizes_protocols_and_primary_tcp_states() {
-        let connections = vec![
+        let mut connections = vec![
             connection(
                 NetworkTransportProtocol::Tcp,
                 NetworkConnectionState::Established,
@@ -258,6 +284,7 @@ mod tests {
                 53,
             ),
         ];
+        connections[0].associated_pids = vec![42];
 
         let summary = summarize_connections(&connections);
         assert_eq!(summary.total_count, 3);
@@ -265,6 +292,7 @@ mod tests {
         assert_eq!(summary.udp_count, 1);
         assert_eq!(summary.established_count, 1);
         assert_eq!(summary.listening_count, 1);
+        assert_eq!(summary.attributed_count, 1);
     }
 
     #[test]
@@ -326,10 +354,17 @@ mod tests {
         let (connections, _) =
             super::collect_supported_connections().expect("enumerate active network connections");
 
-        assert!(connections.iter().any(|connection| {
+        let connection = connections.iter().find(|connection| {
             connection.protocol == NetworkTransportProtocol::Tcp
                 && connection.state == NetworkConnectionState::Listen
                 && connection.local_endpoint.port == port
-        }));
+        });
+        assert!(connection.is_some());
+        assert!(
+            connection
+                .expect("find test listener")
+                .associated_pids
+                .contains(&std::process::id())
+        );
     }
 }

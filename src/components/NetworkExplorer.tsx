@@ -16,6 +16,7 @@ import {
   formatNetworkEndpoint,
   networkHistorySegments,
   networkHistoryWindow,
+  resolveNetworkConnectionOwners,
   visibleNetworkInterfaces,
   type NetworkConnectionFilter,
   type NetworkSeriesPoint,
@@ -23,9 +24,11 @@ import {
 import type {
   CommandError,
   HistoryPoint,
+  NetworkConnection,
   NetworkConnectionsSnapshot,
   NetworkInterfaceSnapshot,
   NetworkSnapshot,
+  ProcessRow,
 } from "../types";
 import { formatBytes, formatRate } from "../utils";
 
@@ -36,6 +39,8 @@ interface NetworkExplorerProps {
   connectionsError: CommandError | null;
   connectionsLoading: boolean;
   onRefreshConnections: () => void;
+  processes: ProcessRow[];
+  onSelectProcess: (process: ProcessRow) => void;
 }
 
 const CHART_WIDTH = 720;
@@ -59,6 +64,8 @@ export function NetworkExplorer({
   connectionsError,
   connectionsLoading,
   onRefreshConnections,
+  processes,
+  onSelectProcess,
 }: NetworkExplorerProps) {
   const { t } = useTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
@@ -120,6 +127,8 @@ export function NetworkExplorer({
         error={connectionsError}
         loading={connectionsLoading}
         onRefresh={onRefreshConnections}
+        processes={processes}
+        onSelectProcess={onSelectProcess}
       />
 
       <section className="panel network-interface-panel" aria-labelledby="interface-title">
@@ -170,11 +179,15 @@ function NetworkConnectionsPanel({
   error,
   loading,
   onRefresh,
+  processes,
+  onSelectProcess,
 }: {
   snapshot: NetworkConnectionsSnapshot | null;
   error: CommandError | null;
   loading: boolean;
   onRefresh: () => void;
+  processes: ProcessRow[];
+  onSelectProcess: (process: ProcessRow) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [filter, setFilter] = useState<NetworkConnectionFilter>("all");
@@ -223,7 +236,13 @@ function NetworkConnectionsPanel({
 
       {snapshot ? (
         <div className="network-connection-summary" aria-label={t("network.connections.summary")}>
-          <ConnectionSummaryItem label={t("network.connections.allConnections")} value={snapshot.summary.totalCount} />
+          <ConnectionSummaryItem
+            label={t("network.connections.allConnections")}
+            value={snapshot.summary.totalCount}
+            context={t("network.connections.attributedSummary", {
+              count: snapshot.summary.attributedCount,
+            })}
+          />
           <ConnectionSummaryItem
             label={t("network.connections.established")}
             value={snapshot.summary.establishedCount}
@@ -259,6 +278,15 @@ function NetworkConnectionsPanel({
         </div>
       ) : null}
 
+      {snapshot && snapshot.processAttribution !== "available" ? (
+        <div className="network-connections__notice" role="status">
+          <AlertTriangle size={13} aria-hidden="true" />
+          {t(
+            `network.connections.attribution.${snapshot.processAttribution}`,
+          )}
+        </div>
+      ) : null}
+
       <div className="network-connections__toolbar">
         <div className="network-connection-filters" role="group" aria-label={t("network.connections.filters")}>
           {CONNECTION_FILTERS.map((value) => (
@@ -290,6 +318,7 @@ function NetworkConnectionsPanel({
               <span role="columnheader">{t("network.connections.state")}</span>
               <span role="columnheader">{t("network.connections.localAddress")}</span>
               <span role="columnheader">{t("network.connections.remoteAddress")}</span>
+              <span role="columnheader">{t("network.connections.process")}</span>
             </div>
             {visibleConnections.map((connection, index) => (
               <div
@@ -312,6 +341,11 @@ function NetworkConnectionsPanel({
                 <code role="cell" title={formatNetworkEndpoint(connection.remoteEndpoint)}>
                   {formatNetworkEndpoint(connection.remoteEndpoint)}
                 </code>
+                <ConnectionOwnersCell
+                  connection={connection}
+                  processes={processes}
+                  onSelectProcess={onSelectProcess}
+                />
               </div>
             ))}
           </div>
@@ -336,6 +370,56 @@ function NetworkConnectionsPanel({
         </div>
       )}
     </section>
+  );
+}
+
+function ConnectionOwnersCell({
+  connection,
+  processes,
+  onSelectProcess,
+}: {
+  connection: NetworkConnection;
+  processes: ProcessRow[];
+  onSelectProcess: (process: ProcessRow) => void;
+}) {
+  const { t } = useTranslation();
+  const owners = resolveNetworkConnectionOwners(connection, processes);
+  const primary = owners.processes[0];
+  const reportedCount =
+    owners.processes.length + owners.unavailablePids.length;
+
+  if (primary) {
+    return (
+      <div className="network-connection-owner" role="cell">
+        <button
+          type="button"
+          title={t("network.connections.inspectProcess", {
+            name: primary.name || `PID ${primary.pid}`,
+          })}
+          onClick={() => onSelectProcess(primary)}
+        >
+          <strong>{primary.name || `PID ${primary.pid}`}</strong>
+          <small>PID {primary.pid}</small>
+        </button>
+        {reportedCount > 1 ? <em>+{reportedCount - 1}</em> : null}
+      </div>
+    );
+  }
+
+  if (owners.unavailablePids[0] !== undefined) {
+    return (
+      <div className="network-connection-owner is-unavailable" role="cell">
+        <span>PID {owners.unavailablePids[0]}</span>
+        <small>{t("network.connections.ownerUnavailable")}</small>
+        {reportedCount > 1 ? <em>+{reportedCount - 1}</em> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="network-connection-owner is-empty" role="cell">
+      {t("network.connections.unattributed")}
+    </div>
   );
 }
 

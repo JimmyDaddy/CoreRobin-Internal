@@ -1923,7 +1923,7 @@ code,
 .network-connection-row {
   display: grid;
   min-width: 0;
-  grid-template-columns: 72px 120px minmax(140px, 1fr) minmax(140px, 1fr);
+  grid-template-columns: 64px 108px minmax(130px, 1fr) minmax(130px, 1fr) minmax(128px, 0.8fr);
   align-items: center;
   gap: 10px;
   min-height: 36px;
@@ -1984,6 +1984,63 @@ code,
 .network-connection-state--close_wait,
 .network-connection-state--closing,
 .network-connection-state--last_ack { color: var(--amber); }
+
+.network-connection-owner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+}
+
+.network-connection-owner button {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 6px;
+  overflow: hidden;
+  color: var(--text-soft);
+  border: 1px solid rgba(99, 168, 255, 0.16);
+  border-radius: 6px;
+  background: var(--blue-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.network-connection-owner button:hover {
+  color: var(--text);
+  border-color: rgba(99, 168, 255, 0.35);
+}
+
+.network-connection-owner button strong,
+.network-connection-owner button small,
+.network-connection-owner > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-connection-owner button strong { font-size: 9px; }
+.network-connection-owner button small,
+.network-connection-owner.is-unavailable small { color: var(--text-muted); font-size: 7px; }
+.network-connection-owner > em {
+  flex: 0 0 auto;
+  color: var(--blue);
+  font-size: 8px;
+  font-style: normal;
+}
+.network-connection-owner.is-unavailable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 5px;
+}
+.network-connection-owner.is-unavailable small { grid-column: 1; }
+.network-connection-owner.is-unavailable em { grid-row: 1 / 3; grid-column: 2; align-self: center; }
+.network-connection-owner.is-empty { color: var(--text-muted); }
 
 .network-connections__more {
   display: block;
@@ -2507,7 +2564,7 @@ code,
     flex-direction: column;
   }
   .network-connection-row {
-    grid-template-columns: 58px 96px minmax(110px, 1fr) minmax(110px, 1fr);
+    grid-template-columns: 56px 88px minmax(105px, 1fr) minmax(105px, 1fr) minmax(118px, 0.8fr);
     gap: 8px;
   }
   .network-interface-row {
@@ -2626,4 +2683,9 @@ code,
 .network-connection-row code,
 .network-connection-state { font-size: 11px; }
 .network-connection-row > span small { font-size: 10px; }
+.network-connection-owner,
+.network-connection-owner button strong { font-size: 11px; }
+.network-connection-owner button small,
+.network-connection-owner.is-unavailable small,
+.network-connection-owner > em { font-size: 10px; }
 .network-interface-row { min-height: 80px; }

@@ -27,6 +27,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "192.168.1.42", port: 51_234 },
     remoteEndpoint: { address: "203.0.113.24", port: 443 },
     state: "established",
+    associatedPids: [48_102],
   },
   {
     protocol: "tcp",
@@ -34,6 +35,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "2001:db8::42", port: 51_882 },
     remoteEndpoint: { address: "2001:db8:2::80", port: 443 },
     state: "established",
+    associatedPids: [932],
   },
   {
     protocol: "tcp",
@@ -41,6 +43,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "127.0.0.1", port: 1_420 },
     remoteEndpoint: null,
     state: "listen",
+    associatedPids: [48_102],
   },
   {
     protocol: "tcp",
@@ -48,6 +51,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "0.0.0.0", port: 22 },
     remoteEndpoint: null,
     state: "listen",
+    associatedPids: [],
   },
   {
     protocol: "tcp",
@@ -55,6 +59,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "192.168.1.42", port: 50_910 },
     remoteEndpoint: { address: "198.51.100.18", port: 443 },
     state: "time_wait",
+    associatedPids: [],
   },
   {
     protocol: "tcp",
@@ -62,6 +67,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "192.168.1.42", port: 50_422 },
     remoteEndpoint: { address: "203.0.113.82", port: 22 },
     state: "close_wait",
+    associatedPids: [48_000],
   },
   {
     protocol: "udp",
@@ -69,6 +75,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "0.0.0.0", port: 5_353 },
     remoteEndpoint: null,
     state: "unconnected",
+    associatedPids: [46_100, 46_177],
   },
   {
     protocol: "udp",
@@ -76,6 +83,7 @@ const mockConnections: NetworkConnection[] = [
     localEndpoint: { address: "::", port: 5_353 },
     remoteEndpoint: null,
     state: "unconnected",
+    associatedPids: [],
   },
 ];
 
@@ -376,8 +384,12 @@ export function getMockNetworkConnections(): NetworkConnectionsSnapshot {
         ({ state }) => state === "established",
       ).length,
       listeningCount: mockConnections.filter(({ state }) => state === "listen").length,
+      attributedCount: mockConnections.filter(
+        ({ associatedPids }) => associatedPids.length > 0,
+      ).length,
     },
     connections: mockConnections,
+    processAttribution: "available",
     truncated: false,
     skippedEntryCount: 0,
   };

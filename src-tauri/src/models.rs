@@ -101,6 +101,7 @@ pub struct NetworkConnectionsSnapshot {
     pub sampled_at_ms: u64,
     pub summary: NetworkConnectionSummary,
     pub connections: Vec<NetworkConnection>,
+    pub process_attribution: NetworkProcessAttribution,
     pub truncated: bool,
     pub skipped_entry_count: usize,
 }
@@ -113,6 +114,7 @@ pub struct NetworkConnectionSummary {
     pub udp_count: usize,
     pub established_count: usize,
     pub listening_count: usize,
+    pub attributed_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -123,6 +125,16 @@ pub struct NetworkConnection {
     pub local_endpoint: NetworkEndpoint,
     pub remote_endpoint: Option<NetworkEndpoint>,
     pub state: NetworkConnectionState,
+    pub associated_pids: Vec<u32>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Availability differs by target OS and is serialized for the frontend.
+pub enum NetworkProcessAttribution {
+    Available,
+    Partial,
+    Unavailable,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq, PartialOrd, Ord)]

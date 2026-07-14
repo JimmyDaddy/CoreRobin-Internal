@@ -3,6 +3,7 @@ import type {
   NetworkConnection,
   NetworkEndpoint,
   NetworkInterfaceSnapshot,
+  ProcessRow,
 } from "./types";
 
 export const NETWORK_HISTORY_WINDOW_MS = 5 * 60 * 1_000;
@@ -24,6 +25,26 @@ export interface NetworkSeriesPoint {
 export interface VisibleNetworkInterfaces {
   interfaces: NetworkInterfaceSnapshot[];
   hiddenCount: number;
+}
+
+export interface NetworkConnectionOwners {
+  processes: ProcessRow[];
+  unavailablePids: number[];
+}
+
+export function resolveNetworkConnectionOwners(
+  connection: NetworkConnection,
+  processes: readonly ProcessRow[],
+): NetworkConnectionOwners {
+  const processByPid = new Map(processes.map((process) => [process.pid, process]));
+  const resolved: ProcessRow[] = [];
+  const unavailablePids: number[] = [];
+  for (const pid of [...new Set(connection.associatedPids)].sort((left, right) => left - right)) {
+    const process = processByPid.get(pid);
+    if (process) resolved.push(process);
+    else unavailablePids.push(pid);
+  }
+  return { processes: resolved, unavailablePids };
 }
 
 export function filterNetworkConnections(

@@ -116,7 +116,13 @@ export interface NetworkConnection {
   localEndpoint: NetworkEndpoint;
   remoteEndpoint: NetworkEndpoint | null;
   state: NetworkConnectionState;
+  associatedPids: number[];
 }
+
+export type NetworkProcessAttribution =
+  | "available"
+  | "partial"
+  | "unavailable";
 
 export interface NetworkConnectionSummary {
   totalCount: number;
@@ -124,12 +130,14 @@ export interface NetworkConnectionSummary {
   udpCount: number;
   establishedCount: number;
   listeningCount: number;
+  attributedCount: number;
 }
 
 export interface NetworkConnectionsSnapshot {
   sampledAtMs: number;
   summary: NetworkConnectionSummary;
   connections: NetworkConnection[];
+  processAttribution: NetworkProcessAttribution;
   truncated: boolean;
   skippedEntryCount: number;
 }
