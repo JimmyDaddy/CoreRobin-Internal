@@ -93,6 +93,17 @@ jobs:
       - name: Activate pinned Rust toolchain
         run: rustup show active-toolchain
 
+      - name: Restore Cargo cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Check desktop targets
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
 
