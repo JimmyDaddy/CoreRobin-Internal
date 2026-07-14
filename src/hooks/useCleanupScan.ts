@@ -1,30 +1,57 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { cancelCleanupScan, getCleanupScan } from "../api";
+import {
+  cancelCleanupScan,
+  clearPersistedCleanupScan,
+  getCleanupScan,
+  loadPersistedCleanupScan,
+} from "../api";
 import {
   clearStoredCleanupScan,
-  loadStoredCleanupScan,
-  saveCleanupScan,
+  parseStoredCleanupScan,
   type CleanupSnapshotStatus,
 } from "../cleanupScanStore";
 import type { CleanupScan, CleanupScanProgress, CommandError } from "../types";
 import { normalizeCommandError } from "../utils";
 
 export function useCleanupScan() {
-  const restored = useRef<ReturnType<typeof loadStoredCleanupScan> | undefined>(undefined);
-  if (restored.current === undefined) restored.current = loadStoredCleanupScan();
-  const [snapshot, setSnapshot] = useState<CleanupScan | null>(restored.current?.snapshot ?? null);
-  const [snapshotStatus, setSnapshotStatus] = useState<CleanupSnapshotStatus>(restored.current?.status ?? "current");
+  const [snapshot, setSnapshot] = useState<CleanupScan | null>(null);
+  const [snapshotStatus, setSnapshotStatus] = useState<CleanupSnapshotStatus>("current");
   const [error, setError] = useState<CommandError | null>(null);
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [progress, setProgress] = useState<CleanupScanProgress | null>(null);
   const inFlight = useRef(false);
+  const stateTouched = useRef(false);
+
+  useEffect(() => {
+    clearStoredCleanupScan();
+    let disposed = false;
+    void loadPersistedCleanupScan()
+      .then((serialized) => parseStoredCleanupScan(serialized))
+      .then((persisted) => {
+        if (disposed || stateTouched.current || !persisted) return;
+        setSnapshot(persisted.snapshot);
+        setSnapshotStatus(persisted.status);
+      })
+      .catch(() => {
+        // A missing or unavailable disk cache is equivalent to no prior scan.
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const scan = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    stateTouched.current = true;
     clearStoredCleanupScan();
+    try {
+      await clearPersistedCleanupScan();
+    } catch {
+      // A stale cache must not prevent a new scan.
+    }
     setSnapshot(null);
     setSnapshotStatus("current");
     setLoading(true);
@@ -38,7 +65,6 @@ export function useCleanupScan() {
     setError(null);
     try {
       const completed = await getCleanupScan(setProgress);
-      saveCleanupScan(completed);
       setSnapshot(completed);
       setSnapshotStatus("current");
     } catch (caughtError) {

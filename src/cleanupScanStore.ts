@@ -7,21 +7,14 @@ import type {
 } from "./types";
 import {
   LEGACY_STORAGE_KEYS,
-  readMigratedStorageItem,
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v1";
+export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v3";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export type CleanupSnapshotStatus = "current" | "cached" | "expired";
-
-interface CleanupScanPayload {
-  version: 1;
-  savedAtMs: number;
-  snapshot: CleanupScan;
-}
 
 export interface StoredCleanupScan {
   snapshot: CleanupScan;
@@ -40,7 +33,7 @@ export function parseStoredCleanupScan(
     );
     if (
       !isRecord(value) ||
-      value.version !== 1 ||
+      value.version !== 3 ||
       !isFiniteNonNegativeNumber(value.savedAtMs) ||
       !isCleanupScan(snapshot)
     ) {
@@ -51,7 +44,7 @@ export function parseStoredCleanupScan(
     return {
       // Cleanup availability belongs to the running StatusOrbit build, not to the
       // historical scan. Older retained maps become actionable after the
-      // backend adds the guarded move-to-Trash workflow.
+      // backend adds the guarded permanent-deletion workflow.
       snapshot: { ...snapshot, deletionAvailable: true },
       status: ageMs > CLEANUP_SCAN_STALE_AFTER_MS ? "expired" : "cached",
     };
@@ -71,31 +64,6 @@ function normalizeCleanupScan(value: unknown): unknown {
       ? value.applicationInventoryAvailable
       : false,
   };
-}
-
-export function loadStoredCleanupScan(now = Date.now()): StoredCleanupScan | null {
-  try {
-    return parseStoredCleanupScan(
-      readMigratedStorageItem(
-        window.localStorage,
-        CLEANUP_SCAN_STORAGE_KEY,
-        LEGACY_STORAGE_KEYS.cleanupScan,
-      ),
-      now,
-    );
-  } catch {
-    return null;
-  }
-}
-
-export function saveCleanupScan(snapshot: CleanupScan, now = Date.now()): void {
-  try {
-    const payload: CleanupScanPayload = { version: 1, savedAtMs: now, snapshot };
-    window.localStorage.setItem(CLEANUP_SCAN_STORAGE_KEY, JSON.stringify(payload));
-  } catch {
-    // The completed scan remains available for this session if WebView storage
-    // is unavailable or its quota has been exhausted.
-  }
 }
 
 export function clearStoredCleanupScan(): void {
@@ -163,8 +131,12 @@ function isCleanupNode(value: unknown): value is CleanupNode {
     typeof value.name === "string" &&
     (value.path === null || typeof value.path === "string") &&
     isFiniteNonNegativeNumber(value.sizeBytes) &&
+    isFiniteNonNegativeNumber(value.logicalSizeBytes) &&
+    isFiniteNonNegativeNumber(value.allocatedSizeBytes) &&
     isFiniteNonNegativeNumber(value.itemCount) &&
+    typeof value.hasChildren === "boolean" &&
     (value.safety === "reclaimable" || value.safety === "review") &&
+    ["folder", "file", "aggregate", "restricted"].includes(String(value.kind)) &&
     Array.isArray(value.children) &&
     value.children.every(isCleanupNode)
   );

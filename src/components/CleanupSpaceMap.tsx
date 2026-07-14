@@ -1,107 +1,142 @@
-import { CheckCircle2, ChevronRight, Clock3, FolderOpen, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { ChevronRight, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  createCleanupTrashLease,
-  executeCleanupTrash,
+  createCleanupDeleteLease,
+  executeCleanupDelete,
   getCleanupPathState,
-  releaseCleanupTrashLease,
+  getCleanupSubtree,
+  releaseCleanupDeleteLease,
 } from "../api";
 import { cleanupPathChanged } from "../cleanupFreshness";
-import { collectCleanupPlanNode, layoutCleanupMap, type CleanupMapNode } from "../cleanupMap";
+import {
+  buildCleanupHueMap,
+  cleanupNodeVisual,
+  collectCleanupPlanNode,
+  layoutCleanupMap,
+  type CleanupMapNode,
+} from "../cleanupMap";
 import type { CleanupSnapshotStatus } from "../cleanupScanStore";
-import type { CleanupNode, CleanupScan, CleanupTrashLease, CommandError } from "../types";
+import type { CleanupScan, CleanupDeleteLease, CommandError } from "../types";
 import { formatBytes, normalizeCommandError } from "../utils";
-import { CleanupTrashDialog } from "./CleanupTrashDialog";
+import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
+import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
   snapshotStatus: CleanupSnapshotStatus;
 }
 
-const ARC_COLORS = [
-  "#63a8ff",
-  "#56cf93",
-  "#a78bfa",
-  "#f5b94c",
-  "#f1788b",
-  "#60c9cf",
-  "#8cb4ff",
-];
-
 interface CleanupDragState {
   nodeId: string;
   pointerId: number;
   startX: number;
   startY: number;
+  startedAt: number;
   x: number;
   y: number;
   dragging: boolean;
   overDropzone: boolean;
 }
 
-interface CleanupTrashOutcome {
-  movedCount: number;
+interface CleanupDeleteOutcome {
+  deletedCount: number;
   failedCount: number;
 }
 
-export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapProps) {
+export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapProps) {
   const { t } = useTranslation();
+  const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(() => new Map());
   const root = useMemo<CleanupMapNode>(() => ({
     id: "cleanup-root",
     name: t("cleanup.map.allScanned"),
     path: null,
     sizeBytes: snapshot.locations.reduce((total, location) => total + location.sizeBytes, 0),
+    logicalSizeBytes: snapshot.locations.reduce(
+      (total, location) => total + location.nodes.reduce((sum, node) => sum + node.logicalSizeBytes, 0),
+      0,
+    ),
+    allocatedSizeBytes: snapshot.locations.reduce((total, location) => total + location.sizeBytes, 0),
     itemCount: snapshot.locations.reduce((total, location) => total + location.itemCount, 0),
     safety: "review",
+    kind: "folder",
+    hasChildren: true,
     children: snapshot.locations
-      .filter((location) => location.available && location.sizeBytes > 0)
-      .map((location) => ({
-        id: `location:${location.kind}`,
-        name: t(`cleanup.locations.${location.kind}.title`),
-        path: null,
-        sizeBytes: location.sizeBytes,
-        itemCount: location.itemCount,
-        safety: location.safety,
-        children: location.nodes.map(localizeOtherNode),
-      }))
+      .filter((location) => location.available && (
+        location.sizeBytes > 0 || location.nodes.some((node) => node.kind === "restricted")
+      ))
+      .map((location) => {
+        const restrictedOnly = location.sizeBytes === 0 &&
+          location.nodes.some((node) => node.kind === "restricted");
+        return {
+          id: `location:${location.kind}`,
+          name: t(`cleanup.locations.${location.kind}.title`),
+          path: null,
+          sizeBytes: location.sizeBytes,
+          logicalSizeBytes: location.nodes.reduce((total, node) => total + node.logicalSizeBytes, 0),
+          allocatedSizeBytes: location.sizeBytes,
+          itemCount: location.itemCount,
+          safety: location.safety,
+          kind: restrictedOnly ? "restricted" as const : "folder" as const,
+          hasChildren: location.nodes.length > 0,
+          children: location.nodes.map((node) => materializeCleanupNode(node, loadedSubtrees)),
+        };
+      })
       .sort((left, right) => right.sizeBytes - left.sizeBytes),
-  }), [snapshot, t]);
-  const { nodes, parents } = useMemo(() => indexTree(root), [root]);
+  }), [loadedSubtrees, snapshot, t]);
+  const { nodes, parents, depths } = useMemo(() => indexTree(root), [root]);
+  const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
   const [plannedIds, setPlannedIds] = useState<Set<string>>(() => new Set());
   const [changedIds, setChangedIds] = useState<Set<string>>(() => new Set());
   const [validationRevision, setValidationRevision] = useState(0);
   const [dragState, setDragState] = useState<CleanupDragState | null>(null);
-  const [trashDialogOpen, setTrashDialogOpen] = useState(false);
-  const [trashDialogItems, setTrashDialogItems] = useState<CleanupMapNode[]>([]);
-  const [trashLease, setTrashLease] = useState<CleanupTrashLease | null>(null);
-  const [trashPreparing, setTrashPreparing] = useState(false);
-  const [trashSubmitting, setTrashSubmitting] = useState(false);
-  const [trashError, setTrashError] = useState<CommandError | null>(null);
-  const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
-  const [trashOutcome, setTrashOutcome] = useState<CleanupTrashOutcome | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogItems, setDeleteDialogItems] = useState<CleanupMapNode[]>([]);
+  const [deleteLease, setDeleteLease] = useState<CleanupDeleteLease | null>(null);
+  const [deletePreparing, setDeletePreparing] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<CommandError | null>(null);
+  const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
+  const [deleteOutcome, setDeleteOutcome] = useState<CleanupDeleteOutcome | null>(null);
+  const [loadingNodeId, setLoadingNodeId] = useState<string | null>(null);
+  const [subtreeError, setSubtreeError] = useState<CommandError | null>(null);
   const dragStateRef = useRef<CleanupDragState | null>(null);
+  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+  const dragPreviewFrameRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const suppressNextClickRef = useRef(false);
-  const trashLeaseRef = useRef<CleanupTrashLease | null>(null);
-  const trashRequestIdRef = useRef(0);
+  const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
+  const deleteRequestIdRef = useRef(0);
+  const subtreeRequestIdRef = useRef(0);
 
   useEffect(() => {
-    setFocusId(root.id);
-    setSelectedId(root.id);
+    subtreeRequestIdRef.current += 1;
+    setLoadedSubtrees(new Map());
+    setFocusId("cleanup-root");
+    setSelectedId("cleanup-root");
     setPlannedIds(new Set());
     setChangedIds(new Set());
-    setTrashOutcome(null);
+    setDeleteOutcome(null);
     dragStateRef.current = null;
     setDragState(null);
-  }, [root]);
+    setLoadingNodeId(null);
+    setSubtreeError(null);
+  }, [snapshot]);
 
   const focus = nodes.get(focusId) ?? root;
-  const selected = nodes.get(selectedId) ?? focus;
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
+  const visibleNodes = useMemo(
+    () => new Map(arcs.map((arc) => [arc.node.id, arc.node])),
+    [arcs],
+  );
+  const selected = nodes.get(selectedId) ?? visibleNodes.get(selectedId) ?? focus;
+  const directChildren = useMemo(
+    () => [...focus.children].sort((left, right) => right.allocatedSizeBytes - left.allocatedSizeBytes || left.name.localeCompare(right.name)),
+    [focus],
+  );
   const planned = [...plannedIds]
     .map((id) => nodes.get(id))
     .filter((node): node is CleanupMapNode => node !== undefined);
@@ -110,6 +145,15 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
   const breadcrumbs = breadcrumbPath(focus, nodes, parents);
   const focusChanged = changedIds.has(focus.id);
   const freshness = focusChanged ? "changed" : snapshotStatus;
+  const validationTargets = useMemo(() => {
+    if (focus.path) return [{ id: focus.id, path: focus.path }];
+    if (!focus.id.startsWith("location:")) return [];
+    return focus.children.flatMap((child) => child.path ? [{ id: child.id, path: child.path }] : []);
+  }, [focus]);
+  const selectMapNode = useCallback((node: CleanupMapNode | null) => {
+    const nextId = node?.id ?? focus.id;
+    setSelectedId((current) => current === nextId ? current : nextId);
+  }, [focus.id]);
 
   useEffect(() => {
     const revalidate = () => setValidationRevision((current) => current + 1);
@@ -118,9 +162,9 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
   }, []);
 
   useEffect(() => () => {
-    trashRequestIdRef.current += 1;
-    const lease = trashLeaseRef.current;
-    if (lease) void releaseCleanupTrashLease({ leaseId: lease.id });
+    deleteRequestIdRef.current += 1;
+    const lease = deleteLeaseRef.current;
+    if (lease) void releaseCleanupDeleteLease({ leaseId: lease.id });
   }, []);
 
   useEffect(() => {
@@ -145,39 +189,85 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
   }, []);
 
   useEffect(() => {
-    if (!focus.path) return;
+    if (validationTargets.length === 0) return;
     let cancelled = false;
-    void getCleanupPathState(focus.path)
-      .then((state) => {
-        if (cancelled || !cleanupPathChanged(state, snapshot.sampledAtMs)) return;
-        setChangedIds((current) => {
-          if (current.has(focus.id)) return current;
-          const next = new Set(current);
-          next.add(focus.id);
-          return next;
-        });
-      })
-      .catch(() => {
-        // A failed one-shot metadata check must not hide the retained map.
+    void Promise.all(validationTargets.map(async (target) => {
+      try {
+        const state = await getCleanupPathState(target.path);
+        return cleanupPathChanged(state, snapshot.sampledAtMs) ? target.id : null;
+      } catch {
+        return null;
+      }
+    })).then((changedTargets) => {
+      if (cancelled) return;
+      const changed = changedTargets.filter((id): id is string => id !== null);
+      if (changed.length === 0) return;
+      setChangedIds((current) => {
+        const next = new Set(current);
+        next.add(focus.id);
+        changed.forEach((id) => next.add(id));
+        return next;
       });
+    });
     return () => {
       cancelled = true;
     };
-  }, [focus.id, focus.path, snapshot.sampledAtMs, validationRevision]);
-
-  const drillInto = (node: CleanupMapNode) => {
-    setSelectedId(node.id);
-    if (node.children.length > 0) setFocusId(node.id);
-  };
+  }, [focus.id, snapshot.sampledAtMs, validationRevision, validationTargets]);
 
   const navigateTo = (node: CleanupMapNode) => {
+    if (loadingNodeId && node.id !== loadingNodeId) {
+      subtreeRequestIdRef.current += 1;
+      setLoadingNodeId(null);
+    }
+    setSubtreeError(null);
+    if (node.id === focus.id) {
+      setSelectedId(node.id);
+      return;
+    }
     setFocusId(node.id);
     setSelectedId(node.id);
   };
 
+  const drillInto = async (node: CleanupMapNode) => {
+    if (loadingNodeId === node.id) return;
+    if (loadingNodeId) {
+      subtreeRequestIdRef.current += 1;
+      setLoadingNodeId(null);
+    }
+    setSubtreeError(null);
+    setSelectedId(node.id);
+    if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
+      navigateTo(node);
+      return;
+    }
+    if (node.kind !== "folder" || !node.hasChildren || !node.path) return;
+
+    const requestId = subtreeRequestIdRef.current + 1;
+    subtreeRequestIdRef.current = requestId;
+    setLoadingNodeId(node.id);
+    setSubtreeError(null);
+    try {
+      const subtree = await getCleanupSubtree({ path: node.path, safety: node.safety });
+      if (subtreeRequestIdRef.current !== requestId) return;
+      const loaded = subtree as CleanupMapNode;
+      setLoadedSubtrees((current) => {
+        const next = new Map(current);
+        next.set(node.id, loaded);
+        return next;
+      });
+      navigateTo(loaded);
+    } catch (caughtError) {
+      if (subtreeRequestIdRef.current === requestId) {
+        setSubtreeError(normalizeCommandError(caughtError));
+      }
+    } finally {
+      if (subtreeRequestIdRef.current === requestId) setLoadingNodeId(null);
+    }
+  };
+
   const addToPlan = (node: CleanupMapNode) => {
     if (node.id === root.id || !canCollectCleanupNode(node)) return;
-    setTrashOutcome(null);
+    setDeleteOutcome(null);
     setPlannedIds((current) => collectCleanupPlanNode(current, node.id, parents));
   };
 
@@ -190,11 +280,26 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
   };
 
   const updateDragState = (next: CleanupDragState | null) => {
+    const previous = dragStateRef.current;
     dragStateRef.current = next;
-    setDragState(next);
+    if (next?.dragging) {
+      window.cancelAnimationFrame(dragPreviewFrameRef.current);
+      dragPreviewFrameRef.current = window.requestAnimationFrame(() => {
+        if (!dragPreviewRef.current) return;
+        dragPreviewRef.current.style.transform = `translate3d(${next.x + 13}px, ${next.y + 13}px, 0)`;
+      });
+    }
+    if (
+      previous === null ||
+      next === null ||
+      previous.dragging !== next.dragging ||
+      previous.overDropzone !== next.overDropzone
+    ) {
+      setDragState(next);
+    }
   };
 
-  const beginDrag = (event: ReactPointerEvent<SVGPathElement>, node: CleanupMapNode) => {
+  const beginDrag = (event: ReactPointerEvent<HTMLCanvasElement>, node: CleanupMapNode) => {
     if (event.button !== 0 || !canCollectCleanupNode(node)) return;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -206,6 +311,7 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      startedAt: performance.now(),
       x: event.clientX,
       y: event.clientY,
       dragging: false,
@@ -216,10 +322,10 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
   const moveDragAt = (pointerId: number, clientX: number, clientY: number) => {
     const current = dragStateRef.current;
     if (!current || current.pointerId !== pointerId) return;
-    const dragging = current.dragging || Math.hypot(
-      clientX - current.startX,
-      clientY - current.startY,
-    ) >= 7;
+    const distance = Math.hypot(clientX - current.startX, clientY - current.startY);
+    const dragging = current.dragging || (
+      distance >= 10 && (performance.now() - current.startedAt >= 90 || distance >= 18)
+    );
     const overDropzone = dragging && Boolean(
       document.elementFromPoint(clientX, clientY)?.closest(".cleanup-map__dropzone"),
     );
@@ -265,78 +371,80 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", cancel);
     };
-  });
+  }, [nodes, parents]);
 
-  const closeTrashDialog = useCallback(() => {
-    trashRequestIdRef.current += 1;
-    const lease = trashLeaseRef.current;
-    trashLeaseRef.current = null;
-    if (lease) void releaseCleanupTrashLease({ leaseId: lease.id });
-    setTrashDialogOpen(false);
-    setTrashDialogItems([]);
-    setTrashLease(null);
-    setTrashPreparing(false);
-    setTrashSubmitting(false);
-    setTrashError(null);
-    setReviewAcknowledged(false);
+  useEffect(() => () => window.cancelAnimationFrame(dragPreviewFrameRef.current), []);
+
+  const closeDeleteDialog = useCallback(() => {
+    deleteRequestIdRef.current += 1;
+    const lease = deleteLeaseRef.current;
+    deleteLeaseRef.current = null;
+    if (lease) void releaseCleanupDeleteLease({ leaseId: lease.id });
+    setDeleteDialogOpen(false);
+    setDeleteDialogItems([]);
+    setDeleteLease(null);
+    setDeletePreparing(false);
+    setDeleteSubmitting(false);
+    setDeleteError(null);
+    setDeleteAcknowledged(false);
   }, []);
 
-  const openTrashDialog = async () => {
+  const openDeleteDialog = async () => {
     if (planned.length === 0 || !snapshot.deletionAvailable) return;
     const items = [...planned];
-    const requestId = trashRequestIdRef.current + 1;
-    trashRequestIdRef.current = requestId;
-    setTrashDialogItems(items);
-    setTrashDialogOpen(true);
-    setTrashLease(null);
-    trashLeaseRef.current = null;
-    setTrashPreparing(true);
-    setTrashSubmitting(false);
-    setTrashError(null);
-    setReviewAcknowledged(false);
-    setTrashOutcome(null);
+    const requestId = deleteRequestIdRef.current + 1;
+    deleteRequestIdRef.current = requestId;
+    setDeleteDialogItems(items);
+    setDeleteDialogOpen(true);
+    setDeleteLease(null);
+    deleteLeaseRef.current = null;
+    setDeletePreparing(true);
+    setDeleteSubmitting(false);
+    setDeleteError(null);
+    setDeleteAcknowledged(false);
+    setDeleteOutcome(null);
     try {
-      const lease = await createCleanupTrashLease({
+      const lease = await createCleanupDeleteLease({
         paths: items.flatMap((item) => item.path ? [item.path] : []),
         scanSampledAtMs: snapshot.sampledAtMs,
       });
-      if (trashRequestIdRef.current !== requestId) {
-        await releaseCleanupTrashLease({ leaseId: lease.id });
+      if (deleteRequestIdRef.current !== requestId) {
+        await releaseCleanupDeleteLease({ leaseId: lease.id });
         return;
       }
-      trashLeaseRef.current = lease;
-      setTrashLease(lease);
+      deleteLeaseRef.current = lease;
+      setDeleteLease(lease);
     } catch (caughtError) {
-      if (trashRequestIdRef.current === requestId) {
-        setTrashError(normalizeCommandError(caughtError));
+      if (deleteRequestIdRef.current === requestId) {
+        setDeleteError(normalizeCommandError(caughtError));
       }
     } finally {
-      if (trashRequestIdRef.current === requestId) setTrashPreparing(false);
+      if (deleteRequestIdRef.current === requestId) setDeletePreparing(false);
     }
   };
 
-  const confirmMoveToTrash = async () => {
-    const lease = trashLeaseRef.current;
-    if (!lease || trashSubmitting) return;
-    setTrashSubmitting(true);
-    setTrashError(null);
+  const confirmPermanentDelete = async () => {
+    const lease = deleteLeaseRef.current;
+    if (!lease || deleteSubmitting) return;
+    setDeleteSubmitting(true);
+    setDeleteError(null);
     try {
-      const result = await executeCleanupTrash({ leaseId: lease.id });
-      trashLeaseRef.current = null;
-      setTrashLease(null);
-      const movedPaths = new Set(result.movedPaths);
-      const movedIds = trashDialogItems
-        .filter((item) => item.path !== null && movedPaths.has(item.path))
+      const result = await executeCleanupDelete({ leaseId: lease.id });
+      deleteLeaseRef.current = null;
+      setDeleteLease(null);
+      const deletedPaths = new Set(result.deletedPaths);
+      const deletedIds = deleteDialogItems
+        .filter((item) => item.path !== null && deletedPaths.has(item.path))
         .map((item) => item.id);
       setPlannedIds((current) => new Set(
         [...current].filter((id) => {
           const path = nodes.get(id)?.path;
-          return path === null || path === undefined || !movedPaths.has(path);
+          return path === null || path === undefined || !deletedPaths.has(path);
         }),
       ));
       setChangedIds((current) => {
         const next = new Set(current);
-        for (const id of movedIds) {
+        for (const id of deletedIds) {
           next.add(id);
           let parent = parents.get(id);
           while (parent) {
@@ -346,17 +454,17 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
         }
         return next;
       });
-      setTrashOutcome({
-        movedCount: result.movedPaths.length,
+      setDeleteOutcome({
+        deletedCount: result.deletedPaths.length,
         failedCount: result.failed.length,
       });
-      closeTrashDialog();
+      closeDeleteDialog();
     } catch (caughtError) {
-      trashLeaseRef.current = null;
-      setTrashLease(null);
-      setTrashError(normalizeCommandError(caughtError));
+      deleteLeaseRef.current = null;
+      setDeleteLease(null);
+      setDeleteError(normalizeCommandError(caughtError));
     } finally {
-      setTrashSubmitting(false);
+      setDeleteSubmitting(false);
     }
   };
 
@@ -387,208 +495,219 @@ export function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapPro
       <div className="cleanup-map__workspace">
         <div className="cleanup-map__visual">
           <div className="cleanup-map__canvas" ref={canvasRef}>
-          {freshness !== "current" ? (
-            <div className={`cleanup-map__freshness is-${freshness}`} role="status">
-              {freshness === "changed" ? <RefreshCw size={13} /> : <Clock3 size={13} />}
-              <span>{t(`cleanup.map.freshness.${freshness}`)}</span>
-            </div>
-          ) : null}
-          <svg viewBox="0 0 360 360" role="img" aria-label={t("cleanup.map.ariaLabel", { name: focus.name })}>
-            <g className={`cleanup-map__rings${focusChanged ? " is-changed" : ""}`} key={focus.id}>
-              {arcs.map((arc, index) => (
-                <path
-                  className={`cleanup-map__arc${selected.id === arc.node.id ? " is-selected" : ""}${changedIds.has(arc.node.id) ? " is-changed" : ""}${canCollectCleanupNode(arc.node) ? "" : " is-not-collectable"}`}
-                  d={arc.path}
-                  fill={colorForNode(arc.node, focus, nodes, parents)}
-                  key={`${focus.id}:${arc.node.id}:${arc.depth}`}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${arc.node.name} ${formatBytes(arc.node.sizeBytes)}`}
-                  style={{ animationDelay: `${Math.min(index * 12, 180)}ms` }}
-                  onMouseEnter={() => setSelectedId(arc.node.id)}
-                  onFocus={() => setSelectedId(arc.node.id)}
-                  onClick={() => {
-                    if (suppressNextClickRef.current) {
-                      suppressNextClickRef.current = false;
-                      return;
-                    }
-                    drillInto(arc.node);
-                  }}
-                  onContextMenu={(event) => event.preventDefault()}
-                  onPointerDown={(event) => beginDrag(event, arc.node)}
-                  onLostPointerCapture={(event) => cancelDragAt(event.pointerId)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      drillInto(arc.node);
-                    }
-                  }}
-                />
-              ))}
-            </g>
-            <g
-              className={`cleanup-map__center-control${parentId ? " is-interactive" : ""}`}
-              role={parentId ? "button" : undefined}
-              tabIndex={parentId ? 0 : undefined}
-              aria-label={parentId ? t("cleanup.map.centerBack") : undefined}
-              onClick={() => {
-                const parent = parentId ? nodes.get(parentId) : null;
-                if (parent) navigateTo(parent);
-              }}
-              onKeyDown={(event) => {
-                if (parentId && (event.key === "Enter" || event.key === " ")) {
-                  event.preventDefault();
-                  const parent = nodes.get(parentId);
+            {freshness !== "current" ? (
+              <div className={`cleanup-map__freshness is-${freshness}`} role="status">
+                {freshness === "changed" ? <RefreshCw size={13} /> : <Clock3 size={13} />}
+                <span>{t(`cleanup.map.freshness.${freshness}`)}</span>
+              </div>
+            ) : null}
+            {loadingNodeId ? (
+              <div className="cleanup-map__subtree-loading" role="status">
+                <LoaderCircle size={14} />
+                <span>{t("cleanup.map.loadingFolder")}</span>
+              </div>
+            ) : null}
+            <div className="cleanup-map__surface">
+              <CleanupSunburstCanvas
+                arcs={arcs}
+                hues={hueMap}
+                selectedId={selected.id}
+                changedIds={changedIds}
+                focusKey={focus.id}
+                ariaLabel={t("cleanup.map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects")) })}
+                onSelect={selectMapNode}
+                onActivate={(node) => {
+                  if (suppressNextClickRef.current) {
+                    suppressNextClickRef.current = false;
+                    return;
+                  }
+                  void drillInto(node);
+                }}
+                onPointerDown={beginDrag}
+                onPointerCancel={cancelDragAt}
+              />
+              <button
+                className={`cleanup-map__center-control${focusChanged ? " is-changed" : ""}`}
+                type="button"
+                disabled={!parentId}
+                aria-label={parentId ? t("cleanup.map.centerBack") : undefined}
+                onClick={() => {
+                  const parent = parentId ? nodes.get(parentId) : null;
                   if (parent) navigateTo(parent);
-                }
-              }}
-            >
-              <circle className={`cleanup-map__center${focusChanged ? " is-changed" : ""}`} cx="180" cy="180" r="52" />
-              <text className="cleanup-map__center-label" x="180" y={focusChanged ? "165" : "172"} textAnchor="middle">{truncateLabel(focus.name)}</text>
-              <text className="cleanup-map__center-value" x="180" y={focusChanged ? "188" : "195"} textAnchor="middle">{formatBytes(focus.sizeBytes)}</text>
-              {focusChanged ? <text className="cleanup-map__center-state" x="180" y="207" textAnchor="middle">{t("cleanup.map.freshness.changedShort")}</text> : null}
-            </g>
-          </svg>
+                }}
+              >
+                <span>{nodeDisplayName(focus, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</span>
+                <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
+                {focusChanged ? <small>{t("cleanup.map.freshness.changedShort")}</small> : null}
+              </button>
+            </div>
+
+            <div className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone ? " is-active" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}`}>
+              <span className="cleanup-map__basket-icon"><Trash2 size={18} /></span>
+              <div className="cleanup-map__basket-copy">
+                <small>{dragState?.overDropzone ? t("cleanup.map.basket.release") : t("cleanup.map.basket.title")}</small>
+                <strong>{planned.length > 0
+                    ? t("cleanup.map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
+                    : deleteOutcome
+                    ? t(
+                        deleteOutcome.failedCount > 0 ? "cleanup.map.basket.partial" : "cleanup.map.basket.completed",
+                        { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failedCount },
+                      )
+                    : t("cleanup.map.basket.empty")}</strong>
+                {planned.length > 0 ? (
+                  <div className="cleanup-map__basket-items">
+                    {planned.map((node) => (
+                      <button type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup.map.basket.remove", { name: node.name })}>
+                        <span>{node.name}</span><X size={11} />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {planned.length > 0 ? (
+                <>
+                  <button className="cleanup-map__basket-clear" type="button" onClick={() => setPlannedIds(new Set())}>
+                    {t("cleanup.map.basket.clear")}
+                  </button>
+                  <button className="button button--danger" type="button" disabled={!snapshot.deletionAvailable} onClick={() => void openDeleteDialog()}>
+                    <Trash2 size={14} />
+                    {snapshot.deletionAvailable ? t("cleanup.map.reviewCleanup") : t("cleanup.map.deletionUnavailable")}
+                  </button>
+                </>
+              ) : null}
+            </div>
           </div>
-          <span>{t("cleanup.map.clickToDrill")}</span>
+          <div className="cleanup-map__hints">{t("cleanup.map.clickToDrill")}</div>
         </div>
 
         <aside className="cleanup-map__details" aria-label={t("cleanup.map.details")}>
           <div className="cleanup-map__selected">
-            <span className="cleanup-map__selected-icon"><FolderOpen size={17} /></span>
+            <span className={`cleanup-map__selected-icon is-${selected.kind}`}>
+              {selected.kind === "file" ? <File size={17} /> : selected.kind === "aggregate" ? <Layers3 size={17} /> : selected.kind === "restricted" ? <LockKeyhole size={17} /> : <FolderOpen size={17} />}
+            </span>
             <div>
               <small>{t("cleanup.map.selected")}</small>
-              <strong>{selected.name}</strong>
+              <strong>{nodeDisplayName(selected, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</strong>
               <code title={selected.path ?? selected.name}>{selected.path ?? t("cleanup.map.grouped")}</code>
             </div>
-            <span><strong>{formatBytes(selected.sizeBytes)}</strong><small>{t("cleanup.itemCount", { count: selected.itemCount })}</small></span>
+            <span>
+              <strong>{formatBytes(selected.allocatedSizeBytes)}</strong>
+              <small>{t("cleanup.map.allocatedSize")}</small>
+              {selected.logicalSizeBytes !== selected.allocatedSizeBytes ? <small>{t("cleanup.map.logicalSize", { size: formatBytes(selected.logicalSizeBytes) })}</small> : null}
+            </span>
           </div>
 
-          <div className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone ? " is-active" : ""}${planned.length > 0 ? " has-items" : ""}${trashOutcome ? " has-outcome" : ""}`}>
-            <span className="cleanup-map__basket-icon"><Trash2 size={19} /></span>
-            <div className="cleanup-map__basket-copy">
-              <small>{dragState?.overDropzone ? t("cleanup.map.basket.release") : t("cleanup.map.basket.title")}</small>
-              <strong>{planned.length > 0
-                  ? t("cleanup.map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
-                  : trashOutcome
-                  ? t(
-                      trashOutcome.failedCount > 0
-                        ? "cleanup.map.basket.partial"
-                        : "cleanup.map.basket.completed",
-                      {
-                        movedCount: trashOutcome.movedCount,
-                        failedCount: trashOutcome.failedCount,
-                      },
-                    )
-                  : t("cleanup.map.basket.empty")}</strong>
-              {planned.length > 0 ? (
-                <div className="cleanup-map__basket-items">
-                  {planned.map((node) => (
-                    <button type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup.map.basket.remove", { name: node.name })}>
-                      <span>{node.name}</span><X size={11} />
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            {planned.length > 0 ? (
-              <button className="cleanup-map__basket-clear" type="button" onClick={() => setPlannedIds(new Set())}>
-                {t("cleanup.map.basket.clear")}
-              </button>
-            ) : null}
-            <button
-              className="button button--danger"
-              type="button"
-              disabled={planned.length === 0 || !snapshot.deletionAvailable}
-              onClick={() => void openTrashDialog()}
-            >
-              {trashOutcome && planned.length === 0 ? <CheckCircle2 size={14} /> : <Trash2 size={14} />}
-              {snapshot.deletionAvailable ? t("cleanup.map.reviewCleanup") : t("cleanup.map.deletionUnavailable")}
-            </button>
-          </div>
-
-          {focus.children.length > 0 ? (
+          {directChildren.length > 0 ? (
             <ol className="cleanup-map__legend">
-              {focus.children.slice(0, 12).map((child, index) => (
-                <li key={child.id}>
-                  <button
-                    className={selected.id === child.id ? "is-selected" : undefined}
-                    type="button"
-                    onMouseEnter={() => setSelectedId(child.id)}
-                    onFocus={() => setSelectedId(child.id)}
-                    onClick={() => drillInto(child)}
-                  >
-                    <i style={{ background: ARC_COLORS[index % ARC_COLORS.length] }} />
-                    <span><strong>{child.name}</strong><small>{percentage(child.sizeBytes, focus.sizeBytes)}</small></span>
-                    <b>{formatBytes(child.sizeBytes)}</b>
-                  </button>
-                </li>
-              ))}
+              {directChildren.map((child) => {
+                const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
+                return (
+                  <li key={child.id}>
+                    <button
+                      className={selected.id === child.id ? "is-selected" : undefined}
+                      type="button"
+                      style={{ "--cleanup-node-color": visual.swatch } as CSSProperties}
+                      aria-current={selected.id === child.id ? "true" : undefined}
+                      onMouseEnter={() => setSelectedId(child.id)}
+                      onFocus={() => setSelectedId(child.id)}
+                      onClick={() => void drillInto(child)}
+                    >
+                      <i className={visual.className} style={{ background: visual.swatch }}>
+                        {child.kind === "restricted" ? <LockKeyhole size={8} /> : null}
+                      </i>
+                      <span>
+                        <strong>{nodeDisplayName(child, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</strong>
+                        <small>{t(`cleanup.map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}</small>
+                      </span>
+                      <b>{child.kind === "restricted" ? t("cleanup.map.unreadable") : formatBytes(child.allocatedSizeBytes)}</b>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           ) : (
-            <div className="cleanup-map__leaf">{t("cleanup.map.noDeeperBreakdown")}</div>
+            <div className="cleanup-map__leaf">
+              {focus.hasChildren ? t("cleanup.map.loadDeeperHint") : t("cleanup.map.noDeeperBreakdown")}
+            </div>
           )}
+
+          {subtreeError ? (
+            <div className="cleanup-map__subtree-error" role="alert">
+              {t("cleanup.map.loadFailed")}: {subtreeError.message}
+            </div>
+          ) : null}
 
           <div className="cleanup-map__review">
             <span><ShieldAlert size={14} />{t(`cleanup.safety.${selected.safety}`)}</span>
-            <small>{t(isTrashPath(selected.path) ? "cleanup.map.alreadyInTrash" : "cleanup.map.directActionHint")}</small>
+            <small>{selected.kind === "restricted" ? t("cleanup.map.restrictedHint") : t(isTrashRootPath(selected.path) ? "cleanup.map.trashRootProtected" : "cleanup.map.directActionHint")}</small>
           </div>
         </aside>
       </div>
       {dragState?.dragging ? (
-        <div className={`cleanup-map__drag-preview${dragState.overDropzone ? " is-over" : ""}`} style={{ left: dragState.x, top: dragState.y }} aria-hidden="true">
+        <div
+          ref={dragPreviewRef}
+          className={`cleanup-map__drag-preview${dragState.overDropzone ? " is-over" : ""}`}
+          style={{ transform: `translate3d(${dragState.x + 13}px, ${dragState.y + 13}px, 0)` }}
+          aria-hidden="true"
+        >
           <FolderOpen size={14} />
           <span>{nodes.get(dragState.nodeId)?.name}</span>
           <strong>{formatBytes(nodes.get(dragState.nodeId)?.sizeBytes ?? 0)}</strong>
         </div>
       ) : null}
-      {trashDialogOpen ? (
-        <CleanupTrashDialog
-          items={trashDialogItems}
-          lease={trashLease}
-          preparing={trashPreparing}
-          submitting={trashSubmitting}
-          error={trashError}
-          reviewAcknowledged={reviewAcknowledged}
-          onReviewAcknowledgedChange={setReviewAcknowledged}
-          onCancel={closeTrashDialog}
-          onConfirm={() => void confirmMoveToTrash()}
+      {deleteDialogOpen ? (
+        <CleanupDeleteDialog
+          items={deleteDialogItems}
+          lease={deleteLease}
+          preparing={deletePreparing}
+          submitting={deleteSubmitting}
+          error={deleteError}
+          deleteAcknowledged={deleteAcknowledged}
+          onDeleteAcknowledgedChange={setDeleteAcknowledged}
+          onCancel={closeDeleteDialog}
+          onConfirm={() => void confirmPermanentDelete()}
         />
       ) : null}
     </section>
   );
+});
+
+function materializeCleanupNode(
+  node: CleanupMapNode,
+  loadedSubtrees: ReadonlyMap<string, CleanupMapNode>,
+): CleanupMapNode {
+  const materialized = loadedSubtrees.get(node.id) ?? node;
+  return {
+    ...materialized,
+    children: materialized.children.map((child) => materializeCleanupNode(child, loadedSubtrees)),
+  };
 }
 
 function canCollectCleanupNode(node: CleanupMapNode): boolean {
-  return node.path !== null && !isTrashPath(node.path);
+  return (node.kind === "folder" || node.kind === "file") && node.path !== null && !isTrashRootPath(node.path);
 }
 
-function isTrashPath(path: string | null): boolean {
+function isTrashRootPath(path: string | null): boolean {
   if (!path) return false;
-  const normalized = path.replace(/\\/g, "/").toLocaleLowerCase();
+  const normalized = path.replace(/\\/g, "/").toLowerCase();
   return normalized === "~/.trash" ||
-    normalized.startsWith("~/.trash/") ||
-    normalized.includes("/.local/share/trash/files");
-}
-
-function localizeOtherNode(node: CleanupNode): CleanupMapNode {
-  return {
-    ...node,
-    name: node.path === null && node.name === "other" ? "…" : node.name,
-    children: node.children.map(localizeOtherNode),
-  };
+    normalized.endsWith("/.trash") ||
+    normalized === "~/.local/share/trash/files" ||
+    normalized.endsWith("/.local/share/trash/files");
 }
 
 function indexTree(root: CleanupMapNode) {
   const nodes = new Map<string, CleanupMapNode>();
   const parents = new Map<string, string>();
-  const visit = (node: CleanupMapNode, parent: string | null) => {
+  const depths = new Map<string, number>();
+  const visit = (node: CleanupMapNode, parent: string | null, depth: number) => {
     nodes.set(node.id, node);
+    depths.set(node.id, depth);
     if (parent) parents.set(node.id, parent);
-    node.children.forEach((child) => visit(child, node.id));
+    node.children.forEach((child) => visit(child, node.id, depth + 1));
   };
-  visit(root, null);
-  return { nodes, parents };
+  visit(root, null, 0);
+  return { nodes, parents, depths };
 }
 
 function breadcrumbPath(
@@ -607,44 +726,12 @@ function breadcrumbPath(
   return path;
 }
 
-function colorForNode(
-  node: CleanupMapNode,
-  focus: CleanupMapNode,
-  nodes: Map<string, CleanupMapNode>,
-  parents: Map<string, string>,
-) {
-  const onlyChild = focus.children.length === 1 ? focus.children[0] : null;
-  if (onlyChild && node.id !== onlyChild.id && onlyChild.children.length > 0) {
-    let branch = node;
-    let parentId = parents.get(branch.id);
-    while (parentId && parentId !== onlyChild.id) {
-      const parent = nodes.get(parentId);
-      if (!parent) break;
-      branch = parent;
-      parentId = parents.get(branch.id);
-    }
-    const nestedIndex = Math.max(
-      0,
-      onlyChild.children.findIndex((child) => child.id === branch.id),
-    );
-    return ARC_COLORS[nestedIndex % ARC_COLORS.length];
-  }
-  let branch = node;
-  let parentId = parents.get(branch.id);
-  while (parentId && parentId !== focus.id) {
-    const parent = nodes.get(parentId);
-    if (!parent) break;
-    branch = parent;
-    parentId = parents.get(branch.id);
-  }
-  const index = Math.max(0, focus.children.findIndex((child) => child.id === branch.id));
-  return ARC_COLORS[index % ARC_COLORS.length];
-}
-
 function percentage(value: number, total: number) {
   return total <= 0 ? "0%" : `${Math.max(0.1, value / total * 100).toFixed(value / total >= 0.1 ? 0 : 1)}%`;
 }
 
-function truncateLabel(value: string) {
-  return value.length > 12 ? `${value.slice(0, 11)}…` : value;
+function nodeDisplayName(node: CleanupMapNode, aggregateLabel: string, restrictedLabel: string) {
+  if (node.kind === "aggregate") return aggregateLabel;
+  if (node.kind === "restricted" && node.path === null) return restrictedLabel;
+  return node.name;
 }

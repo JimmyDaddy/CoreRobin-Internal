@@ -6,7 +6,11 @@ export const LEGACY_STORAGE_KEYS = {
   processExplorer: ["pulse.process-explorer.preferences.v1"],
   resourceHistory: ["pulse.resource-history.v1"],
   resourceAlerts: ["pulse.resource-alert-events.v1"],
-  cleanupScan: ["pulse.cleanup-scan.v1"],
+  cleanupScan: [
+    "status-orbit.cleanup-scan.v2",
+    "status-orbit.cleanup-scan.v1",
+    "pulse.cleanup-scan.v1",
+  ],
   desktopNotificationLog: ["pulse.desktop-notification-log.v1"],
 } as const;
 

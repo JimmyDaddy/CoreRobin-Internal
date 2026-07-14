@@ -1,10 +1,10 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
 import {
-  createMockCleanupTrashLease,
+  createMockCleanupDeleteLease,
   createMockProcessControlLease,
   createMockStartupManagementLease,
-  executeMockCleanupTrash,
+  executeMockCleanupDelete,
   executeMockProcessAction,
   executeMockStartupManagement,
   getMockCleanupScan,
@@ -13,19 +13,21 @@ import {
   getMockProcessDetail,
   getMockSnapshot,
   releaseMockProcessControlLease,
-  releaseMockCleanupTrashLease,
+  releaseMockCleanupDeleteLease,
   releaseMockStartupManagementLease,
 } from "./mockData";
 import type {
   ApplicationIcon,
+  CleanupNode,
   CleanupPathState,
   CleanupScan,
   CleanupScanProgress,
-  CleanupTrashExecutionRequest,
-  CleanupTrashLease,
-  CleanupTrashLeaseReleaseRequest,
-  CleanupTrashLeaseRequest,
-  CleanupTrashResult,
+  CleanupSubtreeRequest,
+  CleanupDeleteExecutionRequest,
+  CleanupDeleteLease,
+  CleanupDeleteLeaseReleaseRequest,
+  CleanupDeleteLeaseRequest,
+  CleanupDeleteResult,
   ProcessActionRequest,
   ProcessActionResult,
   ProcessControlLease,
@@ -133,6 +135,35 @@ export async function getCleanupPathState(path: string): Promise<CleanupPathStat
   return invoke<CleanupPathState>("get_cleanup_path_state", { path });
 }
 
+export async function getCleanupSubtree(
+  request: CleanupSubtreeRequest,
+): Promise<CleanupNode> {
+  if (canUseDevelopmentMock()) {
+    const findNode = (nodes: CleanupNode[]): CleanupNode | null => {
+      for (const node of nodes) {
+        if (node.path === request.path) return node;
+        const nested = findNode(node.children);
+        if (nested) return nested;
+      }
+      return null;
+    };
+    const found = findNode(getMockCleanupScan().locations.flatMap((location) => location.nodes));
+    if (found) return found;
+    throw { code: "cleanup_subtree_unavailable", message: "The folder is unavailable." };
+  }
+  return invoke<CleanupNode>("get_cleanup_subtree", { request });
+}
+
+export async function loadPersistedCleanupScan(): Promise<string | null> {
+  if (canUseDevelopmentMock()) return null;
+  return invoke<string | null>("load_persisted_cleanup_scan");
+}
+
+export async function clearPersistedCleanupScan(): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("clear_persisted_cleanup_scan");
+}
+
 export async function cancelCleanupScan(): Promise<boolean> {
   if (canUseDevelopmentMock()) {
     mockCleanupCancelled = true;
@@ -141,28 +172,28 @@ export async function cancelCleanupScan(): Promise<boolean> {
   return invoke<boolean>("cancel_cleanup_scan");
 }
 
-export async function createCleanupTrashLease(
-  request: CleanupTrashLeaseRequest,
-): Promise<CleanupTrashLease> {
-  if (canUseDevelopmentMock()) return createMockCleanupTrashLease(request);
-  return invoke<CleanupTrashLease>("create_cleanup_trash_lease", { request });
+export async function createCleanupDeleteLease(
+  request: CleanupDeleteLeaseRequest,
+): Promise<CleanupDeleteLease> {
+  if (canUseDevelopmentMock()) return createMockCleanupDeleteLease(request);
+  return invoke<CleanupDeleteLease>("create_cleanup_delete_lease", { request });
 }
 
-export async function releaseCleanupTrashLease(
-  request: CleanupTrashLeaseReleaseRequest,
+export async function releaseCleanupDeleteLease(
+  request: CleanupDeleteLeaseReleaseRequest,
 ): Promise<void> {
   if (canUseDevelopmentMock()) {
-    releaseMockCleanupTrashLease(request);
+    releaseMockCleanupDeleteLease(request);
     return;
   }
-  return invoke<void>("release_cleanup_trash_lease", { request });
+  return invoke<void>("release_cleanup_delete_lease", { request });
 }
 
-export async function executeCleanupTrash(
-  request: CleanupTrashExecutionRequest,
-): Promise<CleanupTrashResult> {
-  if (canUseDevelopmentMock()) return executeMockCleanupTrash(request);
-  return invoke<CleanupTrashResult>("execute_cleanup_trash", { request });
+export async function executeCleanupDelete(
+  request: CleanupDeleteExecutionRequest,
+): Promise<CleanupDeleteResult> {
+  if (canUseDevelopmentMock()) return executeMockCleanupDelete(request);
+  return invoke<CleanupDeleteResult>("execute_cleanup_delete", { request });
 }
 
 export async function getProcessDetail(

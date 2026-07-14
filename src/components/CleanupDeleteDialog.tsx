@@ -1,41 +1,39 @@
-import { AlertTriangle, LoaderCircle, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, LoaderCircle, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CleanupMapNode } from "../cleanupMap";
-import type { CleanupTrashLease, CommandError } from "../types";
+import type { CleanupDeleteLease, CommandError } from "../types";
 import { formatBytes } from "../utils";
 
-interface CleanupTrashDialogProps {
+interface CleanupDeleteDialogProps {
   items: readonly CleanupMapNode[];
-  lease: CleanupTrashLease | null;
+  lease: CleanupDeleteLease | null;
   preparing: boolean;
   submitting: boolean;
   error: CommandError | null;
-  reviewAcknowledged: boolean;
-  onReviewAcknowledgedChange: (checked: boolean) => void;
+  deleteAcknowledged: boolean;
+  onDeleteAcknowledgedChange: (checked: boolean) => void;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function CleanupTrashDialog({
+export function CleanupDeleteDialog({
   items,
   lease,
   preparing,
   submitting,
   error,
-  reviewAcknowledged,
-  onReviewAcknowledgedChange,
+  deleteAcknowledged,
+  onDeleteAcknowledgedChange,
   onCancel,
   onConfirm,
-}: CleanupTrashDialogProps) {
+}: CleanupDeleteDialogProps) {
   const { t } = useTranslation();
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
-  const containsReviewItems = items.some((item) => item.safety === "review");
   const changedPaths = new Set(lease?.changedPaths ?? []);
-  const canConfirm = lease !== null && !preparing && !submitting &&
-    (!containsReviewItems || reviewAcknowledged);
+  const canConfirm = lease !== null && !preparing && !submitting && deleteAcknowledged;
 
   useEffect(() => {
     cancelButton.current?.focus();
@@ -49,30 +47,30 @@ export function CleanupTrashDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={submitting ? undefined : onCancel}>
       <section
-        className="cleanup-trash-dialog"
+        className="cleanup-delete-dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="cleanup-trash-title"
+        aria-labelledby="cleanup-delete-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header>
-          <span className="cleanup-trash-dialog__icon"><Trash2 size={20} /></span>
+          <span className="cleanup-delete-dialog__icon"><Trash2 size={20} /></span>
           <div>
-            <h2 id="cleanup-trash-title">{t("cleanup.trashDialog.title")}</h2>
-            <p>{t("cleanup.trashDialog.description")}</p>
+            <h2 id="cleanup-delete-title">{t("cleanup.deleteDialog.title")}</h2>
+            <p>{t("cleanup.deleteDialog.description")}</p>
           </div>
           <button className="icon-button" type="button" aria-label={t("common.cancel")} disabled={submitting} onClick={onCancel}>
             <X size={17} />
           </button>
         </header>
 
-        <div className="cleanup-trash-dialog__summary">
-          <span><strong>{items.length}</strong>{t("cleanup.trashDialog.itemUnit")}</span>
-          <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup.trashDialog.estimatedSize")}</span>
-          <small><ShieldCheck size={13} />{t("cleanup.trashDialog.recoverable")}</small>
+        <div className="cleanup-delete-dialog__summary">
+          <span><strong>{items.length}</strong>{t("cleanup.deleteDialog.itemUnit")}</span>
+          <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup.deleteDialog.estimatedSize")}</span>
+          <small><AlertTriangle size={13} />{t("cleanup.deleteDialog.irreversible")}</small>
         </div>
 
-        <ol className="cleanup-trash-dialog__items">
+        <ol className="cleanup-delete-dialog__items">
           {items.map((item) => (
             <li key={item.id}>
               <span className={`is-${item.safety}`}><i />{t(`cleanup.safety.${item.safety}`)}</span>
@@ -82,41 +80,39 @@ export function CleanupTrashDialog({
               </div>
               <b>{formatBytes(item.sizeBytes)}</b>
               {item.path && changedPaths.has(item.path) ? (
-                <small><AlertTriangle size={12} />{t("cleanup.trashDialog.changed")}</small>
+                <small><AlertTriangle size={12} />{t("cleanup.deleteDialog.changed")}</small>
               ) : null}
             </li>
           ))}
         </ol>
 
         {preparing ? (
-          <div className="cleanup-trash-dialog__preparing" role="status">
+          <div className="cleanup-delete-dialog__preparing" role="status">
             <LoaderCircle className="is-spinning" size={15} />
-            {t("cleanup.trashDialog.preparing")}
+            {t("cleanup.deleteDialog.preparing")}
           </div>
         ) : null}
 
         {lease && lease.changedPaths.length > 0 ? (
-          <p className="cleanup-trash-dialog__warning">
+          <p className="cleanup-delete-dialog__warning">
             <AlertTriangle size={14} />
-            {t("cleanup.trashDialog.changedWarning", { count: lease.changedPaths.length })}
+            {t("cleanup.deleteDialog.changedWarning", { count: lease.changedPaths.length })}
           </p>
         ) : null}
 
-        {containsReviewItems ? (
-          <label className="cleanup-trash-dialog__acknowledgement">
-            <input
-              type="checkbox"
-              checked={reviewAcknowledged}
-              disabled={submitting}
-              onChange={(event) => onReviewAcknowledgedChange(event.target.checked)}
-            />
-            <span><strong>{t("cleanup.trashDialog.reviewConfirmTitle")}</strong><small>{t("cleanup.trashDialog.reviewConfirmDescription")}</small></span>
-          </label>
-        ) : null}
+        <label className="cleanup-delete-dialog__acknowledgement">
+          <input
+            type="checkbox"
+            checked={deleteAcknowledged}
+            disabled={submitting}
+            onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
+          />
+          <span><strong>{t("cleanup.deleteDialog.deleteConfirmTitle")}</strong><small>{t("cleanup.deleteDialog.deleteConfirmDescription")}</small></span>
+        </label>
 
         {error ? (
-          <p className="cleanup-trash-dialog__error" role="alert">
-            {t(`cleanup.trashDialog.errors.${error.code}`, { defaultValue: error.message })}
+          <p className="cleanup-delete-dialog__error" role="alert">
+            {t(`cleanup.deleteDialog.errors.${error.code}`, { defaultValue: error.message })}
           </p>
         ) : null}
 
@@ -125,7 +121,7 @@ export function CleanupTrashDialog({
             {t("common.cancel")}
           </button>
           <button className="button button--danger" type="button" disabled={!canConfirm} onClick={onConfirm}>
-            {submitting ? t("cleanup.trashDialog.moving") : t("cleanup.trashDialog.confirm", { count: items.length })}
+            {submitting ? t("cleanup.deleteDialog.deleting") : t("cleanup.deleteDialog.confirm", { count: items.length })}
           </button>
         </footer>
       </section>

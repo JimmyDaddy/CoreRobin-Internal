@@ -13,17 +13,21 @@ use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
 use application_icon::load_application_icon;
-use cleanup::{CleanupScanCoordinator, CleanupTrashController, inspect_cleanup_path, scan_cleanup};
+use cleanup::{
+    CleanupDeleteController, CleanupScanCoordinator, inspect_cleanup_path, load_cleanup_scan_cache,
+    remove_cleanup_scan_cache, save_cleanup_scan_snapshot_cache, scan_cleanup,
+    scan_cleanup_subtree,
+};
 use error::CommandError;
 use models::{
-    ApplicationIcon, CleanupPathState, CleanupScan, CleanupScanProgress,
-    CleanupTrashExecutionRequest, CleanupTrashLease, CleanupTrashLeaseReleaseRequest,
-    CleanupTrashLeaseRequest, CleanupTrashResult, NetworkConnectionsSnapshot, ProcessActionRequest,
-    ProcessActionResult, ProcessControlLease, ProcessControlLeaseReleaseRequest,
-    ProcessControlLeaseRequest, ProcessDetail, ProcessDetailRequest, StartupItemsSnapshot,
-    StartupManagementExecutionRequest, StartupManagementLease,
-    StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
-    SystemSnapshot,
+    ApplicationIcon, CleanupDeleteExecutionRequest, CleanupDeleteLease,
+    CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteResult,
+    CleanupPathState, CleanupScan, CleanupScanProgress, CleanupSubtreeRequest,
+    NetworkConnectionsSnapshot, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
+    ProcessDetailRequest, StartupItemsSnapshot, StartupManagementExecutionRequest,
+    StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
+    StartupManagementResult, SystemSnapshot,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -41,7 +45,7 @@ struct AppState {
     monitor: Arc<Mutex<SystemMonitor>>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupScanCoordinator>,
-    cleanup_trash_controller: Arc<Mutex<CleanupTrashController>>,
+    cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
     startup_controller: Arc<Mutex<StartupController>>,
 }
 
@@ -55,7 +59,7 @@ impl AppState {
             monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
             process_controller,
             cleanup_scan: Arc::new(CleanupScanCoordinator::default()),
-            cleanup_trash_controller: Arc::new(Mutex::new(CleanupTrashController::default())),
+            cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
         }
     }
@@ -115,13 +119,13 @@ where
     .map_err(|error| CommandError::internal(format!("Process control task failed: {error}")))?
 }
 
-async fn with_cleanup_trash_controller<T, F>(
-    controller: Arc<Mutex<CleanupTrashController>>,
+async fn with_cleanup_delete_controller<T, F>(
+    controller: Arc<Mutex<CleanupDeleteController>>,
     operation: F,
 ) -> Result<T, CommandError>
 where
     T: Send + 'static,
-    F: FnOnce(&mut CleanupTrashController) -> Result<T, CommandError> + Send + 'static,
+    F: FnOnce(&mut CleanupDeleteController) -> Result<T, CommandError> + Send + 'static,
 {
     tauri::async_runtime::spawn_blocking(move || {
         let mut controller = controller
@@ -206,16 +210,20 @@ async fn execute_startup_management(
 
 #[tauri::command]
 async fn get_cleanup_scan(
+    app: AppHandle,
     state: State<'_, AppState>,
     on_progress: Channel<CleanupScanProgress>,
 ) -> Result<CleanupScan, CommandError> {
+    let cache_path = cleanup_scan_cache_path(&app)?;
     let coordinator = Arc::clone(&state.cleanup_scan);
     let cancelled = coordinator.begin()?;
     let worker_cancelled = Arc::clone(&cancelled);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        scan_cleanup(&worker_cancelled, &mut |progress| {
+        let scan = scan_cleanup(&worker_cancelled, &mut |progress| {
             let _ = on_progress.send(progress);
-        })
+        })?;
+        let _ = save_cleanup_scan_snapshot_cache(&cache_path, &scan);
+        Ok::<_, CommandError>(scan)
     })
     .await;
     coordinator.finish(&cancelled);
@@ -230,29 +238,69 @@ async fn get_cleanup_path_state(path: String) -> Result<CleanupPathState, Comman
 }
 
 #[tauri::command]
+async fn get_cleanup_subtree(
+    request: CleanupSubtreeRequest,
+) -> Result<models::CleanupNode, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || scan_cleanup_subtree(request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Cleanup subtree scan failed: {error}")))?
+}
+
+fn cleanup_scan_cache_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join("cleanup-scan-v3.json"))
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Could not resolve the application data folder: {error}"
+            ))
+        })
+}
+
+#[tauri::command]
+async fn load_persisted_cleanup_scan(app: AppHandle) -> Result<Option<String>, CommandError> {
+    let path = cleanup_scan_cache_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || load_cleanup_scan_cache(&path))
+        .await
+        .map_err(|error| CommandError::internal(format!("Cleanup cache read failed: {error}")))?
+}
+
+#[tauri::command]
+async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError> {
+    let path = cleanup_scan_cache_path(&app)?;
+    let legacy_path = path.with_file_name("cleanup-scan-v2.json");
+    tauri::async_runtime::spawn_blocking(move || {
+        remove_cleanup_scan_cache(&path)?;
+        remove_cleanup_scan_cache(&legacy_path)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
+}
+
+#[tauri::command]
 fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError> {
     state.cleanup_scan.cancel()
 }
 
 #[tauri::command]
-async fn create_cleanup_trash_lease(
+async fn create_cleanup_delete_lease(
     state: State<'_, AppState>,
-    request: CleanupTrashLeaseRequest,
-) -> Result<CleanupTrashLease, CommandError> {
-    with_cleanup_trash_controller(
-        Arc::clone(&state.cleanup_trash_controller),
+    request: CleanupDeleteLeaseRequest,
+) -> Result<CleanupDeleteLease, CommandError> {
+    with_cleanup_delete_controller(
+        Arc::clone(&state.cleanup_delete_controller),
         move |controller| controller.create_lease(request),
     )
     .await
 }
 
 #[tauri::command]
-async fn release_cleanup_trash_lease(
+async fn release_cleanup_delete_lease(
     state: State<'_, AppState>,
-    request: CleanupTrashLeaseReleaseRequest,
+    request: CleanupDeleteLeaseReleaseRequest,
 ) -> Result<(), CommandError> {
-    with_cleanup_trash_controller(
-        Arc::clone(&state.cleanup_trash_controller),
+    with_cleanup_delete_controller(
+        Arc::clone(&state.cleanup_delete_controller),
         move |controller| {
             controller.release_lease(&request.lease_id);
             Ok(())
@@ -262,12 +310,12 @@ async fn release_cleanup_trash_lease(
 }
 
 #[tauri::command]
-async fn execute_cleanup_trash(
+async fn execute_cleanup_delete(
     state: State<'_, AppState>,
-    request: CleanupTrashExecutionRequest,
-) -> Result<CleanupTrashResult, CommandError> {
-    with_cleanup_trash_controller(
-        Arc::clone(&state.cleanup_trash_controller),
+    request: CleanupDeleteExecutionRequest,
+) -> Result<CleanupDeleteResult, CommandError> {
+    with_cleanup_delete_controller(
+        Arc::clone(&state.cleanup_delete_controller),
         move |controller| controller.execute(request),
     )
     .await
@@ -453,10 +501,13 @@ pub fn run() {
             execute_startup_management,
             get_cleanup_scan,
             get_cleanup_path_state,
+            get_cleanup_subtree,
+            load_persisted_cleanup_scan,
+            clear_persisted_cleanup_scan,
             cancel_cleanup_scan,
-            create_cleanup_trash_lease,
-            release_cleanup_trash_lease,
-            execute_cleanup_trash,
+            create_cleanup_delete_lease,
+            release_cleanup_delete_lease,
+            execute_cleanup_delete,
             complete_startup,
             show_main_window,
             get_process_detail,

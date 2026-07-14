@@ -1,37 +1,37 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createMockCleanupTrashLease,
-  executeMockCleanupTrash,
-  releaseMockCleanupTrashLease,
+  createMockCleanupDeleteLease,
+  executeMockCleanupDelete,
+  releaseMockCleanupDeleteLease,
 } from "./mockData";
 
-describe("cleanup trash confirmation mock", () => {
+describe("cleanup permanent deletion confirmation mock", () => {
   it("binds the confirmed paths and consumes the lease once", () => {
-    const lease = createMockCleanupTrashLease({
+    const lease = createMockCleanupDeleteLease({
       paths: ["~/Downloads/archive.zip"],
       scanSampledAtMs: Date.now(),
     });
 
     expect(lease.paths).toEqual(["~/Downloads/archive.zip"]);
-    expect(executeMockCleanupTrash({ leaseId: lease.id })).toEqual({
-      movedPaths: ["~/Downloads/archive.zip"],
+    expect(executeMockCleanupDelete({ leaseId: lease.id })).toEqual({
+      deletedPaths: ["~/Downloads/archive.zip"],
       failed: [],
     });
-    expect(() => executeMockCleanupTrash({ leaseId: lease.id })).toThrow(
+    expect(() => executeMockCleanupDelete({ leaseId: lease.id })).toThrow(
       expect.objectContaining({ code: "cleanup_confirmation_unavailable" }),
     );
   });
 
   it("cannot execute a released confirmation", () => {
-    const lease = createMockCleanupTrashLease({
+    const lease = createMockCleanupDeleteLease({
       paths: ["~/Library/Caches/example"],
       scanSampledAtMs: Date.now(),
     });
 
-    releaseMockCleanupTrashLease({ leaseId: lease.id });
+    releaseMockCleanupDeleteLease({ leaseId: lease.id });
 
-    expect(() => executeMockCleanupTrash({ leaseId: lease.id })).toThrow(
+    expect(() => executeMockCleanupDelete({ leaseId: lease.id })).toThrow(
       expect.objectContaining({ code: "cleanup_confirmation_unavailable" }),
     );
   });

@@ -167,6 +167,7 @@ export type CleanupLocationKind =
   | "developer_cache"
   | "hidden_data";
 export type CleanupSafety = "reclaimable" | "review";
+export type CleanupNodeKind = "folder" | "file" | "aggregate" | "restricted";
 
 export interface CleanupScan {
   sampledAtMs: number;
@@ -203,10 +204,20 @@ export interface CleanupNode {
   id: string;
   name: string;
   path: string | null;
+  /** Physical/allocated bytes and the primary value shown in the cleanup UI. */
   sizeBytes: number;
+  logicalSizeBytes: number;
+  allocatedSizeBytes: number;
   itemCount: number;
   safety: CleanupSafety;
+  kind: CleanupNodeKind;
+  hasChildren: boolean;
   children: CleanupNode[];
+}
+
+export interface CleanupSubtreeRequest {
+  path: string;
+  safety: CleanupSafety;
 }
 
 export interface CleanupScanProgress {
@@ -222,32 +233,32 @@ export interface CleanupPathState {
   modifiedAtMs: number | null;
 }
 
-export interface CleanupTrashLeaseRequest {
+export interface CleanupDeleteLeaseRequest {
   paths: string[];
   scanSampledAtMs: number;
 }
 
-export interface CleanupTrashLease {
+export interface CleanupDeleteLease {
   id: string;
   paths: string[];
   changedPaths: string[];
   expiresAtMs: number;
 }
 
-export interface CleanupTrashExecutionRequest {
+export interface CleanupDeleteExecutionRequest {
   leaseId: string;
 }
 
-export interface CleanupTrashLeaseReleaseRequest {
+export interface CleanupDeleteLeaseReleaseRequest {
   leaseId: string;
 }
 
-export interface CleanupTrashResult {
-  movedPaths: string[];
-  failed: CleanupTrashFailure[];
+export interface CleanupDeleteResult {
+  deletedPaths: string[];
+  failed: CleanupDeleteFailure[];
 }
 
-export interface CleanupTrashFailure {
+export interface CleanupDeleteFailure {
   path: string;
   message: string;
 }

@@ -6,10 +6,9 @@ import {
   CLEANUP_SCAN_STALE_AFTER_MS,
   CLEANUP_SCAN_STORAGE_KEY,
   clearStoredCleanupScan,
-  loadStoredCleanupScan,
   parseStoredCleanupScan,
-  saveCleanupScan,
 } from "./cleanupScanStore";
+import { LEGACY_STORAGE_KEYS } from "./storageMigration";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -20,7 +19,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = 10_000;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 1,
+      version: 3,
       savedAtMs: now - 500,
       snapshot,
     }), now);
@@ -32,7 +31,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = CLEANUP_SCAN_STALE_AFTER_MS + 2_000;
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 1,
+      version: 3,
       savedAtMs: 1_000,
       snapshot,
     }), now)?.status).toBe("expired");
@@ -41,7 +40,7 @@ describe("cleanup scan persistence", () => {
   it("uses the current guarded cleanup capability for older retained scans", () => {
     const snapshot = { ...getMockCleanupScan(), deletionAvailable: false };
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 1,
+      version: 3,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000);
@@ -49,11 +48,11 @@ describe("cleanup scan persistence", () => {
     expect(parsed?.snapshot.deletionAvailable).toBe(true);
   });
 
-  it("keeps legacy retained maps usable without inventing application activity", () => {
+  it("keeps retained v3 maps usable without inventing application activity", () => {
     const snapshot = getMockCleanupScan();
     const { installedApplications: _applications, applicationInventoryAvailable: _available, ...legacy } = snapshot;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 1,
+      version: 3,
       savedAtMs: 9_500,
       snapshot: legacy,
     }), 10_000);
@@ -67,27 +66,44 @@ describe("cleanup scan persistence", () => {
     const now = CLEANUP_SCAN_RETENTION_MS + 2_000;
     expect(parseStoredCleanupScan("not-json", now)).toBeNull();
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 1,
+      version: 3,
       savedAtMs: 1_000,
       snapshot,
     }), now)).toBeNull();
   });
 
-  it("saves and loads the completed snapshot", () => {
+  it("rejects v2 maps whose unbounded trees can freeze the WebView", () => {
+    expect(parseStoredCleanupScan(JSON.stringify({
+      version: 2,
+      savedAtMs: 9_500,
+      snapshot: getMockCleanupScan(),
+    }), 10_000)).toBeNull();
+  });
+
+  it("rejects v3 maps that cannot advertise lazily loadable folders", () => {
+    const snapshot = getMockCleanupScan();
+    delete (snapshot.locations[0].nodes[0] as { hasChildren?: boolean }).hasChildren;
+
+    expect(parseStoredCleanupScan(JSON.stringify({
+      version: 3,
+      savedAtMs: 9_500,
+      snapshot,
+    }), 10_000)).toBeNull();
+  });
+
+  it("clears current and legacy WebView payloads", () => {
     const values = new Map<string, string>();
     vi.stubGlobal("window", {
       localStorage: {
-        getItem: (key: string) => values.get(key) ?? null,
-        setItem: (key: string, value: string) => values.set(key, value),
         removeItem: (key: string) => values.delete(key),
       },
     });
-    const snapshot = getMockCleanupScan();
-    saveCleanupScan(snapshot, 20_000);
-
-    expect(values.has(CLEANUP_SCAN_STORAGE_KEY)).toBe(true);
-    expect(loadStoredCleanupScan(21_000)?.snapshot).toEqual(snapshot);
+    values.set(CLEANUP_SCAN_STORAGE_KEY, "current");
+    for (const key of LEGACY_STORAGE_KEYS.cleanupScan) values.set(key, "legacy");
     clearStoredCleanupScan();
     expect(values.has(CLEANUP_SCAN_STORAGE_KEY)).toBe(false);
+    for (const key of LEGACY_STORAGE_KEYS.cleanupScan) {
+      expect(values.has(key)).toBe(false);
+    }
   });
 });

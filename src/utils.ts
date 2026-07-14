@@ -11,6 +11,7 @@ import {
 import i18n from "./i18n";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
+const BYTE_NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>();
 
 export type ResourceUsageLevel =
   | "unavailable"
@@ -39,7 +40,14 @@ export function formatBytes(bytes: number, maximumFractionDigits = 1): string {
     BYTE_UNITS.length - 1,
   );
   const value = bytes / 1024 ** exponent;
-  return `${value.toLocaleString(i18n.resolvedLanguage, { maximumFractionDigits })} ${BYTE_UNITS[exponent]}`;
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const formatterKey = `${locale}:${maximumFractionDigits}`;
+  let formatter = BYTE_NUMBER_FORMATTERS.get(formatterKey);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { maximumFractionDigits });
+    BYTE_NUMBER_FORMATTERS.set(formatterKey, formatter);
+  }
+  return `${formatter.format(value)} ${BYTE_UNITS[exponent]}`;
 }
 
 export function formatRate(bytesPerSecond: number | null): string {

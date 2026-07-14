@@ -308,16 +308,41 @@ pub struct CleanupLocation {
     pub nodes: Vec<CleanupNode>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupNodeKind {
+    Folder,
+    File,
+    Aggregate,
+    Restricted,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupNode {
     pub id: String,
     pub name: String,
     pub path: Option<String>,
+    /// Kept as the primary display size for existing consumers. It matches
+    /// `allocated_size_bytes`, which is the space that can actually be reclaimed.
     pub size_bytes: u64,
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
     pub item_count: usize,
     pub safety: CleanupSafety,
+    pub kind: CleanupNodeKind,
+    /// Whether the directory contains entries beyond the currently materialized
+    /// visualization tree. The frontend can request a fresh bounded subtree on
+    /// demand without forcing the initial scan to return every file node.
+    pub has_children: bool,
     pub children: Vec<CleanupNode>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupSubtreeRequest {
+    pub path: String,
+    pub safety: CleanupSafety,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -339,14 +364,14 @@ pub struct CleanupPathState {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashLeaseRequest {
+pub struct CleanupDeleteLeaseRequest {
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashLease {
+pub struct CleanupDeleteLease {
     pub id: String,
     pub paths: Vec<String>,
     pub changed_paths: Vec<String>,
@@ -355,26 +380,26 @@ pub struct CleanupTrashLease {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashExecutionRequest {
+pub struct CleanupDeleteExecutionRequest {
     pub lease_id: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashLeaseReleaseRequest {
+pub struct CleanupDeleteLeaseReleaseRequest {
     pub lease_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashResult {
-    pub moved_paths: Vec<String>,
-    pub failed: Vec<CleanupTrashFailure>,
+pub struct CleanupDeleteResult {
+    pub deleted_paths: Vec<String>,
+    pub failed: Vec<CleanupDeleteFailure>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupTrashFailure {
+pub struct CleanupDeleteFailure {
     pub path: String,
     pub message: String,
 }
@@ -389,7 +414,7 @@ pub enum CleanupLocationKind {
     HiddenData,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupSafety {
     Reclaimable,

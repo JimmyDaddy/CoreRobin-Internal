@@ -2,11 +2,11 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
   type CleanupNode,
   type CleanupScan,
-  type CleanupTrashExecutionRequest,
-  type CleanupTrashLease,
-  type CleanupTrashLeaseReleaseRequest,
-  type CleanupTrashLeaseRequest,
-  type CleanupTrashResult,
+  type CleanupDeleteExecutionRequest,
+  type CleanupDeleteLease,
+  type CleanupDeleteLeaseReleaseRequest,
+  type CleanupDeleteLeaseRequest,
+  type CleanupDeleteResult,
   type ProcessActionRequest,
   type ProcessActionResult,
   type ProcessControlLease,
@@ -144,8 +144,22 @@ function cleanupNode(
   itemCount: number,
   safety: CleanupNode["safety"],
   children: CleanupNode[] = [],
+  kind: CleanupNode["kind"] = "folder",
+  path: string | null = id,
 ): CleanupNode {
-  return { id, name, path: id, sizeBytes, itemCount, safety, children };
+  return {
+    id,
+    name,
+    path,
+    sizeBytes,
+    logicalSizeBytes: sizeBytes,
+    allocatedSizeBytes: sizeBytes,
+    itemCount,
+    safety,
+    kind,
+    hasChildren: children.length > 0,
+    children,
+  };
 }
 
 export function getMockCleanupScan(): CleanupScan {
@@ -161,9 +175,18 @@ export function getMockCleanupScan(): CleanupScan {
         safety: "review",
         available: true,
         nodes: [cleanupNode("~/Downloads", "Downloads", 8_640_000_000, 184, "review", [
-          cleanupNode("~/Downloads/Installers", "Installers", 5_940_000_000, 18, "review"),
-          cleanupNode("~/Downloads/Videos", "Videos", 1_860_000_000, 9, "review"),
-          cleanupNode("~/Downloads/Documents", "Documents", 840_000_000, 157, "review"),
+          cleanupNode("~/Downloads/Installers", "Installers", 5_940_000_000, 18, "review", [
+            cleanupNode("~/Downloads/Installers/macOS.dmg", "macOS.dmg", 4_100_000_000, 1, "review", [], "file"),
+            cleanupNode("~/Downloads/Installers/toolchains", "toolchains", 1_200_000_000, 5, "review"),
+            cleanupNode("~/Downloads/Installers::aggregate", "other", 640_000_000, 12, "review", [], "aggregate", null),
+          ]),
+          cleanupNode("~/Downloads/Videos", "Videos", 1_860_000_000, 9, "review", [
+            cleanupNode("~/Downloads/Videos/recording.mov", "recording.mov", 1_860_000_000, 1, "review", [], "file"),
+          ]),
+          cleanupNode("~/Downloads/Documents", "Documents", 840_000_000, 157, "review", [
+            cleanupNode("~/Downloads/Documents/archive", "archive", 700_000_000, 40, "review"),
+            cleanupNode("~/Downloads/Documents::aggregate", "other", 140_000_000, 117, "review", [], "aggregate", null),
+          ]),
         ])],
       },
       {
@@ -200,7 +223,18 @@ export function getMockCleanupScan(): CleanupScan {
         available: true,
         nodes: [
           cleanupNode("~/.cargo/registry", "Cargo registry", 1_890_000_000, 3_820, "reclaimable"),
-          cleanupNode("~/Library/Developer/Xcode/DerivedData", "Xcode DerivedData", 4_420_000_000, 4_388, "reclaimable"),
+          cleanupNode("~/Library/Developer/Xcode/DerivedData", "Xcode DerivedData", 4_420_000_000, 4_388, "reclaimable", [
+            cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit", "StatusOrbit", 2_900_000_000, 2_600, "reclaimable", [
+              cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build", "Build", 2_900_000_000, 2_600, "reclaimable", [
+                cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates", "Intermediates", 2_900_000_000, 2_600, "reclaimable", [
+                  cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates/Objects", "Objects", 2_900_000_000, 2_600, "reclaimable", [
+                    cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates/Objects/app.o", "app.o", 2_900_000_000, 1, "reclaimable", [], "file"),
+                  ]),
+                ]),
+              ]),
+            ]),
+            cleanupNode("~/Library/Developer/Xcode/DerivedData::aggregate", "other", 1_520_000_000, 1_788, "reclaimable", [], "aggregate", null),
+          ]),
         ],
       },
       {
@@ -214,6 +248,7 @@ export function getMockCleanupScan(): CleanupScan {
           cleanupNode("~/.config", ".config", 380_000_000, 1_240, "review"),
           cleanupNode("~/.local", ".local", 1_240_000_000, 1_836, "review"),
           cleanupNode("~/.docker", ".docker", 860_000_000, 410, "review"),
+          cleanupNode("~/.private::restricted", ".private", 0, 1, "review", [], "restricted", "~/.private"),
         ],
       },
     ],
@@ -266,13 +301,13 @@ let sequence = 0;
 let leaseSequence = 0;
 const mockLeases = new Map<string, ProcessControlLease>();
 let cleanupLeaseSequence = 0;
-const mockCleanupLeases = new Map<string, CleanupTrashLease>();
+const mockCleanupLeases = new Map<string, CleanupDeleteLease>();
 
-export function createMockCleanupTrashLease(
-  request: CleanupTrashLeaseRequest,
-): CleanupTrashLease {
+export function createMockCleanupDeleteLease(
+  request: CleanupDeleteLeaseRequest,
+): CleanupDeleteLease {
   cleanupLeaseSequence += 1;
-  const lease: CleanupTrashLease = {
+  const lease: CleanupDeleteLease = {
     id: `mock-cleanup-lease-${cleanupLeaseSequence}`,
     paths: [...request.paths],
     changedPaths: [],
@@ -282,15 +317,15 @@ export function createMockCleanupTrashLease(
   return lease;
 }
 
-export function releaseMockCleanupTrashLease(
-  request: CleanupTrashLeaseReleaseRequest,
+export function releaseMockCleanupDeleteLease(
+  request: CleanupDeleteLeaseReleaseRequest,
 ): void {
   mockCleanupLeases.delete(request.leaseId);
 }
 
-export function executeMockCleanupTrash(
-  request: CleanupTrashExecutionRequest,
-): CleanupTrashResult {
+export function executeMockCleanupDelete(
+  request: CleanupDeleteExecutionRequest,
+): CleanupDeleteResult {
   const lease = mockCleanupLeases.get(request.leaseId);
   mockCleanupLeases.delete(request.leaseId);
   if (!lease || lease.expiresAtMs <= Date.now()) {
@@ -299,7 +334,7 @@ export function executeMockCleanupTrash(
       message: "本次清理确认已经失效，请重新检查所选内容。",
     };
   }
-  return { movedPaths: lease.paths, failed: [] };
+  return { deletedPaths: lease.paths, failed: [] };
 }
 // Keep demo identities stable across browser reloads so view preferences can be
 // exercised without implying that a reused PID is the same process.
