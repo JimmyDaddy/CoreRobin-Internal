@@ -15,8 +15,8 @@ use std::time::Duration;
 use application_icon::load_application_icon;
 use cleanup::{
     CleanupDeleteController, CleanupScanCoordinator, inspect_cleanup_path, load_cleanup_scan_cache,
-    remove_cleanup_scan_cache, save_cleanup_scan_snapshot_cache, scan_cleanup,
-    scan_cleanup_subtree,
+    remove_cleanup_scan_cache, save_cleanup_scan_snapshot_cache,
+    save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
 };
 use error::CommandError;
 use models::{
@@ -266,6 +266,20 @@ async fn load_persisted_cleanup_scan(app: AppHandle) -> Result<Option<String>, C
 }
 
 #[tauri::command]
+async fn save_persisted_cleanup_scan(
+    app: AppHandle,
+    snapshot: CleanupScan,
+) -> Result<(), CommandError> {
+    let path = cleanup_scan_cache_path(&app)?;
+    let saved_at_ms = snapshot.sampled_at_ms;
+    tauri::async_runtime::spawn_blocking(move || {
+        save_cleanup_scan_snapshot_cache_at(&path, &snapshot, saved_at_ms)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Cleanup cache update failed: {error}")))?
+}
+
+#[tauri::command]
 async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError> {
     let path = cleanup_scan_cache_path(&app)?;
     let legacy_path = path.with_file_name("cleanup-scan-v2.json");
@@ -503,6 +517,7 @@ pub fn run() {
             get_cleanup_path_state,
             get_cleanup_subtree,
             load_persisted_cleanup_scan,
+            save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
             cancel_cleanup_scan,
             create_cleanup_delete_lease,

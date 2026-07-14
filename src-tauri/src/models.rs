@@ -271,7 +271,7 @@ pub struct NetworkInterfaceSnapshot {
     pub operational_state: String,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScan {
     pub sampled_at_ms: u64,
@@ -286,7 +286,7 @@ pub struct CleanupScan {
     pub deletion_available: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupApplication {
     pub name: String,
@@ -296,7 +296,7 @@ pub struct CleanupApplication {
     pub modified_at_ms: Option<u64>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupLocation {
     pub kind: CleanupLocationKind,
@@ -308,7 +308,7 @@ pub struct CleanupLocation {
     pub nodes: Vec<CleanupNode>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupNodeKind {
     Folder,
@@ -317,7 +317,7 @@ pub enum CleanupNodeKind {
     Restricted,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupNode {
     pub id: String,
@@ -393,8 +393,16 @@ pub struct CleanupDeleteLeaseReleaseRequest {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteResult {
-    pub deleted_paths: Vec<String>,
+    pub deleted: Vec<CleanupDeleteSuccess>,
+    pub deleted_bytes: u64,
     pub failed: Vec<CleanupDeleteFailure>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDeleteSuccess {
+    pub path: String,
+    pub deleted_bytes: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -404,7 +412,7 @@ pub struct CleanupDeleteFailure {
     pub message: String,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupLocationKind {
     Downloads,
@@ -421,7 +429,7 @@ pub enum CleanupSafety {
     Review,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupFile {
     pub name: String,

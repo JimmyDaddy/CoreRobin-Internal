@@ -159,6 +159,11 @@ export async function loadPersistedCleanupScan(): Promise<string | null> {
   return invoke<string | null>("load_persisted_cleanup_scan");
 }
 
+export async function savePersistedCleanupScan(snapshot: CleanupScan): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("save_persisted_cleanup_scan", { snapshot });
+}
+
 export async function clearPersistedCleanupScan(): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("clear_persisted_cleanup_scan");

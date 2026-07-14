@@ -334,7 +334,11 @@ export function executeMockCleanupDelete(
       message: "本次清理确认已经失效，请重新检查所选内容。",
     };
   }
-  return { deletedPaths: lease.paths, failed: [] };
+  return {
+    deleted: lease.paths.map((path) => ({ path, deletedBytes: 0 })),
+    deletedBytes: 0,
+    failed: [],
+  };
 }
 // Keep demo identities stable across browser reloads so view preferences can be
 // exercised without implying that a reused PID is the same process.

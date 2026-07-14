@@ -15,7 +15,8 @@ describe("cleanup permanent deletion confirmation mock", () => {
 
     expect(lease.paths).toEqual(["~/Downloads/archive.zip"]);
     expect(executeMockCleanupDelete({ leaseId: lease.id })).toEqual({
-      deletedPaths: ["~/Downloads/archive.zip"],
+      deleted: [{ path: "~/Downloads/archive.zip", deletedBytes: 0 }],
+      deletedBytes: 0,
       failed: [],
     });
     expect(() => executeMockCleanupDelete({ leaseId: lease.id })).toThrow(

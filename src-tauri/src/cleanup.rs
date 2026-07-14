@@ -29,9 +29,9 @@ use windows_sys::Win32::Storage::FileSystem::{
 use crate::error::CommandError;
 use crate::models::{
     CleanupApplication, CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
-    CleanupDeleteLeaseRequest, CleanupDeleteResult, CleanupFile, CleanupLocation,
-    CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupPathState, CleanupSafety,
-    CleanupScan, CleanupScanProgress, CleanupSubtreeRequest,
+    CleanupDeleteLeaseRequest, CleanupDeleteResult, CleanupDeleteSuccess, CleanupFile,
+    CleanupLocation, CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupPathState,
+    CleanupSafety, CleanupScan, CleanupScanProgress, CleanupSubtreeRequest,
 };
 
 #[cfg(not(test))]
@@ -202,7 +202,7 @@ impl CleanupDeleteController {
         mut delete_target: F,
     ) -> Result<CleanupDeleteResult, CommandError>
     where
-        F: FnMut(&Path) -> Result<(), String>,
+        F: FnMut(&Path) -> Result<u64, String>,
     {
         let position = self
             .leases
@@ -226,11 +226,18 @@ impl CleanupDeleteController {
             revalidate_cleanup_target(target)?;
         }
 
-        let mut deleted_paths = Vec::new();
+        let mut deleted = Vec::new();
+        let mut deleted_bytes = 0_u64;
         let mut failed = Vec::new();
         for target in lease.targets {
             match delete_target(&target.canonical_path) {
-                Ok(()) => deleted_paths.push(target.display_path),
+                Ok(bytes) => {
+                    deleted.push(CleanupDeleteSuccess {
+                        path: target.display_path,
+                        deleted_bytes: bytes,
+                    });
+                    deleted_bytes = deleted_bytes.saturating_add(bytes);
+                }
                 Err(message) => failed.push(CleanupDeleteFailure {
                     path: target.display_path,
                     message,
@@ -238,7 +245,8 @@ impl CleanupDeleteController {
             }
         }
         Ok(CleanupDeleteResult {
-            deleted_paths,
+            deleted,
+            deleted_bytes,
             failed,
         })
     }
@@ -416,9 +424,17 @@ pub fn save_cleanup_scan_snapshot_cache(
     path: &Path,
     snapshot: &CleanupScan,
 ) -> Result<(), CommandError> {
+    save_cleanup_scan_snapshot_cache_at(path, snapshot, now_millis())
+}
+
+pub fn save_cleanup_scan_snapshot_cache_at(
+    path: &Path,
+    snapshot: &CleanupScan,
+    saved_at_ms: u64,
+) -> Result<(), CommandError> {
     let serialized = serde_json::to_string(&CleanupScanCachePayload {
         version: CLEANUP_SCAN_CACHE_VERSION,
-        saved_at_ms: now_millis(),
+        saved_at_ms,
         snapshot,
     })
     .map_err(|error| {
@@ -453,6 +469,15 @@ fn validate_cleanup_targets(
             format!("StatusOrbit could not verify the home directory: {error}"),
         )
     })?;
+    #[cfg(unix)]
+    let home_device = fs::metadata(&canonical_home)
+        .map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("StatusOrbit could not inspect the home filesystem: {error}"),
+            )
+        })?
+        .dev();
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
     let mut targets = Vec::with_capacity(request.paths.len());
@@ -474,6 +499,20 @@ fn validate_cleanup_targets(
             return Err(CommandError::new(
                 "unsupported_cleanup_target",
                 format!("StatusOrbit will not delete links or special files: {display}"),
+            ));
+        }
+        #[cfg(unix)]
+        if metadata.is_dir() && metadata.dev() != home_device {
+            return Err(CommandError::new(
+                "cleanup_cross_filesystem",
+                format!("StatusOrbit will not recursively delete a mounted filesystem: {display}"),
+            ));
+        }
+        #[cfg(windows)]
+        if metadata.is_dir() && is_windows_reparse_point(&metadata) {
+            return Err(CommandError::new(
+                "cleanup_cross_filesystem",
+                format!("StatusOrbit will not recursively delete a reparse point: {display}"),
             ));
         }
         let canonical_path = path.canonicalize().map_err(|error| {
@@ -569,18 +608,95 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
     Ok(())
 }
 
-fn delete_cleanup_target(path: &Path) -> Result<(), String> {
+fn delete_cleanup_target(path: &Path) -> Result<u64, String> {
     let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
     if metadata.file_type().is_symlink() {
         return Err("StatusOrbit will not delete symbolic links.".to_owned());
     }
     if metadata.is_file() {
-        fs::remove_file(path).map_err(|error| error.to_string())
+        let deleted_bytes = allocated_file_size(path, &metadata);
+        fs::remove_file(path)
+            .map(|()| deleted_bytes)
+            .map_err(|error| error.to_string())
     } else if metadata.is_dir() {
-        fs::remove_dir_all(path).map_err(|error| error.to_string())
+        let deleted_bytes = inspect_cleanup_tree_before_delete(path, &metadata)?;
+        fs::remove_dir_all(path)
+            .map(|()| deleted_bytes)
+            .map_err(|error| error.to_string())
     } else {
         Err("StatusOrbit will not delete special files.".to_owned())
     }
+}
+
+fn inspect_cleanup_tree_before_delete(
+    root: &Path,
+    root_metadata: &Metadata,
+) -> Result<u64, String> {
+    #[cfg(unix)]
+    let root_device = root_metadata.dev();
+    #[cfg(not(unix))]
+    let _ = root_metadata;
+    let mut deleted_bytes = 0_u64;
+    let mut seen_files = HashSet::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(directory) = stack.pop() {
+        let entries = fs::read_dir(&directory).map_err(|error| {
+            format!(
+                "StatusOrbit could not verify {} before deletion: {error}",
+                directory.display()
+            )
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|error| {
+                format!(
+                    "StatusOrbit could not read {} before deletion: {error}",
+                    directory.display()
+                )
+            })?;
+            let path = entry.path();
+            let metadata = fs::symlink_metadata(&path).map_err(|error| {
+                format!(
+                    "StatusOrbit could not verify {} before deletion: {error}",
+                    path.display()
+                )
+            })?;
+            if metadata.file_type().is_symlink() {
+                continue;
+            }
+            #[cfg(windows)]
+            if is_windows_reparse_point(&metadata) {
+                return Err(format!(
+                    "StatusOrbit refused to delete {} because it contains a Windows reparse point.",
+                    path.display()
+                ));
+            }
+            if metadata.is_dir() {
+                #[cfg(unix)]
+                if cleanup_filesystem_changed(root_device, metadata.dev()) {
+                    return Err(format!(
+                        "StatusOrbit refused to delete {} because it crosses into another mounted filesystem.",
+                        path.display()
+                    ));
+                }
+                stack.push(path);
+            } else if metadata.is_file() && should_count_file(&path, &metadata, &mut seen_files) {
+                deleted_bytes = deleted_bytes.saturating_add(allocated_file_size(&path, &metadata));
+            }
+        }
+    }
+    Ok(deleted_bytes)
+}
+
+#[cfg(unix)]
+fn cleanup_filesystem_changed(root_device: u64, candidate_device: u64) -> bool {
+    root_device != candidate_device
+}
+
+#[cfg(windows)]
+fn is_windows_reparse_point(metadata: &Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 
 #[derive(Clone, Debug)]
@@ -1735,6 +1851,13 @@ mod tests {
 
     use super::*;
 
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_mount_guard_detects_a_device_boundary() {
+        assert!(!cleanup_filesystem_changed(7, 7));
+        assert!(cleanup_filesystem_changed(7, 8));
+    }
+
     #[test]
     fn platform_cleanup_roots_do_not_double_count_the_same_path() {
         let root = test_root("unique-platform-roots");
@@ -1767,7 +1890,7 @@ mod tests {
         );
 
         let scan = scan_for_test(&root, Vec::new());
-        save_cleanup_scan_snapshot_cache(&cache_path, &scan).unwrap();
+        save_cleanup_scan_snapshot_cache_at(&cache_path, &scan, 1_234).unwrap();
         let serialized = load_cleanup_scan_cache(&cache_path).unwrap().unwrap();
         let payload: serde_json::Value = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
@@ -1778,6 +1901,7 @@ mod tests {
             payload["snapshot"]["sampledAtMs"].as_u64(),
             Some(scan.sampled_at_ms),
         );
+        assert_eq!(payload["savedAtMs"].as_u64(), Some(1_234));
 
         remove_cleanup_scan_cache(&cache_path).unwrap();
         assert_eq!(load_cleanup_scan_cache(&cache_path).unwrap(), None);
@@ -2125,17 +2249,20 @@ mod tests {
                 },
                 |path| {
                     deleted.push(path.to_path_buf());
-                    Ok(())
+                    Ok(7)
                 },
             )
             .unwrap();
-        assert_eq!(result.deleted_paths, vec![display]);
+        assert_eq!(result.deleted.len(), 1);
+        assert_eq!(result.deleted[0].path, display);
+        assert_eq!(result.deleted[0].deleted_bytes, 7);
+        assert_eq!(result.deleted_bytes, 7);
         assert!(result.failed.is_empty());
         assert_eq!(deleted, vec![target.canonicalize().unwrap()]);
 
         let error = controller
             .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
-                Ok(())
+                Ok(0)
             })
             .unwrap_err();
         assert_eq!(error.code, "cleanup_confirmation_unavailable");
@@ -2232,11 +2359,78 @@ mod tests {
             .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
             .unwrap();
 
-        assert_eq!(result.deleted_paths.len(), 2);
+        assert_eq!(result.deleted.len(), 2);
+        assert!(result.deleted_bytes > 0);
         assert!(result.failed.is_empty());
         assert!(!file.exists());
         assert!(!directory.exists());
         assert!(root.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_delete_does_not_follow_nested_symbolic_links() {
+        use std::os::unix::fs::symlink;
+
+        let root = test_root("delete-nested-symlink");
+        let target = root.join("Library/Caches/example");
+        let outside = root.join("outside");
+        fs::create_dir_all(&target).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(target.join("cache.bin"), b"cache").unwrap();
+        fs::write(outside.join("keep.txt"), b"keep").unwrap();
+        symlink(&outside, target.join("outside-link")).unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                CleanupDeleteLeaseRequest {
+                    paths: vec![target.to_string_lossy().into_owned()],
+                    scan_sampled_at_ms: now_millis(),
+                },
+                &root,
+            )
+            .unwrap();
+
+        let result = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+            .unwrap();
+
+        assert_eq!(result.deleted.len(), 1);
+        assert!(!target.exists());
+        assert!(outside.join("keep.txt").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_delete_handles_read_only_files_inside_a_selected_directory() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = test_root("delete-read-only-file");
+        let target = root.join("Library/Caches/example");
+        let read_only_file = target.join("cache.bin");
+        fs::create_dir_all(&target).unwrap();
+        fs::write(&read_only_file, b"cache").unwrap();
+        fs::set_permissions(&read_only_file, fs::Permissions::from_mode(0o444)).unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                CleanupDeleteLeaseRequest {
+                    paths: vec![target.to_string_lossy().into_owned()],
+                    scan_sampled_at_ms: now_millis(),
+                },
+                &root,
+            )
+            .unwrap();
+
+        let result = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+            .unwrap();
+
+        assert_eq!(result.deleted.len(), 1);
+        assert!(result.failed.is_empty());
+        assert!(!target.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -2263,7 +2457,7 @@ mod tests {
         let error = controller
             .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
                 attempted = true;
-                Ok(())
+                Ok(0)
             })
             .unwrap_err();
 
@@ -2302,13 +2496,14 @@ mod tests {
                     if path.ends_with("second.txt") {
                         Err("simulated platform refusal".to_owned())
                     } else {
-                        Ok(())
+                        Ok(5)
                     }
                 },
             )
             .unwrap();
 
-        assert_eq!(result.deleted_paths.len(), 1);
+        assert_eq!(result.deleted.len(), 1);
+        assert_eq!(result.deleted_bytes, 5);
         assert_eq!(result.failed.len(), 1);
         assert!(result.failed[0].path.ends_with("second.txt"));
         fs::remove_dir_all(root).unwrap();

@@ -3672,6 +3672,24 @@ code,
 .cleanup-map__selected strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .cleanup-map__selected code { overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 
+.cleanup-map__delete-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 9px 10px;
+  color: var(--green);
+  border: 1px solid rgba(86, 207, 147, 0.22);
+  border-radius: 10px;
+  background: rgba(86, 207, 147, 0.075);
+}
+.cleanup-map__delete-result.is-partial { color: var(--danger); border-color: rgba(255, 125, 115, 0.24); background: var(--danger-soft); }
+.cleanup-map__delete-result > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.cleanup-map__delete-result strong { color: var(--text); font-size: 12px; }
+.cleanup-map__delete-result small { color: var(--text-muted); font-size: 10px; }
+.cleanup-map__delete-result code { overflow: hidden; color: currentColor; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
 .cleanup-map__legend { flex: 1; min-height: 0; margin: 10px 0 0; overflow-y: auto; padding: 0 3px 0 0; list-style: none; }
 .cleanup-map__legend li + li { border-top: 1px solid rgba(32, 42, 50, 0.62); }
 .cleanup-map__legend button {
@@ -3722,6 +3740,11 @@ code,
 .cleanup-map__legend button.is-selected strong { color: #fff; }
 .cleanup-map__legend button.is-selected small,
 .cleanup-map__legend button.is-selected b { color: var(--text); }
+.cleanup-map__legend button.is-delete-failed {
+  border-color: rgba(255, 125, 115, 0.44);
+  background: var(--danger-soft);
+  box-shadow: inset 3px 0 0 var(--danger);
+}
 
 .cleanup-map__leaf { display: grid; min-height: 180px; place-items: center; color: var(--text-muted); font-size: 11px; text-align: center; }
 .cleanup-map__subtree-error { margin: 8px 0 0; padding: 7px 9px; color: var(--danger); border: 1px solid rgba(255, 125, 115, 0.18); border-radius: 7px; background: var(--danger-soft); font-size: 10px; }
@@ -3813,6 +3836,7 @@ code,
 }
 .cleanup-map__basket-items button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cleanup-map__basket-items button:hover { color: var(--danger); border-color: rgba(255, 125, 115, 0.24); }
+.cleanup-map__basket-items button.is-failed { color: var(--danger); border-color: rgba(255, 125, 115, 0.28); background: var(--danger-soft); }
 .cleanup-map__basket-clear { padding: 6px 8px; color: var(--text-muted); border-radius: 7px; background: transparent; font-size: 11px; cursor: pointer; }
 .cleanup-map__basket-clear:hover { color: var(--text); background: var(--panel-raised); }
 

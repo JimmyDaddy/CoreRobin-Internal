@@ -921,6 +921,7 @@ function App() {
                 snapshotStatus={cleanupScan.snapshotStatus}
                 onScan={() => void cleanupScan.scan()}
                 onCancel={() => void cleanupScan.cancel()}
+                onDeletionApplied={cleanupScan.applyDeletion}
               />
             ) : activeView === "network" ? (
               <NetworkExplorer

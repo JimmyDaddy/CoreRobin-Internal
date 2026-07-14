@@ -254,8 +254,14 @@ export interface CleanupDeleteLeaseReleaseRequest {
 }
 
 export interface CleanupDeleteResult {
-  deletedPaths: string[];
+  deleted: CleanupDeleteSuccess[];
+  deletedBytes: number;
   failed: CleanupDeleteFailure[];
+}
+
+export interface CleanupDeleteSuccess {
+  path: string;
+  deletedBytes: number;
 }
 
 export interface CleanupDeleteFailure {

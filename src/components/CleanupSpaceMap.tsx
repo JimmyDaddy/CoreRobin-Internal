@@ -1,4 +1,4 @@
-import { ChevronRight, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +18,11 @@ import {
   type CleanupMapNode,
 } from "../cleanupMap";
 import type { CleanupSnapshotStatus } from "../cleanupScanStore";
-import type { CleanupScan, CleanupDeleteLease, CommandError } from "../types";
+import {
+  reconcileCleanupNodeAfterDeletion,
+  type CleanupDeletionTargetSnapshot,
+} from "../cleanupScanStore";
+import type { CleanupDeleteFailure, CleanupScan, CleanupDeleteLease, CommandError } from "../types";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
@@ -26,6 +30,7 @@ import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
   snapshotStatus: CleanupSnapshotStatus;
+  onDeletionApplied: (targets: readonly CleanupDeletionTargetSnapshot[]) => Promise<void>;
 }
 
 interface CleanupDragState {
@@ -42,10 +47,11 @@ interface CleanupDragState {
 
 interface CleanupDeleteOutcome {
   deletedCount: number;
-  failedCount: number;
+  deletedBytes: number;
+  failed: CleanupDeleteFailure[];
 }
 
-export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapshotStatus }: CleanupSpaceMapProps) {
+export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapshotStatus, onDeletionApplied }: CleanupSpaceMapProps) {
   const { t } = useTranslation();
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(() => new Map());
   const root = useMemo<CleanupMapNode>(() => ({
@@ -124,7 +130,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     setDragState(null);
     setLoadingNodeId(null);
     setSubtreeError(null);
-  }, [snapshot]);
+  }, [snapshot.sampledAtMs]);
 
   const focus = nodes.get(focusId) ?? root;
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
@@ -141,6 +147,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     .map((id) => nodes.get(id))
     .filter((node): node is CleanupMapNode => node !== undefined);
   const plannedBytes = planned.reduce((total, node) => total + node.sizeBytes, 0);
+  const failedPaths = useMemo(
+    () => new Set(deleteOutcome?.failed.map((failure) => failure.path) ?? []),
+    [deleteOutcome],
+  );
   const parentId = parents.get(focus.id) ?? null;
   const breadcrumbs = breadcrumbPath(focus, nodes, parents);
   const focusChanged = changedIds.has(focus.id);
@@ -432,32 +442,38 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
       const result = await executeCleanupDelete({ leaseId: lease.id });
       deleteLeaseRef.current = null;
       setDeleteLease(null);
-      const deletedPaths = new Set(result.deletedPaths);
-      const deletedIds = deleteDialogItems
-        .filter((item) => item.path !== null && deletedPaths.has(item.path))
-        .map((item) => item.id);
+      const deletedByPath = new Map(result.deleted.map((item) => [item.path, item.deletedBytes]));
+      const deletedPaths = new Set(deletedByPath.keys());
+      const deletedItems = deleteDialogItems.filter(
+        (item): item is CleanupMapNode & { path: string } => item.path !== null && deletedPaths.has(item.path),
+      );
+      const deletionTargets = deletedItems.map<CleanupDeletionTargetSnapshot>((item) => ({
+        path: item.path,
+        logicalSizeBytes: item.logicalSizeBytes,
+        allocatedSizeBytes: deletedByPath.get(item.path) ?? item.allocatedSizeBytes,
+        itemCount: item.itemCount,
+      }));
       setPlannedIds((current) => new Set(
         [...current].filter((id) => {
           const path = nodes.get(id)?.path;
           return path === null || path === undefined || !deletedPaths.has(path);
         }),
       ));
-      setChangedIds((current) => {
-        const next = new Set(current);
-        for (const id of deletedIds) {
-          next.add(id);
-          let parent = parents.get(id);
-          while (parent) {
-            next.add(parent);
-            parent = parents.get(parent);
-          }
+      setLoadedSubtrees((current) => {
+        const next = new Map<string, CleanupMapNode>();
+        for (const [id, node] of current) {
+          const reconciled = reconcileCleanupNodeAfterDeletion(node, deletionTargets);
+          if (reconciled) next.set(id, reconciled);
         }
         return next;
       });
+      setSelectedId(focus.id);
       setDeleteOutcome({
-        deletedCount: result.deletedPaths.length,
-        failedCount: result.failed.length,
+        deletedCount: result.deleted.length,
+        deletedBytes: result.deletedBytes,
+        failed: result.failed,
       });
+      await onDeletionApplied(deletionTargets);
       closeDeleteDialog();
     } catch (caughtError) {
       deleteLeaseRef.current = null;
@@ -550,14 +566,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                     ? t("cleanup.map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
                     : deleteOutcome
                     ? t(
-                        deleteOutcome.failedCount > 0 ? "cleanup.map.basket.partial" : "cleanup.map.basket.completed",
-                        { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failedCount },
+                        deleteOutcome.failed.length > 0 ? "cleanup.map.basket.partial" : "cleanup.map.basket.completed",
+                        { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
                       )
                     : t("cleanup.map.basket.empty")}</strong>
                 {planned.length > 0 ? (
                   <div className="cleanup-map__basket-items">
                     {planned.map((node) => (
-                      <button type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup.map.basket.remove", { name: node.name })}>
+                      <button className={node.path && failedPaths.has(node.path) ? "is-failed" : undefined} type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup.map.basket.remove", { name: node.name })}>
                         <span>{node.name}</span><X size={11} />
                       </button>
                     ))}
@@ -597,6 +613,24 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
             </span>
           </div>
 
+          {deleteOutcome ? (
+            <div className={`cleanup-map__delete-result${deleteOutcome.failed.length > 0 ? " is-partial" : " is-success"}`} role="status">
+              {deleteOutcome.failed.length > 0 ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+              <div>
+                <strong>{t(
+                  deleteOutcome.failed.length > 0
+                    ? deleteOutcome.deletedCount > 0 ? "cleanup.map.deleteResult.partial" : "cleanup.map.deleteResult.failed"
+                    : "cleanup.map.deleteResult.success",
+                  { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
+                )}</strong>
+                <small>{t("cleanup.map.deleteResult.reclaimed", { size: formatBytes(deleteOutcome.deletedBytes) })}</small>
+                {deleteOutcome.failed.slice(0, 3).map((failure) => (
+                  <code key={failure.path} title={failure.message}>{failure.path}</code>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {directChildren.length > 0 ? (
             <ol className="cleanup-map__legend">
               {directChildren.map((child) => {
@@ -604,7 +638,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                 return (
                   <li key={child.id}>
                     <button
-                      className={selected.id === child.id ? "is-selected" : undefined}
+                      className={`${selected.id === child.id ? "is-selected" : ""}${child.path && failedPaths.has(child.path) ? " is-delete-failed" : ""}`.trim() || undefined}
                       type="button"
                       style={{ "--cleanup-node-color": visual.swatch } as CSSProperties}
                       aria-current={selected.id === child.id ? "true" : undefined}

@@ -472,6 +472,12 @@ const resources = {
             completed: "已永久删除 {{deletedCount}} 项",
             partial: "已删除 {{deletedCount}} 项，{{failedCount}} 项未能处理",
           },
+          deleteResult: {
+            success: "已永久删除 {{deletedCount}} 项",
+            partial: "已删除 {{deletedCount}} 项，另有 {{failedCount}} 项失败",
+            failed: "没有删除任何内容，{{failedCount}} 项处理失败",
+            reclaimed: "删除前核对的磁盘占用约为 {{size}}",
+          },
           freshness: {
             cached: "正在显示上次扫描结果",
             expired: "扫描结果较旧，建议重新扫描",
@@ -495,6 +501,7 @@ const resources = {
           errors: {
             protected_cleanup_path: "StatusOrbit 不会删除主目录或废纸篓目录本身。",
             cleanup_target_outside_home: "出于安全考虑，StatusOrbit 只处理个人目录内的内容。",
+            cleanup_cross_filesystem: "所选目录进入了另一个磁盘或挂载点，StatusOrbit 已拒绝递归删除。",
             cleanup_target_changed: "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
             cleanup_confirmation_unavailable: "本次确认已经失效，请取消后重新打开检查窗口。",
             cleanup_confirmation_expired: "确认已超时，请取消后重新检查当前文件。",
@@ -1531,6 +1538,12 @@ const resources = {
             completed: "Permanently deleted {{deletedCount}} items",
             partial: "Deleted {{deletedCount}} items; {{failedCount}} could not be handled",
           },
+          deleteResult: {
+            success: "Permanently deleted {{deletedCount}} items",
+            partial: "Deleted {{deletedCount}} items; {{failedCount}} failed",
+            failed: "Nothing was deleted; {{failedCount}} items failed",
+            reclaimed: "Allocated space verified before deletion: about {{size}}",
+          },
           freshness: {
             cached: "Showing the previous scan result",
             expired: "This scan is old; a rescan is recommended",
@@ -1554,6 +1567,7 @@ const resources = {
           errors: {
             protected_cleanup_path: "StatusOrbit will not delete your home directory or the Trash folder itself.",
             cleanup_target_outside_home: "For safety, StatusOrbit only handles content inside your personal folder.",
+            cleanup_cross_filesystem: "The selected directory enters another disk or mount point, so StatusOrbit refused recursive deletion.",
             cleanup_target_changed: "A file changed after confirmation, so StatusOrbit deleted nothing. Cancel and review it again.",
             cleanup_confirmation_unavailable: "This confirmation is no longer available. Cancel and reopen the review.",
             cleanup_confirmation_expired: "This confirmation expired. Cancel and review the current files again.",

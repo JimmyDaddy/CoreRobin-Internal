@@ -5,10 +5,13 @@ import {
   clearPersistedCleanupScan,
   getCleanupScan,
   loadPersistedCleanupScan,
+  savePersistedCleanupScan,
 } from "../api";
 import {
   clearStoredCleanupScan,
   parseStoredCleanupScan,
+  reconcileCleanupScanAfterDeletion,
+  type CleanupDeletionTargetSnapshot,
   type CleanupSnapshotStatus,
 } from "../cleanupScanStore";
 import type { CleanupScan, CleanupScanProgress, CommandError } from "../types";
@@ -23,6 +26,11 @@ export function useCleanupScan() {
   const [progress, setProgress] = useState<CleanupScanProgress | null>(null);
   const inFlight = useRef(false);
   const stateTouched = useRef(false);
+  const snapshotRef = useRef<CleanupScan | null>(null);
+
+  useEffect(() => {
+    snapshotRef.current = snapshot;
+  }, [snapshot]);
 
   useEffect(() => {
     clearStoredCleanupScan();
@@ -31,6 +39,7 @@ export function useCleanupScan() {
       .then((serialized) => parseStoredCleanupScan(serialized))
       .then((persisted) => {
         if (disposed || stateTouched.current || !persisted) return;
+        snapshotRef.current = persisted.snapshot;
         setSnapshot(persisted.snapshot);
         setSnapshotStatus(persisted.status);
       })
@@ -53,6 +62,7 @@ export function useCleanupScan() {
       // A stale cache must not prevent a new scan.
     }
     setSnapshot(null);
+    snapshotRef.current = null;
     setSnapshotStatus("current");
     setLoading(true);
     setCancelling(false);
@@ -65,6 +75,7 @@ export function useCleanupScan() {
     setError(null);
     try {
       const completed = await getCleanupScan(setProgress);
+      snapshotRef.current = completed;
       setSnapshot(completed);
       setSnapshotStatus("current");
     } catch (caughtError) {
@@ -89,6 +100,24 @@ export function useCleanupScan() {
     }
   }, [cancelling]);
 
+  const applyDeletion = useCallback(async (targets: readonly CleanupDeletionTargetSnapshot[]) => {
+    const current = snapshotRef.current;
+    if (!current || targets.length === 0) return;
+    const updated = reconcileCleanupScanAfterDeletion(current, targets);
+    snapshotRef.current = updated;
+    setSnapshot(updated);
+    try {
+      await savePersistedCleanupScan(updated);
+    } catch {
+      // Never retain a pre-deletion map if the corrected snapshot cannot be saved.
+      try {
+        await clearPersistedCleanupScan();
+      } catch {
+        // The in-memory result is still authoritative for this app session.
+      }
+    }
+  }, []);
+
   return {
     snapshot,
     snapshotStatus,
@@ -98,5 +127,6 @@ export function useCleanupScan() {
     progress,
     scan,
     cancel,
+    applyDeletion,
   };
 }

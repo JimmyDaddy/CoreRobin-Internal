@@ -7,6 +7,8 @@ import {
   CLEANUP_SCAN_STORAGE_KEY,
   clearStoredCleanupScan,
   parseStoredCleanupScan,
+  reconcileCleanupNodeAfterDeletion,
+  reconcileCleanupScanAfterDeletion,
 } from "./cleanupScanStore";
 import { LEGACY_STORAGE_KEYS } from "./storageMigration";
 
@@ -105,5 +107,60 @@ describe("cleanup scan persistence", () => {
     for (const key of LEGACY_STORAGE_KEYS.cleanupScan) {
       expect(values.has(key)).toBe(false);
     }
+  });
+
+  it("removes deleted nodes and updates every ancestor and location total", () => {
+    const snapshot = getMockCleanupScan();
+    const location = snapshot.locations.find((candidate) => candidate.kind === "downloads")!;
+    const parent = location.nodes[0];
+    const target = parent.children[0];
+    const updated = reconcileCleanupScanAfterDeletion(snapshot, [{
+      path: target.path!,
+      logicalSizeBytes: target.logicalSizeBytes,
+      allocatedSizeBytes: target.allocatedSizeBytes,
+      itemCount: target.itemCount,
+    }]);
+    const updatedLocation = updated.locations.find((candidate) => candidate.kind === "downloads")!;
+    const updatedParent = updatedLocation.nodes[0];
+
+    expect(updatedLocation.sizeBytes).toBe(location.sizeBytes - target.allocatedSizeBytes);
+    expect(updatedLocation.itemCount).toBe(location.itemCount - target.itemCount);
+    expect(updatedParent.allocatedSizeBytes).toBe(parent.allocatedSizeBytes - target.allocatedSizeBytes);
+    expect(updatedParent.logicalSizeBytes).toBe(parent.logicalSizeBytes - target.logicalSizeBytes);
+    expect(updatedParent.itemCount).toBe(parent.itemCount - target.itemCount);
+    expect(updatedParent.children.some((child) => child.path === target.path)).toBe(false);
+  });
+
+  it("updates a pruned ancestor even when the deleted child was loaded lazily", () => {
+    const snapshot = getMockCleanupScan();
+    const location = snapshot.locations.find((candidate) => candidate.kind === "developer_cache")!;
+    const parent = { ...location.nodes[0], children: [] };
+    const allocatedSizeBytes = Math.min(1_024, parent.allocatedSizeBytes);
+    const target = {
+      path: `${parent.path}/lazy-child`,
+      logicalSizeBytes: allocatedSizeBytes,
+      allocatedSizeBytes,
+      itemCount: 1,
+    };
+
+    const updated = reconcileCleanupNodeAfterDeletion(parent, [target]);
+
+    expect(updated?.allocatedSizeBytes).toBe(parent.allocatedSizeBytes - allocatedSizeBytes);
+    expect(updated?.itemCount).toBe(parent.itemCount - 1);
+  });
+
+  it("removes large-file evidence beneath a deleted directory without changing scan age", () => {
+    const snapshot = getMockCleanupScan();
+    const file = snapshot.largestFiles[0];
+    const parentPath = file.path.replace(/[/\\][^/\\]+$/, "");
+    const updated = reconcileCleanupScanAfterDeletion(snapshot, [{
+      path: parentPath,
+      logicalSizeBytes: file.sizeBytes,
+      allocatedSizeBytes: file.sizeBytes,
+      itemCount: 1,
+    }]);
+
+    expect(updated.sampledAtMs).toBe(snapshot.sampledAtMs);
+    expect(updated.largestFiles.some((candidate) => candidate.path === file.path)).toBe(false);
   });
 });

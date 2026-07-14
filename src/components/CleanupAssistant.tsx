@@ -26,7 +26,7 @@ import type {
   CleanupScanProgress,
   CommandError,
 } from "../types";
-import type { CleanupSnapshotStatus } from "../cleanupScanStore";
+import type { CleanupDeletionTargetSnapshot, CleanupSnapshotStatus } from "../cleanupScanStore";
 import { findUnusedApplications, unusedApplicationDays } from "../cleanupApplications";
 import { formatBytes } from "../utils";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
@@ -40,6 +40,7 @@ interface CleanupAssistantProps {
   snapshotStatus: CleanupSnapshotStatus;
   onScan: () => void;
   onCancel: () => void;
+  onDeletionApplied: (targets: readonly CleanupDeletionTargetSnapshot[]) => Promise<void>;
 }
 
 const LOCATION_ICONS = {
@@ -59,6 +60,7 @@ export function CleanupAssistant({
   snapshotStatus,
   onScan,
   onCancel,
+  onDeletionApplied,
 }: CleanupAssistantProps) {
   const { t, i18n } = useTranslation();
   const reclaimableBytes = useMemo(
@@ -209,7 +211,11 @@ export function CleanupAssistant({
             </div>
           </div>
 
-          <CleanupSpaceMap snapshot={snapshot} snapshotStatus={snapshotStatus} />
+          <CleanupSpaceMap
+            snapshot={snapshot}
+            snapshotStatus={snapshotStatus}
+            onDeletionApplied={onDeletionApplied}
+          />
 
           <div className="cleanup-location-grid">
             {snapshot.locations.map((location) => {
