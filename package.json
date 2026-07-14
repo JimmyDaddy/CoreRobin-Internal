@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "site:build": "node scripts/build-site.mjs",
+    "site:dev": "pnpm site:build && vite site-dist",
     "preview": "vite preview",
     "tauri": "tauri"
   },

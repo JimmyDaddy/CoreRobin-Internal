@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN" data-language="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080d12" />
+    <meta name="description" content="StatusOrbit 是一款本地优先的桌面资源管理器，用清晰的人话解释 CPU、内存、磁盘、网络和进程状态。" />
+    <meta property="og:title" content="StatusOrbit — 看懂电脑状态" />
+    <meta property="og:description" content="从实时监控、智能诊断到安全清理，在本机完成每一次判断。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://jimmydaddy.github.io/StatusOrbit/" />
+    <meta property="og:image" content="https://jimmydaddy.github.io/StatusOrbit/assets/app-icon.png" />
+    <link rel="canonical" href="https://jimmydaddy.github.io/StatusOrbit/" />
+    <link rel="icon" href="./assets/app-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>StatusOrbit — 看懂电脑状态</title>
+  </head>
+  <body>
+    <div class="ambient ambient--one" aria-hidden="true"></div>
+    <div class="ambient ambient--two" aria-hidden="true"></div>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="#top" aria-label="StatusOrbit home">
+        <span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span>
+        <span><strong>StatusOrbit</strong><small>LOCAL SYSTEM COMPANION</small></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="打开导航" aria-expanded="false" data-nav-toggle data-aria-zh="打开导航" data-aria-en="Open navigation">
+        <span></span><span></span>
+      </button>
+      <nav class="main-nav" data-nav>
+        <a href="#experience" data-zh="体验" data-en="Experience">体验</a>
+        <a href="#capabilities" data-zh="能力" data-en="Capabilities">能力</a>
+        <a href="#safety" data-zh="安全" data-en="Safety">安全</a>
+        <a href="./guide/" data-zh="使用指南" data-en="Guide">使用指南</a>
+      </nav>
+      <div class="header-actions">
+        <button class="language-toggle" type="button" data-language-toggle aria-label="Switch language">
+          <span data-language-label>EN</span>
+        </button>
+        <a class="button button--small button--ghost" href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer">
+          <span>GitHub</span><span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero section-shell">
+        <div class="hero__copy" data-reveal>
+          <div class="eyebrow"><i></i><span data-zh="本地优先 · 桌面资源管理器" data-en="LOCAL-FIRST · DESKTOP SYSTEM MONITOR">本地优先 · 桌面资源管理器</span></div>
+          <h1>
+            <span data-zh="看懂电脑状态，" data-en="Understand your computer.">看懂电脑状态，</span>
+            <em data-zh="再决定要不要动手。" data-en="Then decide what to do.">再决定要不要动手。</em>
+          </h1>
+          <p class="hero__lead" data-zh="StatusOrbit 把 CPU、内存、磁盘、网络和进程数据整理成清晰的结论、原因与建议。所有分析留在本机，所有高风险操作都要经过你的确认。" data-en="StatusOrbit turns CPU, memory, storage, network, and process data into clear status, causes, and next steps. Analysis stays on your device, and every risky action requires your confirmation.">
+            StatusOrbit 把 CPU、内存、磁盘、网络和进程数据整理成清晰的结论、原因与建议。所有分析留在本机，所有高风险操作都要经过你的确认。
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="./guide/">
+              <span data-zh="阅读使用指南" data-en="Read the guide">阅读使用指南</span><span aria-hidden="true">→</span>
+            </a>
+            <a class="button button--ghost" href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer">
+              <span data-zh="查看源代码" data-en="View source">查看源代码</span><span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="hero__trust">
+            <span><i class="signal-dot"></i><b data-zh="macOS 已验证" data-en="macOS verified">macOS 已验证</b></span>
+            <span data-zh="Tauri 2 · React · Rust" data-en="Tauri 2 · React · Rust">Tauri 2 · React · Rust</span>
+            <span data-zh="简体中文 / English" data-en="English / 简体中文">简体中文 / English</span>
+          </div>
+        </div>
+
+        <div class="hero__visual" data-reveal data-delay="120">
+          <div class="orbit-emblem" aria-hidden="true">
+            <span class="orbit-emblem__ring orbit-emblem__ring--one"></span>
+            <span class="orbit-emblem__ring orbit-emblem__ring--two"></span>
+            <img src="./assets/brand-mark.png" alt="" />
+          </div>
+          <div class="product-window">
+            <div class="product-window__bar">
+              <span class="window-lights"><i></i><i></i><i></i></span>
+              <span>StatusOrbit</span>
+              <span class="live-pill"><i></i><span data-zh="实时" data-en="Live">实时</span></span>
+            </div>
+            <div class="product-window__body">
+              <div class="product-rail" aria-hidden="true">
+                <span class="rail-logo"><img src="./assets/brand-mark.png" alt="" /></span>
+                <i class="is-active"></i><i></i><i></i><i></i><i></i>
+              </div>
+              <div class="product-content">
+                <div class="product-heading">
+                  <div><small data-zh="系统概览" data-en="SYSTEM OVERVIEW">系统概览</small><strong data-zh="电脑状态正常" data-en="Everything looks good">电脑状态正常</strong></div>
+                  <span><i></i><span data-zh="没有需要立即处理的问题" data-en="No urgent issues">没有需要立即处理的问题</span></span>
+                </div>
+                <div class="metric-grid">
+                  <article class="metric-card metric-card--blue">
+                    <small>CPU</small><strong>18<em>%</em></strong>
+                    <svg viewBox="0 0 160 42" role="img" aria-label="CPU trend"><path d="M0 31 C18 30, 22 14, 38 20 S58 36, 70 19 S92 8, 104 20 S130 35, 160 12" /></svg>
+                  </article>
+                  <article class="metric-card metric-card--mint">
+                    <small data-zh="内存" data-en="MEMORY">内存</small><strong>61<em>%</em></strong>
+                    <svg viewBox="0 0 160 42" role="img" aria-label="Memory trend"><path d="M0 28 C20 27, 30 29, 45 24 S70 18, 84 22 S108 16, 124 20 S145 17, 160 15" /></svg>
+                  </article>
+                  <article class="metric-card metric-card--coral">
+                    <small data-zh="磁盘" data-en="STORAGE">磁盘</small><strong>72<em>%</em></strong>
+                    <div class="storage-ring"><i></i><span>148 GB</span></div>
+                  </article>
+                </div>
+                <div class="activity-card">
+                  <div class="activity-card__head"><span data-zh="最近活动" data-en="RECENT ACTIVITY">最近活动</span><b>5 min</b></div>
+                  <div class="activity-chart" aria-hidden="true">
+                    <span style="--h: 28%"></span><span style="--h: 42%"></span><span style="--h: 34%"></span><span style="--h: 58%"></span><span style="--h: 46%"></span><span style="--h: 73%"></span><span style="--h: 54%"></span><span style="--h: 62%"></span><span style="--h: 39%"></span><span style="--h: 47%"></span><span style="--h: 31%"></span><span style="--h: 44%"></span><span style="--h: 36%"></span><span style="--h: 52%"></span><span style="--h: 41%"></span><span style="--h: 68%"></span><span style="--h: 49%"></span><span style="--h: 57%"></span><span style="--h: 38%"></span><span style="--h: 46%"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="floating-card floating-card--top"><i></i><span><small data-zh="网络" data-en="NETWORK">网络</small><strong>2.4 MB/s</strong></span></div>
+          <div class="floating-card floating-card--bottom"><span class="mini-orbit"></span><span><small data-zh="智能诊断" data-en="DIAGNOSIS">智能诊断</small><strong data-zh="状态稳定" data-en="Stable">状态稳定</strong></span></div>
+        </div>
+      </section>
+
+      <section class="signal-strip" aria-label="Product principles">
+        <div><strong>01</strong><span data-zh="先给结论" data-en="Answer first">先给结论</span></div>
+        <div><strong>02</strong><span data-zh="解释原因" data-en="Explain why">解释原因</span></div>
+        <div><strong>03</strong><span data-zh="展示证据" data-en="Show evidence">展示证据</span></div>
+        <div><strong>04</strong><span data-zh="由你决定" data-en="You decide">由你决定</span></div>
+      </section>
+
+      <section class="experience section-shell" id="experience">
+        <div class="section-heading" data-reveal>
+          <div><span class="section-index">01</span><span class="eyebrow-text" data-zh="为真实的人设计" data-en="DESIGNED FOR PEOPLE">为真实的人设计</span></div>
+          <h2 data-zh="不需要先成为电脑专家。" data-en="You should not need to be a computer expert.">不需要先成为电脑专家。</h2>
+          <p data-zh="简单模式先回答“发生了什么”，专业模式再展开完整数据。两种视图共享同一套可靠采样与安全逻辑。" data-en="Simple mode starts with what is happening. Pro mode opens the full dataset. Both share the same reliable sampling and safety model.">简单模式先回答“发生了什么”，专业模式再展开完整数据。两种视图共享同一套可靠采样与安全逻辑。</p>
+        </div>
+        <div class="experience-flow">
+          <article data-reveal>
+            <span class="flow-icon">◎</span><small>STATUS</small>
+            <h3 data-zh="先告诉你是否正常" data-en="Know if things are normal">先告诉你是否正常</h3>
+            <p data-zh="用正常、观察、关注等状态替代没有上下文的数字墙。" data-en="Plain states replace a wall of numbers without context.">用正常、观察、关注等状态替代没有上下文的数字墙。</p>
+          </article>
+          <span class="flow-line" aria-hidden="true"><i></i></span>
+          <article data-reveal data-delay="100">
+            <span class="flow-icon">⌁</span><small>CONTEXT</small>
+            <h3 data-zh="再解释可能原因" data-en="Understand likely causes">再解释可能原因</h3>
+            <p data-zh="结合持续趋势与应用归因，避免把一次尖峰误报成故障。" data-en="Sustained trends and app attribution avoid false alarms from brief spikes.">结合持续趋势与应用归因，避免把一次尖峰误报成故障。</p>
+          </article>
+          <span class="flow-line" aria-hidden="true"><i></i></span>
+          <article data-reveal data-delay="200">
+            <span class="flow-icon">↗</span><small>ACTION</small>
+            <h3 data-zh="最后给出安全下一步" data-en="Take a safer next step">最后给出安全下一步</h3>
+            <p data-zh="跳转到证据页面，高风险操作需要复核、租约和明确确认。" data-en="Open the evidence first. Risky actions require revalidation and explicit consent.">跳转到证据页面，高风险操作需要复核、租约和明确确认。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="capabilities section-shell" id="capabilities">
+        <div class="section-heading section-heading--split" data-reveal>
+          <div>
+            <div><span class="section-index">02</span><span class="eyebrow-text" data-zh="一套完整工具" data-en="ONE COHERENT TOOLKIT">一套完整工具</span></div>
+            <h2 data-zh="从发现，到理解，再到处理。" data-en="From signal, to insight, to action.">从发现，到理解，再到处理。</h2>
+          </div>
+          <p data-zh="StatusOrbit 把常见的系统排查入口放在一个一致的桌面工作台里。" data-en="StatusOrbit brings the essential system investigation surfaces into one coherent desktop workspace.">StatusOrbit 把常见的系统排查入口放在一个一致的桌面工作台里。</p>
+        </div>
+        <div class="capability-grid">
+          <article class="capability capability--wide" data-reveal>
+            <span class="capability__number">01</span><div class="capability__glyph pulse-glyph">⌁</div>
+            <div><h3 data-zh="智能概览" data-en="Smart overview">智能概览</h3><p data-zh="实时资源、五分钟趋势和持续性诊断，用自然语言解释电脑为什么可能变慢。" data-en="Live resources, five-minute trends, and sustained diagnosis explain why your computer may feel slow.">实时资源、五分钟趋势和持续性诊断，用自然语言解释电脑为什么可能变慢。</p></div>
+            <div class="capability__visual diagnosis-visual"><span><i></i><b data-zh="状态稳定" data-en="Stable">状态稳定</b></span><em>CPU 18%</em><em>RAM 61%</em><em>SSD 72%</em></div>
+          </article>
+          <article class="capability" data-reveal data-delay="80">
+            <span class="capability__number">02</span><div class="capability__glyph">≋</div>
+            <h3 data-zh="应用与进程" data-en="Apps and processes">应用与进程</h3><p data-zh="应用归并、进程树、搜索排序、Inspector 与受保护的结束操作。" data-en="App grouping, process trees, search, inspector details, and guarded process controls.">应用归并、进程树、搜索排序、Inspector 与受保护的结束操作。</p>
+          </article>
+          <article class="capability" data-reveal data-delay="120">
+            <span class="capability__number">03</span><div class="capability__glyph">◉</div>
+            <h3 data-zh="空间清理" data-en="Space cleanup">空间清理</h3><p data-zh="完整后台扫描、可下钻空间图、拖拽清理篮与不可恢复操作复核。" data-en="Complete background scans, a drillable space map, cleanup basket, and irreversible-action review.">完整后台扫描、可下钻空间图、拖拽清理篮与不可恢复操作复核。</p>
+          </article>
+          <article class="capability" data-reveal>
+            <span class="capability__number">04</span><div class="capability__glyph">⇄</div>
+            <h3 data-zh="网络连接" data-en="Network connections">网络连接</h3><p data-zh="接口吞吐、累计流量、TCP / UDP 状态以及权限允许时的进程归属。" data-en="Interface throughput, session totals, TCP/UDP states, and process ownership when permitted.">接口吞吐、累计流量、TCP / UDP 状态以及权限允许时的进程归属。</p>
+          </article>
+          <article class="capability" data-reveal data-delay="80">
+            <span class="capability__number">05</span><div class="capability__glyph">↥</div>
+            <h3 data-zh="启动项" data-en="Startup items">启动项</h3><p data-zh="识别常见自启动来源，在能力边界内安全停用和恢复用户项目。" data-en="Review common startup sources and safely disable or restore supported user items.">识别常见自启动来源，在能力边界内安全停用和恢复用户项目。</p>
+          </article>
+          <article class="capability capability--accent" data-reveal data-delay="120">
+            <span class="capability__number">06</span><div class="capability__glyph">◷</div>
+            <h3 data-zh="本地历史" data-en="Local history">本地历史</h3><p data-zh="聚合快照、告警与恢复事件只保存在当前设备，可随时停用或清除。" data-en="Aggregate snapshots, alerts, and recovery events stay on this device and can be disabled or cleared.">聚合快照、告警与恢复事件只保存在当前设备，可随时停用或清除。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="safety section-shell" id="safety">
+        <div class="safety__panel" data-reveal>
+          <div class="safety__orbit" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /><i></i><i></i></div>
+          <div class="safety__copy">
+            <div><span class="section-index">03</span><span class="eyebrow-text" data-zh="安全不是弹窗，是系统设计" data-en="SAFETY IS A SYSTEM DESIGN">安全不是弹窗，是系统设计</span></div>
+            <h2 data-zh="先核对身份，再执行动作。" data-en="Verify identity before every action.">先核对身份，再执行动作。</h2>
+            <p data-zh="StatusOrbit 不自动提权，不自动结束进程，不自动删除文件。进程与清理操作都使用短期、单次确认，并在执行前重新验证目标。" data-en="StatusOrbit never elevates itself, terminates a process, or deletes a file automatically. Process and cleanup actions use short-lived, single-use confirmations and revalidate targets before execution.">StatusOrbit 不自动提权，不自动结束进程，不自动删除文件。进程与清理操作都使用短期、单次确认，并在执行前重新验证目标。</p>
+            <ul>
+              <li><i>✓</i><span data-zh="默认不上传遥测、文件、进程或连接数据" data-en="No telemetry, files, processes, or connections uploaded by default">默认不上传遥测、文件、进程或连接数据</span></li>
+              <li><i>✓</i><span data-zh="系统关键进程与应用自身默认受保护" data-en="Critical system processes and the app itself are protected">系统关键进程与应用自身默认受保护</span></li>
+              <li><i>✓</i><span data-zh="永久删除拒绝主目录、链接、特殊文件和挂载边界" data-en="Permanent deletion rejects home roots, links, special files, and mount boundaries">永久删除拒绝主目录、链接、特殊文件和挂载边界</span></li>
+            </ul>
+            <a class="text-link" href="./guide/#safety"><span data-zh="阅读安全操作指南" data-en="Read the safety guide">阅读安全操作指南</span><span>→</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="guide-cta section-shell" id="guide">
+        <div class="guide-cta__panel" data-reveal>
+          <span class="guide-cta__label" data-zh="第一次打开 StatusOrbit？" data-en="NEW TO STATUSORBIT?">第一次打开 StatusOrbit？</span>
+          <h2 data-zh="五分钟熟悉你的系统工作台。" data-en="Learn your system workspace in five minutes.">五分钟熟悉你的系统工作台。</h2>
+          <p data-zh="从第一次采样、简单与专业模式，到安全清理和常见问题，指南会告诉你每一个页面适合解决什么问题。" data-en="From the first sample and view modes to safe cleanup and troubleshooting, the guide explains when and how to use every surface.">从第一次采样、简单与专业模式，到安全清理和常见问题，指南会告诉你每一个页面适合解决什么问题。</p>
+          <a class="button button--light" href="./guide/"><span data-zh="打开完整指南" data-en="Open the full guide">打开完整指南</span><span>→</span></a>
+          <div class="guide-cta__rings" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <section class="open-source section-shell" data-reveal>
+        <div>
+          <span class="eyebrow-text" data-zh="开放构建，持续进化" data-en="OPENLY BUILT, ALWAYS EVOLVING">开放构建，持续进化</span>
+          <h2 data-zh="一个真正属于桌面的系统伴侣。" data-en="A system companion that belongs on your desktop.">一个真正属于桌面的系统伴侣。</h2>
+        </div>
+        <div>
+          <p data-zh="StatusOrbit 正在积极开发中。查看实现、提交问题，或一起把复杂的系统数据变得更容易理解。" data-en="StatusOrbit is under active development. Explore the implementation, report an issue, or help make complex system data easier to understand.">StatusOrbit 正在积极开发中。查看实现、提交问题，或一起把复杂的系统数据变得更容易理解。</p>
+          <a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer"><span data-zh="在 GitHub 上查看" data-en="Explore on GitHub">在 GitHub 上查看</span><span>↗</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <a class="brand brand--footer" href="#top"><span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span><span><strong>StatusOrbit</strong><small>LOCAL SYSTEM COMPANION</small></span></a>
+      <p><span>© </span><span data-year></span><span> StatusOrbit.</span> <span data-zh="在本机看懂你的电脑。" data-en="Understand your computer, locally.">在本机看懂你的电脑。</span></p>
+      <div><a href="./guide/" data-zh="指南" data-en="Guide">指南</a><a href="https://github.com/JimmyDaddy/StatusOrbit/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer">GitHub</a></div>
+    </footer>
+
+    <script src="./site.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "StatusOrbit",
+  "short_name": "StatusOrbit",
+  "description": "A local-first desktop system companion.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#080d12",
+  "theme_color": "#080d12",
+  "icons": [
+    {
+      "src": "./assets/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

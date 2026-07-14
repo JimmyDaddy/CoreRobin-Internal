@@ -4,6 +4,10 @@ StatusOrbit 是一个面向桌面的 `htop` 风格资源管理器。它由 Tauri
 
 界面支持简体中文与英文，可在右上角直接切换。
 
+- [产品网站](https://jimmydaddy.github.io/StatusOrbit/)
+- [中文使用指南](docs/user-guide.zh-CN.md)
+- [English user guide](docs/user-guide.md)
+
 ## 功能
 
 ### 系统概览
@@ -102,6 +106,13 @@ pnpm dev:web
 pnpm tauri build
 ```
 
+本地预览产品网站或只构建 GitHub Pages 静态文件：
+
+```bash
+pnpm site:dev
+pnpm site:build
+```
+
 ## 验证
 
 ```bash
@@ -126,3 +137,6 @@ GitHub Actions 会在 pull request 和 `main` 分支推送时运行前端检查�
 - `src-tauri/src/process_control.rs`：跨平台进程控制租约与执行
 - `src-tauri/src/identity.rs`：跨平台进程启动标识读取
 - `src-tauri/src/models.rs`：前后端数据契约
+- `site/`：产品网站与网页版中英文使用指南
+- `docs/user-guide.zh-CN.md`、`docs/user-guide.md`：仓库内中英文用户指南
+- `scripts/build-site.mjs`：静态网站构建、品牌资产复制与本地链接校验
