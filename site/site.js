@@ -30,8 +30,8 @@ function setLanguage(language) {
   if (languageLabel) languageLabel.textContent = next === "zh" ? "EN" : "中文";
   const guidePage = document.body.classList.contains("guide-page");
   document.title = next === "zh"
-    ? guidePage ? "StatusOrbit 使用指南" : "StatusOrbit — 看懂电脑状态"
-    : guidePage ? "StatusOrbit User Guide" : "StatusOrbit — Understand your computer";
+    ? guidePage ? "StatusOrbit 使用指南" : "StatusOrbit — 电脑变慢，空间不足，原因一眼看清"
+    : guidePage ? "StatusOrbit User Guide" : "StatusOrbit — Find slowdowns and free up space";
   try {
     window.localStorage.setItem("status-orbit.site-language", next);
   } catch {

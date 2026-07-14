@@ -1,4 +1,4 @@
-# StatusOrbit 小白体验设计与实施路线
+# StatusOrbit 普通用户体验设计与实施路线
 
 ## 产品目标
 

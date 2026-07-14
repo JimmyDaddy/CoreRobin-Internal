@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080d12" />
-    <meta name="description" content="StatusOrbit 使用指南：快速开始、页面说明、安全清理、常见问题与隐私边界。" />
+    <meta name="description" content="StatusOrbit 使用指南：从第一次打开，到查看电脑状态、管理应用和清理磁盘空间。" />
     <link rel="canonical" href="https://jimmydaddy.github.io/StatusOrbit/guide/" />
     <link rel="icon" href="../assets/app-icon.png" />
     <link rel="stylesheet" href="../styles.css" />
@@ -35,12 +35,12 @@
         <div class="guide-sidebar__label" data-zh="使用指南" data-en="USER GUIDE">使用指南</div>
         <nav>
           <a href="#quick-start" class="is-active"><span>01</span><span data-zh="快速开始" data-en="Quick start">快速开始</span></a>
-          <a href="#overview"><span>02</span><span data-zh="概览与诊断" data-en="Overview">概览与诊断</span></a>
+          <a href="#overview"><span>02</span><span data-zh="电脑概览" data-en="Overview">电脑概览</span></a>
           <a href="#processes"><span>03</span><span data-zh="应用与进程" data-en="Apps & processes">应用与进程</span></a>
           <a href="#cleanup"><span>04</span><span data-zh="存储与清理" data-en="Storage & cleanup">存储与清理</span></a>
           <a href="#network"><span>05</span><span data-zh="网络与启动项" data-en="Network & startup">网络与启动项</span></a>
           <a href="#history"><span>06</span><span data-zh="历史与设置" data-en="History & settings">历史与设置</span></a>
-          <a href="#safety"><span>07</span><span data-zh="安全边界" data-en="Safety boundaries">安全边界</span></a>
+          <a href="#safety"><span>07</span><span data-zh="安全与隐私" data-en="Safety & privacy">安全与隐私</span></a>
           <a href="#troubleshooting"><span>08</span><span data-zh="常见问题" data-en="Troubleshooting">常见问题</span></a>
         </nav>
       </aside>
@@ -48,108 +48,108 @@
       <article class="guide-content">
         <header class="guide-hero" data-reveal>
           <div class="eyebrow"><i></i><span data-zh="STATUSORBIT 使用指南" data-en="STATUSORBIT USER GUIDE">STATUSORBIT 使用指南</span></div>
-          <h1 data-zh="五分钟，熟悉你的系统工作台。" data-en="Learn your system workspace in five minutes.">五分钟，熟悉你的系统工作台。</h1>
-          <p data-zh="先理解状态，再查看证据，最后才执行操作。这份指南会带你认识每一个核心页面，以及哪些动作需要格外谨慎。" data-en="Understand status first, inspect the evidence, and act only when needed. This guide covers every core surface and the actions that deserve extra care.">先理解状态，再查看证据，最后才执行操作。这份指南会带你认识每一个核心页面，以及哪些动作需要格外谨慎。</p>
-          <div class="guide-meta"><span data-zh="适用于当前 main 分支" data-en="For the current main branch">适用于当前 main 分支</span><span data-zh="约 8 分钟阅读" data-en="About 8 min read">约 8 分钟阅读</span></div>
+          <h1 data-zh="第一次使用，从这里开始。" data-en="New to StatusOrbit? Start here.">第一次使用，从这里开始。</h1>
+          <p data-zh="这份指南会带你看懂每个页面是做什么的，也会告诉你结束进程和清理文件时需要注意什么。" data-en="This guide explains what each page is for and what to watch for when stopping processes or cleaning files.">这份指南会带你看懂每个页面是做什么的，也会告诉你结束进程和清理文件时需要注意什么。</p>
+          <div class="guide-meta"><span data-zh="随产品持续更新" data-en="Updated with the product">随产品持续更新</span><span data-zh="约 8 分钟读完" data-en="About 8 minutes">约 8 分钟读完</span></div>
         </header>
 
         <section class="guide-section" id="quick-start" data-reveal>
           <span class="guide-section__number">01</span>
           <h2 data-zh="快速开始" data-en="Quick start">快速开始</h2>
-          <p data-zh="StatusOrbit 仍处于积极开发阶段，目前从源码构建。macOS 已完成真实窗口和原生构建验证；Linux 与 Windows 仍需要更多目标系统运行验证。" data-en="StatusOrbit is under active development and is currently built from source. Native macOS windows and builds are verified; Linux and Windows still need more runtime validation.">StatusOrbit 仍处于积极开发阶段，目前从源码构建。macOS 已完成真实窗口和原生构建验证；Linux 与 Windows 仍需要更多目标系统运行验证。</p>
-          <div class="guide-callout guide-callout--info"><strong data-zh="准备环境" data-en="Prerequisites">准备环境</strong><span data-zh="Node.js 22、pnpm 10.33、Rust 1.95，以及当前平台所需的 Tauri 2 系统依赖。" data-en="Node.js 22, pnpm 10.33, Rust 1.95, and the Tauri 2 system dependencies for your platform.">Node.js 22、pnpm 10.33、Rust 1.95，以及当前平台所需的 Tauri 2 系统依赖。</span></div>
-          <pre><code>git clone git@github.com:JimmyDaddy/StatusOrbit.git
+          <p data-zh="StatusOrbit 还没有正式安装包，目前需要从源码运行。已经熟悉开发工具的用户可以按下面的步骤开始；如果你不熟悉这些工具，建议先关注项目进展，等待安装包发布。" data-en="StatusOrbit does not have an official installer yet, so it currently runs from source. If you are comfortable with development tools, follow the steps below. Otherwise, consider following the project until installers are available.">StatusOrbit 还没有正式安装包，目前需要从源码运行。已经熟悉开发工具的用户可以按下面的步骤开始；如果你不熟悉这些工具，建议先关注项目进展，等待安装包发布。</p>
+          <div class="guide-callout guide-callout--info"><strong data-zh="从源码运行需要" data-en="To run from source">从源码运行需要</strong><span data-zh="Node.js 22、pnpm 10.33、Rust 1.95，以及当前系统需要的 Tauri 2 依赖。" data-en="Node.js 22, pnpm 10.33, Rust 1.95, and the Tauri 2 dependencies for your operating system.">Node.js 22、pnpm 10.33、Rust 1.95，以及当前系统需要的 Tauri 2 依赖。</span></div>
+          <pre><code>git clone https://github.com/JimmyDaddy/StatusOrbit.git
 cd StatusOrbit
 corepack enable
 pnpm install
 pnpm dev</code><button type="button" class="copy-button" data-copy data-zh="复制" data-en="Copy">复制</button></pre>
-          <p data-zh="构建原生应用时执行：" data-en="To build the native application, run:">构建原生应用时执行：</p>
+          <p data-zh="需要生成原生应用时，运行：" data-en="To build the desktop app, run:">需要生成原生应用时，运行：</p>
           <pre><code>pnpm tauri build</code><button type="button" class="copy-button" data-copy data-zh="复制" data-en="Copy">复制</button></pre>
           <h3 data-zh="第一次打开" data-en="First launch">第一次打开</h3>
           <ol class="guide-steps">
-            <li><span>1</span><div><strong data-zh="等待首轮采样" data-en="Wait for the first sample">等待首轮采样</strong><p data-zh="网络和磁盘速率需要比较前后两帧，短暂显示“预热”属于正常现象。" data-en="Disk and network rates compare two samples, so a brief warm-up state is expected.">网络和磁盘速率需要比较前后两帧，短暂显示“预热”属于正常现象。</p></div></li>
-            <li><span>2</span><div><strong data-zh="从简单模式开始" data-en="Start in Simple mode">从简单模式开始</strong><p data-zh="它优先显示电脑是否正常、可能原因和建议，适合日常使用。" data-en="It prioritizes status, likely causes, and recommendations for everyday use.">它优先显示电脑是否正常、可能原因和建议，适合日常使用。</p></div></li>
-            <li><span>3</span><div><strong data-zh="按需切换专业模式" data-en="Open Pro mode when needed">按需切换专业模式</strong><p data-zh="需要 PID、协议、命令行和完整趋势时再展开技术数据。" data-en="Use it when you need PIDs, protocols, commands, and detailed trends.">需要 PID、协议、命令行和完整趋势时再展开技术数据。</p></div></li>
+            <li><span>1</span><div><strong data-zh="等几秒，让数据准备好" data-en="Give it a few seconds">等几秒，让数据准备好</strong><p data-zh="刚启动时，网络和磁盘速率可能显示“预热”。等到下一次刷新就会出现正常数据。" data-en="Right after launch, disk and network rates may show a warm-up message. They appear after the next refresh.">刚启动时，网络和磁盘速率可能显示“预热”。等到下一次刷新就会出现正常数据。</p></div></li>
+            <li><span>2</span><div><strong data-zh="先用简单模式" data-en="Start with Simple mode">先用简单模式</strong><p data-zh="它会先告诉你电脑是否正常、哪个应用最忙，适合日常查看。" data-en="It shows whether your computer is doing well and which apps are busiest, making it a good everyday view.">它会先告诉你电脑是否正常、哪个应用最忙，适合日常查看。</p></div></li>
+            <li><span>3</span><div><strong data-zh="想看更多，再切换专业模式" data-en="Switch to Pro mode for more detail">想看更多，再切换专业模式</strong><p data-zh="PID、连接协议、命令行和完整趋势都在专业模式里。" data-en="PIDs, connection protocols, command lines, and full trends are available in Pro mode.">PID、连接协议、命令行和完整趋势都在专业模式里。</p></div></li>
           </ol>
         </section>
 
         <section class="guide-section" id="overview" data-reveal>
-          <span class="guide-section__number">02</span><h2 data-zh="概览与智能诊断" data-en="Overview and smart diagnosis">概览与智能诊断</h2>
-          <p data-zh="概览页把 CPU、内存、交换空间、磁盘和网络状态放在同一个视图中。智能诊断会等待持续证据，不会把一次瞬时峰值直接描述成故障。" data-en="Overview brings CPU, memory, swap, storage, and network state into one view. Diagnosis waits for sustained evidence instead of treating a brief spike as a failure.">概览页把 CPU、内存、交换空间、磁盘和网络状态放在同一个视图中。智能诊断会等待持续证据，不会把一次瞬时峰值直接描述成故障。</p>
+          <span class="guide-section__number">02</span><h2 data-zh="概览：先看电脑哪里忙" data-en="Overview: see what is busy">概览：先看电脑哪里忙</h2>
+          <p data-zh="概览页把 CPU、内存、磁盘和网络放在一起。StatusOrbit 会结合最近一段时间的变化判断是否需要留意，不会因为一次短暂波动就说电脑出了问题。" data-en="Overview puts CPU, memory, storage, and network activity in one place. StatusOrbit looks at recent trends before raising a concern, so a brief spike is not treated as a problem.">概览页把 CPU、内存、磁盘和网络放在一起。StatusOrbit 会结合最近一段时间的变化判断是否需要留意，不会因为一次短暂波动就说电脑出了问题。</p>
           <div class="guide-grid">
-            <article><i>◎</i><strong data-zh="先读结论" data-en="Read the status">先读结论</strong><p data-zh="正常、观察、建议关注等状态比单独数字更重要。" data-en="States such as normal, observing, or attention matter more than isolated numbers.">正常、观察、建议关注等状态比单独数字更重要。</p></article>
-            <article><i>⌁</i><strong data-zh="再看趋势" data-en="Check the trend">再看趋势</strong><p data-zh="五分钟曲线可以区分短暂尖峰和持续压力。" data-en="Five-minute trends separate brief spikes from sustained pressure.">五分钟曲线可以区分短暂尖峰和持续压力。</p></article>
-            <article><i>↗</i><strong data-zh="打开证据" data-en="Open evidence">打开证据</strong><p data-zh="诊断会带你到相关页面，但不会自动处置。" data-en="Diagnosis navigates to the evidence but never acts automatically.">诊断会带你到相关页面，但不会自动处置。</p></article>
+            <article><i>◎</i><strong data-zh="先看状态" data-en="Start with the status">先看状态</strong><p data-zh="先确认整体是否正常，再决定要不要继续查看。" data-en="Check whether everything looks normal before digging deeper.">先确认整体是否正常，再决定要不要继续查看。</p></article>
+            <article><i>⌁</i><strong data-zh="看看最近几分钟" data-en="Look at the last few minutes">看看最近几分钟</strong><p data-zh="趋势图能帮你分清短暂变忙和持续卡顿。" data-en="Trends help separate a brief burst of activity from an ongoing slowdown.">趋势图能帮你分清短暂变忙和持续卡顿。</p></article>
+            <article><i>↗</i><strong data-zh="点进去找原因" data-en="Open the details">点进去找原因</strong><p data-zh="从提示直接进入相关页面，看看是哪个应用或资源最忙。" data-en="Open the related page to see which app or resource is busiest.">从提示直接进入相关页面，看看是哪个应用或资源最忙。</p></article>
           </div>
         </section>
 
         <section class="guide-section" id="processes" data-reveal>
           <span class="guide-section__number">03</span><h2 data-zh="应用与进程" data-en="Applications and processes">应用与进程</h2>
-          <p data-zh="简单模式把同一应用的辅助进程归在一起，适合回答“哪个应用正在占用资源”。专业模式提供平铺、进程树、搜索、排序和详细 Inspector。" data-en="Simple mode groups helper processes by application to answer which app is using resources. Pro mode adds flat and tree views, search, sorting, and a detailed inspector.">简单模式把同一应用的辅助进程归在一起，适合回答“哪个应用正在占用资源”。专业模式提供平铺、进程树、搜索、排序和详细 Inspector。</p>
+          <p data-zh="简单模式会把同一个应用的相关进程合在一起，方便你找到最占资源的应用。专业模式则提供进程树、搜索、排序和完整详情。" data-en="Simple mode groups related processes by app, making it easier to find what is using resources. Pro mode adds a process tree, search, sorting, and full details.">简单模式会把同一个应用的相关进程合在一起，方便你找到最占资源的应用。专业模式则提供进程树、搜索、排序和完整详情。</p>
           <ul class="guide-list">
-            <li data-zh="单击应用或进程查看路径、命令、父进程和五分钟资源趋势。" data-en="Select an app or process to inspect its path, command, parent, and five-minute resource trends.">单击应用或进程查看路径、命令、父进程和五分钟资源趋势。</li>
+            <li data-zh="单击应用或进程，可以查看它的位置、启动命令、上级进程和最近五分钟的占用。" data-en="Select an app or process to see its location, launch command, parent process, and activity over the last five minutes.">单击应用或进程，可以查看它的位置、启动命令、上级进程和最近五分钟的占用。</li>
             <li data-zh="优先使用“请求结束”，让应用有机会保存状态；只在必要时强制结束。" data-en="Prefer request-to-stop so the app can save state; force termination only when necessary.">优先使用“请求结束”，让应用有机会保存状态；只在必要时强制结束。</li>
-            <li data-zh="PID 会被复用，因此 StatusOrbit 还会核对进程启动身份；确认过期或身份不一致时会拒绝执行。" data-en="PIDs are reused, so StatusOrbit also verifies process birth identity and refuses expired or mismatched confirmations.">PID 会被复用，因此 StatusOrbit 还会核对进程启动身份；确认过期或身份不一致时会拒绝执行。</li>
+            <li data-zh="为了避免结束错进程，StatusOrbit 会在执行前再次确认目标。进程已经退出或发生变化时，操作会自动停止。" data-en="To avoid stopping the wrong process, StatusOrbit checks the target again right before the action. If the process has exited or changed, the action stops.">为了避免结束错进程，StatusOrbit 会在执行前再次确认目标。进程已经退出或发生变化时，操作会自动停止。</li>
           </ul>
         </section>
 
         <section class="guide-section" id="cleanup" data-reveal>
           <span class="guide-section__number">04</span><h2 data-zh="存储与安全清理" data-en="Storage and safe cleanup">存储与安全清理</h2>
-          <p data-zh="存储页用于判断磁盘是否紧张以及谁在读写；清理页用于回答空间去了哪里。扫描完整遍历选定范围，不会因为时间或数量限制静默停止。" data-en="Storage explains capacity and I/O activity. Cleanup shows where space went. The scan completely traverses its selected scope without silently stopping at a time or item limit.">存储页用于判断磁盘是否紧张以及谁在读写；清理页用于回答空间去了哪里。扫描完整遍历选定范围，不会因为时间或数量限制静默停止。</p>
-          <div class="cleanup-demo" aria-hidden="true"><div class="cleanup-demo__map"><span></span><i></i></div><div><b data-zh="点击进入目录" data-en="Click to drill in">点击进入目录</b><b data-zh="拖到清理篮收集" data-en="Drag to collect">拖到清理篮收集</b><b data-zh="确认后永久删除" data-en="Confirm permanent deletion">确认后永久删除</b></div></div>
+          <p data-zh="存储页告诉你还剩多少空间、哪些应用正在频繁读写。清理页则扫描文件和文件夹，用扇形图显示空间都被什么占用了。扫描会一直进行到完成，除非你主动停止。" data-en="Storage shows how much space is left and which apps are reading or writing heavily. Cleanup scans files and folders, then maps what is taking up space. The scan continues until it finishes unless you stop it.">存储页告诉你还剩多少空间、哪些应用正在频繁读写。清理页则扫描文件和文件夹，用扇形图显示空间都被什么占用了。扫描会一直进行到完成，除非你主动停止。</p>
+          <div class="cleanup-demo" aria-hidden="true"><div class="cleanup-demo__map"><span></span><i></i></div><div><b data-zh="单击查看里面" data-en="Click to look inside">单击查看里面</b><b data-zh="拖进清理篮" data-en="Drag to the basket">拖进清理篮</b><b data-zh="检查后再删除" data-en="Review before deleting">检查后再删除</b></div></div>
           <ol class="guide-steps">
-            <li><span>1</span><div><strong data-zh="扫描" data-en="Scan">扫描</strong><p data-zh="观察当前路径、已检查项目、已发现空间和耗时；需要时可以停止。" data-en="Watch the current path, item count, discovered space, and elapsed time; stop when needed.">观察当前路径、已检查项目、已发现空间和耗时；需要时可以停止。</p></div></li>
-            <li><span>2</span><div><strong data-zh="浏览" data-en="Explore">浏览</strong><p data-zh="扇区面积按实际占用计算。点击进入目录，点击中心回到上一级。" data-en="Sector area represents allocated space. Click to enter a folder and click the center to go back.">扇区面积按实际占用计算。点击进入目录，点击中心回到上一级。</p></div></li>
-            <li><span>3</span><div><strong data-zh="收集" data-en="Collect">收集</strong><p data-zh="按住文件或目录扇区，拖入左下角清理篮。此时不会删除。" data-en="Hold a file or folder sector and drag it into the lower-left basket. Nothing is deleted yet.">按住文件或目录扇区，拖入左下角清理篮。此时不会删除。</p></div></li>
-            <li><span>4</span><div><strong data-zh="复核并删除" data-en="Review and delete">复核并删除</strong><p data-zh="再次检查名称、路径、大小和变化，理解不可恢复提示后再确认。" data-en="Recheck names, paths, sizes, and changes, then acknowledge that deletion is irreversible.">再次检查名称、路径、大小和变化，理解不可恢复提示后再确认。</p></div></li>
+            <li><span>1</span><div><strong data-zh="等待扫描完成" data-en="Let the scan finish">等待扫描完成</strong><p data-zh="页面会持续显示正在扫描的位置、已经检查的项目和找到的空间。你也可以随时停止。" data-en="The page shows where it is scanning, how many items it has checked, and how much space it has found. You can stop at any time.">页面会持续显示正在扫描的位置、已经检查的项目和找到的空间。你也可以随时停止。</p></div></li>
+            <li><span>2</span><div><strong data-zh="查看大文件夹" data-en="Explore large folders">查看大文件夹</strong><p data-zh="扇区越大，占用的空间越多。单击文件夹进入，单击中间区域返回上一级。" data-en="Larger sectors use more space. Click a folder to open it, or click the center to go back.">扇区越大，占用的空间越多。单击文件夹进入，单击中间区域返回上一级。</p></div></li>
+            <li><span>3</span><div><strong data-zh="放进清理篮" data-en="Add items to the basket">放进清理篮</strong><p data-zh="按住扇区并拖到左下角。放进清理篮不会立即删除文件。" data-en="Hold a sector and drag it to the lower-left basket. Adding it to the basket does not delete it.">按住扇区并拖到左下角。放进清理篮不会立即删除文件。</p></div></li>
+            <li><span>4</span><div><strong data-zh="检查后永久删除" data-en="Review, then delete">检查后永久删除</strong><p data-zh="确认名称、位置和大小都正确，再继续。文件不会进入废纸篓，删除后无法撤销。" data-en="Check that the name, location, and size are correct before continuing. Files bypass Trash, so deletion cannot be undone.">确认名称、位置和大小都正确，再继续。文件不会进入废纸篓，删除后无法撤销。</p></div></li>
           </ol>
-          <div class="guide-callout guide-callout--danger"><strong data-zh="永久删除不会进入废纸篓" data-en="Permanent deletion bypasses Trash">永久删除不会进入废纸篓</strong><span data-zh="建议从可重新生成的缓存开始。下载、配置、工程文件和个人资料必须确认来源后再处理。" data-en="Start with reproducible caches. Carefully verify downloads, settings, projects, and personal data.">建议从可重新生成的缓存开始。下载、配置、工程文件和个人资料必须确认来源后再处理。</span></div>
+          <div class="guide-callout guide-callout--danger"><strong data-zh="永久删除不会进入废纸篓" data-en="Permanent deletion bypasses Trash">永久删除不会进入废纸篓</strong><span data-zh="建议先清理可以重新生成的缓存。下载内容、项目文件、设置和个人资料不确定时不要删除。" data-en="Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.">建议先清理可以重新生成的缓存。下载内容、项目文件、设置和个人资料不确定时不要删除。</span></div>
         </section>
 
         <section class="guide-section" id="network" data-reveal>
           <span class="guide-section__number">05</span><h2 data-zh="网络与启动项" data-en="Network and startup items">网络与启动项</h2>
           <h3 data-zh="活动连接" data-en="Active connections">活动连接</h3>
-          <p data-zh="网络页展示上下行速率、启动后累计流量、接口信息以及 TCP / UDP 连接。进程归属取决于系统权限；没有进程名并不代表连接异常。" data-en="Network shows throughput, session totals, interfaces, and TCP/UDP connections. Process ownership depends on system permissions; a missing owner does not imply a suspicious connection.">网络页展示上下行速率、启动后累计流量、接口信息以及 TCP / UDP 连接。进程归属取决于系统权限；没有进程名并不代表连接异常。</p>
+          <p data-zh="网络页显示当前上传和下载速度、本次启动后的累计流量，以及正在活动的 TCP / UDP 连接。系统不一定允许普通应用读取每条连接属于哪个进程，所以没有显示应用名并不代表连接有问题。" data-en="Network shows current upload and download speeds, traffic since launch, and active TCP/UDP connections. The operating system may hide which process owns a connection, so a missing app name does not mean the connection is suspicious.">网络页显示当前上传和下载速度、本次启动后的累计流量，以及正在活动的 TCP / UDP 连接。系统不一定允许普通应用读取每条连接属于哪个进程，所以没有显示应用名并不代表连接有问题。</p>
           <h3 data-zh="启动项" data-en="Startup items">启动项</h3>
-          <p data-zh="StatusOrbit 会展示常见用户级启动来源。可恢复的第三方项目能够停用和恢复；系统项目和平台暂不支持的来源保持只读。修改动作会复核文件身份，不会删除原文件。" data-en="StatusOrbit lists common user startup sources. Supported third-party items can be disabled and restored, while system-owned or unsupported sources remain read-only. Changes revalidate file identity and do not delete source files.">StatusOrbit 会展示常见用户级启动来源。可恢复的第三方项目能够停用和恢复；系统项目和平台暂不支持的来源保持只读。修改动作会复核文件身份，不会删除原文件。</p>
+          <p data-zh="启动项页面告诉你哪些应用会随电脑启动。支持的第三方项目可以关闭，也可以稍后恢复；系统项目只供查看。StatusOrbit 不会直接删除它们的配置文件。" data-en="Startup shows which apps launch with your computer. Supported third-party items can be turned off and restored later; system items are view-only. StatusOrbit does not delete their configuration files.">启动项页面告诉你哪些应用会随电脑启动。支持的第三方项目可以关闭，也可以稍后恢复；系统项目只供查看。StatusOrbit 不会直接删除它们的配置文件。</p>
         </section>
 
         <section class="guide-section" id="history" data-reveal>
           <span class="guide-section__number">06</span><h2 data-zh="历史、提醒与设置" data-en="History, alerts, and settings">历史、提醒与设置</h2>
           <ul class="guide-list">
-            <li data-zh="历史以五分钟快照保存 CPU、内存、磁盘和网络聚合趋势，并记录持续告警和恢复事件。" data-en="History stores five-minute aggregate CPU, memory, storage, and network trends plus sustained alerts and recoveries.">历史以五分钟快照保存 CPU、内存、磁盘和网络聚合趋势，并记录持续告警和恢复事件。</li>
-            <li data-zh="保留期可选 1、7 或 30 天，也可以停用写入或清空全部历史。" data-en="Choose 1, 7, or 30 days of retention, disable writes, or clear all history.">保留期可选 1、7 或 30 天，也可以停用写入或清空全部历史。</li>
-            <li data-zh="桌面提醒使用持续判定、恢复回差、冷却和每日预算，CPU、内存、磁盘可以分别关闭。" data-en="Notifications use sustained thresholds, recovery hysteresis, cooldowns, and daily budgets; CPU, memory, and storage can be muted separately.">桌面提醒使用持续判定、恢复回差、冷却和每日预算，CPU、内存、磁盘可以分别关闭。</li>
-            <li data-zh="设置还可以调整语言、系统采样间隔、连接刷新间隔、告警颜色和默认进程视图。" data-en="Settings also control language, sampling and connection intervals, alert colors, and the default process layout.">设置还可以调整语言、系统采样间隔、连接刷新间隔、告警颜色和默认进程视图。</li>
+            <li data-zh="历史页按时间保存 CPU、内存、磁盘和网络的整体变化，让你回看电脑什么时候开始变忙、什么时候恢复正常。" data-en="History records overall CPU, memory, storage, and network changes over time, so you can see when your computer became busy and when it recovered.">历史页按时间保存 CPU、内存、磁盘和网络的整体变化，让你回看电脑什么时候开始变忙、什么时候恢复正常。</li>
+            <li data-zh="记录可以保留 1、7 或 30 天。你也可以关闭历史记录，或者随时清空。" data-en="Keep history for 1, 7, or 30 days. You can also turn history off or clear it anytime.">记录可以保留 1、7 或 30 天。你也可以关闭历史记录，或者随时清空。</li>
+            <li data-zh="只有问题持续一段时间时才会提醒；同一问题不会反复弹出。CPU、内存和磁盘提醒可以分别关闭。" data-en="Notifications appear only when a problem lasts for a while, and the same warning is not repeated constantly. CPU, memory, and storage alerts can be turned off separately.">只有问题持续一段时间时才会提醒；同一问题不会反复弹出。CPU、内存和磁盘提醒可以分别关闭。</li>
+            <li data-zh="设置页还可以更改语言、刷新速度、颜色提示和默认的进程列表样式。" data-en="Settings also lets you change the language, refresh speed, alert colors, and default process view.">设置页还可以更改语言、刷新速度、颜色提示和默认的进程列表样式。</li>
           </ul>
         </section>
 
         <section class="guide-section" id="safety" data-reveal>
-          <span class="guide-section__number">07</span><h2 data-zh="安全与隐私边界" data-en="Safety and privacy boundaries">安全与隐私边界</h2>
+          <span class="guide-section__number">07</span><h2 data-zh="操作前要知道的事" data-en="Before you take action">操作前要知道的事</h2>
           <div class="boundary-table">
-            <div><strong data-zh="进程操作" data-en="Process actions">进程操作</strong><span data-zh="短期单次租约、启动身份复核、关键 PID 和应用自身保护。" data-en="Short-lived single-use lease, birth-identity verification, and protection for critical PIDs and the app itself.">短期单次租约、启动身份复核、关键 PID 和应用自身保护。</span></div>
-            <div><strong data-zh="永久删除" data-en="Permanent deletion">永久删除</strong><span data-zh="仅限主目录内普通内容；拒绝根目录、链接、特殊文件和跨挂载边界。" data-en="Limited to regular content inside home; roots, links, special files, and mount boundaries are rejected.">仅限主目录内普通内容；拒绝根目录、链接、特殊文件和跨挂载边界。</span></div>
-            <div><strong data-zh="权限" data-en="Privileges">权限</strong><span data-zh="应用不会为了获得更多数据而自动提权，权限不足时明确降级。" data-en="The app does not elevate itself to collect more data and degrades explicitly when permissions are limited.">应用不会为了获得更多数据而自动提权，权限不足时明确降级。</span></div>
-            <div><strong data-zh="隐私" data-en="Privacy">隐私</strong><span data-zh="默认不上传遥测、进程、文件、历史或连接信息。" data-en="No telemetry, process, file, history, or connection information is uploaded by default.">默认不上传遥测、进程、文件、历史或连接信息。</span></div>
+            <div><strong data-zh="结束进程" data-en="Stopping a process">结束进程</strong><span data-zh="应用会在最后一步确认，并再次检查目标。系统关键进程和 StatusOrbit 本身不能被误关。" data-en="The app asks for confirmation and checks the target again. Critical system processes and StatusOrbit itself cannot be stopped by mistake.">应用会在最后一步确认，并再次检查目标。系统关键进程和 StatusOrbit 本身不能被误关。</span></div>
+            <div><strong data-zh="永久删除" data-en="Permanent deletion">永久删除</strong><span data-zh="只处理你个人文件夹内的普通文件和文件夹。主目录、废纸篓本身、链接和其他磁盘不会被删除。" data-en="Only regular files and folders inside your home folder can be removed. Your home folder, Trash itself, links, and other disks are protected.">只处理你个人文件夹内的普通文件和文件夹。主目录、废纸篓本身、链接和其他磁盘不会被删除。</span></div>
+            <div><strong data-zh="系统权限" data-en="System permissions">系统权限</strong><span data-zh="StatusOrbit 不会自动申请更高权限。看不到某些信息时，页面会直接说明。" data-en="StatusOrbit does not elevate itself automatically. When the system hides information, the page tells you.">StatusOrbit 不会自动申请更高权限。看不到某些信息时，页面会直接说明。</span></div>
+            <div><strong data-zh="你的数据" data-en="Your data">你的数据</strong><span data-zh="监控、文件、进程、历史和连接信息默认只保存在这台电脑上。" data-en="Monitoring, file, process, history, and connection data stay on this computer by default.">监控、文件、进程、历史和连接信息默认只保存在这台电脑上。</span></div>
           </div>
         </section>
 
         <section class="guide-section" id="troubleshooting" data-reveal>
           <span class="guide-section__number">08</span><h2 data-zh="常见问题" data-en="Troubleshooting">常见问题</h2>
           <div class="faq-list">
-            <details><summary data-zh="刚启动时为什么没有网络或磁盘速率？" data-en="Why is there no network or disk rate right after launch?">刚启动时为什么没有网络或磁盘速率？</summary><p data-zh="速率需要比较两次累计计数。等待下一个采样周期后会出现数据。" data-en="Rates require two cumulative counters. Data appears after the next sampling cycle.">速率需要比较两次累计计数。等待下一个采样周期后会出现数据。</p></details>
-            <details><summary data-zh="清理扫描为什么需要较长时间？" data-en="Why can cleanup scanning take a long time?">清理扫描为什么需要较长时间？</summary><p data-zh="扫描不会静默截断。大量开发缓存、小文件和权限受限目录都会增加耗时，可以观察实时进度或主动停止。" data-en="The scan is not silently truncated. Large caches, many small files, and restricted directories take longer; watch live progress or stop it manually.">扫描不会静默截断。大量开发缓存、小文件和权限受限目录都会增加耗时，可以观察实时进度或主动停止。</p></details>
-            <details><summary data-zh="为什么空间大小和 Finder / Explorer 不同？" data-en="Why does size differ from Finder or Explorer?">为什么空间大小和 Finder / Explorer 不同？</summary><p data-zh="StatusOrbit 优先显示实际磁盘占用。稀疏文件、硬链接、压缩和文件系统行为可能让它与逻辑大小不同。" data-en="StatusOrbit prioritizes allocated space. Sparse files, hard links, compression, and filesystem behavior can differ from logical size.">StatusOrbit 优先显示实际磁盘占用。稀疏文件、硬链接、压缩和文件系统行为可能让它与逻辑大小不同。</p></details>
+            <details><summary data-zh="刚启动时为什么没有网络或磁盘速度？" data-en="Why are disk and network speeds missing right after launch?">刚启动时为什么没有网络或磁盘速度？</summary><p data-zh="应用需要先后读取两次数据才能算出速度。等到下一次刷新就会显示。" data-en="The app needs two readings to calculate a rate. The numbers appear after the next refresh.">应用需要先后读取两次数据才能算出速度。等到下一次刷新就会显示。</p></details>
+            <details><summary data-zh="为什么扫描要等很久？" data-en="Why is the scan taking a long time?">为什么扫描要等很久？</summary><p data-zh="扫描时间主要取决于文件和文件夹的数量。开发缓存、小文件很多或部分文件夹无法读取时，会花更长时间。页面会持续更新进度，你也可以主动停止。" data-en="Scan time depends mostly on the number of files and folders. Development caches, large numbers of small files, and restricted folders take longer. Progress keeps updating, and you can stop the scan.">扫描时间主要取决于文件和文件夹的数量。开发缓存、小文件很多或部分文件夹无法读取时，会花更长时间。页面会持续更新进度，你也可以主动停止。</p></details>
+            <details><summary data-zh="为什么大小和 Finder / Explorer 显示的不一样？" data-en="Why does the size differ from Finder or Explorer?">为什么大小和 Finder / Explorer 显示的不一样？</summary><p data-zh="StatusOrbit 显示文件实际占用的磁盘空间。压缩文件、稀疏文件和硬链接等情况，可能会让这个数字与文件标称大小不同。" data-en="StatusOrbit shows the space files actually occupy on disk. Compression, sparse files, and hard links can make this number differ from the listed file size.">StatusOrbit 显示文件实际占用的磁盘空间。压缩文件、稀疏文件和硬链接等情况，可能会让这个数字与文件标称大小不同。</p></details>
             <details><summary data-zh="开发时提示端口 1420 被占用怎么办？" data-en="What if port 1420 is already in use during development?">开发时提示端口 1420 被占用怎么办？</summary><p data-zh="通常是旧的 Vite/Tauri 开发进程仍在运行。结束旧进程后再启动，避免同时运行多个 pnpm dev 实例。" data-en="An older Vite/Tauri development process is usually still running. Stop it before launching another pnpm dev instance.">通常是旧的 Vite/Tauri 开发进程仍在运行。结束旧进程后再启动，避免同时运行多个 pnpm dev 实例。</p></details>
           </div>
-          <div class="guide-help"><div><strong data-zh="仍然需要帮助？" data-en="Still need help?">仍然需要帮助？</strong><p data-zh="提交问题时请附上操作系统、复现步骤和相关错误信息。安全问题请使用私密漏洞报告。" data-en="Include your operating system, reproduction steps, and relevant errors. Use private vulnerability reporting for security issues.">提交问题时请附上操作系统、复现步骤和相关错误信息。安全问题请使用私密漏洞报告。</p></div><a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit/issues" rel="noreferrer"><span data-zh="前往 Issues" data-en="Open Issues">前往 Issues</span><span>↗</span></a></div>
+          <div class="guide-help"><div><strong data-zh="还是遇到了问题？" data-en="Still having trouble?">还是遇到了问题？</strong><p data-zh="可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。" data-en="Open an issue on GitHub and include your operating system, what you were doing, and any error message. Use private vulnerability reporting for security issues.">可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。</p></div><a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit/issues" rel="noreferrer"><span data-zh="提交问题" data-en="Report a problem">提交问题</span><span>↗</span></a></div>
         </section>
       </article>
     </main>
 
     <footer class="site-footer section-shell">
-      <a class="brand brand--footer" href="../"><span class="brand__mark"><img src="../assets/brand-mark.png" alt="" /></span><span><strong>StatusOrbit</strong><small>LOCAL SYSTEM COMPANION</small></span></a>
-      <p>© <span data-year></span> StatusOrbit. <span data-zh="在本机看懂你的电脑。" data-en="Understand your computer, locally.">在本机看懂你的电脑。</span></p>
+      <a class="brand brand--footer" href="../"><span class="brand__mark"><img src="../assets/brand-mark.png" alt="" /></span><span><strong>StatusOrbit</strong><small>USER GUIDE</small></span></a>
+      <p>© <span data-year></span> StatusOrbit. <span data-zh="看清电脑状态，找出变慢和空间不足的原因。" data-en="Find slowdowns and see what is taking up space.">看清电脑状态，找出变慢和空间不足的原因。</span></p>
       <div><a href="../" data-zh="首页" data-en="Home">首页</a><a href="https://github.com/JimmyDaddy/StatusOrbit/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/StatusOrbit">GitHub</a></div>
     </footer>
     <script src="../site.js" defer></script>
