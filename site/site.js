@@ -95,17 +95,47 @@ const guideSections = guideLinks
   .map((link) => document.querySelector(link.getAttribute("href")))
   .filter(Boolean);
 
-if (guideSections.length > 0 && "IntersectionObserver" in window) {
-  const sectionObserver = new IntersectionObserver((entries) => {
-    const visible = entries
-      .filter((entry) => entry.isIntersecting)
-      .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-    if (!visible) return;
+if (guideSections.length > 0) {
+  let scrollFrame;
+
+  function setActiveGuideSection(section) {
     guideLinks.forEach((link) => {
-      link.classList.toggle("is-active", link.getAttribute("href") === `#${visible.target.id}`);
+      const active = link.getAttribute("href") === `#${section.id}`;
+      link.classList.toggle("is-active", active);
+      if (active) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
     });
-  }, { rootMargin: "-25% 0px -60%", threshold: [0, 0.15, 0.5] });
-  guideSections.forEach((section) => sectionObserver.observe(section));
+  }
+
+  function updateActiveGuideSection() {
+    scrollFrame = undefined;
+    const marker = Math.min(180, window.innerHeight * 0.24);
+    let activeSection = guideSections[0];
+
+    guideSections.forEach((section) => {
+      if (section.getBoundingClientRect().top <= marker) activeSection = section;
+    });
+
+    const atPageEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    if (atPageEnd) activeSection = guideSections[guideSections.length - 1];
+    setActiveGuideSection(activeSection);
+  }
+
+  function scheduleGuideUpdate() {
+    if (scrollFrame !== undefined) return;
+    scrollFrame = window.requestAnimationFrame(updateActiveGuideSection);
+  }
+
+  guideLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      const section = document.querySelector(link.getAttribute("href"));
+      if (section) setActiveGuideSection(section);
+    });
+  });
+
+  updateActiveGuideSection();
+  window.addEventListener("scroll", scheduleGuideUpdate, { passive: true });
+  window.addEventListener("resize", scheduleGuideUpdate);
 }
 
 document.querySelectorAll("[data-copy]").forEach((button) => {

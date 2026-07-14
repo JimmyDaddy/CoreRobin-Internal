@@ -123,10 +123,6 @@ StatusOrbit shows the space files actually occupy on disk. Compression, sparse f
 
 The operating system may hide which process owns a connection. StatusOrbit does not elevate itself automatically to fill in that information.
 
-### What if port 1420 is already in use during development?
-
-An earlier Vite or Tauri process is probably still running. Stop the old development process before running `pnpm dev` again.
-
 ## Privacy and support
 
 Monitoring, file, process, history, and connection data stay on this computer by default. They are not uploaded or synced.
