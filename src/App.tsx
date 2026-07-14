@@ -25,6 +25,7 @@ import {
   releaseProcessControlLease,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
+import { HistoryExplorer } from "./components/HistoryExplorer";
 import { MetricCard } from "./components/MetricCard";
 import { NetworkExplorer } from "./components/NetworkExplorer";
 import { ProcessInspector } from "./components/ProcessInspector";
@@ -33,6 +34,7 @@ import { ResourceHistory } from "./components/ResourceHistory";
 import { SettingsExplorer } from "./components/SettingsExplorer";
 import { StorageExplorer } from "./components/StorageExplorer";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
+import { usePersistentHistory } from "./hooks/usePersistentHistory";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import { normalizeLanguage } from "./i18n";
@@ -69,7 +71,7 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes" | "storage" | "network" | "settings";
+type ActiveView = "overview" | "processes" | "storage" | "network" | "history" | "settings";
 
 interface PendingProcessAction {
   action: ProcessAction;
@@ -93,6 +95,11 @@ function App() {
     loading,
     refreshNow,
   } = useSystemMonitor(settings.systemSampleIntervalMs);
+  const persistentHistory = usePersistentHistory(
+    history,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+  );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
   const {
     snapshot: connectionsSnapshot,
@@ -120,6 +127,7 @@ function App() {
   const [bestEffortOptIn, setBestEffortOptIn] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const selectedIdentityRef = useRef(selectedIdentity);
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const activeDetailKeyRef = useRef<ProcessKey | null>(null);
   const preparingActionRef = useRef(false);
   const submittingActionRef = useRef(false);
@@ -142,6 +150,10 @@ function App() {
   const activeDetail = detailMatchesProcess(detail, selectedProcess) ? detail : null;
   selectedIdentityRef.current = selectedIdentity;
   activeDetailKeyRef.current = activeDetail?.key ?? null;
+
+  useEffect(() => {
+    mainContentRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [activeView]);
 
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
@@ -426,7 +438,7 @@ function App() {
 
         <div className="nav-group">
           <span className="nav-label">{t("app.diagnostics")}</span>
-          <button type="button" disabled title={t("app.comingSoon")}><History size={17} />{t("app.history")}<small>{t("app.soon")}</small></button>
+          <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app.history")}</button>
           <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app.settings")}</button>
         </div>
 
@@ -473,8 +485,8 @@ function App() {
         {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
 
-        <div className={`content-layout${activeView === "network" || activeView === "settings" ? " content-layout--wide" : ""}`}>
-          <main className="main-content">
+        <div className={`content-layout${activeView === "network" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
+          <main className="main-content" ref={mainContentRef}>
             {activeView === "overview" ? (
               <>
                 <section className="metric-grid" aria-label={t("app.metricsLabel")}>
@@ -590,6 +602,21 @@ function App() {
                   setActiveView("processes");
                 }}
               />
+            ) : activeView === "history" ? (
+              <HistoryExplorer
+                points={persistentHistory.points}
+                storedPointCount={persistentHistory.storedPoints.length}
+                persistenceEnabled={settings.historyPersistenceEnabled}
+                retentionDays={settings.historyRetentionDays}
+                usageThresholds={settings.usageThresholds}
+                onPersistenceEnabledChange={(historyPersistenceEnabled) =>
+                  updateSettings({ historyPersistenceEnabled })
+                }
+                onRetentionDaysChange={(historyRetentionDays) =>
+                  updateSettings({ historyRetentionDays })
+                }
+                onClear={persistentHistory.clear}
+              />
             ) : (
               <SettingsExplorer settings={settings} onChange={updateSettings} />
             )}
@@ -620,6 +647,10 @@ function App() {
                   interfaces: snapshot.network.interfaceCount,
                   connections: connectionsSnapshot?.summary.totalCount ?? "—",
                 })
+              : activeView === "history"
+                ? t("app.status.savedHistory", {
+                    count: persistentHistory.storedPoints.length,
+                  })
               : t("app.status.processCount", { count: snapshot.processes.length })}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>

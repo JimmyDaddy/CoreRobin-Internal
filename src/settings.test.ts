@@ -27,6 +27,8 @@ describe("application settings", () => {
           connectionRefreshIntervalMs: 10_000,
           usageThresholds: [40, 70, 90],
           defaultProcessView: "tree",
+          historyPersistenceEnabled: false,
+          historyRetentionDays: 30,
         }),
       ),
     ).toEqual({
@@ -36,6 +38,8 @@ describe("application settings", () => {
       connectionRefreshIntervalMs: 10_000,
       usageThresholds: [40, 70, 90],
       defaultProcessView: "tree",
+      historyPersistenceEnabled: false,
+      historyRetentionDays: 30,
     });
 
     expect(

@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "./i18n";
+import type { HistoryRetentionDays } from "./historyStore";
 import type { ProcessViewMode } from "./types";
 
 export const APP_SETTINGS_STORAGE_KEY = "pulse.settings.v1";
@@ -14,6 +15,8 @@ export interface AppSettings {
   connectionRefreshIntervalMs: number;
   usageThresholds: UsageThresholds;
   defaultProcessView: ProcessViewMode;
+  historyPersistenceEnabled: boolean;
+  historyRetentionDays: HistoryRetentionDays;
 }
 
 export function defaultAppSettings(
@@ -26,6 +29,8 @@ export function defaultAppSettings(
     connectionRefreshIntervalMs: 5_000,
     usageThresholds: [35, 65, 85],
     defaultProcessView: "flat",
+    historyPersistenceEnabled: true,
+    historyRetentionDays: 7,
   };
 }
 
@@ -63,6 +68,13 @@ export function parseAppSettings(
       defaultProcessView: isProcessViewMode(value.defaultProcessView)
         ? value.defaultProcessView
         : fallback.defaultProcessView,
+      historyPersistenceEnabled:
+        typeof value.historyPersistenceEnabled === "boolean"
+          ? value.historyPersistenceEnabled
+          : fallback.historyPersistenceEnabled,
+      historyRetentionDays: isHistoryRetentionDays(value.historyRetentionDays)
+        ? value.historyRetentionDays
+        : fallback.historyRetentionDays,
     };
   } catch {
     return fallback;
@@ -107,6 +119,10 @@ function isSupportedLanguage(value: unknown): value is SupportedLanguage {
 
 function isProcessViewMode(value: unknown): value is ProcessViewMode {
   return value === "flat" || value === "tree";
+}
+
+function isHistoryRetentionDays(value: unknown): value is HistoryRetentionDays {
+  return value === 1 || value === 7 || value === 30;
 }
 
 function isAllowedNumber<const Values extends readonly number[]>(

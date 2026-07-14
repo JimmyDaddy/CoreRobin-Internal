@@ -1,4 +1,4 @@
-import { BellRing, Languages, ListTree, Network, Timer } from "lucide-react";
+import { BellRing, History, Languages, ListTree, Network, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -7,6 +7,7 @@ import {
   type AppSettings,
   type UsageThresholds,
 } from "../settings";
+import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
 
 interface SettingsExplorerProps {
   settings: AppSettings;
@@ -119,6 +120,48 @@ export function SettingsExplorer({
                 {t(`process.${mode}`)}
               </button>
             ))}
+          </div>
+        </SettingsCard>
+
+        <SettingsCard
+          icon={History}
+          title={t("settings.history.title")}
+          description={t("settings.history.description")}
+        >
+          <div className="settings-history-controls">
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={settings.historyPersistenceEnabled}
+                onChange={(event) =>
+                  onChange({ historyPersistenceEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings.history.persist")}</span>
+            </label>
+            <label className="settings-field">
+              <span>{t("settings.history.retention")}</span>
+              <select
+                value={settings.historyRetentionDays}
+                onChange={(event) =>
+                  onChange({
+                    historyRetentionDays:
+                      event.target.value === "1"
+                        ? 1
+                        : event.target.value === "30"
+                          ? 30
+                          : 7,
+                  })
+                }
+              >
+                {HISTORY_RETENTION_OPTIONS.map((days) => (
+                  <option key={days} value={days}>
+                    {t("settings.history.days", { count: days })}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </SettingsCard>
 
