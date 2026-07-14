@@ -98,7 +98,7 @@ impl CleanupTrashController {
         let home = home_directory().ok_or_else(|| {
             CommandError::new(
                 "home_directory_unavailable",
-                "Pulse could not locate the current user's home directory.",
+                "StatusOrbit could not locate the current user's home directory.",
             )
         })?;
         self.create_lease_for_home(request, &home)
@@ -215,7 +215,7 @@ pub fn scan_cleanup(
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "Pulse could not locate the current user's home directory.",
+            "StatusOrbit could not locate the current user's home directory.",
         )
     })?;
     scan_home(&home, platform_paths(&home), true, cancelled, on_progress)
@@ -225,7 +225,7 @@ pub fn inspect_cleanup_path(display_path: &str) -> Result<CleanupPathState, Comm
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "Pulse could not locate the current user's home directory.",
+            "StatusOrbit could not locate the current user's home directory.",
         )
     })?;
     let path = if display_path == "~" {
@@ -272,7 +272,7 @@ fn validate_cleanup_targets(
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
-            format!("Pulse could not verify the home directory: {error}"),
+            format!("StatusOrbit could not verify the home directory: {error}"),
         )
     })?;
     let trash_roots = trash_paths(&canonical_home);
@@ -283,25 +283,25 @@ fn validate_cleanup_targets(
         if path == canonical_home || trash_roots.iter().any(|root| path.starts_with(root)) {
             return Err(CommandError::new(
                 "protected_cleanup_path",
-                "Pulse will not move the home directory or content that is already in the Trash.",
+                "StatusOrbit will not move the home directory or content that is already in the Trash.",
             ));
         }
         let metadata = fs::symlink_metadata(&path).map_err(|error| {
             CommandError::new(
                 "cleanup_target_unavailable",
-                format!("Pulse could not inspect {display}: {error}"),
+                format!("StatusOrbit could not inspect {display}: {error}"),
             )
         })?;
         if metadata.file_type().is_symlink() || (!metadata.is_file() && !metadata.is_dir()) {
             return Err(CommandError::new(
                 "unsupported_cleanup_target",
-                format!("Pulse will not move links or special files: {display}"),
+                format!("StatusOrbit will not move links or special files: {display}"),
             ));
         }
         let canonical_path = path.canonicalize().map_err(|error| {
             CommandError::new(
                 "cleanup_target_unavailable",
-                format!("Pulse could not verify {display}: {error}"),
+                format!("StatusOrbit could not verify {display}: {error}"),
             )
         })?;
         if canonical_path == canonical_home
@@ -311,13 +311,13 @@ fn validate_cleanup_targets(
         {
             return Err(CommandError::new(
                 "protected_cleanup_path",
-                "Pulse will not move the home directory or content that is already in the Trash.",
+                "StatusOrbit will not move the home directory or content that is already in the Trash.",
             ));
         }
         if !canonical_path.starts_with(&canonical_home) {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
-                format!("Pulse only moves items inside your home folder: {display}"),
+                format!("StatusOrbit only moves items inside your home folder: {display}"),
             ));
         }
         if !seen.insert(canonical_path.clone()) {
@@ -364,7 +364,7 @@ fn expand_cleanup_path(display_path: &str, home: &Path) -> Result<PathBuf, Comma
     if !path.is_absolute() {
         return Err(CommandError::new(
             "invalid_cleanup_path",
-            format!("Pulse could not resolve this cleanup path: {display_path}"),
+            format!("StatusOrbit could not resolve this cleanup path: {display_path}"),
         ));
     }
     Ok(path)
@@ -375,7 +375,7 @@ fn revalidate_cleanup_target(target: &CleanupTrashTarget) -> Result<(), CommandE
         CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; Pulse moved nothing. Review the selection again: {error}",
+                "{} changed after confirmation; StatusOrbit moved nothing. Review the selection again: {error}",
                 target.display_path
             ),
         )
@@ -387,7 +387,7 @@ fn revalidate_cleanup_target(target: &CleanupTrashTarget) -> Result<(), CommandE
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; Pulse moved nothing. Review the selection again.",
+                "{} changed after confirmation; StatusOrbit moved nothing. Review the selection again.",
                 target.display_path
             ),
         ));
@@ -1444,6 +1444,6 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        env::temp_dir().join(format!("pulse-cleanup-{suffix}-{nonce}"))
+        env::temp_dir().join(format!("status-orbit-cleanup-{suffix}-{nonce}"))
     }
 }

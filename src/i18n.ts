@@ -1,7 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "./storageMigration";
 
-export const LANGUAGE_STORAGE_KEY = "pulse.language.v1";
+export const LANGUAGE_STORAGE_KEY = "status-orbit.language.v1";
 export type SupportedLanguage = "zh-CN" | "en";
 
 const resources = {
@@ -102,7 +106,7 @@ const resources = {
         },
       },
       splash: {
-        title: "正在启动 Pulse",
+        title: "正在启动 StatusOrbit",
         description: "本机资源状态，清晰呈现。",
         connecting: "正在连接本机采样器",
       },
@@ -120,8 +124,8 @@ const resources = {
         status: {
           loading: { title: "正在读取电脑状态", description: "首个采样结果很快就会出现。" },
           normal: { title: "电脑运行平稳", description: "没有发现需要立即处理的资源问题。" },
-          attention: { title: "有一项资源值得留意", description: "打开 Pulse 可以查看原因和对应建议。" },
-          urgent: { title: "有一项资源压力较高", description: "建议打开 Pulse 查看证据后再处理。" },
+          attention: { title: "有一项资源值得留意", description: "打开 StatusOrbit 可以查看原因和对应建议。" },
+          urgent: { title: "有一项资源压力较高", description: "建议打开 StatusOrbit 查看证据后再处理。" },
         },
         reason: "{{resource}}需要关注",
         resource: {
@@ -139,7 +143,7 @@ const resources = {
         collapse: "收起诊断",
         checkedLabel: "本次诊断检查项",
         thisDisk: "系统磁盘",
-        safety: "Pulse 不会自动操作；推荐动作仍需你确认，强制结束只保留在专业模式。",
+        safety: "StatusOrbit 不会自动操作；推荐动作仍需你确认，强制结束只保留在专业模式。",
         duration: "持续 {{seconds}} 秒",
         status: {
           observing: {
@@ -156,7 +160,7 @@ const resources = {
           },
           urgent: {
             title: "有问题需要尽快处理",
-            summary: "发现 {{count}} 个影响较明显的问题，Pulse 会先带你核对证据。",
+            summary: "发现 {{count}} 个影响较明显的问题，StatusOrbit 会先带你核对证据。",
           },
         },
         categories: {
@@ -232,7 +236,7 @@ const resources = {
           },
           request_close: {
             title: "建议先请求 {{name}} 退出",
-            description: "这是优先级最高的温和处理方式。Pulse 会先核对进程身份并显示确认窗口，不会直接强制结束。",
+            description: "这是优先级最高的温和处理方式。StatusOrbit 会先核对进程身份并显示确认窗口，不会直接强制结束。",
             action: "请求退出 {{name}}",
           },
           open_cleanup: {
@@ -247,22 +251,22 @@ const resources = {
           },
           inspect_process: {
             title: "先查看详细证据",
-            description: "Pulse 当前不提供直接处理按钮；先确认应用身份、资源变化和系统保护原因。",
+            description: "StatusOrbit 当前不提供直接处理按钮；先确认应用身份、资源变化和系统保护原因。",
             action: "查看详细证据",
           },
           inspectEvidence: "先看应用证据",
           preparing: "正在核对…",
-          actionUnavailable: "这个应用当前无法安全核对或处理，Pulse 没有执行任何操作。",
+          actionUnavailable: "这个应用当前无法安全核对或处理，StatusOrbit 没有执行任何操作。",
         },
         actionDialog: {
           title: "请求 {{name}} 退出？",
-          description: "Pulse 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
+          description: "StatusOrbit 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
           safeTitle: "不会删除应用或文件",
           safeDescription: "这项操作只请求当前应用结束运行，不会清理它的数据。",
           riskTitle: "先保存正在编辑的内容",
           riskDescription: "应用是否显示保存提示取决于它自身；未保存内容仍可能丢失。",
           stableIdentity: "已通过稳定句柄锁定你刚刚选择的进程，执行前还会再次复核。",
-          bestEffortIdentity: "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，Pulse 会拒绝执行。",
+          bestEffortIdentity: "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，StatusOrbit 会拒绝执行。",
           confirm: "确认请求 {{name}} 退出",
         },
       },
@@ -270,7 +274,7 @@ const resources = {
         kicker: "应用级汇总",
         overviewTitle: "现在谁影响最大",
         title: "应用资源影响",
-        description: "Pulse 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
+        description: "StatusOrbit 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
         viewAll: "查看全部应用",
         search: "搜索应用",
         searchPlaceholder: "按应用名称搜索",
@@ -298,7 +302,7 @@ const resources = {
           disk: "当前主要影响来自磁盘活动（{{value}}）。同步、下载或构建任务都可能造成短时读写。",
           balanced: "当前没有某一项资源特别突出，整体影响较低。",
           systemSafety: "这是系统组件，不建议直接结束；如有异常请先查看专业证据。",
-          appSafety: "这是普通应用。Pulse 不会自动关闭它，结束操作仍需单独确认。",
+          appSafety: "这是普通应用。StatusOrbit 不会自动关闭它，结束操作仍需单独确认。",
           professionalDetails: "用专业模式查看进程",
         },
         empty: "没有匹配的应用",
@@ -319,7 +323,7 @@ const resources = {
           normal: "当前温度在正常范围内。",
           attention: "设备有些热；如果同时卡顿，可先减少高负荷任务。",
           urgent: "温度持续偏高，建议停止高负荷任务并保持通风。",
-          unavailable: "当前系统或硬件没有向 Pulse 提供温度读数。",
+          unavailable: "当前系统或硬件没有向 StatusOrbit 提供温度读数。",
         },
         battery: {
           label: "电池",
@@ -340,7 +344,7 @@ const resources = {
         sleep: {
           label: "自动休眠",
           unavailableValue: "无法读取",
-          unavailable: "当前平台没有向 Pulse 提供可靠的休眠阻止信息。",
+          unavailable: "当前平台没有向 StatusOrbit 提供可靠的休眠阻止信息。",
           clearValue: "可以正常休眠",
           clear: "没有发现应用阻止电脑自动休眠。",
           blockedValue: "{{count}} 个应用",
@@ -380,11 +384,11 @@ const resources = {
           refresh: "更新结果",
           cached: {
             title: "已恢复上次扫描结果",
-            description: "无需重新等待即可继续查看；进入具体目录时，Pulse 会按需核对它是否发生变化。",
+            description: "无需重新等待即可继续查看；进入具体目录时，StatusOrbit 会按需核对它是否发生变化。",
           },
           expired: {
             title: "这份结果已超过 24 小时",
-            description: "Pulse 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。",
+            description: "StatusOrbit 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。",
           },
         },
         progress: {
@@ -397,10 +401,10 @@ const resources = {
           indeterminate: "文件总数在遍历完成前无法准确得知，因此不显示虚假的百分比；这些数字会持续更新。",
           foundSpace: "已找到的内容",
           stageKicker: "空间地图生成中",
-          stageTitle: "Pulse 正在把复杂的文件夹整理成一张图",
+          stageTitle: "StatusOrbit 正在把复杂的文件夹整理成一张图",
           stageDescription: "扫描完成后，你会看到空间主要花在哪里、哪些内容通常可以回收，以及哪些文件必须由你确认。",
           reassuranceTitle: "可以放心等待",
-          reassuranceDescription: "Pulse 只读取文件名和大小，不会打开文件内容，也不会在扫描时删除或移动任何内容。",
+          reassuranceDescription: "StatusOrbit 只读取文件名和大小，不会打开文件内容，也不会在扫描时删除或移动任何内容。",
           locations: {
             downloads: "下载文件",
             trash: "废纸篓",
@@ -440,7 +444,7 @@ const resources = {
           grouped: "汇总分类",
           noDeeperBreakdown: "当前层级没有更细的目录分组。",
           directActionHint: "按住扇区并拖到右侧清理篮",
-          alreadyInTrash: "这些内容已在废纸篓中，Pulse 不提供永久清空",
+          alreadyInTrash: "这些内容已在废纸篓中，StatusOrbit 不提供永久清空",
           planSummary: "已选择 {{count}} 项，共 {{size}}",
           reviewCleanup: "检查并移入废纸篓",
           deletionUnavailable: "系统废纸篓不可用",
@@ -462,7 +466,7 @@ const resources = {
         },
         trashDialog: {
           title: "移入废纸篓前再检查一次",
-          description: "Pulse 不会永久删除这些内容；确认后会交给系统废纸篓处理。",
+          description: "StatusOrbit 不会永久删除这些内容；确认后会交给系统废纸篓处理。",
           itemUnit: "项内容",
           estimatedSize: "预估大小",
           recoverable: "清空废纸篓前通常可以恢复",
@@ -474,8 +478,8 @@ const resources = {
           confirm: "将 {{count}} 项移入废纸篓",
           moving: "正在移入废纸篓…",
           errors: {
-            protected_cleanup_path: "Pulse 不会处理主目录或已经位于废纸篓中的内容。",
-            cleanup_target_outside_home: "出于安全考虑，Pulse 只处理个人目录内的内容。",
+            protected_cleanup_path: "StatusOrbit 不会处理主目录或已经位于废纸篓中的内容。",
+            cleanup_target_outside_home: "出于安全考虑，StatusOrbit 只处理个人目录内的内容。",
             cleanup_target_changed: "文件在确认后又发生了变化，因此没有移动任何内容。请取消后重新检查。",
             cleanup_confirmation_unavailable: "本次确认已经失效，请取消后重新打开检查窗口。",
             cleanup_confirmation_expired: "确认已超时，请取消后重新检查当前文件。",
@@ -521,15 +525,15 @@ const resources = {
           lastUsed: "{{date}} 最后使用 · 已有 {{days}} 天未打开",
           none: "没有发现能够确认已超过 6 个月未使用的应用。",
           unavailable: "当前平台暂时无法可靠读取应用的最后使用时间。",
-          unknownExcluded: "另有 {{count}} 个应用无法确认最后使用时间，Pulse 没有把它们归为长期未用。",
+          unknownExcluded: "另有 {{count}} 个应用无法确认最后使用时间，StatusOrbit 没有把它们归为长期未用。",
         },
         reviewFirst: "逐项确认",
         largestFiles: "较大的个人文件",
         largeFileBoundary: "只列出超过 500 MB 的文件，不建议自动删除",
         noLargeFiles: "常用个人目录中没有发现超过 500 MB 的文件。",
         unreadable: "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。",
-        fullDiskAccessHint: "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 Pulse 后重新扫描。",
-        safetyBoundary: "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮并再次确认的内容才会移入系统废纸篓，Pulse 不做永久删除。",
+        fullDiskAccessHint: "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 StatusOrbit 后重新扫描。",
+        safetyBoundary: "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮并再次确认的内容才会移入系统废纸篓，StatusOrbit 不做永久删除。",
       },
       startup: {
         eyebrow: "开机与登录",
@@ -537,7 +541,7 @@ const resources = {
         description: "查看会在登录时或后台条件满足时启动的项目，优先解释第三方项目，不把系统服务包装成普通开关。",
         scanning: "正在检查…",
         loadingTitle: "正在读取启动位置",
-        loadingDescription: "Pulse 只读取系统公开的启动配置，不会加载或运行其中的命令。",
+        loadingDescription: "StatusOrbit 只读取系统公开的启动配置，不会加载或运行其中的命令。",
         summary: "启动项摘要",
         reviewCount: "建议看一眼",
         reviewHint: "登录时启动的第三方项目",
@@ -587,13 +591,13 @@ const resources = {
         actionDialog: {
           disable: {
             title: "停用 {{name}} 的自动启动？",
-            description: "Pulse 会把这份用户级启动配置移到自己的可恢复存储中，不会删除它。",
+            description: "StatusOrbit 会把这份用户级启动配置移到自己的可恢复存储中，不会删除它。",
             whenDescription: "下次登录时生效；恢复后也会从下一次登录开始重新允许自动启动。",
             confirm: "确认停用自动启动",
           },
           enable: {
             title: "恢复 {{name}} 的自动启动？",
-            description: "Pulse 会把之前保存的配置放回原位置。",
+            description: "StatusOrbit 会把之前保存的配置放回原位置。",
             whenDescription: "从下次登录开始，系统会再次允许这个项目自动启动。",
             confirm: "确认恢复自动启动",
           },
@@ -605,10 +609,10 @@ const resources = {
           preparing: "正在核对启动项与文件状态…",
           applying: "正在安全更新…",
           errors: {
-            startup_item_protected: "这不是可安全管理的用户级第三方启动项，Pulse 没有执行操作。",
+            startup_item_protected: "这不是可安全管理的用户级第三方启动项，StatusOrbit 没有执行操作。",
             startup_item_unavailable: "这个启动项已经变化或不存在，请刷新列表后再试。",
-            startup_state_changed: "启动配置在确认后发生变化，Pulse 没有执行操作。",
-            startup_destination_conflict: "目标位置出现了另一份配置，为避免覆盖，Pulse 没有执行操作。",
+            startup_state_changed: "启动配置在确认后发生变化，StatusOrbit 没有执行操作。",
+            startup_destination_conflict: "目标位置出现了另一份配置，为避免覆盖，StatusOrbit 没有执行操作。",
             startup_confirmation_unavailable: "本次确认已经失效，请取消后重新打开。",
             startup_confirmation_expired: "确认已超时，请重新检查后再操作。",
             startup_management_failed: "系统未能安全移动启动配置；原文件仍保留在当前状态。",
@@ -632,7 +636,7 @@ const resources = {
           },
           system: {
             title: "系统或设备服务",
-            description: "不建议作为普通启动项处理，Pulse 保持只读展示。",
+            description: "不建议作为普通启动项处理，StatusOrbit 保持只读展示。",
           },
           disabled: {
             title: "当前未启用",
@@ -655,7 +659,7 @@ const resources = {
         },
         language: {
           title: "界面语言",
-          description: "切换 Pulse 的菜单、说明与状态文本。",
+          description: "切换 StatusOrbit 的菜单、说明与状态文本。",
           label: "语言",
         },
         sampling: {
@@ -768,7 +772,7 @@ const resources = {
           launchCommand: "启动命令",
           stableHandle: "确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
           unavailableControl: "此平台暂不支持安全的进程控制。",
-          bestEffort: "macOS 无法为任意进程提供可发信号的稳定句柄。Pulse 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
+          bestEffort: "macOS 无法为任意进程提供可发信号的稳定句柄。StatusOrbit 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
           allowBestEffort: "本次运行中允许 best-effort 进程操作",
           binding: "正在绑定…",
           requestClose: "请求结束",
@@ -834,7 +838,7 @@ const resources = {
       network: {
         local: "本机网络",
         title: "实时接口与会话流量",
-        description: "速率按真实采样间隔换算；累计值从本次启动 Pulse 开始。",
+        description: "速率按真实采样间隔换算；累计值从本次启动 StatusOrbit 开始。",
         connectedInterfaces: "{{connected}} / {{total}} 个接口已连接",
         summary: "网络摘要",
         receiveNow: "当前接收",
@@ -976,7 +980,7 @@ const resources = {
           happeningNow: "仍在发生",
           resolved: "已经恢复",
           emptyTitle: "最近没有值得担心的事情",
-          emptyDescription: "Pulse 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
+          emptyDescription: "StatusOrbit 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
           cpu: {
             active: {
               title: "电脑正在持续忙碌",
@@ -986,7 +990,7 @@ const resources = {
               title: "电脑曾忙了一阵，现在已经恢复",
               description: "这次高负荷持续约 {{duration}}，峰值约 {{value}}%，之后已回到正常范围。",
             },
-            guidance: "如果仍然觉得卡，可以到“应用”查看是谁影响最大；Pulse 不会自动关闭任何应用。",
+            guidance: "如果仍然觉得卡，可以到“应用”查看是谁影响最大；StatusOrbit 不会自动关闭任何应用。",
           },
           memory: {
             active: {
@@ -1034,7 +1038,7 @@ const resources = {
         },
         privacyEyebrow: "数据边界",
         privacyTitle: "隐私说明",
-        privacyLocal: "历史只保存在当前设备的 Pulse WebView 存储中，不会上传或同步。",
+        privacyLocal: "历史只保存在当前设备的 StatusOrbit WebView 存储中，不会上传或同步。",
         privacyCollected: "仅记录整机 CPU、内存百分比、磁盘和网络吞吐快照、资源超限与恢复事件；应用显示名只有在设置中单独允许后才会随事件保存。",
         privacyExcluded: "不记录进程命令、用户、路径、文件名、本地或远端连接地址。",
         privacyControl: "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
@@ -1146,7 +1150,7 @@ const resources = {
         },
       },
       splash: {
-        title: "Starting Pulse",
+        title: "Starting StatusOrbit",
         description: "Your local system health, made clear.",
         connecting: "Connecting to the local sampler",
       },
@@ -1164,8 +1168,8 @@ const resources = {
         status: {
           loading: { title: "Reading system health", description: "The first sample will appear shortly." },
           normal: { title: "Your computer is running smoothly", description: "No resource issue needs immediate attention." },
-          attention: { title: "One resource is worth watching", description: "Open Pulse to see the reason and guidance." },
-          urgent: { title: "One resource is under pressure", description: "Review the evidence in Pulse before taking action." },
+          attention: { title: "One resource is worth watching", description: "Open StatusOrbit to see the reason and guidance." },
+          urgent: { title: "One resource is under pressure", description: "Review the evidence in StatusOrbit before taking action." },
         },
         reason: "{{resource}} needs attention",
         resource: {
@@ -1183,7 +1187,7 @@ const resources = {
         collapse: "Hide diagnosis",
         checkedLabel: "Checks in this diagnosis",
         thisDisk: "System disk",
-        safety: "Pulse never acts automatically. Recommended actions still need your confirmation, and force quit stays in professional mode.",
+        safety: "StatusOrbit never acts automatically. Recommended actions still need your confirmation, and force quit stays in professional mode.",
         duration: "for {{seconds}} sec",
         status: {
           observing: {
@@ -1196,11 +1200,11 @@ const resources = {
           },
           attention: {
             title: "Your computer may be slowing down",
-            summary: "Pulse found possible performance issues ({{count}}). Expand this card to see why.",
+            summary: "StatusOrbit found possible performance issues ({{count}}). Expand this card to see why.",
           },
           urgent: {
             title: "Something needs attention soon",
-            summary: "Pulse found significant performance issues ({{count}}). Review the evidence before taking action.",
+            summary: "StatusOrbit found significant performance issues ({{count}}). Review the evidence before taking action.",
           },
         },
         categories: {
@@ -1276,7 +1280,7 @@ const resources = {
           },
           request_close: {
             title: "First ask {{name}} to quit",
-            description: "This is the gentlest available action. Pulse verifies the process identity and shows a confirmation before doing anything.",
+            description: "This is the gentlest available action. StatusOrbit verifies the process identity and shows a confirmation before doing anything.",
             action: "Ask {{name}} to quit",
           },
           open_cleanup: {
@@ -1291,22 +1295,22 @@ const resources = {
           },
           inspect_process: {
             title: "Inspect the evidence first",
-            description: "Pulse does not offer a direct action here. Verify the app identity, resource changes, and protection reason first.",
+            description: "StatusOrbit does not offer a direct action here. Verify the app identity, resource changes, and protection reason first.",
             action: "Inspect detailed evidence",
           },
           inspectEvidence: "Inspect app evidence",
           preparing: "Verifying…",
-          actionUnavailable: "Pulse could not safely verify or control this app, so nothing was changed.",
+          actionUnavailable: "StatusOrbit could not safely verify or control this app, so nothing was changed.",
         },
         actionDialog: {
           title: "Ask {{name}} to quit?",
-          description: "Pulse will send a normal termination request. This is the gentle action, not force quit.",
+          description: "StatusOrbit will send a normal termination request. This is the gentle action, not force quit.",
           safeTitle: "Does not delete the app or its files",
           safeDescription: "This only asks the running app to stop and does not clean up its data.",
           riskTitle: "Save anything you are editing first",
           riskDescription: "Whether a save prompt appears depends on the app; unsaved work could still be lost.",
           stableIdentity: "A stable handle is bound to the process you selected and will be checked again before execution.",
-          bestEffortIdentity: "This platform can only reduce PID-reuse risk through identity checks. Pulse refuses the action if the process has changed.",
+          bestEffortIdentity: "This platform can only reduce PID-reuse risk through identity checks. StatusOrbit refuses the action if the process has changed.",
           confirm: "Confirm quit request for {{name}}",
         },
       },
@@ -1314,7 +1318,7 @@ const resources = {
         kicker: "Application summary",
         overviewTitle: "What has the most impact now",
         title: "Application resource impact",
-        description: "Pulse groups helper processes under familiar application names, then totals CPU, memory, and disk activity.",
+        description: "StatusOrbit groups helper processes under familiar application names, then totals CPU, memory, and disk activity.",
         viewAll: "View all apps",
         search: "Search applications",
         searchPlaceholder: "Search by application name",
@@ -1342,7 +1346,7 @@ const resources = {
           disk: "Disk activity is the main impact right now ({{value}}). Sync, downloads, and builds can all cause temporary reads and writes.",
           balanced: "No single resource stands out right now, so the overall impact is low.",
           systemSafety: "This is a system component. Do not quit it directly; inspect professional evidence first if something looks wrong.",
-          appSafety: "This is a regular app. Pulse will never close it automatically, and every quit action still requires confirmation.",
+          appSafety: "This is a regular app. StatusOrbit will never close it automatically, and every quit action still requires confirmation.",
           professionalDetails: "Inspect processes in professional mode",
         },
         empty: "No matching applications",
@@ -1363,7 +1367,7 @@ const resources = {
           normal: "Temperature is currently within the normal range.",
           attention: "The device is warm. If it also feels slow, reduce heavy tasks first.",
           urgent: "Temperature is staying high. Stop heavy tasks and keep the device ventilated.",
-          unavailable: "The operating system or hardware is not exposing a temperature reading to Pulse.",
+          unavailable: "The operating system or hardware is not exposing a temperature reading to StatusOrbit.",
         },
         battery: {
           label: "Battery",
@@ -1384,7 +1388,7 @@ const resources = {
         sleep: {
           label: "Automatic sleep",
           unavailableValue: "Unavailable",
-          unavailable: "This platform is not exposing reliable sleep-blocker information to Pulse.",
+          unavailable: "This platform is not exposing reliable sleep-blocker information to StatusOrbit.",
           clearValue: "Sleep is available",
           clear: "No app is preventing the computer from sleeping automatically.",
           blockedValue: "{{count}} app",
@@ -1424,11 +1428,11 @@ const resources = {
           refresh: "Refresh result",
           cached: {
             title: "Previous scan restored",
-            description: "Keep exploring without waiting for another scan. Pulse checks a directory for changes only when you browse into it.",
+            description: "Keep exploring without waiting for another scan. StatusOrbit checks a directory for changes only when you browse into it.",
           },
           expired: {
             title: "This result is over 24 hours old",
-            description: "Pulse keeps the map available so you can continue exploring. Refresh it before acting on cleanup choices.",
+            description: "StatusOrbit keeps the map available so you can continue exploring. Refresh it before acting on cleanup choices.",
           },
         },
         progress: {
@@ -1438,13 +1442,13 @@ const resources = {
           entries: "Checked",
           discovered: "Discovered",
           elapsed: "Elapsed",
-          indeterminate: "The total file count is unknowable before traversal completes, so Pulse does not show a fake percentage. These figures update continuously.",
+          indeterminate: "The total file count is unknowable before traversal completes, so StatusOrbit does not show a fake percentage. These figures update continuously.",
           foundSpace: "Content found",
           stageKicker: "Building the space map",
-          stageTitle: "Pulse is turning complex folders into one clear picture",
+          stageTitle: "StatusOrbit is turning complex folders into one clear picture",
           stageDescription: "When the scan finishes, you will see where space went, what is usually reclaimable, and which files need your decision.",
           reassuranceTitle: "Safe to leave running",
-          reassuranceDescription: "Pulse only reads file names and sizes. It never opens file contents or deletes or moves anything during a scan.",
+          reassuranceDescription: "StatusOrbit only reads file names and sizes. It never opens file contents or deletes or moves anything during a scan.",
           locations: {
             downloads: "downloads",
             trash: "the trash",
@@ -1484,7 +1488,7 @@ const resources = {
           grouped: "Grouped category",
           noDeeperBreakdown: "No deeper directory grouping is available at this level.",
           directActionHint: "Hold a sector and drag it to the cleanup basket on the right",
-          alreadyInTrash: "These items are already in Trash; Pulse does not permanently empty it",
+          alreadyInTrash: "These items are already in Trash; StatusOrbit does not permanently empty it",
           planSummary: "{{count}} items selected · {{size}}",
           reviewCleanup: "Review and move to Trash",
           deletionUnavailable: "System Trash unavailable",
@@ -1506,7 +1510,7 @@ const resources = {
         },
         trashDialog: {
           title: "Review before moving to Trash",
-          description: "Pulse will not permanently delete these items; the operating system handles the move to Trash.",
+          description: "StatusOrbit will not permanently delete these items; the operating system handles the move to Trash.",
           itemUnit: "items",
           estimatedSize: "estimated",
           recoverable: "Usually recoverable until Trash is emptied",
@@ -1518,9 +1522,9 @@ const resources = {
           confirm: "Move {{count}} items to Trash",
           moving: "Moving to Trash…",
           errors: {
-            protected_cleanup_path: "Pulse will not handle your home directory or content that is already in Trash.",
-            cleanup_target_outside_home: "For safety, Pulse only handles content inside your personal folder.",
-            cleanup_target_changed: "A file changed after confirmation, so Pulse moved nothing. Cancel and review it again.",
+            protected_cleanup_path: "StatusOrbit will not handle your home directory or content that is already in Trash.",
+            cleanup_target_outside_home: "For safety, StatusOrbit only handles content inside your personal folder.",
+            cleanup_target_changed: "A file changed after confirmation, so StatusOrbit moved nothing. Cancel and review it again.",
             cleanup_confirmation_unavailable: "This confirmation is no longer available. Cancel and reopen the review.",
             cleanup_confirmation_expired: "This confirmation expired. Cancel and review the current files again.",
             cleanup_target_unavailable: "Some content no longer exists or cannot be accessed. Rescan and try again.",
@@ -1561,19 +1565,19 @@ const resources = {
         applications: {
           kicker: "Read-only app inventory",
           title: "Applications not used for a long time",
-          boundary: "Only apps macOS confirms were unopened for at least six months; Pulse never uninstalls them automatically",
+          boundary: "Only apps macOS confirms were unopened for at least six months; StatusOrbit never uninstalls them automatically",
           lastUsed: "Last used {{date}} · unopened for {{days}} days",
           none: "No application could be confirmed as unused for more than six months.",
           unavailable: "This platform cannot currently provide reliable application last-use dates.",
-          unknownExcluded: "{{count}} other apps have no confirmed last-use date, so Pulse did not classify them as unused.",
+          unknownExcluded: "{{count}} other apps have no confirmed last-use date, so StatusOrbit did not classify them as unused.",
         },
         reviewFirst: "Review one by one",
         largestFiles: "Large personal files",
         largeFileBoundary: "Only files over 500 MB are listed; automatic deletion is not recommended",
         noLargeFiles: "No files over 500 MB were found in common personal folders.",
         unreadable: "{{count}} locations were protected or temporarily unreadable. Only those locations are excluded from the result.",
-        fullDiskAccessHint: "On macOS, grant Pulse Full Disk Access in System Settings → Privacy & Security, then scan again.",
-        safetyBoundary: "The scan has no time or item limit and never follows symbolic links. Only items placed in the basket and confirmed again move to system Trash; Pulse never permanently deletes them.",
+        fullDiskAccessHint: "On macOS, grant StatusOrbit Full Disk Access in System Settings → Privacy & Security, then scan again.",
+        safetyBoundary: "The scan has no time or item limit and never follows symbolic links. Only items placed in the basket and confirmed again move to system Trash; StatusOrbit never permanently deletes them.",
       },
       startup: {
         eyebrow: "Boot and sign-in",
@@ -1581,7 +1585,7 @@ const resources = {
         description: "See what launches at sign-in or when background conditions are met. Third-party items are explained first; system services are never presented as ordinary switches.",
         scanning: "Checking…",
         loadingTitle: "Reading startup locations",
-        loadingDescription: "Pulse only reads public startup configuration and never loads or runs the commands inside it.",
+        loadingDescription: "StatusOrbit only reads public startup configuration and never loads or runs the commands inside it.",
         summary: "Startup summary",
         reviewCount: "Worth a look",
         reviewHint: "Third-party items that launch at sign-in",
@@ -1605,7 +1609,7 @@ const resources = {
         disabled: "Disabled",
         technicalDetails: "Show technical location",
         managementBoundary: "Only reversible user-level third-party startup files can be disabled. System items and unsupported sources stay read-only.",
-        readOnlyBoundary: "This platform exposes no startup source Pulse can safely restore, so the inventory remains read-only.",
+        readOnlyBoundary: "This platform exposes no startup source StatusOrbit can safely restore, so the inventory remains read-only.",
         unreadable: "{{count}} startup locations could not be read due to permissions",
         actions: {
           disable: "Disable at sign-in",
@@ -1631,13 +1635,13 @@ const resources = {
         actionDialog: {
           disable: {
             title: "Disable automatic startup for {{name}}?",
-            description: "Pulse moves this user-level startup file into its own recoverable storage and does not delete it.",
+            description: "StatusOrbit moves this user-level startup file into its own recoverable storage and does not delete it.",
             whenDescription: "This takes effect at the next sign-in. Restoring it also takes effect from a future sign-in.",
             confirm: "Confirm disable at sign-in",
           },
           enable: {
             title: "Restore automatic startup for {{name}}?",
-            description: "Pulse moves the configuration it saved back to the original location.",
+            description: "StatusOrbit moves the configuration it saved back to the original location.",
             whenDescription: "From the next sign-in, the system can launch this item automatically again.",
             confirm: "Confirm restore at sign-in",
           },
@@ -1649,10 +1653,10 @@ const resources = {
           preparing: "Verifying the startup item and file state…",
           applying: "Updating safely…",
           errors: {
-            startup_item_protected: "This is not a user-level third-party startup item Pulse can manage safely, so nothing changed.",
+            startup_item_protected: "This is not a user-level third-party startup item StatusOrbit can manage safely, so nothing changed.",
             startup_item_unavailable: "This startup item changed or disappeared. Refresh the list and try again.",
-            startup_state_changed: "The startup file changed after confirmation, so Pulse changed nothing.",
-            startup_destination_conflict: "Another configuration appeared at the destination. Pulse refused to overwrite it.",
+            startup_state_changed: "The startup file changed after confirmation, so StatusOrbit changed nothing.",
+            startup_destination_conflict: "Another configuration appeared at the destination. StatusOrbit refused to overwrite it.",
             startup_confirmation_unavailable: "This confirmation is no longer available. Cancel and open it again.",
             startup_confirmation_expired: "The confirmation expired. Review the item again before continuing.",
             startup_management_failed: "The system could not move the startup file safely. The original state was preserved.",
@@ -1676,7 +1680,7 @@ const resources = {
           },
           system: {
             title: "System or device service",
-            description: "Do not treat this as an ordinary startup app. Pulse keeps it read-only.",
+            description: "Do not treat this as an ordinary startup app. StatusOrbit keeps it read-only.",
           },
           disabled: {
             title: "Currently disabled",
@@ -1699,7 +1703,7 @@ const resources = {
         },
         language: {
           title: "Interface language",
-          description: "Change Pulse menus, guidance, and status text.",
+          description: "Change StatusOrbit menus, guidance, and status text.",
           label: "Language",
         },
         sampling: {
@@ -1728,7 +1732,7 @@ const resources = {
         },
         notifications: {
           title: "Desktop notifications",
-          description: "Only sustained heavy load, real memory pressure, and low disk space interrupt you. Pulse follows up once after the problem has stably recovered.",
+          description: "Only sustained heavy load, real memory pressure, and low disk space interrupt you. StatusOrbit follows up once after the problem has stably recovered.",
           enable: "Allow restrained alerts",
           categories: "Allowed alert categories",
           resources: {
@@ -1812,7 +1816,7 @@ const resources = {
           launchCommand: "Launch command",
           stableHandle: "Confirmation binds a short-lived, single-use stable OS handle; execution does not look up the target by PID again.",
           unavailableControl: "Safe process control is unavailable on this platform.",
-          bestEffort: "macOS cannot provide a stable signal handle for every process. Pulse rechecks the launch identity before signaling, but targeting remains best-effort by PID.",
+          bestEffort: "macOS cannot provide a stable signal handle for every process. StatusOrbit rechecks the launch identity before signaling, but targeting remains best-effort by PID.",
           allowBestEffort: "Allow best-effort process actions for this run",
           binding: "Binding…",
           requestClose: "Request exit",
@@ -1878,7 +1882,7 @@ const resources = {
       network: {
         local: "Local network",
         title: "Live interfaces and session traffic",
-        description: "Rates use the actual sample interval; totals begin when Pulse launches.",
+        description: "Rates use the actual sample interval; totals begin when StatusOrbit launches.",
         connectedInterfaces: "{{connected}} / {{total}} interfaces connected",
         summary: "Network summary",
         receiveNow: "Receiving now",
@@ -2020,7 +2024,7 @@ const resources = {
           happeningNow: "Still happening",
           resolved: "Recovered",
           emptyTitle: "Nothing concerning recently",
-          emptyDescription: "Pulse ignores brief fluctuations and only records conditions that persist long enough to affect the computer.",
+          emptyDescription: "StatusOrbit ignores brief fluctuations and only records conditions that persist long enough to affect the computer.",
           cpu: {
             active: {
               title: "The computer is staying busy",
@@ -2030,7 +2034,7 @@ const resources = {
               title: "The computer was busy and has recovered",
               description: "The high load lasted about {{duration}}, peaked near {{value}}%, and then returned to the normal range.",
             },
-            guidance: "If the computer still feels slow, open Applications to see the biggest impact. Pulse never closes an app automatically.",
+            guidance: "If the computer still feels slow, open Applications to see the biggest impact. StatusOrbit never closes an app automatically.",
           },
           memory: {
             active: {
@@ -2041,7 +2045,7 @@ const resources = {
               title: "Memory pressure rose and has eased",
               description: "Memory stayed tight for about {{duration}}, then available memory and swap activity recovered.",
             },
-            guidance: "High memory use alone is normal. Pulse records this only when low availability and meaningful swap activity happen together.",
+            guidance: "High memory use alone is normal. StatusOrbit records this only when low availability and meaningful swap activity happen together.",
           },
           volume: {
             active: {
@@ -2078,7 +2082,7 @@ const resources = {
         },
         privacyEyebrow: "Data boundaries",
         privacyTitle: "Privacy policy",
-        privacyLocal: "History stays in this device's Pulse WebView storage and is never uploaded or synchronized.",
+        privacyLocal: "History stays in this device's StatusOrbit WebView storage and is never uploaded or synchronized.",
         privacyCollected: "Only system CPU and memory percentages, disk and network throughput snapshots, and resource pressure and recovery events are stored. App display names are saved only after you allow them separately in Settings.",
         privacyExcluded: "Process commands, users, paths, file names, and local or remote connection addresses are not stored.",
         privacyControl: "Disabling stops new writes; existing records remain until they expire or you clear them manually.",
@@ -2101,7 +2105,11 @@ export function normalizeLanguage(language: string | null | undefined): Supporte
 
 function initialLanguage(): SupportedLanguage {
   try {
-    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    const stored = readMigratedStorageItem(
+      window.localStorage,
+      LANGUAGE_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.language,
+    );
     if (stored) return normalizeLanguage(stored);
     return normalizeLanguage(window.navigator.language);
   } catch {

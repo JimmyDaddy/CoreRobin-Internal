@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Pulse",
+  "productName": "StatusOrbit",
   "version": "0.1.0",
-  "identifier": "com.timetombs.pulse",
+  "identifier": "com.timetombs.statusorbit",
   "build": {
     "beforeDevCommand": "pnpm dev:web",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Pulse",
+        "title": "StatusOrbit",
         "width": 1280,
         "height": 800,
         "minWidth": 940,
@@ -25,7 +25,7 @@
       },
       {
         "label": "splashscreen",
-        "title": "Pulse",
+        "title": "StatusOrbit",
         "url": "index.html?surface=splash",
         "width": 520,
         "height": 340,
@@ -39,7 +39,7 @@
       },
       {
         "label": "tray",
-        "title": "Pulse Status",
+        "title": "StatusOrbit Status",
         "url": "index.html?surface=tray",
         "width": 360,
         "height": 440,

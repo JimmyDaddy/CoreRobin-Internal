@@ -245,7 +245,7 @@ fn action_result_message(
 ) -> String {
     match execution.outcome {
         ProcessActionOutcome::AlreadyExited => {
-            "目标进程在执行前已经退出；Pulse 未发送任何信号。".to_owned()
+            "目标进程在执行前已经退出；StatusOrbit 未发送任何信号。".to_owned()
         }
         ProcessActionOutcome::Exited => match action {
             ProcessAction::RequestClose => "已发送结束请求，并确认目标进程退出。".to_owned(),
@@ -253,9 +253,9 @@ fn action_result_message(
         },
         ProcessActionOutcome::StillRunning => {
             let suffix = if targeting == ProcessControlTargeting::BestEffortPid {
-                "此平台使用 best-effort PID 定位，Pulse 将继续通过采样核验。"
+                "此平台使用 best-effort PID 定位，StatusOrbit 将继续通过采样核验。"
             } else {
-                "稳定句柄仍指向同一目标，Pulse 将继续通过采样核验。"
+                "稳定句柄仍指向同一目标，StatusOrbit 将继续通过采样核验。"
             };
             match action {
                 ProcessAction::RequestClose => {
@@ -450,7 +450,7 @@ mod platform {
                 let reason = if error == Errno::NOSYS || error == Errno::INVAL {
                     "This Linux kernel does not provide pidfd process control."
                 } else {
-                    "Pulse could not initialize Linux pidfd process control."
+                    "StatusOrbit could not initialize Linux pidfd process control."
                 };
                 (
                     ProcessControlTargeting::Unavailable,

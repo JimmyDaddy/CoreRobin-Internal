@@ -18,7 +18,7 @@ export function SplashScreen() {
         </div>
         <div className="splash-copy">
           <span className="splash-eyebrow">LOCAL · PRIVATE · LIVE</span>
-          <h1>Pulse</h1>
+          <h1>StatusOrbit</h1>
           <p>{t("splash.description")}</p>
         </div>
         <div className="splash-progress" aria-hidden="true"><span /></div>

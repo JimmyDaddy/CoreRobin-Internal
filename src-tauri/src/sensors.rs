@@ -63,7 +63,7 @@ fn start_sleep_sampler() -> Arc<Mutex<SleepSnapshot>> {
     let snapshot = Arc::new(Mutex::new(unavailable_sleep()));
     let worker = Arc::downgrade(&snapshot);
     let _ = thread::Builder::new()
-        .name("pulse-sleep-assertions".to_owned())
+        .name("status-orbit-sleep-assertions".to_owned())
         .spawn(move || run_sleep_sampler(worker));
     snapshot
 }

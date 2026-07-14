@@ -5,8 +5,13 @@ import type {
   CleanupNode,
   CleanupScan,
 } from "./types";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+  removeStorageItems,
+} from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "pulse.cleanup-scan.v1";
+export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v1";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -44,7 +49,7 @@ export function parseStoredCleanupScan(
     const ageMs = Math.max(0, now - value.savedAtMs);
     if (ageMs > CLEANUP_SCAN_RETENTION_MS) return null;
     return {
-      // Cleanup availability belongs to the running Pulse build, not to the
+      // Cleanup availability belongs to the running StatusOrbit build, not to the
       // historical scan. Older retained maps become actionable after the
       // backend adds the guarded move-to-Trash workflow.
       snapshot: { ...snapshot, deletionAvailable: true },
@@ -71,7 +76,11 @@ function normalizeCleanupScan(value: unknown): unknown {
 export function loadStoredCleanupScan(now = Date.now()): StoredCleanupScan | null {
   try {
     return parseStoredCleanupScan(
-      window.localStorage.getItem(CLEANUP_SCAN_STORAGE_KEY),
+      readMigratedStorageItem(
+        window.localStorage,
+        CLEANUP_SCAN_STORAGE_KEY,
+        LEGACY_STORAGE_KEYS.cleanupScan,
+      ),
       now,
     );
   } catch {
@@ -91,7 +100,11 @@ export function saveCleanupScan(snapshot: CleanupScan, now = Date.now()): void {
 
 export function clearStoredCleanupScan(): void {
   try {
-    window.localStorage.removeItem(CLEANUP_SCAN_STORAGE_KEY);
+    removeStorageItems(
+      window.localStorage,
+      CLEANUP_SCAN_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.cleanupScan,
+    );
   } catch {
     // A storage failure must not prevent a fresh scan from starting.
   }

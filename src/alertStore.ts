@@ -3,8 +3,13 @@ import {
   type ResourceAlertEvent,
 } from "./resourceAlerts";
 import type { HistoryRetentionDays } from "./historyStore";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+  removeStorageItems,
+} from "./storageMigration";
 
-export const RESOURCE_ALERT_STORAGE_KEY = "pulse.resource-alert-events.v1";
+export const RESOURCE_ALERT_STORAGE_KEY = "status-orbit.resource-alert-events.v1";
 export const MAX_RESOURCE_ALERT_EVENTS = 5_000;
 
 interface ResourceAlertPayload {
@@ -30,7 +35,11 @@ export function parseResourceAlertEvents(
 export function loadResourceAlertEvents(): ResourceAlertEvent[] {
   try {
     return parseResourceAlertEvents(
-      window.localStorage.getItem(RESOURCE_ALERT_STORAGE_KEY),
+      readMigratedStorageItem(
+        window.localStorage,
+        RESOURCE_ALERT_STORAGE_KEY,
+        LEGACY_STORAGE_KEYS.resourceAlerts,
+      ),
     );
   } catch {
     return [];
@@ -56,7 +65,11 @@ export function saveResourceAlertEvents(
 
 export function clearResourceAlertStorage(): void {
   try {
-    window.localStorage.removeItem(RESOURCE_ALERT_STORAGE_KEY);
+    removeStorageItems(
+      window.localStorage,
+      RESOURCE_ALERT_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.resourceAlerts,
+    );
   } catch {
     // Clearing the in-memory saved copy still provides the expected UI behavior.
   }

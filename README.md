@@ -1,6 +1,6 @@
-# Pulse
+# StatusOrbit
 
-Pulse 是一个面向桌面的 `htop` 风格资源管理器。它由 Tauri 2、React、TypeScript 和 Rust 构建，在保留实时采样与进程操作能力的同时，提供更直观的趋势、搜索和诊断界面。
+StatusOrbit 是一个面向桌面的 `htop` 风格资源管理器。它由 Tauri 2、React、TypeScript 和 Rust 构建，在保留实时采样与进程操作能力的同时，提供更直观的趋势、搜索和诊断界面。
 
 界面支持简体中文与英文，可在右上角直接切换。
 
@@ -66,7 +66,7 @@ macOS 与 Linux 可能因系统权限只返回部分连接归属。
 
 ## 安全与平台边界
 
-进程操作不只依赖 PID。Pulse 会创建短期、单次使用的控制租约，并在执行前再次核对进程启动标识；标识不一致或租约过期时会拒绝操作。PID 0、PID 1 和 Pulse 自身默认受保护，强制结束还需要单独确认。
+进程操作不只依赖 PID。StatusOrbit 会创建短期、单次使用的控制租约，并在执行前再次核对进程启动标识；标识不一致或租约过期时会拒绝操作。PID 0、PID 1 和 StatusOrbit 自身默认受保护，强制结束还需要单独确认。
 
 应用不会自动提权。macOS 的最终信号接口仍基于 PID，因此属于多重校验下的 best-effort 防护；Linux 使用 `pidfd`，Windows 复用同一进程 handle 完成校验和终止。
 

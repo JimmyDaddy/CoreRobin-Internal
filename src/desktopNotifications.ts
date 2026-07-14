@@ -1,5 +1,9 @@
 import type { SupportedLanguage } from "./i18n";
 import type { ResourceAlertEvent } from "./resourceAlerts";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "./storageMigration";
 
 export type DesktopNotificationStatus =
   | "disabled"
@@ -13,7 +17,7 @@ export interface DesktopNotificationCopy {
   body: string;
 }
 
-export const DESKTOP_NOTIFICATION_LOG_KEY = "pulse.desktop-notification-log.v1";
+export const DESKTOP_NOTIFICATION_LOG_KEY = "status-orbit.desktop-notification-log.v1";
 export const MAX_DESKTOP_NOTIFICATIONS_PER_DAY = 4;
 
 export function selectNotificationsWithinDailyBudget(
@@ -30,7 +34,11 @@ export function selectNotificationsWithinDailyBudget(
 
 export function loadDesktopNotificationLog(now = Date.now()): number[] {
   try {
-    const value = JSON.parse(window.localStorage.getItem(DESKTOP_NOTIFICATION_LOG_KEY) ?? "[]") as unknown;
+    const value = JSON.parse(readMigratedStorageItem(
+      window.localStorage,
+      DESKTOP_NOTIFICATION_LOG_KEY,
+      LEGACY_STORAGE_KEYS.desktopNotificationLog,
+    ) ?? "[]") as unknown;
     if (!Array.isArray(value)) return [];
     const dayStart = localDayStart(now);
     return value.filter((timestamp): timestamp is number =>
@@ -92,16 +100,16 @@ export function desktopNotificationCopy(
     return {
       title: zh ? "电脑持续处于高负荷" : "The computer is staying under heavy load",
       body: zh
-        ? "处理器持续繁忙，可能导致卡顿、发热或更耗电。打开 Pulse 可查看影响最大的应用。"
-        : "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open Pulse to see the biggest app impact.",
+        ? "处理器持续繁忙，可能导致卡顿、发热或更耗电。打开 StatusOrbit 可查看影响最大的应用。"
+        : "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open StatusOrbit to see the biggest app impact.",
     };
   }
   if (event.resource === "memory") {
     return {
       title: zh ? "可用内存持续紧张" : "Available memory is staying tight",
       body: zh
-        ? "低可用内存与明显交换活动同时出现，切换应用可能变慢。Pulse 不会自动关闭应用。"
-        : "Low available memory and meaningful swap activity are happening together. Pulse will never close apps automatically.",
+        ? "低可用内存与明显交换活动同时出现，切换应用可能变慢。StatusOrbit 不会自动关闭应用。"
+        : "Low available memory and meaningful swap activity are happening together. StatusOrbit will never close apps automatically.",
     };
   }
   return {

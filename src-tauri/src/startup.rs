@@ -50,7 +50,7 @@ impl StartupController {
         let home = home_directory().ok_or_else(|| {
             CommandError::new(
                 "home_directory_unavailable",
-                "Pulse could not locate the current user's home directory.",
+                "StatusOrbit could not locate the current user's home directory.",
             )
         })?;
         self.create_lease_for_home(request, &home)
@@ -91,7 +91,7 @@ impl StartupController {
         if lease.destination_path.exists() {
             return Err(CommandError::new(
                 "startup_destination_conflict",
-                "Another startup configuration now exists at the destination. Pulse changed nothing.",
+                "Another startup configuration now exists at the destination. StatusOrbit changed nothing.",
             ));
         }
         let destination_parent = lease.destination_path.parent().ok_or_else(|| {
@@ -100,19 +100,19 @@ impl StartupController {
         fs::create_dir_all(destination_parent).map_err(|error| {
             CommandError::new(
                 "startup_management_failed",
-                format!("Pulse could not prepare its reversible startup storage: {error}"),
+                format!("StatusOrbit could not prepare its reversible startup storage: {error}"),
             )
         })?;
         let canonical_destination_parent = destination_parent.canonicalize().map_err(|error| {
             CommandError::new(
                 "startup_management_failed",
-                format!("Pulse could not verify the startup destination: {error}"),
+                format!("StatusOrbit could not verify the startup destination: {error}"),
             )
         })?;
         if !canonical_destination_parent.starts_with(&lease.canonical_home) {
             return Err(CommandError::new(
                 "startup_item_protected",
-                "The startup destination is outside the current user's profile. Pulse changed nothing.",
+                "The startup destination is outside the current user's profile. StatusOrbit changed nothing.",
             ));
         }
         move_startup_file_without_overwrite(&lease.source_path, &lease.destination_path)?;
@@ -148,7 +148,7 @@ impl StartupController {
         if item.management_status != StartupManagementStatus::Available {
             return Err(CommandError::new(
                 "startup_item_protected",
-                "Pulse only manages recognized third-party startup files in the current user's profile.",
+                "StatusOrbit only manages recognized third-party startup files in the current user's profile.",
             ));
         }
         let expected_action = if item.enabled {
@@ -172,14 +172,14 @@ impl StartupController {
         let canonical_home = home.canonicalize().map_err(|error| {
             CommandError::new(
                 "home_directory_unavailable",
-                format!("Pulse could not verify the current user's home directory: {error}"),
+                format!("StatusOrbit could not verify the current user's home directory: {error}"),
             )
         })?;
         let source_fingerprint = startup_file_fingerprint(&source_path, &canonical_home)?;
         if destination_path.exists() {
             return Err(CommandError::new(
                 "startup_destination_conflict",
-                "Another startup configuration already exists at the destination. Pulse changed nothing.",
+                "Another startup configuration already exists at the destination. StatusOrbit changed nothing.",
             ));
         }
         let id = format!(
@@ -212,7 +212,7 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "Pulse could not locate the current user's home directory.",
+            "StatusOrbit could not locate the current user's home directory.",
         )
     })?;
     let (mut items, unreadable_location_count) = platform_startup_items(&home);
@@ -236,7 +236,6 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
 #[cfg(target_os = "macos")]
 fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
     let user_launch_agents = home.join("Library/LaunchAgents");
-    let disabled_launch_agents = macos_disabled_directory(home);
     let definitions = [
         (
             user_launch_agents.clone(),
@@ -273,16 +272,18 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
             Err(()) => {}
         }
     }
-    match scan_macos_plists(
-        &disabled_launch_agents,
-        &user_launch_agents,
-        StartupItemSource::LaunchAgent,
-        StartupItemScope::User,
-        true,
-    ) {
-        Ok(mut found) => items.append(&mut found),
-        Err(()) if disabled_launch_agents.exists() => unreadable += 1,
-        Err(()) => {}
+    for disabled_launch_agents in macos_disabled_directories(home) {
+        match scan_macos_plists(
+            &disabled_launch_agents,
+            &user_launch_agents,
+            StartupItemSource::LaunchAgent,
+            StartupItemScope::User,
+            true,
+        ) {
+            Ok(found) => append_unique_startup_items(&mut items, found),
+            Err(()) if disabled_launch_agents.exists() => unreadable += 1,
+            Err(()) => {}
+        }
     }
     (items, unreadable)
 }
@@ -398,7 +399,6 @@ fn macos_startup_item(
 #[cfg(target_os = "linux")]
 fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
     let user_autostart = home.join(".config/autostart");
-    let disabled_autostart = linux_disabled_directory(home);
     let definitions = [
         (user_autostart.clone(), StartupItemScope::User),
         (
@@ -415,15 +415,17 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
             Err(()) => {}
         }
     }
-    match scan_linux_desktop_entries(
-        &disabled_autostart,
-        &user_autostart,
-        StartupItemScope::User,
-        true,
-    ) {
-        Ok(mut found) => items.append(&mut found),
-        Err(()) if disabled_autostart.exists() => unreadable += 1,
-        Err(()) => {}
+    for disabled_autostart in linux_disabled_directories(home) {
+        match scan_linux_desktop_entries(
+            &disabled_autostart,
+            &user_autostart,
+            StartupItemScope::User,
+            true,
+        ) {
+            Ok(found) => append_unique_startup_items(&mut items, found),
+            Err(()) if disabled_autostart.exists() => unreadable += 1,
+            Err(()) => {}
+        }
     }
     (items, unreadable)
 }
@@ -588,31 +590,33 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
         }
     }
     if let Some(original_directory) = user_startup_directory {
-        let disabled_directory = windows_disabled_directory(home);
-        match fs::read_dir(&disabled_directory) {
-            Ok(entries) => {
-                items.extend(entries.filter_map(Result::ok).map(|entry| {
-                    let original_path = original_directory.join(entry.file_name());
-                    StartupItem {
-                        id: format!("startup-folder:{}", original_path.to_string_lossy()),
-                        name: original_path
-                            .file_stem()
-                            .map(|value| value.to_string_lossy().into_owned())
-                            .unwrap_or_else(|| "Startup item".to_owned()),
-                        publisher: None,
-                        command: Some(original_path.to_string_lossy().into_owned()),
-                        path: original_path.to_string_lossy().into_owned(),
-                        source: StartupItemSource::StartupFolder,
-                        scope: StartupItemScope::User,
-                        enabled: false,
-                        system: false,
-                        launch_kind: StartupLaunchKind::Login,
-                        management_status: StartupManagementStatus::Available,
-                    }
-                }));
+        for disabled_directory in windows_disabled_directories(home) {
+            match fs::read_dir(&disabled_directory) {
+                Ok(entries) => {
+                    let found = entries.filter_map(Result::ok).map(|entry| {
+                        let original_path = original_directory.join(entry.file_name());
+                        StartupItem {
+                            id: format!("startup-folder:{}", original_path.to_string_lossy()),
+                            name: original_path
+                                .file_stem()
+                                .map(|value| value.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| "Startup item".to_owned()),
+                            publisher: None,
+                            command: Some(original_path.to_string_lossy().into_owned()),
+                            path: original_path.to_string_lossy().into_owned(),
+                            source: StartupItemSource::StartupFolder,
+                            scope: StartupItemScope::User,
+                            enabled: false,
+                            system: false,
+                            launch_kind: StartupLaunchKind::Login,
+                            management_status: StartupManagementStatus::Available,
+                        }
+                    });
+                    append_unique_startup_items(&mut items, found);
+                }
+                Err(_) if disabled_directory.exists() => unreadable += 1,
+                Err(_) => {}
             }
-            Err(_) if disabled_directory.exists() => unreadable += 1,
-            Err(_) => {}
         }
     }
     (items, unreadable)
@@ -624,21 +628,55 @@ fn platform_startup_items(_home: &Path) -> (Vec<StartupItem>, usize) {
 }
 
 #[cfg(target_os = "macos")]
-fn macos_disabled_directory(home: &Path) -> PathBuf {
-    home.join("Library/Application Support/Pulse/Disabled Startup Items/LaunchAgents")
+fn macos_disabled_directories(home: &Path) -> [PathBuf; 2] {
+    [
+        home.join("Library/Application Support/StatusOrbit/Disabled Startup Items/LaunchAgents"),
+        home.join("Library/Application Support/Pulse/Disabled Startup Items/LaunchAgents"),
+    ]
 }
 
 #[cfg(target_os = "linux")]
-fn linux_disabled_directory(home: &Path) -> PathBuf {
-    home.join(".local/share/pulse/disabled-startup/autostart")
+fn linux_disabled_directories(home: &Path) -> [PathBuf; 2] {
+    [
+        home.join(".local/share/status-orbit/disabled-startup/autostart"),
+        home.join(".local/share/pulse/disabled-startup/autostart"),
+    ]
 }
 
 #[cfg(windows)]
-fn windows_disabled_directory(home: &Path) -> PathBuf {
-    env::var_os("LOCALAPPDATA")
+fn windows_disabled_directories(home: &Path) -> [PathBuf; 2] {
+    let local_app_data = env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
-        .unwrap_or_else(|| home.join("AppData/Local"))
-        .join("Pulse/Disabled Startup Items/Startup")
+        .unwrap_or_else(|| home.join("AppData/Local"));
+    [
+        local_app_data.join("StatusOrbit/Disabled Startup Items/Startup"),
+        local_app_data.join("Pulse/Disabled Startup Items/Startup"),
+    ]
+}
+
+fn append_unique_startup_items<I>(items: &mut Vec<StartupItem>, found: I)
+where
+    I: IntoIterator<Item = StartupItem>,
+{
+    for item in found {
+        if !items.iter().any(|existing| existing.id == item.id) {
+            items.push(item);
+        }
+    }
+}
+
+fn existing_or_current_disabled_path(
+    directories: impl IntoIterator<Item = PathBuf>,
+    file_name: &std::ffi::OsStr,
+) -> PathBuf {
+    let mut candidates = directories.into_iter().map(|path| path.join(file_name));
+    let current = candidates
+        .next()
+        .expect("disabled startup storage always has a current directory");
+    if current.exists() {
+        return current;
+    }
+    candidates.find(|path| path.exists()).unwrap_or(current)
 }
 
 #[cfg(target_os = "macos")]
@@ -649,7 +687,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     {
         return Err(CommandError::new(
             "startup_item_protected",
-            "Pulse only manages user LaunchAgent files from the standard folder.",
+            "StatusOrbit only manages user LaunchAgent files from the standard folder.",
         ));
     }
     let file_name = active_path.file_name().ok_or_else(|| {
@@ -658,7 +696,10 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
             "The startup item has no file name.",
         )
     })?;
-    Ok(macos_disabled_directory(home).join(file_name))
+    Ok(existing_or_current_disabled_path(
+        macos_disabled_directories(home),
+        file_name,
+    ))
 }
 
 #[cfg(target_os = "linux")]
@@ -669,7 +710,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     {
         return Err(CommandError::new(
             "startup_item_protected",
-            "Pulse only manages user desktop autostart files from the standard folder.",
+            "StatusOrbit only manages user desktop autostart files from the standard folder.",
         ));
     }
     let file_name = active_path.file_name().ok_or_else(|| {
@@ -678,7 +719,10 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
             "The startup item has no file name.",
         )
     })?;
-    Ok(linux_disabled_directory(home).join(file_name))
+    Ok(existing_or_current_disabled_path(
+        linux_disabled_directories(home),
+        file_name,
+    ))
 }
 
 #[cfg(windows)]
@@ -686,7 +730,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     if item.source != StartupItemSource::StartupFolder {
         return Err(CommandError::new(
             "startup_item_protected",
-            "Pulse only manages files in the current user's Startup folder on Windows.",
+            "StatusOrbit only manages files in the current user's Startup folder on Windows.",
         ));
     }
     let active_path = PathBuf::from(&item.path);
@@ -711,7 +755,10 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
             "The startup item has no file name.",
         )
     })?;
-    Ok(windows_disabled_directory(home).join(file_name))
+    Ok(existing_or_current_disabled_path(
+        windows_disabled_directories(home),
+        file_name,
+    ))
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
@@ -729,32 +776,32 @@ fn startup_file_fingerprint(
     let metadata = fs::symlink_metadata(path).map_err(|error| {
         CommandError::new(
             "startup_item_unavailable",
-            format!("Pulse could not inspect the startup file: {error}"),
+            format!("StatusOrbit could not inspect the startup file: {error}"),
         )
     })?;
     validate_startup_file_type(&metadata)?;
     let canonical_path = path.canonicalize().map_err(|error| {
         CommandError::new(
             "startup_item_unavailable",
-            format!("Pulse could not verify the startup file: {error}"),
+            format!("StatusOrbit could not verify the startup file: {error}"),
         )
     })?;
     if !canonical_path.starts_with(canonical_home) {
         return Err(CommandError::new(
             "startup_item_protected",
-            "The startup file is outside the current user's profile. Pulse changed nothing.",
+            "The startup file is outside the current user's profile. StatusOrbit changed nothing.",
         ));
     }
     if metadata.len() > MAX_STARTUP_FILE_BYTES {
         return Err(CommandError::new(
             "startup_item_protected",
-            "The startup file is unexpectedly large. Pulse changed nothing.",
+            "The startup file is unexpectedly large. StatusOrbit changed nothing.",
         ));
     }
     let content = fs::read(path).map_err(|error| {
         CommandError::new(
             "startup_item_unavailable",
-            format!("Pulse could not read the startup file for verification: {error}"),
+            format!("StatusOrbit could not read the startup file for verification: {error}"),
         )
     })?;
     Ok(file_fingerprint(&metadata, &content))
@@ -769,7 +816,7 @@ fn validate_startup_source(
     if actual != expected {
         return Err(CommandError::new(
             "startup_state_changed",
-            "This startup file changed after confirmation. Pulse changed nothing.",
+            "This startup file changed after confirmation. StatusOrbit changed nothing.",
         ));
     }
     Ok(())
@@ -779,7 +826,7 @@ fn validate_startup_file_type(metadata: &Metadata) -> Result<(), CommandError> {
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(CommandError::new(
             "startup_item_protected",
-            "Pulse will not manage links or special files as startup items.",
+            "StatusOrbit will not manage links or special files as startup items.",
         ));
     }
     Ok(())
@@ -810,12 +857,12 @@ fn move_startup_file_without_overwrite(
         if error.kind() == std::io::ErrorKind::AlreadyExists {
             CommandError::new(
                 "startup_destination_conflict",
-                "Another startup configuration appeared at the destination. Pulse refused to overwrite it.",
+                "Another startup configuration appeared at the destination. StatusOrbit refused to overwrite it.",
             )
         } else {
             CommandError::new(
                 "startup_management_failed",
-                format!("Pulse could not create a reversible startup copy: {error}"),
+                format!("StatusOrbit could not create a reversible startup copy: {error}"),
             )
         }
     })?;
@@ -823,7 +870,7 @@ fn move_startup_file_without_overwrite(
         let _ = fs::remove_file(destination);
         return Err(CommandError::new(
             "startup_management_failed",
-            format!("Pulse could not finish moving the startup configuration: {error}"),
+            format!("StatusOrbit could not finish moving the startup configuration: {error}"),
         ));
     }
     Ok(())
@@ -901,7 +948,7 @@ mod tests {
     };
 
     #[cfg(target_os = "macos")]
-    use super::{StartupController, macos_disabled_directory, platform_startup_items};
+    use super::{StartupController, macos_disabled_directories, platform_startup_items};
     use super::{friendly_label, publisher_from_label};
 
     #[test]
@@ -938,7 +985,7 @@ mod tests {
         assert!(!disabled_result.enabled);
         assert!(!active.exists());
         assert!(
-            macos_disabled_directory(&root)
+            macos_disabled_directories(&root)[0]
                 .join("com.example.sync.plist")
                 .exists()
         );
@@ -975,10 +1022,46 @@ mod tests {
         assert!(enabled_result.enabled);
         assert!(active.exists());
         assert!(
-            !macos_disabled_directory(&root)
+            !macos_disabled_directories(&root)[0]
                 .join("com.example.sync.plist")
                 .exists()
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn legacy_disabled_launch_agent_can_be_restored_after_rename() {
+        let root = test_root("legacy-restore");
+        fs::create_dir_all(root.join("Library/LaunchAgents")).unwrap();
+        let file_name = "com.example.legacy.plist";
+        let legacy_disabled = macos_disabled_directories(&root)[1].join(file_name);
+        fs::create_dir_all(legacy_disabled.parent().unwrap()).unwrap();
+        fs::write(&legacy_disabled, launch_agent_plist("com.example.legacy")).unwrap();
+        let active = root.join("Library/LaunchAgents").join(file_name);
+        let item_id = format!("launch-agent:{}", active.to_string_lossy());
+
+        let (items, _) = platform_startup_items(&root);
+        assert!(items.iter().any(|item| item.id == item_id && !item.enabled));
+
+        let mut controller = StartupController::default();
+        let enable = controller
+            .create_lease_for_home(
+                StartupManagementLeaseRequest {
+                    item_id,
+                    action: StartupManagementAction::Enable,
+                },
+                &root,
+            )
+            .unwrap();
+        controller
+            .execute(StartupManagementExecutionRequest {
+                lease_id: enable.id,
+            })
+            .unwrap();
+
+        assert!(active.exists());
+        assert!(!legacy_disabled.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1068,7 +1151,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     fn test_root(name: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!(
-            "pulse-startup-{name}-{}-{}",
+            "status-orbit-startup-{name}-{}-{}",
             std::process::id(),
             super::now_millis()
         ));

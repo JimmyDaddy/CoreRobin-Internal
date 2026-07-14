@@ -1,6 +1,11 @@
 import type { HistoryPoint } from "./types";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+  removeStorageItems,
+} from "./storageMigration";
 
-export const PERSISTENT_HISTORY_STORAGE_KEY = "pulse.resource-history.v1";
+export const PERSISTENT_HISTORY_STORAGE_KEY = "status-orbit.resource-history.v1";
 export const PERSISTENT_HISTORY_BUCKET_MS = 5 * 60 * 1_000;
 export const HISTORY_RETENTION_OPTIONS = [1, 7, 30] as const;
 export const MAX_PERSISTENT_HISTORY_POINTS =
@@ -32,7 +37,11 @@ export function parsePersistentHistory(serialized: string | null): HistoryPoint[
 export function loadPersistentHistory(): HistoryPoint[] {
   try {
     return parsePersistentHistory(
-      window.localStorage.getItem(PERSISTENT_HISTORY_STORAGE_KEY),
+      readMigratedStorageItem(
+        window.localStorage,
+        PERSISTENT_HISTORY_STORAGE_KEY,
+        LEGACY_STORAGE_KEYS.resourceHistory,
+      ),
     );
   } catch {
     return [];
@@ -57,7 +66,11 @@ export function savePersistentHistory(points: readonly HistoryPoint[]): void {
 
 export function clearPersistentHistoryStorage(): void {
   try {
-    window.localStorage.removeItem(PERSISTENT_HISTORY_STORAGE_KEY);
+    removeStorageItems(
+      window.localStorage,
+      PERSISTENT_HISTORY_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.resourceHistory,
+    );
   } catch {
     // Clearing the in-memory copy is still useful when storage is unavailable.
   }

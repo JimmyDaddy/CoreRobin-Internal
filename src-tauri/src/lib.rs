@@ -63,7 +63,7 @@ impl AppState {
 
 fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
     std::thread::Builder::new()
-        .name("pulse-control-lease-reaper".to_owned())
+        .name("status-orbit-control-lease-reaper".to_owned())
         .spawn(move || {
             loop {
                 std::thread::sleep(Duration::from_secs(1));
@@ -296,7 +296,7 @@ fn show_main(app: &AppHandle) {
 
 fn navigate_main(app: &AppHandle, view: &str) {
     show_main(app);
-    let _ = app.emit_to("main", "pulse:navigate", view);
+    let _ = app.emit_to("main", "status-orbit:navigate", view);
 }
 
 fn toggle_tray_panel(app: &AppHandle) {
@@ -389,12 +389,12 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(AppState::new())
         .setup(|app| {
-            let open = MenuItem::with_id(app, "open", "Open Pulse", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open StatusOrbit", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit Pulse", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit StatusOrbit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &cleanup, &quit])?;
-            let mut tray = TrayIconBuilder::with_id("pulse-status")
-                .tooltip("Pulse · Local Monitor")
+            let mut tray = TrayIconBuilder::with_id("status-orbit-status")
+                .tooltip("StatusOrbit · Local Monitor")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -427,7 +427,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             std::thread::Builder::new()
-                .name("pulse-splash-fallback".to_owned())
+                .name("status-orbit-splash-fallback".to_owned())
                 .spawn(move || {
                     std::thread::sleep(Duration::from_secs(10));
                     if handle.get_webview_window("splashscreen").is_some() {
@@ -466,5 +466,5 @@ pub fn run() {
             execute_process_action
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Pulse");
+        .expect("error while running StatusOrbit");
 }

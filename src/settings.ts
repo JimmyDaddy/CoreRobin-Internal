@@ -2,8 +2,12 @@ import type { SupportedLanguage } from "./i18n";
 import type { HistoryRetentionDays } from "./historyStore";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "./storageMigration";
 
-export const APP_SETTINGS_STORAGE_KEY = "pulse.settings.v1";
+export const APP_SETTINGS_STORAGE_KEY = "status-orbit.settings.v1";
 export const SYSTEM_SAMPLE_INTERVAL_OPTIONS = [500, 1_000, 2_000, 5_000] as const;
 export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000] as const;
 
@@ -110,7 +114,11 @@ export function loadAppSettings(
 ): AppSettings {
   try {
     return parseAppSettings(
-      window.localStorage.getItem(APP_SETTINGS_STORAGE_KEY),
+      readMigratedStorageItem(
+        window.localStorage,
+        APP_SETTINGS_STORAGE_KEY,
+        LEGACY_STORAGE_KEYS.settings,
+      ),
       language,
     );
   } catch {

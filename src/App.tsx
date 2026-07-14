@@ -252,13 +252,13 @@ function App() {
     let disposed = false;
     const unlisteners: Array<() => void> = [];
     void Promise.all([
-      listen<unknown>("pulse:navigate", ({ payload }) => {
+      listen<unknown>("status-orbit:navigate", ({ payload }) => {
         if (!disposed && isActiveView(payload)) setActiveView(payload);
       }),
-      listen<boolean>("pulse:set-paused", ({ payload }) => {
+      listen<boolean>("status-orbit:set-paused", ({ payload }) => {
         if (!disposed) setPaused(Boolean(payload));
       }),
-      listen("pulse:refresh", () => {
+      listen("status-orbit:refresh", () => {
         if (!disposed) void refreshNow();
       }),
     ]).then((nextUnlisteners) => {
@@ -275,7 +275,7 @@ function App() {
     if (!isDesktopRuntime() || !snapshot) return;
     void emitTo(
       "tray",
-      "pulse:tray-summary",
+      "status-orbit:tray-summary",
       buildTraySummary(snapshot, paused, settings.usageThresholds),
     );
   }, [paused, settings.usageThresholds, snapshot]);
@@ -598,8 +598,8 @@ function App() {
     return (
       <main className="boot-screen">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
-        <strong>Pulse</strong>
-        <span><i className="pulse-dot" />{t("app.samplerConnecting")}</span>
+        <strong>StatusOrbit</strong>
+        <span><i className="live-status-dot" />{t("app.samplerConnecting")}</span>
       </main>
     );
   }
@@ -634,7 +634,7 @@ function App() {
       <nav className="sidebar" aria-label={t("app.mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
-          <span><strong>Pulse</strong><small>LOCAL MONITOR</small></span>
+          <span><strong>StatusOrbit</strong><small>LOCAL MONITOR</small></span>
         </div>
 
         <div className="nav-group">

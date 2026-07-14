@@ -50,7 +50,7 @@ export function useDesktopNotifications(
     let unlisten: (() => void) | undefined;
     void import("@tauri-apps/plugin-notification")
       .then(({ onAction }) => onAction((notification) => {
-        const resource = notification.extra?.pulseResource;
+        const resource = notification.extra?.statusOrbitResource;
         if (resource === "cpu" || resource === "memory" || resource === "volume") {
           onOpenEvidence(resource);
         }
@@ -109,7 +109,7 @@ async function sendResourceNotification(
     sendNotification({
       ...desktopNotificationCopy(event, language),
       autoCancel: true,
-      extra: { pulseResource: event.resource },
+      extra: { statusOrbitResource: event.resource },
     });
   } catch {
     // The event remains available in History even if the OS rejects a toast.

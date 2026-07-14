@@ -7,9 +7,13 @@ import type {
   SystemSnapshot,
 } from "./types";
 import { processIdentity } from "./utils";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "./storageMigration";
 
 export const PROCESS_EXPLORER_STORAGE_KEY =
-  "pulse.process-explorer.preferences.v1";
+  "status-orbit.process-explorer.preferences.v1";
 export const PROCESS_HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 export const MAX_PROCESS_HISTORY_POINTS = 300;
 
@@ -123,7 +127,11 @@ export function parseProcessExplorerPreferences(
 export function loadProcessExplorerPreferences(): ProcessExplorerPreferences {
   try {
     return parseProcessExplorerPreferences(
-      window.localStorage.getItem(PROCESS_EXPLORER_STORAGE_KEY),
+      readMigratedStorageItem(
+        window.localStorage,
+        PROCESS_EXPLORER_STORAGE_KEY,
+        LEGACY_STORAGE_KEYS.processExplorer,
+      ),
     );
   } catch {
     return defaultProcessExplorerPreferences();

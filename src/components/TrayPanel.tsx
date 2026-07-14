@@ -29,7 +29,7 @@ export function TrayPanel() {
     let stopSummary: (() => void) | undefined;
     let stopFocus: (() => void) | undefined;
     void Promise.all([
-      listen<TraySummary>("pulse:tray-summary", ({ payload }) => {
+      listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
         if (!disposed) setSummary(payload);
       }).then((unlisten) => { stopSummary = unlisten; }),
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
@@ -45,10 +45,10 @@ export function TrayPanel() {
 
   const openView = async (view: "overview" | "cleanup" | "settings") => {
     await invoke("show_main_window");
-    await emitTo("main", "pulse:navigate", view);
+    await emitTo("main", "status-orbit:navigate", view);
   };
   const togglePaused = async () => {
-    await emitTo("main", "pulse:set-paused", !summary?.paused);
+    await emitTo("main", "status-orbit:set-paused", !summary?.paused);
   };
 
   return (
@@ -56,7 +56,7 @@ export function TrayPanel() {
       <section className="tray-panel">
         <header className="tray-header">
           <span className="tray-logo"><img src={brandMark} alt="" /></span>
-          <span className="tray-brand"><strong>Pulse</strong><small>{t("tray.localMonitor")}</small></span>
+          <span className="tray-brand"><strong>StatusOrbit</strong><small>{t("tray.localMonitor")}</small></span>
           <span className={`tray-health tray-health--${summary?.health ?? "loading"}`}>
             <i />{t(`tray.health.${summary?.health ?? "loading"}`)}
           </span>

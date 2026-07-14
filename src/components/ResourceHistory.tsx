@@ -48,7 +48,7 @@ export function ResourceHistory({ history, usageThresholds }: ResourceHistoryPro
 
       {history.length < 2 ? (
         <div className="history-empty">
-          <span className="pulse-dot" />
+          <span className="live-status-dot" />
           {t("history.establishing")}
         </div>
       ) : (

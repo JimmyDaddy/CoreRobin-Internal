@@ -516,7 +516,7 @@ function NetworkThroughput({
 
       {points.length < 2 ? (
         <div className="network-history__empty">
-          <span className="pulse-dot" />{t("network.establishingBaseline")}
+          <span className="live-status-dot" />{t("network.establishingBaseline")}
         </div>
       ) : (
         <>

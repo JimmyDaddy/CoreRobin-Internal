@@ -2064,7 +2064,7 @@ code,
 
 .diagnosis-check.is-waiting i {
   background: var(--blue);
-  animation: pulse 1.4s ease-in-out infinite;
+  animation: status-breathe 1.4s ease-in-out infinite;
 }
 
 .diagnosis-check.is-attention {
@@ -2502,16 +2502,16 @@ code,
   font-size: 11px;
 }
 
-.pulse-dot {
+.live-status-dot {
   display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--blue);
-  animation: pulse 1.4s ease-in-out infinite;
+  animation: status-breathe 1.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes status-breathe {
   50% { opacity: 0.35; transform: scale(0.75); }
 }
 
@@ -5653,7 +5653,7 @@ body[data-surface="tray"] #root {
   border-radius: 50%;
   background: var(--green);
   box-shadow: 0 0 12px rgba(86, 207, 147, 0.75);
-  animation: pulse 1.25s infinite;
+  animation: status-breathe 1.25s infinite;
 }
 
 .tray-surface {

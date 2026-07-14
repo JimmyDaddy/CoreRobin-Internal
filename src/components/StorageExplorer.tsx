@@ -298,7 +298,7 @@ function StorageThroughput({
 
       {points.length < 2 ? (
         <div className="storage-history__empty">
-          <span className="pulse-dot" />{t("storage.establishingBaseline")}
+          <span className="live-status-dot" />{t("storage.establishingBaseline")}
         </div>
       ) : (
         <>
