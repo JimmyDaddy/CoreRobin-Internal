@@ -84,7 +84,10 @@ function snapshotFixture(
     network: {
       receivedBytesPerSecond: 0,
       transmittedBytesPerSecond: 0,
+      receivedBytesSinceLaunch: 0,
+      transmittedBytesSinceLaunch: 0,
       interfaceCount: 0,
+      interfaces: [],
     },
     processes,
     capabilities: {

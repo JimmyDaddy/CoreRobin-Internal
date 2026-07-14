@@ -24,6 +24,7 @@ import {
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
 import { MetricCard } from "./components/MetricCard";
+import { NetworkExplorer } from "./components/NetworkExplorer";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
@@ -57,7 +58,7 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes" | "storage";
+type ActiveView = "overview" | "processes" | "storage" | "network";
 
 interface PendingProcessAction {
   action: ProcessAction;
@@ -355,7 +356,9 @@ function App() {
           <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}>
             <Database size={17} />存储
           </button>
-          <button type="button" disabled title="即将推出"><Network size={17} />网络<small>稍后</small></button>
+          <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}>
+            <Network size={17} />网络
+          </button>
         </div>
 
         <div className="nav-group">
@@ -378,7 +381,9 @@ function App() {
                 ? "系统概览"
                 : activeView === "processes"
                   ? "进程诊断"
-                  : "存储诊断"}
+                  : activeView === "storage"
+                    ? "存储诊断"
+                    : "网络诊断"}
             </span>
             <h1>{snapshot.host.hostname}</h1>
             <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
@@ -401,7 +406,7 @@ function App() {
         {error ? <div className="global-error">采样暂时失败：{error.message}</div> : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
 
-        <div className="content-layout">
+        <div className={`content-layout${activeView === "network" ? " content-layout--wide" : ""}`}>
           <main className="main-content">
             {activeView === "overview" ? (
               <>
@@ -480,7 +485,7 @@ function App() {
                   setProcessPreferences(defaultProcessExplorerPreferences())
                 }
               />
-            ) : (
+            ) : activeView === "storage" ? (
               <StorageExplorer
                 disk={snapshot.disk}
                 history={history}
@@ -488,27 +493,38 @@ function App() {
                 selectedIdentity={selectedIdentity}
                 onSelectProcess={selectProcess}
               />
+            ) : (
+              <NetworkExplorer
+                network={snapshot.network}
+                history={history}
+              />
             )}
           </main>
 
-          <ProcessInspector
-            selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
-            selectionMissing={selectionMissing}
-            detail={activeDetail}
-            detailError={detailError}
-            detailLoading={detailLoading}
-            history={selectedHistory}
-            capabilities={snapshot.capabilities}
-            bestEffortOptIn={bestEffortOptIn}
-            preparingAction={preparingAction}
-            onBestEffortOptInChange={setBestEffortOptIn}
-            onAction={(action) => void beginProcessAction(action)}
-          />
+          {activeView !== "network" ? (
+            <ProcessInspector
+              selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
+              selectionMissing={selectionMissing}
+              detail={activeDetail}
+              detailError={detailError}
+              detailLoading={detailLoading}
+              history={selectedHistory}
+              capabilities={snapshot.capabilities}
+              bestEffortOptIn={bestEffortOptIn}
+              preparingAction={preparingAction}
+              onBestEffortOptInChange={setBestEffortOptIn}
+              onAction={(action) => void beginProcessAction(action)}
+            />
+          ) : null}
         </div>
 
         <footer className="statusbar">
           <span><Gauge size={13} />采样间隔 {snapshot.sampleIntervalMs} ms</span>
-          <span>{snapshot.processes.length} 个进程</span>
+          <span>
+            {activeView === "network"
+              ? `${snapshot.network.interfaceCount} 个网络接口`
+              : `${snapshot.processes.length} 个进程`}
+          </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>
           <span className="statusbar__sequence">#{snapshot.sequence}</span>
         </footer>

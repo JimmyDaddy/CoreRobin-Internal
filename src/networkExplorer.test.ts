@@ -1,0 +1,136 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  NETWORK_HISTORY_WINDOW_MS,
+  networkHistorySegments,
+  networkHistoryWindow,
+  networkInterfaceRate,
+  sortNetworkInterfaces,
+  visibleNetworkInterfaces,
+} from "./networkExplorer";
+import type { HistoryPoint, NetworkInterfaceSnapshot } from "./types";
+
+function interfaceFixture(
+  name: string,
+  received: number | null,
+  transmitted: number | null,
+  options: Partial<NetworkInterfaceSnapshot> = {},
+): NetworkInterfaceSnapshot {
+  return {
+    name,
+    receivedBytesPerSecond: received,
+    transmittedBytesPerSecond: transmitted,
+    receivedBytesSinceLaunch: received ?? 0,
+    transmittedBytesSinceLaunch: transmitted ?? 0,
+    packetsReceivedSinceLaunch: 0,
+    packetsTransmittedSinceLaunch: 0,
+    receiveErrorsSinceLaunch: 0,
+    transmitErrorsSinceLaunch: 0,
+    mtu: 1_500,
+    macAddress: null,
+    ipNetworks: [],
+    operationalState: "up",
+    ...options,
+  };
+}
+
+function historyPoint(
+  timestamp: number,
+  received: number | null,
+  transmitted: number | null,
+): HistoryPoint {
+  return {
+    timestamp,
+    cpuPercent: 10,
+    memoryPercent: 20,
+    diskReadBytesPerSecond: 30,
+    diskWriteBytesPerSecond: 40,
+    networkReceivedBytesPerSecond: received,
+    networkTransmittedBytesPerSecond: transmitted,
+  };
+}
+
+describe("network interfaces", () => {
+  it("combines one-sided rates and keeps unavailable rates distinct", () => {
+    expect(networkInterfaceRate(interfaceFixture("en0", 500, null))).toBe(500);
+    expect(networkInterfaceRate(interfaceFixture("en1", null, null))).toBeNull();
+  });
+
+  it("sorts by current traffic, then state, session traffic, and name", () => {
+    const fast = interfaceFixture("en0", 800, 200);
+    const quietUp = interfaceFixture("en1", 0, 0, {
+      receivedBytesSinceLaunch: 20,
+    });
+    const quietDown = interfaceFixture("en2", 0, 0, {
+      receivedBytesSinceLaunch: 500,
+      operationalState: "down",
+    });
+
+    expect(
+      sortNetworkInterfaces([quietDown, quietUp, fast]).map(({ name }) => name),
+    ).toEqual(["en0", "en1", "en2"]);
+  });
+
+  it("collapses never-used interfaces and can reveal every interface", () => {
+    const active = interfaceFixture("en0", 100, 20);
+    const loopback = interfaceFixture("lo0", 0, 0);
+    const down = interfaceFixture("awdl0", 0, 0, {
+      operationalState: "down",
+    });
+
+    expect(visibleNetworkInterfaces([loopback, down, active], false)).toMatchObject({
+      interfaces: [active],
+      hiddenCount: 2,
+    });
+    expect(
+      visibleNetworkInterfaces([loopback, down, active], true).interfaces.map(
+        ({ name }) => name,
+      ),
+    ).toEqual(["en0", "lo0", "awdl0"]);
+  });
+
+  it("shows up interfaces while the first traffic baseline is warming", () => {
+    const up = interfaceFixture("en0", null, null);
+    const down = interfaceFixture("en1", null, null, {
+      operationalState: "down",
+    });
+
+    expect(visibleNetworkInterfaces([down, up], false)).toMatchObject({
+      interfaces: [up],
+      hiddenCount: 1,
+    });
+  });
+});
+
+describe("network history", () => {
+  it("sorts samples and keeps the latest five-minute window", () => {
+    const latest = NETWORK_HISTORY_WINDOW_MS + 2_000;
+    const result = networkHistoryWindow([
+      historyPoint(latest, 3, 3),
+      historyPoint(1_000, 1, 1),
+      historyPoint(2_000, 2, 2),
+    ]);
+
+    expect(result.map((point) => point.timestamp)).toEqual([2_000, latest]);
+  });
+
+  it("breaks receive and transmit series at null values and long gaps", () => {
+    const history = [
+      historyPoint(0, 10, 10),
+      historyPoint(1_000, 20, null),
+      historyPoint(2_000, null, 30),
+      historyPoint(8_000, 40, 40),
+    ];
+
+    expect(
+      networkHistorySegments(history, "received").map((segment) =>
+        segment.map(({ value }) => value),
+      ),
+    ).toEqual([[10, 20], [40]]);
+    expect(
+      networkHistorySegments(history, "transmitted").map((segment) =>
+        segment.map(({ value }) => value),
+      ),
+    ).toEqual([[10], [30], [40]]);
+  });
+});

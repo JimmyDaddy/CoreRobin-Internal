@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 3;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 4;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,7 +71,28 @@ pub struct VolumeSnapshot {
 pub struct NetworkSnapshot {
     pub received_bytes_per_second: Option<u64>,
     pub transmitted_bytes_per_second: Option<u64>,
+    pub received_bytes_since_launch: u64,
+    pub transmitted_bytes_since_launch: u64,
     pub interface_count: usize,
+    pub interfaces: Vec<NetworkInterfaceSnapshot>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkInterfaceSnapshot {
+    pub name: String,
+    pub received_bytes_per_second: Option<u64>,
+    pub transmitted_bytes_per_second: Option<u64>,
+    pub received_bytes_since_launch: u64,
+    pub transmitted_bytes_since_launch: u64,
+    pub packets_received_since_launch: u64,
+    pub packets_transmitted_since_launch: u64,
+    pub receive_errors_since_launch: u64,
+    pub transmit_errors_since_launch: u64,
+    pub mtu: u64,
+    pub mac_address: Option<String>,
+    pub ip_networks: Vec<String>,
+    pub operational_state: String,
 }
 
 #[derive(Clone, Debug, Serialize)]

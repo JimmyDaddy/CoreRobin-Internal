@@ -59,6 +59,8 @@ function historyPoint(
     memoryPercent: 20,
     diskReadBytesPerSecond: read,
     diskWriteBytesPerSecond: write,
+    networkReceivedBytesPerSecond: 0,
+    networkTransmittedBytesPerSecond: 0,
   };
 }
 

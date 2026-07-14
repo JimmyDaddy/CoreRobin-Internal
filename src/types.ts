@@ -1,4 +1,4 @@
-export const SNAPSHOT_SCHEMA_VERSION = 3;
+export const SNAPSHOT_SCHEMA_VERSION = 4;
 
 export interface SystemSnapshot {
   schemaVersion: number;
@@ -55,7 +55,36 @@ export interface VolumeSnapshot {
 export interface NetworkSnapshot {
   receivedBytesPerSecond: number | null;
   transmittedBytesPerSecond: number | null;
+  receivedBytesSinceLaunch: number;
+  transmittedBytesSinceLaunch: number;
   interfaceCount: number;
+  interfaces: NetworkInterfaceSnapshot[];
+}
+
+export type NetworkInterfaceOperationalState =
+  | "other"
+  | "up"
+  | "down"
+  | "testing"
+  | "unknown"
+  | "dormant"
+  | "notpresent"
+  | "lowerlayerdown";
+
+export interface NetworkInterfaceSnapshot {
+  name: string;
+  receivedBytesPerSecond: number | null;
+  transmittedBytesPerSecond: number | null;
+  receivedBytesSinceLaunch: number;
+  transmittedBytesSinceLaunch: number;
+  packetsReceivedSinceLaunch: number;
+  packetsTransmittedSinceLaunch: number;
+  receiveErrorsSinceLaunch: number;
+  transmitErrorsSinceLaunch: number;
+  mtu: number;
+  macAddress: string | null;
+  ipNetworks: string[];
+  operationalState: NetworkInterfaceOperationalState;
 }
 
 export interface ProcessRow {
@@ -175,6 +204,8 @@ export interface HistoryPoint {
   memoryPercent: number;
   diskReadBytesPerSecond: number | null;
   diskWriteBytesPerSecond: number | null;
+  networkReceivedBytesPerSecond: number | null;
+  networkTransmittedBytesPerSecond: number | null;
 }
 
 export interface ProcessHistoryPoint {

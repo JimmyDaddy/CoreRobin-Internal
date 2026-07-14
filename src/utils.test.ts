@@ -32,9 +32,9 @@ const processFixture = (overrides: Partial<ProcessRow>): ProcessRow => ({
 
 describe("resource formatting", () => {
   it("accepts only the current snapshot schema", () => {
-    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 3 })).not.toThrow();
-    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 2 })).toThrow(
-      "不支持的数据版本：2",
+    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 4 })).not.toThrow();
+    expect(() => assertSupportedSnapshotSchema({ schemaVersion: 3 })).toThrow(
+      "不支持的数据版本：3",
     );
   });
 

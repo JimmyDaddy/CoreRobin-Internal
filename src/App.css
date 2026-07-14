@@ -431,6 +431,10 @@ code,
   overflow: hidden;
 }
 
+.content-layout--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
@@ -1571,6 +1575,335 @@ code,
   font-size: 10px;
 }
 
+.network-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.network-overview,
+.network-history,
+.network-interface-panel {
+  padding: 15px;
+}
+
+.network-overview__heading,
+.network-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.network-overview__heading h2,
+.network-section-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.network-overview__heading p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.network-overview__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 9px;
+  color: var(--green);
+  border: 1px solid rgba(86, 207, 147, 0.18);
+  border-radius: 999px;
+  background: var(--green-soft);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.network-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.network-summary__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-soft);
+}
+
+.network-summary__item > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.network-summary__item > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.network-summary__item small,
+.network-summary__item em {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-summary__item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-summary__item--received > svg { color: var(--green); }
+.network-summary__item--transmitted > svg { color: var(--blue); }
+.network-summary__item--session > svg { color: var(--violet); }
+
+.network-section-heading > span {
+  color: var(--text-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.network-history__legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.network-history__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.network-history__legend i {
+  display: inline-block;
+  width: 13px;
+  border-top: 2px solid;
+}
+
+.network-history__legend i.is-received { color: var(--green); }
+.network-history__legend i.is-transmitted {
+  color: var(--blue);
+  border-top-style: dashed;
+}
+
+.network-history__chart {
+  display: block;
+  width: 100%;
+  height: 156px;
+  margin-top: 8px;
+  overflow: visible;
+  fill: var(--text-muted);
+  font-size: 8px;
+}
+
+.network-history__grid-line {
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.network-history__line {
+  fill: none;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.network-history__line--received { stroke: var(--green); }
+.network-history__line--transmitted {
+  stroke: var(--blue);
+  stroke-dasharray: 5 4;
+}
+
+.network-history__empty {
+  display: flex;
+  height: 150px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.network-history__peaks {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: -8px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.network-history__peaks strong {
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.network-interface-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.network-interface-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.network-interface-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.network-interface-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(108px, 0.8fr)) minmax(100px, 0.75fr) minmax(108px, 0.8fr);
+  gap: 12px;
+  min-width: 0;
+  min-height: 70px;
+  align-items: center;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-soft);
+}
+
+.network-interface-identity,
+.network-interface-metric,
+.network-interface-session,
+.network-interface-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.network-interface-state {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 7px;
+}
+
+.network-interface-state i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.network-interface-state--up { color: var(--green); }
+.network-interface-state--up i {
+  background: var(--green);
+  box-shadow: 0 0 7px rgba(86, 207, 147, 0.55);
+}
+
+.network-interface-state--dormant,
+.network-interface-state--testing { color: var(--amber); }
+.network-interface-state--dormant i,
+.network-interface-state--testing i { background: var(--amber); }
+
+.network-interface-identity strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-interface-identity code {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-interface-metric small,
+.network-interface-session small {
+  color: var(--text-muted);
+  font-size: 7px;
+}
+
+.network-interface-metric strong,
+.network-interface-session strong {
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-interface-metric--received strong { color: var(--green); }
+.network-interface-metric--transmitted strong { color: var(--blue); }
+
+.network-interface-metric span,
+.network-interface-session span,
+.network-interface-details span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-interface-details em {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--danger);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.network-interface-details em.is-healthy { color: var(--green); }
+
+.network-empty {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .evidence-callout,
 .detail-loading,
 .detail-error {
@@ -1893,6 +2226,7 @@ code,
 @media (max-width: 1080px) {
   .app-shell { grid-template-columns: 158px minmax(0, 1fr); }
   .content-layout { grid-template-columns: minmax(0, 1fr) 260px; }
+  .content-layout.content-layout--wide { grid-template-columns: minmax(0, 1fr); }
   .process-grid { grid-template-columns: minmax(120px, 1fr) 50px 63px 73px; }
   .process-row.process-grid > :nth-child(5),
   .process-row.process-grid > :nth-child(6),
@@ -1903,8 +2237,23 @@ code,
   }
   .storage-process-list button > :nth-child(3),
   .storage-process-list button > :nth-child(4) { display: none; }
+  .network-interface-row {
+    grid-template-columns: minmax(150px, 1.3fr) repeat(2, minmax(96px, 0.8fr)) minmax(92px, 0.75fr);
+  }
+  .network-interface-details { display: none; }
   .topbar { padding-left: 18px; }
   .demo-badge { display: none; }
+}
+
+@media (max-width: 980px) {
+  .network-overview__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .network-interface-row {
+    grid-template-columns: minmax(130px, 1.25fr) repeat(2, minmax(82px, 0.8fr));
+  }
+  .network-interface-session { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

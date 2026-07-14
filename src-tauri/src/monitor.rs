@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{
@@ -8,10 +9,40 @@ use sysinfo::{
 use crate::error::CommandError;
 use crate::identity::{ensure_birth_token, read_birth_token};
 use crate::models::{
-    Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot, NetworkSnapshot,
-    ProcessControlCapabilities, ProcessDetail, ProcessDetailRequest, ProcessKey, ProcessRow,
-    SNAPSHOT_SCHEMA_VERSION, SystemSnapshot, VolumeSnapshot,
+    Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot,
+    NetworkInterfaceSnapshot, NetworkSnapshot, ProcessControlCapabilities, ProcessDetail,
+    ProcessDetailRequest, ProcessKey, ProcessRow, SNAPSHOT_SCHEMA_VERSION, SystemSnapshot,
+    VolumeSnapshot,
 };
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct NetworkSessionCounters {
+    received_bytes: u64,
+    transmitted_bytes: u64,
+    packets_received: u64,
+    packets_transmitted: u64,
+    receive_errors: u64,
+    transmit_errors: u64,
+}
+
+impl NetworkSessionCounters {
+    fn record(
+        &mut self,
+        received_bytes: u64,
+        transmitted_bytes: u64,
+        packets_received: u64,
+        packets_transmitted: u64,
+        receive_errors: u64,
+        transmit_errors: u64,
+    ) {
+        self.received_bytes = self.received_bytes.saturating_add(received_bytes);
+        self.transmitted_bytes = self.transmitted_bytes.saturating_add(transmitted_bytes);
+        self.packets_received = self.packets_received.saturating_add(packets_received);
+        self.packets_transmitted = self.packets_transmitted.saturating_add(packets_transmitted);
+        self.receive_errors = self.receive_errors.saturating_add(receive_errors);
+        self.transmit_errors = self.transmit_errors.saturating_add(transmit_errors);
+    }
+}
 
 pub struct SystemMonitor {
     system: System,
@@ -21,6 +52,7 @@ pub struct SystemMonitor {
     host: HostSnapshot,
     sequence: u64,
     last_sample: Instant,
+    network_sessions: HashMap<String, NetworkSessionCounters>,
     own_pid: u32,
     process_control_capabilities: ProcessControlCapabilities,
 }
@@ -54,6 +86,7 @@ impl SystemMonitor {
             host,
             sequence: 0,
             last_sample: Instant::now(),
+            network_sessions: HashMap::new(),
             own_pid: std::process::id(),
             process_control_capabilities,
         }
@@ -90,12 +123,57 @@ impl SystemMonitor {
         let disk_write_delta = self.disks.list().iter().fold(0_u64, |total, disk| {
             total.saturating_add(disk.usage().written_bytes)
         });
-        let network_received_delta = self.networks.list().values().fold(0_u64, |total, network| {
-            total.saturating_add(network.received())
-        });
-        let network_transmitted_delta =
-            self.networks.list().values().fold(0_u64, |total, network| {
-                total.saturating_add(network.transmitted())
+        let mut network_received_delta = 0_u64;
+        let mut network_transmitted_delta = 0_u64;
+        let mut network_interfaces = Vec::with_capacity(self.networks.list().len());
+        for (name, network) in self.networks.list() {
+            let received_delta = network.received();
+            let transmitted_delta = network.transmitted();
+            network_received_delta = network_received_delta.saturating_add(received_delta);
+            network_transmitted_delta = network_transmitted_delta.saturating_add(transmitted_delta);
+
+            let counters = self.network_sessions.entry(name.clone()).or_default();
+            counters.record(
+                received_delta,
+                transmitted_delta,
+                network.packets_received(),
+                network.packets_transmitted(),
+                network.errors_on_received(),
+                network.errors_on_transmitted(),
+            );
+
+            let mac_address = network.mac_address();
+            network_interfaces.push(NetworkInterfaceSnapshot {
+                name: name.clone(),
+                received_bytes_per_second: (!warming_up)
+                    .then(|| bytes_per_second(received_delta, elapsed_ms)),
+                transmitted_bytes_per_second: (!warming_up)
+                    .then(|| bytes_per_second(transmitted_delta, elapsed_ms)),
+                received_bytes_since_launch: counters.received_bytes,
+                transmitted_bytes_since_launch: counters.transmitted_bytes,
+                packets_received_since_launch: counters.packets_received,
+                packets_transmitted_since_launch: counters.packets_transmitted,
+                receive_errors_since_launch: counters.receive_errors,
+                transmit_errors_since_launch: counters.transmit_errors,
+                mtu: network.mtu(),
+                mac_address: (!mac_address.is_unspecified()).then(|| mac_address.to_string()),
+                ip_networks: network
+                    .ip_networks()
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+                operational_state: network.operational_state().to_string(),
+            });
+        }
+        network_interfaces.sort_by(|left, right| left.name.cmp(&right.name));
+        let (network_received_since_launch, network_transmitted_since_launch) = self
+            .network_sessions
+            .values()
+            .fold((0_u64, 0_u64), |(received, transmitted), counters| {
+                (
+                    received.saturating_add(counters.received_bytes),
+                    transmitted.saturating_add(counters.transmitted_bytes),
+                )
             });
 
         let mut processes = self
@@ -185,7 +263,10 @@ impl SystemMonitor {
                     .then(|| bytes_per_second(network_received_delta, elapsed_ms)),
                 transmitted_bytes_per_second: (!warming_up)
                     .then(|| bytes_per_second(network_transmitted_delta, elapsed_ms)),
-                interface_count: self.networks.list().len(),
+                received_bytes_since_launch: network_received_since_launch,
+                transmitted_bytes_since_launch: network_transmitted_since_launch,
+                interface_count: network_interfaces.len(),
+                interfaces: network_interfaces,
             },
             processes,
             capabilities: Capabilities {
@@ -328,7 +409,10 @@ fn bytes_per_second(bytes: u64, elapsed_ms: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bytes_per_second, collapse_macos_system_volume_group, protected_reason};
+    use super::{
+        NetworkSessionCounters, bytes_per_second, collapse_macos_system_volume_group,
+        protected_reason,
+    };
     use crate::models::VolumeSnapshot;
 
     fn volume(name: &str, mount_point: &str) -> VolumeSnapshot {
@@ -349,6 +433,25 @@ mod tests {
     #[test]
     fn handles_zero_interval_without_dividing_by_zero() {
         assert_eq!(bytes_per_second(u64::MAX, 0), 0);
+    }
+
+    #[test]
+    fn accumulates_network_counters_for_the_current_pulse_session() {
+        let mut counters = NetworkSessionCounters::default();
+        counters.record(1_024, 512, 10, 5, 1, 0);
+        counters.record(2_048, 256, 20, 4, 0, 2);
+
+        assert_eq!(
+            counters,
+            NetworkSessionCounters {
+                received_bytes: 3_072,
+                transmitted_bytes: 768,
+                packets_received: 30,
+                packets_transmitted: 9,
+                receive_errors: 1,
+                transmit_errors: 2,
+            }
+        );
     }
 
     #[test]

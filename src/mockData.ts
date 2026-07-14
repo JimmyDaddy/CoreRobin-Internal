@@ -132,6 +132,72 @@ export function getMockSnapshot(): SystemSnapshot {
   const cpu = Math.max(8, 42 + Math.sin(phase) * 18);
   const memoryUsed = 12_884_901_888 + Math.sin(phase / 2) * 320_000_000;
   const warmingUp = sequence === 1;
+  const primaryReceived = Math.round(3_400_000 * (1 + Math.sin(phase + 0.4) * 0.18));
+  const primaryTransmitted = Math.round(700_000 * (1 + Math.sin(phase + 1.1) * 0.16));
+  const vpnReceived = Math.round(700_000 * (1 + Math.sin(phase + 1.7) * 0.22));
+  const vpnTransmitted = Math.round(190_000 * (1 + Math.sin(phase + 2.2) * 0.2));
+  const networkInterfaces = [
+    {
+      name: "en0",
+      receivedBytesPerSecond: warmingUp ? null : primaryReceived,
+      transmittedBytesPerSecond: warmingUp ? null : primaryTransmitted,
+      receivedBytesSinceLaunch: sequence * 3_400_000,
+      transmittedBytesSinceLaunch: sequence * 700_000,
+      packetsReceivedSinceLaunch: sequence * 2_850,
+      packetsTransmittedSinceLaunch: sequence * 910,
+      receiveErrorsSinceLaunch: 0,
+      transmitErrorsSinceLaunch: 0,
+      mtu: 1_500,
+      macAddress: "a0:b1:c2:d3:e4:f5",
+      ipNetworks: ["192.168.1.42/24", "fe80::42/64"],
+      operationalState: "up" as const,
+    },
+    {
+      name: "utun6",
+      receivedBytesPerSecond: warmingUp ? null : vpnReceived,
+      transmittedBytesPerSecond: warmingUp ? null : vpnTransmitted,
+      receivedBytesSinceLaunch: sequence * 700_000,
+      transmittedBytesSinceLaunch: sequence * 190_000,
+      packetsReceivedSinceLaunch: sequence * 620,
+      packetsTransmittedSinceLaunch: sequence * 210,
+      receiveErrorsSinceLaunch: 1,
+      transmitErrorsSinceLaunch: 0,
+      mtu: 1_380,
+      macAddress: null,
+      ipNetworks: ["10.8.0.2/32"],
+      operationalState: "up" as const,
+    },
+    {
+      name: "lo0",
+      receivedBytesPerSecond: warmingUp ? null : 0,
+      transmittedBytesPerSecond: warmingUp ? null : 0,
+      receivedBytesSinceLaunch: 0,
+      transmittedBytesSinceLaunch: 0,
+      packetsReceivedSinceLaunch: 0,
+      packetsTransmittedSinceLaunch: 0,
+      receiveErrorsSinceLaunch: 0,
+      transmitErrorsSinceLaunch: 0,
+      mtu: 16_384,
+      macAddress: null,
+      ipNetworks: ["127.0.0.1/8", "::1/128"],
+      operationalState: "up" as const,
+    },
+    {
+      name: "awdl0",
+      receivedBytesPerSecond: warmingUp ? null : 0,
+      transmittedBytesPerSecond: warmingUp ? null : 0,
+      receivedBytesSinceLaunch: 0,
+      transmittedBytesSinceLaunch: 0,
+      packetsReceivedSinceLaunch: 0,
+      packetsTransmittedSinceLaunch: 0,
+      receiveErrorsSinceLaunch: 0,
+      transmitErrorsSinceLaunch: 0,
+      mtu: 1_484,
+      macAddress: "02:00:00:00:00:00",
+      ipNetworks: [],
+      operationalState: "down" as const,
+    },
+  ];
 
   return {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -173,9 +239,24 @@ export function getMockSnapshot(): SystemSnapshot {
       ],
     },
     network: {
-      receivedBytesPerSecond: warmingUp ? null : 4_100_000,
-      transmittedBytesPerSecond: warmingUp ? null : 890_000,
-      interfaceCount: 7,
+      receivedBytesPerSecond: warmingUp
+        ? null
+        : primaryReceived + vpnReceived,
+      transmittedBytesPerSecond: warmingUp
+        ? null
+        : primaryTransmitted + vpnTransmitted,
+      receivedBytesSinceLaunch: networkInterfaces.reduce(
+        (total, networkInterface) =>
+          total + networkInterface.receivedBytesSinceLaunch,
+        0,
+      ),
+      transmittedBytesSinceLaunch: networkInterfaces.reduce(
+        (total, networkInterface) =>
+          total + networkInterface.transmittedBytesSinceLaunch,
+        0,
+      ),
+      interfaceCount: networkInterfaces.length,
+      interfaces: networkInterfaces,
     },
     processes: baseProcesses.map((process, index) => {
       const resourcePhase = phase + index * 0.73;

@@ -47,6 +47,10 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
             ),
             diskReadBytesPerSecond: nextSnapshot.disk.readBytesPerSecond,
             diskWriteBytesPerSecond: nextSnapshot.disk.writeBytesPerSecond,
+            networkReceivedBytesPerSecond:
+              nextSnapshot.network.receivedBytesPerSecond,
+            networkTransmittedBytesPerSecond:
+              nextSnapshot.network.transmittedBytesPerSecond,
           };
           const cutoff = nextSnapshot.sampledAtMs - HISTORY_WINDOW_MS;
           return [...current, point]
