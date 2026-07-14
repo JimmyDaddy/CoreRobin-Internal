@@ -102,10 +102,9 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-deps-v1-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-deps-v1-
 
       - name: Check desktop targets
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
