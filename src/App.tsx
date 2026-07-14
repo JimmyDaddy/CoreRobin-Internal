@@ -27,6 +27,7 @@ import { MetricCard } from "./components/MetricCard";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
+import { StorageExplorer } from "./components/StorageExplorer";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import {
@@ -56,7 +57,7 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes";
+type ActiveView = "overview" | "processes" | "storage";
 
 interface PendingProcessAction {
   action: ProcessAction;
@@ -351,7 +352,9 @@ function App() {
           <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}>
             <ListTree size={17} />进程
           </button>
-          <button type="button" disabled title="即将推出"><Database size={17} />存储<small>稍后</small></button>
+          <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}>
+            <Database size={17} />存储
+          </button>
           <button type="button" disabled title="即将推出"><Network size={17} />网络<small>稍后</small></button>
         </div>
 
@@ -370,7 +373,13 @@ function App() {
       <div className="workspace">
         <header className="topbar">
           <div className="host-heading">
-            <span className="eyebrow">{activeView === "overview" ? "系统概览" : "进程诊断"}</span>
+            <span className="eyebrow">
+              {activeView === "overview"
+                ? "系统概览"
+                : activeView === "processes"
+                  ? "进程诊断"
+                  : "存储诊断"}
+            </span>
             <h1>{snapshot.host.hostname}</h1>
             <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
           </div>
@@ -443,7 +452,7 @@ function App() {
                   }
                 />
               </>
-            ) : (
+            ) : activeView === "processes" ? (
               <ProcessTable
                 processes={snapshot.processes}
                 selectedIdentity={selectedIdentity}
@@ -470,6 +479,14 @@ function App() {
                 onResetPreferences={() =>
                   setProcessPreferences(defaultProcessExplorerPreferences())
                 }
+              />
+            ) : (
+              <StorageExplorer
+                disk={snapshot.disk}
+                history={history}
+                processes={snapshot.processes}
+                selectedIdentity={selectedIdentity}
+                onSelectProcess={selectProcess}
               />
             )}
           </main>

@@ -136,19 +136,20 @@ impl SystemMonitor {
                 .then_with(|| right.memory_bytes.cmp(&left.memory_bytes))
         });
 
-        let volumes = self
-            .disks
-            .list()
-            .iter()
-            .filter(|disk| disk.total_space() > 0)
-            .map(|disk| VolumeSnapshot {
-                name: disk.name().to_string_lossy().into_owned(),
-                mount_point: disk.mount_point().to_string_lossy().into_owned(),
-                total_bytes: disk.total_space(),
-                available_bytes: disk.available_space(),
-                removable: disk.is_removable(),
-            })
-            .collect();
+        let volumes = collapse_macos_system_volume_group(
+            self.disks
+                .list()
+                .iter()
+                .filter(|disk| disk.total_space() > 0)
+                .map(|disk| VolumeSnapshot {
+                    name: disk.name().to_string_lossy().into_owned(),
+                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
+                    total_bytes: disk.total_space(),
+                    available_bytes: disk.available_space(),
+                    removable: disk.is_removable(),
+                })
+                .collect(),
+        );
 
         SystemSnapshot {
             schema_version: SNAPSHOT_SCHEMA_VERSION,
@@ -298,6 +299,16 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .without_tasks()
 }
 
+fn collapse_macos_system_volume_group(mut volumes: Vec<VolumeSnapshot>) -> Vec<VolumeSnapshot> {
+    let has_system_root = volumes.iter().any(|volume| volume.mount_point == "/");
+    if has_system_root {
+        // Modern macOS exposes the sealed system volume and its writable Data
+        // partner as separate mounts even though they share one APFS container.
+        volumes.retain(|volume| volume.mount_point != "/System/Volumes/Data");
+    }
+    volumes
+}
+
 pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
     if pid == own_pid {
         Some("Pulse cannot terminate itself.")
@@ -317,7 +328,18 @@ fn bytes_per_second(bytes: u64, elapsed_ms: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bytes_per_second, protected_reason};
+    use super::{bytes_per_second, collapse_macos_system_volume_group, protected_reason};
+    use crate::models::VolumeSnapshot;
+
+    fn volume(name: &str, mount_point: &str) -> VolumeSnapshot {
+        VolumeSnapshot {
+            name: name.to_owned(),
+            mount_point: mount_point.to_owned(),
+            total_bytes: 1_000,
+            available_bytes: 250,
+            removable: false,
+        }
+    }
 
     #[test]
     fn converts_delta_bytes_using_the_real_interval() {
@@ -335,5 +357,27 @@ mod tests {
         assert!(protected_reason(1, 42).is_some());
         assert!(protected_reason(42, 42).is_some());
         assert!(protected_reason(43, 42).is_none());
+    }
+
+    #[test]
+    fn collapses_the_macos_system_and_data_volume_group() {
+        let volumes = collapse_macos_system_volume_group(vec![
+            volume("Macintosh HD", "/"),
+            volume("Macintosh HD", "/System/Volumes/Data"),
+            volume("Backup", "/Volumes/Backup"),
+        ]);
+
+        assert_eq!(volumes.len(), 2);
+        assert_eq!(volumes[0].mount_point, "/");
+        assert_eq!(volumes[1].mount_point, "/Volumes/Backup");
+    }
+
+    #[test]
+    fn preserves_a_data_mount_when_the_system_root_is_absent() {
+        let volumes =
+            collapse_macos_system_volume_group(vec![volume("Data", "/System/Volumes/Data")]);
+
+        assert_eq!(volumes.len(), 1);
+        assert_eq!(volumes[0].mount_point, "/System/Volumes/Data");
     }
 }

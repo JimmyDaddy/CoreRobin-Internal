@@ -173,6 +173,8 @@ export interface HistoryPoint {
   timestamp: number;
   cpuPercent: number;
   memoryPercent: number;
+  diskReadBytesPerSecond: number | null;
+  diskWriteBytesPerSecond: number | null;
 }
 
 export interface ProcessHistoryPoint {

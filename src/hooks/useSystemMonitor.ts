@@ -9,6 +9,7 @@ import {
 } from "../utils";
 
 const MAX_HISTORY_POINTS = 300;
+const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 
 export function useSystemMonitor(refreshIntervalMs = 1_000) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
@@ -36,17 +37,22 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
       setSnapshot(nextSnapshot);
       setError(null);
       if (nextSnapshot.cpu.usagePercent !== null) {
-        setHistory((current) => [
-          ...current.slice(-(MAX_HISTORY_POINTS - 1)),
-          {
+        setHistory((current) => {
+          const point: HistoryPoint = {
             timestamp: nextSnapshot.sampledAtMs,
             cpuPercent: nextSnapshot.cpu.usagePercent ?? 0,
             memoryPercent: memoryUsagePercent(
               nextSnapshot.memory.usedBytes,
               nextSnapshot.memory.totalBytes,
             ),
-          },
-        ]);
+            diskReadBytesPerSecond: nextSnapshot.disk.readBytesPerSecond,
+            diskWriteBytesPerSecond: nextSnapshot.disk.writeBytesPerSecond,
+          };
+          const cutoff = nextSnapshot.sampledAtMs - HISTORY_WINDOW_MS;
+          return [...current, point]
+            .filter((candidate) => candidate.timestamp >= cutoff)
+            .slice(-MAX_HISTORY_POINTS);
+        });
       }
     } catch (caughtError) {
       setError(normalizeCommandError(caughtError));
