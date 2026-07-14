@@ -2,6 +2,7 @@ mod error;
 mod identity;
 mod models;
 mod monitor;
+mod network_connections;
 mod process_control;
 
 use std::sync::{Arc, Mutex, Weak};
@@ -9,11 +10,12 @@ use std::time::Duration;
 
 use error::CommandError;
 use models::{
-    ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    NetworkConnectionsSnapshot, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
     ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
     ProcessDetailRequest, SystemSnapshot,
 };
 use monitor::SystemMonitor;
+use network_connections::sample_network_connections;
 use process_control::ProcessController;
 use tauri::State;
 
@@ -96,6 +98,13 @@ async fn get_system_snapshot(state: State<'_, AppState>) -> Result<SystemSnapsho
 }
 
 #[tauri::command]
+async fn get_network_connections() -> Result<NetworkConnectionsSnapshot, CommandError> {
+    tauri::async_runtime::spawn_blocking(sample_network_connections)
+        .await
+        .map_err(|error| CommandError::internal(format!("Connection scan failed: {error}")))?
+}
+
+#[tauri::command]
 async fn get_process_detail(
     state: State<'_, AppState>,
     request: ProcessDetailRequest,
@@ -146,6 +155,7 @@ pub fn run() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             get_system_snapshot,
+            get_network_connections,
             get_process_detail,
             create_process_control_lease,
             release_process_control_lease,

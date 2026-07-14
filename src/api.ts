@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   createMockProcessControlLease,
   executeMockProcessAction,
+  getMockNetworkConnections,
   getMockProcessDetail,
   getMockSnapshot,
   releaseMockProcessControlLease,
@@ -15,6 +16,7 @@ import type {
   ProcessControlLeaseRequest,
   ProcessDetail,
   ProcessDetailRequest,
+  NetworkConnectionsSnapshot,
   SystemSnapshot,
 } from "./types";
 
@@ -37,6 +39,13 @@ export async function getSystemSnapshot(): Promise<SystemSnapshot> {
     return getMockSnapshot();
   }
   return invoke<SystemSnapshot>("get_system_snapshot");
+}
+
+export async function getNetworkConnections(): Promise<NetworkConnectionsSnapshot> {
+  if (canUseDevelopmentMock()) {
+    return getMockNetworkConnections();
+  }
+  return invoke<NetworkConnectionsSnapshot>("get_network_connections");
 }
 
 export async function getProcessDetail(

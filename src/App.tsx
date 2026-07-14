@@ -29,6 +29,7 @@ import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { StorageExplorer } from "./components/StorageExplorer";
+import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import {
@@ -79,6 +80,12 @@ function App() {
     refreshNow,
   } = useSystemMonitor();
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const {
+    snapshot: connectionsSnapshot,
+    error: connectionsError,
+    loading: connectionsLoading,
+    refreshNow: refreshConnections,
+  } = useNetworkConnections(activeView === "network", paused);
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<ProcessRow | null>(null);
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
@@ -96,6 +103,12 @@ function App() {
   const preparingActionRef = useRef(false);
   const submittingActionRef = useRef(false);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
+  const refreshActiveView = useCallback(async () => {
+    await Promise.all([
+      refreshNow(),
+      ...(activeView === "network" ? [refreshConnections()] : []),
+    ]);
+  }, [activeView, refreshConnections, refreshNow]);
 
   const selectedProcess = useMemo(
     () =>
@@ -393,7 +406,7 @@ function App() {
             <span className={`sample-status${paused ? " is-paused" : ""}`}>
               <i />{paused ? "已暂停" : snapshot.warmingUp ? "预热中" : "实时"}
             </span>
-            <button className="icon-button" type="button" title="立即刷新" aria-label="立即刷新" onClick={() => void refreshNow()}>
+            <button className="icon-button" type="button" title="立即刷新" aria-label="立即刷新" onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
             </button>
             <button className="button button--secondary" type="button" onClick={() => setPaused(!paused)}>
@@ -497,6 +510,10 @@ function App() {
               <NetworkExplorer
                 network={snapshot.network}
                 history={history}
+                connections={connectionsSnapshot}
+                connectionsError={connectionsError}
+                connectionsLoading={connectionsLoading}
+                onRefreshConnections={() => void refreshConnections()}
               />
             )}
           </main>
@@ -522,7 +539,7 @@ function App() {
           <span><Gauge size={13} />采样间隔 {snapshot.sampleIntervalMs} ms</span>
           <span>
             {activeView === "network"
-              ? `${snapshot.network.interfaceCount} 个网络接口`
+              ? `${snapshot.network.interfaceCount} 个网络接口 · ${connectionsSnapshot?.summary.totalCount ?? "—"} 个连接`
               : `${snapshot.processes.length} 个进程`}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>

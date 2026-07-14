@@ -97,6 +97,76 @@ pub struct NetworkInterfaceSnapshot {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NetworkConnectionsSnapshot {
+    pub sampled_at_ms: u64,
+    pub summary: NetworkConnectionSummary,
+    pub connections: Vec<NetworkConnection>,
+    pub truncated: bool,
+    pub skipped_entry_count: usize,
+}
+
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkConnectionSummary {
+    pub total_count: usize,
+    pub tcp_count: usize,
+    pub udp_count: usize,
+    pub established_count: usize,
+    pub listening_count: usize,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkConnection {
+    pub protocol: NetworkTransportProtocol,
+    pub address_family: NetworkAddressFamily,
+    pub local_endpoint: NetworkEndpoint,
+    pub remote_endpoint: Option<NetworkEndpoint>,
+    pub state: NetworkConnectionState,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkEndpoint {
+    pub address: String,
+    pub port: u16,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkTransportProtocol {
+    Tcp,
+    Udp,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkAddressFamily {
+    Ipv4,
+    Ipv6,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkConnectionState {
+    Closed,
+    Listen,
+    SynSent,
+    SynReceived,
+    Established,
+    FinWait1,
+    FinWait2,
+    CloseWait,
+    Closing,
+    LastAck,
+    TimeWait,
+    DeleteTcb,
+    Unconnected,
+    Unknown,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProcessRow {
     pub pid: u32,
     pub birth_token: Option<String>,

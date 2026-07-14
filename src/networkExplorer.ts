@@ -1,9 +1,20 @@
-import type { HistoryPoint, NetworkInterfaceSnapshot } from "./types";
+import type {
+  HistoryPoint,
+  NetworkConnection,
+  NetworkEndpoint,
+  NetworkInterfaceSnapshot,
+} from "./types";
 
 export const NETWORK_HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 export const NETWORK_SAMPLE_GAP_MS = 5_000;
 
 export type NetworkMetric = "received" | "transmitted";
+export type NetworkConnectionFilter =
+  | "all"
+  | "established"
+  | "listen"
+  | "tcp"
+  | "udp";
 
 export interface NetworkSeriesPoint {
   timestamp: number;
@@ -13,6 +24,25 @@ export interface NetworkSeriesPoint {
 export interface VisibleNetworkInterfaces {
   interfaces: NetworkInterfaceSnapshot[];
   hiddenCount: number;
+}
+
+export function filterNetworkConnections(
+  connections: readonly NetworkConnection[],
+  filter: NetworkConnectionFilter,
+): NetworkConnection[] {
+  if (filter === "all") return [...connections];
+  if (filter === "tcp" || filter === "udp") {
+    return connections.filter(({ protocol }) => protocol === filter);
+  }
+  return connections.filter(({ state }) => state === filter);
+}
+
+export function formatNetworkEndpoint(endpoint: NetworkEndpoint | null): string {
+  if (!endpoint) return "—";
+  const address = endpoint.address.includes(":")
+    ? `[${endpoint.address}]`
+    : endpoint.address;
+  return `${address}:${endpoint.port}`;
 }
 
 export function networkInterfaceRate(

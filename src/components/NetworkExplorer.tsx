@@ -6,17 +6,24 @@ import {
   ChevronDown,
   ChevronUp,
   Network,
+  RefreshCw,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
+  filterNetworkConnections,
+  formatNetworkEndpoint,
   networkHistorySegments,
   networkHistoryWindow,
   visibleNetworkInterfaces,
+  type NetworkConnectionFilter,
   type NetworkSeriesPoint,
 } from "../networkExplorer";
 import type {
+  CommandError,
   HistoryPoint,
+  NetworkConnectionState,
+  NetworkConnectionsSnapshot,
   NetworkInterfaceOperationalState,
   NetworkInterfaceSnapshot,
   NetworkSnapshot,
@@ -26,12 +33,45 @@ import { formatBytes, formatRate } from "../utils";
 interface NetworkExplorerProps {
   network: NetworkSnapshot;
   history: HistoryPoint[];
+  connections: NetworkConnectionsSnapshot | null;
+  connectionsError: CommandError | null;
+  connectionsLoading: boolean;
+  onRefreshConnections: () => void;
 }
 
 const CHART_WIDTH = 720;
 const CHART_HEIGHT = 176;
 const CHART_TOP = 12;
 const CHART_BOTTOM = 148;
+const CONNECTION_PAGE_SIZE = 100;
+
+const CONNECTION_FILTERS: Array<{
+  value: NetworkConnectionFilter;
+  label: string;
+}> = [
+  { value: "all", label: "全部" },
+  { value: "established", label: "已建立" },
+  { value: "listen", label: "监听" },
+  { value: "tcp", label: "TCP" },
+  { value: "udp", label: "UDP" },
+];
+
+const CONNECTION_STATE_LABELS: Record<NetworkConnectionState, string> = {
+  closed: "已关闭",
+  listen: "监听",
+  syn_sent: "SYN 已发送",
+  syn_received: "SYN 已接收",
+  established: "已建立",
+  fin_wait1: "FIN 等待 1",
+  fin_wait2: "FIN 等待 2",
+  close_wait: "关闭等待",
+  closing: "关闭中",
+  last_ack: "最终确认",
+  time_wait: "时间等待",
+  delete_tcb: "删除 TCB",
+  unconnected: "无连接",
+  unknown: "未知",
+};
 
 const STATE_LABELS: Record<NetworkInterfaceOperationalState, string> = {
   other: "其他",
@@ -47,6 +87,10 @@ const STATE_LABELS: Record<NetworkInterfaceOperationalState, string> = {
 export function NetworkExplorer({
   network,
   history,
+  connections,
+  connectionsError,
+  connectionsLoading,
+  onRefreshConnections,
 }: NetworkExplorerProps) {
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
   const visible = useMemo(
@@ -99,6 +143,13 @@ export function NetworkExplorer({
 
       <NetworkThroughput history={history} network={network} />
 
+      <NetworkConnectionsPanel
+        snapshot={connections}
+        error={connectionsError}
+        loading={connectionsLoading}
+        onRefresh={onRefreshConnections}
+      />
+
       <section className="panel network-interface-panel" aria-labelledby="interface-title">
         <header className="network-section-heading">
           <div>
@@ -139,6 +190,196 @@ export function NetworkExplorer({
         )}
       </section>
     </section>
+  );
+}
+
+function NetworkConnectionsPanel({
+  snapshot,
+  error,
+  loading,
+  onRefresh,
+}: {
+  snapshot: NetworkConnectionsSnapshot | null;
+  error: CommandError | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const [filter, setFilter] = useState<NetworkConnectionFilter>("all");
+  const [rowLimit, setRowLimit] = useState(CONNECTION_PAGE_SIZE);
+  const filteredConnections = useMemo(
+    () => filterNetworkConnections(snapshot?.connections ?? [], filter),
+    [filter, snapshot?.connections],
+  );
+  const visibleConnections = filteredConnections.slice(0, rowLimit);
+  const hasMore = visibleConnections.length < filteredConnections.length;
+
+  return (
+    <section
+      className="panel network-connections"
+      aria-labelledby="network-connections-title"
+    >
+      <header className="network-connections__heading">
+        <div>
+          <span className="eyebrow">独立低频采集</span>
+          <h2 id="network-connections-title">活动连接</h2>
+          <p>每 5 秒更新一次；当前不关联进程，以隔离权限与跨平台差异。</p>
+        </div>
+        <div className="network-connections__status">
+          <span>
+            {snapshot
+              ? `更新于 ${new Date(snapshot.sampledAtMs).toLocaleTimeString("zh-CN", {
+                  hour12: false,
+                })}`
+              : "等待首次采集"}
+          </span>
+          <button
+            className="network-connections__refresh"
+            type="button"
+            aria-label="刷新活动连接"
+            title="刷新活动连接"
+            onClick={onRefresh}
+          >
+            <RefreshCw size={13} aria-hidden="true" />
+            刷新
+          </button>
+        </div>
+      </header>
+
+      {snapshot ? (
+        <div className="network-connection-summary" aria-label="连接摘要">
+          <ConnectionSummaryItem label="全部连接" value={snapshot.summary.totalCount} />
+          <ConnectionSummaryItem
+            label="已建立"
+            value={snapshot.summary.establishedCount}
+            tone="established"
+          />
+          <ConnectionSummaryItem
+            label="监听"
+            value={snapshot.summary.listeningCount}
+            tone="listen"
+          />
+          <ConnectionSummaryItem
+            label="TCP / UDP"
+            value={`${snapshot.summary.tcpCount} / ${snapshot.summary.udpCount}`}
+          />
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="network-connections__notice is-error" role="alert">
+          <AlertTriangle size={13} aria-hidden="true" />
+          连接采集暂时失败：{error.message}
+        </div>
+      ) : null}
+
+      {snapshot && (snapshot.truncated || snapshot.skippedEntryCount > 0) ? (
+        <div className="network-connections__notice" role="status">
+          <AlertTriangle size={13} aria-hidden="true" />
+          {snapshot.truncated ? "列表仅展示采集结果的前 500 项。" : null}
+          {snapshot.truncated && snapshot.skippedEntryCount > 0 ? " " : null}
+          {snapshot.skippedEntryCount > 0
+            ? `${snapshot.skippedEntryCount} 个连接条目因系统限制未能读取。`
+            : null}
+        </div>
+      ) : null}
+
+      <div className="network-connections__toolbar">
+        <div className="network-connection-filters" role="group" aria-label="连接筛选">
+          {CONNECTION_FILTERS.map(({ value, label }) => (
+            <button
+              className={filter === value ? "is-active" : ""}
+              key={value}
+              type="button"
+              aria-pressed={filter === value}
+              onClick={() => {
+                setFilter(value);
+                setRowLimit(CONNECTION_PAGE_SIZE);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span>
+          {filteredConnections.length.toLocaleString()} 项
+          {loading ? " · 正在更新" : ""}
+        </span>
+      </div>
+
+      {snapshot && visibleConnections.length > 0 ? (
+        <>
+          <div className="network-connection-table" role="table" aria-label="活动连接列表">
+            <div className="network-connection-row network-connection-row--header" role="row">
+              <span role="columnheader">协议</span>
+              <span role="columnheader">状态</span>
+              <span role="columnheader">本地地址</span>
+              <span role="columnheader">远端地址</span>
+            </div>
+            {visibleConnections.map((connection, index) => (
+              <div
+                className="network-connection-row"
+                role="row"
+                key={`${connection.protocol}-${formatNetworkEndpoint(connection.localEndpoint)}-${formatNetworkEndpoint(connection.remoteEndpoint)}-${connection.state}-${index}`}
+              >
+                <span role="cell">
+                  <strong>{connection.protocol.toUpperCase()}</strong>
+                  <small>{connection.addressFamily.toUpperCase()}</small>
+                </span>
+                <span role="cell">
+                  <i className={`network-connection-state network-connection-state--${connection.state}`}>
+                    {CONNECTION_STATE_LABELS[connection.state]}
+                  </i>
+                </span>
+                <code role="cell" title={formatNetworkEndpoint(connection.localEndpoint)}>
+                  {formatNetworkEndpoint(connection.localEndpoint)}
+                </code>
+                <code role="cell" title={formatNetworkEndpoint(connection.remoteEndpoint)}>
+                  {formatNetworkEndpoint(connection.remoteEndpoint)}
+                </code>
+              </div>
+            ))}
+          </div>
+          {hasMore ? (
+            <button
+              className="network-connections__more"
+              type="button"
+              onClick={() => setRowLimit((current) => current + CONNECTION_PAGE_SIZE)}
+            >
+              显示更多（剩余 {filteredConnections.length - visibleConnections.length} 项）
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <div className="network-empty" aria-live="polite">
+          <Network size={20} />
+          {loading && !snapshot
+            ? "正在采集本机连接…"
+            : error && !snapshot
+              ? "暂时无法读取活动连接。"
+              : "当前筛选条件下没有连接。"}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ConnectionSummaryItem({
+  label,
+  value,
+  context,
+  tone = "default",
+}: {
+  label: string;
+  value: number | string;
+  context?: string;
+  tone?: "default" | "established" | "listen";
+}) {
+  return (
+    <div className={`network-connection-summary__item network-connection-summary__item--${tone}`}>
+      <span>{label}</span>
+      <strong>{typeof value === "number" ? value.toLocaleString() : value}</strong>
+      {context ? <small>{context}</small> : null}
+    </div>
   );
 }
 

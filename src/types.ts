@@ -87,6 +87,53 @@ export interface NetworkInterfaceSnapshot {
   operationalState: NetworkInterfaceOperationalState;
 }
 
+export type NetworkTransportProtocol = "tcp" | "udp";
+export type NetworkAddressFamily = "ipv4" | "ipv6";
+export type NetworkConnectionState =
+  | "closed"
+  | "listen"
+  | "syn_sent"
+  | "syn_received"
+  | "established"
+  | "fin_wait1"
+  | "fin_wait2"
+  | "close_wait"
+  | "closing"
+  | "last_ack"
+  | "time_wait"
+  | "delete_tcb"
+  | "unconnected"
+  | "unknown";
+
+export interface NetworkEndpoint {
+  address: string;
+  port: number;
+}
+
+export interface NetworkConnection {
+  protocol: NetworkTransportProtocol;
+  addressFamily: NetworkAddressFamily;
+  localEndpoint: NetworkEndpoint;
+  remoteEndpoint: NetworkEndpoint | null;
+  state: NetworkConnectionState;
+}
+
+export interface NetworkConnectionSummary {
+  totalCount: number;
+  tcpCount: number;
+  udpCount: number;
+  establishedCount: number;
+  listeningCount: number;
+}
+
+export interface NetworkConnectionsSnapshot {
+  sampledAtMs: number;
+  summary: NetworkConnectionSummary;
+  connections: NetworkConnection[];
+  truncated: boolean;
+  skippedEntryCount: number;
+}
+
 export interface ProcessRow {
   pid: number;
   birthToken: string | null;

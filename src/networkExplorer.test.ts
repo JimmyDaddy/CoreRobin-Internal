@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   NETWORK_HISTORY_WINDOW_MS,
+  filterNetworkConnections,
+  formatNetworkEndpoint,
   networkHistorySegments,
   networkHistoryWindow,
   networkInterfaceRate,
   sortNetworkInterfaces,
   visibleNetworkInterfaces,
 } from "./networkExplorer";
-import type { HistoryPoint, NetworkInterfaceSnapshot } from "./types";
+import type {
+  HistoryPoint,
+  NetworkConnection,
+  NetworkInterfaceSnapshot,
+} from "./types";
 
 function interfaceFixture(
   name: string,
@@ -33,6 +39,55 @@ function interfaceFixture(
     ...options,
   };
 }
+
+const connectionFixtures: NetworkConnection[] = [
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "127.0.0.1", port: 4_000 },
+    remoteEndpoint: { address: "203.0.113.10", port: 443 },
+    state: "established",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv6",
+    localEndpoint: { address: "::", port: 8_080 },
+    remoteEndpoint: null,
+    state: "listen",
+  },
+  {
+    protocol: "udp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "0.0.0.0", port: 53 },
+    remoteEndpoint: null,
+    state: "unconnected",
+  },
+];
+
+describe("network connections", () => {
+  it("filters by protocol and important TCP states", () => {
+    expect(filterNetworkConnections(connectionFixtures, "tcp")).toHaveLength(2);
+    expect(filterNetworkConnections(connectionFixtures, "udp")).toEqual([
+      connectionFixtures[2],
+    ]);
+    expect(filterNetworkConnections(connectionFixtures, "established")).toEqual([
+      connectionFixtures[0],
+    ]);
+    expect(filterNetworkConnections(connectionFixtures, "listen")).toEqual([
+      connectionFixtures[1],
+    ]);
+  });
+
+  it("formats IPv4, IPv6, and absent endpoints without ambiguity", () => {
+    expect(formatNetworkEndpoint(connectionFixtures[0].localEndpoint)).toBe(
+      "127.0.0.1:4000",
+    );
+    expect(formatNetworkEndpoint(connectionFixtures[1].localEndpoint)).toBe(
+      "[::]:8080",
+    );
+    expect(formatNetworkEndpoint(null)).toBe("—");
+  });
+});
 
 function historyPoint(
   timestamp: number,

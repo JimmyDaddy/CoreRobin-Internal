@@ -7,6 +7,8 @@ import {
   type ProcessControlLeaseRequest,
   type ProcessDetail,
   type ProcessDetailRequest,
+  type NetworkConnection,
+  type NetworkConnectionsSnapshot,
   type ProcessRow,
   type SystemSnapshot,
 } from "./types";
@@ -17,6 +19,65 @@ const mockLeases = new Map<string, ProcessControlLease>();
 // Keep demo identities stable across browser reloads so view preferences can be
 // exercised without implying that a reused PID is the same process.
 const startTime = 1_750_000_000;
+
+const mockConnections: NetworkConnection[] = [
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "192.168.1.42", port: 51_234 },
+    remoteEndpoint: { address: "203.0.113.24", port: 443 },
+    state: "established",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv6",
+    localEndpoint: { address: "2001:db8::42", port: 51_882 },
+    remoteEndpoint: { address: "2001:db8:2::80", port: 443 },
+    state: "established",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "127.0.0.1", port: 1_420 },
+    remoteEndpoint: null,
+    state: "listen",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "0.0.0.0", port: 22 },
+    remoteEndpoint: null,
+    state: "listen",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "192.168.1.42", port: 50_910 },
+    remoteEndpoint: { address: "198.51.100.18", port: 443 },
+    state: "time_wait",
+  },
+  {
+    protocol: "tcp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "192.168.1.42", port: 50_422 },
+    remoteEndpoint: { address: "203.0.113.82", port: 22 },
+    state: "close_wait",
+  },
+  {
+    protocol: "udp",
+    addressFamily: "ipv4",
+    localEndpoint: { address: "0.0.0.0", port: 5_353 },
+    remoteEndpoint: null,
+    state: "unconnected",
+  },
+  {
+    protocol: "udp",
+    addressFamily: "ipv6",
+    localEndpoint: { address: "::", port: 5_353 },
+    remoteEndpoint: null,
+    state: "unconnected",
+  },
+];
 
 const baseProcesses: ProcessRow[] = [
   {
@@ -301,6 +362,24 @@ export function getMockSnapshot(): SystemSnapshot {
       },
       requiresConfirmation: true,
     },
+  };
+}
+
+export function getMockNetworkConnections(): NetworkConnectionsSnapshot {
+  return {
+    sampledAtMs: Date.now(),
+    summary: {
+      totalCount: mockConnections.length,
+      tcpCount: mockConnections.filter(({ protocol }) => protocol === "tcp").length,
+      udpCount: mockConnections.filter(({ protocol }) => protocol === "udp").length,
+      establishedCount: mockConnections.filter(
+        ({ state }) => state === "established",
+      ).length,
+      listeningCount: mockConnections.filter(({ state }) => state === "listen").length,
+    },
+    connections: mockConnections,
+    truncated: false,
+    skippedEntryCount: 0,
   };
 }
 
