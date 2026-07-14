@@ -1,4 +1,5 @@
-import { BellRing, History, Languages, ListTree, Network, Timer } from "lucide-react";
+import { BellRing, ChevronDown, History, Languages, ListTree, Network, Timer } from "lucide-react";
+import type { ChangeEventHandler, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -45,18 +46,23 @@ export function SettingsExplorer({
           title={t("settings.language.title")}
           description={t("settings.language.description")}
         >
-          <label className="settings-field">
-            <span>{t("settings.language.label")}</span>
-            <select
-              value={settings.language}
-              onChange={(event) =>
-                onChange({ language: event.target.value === "en" ? "en" : "zh-CN" })
-              }
-            >
-              <option value="zh-CN">简体中文</option>
-              <option value="en">English</option>
-            </select>
-          </label>
+          <div
+            className="settings-segmented"
+            role="group"
+            aria-label={t("settings.language.label")}
+          >
+            {(["zh-CN", "en"] as const).map((language) => (
+              <button
+                type="button"
+                key={language}
+                className={settings.language === language ? "is-active" : ""}
+                aria-pressed={settings.language === language}
+                onClick={() => onChange({ language })}
+              >
+                {language === "en" ? "English" : "简体中文"}
+              </button>
+            ))}
+          </div>
         </SettingsCard>
 
         <SettingsCard
@@ -66,7 +72,7 @@ export function SettingsExplorer({
         >
           <label className="settings-field">
             <span>{t("settings.sampling.system")}</span>
-            <select
+            <SettingsSelect
               value={settings.systemSampleIntervalMs}
               onChange={(event) =>
                 onChange({ systemSampleIntervalMs: Number(event.target.value) })
@@ -77,7 +83,7 @@ export function SettingsExplorer({
                   {t("settings.intervalMs", { interval })}
                 </option>
               ))}
-            </select>
+            </SettingsSelect>
           </label>
         </SettingsCard>
 
@@ -88,7 +94,7 @@ export function SettingsExplorer({
         >
           <label className="settings-field">
             <span>{t("settings.connections.refresh")}</span>
-            <select
+            <SettingsSelect
               value={settings.connectionRefreshIntervalMs}
               onChange={(event) =>
                 onChange({ connectionRefreshIntervalMs: Number(event.target.value) })
@@ -99,11 +105,12 @@ export function SettingsExplorer({
                   {t("settings.intervalSeconds", { seconds: interval / 1_000 })}
                 </option>
               ))}
-            </select>
+            </SettingsSelect>
           </label>
         </SettingsCard>
 
         <SettingsCard
+          className="settings-card--half"
           icon={ListTree}
           title={t("settings.processView.title")}
           description={t("settings.processView.description")}
@@ -124,6 +131,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          className="settings-card--half"
           icon={History}
           title={t("settings.history.title")}
           description={t("settings.history.description")}
@@ -142,7 +150,7 @@ export function SettingsExplorer({
             </label>
             <label className="settings-field">
               <span>{t("settings.history.retention")}</span>
-              <select
+              <SettingsSelect
                 value={settings.historyRetentionDays}
                 onChange={(event) =>
                   onChange({
@@ -160,7 +168,7 @@ export function SettingsExplorer({
                     {t("settings.history.days", { count: days })}
                   </option>
                 ))}
-              </select>
+              </SettingsSelect>
             </label>
           </div>
         </SettingsCard>
@@ -214,7 +222,7 @@ function SettingsCard({
   icon: typeof Languages;
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className={`panel settings-card ${className}`.trim()}>
@@ -246,12 +254,37 @@ function ThresholdSelect({
   return (
     <label className={`settings-threshold settings-threshold--${tone}`}>
       <span><i />{label}</span>
-      <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
+      <SettingsSelect
+        compact
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      >
         {options.map((option) => (
           <option key={option} value={option}>{option}%</option>
         ))}
-      </select>
+      </SettingsSelect>
     </label>
+  );
+}
+
+function SettingsSelect({
+  value,
+  compact = false,
+  onChange,
+  children,
+}: {
+  value: string | number;
+  compact?: boolean;
+  onChange: ChangeEventHandler<HTMLSelectElement>;
+  children: ReactNode;
+}) {
+  return (
+    <span className={`settings-select${compact ? " settings-select--compact" : ""}`}>
+      <select value={value} onChange={onChange}>
+        {children}
+      </select>
+      <ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
+    </span>
   );
 }
 
