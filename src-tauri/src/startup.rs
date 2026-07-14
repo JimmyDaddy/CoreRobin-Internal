@@ -876,6 +876,7 @@ fn move_startup_file_without_overwrite(
     Ok(())
 }
 
+#[cfg(any(target_os = "macos", windows, test))]
 fn friendly_label(label: &str) -> String {
     label
         .split(['.', '-', '_'])
@@ -893,6 +894,7 @@ fn friendly_label(label: &str) -> String {
         .join(" ")
 }
 
+#[cfg(any(target_os = "macos", windows, test))]
 fn publisher_from_label(label: &str) -> Option<String> {
     let parts = label.split(['.', '-', '_']).collect::<Vec<_>>();
     let candidate = if matches!(parts.first().copied(), Some("com" | "org" | "net" | "io")) {
@@ -903,6 +905,7 @@ fn publisher_from_label(label: &str) -> Option<String> {
     (!candidate.is_empty()).then(|| title_case(candidate))
 }
 
+#[cfg(any(target_os = "macos", windows, test))]
 fn title_case(value: &str) -> String {
     let mut characters = value.chars();
     characters
@@ -911,6 +914,7 @@ fn title_case(value: &str) -> String {
         .unwrap_or_default()
 }
 
+#[cfg(target_os = "macos")]
 fn source_name(source: StartupItemSource) -> &'static str {
     match source {
         StartupItemSource::LaunchAgent => "launch-agent",

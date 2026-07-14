@@ -1,5 +1,5 @@
 use std::cmp::Reverse;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
@@ -9,6 +9,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
+#[cfg(target_os = "macos")]
+use std::collections::HashMap;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
@@ -2269,12 +2271,16 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn cleanup_delete_protects_roots_but_allows_trash_contents() {
         let root = test_root("trash-protected");
         let folder = root.join("Downloads");
         let child = folder.join("file.txt");
-        let trash = root.join(".Trash");
+        let trash = trash_paths(&root)
+            .into_iter()
+            .next()
+            .expect("Unix platforms expose a cleanup Trash root");
         fs::create_dir_all(&folder).unwrap();
         fs::create_dir_all(&trash).unwrap();
         fs::write(&child, b"file").unwrap();

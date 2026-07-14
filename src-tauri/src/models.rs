@@ -66,6 +66,7 @@ pub struct SleepBlocker {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, Hash)]
+#[allow(dead_code)] // Sleep blocker kinds are currently populated by the macOS sampler only.
 pub enum SleepBlockerKind {
     #[serde(rename = "system_sleep")]
     System,
@@ -102,6 +103,7 @@ pub struct StartupItem {
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Protected startup items are currently identified by the macOS backend only.
 pub enum StartupManagementStatus {
     Available,
     System,
@@ -172,6 +174,7 @@ pub enum StartupItemScope {
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Conditional launch semantics are currently reported by the macOS backend only.
 pub enum StartupLaunchKind {
     Login,
     Conditional,

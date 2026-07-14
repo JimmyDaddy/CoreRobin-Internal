@@ -5,9 +5,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use sysinfo::Components;
 
 use crate::models::{
-    BatterySnapshot, BatteryState, PowerSource, SensorsSnapshot, SleepBlocker, SleepBlockerKind,
-    SleepSnapshot, TemperatureSnapshot,
+    BatterySnapshot, BatteryState, PowerSource, SensorsSnapshot, SleepSnapshot, TemperatureSnapshot,
 };
+#[cfg(target_os = "macos")]
+use crate::models::{SleepBlocker, SleepBlockerKind};
 
 const SENSOR_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const SLEEP_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
