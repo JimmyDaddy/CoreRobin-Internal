@@ -30,10 +30,12 @@ import { NetworkExplorer } from "./components/NetworkExplorer";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
+import { SettingsExplorer } from "./components/SettingsExplorer";
 import { StorageExplorer } from "./components/StorageExplorer";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
+import { normalizeLanguage } from "./i18n";
 import {
   defaultProcessExplorerPreferences,
   loadProcessExplorerPreferences,
@@ -41,6 +43,11 @@ import {
   saveProcessExplorerPreferences,
   type ProcessExplorerPreferences,
 } from "./processExplorer";
+import {
+  loadAppSettings,
+  saveAppSettings,
+  type AppSettings,
+} from "./settings";
 import type {
   CommandError,
   ProcessAction,
@@ -62,7 +69,7 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes" | "storage" | "network";
+type ActiveView = "overview" | "processes" | "storage" | "network" | "settings";
 
 interface PendingProcessAction {
   action: ProcessAction;
@@ -74,6 +81,9 @@ interface PendingProcessAction {
 
 function App() {
   const { t, i18n } = useTranslation();
+  const [settings, setSettings] = useState<AppSettings>(() =>
+    loadAppSettings(normalizeLanguage(i18n.resolvedLanguage)),
+  );
   const {
     snapshot,
     history,
@@ -82,21 +92,28 @@ function App() {
     setPaused,
     loading,
     refreshNow,
-  } = useSystemMonitor();
+  } = useSystemMonitor(settings.systemSampleIntervalMs);
   const [activeView, setActiveView] = useState<ActiveView>("overview");
   const {
     snapshot: connectionsSnapshot,
     error: connectionsError,
     loading: connectionsLoading,
     refreshNow: refreshConnections,
-  } = useNetworkConnections(activeView === "network", paused);
+  } = useNetworkConnections(
+    activeView === "network",
+    paused,
+    settings.connectionRefreshIntervalMs,
+  );
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<ProcessRow | null>(null);
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
   const [detailError, setDetailError] = useState<CommandError | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [processPreferences, setProcessPreferences] =
-    useState<ProcessExplorerPreferences>(loadProcessExplorerPreferences);
+    useState<ProcessExplorerPreferences>(() => ({
+      ...loadProcessExplorerPreferences(),
+      viewMode: settings.defaultProcessView,
+    }));
   const [pendingAction, setPendingAction] = useState<PendingProcessAction | null>(null);
   const [preparingAction, setPreparingAction] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -129,9 +146,38 @@ function App() {
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
       setProcessPreferences((current) => ({ ...current, ...update }));
+      if (update.viewMode) {
+        setSettings((current) => ({
+          ...current,
+          defaultProcessView: update.viewMode ?? current.defaultProcessView,
+        }));
+      }
     },
     [],
   );
+
+  const updateSettings = useCallback(
+    (update: Partial<Omit<AppSettings, "version">>) => {
+      setSettings((current) => ({ ...current, ...update }));
+      if (update.defaultProcessView) {
+        setProcessPreferences((current) => ({
+          ...current,
+          viewMode: update.defaultProcessView ?? current.viewMode,
+        }));
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    saveAppSettings(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    if (normalizeLanguage(i18n.resolvedLanguage) !== settings.language) {
+      void i18n.changeLanguage(settings.language);
+    }
+  }, [i18n, settings.language]);
 
   useEffect(() => {
     saveProcessExplorerPreferences(processPreferences);
@@ -381,7 +427,7 @@ function App() {
         <div className="nav-group">
           <span className="nav-label">{t("app.diagnostics")}</span>
           <button type="button" disabled title={t("app.comingSoon")}><History size={17} />{t("app.history")}<small>{t("app.soon")}</small></button>
-          <button type="button" disabled title={t("app.comingSoon")}><Settings2 size={17} />{t("app.settings")}<small>{t("app.soon")}</small></button>
+          <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app.settings")}</button>
         </div>
 
         <div className="sidebar-footer">
@@ -412,7 +458,7 @@ function App() {
               type="button"
               title={t("app.switchLanguage")}
               aria-label={t("app.switchLanguage")}
-              onClick={() => void i18n.changeLanguage(i18n.resolvedLanguage === "en" ? "zh-CN" : "en")}
+              onClick={() => updateSettings({ language: settings.language === "en" ? "zh-CN" : "en" })}
             >
               <Languages size={15} />
               {i18n.resolvedLanguage === "en" ? "中文" : "EN"}
@@ -427,7 +473,7 @@ function App() {
         {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
 
-        <div className={`content-layout${activeView === "network" ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${activeView === "network" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content">
             {activeView === "overview" ? (
               <>
@@ -439,7 +485,7 @@ function App() {
                     context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
                     tone="blue"
                     progress={snapshot.cpu.usagePercent ?? 0}
-                    usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent)}
+                    usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent, settings.usageThresholds)}
                   />
                   <MetricCard
                     icon={MemoryStick}
@@ -451,7 +497,7 @@ function App() {
                     })}
                     tone="violet"
                     progress={memoryPercent}
-                    usageLevel={resourceUsageLevel(memoryPercent)}
+                    usageLevel={resourceUsageLevel(memoryPercent, settings.usageThresholds)}
                   />
                   <MetricCard
                     icon={Database}
@@ -474,7 +520,7 @@ function App() {
                     tone="green"
                   />
                 </section>
-                <ResourceHistory history={history} />
+                <ResourceHistory history={history} usageThresholds={settings.usageThresholds} />
                 <ProcessTable
                   compact
                   processes={snapshot.processes}
@@ -514,7 +560,10 @@ function App() {
                   updateProcessPreferences({ followSelection })
                 }
                 onResetPreferences={() =>
-                  setProcessPreferences(defaultProcessExplorerPreferences())
+                  setProcessPreferences({
+                    ...defaultProcessExplorerPreferences(),
+                    viewMode: settings.defaultProcessView,
+                  })
                 }
               />
             ) : activeView === "storage" ? (
@@ -524,8 +573,9 @@ function App() {
                 processes={snapshot.processes}
                 selectedIdentity={selectedIdentity}
                 onSelectProcess={selectProcess}
+                usageThresholds={settings.usageThresholds}
               />
-            ) : (
+            ) : activeView === "network" ? (
               <NetworkExplorer
                 network={snapshot.network}
                 history={history}
@@ -533,16 +583,19 @@ function App() {
                 connectionsError={connectionsError}
                 connectionsLoading={connectionsLoading}
                 onRefreshConnections={() => void refreshConnections()}
+                connectionRefreshIntervalMs={settings.connectionRefreshIntervalMs}
                 processes={snapshot.processes}
                 onSelectProcess={(process) => {
                   selectProcess(process);
                   setActiveView("processes");
                 }}
               />
+            ) : (
+              <SettingsExplorer settings={settings} onChange={updateSettings} />
             )}
           </main>
 
-          {activeView !== "network" ? (
+          {activeView === "overview" || activeView === "processes" || activeView === "storage" ? (
             <ProcessInspector
               selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
               selectionMissing={selectionMissing}

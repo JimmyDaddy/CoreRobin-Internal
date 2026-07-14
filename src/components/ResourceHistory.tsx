@@ -1,9 +1,11 @@
 import type { HistoryPoint } from "../types";
 import { useTranslation } from "react-i18next";
+import type { UsageThresholds } from "../settings";
 import { resourceUsageLevel } from "../utils";
 
 interface ResourceHistoryProps {
   history: HistoryPoint[];
+  usageThresholds: UsageThresholds;
 }
 
 const WIDTH = 720;
@@ -25,7 +27,7 @@ function pathFor(values: number[]): string {
     .join(" ");
 }
 
-export function ResourceHistory({ history }: ResourceHistoryProps) {
+export function ResourceHistory({ history, usageThresholds }: ResourceHistoryProps) {
   const { t } = useTranslation();
   const cpuPath = pathFor(history.map((point) => point.cpuPercent));
   const memoryPath = pathFor(history.map((point) => point.memoryPercent));
@@ -39,8 +41,8 @@ export function ResourceHistory({ history }: ResourceHistoryProps) {
           <h2 id="history-title">{t("history.title")}</h2>
         </div>
         <div className="chart-legend" aria-label={t("history.legend")}>
-          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.cpuPercent)}` : undefined}><i className="legend-dot legend-dot--cpu" />CPU {latest ? `${latest.cpuPercent.toFixed(0)}%` : t("history.warmup")}</span>
-          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.memoryPercent)}` : undefined}><i className="legend-dot legend-dot--memory" />{t("history.memory")} {latest ? `${latest.memoryPercent.toFixed(0)}%` : t("history.warmup")}</span>
+          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.cpuPercent, usageThresholds)}` : undefined}><i className="legend-dot legend-dot--cpu" />CPU {latest ? `${latest.cpuPercent.toFixed(0)}%` : t("history.warmup")}</span>
+          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.memoryPercent, usageThresholds)}` : undefined}><i className="legend-dot legend-dot--memory" />{t("history.memory")} {latest ? `${latest.memoryPercent.toFixed(0)}%` : t("history.warmup")}</span>
         </div>
       </div>
 

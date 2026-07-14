@@ -39,6 +39,7 @@ interface NetworkExplorerProps {
   connectionsError: CommandError | null;
   connectionsLoading: boolean;
   onRefreshConnections: () => void;
+  connectionRefreshIntervalMs: number;
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
 }
@@ -64,6 +65,7 @@ export function NetworkExplorer({
   connectionsError,
   connectionsLoading,
   onRefreshConnections,
+  connectionRefreshIntervalMs,
   processes,
   onSelectProcess,
 }: NetworkExplorerProps) {
@@ -127,6 +129,7 @@ export function NetworkExplorer({
         error={connectionsError}
         loading={connectionsLoading}
         onRefresh={onRefreshConnections}
+        refreshIntervalMs={connectionRefreshIntervalMs}
         processes={processes}
         onSelectProcess={onSelectProcess}
       />
@@ -179,6 +182,7 @@ function NetworkConnectionsPanel({
   error,
   loading,
   onRefresh,
+  refreshIntervalMs,
   processes,
   onSelectProcess,
 }: {
@@ -186,6 +190,7 @@ function NetworkConnectionsPanel({
   error: CommandError | null;
   loading: boolean;
   onRefresh: () => void;
+  refreshIntervalMs: number;
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
 }) {
@@ -208,7 +213,7 @@ function NetworkConnectionsPanel({
         <div>
           <span className="eyebrow">{t("network.connections.collection")}</span>
           <h2 id="network-connections-title">{t("network.connections.title")}</h2>
-          <p>{t("network.connections.description")}</p>
+          <p>{t("network.connections.description", { seconds: refreshIntervalMs / 1_000 })}</p>
         </div>
         <div className="network-connections__status">
           <span>

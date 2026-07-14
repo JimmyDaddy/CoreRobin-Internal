@@ -17,6 +17,7 @@ import {
   topDiskProcesses,
   type StorageSeriesPoint,
 } from "../storageExplorer";
+import type { UsageThresholds } from "../settings";
 import type {
   DiskSnapshot,
   HistoryPoint,
@@ -35,6 +36,7 @@ interface StorageExplorerProps {
   processes: ProcessRow[];
   selectedIdentity: string | null;
   onSelectProcess: (process: ProcessRow) => void;
+  usageThresholds: UsageThresholds;
 }
 
 const CHART_WIDTH = 720;
@@ -48,6 +50,7 @@ export function StorageExplorer({
   processes,
   selectedIdentity,
   onSelectProcess,
+  usageThresholds,
 }: StorageExplorerProps) {
   const { t } = useTranslation();
   const volumes = useMemo(
@@ -132,7 +135,7 @@ export function StorageExplorer({
                 <div className="volume-capacity">
                   <strong>{formatBytes(usedBytes)}</strong>
                   <span>/ {formatBytes(volume.totalBytes)}</span>
-                  <b className={`resource-usage resource-usage--${resourceUsageLevel(usagePercent, [50, 75, 90])}`}>{usagePercent.toFixed(0)}%</b>
+                  <b className={`resource-usage resource-usage--${resourceUsageLevel(usagePercent, usageThresholds)}`}>{usagePercent.toFixed(0)}%</b>
                 </div>
                 <span
                   className="volume-track"
