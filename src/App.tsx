@@ -35,6 +35,7 @@ import { SettingsExplorer } from "./components/SettingsExplorer";
 import { StorageExplorer } from "./components/StorageExplorer";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { usePersistentHistory } from "./hooks/usePersistentHistory";
+import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import { normalizeLanguage } from "./i18n";
@@ -97,6 +98,12 @@ function App() {
   } = useSystemMonitor(settings.systemSampleIntervalMs);
   const persistentHistory = usePersistentHistory(
     history,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+  );
+  const resourceAlerts = useResourceAlerts(
+    snapshot,
+    settings.usageThresholds,
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
   );
@@ -438,7 +445,14 @@ function App() {
 
         <div className="nav-group">
           <span className="nav-label">{t("app.diagnostics")}</span>
-          <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app.history")}</button>
+          <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}>
+            <History size={17} />{t("app.history")}
+            {resourceAlerts.activeAlerts.length > 0 ? (
+              <small className="nav-alert-badge" aria-label={t("history.alerts.active", { count: resourceAlerts.activeAlerts.length })}>
+                {resourceAlerts.activeAlerts.length}
+              </small>
+            ) : null}
+          </button>
           <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app.settings")}</button>
         </div>
 
@@ -606,6 +620,9 @@ function App() {
               <HistoryExplorer
                 points={persistentHistory.points}
                 storedPointCount={persistentHistory.storedPoints.length}
+                alertEvents={resourceAlerts.events}
+                storedAlertEventCount={resourceAlerts.storedEvents.length}
+                activeAlertCount={resourceAlerts.activeAlerts.length}
                 persistenceEnabled={settings.historyPersistenceEnabled}
                 retentionDays={settings.historyRetentionDays}
                 usageThresholds={settings.usageThresholds}
@@ -615,7 +632,10 @@ function App() {
                 onRetentionDaysChange={(historyRetentionDays) =>
                   updateSettings({ historyRetentionDays })
                 }
-                onClear={persistentHistory.clear}
+                onClear={() => {
+                  persistentHistory.clear();
+                  resourceAlerts.clearSaved();
+                }}
               />
             ) : (
               <SettingsExplorer settings={settings} onChange={updateSettings} />

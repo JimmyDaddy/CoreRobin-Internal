@@ -1,5 +1,16 @@
-import { Database, History, Network, ShieldCheck, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import {
+  BellRing,
+  CheckCircle2,
+  Cpu,
+  Database,
+  HardDrive,
+  History,
+  MemoryStick,
+  Network,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -9,10 +20,17 @@ import {
 import type { UsageThresholds } from "../settings";
 import type { HistoryPoint } from "../types";
 import { formatRate, resourceUsageLevel } from "../utils";
+import type {
+  ResourceAlertEvent,
+  ResourceAlertResource,
+} from "../resourceAlerts";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
   storedPointCount: number;
+  alertEvents: ResourceAlertEvent[];
+  storedAlertEventCount: number;
+  activeAlertCount: number;
   persistenceEnabled: boolean;
   retentionDays: HistoryRetentionDays;
   usageThresholds: UsageThresholds;
@@ -29,6 +47,9 @@ const CHART_BOTTOM = 178;
 export function HistoryExplorer({
   points,
   storedPointCount,
+  alertEvents,
+  storedAlertEventCount,
+  activeAlertCount,
   persistenceEnabled,
   retentionDays,
   usageThresholds,
@@ -37,7 +58,16 @@ export function HistoryExplorer({
   onClear,
 }: HistoryExplorerProps) {
   const { t, i18n } = useTranslation();
+  const [alertFilter, setAlertFilter] = useState<"all" | ResourceAlertResource>("all");
   const summary = useMemo(() => summarizeHistory(points), [points]);
+  const visibleAlertEvents = useMemo(
+    () =>
+      [...alertEvents]
+        .filter((event) => alertFilter === "all" || event.resource === alertFilter)
+        .reverse()
+        .slice(0, 100),
+    [alertEvents, alertFilter],
+  );
   const range = historyRangeLabel(points, i18n.resolvedLanguage);
 
   return (
@@ -83,11 +113,12 @@ export function HistoryExplorer({
         </label>
         <span className="history-controls__range">
           {range ?? t("history.noRange")} · {t("history.savedPoints", { count: storedPointCount })}
+          {" · "}{t("history.alerts.savedEvents", { count: storedAlertEventCount })}
         </span>
         <button
           className="button button--danger-ghost"
           type="button"
-          disabled={storedPointCount === 0}
+          disabled={storedPointCount === 0 && storedAlertEventCount === 0}
           onClick={onClear}
         >
           <Trash2 size={14} />{t("history.clearSaved")}
@@ -122,6 +153,52 @@ export function HistoryExplorer({
         </>
       )}
 
+      <section className="panel history-alerts" aria-labelledby="history-alerts-title">
+        <header className="history-alerts__header">
+          <div>
+            <span className="eyebrow">{t("history.alerts.eyebrow")}</span>
+            <h3 id="history-alerts-title"><BellRing size={16} />{t("history.alerts.title")}</h3>
+            <p>{t("history.alerts.description")}</p>
+          </div>
+          <span className={`history-alerts__status${activeAlertCount > 0 ? " is-active" : ""}`}>
+            {activeAlertCount > 0
+              ? t("history.alerts.active", { count: activeAlertCount })
+              : t("history.alerts.normal")}
+          </span>
+        </header>
+        <div className="history-alerts__toolbar">
+          <div className="history-alert-filters" role="group" aria-label={t("history.alerts.filters")}>
+            {(["all", "cpu", "memory", "volume"] as const).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                className={alertFilter === filter ? "is-active" : ""}
+                aria-pressed={alertFilter === filter}
+                onClick={() => setAlertFilter(filter)}
+              >
+                {filter === "all"
+                  ? t("history.alerts.all")
+                  : alertResourceLabel(filter, t)}
+              </button>
+            ))}
+          </div>
+          <span>{t("history.alerts.eventCount", { count: visibleAlertEvents.length })}</span>
+        </div>
+        {visibleAlertEvents.length === 0 ? (
+          <div className="history-alerts__empty">
+            <CheckCircle2 size={20} />
+            <strong>{t("history.alerts.emptyTitle")}</strong>
+            <span>{t("history.alerts.emptyDescription")}</span>
+          </div>
+        ) : (
+          <div className="history-alert-list">
+            {visibleAlertEvents.map((event) => (
+              <ResourceAlertRow key={event.id} event={event} />
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="panel history-privacy" aria-labelledby="history-privacy-title">
         <span className="history-privacy__icon" aria-hidden="true"><ShieldCheck size={19} /></span>
         <div>
@@ -137,6 +214,66 @@ export function HistoryExplorer({
       </section>
     </section>
   );
+}
+
+function ResourceAlertRow({ event }: { event: ResourceAlertEvent }) {
+  const { t, i18n } = useTranslation();
+  const Icon = event.resource === "cpu"
+    ? Cpu
+    : event.resource === "memory"
+      ? MemoryStick
+      : HardDrive;
+  const duration = formatAlertDuration(event.durationMs, t);
+  return (
+    <article className={`history-alert-row is-${event.kind} is-${event.severity}`}>
+      <span className="history-alert-row__icon" aria-hidden="true"><Icon size={16} /></span>
+      <div className="history-alert-row__body">
+        <div>
+          <strong>{alertResourceLabel(event.resource, t)}</strong>
+          <span>{event.kind === "triggered"
+            ? t(`history.alerts.severity.${event.severity}`)
+            : t("history.alerts.recovered")}</span>
+        </div>
+        <p>
+          {event.kind === "triggered"
+            ? t("history.alerts.triggeredDetail", {
+                value: event.valuePercent.toFixed(0),
+                threshold: event.thresholdPercent.toFixed(0),
+                duration,
+              })
+            : t("history.alerts.recoveredDetail", {
+                value: event.valuePercent.toFixed(0),
+                duration,
+              })}
+        </p>
+      </div>
+      <time dateTime={new Date(event.timestamp).toISOString()}>
+        {formatTimestamp(event.timestamp, i18n.resolvedLanguage)}
+      </time>
+    </article>
+  );
+}
+
+function alertResourceLabel(
+  resource: ResourceAlertResource,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (resource === "cpu") return "CPU";
+  if (resource === "memory") return t("history.memory");
+  return t("history.alerts.volume");
+}
+
+function formatAlertDuration(
+  durationMs: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const seconds = Math.max(1, Math.round(durationMs / 1_000));
+  if (seconds < 60) return t("format.seconds", { count: seconds });
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return t("format.minutes", { count: minutes });
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return t("format.hours", { count: hours });
+  return t("format.days", { count: Math.round(hours / 24) });
 }
 
 function HistorySummaryItem({
