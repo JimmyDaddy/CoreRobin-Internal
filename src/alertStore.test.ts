@@ -57,6 +57,22 @@ describe("resource alert event storage", () => {
         JSON.stringify({ version: 1, events: [valid, { ...valid, resource: "gpu" }] }),
       ),
     ).toEqual([valid]);
+    expect(
+      parseResourceAlertEvents(
+        JSON.stringify({
+          version: 1,
+          events: [{
+            ...valid,
+            peakValuePercent: 88,
+            peakAtMs: valid.timestamp,
+            culpritName: "Docker Desktop",
+          }],
+        }),
+      ),
+    ).toMatchObject([{
+      peakValuePercent: 88,
+      culpritName: "Docker Desktop",
+    }]);
   });
 
   it("persists, loads, and clears safely", () => {

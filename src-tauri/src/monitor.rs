@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{
-    CpuRefreshKind, Disks, MINIMUM_CPU_UPDATE_INTERVAL, Networks, ProcessRefreshKind,
-    ProcessesToUpdate, System, UpdateKind, Users,
+    CpuRefreshKind, DiskRefreshKind, Disks, MINIMUM_CPU_UPDATE_INTERVAL, Networks,
+    ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind, Users,
 };
 
 use crate::error::CommandError;
@@ -14,6 +14,7 @@ use crate::models::{
     ProcessDetailRequest, ProcessKey, ProcessRow, SNAPSHOT_SCHEMA_VERSION, SystemSnapshot,
     VolumeSnapshot,
 };
+use crate::sensors::SensorSampler;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct NetworkSessionCounters {
@@ -55,6 +56,7 @@ pub struct SystemMonitor {
     network_sessions: HashMap<String, NetworkSessionCounters>,
     own_pid: u32,
     process_control_capabilities: ProcessControlCapabilities,
+    sensors: SensorSampler,
 }
 
 impl SystemMonitor {
@@ -89,6 +91,7 @@ impl SystemMonitor {
             network_sessions: HashMap::new(),
             own_pid: std::process::id(),
             process_control_capabilities,
+            sensors: SensorSampler::new(),
         }
     }
 
@@ -102,7 +105,15 @@ impl SystemMonitor {
             process_refresh_kind(),
         );
         self.networks.refresh(true);
-        self.disks.refresh(true);
+        // Refreshing the full disk list on macOS asks CoreFoundation for every
+        // mounted volume's properties. A stale or busy APFS/network mount can
+        // block that call indefinitely and prevent the first snapshot from
+        // reaching the UI. The list and capacity metadata are established when
+        // the monitor is created; high-frequency samples only need fresh I/O
+        // counters.
+        for disk in self.disks.list_mut() {
+            disk.refresh_specifics(DiskRefreshKind::nothing().with_io_usage());
+        }
 
         self.sequence = self.sequence.saturating_add(1);
         self.last_sample = Instant::now();
@@ -268,6 +279,7 @@ impl SystemMonitor {
                 interface_count: network_interfaces.len(),
                 interfaces: network_interfaces,
             },
+            sensors: self.sensors.sample(),
             processes,
             capabilities: Capabilities {
                 platform: std::env::consts::OS.to_owned(),

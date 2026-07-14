@@ -5,6 +5,7 @@ import {
   ArrowUpFromLine,
   ChevronRight,
   HardDrive,
+  Sparkles,
   Usb,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -37,6 +38,7 @@ interface StorageExplorerProps {
   selectedIdentity: string | null;
   onSelectProcess: (process: ProcessRow) => void;
   usageThresholds: UsageThresholds;
+  onOpenCleanup: () => void;
 }
 
 const CHART_WIDTH = 720;
@@ -51,6 +53,7 @@ export function StorageExplorer({
   selectedIdentity,
   onSelectProcess,
   usageThresholds,
+  onOpenCleanup,
 }: StorageExplorerProps) {
   const { t } = useTranslation();
   const volumes = useMemo(
@@ -72,9 +75,14 @@ export function StorageExplorer({
             <h2 id="storage-title">{t("storage.title")}</h2>
             <p>{t("storage.description")}</p>
           </div>
-          <span className="storage-overview__badge">
-            <HardDrive size={14} />{t("storage.volumeCount", { count: volumes.length })}
-          </span>
+          <div className="storage-overview__actions">
+            <span className="storage-overview__badge">
+              <HardDrive size={14} />{t("storage.volumeCount", { count: volumes.length })}
+            </span>
+            <button className="button button--primary storage-overview__cleanup" type="button" onClick={onOpenCleanup}>
+              <Sparkles size={14} />{t("storage.openCleanup")}
+            </button>
+          </div>
         </header>
 
         <div className="storage-summary" aria-label={t("storage.summary")}>

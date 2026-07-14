@@ -1,4 +1,8 @@
 import type { UsageThresholds } from "./settings";
+import type { MemorySnapshot } from "./types";
+
+const MEBIBYTE = 1_024 * 1_024;
+const GIBIBYTE = 1_024 * MEBIBYTE;
 
 export const ALERT_BREACH_DURATION_MS = 10_000;
 export const ALERT_RECOVERY_DURATION_MS = 15_000;
@@ -21,11 +25,16 @@ export interface ResourceAlertEvent {
   thresholdPercent: number;
   startedAtMs: number;
   durationMs: number;
+  peakValuePercent?: number;
+  peakAtMs?: number;
+  culpritName?: string | null;
 }
 
 export interface ResourceAlertSample {
   resource: ResourceAlertResource;
   valuePercent: number | null;
+  alertThresholdPercent?: number;
+  criticalThresholdPercent?: number;
 }
 
 interface ResourceAlertTracker {
@@ -35,6 +44,8 @@ interface ResourceAlertTracker {
   activeSeverity: ResourceAlertSeverity | null;
   cooldownUntilMs: number;
   lastValuePercent: number | null;
+  peakValuePercent: number | null;
+  peakAtMs: number | null;
 }
 
 export interface ResourceAlertEvaluationState {
@@ -46,6 +57,25 @@ export interface ActiveResourceAlert {
   severity: ResourceAlertSeverity;
   startedAtMs: number;
   valuePercent: number;
+}
+
+export function memoryPressureAlertPercent(memory: MemorySnapshot): number {
+  if (memory.totalBytes <= 0) return 0;
+  const availablePercent = Math.min(
+    100,
+    Math.max(0, memory.availableBytes / memory.totalBytes * 100),
+  );
+  const usedPercent = Math.min(
+    100,
+    Math.max(0, memory.usedBytes / memory.totalBytes * 100),
+  );
+  const meaningfulSwap =
+    memory.swapUsedBytes >= 512 * MEBIBYTE &&
+    (memory.swapTotalBytes <= 0 || memory.swapUsedBytes / memory.swapTotalBytes >= 0.1);
+  const immediatePressure = availablePercent <= 3 && memory.swapUsedBytes >= GIBIBYTE;
+  return immediatePressure || (availablePercent <= 10 && meaningfulSwap)
+    ? usedPercent
+    : 0;
 }
 
 interface ResourceAlertTiming {
@@ -80,12 +110,6 @@ export function evaluateResourceAlerts(
   timing: Partial<ResourceAlertTiming> = {},
 ): { state: ResourceAlertEvaluationState; events: ResourceAlertEvent[] } {
   const options = { ...DEFAULT_TIMING, ...timing };
-  const alertThreshold = thresholds[1];
-  const criticalThreshold = thresholds[2];
-  const recoveryThreshold = Math.max(
-    0,
-    alertThreshold - options.recoveryHysteresisPercent,
-  );
   const trackers = { ...current.trackers };
   const events: ResourceAlertEvent[] = [];
 
@@ -99,11 +123,24 @@ export function evaluateResourceAlerts(
     }
 
     const valuePercent = Math.min(100, sample.valuePercent);
+    const alertThreshold = sample.alertThresholdPercent ?? thresholds[1];
+    const criticalThreshold = sample.criticalThresholdPercent ?? thresholds[2];
+    const recoveryThreshold = Math.max(
+      0,
+      alertThreshold - options.recoveryHysteresisPercent,
+    );
     const tracker = { ...trackers[sample.resource], lastValuePercent: valuePercent };
 
     if (valuePercent >= alertThreshold) {
       tracker.recoverySinceMs = null;
       if (tracker.activeSinceMs !== null) {
+        if (
+          tracker.peakValuePercent === null ||
+          valuePercent > tracker.peakValuePercent
+        ) {
+          tracker.peakValuePercent = valuePercent;
+          tracker.peakAtMs = sampledAtMs;
+        }
         if (valuePercent >= criticalThreshold) {
           tracker.activeSeverity = "critical";
         }
@@ -113,6 +150,8 @@ export function evaluateResourceAlerts(
         if (sustained && sampledAtMs >= tracker.cooldownUntilMs) {
           tracker.activeSinceMs = tracker.breachSinceMs;
           tracker.activeSeverity = severityFor(valuePercent, criticalThreshold);
+          tracker.peakValuePercent = valuePercent;
+          tracker.peakAtMs = sampledAtMs;
           events.push(
             alertEvent(
               sample.resource,
@@ -122,6 +161,8 @@ export function evaluateResourceAlerts(
               alertThreshold,
               tracker.activeSinceMs,
               sampledAtMs,
+              tracker.peakValuePercent,
+              tracker.peakAtMs,
             ),
           );
         }
@@ -140,12 +181,16 @@ export function evaluateResourceAlerts(
               alertThreshold,
               tracker.activeSinceMs,
               sampledAtMs,
+              tracker.peakValuePercent,
+              tracker.peakAtMs,
             ),
           );
           tracker.activeSinceMs = null;
           tracker.activeSeverity = null;
           tracker.recoverySinceMs = null;
           tracker.cooldownUntilMs = sampledAtMs + options.cooldownMs;
+          tracker.peakValuePercent = null;
+          tracker.peakAtMs = null;
         }
       }
     } else {
@@ -185,6 +230,8 @@ function createTracker(): ResourceAlertTracker {
     activeSeverity: null,
     cooldownUntilMs: 0,
     lastValuePercent: null,
+    peakValuePercent: null,
+    peakAtMs: null,
   };
 }
 
@@ -203,6 +250,8 @@ function alertEvent(
   thresholdPercent: number,
   startedAtMs: number,
   timestamp: number,
+  peakValuePercent: number | null,
+  peakAtMs: number | null,
 ): ResourceAlertEvent {
   return {
     id: `${resource}:${kind}:${timestamp}`,
@@ -214,5 +263,7 @@ function alertEvent(
     thresholdPercent,
     startedAtMs,
     durationMs: Math.max(0, timestamp - startedAtMs),
+    peakValuePercent: peakValuePercent ?? valuePercent,
+    peakAtMs: peakAtMs ?? timestamp,
   };
 }

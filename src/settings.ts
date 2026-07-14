@@ -1,5 +1,6 @@
 import type { SupportedLanguage } from "./i18n";
 import type { HistoryRetentionDays } from "./historyStore";
+import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
 
 export const APP_SETTINGS_STORAGE_KEY = "pulse.settings.v1";
@@ -7,16 +8,21 @@ export const SYSTEM_SAMPLE_INTERVAL_OPTIONS = [500, 1_000, 2_000, 5_000] as cons
 export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000] as const;
 
 export type UsageThresholds = readonly [number, number, number];
+export type ExperienceMode = "simple" | "professional";
 
 export interface AppSettings {
   version: 1;
   language: SupportedLanguage;
+  experienceMode: ExperienceMode;
   systemSampleIntervalMs: number;
   connectionRefreshIntervalMs: number;
   usageThresholds: UsageThresholds;
   defaultProcessView: ProcessViewMode;
   historyPersistenceEnabled: boolean;
+  historyApplicationNamesEnabled: boolean;
   historyRetentionDays: HistoryRetentionDays;
+  desktopNotificationsEnabled: boolean;
+  mutedNotificationResources: ResourceAlertResource[];
 }
 
 export function defaultAppSettings(
@@ -25,12 +31,16 @@ export function defaultAppSettings(
   return {
     version: 1,
     language,
+    experienceMode: "simple",
     systemSampleIntervalMs: 1_000,
     connectionRefreshIntervalMs: 5_000,
     usageThresholds: [35, 65, 85],
     defaultProcessView: "flat",
     historyPersistenceEnabled: true,
+    historyApplicationNamesEnabled: false,
     historyRetentionDays: 7,
+    desktopNotificationsEnabled: false,
+    mutedNotificationResources: [],
   };
 }
 
@@ -50,6 +60,9 @@ export function parseAppSettings(
       language: isSupportedLanguage(value.language)
         ? value.language
         : fallback.language,
+      experienceMode: isExperienceMode(value.experienceMode)
+        ? value.experienceMode
+        : fallback.experienceMode,
       systemSampleIntervalMs: isAllowedNumber(
         value.systemSampleIntervalMs,
         SYSTEM_SAMPLE_INTERVAL_OPTIONS,
@@ -72,9 +85,20 @@ export function parseAppSettings(
         typeof value.historyPersistenceEnabled === "boolean"
           ? value.historyPersistenceEnabled
           : fallback.historyPersistenceEnabled,
+      historyApplicationNamesEnabled:
+        typeof value.historyApplicationNamesEnabled === "boolean"
+          ? value.historyApplicationNamesEnabled
+          : fallback.historyApplicationNamesEnabled,
       historyRetentionDays: isHistoryRetentionDays(value.historyRetentionDays)
         ? value.historyRetentionDays
         : fallback.historyRetentionDays,
+      desktopNotificationsEnabled:
+        typeof value.desktopNotificationsEnabled === "boolean"
+          ? value.desktopNotificationsEnabled
+          : fallback.desktopNotificationsEnabled,
+      mutedNotificationResources: isNotificationResourceArray(value.mutedNotificationResources)
+        ? value.mutedNotificationResources
+        : fallback.mutedNotificationResources,
     };
   } catch {
     return fallback;
@@ -117,12 +141,22 @@ function isSupportedLanguage(value: unknown): value is SupportedLanguage {
   return value === "zh-CN" || value === "en";
 }
 
+function isExperienceMode(value: unknown): value is ExperienceMode {
+  return value === "simple" || value === "professional";
+}
+
 function isProcessViewMode(value: unknown): value is ProcessViewMode {
   return value === "flat" || value === "tree";
 }
 
 function isHistoryRetentionDays(value: unknown): value is HistoryRetentionDays {
   return value === 1 || value === 7 || value === 30;
+}
+
+function isNotificationResourceArray(value: unknown): value is ResourceAlertResource[] {
+  return Array.isArray(value) && value.every((resource) =>
+    resource === "cpu" || resource === "memory" || resource === "volume"
+  );
 }
 
 function isAllowedNumber<const Values extends readonly number[]>(

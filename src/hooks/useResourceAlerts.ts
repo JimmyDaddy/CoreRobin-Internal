@@ -6,26 +6,35 @@ import {
   mergeResourceAlertEvents,
   saveResourceAlertEvents,
 } from "../alertStore";
+import { alertCulpritName } from "../alertAttribution";
+import { aggregateApplications } from "../diagnosis";
 import type { HistoryRetentionDays } from "../historyStore";
 import {
   activeResourceAlerts,
   createResourceAlertEvaluationState,
   evaluateResourceAlerts,
+  memoryPressureAlertPercent,
   type ActiveResourceAlert,
   type ResourceAlertEvent,
+  type ResourceAlertResource,
 } from "../resourceAlerts";
 import type { UsageThresholds } from "../settings";
 import { volumeUsage } from "../storageExplorer";
 import type { SystemSnapshot } from "../types";
-import { memoryUsagePercent } from "../utils";
 
 export function useResourceAlerts(
   snapshot: SystemSnapshot | null,
   thresholds: UsageThresholds,
   persistenceEnabled: boolean,
   retentionDays: HistoryRetentionDays,
+  applicationNamesEnabled: boolean,
 ) {
   const evaluationRef = useRef(createResourceAlertEvaluationState());
+  const culpritNamesRef = useRef<Record<ResourceAlertResource, string | null>>({
+    cpu: null,
+    memory: null,
+    volume: null,
+  });
   const [activeAlerts, setActiveAlerts] = useState<ActiveResourceAlert[]>([]);
   const [sessionEvents, setSessionEvents] = useState<ResourceAlertEvent[]>([]);
   const [storedEvents, setStoredEvents] = useState<ResourceAlertEvent[]>(
@@ -47,12 +56,16 @@ export function useResourceAlerts(
         { resource: "cpu", valuePercent: snapshot.cpu.usagePercent },
         {
           resource: "memory",
-          valuePercent: memoryUsagePercent(
-            snapshot.memory.usedBytes,
-            snapshot.memory.totalBytes,
-          ),
+          valuePercent: memoryPressureAlertPercent(snapshot.memory),
+          alertThresholdPercent: 90,
+          criticalThresholdPercent: 95,
         },
-        { resource: "volume", valuePercent: volumePercent },
+        {
+          resource: "volume",
+          valuePercent: volumePercent,
+          alertThresholdPercent: 85,
+          criticalThresholdPercent: 95,
+        },
       ],
       snapshot.sampledAtMs,
       thresholds,
@@ -61,19 +74,36 @@ export function useResourceAlerts(
     setActiveAlerts(activeResourceAlerts(result.state));
 
     if (result.events.length === 0) return;
+    const applications = aggregateApplications(snapshot.processes);
+    const events = result.events.map((event) => {
+      const culpritName = event.kind === "triggered"
+        ? alertCulpritName(
+            event.resource,
+            applications,
+            snapshot.memory.totalBytes,
+          )
+        : culpritNamesRef.current[event.resource];
+      culpritNamesRef.current[event.resource] = event.kind === "triggered"
+        ? culpritName
+        : null;
+      return { ...event, culpritName };
+    });
     setSessionEvents((current) =>
       mergeResourceAlertEvents(
         current,
-        result.events,
+        events,
         snapshot.sampledAtMs,
         retentionDays,
       ),
     );
     if (persistenceEnabled) {
       setStoredEvents((current) => {
+        const persistentEvents = applicationNamesEnabled
+          ? events
+          : events.map((event) => ({ ...event, culpritName: null }));
         const next = mergeResourceAlertEvents(
           current,
-          result.events,
+          persistentEvents,
           snapshot.sampledAtMs,
           retentionDays,
         );
@@ -81,7 +111,16 @@ export function useResourceAlerts(
         return next;
       });
     }
-  }, [persistenceEnabled, retentionDays, snapshot, thresholds]);
+  }, [applicationNamesEnabled, persistenceEnabled, retentionDays, snapshot, thresholds]);
+
+  useEffect(() => {
+    if (applicationNamesEnabled) return;
+    setStoredEvents((current) => {
+      const next = current.map((event) => ({ ...event, culpritName: null }));
+      saveResourceAlertEvents(next);
+      return next;
+    });
+  }, [applicationNamesEnabled]);
 
   useEffect(() => {
     setStoredEvents((current) => {

@@ -23,23 +23,31 @@ describe("application settings", () => {
         JSON.stringify({
           version: 1,
           language: "en",
+          experienceMode: "professional",
           systemSampleIntervalMs: 2_000,
           connectionRefreshIntervalMs: 10_000,
           usageThresholds: [40, 70, 90],
           defaultProcessView: "tree",
           historyPersistenceEnabled: false,
+          historyApplicationNamesEnabled: true,
           historyRetentionDays: 30,
+          desktopNotificationsEnabled: true,
+          mutedNotificationResources: ["cpu"],
         }),
       ),
     ).toEqual({
       version: 1,
       language: "en",
+      experienceMode: "professional",
       systemSampleIntervalMs: 2_000,
       connectionRefreshIntervalMs: 10_000,
       usageThresholds: [40, 70, 90],
       defaultProcessView: "tree",
       historyPersistenceEnabled: false,
+      historyApplicationNamesEnabled: true,
       historyRetentionDays: 30,
+      desktopNotificationsEnabled: true,
+      mutedNotificationResources: ["cpu"],
     });
 
     expect(
@@ -47,6 +55,7 @@ describe("application settings", () => {
         JSON.stringify({
           version: 1,
           language: "fr",
+          experienceMode: "expert",
           systemSampleIntervalMs: 42,
           connectionRefreshIntervalMs: 42,
           usageThresholds: [90, 70, 40],
@@ -55,6 +64,16 @@ describe("application settings", () => {
         "en",
       ),
     ).toEqual(defaultAppSettings("en"));
+  });
+
+  it("migrates existing version 1 preferences to simple mode", () => {
+    const legacy = {
+      ...defaultAppSettings("en"),
+      experienceMode: undefined,
+    };
+    expect(parseAppSettings(JSON.stringify(legacy), "en").experienceMode).toBe(
+      "simple",
+    );
   });
 
   it("sanitizes persisted settings and survives blocked storage", () => {

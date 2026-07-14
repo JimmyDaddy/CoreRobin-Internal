@@ -106,7 +106,18 @@ function isResourceAlertEvent(value: unknown): value is ResourceAlertEvent {
     isPercentage(value.thresholdPercent) &&
     isFinitePositiveNumber(value.startedAtMs) &&
     isFiniteNonNegativeNumber(value.durationMs) &&
-    value.startedAtMs <= value.timestamp
+    value.startedAtMs <= value.timestamp &&
+    (value.peakValuePercent === undefined || isPercentage(value.peakValuePercent)) &&
+    (value.peakAtMs === undefined || (
+      isFinitePositiveNumber(value.peakAtMs) &&
+      value.peakAtMs >= value.startedAtMs &&
+      value.peakAtMs <= value.timestamp
+    )) &&
+    (value.culpritName === undefined || value.culpritName === null || (
+      typeof value.culpritName === "string" &&
+      value.culpritName.length > 0 &&
+      value.culpritName.length <= 120
+    ))
   );
 }
 

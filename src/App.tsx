@@ -1,5 +1,6 @@
 import {
-  Activity,
+  ChevronDown,
+  ChevronUp,
   CircleGauge,
   Cpu,
   Database,
@@ -12,8 +13,13 @@ import {
   Pause,
   Play,
   RefreshCw,
+  Rocket,
   Settings2,
+  Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +31,9 @@ import {
   releaseProcessControlLease,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
+import { ApplicationImpactPanel } from "./components/ApplicationImpactPanel";
+import { CleanupAssistant } from "./components/CleanupAssistant";
+import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { HistoryExplorer } from "./components/HistoryExplorer";
 import { MetricCard } from "./components/MetricCard";
 import { NetworkExplorer } from "./components/NetworkExplorer";
@@ -32,13 +41,20 @@ import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { SettingsExplorer } from "./components/SettingsExplorer";
+import { SmartDiagnosis } from "./components/SmartDiagnosis";
 import { StorageExplorer } from "./components/StorageExplorer";
+import { StartupExplorer } from "./components/StartupExplorer";
+import { analyzeSystemHealth, type ApplicationImpact } from "./diagnosis";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
+import { useCleanupScan } from "./hooks/useCleanupScan";
+import { useDesktopNotifications } from "./hooks/useDesktopNotifications";
 import { usePersistentHistory } from "./hooks/usePersistentHistory";
 import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
+import { useStartupItems } from "./hooks/useStartupItems";
 import { normalizeLanguage } from "./i18n";
+import brandMark from "./assets/brand-mark.png";
 import {
   defaultProcessExplorerPreferences,
   loadProcessExplorerPreferences,
@@ -46,11 +62,13 @@ import {
   saveProcessExplorerPreferences,
   type ProcessExplorerPreferences,
 } from "./processExplorer";
+import type { ResourceAlertResource } from "./resourceAlerts";
 import {
   loadAppSettings,
   saveAppSettings,
   type AppSettings,
 } from "./settings";
+import { buildTraySummary } from "./traySummary";
 import type {
   CommandError,
   ProcessAction,
@@ -72,9 +90,27 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes" | "storage" | "network" | "history" | "settings";
+type ActiveView = "overview" | "processes" | "storage" | "cleanup" | "network" | "startup" | "history" | "settings";
+
+const MAIN_SURFACE_STARTED_AT = performance.now();
+const MINIMUM_SPLASH_DURATION_MS = 1300;
+
+function isActiveView(value: unknown): value is ActiveView {
+  return typeof value === "string" && [
+    "overview",
+    "processes",
+    "storage",
+    "cleanup",
+    "network",
+    "startup",
+    "history",
+    "settings",
+  ].includes(value);
+}
 
 interface PendingProcessAction {
+  source: "process" | "diagnosis";
+  displayName: string;
   action: ProcessAction;
   selectionIdentity: string;
   key: ProcessKey;
@@ -96,6 +132,16 @@ function App() {
     loading,
     refreshNow,
   } = useSystemMonitor(settings.systemSampleIntervalMs);
+  const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [diagnosisExpanded, setDiagnosisExpanded] = useState(false);
+  const handleOpenAlertEvidence = useCallback((resource: ResourceAlertResource) => {
+    if (resource === "volume") {
+      setActiveView("storage");
+      return;
+    }
+    setActiveView("overview");
+    setDiagnosisExpanded(true);
+  }, []);
   const persistentHistory = usePersistentHistory(
     history,
     settings.historyPersistenceEnabled,
@@ -106,15 +152,26 @@ function App() {
     settings.usageThresholds,
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
+    settings.historyApplicationNamesEnabled,
   );
-  const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const desktopNotifications = useDesktopNotifications(
+    resourceAlerts.events,
+    settings.desktopNotificationsEnabled,
+    settings.language,
+    settings.mutedNotificationResources,
+    handleOpenAlertEvidence,
+  );
+  const [technicalOverviewExpanded, setTechnicalOverviewExpanded] = useState(false);
+  const cleanupScan = useCleanupScan();
+  const startupItems = useStartupItems(activeView === "startup");
   const {
     snapshot: connectionsSnapshot,
     error: connectionsError,
     loading: connectionsLoading,
     refreshNow: refreshConnections,
   } = useNetworkConnections(
-    activeView === "network",
+    activeView === "network" ||
+      (activeView === "overview" && diagnosisExpanded),
     paused,
     settings.connectionRefreshIntervalMs,
   );
@@ -138,13 +195,28 @@ function App() {
   const activeDetailKeyRef = useRef<ProcessKey | null>(null);
   const preparingActionRef = useRef(false);
   const submittingActionRef = useRef(false);
+  const startupCompletedRef = useRef(false);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
+  const diagnosis = useMemo(
+    () => snapshot
+      ? analyzeSystemHealth({
+          snapshot,
+          history,
+          connections: connectionsSnapshot,
+        })
+      : null,
+    [connectionsSnapshot, history, snapshot],
+  );
   const refreshActiveView = useCallback(async () => {
     await Promise.all([
       refreshNow(),
-      ...(activeView === "network" ? [refreshConnections()] : []),
+      ...(activeView === "network" ||
+      (activeView === "overview" && diagnosisExpanded)
+        ? [refreshConnections()]
+        : []),
+      ...(activeView === "cleanup" ? [cleanupScan.scan()] : []),
     ]);
-  }, [activeView, refreshConnections, refreshNow]);
+  }, [activeView, cleanupScan.scan, diagnosisExpanded, refreshConnections, refreshNow]);
 
   const selectedProcess = useMemo(
     () =>
@@ -161,6 +233,52 @@ function App() {
   useEffect(() => {
     mainContentRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [activeView]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime() || loading || startupCompletedRef.current) return;
+    startupCompletedRef.current = true;
+    const remaining = Math.max(
+      0,
+      MINIMUM_SPLASH_DURATION_MS - (performance.now() - MAIN_SURFACE_STARTED_AT),
+    );
+    const timeout = window.setTimeout(() => {
+      void invoke("complete_startup");
+    }, remaining);
+    return () => window.clearTimeout(timeout);
+  }, [loading]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    const unlisteners: Array<() => void> = [];
+    void Promise.all([
+      listen<unknown>("pulse:navigate", ({ payload }) => {
+        if (!disposed && isActiveView(payload)) setActiveView(payload);
+      }),
+      listen<boolean>("pulse:set-paused", ({ payload }) => {
+        if (!disposed) setPaused(Boolean(payload));
+      }),
+      listen("pulse:refresh", () => {
+        if (!disposed) void refreshNow();
+      }),
+    ]).then((nextUnlisteners) => {
+      if (disposed) nextUnlisteners.forEach((unlisten) => unlisten());
+      else unlisteners.push(...nextUnlisteners);
+    });
+    return () => {
+      disposed = true;
+      unlisteners.forEach((unlisten) => unlisten());
+    };
+  }, [refreshNow, setPaused]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime() || !snapshot) return;
+    void emitTo(
+      "tray",
+      "pulse:tray-summary",
+      buildTraySummary(snapshot, paused, settings.usageThresholds),
+    );
+  }, [paused, settings.usageThresholds, snapshot]);
 
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
@@ -301,6 +419,17 @@ function App() {
     [discardPendingAction, pendingAction],
   );
 
+  const selectApplication = useCallback(
+    (application: ApplicationImpact) => {
+      const representative = snapshot?.processes.find(
+        (process) =>
+          processIdentity(process) === application.representativeIdentity,
+      );
+      if (representative) selectProcess(representative);
+    },
+    [selectProcess, snapshot],
+  );
+
   const beginProcessAction = useCallback(
     async (action: ProcessAction) => {
       if (
@@ -333,6 +462,8 @@ function App() {
           return;
         }
         setPendingAction({
+          source: "process",
+          displayName: activeDetail.name,
           action,
           selectionIdentity,
           key,
@@ -349,9 +480,88 @@ function App() {
     [activeDetail, bestEffortOptIn, selectedIdentity, snapshot?.capabilities.processControl.targeting],
   );
 
+  const beginDiagnosisRequestClose = useCallback(
+    async (identity: string, applicationName: string) => {
+      if (preparingActionRef.current || !snapshot) return;
+      const process = snapshot.processes.find(
+        (candidate) => processIdentity(candidate) === identity,
+      );
+      if (!process || process.protected || !process.birthToken) {
+        setNotice(t("diagnosis.recommendations.actionUnavailable"));
+        return;
+      }
+
+      discardPendingAction(pendingAction);
+      setPendingAction(null);
+      selectedIdentityRef.current = identity;
+      setSelectedIdentity(identity);
+      setLastSelected(process);
+      setNotice(null);
+      preparingActionRef.current = true;
+      setPreparingAction(true);
+      try {
+        const nextDetail = await getProcessDetail({
+          pid: process.pid,
+          snapshotStartTime: process.startTime,
+          snapshotBirthToken: process.birthToken,
+        });
+        if (
+          selectedIdentityRef.current !== identity ||
+          !detailMatchesProcess(nextDetail, process) ||
+          !nextDetail.key
+        ) {
+          setNotice(t("app.staleTarget"));
+          return;
+        }
+        if (!nextDetail.canTerminate) {
+          setNotice(
+            nextDetail.protectedReason ??
+            nextDetail.identityError ??
+            t("diagnosis.recommendations.actionUnavailable"),
+          );
+          return;
+        }
+
+        const lease = await createProcessControlLease({
+          key: nextDetail.key,
+          action: "request_close",
+          // The diagnosis confirmation dialog explains the best-effort target
+          // boundary before execution, so preparing this lease is an explicit
+          // user-initiated acknowledgement and still sends no signal itself.
+          acknowledgeBestEffort: true,
+        });
+        if (selectedIdentityRef.current !== identity) {
+          await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
+          setNotice(t("app.staleTarget"));
+          return;
+        }
+        setDetail(nextDetail);
+        setPendingAction({
+          source: "diagnosis",
+          displayName: applicationName,
+          action: "request_close",
+          selectionIdentity: identity,
+          key: nextDetail.key,
+          lease,
+          detail: nextDetail,
+        });
+      } catch (caughtError) {
+        setNotice(normalizeCommandError(caughtError).message);
+      } finally {
+        preparingActionRef.current = false;
+        setPreparingAction(false);
+      }
+    },
+    [discardPendingAction, pendingAction, snapshot, t],
+  );
+
   const handleAction = async () => {
     if (!pendingAction || submittingActionRef.current) return;
-    const currentKey = activeDetail?.key ?? null;
+    const currentKey = pendingAction.source === "diagnosis"
+      ? selectedProcess && processIdentity(selectedProcess) === pendingAction.selectionIdentity
+        ? pendingAction.key
+        : null
+      : activeDetail?.key ?? null;
     if (
       selectedIdentity !== pendingAction.selectionIdentity ||
       !processKeysEqual(currentKey, pendingAction.key)
@@ -387,7 +597,7 @@ function App() {
   if (!snapshot && loading) {
     return (
       <main className="boot-screen">
-        <span className="brand-mark"><Activity size={22} /></span>
+        <span className="brand-mark"><img src={brandMark} alt="" /></span>
         <strong>Pulse</strong>
         <span><i className="pulse-dot" />{t("app.samplerConnecting")}</span>
       </main>
@@ -397,7 +607,7 @@ function App() {
   if (!snapshot) {
     return (
       <main className="boot-screen boot-screen--error">
-        <span className="brand-mark"><Activity size={22} /></span>
+        <span className="brand-mark"><img src={brandMark} alt="" /></span>
         <strong>{t("app.samplerFailed")}</strong>
         <span>{error?.message ?? t("app.samplerNoData")}</span>
         <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common.retry")}</button>
@@ -423,7 +633,7 @@ function App() {
     <div className="app-shell">
       <nav className="sidebar" aria-label={t("app.mainNavigation")}>
         <div className="brand">
-          <span className="brand-mark"><Activity size={20} /></span>
+          <span className="brand-mark"><img src={brandMark} alt="" /></span>
           <span><strong>Pulse</strong><small>LOCAL MONITOR</small></span>
         </div>
 
@@ -433,10 +643,13 @@ function App() {
             <CircleGauge size={17} />{t("app.overview")}
           </button>
           <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}>
-            <ListTree size={17} />{t("app.processes")}
+            <ListTree size={17} />{settings.experienceMode === "simple" ? t("app.applications") : t("app.processes")}
           </button>
           <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}>
             <Database size={17} />{t("app.storage")}
+          </button>
+          <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}>
+            <Sparkles size={17} />{t("app.cleanup")}
           </button>
           <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}>
             <Network size={17} />{t("app.network")}
@@ -445,6 +658,9 @@ function App() {
 
         <div className="nav-group">
           <span className="nav-label">{t("app.diagnostics")}</span>
+          <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}>
+            <Rocket size={17} />{t("app.startup")}
+          </button>
           <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}>
             <History size={17} />{t("app.history")}
             {resourceAlerts.activeAlerts.length > 0 ? (
@@ -466,7 +682,9 @@ function App() {
         <header className="topbar">
           <div className="host-heading">
             <span className="eyebrow">
-              {t(`app.viewEyebrow.${activeView}`)}
+              {activeView === "processes" && settings.experienceMode === "simple"
+                ? t("app.viewEyebrow.applications")
+                : t(`app.viewEyebrow.${activeView}`)}
             </span>
             <h1>{snapshot.host.hostname}</h1>
             <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
@@ -476,6 +694,18 @@ function App() {
             <span className={`sample-status${paused ? " is-paused" : ""}`}>
               <i />{paused ? t("app.paused") : snapshot.warmingUp ? t("common.warmup") : t("app.live")}
             </span>
+            <button
+              className="button button--secondary mode-button"
+              type="button"
+              title={t(`app.mode.switchTo.${settings.experienceMode === "simple" ? "professional" : "simple"}`)}
+              aria-label={t(`app.mode.switchTo.${settings.experienceMode === "simple" ? "professional" : "simple"}`)}
+              onClick={() => updateSettings({
+                experienceMode: settings.experienceMode === "simple" ? "professional" : "simple",
+              })}
+            >
+              <SlidersHorizontal size={15} />
+              <span>{t(`app.mode.${settings.experienceMode}`)}</span>
+            </button>
             <button className="icon-button" type="button" title={t("app.refreshNow")} aria-label={t("app.refreshNow")} onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
             </button>
@@ -499,56 +729,145 @@ function App() {
         {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
 
-        <div className={`content-layout${activeView === "network" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" || (settings.experienceMode === "simple" && (activeView === "overview" || activeView === "processes" || activeView === "storage")) ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
             {activeView === "overview" ? (
               <>
-                <section className="metric-grid" aria-label={t("app.metricsLabel")}>
-                  <MetricCard
-                    icon={Cpu}
-                    label="CPU"
-                    value={formatPercent(snapshot.cpu.usagePercent)}
-                    context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
-                    tone="blue"
-                    progress={snapshot.cpu.usagePercent ?? 0}
-                    usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent, settings.usageThresholds)}
+                {diagnosis ? (
+                  <SmartDiagnosis
+                    result={diagnosis}
+                    expanded={diagnosisExpanded}
+                    connectionScanLoading={connectionsLoading && !paused}
+                    connectionScanUnavailable={connectionsError !== null}
+                    preparingAction={preparingAction}
+                    onToggle={() => {
+                      const nextExpanded = !diagnosisExpanded;
+                      setDiagnosisExpanded(nextExpanded);
+                      if (nextExpanded && !paused) void refreshConnections();
+                    }}
+                    onOpenTarget={setActiveView}
+                    onInspectProcess={(identity) => {
+                      const process = snapshot.processes.find(
+                        (candidate) => processIdentity(candidate) === identity,
+                      );
+                      if (process) selectProcess(process);
+                      setActiveView("processes");
+                    }}
+                    onRequestClose={(identity, applicationName) => {
+                      void beginDiagnosisRequestClose(identity, applicationName);
+                    }}
                   />
-                  <MetricCard
-                    icon={MemoryStick}
-                    label={t("app.metrics.memory")}
-                    value={formatBytes(snapshot.memory.usedBytes)}
-                    context={t("app.metrics.memoryContext", {
-                      total: formatBytes(snapshot.memory.totalBytes),
-                      swap: formatBytes(snapshot.memory.swapUsedBytes),
-                    })}
-                    tone="violet"
-                    progress={memoryPercent}
-                    usageLevel={resourceUsageLevel(memoryPercent, settings.usageThresholds)}
+                ) : null}
+                <DeviceWellbeing
+                  sensors={snapshot.sensors}
+                  applications={diagnosis?.applications ?? []}
+                />
+                {settings.experienceMode === "simple" && diagnosis ? (
+                  <ApplicationImpactPanel
+                    compact
+                    applications={diagnosis.applications}
+                    totalMemoryBytes={snapshot.memory.totalBytes}
+                    selectedIdentity={selectedIdentity}
+                    onSelect={(application) => {
+                      selectApplication(application);
+                      setActiveView("processes");
+                    }}
+                    onViewAll={() => setActiveView("processes")}
                   />
-                  <MetricCard
-                    icon={Database}
-                    label={t("app.metrics.disk")}
-                    value={formatRate(diskRate)}
-                    context={t("app.metrics.diskContext", {
-                      read: formatRate(snapshot.disk.readBytesPerSecond),
-                      write: formatRate(snapshot.disk.writeBytesPerSecond),
-                    })}
-                    tone="amber"
+                ) : null}
+                {settings.experienceMode === "simple" ? (
+                  <button
+                    className="technical-overview-toggle"
+                    type="button"
+                    aria-expanded={technicalOverviewExpanded}
+                    onClick={() => setTechnicalOverviewExpanded((current) => !current)}
+                  >
+                    <Gauge size={15} />
+                    <span>
+                      <strong>{t("app.technicalOverview.title")}</strong>
+                      <small>{t("app.technicalOverview.description")}</small>
+                    </span>
+                    {technicalOverviewExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                ) : null}
+                {settings.experienceMode === "professional" || technicalOverviewExpanded ? (
+                  <>
+                    <section className="metric-grid" aria-label={t("app.metricsLabel")}>
+                      <MetricCard
+                        icon={Cpu}
+                        label="CPU"
+                        value={formatPercent(snapshot.cpu.usagePercent)}
+                        context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
+                        tone="blue"
+                        progress={snapshot.cpu.usagePercent ?? 0}
+                        usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent, settings.usageThresholds)}
+                      />
+                      <MetricCard
+                        icon={MemoryStick}
+                        label={t("app.metrics.memory")}
+                        value={formatBytes(snapshot.memory.usedBytes)}
+                        context={t("app.metrics.memoryContext", {
+                          total: formatBytes(snapshot.memory.totalBytes),
+                          swap: formatBytes(snapshot.memory.swapUsedBytes),
+                        })}
+                        tone="violet"
+                        progress={memoryPercent}
+                        usageLevel={resourceUsageLevel(memoryPercent, settings.usageThresholds)}
+                      />
+                      <MetricCard
+                        icon={Database}
+                        label={t("app.metrics.disk")}
+                        value={formatRate(diskRate)}
+                        context={t("app.metrics.diskContext", {
+                          read: formatRate(snapshot.disk.readBytesPerSecond),
+                          write: formatRate(snapshot.disk.writeBytesPerSecond),
+                        })}
+                        tone="amber"
+                      />
+                      <MetricCard
+                        icon={Network}
+                        label={t("app.metrics.network")}
+                        value={formatRate(networkRate)}
+                        context={t("app.metrics.networkContext", {
+                          receive: formatRate(snapshot.network.receivedBytesPerSecond),
+                          send: formatRate(snapshot.network.transmittedBytesPerSecond),
+                        })}
+                        tone="green"
+                      />
+                    </section>
+                    <ResourceHistory history={history} usageThresholds={settings.usageThresholds} />
+                  </>
+                ) : null}
+                {settings.experienceMode === "professional" ? (
+                  <ProcessTable
+                    compact
+                    processes={snapshot.processes}
+                    selectedIdentity={selectedIdentity}
+                    onSelect={selectProcess}
+                    query={processPreferences.query}
+                    onQueryChange={(query) => updateProcessPreferences({ query })}
+                    sortKey={processPreferences.sortKey}
+                    direction={processPreferences.sortDirection}
+                    onSortChange={(sortKey, sortDirection) =>
+                      updateProcessPreferences({ sortKey, sortDirection })
+                    }
                   />
-                  <MetricCard
-                    icon={Network}
-                    label={t("app.metrics.network")}
-                    value={formatRate(networkRate)}
-                    context={t("app.metrics.networkContext", {
-                      receive: formatRate(snapshot.network.receivedBytesPerSecond),
-                      send: formatRate(snapshot.network.transmittedBytesPerSecond),
-                    })}
-                    tone="green"
-                  />
-                </section>
-                <ResourceHistory history={history} usageThresholds={settings.usageThresholds} />
+                ) : null}
+              </>
+            ) : activeView === "processes" ? (
+              settings.experienceMode === "simple" && diagnosis ? (
+                <ApplicationImpactPanel
+                  applications={diagnosis.applications}
+                  totalMemoryBytes={snapshot.memory.totalBytes}
+                  selectedIdentity={selectedIdentity}
+                  onSelect={selectApplication}
+                  onOpenProfessionalDetails={(application) => {
+                    selectApplication(application);
+                    updateSettings({ experienceMode: "professional" });
+                  }}
+                />
+              ) : (
                 <ProcessTable
-                  compact
                   processes={snapshot.processes}
                   selectedIdentity={selectedIdentity}
                   onSelect={selectProcess}
@@ -559,47 +878,49 @@ function App() {
                   onSortChange={(sortKey, sortDirection) =>
                     updateProcessPreferences({ sortKey, sortDirection })
                   }
+                  viewMode={processPreferences.viewMode}
+                  onViewModeChange={(viewMode) =>
+                    updateProcessPreferences({ viewMode })
+                  }
+                  expandedIdentities={processPreferences.expandedIdentities}
+                  onExpandedIdentitiesChange={(expandedIdentities) =>
+                    updateProcessPreferences({ expandedIdentities })
+                  }
+                  followSelection={processPreferences.followSelection}
+                  onFollowSelectionChange={(followSelection) =>
+                    updateProcessPreferences({ followSelection })
+                  }
+                  onResetPreferences={() =>
+                    setProcessPreferences({
+                      ...defaultProcessExplorerPreferences(),
+                      viewMode: settings.defaultProcessView,
+                    })
+                  }
                 />
-              </>
-            ) : activeView === "processes" ? (
-              <ProcessTable
-                processes={snapshot.processes}
-                selectedIdentity={selectedIdentity}
-                onSelect={selectProcess}
-                query={processPreferences.query}
-                onQueryChange={(query) => updateProcessPreferences({ query })}
-                sortKey={processPreferences.sortKey}
-                direction={processPreferences.sortDirection}
-                onSortChange={(sortKey, sortDirection) =>
-                  updateProcessPreferences({ sortKey, sortDirection })
-                }
-                viewMode={processPreferences.viewMode}
-                onViewModeChange={(viewMode) =>
-                  updateProcessPreferences({ viewMode })
-                }
-                expandedIdentities={processPreferences.expandedIdentities}
-                onExpandedIdentitiesChange={(expandedIdentities) =>
-                  updateProcessPreferences({ expandedIdentities })
-                }
-                followSelection={processPreferences.followSelection}
-                onFollowSelectionChange={(followSelection) =>
-                  updateProcessPreferences({ followSelection })
-                }
-                onResetPreferences={() =>
-                  setProcessPreferences({
-                    ...defaultProcessExplorerPreferences(),
-                    viewMode: settings.defaultProcessView,
-                  })
-                }
-              />
+              )
             ) : activeView === "storage" ? (
               <StorageExplorer
                 disk={snapshot.disk}
                 history={history}
                 processes={snapshot.processes}
                 selectedIdentity={selectedIdentity}
-                onSelectProcess={selectProcess}
+                onSelectProcess={(process) => {
+                  selectProcess(process);
+                  if (settings.experienceMode === "simple") setActiveView("processes");
+                }}
                 usageThresholds={settings.usageThresholds}
+                onOpenCleanup={() => setActiveView("cleanup")}
+              />
+            ) : activeView === "cleanup" ? (
+              <CleanupAssistant
+                snapshot={cleanupScan.snapshot}
+                error={cleanupScan.error}
+                loading={cleanupScan.loading}
+                cancelling={cleanupScan.cancelling}
+                progress={cleanupScan.progress}
+                snapshotStatus={cleanupScan.snapshotStatus}
+                onScan={() => void cleanupScan.scan()}
+                onCancel={() => void cleanupScan.cancel()}
               />
             ) : activeView === "network" ? (
               <NetworkExplorer
@@ -615,6 +936,15 @@ function App() {
                   selectProcess(process);
                   setActiveView("processes");
                 }}
+              />
+            ) : activeView === "startup" ? (
+              <StartupExplorer
+                snapshot={startupItems.snapshot}
+                error={startupItems.error}
+                loading={startupItems.loading}
+                applications={diagnosis?.applications ?? []}
+                totalMemoryBytes={snapshot.memory.totalBytes}
+                onRefresh={startupItems.refresh}
               />
             ) : activeView === "history" ? (
               <HistoryExplorer
@@ -638,11 +968,15 @@ function App() {
                 }}
               />
             ) : (
-              <SettingsExplorer settings={settings} onChange={updateSettings} />
+              <SettingsExplorer
+                settings={settings}
+                notificationStatus={desktopNotifications.status}
+                onChange={updateSettings}
+              />
             )}
           </main>
 
-          {activeView === "overview" || activeView === "processes" || activeView === "storage" ? (
+          {settings.experienceMode === "professional" && (activeView === "overview" || activeView === "processes" || activeView === "storage") ? (
             <ProcessInspector
               selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
               selectionMissing={selectionMissing}
@@ -667,9 +1001,17 @@ function App() {
                   interfaces: snapshot.network.interfaceCount,
                   connections: connectionsSnapshot?.summary.totalCount ?? "—",
                 })
+              : activeView === "processes" && settings.experienceMode === "simple"
+                ? t("app.status.applicationCount", {
+                    count: diagnosis?.applications.length ?? 0,
+                  })
               : activeView === "history"
                 ? t("app.status.savedHistory", {
                     count: persistentHistory.storedPoints.length,
+                  })
+              : activeView === "cleanup"
+                ? t("app.status.cleanupEntries", {
+                    count: cleanupScan.progress?.scannedEntryCount ?? cleanupScan.snapshot?.scannedEntryCount ?? 0,
                   })
               : t("app.status.processCount", { count: snapshot.processes.length })}
           </span>
@@ -681,6 +1023,8 @@ function App() {
       {pendingAction ? (
         <ConfirmActionDialog
           action={pendingAction.action}
+          source={pendingAction.source}
+          displayName={pendingAction.displayName}
           detail={pendingAction.detail}
           targeting={pendingAction.lease.targeting}
           semantic={

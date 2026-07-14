@@ -1,4 +1,4 @@
-import { BellRing, ChevronDown, History, Languages, ListTree, Network, Timer } from "lucide-react";
+import { BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Timer } from "lucide-react";
 import type { ChangeEventHandler, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,9 +9,11 @@ import {
   type UsageThresholds,
 } from "../settings";
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
+import type { DesktopNotificationStatus } from "../desktopNotifications";
 
 interface SettingsExplorerProps {
   settings: AppSettings;
+  notificationStatus: DesktopNotificationStatus;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
 }
 
@@ -21,6 +23,7 @@ const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
 
 export function SettingsExplorer({
   settings,
+  notificationStatus,
   onChange,
 }: SettingsExplorerProps) {
   const { t } = useTranslation();
@@ -41,6 +44,27 @@ export function SettingsExplorer({
       </header>
 
       <div className="settings-grid">
+        <SettingsCard
+          className="settings-card--mode"
+          icon={LayoutDashboard}
+          title={t("settings.experience.title")}
+          description={t("settings.experience.description")}
+        >
+          <div className="settings-segmented" role="group" aria-label={t("settings.experience.label")}>
+            {(["simple", "professional"] as const).map((experienceMode) => (
+              <button
+                type="button"
+                key={experienceMode}
+                className={settings.experienceMode === experienceMode ? "is-active" : ""}
+                aria-pressed={settings.experienceMode === experienceMode}
+                onClick={() => onChange({ experienceMode })}
+              >
+                {t(`settings.experience.${experienceMode}`)}
+              </button>
+            ))}
+          </div>
+        </SettingsCard>
+
         <SettingsCard
           icon={Languages}
           title={t("settings.language.title")}
@@ -110,7 +134,6 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
-          className="settings-card--half"
           icon={ListTree}
           title={t("settings.processView.title")}
           description={t("settings.processView.description")}
@@ -131,7 +154,6 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
-          className="settings-card--half"
           icon={History}
           title={t("settings.history.title")}
           description={t("settings.history.description")}
@@ -147,6 +169,18 @@ export function SettingsExplorer({
                 }
               />
               <span>{t("settings.history.persist")}</span>
+            </label>
+            <label className="settings-switch" title={t("settings.history.applicationNamesHint")}>
+              <input
+                type="checkbox"
+                role="switch"
+                disabled={!settings.historyPersistenceEnabled}
+                checked={settings.historyPersistenceEnabled && settings.historyApplicationNamesEnabled}
+                onChange={(event) =>
+                  onChange({ historyApplicationNamesEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings.history.applicationNames")}</span>
             </label>
             <label className="settings-field">
               <span>{t("settings.history.retention")}</span>
@@ -171,6 +205,49 @@ export function SettingsExplorer({
               </SettingsSelect>
             </label>
           </div>
+        </SettingsCard>
+
+        <SettingsCard
+          icon={BellRing}
+          title={t("settings.notifications.title")}
+          description={t("settings.notifications.description")}
+        >
+          <div className="settings-notification-controls">
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={settings.desktopNotificationsEnabled}
+                onChange={(event) =>
+                  onChange({ desktopNotificationsEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings.notifications.enable")}</span>
+            </label>
+            <small className={`is-${notificationStatus}`}>
+              <i />{t(`settings.notifications.status.${notificationStatus}`)}
+            </small>
+          </div>
+          <fieldset className="settings-notification-categories" disabled={!settings.desktopNotificationsEnabled}>
+            <legend>{t("settings.notifications.categories")}</legend>
+            {(["cpu", "memory", "volume"] as const).map((resource) => {
+              const enabled = !settings.mutedNotificationResources.includes(resource);
+              return (
+                <label key={resource}>
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(event) => onChange({
+                      mutedNotificationResources: event.target.checked
+                        ? settings.mutedNotificationResources.filter((item) => item !== resource)
+                        : [...settings.mutedNotificationResources, resource],
+                    })}
+                  />
+                  <span>{t(`settings.notifications.resources.${resource}`)}</span>
+                </label>
+              );
+            })}
+          </fieldset>
         </SettingsCard>
 
         <SettingsCard

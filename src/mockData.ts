@@ -1,5 +1,12 @@
 import {
   SNAPSHOT_SCHEMA_VERSION,
+  type CleanupNode,
+  type CleanupScan,
+  type CleanupTrashExecutionRequest,
+  type CleanupTrashLease,
+  type CleanupTrashLeaseReleaseRequest,
+  type CleanupTrashLeaseRequest,
+  type CleanupTrashResult,
   type ProcessActionRequest,
   type ProcessActionResult,
   type ProcessControlLease,
@@ -11,11 +18,289 @@ import {
   type NetworkConnectionsSnapshot,
   type ProcessRow,
   type SystemSnapshot,
+  type StartupItemsSnapshot,
+  type StartupManagementExecutionRequest,
+  type StartupManagementLease,
+  type StartupManagementLeaseReleaseRequest,
+  type StartupManagementLeaseRequest,
+  type StartupManagementResult,
 } from "./types";
+
+let mockStartupLeaseSequence = 0;
+const mockStartupLeases = new Map<string, StartupManagementLease>();
+const mockStartupEnabled = new Map<string, boolean>([
+  ["launch-agent:spotify", true],
+  ["launch-agent:dropbox", true],
+  ["launch-agent:docker", true],
+]);
+
+export function getMockStartupItems(): StartupItemsSnapshot {
+  return {
+    sampledAtMs: Date.now(),
+    unreadableLocationCount: 0,
+    managementAvailable: true,
+    items: [
+      {
+        id: "launch-agent:spotify",
+        name: "Spotify",
+        publisher: "Spotify",
+        command: "/Applications/Spotify.app/Contents/MacOS/Spotify --autostart",
+        path: "~/Library/LaunchAgents/com.spotify.client.plist",
+        source: "launch_agent",
+        scope: "user",
+        enabled: mockStartupEnabled.get("launch-agent:spotify") ?? true,
+        system: false,
+        launchKind: "login",
+        managementStatus: "available",
+      },
+      {
+        id: "launch-agent:dropbox",
+        name: "Dropbox",
+        publisher: "Dropbox",
+        command: "/Applications/Dropbox.app/Contents/MacOS/Dropbox",
+        path: "~/Library/LaunchAgents/com.dropbox.DropboxMacUpdate.agent.plist",
+        source: "launch_agent",
+        scope: "user",
+        enabled: mockStartupEnabled.get("launch-agent:dropbox") ?? true,
+        system: false,
+        launchKind: "conditional",
+        managementStatus: "available",
+      },
+      {
+        id: "launch-agent:docker",
+        name: "Docker Desktop",
+        publisher: "Docker",
+        command: "/Applications/Docker.app/Contents/MacOS/Docker --autostart",
+        path: "~/Library/LaunchAgents/com.docker.helper.plist",
+        source: "launch_agent",
+        scope: "user",
+        enabled: mockStartupEnabled.get("launch-agent:docker") ?? true,
+        system: false,
+        launchKind: "login",
+        managementStatus: "available",
+      },
+      {
+        id: "launch-daemon:apple",
+        name: "Software Update",
+        publisher: "Apple",
+        command: "/System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated",
+        path: "/System/Library/LaunchDaemons/com.apple.softwareupdated.plist",
+        source: "launch_daemon",
+        scope: "system",
+        enabled: true,
+        system: true,
+        launchKind: "conditional",
+        managementStatus: "system",
+      },
+    ],
+  };
+}
+
+export function createMockStartupManagementLease(
+  request: StartupManagementLeaseRequest,
+): StartupManagementLease {
+  const item = getMockStartupItems().items.find(({ id }) => id === request.itemId);
+  if (!item || item.managementStatus !== "available") {
+    throw { code: "startup_item_protected", message: "This startup item is not manageable." };
+  }
+  if ((request.action === "disable") !== item.enabled) {
+    throw { code: "startup_state_changed", message: "This startup item changed state." };
+  }
+  mockStartupLeaseSequence += 1;
+  const lease: StartupManagementLease = {
+    id: `mock-startup-lease-${mockStartupLeaseSequence}`,
+    itemId: item.id,
+    itemName: item.name,
+    action: request.action,
+    expiresAtMs: Date.now() + 60_000,
+  };
+  mockStartupLeases.set(lease.id, lease);
+  return lease;
+}
+
+export function releaseMockStartupManagementLease(
+  request: StartupManagementLeaseReleaseRequest,
+): void {
+  mockStartupLeases.delete(request.leaseId);
+}
+
+export function executeMockStartupManagement(
+  request: StartupManagementExecutionRequest,
+): StartupManagementResult {
+  const lease = mockStartupLeases.get(request.leaseId);
+  mockStartupLeases.delete(request.leaseId);
+  if (!lease) {
+    throw { code: "startup_confirmation_unavailable", message: "This confirmation is unavailable." };
+  }
+  const enabled = lease.action === "enable";
+  mockStartupEnabled.set(lease.itemId, enabled);
+  return { itemId: lease.itemId, enabled };
+}
+
+function cleanupNode(
+  id: string,
+  name: string,
+  sizeBytes: number,
+  itemCount: number,
+  safety: CleanupNode["safety"],
+  children: CleanupNode[] = [],
+): CleanupNode {
+  return { id, name, path: id, sizeBytes, itemCount, safety, children };
+}
+
+export function getMockCleanupScan(): CleanupScan {
+  return {
+    sampledAtMs: Date.now(),
+    durationMs: 1_840,
+    locations: [
+      {
+        kind: "downloads",
+        paths: ["~/Downloads"],
+        sizeBytes: 8_640_000_000,
+        itemCount: 184,
+        safety: "review",
+        available: true,
+        nodes: [cleanupNode("~/Downloads", "Downloads", 8_640_000_000, 184, "review", [
+          cleanupNode("~/Downloads/Installers", "Installers", 5_940_000_000, 18, "review"),
+          cleanupNode("~/Downloads/Videos", "Videos", 1_860_000_000, 9, "review"),
+          cleanupNode("~/Downloads/Documents", "Documents", 840_000_000, 157, "review"),
+        ])],
+      },
+      {
+        kind: "trash",
+        paths: ["~/.Trash"],
+        sizeBytes: 1_280_000_000,
+        itemCount: 47,
+        safety: "reclaimable",
+        available: true,
+        nodes: [cleanupNode("~/.Trash", ".Trash", 1_280_000_000, 47, "reclaimable", [
+          cleanupNode("~/.Trash/Archives", "Archives", 760_000_000, 12, "reclaimable"),
+          cleanupNode("~/.Trash/Other", "Other", 520_000_000, 35, "reclaimable"),
+        ])],
+      },
+      {
+        kind: "app_cache",
+        paths: ["~/Library/Caches"],
+        sizeBytes: 4_720_000_000,
+        itemCount: 12_460,
+        safety: "reclaimable",
+        available: true,
+        nodes: [cleanupNode("~/Library/Caches", "Caches", 4_720_000_000, 12_460, "reclaimable", [
+          cleanupNode("~/Library/Caches/com.apple.Safari", "Safari", 1_720_000_000, 4_100, "reclaimable"),
+          cleanupNode("~/Library/Caches/com.spotify.client", "Spotify", 1_280_000_000, 2_640, "reclaimable"),
+          cleanupNode("~/Library/Caches/Other", "Other apps", 1_720_000_000, 5_720, "reclaimable"),
+        ])],
+      },
+      {
+        kind: "developer_cache",
+        paths: ["~/.cargo/registry", "~/Library/Developer/Xcode/DerivedData"],
+        sizeBytes: 6_310_000_000,
+        itemCount: 8_208,
+        safety: "reclaimable",
+        available: true,
+        nodes: [
+          cleanupNode("~/.cargo/registry", "Cargo registry", 1_890_000_000, 3_820, "reclaimable"),
+          cleanupNode("~/Library/Developer/Xcode/DerivedData", "Xcode DerivedData", 4_420_000_000, 4_388, "reclaimable"),
+        ],
+      },
+      {
+        kind: "hidden_data",
+        paths: ["~/.config", "~/.local", "~/.docker"],
+        sizeBytes: 2_480_000_000,
+        itemCount: 3_486,
+        safety: "review",
+        available: true,
+        nodes: [
+          cleanupNode("~/.config", ".config", 380_000_000, 1_240, "review"),
+          cleanupNode("~/.local", ".local", 1_240_000_000, 1_836, "review"),
+          cleanupNode("~/.docker", ".docker", 860_000_000, 410, "review"),
+        ],
+      },
+    ],
+    largestFiles: [
+      {
+        name: "macOS-installer.dmg",
+        path: "/Users/demo/Downloads/macOS-installer.dmg",
+        sizeBytes: 5_640_000_000,
+        modifiedAtMs: Date.now() - 12 * 86_400_000,
+      },
+      {
+        name: "screen-recording.mov",
+        path: "/Users/demo/Movies/screen-recording.mov",
+        sizeBytes: 2_180_000_000,
+        modifiedAtMs: Date.now() - 45 * 86_400_000,
+      },
+    ],
+    installedApplications: [
+      {
+        name: "Archive Studio",
+        path: "/Applications/Archive Studio.app",
+        sizeBytes: 2_860_000_000,
+        lastUsedAtMs: Date.now() - 340 * 86_400_000,
+        modifiedAtMs: Date.now() - 400 * 86_400_000,
+      },
+      {
+        name: "Sketchbook Classic",
+        path: "/Applications/Sketchbook Classic.app",
+        sizeBytes: 940_000_000,
+        lastUsedAtMs: Date.now() - 220 * 86_400_000,
+        modifiedAtMs: Date.now() - 250 * 86_400_000,
+      },
+      {
+        name: "Daily Notes",
+        path: "/Applications/Daily Notes.app",
+        sizeBytes: 180_000_000,
+        lastUsedAtMs: Date.now() - 3 * 86_400_000,
+        modifiedAtMs: Date.now() - 20 * 86_400_000,
+      },
+    ],
+    applicationInventoryAvailable: true,
+    scannedEntryCount: 21_104,
+    unreadableEntryCount: 0,
+    unreadablePaths: [],
+    deletionAvailable: true,
+  };
+}
 
 let sequence = 0;
 let leaseSequence = 0;
 const mockLeases = new Map<string, ProcessControlLease>();
+let cleanupLeaseSequence = 0;
+const mockCleanupLeases = new Map<string, CleanupTrashLease>();
+
+export function createMockCleanupTrashLease(
+  request: CleanupTrashLeaseRequest,
+): CleanupTrashLease {
+  cleanupLeaseSequence += 1;
+  const lease: CleanupTrashLease = {
+    id: `mock-cleanup-lease-${cleanupLeaseSequence}`,
+    paths: [...request.paths],
+    changedPaths: [],
+    expiresAtMs: Date.now() + 60_000,
+  };
+  mockCleanupLeases.set(lease.id, lease);
+  return lease;
+}
+
+export function releaseMockCleanupTrashLease(
+  request: CleanupTrashLeaseReleaseRequest,
+): void {
+  mockCleanupLeases.delete(request.leaseId);
+}
+
+export function executeMockCleanupTrash(
+  request: CleanupTrashExecutionRequest,
+): CleanupTrashResult {
+  const lease = mockCleanupLeases.get(request.leaseId);
+  mockCleanupLeases.delete(request.leaseId);
+  if (!lease || lease.expiresAtMs <= Date.now()) {
+    throw {
+      code: "cleanup_confirmation_unavailable",
+      message: "本次清理确认已经失效，请重新检查所选内容。",
+    };
+  }
+  return { movedPaths: lease.paths, failed: [] };
+}
 // Keep demo identities stable across browser reloads so view preferences can be
 // exercised without implying that a reused PID is the same process.
 const startTime = 1_750_000_000;
@@ -198,7 +483,11 @@ const baseProcesses: ProcessRow[] = [
 export function getMockSnapshot(): SystemSnapshot {
   sequence += 1;
   const phase = sequence / 4;
-  const cpu = Math.max(8, 42 + Math.sin(phase) * 18);
+  const diagnosisDemo = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("demo") === "diagnosis";
+  const cpu = diagnosisDemo
+    ? 84 + Math.sin(phase) * 4
+    : Math.max(8, 42 + Math.sin(phase) * 18);
   const memoryUsed = 12_884_901_888 + Math.sin(phase / 2) * 320_000_000;
   const warmingUp = sequence === 1;
   const primaryReceived = Math.round(3_400_000 * (1 + Math.sin(phase + 0.4) * 0.18));
@@ -326,6 +615,34 @@ export function getMockSnapshot(): SystemSnapshot {
       ),
       interfaceCount: networkInterfaces.length,
       interfaces: networkInterfaces,
+    },
+    sensors: {
+      sampledAtMs: Date.now(),
+      temperature: {
+        celsius: 47 + Math.sin(phase * 0.4) * 3,
+        componentLabel: "System",
+        criticalCelsius: 100,
+      },
+      battery: {
+        present: true,
+        chargePercent: 78,
+        state: "discharging",
+        timeRemainingMinutes: 284,
+        powerSource: "battery",
+      },
+      sleep: {
+        sampledAtMs: Date.now(),
+        available: true,
+        blockers: [
+          {
+            pid: 46_100,
+            processName: "Code",
+            reason: "Electron",
+            kind: "idle_sleep",
+            durationSeconds: 1_820,
+          },
+        ],
+      },
     },
     processes: baseProcesses.map((process, index) => {
       const resourcePhase = phase + index * 0.73;

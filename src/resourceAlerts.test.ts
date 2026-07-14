@@ -4,6 +4,7 @@ import {
   activeResourceAlerts,
   createResourceAlertEvaluationState,
   evaluateResourceAlerts,
+  memoryPressureAlertPercent,
   type ResourceAlertSample,
 } from "./resourceAlerts";
 
@@ -20,6 +21,26 @@ function cpu(valuePercent: number | null): ResourceAlertSample[] {
 }
 
 describe("resource alert evaluation", () => {
+  it("does not treat healthy cache-heavy memory use as pressure", () => {
+    expect(memoryPressureAlertPercent({
+      totalBytes: 16 * 1_024 ** 3,
+      usedBytes: 14.8 * 1_024 ** 3,
+      availableBytes: 1.2 * 1_024 ** 3,
+      swapTotalBytes: 4 * 1_024 ** 3,
+      swapUsedBytes: 120 * 1_024 ** 2,
+    })).toBe(0);
+  });
+
+  it("signals memory pressure only with scarce availability and meaningful swap", () => {
+    expect(memoryPressureAlertPercent({
+      totalBytes: 16 * 1_024 ** 3,
+      usedBytes: 15.2 * 1_024 ** 3,
+      availableBytes: 0.8 * 1_024 ** 3,
+      swapTotalBytes: 4 * 1_024 ** 3,
+      swapUsedBytes: 1.2 * 1_024 ** 3,
+    })).toBeCloseTo(95);
+  });
+
   it("requires a sustained high reading before triggering", () => {
     let state = createResourceAlertEvaluationState();
     let result = evaluateResourceAlerts(state, cpu(70), 100, thresholds, timing);
@@ -74,9 +95,27 @@ describe("resource alert evaluation", () => {
         valuePercent: 50,
         startedAtMs: 100,
         durationMs: 45,
+        peakValuePercent: 70,
+        peakAtMs: 110,
       },
     ]);
     expect(activeResourceAlerts(result.state)).toEqual([]);
+  });
+
+  it("retains the real peak and its time until the incident recovers", () => {
+    let state = createResourceAlertEvaluationState();
+    state = evaluateResourceAlerts(state, cpu(70), 100, thresholds, timing).state;
+    state = evaluateResourceAlerts(state, cpu(70), 110, thresholds, timing).state;
+    state = evaluateResourceAlerts(state, cpu(92), 115, thresholds, timing).state;
+    state = evaluateResourceAlerts(state, cpu(50), 120, thresholds, timing).state;
+    const result = evaluateResourceAlerts(state, cpu(48), 135, thresholds, timing);
+
+    expect(result.events).toMatchObject([{
+      resource: "cpu",
+      kind: "recovered",
+      peakValuePercent: 92,
+      peakAtMs: 115,
+    }]);
   });
 
   it("suppresses a retrigger until the cooldown expires", () => {
@@ -111,5 +150,22 @@ describe("resource alert evaluation", () => {
       ["memory", "critical"],
       ["volume", "high"],
     ]);
+  });
+
+  it("supports safer resource-specific thresholds", () => {
+    let state = createResourceAlertEvaluationState();
+    const samples: ResourceAlertSample[] = [{
+      resource: "volume",
+      valuePercent: 87,
+      alertThresholdPercent: 85,
+      criticalThresholdPercent: 95,
+    }];
+    state = evaluateResourceAlerts(state, samples, 100, thresholds, timing).state;
+    const result = evaluateResourceAlerts(state, samples, 110, thresholds, timing);
+    expect(result.events).toMatchObject([{
+      resource: "volume",
+      severity: "high",
+      thresholdPercent: 85,
+    }]);
   });
 });

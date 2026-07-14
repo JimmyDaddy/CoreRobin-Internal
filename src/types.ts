@@ -1,4 +1,4 @@
-export const SNAPSHOT_SCHEMA_VERSION = 4;
+export const SNAPSHOT_SCHEMA_VERSION = 6;
 
 export interface SystemSnapshot {
   schemaVersion: number;
@@ -11,8 +11,116 @@ export interface SystemSnapshot {
   memory: MemorySnapshot;
   disk: DiskSnapshot;
   network: NetworkSnapshot;
+  sensors: SensorsSnapshot;
   processes: ProcessRow[];
   capabilities: Capabilities;
+}
+
+export type BatteryState =
+  | "charging"
+  | "discharging"
+  | "full"
+  | "not_charging"
+  | "unknown";
+export type PowerSource = "ac" | "battery" | "unknown";
+
+export interface SensorsSnapshot {
+  sampledAtMs: number;
+  temperature: TemperatureSnapshot;
+  battery: BatterySnapshot;
+  sleep: SleepSnapshot;
+}
+
+export interface TemperatureSnapshot {
+  celsius: number | null;
+  componentLabel: string | null;
+  criticalCelsius: number | null;
+}
+
+export interface BatterySnapshot {
+  present: boolean;
+  chargePercent: number | null;
+  state: BatteryState;
+  timeRemainingMinutes: number | null;
+  powerSource: PowerSource;
+}
+
+export type SleepBlockerKind = "system_sleep" | "idle_sleep" | "display_sleep";
+
+export interface SleepSnapshot {
+  sampledAtMs: number;
+  available: boolean;
+  blockers: SleepBlocker[];
+}
+
+export interface SleepBlocker {
+  pid: number | null;
+  processName: string;
+  reason: string | null;
+  kind: SleepBlockerKind;
+  durationSeconds: number | null;
+}
+
+export type StartupItemSource =
+  | "launch_agent"
+  | "launch_daemon"
+  | "desktop_entry"
+  | "registry_run"
+  | "startup_folder";
+export type StartupItemScope = "user" | "system";
+export type StartupLaunchKind = "login" | "conditional";
+export type StartupManagementStatus =
+  | "available"
+  | "system"
+  | "protected"
+  | "unsupported";
+export type StartupManagementAction = "disable" | "enable";
+
+export interface StartupItemsSnapshot {
+  sampledAtMs: number;
+  items: StartupItem[];
+  unreadableLocationCount: number;
+  managementAvailable: boolean;
+}
+
+export interface StartupItem {
+  id: string;
+  name: string;
+  publisher: string | null;
+  command: string | null;
+  path: string;
+  source: StartupItemSource;
+  scope: StartupItemScope;
+  enabled: boolean;
+  system: boolean;
+  launchKind: StartupLaunchKind;
+  managementStatus: StartupManagementStatus;
+}
+
+export interface StartupManagementLeaseRequest {
+  itemId: string;
+  action: StartupManagementAction;
+}
+
+export interface StartupManagementLease {
+  id: string;
+  itemId: string;
+  itemName: string;
+  action: StartupManagementAction;
+  expiresAtMs: number;
+}
+
+export interface StartupManagementExecutionRequest {
+  leaseId: string;
+}
+
+export interface StartupManagementLeaseReleaseRequest {
+  leaseId: string;
+}
+
+export interface StartupManagementResult {
+  itemId: string;
+  enabled: boolean;
 }
 
 export interface HostSnapshot {
@@ -50,6 +158,105 @@ export interface VolumeSnapshot {
   totalBytes: number;
   availableBytes: number;
   removable: boolean;
+}
+
+export type CleanupLocationKind =
+  | "downloads"
+  | "trash"
+  | "app_cache"
+  | "developer_cache"
+  | "hidden_data";
+export type CleanupSafety = "reclaimable" | "review";
+
+export interface CleanupScan {
+  sampledAtMs: number;
+  durationMs: number;
+  locations: CleanupLocation[];
+  largestFiles: CleanupFile[];
+  installedApplications: CleanupApplication[];
+  applicationInventoryAvailable: boolean;
+  scannedEntryCount: number;
+  unreadableEntryCount: number;
+  unreadablePaths: string[];
+  deletionAvailable: boolean;
+}
+
+export interface CleanupApplication {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  lastUsedAtMs: number | null;
+  modifiedAtMs: number | null;
+}
+
+export interface CleanupLocation {
+  kind: CleanupLocationKind;
+  paths: string[];
+  sizeBytes: number;
+  itemCount: number;
+  safety: CleanupSafety;
+  available: boolean;
+  nodes: CleanupNode[];
+}
+
+export interface CleanupNode {
+  id: string;
+  name: string;
+  path: string | null;
+  sizeBytes: number;
+  itemCount: number;
+  safety: CleanupSafety;
+  children: CleanupNode[];
+}
+
+export interface CleanupScanProgress {
+  scannedEntryCount: number;
+  discoveredBytes: number;
+  currentPath: string;
+  elapsedMs: number;
+}
+
+export interface CleanupPathState {
+  path: string;
+  exists: boolean;
+  modifiedAtMs: number | null;
+}
+
+export interface CleanupTrashLeaseRequest {
+  paths: string[];
+  scanSampledAtMs: number;
+}
+
+export interface CleanupTrashLease {
+  id: string;
+  paths: string[];
+  changedPaths: string[];
+  expiresAtMs: number;
+}
+
+export interface CleanupTrashExecutionRequest {
+  leaseId: string;
+}
+
+export interface CleanupTrashLeaseReleaseRequest {
+  leaseId: string;
+}
+
+export interface CleanupTrashResult {
+  movedPaths: string[];
+  failed: CleanupTrashFailure[];
+}
+
+export interface CleanupTrashFailure {
+  path: string;
+  message: string;
+}
+
+export interface CleanupFile {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  modifiedAtMs: number | null;
 }
 
 export interface NetworkSnapshot {
@@ -212,6 +419,11 @@ export interface ProcessDetail {
   canTerminate: boolean;
   protectedReason: string | null;
   identityError: string | null;
+}
+
+export interface ApplicationIcon {
+  mimeType: string;
+  bytes: number[];
 }
 
 export type ProcessAction = "request_close" | "force_kill";

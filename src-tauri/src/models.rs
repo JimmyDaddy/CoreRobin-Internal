@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 4;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 6;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,8 +15,184 @@ pub struct SystemSnapshot {
     pub memory: MemorySnapshot,
     pub disk: DiskSnapshot,
     pub network: NetworkSnapshot,
+    pub sensors: SensorsSnapshot,
     pub processes: Vec<ProcessRow>,
     pub capabilities: Capabilities,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SensorsSnapshot {
+    pub sampled_at_ms: u64,
+    pub temperature: TemperatureSnapshot,
+    pub battery: BatterySnapshot,
+    pub sleep: SleepSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TemperatureSnapshot {
+    pub celsius: Option<f32>,
+    pub component_label: Option<String>,
+    pub critical_celsius: Option<f32>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatterySnapshot {
+    pub present: bool,
+    pub charge_percent: Option<f32>,
+    pub state: BatteryState,
+    pub time_remaining_minutes: Option<u64>,
+    pub power_source: PowerSource,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepSnapshot {
+    pub sampled_at_ms: u64,
+    pub available: bool,
+    pub blockers: Vec<SleepBlocker>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SleepBlocker {
+    pub pid: Option<u32>,
+    pub process_name: String,
+    pub reason: Option<String>,
+    pub kind: SleepBlockerKind,
+    pub duration_seconds: Option<u64>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, Hash)]
+pub enum SleepBlockerKind {
+    #[serde(rename = "system_sleep")]
+    System,
+    #[serde(rename = "idle_sleep")]
+    Idle,
+    #[serde(rename = "display_sleep")]
+    Display,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupItemsSnapshot {
+    pub sampled_at_ms: u64,
+    pub items: Vec<StartupItem>,
+    pub unreadable_location_count: usize,
+    pub management_available: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupItem {
+    pub id: String,
+    pub name: String,
+    pub publisher: Option<String>,
+    pub command: Option<String>,
+    pub path: String,
+    pub source: StartupItemSource,
+    pub scope: StartupItemScope,
+    pub enabled: bool,
+    pub system: bool,
+    pub launch_kind: StartupLaunchKind,
+    pub management_status: StartupManagementStatus,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupManagementStatus {
+    Available,
+    System,
+    Protected,
+    Unsupported,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupManagementAction {
+    Disable,
+    Enable,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupManagementLeaseRequest {
+    pub item_id: String,
+    pub action: StartupManagementAction,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupManagementLease {
+    pub id: String,
+    pub item_id: String,
+    pub item_name: String,
+    pub action: StartupManagementAction,
+    pub expires_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupManagementExecutionRequest {
+    pub lease_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupManagementLeaseReleaseRequest {
+    pub lease_id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupManagementResult {
+    pub item_id: String,
+    pub enabled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
+pub enum StartupItemSource {
+    LaunchAgent,
+    LaunchDaemon,
+    DesktopEntry,
+    RegistryRun,
+    StartupFolder,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupItemScope {
+    User,
+    System,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupLaunchKind {
+    Login,
+    Conditional,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BatteryState {
+    Charging,
+    Discharging,
+    Full,
+    NotCharging,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PowerSource {
+    Ac,
+    Battery,
+    Unknown,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -93,6 +269,140 @@ pub struct NetworkInterfaceSnapshot {
     pub mac_address: Option<String>,
     pub ip_networks: Vec<String>,
     pub operational_state: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScan {
+    pub sampled_at_ms: u64,
+    pub duration_ms: u64,
+    pub locations: Vec<CleanupLocation>,
+    pub largest_files: Vec<CleanupFile>,
+    pub installed_applications: Vec<CleanupApplication>,
+    pub application_inventory_available: bool,
+    pub scanned_entry_count: usize,
+    pub unreadable_entry_count: usize,
+    pub unreadable_paths: Vec<String>,
+    pub deletion_available: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupApplication {
+    pub name: String,
+    pub path: String,
+    pub size_bytes: u64,
+    pub last_used_at_ms: Option<u64>,
+    pub modified_at_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupLocation {
+    pub kind: CleanupLocationKind,
+    pub paths: Vec<String>,
+    pub size_bytes: u64,
+    pub item_count: usize,
+    pub safety: CleanupSafety,
+    pub available: bool,
+    pub nodes: Vec<CleanupNode>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupNode {
+    pub id: String,
+    pub name: String,
+    pub path: Option<String>,
+    pub size_bytes: u64,
+    pub item_count: usize,
+    pub safety: CleanupSafety,
+    pub children: Vec<CleanupNode>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScanProgress {
+    pub scanned_entry_count: usize,
+    pub discovered_bytes: u64,
+    pub current_path: String,
+    pub elapsed_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupPathState {
+    pub path: String,
+    pub exists: bool,
+    pub modified_at_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashLeaseRequest {
+    pub paths: Vec<String>,
+    pub scan_sampled_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashLease {
+    pub id: String,
+    pub paths: Vec<String>,
+    pub changed_paths: Vec<String>,
+    pub expires_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashExecutionRequest {
+    pub lease_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashLeaseReleaseRequest {
+    pub lease_id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashResult {
+    pub moved_paths: Vec<String>,
+    pub failed: Vec<CleanupTrashFailure>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupTrashFailure {
+    pub path: String,
+    pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupLocationKind {
+    Downloads,
+    Trash,
+    AppCache,
+    DeveloperCache,
+    HiddenData,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupSafety {
+    Reclaimable,
+    Review,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupFile {
+    pub name: String,
+    pub path: String,
+    pub size_bytes: u64,
+    pub modified_at_ms: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -272,6 +582,13 @@ pub struct ProcessDetail {
     pub can_terminate: bool,
     pub protected_reason: Option<String>,
     pub identity_error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationIcon {
+    pub mime_type: String,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]

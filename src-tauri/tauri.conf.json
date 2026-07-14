@@ -10,15 +10,46 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Pulse",
         "width": 1280,
         "height": 800,
         "minWidth": 940,
         "minHeight": 640,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "Pulse",
+        "url": "index.html?surface=splash",
+        "width": 520,
+        "height": 340,
+        "center": true,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": true
+      },
+      {
+        "label": "tray",
+        "title": "Pulse Status",
+        "url": "index.html?surface=tray",
+        "width": 360,
+        "height": 440,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": true,
+        "visible": false
       }
     ],
     "security": {

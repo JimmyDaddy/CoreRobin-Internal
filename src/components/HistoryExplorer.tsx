@@ -1,5 +1,6 @@
 import {
   BellRing,
+  BookOpen,
   CheckCircle2,
   Cpu,
   Database,
@@ -9,6 +10,7 @@ import {
   Network,
   ShieldCheck,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,6 +19,7 @@ import {
   HISTORY_RETENTION_OPTIONS,
   type HistoryRetentionDays,
 } from "../historyStore";
+import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { UsageThresholds } from "../settings";
 import type { HistoryPoint } from "../types";
 import { formatRate, resourceUsageLevel } from "../utils";
@@ -67,6 +70,10 @@ export function HistoryExplorer({
         .reverse()
         .slice(0, 100),
     [alertEvents, alertFilter],
+  );
+  const stories = useMemo(
+    () => buildHistoryStories(alertEvents).slice(0, 6),
+    [alertEvents],
   );
   const range = historyRangeLabel(points, i18n.resolvedLanguage);
 
@@ -153,6 +160,27 @@ export function HistoryExplorer({
         </>
       )}
 
+      <section className="panel history-stories" aria-labelledby="history-stories-title">
+        <header className="history-stories__header">
+          <div>
+            <span className="eyebrow">{t("history.stories.eyebrow")}</span>
+            <h3 id="history-stories-title"><BookOpen size={16} />{t("history.stories.title")}</h3>
+            <p>{t("history.stories.description")}</p>
+          </div>
+          <span>{t("history.stories.count", { count: stories.length })}</span>
+        </header>
+        {stories.length > 0 ? (
+          <div className="history-story-list">
+            {stories.map((story) => <HistoryStoryCard key={story.id} story={story} />)}
+          </div>
+        ) : (
+          <div className="history-stories__empty">
+            <CheckCircle2 size={20} />
+            <div><strong>{t("history.stories.emptyTitle")}</strong><span>{t("history.stories.emptyDescription")}</span></div>
+          </div>
+        )}
+      </section>
+
       <section className="panel history-alerts" aria-labelledby="history-alerts-title">
         <header className="history-alerts__header">
           <div>
@@ -213,6 +241,47 @@ export function HistoryExplorer({
         </div>
       </section>
     </section>
+  );
+}
+
+function HistoryStoryCard({ story }: { story: HistoryStory }) {
+  const { t, i18n } = useTranslation();
+  const Icon = story.status === "active" ? TriangleAlert : CheckCircle2;
+  const duration = formatAlertDuration(story.durationMs, t);
+  const startedAt = formatTimestamp(story.startedAtMs, i18n.resolvedLanguage);
+  const peakAt = formatTimestamp(story.peakAtMs, i18n.resolvedLanguage);
+  const endedAt = story.endedAtMs === null
+    ? null
+    : formatTimestamp(story.endedAtMs, i18n.resolvedLanguage);
+  return (
+    <article className={`history-story is-${story.resource} is-${story.status} is-${story.severity}`}>
+      <span className="history-story__icon" aria-hidden="true"><Icon size={17} /></span>
+      <div>
+        <span>{story.status === "active" ? t("history.stories.happeningNow") : t("history.stories.resolved")}</span>
+        <h4>{t(`history.stories.${story.resource}.${story.status}.title`)}</h4>
+        <p>{t(`history.stories.${story.resource}.${story.status}.description`, {
+          duration,
+          value: story.peakPercent.toFixed(0),
+        })}</p>
+        {story.culpritName ? (
+          <p className="history-story__cause">
+            {t("history.stories.cause", { name: story.culpritName })}
+          </p>
+        ) : null}
+        <div className="history-story__timeline" aria-label={t("history.stories.timeline")}>
+          <span>{t("history.stories.startedAt", { time: startedAt })}</span>
+          <span>{t("history.stories.peakedAt", {
+            time: peakAt,
+            value: story.peakPercent.toFixed(0),
+          })}</span>
+          {endedAt ? <span>{t("history.stories.endedAt", { time: endedAt })}</span> : null}
+        </div>
+        <small>{t(`history.stories.${story.resource}.guidance`)}</small>
+      </div>
+      <time dateTime={new Date(story.startedAtMs).toISOString()}>
+        {startedAt}
+      </time>
+    </article>
   );
 }
 

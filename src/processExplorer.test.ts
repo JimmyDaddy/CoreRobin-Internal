@@ -90,6 +90,22 @@ function snapshotFixture(
       interfaceCount: 0,
       interfaces: [],
     },
+    sensors: {
+      sampledAtMs,
+      temperature: { celsius: null, componentLabel: null, criticalCelsius: null },
+      battery: {
+        present: false,
+        chargePercent: null,
+        state: "unknown",
+        timeRemainingMinutes: null,
+        powerSource: "unknown",
+      },
+      sleep: {
+        sampledAtMs,
+        available: false,
+        blockers: [],
+      },
+    },
     processes,
     capabilities: {
       platform: "test",
