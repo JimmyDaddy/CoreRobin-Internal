@@ -1,4 +1,6 @@
 import { useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import {
   PROCESS_HISTORY_WINDOW_MS,
@@ -40,35 +42,36 @@ const PLOT_TOP = 8;
 const PLOT_BOTTOM = 76;
 const MAX_CONNECTED_SAMPLE_GAP_MS = 5_000;
 
-const METRICS: Array<{ key: HistoryMetric; label: string }> = [
-  { key: "cpu", label: "CPU" },
-  { key: "memory", label: "内存" },
-  { key: "io", label: "I/O" },
-];
+const METRICS: HistoryMetric[] = ["cpu", "memory", "io"];
 
 export function ProcessHistory({ history }: ProcessHistoryProps) {
+  const { t } = useTranslation();
   const [metric, setMetric] = useState<HistoryMetric>("cpu");
   const titleId = useId();
   const descriptionId = useId();
-  const chart = useMemo(() => buildChart(history, metric), [history, metric]);
+  const chart = useMemo(() => buildChart(history, metric, t), [history, metric, t]);
 
   return (
     <section className="process-history" aria-labelledby={`${titleId}-section`}>
       <header className="process-history__header">
         <div>
-          <span className="eyebrow">最多保留 5 分钟</span>
-          <h3 id={`${titleId}-section`}>资源趋势</h3>
+          <span className="eyebrow">{t("process.history.retained")}</span>
+          <h3 id={`${titleId}-section`}>{t("process.history.title")}</h3>
         </div>
-        <div className="process-history__segments" role="group" aria-label="趋势指标">
+        <div className="process-history__segments" role="group" aria-label={t("process.history.metrics")}>
           {METRICS.map((candidate) => (
             <button
               type="button"
-              className={`process-history__segment${metric === candidate.key ? " is-active" : ""}`}
-              aria-pressed={metric === candidate.key}
-              key={candidate.key}
-              onClick={() => setMetric(candidate.key)}
+              className={`process-history__segment${metric === candidate ? " is-active" : ""}`}
+              aria-pressed={metric === candidate}
+              key={candidate}
+              onClick={() => setMetric(candidate)}
             >
-              {candidate.label}
+              {candidate === "cpu"
+                ? "CPU"
+                : candidate === "memory"
+                  ? t("process.history.memory")
+                  : "I/O"}
             </button>
           ))}
         </div>
@@ -76,7 +79,7 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
 
       {!history || chart.points.length === 0 ? (
         <div className="process-history__empty">
-          选择进程后开始记录趋势。
+          {t("process.history.empty")}
         </div>
       ) : (
         <>
@@ -87,9 +90,13 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
             aria-labelledby={`${titleId} ${descriptionId}`}
             focusable="false"
           >
-            <title id={titleId}>{history.name || `PID ${history.pid}`} 的 {chart.label} 五分钟趋势</title>
+            <title id={titleId}>{t("process.history.chartTitle", { name: history.name || `PID ${history.pid}`, metric: chart.label })}</title>
             <desc id={descriptionId}>
-              当前 {chart.summary.current}，平均 {chart.summary.average}，峰值 {chart.summary.peak}。
+              {t("process.history.chartDescription", {
+                current: chart.summary.current,
+                average: chart.summary.average,
+                peak: chart.summary.peak,
+              })}
             </desc>
             <g className="process-history__grid" aria-hidden="true">
               {[PLOT_TOP, (PLOT_TOP + PLOT_BOTTOM) / 2, PLOT_BOTTOM].map((y) => (
@@ -116,8 +123,8 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
               )}
             </g>
             <g className="process-history__axis" aria-hidden="true">
-              <text x={PLOT_LEFT} y={91}>−5 分钟</text>
-              <text x={PLOT_RIGHT} y={91} textAnchor="end">现在</text>
+              <text x={PLOT_LEFT} y={91}>{t("common.fiveMinutesBack")}</text>
+              <text x={PLOT_RIGHT} y={91} textAnchor="end">{t("common.now")}</text>
             </g>
           </svg>
 
@@ -133,12 +140,12 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
           ) : null}
 
           <dl className="process-history__summary">
-            <div><dt>当前</dt><dd>{chart.summary.current}</dd></div>
-            <div><dt>平均</dt><dd>{chart.summary.average}</dd></div>
-            <div><dt>峰值</dt><dd>{chart.summary.peak}</dd></div>
+            <div><dt>{t("common.current")}</dt><dd>{chart.summary.current}</dd></div>
+            <div><dt>{t("common.average")}</dt><dd>{chart.summary.average}</dd></div>
+            <div><dt>{t("common.peak")}</dt><dd>{chart.summary.peak}</dd></div>
           </dl>
           {history.missing ? (
-            <p className="process-history__missing" role="status">进程已退出，趋势停止更新。</p>
+            <p className="process-history__missing" role="status">{t("process.history.exited")}</p>
           ) : null}
         </>
       )}
@@ -146,7 +153,11 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
   );
 }
 
-function buildChart(history: SelectedProcessHistory | null, metric: HistoryMetric) {
+function buildChart(
+  history: SelectedProcessHistory | null,
+  metric: HistoryMetric,
+  t: TFunction,
+) {
   const allPoints = history?.points ?? [];
   const windowEnd = allPoints[allPoints.length - 1]?.timestamp ?? 0;
   const windowStart = windowEnd - PROCESS_HISTORY_WINDOW_MS;
@@ -164,20 +175,24 @@ function buildChart(history: SelectedProcessHistory | null, metric: HistoryMetri
       windowEnd,
       yMaximum: roundedCpuMaximum(values),
       series: [series("cpu", "CPU", "process-history__line--cpu", false, values)],
-      summary: summarize(values, formatPercent),
+      summary: summarize(values, formatPercent, t("common.unavailable")),
     };
   }
 
   if (metric === "memory") {
     const values = points.map((point) => finiteOrNull(point.memoryBytes));
     return {
-      label: "内存",
+      label: t("process.history.memory"),
       points,
       windowStart,
       windowEnd,
       yMaximum: positiveMaximum(values),
-      series: [series("memory", "内存", "process-history__line--memory", false, values)],
-      summary: summarize(values, (value) => value === null ? "不可用" : formatBytes(value)),
+      series: [series("memory", t("process.history.memory"), "process-history__line--memory", false, values)],
+      summary: summarize(
+        values,
+        (value) => (value === null ? t("common.unavailable") : formatBytes(value)),
+        t("common.unavailable"),
+      ),
     };
   }
 
@@ -185,16 +200,16 @@ function buildChart(history: SelectedProcessHistory | null, metric: HistoryMetri
   const writeValues = points.map((point) => finiteOrNull(point.diskWriteBytesPerSecond));
   const totals = points.map((_, index) => addNullable(readValues[index], writeValues[index]));
   return {
-    label: "磁盘 I/O",
+    label: t("process.history.diskIo"),
     points,
     windowStart,
     windowEnd,
     yMaximum: positiveMaximum([...readValues, ...writeValues]),
     series: [
-      series("read", "读取", "process-history__line--read", false, readValues),
-      series("write", "写入", "process-history__line--write", true, writeValues),
+      series("read", t("common.read"), "process-history__line--read", false, readValues),
+      series("write", t("common.write"), "process-history__line--write", true, writeValues),
     ],
-    summary: summarize(totals, formatRate),
+    summary: summarize(totals, formatRate, t("common.unavailable")),
   };
 }
 
@@ -259,11 +274,12 @@ export function buildProcessHistoryLineSegments(
 function summarize(
   values: readonly (number | null)[],
   formatter: (value: number | null) => string,
+  unavailable: string,
 ): MetricSummary {
   const available = values.filter((value): value is number => value !== null);
   const current = values[values.length - 1] ?? null;
   if (available.length === 0) {
-    return { current: formatter(current), average: "不可用", peak: "不可用" };
+    return { current: formatter(current), average: unavailable, peak: unavailable };
   }
   const average = available.reduce((sum, value) => sum + value, 0) / available.length;
   const peak = Math.max(...available);

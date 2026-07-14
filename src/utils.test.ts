@@ -10,6 +10,7 @@ import {
   processDiskRate,
   processIdentity,
   processKeysEqual,
+  resourceUsageLevel,
   sortAndFilterProcesses,
 } from "./utils";
 
@@ -56,6 +57,15 @@ describe("resource formatting", () => {
 
     expect(processDiskRate(process)).toBeNull();
     expect(formatRate(processDiskRate(process))).toBe("预热中");
+  });
+
+  it("maps percentages to stable semantic usage levels", () => {
+    expect(resourceUsageLevel(null)).toBe("unavailable");
+    expect(resourceUsageLevel(20)).toBe("low");
+    expect(resourceUsageLevel(50)).toBe("moderate");
+    expect(resourceUsageLevel(75)).toBe("high");
+    expect(resourceUsageLevel(95)).toBe("critical");
+    expect(resourceUsageLevel(101, [10, 50, 100])).toBe("critical");
   });
 });
 

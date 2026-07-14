@@ -2142,6 +2142,20 @@ code,
   font-size: 10px;
 }
 
+.resource-usage.resource-usage--unavailable { color: var(--text-muted); }
+.resource-usage.resource-usage--low { color: var(--green); }
+.resource-usage.resource-usage--moderate { color: var(--blue); }
+.resource-usage.resource-usage--high { color: var(--amber); }
+.resource-usage.resource-usage--critical {
+  color: var(--danger);
+  text-shadow: 0 0 10px rgba(255, 125, 115, 0.18);
+}
+
+.metric-card--usage-low .metric-card__track { color: var(--green); }
+.metric-card--usage-moderate .metric-card__track { color: var(--blue); }
+.metric-card--usage-high .metric-card__track { color: var(--amber); }
+.metric-card--usage-critical .metric-card__track { color: var(--danger); }
+
 .evidence-callout,
 .detail-loading,
 .detail-error {
@@ -2512,3 +2526,104 @@ code,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Legibility scale: operational data stays dense, but primary values and
+   controls use a comfortable desktop reading size. Keep this block last so it
+   wins over component-local defaults above. */
+.sidebar button { min-height: 40px; font-size: 13px; }
+.sidebar button small,
+.brand small { font-size: 10px; }
+.nav-label,
+.eyebrow { font-size: 11px; }
+.language-button { min-width: 62px; }
+
+.metric-card__context,
+.chart-legend,
+.segmented-control button,
+.process-tool-button,
+.search-field input,
+.process-footer { font-size: 11px; }
+
+.search-field kbd,
+.process-history__axis,
+.chart-axis-label { font-size: 10px; }
+.process-table__header { height: 34px; font-size: 11px; }
+.process-row { height: 38px; font-size: 12px; }
+.process-panel--compact .process-table__body { max-height: 342px; }
+
+.inspector-title > span,
+.inspector-metrics span,
+.command-preview > span,
+.process-history__segment,
+.process-history__legend,
+.process-history__summary dt,
+.process-history__summary dd,
+.process-history__missing,
+.process-history__empty,
+.detail-list small,
+.detail-list strong,
+.detail-list code,
+.command-preview code,
+.action-guard,
+.best-effort-guard,
+.inspector-exit small,
+.inspector-empty span,
+.confirm-dialog header p,
+.confirm-target dt,
+.confirm-target dd,
+.identity-note,
+.statusbar,
+.evidence-callout,
+.detail-loading,
+.detail-error { font-size: 11px; }
+
+.storage-overview__heading p,
+.storage-overview__badge,
+.storage-summary__item small,
+.storage-summary__item em,
+.storage-section-heading > span,
+.storage-history__legend,
+.storage-history__peaks,
+.volume-card > header code,
+.volume-card > header small,
+.volume-capacity span,
+.volume-card > footer,
+.storage-process-list small { font-size: 11px; }
+
+.volume-card > header strong,
+.storage-process-list strong,
+.storage-process-name strong { font-size: 12px; }
+.storage-process-list button { min-height: 50px; }
+
+.network-overview__heading p,
+.network-overview__badge,
+.network-summary__item small,
+.network-summary__item em,
+.network-section-heading > span,
+.network-history__legend,
+.network-history__peaks,
+.network-connections__heading p,
+.network-connections__status,
+.network-connection-summary__item span,
+.network-connection-summary__item small,
+.network-connections__notice,
+.network-connections__toolbar > span,
+.network-connection-filters button,
+.network-connections__more,
+.network-interface-toggle,
+.network-interface-state,
+.network-interface-identity code,
+.network-interface-metric small,
+.network-interface-session small,
+.network-interface-metric span,
+.network-interface-session span,
+.network-interface-details span,
+.network-interface-details em { font-size: 11px; }
+
+.network-connection-row { min-height: 42px; font-size: 12px; }
+.network-connection-row--header { min-height: 36px; font-size: 11px; }
+.network-connection-row > span strong,
+.network-connection-row code,
+.network-connection-state { font-size: 11px; }
+.network-connection-row > span small { font-size: 10px; }
+.network-interface-row { min-height: 80px; }

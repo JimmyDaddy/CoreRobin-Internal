@@ -8,6 +8,7 @@ import {
   Usb,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   sortVolumesByUsage,
@@ -25,6 +26,7 @@ import {
   formatBytes,
   formatRate,
   processIdentity,
+  resourceUsageLevel,
 } from "../utils";
 
 interface StorageExplorerProps {
@@ -47,6 +49,7 @@ export function StorageExplorer({
   selectedIdentity,
   onSelectProcess,
 }: StorageExplorerProps) {
+  const { t } = useTranslation();
   const volumes = useMemo(
     () => sortVolumesByUsage(disk.volumes),
     [disk.volumes],
@@ -62,35 +65,35 @@ export function StorageExplorer({
       <section className="panel storage-overview">
         <header className="storage-overview__heading">
           <div>
-            <span className="eyebrow">本机存储</span>
-            <h2 id="storage-title">容量与磁盘活动</h2>
-            <p>卷容量来自当前系统快照；吞吐按真实采样间隔换算。</p>
+            <span className="eyebrow">{t("storage.local")}</span>
+            <h2 id="storage-title">{t("storage.title")}</h2>
+            <p>{t("storage.description")}</p>
           </div>
           <span className="storage-overview__badge">
-            <HardDrive size={14} />{volumes.length} 个卷
+            <HardDrive size={14} />{t("storage.volumeCount", { count: volumes.length })}
           </span>
         </header>
 
-        <div className="storage-summary" aria-label="存储摘要">
+        <div className="storage-summary" aria-label={t("storage.summary")}>
           <StorageSummaryItem
             icon={ArrowDownToLine}
-            label="当前读取"
+            label={t("storage.currentRead")}
             value={formatRate(disk.readBytesPerSecond)}
             tone="read"
           />
           <StorageSummaryItem
             icon={ArrowUpFromLine}
-            label="当前写入"
+            label={t("storage.currentWrite")}
             value={formatRate(disk.writeBytesPerSecond)}
             tone="write"
           />
           <StorageSummaryItem
             icon={HardDrive}
-            label="最高占用"
+            label={t("storage.highestUsage")}
             value={
               highestUsage
                 ? `${highestUsage.usagePercent.toFixed(0)}%`
-                : "无可用卷"
+                : t("storage.noVolume")
             }
             context={highestUsage?.volume.name}
             tone={highestUsage?.lowSpace ? "warning" : "capacity"}
@@ -103,10 +106,10 @@ export function StorageExplorer({
       <section className="panel volume-panel" aria-labelledby="volume-title">
         <header className="storage-section-heading">
           <div>
-            <span className="eyebrow">文件系统容量</span>
-            <h2 id="volume-title">卷</h2>
+            <span className="eyebrow">{t("storage.filesystemCapacity")}</span>
+            <h2 id="volume-title">{t("storage.volumes")}</h2>
           </div>
-          <span>按占用率排序</span>
+          <span>{t("storage.sortedByUsage")}</span>
         </header>
 
         {volumes.length > 0 ? (
@@ -121,20 +124,20 @@ export function StorageExplorer({
                     {volume.removable ? <Usb size={16} /> : <HardDrive size={16} />}
                   </span>
                   <span>
-                    <strong title={volume.name}>{volume.name || "未命名卷"}</strong>
+                    <strong title={volume.name}>{volume.name || t("storage.unnamedVolume")}</strong>
                     <code title={volume.mountPoint}>{volume.mountPoint}</code>
                   </span>
-                  {volume.removable ? <small>可移除</small> : null}
+                  {volume.removable ? <small>{t("storage.removable")}</small> : null}
                 </header>
                 <div className="volume-capacity">
                   <strong>{formatBytes(usedBytes)}</strong>
                   <span>/ {formatBytes(volume.totalBytes)}</span>
-                  <b>{usagePercent.toFixed(0)}%</b>
+                  <b className={`resource-usage resource-usage--${resourceUsageLevel(usagePercent, [50, 75, 90])}`}>{usagePercent.toFixed(0)}%</b>
                 </div>
                 <span
                   className="volume-track"
                   role="progressbar"
-                  aria-label={`${volume.name || volume.mountPoint} 已用空间`}
+                  aria-label={t("storage.usedSpace", { name: volume.name || volume.mountPoint })}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(usagePercent)}
@@ -142,10 +145,10 @@ export function StorageExplorer({
                   <i style={{ width: `${usagePercent}%` }} />
                 </span>
                 <footer>
-                  <span>可用 {formatBytes(volume.availableBytes)}</span>
+                  <span>{t("storage.available", { value: formatBytes(volume.availableBytes) })}</span>
                   {lowSpace ? (
                     <span className="volume-warning">
-                      <AlertTriangle size={12} />空间偏紧
+                      <AlertTriangle size={12} />{t("storage.lowSpace")}
                     </span>
                   ) : null}
                 </footer>
@@ -154,7 +157,7 @@ export function StorageExplorer({
           </div>
         ) : (
           <div className="storage-empty">
-            <HardDrive size={20} />当前没有可展示的卷。
+            <HardDrive size={20} />{t("storage.noDisplayVolumes")}
           </div>
         )}
       </section>
@@ -165,10 +168,10 @@ export function StorageExplorer({
       >
         <header className="storage-section-heading">
           <div>
-            <span className="eyebrow">当前快照</span>
-            <h2 id="storage-process-title">磁盘活动最高的进程</h2>
+            <span className="eyebrow">{t("storage.snapshot")}</span>
+            <h2 id="storage-process-title">{t("storage.topProcesses")}</h2>
           </div>
-          <span>点击后在右侧核验详情</span>
+          <span>{t("storage.inspectHint")}</span>
         </header>
 
         {diskProcesses.length > 0 ? (
@@ -185,19 +188,19 @@ export function StorageExplorer({
                   >
                     <span className="storage-process-rank">{index + 1}</span>
                     <span className="storage-process-name">
-                      <strong>{process.name || "未命名进程"}</strong>
+                      <strong>{process.name || t("common.unnamedProcess")}</strong>
                       <small>PID {process.pid}</small>
                     </span>
                     <span>
-                      <small>读取</small>
+                      <small>{t("common.read")}</small>
                       <strong>{formatRate(process.diskReadBytesPerSecond)}</strong>
                     </span>
                     <span>
-                      <small>写入</small>
+                      <small>{t("common.write")}</small>
                       <strong>{formatRate(process.diskWriteBytesPerSecond)}</strong>
                     </span>
                     <span className="storage-process-total">
-                      <small>合计</small>
+                      <small>{t("common.total")}</small>
                       <strong>{formatRate(totalBytesPerSecond)}</strong>
                     </span>
                     <ChevronRight size={14} aria-hidden="true" />
@@ -208,7 +211,7 @@ export function StorageExplorer({
           </ol>
         ) : (
           <div className="storage-empty">
-            <Activity size={20} />正在等待进程磁盘活动基线…
+            <Activity size={20} />{t("storage.waitingProcessIo")}
           </div>
         )}
       </section>
@@ -250,6 +253,7 @@ function StorageThroughput({
   history: HistoryPoint[];
   disk: DiskSnapshot;
 }) {
+  const { t } = useTranslation();
   const points = storageHistoryWindow(history);
   const readSegments = storageHistorySegments(points, "read");
   const writeSegments = storageHistorySegments(points, "write");
@@ -272,18 +276,18 @@ function StorageThroughput({
     <section className="panel storage-history" aria-labelledby="storage-history-title">
       <header className="storage-section-heading">
         <div>
-          <span className="eyebrow">最近 5 分钟</span>
-          <h2 id="storage-history-title">磁盘吞吐</h2>
+          <span className="eyebrow">{t("common.fiveMinutes")}</span>
+          <h2 id="storage-history-title">{t("storage.throughput")}</h2>
         </div>
-        <div className="storage-history__legend" aria-label="吞吐图例">
-          <span><i className="is-read" />读取 {formatRate(disk.readBytesPerSecond)}</span>
-          <span><i className="is-write" />写入 {formatRate(disk.writeBytesPerSecond)}</span>
+        <div className="storage-history__legend" aria-label={t("storage.throughputLegend")}>
+          <span><i className="is-read" />{t("common.read")} {formatRate(disk.readBytesPerSecond)}</span>
+          <span><i className="is-write" />{t("common.write")} {formatRate(disk.writeBytesPerSecond)}</span>
         </div>
       </header>
 
       {points.length < 2 ? (
         <div className="storage-history__empty">
-          <span className="pulse-dot" />正在建立磁盘吞吐基线…
+          <span className="pulse-dot" />{t("storage.establishingBaseline")}
         </div>
       ) : (
         <>
@@ -292,7 +296,10 @@ function StorageThroughput({
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label={`磁盘读取 ${formatRate(disk.readBytesPerSecond)}，写入 ${formatRate(disk.writeBytesPerSecond)}`}
+            aria-label={t("storage.chartLabel", {
+              read: formatRate(disk.readBytesPerSecond),
+              write: formatRate(disk.writeBytesPerSecond),
+            })}
           >
             {[0.25, 0.5, 0.75].map((ratio) => (
               <line
@@ -318,12 +325,12 @@ function StorageThroughput({
                 key={`write-${index}`}
               />
             ))}
-            <text x="0" y="172">−5 分钟</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">现在</text>
+            <text x="0" y="172">{t("common.fiveMinutesBack")}</text>
+            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common.now")}</text>
           </svg>
           <div className="storage-history__peaks">
-            <span>读取峰值 <strong>{formatRate(readPeak)}</strong></span>
-            <span>写入峰值 <strong>{formatRate(writePeak)}</strong></span>
+            <span>{t("storage.readPeak")} <strong>{formatRate(readPeak)}</strong></span>
+            <span>{t("storage.writePeak")} <strong>{formatRate(writePeak)}</strong></span>
           </div>
         </>
       )}

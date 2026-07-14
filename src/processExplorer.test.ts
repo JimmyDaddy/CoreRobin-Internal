@@ -7,6 +7,7 @@ import {
   buildProcessTreeProjection,
   computeVirtualRange,
   defaultProcessExplorerPreferences,
+  expandableProcessTreeRootIdentities,
   loadProcessExplorerPreferences,
   parseProcessExplorerPreferences,
   pruneExpandedIdentities,
@@ -276,6 +277,16 @@ describe("process explorer preferences", () => {
 });
 
 describe("process tree projection", () => {
+  it("identifies expandable roots so tree sorting can reveal sibling order", () => {
+    const root = processFixture(1, { name: "root" });
+    const child = processFixture(2, { name: "child", parentPid: 1 });
+    const leafRoot = processFixture(3, { name: "leaf-root" });
+
+    expect(
+      expandableProcessTreeRootIdentities([child, leafRoot, root]),
+    ).toEqual([processIdentity(root)]);
+  });
+
   it("honors expansion and assigns stable parent identities and depths", () => {
     const root = processFixture(1, { name: "root" });
     const child = processFixture(2, { name: "child", parentPid: 1 });

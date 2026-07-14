@@ -1,74 +1,68 @@
 # Pulse
 
-Pulse 是一个面向桌面的电脑资源管理器：保留 `htop` 的实时性与进程操作能力，同时提供更适合图形界面的趋势、搜索、诊断和安全确认体验。
+Pulse 是一个面向桌面的 `htop` 风格资源管理器。它由 Tauri 2、React、TypeScript 和 Rust 构建，在保留实时采样与进程操作能力的同时，提供更直观的趋势、搜索和诊断界面。
 
-当前版本已经打通第一条可用链路：Rust 后端读取真实系统数据，Tauri 将其暴露给 React 界面，用户可以查看资源总览、筛选进程、打开进程详情，并在身份复核后请求或强制结束进程。
+界面支持简体中文与英文，可在右上角直接切换。
 
-## 当前能力
+## 功能
 
-- 每秒采样 CPU、内存、交换空间、磁盘吞吐和网络吞吐
-- 展示整机 CPU / 内存、选中进程 CPU / 内存 / I/O 与磁盘吞吐的最近 5 分钟趋势
-- 展示网络上下行趋势、本次启动累计流量和逐接口速率、地址、包数及错误数
-- 以独立的 5 秒低频采集展示 TCP/UDP 活动连接、状态、本地/远端地址和汇总
-- 进程支持平铺或父子树视图、虚拟滚动、同级排序和稳定身份跟随
-- 按 CPU、内存、磁盘 I/O 或名称排序，支持名称、PID、用户搜索
-- 展示卷容量、可用空间、低空间提示和当前磁盘活动最高的进程
-- 按需读取进程路径、命令、父进程、用户、状态和运行时长
-- 支持暂停、继续和立即刷新；丢弃乱序采样帧
-- 请求结束进程（macOS / Linux 使用 `SIGTERM`）或强制结束进程
-- 针对首帧速率指标显示“预热中”，避免把尚未采样的数据显示成 0
+### 系统概览
 
-连接到进程的跨平台归属、跨重启的持久化历史和设置入口暂时保留为后续迭代。
+- 实时展示 CPU、内存、交换空间、磁盘和网络吞吐
+- 展示整机 CPU / 内存与磁盘读写的最近 5 分钟趋势
+- 支持暂停、继续和立即刷新，并丢弃乱序采样帧
+- 速率类指标在首帧明确显示预热状态
 
-## 安全边界
+### 进程浏览器
 
-进程操作不会只依赖 PID。采样快照会尽可能记录操作系统提供的高精度进程启动标识；确认时创建短期、单次使用的控制租约，将操作绑定到同一进程身份。任何一次标识不一致或租约过期都会拒绝执行，从而降低 PID 被复用后误操作新进程的风险。
+- 平铺与父子树两种视图，支持虚拟滚动、搜索和排序
+- 展示进程 CPU、内存、磁盘 I/O、状态、用户和运行时长
+- Inspector 提供路径、命令、父进程与最近 5 分钟资源趋势
+- 支持请求结束和强制结束进程，并在执行前复核进程身份
 
-此外：
+### 存储浏览器
 
-- PID 0、PID 1 和 Pulse 自身默认受保护
-- 强制结束需要二次确认，并明确展示目标进程
-- 不自动提权；权限不足时返回结构化错误
-- 系统采样与进程操作都在后台线程执行，不阻塞界面线程
+- 展示卷容量、已用比例、剩余空间与低空间告警
+- 展示最近 5 分钟系统磁盘读写趋势和高 I/O 进程
+- macOS 会合并显示属于同一 APFS 系统卷组的 `/` 与 Data 卷
 
-macOS 的最终信号接口仍然基于 PID，因此当前属于多重校验的 best-effort 防护；界面会要求本次运行显式授权。Linux 使用 `pidfd`，Windows 使用同一进程 handle 绑定校验和终止，但仍需在对应目标系统完成运行时验证。
+### 网络浏览器
 
-## 技术栈
+- 展示网络上下行趋势、本次启动累计流量和逐接口统计
+- 以独立的低频采集展示 TCP / UDP 活动连接
+- 支持按协议和状态筛选，展示本地地址、远端地址与连接汇总
 
-- Tauri 2
-- Rust 1.95（由项目根目录的 `rust-toolchain.toml` 固定）
-- React 19、TypeScript、Vite
-- `sysinfo` 0.39.6
-- Vitest
+连接到进程的跨平台归属和跨重启的持久化历史尚未实现。
+
+## 安全与平台边界
+
+进程操作不只依赖 PID。Pulse 会创建短期、单次使用的控制租约，并在执行前再次核对进程启动标识；标识不一致或租约过期时会拒绝操作。PID 0、PID 1 和 Pulse 自身默认受保护，强制结束还需要单独确认。
+
+应用不会自动提权。macOS 的最终信号接口仍基于 PID，因此属于多重校验下的 best-effort 防护；Linux 使用 `pidfd`，Windows 复用同一进程 handle 完成校验和终止。
+
+目前已在 macOS 完成真实窗口和原生应用构建验证。Linux 与 Windows 由 CI 编译对应平台分支，但仍需要持续补充目标系统上的运行时验证。
 
 ## 开发
 
-建议用 `rustup` 管理 Rust。它相当于 Rust 生态中的 `nvm`，可以安装多个工具链，并通过目录级配置自动切换版本。本项目进入目录后会自动选择 Rust 1.95：
+需要准备：
+
+- Node.js 22+
+- pnpm 10.33（项目通过 `packageManager` 固定）
+- Rust 1.95（项目通过 `rust-toolchain.toml` 固定）
+- 当前平台所需的 [Tauri 系统依赖](https://v2.tauri.app/start/prerequisites/)
+
+安装依赖并启动桌面应用：
 
 ```bash
-rustup show active-toolchain
-```
-
-准备环境：
-
-```bash
+corepack enable
 pnpm install
 pnpm dev
 ```
 
-`pnpm dev` 会同时启动 Vite、Tauri 窗口和 Rust 后端，因此界面展示的是真实系统数据。若只需在浏览器中调试前端 mock 数据，使用 `pnpm dev:web`。
-
-如果本机尚未安装固定版本，`rustup` 会根据 `rust-toolchain.toml` 自动下载；macOS 还需要 Xcode Command Line Tools。
-
-常用检查：
+`pnpm dev` 会启动 Vite、Tauri 窗口和 Rust 后端。只调试浏览器界面与 mock 数据时可使用：
 
 ```bash
-pnpm typecheck
-pnpm test
-pnpm build
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path src-tauri/Cargo.toml
+pnpm dev:web
 ```
 
 构建桌面应用：
@@ -77,14 +71,24 @@ cargo test --manifest-path src-tauri/Cargo.toml
 pnpm tauri build
 ```
 
+## 验证
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo test --manifest-path src-tauri/Cargo.toml
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```
+
+GitHub Actions 会在 pull request 和 `main` 分支推送时运行前端检查，并在 Linux、macOS 和 Windows 上编译 Rust/Tauri 目标；Linux 额外运行 Rust 测试、格式检查和 Clippy。
+
 ## 目录
 
-- `src/`：界面、轮询状态、进程表格与交互
-- `src-tauri/src/monitor.rs`：资源与进程采样
+- `src/`：React 界面、国际化、轮询状态与交互逻辑
+- `src-tauri/src/monitor.rs`：系统资源与进程采样
+- `src-tauri/src/network_connections.rs`：活动连接采集与解析
 - `src-tauri/src/process_control.rs`：跨平台进程控制租约与执行
 - `src-tauri/src/identity.rs`：跨平台进程启动标识读取
 - `src-tauri/src/models.rs`：前后端数据契约
-
-## 当前平台状态
-
-macOS 已完成真实窗口和原生应用构建验证。Linux / Windows 已保留对应的进程身份实现与条件编译分支，但还需要在目标系统上完成运行时验证。GPU、温度、风扇和电池指标尚未接入。

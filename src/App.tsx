@@ -5,6 +5,7 @@ import {
   Database,
   Gauge,
   History,
+  Languages,
   ListTree,
   MemoryStick,
   Network,
@@ -14,6 +15,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   createProcessControlLease,
@@ -56,6 +58,7 @@ import {
   normalizeCommandError,
   processIdentity,
   processKeysEqual,
+  resourceUsageLevel,
 } from "./utils";
 import "./App.css";
 
@@ -70,6 +73,7 @@ interface PendingProcessAction {
 }
 
 function App() {
+  const { t, i18n } = useTranslation();
   const {
     snapshot,
     history,
@@ -260,7 +264,7 @@ function App() {
           !processKeysEqual(activeDetailKeyRef.current, key)
         ) {
           await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
-          setNotice("目标进程身份已经变化，操作已取消。请重新选择并确认。");
+          setNotice(t("app.staleTarget"));
           return;
         }
         setPendingAction({
@@ -288,7 +292,7 @@ function App() {
       !processKeysEqual(currentKey, pendingAction.key)
     ) {
       await releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
-      setNotice("目标进程身份已经变化，操作已取消。请重新选择并确认。");
+      setNotice(t("app.staleTarget"));
       setPendingAction(null);
       return;
     }
@@ -320,7 +324,7 @@ function App() {
       <main className="boot-screen">
         <span className="brand-mark"><Activity size={22} /></span>
         <strong>Pulse</strong>
-        <span><i className="pulse-dot" />正在连接本机采样器…</span>
+        <span><i className="pulse-dot" />{t("app.samplerConnecting")}</span>
       </main>
     );
   }
@@ -329,9 +333,9 @@ function App() {
     return (
       <main className="boot-screen boot-screen--error">
         <span className="brand-mark"><Activity size={22} /></span>
-        <strong>无法启动采样器</strong>
-        <span>{error?.message ?? "没有收到系统数据。"}</span>
-        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>重试</button>
+        <strong>{t("app.samplerFailed")}</strong>
+        <span>{error?.message ?? t("app.samplerNoData")}</span>
+        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common.retry")}</button>
       </main>
     );
   }
@@ -352,36 +356,36 @@ function App() {
         snapshot.network.transmittedBytesPerSecond;
   return (
     <div className="app-shell">
-      <nav className="sidebar" aria-label="主导航">
+      <nav className="sidebar" aria-label={t("app.mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><Activity size={20} /></span>
           <span><strong>Pulse</strong><small>LOCAL MONITOR</small></span>
         </div>
 
         <div className="nav-group">
-          <span className="nav-label">监控</span>
+          <span className="nav-label">{t("app.monitor")}</span>
           <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}>
-            <CircleGauge size={17} />概览
+            <CircleGauge size={17} />{t("app.overview")}
           </button>
           <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}>
-            <ListTree size={17} />进程
+            <ListTree size={17} />{t("app.processes")}
           </button>
           <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}>
-            <Database size={17} />存储
+            <Database size={17} />{t("app.storage")}
           </button>
           <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}>
-            <Network size={17} />网络
+            <Network size={17} />{t("app.network")}
           </button>
         </div>
 
         <div className="nav-group">
-          <span className="nav-label">诊断</span>
-          <button type="button" disabled title="即将推出"><History size={17} />历史<small>稍后</small></button>
-          <button type="button" disabled title="即将推出"><Settings2 size={17} />设置<small>稍后</small></button>
+          <span className="nav-label">{t("app.diagnostics")}</span>
+          <button type="button" disabled title={t("app.comingSoon")}><History size={17} />{t("app.history")}<small>{t("app.soon")}</small></button>
+          <button type="button" disabled title={t("app.comingSoon")}><Settings2 size={17} />{t("app.settings")}<small>{t("app.soon")}</small></button>
         </div>
 
         <div className="sidebar-footer">
-          <span className="live-indicator"><i />本机采样</span>
+          <span className="live-indicator"><i />{t("app.localSampling")}</span>
           <small>Schema v{snapshot.schemaVersion}</small>
         </div>
       </nav>
@@ -390,68 +394,83 @@ function App() {
         <header className="topbar">
           <div className="host-heading">
             <span className="eyebrow">
-              {activeView === "overview"
-                ? "系统概览"
-                : activeView === "processes"
-                  ? "进程诊断"
-                  : activeView === "storage"
-                    ? "存储诊断"
-                    : "网络诊断"}
+              {t(`app.viewEyebrow.${activeView}`)}
             </span>
             <h1>{snapshot.host.hostname}</h1>
             <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
           </div>
           <div className="topbar-actions">
-            {!isDesktopRuntime() ? <span className="demo-badge">浏览器演示数据</span> : null}
+            {!isDesktopRuntime() ? <span className="demo-badge">{t("app.demoData")}</span> : null}
             <span className={`sample-status${paused ? " is-paused" : ""}`}>
-              <i />{paused ? "已暂停" : snapshot.warmingUp ? "预热中" : "实时"}
+              <i />{paused ? t("app.paused") : snapshot.warmingUp ? t("common.warmup") : t("app.live")}
             </span>
-            <button className="icon-button" type="button" title="立即刷新" aria-label="立即刷新" onClick={() => void refreshActiveView()}>
+            <button className="icon-button" type="button" title={t("app.refreshNow")} aria-label={t("app.refreshNow")} onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
+            </button>
+            <button
+              className="button button--secondary language-button"
+              type="button"
+              title={t("app.switchLanguage")}
+              aria-label={t("app.switchLanguage")}
+              onClick={() => void i18n.changeLanguage(i18n.resolvedLanguage === "en" ? "zh-CN" : "en")}
+            >
+              <Languages size={15} />
+              {i18n.resolvedLanguage === "en" ? "中文" : "EN"}
             </button>
             <button className="button button--secondary" type="button" onClick={() => setPaused(!paused)}>
               {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? "继续" : "暂停"}
+              {paused ? t("app.resume") : t("app.pause")}
             </button>
           </div>
         </header>
 
-        {error ? <div className="global-error">采样暂时失败：{error.message}</div> : null}
-        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
+        {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
+        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
 
         <div className={`content-layout${activeView === "network" ? " content-layout--wide" : ""}`}>
           <main className="main-content">
             {activeView === "overview" ? (
               <>
-                <section className="metric-grid" aria-label="系统资源摘要">
+                <section className="metric-grid" aria-label={t("app.metricsLabel")}>
                   <MetricCard
                     icon={Cpu}
                     label="CPU"
                     value={formatPercent(snapshot.cpu.usagePercent)}
-                    context={`${snapshot.cpu.logicalCoreCount} 个逻辑核心 · 单进程可超过 100%`}
+                    context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
                     tone="blue"
                     progress={snapshot.cpu.usagePercent ?? 0}
+                    usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent)}
                   />
                   <MetricCard
                     icon={MemoryStick}
-                    label="内存使用"
+                    label={t("app.metrics.memory")}
                     value={formatBytes(snapshot.memory.usedBytes)}
-                    context={`共 ${formatBytes(snapshot.memory.totalBytes)} · 交换 ${formatBytes(snapshot.memory.swapUsedBytes)}`}
+                    context={t("app.metrics.memoryContext", {
+                      total: formatBytes(snapshot.memory.totalBytes),
+                      swap: formatBytes(snapshot.memory.swapUsedBytes),
+                    })}
                     tone="violet"
                     progress={memoryPercent}
+                    usageLevel={resourceUsageLevel(memoryPercent)}
                   />
                   <MetricCard
                     icon={Database}
-                    label="磁盘 I/O"
+                    label={t("app.metrics.disk")}
                     value={formatRate(diskRate)}
-                    context={`读 ${formatRate(snapshot.disk.readBytesPerSecond)} · 写 ${formatRate(snapshot.disk.writeBytesPerSecond)}`}
+                    context={t("app.metrics.diskContext", {
+                      read: formatRate(snapshot.disk.readBytesPerSecond),
+                      write: formatRate(snapshot.disk.writeBytesPerSecond),
+                    })}
                     tone="amber"
                   />
                   <MetricCard
                     icon={Network}
-                    label="网络吞吐"
+                    label={t("app.metrics.network")}
                     value={formatRate(networkRate)}
-                    context={`下行 ${formatRate(snapshot.network.receivedBytesPerSecond)} · 上行 ${formatRate(snapshot.network.transmittedBytesPerSecond)}`}
+                    context={t("app.metrics.networkContext", {
+                      receive: formatRate(snapshot.network.receivedBytesPerSecond),
+                      send: formatRate(snapshot.network.transmittedBytesPerSecond),
+                    })}
                     tone="green"
                   />
                 </section>
@@ -536,11 +555,14 @@ function App() {
         </div>
 
         <footer className="statusbar">
-          <span><Gauge size={13} />采样间隔 {snapshot.sampleIntervalMs} ms</span>
+          <span><Gauge size={13} />{t("app.status.interval", { interval: snapshot.sampleIntervalMs })}</span>
           <span>
             {activeView === "network"
-              ? `${snapshot.network.interfaceCount} 个网络接口 · ${connectionsSnapshot?.summary.totalCount ?? "—"} 个连接`
-              : `${snapshot.processes.length} 个进程`}
+              ? t("app.status.interfacesAndConnections", {
+                  interfaces: snapshot.network.interfaceCount,
+                  connections: connectionsSnapshot?.summary.totalCount ?? "—",
+                })
+              : t("app.status.processCount", { count: snapshot.processes.length })}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>
           <span className="statusbar__sequence">#{snapshot.sequence}</span>

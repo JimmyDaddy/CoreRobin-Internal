@@ -1,4 +1,6 @@
 import type { HistoryPoint } from "../types";
+import { useTranslation } from "react-i18next";
+import { resourceUsageLevel } from "../utils";
 
 interface ResourceHistoryProps {
   history: HistoryPoint[];
@@ -24,6 +26,7 @@ function pathFor(values: number[]): string {
 }
 
 export function ResourceHistory({ history }: ResourceHistoryProps) {
+  const { t } = useTranslation();
   const cpuPath = pathFor(history.map((point) => point.cpuPercent));
   const memoryPath = pathFor(history.map((point) => point.memoryPercent));
   const latest = history[history.length - 1];
@@ -32,19 +35,19 @@ export function ResourceHistory({ history }: ResourceHistoryProps) {
     <section className="panel history-panel" aria-labelledby="history-title">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">最近 5 分钟</span>
-          <h2 id="history-title">资源趋势</h2>
+          <span className="eyebrow">{t("common.fiveMinutes")}</span>
+          <h2 id="history-title">{t("history.title")}</h2>
         </div>
-        <div className="chart-legend" aria-label="图表图例">
-          <span><i className="legend-dot legend-dot--cpu" />CPU {latest ? `${latest.cpuPercent.toFixed(0)}%` : "预热"}</span>
-          <span><i className="legend-dot legend-dot--memory" />内存 {latest ? `${latest.memoryPercent.toFixed(0)}%` : "预热"}</span>
+        <div className="chart-legend" aria-label={t("history.legend")}>
+          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.cpuPercent)}` : undefined}><i className="legend-dot legend-dot--cpu" />CPU {latest ? `${latest.cpuPercent.toFixed(0)}%` : t("history.warmup")}</span>
+          <span className={latest ? `resource-usage resource-usage--${resourceUsageLevel(latest.memoryPercent)}` : undefined}><i className="legend-dot legend-dot--memory" />{t("history.memory")} {latest ? `${latest.memoryPercent.toFixed(0)}%` : t("history.warmup")}</span>
         </div>
       </div>
 
       {history.length < 2 ? (
         <div className="history-empty">
           <span className="pulse-dot" />
-          正在建立趋势基线…
+          {t("history.establishing")}
         </div>
       ) : (
         <svg
@@ -52,7 +55,10 @@ export function ResourceHistory({ history }: ResourceHistoryProps) {
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label={`CPU ${latest?.cpuPercent.toFixed(0)}%，内存 ${latest?.memoryPercent.toFixed(0)}%`}
+          aria-label={t("history.chartLabel", {
+            cpu: latest?.cpuPercent.toFixed(0),
+            memory: latest?.memoryPercent.toFixed(0),
+          })}
         >
           <defs>
             <linearGradient id="cpu-fill" x1="0" y1="0" x2="0" y2="1">
@@ -70,8 +76,8 @@ export function ResourceHistory({ history }: ResourceHistoryProps) {
           />
           <path className="chart-line chart-line--memory" d={memoryPath} />
           <path className="chart-line chart-line--cpu" d={cpuPath} />
-          <text className="chart-axis-label" x="0" y={HEIGHT - 3}>较早</text>
-          <text className="chart-axis-label" x={WIDTH} y={HEIGHT - 3} textAnchor="end">现在</text>
+          <text className="chart-axis-label" x="0" y={HEIGHT - 3}>{t("common.earlier")}</text>
+          <text className="chart-axis-label" x={WIDTH} y={HEIGHT - 3} textAnchor="end">{t("common.now")}</text>
         </svg>
       )}
     </section>

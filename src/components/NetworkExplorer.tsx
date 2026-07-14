@@ -9,6 +9,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   filterNetworkConnections,
@@ -22,9 +23,7 @@ import {
 import type {
   CommandError,
   HistoryPoint,
-  NetworkConnectionState,
   NetworkConnectionsSnapshot,
-  NetworkInterfaceOperationalState,
   NetworkInterfaceSnapshot,
   NetworkSnapshot,
 } from "../types";
@@ -45,44 +44,13 @@ const CHART_TOP = 12;
 const CHART_BOTTOM = 148;
 const CONNECTION_PAGE_SIZE = 100;
 
-const CONNECTION_FILTERS: Array<{
-  value: NetworkConnectionFilter;
-  label: string;
-}> = [
-  { value: "all", label: "全部" },
-  { value: "established", label: "已建立" },
-  { value: "listen", label: "监听" },
-  { value: "tcp", label: "TCP" },
-  { value: "udp", label: "UDP" },
+const CONNECTION_FILTERS: NetworkConnectionFilter[] = [
+  "all",
+  "established",
+  "listen",
+  "tcp",
+  "udp",
 ];
-
-const CONNECTION_STATE_LABELS: Record<NetworkConnectionState, string> = {
-  closed: "已关闭",
-  listen: "监听",
-  syn_sent: "SYN 已发送",
-  syn_received: "SYN 已接收",
-  established: "已建立",
-  fin_wait1: "FIN 等待 1",
-  fin_wait2: "FIN 等待 2",
-  close_wait: "关闭等待",
-  closing: "关闭中",
-  last_ack: "最终确认",
-  time_wait: "时间等待",
-  delete_tcb: "删除 TCB",
-  unconnected: "无连接",
-  unknown: "未知",
-};
-
-const STATE_LABELS: Record<NetworkInterfaceOperationalState, string> = {
-  other: "其他",
-  up: "已连接",
-  down: "未连接",
-  testing: "测试中",
-  unknown: "未知",
-  dormant: "待机",
-  notpresent: "不存在",
-  lowerlayerdown: "底层未连接",
-};
 
 export function NetworkExplorer({
   network,
@@ -92,6 +60,7 @@ export function NetworkExplorer({
   connectionsLoading,
   onRefreshConnections,
 }: NetworkExplorerProps) {
+  const { t } = useTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
   const visible = useMemo(
     () => visibleNetworkInterfaces(network.interfaces, showAllInterfaces),
@@ -108,34 +77,37 @@ export function NetworkExplorer({
       <section className="panel network-overview">
         <header className="network-overview__heading">
           <div>
-            <span className="eyebrow">本机网络</span>
-            <h2 id="network-title">实时接口与会话流量</h2>
-            <p>速率按真实采样间隔换算；累计值从本次启动 Pulse 开始。</p>
+            <span className="eyebrow">{t("network.local")}</span>
+            <h2 id="network-title">{t("network.title")}</h2>
+            <p>{t("network.description")}</p>
           </div>
           <span className="network-overview__badge">
             <Network size={14} />
-            {connectedCount} / {network.interfaceCount} 个接口已连接
+            {t("network.connectedInterfaces", { connected: connectedCount, total: network.interfaceCount })}
           </span>
         </header>
 
-        <div className="network-summary" aria-label="网络摘要">
+        <div className="network-summary" aria-label={t("network.summary")}>
           <NetworkSummaryItem
             icon={ArrowDownToLine}
-            label="当前接收"
+            label={t("network.receiveNow")}
             value={formatRate(network.receivedBytesPerSecond)}
             tone="received"
           />
           <NetworkSummaryItem
             icon={ArrowUpFromLine}
-            label="当前发送"
+            label={t("network.sendNow")}
             value={formatRate(network.transmittedBytesPerSecond)}
             tone="transmitted"
           />
           <NetworkSummaryItem
             icon={Activity}
-            label="本次启动累计"
+            label={t("network.sessionTotal")}
             value={formatBytes(sessionTotal)}
-            context={`接收 ${formatBytes(network.receivedBytesSinceLaunch)} · 发送 ${formatBytes(network.transmittedBytesSinceLaunch)}`}
+            context={t("network.sessionContext", {
+              receive: formatBytes(network.receivedBytesSinceLaunch),
+              send: formatBytes(network.transmittedBytesSinceLaunch),
+            })}
             tone="session"
           />
         </div>
@@ -153,8 +125,8 @@ export function NetworkExplorer({
       <section className="panel network-interface-panel" aria-labelledby="interface-title">
         <header className="network-section-heading">
           <div>
-            <span className="eyebrow">网络接口</span>
-            <h2 id="interface-title">接口活动</h2>
+            <span className="eyebrow">{t("network.interfaces")}</span>
+            <h2 id="interface-title">{t("network.interfaceActivity")}</h2>
           </div>
           {visible.hiddenCount > 0 || showAllInterfaces ? (
             <button
@@ -164,13 +136,13 @@ export function NetworkExplorer({
               onClick={() => setShowAllInterfaces((current) => !current)}
             >
               {showAllInterfaces ? (
-                <><ChevronUp size={13} />收起未使用接口</>
+                <><ChevronUp size={13} />{t("network.collapseUnused")}</>
               ) : (
-                <><ChevronDown size={13} />显示另外 {visible.hiddenCount} 个接口</>
+                <><ChevronDown size={13} />{t("network.showOtherInterfaces", { count: visible.hiddenCount })}</>
               )}
             </button>
           ) : (
-            <span>按当前总流量排序</span>
+            <span>{t("network.sortedByTraffic")}</span>
           )}
         </header>
 
@@ -185,7 +157,7 @@ export function NetworkExplorer({
           </ul>
         ) : (
           <div className="network-empty">
-            <Network size={20} />当前没有可展示的网络接口。
+            <Network size={20} />{t("network.noInterfaces")}
           </div>
         )}
       </section>
@@ -204,6 +176,7 @@ function NetworkConnectionsPanel({
   loading: boolean;
   onRefresh: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const [filter, setFilter] = useState<NetworkConnectionFilter>("all");
   const [rowLimit, setRowLimit] = useState(CONNECTION_PAGE_SIZE);
   const filteredConnections = useMemo(
@@ -220,46 +193,49 @@ function NetworkConnectionsPanel({
     >
       <header className="network-connections__heading">
         <div>
-          <span className="eyebrow">独立低频采集</span>
-          <h2 id="network-connections-title">活动连接</h2>
-          <p>每 5 秒更新一次；当前不关联进程，以隔离权限与跨平台差异。</p>
+          <span className="eyebrow">{t("network.connections.collection")}</span>
+          <h2 id="network-connections-title">{t("network.connections.title")}</h2>
+          <p>{t("network.connections.description")}</p>
         </div>
         <div className="network-connections__status">
           <span>
             {snapshot
-              ? `更新于 ${new Date(snapshot.sampledAtMs).toLocaleTimeString("zh-CN", {
-                  hour12: false,
-                })}`
-              : "等待首次采集"}
+              ? t("network.connections.updatedAt", {
+                  time: new Date(snapshot.sampledAtMs).toLocaleTimeString(
+                    i18n.resolvedLanguage,
+                    { hour12: false },
+                  ),
+                })
+              : t("network.connections.waiting")}
           </span>
           <button
             className="network-connections__refresh"
             type="button"
-            aria-label="刷新活动连接"
-            title="刷新活动连接"
+            aria-label={t("network.connections.refresh")}
+            title={t("network.connections.refresh")}
             onClick={onRefresh}
           >
             <RefreshCw size={13} aria-hidden="true" />
-            刷新
+            {t("common.refresh")}
           </button>
         </div>
       </header>
 
       {snapshot ? (
-        <div className="network-connection-summary" aria-label="连接摘要">
-          <ConnectionSummaryItem label="全部连接" value={snapshot.summary.totalCount} />
+        <div className="network-connection-summary" aria-label={t("network.connections.summary")}>
+          <ConnectionSummaryItem label={t("network.connections.allConnections")} value={snapshot.summary.totalCount} />
           <ConnectionSummaryItem
-            label="已建立"
+            label={t("network.connections.established")}
             value={snapshot.summary.establishedCount}
             tone="established"
           />
           <ConnectionSummaryItem
-            label="监听"
+            label={t("network.connections.listening")}
             value={snapshot.summary.listeningCount}
             tone="listen"
           />
           <ConnectionSummaryItem
-            label="TCP / UDP"
+            label={t("network.connections.tcpUdp")}
             value={`${snapshot.summary.tcpCount} / ${snapshot.summary.udpCount}`}
           />
         </div>
@@ -268,24 +244,24 @@ function NetworkConnectionsPanel({
       {error ? (
         <div className="network-connections__notice is-error" role="alert">
           <AlertTriangle size={13} aria-hidden="true" />
-          连接采集暂时失败：{error.message}
+          {t("network.connections.failure", { message: error.message })}
         </div>
       ) : null}
 
       {snapshot && (snapshot.truncated || snapshot.skippedEntryCount > 0) ? (
         <div className="network-connections__notice" role="status">
           <AlertTriangle size={13} aria-hidden="true" />
-          {snapshot.truncated ? "列表仅展示采集结果的前 500 项。" : null}
+          {snapshot.truncated ? t("network.connections.truncated") : null}
           {snapshot.truncated && snapshot.skippedEntryCount > 0 ? " " : null}
           {snapshot.skippedEntryCount > 0
-            ? `${snapshot.skippedEntryCount} 个连接条目因系统限制未能读取。`
+            ? t("network.connections.skipped", { count: snapshot.skippedEntryCount })
             : null}
         </div>
       ) : null}
 
       <div className="network-connections__toolbar">
-        <div className="network-connection-filters" role="group" aria-label="连接筛选">
-          {CONNECTION_FILTERS.map(({ value, label }) => (
+        <div className="network-connection-filters" role="group" aria-label={t("network.connections.filters")}>
+          {CONNECTION_FILTERS.map((value) => (
             <button
               className={filter === value ? "is-active" : ""}
               key={value}
@@ -296,24 +272,24 @@ function NetworkConnectionsPanel({
                 setRowLimit(CONNECTION_PAGE_SIZE);
               }}
             >
-              {label}
+              {t(`network.connections.filtersLabel.${value}`)}
             </button>
           ))}
         </div>
         <span>
-          {filteredConnections.length.toLocaleString()} 项
-          {loading ? " · 正在更新" : ""}
+          {t("network.connections.count", { count: filteredConnections.length })}
+          {loading ? ` · ${t("network.connections.updating")}` : ""}
         </span>
       </div>
 
       {snapshot && visibleConnections.length > 0 ? (
         <>
-          <div className="network-connection-table" role="table" aria-label="活动连接列表">
+          <div className="network-connection-table" role="table" aria-label={t("network.connections.table")}>
             <div className="network-connection-row network-connection-row--header" role="row">
-              <span role="columnheader">协议</span>
-              <span role="columnheader">状态</span>
-              <span role="columnheader">本地地址</span>
-              <span role="columnheader">远端地址</span>
+              <span role="columnheader">{t("network.connections.protocol")}</span>
+              <span role="columnheader">{t("network.connections.state")}</span>
+              <span role="columnheader">{t("network.connections.localAddress")}</span>
+              <span role="columnheader">{t("network.connections.remoteAddress")}</span>
             </div>
             {visibleConnections.map((connection, index) => (
               <div
@@ -327,7 +303,7 @@ function NetworkConnectionsPanel({
                 </span>
                 <span role="cell">
                   <i className={`network-connection-state network-connection-state--${connection.state}`}>
-                    {CONNECTION_STATE_LABELS[connection.state]}
+                    {t(`network.connections.states.${connection.state}`)}
                   </i>
                 </span>
                 <code role="cell" title={formatNetworkEndpoint(connection.localEndpoint)}>
@@ -345,7 +321,7 @@ function NetworkConnectionsPanel({
               type="button"
               onClick={() => setRowLimit((current) => current + CONNECTION_PAGE_SIZE)}
             >
-              显示更多（剩余 {filteredConnections.length - visibleConnections.length} 项）
+              {t("network.connections.more", { count: filteredConnections.length - visibleConnections.length })}
             </button>
           ) : null}
         </>
@@ -353,10 +329,10 @@ function NetworkConnectionsPanel({
         <div className="network-empty" aria-live="polite">
           <Network size={20} />
           {loading && !snapshot
-            ? "正在采集本机连接…"
+            ? t("network.connections.collecting")
             : error && !snapshot
-              ? "暂时无法读取活动连接。"
-              : "当前筛选条件下没有连接。"}
+              ? t("network.connections.unavailable")
+              : t("network.connections.empty")}
         </div>
       )}
     </section>
@@ -417,6 +393,7 @@ function NetworkThroughput({
   history: HistoryPoint[];
   network: NetworkSnapshot;
 }) {
+  const { t } = useTranslation();
   const points = networkHistoryWindow(history);
   const receivedSegments = networkHistorySegments(points, "received");
   const transmittedSegments = networkHistorySegments(points, "transmitted");
@@ -439,18 +416,18 @@ function NetworkThroughput({
     <section className="panel network-history" aria-labelledby="network-history-title">
       <header className="network-section-heading">
         <div>
-          <span className="eyebrow">最近 5 分钟</span>
-          <h2 id="network-history-title">网络吞吐</h2>
+          <span className="eyebrow">{t("common.fiveMinutes")}</span>
+          <h2 id="network-history-title">{t("network.throughput")}</h2>
         </div>
-        <div className="network-history__legend" aria-label="吞吐图例">
-          <span><i className="is-received" />接收 {formatRate(network.receivedBytesPerSecond)}</span>
-          <span><i className="is-transmitted" />发送 {formatRate(network.transmittedBytesPerSecond)}</span>
+        <div className="network-history__legend" aria-label={t("network.throughputLegend")}>
+          <span><i className="is-received" />{t("network.receive")} {formatRate(network.receivedBytesPerSecond)}</span>
+          <span><i className="is-transmitted" />{t("network.send")} {formatRate(network.transmittedBytesPerSecond)}</span>
         </div>
       </header>
 
       {points.length < 2 ? (
         <div className="network-history__empty">
-          <span className="pulse-dot" />正在建立网络吞吐基线…
+          <span className="pulse-dot" />{t("network.establishingBaseline")}
         </div>
       ) : (
         <>
@@ -459,7 +436,10 @@ function NetworkThroughput({
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label={`网络接收 ${formatRate(network.receivedBytesPerSecond)}，发送 ${formatRate(network.transmittedBytesPerSecond)}`}
+            aria-label={t("network.chartLabel", {
+              receive: formatRate(network.receivedBytesPerSecond),
+              send: formatRate(network.transmittedBytesPerSecond),
+            })}
           >
             {[0.25, 0.5, 0.75].map((ratio) => (
               <line
@@ -485,12 +465,12 @@ function NetworkThroughput({
                 key={`transmitted-${index}`}
               />
             ))}
-            <text x="0" y="172">−5 分钟</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">现在</text>
+            <text x="0" y="172">{t("common.fiveMinutesBack")}</text>
+            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common.now")}</text>
           </svg>
           <div className="network-history__peaks">
-            <span>接收峰值 <strong>{formatRate(receivedPeak)}</strong></span>
-            <span>发送峰值 <strong>{formatRate(transmittedPeak)}</strong></span>
+            <span>{t("network.receivePeak")} <strong>{formatRate(receivedPeak)}</strong></span>
+            <span>{t("network.sendPeak")} <strong>{formatRate(transmittedPeak)}</strong></span>
           </div>
         </>
       )}
@@ -503,6 +483,7 @@ function NetworkInterfaceRow({
 }: {
   networkInterface: NetworkInterfaceSnapshot;
 }) {
+  const { t, i18n } = useTranslation();
   const errorCount =
     networkInterface.receiveErrorsSinceLaunch +
     networkInterface.transmitErrorsSinceLaunch;
@@ -512,7 +493,9 @@ function NetworkInterfaceRow({
   const sessionTotal =
     networkInterface.receivedBytesSinceLaunch +
     networkInterface.transmittedBytesSinceLaunch;
-  const stateLabel = STATE_LABELS[networkInterface.operationalState];
+  const stateLabel = t(
+    `network.interfaceStates.${networkInterface.operationalState}`,
+  );
 
   return (
     <li className="network-interface-row">
@@ -526,33 +509,33 @@ function NetworkInterfaceRow({
         <code title={networkInterface.ipNetworks.join(" · ")}>
           {networkInterface.ipNetworks.length > 0
             ? networkInterface.ipNetworks.join(" · ")
-            : "未报告 IP 地址"}
+            : t("network.noIp")}
         </code>
       </div>
       <div className="network-interface-metric network-interface-metric--received">
-        <small>接收</small>
+        <small>{t("network.receive")}</small>
         <strong>{formatRate(networkInterface.receivedBytesPerSecond)}</strong>
-        <span>累计 {formatBytes(networkInterface.receivedBytesSinceLaunch)}</span>
+        <span>{t("network.accumulated", { value: formatBytes(networkInterface.receivedBytesSinceLaunch) })}</span>
       </div>
       <div className="network-interface-metric network-interface-metric--transmitted">
-        <small>发送</small>
+        <small>{t("network.send")}</small>
         <strong>{formatRate(networkInterface.transmittedBytesPerSecond)}</strong>
-        <span>累计 {formatBytes(networkInterface.transmittedBytesSinceLaunch)}</span>
+        <span>{t("network.accumulated", { value: formatBytes(networkInterface.transmittedBytesSinceLaunch) })}</span>
       </div>
       <div className="network-interface-session">
-        <small>本次启动</small>
+        <small>{t("common.session")}</small>
         <strong>{formatBytes(sessionTotal)}</strong>
-        <span>{packetCount.toLocaleString()} 个数据包</span>
+        <span>{t("network.packets", { count: packetCount.toLocaleString(i18n.resolvedLanguage) })}</span>
       </div>
       <div className="network-interface-details">
-        <span>MTU {networkInterface.mtu || "未知"}</span>
+        <span>MTU {networkInterface.mtu || t("network.unknownMtu")}</span>
         <span title={networkInterface.macAddress ?? undefined}>
-          {networkInterface.macAddress ?? "无 MAC 地址"}
+          {networkInterface.macAddress ?? t("network.noMac")}
         </span>
         {errorCount > 0 ? (
-          <em><AlertTriangle size={10} />{errorCount} 个错误</em>
+          <em><AlertTriangle size={10} />{t("common.errors", { count: errorCount })}</em>
         ) : (
-          <em className="is-healthy">0 个错误</em>
+          <em className="is-healthy">{t("common.errors", { count: 0 })}</em>
         )}
       </div>
     </li>

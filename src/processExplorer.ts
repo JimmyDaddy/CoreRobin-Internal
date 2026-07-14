@@ -58,6 +58,11 @@ export interface VirtualRange {
   paddingBottom: number;
 }
 
+interface ProcessTreeIndex {
+  processByIdentity: Map<string, ProcessRow>;
+  parentByIdentity: Map<string, string>;
+}
+
 export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences {
   return {
     version: 1,
@@ -168,30 +173,7 @@ export function buildProcessTreeProjection(
   selectedIdentity: string | null,
   followSelection: boolean,
 ): ProcessTreeProjection {
-  const processByIdentity = new Map<string, ProcessRow>();
-  const identitiesByPid = new Map<number, string[]>();
-  for (const process of processes) {
-    const identity = processIdentity(process);
-    processByIdentity.set(identity, process);
-    const identities = identitiesByPid.get(process.pid) ?? [];
-    identities.push(identity);
-    identitiesByPid.set(process.pid, identities);
-  }
-
-  const parentByIdentity = new Map<string, string>();
-  for (const process of processes) {
-    const identity = processIdentity(process);
-    if (process.parentPid === null || process.parentPid === process.pid) continue;
-
-    const parentCandidates = identitiesByPid.get(process.parentPid) ?? [];
-    if (parentCandidates.length !== 1) continue;
-    const [parentIdentity] = parentCandidates;
-    if (parentIdentity === undefined) continue;
-    const parent = processByIdentity.get(parentIdentity);
-    if (!parent || parent.startTime > process.startTime) continue;
-    parentByIdentity.set(identity, parentIdentity);
-  }
-  breakParentCycles(parentByIdentity, processByIdentity);
+  const { processByIdentity, parentByIdentity } = buildProcessTreeIndex(processes);
 
   const childrenByIdentity = new Map<string, ProcessRow[]>();
   const roots: ProcessRow[] = [];
@@ -285,6 +267,49 @@ export function buildProcessTreeProjection(
     includedCount: included.size,
     matchCount: normalizedQuery ? queryMatches.size : processes.length,
   };
+}
+
+export function expandableProcessTreeRootIdentities(
+  processes: readonly ProcessRow[],
+): string[] {
+  const { processByIdentity, parentByIdentity } = buildProcessTreeIndex(processes);
+  const rootsWithChildren = new Set<string>();
+  for (const parentIdentity of parentByIdentity.values()) {
+    if (!parentByIdentity.has(parentIdentity)) rootsWithChildren.add(parentIdentity);
+  }
+  return [...rootsWithChildren]
+    .filter((identity) => processByIdentity.has(identity))
+    .sort(compareIdentities);
+}
+
+function buildProcessTreeIndex(
+  processes: readonly ProcessRow[],
+): ProcessTreeIndex {
+  const processByIdentity = new Map<string, ProcessRow>();
+  const identitiesByPid = new Map<number, string[]>();
+  for (const process of processes) {
+    const identity = processIdentity(process);
+    processByIdentity.set(identity, process);
+    const identities = identitiesByPid.get(process.pid) ?? [];
+    identities.push(identity);
+    identitiesByPid.set(process.pid, identities);
+  }
+
+  const parentByIdentity = new Map<string, string>();
+  for (const process of processes) {
+    const identity = processIdentity(process);
+    if (process.parentPid === null || process.parentPid === process.pid) continue;
+
+    const parentCandidates = identitiesByPid.get(process.parentPid) ?? [];
+    if (parentCandidates.length !== 1) continue;
+    const [parentIdentity] = parentCandidates;
+    if (parentIdentity === undefined) continue;
+    const parent = processByIdentity.get(parentIdentity);
+    if (!parent || parent.startTime > process.startTime) continue;
+    parentByIdentity.set(identity, parentIdentity);
+  }
+  breakParentCycles(parentByIdentity, processByIdentity);
+  return { processByIdentity, parentByIdentity };
 }
 
 export function buildFlatProcessRows(

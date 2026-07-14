@@ -21,11 +21,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   buildFlatProcessRows,
   buildProcessTreeProjection,
   computeVirtualRange,
+  expandableProcessTreeRootIdentities,
   type VisibleProcessRow,
 } from "../processExplorer";
 import type {
@@ -40,6 +42,7 @@ import {
   formatRate,
   processDiskRate,
   processIdentity,
+  resourceUsageLevel,
   statusLabel,
 } from "../utils";
 
@@ -62,7 +65,7 @@ interface ProcessTableProps {
   compact?: boolean;
 }
 
-const ROW_HEIGHT = 34;
+const ROW_HEIGHT = 38;
 const OVERSCAN_ROWS = 6;
 const COMPACT_ROWS = 9;
 
@@ -98,6 +101,7 @@ export function ProcessTable({
   onResetPreferences,
   compact = false,
 }: ProcessTableProps) {
+  const { t } = useTranslation();
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingFocusIdentity = useRef<string | null>(null);
@@ -227,11 +231,31 @@ export function ProcessTable({
   }, [focusedIdentity, rows]);
 
   const requestSort = (nextSortKey: ProcessSortKey) => {
+    if (effectiveViewMode === "tree" && onExpandedIdentitiesChange) {
+      const nextExpanded = new Set(expandedIdentities);
+      for (const identity of expandableProcessTreeRootIdentities(processes)) {
+        nextExpanded.add(identity);
+      }
+      if (nextExpanded.size !== expandedIdentities.length) {
+        onExpandedIdentitiesChange([...nextExpanded]);
+      }
+    }
     const nextDirection =
       nextSortKey === sortKey && direction === "descending"
         ? "ascending"
         : "descending";
     onSortChange(nextSortKey, nextDirection);
+  };
+
+  const showTreeView = () => {
+    const nextExpanded = new Set(expandedIdentities);
+    for (const identity of expandableProcessTreeRootIdentities(processes)) {
+      nextExpanded.add(identity);
+    }
+    if (nextExpanded.size !== expandedIdentities.length) {
+      onExpandedIdentitiesChange?.([...nextExpanded]);
+    }
+    onViewModeChange?.("tree");
   };
 
   const sortIcon = (column: ProcessSortKey) => {
@@ -359,45 +383,45 @@ export function ProcessTable({
       <div className="process-toolbar">
         <div className="process-heading">
           <div>
-            <span className="eyebrow">实时采样</span>
+            <span className="eyebrow">{t("process.realtime")}</span>
             <h2 id="process-title">
-              {compact ? "影响最大的进程" : "所有进程"}
+              {compact ? t("process.topProcesses") : t("process.allProcesses")}
             </h2>
           </div>
           {!compact ? (
-            <div className="process-view-controls" aria-label="进程视图设置">
-              <div className="segmented-control" aria-label="视图模式">
+            <div className="process-view-controls" aria-label={t("process.viewSettings")}>
+              <div className="segmented-control" aria-label={t("process.viewMode")}>
                 <button
                   type="button"
                   aria-pressed={effectiveViewMode === "flat"}
-                  title="平铺视图"
+                  title={t("process.flatTitle")}
                   onClick={() => onViewModeChange?.("flat")}
                 >
-                  <List size={14} />平铺
+                  <List size={14} />{t("process.flat")}
                 </button>
                 <button
                   type="button"
                   aria-pressed={effectiveViewMode === "tree"}
-                  title="按父子关系显示；排序只作用于同级"
-                  onClick={() => onViewModeChange?.("tree")}
+                  title={t("process.treeTitle")}
+                  onClick={showTreeView}
                 >
-                  <ListTree size={14} />树形
+                  <ListTree size={14} />{t("process.tree")}
                 </button>
               </div>
               <button
                 className="process-tool-button"
                 type="button"
                 aria-pressed={followSelection}
-                title="刷新重排后保持选中进程在视野内"
+                title={t("process.followTitle")}
                 onClick={() => onFollowSelectionChange?.(!followSelection)}
               >
-                <LocateFixed size={14} />跟随
+                <LocateFixed size={14} />{t("process.follow")}
               </button>
               <button
                 className="process-tool-button process-tool-button--icon"
                 type="button"
-                aria-label="恢复默认进程视图"
-                title="恢复默认进程视图"
+                aria-label={t("process.resetView")}
+                title={t("process.resetView")}
                 onClick={onResetPreferences}
               >
                 <RotateCcw size={14} />
@@ -407,12 +431,12 @@ export function ProcessTable({
         </div>
         <label className="search-field">
           <Search size={15} aria-hidden="true" />
-          <span className="sr-only">搜索进程</span>
+          <span className="sr-only">{t("process.search")}</span>
           <input
             value={query}
             maxLength={256}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
-            placeholder="名称、PID 或用户"
+            placeholder={t("process.searchPlaceholder")}
             spellCheck={false}
           />
           {query ? <kbd>{matchCount}</kbd> : <kbd>⌘K</kbd>}
@@ -422,7 +446,7 @@ export function ProcessTable({
       <div
         className="process-table"
         role={effectiveViewMode === "tree" ? "treegrid" : "grid"}
-        aria-label="系统进程"
+        aria-label={t("process.systemProcesses")}
         aria-rowcount={rows.length + 1}
         aria-colcount={6}
       >
@@ -432,7 +456,7 @@ export function ProcessTable({
             aria-sort={sortAriaValue("name", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("name")}>
-              进程 {sortIcon("name")}
+              {t("process.columns.process")} {sortIcon("name")}
             </button>
           </span>
           <span role="columnheader">PID</span>
@@ -449,7 +473,7 @@ export function ProcessTable({
             aria-sort={sortAriaValue("memory", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("memory")}>
-              内存 {sortIcon("memory")}
+              {t("process.columns.memory")} {sortIcon("memory")}
             </button>
           </span>
           <span
@@ -457,10 +481,10 @@ export function ProcessTable({
             aria-sort={sortAriaValue("disk", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("disk")}>
-              磁盘 I/O {sortIcon("disk")}
+              {t("process.columns.disk")} {sortIcon("disk")}
             </button>
           </span>
-          <span role="columnheader">状态</span>
+          <span role="columnheader">{t("process.columns.status")}</span>
         </div>
 
         <div
@@ -515,7 +539,10 @@ export function ProcessTable({
                       <button
                         className="tree-toggle"
                         type="button"
-                        aria-label={`${row.expanded ? "折叠" : "展开"}${process.name || "未命名进程"}`}
+                        aria-label={t(
+                          row.expanded ? "process.collapse" : "process.expand",
+                          { name: process.name || t("common.unnamedProcess") },
+                        )}
                         tabIndex={-1}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -555,16 +582,22 @@ export function ProcessTable({
                       onSelect(process);
                     }}
                   >
-                    {process.name || "未命名进程"}
+                    {process.name || t("common.unnamedProcess")}
                   </button>
                   {process.protected ? (
-                    <ShieldCheck size={13} aria-label="受保护" />
+                    <ShieldCheck size={13} aria-label={t("process.protected")} />
                   ) : null}
                 </span>
                 <span className="tabular" role="gridcell">
                   {process.pid}
                 </span>
-                <span className="tabular" role="gridcell">
+                <span
+                  className={`tabular resource-usage resource-usage--${resourceUsageLevel(
+                    process.cpuPercent,
+                    [10, 50, 100],
+                  )}`}
+                  role="gridcell"
+                >
                   {formatPercent(process.cpuPercent)}
                 </span>
                 <span className="tabular" role="gridcell">
@@ -590,7 +623,7 @@ export function ProcessTable({
             />
           ) : null}
           {rows.length === 0 ? (
-            <div className="process-empty">没有匹配的进程</div>
+            <div className="process-empty">{t("process.noMatches")}</div>
           ) : null}
         </div>
       </div>
@@ -598,23 +631,33 @@ export function ProcessTable({
       <footer className="process-footer">
         {compact ? (
           <span>
-            显示 {rows.length} / {allRows.length} 个进程
+            {t("process.footer.compact", {
+              visible: rows.length,
+              total: allRows.length,
+            })}
           </span>
         ) : effectiveViewMode === "tree" ? (
           <span>
-            可见 {rows.length} · 匹配 {matchCount} / {processes.length} 个进程
+            {t("process.footer.tree", {
+              visible: rows.length,
+              matches: matchCount,
+              total: processes.length,
+            })}
           </span>
         ) : (
           <span>
-            {rows.length} / {processes.length} 个进程 · 按需渲染
+            {t("process.footer.flat", {
+              visible: rows.length,
+              total: processes.length,
+            })}
           </span>
         )}
         {!compact && effectiveViewMode === "tree" ? (
-          <span>按同级排序</span>
+          <span>{t("process.footer.siblingSort")}</span>
         ) : null}
         {selectionFiltered ? (
           <button type="button" onClick={() => onQueryChange("")}>
-            选中进程被筛选隐藏 · 清除筛选
+            {t("process.footer.selectionFiltered")}
           </button>
         ) : null}
       </footer>

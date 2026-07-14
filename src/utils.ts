@@ -8,14 +8,24 @@ import {
   type SortDirection,
   type SystemSnapshot,
 } from "./types";
+import i18n from "./i18n";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+export type ResourceUsageLevel =
+  | "unavailable"
+  | "low"
+  | "moderate"
+  | "high"
+  | "critical";
 
 export function assertSupportedSnapshotSchema(
   snapshot: Pick<SystemSnapshot, "schemaVersion">,
 ): void {
   if (snapshot.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
-    throw new Error(`不支持的数据版本：${snapshot.schemaVersion}`);
+    throw new Error(
+      i18n.t("format.unsupportedSchema", { version: snapshot.schemaVersion }),
+    );
   }
 }
 
@@ -29,28 +39,51 @@ export function formatBytes(bytes: number, maximumFractionDigits = 1): string {
     BYTE_UNITS.length - 1,
   );
   const value = bytes / 1024 ** exponent;
-  return `${value.toLocaleString(undefined, { maximumFractionDigits })} ${BYTE_UNITS[exponent]}`;
+  return `${value.toLocaleString(i18n.resolvedLanguage, { maximumFractionDigits })} ${BYTE_UNITS[exponent]}`;
 }
 
 export function formatRate(bytesPerSecond: number | null): string {
-  return bytesPerSecond === null ? "预热中" : `${formatBytes(bytesPerSecond)}/s`;
+  return bytesPerSecond === null
+    ? i18n.t("common.warmup")
+    : `${formatBytes(bytesPerSecond)}/s`;
 }
 
 export function formatPercent(value: number | null): string {
-  return value === null ? "预热中" : `${value.toFixed(value >= 10 ? 0 : 1)}%`;
+  return value === null
+    ? i18n.t("common.warmup")
+    : `${value.toFixed(value >= 10 ? 0 : 1)}%`;
 }
 
 export function formatDuration(totalSeconds: number): string {
   if (totalSeconds < 60) {
-    return `${Math.max(0, Math.floor(totalSeconds))} 秒`;
+    return i18n.t("format.seconds", {
+      count: Math.max(0, Math.floor(totalSeconds)),
+    });
   }
   if (totalSeconds < 3_600) {
-    return `${Math.floor(totalSeconds / 60)} 分钟`;
+    return i18n.t("format.minutes", {
+      count: Math.floor(totalSeconds / 60),
+    });
   }
   if (totalSeconds < 86_400) {
-    return `${Math.floor(totalSeconds / 3_600)} 小时`;
+    return i18n.t("format.hours", {
+      count: Math.floor(totalSeconds / 3_600),
+    });
   }
-  return `${Math.floor(totalSeconds / 86_400)} 天`;
+  return i18n.t("format.days", {
+    count: Math.floor(totalSeconds / 86_400),
+  });
+}
+
+export function resourceUsageLevel(
+  value: number | null,
+  thresholds: readonly [number, number, number] = [35, 65, 85],
+): ResourceUsageLevel {
+  if (value === null || !Number.isFinite(value)) return "unavailable";
+  if (value < thresholds[0]) return "low";
+  if (value < thresholds[1]) return "moderate";
+  if (value < thresholds[2]) return "high";
+  return "critical";
 }
 
 export function memoryUsagePercent(used: number, total: number): number {
@@ -169,20 +202,11 @@ export function normalizeCommandError(error: unknown): CommandError {
 
   return {
     code: "unknown_error",
-    message: typeof error === "string" ? error : "发生了未知错误。",
+    message: typeof error === "string" ? error : i18n.t("format.unknownError"),
   };
 }
 
 export function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    Run: "运行",
-    Sleep: "休眠",
-    Idle: "空闲",
-    Stop: "停止",
-    Zombie: "僵尸",
-    Dead: "退出",
-    LockBlocked: "锁等待",
-    UninterruptibleDiskSleep: "I/O 等待",
-  };
-  return labels[status] ?? status;
+  const key = `process.status.${status}`;
+  return i18n.exists(key) ? i18n.t(key) : status;
 }

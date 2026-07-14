@@ -1,5 +1,6 @@
 import { AlertOctagon, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import type {
   ProcessAction,
@@ -27,13 +28,14 @@ export function ConfirmActionDialog({
   onCancel,
   onConfirm,
 }: ConfirmActionDialogProps) {
+  const { t, i18n } = useTranslation();
   const cancelButton = useRef<HTMLButtonElement>(null);
   const force = action === "force_kill";
   const actionDescription = force
     ? semantic === "terminate_process"
-      ? "Windows 将通过已绑定的进程句柄执行 TerminateProcess；进程无法保存状态。"
-      : "系统将向已核验目标发送 SIGKILL；进程无法保存状态，此操作不可撤销。"
-    : "系统将向已核验目标发送 SIGTERM，让进程有机会清理并退出。";
+      ? t("process.dialog.windowsForce")
+      : t("process.dialog.unixForce")
+    : t("process.dialog.request");
 
   useEffect(() => {
     cancelButton.current?.focus();
@@ -58,35 +60,35 @@ export function ConfirmActionDialog({
             {force ? <AlertOctagon size={20} /> : <ShieldCheck size={20} />}
           </span>
           <div>
-            <h2 id="confirm-title">{force ? "强制结束进程？" : "请求进程结束？"}</h2>
+            <h2 id="confirm-title">{force ? t("process.dialog.forceTitle") : t("process.dialog.requestTitle")}</h2>
             <p>{actionDescription}</p>
           </div>
-          <button className="icon-button" type="button" aria-label="取消" disabled={submitting} onClick={onCancel}>
+          <button className="icon-button" type="button" aria-label={t("common.cancel")} disabled={submitting} onClick={onCancel}>
             <X size={17} />
           </button>
         </header>
 
         <dl className="confirm-target">
-          <div><dt>进程</dt><dd>{detail.name}</dd></div>
+          <div><dt>{t("process.columns.process")}</dt><dd>{detail.name}</dd></div>
           <div><dt>PID</dt><dd>{detail.pid}</dd></div>
-          <div><dt>用户</dt><dd>{detail.user ?? "未知"}</dd></div>
-          <div><dt>启动时间</dt><dd>{new Date(detail.startTime * 1_000).toLocaleString()}</dd></div>
+          <div><dt>{t("process.dialog.user")}</dt><dd>{detail.user ?? t("common.unknown")}</dd></div>
+          <div><dt>{t("process.dialog.startedAt")}</dt><dd>{new Date(detail.startTime * 1_000).toLocaleString(i18n.resolvedLanguage)}</dd></div>
         </dl>
 
         <p className={`identity-note${targeting === "best_effort_pid" ? " identity-note--warning" : ""}`}>
           {targeting === "stable_handle"
-            ? "本次确认已绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。"
-            : "macOS 仅支持 best-effort PID 定位。执行前会再次校验高精度启动标识，但无法提供稳定句柄的同等级保证。"}
+            ? t("process.dialog.stableIdentity")
+            : t("process.dialog.bestEffortIdentity")}
         </p>
         <footer>
-          <button ref={cancelButton} type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>取消</button>
+          <button ref={cancelButton} type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>{t("common.cancel")}</button>
           <button
             type="button"
             className={`button ${force ? "button--danger" : "button--primary"}`}
             disabled={submitting}
             onClick={onConfirm}
           >
-            {submitting ? "正在校验…" : force ? "确认强制结束" : "确认请求结束"}
+            {submitting ? t("process.dialog.validating") : force ? t("process.dialog.confirmForce") : t("process.dialog.confirmRequest")}
           </button>
         </footer>
       </section>
