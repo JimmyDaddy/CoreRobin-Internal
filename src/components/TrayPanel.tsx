@@ -21,11 +21,16 @@ import brandMark from "../assets/brand-mark.png";
 import type { TraySummary } from "../traySummary";
 import { formatBytes, formatPercent } from "../utils";
 
+const desktopRuntime = typeof window !== "undefined"
+  && "__TAURI_INTERNALS__" in window
+  && getCurrentWindow().label === "tray";
+
 export function TrayPanel() {
   const { t } = useTranslation();
   const [summary, setSummary] = useState<TraySummary | null>(null);
 
   useEffect(() => {
+    if (!desktopRuntime) return;
     let disposed = false;
     let stopSummary: (() => void) | undefined;
     let stopFocus: (() => void) | undefined;
