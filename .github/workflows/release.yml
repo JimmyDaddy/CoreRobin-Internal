@@ -6,7 +6,7 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,9 +20,14 @@ jobs:
     name: Verify release source
     runs-on: ubuntu-22.04
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Install Linux system dependencies
         run: |
@@ -39,7 +44,7 @@ jobs:
             librsvg2-dev
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
 
@@ -49,16 +54,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check release version
-        shell: bash
-        run: |
-          expected="${GITHUB_REF_NAME#v}"
-          test "$(node -p "require('./package.json').version")" = "$expected"
-          test "$(node -p "require('./src-tauri/tauri.conf.json').version")" = "$expected"
-          test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)" = "$expected"
+      - name: Verify tag, versions, and trusted branch ancestry
+        run: node scripts/verify-release-source.mjs "$GITHUB_REF_NAME" origin/main
 
       - name: Check frontend and site
         run: |
+          pnpm lint
           pnpm typecheck
           pnpm test
           pnpm build
@@ -70,12 +71,14 @@ jobs:
       - name: Check Rust backend
         run: |
           cargo fmt --manifest-path src-tauri/Cargo.toml --check
-          cargo test --manifest-path src-tauri/Cargo.toml
-          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 
   build:
     name: Build ${{ matrix.label }}
     needs: verify
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -83,28 +86,30 @@ jobs:
           - label: macOS Apple Silicon
             os: macos-latest
             target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --bundles dmg
-            signing_identity: "-"
+            args: --target aarch64-apple-darwin --bundles dmg --no-sign -- --locked
+            artifact: statusorbit-macos-aarch64
           - label: macOS Intel
             os: macos-latest
             target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin --bundles dmg
-            signing_identity: "-"
+            args: --target x86_64-apple-darwin --bundles dmg --no-sign -- --locked
+            artifact: statusorbit-macos-x86_64
           - label: Linux x64
             os: ubuntu-22.04
             target: ""
-            args: --bundles deb,appimage
-            signing_identity: ""
+            args: --bundles deb,appimage -- --locked
+            artifact: statusorbit-linux-x86_64
           - label: Windows x64
             os: windows-latest
             target: ""
-            args: --bundles nsis,msi
-            signing_identity: ""
+            args: --bundles nsis,msi -- --locked
+            artifact: statusorbit-windows-x86_64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -123,7 +128,7 @@ jobs:
             patchelf
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
 
@@ -141,7 +146,7 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Restore Cargo cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cargo/registry
@@ -151,32 +156,132 @@ jobs:
             release-${{ runner.os }}-${{ matrix.target }}-
             release-${{ runner.os }}-
 
-      - name: Build and upload installer
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ matrix.signing_identity }}
+      - name: Build unsigned installer
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: StatusOrbit ${{ github.ref_name }}
-          releaseBody: |
-            StatusOrbit ${{ github.ref_name }} 提供日常助手、系统监控、应用与进程详情、网络连接、存储分析，以及可交互的空间清理扇形图。
-
-            具体变化请查看本版本对应的提交记录。Windows 与 Linux 安装包目前作为早期预览版本提供。
-
-            macOS 安装包尚未经过 Apple 公证；如果第一次打开被系统阻止，请在“系统设置 → 隐私与安全性”中确认打开。
-          releaseDraft: true
-          prerelease: false
-          retryAttempts: 2
           args: ${{ matrix.args }}
+          retryAttempts: 2
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]
+
+  package:
+    name: Package release evidence
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: statusorbit-*
+          path: release-artifacts
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: release-artifacts
+          format: spdx-json
+          output-file: release-artifacts/statusorbit.spdx.json
+          artifact-name: statusorbit.spdx.json
+          syft-version: v1.46.0
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Generate and verify SHA-256 checksums
+        shell: bash
+        run: |
+          find release-artifacts -type f ! -name SHA256SUMS -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > release-artifacts/SHA256SUMS
+          sha256sum --check release-artifacts/SHA256SUMS
+
+      - name: Upload release-ready artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-ready-${{ github.sha }}
+          path: release-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+  provenance:
+    name: Attest release provenance
+    needs: package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download release-ready artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: release-ready-${{ github.sha }}
+          path: release-artifacts
+
+      - name: Attest checksummed subjects
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        with:
+          subject-checksums: release-artifacts/SHA256SUMS
+          create-storage-record: false
 
   publish:
     name: Publish GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    needs:
+      - package
+      - provenance
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      contents: write
+      attestations: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_NOTES: |
+        StatusOrbit ${{ github.ref_name }} 提供日常助手、系统监控、应用与进程详情、网络连接、存储分析，以及可交互的空间清理扇形图。
+
+        Windows 与 Linux 安装包目前作为早期预览版本提供。当前安装包未配置平台发布签名；macOS 安装包尚未经过 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
     steps:
-      - name: Publish completed release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+      - name: Download release-ready artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: release-ready-${{ github.sha }}
+          path: release-artifacts
+
+      - name: Verify checksums and provenance
+        shell: bash
+        run: |
+          sha256sum --check release-artifacts/SHA256SUMS
+          while IFS= read -r checksum_line; do
+            artifact_path="${checksum_line#*  }"
+            gh attestation verify "$artifact_path" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-ref "$GITHUB_REF"
+          done < release-artifacts/SHA256SUMS
+
+      - name: Create or update draft release, then publish
+        shell: bash
+        run: |
+          mapfile -d '' assets < <(find release-artifacts -type f -print0 | sort -z)
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft --repo "$GITHUB_REPOSITORY")" = "true"
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+              --draft \
+              --verify-tag \
+              --title "StatusOrbit $GITHUB_REF_NAME" \
+              --notes "$RELEASE_NOTES" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release edit "$GITHUB_REF_NAME" \
+            --draft=false \
+            --latest \
+            --repo "$GITHUB_REPOSITORY"
