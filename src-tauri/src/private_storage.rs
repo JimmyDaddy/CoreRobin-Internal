@@ -3,18 +3,18 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
-use cap_fs_ext::{FollowSymlinks, OpenOptionsFollowExt};
-use cap_std::fs::{Dir, File, OpenOptions};
-use cap_std::{ambient_authority, fs as cap_fs};
+use cap_fs_ext::{FollowSymlinks, MetadataExt as CapMetadataExt, OpenOptionsFollowExt};
+use cap_std::ambient_authority;
+use cap_std::fs::{Dir, File, Metadata as CapMetadata, OpenOptions};
 
 #[cfg(unix)]
 use cap_fs_ext::OpenOptionsExt as _;
 #[cfg(unix)]
+use cap_std::fs as cap_fs;
+#[cfg(unix)]
 use cap_std::fs::PermissionsExt as _;
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-#[cfg(windows)]
-use std::os::windows::fs::MetadataExt;
 
 const TEMP_NAME_ATTEMPTS: usize = 32;
 
@@ -126,8 +126,8 @@ impl PrivateDir {
         let path_metadata = fs::symlink_metadata(path)?;
         validate_private_directory(&path_metadata)?;
         let dir = Dir::open_ambient_dir(path, ambient_authority())?;
-        let handle_metadata = dir.try_clone()?.into_std_file().metadata()?;
-        validate_private_directory(&handle_metadata)?;
+        let handle_metadata = dir.dir_metadata()?;
+        validate_private_directory_handle(&handle_metadata)?;
         let identity = directory_identity(&handle_metadata)?;
 
         #[cfg(unix)]
@@ -148,7 +148,10 @@ impl PrivateDir {
     fn verify_current_path(&self) -> io::Result<()> {
         let metadata = fs::symlink_metadata(&self.path)?;
         validate_private_directory(&metadata)?;
-        if directory_identity(&metadata)? != self.identity {
+        let current = Dir::open_ambient_dir(&self.path, ambient_authority())?;
+        let handle_metadata = current.dir_metadata()?;
+        validate_private_directory_handle(&handle_metadata)?;
+        if directory_identity(&handle_metadata)? != self.identity {
             return Err(invalid_data(
                 "private storage directory changed during the operation",
             ));
@@ -219,6 +222,11 @@ impl PrivateDir {
     }
 
     fn sync(&self) -> io::Result<()> {
+        #[cfg(target_os = "linux")]
+        {
+            return sync_linux_directory(&self.dir);
+        }
+        #[cfg(not(target_os = "linux"))]
         let result = self.dir.try_clone()?.into_std_file().sync_all();
         #[cfg(windows)]
         if result
@@ -229,6 +237,19 @@ impl PrivateDir {
         }
         result
     }
+}
+
+#[cfg(target_os = "linux")]
+fn sync_linux_directory(directory: &Dir) -> io::Result<()> {
+    use rustix::fs::{Mode, OFlags, fsync, openat};
+
+    let handle = openat(
+        directory,
+        ".",
+        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::empty(),
+    )?;
+    fsync(handle)
 }
 
 fn random_temporary_name() -> io::Result<OsString> {
@@ -265,6 +286,20 @@ fn validate_private_directory(metadata: &fs::Metadata) -> io::Result<()> {
     validate_current_owner(metadata)
 }
 
+fn validate_private_directory_handle(metadata: &CapMetadata) -> io::Result<()> {
+    if !metadata.is_dir() {
+        return Err(invalid_data("private storage handle is not a directory"));
+    }
+    #[cfg(unix)]
+    if cap_std::fs::MetadataExt::uid(metadata) != unsafe { libc::geteuid() } {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "private storage handle is not owned by the current user",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(unix)]
 fn validate_current_owner(metadata: &fs::Metadata) -> io::Result<()> {
     let effective_user = unsafe { libc::geteuid() };
@@ -285,26 +320,10 @@ fn validate_current_owner(_metadata: &fs::Metadata) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
 type DirectoryIdentity = (u64, u64);
 
-#[cfg(unix)]
-fn directory_identity(metadata: &fs::Metadata) -> io::Result<DirectoryIdentity> {
-    Ok((metadata.dev(), metadata.ino()))
-}
-
-#[cfg(windows)]
-type DirectoryIdentity = (u32, u64);
-
-#[cfg(windows)]
-fn directory_identity(metadata: &fs::Metadata) -> io::Result<DirectoryIdentity> {
-    let volume = metadata
-        .volume_serial_number()
-        .ok_or_else(|| invalid_data("private storage directory has no stable volume identity"))?;
-    let file = metadata
-        .file_index()
-        .ok_or_else(|| invalid_data("private storage directory has no stable file identity"))?;
-    Ok((volume, file))
+fn directory_identity(metadata: &CapMetadata) -> io::Result<DirectoryIdentity> {
+    Ok((CapMetadataExt::dev(metadata), CapMetadataExt::ino(metadata)))
 }
 
 fn invalid_data(message: &'static str) -> io::Error {

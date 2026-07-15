@@ -155,9 +155,9 @@ impl SafeFileMoveRoot {
     ) -> io::Result<()> {
         let directory = self.open_directory(relative_path, true)?;
         if private_final_directory {
-            let metadata = directory.directory.dir_metadata()?;
             #[cfg(unix)]
             {
+                let metadata = directory.directory.dir_metadata()?;
                 if cap_std::fs::MetadataExt::uid(&metadata) != unsafe { libc::geteuid() } {
                     return Err(io::Error::new(
                         io::ErrorKind::PermissionDenied,
@@ -986,6 +986,19 @@ fn ensure_entry_absent(directory: &Dir, name: &OsStr) -> io::Result<()> {
 }
 
 fn sync_directory(directory: &Dir) -> io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        use rustix::fs::{Mode, OFlags, fsync, openat};
+
+        let handle = openat(
+            directory,
+            ".",
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+            Mode::empty(),
+        )?;
+        return fsync(handle);
+    }
+    #[cfg(not(target_os = "linux"))]
     let result = directory.try_clone()?.into_std_file().sync_all();
     #[cfg(windows)]
     if result
