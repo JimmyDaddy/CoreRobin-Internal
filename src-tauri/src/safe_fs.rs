@@ -164,12 +164,10 @@ impl SafeFileMoveRoot {
                         "startup storage directory is not owned by the current user",
                     ));
                 }
-                use std::os::unix::fs::PermissionsExt as _;
+                use cap_std::fs::PermissionsExt as _;
                 directory
                     .directory
-                    .try_clone()?
-                    .into_std_file()
-                    .set_permissions(fs::Permissions::from_mode(0o700))?;
+                    .set_permissions(".", cap_std::fs::Permissions::from_mode(0o700))?;
             }
             directory.verify_path()?;
         }

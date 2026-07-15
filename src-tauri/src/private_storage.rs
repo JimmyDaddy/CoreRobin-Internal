@@ -14,7 +14,7 @@ use cap_std::fs as cap_fs;
 #[cfg(unix)]
 use cap_std::fs::PermissionsExt as _;
 #[cfg(unix)]
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::os::unix::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt as _;
 
@@ -134,8 +134,7 @@ impl PrivateDir {
 
         #[cfg(unix)]
         {
-            let handle = dir.try_clone()?.into_std_file();
-            handle.set_permissions(fs::Permissions::from_mode(0o700))?;
+            dir.set_permissions(".", cap_fs::Permissions::from_mode(0o700))?;
         }
 
         let private_dir = Self {
