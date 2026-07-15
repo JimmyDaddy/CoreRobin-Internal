@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { createAsyncListenerRegistry } from "../asyncListener";
 import type { TraySummary } from "../traySummary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 
@@ -57,29 +58,23 @@ export function OrbitCompanionWindow() {
 
   useEffect(() => {
     if (!desktopRuntime) return;
-    let disposed = false;
-    let stopSummary: (() => void) | undefined;
-    void listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
-      if (!disposed) setSummary(payload);
-    }).then((unlisten) => { stopSummary = unlisten; });
-    return () => {
-      disposed = true;
-      stopSummary?.();
-    };
+    const listeners = createAsyncListenerRegistry();
+    listeners.register(
+      listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
+        if (!listeners.disposed) setSummary(payload);
+      }),
+    );
+    return () => listeners.dispose();
   }, []);
 
   useEffect(() => {
     if (!desktopRuntime) return;
     const companionWindow = getCurrentWindow();
-    let disposed = false;
-    let stopMoved: (() => void) | undefined;
-    let stopFocus: (() => void) | undefined;
-    let stopCollapse: (() => void) | undefined;
-    let stopEnter: (() => void) | undefined;
-    let stopExit: (() => void) | undefined;
+    const listeners = createAsyncListenerRegistry();
     let visibilityTimer: number | undefined;
 
     const playEntrance = () => {
+      if (listeners.disposed) return;
       if (visibilityTimer !== undefined) window.clearTimeout(visibilityTimer);
       setVisibilityPhase("entering");
       visibilityTimer = window.setTimeout(() => {
@@ -89,6 +84,7 @@ export function OrbitCompanionWindow() {
     };
 
     const playExit = () => {
+      if (listeners.disposed) return;
       if (visibilityTimer !== undefined) window.clearTimeout(visibilityTimer);
       visibilityTimer = undefined;
       setVisibilityPhase("exiting");
@@ -99,7 +95,7 @@ export function OrbitCompanionWindow() {
         currentMonitor(),
         companionWindow.outerSize(),
       ]);
-      if (!monitor || disposed) return;
+      if (!monitor || listeners.disposed) return;
       const workArea = monitor.workArea;
       const expandedWidth = Math.round(
         COMPANION_EXPANDED_LOGICAL_SIZE.width * monitor.scaleFactor,
@@ -142,8 +138,9 @@ export function OrbitCompanionWindow() {
     };
     window.addEventListener("keydown", onKeyDown);
     void restorePosition();
-    void Promise.all([
+    listeners.register(
       companionWindow.onMoved(({ payload }) => {
+        if (listeners.disposed) return;
         try {
           window.localStorage.setItem(
             COMPANION_POSITION_KEY,
@@ -152,37 +149,35 @@ export function OrbitCompanionWindow() {
         } catch {
           // Position persistence is optional.
         }
-      }).then((unlisten) => { stopMoved = unlisten; }),
+      }),
+    );
+    listeners.register(
       companionWindow.onFocusChanged(({ payload: focused }) => {
-        if (!focused) {
+        if (!listeners.disposed && !focused) {
           contextMenuOpenRef.current = false;
           setContextMenuOpen(false);
           if (expandedRef.current) void updateExpanded(false);
         }
-      }).then((unlisten) => { stopFocus = unlisten; }),
+      }),
+    );
+    listeners.register(
       listen("status-orbit:companion-collapse", () => {
+        if (listeners.disposed) return;
         contextMenuOpenRef.current = false;
         setContextMenuOpen(false);
         expandedRef.current = false;
         setExpanded(false);
-      }).then((unlisten) => { stopCollapse = unlisten; }),
-      listen("status-orbit:companion-enter", playEntrance)
-        .then((unlisten) => { stopEnter = unlisten; }),
-      listen("status-orbit:companion-exit", playExit)
-        .then((unlisten) => { stopExit = unlisten; }),
-    ]);
+      }),
+    );
+    listeners.register(listen("status-orbit:companion-enter", playEntrance));
+    listeners.register(listen("status-orbit:companion-exit", playExit));
     void companionWindow.isVisible().then((visible) => {
-      if (!disposed && visible) playEntrance();
+      if (!listeners.disposed && visible) playEntrance();
     });
     return () => {
-      disposed = true;
+      listeners.dispose();
       if (visibilityTimer !== undefined) window.clearTimeout(visibilityTimer);
       window.removeEventListener("keydown", onKeyDown);
-      stopMoved?.();
-      stopFocus?.();
-      stopCollapse?.();
-      stopEnter?.();
-      stopExit?.();
     };
   }, []);
 

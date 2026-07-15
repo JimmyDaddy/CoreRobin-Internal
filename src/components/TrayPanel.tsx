@@ -17,6 +17,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import brandMark from "../../src-tauri/icons/128x128.png";
+import { createAsyncListenerRegistry } from "../asyncListener";
 import type { TraySummary } from "../traySummary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
@@ -31,22 +32,18 @@ export function TrayPanel() {
 
   useEffect(() => {
     if (!desktopRuntime) return;
-    let disposed = false;
-    let stopSummary: (() => void) | undefined;
-    let stopFocus: (() => void) | undefined;
-    void Promise.all([
+    const listeners = createAsyncListenerRegistry();
+    listeners.register(
       listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
-        if (!disposed) setSummary(payload);
-      }).then((unlisten) => { stopSummary = unlisten; }),
+        if (!listeners.disposed) setSummary(payload);
+      }),
+    );
+    listeners.register(
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-        if (!focused) void getCurrentWindow().hide();
-      }).then((unlisten) => { stopFocus = unlisten; }),
-    ]);
-    return () => {
-      disposed = true;
-      stopSummary?.();
-      stopFocus?.();
-    };
+        if (!listeners.disposed && !focused) void getCurrentWindow().hide();
+      }),
+    );
+    return () => listeners.dispose();
   }, []);
 
   const openView = async (view: "overview" | "cleanup" | "settings") => {
