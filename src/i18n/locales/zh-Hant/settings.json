@@ -1,0 +1,82 @@
+{
+  "localPreferences": "本機偏好",
+  "title": "設定",
+  "description": "這些偏好只儲存在當前裝置上，並會立即應用到取樣與介面。",
+  "intervalMs": "{{interval}} 毫秒",
+  "intervalSeconds": "{{seconds}} 秒",
+  "experience": {
+    "title": "介面模式",
+    "description": "日常模式從實際問題出發並給出引導；專業模式保留完整程序與指標。",
+    "label": "介面模式",
+    "simple": "日常模式",
+    "professional": "專業模式"
+  },
+  "language": {
+    "title": "介面語言",
+    "description": "切換 StatusOrbit 的選單、說明與狀態文字。",
+    "label": "語言"
+  },
+  "background": {
+    "title": "後臺與桌面",
+    "description": "控制 StatusOrbit 如何常駐、登入啟動，以及 Orbit 小夥伴的桌面行為。",
+    "showDockIcon": "在 Dock 中顯示",
+    "showDockIconDescription": "關閉後不佔用 Dock 和應用切換器，仍可從頂部狀態列喚起",
+    "launchAtLogin": "登入時啟動",
+    "launchAtLoginDescription": "登入後靜默啟動狀態列服務，不自動開啟主視窗",
+    "companionShowOnStartup": "讓 Orbit 常駐桌面",
+    "companionShowOnStartupDescription": "應用啟動後自動顯示 Orbit 小夥伴",
+    "companionAlwaysOnTop": "Orbit 始終置頂",
+    "companionAlwaysOnTopDescription": "讓 Orbit 保持在其他視窗上方，關閉後可能被遮擋"
+  },
+  "sampling": {
+    "title": "系統取樣",
+    "description": "更短的間隔響應更快，也會帶來更高的取樣開銷。",
+    "system": "CPU、記憶體與程序"
+  },
+  "connections": {
+    "title": "連線重新整理",
+    "description": "活動連線使用獨立的低頻掃描，不影響系統主取樣。",
+    "refresh": "活動連線"
+  },
+  "processView": {
+    "title": "預設程序檢視",
+    "description": "啟動與重置程序瀏覽器時使用的佈局。",
+    "label": "預設程序檢視"
+  },
+  "history": {
+    "title": "歷史記錄",
+    "description": "儲存整機資源的低頻聚合快照與告警事件，不包含程序與連線詳情。",
+    "persist": "在本機儲存歷史",
+    "applicationNames": "允許歷史儲存應用顯示名",
+    "applicationNamesHint": "僅當某個應用明顯解釋資源壓力時儲存名稱；關閉後會移除已儲存事件中的應用名。",
+    "retention": "保留時間",
+    "days": "{{count}} 天"
+  },
+  "notifications": {
+    "title": "桌面提醒",
+    "description": "只提醒持續高負荷、真實記憶體壓力和磁碟空間不足；問題穩定恢復後 StatusOrbit 會再告知一次。",
+    "enable": "允許剋制提醒",
+    "categories": "允許提醒的類別",
+    "resources": {
+      "cpu": "持續高負荷",
+      "memory": "記憶體壓力",
+      "volume": "磁碟空間"
+    },
+    "status": {
+      "disabled": "未開啟",
+      "requesting": "等待系統授權",
+      "ready": "已允許",
+      "denied": "系統未授權",
+      "unavailable": "僅桌面應用可用"
+    }
+  },
+  "thresholds": {
+    "title": "資源告警閾值",
+    "description": "用於 CPU、記憶體與卷佔用的顏色分級；持續達到“偏高”時記錄告警。",
+    "preview": "資源告警顏色預覽",
+    "low": "正常",
+    "moderate": "關注",
+    "high": "偏高",
+    "critical": "嚴重"
+  }
+}

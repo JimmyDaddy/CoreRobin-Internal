@@ -1,0 +1,227 @@
+{
+  "kicker": "Análise de espaço em disco",
+  "title": "Assistente de limpeza de disco",
+  "description": "Analise o uso do espaço em disco e visualize o espaço utilizado por arquivos específicos.",
+  "startScan": "Iniciar varredura somente leitura",
+  "scanAgain": "Reiniciar varredura",
+  "scanning": "Varrendo…",
+  "cancelScan": "Cancelar varredura",
+  "cancelling": "Parando…",
+  "readOnlyTitle": "Verifique primeiro, decida depois",
+  "readOnlyDescription": "A varredura em segundo plano lê nomes, tamanhos e outros metadados até a conclusão. Não lê o conteúdo dos arquivos nem os modifica, move ou envia para a nuvem.",
+  "failed": "A verificação do armazenamento não pôde ser concluída",
+  "access": {
+    "kicker": "Antes de iniciar a verificação",
+    "title": "Permitir acesso a todo o disco do sistema",
+    "description": "O macOS protege e-mails, mensagens e outros dados de aplicativos. O acesso completo ao disco permite que o SpaceMap seja o mais completo possível; o StatusOrbit ainda lê apenas metadados como nomes, tamanhos e datas.",
+    "checking": "Verificando acesso…",
+    "checkingReturn": "Confirmando acesso…",
+    "openSettings": "Abrir Acesso Completo",
+    "openAgain": "Reabrir as Configurações do Sistema",
+    "revealApp": "Mostrar aplicativo no Finder",
+    "checkAgain": "Acesso habilitado — verificar novamente",
+    "continueLimited": "Verificar áreas acessíveis",
+    "waiting": "As Configurações do Sistema estão abertas. Se o StatusOrbit estiver ausente, clique no + abaixo da lista e selecione StatusOrbit.app. Ative-o e retorne para iniciar a verificação automaticamente.",
+    "unknown": "Não foi possível confirmar o acesso. Você ainda pode abrir as Configurações do Sistema ou executar uma verificação limitada.",
+    "bundleRequired": "Inicie o StatusOrbit.app primeiro",
+    "bundleMissingTitle": "Este processo não pode ser adicionado à lista de acesso",
+    "bundleMissingDescription": "O macOS não permite autorizar este processo de desenvolvimento aqui. Instale o StatusOrbit.app e abra-o novamente a partir de Aplicativos; uma verificação limitada ainda está disponível.",
+    "privacy": "O macOS controla esta permissão e você pode desativá-la a qualquer momento. O StatusOrbit nunca lê o conteúdo dos arquivos ou modifica arquivos durante a verificação.",
+    "steps": {
+      "open": "Abrir Configurações do Sistema",
+      "add": "Clique no + e selecione StatusOrbit.app",
+      "return": "Ative-o e retorne"
+    }
+  },
+  "reclaimableEstimate": "Espaço potencialmente recuperável",
+  "estimateBoundary": "Este é um cálculo para caches e lixo, não uma recomendação para remover tudo.",
+  "entriesScanned": "{{count}} itens verificados",
+  "scanDuration": "{{seconds}} segundos",
+  "snapshot": {
+    "retained": "Salvo neste dispositivo; as alterações são verificadas enquanto você navega",
+    "refresh": "Atualizar resultado",
+    "cached": {
+      "title": "Resultado da última verificação restaurado",
+      "description": "Continue explorando sem esperar por outra verificação. O StatusOrbit verifica um diretório em busca de alterações somente quando você o acessa."
+    },
+    "expired": {
+      "title": "Este resultado tem mais de 24 horas",
+      "description": "O StatusOrbit mantém a visualização disponível para que você possa continuar explorando. Atualize-a antes de tomar decisões sobre limpeza."
+    }
+  },
+  "progress": {
+    "scanningLocation": "Analisando {{location}}",
+    "showPath": "Mostrar caminho atual",
+    "entries": "Verificado",
+    "discovered": "Encontrado",
+    "elapsed": "Tempo decorrido",
+    "foundSpace": "Conteúdo encontrado",
+    "stageKicker": "Construindo o mapa de espaço",
+    "locations": {
+      "downloads": "Downloads",
+      "trash": "Lixeira",
+      "appCache": "Caches de aplicativos",
+      "developerCache": "cache de desenvolvedor",
+      "hiddenData": "dados de aplicativos ocultos",
+      "applications": "aplicativos instalados",
+      "personal": "arquivos pessoais",
+      "systemDisk": "disco do sistema"
+    }
+  },
+  "categories": {
+    "title": "Para que essa área é comumente utilizada"
+  },
+  "map": {
+    "title": "Onde os dados estão localizados",
+    "description": "A área representa o espaço em disco alocado. As cores relacionadas pertencem a uma subpasta; as áreas cinzentas são arquivos.",
+    "descriptionPath": "Mostra o caminho real no disco do sistema: cada anel representa o próximo nível de diretório, e a área representa o espaço em disco alocado.",
+    "descriptionCategory": "A mesma varredura é agrupada por finalidade comum. As categorias são uma visualização auxiliar, não a hierarquia de diretórios real.",
+    "allScanned": "Resultados da varredura",
+    "categoryRoot": "Categorias de uso",
+    "mode": {
+      "label": "Visualização do mapa de espaço",
+      "path": "Caminhos de arquivos",
+      "category": "Uso"
+    },
+    "ariaLabel": "Mapa em formato de sol para {{name}}",
+    "back": "Voltar um nível",
+    "breadcrumbs": "Hierarquia do mapa de espaço",
+    "centerBack": "Retornar ao diretório pai",
+    "details": "Detalhes do espaço",
+    "selected": "Selecionado",
+    "grouped": "Categoria agrupada",
+    "smallerObjects": "Objetos menores",
+    "restrictedObjects": "Objetos inacessíveis",
+    "allocatedSize": "Alocado no disco",
+    "logicalSize": "{{size}} tamanho lógico",
+    "unreadable": "Inacessível",
+    "restrictedHint": "O sistema operacional não concedeu acesso de leitura; este item não pode ser coletado",
+    "types": {
+      "folder": "Pasta",
+      "file": "Arquivo",
+      "aggregate": "Objetos pequenos agrupados",
+      "restricted": "Restritos"
+    },
+    "noDeeperBreakdown": "Não é possível agrupar diretórios em níveis mais profundos neste momento.",
+    "loadDeeperHint": "Selecione esta pasta para carregar o próximo nível sem escanear todo o computador.",
+    "loadingFolder": "Carregando esta pasta…",
+    "loadFailed": "Não foi possível carregar a pasta",
+    "directActionHint": "Arraste uma seção para o cesto de limpeza, localizado na parte inferior esquerda do mapa.",
+    "protectedSelectionHint": "Pastas do sistema, nós agrupados e a raiz da sua área pessoal são apenas para visualização; apenas itens específicos dentro da sua pasta pessoal podem ser movidos para o cesto",
+    "trashRootProtected": "A pasta de lixeira é protegida; entre nela e selecione os itens específicos que deseja remover",
+    "planSummary": "{{count}} itens selecionados · {{size}}",
+    "reviewCleanup": "Reverta e exclua permanentemente",
+    "refreshCleanup": "Atualize a seleção antes de rever",
+    "deletionUnavailable": "Exclusão permanente indisponível",
+    "basket": {
+      "title": "Cesta de limpeza",
+      "empty": "Mantenha uma seção selecionada e arraste-a aqui para coletar os itens primeiro",
+      "release": "Libere para adicionar à cesta",
+      "collected": "Na cesta de limpeza",
+      "collectedHint": "Já foi adicionado; remova-o da cesta abaixo ou continue revisando",
+      "remove": "Remova {{name}} da cesta",
+      "clear": "Limpe",
+      "completed": "Excluido permanentemente {{deletedCount}} itens",
+      "partial": "Excluido {{deletedCount}} itens; {{failedCount}} Não foi possível realizar a operação",
+      "cancelled": "Remoção interrompida após a remoção de {{deletedCount}} itens"
+    },
+    "deleteResult": {
+      "success": "Excluido permanentemente {{deletedCount}} itens",
+      "partial": "Excluido {{deletedCount}} itens; {{failedCount}} Falha na operação",
+      "failed": "Nenhum item foi excluído {{failedCount}} Exclusão de itens falhou",
+      "cancelled": "Remoção interrompida após a remoção de {{deletedCount}} itens",
+      "cancelledNoDeletion": "Remoção interrompida antes da remoção completa de qualquer item",
+      "reclaimed": "Espaço alocado verificado antes da remoção: aproximadamente {{size}}"
+    },
+    "freshness": {
+      "cached": "Mostrando o resultado da última varredura",
+      "expired": "Esta verificação está desatualizada; recomendamos uma nova verificação",
+      "changed": "Esta pasta foi alterada; os tamanhos podem ser imprecisos",
+      "changedShort": "Conteúdo modificado"
+    }
+  },
+  "deleteDialog": {
+    "title": "Revisar antes da exclusão permanente",
+    "description": "Confirma a exclusão direta dos itens do disco, em vez de movê-los para a lixeira.",
+    "itemUnit": "itens",
+    "estimatedSize": "estimado",
+    "irreversible": "Não pode ser desfeito",
+    "changed": "Modificado desde a última verificação",
+    "changedWarning": "{{count}} itens diferem da visualização anterior. Tamanhos e contagens foram atualizados; atualize novamente antes de confirmar.",
+    "preparing": "Verificando novamente os caminhos e o estado atual dos arquivos…",
+    "refreshSelection": "Atualizar a seleção novamente",
+    "deleteConfirmTitle": "Entendo que esses itens serão excluídos permanentemente",
+    "deleteConfirmDescription": "Os arquivos não serão movidos para a lixeira. Downloads, configurações e dados pessoais podem não ser recuperáveis.",
+    "confirm": "Excluir permanentemente {{count}} itens",
+    "deleting": "Excluindo permanentemente…",
+    "selection": "itens selecionados",
+    "progressPreparing": "Verificando o conteúdo selecionado",
+    "progressDeleting": "Excluindo permanentemente",
+    "progressCancelling": "Parando com segurança",
+    "progressCurrent": "Atual: {{name}}",
+    "progressInspecting": "Contando arquivos e pastas",
+    "progressEntries": "{{processed}} / {{total}} arquivos e pastas",
+    "progressTargets": "{{completed}} / {{total}} itens concluídos",
+    "progressDeleted": "~{{size}} liberados",
+    "cancelDelete": "Cancelar exclusão",
+    "cancelling": "Excluindo…",
+    "cancelHint": "As exclusões concluídas não podem ser restauradas. O StatusOrbit interromperá a exclusão após a operação de arquivo atual.",
+    "errors": {
+      "protected_cleanup_path": "O StatusOrbit não excluirá seu diretório pessoal nem o próprio diretório da Lixeira.",
+      "cleanup_target_outside_home": "Por segurança, o StatusOrbit só trata arquivos dentro da sua pasta pessoal.",
+      "cleanup_cross_filesystem": "A pasta selecionada está em um disco ou ponto de montagem diferente, por isso o StatusOrbit não conseguiu realizar a exclusão recursiva.",
+      "cleanup_target_changed": "Um arquivo foi alterado após a confirmação, portanto o StatusOrbit não realizou nenhuma exclusão. Cancele e revise novamente.",
+      "cleanup_confirmation_unavailable": "Esta confirmação não está mais disponível. Cancele e abra novamente a revisão.",
+      "cleanup_confirmation_expired": "Esta confirmação expirou. Cancele e revise os arquivos atuais novamente.",
+      "cleanup_target_unavailable": "Algum conteúdo pode não existir ou não estar acessível. Verifique novamente e tente novamente.",
+      "invalid_cleanup_selection": "A seleção na lixeira é inválida. Escolha os itens novamente.",
+      "overlapping_cleanup_targets": "Uma pasta e uma de suas subpastas estão selecionadas. Mantenha apenas um nível."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "Downloads",
+      "description": "Pode conter instaladores, documentos e arquivos que você ainda precisa."
+    },
+    "trash": {
+      "title": "Lixeira",
+      "description": "Itens geralmente não podem ser recuperados após a lixeira ser esvaziada."
+    },
+    "app_cache": {
+      "title": "Cache de aplicativos",
+      "description": "Os aplicativos podem recriar ou baixar esses dados novamente mais tarde."
+    },
+    "developer_cache": {
+      "title": "Cache de desenvolvedor",
+      "description": "Dados que as ferramentas de construção e gerenciadores de pacotes podem recriar."
+    },
+    "hidden_data": {
+      "title": "Pastas do usuário ocultas",
+      "description": "Dados de aplicativos com prefixo de ponto e configurações. Medido apenas; a limpeza direta não é recomendada."
+    }
+  },
+  "safety": {
+    "reclaimable": "Geralmente recuperável",
+    "review": "Revisão necessária"
+  },
+  "itemCount": "{{count}} arquivos",
+  "unavailable": "Não disponível nesta plataforma",
+  "pathUnavailable": "Local não acessível para varredura",
+  "morePaths": "e {{count}} mais locais",
+  "applications": {
+    "kicker": "Inventário de aplicativos somente leitura",
+    "title": "Aplicativos que não foram utilizados há muito tempo",
+    "boundary": "Apenas aplicativos que, segundo o macOS, não são abertos há pelo menos seis meses; o StatusOrbit nunca os desinstala automaticamente",
+    "lastUsed": "Última utilização {{date}} · não aberto há {{days}} dias",
+    "none": "Nenhum aplicativo pôde ser confirmado como não utilizado por mais de seis meses.",
+    "unavailable": "Esta plataforma atualmente não fornece datas de última utilização de aplicativos de forma confiável.",
+    "unknownExcluded": "{{count}} Outros aplicativos não possuem uma data de uso confirmada, portanto, o StatusOrbit não os classificou como não utilizados."
+  },
+  "reviewFirst": "Verificar um por um",
+  "largestFiles": "Arquivos grandes no disco do sistema",
+  "largeFileBoundary": "Apenas arquivos com mais de 500 MB são listados; a exclusão automática não é recomendada",
+  "noLargeFiles": "Nenhum arquivo com mais de 500 MB foi encontrado em locais acessíveis do disco do sistema.",
+  "unreadable": "{{count}} As localizações estavam protegidas ou temporariamente inacessíveis. Apenas essas localizações são excluídas do resultado.",
+  "fullDiskAccessHint": "No macOS, conceda ao StatusOrbit Acesso Total ao Disco em Ajustes do Sistema → Privacidade e Segurança e verifique novamente.",
+  "safetyBoundary": "A verificação não tem limite de tempo ou itens e nunca segue links simbólicos. Apenas os itens colocados na lixeira, verificados por caminho e explicitamente confirmados são permanentemente excluídos e não podem ser restaurados."
+}

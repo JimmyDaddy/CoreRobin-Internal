@@ -1,0 +1,52 @@
+{
+  "localMonitor": "ローカルシステムの状態",
+  "available": "空き容量",
+  "open": "概要表示",
+  "companion": "Orbit ユーティリティ",
+  "cleanup": "ディスクの整理",
+  "health": {
+    "loading": "接続中",
+    "observing": "システムの状況を学習中",
+    "normal": "正常",
+    "attention": "注意が必要",
+    "urgent": "対応が必要です"
+  },
+  "status": {
+    "loading": {
+      "title": "システムの状態を確認中",
+      "description": "最初の測定結果はすぐに表示されます。"
+    },
+    "observing": {
+      "title": "コンピューターの状態を学習中",
+      "description": "一時的な上昇が問題と誤認されないように、しばらく観察します。"
+    },
+    "normal": {
+      "title": "コンピューターは正常に動作しています",
+      "description": "リソースに関する問題はすぐには必要ありません。"
+    },
+    "attention": {
+      "title": "特定のリソースを監視してください",
+      "description": "StatusOrbitを開いて、詳細と対処方法を確認してください。"
+    },
+    "urgent": {
+      "title": "リソースの使用状況が逼迫しています",
+      "description": "対応前に、StatusOrbitで詳細を確認してください。"
+    }
+  },
+  "reason": "{{resource}} 注意が必要です",
+  "resource": {
+    "cpu": "CPU使用率",
+    "memory": "メモリ使用量",
+    "storage": "ストレージ容量",
+    "temperature": "温度",
+    "battery": "バッテリー残量",
+    "network": "ネットワーク接続",
+    "sleep": "スリープ状態",
+    "none": "システムの状態"
+  },
+  "incidentTitle": {
+    "attention": "注意すべき項目：{{count}}",
+    "urgent": "早めに確認が必要な項目：{{count}}"
+  },
+  "recovering": "状況が改善しています。正常にスリープ状態を維持していることを確認します。"
+}

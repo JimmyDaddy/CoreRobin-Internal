@@ -1,6 +1,6 @@
-import { BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Timer } from "lucide-react";
+import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Orbit, Rocket, Timer } from "lucide-react";
 import type { ChangeEventHandler, ReactNode } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   CONNECTION_REFRESH_INTERVAL_OPTIONS,
@@ -10,6 +10,7 @@ import {
 } from "../settings";
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
+import { LocaleSelect } from "./LocaleSelect";
 
 interface SettingsExplorerProps {
   settings: AppSettings;
@@ -26,7 +27,7 @@ export function SettingsExplorer({
   notificationStatus,
   onChange,
 }: SettingsExplorerProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
 
   const updateThreshold = (index: number, value: number) => {
@@ -38,19 +39,19 @@ export function SettingsExplorer({
   return (
     <section className="settings-explorer" aria-labelledby="settings-title">
       <header className="panel settings-hero">
-        <span className="eyebrow">{t("settings.localPreferences")}</span>
-        <h2 id="settings-title">{t("settings.title")}</h2>
-        <p>{t("settings.description")}</p>
+        <span className="eyebrow">{t("settings:localPreferences")}</span>
+        <h2 id="settings-title">{t("settings:title")}</h2>
+        <p>{t("settings:description")}</p>
       </header>
 
       <div className="settings-grid">
         <SettingsCard
           className="settings-card--mode"
           icon={LayoutDashboard}
-          title={t("settings.experience.title")}
-          description={t("settings.experience.description")}
+          title={t("settings:experience.title")}
+          description={t("settings:experience.description")}
         >
-          <div className="settings-segmented" role="group" aria-label={t("settings.experience.label")}>
+          <div className="settings-segmented" role="group" aria-label={t("settings:experience.label")}>
             {(["simple", "professional"] as const).map((experienceMode) => (
               <button
                 type="button"
@@ -59,7 +60,7 @@ export function SettingsExplorer({
                 aria-pressed={settings.experienceMode === experienceMode}
                 onClick={() => onChange({ experienceMode })}
               >
-                {t(`settings.experience.${experienceMode}`)}
+                {t(`settings:experience.${experienceMode}`)}
               </button>
             ))}
           </div>
@@ -67,35 +68,61 @@ export function SettingsExplorer({
 
         <SettingsCard
           icon={Languages}
-          title={t("settings.language.title")}
-          description={t("settings.language.description")}
+          title={t("settings:language.title")}
+          description={t("settings:language.description")}
         >
-          <div
-            className="settings-segmented"
-            role="group"
-            aria-label={t("settings.language.label")}
-          >
-            {(["zh-CN", "en"] as const).map((language) => (
-              <button
-                type="button"
-                key={language}
-                className={settings.language === language ? "is-active" : ""}
-                aria-pressed={settings.language === language}
-                onClick={() => onChange({ language })}
-              >
-                {language === "en" ? "English" : "简体中文"}
-              </button>
-            ))}
+          <LocaleSelect
+            value={settings.language}
+            label={t("settings:language.label")}
+            onChange={(language) => onChange({ language })}
+          />
+        </SettingsCard>
+
+        <SettingsCard
+          className="settings-card--background"
+          icon={AppWindow}
+          title={t("settings:background.title")}
+          description={t("settings:background.description")}
+        >
+          <div className="settings-background-controls">
+            <BackgroundSwitch
+              icon={AppWindow}
+              label={t("settings:background.showDockIcon")}
+              description={t("settings:background.showDockIconDescription")}
+              checked={settings.showDockIcon}
+              onChange={(checked) => onChange({ showDockIcon: checked })}
+            />
+            <BackgroundSwitch
+              icon={Rocket}
+              label={t("settings:background.launchAtLogin")}
+              description={t("settings:background.launchAtLoginDescription")}
+              checked={settings.launchAtLogin}
+              onChange={(checked) => onChange({ launchAtLogin: checked })}
+            />
+            <BackgroundSwitch
+              icon={Orbit}
+              label={t("settings:background.companionShowOnStartup")}
+              description={t("settings:background.companionShowOnStartupDescription")}
+              checked={settings.companionShowOnStartup}
+              onChange={(checked) => onChange({ companionShowOnStartup: checked })}
+            />
+            <BackgroundSwitch
+              icon={Orbit}
+              label={t("settings:background.companionAlwaysOnTop")}
+              description={t("settings:background.companionAlwaysOnTopDescription")}
+              checked={settings.companionAlwaysOnTop}
+              onChange={(checked) => onChange({ companionAlwaysOnTop: checked })}
+            />
           </div>
         </SettingsCard>
 
         <SettingsCard
           icon={Timer}
-          title={t("settings.sampling.title")}
-          description={t("settings.sampling.description")}
+          title={t("settings:sampling.title")}
+          description={t("settings:sampling.description")}
         >
           <label className="settings-field">
-            <span>{t("settings.sampling.system")}</span>
+            <span>{t("settings:sampling.system")}</span>
             <SettingsSelect
               value={settings.systemSampleIntervalMs}
               onChange={(event) =>
@@ -104,7 +131,7 @@ export function SettingsExplorer({
             >
               {SYSTEM_SAMPLE_INTERVAL_OPTIONS.map((interval) => (
                 <option key={interval} value={interval}>
-                  {t("settings.intervalMs", { interval })}
+                  {t("settings:intervalMs", { interval })}
                 </option>
               ))}
             </SettingsSelect>
@@ -113,11 +140,11 @@ export function SettingsExplorer({
 
         <SettingsCard
           icon={Network}
-          title={t("settings.connections.title")}
-          description={t("settings.connections.description")}
+          title={t("settings:connections.title")}
+          description={t("settings:connections.description")}
         >
           <label className="settings-field">
-            <span>{t("settings.connections.refresh")}</span>
+            <span>{t("settings:connections.refresh")}</span>
             <SettingsSelect
               value={settings.connectionRefreshIntervalMs}
               onChange={(event) =>
@@ -126,7 +153,7 @@ export function SettingsExplorer({
             >
               {CONNECTION_REFRESH_INTERVAL_OPTIONS.map((interval) => (
                 <option key={interval} value={interval}>
-                  {t("settings.intervalSeconds", { seconds: interval / 1_000 })}
+                  {t("settings:intervalSeconds", { seconds: interval / 1_000 })}
                 </option>
               ))}
             </SettingsSelect>
@@ -135,10 +162,10 @@ export function SettingsExplorer({
 
         <SettingsCard
           icon={ListTree}
-          title={t("settings.processView.title")}
-          description={t("settings.processView.description")}
+          title={t("settings:processView.title")}
+          description={t("settings:processView.description")}
         >
-          <div className="settings-segmented" role="group" aria-label={t("settings.processView.label")}>
+          <div className="settings-segmented" role="group" aria-label={t("settings:processView.label")}>
             {(["flat", "tree"] as const).map((mode) => (
               <button
                 type="button"
@@ -147,7 +174,7 @@ export function SettingsExplorer({
                 aria-pressed={settings.defaultProcessView === mode}
                 onClick={() => onChange({ defaultProcessView: mode })}
               >
-                {t(`process.${mode}`)}
+                {t(`process:${mode}`)}
               </button>
             ))}
           </div>
@@ -155,8 +182,8 @@ export function SettingsExplorer({
 
         <SettingsCard
           icon={History}
-          title={t("settings.history.title")}
-          description={t("settings.history.description")}
+          title={t("settings:history.title")}
+          description={t("settings:history.description")}
         >
           <div className="settings-history-controls">
             <label className="settings-switch">
@@ -168,9 +195,9 @@ export function SettingsExplorer({
                   onChange({ historyPersistenceEnabled: event.target.checked })
                 }
               />
-              <span>{t("settings.history.persist")}</span>
+              <span>{t("settings:history.persist")}</span>
             </label>
-            <label className="settings-switch" title={t("settings.history.applicationNamesHint")}>
+            <label className="settings-switch" title={t("settings:history.applicationNamesHint")}>
               <input
                 type="checkbox"
                 role="switch"
@@ -180,10 +207,10 @@ export function SettingsExplorer({
                   onChange({ historyApplicationNamesEnabled: event.target.checked })
                 }
               />
-              <span>{t("settings.history.applicationNames")}</span>
+              <span>{t("settings:history.applicationNames")}</span>
             </label>
             <label className="settings-field">
-              <span>{t("settings.history.retention")}</span>
+              <span>{t("settings:history.retention")}</span>
               <SettingsSelect
                 value={settings.historyRetentionDays}
                 onChange={(event) =>
@@ -199,7 +226,7 @@ export function SettingsExplorer({
               >
                 {HISTORY_RETENTION_OPTIONS.map((days) => (
                   <option key={days} value={days}>
-                    {t("settings.history.days", { count: days })}
+                    {t("settings:history.days", { count: days })}
                   </option>
                 ))}
               </SettingsSelect>
@@ -209,8 +236,8 @@ export function SettingsExplorer({
 
         <SettingsCard
           icon={BellRing}
-          title={t("settings.notifications.title")}
-          description={t("settings.notifications.description")}
+          title={t("settings:notifications.title")}
+          description={t("settings:notifications.description")}
         >
           <div className="settings-notification-controls">
             <label className="settings-switch">
@@ -222,14 +249,14 @@ export function SettingsExplorer({
                   onChange({ desktopNotificationsEnabled: event.target.checked })
                 }
               />
-              <span>{t("settings.notifications.enable")}</span>
+              <span>{t("settings:notifications.enable")}</span>
             </label>
             <small className={`is-${notificationStatus}`}>
-              <i />{t(`settings.notifications.status.${notificationStatus}`)}
+              <i />{t(`settings:notifications.status.${notificationStatus}`)}
             </small>
           </div>
           <fieldset className="settings-notification-categories" disabled={!settings.desktopNotificationsEnabled}>
-            <legend>{t("settings.notifications.categories")}</legend>
+            <legend>{t("settings:notifications.categories")}</legend>
             {(["cpu", "memory", "volume"] as const).map((resource) => {
               const enabled = !settings.mutedNotificationResources.includes(resource);
               return (
@@ -243,7 +270,7 @@ export function SettingsExplorer({
                         : [...settings.mutedNotificationResources, resource],
                     })}
                   />
-                  <span>{t(`settings.notifications.resources.${resource}`)}</span>
+                  <span>{t(`settings:notifications.resources.${resource}`)}</span>
                 </label>
               );
             })}
@@ -253,19 +280,19 @@ export function SettingsExplorer({
         <SettingsCard
           className="settings-card--thresholds"
           icon={BellRing}
-          title={t("settings.thresholds.title")}
-          description={t("settings.thresholds.description")}
+          title={t("settings:thresholds.title")}
+          description={t("settings:thresholds.description")}
         >
           <div className="settings-thresholds">
             <ThresholdSelect
-              label={t("settings.thresholds.moderate")}
+              label={t("settings:thresholds.moderate")}
               value={moderate}
               options={THRESHOLD_OPTIONS.filter((value) => value < high)}
               tone="moderate"
               onChange={(value) => updateThreshold(0, value)}
             />
             <ThresholdSelect
-              label={t("settings.thresholds.high")}
+              label={t("settings:thresholds.high")}
               value={high}
               options={THRESHOLD_OPTIONS.filter(
                 (value) => value > moderate && value < critical,
@@ -274,7 +301,7 @@ export function SettingsExplorer({
               onChange={(value) => updateThreshold(1, value)}
             />
             <ThresholdSelect
-              label={t("settings.thresholds.critical")}
+              label={t("settings:thresholds.critical")}
               value={critical}
               options={THRESHOLD_OPTIONS.filter((value) => value > high)}
               tone="critical"
@@ -285,6 +312,28 @@ export function SettingsExplorer({
         </SettingsCard>
       </div>
     </section>
+  );
+}
+
+function BackgroundSwitch({
+  icon: Icon,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  icon: typeof AppWindow;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="settings-background-option">
+      <span aria-hidden="true"><Icon size={16} /></span>
+      <span><strong>{label}</strong><small>{description}</small></span>
+      <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
   );
 }
 
@@ -366,14 +415,14 @@ function SettingsSelect({
 }
 
 function ThresholdPreview({ thresholds }: { thresholds: UsageThresholds }) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [moderate, high, critical] = thresholds;
   return (
-    <div className="settings-threshold-preview" aria-label={t("settings.thresholds.preview")}>
-      <span className="is-low" style={{ flex: moderate }}>{t("settings.thresholds.low")}</span>
-      <span className="is-moderate" style={{ flex: high - moderate }}>{t("settings.thresholds.moderate")}</span>
-      <span className="is-high" style={{ flex: critical - high }}>{t("settings.thresholds.high")}</span>
-      <span className="is-critical" style={{ flex: 100 - critical }}>{t("settings.thresholds.critical")}</span>
+    <div className="settings-threshold-preview" aria-label={t("settings:thresholds.preview")}>
+      <span className="is-low" style={{ flex: moderate }}>{t("settings:thresholds.low")}</span>
+      <span className="is-moderate" style={{ flex: high - moderate }}>{t("settings:thresholds.moderate")}</span>
+      <span className="is-high" style={{ flex: critical - high }}>{t("settings:thresholds.high")}</span>
+      <span className="is-critical" style={{ flex: 100 - critical }}>{t("settings:thresholds.critical")}</span>
     </div>
   );
 }

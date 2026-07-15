@@ -1,0 +1,30 @@
+{
+  "triggered": {
+    "cpu": {
+      "title": "L'ordinateur fonctionne sous forte charge",
+      "body": "Le processeur est sollicité et peut entraîner des ralentissements, de la surchauffe ou une consommation accrue d'énergie. Ouvrez StatusOrbit pour identifier les applications les plus gourmandes en ressources."
+    },
+    "memory": {
+      "title": "La mémoire disponible est limitée",
+      "body": "Une faible quantité de mémoire disponible et une activité significative du fichier d'échange se produisent simultanément. StatusOrbit ne ferme jamais automatiquement les applications."
+    },
+    "volume": {
+      "title": "L'espace disque libre est faible",
+      "body": "L'utilisation du disque reste supérieure à 85 %. Consultez d'abord le plan de gestion de l'espace. Chaque action sur un fichier nécessite une confirmation."
+    }
+  },
+  "recovered": {
+    "cpu": {
+      "title": "La charge de l'ordinateur est revenue à la normale",
+      "body": "L'utilisation du processeur est revenue dans les limites normales. Les ralentissements, la surchauffe ou l'impact sur la consommation d'énergie précédents devraient maintenant diminuer."
+    },
+    "memory": {
+      "title": "La pression mémoire s'est atténuée",
+      "body": "La mémoire disponible et l'activité de swap se maintiennent dans une plage saine, ce qui devrait améliorer la fluidité des transitions entre les applications."
+    },
+    "volume": {
+      "title": "L'espace disque est de nouveau dans une plage saine",
+      "body": "L'utilisation du disque reste dans une plage sécurisée, aucune intervention supplémentaire n'est nécessaire pour le moment."
+    }
+  }
+}

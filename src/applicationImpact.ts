@@ -57,6 +57,26 @@ export function sortApplications(
   });
 }
 
+export function reconcileApplicationOrder(
+  currentIds: readonly string[],
+  applications: readonly ApplicationImpact[],
+  totalMemoryBytes: number,
+  rerank: boolean,
+): string[] {
+  if (rerank || currentIds.length === 0) {
+    return sortApplications(applications, "impact", totalMemoryBytes).map(({ id }) => id);
+  }
+  const availableIds = new Set(applications.map(({ id }) => id));
+  const retained = currentIds.filter((id) => availableIds.has(id));
+  const retainedIds = new Set(retained);
+  const added = sortApplications(
+    applications.filter(({ id }) => !retainedIds.has(id)),
+    "impact",
+    totalMemoryBytes,
+  ).map(({ id }) => id);
+  return [...retained, ...added];
+}
+
 function applicationMetric(
   application: ApplicationImpact,
   sortKey: ApplicationSortKey,

@@ -1,0 +1,227 @@
+{
+  "kicker": "Análisis del espacio local",
+  "title": "Asistente de limpieza de almacenamiento",
+  "description": "Escanea el disco del sistema y muestra el uso del espacio por ruta de archivo real.",
+  "startScan": "Iniciar escaneo en modo de solo lectura",
+  "scanAgain": "Re-escanear",
+  "scanning": "Escaneando…",
+  "cancelScan": "Detener escaneo",
+  "cancelling": "Deteniendo…",
+  "readOnlyTitle": "Revisar primero, decidir después",
+  "readOnlyDescription": "El escaneo en segundo plano lee nombres, tamaños y otra información hasta que se complete. Nunca lee el contenido de los archivos ni modifica, mueve o carga archivos.",
+  "failed": "La comprobación del almacenamiento no pudo completarse",
+  "access": {
+    "kicker": "Antes de iniciar la comprobación",
+    "title": "Permitir acceso al disco completo del sistema",
+    "description": "macOS protege Mail, Messages y otras ubicaciones de datos de aplicaciones. El acceso completo permite crear un mapa del espacio más completo; StatusOrbit solo lee metadatos como nombres, tamaños y fechas.",
+    "checking": "Comprobando acceso…",
+    "checkingReturn": "Confirmando acceso…",
+    "openSettings": "Abrir Acceso Completo",
+    "openAgain": "Reabrir la configuración del sistema",
+    "revealApp": "Mostrar aplicación en Finder",
+    "checkAgain": "Acceso habilitado — verificar nuevamente",
+    "continueLimited": "Analizar áreas accesibles",
+    "waiting": "Ajustes del Sistema está abierto. Si StatusOrbit no aparece, haz clic en + debajo de la lista y selecciona StatusOrbit.app. Actívalo y vuelve para iniciar el análisis automáticamente.",
+    "unknown": "No se pudo confirmar el acceso. Puede abrir las Preferencias del Sistema o ejecutar una búsqueda limitada.",
+    "bundleRequired": "Inicie primero la aplicación StatusOrbit.app",
+    "bundleMissingTitle": "Este proceso no puede agregarse a la lista de accesos",
+    "bundleMissingDescription": "macOS no puede autorizar este proceso de desarrollo. Instale la aplicación StatusOrbit.app y vuelva a abrirla desde Aplicaciones; aún está disponible una búsqueda limitada.",
+    "privacy": "macOS controla esta autorización y puede desactivarla en cualquier momento. StatusOrbit nunca lee el contenido de archivos ni modifica archivos durante un escaneo.",
+    "steps": {
+      "open": "Abrir Preferencias del Sistema",
+      "add": "Haga clic en + y seleccione StatusOrbit.app",
+      "return": "Active y vuelva"
+    }
+  },
+  "reclaimableEstimate": "Espacio potencialmente recuperable",
+  "estimateBoundary": "Esta es una estimación para cachés y archivos temporales, no una recomendación para eliminar todo.",
+  "entriesScanned": "{{count}} elementos revisados",
+  "scanDuration": "{{seconds}} segundos",
+  "snapshot": {
+    "retained": "Guardado en este dispositivo; los cambios se verifican mientras navega",
+    "refresh": "Actualizar resultado",
+    "cached": {
+      "title": "Resultado del último escaneo restaurado",
+      "description": "Continúe explorando sin esperar a otro escaneo. StatusOrbit revisa un directorio en busca de cambios solo cuando lo explora"
+    },
+    "expired": {
+      "title": "Este resultado tiene más de 24 horas",
+      "description": "StatusOrbit mantiene la información disponible para que pueda continuar explorando. Actualícela antes de tomar decisiones sobre la limpieza."
+    }
+  },
+  "progress": {
+    "scanningLocation": "Analizando {{location}}",
+    "showPath": "Mostrar ruta actual",
+    "entries": "Comprobado",
+    "discovered": "Encontrado",
+    "elapsed": "Tiempo transcurrido",
+    "foundSpace": "Contenido encontrado",
+    "stageKicker": "Creando el mapa de espacio",
+    "locations": {
+      "downloads": "descargas",
+      "trash": "basura",
+      "appCache": "cachés de aplicaciones",
+      "developerCache": "Cachés de desarrollador",
+      "hiddenData": "Datos de aplicaciones ocultos",
+      "applications": "Aplicaciones instaladas",
+      "personal": "Archivos personales",
+      "systemDisk": "Disco del sistema"
+    }
+  },
+  "categories": {
+    "title": "Para qué se utiliza este espacio comúnmente"
+  },
+  "map": {
+    "title": "Dónde se encuentra el espacio",
+    "description": "El área de sector representa el espacio en disco asignado. Los colores relacionados pertenecen a una rama de carpeta; los sectores grises son archivos.",
+    "descriptionPath": "Mostrado por la ruta real en todo el disco del sistema: cada anillo es el siguiente nivel de directorio, y el área de sector representa el espacio en disco asignado.",
+    "descriptionCategory": "El mismo escaneo se agrupa según su propósito común. Las categorías son una vista de apoyo, no la jerarquía de directorios real.",
+    "allScanned": "Resultados de escaneo completos",
+    "categoryRoot": "Categorías de propósito",
+    "mode": {
+      "label": "Vista del mapa de espacio",
+      "path": "Rutas de archivos",
+      "category": "Propósito"
+    },
+    "ariaLabel": "Mapa circular para {{name}}",
+    "back": "Regresar un nivel",
+    "breadcrumbs": "Jerarquía del mapa de espacio",
+    "centerBack": "Volver al directorio padre",
+    "details": "Detalles del espacio",
+    "selected": "Seleccionado",
+    "grouped": "Categoría agrupada",
+    "smallerObjects": "Objetos más pequeños",
+    "restrictedObjects": "Objetos inaccesibles",
+    "allocatedSize": "Asignado en disco",
+    "logicalSize": "{{size}} tamaño lógico",
+    "unreadable": "Inaccesible",
+    "restrictedHint": "El sistema operativo no ha otorgado acceso de lectura; este elemento no puede ser recolectado",
+    "types": {
+      "folder": "Carpeta",
+      "file": "Archivo",
+      "aggregate": "Objetos pequeños agrupados",
+      "restricted": "Restringidos"
+    },
+    "noDeeperBreakdown": "No se puede agrupar directorios en niveles inferiores en este nivel.",
+    "loadDeeperHint": "Seleccione esta carpeta para cargar el siguiente nivel sin escanear todo el equipo.",
+    "loadingFolder": "Cargando esta carpeta…",
+    "loadFailed": "No se pudo cargar la carpeta",
+    "directActionHint": "Mantenga un sector y arrástrelo al cesto de limpieza en la parte inferior izquierda del mapa",
+    "protectedSelectionHint": "Las rutas del sistema, los nodos agrupados y la raíz del directorio de inicio son solo de visualización; solo los elementos específicos dentro de su carpeta de inicio pueden entrar al cesto",
+    "trashRootProtected": "El propio cesto está protegido; acceda a él y seleccione el contenido específico que desea eliminar",
+    "planSummary": "{{count}} elementos seleccionados · {{size}}",
+    "reviewCleanup": "Revisar y eliminar permanentemente",
+    "refreshCleanup": "Actualizar la selección antes de revisar",
+    "deletionUnavailable": "La eliminación permanente no está disponible",
+    "basket": {
+      "title": "Cesta de limpieza",
+      "empty": "Mantén una sección y arrástrala aquí para recoger los elementos primero",
+      "release": "Liberar para añadir a la cesta",
+      "collected": "En la cesta de limpieza",
+      "collectedHint": "Ya ha sido recogido; elimínalo de la cesta de abajo o continúa revisando",
+      "remove": "Eliminar {{name}} de la cesta",
+      "clear": "Vaciar",
+      "completed": "Eliminados permanentemente {{deletedCount}} elementos",
+      "partial": "Se eliminaron {{deletedCount}} elementos; no se pudieron procesar {{failedCount}}",
+      "cancelled": "La eliminación se detuvo después de eliminar {{deletedCount}} elementos"
+    },
+    "deleteResult": {
+      "success": "Eliminados permanentemente {{deletedCount}} elementos",
+      "partial": "Se eliminaron {{deletedCount}} elementos; falló la operación con {{failedCount}}",
+      "failed": "No se eliminó nada; falló la eliminación de {{failedCount}} elementos",
+      "cancelled": "La eliminación se detuvo después de eliminar {{deletedCount}} elementos",
+      "cancelledNoDeletion": "La eliminación se detuvo antes de eliminar completamente ningún elemento",
+      "reclaimed": "Espacio liberado verificado antes de la eliminación: aproximadamente {{size}}"
+    },
+    "freshness": {
+      "cached": "Mostrando el resultado del escaneo anterior",
+      "expired": "Esta comprobación es antigua; se recomienda una nueva comprobación",
+      "changed": "Esta carpeta ha cambiado; los tamaños pueden ser inexactos",
+      "changedShort": "Contenido modificado"
+    }
+  },
+  "deleteDialog": {
+    "title": "Revisar antes de eliminar permanentemente",
+    "description": "Confirma la eliminación directa de estos elementos del disco, en lugar de moverlos a la Papelera",
+    "itemUnit": "elementos",
+    "estimatedSize": "estimado",
+    "irreversible": "No se puede deshacer",
+    "changed": "Modificado desde la última comprobación",
+    "changedWarning": "{{count}} Los elementos son diferentes a la vista anterior. Los tamaños y el número de elementos han sido actualizados; vuelva a comprobar antes de confirmar.",
+    "preparing": "Verificando nuevamente las rutas y el estado actual de los archivos…",
+    "refreshSelection": "Actualizar la selección nuevamente",
+    "deleteConfirmTitle": "Entiendo que estos elementos serán eliminados permanentemente",
+    "deleteConfirmDescription": "Los archivos no se moverán a la Papelera. Los descargas, la configuración y los datos personales podrían no ser recuperables.",
+    "confirm": "Eliminar permanentemente {{count}} elementos",
+    "deleting": "Eliminando permanentemente…",
+    "selection": "Contenido seleccionado",
+    "progressPreparing": "Verificando el contenido seleccionado",
+    "progressDeleting": "Eliminando permanentemente",
+    "progressCancelling": "Deteniendo de forma segura",
+    "progressCurrent": "Actual: {{name}}",
+    "progressInspecting": "Contando archivos y carpetas",
+    "progressEntries": "{{processed}} / {{total}} archivos y carpetas",
+    "progressTargets": "{{completed}} / {{total}} elementos completados",
+    "progressDeleted": "Aproximadamente {{size}} liberados",
+    "cancelDelete": "Detener la eliminación",
+    "cancelling": "Eliminando…",
+    "cancelHint": "Las eliminaciones completadas no pueden ser restauradas. StatusOrbit se detendrá después de la operación actual con archivos.",
+    "errors": {
+      "protected_cleanup_path": "StatusOrbit no eliminará tu directorio personal ni la carpeta Papelera.",
+      "cleanup_target_outside_home": "Por seguridad, StatusOrbit solo procesa contenido dentro de tu carpeta personal.",
+      "cleanup_cross_filesystem": "La carpeta seleccionada se encuentra en un disco o punto de montaje diferente, por lo que StatusOrbit no pudo realizar la eliminación recursiva.",
+      "cleanup_target_changed": "Un archivo fue modificado después de la confirmación, por lo que StatusOrbit no eliminó nada. Cancela y revísalo nuevamente.",
+      "cleanup_confirmation_unavailable": "Esta confirmación ya no está disponible. Cancela y vuelve a abrir el revisor.",
+      "cleanup_confirmation_expired": "Esta confirmación ha caducado. Cancela y revisa los archivos actuales nuevamente.",
+      "cleanup_target_unavailable": "Algunos contenidos ya no existen o no se pueden acceder. Escanea de nuevo e inténtalo nuevamente.",
+      "invalid_cleanup_selection": "La selección en la cesta de limpieza es inválida. Elige los elementos nuevamente.",
+      "overlapping_cleanup_targets": "Una carpeta y uno de sus subdirectorios están seleccionados. Mantén solo un nivel."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "Descargas",
+      "description": "Puede contener instaladores, documentos y archivos que aún necesitas."
+    },
+    "trash": {
+      "title": "Papelera",
+      "description": "Los elementos suelen ser irrecuperables una vez que la papelera ha sido vaciada."
+    },
+    "app_cache": {
+      "title": "Cachés de aplicaciones",
+      "description": "Las aplicaciones pueden recrear o descargar esta información nuevamente más tarde."
+    },
+    "developer_cache": {
+      "title": "Cachés de desarrolladores",
+      "description": "Datos que las herramientas y los gestores de paquetes pueden recrear."
+    },
+    "hidden_data": {
+      "title": "Carpetas ocultas del usuario",
+      "description": "Datos de aplicaciones con prefijo de punto y configuración. Se mide solo; no se recomienda la eliminación directa."
+    }
+  },
+  "safety": {
+    "reclaimable": "Generalmente recuperables",
+    "review": "Revisión requerida"
+  },
+  "itemCount": "{{count}} archivos",
+  "unavailable": "No disponible en esta plataforma",
+  "pathUnavailable": "Ubicación no accesible para el escaneo",
+  "morePaths": "y {{count}} más ubicaciones",
+  "applications": {
+    "kicker": "Inventario de aplicaciones solo lectura",
+    "title": "Aplicaciones que no se han utilizado durante mucho tiempo",
+    "boundary": "Solo las aplicaciones que macOS confirma como sin abrir durante al menos seis meses; StatusOrbit nunca las desinstala automáticamente",
+    "lastUsed": "Última utilización {{date}} · sin abrir durante {{days}} días",
+    "none": "No se pudo confirmar ninguna aplicación como no utilizada por más de seis meses.",
+    "unavailable": "Esta plataforma no puede proporcionar actualmente fechas fiables de la última utilización de las aplicaciones.",
+    "unknownExcluded": "{{count}} Algunas aplicaciones no tienen una fecha de uso confirmada, por lo que StatusOrbit no las clasificó como sin usar."
+  },
+  "reviewFirst": "Revisar uno por uno",
+  "largestFiles": "Archivos grandes en el disco del sistema",
+  "largeFileBoundary": "Solo se muestran los archivos de más de 500 MB; no se recomienda la eliminación automática",
+  "noLargeFiles": "No se encontraron archivos de más de 500 MB en las ubicaciones accesibles del disco del sistema.",
+  "unreadable": "{{count}} Las ubicaciones estaban protegidas o temporalmente inaccesibles. Solo estas ubicaciones se excluyen del resultado.",
+  "fullDiskAccessHint": "En macOS, otorgue el acceso completo al disco a StatusOrbit en la configuración del Sistema → Privacidad y seguridad, luego vuelva a escanear.",
+  "safetyBoundary": "El escaneo no tiene límite de tiempo ni de elementos y nunca sigue enlaces simbólicos. Solo los elementos colocados en la cesta, verificados por ruta y confirmados explícitamente se eliminan permanentemente y no pueden ser restaurados."
+}

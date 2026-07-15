@@ -1,0 +1,61 @@
+{
+  "eyebrow": "État du périphérique",
+  "title": "Température, batterie et sommeil",
+  "description": "Lit l'état du système à basse fréquence et explique si une application empêche le sommeil automatique.",
+  "overall": {
+    "normal": "Tout va bien",
+    "attention": "À surveiller",
+    "urgent": "Recommandation d'action",
+    "unavailable": "Aucune donnée système disponible"
+  },
+  "temperature": {
+    "label": "Température de l'appareil",
+    "normal": "La température est actuellement dans la plage normale.",
+    "attention": "L'appareil est chaud. Si cela s'accompagne d'un ralentissement, fermez d'abord les applications gourmandes en ressources.",
+    "urgent": "La température reste élevée. Arrêtez les tâches lourdes et assurez une bonne ventilation de l'appareil.",
+    "unavailable": "Le système d'exploitation ou le matériel ne transmet pas de données de température à StatusOrbit."
+  },
+  "battery": {
+    "label": "Batterie",
+    "notPresent": "Aucune batterie détectée",
+    "unavailable": "Les ordinateurs de bureau et appareils sans rapport de batterie s'affichent ainsi.",
+    "normal": "État de la batterie normal",
+    "attention": "La batterie est faible ; préparez-vous à brancher un chargeur",
+    "urgent": "Batterie très faible ; branchez un chargeur rapidement",
+    "remaining": "environ {{hours}} h {{minutes}} min",
+    "state": {
+      "charging": "En charge",
+      "discharging": "Utilisation de la batterie",
+      "full": "Batterie complètement chargée",
+      "not_charging": "En utilisation, pas en charge",
+      "unknown": "État inconnu"
+    }
+  },
+  "sleep": {
+    "label": "Mode veille automatique",
+    "unavailableValue": "Non disponible",
+    "unavailable": "Cette plateforme ne fournit pas d'informations fiables sur le blocage du sommeil à StatusOrbit.",
+    "clearValue": "Le sommeil est possible",
+    "clear": "Aucune application n'empêche l'ordinateur de se mettre en veille automatiquement.",
+    "blockedValue": "{{count}} application",
+    "blockedValue_many": "{{count}} applications",
+    "blockedValue_one": "{{count}} application",
+    "blockedValue_other": "{{count}} applications",
+    "blocked": "{{name}} a empêché le sommeil automatique pour {{duration}}{{more}}. Fermer l'application ou mettre sa tâche en pause permet généralement de rétablir le sommeil.",
+    "more": ", plus {{count}} applications",
+    "systemValue": "Activité du système",
+    "system": "Une tâche système maintient l'ordinateur allumé temporairement. Elle ne nécessite généralement aucune intervention, et les processus système ne doivent pas être fermés.",
+    "duration": {
+      "unknown": "un moment",
+      "lessThanMinute": "moins d'une minute",
+      "minutes": "environ {{count}} minutes",
+      "minutes_many": "environ {{count}} minutes",
+      "minutes_one": "environ 1 minute",
+      "minutes_other": "environ {{count}} minutes",
+      "hours": "environ {{count}} heures",
+      "hours_many": "environ {{count}} heures",
+      "hours_one": "environ 1 heure",
+      "hours_other": "environ {{count}} heures"
+    }
+  }
+}

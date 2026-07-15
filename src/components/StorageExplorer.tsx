@@ -9,7 +9,7 @@ import {
   Usb,
 } from "lucide-react";
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   sortVolumesByUsage,
@@ -55,7 +55,7 @@ export function StorageExplorer({
   usageThresholds,
   onOpenCleanup,
 }: StorageExplorerProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const volumes = useMemo(
     () => sortVolumesByUsage(disk.volumes),
     [disk.volumes],
@@ -71,40 +71,40 @@ export function StorageExplorer({
       <section className="panel storage-overview">
         <header className="storage-overview__heading">
           <div>
-            <span className="eyebrow">{t("storage.local")}</span>
-            <h2 id="storage-title">{t("storage.title")}</h2>
-            <p>{t("storage.description")}</p>
+            <span className="eyebrow">{t("storage:local")}</span>
+            <h2 id="storage-title">{t("storage:title")}</h2>
+            <p>{t("storage:description")}</p>
           </div>
           <div className="storage-overview__actions">
             <span className="storage-overview__badge">
-              <HardDrive size={14} />{t("storage.volumeCount", { count: volumes.length })}
+              <HardDrive size={14} />{t("storage:volumeCount", { count: volumes.length })}
             </span>
             <button className="button button--primary storage-overview__cleanup" type="button" onClick={onOpenCleanup}>
-              <Sparkles size={14} />{t("storage.openCleanup")}
+              <Sparkles size={14} />{t("storage:openCleanup")}
             </button>
           </div>
         </header>
 
-        <div className="storage-summary" aria-label={t("storage.summary")}>
+        <div className="storage-summary" aria-label={t("storage:summary")}>
           <StorageSummaryItem
             icon={ArrowDownToLine}
-            label={t("storage.currentRead")}
+            label={t("storage:currentRead")}
             value={formatRate(disk.readBytesPerSecond)}
             tone="read"
           />
           <StorageSummaryItem
             icon={ArrowUpFromLine}
-            label={t("storage.currentWrite")}
+            label={t("storage:currentWrite")}
             value={formatRate(disk.writeBytesPerSecond)}
             tone="write"
           />
           <StorageSummaryItem
             icon={HardDrive}
-            label={t("storage.highestUsage")}
+            label={t("storage:highestUsage")}
             value={
               highestUsage
                 ? `${highestUsage.usagePercent.toFixed(0)}%`
-                : t("storage.noVolume")
+                : t("storage:noVolume")
             }
             context={highestUsage?.volume.name}
             tone={highestUsage?.lowSpace ? "warning" : "capacity"}
@@ -117,10 +117,10 @@ export function StorageExplorer({
       <section className="panel volume-panel" aria-labelledby="volume-title">
         <header className="storage-section-heading">
           <div>
-            <span className="eyebrow">{t("storage.filesystemCapacity")}</span>
-            <h2 id="volume-title">{t("storage.volumes")}</h2>
+            <span className="eyebrow">{t("storage:filesystemCapacity")}</span>
+            <h2 id="volume-title">{t("storage:volumes")}</h2>
           </div>
-          <span>{t("storage.sortedByUsage")}</span>
+          <span>{t("storage:sortedByUsage")}</span>
         </header>
 
         {volumes.length > 0 ? (
@@ -135,10 +135,10 @@ export function StorageExplorer({
                     {volume.removable ? <Usb size={16} /> : <HardDrive size={16} />}
                   </span>
                   <span>
-                    <strong title={volume.name}>{volume.name || t("storage.unnamedVolume")}</strong>
+                    <strong title={volume.name}>{volume.name || t("storage:unnamedVolume")}</strong>
                     <code title={volume.mountPoint}>{volume.mountPoint}</code>
                   </span>
-                  {volume.removable ? <small>{t("storage.removable")}</small> : null}
+                  {volume.removable ? <small>{t("storage:removable")}</small> : null}
                 </header>
                 <div className="volume-capacity">
                   <strong>{formatBytes(usedBytes)}</strong>
@@ -148,7 +148,7 @@ export function StorageExplorer({
                 <span
                   className="volume-track"
                   role="progressbar"
-                  aria-label={t("storage.usedSpace", { name: volume.name || volume.mountPoint })}
+                  aria-label={t("storage:usedSpace", { name: volume.name || volume.mountPoint })}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(usagePercent)}
@@ -156,10 +156,10 @@ export function StorageExplorer({
                   <i style={{ width: `${usagePercent}%` }} />
                 </span>
                 <footer>
-                  <span>{t("storage.available", { value: formatBytes(volume.availableBytes) })}</span>
+                  <span>{t("storage:available", { value: formatBytes(volume.availableBytes) })}</span>
                   {lowSpace ? (
                     <span className="volume-warning">
-                      <AlertTriangle size={12} />{t("storage.lowSpace")}
+                      <AlertTriangle size={12} />{t("storage:lowSpace")}
                     </span>
                   ) : null}
                 </footer>
@@ -168,7 +168,7 @@ export function StorageExplorer({
           </div>
         ) : (
           <div className="storage-empty">
-            <HardDrive size={20} />{t("storage.noDisplayVolumes")}
+            <HardDrive size={20} />{t("storage:noDisplayVolumes")}
           </div>
         )}
       </section>
@@ -179,10 +179,10 @@ export function StorageExplorer({
       >
         <header className="storage-section-heading">
           <div>
-            <span className="eyebrow">{t("storage.snapshot")}</span>
-            <h2 id="storage-process-title">{t("storage.topProcesses")}</h2>
+            <span className="eyebrow">{t("storage:snapshot")}</span>
+            <h2 id="storage-process-title">{t("storage:topProcesses")}</h2>
           </div>
-          <span>{t("storage.inspectHint")}</span>
+          <span>{t("storage:inspectHint")}</span>
         </header>
 
         {diskProcesses.length > 0 ? (
@@ -199,19 +199,19 @@ export function StorageExplorer({
                   >
                     <span className="storage-process-rank">{index + 1}</span>
                     <span className="storage-process-name">
-                      <strong>{process.name || t("common.unnamedProcess")}</strong>
+                      <strong>{process.name || t("common:unnamedProcess")}</strong>
                       <small>PID {process.pid}</small>
                     </span>
                     <span>
-                      <small>{t("common.read")}</small>
+                      <small>{t("common:read")}</small>
                       <strong>{formatRate(process.diskReadBytesPerSecond)}</strong>
                     </span>
                     <span>
-                      <small>{t("common.write")}</small>
+                      <small>{t("common:write")}</small>
                       <strong>{formatRate(process.diskWriteBytesPerSecond)}</strong>
                     </span>
                     <span className="storage-process-total">
-                      <small>{t("common.total")}</small>
+                      <small>{t("common:total")}</small>
                       <strong>{formatRate(totalBytesPerSecond)}</strong>
                     </span>
                     <ChevronRight size={14} aria-hidden="true" />
@@ -222,7 +222,7 @@ export function StorageExplorer({
           </ol>
         ) : (
           <div className="storage-empty">
-            <Activity size={20} />{t("storage.waitingProcessIo")}
+            <Activity size={20} />{t("storage:waitingProcessIo")}
           </div>
         )}
       </section>
@@ -264,7 +264,7 @@ function StorageThroughput({
   history: HistoryPoint[];
   disk: DiskSnapshot;
 }) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const points = storageHistoryWindow(history);
   const readSegments = storageHistorySegments(points, "read");
   const writeSegments = storageHistorySegments(points, "write");
@@ -287,18 +287,18 @@ function StorageThroughput({
     <section className="panel storage-history" aria-labelledby="storage-history-title">
       <header className="storage-section-heading">
         <div>
-          <span className="eyebrow">{t("common.fiveMinutes")}</span>
-          <h2 id="storage-history-title">{t("storage.throughput")}</h2>
+          <span className="eyebrow">{t("common:fiveMinutes")}</span>
+          <h2 id="storage-history-title">{t("storage:throughput")}</h2>
         </div>
-        <div className="storage-history__legend" aria-label={t("storage.throughputLegend")}>
-          <span><i className="is-read" />{t("common.read")} {formatRate(disk.readBytesPerSecond)}</span>
-          <span><i className="is-write" />{t("common.write")} {formatRate(disk.writeBytesPerSecond)}</span>
+        <div className="storage-history__legend" aria-label={t("storage:throughputLegend")}>
+          <span><i className="is-read" />{t("common:read")} {formatRate(disk.readBytesPerSecond)}</span>
+          <span><i className="is-write" />{t("common:write")} {formatRate(disk.writeBytesPerSecond)}</span>
         </div>
       </header>
 
       {points.length < 2 ? (
         <div className="storage-history__empty">
-          <span className="live-status-dot" />{t("storage.establishingBaseline")}
+          <span className="live-status-dot" />{t("storage:establishingBaseline")}
         </div>
       ) : (
         <>
@@ -307,7 +307,7 @@ function StorageThroughput({
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label={t("storage.chartLabel", {
+            aria-label={t("storage:chartLabel", {
               read: formatRate(disk.readBytesPerSecond),
               write: formatRate(disk.writeBytesPerSecond),
             })}
@@ -336,12 +336,12 @@ function StorageThroughput({
                 key={`write-${index}`}
               />
             ))}
-            <text x="0" y="172">{t("common.fiveMinutesBack")}</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common.now")}</text>
+            <text x="0" y="172">{t("common:fiveMinutesBack")}</text>
+            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common:now")}</text>
           </svg>
           <div className="storage-history__peaks">
-            <span>{t("storage.readPeak")} <strong>{formatRate(readPeak)}</strong></span>
-            <span>{t("storage.writePeak")} <strong>{formatRate(writePeak)}</strong></span>
+            <span>{t("storage:readPeak")} <strong>{formatRate(readPeak)}</strong></span>
+            <span>{t("storage:writePeak")} <strong>{formatRate(writePeak)}</strong></span>
           </div>
         </>
       )}

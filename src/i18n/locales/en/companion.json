@@ -1,0 +1,17 @@
+{
+  "kicker": "Orbit companion",
+  "dragHint": "Drag Orbit to move; hover for status; right-click for menu",
+  "expand": "Open Orbit companion",
+  "collapse": "Collapse Orbit companion",
+  "menu": "Orbit companion menu",
+  "hide": "Hide companion",
+  "reason": "{{resource}} has been worth watching recently. Open the main window to see why.",
+  "action": {
+    "loading": "Open everyday helper",
+    "observing": "View current status",
+    "normal": "I have a problem",
+    "attention": "See why",
+    "urgent": "Review now"
+  },
+  "recovering": "The metric has eased. I’m watching a little longer to confirm recovery."
+}

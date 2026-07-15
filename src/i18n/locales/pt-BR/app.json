@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "Navegação principal",
+  "monitor": "Monitoramento",
+  "diagnostics": "Diagnóstico",
+  "overview": "Visão geral",
+  "applications": "Aplicativos",
+  "processes": "Processos",
+  "storage": "Armazenamento",
+  "cleanup": "Limpeza",
+  "network": "Rede",
+  "startup": "Inicialização",
+  "history": "Histórico",
+  "settings": "Configurações",
+  "soon": "Em breve",
+  "comingSoon": "Disponível em breve",
+  "localSampling": "Amostragem local",
+  "viewEyebrow": {
+    "overview": "Visão geral do sistema",
+    "applications": "Impacto das aplicações",
+    "processes": "Diagnóstico de processos",
+    "storage": "Diagnóstico de armazenamento",
+    "cleanup": "Limpeza de espaço",
+    "network": "Diagnóstico de rede",
+    "startup": "Revisão de itens de inicialização",
+    "history": "Análise do histórico",
+    "settings": "Configurações"
+  },
+  "demoData": "Dados de demonstração do navegador",
+  "paused": "Pausado",
+  "live": "Em tempo real",
+  "refreshNow": "Atualizar agora",
+  "resume": "Retomar",
+  "pause": "Pausar",
+  "switchLanguage": "Alterar idioma da interface",
+  "samplerConnecting": "Conectando ao sampler local…",
+  "samplerFailed": "Não foi possível iniciar o sampler",
+  "samplerNoData": "Nenhum dado do sistema foi recebido.",
+  "sampleFailed": "Tentativa de coleta temporariamente falhou: {{message}}",
+  "staleTarget": "A identidade do processo mudou. A ação foi cancelada; selecione-a novamente para continuar.",
+  "metricsLabel": "Resumo de recursos do sistema",
+  "mode": {
+    "simple": "Modo diário",
+    "professional": "Modo profissional",
+    "short": {
+      "simple": "Diário",
+      "professional": "Modo profissional"
+    },
+    "switchTo": {
+      "simple": "Mudar para o modo simples",
+      "professional": "Mudar para o modo profissional"
+    }
+  },
+  "companion": {
+    "show": "Mostrar assistente Orbit",
+    "hide": "Ocultar assistente Orbit"
+  },
+  "technicalOverview": {
+    "title": "Visualizar detalhes de recursos em tempo real",
+    "description": "Exiba informações detalhadas sobre CPU, memória, disco e rede, além de tendências de cinco minutos."
+  },
+  "metrics": {
+    "memory": "Uso da memória",
+    "disk": "Desempenho do disco",
+    "network": "Taxa de transferência de dados",
+    "cpuContext": "{{count}} número de núcleos lógicos · um processo pode ultrapassar o limite de 100%",
+    "memoryContext": "{{total}} total {{swap}} uso da memória virtual (swap)",
+    "diskContext": "Leitura {{read}} Escrita {{write}}",
+    "networkContext": "Tráfego recebido {{receive}} Tráfego enviado {{send}}"
+  },
+  "status": {
+    "interval": "Intervalo da amostra em {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} Interfaces de rede {{connections}} Conexões",
+    "applicationCount": "{{count}} Aplicativos e componentes do sistema",
+    "savedHistory": "{{count}} Histórico salvo",
+    "processCount": "{{count}} Processos em execução",
+    "cleanupEntries": "{{count}} Itens verificados"
+  }
+}

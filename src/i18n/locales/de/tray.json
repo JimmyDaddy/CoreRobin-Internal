@@ -1,0 +1,52 @@
+{
+  "localMonitor": "Lokaler Systemüberblick",
+  "available": "Freier Speicherplatz",
+  "open": "Übersicht anzeigen",
+  "companion": "Orbit-Assistent",
+  "cleanup": "Speicher freigeben",
+  "health": {
+    "loading": "Verbinde...",
+    "observing": "Status wird analysiert",
+    "normal": "System läuft stabil",
+    "attention": "Achtung!",
+    "urgent": "Sofortige Maßnahmen erforderlich"
+  },
+  "status": {
+    "loading": {
+      "title": "Systemzustand prüfen",
+      "description": "Die erste Messung erfolgt kurz."
+    },
+    "observing": {
+      "title": "Zustand des Computers analysieren",
+      "description": "Überwachung für kurze Zeit, um Fehlalarme zu vermeiden."
+    },
+    "normal": {
+      "title": "Ihr Computer läuft reibungslos",
+      "description": "Keine Ressourcenprobleme, die sofortige Aufmerksamkeit erfordern."
+    },
+    "attention": {
+      "title": "Eine Ressource ist im Blick",
+      "description": "Öffnen Sie StatusOrbit, um den Grund und die Anweisungen anzuzeigen."
+    },
+    "urgent": {
+      "title": "Eine Ressource ist stark belastet",
+      "description": "Überprüfen Sie die Informationen in StatusOrbit, bevor Sie Maßnahmen ergreifen."
+    }
+  },
+  "reason": "{{resource}} benötigt Aufmerksamkeit",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "Arbeitsspeicher",
+    "storage": "Festplatte",
+    "temperature": "Temperatur",
+    "battery": "Akku",
+    "network": "Netzwerk",
+    "sleep": "Ruhezustand",
+    "none": "System"
+  },
+  "incidentTitle": {
+    "attention": "Wichtige Punkte: {{count}}",
+    "urgent": "Punkte zur Überprüfung: {{count}}"
+  },
+  "recovering": "Der Wert hat sich verbessert; bestätigt, dass er stabil bleibt."
+}

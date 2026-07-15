@@ -1,0 +1,244 @@
+use std::sync::Mutex;
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::CommandError;
+
+pub const HEALTH_STATE_SCHEMA_VERSION: u16 = 1;
+pub const HEALTH_STATE_EVENT: &str = "status-orbit:health-state-changed";
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthDataMode {
+    Foreground,
+    Background,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthLevel {
+    Observing,
+    Normal,
+    Attention,
+    Urgent,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthReason {
+    Cpu,
+    Memory,
+    Storage,
+    Temperature,
+    Battery,
+    Network,
+    Sleep,
+    None,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthIncidentPhase {
+    Active,
+    Recovering,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthIntent {
+    Slow,
+    Space,
+    Startup,
+    Heat,
+    Network,
+    Checkup,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BatteryState {
+    Charging,
+    Discharging,
+    Full,
+    NotCharging,
+    Unknown,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthIncidentProjection {
+    pub id: String,
+    pub occurrence_id: String,
+    pub phase: HealthIncidentPhase,
+    pub level: HealthLevel,
+    pub reason: HealthReason,
+    pub intent: HealthIntent,
+    pub activated_at_ms: u64,
+    pub recovery_started_at_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthStateUpdate {
+    pub schema_version: u16,
+    pub sampled_at_ms: u64,
+    pub data_mode: HealthDataMode,
+    pub paused: bool,
+    pub health: HealthLevel,
+    pub reason: HealthReason,
+    pub active_count: usize,
+    pub pending_count: usize,
+    pub recovering_count: usize,
+    pub primary_incident: Option<HealthIncidentProjection>,
+    pub cpu_percent: Option<f32>,
+    pub memory_percent: f32,
+    pub storage_used_percent: Option<f32>,
+    pub storage_available_bytes: Option<u64>,
+    pub temperature_celsius: Option<f32>,
+    pub battery_percent: Option<f32>,
+    pub battery_state: BatteryState,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthStateSnapshot {
+    pub revision: u64,
+    #[serde(flatten)]
+    pub update: HealthStateUpdate,
+}
+
+#[derive(Default)]
+struct HealthStateRegistry {
+    revision: u64,
+    current: Option<HealthStateSnapshot>,
+}
+
+#[derive(Default)]
+pub struct HealthStateStore {
+    registry: Mutex<HealthStateRegistry>,
+}
+
+impl HealthStateStore {
+    pub fn publish(&self, update: HealthStateUpdate) -> Result<HealthStateSnapshot, CommandError> {
+        validate_update(&update)?;
+        let mut registry = self
+            .registry
+            .lock()
+            .map_err(|_| CommandError::internal("The health state lock was poisoned."))?;
+        registry.revision = registry.revision.saturating_add(1);
+        let snapshot = HealthStateSnapshot {
+            revision: registry.revision,
+            update,
+        };
+        registry.current = Some(snapshot.clone());
+        Ok(snapshot)
+    }
+
+    pub fn current(&self) -> Result<Option<HealthStateSnapshot>, CommandError> {
+        self.registry
+            .lock()
+            .map(|registry| registry.current.clone())
+            .map_err(|_| CommandError::internal("The health state lock was poisoned."))
+    }
+}
+
+fn validate_update(update: &HealthStateUpdate) -> Result<(), CommandError> {
+    let valid = update.schema_version == HEALTH_STATE_SCHEMA_VERSION
+        && update.sampled_at_ms > 0
+        && update.recovering_count <= update.active_count
+        && (update.active_count > 0) == update.primary_incident.is_some()
+        && (update.active_count > 0) == (update.reason != HealthReason::None)
+        && (update.active_count == 0
+            || matches!(update.health, HealthLevel::Attention | HealthLevel::Urgent))
+        && update.memory_percent.is_finite()
+        && (0.0..=100.0).contains(&update.memory_percent);
+    if valid {
+        Ok(())
+    } else {
+        Err(CommandError::new(
+            "invalid_health_state",
+            "The health state update is inconsistent or uses an unsupported schema.",
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn update(active_count: usize) -> HealthStateUpdate {
+        HealthStateUpdate {
+            schema_version: HEALTH_STATE_SCHEMA_VERSION,
+            sampled_at_ms: 100,
+            data_mode: HealthDataMode::Foreground,
+            paused: false,
+            health: if active_count == 0 {
+                HealthLevel::Normal
+            } else {
+                HealthLevel::Attention
+            },
+            reason: if active_count == 0 {
+                HealthReason::None
+            } else {
+                HealthReason::Cpu
+            },
+            active_count,
+            pending_count: 0,
+            recovering_count: 0,
+            primary_incident: (active_count > 0).then(|| HealthIncidentProjection {
+                id: "diagnosis:sustained_cpu".to_owned(),
+                occurrence_id: "diagnosis:sustained_cpu:100".to_owned(),
+                phase: HealthIncidentPhase::Active,
+                level: HealthLevel::Attention,
+                reason: HealthReason::Cpu,
+                intent: HealthIntent::Slow,
+                activated_at_ms: 100,
+                recovery_started_at_ms: None,
+            }),
+            cpu_percent: Some(80.0),
+            memory_percent: 50.0,
+            storage_used_percent: Some(40.0),
+            storage_available_bytes: Some(100),
+            temperature_celsius: Some(55.0),
+            battery_percent: Some(80.0),
+            battery_state: BatteryState::Discharging,
+        }
+    }
+
+    #[test]
+    fn retains_the_latest_state_with_monotonic_revisions() {
+        let store = HealthStateStore::default();
+        let first = store.publish(update(0)).unwrap();
+        let second = store.publish(update(1)).unwrap();
+
+        assert_eq!(first.revision, 1);
+        assert_eq!(second.revision, 2);
+        assert_eq!(store.current().unwrap(), Some(second));
+    }
+
+    #[test]
+    fn rejects_inconsistent_counts_before_replacing_the_current_state() {
+        let store = HealthStateStore::default();
+        let accepted = store.publish(update(0)).unwrap();
+        let mut invalid = update(1);
+        invalid.primary_incident = None;
+
+        let error = store.publish(invalid).unwrap_err();
+
+        assert_eq!(error.code, "invalid_health_state");
+        assert_eq!(store.current().unwrap(), Some(accepted));
+    }
+
+    #[test]
+    fn serializes_revision_and_update_as_one_flat_contract() {
+        let snapshot = HealthStateStore::default().publish(update(1)).unwrap();
+        let value = serde_json::to_value(snapshot).unwrap();
+
+        assert_eq!(value["revision"], 1);
+        assert_eq!(value["schemaVersion"], HEALTH_STATE_SCHEMA_VERSION);
+        assert_eq!(
+            value["primaryIncident"]["occurrenceId"],
+            "diagnosis:sustained_cpu:100"
+        );
+    }
+}

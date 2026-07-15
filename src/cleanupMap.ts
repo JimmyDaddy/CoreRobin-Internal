@@ -43,12 +43,20 @@ export function collectCleanupPlanNode(
   nodeId: string,
   parents: ReadonlyMap<string, string>,
 ): Set<string> {
-  if (current.has(nodeId) || [...current].some((id) => isCleanupAncestor(id, nodeId, parents))) {
+  if (isCleanupNodeCoveredByPlan(current, nodeId, parents)) {
     return new Set(current);
   }
   const next = new Set([...current].filter((id) => !isCleanupAncestor(nodeId, id, parents)));
   next.add(nodeId);
   return next;
+}
+
+export function isCleanupNodeCoveredByPlan(
+  current: ReadonlySet<string>,
+  nodeId: string,
+  parents: ReadonlyMap<string, string>,
+): boolean {
+  return current.has(nodeId) || [...current].some((id) => isCleanupAncestor(id, nodeId, parents));
 }
 
 export function isCleanupAncestor(

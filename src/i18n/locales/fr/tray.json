@@ -1,0 +1,52 @@
+{
+  "localMonitor": "Surveillance du système locale",
+  "available": "Espace disponible",
+  "open": "Vue d'ensemble",
+  "companion": "Assistant Orbit",
+  "cleanup": "Nettoyage de l'espace",
+  "health": {
+    "loading": "Connexion en cours",
+    "observing": "Analyse de l'état",
+    "normal": "État normal",
+    "attention": "Avertissement",
+    "urgent": "Action recommandée"
+  },
+  "status": {
+    "loading": {
+      "title": "Lecture de l'état du système",
+      "description": "Le premier échantillon apparaîtra sous peu."
+    },
+    "observing": {
+      "title": "Analyse de l'état de cet ordinateur",
+      "description": "Surveillance pendant un court laps de temps pour éviter de confondre une brève augmentation avec un problème."
+    },
+    "normal": {
+      "title": "Votre ordinateur fonctionne correctement",
+      "description": "Aucun problème de ressources ne nécessite une attention immédiate."
+    },
+    "attention": {
+      "title": "Une ressource mérite d'être surveillée",
+      "description": "Ouvrir StatusOrbit pour consulter la raison et les instructions."
+    },
+    "urgent": {
+      "title": "Une ressource est en surcharge",
+      "description": "Consultez les informations dans StatusOrbit avant d'agir."
+    }
+  },
+  "reason": "{{resource}} nécessite une attention",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "Mémoire RAM",
+    "storage": "Stockage",
+    "temperature": "Température",
+    "battery": "Batterie",
+    "network": "Réseau",
+    "sleep": "Dormir",
+    "none": "Système"
+  },
+  "incidentTitle": {
+    "attention": "Éléments à surveiller : {{count}}",
+    "urgent": "Éléments à examiner rapidement : {{count}}"
+  },
+  "recovering": "La métrique s'est améliorée ; confirmation qu'elle reste dans un état de récupération."
+}

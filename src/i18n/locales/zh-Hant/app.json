@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "主導航",
+  "monitor": "監控",
+  "diagnostics": "診斷",
+  "overview": "概覽",
+  "applications": "應用",
+  "processes": "程序",
+  "storage": "儲存",
+  "cleanup": "清理",
+  "network": "網路",
+  "startup": "啟動項",
+  "history": "歷史",
+  "settings": "設定",
+  "soon": "稍後",
+  "comingSoon": "即將推出",
+  "localSampling": "本機取樣",
+  "viewEyebrow": {
+    "overview": "系統概覽",
+    "applications": "應用影響",
+    "processes": "程序診斷",
+    "storage": "儲存診斷",
+    "cleanup": "空間清理",
+    "network": "網路診斷",
+    "startup": "啟動項檢查",
+    "history": "歷史分析",
+    "settings": "偏好設定"
+  },
+  "demoData": "瀏覽器演示資料",
+  "paused": "已暫停",
+  "live": "實時",
+  "refreshNow": "立即重新整理",
+  "resume": "繼續",
+  "pause": "暫停",
+  "switchLanguage": "切換介面語言",
+  "samplerConnecting": "正在連線本機取樣器…",
+  "samplerFailed": "無法啟動取樣器",
+  "samplerNoData": "沒有收到系統資料。",
+  "sampleFailed": "取樣暫時失敗：{{message}}",
+  "staleTarget": "目標程序身份已經變化，操作已取消。請重新選擇並確認。",
+  "metricsLabel": "系統資源摘要",
+  "mode": {
+    "simple": "日常模式",
+    "professional": "專業模式",
+    "short": {
+      "simple": "日常",
+      "professional": "專業"
+    },
+    "switchTo": {
+      "simple": "切換到日常模式",
+      "professional": "切換到專業模式"
+    }
+  },
+  "companion": {
+    "show": "喚起 Orbit 小夥伴",
+    "hide": "隱藏 Orbit 小夥伴"
+  },
+  "technicalOverview": {
+    "title": "檢視實時資源詳情",
+    "description": "展開 CPU、記憶體、磁碟、網路和五分鐘趨勢。"
+  },
+  "metrics": {
+    "memory": "記憶體使用",
+    "disk": "磁碟 I/O",
+    "network": "網路吞吐",
+    "cpuContext": "{{count}} 個邏輯核心 · 單程序可超過 100%",
+    "memoryContext": "共 {{total}} · 交換 {{swap}}",
+    "diskContext": "讀 {{read}} · 寫 {{write}}",
+    "networkContext": "下行 {{receive}} · 上行 {{send}}"
+  },
+  "status": {
+    "interval": "取樣間隔 {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} 個網路介面 · {{connections}} 個連線",
+    "applicationCount": "{{count}} 個應用或系統元件",
+    "savedHistory": "{{count}} 個已儲存歷史點",
+    "processCount": "{{count}} 個程序",
+    "cleanupEntries": "已檢查 {{count}} 個專案"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "eyebrow": "起動時に自動で実行される項目",
+  "title": "起動時に自動で実行される項目",
+  "description": "サインイン時や特定の条件が満たされた場合に、自動的に起動するアプリケーションを確認できます。サードパーティ製のアプリケーションは最初に表示され、システムサービスは通常のスイッチとして表示されません。",
+  "guided": {
+    "kicker": "確認推奨のサードパーティ製サインイン項目",
+    "title": "確認推奨の起動時に自動で実行される項目",
+    "description": "安全に復元できるサードパーティ製のサインイン項目のみが表示されます。",
+    "found": "{{count}} 起動時に表示される項目を確認することをお勧めします",
+    "foundDescription": "あまり使わないアプリケーションを、確認後に無効化できます。変更は次のサインイン時に適用されます。",
+    "clear": "特別な注意が必要なサードパーティ製サインイン項目はありません。システムサービスや条件付きメンテナンス機能は、通常のスイッチとして表示されません。",
+    "clearDescription": "システムサービスと条件付きメンテナンス機能は、通常のスイッチとして表示されません。"
+  },
+  "scanning": "確認中…",
+  "loadingTitle": "起動設定の読み込み中",
+  "loadingDescription": "StatusOrbitは、公開されている起動設定のみを読み取り、その中に含まれるコマンドを実行または起動しません。",
+  "summary": "起動設定の概要",
+  "reviewCount": "確認する価値あり",
+  "reviewHint": "ログイン時に起動されるサードパーティ製のアイテム",
+  "thirdPartyCount": "サードパーティ製のアイテム",
+  "thirdPartyHint": "条件付きのバックグラウンドヘルパーを含む",
+  "systemCount": "システム関連の設定",
+  "systemHint": "読み取り専用であり、通常のスイッチとして表示されません",
+  "inventory": "起動時に実行される項目一覧",
+  "listTitle": "自動で起動するものを表示",
+  "filters": "起動時に実行される項目のフィルタリング",
+  "filter": {
+    "review": "確認推奨",
+    "all": "すべて",
+    "system": "システム関連の項目のみ"
+  },
+  "search": "名前、発行元、またはパスで検索",
+  "emptyTitle": "確認するものがありません",
+  "emptyDescription": "条件やシステムメンテナンスの項目を確認するには、「すべて」に変更してください。",
+  "publisherUnknown": "発行元不明",
+  "enabled": "起動時に自動的に開始します",
+  "disabled": "無効化されています",
+  "technicalDetails": "詳細情報を表示",
+  "managementBoundary": "特定のユーザーレベルのサードパーティ製の起動ファイルを無効化できます。システム関連のアイテムやサポートされていないソースは読み取り専用です。",
+  "readOnlyBoundary": "StatusOrbit が安全に復元できる起動ソースは存在しないため、一覧は読み取り専用になります。",
+  "unreadable": "{{count}} 起動設定の読み込みに失敗しました。権限が不足している可能性があります。",
+  "actions": {
+    "disable": "ログイン時に無効化",
+    "enable": "ログイン時に復元"
+  },
+  "managementStatus": {
+    "system": "システム関連のアイテム · 読み取り専用",
+    "protected": "保護されたアイテム",
+    "unsupported": "この機能はまだ利用できません"
+  },
+  "impact": {
+    "none": {
+      "title": "現在、起動時に影響はありません"
+    },
+    "low": {
+      "title": "軽微な影響が予想されます"
+    },
+    "moderate": {
+      "title": "ログイン速度に影響する可能性があります"
+    },
+    "high": {
+      "title": "バックグラウンドでの負荷が大幅に増加しています"
+    },
+    "running": "現在実行中：CPU {{cpu}} · メモリ {{memory}}",
+    "notMatched": "現在の実行中のアプリケーションを特定できません"
+  },
+  "outcome": {
+    "disabled": "{{name}}の自動起動が無効になっています。アプリケーションは正常に終了していません。",
+    "enabled": "{{name}}の自動起動が有効になりました。"
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "{{name}}の自動起動を無効にしますか？",
+      "description": "StatusOrbitは、このユーザー固有の起動ファイルを自身の管理領域に移動し、削除しません。",
+      "whenDescription": "設定変更は、次のサインイン時に適用されます。復元も、今後のサインインから適用されます。",
+      "confirm": "サインイン時に無効化を確認"
+    },
+    "enable": {
+      "title": "{{name}}の自動起動を復元しますか？",
+      "description": "StatusOrbitは、保存した設定を元の場所に移動します。",
+      "whenDescription": "次のサインインから、システムがこの項目を自動的に起動できるようになります。",
+      "confirm": "サインイン時に復元を確認"
+    },
+    "reversibleTitle": "後で復元できます",
+    "reversibleDescription": "ファイルは、2つのユーザーフォルダ間で移動するだけで、編集や削除は行われません。",
+    "whenTitle": "現在のセッションには即座に影響しません",
+    "runningTitle": "現在実行中のアプリケーションは開いたまま",
+    "runningDescription": "起動時にアプリケーションを閉じたり、進行中の作業を中断したりしません。",
+    "preparing": "起動アイテムとファイルの確認中…",
+    "applying": "安全に更新中…",
+    "errors": {
+      "startup_item_protected": "StatusOrbitが安全に管理できるユーザーレベルのサードパーティアプリケーションではありません。そのため、何も変更されませんでした。",
+      "startup_item_unavailable": "この起動アイテムが変更または削除されました。リストを更新して再度お試しください。",
+      "startup_state_changed": "確認後にファイルの状態が変更されたため、StatusOrbitは何も変更しませんでした。",
+      "startup_destination_conflict": "別の設定が宛先に存在します。StatusOrbitは上書きしませんでした。",
+      "startup_confirmation_unavailable": "この確認は利用できません。キャンセルして再度開いてください。",
+      "startup_confirmation_expired": "確認が無効になりました。続行する前に、アイテムを再度確認してください。",
+      "startup_management_failed": "システムが起動ファイルの移動を安全に行うことができませんでした。元の状態は保持されています。"
+    }
+  },
+  "source": {
+    "launch_agent": "起動エージェント",
+    "launch_daemon": "起動デーモン",
+    "desktop_entry": "自動起動エントリ",
+    "registry_run": "レジストリからの起動",
+    "startup_folder": "スタートアップフォルダ"
+  },
+  "advice": {
+    "review": {
+      "title": "本当に必要なのか確認してください",
+      "description": "ログインするたびに起動します。ほとんど使用しない場合は、確認後に無効にできます。"
+    },
+    "normal": {
+      "title": "条件付きで実行されます",
+      "description": "通常はアップデートや同期、または特定のイベント時に起動し、ログインの速度を遅くすることはありません。"
+    },
+    "system": {
+      "title": "システムまたはデバイスのサービス",
+      "description": "通常の使用とは異なるため、このアプリは読み取り専用です。StatusOrbitによって管理されます。"
+    },
+    "disabled": {
+      "title": "現在無効化されています",
+      "description": "設定は残りますが、システムはこのエントリから自動的に起動しません。"
+    }
+  }
+}

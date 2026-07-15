@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "./i18n";
+import { translateNotification } from "./i18n/notificationTranslator";
 import type { ResourceAlertEvent } from "./resourceAlerts";
 import {
   LEGACY_STORAGE_KEYS,
@@ -67,55 +68,18 @@ export function shouldSendDesktopNotification(event: ResourceAlertEvent): boolea
   return true;
 }
 
-export function desktopNotificationCopy(
+export async function desktopNotificationCopy(
   event: ResourceAlertEvent,
   language: SupportedLanguage,
-): DesktopNotificationCopy {
-  const zh = language === "zh-CN";
-  if (event.kind === "recovered") {
-    if (event.resource === "cpu") {
-      return {
-        title: zh ? "电脑负荷已经恢复" : "Computer load has returned to normal",
-        body: zh
-          ? "处理器已稳定回到正常范围，之前的卡顿、发热或耗电影响应该正在缓解。"
-          : "Processor use has stayed back in the normal range. The earlier slowness, heat, or power impact should now be easing.",
-      };
-    }
-    if (event.resource === "memory") {
-      return {
-        title: zh ? "内存压力已经缓解" : "Memory pressure has eased",
-        body: zh
-          ? "可用内存和交换活动已经稳定恢复，切换应用应该会更顺畅。"
-          : "Available memory and swap activity have stayed back in a healthy range, so switching apps should feel smoother.",
-      };
-    }
-    return {
-      title: zh ? "磁盘空间状态已经恢复" : "Disk space is back in a healthy range",
-      body: zh
-        ? "磁盘占用已稳定回到安全范围，目前不需要继续清理。"
-        : "Disk usage has stayed back in a safe range, so no further cleanup is needed right now.",
-    };
-  }
-  if (event.resource === "cpu") {
-    return {
-      title: zh ? "电脑持续处于高负荷" : "The computer is staying under heavy load",
-      body: zh
-        ? "处理器持续繁忙，可能导致卡顿、发热或更耗电。打开 StatusOrbit 可查看影响最大的应用。"
-        : "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open StatusOrbit to see the biggest app impact.",
-    };
-  }
-  if (event.resource === "memory") {
-    return {
-      title: zh ? "可用内存持续紧张" : "Available memory is staying tight",
-      body: zh
-        ? "低可用内存与明显交换活动同时出现，切换应用可能变慢。StatusOrbit 不会自动关闭应用。"
-        : "Low available memory and meaningful swap activity are happening together. StatusOrbit will never close apps automatically.",
-    };
-  }
+): Promise<DesktopNotificationCopy> {
   return {
-    title: zh ? "磁盘剩余空间偏少" : "Disk free space is running low",
-    body: zh
-      ? "磁盘占用持续超过 85%。可以先打开清理页查看空间地图，文件处理仍需你确认。"
-      : "Disk usage has stayed above 85%. Inspect the Cleanup space map first; every file action still requires confirmation.",
+    title: await translateNotification(
+      language,
+      `${event.kind}.${event.resource}.title`,
+    ),
+    body: await translateNotification(
+      language,
+      `${event.kind}.${event.resource}.body`,
+    ),
   };
 }

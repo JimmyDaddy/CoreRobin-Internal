@@ -1,0 +1,61 @@
+{
+  "eyebrow": "Estado del dispositivo",
+  "title": "Temperatura, batería y suspensión",
+  "description": "Lee el estado del sistema con baja frecuencia y explica si una aplicación está impidiendo la suspensión automática.",
+  "overall": {
+    "normal": "Todo en orden",
+    "attention": "Requiere atención",
+    "urgent": "Recomendación de acción",
+    "unavailable": "Lectura del sistema no disponible"
+  },
+  "temperature": {
+    "label": "Temperatura del dispositivo",
+    "normal": "La temperatura está actualmente dentro del rango normal.",
+    "attention": "El dispositivo está caliente. Si también se siente lento, reduzca las tareas intensas primero.",
+    "urgent": "La temperatura se mantiene alta. Detenga las tareas intensas y mantenga el dispositivo ventilado.",
+    "unavailable": "El sistema operativo o el hardware no están enviando una lectura de temperatura a StatusOrbit."
+  },
+  "battery": {
+    "label": "Batería",
+    "notPresent": "No se detecta batería",
+    "unavailable": "Los ordenadores de escritorio y los dispositivos sin informes de batería aparecen así.",
+    "normal": "Estado de la batería normal",
+    "attention": "La batería está baja; prepare para conectar un cargador",
+    "urgent": "La batería está muy baja; conecte un cargador pronto",
+    "remaining": "aproximadamente {{hours}} horas {{minutes}} minutos",
+    "state": {
+      "charging": "Cargando",
+      "discharging": "Usando la batería",
+      "full": "Completamente cargada",
+      "not_charging": "En encendido, no está cargando",
+      "unknown": "Estado desconocido"
+    }
+  },
+  "sleep": {
+    "label": "Modo de suspensión automático",
+    "unavailableValue": "No disponible",
+    "unavailable": "Esta plataforma no proporciona información fiable sobre el bloqueo de sueño a StatusOrbit.",
+    "clearValue": "El sueño está disponible",
+    "clear": "Ninguna aplicación impide que la computadora duerma automáticamente.",
+    "blockedValue": "{{count}} aplicaciones",
+    "blockedValue_many": "{{count}} aplicaciones",
+    "blockedValue_one": "{{count}} aplicación",
+    "blockedValue_other": "{{count}} aplicaciones",
+    "blocked": "La aplicación {{name}} ha impedido el sueño automático para {{duration}}{{more}}. Cerrar la aplicación o pausar su tarea generalmente restaurará el sueño.",
+    "more": ", más {{count}}",
+    "systemValue": "Actividad del sistema",
+    "system": "Una tarea del sistema está manteniendo el ordenador encendido temporalmente. Normalmente no requiere ninguna acción, y las aplicaciones del sistema no deben ser cerradas.",
+    "duration": {
+      "unknown": "un rato",
+      "lessThanMinute": "menos de un minuto",
+      "minutes": "aproximadamente {{count}} minutos",
+      "minutes_many": "aproximadamente {{count}} minutos",
+      "minutes_one": "aproximadamente 1 minuto",
+      "minutes_other": "aproximadamente {{count}} minutos",
+      "hours": "aproximadamente {{count}} horas",
+      "hours_many": "aproximadamente {{count}} horas",
+      "hours_one": "aproximadamente 1 hora",
+      "hours_other": "aproximadamente {{count}} horas"
+    }
+  }
+}

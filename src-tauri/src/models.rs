@@ -22,6 +22,19 @@ pub struct SystemSnapshot {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SystemSummary {
+    pub sequence: u64,
+    pub sampled_at_ms: u64,
+    pub sample_interval_ms: u64,
+    pub cpu: CpuSnapshot,
+    pub memory: MemorySnapshot,
+    pub disk: DiskSnapshot,
+    pub network: NetworkSnapshot,
+    pub sensors: SensorsSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SensorsSnapshot {
     pub sampled_at_ms: u64,
     pub temperature: TemperatureSnapshot,
@@ -279,6 +292,10 @@ pub struct NetworkInterfaceSnapshot {
 pub struct CleanupScan {
     pub sampled_at_ms: u64,
     pub duration_ms: u64,
+    /// The real directory hierarchy rooted at the system disk.
+    /// Category summaries are kept separately in `locations` and must not be
+    /// used to fabricate the filesystem tree shown by the path map.
+    pub root: CleanupNode,
     pub locations: Vec<CleanupLocation>,
     pub largest_files: Vec<CleanupFile>,
     pub installed_applications: Vec<CleanupApplication>,
@@ -344,6 +361,7 @@ pub struct CleanupNode {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupSubtreeRequest {
+    pub request_id: String,
     pub path: String,
     pub safety: CleanupSafety,
 }
@@ -355,6 +373,25 @@ pub struct CleanupScanProgress {
     pub discovered_bytes: u64,
     pub current_path: String,
     pub elapsed_ms: u64,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(dead_code)] // Platform-specific variants are serialized by different desktop targets.
+pub enum CleanupFullDiskAccessStatus {
+    Granted,
+    NotGranted,
+    NotRequired,
+    Unknown,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScanAccess {
+    pub full_disk_access: CleanupFullDiskAccessStatus,
+    pub full_disk_access_recommended: bool,
+    pub application_bundle_available: bool,
+    pub application_bundle_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -370,6 +407,16 @@ pub struct CleanupPathState {
 pub struct CleanupDeleteLeaseRequest {
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
+    pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDeleteTargetEvidence {
+    pub path: String,
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
+    pub item_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -378,6 +425,9 @@ pub struct CleanupDeleteLease {
     pub id: String,
     pub paths: Vec<String>,
     pub changed_paths: Vec<String>,
+    pub refreshed_targets: Vec<CleanupDeleteTargetEvidence>,
+    pub executable: bool,
+    pub refreshed_at_ms: u64,
     pub expires_at_ms: u64,
 }
 
@@ -399,6 +449,26 @@ pub struct CleanupDeleteResult {
     pub deleted: Vec<CleanupDeleteSuccess>,
     pub deleted_bytes: u64,
     pub failed: Vec<CleanupDeleteFailure>,
+    pub cancelled: bool,
+    pub interrupted_path: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupDeleteProgressPhase {
+    Deleting,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDeleteProgress {
+    pub phase: CleanupDeleteProgressPhase,
+    pub processed_entry_count: usize,
+    pub total_entry_count: usize,
+    pub completed_target_count: usize,
+    pub total_target_count: usize,
+    pub current_path: String,
+    pub deleted_bytes: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]

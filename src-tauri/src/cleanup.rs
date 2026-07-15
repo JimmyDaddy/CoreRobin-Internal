@@ -1,5 +1,5 @@
 use std::cmp::Reverse;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
@@ -10,9 +10,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 
 #[cfg(target_os = "macos")]
-use std::collections::HashMap;
+use std::io::Read;
 #[cfg(target_os = "macos")]
-use std::process::Command;
+use std::os::unix::process::CommandExt;
+#[cfg(target_os = "macos")]
+use std::process::{Child, Command, Stdio};
+#[cfg(target_os = "macos")]
+use std::thread;
 
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -31,10 +35,14 @@ use windows_sys::Win32::Storage::FileSystem::{
 use crate::error::CommandError;
 use crate::models::{
     CleanupApplication, CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
-    CleanupDeleteLeaseRequest, CleanupDeleteResult, CleanupDeleteSuccess, CleanupFile,
-    CleanupLocation, CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupPathState,
-    CleanupSafety, CleanupScan, CleanupScanProgress, CleanupSubtreeRequest,
+    CleanupDeleteLeaseRequest, CleanupDeleteProgress, CleanupDeleteProgressPhase,
+    CleanupDeleteResult, CleanupDeleteSuccess, CleanupDeleteTargetEvidence, CleanupFile,
+    CleanupFullDiskAccessStatus, CleanupLocation, CleanupLocationKind, CleanupNode,
+    CleanupNodeKind, CleanupPathState, CleanupSafety, CleanupScan, CleanupScanAccess,
+    CleanupScanProgress, CleanupSubtreeRequest,
 };
+use crate::private_storage;
+use crate::safe_fs::{BoundDeleteTarget, DeleteRoot, TreeInspection};
 
 #[cfg(not(test))]
 const LARGE_FILE_THRESHOLD_BYTES: u64 = 500 * 1_024 * 1_024;
@@ -46,6 +54,7 @@ const MAX_CHART_CHILDREN: usize = 24;
 const MIN_ALWAYS_VISIBLE_CHILDREN: usize = 8;
 const MAX_RESTRICTED_CHILDREN: usize = 4;
 const MAX_VISUAL_TREE_DEPTH: usize = 7;
+const MAX_VISUAL_NODES_PER_SCAN: usize = 2_500;
 const MAX_VISUAL_NODES_PER_LOCATION: usize = 2_500;
 const MAX_VISUAL_NODES_PER_SUBTREE: usize = 2_500;
 // 0.5 degree of a full circle. Smaller siblings are still fully scanned, but
@@ -57,7 +66,15 @@ const CLEANUP_LEASE_TTL: Duration = Duration::from_secs(60);
 const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
-const CLEANUP_SCAN_CACHE_VERSION: u8 = 3;
+const CLEANUP_SCAN_CACHE_VERSION: u8 = 5;
+#[cfg(target_os = "macos")]
+const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
+#[cfg(target_os = "macos")]
+const APPLICATION_DU_DEADLINE: Duration = Duration::from_secs(30);
+#[cfg(target_os = "macos")]
+const APPLICATION_MDLS_DEADLINE: Duration = Duration::from_secs(15);
+#[cfg(target_os = "macos")]
+const APPLICATION_CHILD_POLL_INTERVAL: Duration = Duration::from_millis(25);
 static NEXT_CLEANUP_LEASE_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Serialize)]
@@ -68,20 +85,160 @@ struct CleanupScanCachePayload<'a> {
     snapshot: &'a CleanupScan,
 }
 
-#[derive(Debug, Default)]
-pub struct CleanupScanCoordinator {
-    active: Mutex<Option<Arc<AtomicBool>>>,
+#[derive(Debug)]
+struct CleanupSubtreeOperation {
+    request_id: String,
+    canonical_path: PathBuf,
+    cancelled: Arc<AtomicBool>,
 }
 
-impl CleanupScanCoordinator {
-    pub fn begin(&self) -> Result<Arc<AtomicBool>, CommandError> {
-        let mut active = self.active.lock().map_err(|_| {
-            CommandError::internal("The cleanup scan coordinator lock was poisoned.")
+#[derive(Debug, Default)]
+pub struct CleanupWorkCoordinator {
+    active_full_scan: Mutex<Option<Arc<AtomicBool>>>,
+    active_subtree: Mutex<Option<CleanupSubtreeOperation>>,
+    execution: Mutex<()>,
+}
+
+impl CleanupWorkCoordinator {
+    pub fn begin_full_scan(&self) -> Result<Arc<AtomicBool>, CommandError> {
+        let mut active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
         })?;
-        if active.is_some() {
+        if active_full_scan.is_some() {
             return Err(CommandError::new(
                 "cleanup_scan_in_progress",
                 "A cleanup scan is already in progress.",
+            ));
+        }
+        let active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        if let Some(operation) = active_subtree.as_ref() {
+            operation.cancelled.store(true, Ordering::Relaxed);
+        }
+        let cancelled = Arc::new(AtomicBool::new(false));
+        *active_full_scan = Some(Arc::clone(&cancelled));
+        Ok(cancelled)
+    }
+
+    pub fn begin_subtree(
+        &self,
+        request_id: String,
+        canonical_path: PathBuf,
+    ) -> Result<Arc<AtomicBool>, CommandError> {
+        if request_id.trim().is_empty() {
+            return Err(CommandError::new(
+                "cleanup_subtree_request_invalid",
+                "A cleanup subtree request ID is required.",
+            ));
+        }
+        let active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        if active_full_scan.is_some() {
+            return Err(CommandError::new(
+                "cleanup_scan_in_progress",
+                "The full cleanup scan must finish before expanding a folder.",
+            ));
+        }
+        let mut active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        if let Some(operation) = active_subtree.as_ref() {
+            if operation.request_id == request_id && operation.canonical_path == canonical_path {
+                return Err(CommandError::new(
+                    "cleanup_subtree_duplicate",
+                    "This cleanup subtree request is already in progress.",
+                ));
+            }
+            operation.cancelled.store(true, Ordering::Relaxed);
+        }
+        let cancelled = Arc::new(AtomicBool::new(false));
+        *active_subtree = Some(CleanupSubtreeOperation {
+            request_id,
+            canonical_path,
+            cancelled: Arc::clone(&cancelled),
+        });
+        Ok(cancelled)
+    }
+
+    pub fn run_exclusive<T>(
+        &self,
+        cancelled: &AtomicBool,
+        operation: impl FnOnce() -> Result<T, CommandError>,
+    ) -> Result<T, CommandError> {
+        let _execution = self.execution.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        ensure_scan_active(cancelled)?;
+        operation()
+    }
+
+    pub fn cancel_full_scan(&self) -> Result<bool, CommandError> {
+        let active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        let Some(cancelled) = active_full_scan.as_ref() else {
+            return Ok(false);
+        };
+        cancelled.store(true, Ordering::Relaxed);
+        Ok(true)
+    }
+
+    pub fn cancel_subtree(&self, request_id: &str) -> Result<bool, CommandError> {
+        let active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        let Some(operation) = active_subtree.as_ref() else {
+            return Ok(false);
+        };
+        if operation.request_id != request_id {
+            return Ok(false);
+        }
+        operation.cancelled.store(true, Ordering::Relaxed);
+        Ok(true)
+    }
+
+    pub fn finish_full_scan(&self, cancelled: &Arc<AtomicBool>) {
+        if let Ok(mut active_full_scan) = self.active_full_scan.lock()
+            && active_full_scan
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(current, cancelled))
+        {
+            *active_full_scan = None;
+        }
+    }
+
+    pub fn finish_subtree(&self, cancelled: &Arc<AtomicBool>) {
+        if let Ok(mut active_subtree) = self.active_subtree.lock()
+            && active_subtree
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(&current.cancelled, cancelled))
+        {
+            *active_subtree = None;
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct CleanupDeleteController {
+    leases: Vec<CleanupDeleteLeaseEntry>,
+}
+
+#[derive(Debug, Default)]
+pub struct CleanupDeleteCoordinator {
+    active: Mutex<Option<Arc<AtomicBool>>>,
+}
+
+impl CleanupDeleteCoordinator {
+    pub fn begin(&self) -> Result<Arc<AtomicBool>, CommandError> {
+        let mut active = self.active.lock().map_err(|_| {
+            CommandError::internal("The cleanup delete coordinator lock was poisoned.")
+        })?;
+        if active.is_some() {
+            return Err(CommandError::new(
+                "cleanup_delete_in_progress",
+                "A permanent deletion is already in progress.",
             ));
         }
         let cancelled = Arc::new(AtomicBool::new(false));
@@ -91,7 +248,7 @@ impl CleanupScanCoordinator {
 
     pub fn cancel(&self) -> Result<bool, CommandError> {
         let active = self.active.lock().map_err(|_| {
-            CommandError::internal("The cleanup scan coordinator lock was poisoned.")
+            CommandError::internal("The cleanup delete coordinator lock was poisoned.")
         })?;
         let Some(cancelled) = active.as_ref() else {
             return Ok(false);
@@ -111,16 +268,13 @@ impl CleanupScanCoordinator {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct CleanupDeleteController {
-    leases: Vec<CleanupDeleteLeaseEntry>,
-}
-
 #[derive(Clone, Debug)]
 struct CleanupDeleteTarget {
     display_path: String,
     canonical_path: PathBuf,
     modified_at_ms: Option<u64>,
+    inspection: TreeInspection,
+    bound: BoundDeleteTarget,
 }
 
 #[derive(Debug)]
@@ -150,11 +304,113 @@ impl CleanupDeleteController {
         }
     }
 
+    #[cfg(test)]
     pub fn execute(
         &mut self,
         request: CleanupDeleteExecutionRequest,
     ) -> Result<CleanupDeleteResult, CommandError> {
-        self.execute_with(request, delete_cleanup_target)
+        let cancelled = AtomicBool::new(false);
+        self.execute_cancellable(request, &cancelled, &mut |_| {})
+    }
+
+    pub fn execute_cancellable(
+        &mut self,
+        request: CleanupDeleteExecutionRequest,
+        cancelled: &AtomicBool,
+        on_progress: &mut dyn FnMut(CleanupDeleteProgress),
+    ) -> Result<CleanupDeleteResult, CommandError> {
+        let targets = self.take_validated_targets(request)?;
+        let total_target_count = targets.len();
+        // Deletion deliberately uses indeterminate progress. A complete pre-scan
+        // doubles metadata I/O and widens the race window between validation and
+        // removal without making the operation atomic.
+        let total_entry_count = 0;
+        let mut deleted = Vec::new();
+        let mut deleted_bytes = 0_u64;
+        let mut failed = Vec::new();
+        let mut processed_entry_count = 0_usize;
+        let mut last_emitted_entry_count = 0_usize;
+        let mut last_emitted_at = Instant::now();
+
+        for (target_index, target) in targets.into_iter().enumerate() {
+            if cancelled.load(Ordering::Relaxed) {
+                return Ok(cancelled_delete_result(
+                    deleted,
+                    deleted_bytes,
+                    failed,
+                    None,
+                ));
+            }
+            let current_path = target.display_path.clone();
+            on_progress(CleanupDeleteProgress {
+                phase: CleanupDeleteProgressPhase::Deleting,
+                processed_entry_count,
+                total_entry_count,
+                completed_target_count: target_index,
+                total_target_count,
+                current_path: current_path.clone(),
+                deleted_bytes,
+            });
+            let mut target_deleted_bytes = 0_u64;
+            let result = target
+                .bound
+                .delete_cancellable(cancelled, &mut |entry_deleted_bytes| {
+                    processed_entry_count = processed_entry_count.saturating_add(1);
+                    target_deleted_bytes = target_deleted_bytes.saturating_add(entry_deleted_bytes);
+                    deleted_bytes = deleted_bytes.saturating_add(entry_deleted_bytes);
+                    if processed_entry_count.saturating_sub(last_emitted_entry_count) >= 128
+                        || last_emitted_at.elapsed() >= Duration::from_millis(100)
+                    {
+                        on_progress(CleanupDeleteProgress {
+                            phase: CleanupDeleteProgressPhase::Deleting,
+                            processed_entry_count,
+                            total_entry_count,
+                            completed_target_count: target_index,
+                            total_target_count,
+                            current_path: current_path.clone(),
+                            deleted_bytes,
+                        });
+                        last_emitted_entry_count = processed_entry_count;
+                        last_emitted_at = Instant::now();
+                    }
+                });
+            match result {
+                Ok(true) => {
+                    deleted.push(CleanupDeleteSuccess {
+                        path: target.display_path,
+                        deleted_bytes: target_deleted_bytes,
+                    });
+                }
+                Ok(false) => {
+                    return Ok(cancelled_delete_result(
+                        deleted,
+                        deleted_bytes,
+                        failed,
+                        Some(target.display_path),
+                    ));
+                }
+                Err(message) => failed.push(CleanupDeleteFailure {
+                    path: target.display_path,
+                    message,
+                }),
+            }
+            on_progress(CleanupDeleteProgress {
+                phase: CleanupDeleteProgressPhase::Deleting,
+                processed_entry_count,
+                total_entry_count,
+                completed_target_count: target_index + 1,
+                total_target_count,
+                current_path,
+                deleted_bytes,
+            });
+        }
+        Ok(CleanupDeleteResult {
+            deleted,
+            deleted_bytes,
+            failed,
+            cancelled: false,
+            interrupted_path: None,
+        })
     }
 
     fn create_lease_for_home(
@@ -171,22 +427,42 @@ impl CleanupDeleteController {
             ));
         }
         let targets = validate_cleanup_targets(&request, home)?;
+        if request.expected_targets.len() != targets.len() {
+            return Err(CommandError::new(
+                "invalid_cleanup_selection",
+                "Every cleanup path must include the size and item count currently shown for confirmation.",
+            ));
+        }
+        let refreshed_targets = targets
+            .iter()
+            .map(cleanup_target_evidence)
+            .collect::<Vec<_>>();
         let changed_paths = targets
             .iter()
-            .filter(|target| {
-                target
-                    .modified_at_ms
-                    .is_some_and(|modified| modified > request.scan_sampled_at_ms)
+            .zip(&refreshed_targets)
+            .filter(|(target, refreshed)| {
+                let expected = request
+                    .expected_targets
+                    .iter()
+                    .find(|expected| expected.path == target.display_path);
+                expected != Some(*refreshed)
+                    || target
+                        .modified_at_ms
+                        .is_some_and(|modified| modified > request.scan_sampled_at_ms)
             })
-            .map(|target| target.display_path.clone())
+            .map(|(target, _)| target.display_path.clone())
             .collect::<Vec<_>>();
         let id = next_cleanup_lease_id();
         let expires_at = now + CLEANUP_LEASE_TTL;
-        self.leases.push(CleanupDeleteLeaseEntry {
-            id: id.clone(),
-            expires_at,
-            targets: targets.clone(),
-        });
+        let executable = changed_paths.is_empty();
+        if executable {
+            self.leases.push(CleanupDeleteLeaseEntry {
+                id: id.clone(),
+                expires_at,
+                targets: targets.clone(),
+            });
+        }
+        let refreshed_at_ms = now_millis();
         Ok(CleanupDeleteLease {
             id,
             paths: targets
@@ -194,10 +470,14 @@ impl CleanupDeleteController {
                 .map(|target| target.display_path.clone())
                 .collect(),
             changed_paths,
+            refreshed_targets,
+            executable,
+            refreshed_at_ms,
             expires_at_ms: now_millis().saturating_add(CLEANUP_LEASE_TTL.as_millis() as u64),
         })
     }
 
+    #[cfg(test)]
     fn execute_with<F>(
         &mut self,
         request: CleanupDeleteExecutionRequest,
@@ -206,6 +486,38 @@ impl CleanupDeleteController {
     where
         F: FnMut(&Path) -> Result<u64, String>,
     {
+        let targets = self.take_validated_targets(request)?;
+        let mut deleted = Vec::new();
+        let mut deleted_bytes = 0_u64;
+        let mut failed = Vec::new();
+        for target in targets {
+            match delete_target(&target.canonical_path) {
+                Ok(bytes) => {
+                    deleted.push(CleanupDeleteSuccess {
+                        path: target.display_path,
+                        deleted_bytes: bytes,
+                    });
+                    deleted_bytes = deleted_bytes.saturating_add(bytes);
+                }
+                Err(message) => failed.push(CleanupDeleteFailure {
+                    path: target.display_path,
+                    message,
+                }),
+            }
+        }
+        Ok(CleanupDeleteResult {
+            deleted,
+            deleted_bytes,
+            failed,
+            cancelled: false,
+            interrupted_path: None,
+        })
+    }
+
+    fn take_validated_targets(
+        &mut self,
+        request: CleanupDeleteExecutionRequest,
+    ) -> Result<Vec<CleanupDeleteTarget>, CommandError> {
         let position = self
             .leases
             .iter()
@@ -227,30 +539,22 @@ impl CleanupDeleteController {
         for target in &lease.targets {
             revalidate_cleanup_target(target)?;
         }
+        Ok(lease.targets)
+    }
+}
 
-        let mut deleted = Vec::new();
-        let mut deleted_bytes = 0_u64;
-        let mut failed = Vec::new();
-        for target in lease.targets {
-            match delete_target(&target.canonical_path) {
-                Ok(bytes) => {
-                    deleted.push(CleanupDeleteSuccess {
-                        path: target.display_path,
-                        deleted_bytes: bytes,
-                    });
-                    deleted_bytes = deleted_bytes.saturating_add(bytes);
-                }
-                Err(message) => failed.push(CleanupDeleteFailure {
-                    path: target.display_path,
-                    message,
-                }),
-            }
-        }
-        Ok(CleanupDeleteResult {
-            deleted,
-            deleted_bytes,
-            failed,
-        })
+fn cancelled_delete_result(
+    deleted: Vec<CleanupDeleteSuccess>,
+    deleted_bytes: u64,
+    failed: Vec<CleanupDeleteFailure>,
+    interrupted_path: Option<String>,
+) -> CleanupDeleteResult {
+    CleanupDeleteResult {
+        deleted,
+        deleted_bytes,
+        failed,
+        cancelled: true,
+        interrupted_path,
     }
 }
 
@@ -264,22 +568,206 @@ pub fn scan_cleanup(
             "StatusOrbit could not locate the current user's home directory.",
         )
     })?;
-    scan_home(&home, platform_paths(&home), true, cancelled, on_progress)
+    let scan_root = system_disk_root(&home).ok_or_else(|| {
+        CommandError::new(
+            "cleanup_scan_root_unavailable",
+            "StatusOrbit could not locate the system disk root.",
+        )
+    })?;
+    scan_filesystem(
+        &scan_root,
+        &home,
+        platform_paths(&home),
+        true,
+        cancelled,
+        on_progress,
+    )
 }
 
-pub fn scan_cleanup_subtree(request: CleanupSubtreeRequest) -> Result<CleanupNode, CommandError> {
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupBenchmarkResult {
+    pub root: String,
+    pub duration_ms: u64,
+    pub cpu_user_ms: Option<u64>,
+    pub cpu_system_ms: Option<u64>,
+    pub peak_rss_bytes: Option<u64>,
+    pub read_bytes: Option<u64>,
+    pub scanned_entry_count: usize,
+    pub unreadable_entry_count: usize,
+    pub discovered_allocated_bytes: u64,
+}
+
+pub fn benchmark_cleanup_root(root: &Path) -> Result<CleanupBenchmarkResult, String> {
+    benchmark_cleanup_root_with_cancel(root, &AtomicBool::new(false))
+}
+
+pub fn benchmark_cleanup_root_with_cancel(
+    root: &Path,
+    cancelled: &AtomicBool,
+) -> Result<CleanupBenchmarkResult, String> {
+    let canonical_root = root.canonicalize().map_err(|error| {
+        format!(
+            "Could not verify benchmark root {}: {error}",
+            root.display()
+        )
+    })?;
+    if !canonical_root.is_dir() {
+        return Err(format!(
+            "Benchmark root is not a directory: {}",
+            canonical_root.display()
+        ));
+    }
+    let resources_before = benchmark_resource_snapshot();
+    let started_at = Instant::now();
+    let mut latest_progress = CleanupScanProgress {
+        scanned_entry_count: 0,
+        discovered_bytes: 0,
+        current_path: canonical_root.to_string_lossy().into_owned(),
+        elapsed_ms: 0,
+    };
+    let scan = scan_filesystem(
+        &canonical_root,
+        &canonical_root,
+        Vec::new(),
+        false,
+        cancelled,
+        &mut |progress| latest_progress = progress,
+    )
+    .map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let resources_after = benchmark_resource_snapshot();
+    Ok(CleanupBenchmarkResult {
+        root: canonical_root.to_string_lossy().into_owned(),
+        duration_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        cpu_user_ms: resource_delta_millis(
+            resources_before.user_time_ns,
+            resources_after.user_time_ns,
+        ),
+        cpu_system_ms: resource_delta_millis(
+            resources_before.system_time_ns,
+            resources_after.system_time_ns,
+        ),
+        peak_rss_bytes: resources_after.peak_rss_bytes,
+        read_bytes: resource_delta(resources_before.read_bytes, resources_after.read_bytes),
+        scanned_entry_count: scan.scanned_entry_count,
+        unreadable_entry_count: scan.unreadable_entry_count,
+        discovered_allocated_bytes: latest_progress.discovered_bytes,
+    })
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct BenchmarkResourceSnapshot {
+    user_time_ns: Option<u64>,
+    system_time_ns: Option<u64>,
+    peak_rss_bytes: Option<u64>,
+    read_bytes: Option<u64>,
+}
+
+fn resource_delta(before: Option<u64>, after: Option<u64>) -> Option<u64> {
+    Some(after?.saturating_sub(before?))
+}
+
+fn resource_delta_millis(before: Option<u64>, after: Option<u64>) -> Option<u64> {
+    resource_delta(before, after).map(|nanoseconds| nanoseconds / 1_000_000)
+}
+
+#[cfg(target_os = "macos")]
+fn benchmark_resource_snapshot() -> BenchmarkResourceSnapshot {
+    use std::mem::MaybeUninit;
+
+    let mut process_usage = MaybeUninit::<libc::rusage_info_v2>::uninit();
+    let process_usage_available = unsafe {
+        libc::proc_pid_rusage(
+            libc::getpid(),
+            libc::RUSAGE_INFO_V2,
+            process_usage.as_mut_ptr().cast(),
+        ) == 0
+    };
+    let process_usage = process_usage_available.then(|| unsafe { process_usage.assume_init() });
+
+    let mut general_usage = MaybeUninit::<libc::rusage>::uninit();
+    let general_usage_available =
+        unsafe { libc::getrusage(libc::RUSAGE_SELF, general_usage.as_mut_ptr()) == 0 };
+    let general_usage = general_usage_available.then(|| unsafe { general_usage.assume_init() });
+    let timeval_nanoseconds = |value: libc::timeval| {
+        (value.tv_sec.max(0) as u64)
+            .saturating_mul(1_000_000_000)
+            .saturating_add((value.tv_usec.max(0) as u64).saturating_mul(1_000))
+    };
+
+    BenchmarkResourceSnapshot {
+        user_time_ns: general_usage
+            .as_ref()
+            .map(|usage| timeval_nanoseconds(usage.ru_utime)),
+        system_time_ns: general_usage
+            .as_ref()
+            .map(|usage| timeval_nanoseconds(usage.ru_stime)),
+        peak_rss_bytes: general_usage.map(|usage| usage.ru_maxrss.max(0) as u64),
+        read_bytes: process_usage.map(|usage| usage.ri_diskio_bytesread),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn benchmark_resource_snapshot() -> BenchmarkResourceSnapshot {
+    BenchmarkResourceSnapshot::default()
+}
+
+pub fn canonical_cleanup_subtree_path(path: &str) -> Result<PathBuf, CommandError> {
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
             "StatusOrbit could not locate the current user's home directory.",
         )
     })?;
+    expand_cleanup_path(path, &home)?
+        .canonicalize()
+        .map_err(|error| {
+            CommandError::new(
+                "cleanup_subtree_unavailable",
+                format!("StatusOrbit could not verify {path}: {error}"),
+            )
+        })
+}
+
+pub fn scan_cleanup_subtree(
+    request: CleanupSubtreeRequest,
+    cancelled: &AtomicBool,
+) -> Result<CleanupNode, CommandError> {
+    let home = home_directory().ok_or_else(|| {
+        CommandError::new(
+            "home_directory_unavailable",
+            "StatusOrbit could not locate the current user's home directory.",
+        )
+    })?;
+    let scan_root = system_disk_root(&home).ok_or_else(|| {
+        CommandError::new(
+            "cleanup_scan_root_unavailable",
+            "StatusOrbit could not locate the system disk root.",
+        )
+    })?;
+    scan_cleanup_subtree_at(request, &home, &scan_root, cancelled)
+}
+
+fn scan_cleanup_subtree_at(
+    request: CleanupSubtreeRequest,
+    home: &Path,
+    scan_root: &Path,
+    cancelled: &AtomicBool,
+) -> Result<CleanupNode, CommandError> {
+    ensure_scan_active(cancelled)?;
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
             format!("StatusOrbit could not verify the home directory: {error}"),
         )
     })?;
+    let canonical_scan_root = scan_root.canonicalize().map_err(|error| {
+        CommandError::new(
+            "cleanup_scan_root_unavailable",
+            format!("StatusOrbit could not verify the system disk root: {error}"),
+        )
+    })?;
+    let boundary = ScanFilesystemBoundary::for_root(&canonical_scan_root)?;
     let requested_path = expand_cleanup_path(&request.path, &canonical_home)?;
     let metadata = fs::symlink_metadata(&requested_path).map_err(|error| {
         CommandError::new(
@@ -299,30 +787,48 @@ pub fn scan_cleanup_subtree(request: CleanupSubtreeRequest) -> Result<CleanupNod
             format!("StatusOrbit could not verify {}: {error}", request.path),
         )
     })?;
-    if path == canonical_home || !path.starts_with(&canonical_home) {
+    if !path.starts_with(&canonical_scan_root) {
         return Err(CommandError::new(
-            "cleanup_subtree_outside_home",
-            "StatusOrbit only expands folders inside your home directory.",
+            "cleanup_subtree_outside_disk",
+            "StatusOrbit only expands folders on the system disk.",
+        ));
+    }
+    if !boundary.allows_directory(&metadata) {
+        return Err(CommandError::new(
+            "cleanup_subtree_outside_disk",
+            "StatusOrbit does not expand another disk or mounted filesystem from this map.",
         ));
     }
 
-    let cancelled = AtomicBool::new(false);
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
+    let mut application_sizes = HashMap::new();
+    let definitions = Vec::new();
+    let mut location_summaries = Vec::new();
     let mut ignore_progress = |_progress: CleanupScanProgress| {};
     let mut context = ScanContext {
         stats: &mut stats,
         largest_files: &mut largest_files,
         home: &canonical_home,
-        cancelled: &cancelled,
+        scan_root: &canonical_scan_root,
+        boundary,
+        definitions: &definitions,
+        location_summaries: &mut location_summaries,
+        application_sizes: &mut application_sizes,
+        cancelled,
         on_progress: &mut ignore_progress,
     };
     let mut seen_files = HashSet::new();
+    let subtree_safety = if path.starts_with(&canonical_home) {
+        request.safety
+    } else {
+        CleanupSafety::Review
+    };
     let mut node = scan_path(
         &path,
         false,
         false,
-        request.safety,
+        subtree_safety,
         &mut context,
         &mut seen_files,
         MAX_VISUAL_TREE_DEPTH,
@@ -330,6 +836,116 @@ pub fn scan_cleanup_subtree(request: CleanupSubtreeRequest) -> Result<CleanupNod
     let mut remaining = MAX_VISUAL_NODES_PER_SUBTREE;
     prune_cleanup_node(&mut node, &mut remaining);
     Ok(node)
+}
+
+pub fn cleanup_scan_access() -> CleanupScanAccess {
+    #[cfg(target_os = "macos")]
+    {
+        let application_bundle = current_application_bundle();
+        let full_disk_access =
+            match fs::File::open("/Library/Application Support/com.apple.TCC/TCC.db") {
+                Ok(_) => CleanupFullDiskAccessStatus::Granted,
+                Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                    CleanupFullDiskAccessStatus::NotGranted
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    CleanupFullDiskAccessStatus::Unknown
+                }
+                Err(_) => CleanupFullDiskAccessStatus::Unknown,
+            };
+        CleanupScanAccess {
+            full_disk_access,
+            full_disk_access_recommended: true,
+            application_bundle_available: application_bundle.is_some(),
+            application_bundle_path: application_bundle
+                .map(|path| path.to_string_lossy().into_owned()),
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    CleanupScanAccess {
+        full_disk_access: CleanupFullDiskAccessStatus::NotRequired,
+        full_disk_access_recommended: false,
+        application_bundle_available: false,
+        application_bundle_path: None,
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn application_bundle_from_executable(executable: &Path) -> Option<PathBuf> {
+    executable
+        .ancestors()
+        .find(|path| {
+            path.extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+        })
+        .map(Path::to_path_buf)
+}
+
+#[cfg(target_os = "macos")]
+fn current_application_bundle() -> Option<PathBuf> {
+    let executable = env::current_exe().ok()?;
+    application_bundle_from_executable(&executable)
+}
+
+pub fn open_full_disk_access_settings() -> Result<(), CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let status = Command::new("/usr/bin/open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+            .status()
+            .map_err(|error| {
+                CommandError::internal(format!(
+                    "StatusOrbit could not open Full Disk Access settings: {error}"
+                ))
+            })?;
+        if status.success() {
+            return Ok(());
+        }
+        Err(CommandError::internal(
+            "macOS did not open Full Disk Access settings.",
+        ))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    Err(CommandError::new(
+        "full_disk_access_not_required",
+        "This platform does not use the macOS Full Disk Access setting.",
+    ))
+}
+
+pub fn reveal_cleanup_application_bundle() -> Result<(), CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let application_bundle = current_application_bundle().ok_or_else(|| {
+            CommandError::new(
+                "cleanup_application_bundle_unavailable",
+                "StatusOrbit must be launched from its application bundle before it can be added to Full Disk Access.",
+            )
+        })?;
+        let status = Command::new("/usr/bin/open")
+            .arg("-R")
+            .arg(&application_bundle)
+            .status()
+            .map_err(|error| {
+                CommandError::internal(format!(
+                    "StatusOrbit could not reveal its application bundle: {error}"
+                ))
+            })?;
+        if status.success() {
+            return Ok(());
+        }
+        Err(CommandError::internal(
+            "macOS did not reveal the StatusOrbit application bundle.",
+        ))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    Err(CommandError::new(
+        "cleanup_application_bundle_unavailable",
+        "This platform does not use a macOS application bundle.",
+    ))
 }
 
 pub fn inspect_cleanup_path(display_path: &str) -> Result<CleanupPathState, CommandError> {
@@ -371,22 +987,14 @@ pub fn inspect_cleanup_path(display_path: &str) -> Result<CleanupPathState, Comm
 }
 
 pub fn load_cleanup_scan_cache(path: &Path) -> Result<Option<String>, CommandError> {
-    let metadata = match fs::metadata(path) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(CommandError::internal(format!(
-                "Could not inspect the cleanup scan cache: {error}"
-            )));
-        }
+    let bytes = match private_storage::read_limited(path, MAX_CLEANUP_SCAN_CACHE_BYTES) {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(None),
     };
-    if metadata.len() > MAX_CLEANUP_SCAN_CACHE_BYTES {
-        remove_cleanup_scan_cache(path)?;
+    let Some(bytes) = bytes else {
         return Ok(None);
-    }
-    fs::read_to_string(path).map(Some).map_err(|error| {
-        CommandError::internal(format!("Could not read the cleanup scan cache: {error}"))
-    })
+    };
+    Ok(String::from_utf8(bytes).ok())
 }
 
 pub fn save_cleanup_scan_cache(path: &Path, serialized: &str) -> Result<(), CommandError> {
@@ -396,28 +1004,9 @@ pub fn save_cleanup_scan_cache(path: &Path, serialized: &str) -> Result<(), Comm
             "The cleanup scan cache is too large to retain safely.",
         ));
     }
-    let parent = path.parent().ok_or_else(|| {
-        CommandError::internal("The cleanup scan cache path has no parent directory.")
-    })?;
-    fs::create_dir_all(parent).map_err(|error| {
+    private_storage::write_atomic(path, serialized.as_bytes()).map_err(|error| {
         CommandError::internal(format!(
-            "Could not create the cleanup scan cache folder: {error}"
-        ))
-    })?;
-    let temporary_path = path.with_extension("json.tmp");
-    fs::write(&temporary_path, serialized).map_err(|error| {
-        CommandError::internal(format!("Could not write the cleanup scan cache: {error}"))
-    })?;
-    #[cfg(windows)]
-    if path.exists() {
-        fs::remove_file(path).map_err(|error| {
-            CommandError::internal(format!("Could not replace the cleanup scan cache: {error}"))
-        })?;
-    }
-    fs::rename(&temporary_path, path).map_err(|error| {
-        let _ = fs::remove_file(&temporary_path);
-        CommandError::internal(format!(
-            "Could not finalize the cleanup scan cache: {error}"
+            "Could not securely update the cleanup scan cache: {error}"
         ))
     })
 }
@@ -446,13 +1035,11 @@ pub fn save_cleanup_scan_snapshot_cache_at(
 }
 
 pub fn remove_cleanup_scan_cache(path: &Path) -> Result<(), CommandError> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(CommandError::internal(format!(
-            "Could not clear the cleanup scan cache: {error}"
-        ))),
-    }
+    private_storage::remove(path).map_err(|error| {
+        CommandError::internal(format!(
+            "Could not securely clear the cleanup scan cache: {error}"
+        ))
+    })
 }
 
 fn validate_cleanup_targets(
@@ -471,64 +1058,47 @@ fn validate_cleanup_targets(
             format!("StatusOrbit could not verify the home directory: {error}"),
         )
     })?;
-    #[cfg(unix)]
-    let home_device = fs::metadata(&canonical_home)
-        .map_err(|error| {
-            CommandError::new(
-                "home_directory_unavailable",
-                format!("StatusOrbit could not inspect the home filesystem: {error}"),
-            )
-        })?
-        .dev();
+    let delete_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+        CommandError::new(
+            "home_directory_unavailable",
+            format!("StatusOrbit could not open a stable home directory handle: {error}"),
+        )
+    })?;
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
     let mut targets = Vec::with_capacity(request.paths.len());
     for display in &request.paths {
         let path = expand_cleanup_path(display, &canonical_home)?;
-        if path == canonical_home || trash_roots.contains(&path) {
-            return Err(CommandError::new(
-                "protected_cleanup_path",
-                "StatusOrbit will not delete the home directory or the system Trash folder itself.",
-            ));
-        }
-        let metadata = fs::symlink_metadata(&path).map_err(|error| {
-            CommandError::new(
-                "cleanup_target_unavailable",
-                format!("StatusOrbit could not inspect {display}: {error}"),
-            )
-        })?;
-        if metadata.file_type().is_symlink() || (!metadata.is_file() && !metadata.is_dir()) {
-            return Err(CommandError::new(
-                "unsupported_cleanup_target",
-                format!("StatusOrbit will not delete links or special files: {display}"),
-            ));
-        }
-        #[cfg(unix)]
-        if metadata.is_dir() && metadata.dev() != home_device {
-            return Err(CommandError::new(
-                "cleanup_cross_filesystem",
-                format!("StatusOrbit will not recursively delete a mounted filesystem: {display}"),
-            ));
-        }
-        #[cfg(windows)]
-        if metadata.is_dir() && is_windows_reparse_point(&metadata) {
-            return Err(CommandError::new(
-                "cleanup_cross_filesystem",
-                format!("StatusOrbit will not recursively delete a reparse point: {display}"),
-            ));
-        }
-        let canonical_path = path.canonicalize().map_err(|error| {
-            CommandError::new(
-                "cleanup_target_unavailable",
-                format!("StatusOrbit could not verify {display}: {error}"),
-            )
-        })?;
+        let relative_path = path
+            .strip_prefix(home)
+            .or_else(|_| path.strip_prefix(&canonical_home))
+            .map_err(|_| {
+                CommandError::new(
+                    "cleanup_target_outside_home",
+                    format!("StatusOrbit only deletes items inside your home folder: {display}"),
+                )
+            })?;
+        let canonical_path = canonical_home.join(relative_path);
         if canonical_path == canonical_home || trash_roots.contains(&canonical_path) {
             return Err(CommandError::new(
                 "protected_cleanup_path",
                 "StatusOrbit will not delete the home directory or the system Trash folder itself.",
             ));
         }
+        let bound = delete_root.bind(relative_path).map_err(|error| {
+            let message = error.to_string();
+            let code = if message.contains("volume") {
+                "cleanup_cross_filesystem"
+            } else if message.contains("symbolic") || message.contains("special") {
+                "unsupported_cleanup_target"
+            } else {
+                "cleanup_target_unavailable"
+            };
+            CommandError::new(
+                code,
+                format!("StatusOrbit could not safely bind {display}: {error}"),
+            )
+        })?;
         if !canonical_path.starts_with(&canonical_home) {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
@@ -541,10 +1111,18 @@ fn validate_cleanup_targets(
                 format!("The cleanup selection contains the same item more than once: {display}"),
             ));
         }
+        let inspection = bound.inspect().map_err(|message| {
+            CommandError::new(
+                "cleanup_target_unavailable",
+                format!("StatusOrbit could not refresh {display} before confirmation: {message}"),
+            )
+        })?;
         targets.push(CleanupDeleteTarget {
             display_path: display.clone(),
             canonical_path,
-            modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+            modified_at_ms: bound.modified_at().and_then(system_time_millis),
+            inspection,
+            bound,
         });
     }
     for left in 0..targets.len() {
@@ -586,7 +1164,10 @@ fn expand_cleanup_path(display_path: &str, home: &Path) -> Result<PathBuf, Comma
 }
 
 fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), CommandError> {
-    let metadata = fs::symlink_metadata(&target.canonical_path).map_err(|error| {
+    let modified_at_ms = target
+        .bound
+        .current_modified_at()
+        .map_err(|error| {
         CommandError::new(
             "cleanup_target_changed",
             format!(
@@ -594,11 +1175,9 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
                 target.display_path
             ),
         )
-    })?;
-    if metadata.file_type().is_symlink()
-        || target.canonical_path.canonicalize().ok().as_ref() != Some(&target.canonical_path)
-        || metadata.modified().ok().and_then(system_time_millis) != target.modified_at_ms
-    {
+    })?
+        .and_then(system_time_millis);
+    if modified_at_ms != target.modified_at_ms {
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
@@ -607,91 +1186,34 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
             ),
         ));
     }
+    let inspection = target.bound.inspect().map_err(|message| {
+        CommandError::new(
+            "cleanup_target_changed",
+            format!(
+                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again: {message}",
+                target.display_path
+            ),
+        )
+    })?;
+    if inspection != target.inspection {
+        return Err(CommandError::new(
+            "cleanup_target_changed",
+            format!(
+                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again.",
+                target.display_path
+            ),
+        ));
+    }
     Ok(())
 }
 
-fn delete_cleanup_target(path: &Path) -> Result<u64, String> {
-    let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
-    if metadata.file_type().is_symlink() {
-        return Err("StatusOrbit will not delete symbolic links.".to_owned());
+fn cleanup_target_evidence(target: &CleanupDeleteTarget) -> CleanupDeleteTargetEvidence {
+    CleanupDeleteTargetEvidence {
+        path: target.display_path.clone(),
+        logical_size_bytes: target.inspection.logical_size_bytes,
+        allocated_size_bytes: target.inspection.allocated_size_bytes,
+        item_count: target.inspection.item_count,
     }
-    if metadata.is_file() {
-        let deleted_bytes = allocated_file_size(path, &metadata);
-        fs::remove_file(path)
-            .map(|()| deleted_bytes)
-            .map_err(|error| error.to_string())
-    } else if metadata.is_dir() {
-        let deleted_bytes = inspect_cleanup_tree_before_delete(path, &metadata)?;
-        fs::remove_dir_all(path)
-            .map(|()| deleted_bytes)
-            .map_err(|error| error.to_string())
-    } else {
-        Err("StatusOrbit will not delete special files.".to_owned())
-    }
-}
-
-fn inspect_cleanup_tree_before_delete(
-    root: &Path,
-    root_metadata: &Metadata,
-) -> Result<u64, String> {
-    #[cfg(unix)]
-    let root_device = root_metadata.dev();
-    #[cfg(not(unix))]
-    let _ = root_metadata;
-    let mut deleted_bytes = 0_u64;
-    let mut seen_files = HashSet::new();
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(directory) = stack.pop() {
-        let entries = fs::read_dir(&directory).map_err(|error| {
-            format!(
-                "StatusOrbit could not verify {} before deletion: {error}",
-                directory.display()
-            )
-        })?;
-        for entry in entries {
-            let entry = entry.map_err(|error| {
-                format!(
-                    "StatusOrbit could not read {} before deletion: {error}",
-                    directory.display()
-                )
-            })?;
-            let path = entry.path();
-            let metadata = fs::symlink_metadata(&path).map_err(|error| {
-                format!(
-                    "StatusOrbit could not verify {} before deletion: {error}",
-                    path.display()
-                )
-            })?;
-            if metadata.file_type().is_symlink() {
-                continue;
-            }
-            #[cfg(windows)]
-            if is_windows_reparse_point(&metadata) {
-                return Err(format!(
-                    "StatusOrbit refused to delete {} because it contains a Windows reparse point.",
-                    path.display()
-                ));
-            }
-            if metadata.is_dir() {
-                #[cfg(unix)]
-                if cleanup_filesystem_changed(root_device, metadata.dev()) {
-                    return Err(format!(
-                        "StatusOrbit refused to delete {} because it crosses into another mounted filesystem.",
-                        path.display()
-                    ));
-                }
-                stack.push(path);
-            } else if metadata.is_file() && should_count_file(&path, &metadata, &mut seen_files) {
-                deleted_bytes = deleted_bytes.saturating_add(allocated_file_size(&path, &metadata));
-            }
-        }
-    }
-    Ok(deleted_bytes)
-}
-
-#[cfg(unix)]
-fn cleanup_filesystem_changed(root_device: u64, candidate_device: u64) -> bool {
-    root_device != candidate_device
 }
 
 #[cfg(windows)]
@@ -706,7 +1228,6 @@ struct LocationDefinition {
     kind: CleanupLocationKind,
     paths: Vec<PathBuf>,
     safety: CleanupSafety,
-    collect_large_files: bool,
 }
 
 #[derive(Debug)]
@@ -745,10 +1266,139 @@ struct ScanContext<'a> {
     stats: &'a mut ScanStats,
     largest_files: &'a mut Vec<CleanupFile>,
     home: &'a Path,
+    scan_root: &'a Path,
+    boundary: ScanFilesystemBoundary,
+    definitions: &'a [LocationDefinition],
+    location_summaries: &'a mut [LocationSummary],
+    application_sizes: &'a mut HashMap<PathBuf, u64>,
     cancelled: &'a AtomicBool,
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
 }
 
+#[derive(Clone, Copy, Debug)]
+struct ScanFilesystemBoundary {
+    #[cfg(unix)]
+    device: u64,
+}
+
+impl ScanFilesystemBoundary {
+    fn for_root(root: &Path) -> Result<Self, CommandError> {
+        let metadata = fs::metadata(root).map_err(|error| {
+            CommandError::new(
+                "cleanup_scan_root_unavailable",
+                format!("StatusOrbit could not inspect the system disk root: {error}"),
+            )
+        })?;
+        if !metadata.is_dir() {
+            return Err(CommandError::new(
+                "cleanup_scan_root_unavailable",
+                "The system disk root is not a directory.",
+            ));
+        }
+        Ok(Self {
+            #[cfg(unix)]
+            device: metadata.dev(),
+        })
+    }
+
+    fn allows_directory(self, metadata: &Metadata) -> bool {
+        #[cfg(unix)]
+        {
+            metadata.dev() == self.device
+        }
+        #[cfg(windows)]
+        {
+            return !is_windows_reparse_point(metadata);
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = metadata;
+            true
+        }
+    }
+}
+
+impl ScanContext<'_> {
+    fn safety_for_path(&self, path: &Path, fallback: CleanupSafety) -> CleanupSafety {
+        matching_location_definition(self.definitions, path)
+            .map_or(fallback, |(_, definition)| definition.safety)
+    }
+
+    fn record_file(&mut self, path: &Path, allocated_size_bytes: u64) {
+        if let Some(application_bundle) = application_bundle_for_path(path, self.home) {
+            let size = self
+                .application_sizes
+                .entry(application_bundle)
+                .or_default();
+            *size = size.saturating_add(allocated_size_bytes);
+        }
+        let Some((index, _)) = matching_location_definition(self.definitions, path) else {
+            return;
+        };
+        if let Some(summary) = self.location_summaries.get_mut(index) {
+            summary.size_bytes = summary.size_bytes.saturating_add(allocated_size_bytes);
+            summary.item_count = summary.item_count.saturating_add(1);
+        }
+    }
+
+    fn capture_location_root(&mut self, path: &Path, node: &CleanupNode) {
+        for (index, definition) in self.definitions.iter().enumerate() {
+            if !definition.paths.iter().any(|root| root == path) {
+                continue;
+            }
+            if let Some(summary) = self.location_summaries.get_mut(index) {
+                summary.available = true;
+                summary.nodes.push(node.clone());
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn application_bundle_for_path(path: &Path, home: &Path) -> Option<PathBuf> {
+    for application_root in [PathBuf::from("/Applications"), home.join("Applications")] {
+        let Ok(relative) = path.strip_prefix(&application_root) else {
+            continue;
+        };
+        let bundle_name = relative.components().next()?.as_os_str();
+        let bundle = application_root.join(bundle_name);
+        if bundle
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+        {
+            return Some(bundle);
+        }
+    }
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+fn application_bundle_for_path(_path: &Path, _home: &Path) -> Option<PathBuf> {
+    None
+}
+
+fn matching_location_definition<'a>(
+    definitions: &'a [LocationDefinition],
+    path: &Path,
+) -> Option<(usize, &'a LocationDefinition)> {
+    definitions
+        .iter()
+        .enumerate()
+        .filter_map(|(index, definition)| {
+            definition
+                .paths
+                .iter()
+                .filter(|root| path == root.as_path() || path.starts_with(root))
+                .map(|root| root.components().count())
+                .max()
+                .map(|depth| (depth, index, definition))
+        })
+        .max_by_key(|(depth, _, _)| *depth)
+        .map(|(_, index, definition)| (index, definition))
+}
+
+#[cfg(test)]
 fn scan_home(
     home: &Path,
     definitions: Vec<LocationDefinition>,
@@ -756,40 +1406,68 @@ fn scan_home(
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<CleanupScan, CommandError> {
+    scan_filesystem(
+        home,
+        home,
+        definitions,
+        include_application_inventory,
+        cancelled,
+        on_progress,
+    )
+}
+
+fn scan_filesystem(
+    scan_root: &Path,
+    home: &Path,
+    definitions: Vec<LocationDefinition>,
+    include_application_inventory: bool,
+    cancelled: &AtomicBool,
+    on_progress: &mut dyn FnMut(CleanupScanProgress),
+) -> Result<CleanupScan, CommandError> {
+    let boundary = ScanFilesystemBoundary::for_root(scan_root)?;
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
-    let mut locations = Vec::new();
-    stats.report_progress(home, home, on_progress, true);
+    let mut application_sizes = HashMap::new();
+    let mut location_summaries = definitions
+        .iter()
+        .map(|definition| LocationSummary {
+            available: definition.paths.iter().any(|path| path.is_dir()),
+            ..LocationSummary::default()
+        })
+        .collect::<Vec<_>>();
+    stats.report_progress(scan_root, home, on_progress, true);
 
-    {
-        let mut categorized_seen_files = HashSet::new();
+    let mut root = {
+        let mut seen_files = HashSet::new();
         let mut context = ScanContext {
             stats: &mut stats,
             largest_files: &mut largest_files,
             home,
+            scan_root,
+            boundary,
+            definitions: &definitions,
+            location_summaries: &mut location_summaries,
+            application_sizes: &mut application_sizes,
             cancelled,
             on_progress,
         };
-        for definition in definitions {
-            let mut summary = LocationSummary::default();
-            for path in &definition.paths {
-                if !path.is_dir() {
-                    continue;
-                }
-                let node = scan_path(
-                    path,
-                    definition.collect_large_files,
-                    true,
-                    definition.safety,
-                    &mut context,
-                    &mut categorized_seen_files,
-                    MAX_VISUAL_TREE_DEPTH,
-                )?;
-                summary.available = true;
-                summary.size_bytes = summary.size_bytes.saturating_add(node.allocated_size_bytes);
-                summary.item_count += node.item_count;
-                summary.nodes.push(node);
-            }
+        scan_path(
+            scan_root,
+            true,
+            true,
+            CleanupSafety::Review,
+            &mut context,
+            &mut seen_files,
+            MAX_VISUAL_TREE_DEPTH,
+        )?
+    };
+    let mut remaining = MAX_VISUAL_NODES_PER_SCAN;
+    prune_cleanup_node(&mut root, &mut remaining);
+
+    let locations = definitions
+        .into_iter()
+        .zip(location_summaries)
+        .map(|(definition, mut summary)| {
             summary.nodes.sort_by(|left, right| {
                 right
                     .allocated_size_bytes
@@ -797,7 +1475,7 @@ fn scan_home(
                     .then_with(|| left.name.cmp(&right.name))
             });
             prune_cleanup_nodes(&mut summary.nodes, MAX_VISUAL_NODES_PER_LOCATION);
-            locations.push(CleanupLocation {
+            CleanupLocation {
                 kind: definition.kind,
                 paths: definition
                     .paths
@@ -809,23 +1487,9 @@ fn scan_home(
                 safety: definition.safety,
                 available: summary.available,
                 nodes: summary.nodes,
-            });
-        }
-
-        let mut large_file_seen_files = HashSet::new();
-        for path in large_file_roots(home) {
-            if path.is_dir() {
-                scan_directory_summary(
-                    &path,
-                    true,
-                    false,
-                    CleanupSafety::Review,
-                    &mut context,
-                    &mut large_file_seen_files,
-                )?;
             }
-        }
-    }
+        })
+        .collect();
 
     largest_files.sort_by_key(|file| Reverse(file.size_bytes));
     largest_files.dedup_by(|left, right| left.path == right.path);
@@ -833,7 +1497,7 @@ fn scan_home(
 
     let (installed_applications, application_inventory_available) = if include_application_inventory
     {
-        scan_installed_applications(home, cancelled, &mut stats, on_progress)?
+        scan_installed_applications(home, cancelled, &mut stats, on_progress, &application_sizes)?
     } else {
         (Vec::new(), false)
     };
@@ -844,11 +1508,12 @@ fn scan_home(
         .map(|path| display_path(path, home))
         .collect();
 
-    stats.report_progress(home, home, on_progress, true);
+    stats.report_progress(scan_root, home, on_progress, true);
 
     Ok(CleanupScan {
         sampled_at_ms: now_millis(),
         duration_ms: stats.elapsed_ms(),
+        root,
         locations,
         largest_files,
         installed_applications,
@@ -866,6 +1531,7 @@ fn scan_installed_applications(
     cancelled: &AtomicBool,
     stats: &mut ScanStats,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
+    observed_sizes: &HashMap<PathBuf, u64>,
 ) -> Result<(Vec<CleanupApplication>, bool), CommandError> {
     ensure_scan_active(cancelled)?;
     let application_roots = [PathBuf::from("/Applications"), home.join("Applications")];
@@ -899,9 +1565,22 @@ fn scan_installed_applications(
     paths.sort();
     ensure_scan_active(cancelled)?;
 
-    let sizes = application_sizes(&paths);
+    let mut inventory_available = true;
+    let sizes = match application_sizes(&paths, observed_sizes, cancelled) {
+        Ok(sizes) => sizes,
+        Err(_) => {
+            inventory_available = false;
+            HashMap::new()
+        }
+    };
     ensure_scan_active(cancelled)?;
-    let last_used = application_last_used_times(&paths);
+    let last_used = match application_last_used_times(&paths, cancelled) {
+        Ok(last_used) => last_used,
+        Err(_) => {
+            inventory_available = false;
+            vec![None; paths.len()]
+        }
+    };
     ensure_scan_active(cancelled)?;
 
     let applications = paths
@@ -923,7 +1602,7 @@ fn scan_installed_applications(
             }
         })
         .collect();
-    Ok((applications, true))
+    Ok((applications, inventory_available))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -932,20 +1611,34 @@ fn scan_installed_applications(
     cancelled: &AtomicBool,
     _stats: &mut ScanStats,
     _on_progress: &mut dyn FnMut(CleanupScanProgress),
+    _observed_sizes: &HashMap<PathBuf, u64>,
 ) -> Result<(Vec<CleanupApplication>, bool), CommandError> {
     ensure_scan_active(cancelled)?;
     Ok((Vec::new(), false))
 }
 
 #[cfg(target_os = "macos")]
-fn application_sizes(paths: &[PathBuf]) -> HashMap<PathBuf, u64> {
-    if paths.is_empty() {
-        return HashMap::new();
+fn application_sizes(
+    paths: &[PathBuf],
+    observed_sizes: &HashMap<PathBuf, u64>,
+    cancelled: &AtomicBool,
+) -> Result<HashMap<PathBuf, u64>, ChildCommandFailure> {
+    let mut sizes = paths
+        .iter()
+        .filter_map(|path| observed_sizes.get(path).map(|size| (path.clone(), *size)))
+        .collect::<HashMap<_, _>>();
+    let missing_paths = paths
+        .iter()
+        .filter(|path| !sizes.contains_key(*path))
+        .collect::<Vec<_>>();
+    if missing_paths.is_empty() {
+        return Ok(sizes);
     }
-    let Ok(output) = Command::new("/usr/bin/du").arg("-sk").args(paths).output() else {
-        return HashMap::new();
-    };
-    parse_application_sizes(&String::from_utf8_lossy(&output.stdout))
+    let mut command = Command::new("/usr/bin/du");
+    command.arg("-sk").args(missing_paths);
+    let output = run_bounded_child(&mut command, cancelled, APPLICATION_DU_DEADLINE)?;
+    sizes.extend(parse_application_sizes(&String::from_utf8_lossy(&output)));
+    Ok(sizes)
 }
 
 #[cfg(target_os = "macos")]
@@ -961,28 +1654,111 @@ fn parse_application_sizes(output: &str) -> HashMap<PathBuf, u64> {
 }
 
 #[cfg(target_os = "macos")]
-fn application_last_used_times(paths: &[PathBuf]) -> Vec<Option<u64>> {
+fn application_last_used_times(
+    paths: &[PathBuf],
+    cancelled: &AtomicBool,
+) -> Result<Vec<Option<u64>>, ChildCommandFailure> {
     if paths.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let Ok(output) = Command::new("/usr/bin/mdls")
-        .arg("-name")
-        .arg("kMDItemLastUsedDate")
-        .args(paths)
-        .output()
-    else {
-        return vec![None; paths.len()];
-    };
-    let mut values = String::from_utf8_lossy(&output.stdout)
+    let mut command = Command::new("/usr/bin/mdls");
+    command.arg("-name").arg("kMDItemLastUsedDate").args(paths);
+    let output = run_bounded_child(&mut command, cancelled, APPLICATION_MDLS_DEADLINE)?;
+    let mut values = String::from_utf8_lossy(&output)
         .lines()
         .map(parse_mdls_timestamp)
         .collect::<Vec<_>>();
     if values.len() != paths.len() {
-        return vec![None; paths.len()];
+        return Err(ChildCommandFailure::UnexpectedOutput);
     }
     values.resize(paths.len(), None);
     values.truncate(paths.len());
-    values
+    Ok(values)
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ChildCommandFailure {
+    Cancelled,
+    DeadlineExceeded,
+    OutputLimitExceeded,
+    SpawnFailed,
+    WaitFailed,
+    ReadFailed,
+    UnsuccessfulExit,
+    UnexpectedOutput,
+}
+
+#[cfg(target_os = "macos")]
+fn run_bounded_child(
+    command: &mut Command,
+    cancelled: &AtomicBool,
+    deadline: Duration,
+) -> Result<Vec<u8>, ChildCommandFailure> {
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
+    command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .process_group(0);
+    let mut child = command
+        .spawn()
+        .map_err(|_| ChildCommandFailure::SpawnFailed)?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or(ChildCommandFailure::SpawnFailed)?;
+    let output_reader = thread::spawn(move || {
+        let mut output = Vec::new();
+        stdout
+            .take((APPLICATION_CHILD_OUTPUT_LIMIT + 1) as u64)
+            .read_to_end(&mut output)
+            .map(|_| output)
+    });
+    let started_at = Instant::now();
+    let status = loop {
+        if cancelled.load(Ordering::Relaxed) {
+            terminate_child_process_group(&mut child);
+            let _ = output_reader.join();
+            return Err(ChildCommandFailure::Cancelled);
+        }
+        if started_at.elapsed() >= deadline {
+            terminate_child_process_group(&mut child);
+            let _ = output_reader.join();
+            return Err(ChildCommandFailure::DeadlineExceeded);
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => thread::sleep(APPLICATION_CHILD_POLL_INTERVAL),
+            Err(_) => {
+                terminate_child_process_group(&mut child);
+                let _ = output_reader.join();
+                return Err(ChildCommandFailure::WaitFailed);
+            }
+        }
+    };
+    let output = output_reader
+        .join()
+        .map_err(|_| ChildCommandFailure::ReadFailed)?
+        .map_err(|_| ChildCommandFailure::ReadFailed)?;
+    if output.len() > APPLICATION_CHILD_OUTPUT_LIMIT {
+        return Err(ChildCommandFailure::OutputLimitExceeded);
+    }
+    if !status.success() {
+        return Err(ChildCommandFailure::UnsuccessfulExit);
+    }
+    Ok(output)
+}
+
+#[cfg(target_os = "macos")]
+fn terminate_child_process_group(child: &mut Child) {
+    let process_group = -(child.id() as libc::pid_t);
+    unsafe {
+        libc::kill(process_group, libc::SIGKILL);
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(target_os = "macos")]
@@ -1080,12 +1856,23 @@ fn scan_directory(
     seen_files: &mut HashSet<FileIdentity>,
     remaining_depth: usize,
 ) -> Result<CleanupNode, CommandError> {
+    let directory_safety = context.safety_for_path(directory, safety);
+    if is_cloud_backed_cleanup_root(directory, context.home) {
+        ensure_scan_active(context.cancelled)?;
+        context.stats.record_unreadable(directory);
+        context
+            .stats
+            .report_progress(directory, context.home, context.on_progress, true);
+        let node = restricted_cleanup_node(directory, directory_safety, context.home);
+        context.capture_location_root(directory, &node);
+        return Ok(node);
+    }
     if remaining_depth == 0 {
         return scan_directory_summary(
             directory,
             collect_large_files,
             count_discovered_bytes,
-            safety,
+            directory_safety,
             context,
             seen_files,
         );
@@ -1098,7 +1885,9 @@ fn scan_directory(
         Ok(entries) => entries,
         Err(_) => {
             context.stats.record_unreadable(directory);
-            return Ok(restricted_cleanup_node(directory, safety, context.home));
+            let node = restricted_cleanup_node(directory, directory_safety, context.home);
+            context.capture_location_root(directory, &node);
+            return Ok(node);
         }
     };
     let mut children = ChildAccumulator::default();
@@ -1113,11 +1902,16 @@ fn scan_directory(
             }
         };
         let entry_path = entry.path();
+        let entry_safety = context.safety_for_path(&entry_path, directory_safety);
         let file_type = match entry.file_type() {
             Ok(file_type) => file_type,
             Err(_) => {
                 context.stats.record_unreadable(&entry_path);
-                children.push(restricted_cleanup_node(&entry_path, safety, context.home));
+                children.push(restricted_cleanup_node(
+                    &entry_path,
+                    entry_safety,
+                    context.home,
+                ));
                 continue;
             }
         };
@@ -1125,11 +1919,29 @@ fn scan_directory(
             continue;
         }
         if file_type.is_dir() {
+            if is_excluded_scan_namespace(&entry_path, context.scan_root) {
+                continue;
+            }
+            let metadata = match entry.metadata() {
+                Ok(metadata) => metadata,
+                Err(_) => {
+                    context.stats.record_unreadable(&entry_path);
+                    children.push(restricted_cleanup_node(
+                        &entry_path,
+                        entry_safety,
+                        context.home,
+                    ));
+                    continue;
+                }
+            };
+            if !context.boundary.allows_directory(&metadata) {
+                continue;
+            }
             children.push(scan_directory(
                 &entry_path,
                 collect_large_files,
                 count_discovered_bytes,
-                safety,
+                directory_safety,
                 context,
                 seen_files,
                 remaining_depth - 1,
@@ -1143,7 +1955,11 @@ fn scan_directory(
             Ok(metadata) => metadata,
             Err(_) => {
                 context.stats.record_unreadable(&entry_path);
-                children.push(restricted_cleanup_node(&entry_path, safety, context.home));
+                children.push(restricted_cleanup_node(
+                    &entry_path,
+                    entry_safety,
+                    context.home,
+                ));
                 continue;
             }
         };
@@ -1152,6 +1968,7 @@ fn scan_directory(
         }
         let logical_size_bytes = metadata.len();
         let allocated_size_bytes = allocated_file_size(&entry_path, &metadata);
+        context.record_file(&entry_path, allocated_size_bytes);
         if count_discovered_bytes {
             context.stats.discovered_bytes = context
                 .stats
@@ -1174,7 +1991,7 @@ fn scan_directory(
             logical_size_bytes,
             allocated_size_bytes,
             item_count: 1,
-            safety,
+            safety: entry_safety,
             kind: CleanupNodeKind::File,
             has_children: false,
             children: Vec::new(),
@@ -1189,7 +2006,7 @@ fn scan_directory(
     let item_count = children.total_item_count;
     let has_children = children.has_children;
     let path = display_path(directory, context.home);
-    Ok(CleanupNode {
+    let node = CleanupNode {
         id: path.clone(),
         name: cleanup_node_name(directory),
         path: Some(path),
@@ -1197,11 +2014,28 @@ fn scan_directory(
         logical_size_bytes,
         allocated_size_bytes,
         item_count,
-        safety,
+        safety: directory_safety,
         kind: CleanupNodeKind::Folder,
         has_children,
-        children: children.finish(directory, context.home, safety),
-    })
+        children: children.finish(directory, context.home, directory_safety),
+    };
+    context.capture_location_root(directory, &node);
+    Ok(node)
+}
+
+#[cfg(target_os = "macos")]
+fn is_cloud_backed_cleanup_root(path: &Path, home: &Path) -> bool {
+    [
+        home.join("Library/Mobile Documents"),
+        home.join("Library/CloudStorage"),
+    ]
+    .iter()
+    .any(|root| path == root)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_cloud_backed_cleanup_root(_path: &Path, _home: &Path) -> bool {
+    false
 }
 
 fn scan_directory_summary(
@@ -1212,6 +2046,7 @@ fn scan_directory_summary(
     context: &mut ScanContext<'_>,
     seen_files: &mut HashSet<FileIdentity>,
 ) -> Result<CleanupNode, CommandError> {
+    let root_safety = context.safety_for_path(root, safety);
     let mut logical_size_bytes = 0_u64;
     let mut allocated_size_bytes = 0_u64;
     let mut item_count = 0_usize;
@@ -1258,6 +2093,19 @@ fn scan_directory_summary(
                 continue;
             }
             if file_type.is_dir() {
+                if is_excluded_scan_namespace(&entry_path, context.scan_root) {
+                    continue;
+                }
+                let metadata = match entry.metadata() {
+                    Ok(metadata) => metadata,
+                    Err(_) => {
+                        context.stats.record_unreadable(&entry_path);
+                        continue;
+                    }
+                };
+                if !context.boundary.allows_directory(&metadata) {
+                    continue;
+                }
                 has_children = true;
                 stack.push(entry_path);
                 continue;
@@ -1278,6 +2126,7 @@ fn scan_directory_summary(
             }
             let file_logical_size = metadata.len();
             let file_allocated_size = allocated_file_size(&entry_path, &metadata);
+            context.record_file(&entry_path, file_allocated_size);
             logical_size_bytes = logical_size_bytes.saturating_add(file_logical_size);
             allocated_size_bytes = allocated_size_bytes.saturating_add(file_allocated_size);
             item_count = item_count.saturating_add(1);
@@ -1302,10 +2151,12 @@ fn scan_directory_summary(
     }
 
     if !root_readable {
-        return Ok(restricted_cleanup_node(root, safety, context.home));
+        let node = restricted_cleanup_node(root, root_safety, context.home);
+        context.capture_location_root(root, &node);
+        return Ok(node);
     }
     let path = display_path(root, context.home);
-    Ok(CleanupNode {
+    let node = CleanupNode {
         id: path.clone(),
         name: cleanup_node_name(root),
         path: Some(path),
@@ -1313,11 +2164,13 @@ fn scan_directory_summary(
         logical_size_bytes,
         allocated_size_bytes,
         item_count,
-        safety,
+        safety: root_safety,
         kind: CleanupNodeKind::Folder,
         has_children,
         children: Vec::new(),
-    })
+    };
+    context.capture_location_root(root, &node);
+    Ok(node)
 }
 
 impl ScanStats {
@@ -1679,40 +2532,28 @@ fn platform_paths(home: &Path) -> Vec<LocationDefinition> {
             kind: CleanupLocationKind::Downloads,
             paths: vec![home.join("Downloads")],
             safety: CleanupSafety::Review,
-            collect_large_files: true,
         },
         LocationDefinition {
             kind: CleanupLocationKind::Trash,
             paths: trash_paths(home),
             safety: CleanupSafety::Reclaimable,
-            collect_large_files: false,
         },
         LocationDefinition {
             kind: CleanupLocationKind::AppCache,
             paths: app_cache_paths(home),
             safety: CleanupSafety::Reclaimable,
-            collect_large_files: false,
         },
         LocationDefinition {
             kind: CleanupLocationKind::DeveloperCache,
             paths: developer_cache_paths(home),
             safety: CleanupSafety::Reclaimable,
-            collect_large_files: false,
         },
         LocationDefinition {
             kind: CleanupLocationKind::HiddenData,
             paths: hidden_user_paths(home),
             safety: CleanupSafety::Review,
-            collect_large_files: true,
         },
     ]
-}
-
-fn large_file_roots(home: &Path) -> Vec<PathBuf> {
-    ["Desktop", "Documents", "Movies"]
-        .iter()
-        .map(|name| home.join(name))
-        .collect()
 }
 
 #[cfg(target_os = "macos")]
@@ -1821,9 +2662,32 @@ fn home_directory() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
+fn system_disk_root(home: &Path) -> Option<PathBuf> {
+    home.ancestors()
+        .filter(|ancestor| ancestor.is_absolute())
+        .last()
+        .map(Path::to_path_buf)
+}
+
+#[cfg(target_os = "macos")]
+fn is_excluded_scan_namespace(path: &Path, scan_root: &Path) -> bool {
+    scan_root == Path::new("/") && path == Path::new("/System/Volumes")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_excluded_scan_namespace(_path: &Path, _scan_root: &Path) -> bool {
+    false
+}
+
 fn display_path(path: &Path, home: &Path) -> String {
     path.strip_prefix(home)
-        .map(|relative| format!("~/{}", relative.to_string_lossy()))
+        .map(|relative| {
+            if relative.as_os_str().is_empty() {
+                "~".to_owned()
+            } else {
+                format!("~/{}", relative.to_string_lossy())
+            }
+        })
         .unwrap_or_else(|_| path.to_string_lossy().into_owned())
 }
 
@@ -1849,15 +2713,140 @@ fn next_cleanup_lease_id() -> String {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::sync::Barrier;
+    use std::sync::atomic::AtomicUsize;
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
 
-    #[cfg(unix)]
     #[test]
-    fn cleanup_mount_guard_detects_a_device_boundary() {
-        assert!(!cleanup_filesystem_changed(7, 7));
-        assert!(cleanup_filesystem_changed(7, 8));
+    fn subtree_requests_are_last_request_wins_and_never_scan_concurrently() {
+        let coordinator = Arc::new(CleanupWorkCoordinator::default());
+        let path = PathBuf::from("/fixture/shared");
+        let first_cancelled = coordinator
+            .begin_subtree("first".to_owned(), path.clone())
+            .unwrap();
+        let first_started = Arc::new(Barrier::new(2));
+        let active_workers = Arc::new(AtomicUsize::new(0));
+        let maximum_workers = Arc::new(AtomicUsize::new(0));
+
+        let first_worker = {
+            let coordinator = Arc::clone(&coordinator);
+            let cancelled = Arc::clone(&first_cancelled);
+            let first_started = Arc::clone(&first_started);
+            let active_workers = Arc::clone(&active_workers);
+            let maximum_workers = Arc::clone(&maximum_workers);
+            thread::spawn(move || {
+                coordinator.run_exclusive(&cancelled, || {
+                    let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
+                    maximum_workers.fetch_max(active, Ordering::SeqCst);
+                    first_started.wait();
+                    while !cancelled.load(Ordering::Relaxed) {
+                        thread::sleep(Duration::from_millis(1));
+                    }
+                    active_workers.fetch_sub(1, Ordering::SeqCst);
+                    ensure_scan_active(&cancelled)
+                })
+            })
+        };
+        first_started.wait();
+
+        let second_cancelled = coordinator
+            .begin_subtree("second".to_owned(), path)
+            .unwrap();
+        let second_worker = {
+            let coordinator = Arc::clone(&coordinator);
+            let cancelled = Arc::clone(&second_cancelled);
+            let active_workers = Arc::clone(&active_workers);
+            let maximum_workers = Arc::clone(&maximum_workers);
+            thread::spawn(move || {
+                coordinator.run_exclusive(&cancelled, || {
+                    let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
+                    maximum_workers.fetch_max(active, Ordering::SeqCst);
+                    active_workers.fetch_sub(1, Ordering::SeqCst);
+                    Ok(())
+                })
+            })
+        };
+
+        assert_eq!(
+            first_worker.join().unwrap().unwrap_err().code,
+            "cleanup_scan_cancelled"
+        );
+        second_worker.join().unwrap().unwrap();
+        assert_eq!(maximum_workers.load(Ordering::SeqCst), 1);
+        coordinator.finish_subtree(&first_cancelled);
+        coordinator.finish_subtree(&second_cancelled);
+    }
+
+    #[test]
+    fn full_scan_cancels_subtree_and_blocks_new_subtree_requests() {
+        let coordinator = CleanupWorkCoordinator::default();
+        let subtree = coordinator
+            .begin_subtree("subtree".to_owned(), PathBuf::from("/fixture"))
+            .unwrap();
+        let full_scan = coordinator.begin_full_scan().unwrap();
+
+        assert!(subtree.load(Ordering::Relaxed));
+        let error = coordinator
+            .begin_subtree("later".to_owned(), PathBuf::from("/fixture/later"))
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_scan_in_progress");
+
+        coordinator.finish_subtree(&subtree);
+        coordinator.finish_full_scan(&full_scan);
+    }
+
+    #[test]
+    fn subtree_cancellation_is_scoped_to_the_matching_request() {
+        let coordinator = CleanupWorkCoordinator::default();
+        let cancelled = coordinator
+            .begin_subtree("current".to_owned(), PathBuf::from("/fixture"))
+            .unwrap();
+
+        assert!(!coordinator.cancel_subtree("stale").unwrap());
+        assert!(!cancelled.load(Ordering::Relaxed));
+        assert!(coordinator.cancel_subtree("current").unwrap());
+        assert!(cancelled.load(Ordering::Relaxed));
+
+        coordinator.finish_subtree(&cancelled);
+    }
+
+    fn cleanup_delete_request(
+        home: &Path,
+        paths: Vec<String>,
+        scan_sampled_at_ms: u64,
+    ) -> CleanupDeleteLeaseRequest {
+        let canonical_home = home.canonicalize().unwrap();
+        let root = DeleteRoot::open(&canonical_home).unwrap();
+        let expected_targets = paths
+            .iter()
+            .map(|display| {
+                let path = expand_cleanup_path(display, &canonical_home).unwrap();
+                let inspection = path
+                    .strip_prefix(home)
+                    .or_else(|_| path.strip_prefix(&canonical_home))
+                    .ok()
+                    .and_then(|relative| root.bind(relative).ok())
+                    .and_then(|bound| bound.inspect().ok());
+                CleanupDeleteTargetEvidence {
+                    path: display.clone(),
+                    logical_size_bytes: inspection
+                        .as_ref()
+                        .map_or(0, |value| value.logical_size_bytes),
+                    allocated_size_bytes: inspection
+                        .as_ref()
+                        .map_or(0, |value| value.allocated_size_bytes),
+                    item_count: inspection.as_ref().map_or(0, |value| value.item_count),
+                }
+            })
+            .collect();
+        CleanupDeleteLeaseRequest {
+            paths,
+            scan_sampled_at_ms,
+            expected_targets,
+        }
     }
 
     #[test]
@@ -1885,10 +2874,10 @@ mod tests {
         let cache_path = root.join("nested/cleanup-scan-v3.json");
 
         assert_eq!(load_cleanup_scan_cache(&cache_path).unwrap(), None);
-        save_cleanup_scan_cache(&cache_path, r#"{"version":3}"#).unwrap();
+        save_cleanup_scan_cache(&cache_path, r#"{"version":5}"#).unwrap();
         assert_eq!(
             load_cleanup_scan_cache(&cache_path).unwrap(),
-            Some(r#"{"version":3}"#.to_owned()),
+            Some(r#"{"version":5}"#.to_owned()),
         );
 
         let scan = scan_for_test(&root, Vec::new());
@@ -1938,6 +2927,87 @@ mod tests {
         assert_eq!(sizes.get(Path::new("/Applications/Tiny.app")), Some(&2_048));
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reuses_application_sizes_collected_by_the_exact_scan() {
+        let path = PathBuf::from("/Applications/Example.app");
+        let observed = HashMap::from([(path.clone(), 42_000)]);
+
+        let sizes = application_sizes(
+            std::slice::from_ref(&path),
+            &observed,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+
+        assert_eq!(sizes.get(&path), Some(&42_000));
+        assert_eq!(
+            application_bundle_for_path(
+                Path::new("/Applications/Example.app/Contents/MacOS/example"),
+                Path::new("/Users/example"),
+            ),
+            Some(path),
+        );
+        assert_eq!(
+            application_bundle_for_path(
+                Path::new("/Users/example/Applications/Home.app/Contents/home"),
+                Path::new("/Users/example"),
+            ),
+            Some(PathBuf::from("/Users/example/Applications/Home.app")),
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_terminates_a_stuck_process_group() {
+        let cancelled = AtomicBool::new(false);
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c").arg("trap '' TERM; sleep 30");
+        let started_at = Instant::now();
+
+        let error =
+            run_bounded_child(&mut command, &cancelled, Duration::from_millis(75)).unwrap_err();
+
+        assert_eq!(error, ChildCommandFailure::DeadlineExceeded);
+        assert!(started_at.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_observes_scan_cancellation() {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_cancelled = Arc::clone(&cancelled);
+        let worker = thread::spawn(move || {
+            let mut command = Command::new("/bin/sh");
+            command.arg("-c").arg("sleep 30");
+            run_bounded_child(&mut command, &worker_cancelled, Duration::from_secs(10))
+        });
+        thread::sleep(Duration::from_millis(75));
+        let cancellation_started_at = Instant::now();
+        cancelled.store(true, Ordering::Relaxed);
+
+        assert_eq!(
+            worker.join().unwrap().unwrap_err(),
+            ChildCommandFailure::Cancelled
+        );
+        assert!(cancellation_started_at.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_refuses_output_over_the_limit() {
+        let cancelled = AtomicBool::new(false);
+        let mut command = Command::new("/usr/bin/yes");
+
+        let error =
+            run_bounded_child(&mut command, &cancelled, Duration::from_secs(2)).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ChildCommandFailure::OutputLimitExceeded | ChildCommandFailure::UnsuccessfulExit
+        ));
+    }
+
     #[test]
     fn scans_categories_and_keeps_large_files_as_review_only_evidence() {
         let root = test_root("scan");
@@ -1959,13 +3029,11 @@ mod tests {
                     kind: CleanupLocationKind::Downloads,
                     paths: vec![downloads],
                     safety: CleanupSafety::Review,
-                    collect_large_files: true,
                 },
                 LocationDefinition {
                     kind: CleanupLocationKind::Trash,
                     paths: vec![trash],
                     safety: CleanupSafety::Reclaimable,
-                    collect_large_files: false,
                 },
             ],
         );
@@ -1985,7 +3053,11 @@ mod tests {
             scan.locations[0].nodes[0].children[0].kind,
             CleanupNodeKind::File,
         );
-        assert_eq!(scan.largest_files.len(), 1);
+        assert!(
+            scan.largest_files
+                .iter()
+                .any(|file| file.name == "large.zip")
+        );
         assert!(scan.deletion_available);
         fs::remove_dir_all(root).unwrap();
     }
@@ -2004,7 +3076,6 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: false,
             }],
         );
 
@@ -2025,6 +3096,175 @@ mod tests {
     }
 
     #[test]
+    fn keeps_the_real_home_path_tree_separate_from_usage_categories() {
+        let root = test_root("path-tree");
+        let downloads = root.join("Downloads");
+        let pictures = root.join("Pictures");
+        fs::create_dir_all(&downloads).unwrap();
+        fs::create_dir_all(&pictures).unwrap();
+        fs::write(downloads.join("installer.dmg"), vec![1_u8; 4_096]).unwrap();
+        fs::write(pictures.join("portrait.raw"), vec![2_u8; 8_192]).unwrap();
+
+        let scan = scan_for_test(
+            &root,
+            vec![LocationDefinition {
+                kind: CleanupLocationKind::Downloads,
+                paths: vec![downloads],
+                safety: CleanupSafety::Review,
+            }],
+        );
+
+        assert_eq!(scan.root.path.as_deref(), Some("~"));
+        assert_eq!(scan.root.item_count, 2);
+        assert!(
+            scan.root
+                .children
+                .iter()
+                .any(|node| node.name == "Downloads")
+        );
+        assert!(
+            scan.root
+                .children
+                .iter()
+                .any(|node| node.name == "Pictures")
+        );
+        assert_eq!(scan.locations[0].item_count, 1);
+        assert_eq!(scan.locations[0].nodes[0].name, "Downloads");
+        assert!(
+            scan.locations[0]
+                .nodes
+                .iter()
+                .all(|node| node.name != "Pictures")
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn scans_the_system_disk_root_while_preserving_home_display_paths() {
+        let disk_root = test_root("system-disk");
+        let home = disk_root.join("Users/demo");
+        let downloads = home.join("Downloads");
+        let shared_library = disk_root.join("Library/Application Support");
+        fs::create_dir_all(&downloads).unwrap();
+        fs::create_dir_all(&shared_library).unwrap();
+        fs::write(downloads.join("personal.bin"), vec![1_u8; 256]).unwrap();
+        fs::write(shared_library.join("system-cache.bin"), vec![2_u8; 1_024]).unwrap();
+
+        let scan = scan_filesystem(
+            &disk_root,
+            &home,
+            vec![LocationDefinition {
+                kind: CleanupLocationKind::Downloads,
+                paths: vec![downloads],
+                safety: CleanupSafety::Review,
+            }],
+            false,
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+
+        assert_eq!(
+            scan.root.path.as_deref(),
+            Some(disk_root.to_string_lossy().as_ref())
+        );
+        assert!(scan.root.children.iter().any(|node| node.name == "Library"));
+        let users = scan
+            .root
+            .children
+            .iter()
+            .find(|node| node.name == "Users")
+            .unwrap();
+        assert_eq!(users.children[0].path.as_deref(), Some("~"));
+        assert!(
+            scan.largest_files
+                .iter()
+                .any(|file| file.name == "system-cache.bin")
+        );
+        assert_eq!(scan.locations[0].item_count, 1);
+
+        fs::remove_dir_all(disk_root).unwrap();
+    }
+
+    #[test]
+    fn expands_a_system_disk_subtree_outside_the_home_folder() {
+        let disk_root = test_root("system-subtree");
+        let home = disk_root.join("Users/demo");
+        let shared = disk_root.join("Library/Shared");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&shared).unwrap();
+        fs::write(shared.join("asset.bin"), vec![3_u8; 1_024]).unwrap();
+
+        let node = scan_cleanup_subtree_at(
+            CleanupSubtreeRequest {
+                request_id: "system-subtree".to_owned(),
+                path: shared.to_string_lossy().into_owned(),
+                safety: CleanupSafety::Reclaimable,
+            },
+            &home,
+            &disk_root,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+
+        assert_eq!(node.name, "Shared");
+        assert_eq!(node.safety, CleanupSafety::Review);
+        assert_eq!(node.item_count, 1);
+        assert_eq!(node.children[0].name, "asset.bin");
+
+        fs::remove_dir_all(disk_root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn skips_cloud_backed_file_provider_roots_during_local_space_scan() {
+        let root = test_root("cloud-backed-root");
+        let mobile_documents = root.join("Library/Mobile Documents");
+        let cloud_storage = root.join("Library/CloudStorage");
+        fs::create_dir_all(mobile_documents.join("example/Documents/note.nbn")).unwrap();
+        fs::create_dir_all(cloud_storage.join("Example Drive/Documents")).unwrap();
+        fs::write(
+            mobile_documents.join("example/Documents/note.nbn/content.bin"),
+            vec![1_u8; 8_192],
+        )
+        .unwrap();
+        fs::write(
+            cloud_storage.join("Example Drive/Documents/cloud.bin"),
+            vec![2_u8; 8_192],
+        )
+        .unwrap();
+
+        let scan = scan_for_test(&root, Vec::new());
+        let library = scan
+            .root
+            .children
+            .iter()
+            .find(|node| node.name == "Library")
+            .unwrap();
+
+        assert!(library.children.iter().any(|node| {
+            node.name == "Mobile Documents" && node.kind == CleanupNodeKind::Restricted
+        }));
+        assert!(library.children.iter().any(|node| {
+            node.name == "CloudStorage" && node.kind == CleanupNodeKind::Restricted
+        }));
+        assert!(
+            scan.unreadable_paths
+                .iter()
+                .any(|path| path == "~/Library/Mobile Documents")
+        );
+        assert!(
+            scan.unreadable_paths
+                .iter()
+                .any(|path| path == "~/Library/CloudStorage")
+        );
+        assert!(scan.largest_files.is_empty());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn consolidates_visual_children_without_stopping_the_scan() {
         let root = test_root("aggregate");
         let downloads = root.join("Downloads");
@@ -2039,7 +3279,6 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: false,
             }],
         );
 
@@ -2080,14 +3319,13 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: false,
             }],
         );
 
         let scanned_root = &scan.locations[0].nodes[0];
         assert_eq!(scanned_root.item_count, 1);
         let mut boundary = scanned_root;
-        for _ in 0..MAX_VISUAL_TREE_DEPTH {
+        for _ in 0..MAX_VISUAL_TREE_DEPTH.saturating_sub(1) {
             boundary = &boundary.children[0];
         }
         assert!(boundary.has_children);
@@ -2169,7 +3407,6 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: false,
             }],
         );
 
@@ -2199,25 +3436,32 @@ mod tests {
                     kind: CleanupLocationKind::Downloads,
                     paths: vec![downloads],
                     safety: CleanupSafety::Review,
-                    collect_large_files: false,
                 },
                 LocationDefinition {
                     kind: CleanupLocationKind::Trash,
                     paths: vec![trash],
                     safety: CleanupSafety::Reclaimable,
-                    collect_large_files: false,
                 },
             ],
         );
 
-        assert_eq!(scan.locations[0].item_count, 1);
-        assert_eq!(scan.locations[1].item_count, 0);
+        assert_eq!(
+            scan.locations
+                .iter()
+                .map(|location| location.item_count)
+                .sum::<usize>(),
+            1,
+        );
         assert_eq!(
             scan.locations
                 .iter()
                 .map(|location| location.size_bytes)
                 .sum::<u64>(),
-            scan.locations[0].size_bytes,
+            scan.locations
+                .iter()
+                .map(|location| location.size_bytes)
+                .max()
+                .unwrap_or(0),
         );
         fs::remove_dir_all(root).unwrap();
     }
@@ -2233,16 +3477,33 @@ mod tests {
 
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![display.clone()],
-                    scan_sampled_at_ms: 0,
-                },
+                cleanup_delete_request(&root, vec![display.clone()], 0),
                 &root,
             )
             .unwrap();
 
         assert_eq!(lease.paths, vec![display.clone()]);
         assert_eq!(lease.changed_paths, vec![display.clone()]);
+        assert!(!lease.executable);
+        let unavailable = controller
+            .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
+                Ok(0)
+            })
+            .unwrap_err();
+        assert_eq!(unavailable.code, "cleanup_confirmation_unavailable");
+
+        let lease = controller
+            .create_lease_for_home(
+                CleanupDeleteLeaseRequest {
+                    paths: vec![display.clone()],
+                    scan_sampled_at_ms: lease.refreshed_at_ms,
+                    expected_targets: lease.refreshed_targets,
+                },
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+        assert!(lease.changed_paths.is_empty());
         let mut deleted = Vec::new();
         let result = controller
             .execute_with(
@@ -2289,10 +3550,11 @@ mod tests {
 
         let home_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![root.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![root.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2300,10 +3562,11 @@ mod tests {
 
         let trash_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![trash.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![trash.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2312,10 +3575,7 @@ mod tests {
         let trash_item = trash.join("old.txt").to_string_lossy().into_owned();
         let trash_item_lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![trash_item.clone()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(&root, vec![trash_item.clone()], now_millis()),
                 &root,
             )
             .unwrap();
@@ -2324,13 +3584,14 @@ mod tests {
 
         let overlap_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         folder.to_string_lossy().into_owned(),
                         child.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2350,13 +3611,14 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         file.to_string_lossy().into_owned(),
                         directory.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -2374,9 +3636,104 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn cleanup_delete_can_stop_during_a_large_directory() {
+        let root = test_root("cancel-permanent-delete");
+        let target = root.join("Library/Caches/example");
+        fs::create_dir_all(&target).unwrap();
+        for index in 0..180 {
+            fs::write(target.join(format!("cache-{index}.bin")), b"cache").unwrap();
+        }
+        let display_path = target.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(&root, vec![display_path.clone()], now_millis()),
+                &root,
+            )
+            .unwrap();
+        let cancelled = AtomicBool::new(false);
+        let mut progress_events = Vec::new();
+
+        let result = controller
+            .execute_cancellable(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                &cancelled,
+                &mut |progress| {
+                    if progress.phase == CleanupDeleteProgressPhase::Deleting
+                        && progress.processed_entry_count >= 128
+                    {
+                        cancelled.store(true, Ordering::Relaxed);
+                    }
+                    progress_events.push(progress);
+                },
+            )
+            .unwrap();
+
+        assert!(result.cancelled);
+        assert_eq!(
+            result.interrupted_path.as_deref(),
+            Some(display_path.as_str())
+        );
+        assert!(result.deleted.is_empty());
+        assert!(target.exists());
+        assert!(fs::read_dir(&target).unwrap().count() < 180);
+        assert!(progress_events.iter().any(|progress| {
+            progress.phase == CleanupDeleteProgressPhase::Deleting
+                && progress.total_entry_count == 0
+                && progress.processed_entry_count >= 128
+        }));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_cancelled_before_execution_changes_nothing() {
+        let root = test_root("cancel-before-delete");
+        let target = root.join("Downloads/archive.zip");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, b"archive").unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
+                &root,
+            )
+            .unwrap();
+        let cancelled = AtomicBool::new(true);
+
+        let result = controller
+            .execute_cancellable(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                &cancelled,
+                &mut |_| {},
+            )
+            .unwrap();
+
+        assert!(result.cancelled);
+        assert!(result.interrupted_path.is_none());
+        assert!(result.deleted.is_empty());
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_coordinator_cancels_only_the_active_operation() {
+        let coordinator = CleanupDeleteCoordinator::default();
+        assert!(!coordinator.cancel().unwrap());
+        let cancelled = coordinator.begin().unwrap();
+        assert!(coordinator.cancel().unwrap());
+        assert!(cancelled.load(Ordering::Relaxed));
+        coordinator.finish(&cancelled);
+        assert!(!coordinator.cancel().unwrap());
+    }
+
     #[cfg(unix)]
     #[test]
-    fn cleanup_delete_does_not_follow_nested_symbolic_links() {
+    fn cleanup_delete_fails_closed_on_nested_symbolic_links() {
         use std::os::unix::fs::symlink;
 
         let root = test_root("delete-nested-symlink");
@@ -2388,22 +3745,20 @@ mod tests {
         fs::write(outside.join("keep.txt"), b"keep").unwrap();
         symlink(&outside, target.join("outside-link")).unwrap();
         let mut controller = CleanupDeleteController::default();
-        let lease = controller
+        let error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
-            .unwrap();
+            .unwrap_err();
 
-        let result = controller
-            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
-            .unwrap();
-
-        assert_eq!(result.deleted.len(), 1);
-        assert!(!target.exists());
+        assert_eq!(error.code, "cleanup_target_unavailable");
+        assert!(error.message.contains("symbolic link"));
+        assert!(target.exists());
         assert!(outside.join("keep.txt").exists());
         fs::remove_dir_all(root).unwrap();
     }
@@ -2422,10 +3777,11 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -2449,10 +3805,11 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -2474,6 +3831,69 @@ mod tests {
     }
 
     #[test]
+    fn cleanup_delete_rejects_a_deep_change_after_confirmation() {
+        let root = test_root("deep-revalidate");
+        let target = root.join("Downloads");
+        let deep = target.join("one/two/three");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("before.txt"), b"before").unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+
+        fs::write(deep.join("after.txt"), b"after").unwrap();
+        let mut attempted = false;
+        let error = controller
+            .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
+                attempted = true;
+                Ok(0)
+            })
+            .unwrap_err();
+
+        assert_eq!(error.code, "cleanup_target_changed");
+        assert!(!attempted);
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_refresh_blocks_a_deep_change_before_lease_issuance() {
+        let root = test_root("deep-refresh");
+        let target = root.join("Downloads");
+        let deep = target.join("one/two/three");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("before.txt"), b"before").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![target.to_string_lossy().into_owned()],
+            now_millis(),
+        );
+        fs::write(deep.join("after.txt"), b"after").unwrap();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller.create_lease_for_home(request, &root).unwrap();
+
+        assert!(!lease.executable);
+        assert_eq!(lease.changed_paths, lease.paths);
+        assert_eq!(lease.refreshed_targets[0].item_count, 2);
+        let error = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_confirmation_unavailable");
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cleanup_delete_reports_partial_platform_failures() {
         let root = test_root("trash-partial");
         let first = root.join("first.txt");
@@ -2484,13 +3904,14 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         first.to_string_lossy().into_owned(),
                         second.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -2534,7 +3955,6 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: true,
             }],
         );
 
@@ -2572,7 +3992,6 @@ mod tests {
                 kind: CleanupLocationKind::Downloads,
                 paths: vec![downloads],
                 safety: CleanupSafety::Review,
-                collect_large_files: false,
             }],
             false,
             &cancelled,
@@ -2597,6 +4016,19 @@ mod tests {
         let missing = inspect_cleanup_path(root.to_string_lossy().as_ref()).unwrap();
         assert!(!missing.exists);
         assert!(missing.modified_at_ms.is_none());
+    }
+
+    #[test]
+    fn finds_the_application_bundle_containing_an_executable() {
+        let executable = Path::new("/Applications/StatusOrbit.app/Contents/MacOS/status-orbit");
+        assert_eq!(
+            application_bundle_from_executable(executable),
+            Some(PathBuf::from("/Applications/StatusOrbit.app"))
+        );
+        assert_eq!(
+            application_bundle_from_executable(Path::new("/tmp/status-orbit")),
+            None
+        );
     }
 
     fn scan_for_test(root: &Path, definitions: Vec<LocationDefinition>) -> CleanupScan {

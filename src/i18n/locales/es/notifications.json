@@ -1,0 +1,30 @@
+{
+  "triggered": {
+    "cpu": {
+      "title": "El equipo está bajo una carga intensa",
+      "body": "El procesador ha estado ocupado y puede causar lentitud, sobrecalentamiento o mayor consumo de batería. Abra StatusOrbit para ver el impacto más grande de las aplicaciones."
+    },
+    "memory": {
+      "title": "La memoria disponible es limitada",
+      "body": "Se está utilizando poca memoria y hay actividad significativa en el espacio de intercambio. StatusOrbit nunca cerrará aplicaciones automáticamente."
+    },
+    "volume": {
+      "title": "El espacio libre en disco es bajo",
+      "body": "El uso del disco ha permanecido por encima del 85%. Revise primero el mapa de espacio disponible; cada acción con archivos requiere confirmación."
+    }
+  },
+  "recovered": {
+    "cpu": {
+      "title": "La carga del equipo ha vuelto a la normalidad",
+      "body": "El uso del procesador ha permanecido dentro del rango normal. La lentitud, el sobrecalentamiento o el impacto en la batería anteriores deberían estar disminuyendo."
+    },
+    "memory": {
+      "title": "La presión de memoria se ha aliviado",
+      "body": "La memoria disponible y la actividad de intercambio se mantienen en un rango saludable, por lo que cambiar de aplicaciones debería sentirse más fluido."
+    },
+    "volume": {
+      "title": "El espacio en disco está dentro de un rango saludable",
+      "body": "El uso del disco se mantiene en un rango seguro, por lo que no es necesario realizar ninguna limpieza adicional en este momento."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "kicker": "Assistant Orbit",
+  "dragHint": "Faites glisser l'Assistant Orbit pour le déplacer ; maintenez le curseur sur l'Assistant pour afficher des informations ; cliquez avec la bonne main pour ouvrir le menu",
+  "expand": "Ouvrir l'assistant Orbit",
+  "collapse": "Réduire l'assistant Orbit",
+  "menu": "Menu de l'assistant Orbit",
+  "hide": "Masquer l'assistant",
+  "reason": "{{resource}} a suivi de près. Ouvrez la fenêtre principale pour en savoir plus.",
+  "action": {
+    "loading": "Ouvrir l'aide quotidienne",
+    "observing": "Afficher l'état actuel",
+    "normal": "J'ai un problème",
+    "attention": "Vérifiez la raison",
+    "urgent": "Consultez maintenant"
+  },
+  "recovering": "La valeur s'est stabilisée. Je continue de surveiller pour confirmer la reprise."
+}

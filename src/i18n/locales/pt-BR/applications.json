@@ -1,0 +1,38 @@
+{
+  "kicker": "Resumo de aplicativos",
+  "overviewTitle": "Quais aplicativos estão consumindo mais recursos?",
+  "title": "Impacto de recursos dos aplicativos",
+  "description": "O StatusOrbit agrupa processos auxiliares sob nomes de aplicativos familiares e, em seguida, calcula o uso total de CPU, memória e disco.",
+  "viewAll": "Ver todos os aplicativos",
+  "search": "Pesquisar aplicativos",
+  "searchPlaceholder": "Pesquise por nome do aplicativo",
+  "sortLabel": "Ordem de classificação dos aplicativos",
+  "sort": {
+    "impact": "Impacto geral",
+    "cpu": "Uso da CPU",
+    "memory": "Uso de memória",
+    "disk": "Uso do disco"
+  },
+  "systemComponent": "Processo do sistema · Não encerre",
+  "processCount": "{{count}} Processos relacionados",
+  "memory": "Uso de memória",
+  "disk": "Uso do disco",
+  "level": {
+    "low": "Impacto baixo",
+    "moderate": "Algum impacto",
+    "high": "Alto impacto",
+    "critical": "Impacto significativo"
+  },
+  "selected": {
+    "title": "Como {{name}} afeta o computador",
+    "cpu": "O uso do processador é o principal impacto no momento ({{value}}). Se permanecer alto, o computador pode parecer lento, esquentar ou consumir mais energia.",
+    "memory": "A memória é o principal impacto no momento ({{value}}). A ação só é necessária quando a pressão na memória e a atividade de troca também estiverem presentes.",
+    "disk": "A atividade do disco é o principal impacto no momento ({{value}}). Sincronizações, downloads e compilações podem causar leituras e gravações temporárias.",
+    "balanced": "Nenhum recurso se destaca no momento, portanto, o impacto geral é baixo.",
+    "systemSafety": "Este é um componente do sistema. Não o encerre diretamente; inspecione evidências profissionais primeiro se algo parecer errado.",
+    "appSafety": "Este é um aplicativo comum. O StatusOrbit nunca o encerrará automaticamente e todas as ações de encerramento ainda exigem confirmação.",
+    "professionalDetails": "Inspecione processos no modo profissional"
+  },
+  "empty": "Nenhum aplicativo correspondente",
+  "safety": "Selecionar um aplicativo apenas abre suas evidências de recursos; todas as ações de encerramento ainda requerem confirmação separada."
+}

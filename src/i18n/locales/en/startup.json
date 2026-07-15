@@ -1,0 +1,126 @@
+{
+  "eyebrow": "Boot and sign-in",
+  "title": "Startup items",
+  "description": "See what launches at sign-in or when background conditions are met. Third-party items are explained first; system services are never presented as ordinary switches.",
+  "guided": {
+    "kicker": "Third-party sign-in items",
+    "title": "Startup items worth reviewing",
+    "description": "Only third-party sign-in items that can be safely restored appear here.",
+    "found": "{{count}} items are worth reviewing",
+    "foundDescription": "Apps you rarely use can be disabled after confirmation; the change applies at the next sign-in.",
+    "clear": "No third-party sign-in item needs attention",
+    "clearDescription": "System services and conditional maintenance items are never presented as ordinary switches."
+  },
+  "scanning": "Checking…",
+  "loadingTitle": "Reading startup locations",
+  "loadingDescription": "StatusOrbit only reads public startup configuration and never loads or runs the commands inside it.",
+  "summary": "Startup summary",
+  "reviewCount": "Worth a look",
+  "reviewHint": "Third-party items that launch at sign-in",
+  "thirdPartyCount": "Third-party items",
+  "thirdPartyHint": "Includes conditional background helpers",
+  "systemCount": "System items",
+  "systemHint": "Read-only and never shown as ordinary switches",
+  "inventory": "Startup inventory",
+  "listTitle": "What starts automatically",
+  "filters": "Startup item filters",
+  "filter": {
+    "review": "Worth a look",
+    "all": "All",
+    "system": "System items"
+  },
+  "search": "Search name, publisher, or path",
+  "emptyTitle": "Nothing needs review",
+  "emptyDescription": "Switch to All to inspect conditional and system maintenance items.",
+  "publisherUnknown": "Unknown publisher",
+  "enabled": "Starts automatically",
+  "disabled": "Disabled",
+  "technicalDetails": "Show technical location",
+  "managementBoundary": "Only reversible user-level third-party startup files can be disabled. System items and unsupported sources stay read-only.",
+  "readOnlyBoundary": "This platform exposes no startup source StatusOrbit can safely restore, so the inventory remains read-only.",
+  "unreadable": "{{count}} startup locations could not be read due to permissions",
+  "actions": {
+    "disable": "Disable at sign-in",
+    "enable": "Restore at sign-in"
+  },
+  "managementStatus": {
+    "system": "System item · read-only",
+    "protected": "Protected item",
+    "unsupported": "This source is not manageable yet"
+  },
+  "impact": {
+    "none": {
+      "title": "No current startup impact"
+    },
+    "low": {
+      "title": "Low expected impact"
+    },
+    "moderate": {
+      "title": "May affect sign-in speed"
+    },
+    "high": {
+      "title": "High background impact now"
+    },
+    "running": "Running now: CPU {{cpu}} · Memory {{memory}}",
+    "notMatched": "No currently running app could be matched"
+  },
+  "outcome": {
+    "disabled": "Automatic startup for {{name}} is disabled. The running app was not closed.",
+    "enabled": "Automatic startup for {{name}} is restored."
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "Disable automatic startup for {{name}}?",
+      "description": "StatusOrbit moves this user-level startup file into its own recoverable storage and does not delete it.",
+      "whenDescription": "This takes effect at the next sign-in. Restoring it also takes effect from a future sign-in.",
+      "confirm": "Confirm disable at sign-in"
+    },
+    "enable": {
+      "title": "Restore automatic startup for {{name}}?",
+      "description": "StatusOrbit moves the configuration it saved back to the original location.",
+      "whenDescription": "From the next sign-in, the system can launch this item automatically again.",
+      "confirm": "Confirm restore at sign-in"
+    },
+    "reversibleTitle": "You can restore it later",
+    "reversibleDescription": "The file only moves between two user folders and is never edited or deleted.",
+    "whenTitle": "The current session does not change immediately",
+    "runningTitle": "The running app stays open",
+    "runningDescription": "Disabling startup does not quit the current app or interrupt work already in progress.",
+    "preparing": "Verifying the startup item and file state…",
+    "applying": "Updating safely…",
+    "errors": {
+      "startup_item_protected": "This is not a user-level third-party startup item StatusOrbit can manage safely, so nothing changed.",
+      "startup_item_unavailable": "This startup item changed or disappeared. Refresh the list and try again.",
+      "startup_state_changed": "The startup file changed after confirmation, so StatusOrbit changed nothing.",
+      "startup_destination_conflict": "Another configuration appeared at the destination. StatusOrbit refused to overwrite it.",
+      "startup_confirmation_unavailable": "This confirmation is no longer available. Cancel and open it again.",
+      "startup_confirmation_expired": "The confirmation expired. Review the item again before continuing.",
+      "startup_management_failed": "The system could not move the startup file safely. The original state was preserved."
+    }
+  },
+  "source": {
+    "launch_agent": "LaunchAgent",
+    "launch_daemon": "LaunchDaemon",
+    "desktop_entry": "Autostart entry",
+    "registry_run": "Registry Run",
+    "startup_folder": "Startup folder"
+  },
+  "advice": {
+    "review": {
+      "title": "Consider whether you need it",
+      "description": "It launches every time you sign in. If you rarely use it, you can disable it after confirmation."
+    },
+    "normal": {
+      "title": "Runs conditionally",
+      "description": "It usually starts for updates, sync, or a specific event and may not slow sign-in."
+    },
+    "system": {
+      "title": "System or device service",
+      "description": "Do not treat this as an ordinary startup app. StatusOrbit keeps it read-only."
+    },
+    "disabled": {
+      "title": "Currently disabled",
+      "description": "The configuration remains, but the system will not start it automatically from this entry."
+    }
+  }
+}

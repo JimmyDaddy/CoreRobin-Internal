@@ -1,4 +1,11 @@
-import type { SupportedLanguage } from "./i18n";
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  type InterfaceScale,
+} from "./appearance";
+import {
+  isSupportedLanguage,
+  type SupportedLanguage,
+} from "./language";
 import type { HistoryRetentionDays } from "./historyStore";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
@@ -7,7 +14,11 @@ import {
   readMigratedStorageItem,
 } from "./storageMigration";
 
-export const APP_SETTINGS_STORAGE_KEY = "status-orbit.settings.v1";
+export {
+  APP_SETTINGS_STORAGE_KEY,
+  applyAppAppearance,
+  type InterfaceScale,
+} from "./appearance";
 export const SYSTEM_SAMPLE_INTERVAL_OPTIONS = [500, 1_000, 2_000, 5_000] as const;
 export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000] as const;
 
@@ -27,6 +38,12 @@ export interface AppSettings {
   historyRetentionDays: HistoryRetentionDays;
   desktopNotificationsEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
+  interfaceScale: InterfaceScale;
+  reduceMotion: boolean;
+  showDockIcon: boolean;
+  launchAtLogin: boolean;
+  companionAlwaysOnTop: boolean;
+  companionShowOnStartup: boolean;
 }
 
 export function defaultAppSettings(
@@ -45,6 +62,12 @@ export function defaultAppSettings(
     historyRetentionDays: 7,
     desktopNotificationsEnabled: false,
     mutedNotificationResources: [],
+    interfaceScale: "comfortable",
+    reduceMotion: false,
+    showDockIcon: false,
+    launchAtLogin: false,
+    companionAlwaysOnTop: false,
+    companionShowOnStartup: false,
   };
 }
 
@@ -103,6 +126,24 @@ export function parseAppSettings(
       mutedNotificationResources: isNotificationResourceArray(value.mutedNotificationResources)
         ? value.mutedNotificationResources
         : fallback.mutedNotificationResources,
+      interfaceScale: isInterfaceScale(value.interfaceScale)
+        ? value.interfaceScale
+        : fallback.interfaceScale,
+      reduceMotion: typeof value.reduceMotion === "boolean"
+        ? value.reduceMotion
+        : fallback.reduceMotion,
+      showDockIcon: typeof value.showDockIcon === "boolean"
+        ? value.showDockIcon
+        : fallback.showDockIcon,
+      launchAtLogin: typeof value.launchAtLogin === "boolean"
+        ? value.launchAtLogin
+        : fallback.launchAtLogin,
+      companionAlwaysOnTop: typeof value.companionAlwaysOnTop === "boolean"
+        ? value.companionAlwaysOnTop
+        : fallback.companionAlwaysOnTop,
+      companionShowOnStartup: typeof value.companionShowOnStartup === "boolean"
+        ? value.companionShowOnStartup
+        : fallback.companionShowOnStartup,
     };
   } catch {
     return fallback;
@@ -145,12 +186,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isSupportedLanguage(value: unknown): value is SupportedLanguage {
-  return value === "zh-CN" || value === "en";
-}
-
 function isExperienceMode(value: unknown): value is ExperienceMode {
   return value === "simple" || value === "professional";
+}
+
+function isInterfaceScale(value: unknown): value is InterfaceScale {
+  return value === "comfortable" || value === "large";
 }
 
 function isProcessViewMode(value: unknown): value is ProcessViewMode {

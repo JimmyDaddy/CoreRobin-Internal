@@ -1,0 +1,107 @@
+{
+  "title": "자원 추세",
+  "legend": "차트 설명",
+  "memory": "메모리 사용량",
+  "warmup": "워밍업",
+  "establishing": "기본 메모리 사용량 설정 중…",
+  "chartLabel": "CPU {{cpu}}%, 메모리 {{memory}}%",
+  "localArchive": "로컬 자원 기록",
+  "archiveTitle": "자원 변화 기록",
+  "archiveDescription": "재시작 전후의 장기적인 자원 변화와 지속적인 압박 및 복구 이벤트를 확인합니다.",
+  "saving": "이 장치에 저장",
+  "sessionOnly": "현재 세션만 저장",
+  "controls": "저장 기록 설정",
+  "saveOnDevice": "모든 저장 기록을 이 장치에 저장",
+  "retention": "보존",
+  "retentionDays": "{{count}} 일 동안 보존",
+  "noRange": "시간 범위가 지정되지 않음",
+  "savedPoints": "{{count}} 개의 저장된 기록",
+  "clearSaved": "저장된 데이터를 삭제",
+  "emptyTitle": "저장 기록을 초기화",
+  "emptyDescription": "최초 유효한 측정값을 기준으로 트렌드가 표시됩니다. 재시작 시 데이터를 유지하려면 장치 내 저장 기능을 활성화하세요.",
+  "summary": "사용 기록 요약",
+  "averageCpu": "평균 CPU 사용량",
+  "averageMemory": "평균 메모리 사용량",
+  "peakDisk": "최대 디스크 사용량",
+  "peakNetwork": "최대 네트워크 사용량",
+  "fiveMinuteResolution": "5분 간격으로 측정",
+  "resourceChart": "CPU 및 메모리 사용량 변화 추이",
+  "throughputChart": "디스크 및 네트워크 처리량 변화 추이",
+  "resourceChartLabel": "역사적 CPU 및 메모리 사용량 변화",
+  "throughputChartLabel": "과거의 디스크 및 네트워크 처리량 추세",
+  "stories": {
+    "eyebrow": "무슨 일이 일어났는지",
+    "title": "컴퓨터 관련 정보",
+    "description": "경고와 복구 상황을 하나의 사건으로 묶어, 그 영향과 결과를 쉽게 설명합니다.",
+    "cause": "주요 원인: {{name}}가 가장 큰 영향을 미쳤습니다.",
+    "timeline": "사건 발생 시간",
+    "startedAt": "{{time}}에서 시작됨",
+    "peakedAt": "{{value}}% · {{time}}에서 최고치 기록",
+    "endedAt": "{{time}}로 복구됨",
+    "count": "{{count}} 최근 스토리",
+    "happeningNow": "현재 진행 중",
+    "resolved": "정상 복구됨",
+    "emptyTitle": "최근에 특별한 변화 없음",
+    "emptyDescription": "StatusOrbit는 일시적인 변동을 무시하고, 컴퓨터 성능에 영향을 미치는 지속적인 상태만 기록합니다.",
+    "cpu": {
+      "active": {
+        "title": "컴퓨터가 계속 사용 중입니다",
+        "description": "CPU 사용량이 지속적으로 높게 유지되고 있습니다. {{duration}}최고치를 기록하며 {{value}}%까지 올라갈 수 있습니다. 컴퓨터가 느리거나, 뜨거워지거나, 배터리 소모가 심해질 수 있습니다."
+      },
+      "recovered": {
+        "title": "컴퓨터가 과부하 상태였으나 정상으로 복구됨",
+        "description": "높은 CPU 사용량은 약 {{duration}}초 동안 지속되었으며, 최대 {{value}}%까지 상승한 후 정상 범위로 돌아왔습니다."
+      },
+      "guidance": "컴퓨터가 여전히 느리게 느껴진다면, 실행 중인 앱을 확인하여 가장 큰 영향을 주는 앱을 찾아보세요. StatusOrbit는 자동으로 앱을 종료하지 않습니다."
+    },
+    "memory": {
+      "active": {
+        "title": "사용 가능한 메모리가 부족합니다",
+        "description": "사용 가능한 메모리가 부족하고 스왑 활동이 지속적으로 발생하고 있습니다. {{duration}}애플리케이션을 전환하면 속도가 느려질 수 있습니다."
+      },
+      "recovered": {
+        "title": "메모리 압력이 높아졌다가 정상화됨",
+        "description": "메모리가 부족한 상태가 {{duration}} 동안 지속되었으나, 이후 메모리와 스왑 사용량이 회복되었습니다."
+      },
+      "guidance": "높은 메모리 사용량 자체는 정상입니다. StatusOrbit는 메모리 부족과 의미 있는 스왑 활동이 함께 발생할 때만 기록합니다."
+    },
+    "volume": {
+      "active": {
+        "title": "디스크 공간이 부족함",
+        "description": "디스크 사용량이 {{duration}} 동안 경고 수준을 초과하여 약 {{value}}%까지 증가했습니다."
+      },
+      "recovered": {
+        "title": "디스크 공간 압력이 완화됨",
+        "description": "디스크 공간이 부족한 상태가 {{duration}} 동안 지속되었으나, 현재 디스크 공간은 경고 수준 이하로 회복되었습니다."
+      },
+      "guidance": "먼저 '클린업'을 실행하여 디스크 사용 현황을 확인하십시오. 모든 파일 작업에는 사용자 확인이 필요합니다."
+    }
+  },
+  "alerts": {
+    "eyebrow": "지역 이벤트 로그",
+    "title": "경고 및 복구 이벤트",
+    "description": "경고는 지속적으로 높은 수치를 나타낼 때 발생하며, 복구 하이스터리스와 냉각 시간은 급격한 변화와 반복적인 이벤트를 줄입니다.",
+    "active": "{{count}} 현재 활성 알림",
+    "normal": "모든 리소스 정상",
+    "savedEvents": "{{count}} 저장된 이벤트 기록",
+    "filters": "경고 필터 설정",
+    "all": "전체",
+    "volume": "리소스 사용량",
+    "eventCount": "{{count}} 이벤트 수",
+    "emptyTitle": "경고 이벤트 없음",
+    "emptyDescription": "일시적인 급증은 무시됩니다. 지속적인 과부하 및 복구 이벤트는 여기에 표시됩니다.",
+    "recovered": "복구됨",
+    "severity": {
+      "high": "높음",
+      "critical": "심각함"
+    },
+    "triggeredDetail": "{{value}}정상 범위를 초과 {{threshold}}정상 범위 내에서 {{duration}}",
+    "recoveredDetail": "{{value}}%로 복구됨, {{duration}}%에서"
+  },
+  "privacyEyebrow": "데이터 범위 설정",
+  "privacyTitle": "개인 정보 보호 정책",
+  "privacyLocal": "사용 기록은 이 장치의 StatusOrbit WebView 저장소에 남아있으며, 업로드되거나 동기화되지 않습니다.",
+  "privacyCollected": "CPU 및 메모리 사용량 비율, 디스크 및 네트워크 처리량 스냅샷, 자원 압력 및 복구 이벤트만 저장됩니다. 앱 이름은 별도로 설정에서 허용한 경우에만 저장됩니다.",
+  "privacyExcluded": "프로세스, 사용자, 경로, 파일 이름 및 로컬 또는 원격 연결 주소에 대한 정보는 저장되지 않습니다.",
+  "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다."
+}

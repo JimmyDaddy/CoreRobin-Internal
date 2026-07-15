@@ -1,0 +1,38 @@
+{
+  "kicker": "Resumen de aplicaciones",
+  "overviewTitle": "¿Qué aplicaciones tienen mayor impacto?",
+  "title": "Impacto de recursos de aplicación",
+  "description": "StatusOrbit agrupa procesos auxiliares bajo nombres de aplicaciones familiares, y luego calcula el uso total de CPU, memoria y disco.",
+  "viewAll": "Ver todas las aplicaciones",
+  "search": "Buscar aplicaciones",
+  "searchPlaceholder": "Buscar por nombre de aplicación",
+  "sortLabel": "Orden de clasificación de aplicaciones",
+  "sort": {
+    "impact": "Impacto general",
+    "cpu": "Uso de CPU",
+    "memory": "Uso de memoria",
+    "disk": "Uso del disco"
+  },
+  "systemComponent": "Proceso · No cerrar",
+  "processCount": "{{count}} Procesos relacionados",
+  "memory": "Uso de memoria",
+  "disk": "Uso del disco",
+  "level": {
+    "low": "Impacto bajo",
+    "moderate": "Impacto moderado",
+    "high": "Impacto alto",
+    "critical": "Impacto crítico"
+  },
+  "selected": {
+    "title": "Cómo {{name}} afecta al equipo",
+    "cpu": "El uso del procesador es el principal impacto en este momento ({{value}}). Si permanece alto, el equipo puede sentirse lento, sobrecalentarse o consumir más energía.",
+    "memory": "La memoria es el principal impacto en este momento ({{value}}). La acción solo es necesaria cuando hay presión de memoria y actividad de intercambio también presentes.",
+    "disk": "La actividad del disco es el principal impacto en este momento ({{value}}). Las operaciones de sincronización, descargas y compilación pueden causar lecturas y escrituras temporales.",
+    "balanced": "Ningún recurso destaca actualmente, por lo que el impacto general es bajo.",
+    "systemSafety": "Este es un componente del sistema. No lo cierre directamente; revise la evidencia profesional primero si algo parece incorrecto.",
+    "appSafety": "Esta es una aplicación normal. StatusOrbit nunca la cerrará automáticamente, y cada acción de cierre aún requiere confirmación.",
+    "professionalDetails": "Revise los procesos en modo profesional"
+  },
+  "empty": "No se encontraron aplicaciones coincidentes",
+  "safety": "Seleccionar una aplicación solo muestra su evidencia de recursos; cada acción de cierre aún requiere confirmación separada."
+}

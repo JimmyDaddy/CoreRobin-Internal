@@ -1,0 +1,30 @@
+{
+  "triggered": {
+    "cpu": {
+      "title": "Der Computer läuft unter hoher Last",
+      "body": "Die CPU ist stark ausgelastet und kann zu Leistungseinbußen, Überhitzung oder erhöhtem Energieverbrauch führen. Öffnen Sie StatusOrbit, um die größten App-Auswirkungen zu sehen."
+    },
+    "memory": {
+      "title": "Verfügbarer Speicher ist knapp",
+      "body": "Geringer verfügbarer Speicher und deutliche Swap-Aktivität sind gleichzeitig vorhanden. StatusOrbit schließt Apps niemals automatisch."
+    },
+    "volume": {
+      "title": "Freier Festplattenspeicher ist niedrig",
+      "body": "Die Festplattenauslastung liegt über 85%. Überprüfen Sie zuerst den Speicherplatz-Check; jede Dateioperation erfordert noch eine Bestätigung."
+    }
+  },
+  "recovered": {
+    "cpu": {
+      "title": "Last des Computers ist normal",
+      "body": "Die CPU-Auslastung ist wieder im normalen Bereich. Die früheren Leistungseinbußen, Überhitzung oder Energieverluste sollten sich nun verringern."
+    },
+    "memory": {
+      "title": "Speicherbedarf ist gesunken",
+      "body": "Verfügbarer Speicher und Swap-Aktivität liegen wieder in einem gesunden Bereich, sodass das Umschalten von Apps reibungsloser erfolgen sollte."
+    },
+    "volume": {
+      "title": "Festplattenspeicher ist wieder im sicheren Bereich",
+      "body": "Die Festplattenauslastung liegt wieder in einem sicheren Bereich, daher sind derzeit keine weiteren Bereinigungen erforderlich."
+    }
+  }
+}

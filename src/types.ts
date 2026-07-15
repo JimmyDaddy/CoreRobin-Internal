@@ -16,6 +16,29 @@ export interface SystemSnapshot {
   capabilities: Capabilities;
 }
 
+export interface SystemSummary {
+  sequence: number;
+  sampledAtMs: number;
+  sampleIntervalMs: number;
+  cpu: CpuSnapshot;
+  memory: MemorySnapshot;
+  disk: DiskSnapshot;
+  network: NetworkSnapshot;
+  sensors: SensorsSnapshot;
+}
+
+export type SystemHealthSnapshot = Pick<
+  SystemSnapshot,
+  | "sequence"
+  | "sampledAtMs"
+  | "sampleIntervalMs"
+  | "cpu"
+  | "memory"
+  | "disk"
+  | "network"
+  | "sensors"
+> & Partial<Pick<SystemSnapshot, "processes" | "capabilities">>;
+
 export type BatteryState =
   | "charging"
   | "discharging"
@@ -172,6 +195,8 @@ export type CleanupNodeKind = "folder" | "file" | "aggregate" | "restricted";
 export interface CleanupScan {
   sampledAtMs: number;
   durationMs: number;
+  /** The actual directory hierarchy rooted at the scanned system disk. */
+  root: CleanupNode;
   locations: CleanupLocation[];
   largestFiles: CleanupFile[];
   installedApplications: CleanupApplication[];
@@ -216,6 +241,7 @@ export interface CleanupNode {
 }
 
 export interface CleanupSubtreeRequest {
+  requestId: string;
   path: string;
   safety: CleanupSafety;
 }
@@ -227,6 +253,19 @@ export interface CleanupScanProgress {
   elapsedMs: number;
 }
 
+export type CleanupFullDiskAccessStatus =
+  | "granted"
+  | "not_granted"
+  | "not_required"
+  | "unknown";
+
+export interface CleanupScanAccess {
+  fullDiskAccess: CleanupFullDiskAccessStatus;
+  fullDiskAccessRecommended: boolean;
+  applicationBundleAvailable: boolean;
+  applicationBundlePath: string | null;
+}
+
 export interface CleanupPathState {
   path: string;
   exists: boolean;
@@ -236,12 +275,23 @@ export interface CleanupPathState {
 export interface CleanupDeleteLeaseRequest {
   paths: string[];
   scanSampledAtMs: number;
+  expectedTargets: CleanupDeleteTargetEvidence[];
+}
+
+export interface CleanupDeleteTargetEvidence {
+  path: string;
+  logicalSizeBytes: number;
+  allocatedSizeBytes: number;
+  itemCount: number;
 }
 
 export interface CleanupDeleteLease {
   id: string;
   paths: string[];
   changedPaths: string[];
+  refreshedTargets: CleanupDeleteTargetEvidence[];
+  executable: boolean;
+  refreshedAtMs: number;
   expiresAtMs: number;
 }
 
@@ -257,6 +307,20 @@ export interface CleanupDeleteResult {
   deleted: CleanupDeleteSuccess[];
   deletedBytes: number;
   failed: CleanupDeleteFailure[];
+  cancelled: boolean;
+  interruptedPath: string | null;
+}
+
+export type CleanupDeleteProgressPhase = "preparing" | "deleting";
+
+export interface CleanupDeleteProgress {
+  phase: CleanupDeleteProgressPhase;
+  processedEntryCount: number;
+  totalEntryCount: number;
+  completedTargetCount: number;
+  totalTargetCount: number;
+  currentPath: string;
+  deletedBytes: number;
 }
 
 export interface CleanupDeleteSuccess {

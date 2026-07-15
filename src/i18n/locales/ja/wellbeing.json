@@ -1,0 +1,58 @@
+{
+  "eyebrow": "デバイスの状態",
+  "title": "温度、バッテリー、およびスリープ状態",
+  "description": "システムの状態を定期的に読み取り、特定のアプリが自動スリープを妨げているかどうかを説明します。",
+  "overall": {
+    "normal": "良好です",
+    "attention": "注意が必要です",
+    "urgent": "推奨される対応",
+    "unavailable": "システムからの情報がありません"
+  },
+  "temperature": {
+    "label": "デバイスの温度",
+    "normal": "現在の温度は正常範囲内です。",
+    "attention": "デバイスが高温になっています。もし動作も遅くなっている場合は、負荷の高い作業を減らしてください。",
+    "urgent": "温度が上昇しています。負荷の高い作業を停止し、デバイスの換気を確保してください。",
+    "unavailable": "オペレーティングシステムまたはハードウェアから温度情報が StatusOrbit に送信されていません。"
+  },
+  "battery": {
+    "label": "バッテリー",
+    "notPresent": "バッテリーは検出されません",
+    "unavailable": "バッテリー情報を報告しないデスクトップコンピューターやデバイスは、この状態になります。",
+    "normal": "バッテリーの状態は良好です",
+    "attention": "バッテリー残量が少なくなっています。充電を開始してください",
+    "urgent": "バッテリー残量が非常に少ないです。すぐに充電してください",
+    "remaining": "約 {{hours}} 時間 {{minutes}} 分",
+    "state": {
+      "charging": "充電中",
+      "discharging": "バッテリーを使用しています",
+      "full": "完全に充電されています",
+      "not_charging": "電源が入っている状態で、充電されていません",
+      "unknown": "ステータスが不明です"
+    }
+  },
+  "sleep": {
+    "label": "自動的に休止状態になります",
+    "unavailableValue": "利用不可",
+    "unavailable": "このプラットフォームは、StatusOrbitに信頼できる睡眠防止に関する情報を表示していません。",
+    "clearValue": "睡眠機能が利用可能です",
+    "clear": "どのアプリケーションも、コンピューターを自動的にスリープさせるのを妨げていません。",
+    "blockedValue": "{{count}} アプリケーション",
+    "blockedValue_one": "{{count}} アプリケーション",
+    "blockedValue_other": "複数の {{count}} アプリケーション",
+    "blocked": "{{name}} 自動で睡眠モードを起動するのを妨げています。 {{duration}}{{more}}アプリを終了するか、タスクを一時停止することで、通常は睡眠モードが再開されます。",
+    "more": ", さらに {{count}} 件",
+    "systemValue": "システムアクティビティ",
+    "system": "システムが一時的にコンピューターを起動状態に保っています。通常、特別な操作は必要ありません。システムプロセスは終了しないでください。",
+    "duration": {
+      "unknown": "しばらく",
+      "lessThanMinute": "1分未満",
+      "minutes": "約{{count}}分",
+      "minutes_one": "約1分",
+      "minutes_other": "約{{count}}分",
+      "hours": "約{{count}}時間",
+      "hours_one": "約1時間",
+      "hours_other": "約{{count}}時間"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "seconds": "{{count}} 秒",
+  "minutes": "{{count}} 分",
+  "hours": "{{count}} 時間",
+  "days": "{{count}} 日",
+  "unknownError": "予期せぬエラーが発生しました。",
+  "unsupportedSchema": "利用できないデータ形式： {{version}}"
+}

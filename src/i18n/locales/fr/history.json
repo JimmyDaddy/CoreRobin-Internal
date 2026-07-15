@@ -1,0 +1,107 @@
+{
+  "title": "Tendances des ressources",
+  "legend": "Légende du graphique",
+  "memory": "Mémoire",
+  "warmup": "Mise au point",
+  "establishing": "Établissement de la tendance initiale…",
+  "chartLabel": "CPU {{cpu}}%, mémoire {{memory}}%",
+  "localArchive": "Archive des ressources locales",
+  "archiveTitle": "Historique",
+  "archiveDescription": "Revue des changements de ressources à long terme, ainsi que des pics et des périodes de récupération lors des redémarrages.",
+  "saving": "Sauvegarder sur cet appareil",
+  "sessionOnly": "Seule la session actuelle",
+  "controls": "Paramètres de l'historique",
+  "saveOnDevice": "Sauvegarder l'historique agrégé sur cet appareil",
+  "retention": "Conserver",
+  "retentionDays": "{{count}} jours",
+  "noRange": "Aucune plage de temps définie",
+  "savedPoints": "{{count}} points sauvegardés",
+  "clearSaved": "Supprimer les données sauvegardées",
+  "emptyTitle": "Créer la base de l'historique",
+  "emptyDescription": "Les tendances s'affichent après la première mesure valide ; activez l'enregistrement sur l'appareil pour les conserver lors des redémarrages.",
+  "summary": "Résumé de l'historique",
+  "averageCpu": "Utilisation moyenne du CPU",
+  "averageMemory": "Utilisation moyenne de la mémoire",
+  "peakDisk": "Utilisation maximale du disque",
+  "peakNetwork": "Débit réseau maximal",
+  "fiveMinuteResolution": "Résolution toutes les 5 minutes",
+  "resourceChart": "Graphique de l'utilisation du CPU et de la mémoire",
+  "throughputChart": "Graphique du débit disque et réseau",
+  "resourceChartLabel": "Tendances historiques de l'utilisation du CPU et de la mémoire",
+  "throughputChartLabel": "Tendances historiques des performances disque et réseau",
+  "stories": {
+    "eyebrow": "Ce qui s'est passé",
+    "title": "Récits sur l'ordinateur",
+    "description": "Regroupe les alertes et les récupérations en un seul incident, puis explique son impact et son issue de manière claire.",
+    "cause": "Cause principale : {{name}} a eu le plus grand impact à ce moment-là",
+    "timeline": "Chronologie de l'incident",
+    "startedAt": "Débuté {{time}}",
+    "peakedAt": "A atteint son maximum à {{value}}% · {{time}}",
+    "endedAt": "Récupéré {{time}}",
+    "count": "{{count}} récent",
+    "happeningNow": "En cours",
+    "resolved": "Résolu",
+    "emptyTitle": "Aucune information récente",
+    "emptyDescription": "StatusOrbit ignore les fluctuations mineures et ne conserve que les conditions qui persistent suffisamment pour affecter l'ordinateur.",
+    "cpu": {
+      "active": {
+        "title": "L'ordinateur est en cours d'utilisation",
+        "description": "La charge du processeur est élevée depuis {{duration}}, atteignant un pic proche de {{value}}%. L'ordinateur peut sembler lent, chaud ou consommer plus de batterie."
+      },
+      "recovered": {
+        "title": "L'ordinateur était en surcharge et s'est rétabli",
+        "description": "La surcharge a duré environ {{duration}}, a atteint un pic proche de {{value}}%, puis est revenue à la normale."
+      },
+      "guidance": "Si l'ordinateur reste lent, ouvrez les applications pour identifier l'impact le plus important. StatusOrbit ne ferme jamais une application automatiquement."
+    },
+    "memory": {
+      "active": {
+        "title": "La mémoire disponible est limitée",
+        "description": "La mémoire disponible et l'activité de swap sont faibles depuis {{duration}}. Le lancement d'applications peut sembler plus lent."
+      },
+      "recovered": {
+        "title": "La pression sur la mémoire s'est élevée puis est revenue à la normale",
+        "description": "La mémoire était limitée pendant environ {{duration}}, avant que la mémoire disponible et l'activité de swap ne reviennent à la normale."
+      },
+      "guidance": "Une utilisation élevée de la mémoire est normale. StatusOrbit enregistre cette information uniquement lorsque la disponibilité est faible et qu'une activité de swap significative se produit."
+    },
+    "volume": {
+      "active": {
+        "title": "L'espace disque disponible est faible",
+        "description": "L'utilisation du disque reste au-dessus du seuil d'alerte depuis {{duration}}, atteignant environ {{value}}%."
+      },
+      "recovered": {
+        "title": "La pression sur l'espace disque s'est atténuée",
+        "description": "L'espace disque était limité pendant environ {{duration}} et est maintenant en dessous du seuil d'alerte."
+      },
+      "guidance": "Ouvrez l'outil de nettoyage pour examiner la carte de l'espace en premier. Chaque action sur un fichier nécessite votre confirmation."
+    }
+  },
+  "alerts": {
+    "eyebrow": "Journal des événements locaux",
+    "title": "Événements d'alerte et de récupération",
+    "description": "Les alertes nécessitent des lectures élevées continues ; l'hystérésis et le temps de refroidissement réduisent les pics et les événements répétés.",
+    "active": "{{count}} Alertes actives",
+    "normal": "Tous les ressources sont normales",
+    "savedEvents": "{{count}} Événements enregistrés",
+    "filters": "Filtrez les ressources d'alerte",
+    "all": "Tout",
+    "volume": "Utilisation du volume",
+    "eventCount": "{{count}} Nombre d'événements",
+    "emptyTitle": "Aucun événement d'alerte",
+    "emptyDescription": "Les pics courts sont ignorés. Les événements de pression prolongée et de récupération apparaîtront ici.",
+    "recovered": "Récupéré",
+    "severity": {
+      "high": "Élevé",
+      "critical": "Critique"
+    },
+    "triggeredDetail": "{{value}}%, supérieur à {{threshold}}% pendant {{duration}}.",
+    "recoveredDetail": "Retour à {{value}}% après {{duration}}."
+  },
+  "privacyEyebrow": "Limites de données",
+  "privacyTitle": "Politique de confidentialité",
+  "privacyLocal": "L'historique reste dans le stockage StatusOrbit WebView de cet appareil et n'est jamais téléchargé ou synchronisé.",
+  "privacyCollected": "Seules les pourcentages d'utilisation du CPU et de la mémoire, les captures d'instantané du débit disque et réseau, ainsi que les événements de pression et de récupération sont stockés. Les noms d'applications ne sont enregistrés que si vous l'autorisez séparément dans les Paramètres.",
+  "privacyExcluded": "Les commandes, les utilisateurs, les chemins et les adresses de connexion (locales ou distantes) ne sont pas enregistrés.",
+  "privacyControl": "La désactivation arrête l'enregistrement de nouvelles données ; les données existantes restent jusqu'à leur expiration ou jusqu'à ce que vous les effaciez manuellement."
+}

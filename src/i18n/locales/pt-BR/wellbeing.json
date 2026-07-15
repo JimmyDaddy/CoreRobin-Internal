@@ -1,0 +1,61 @@
+{
+  "eyebrow": "Estado do dispositivo",
+  "title": "Temperatura, bateria e modo de suspensão",
+  "description": "Monitora o estado do sistema com frequência baixa e informa se um aplicativo está impedindo a suspensão automática.",
+  "overall": {
+    "normal": "Tudo certo",
+    "attention": "Requer atenção",
+    "urgent": "Ação recomendada",
+    "unavailable": "Sem leitura do sistema"
+  },
+  "temperature": {
+    "label": "Temperatura do dispositivo",
+    "normal": "A temperatura está atualmente dentro da faixa normal.",
+    "attention": "O dispositivo está quente. Se também estiver lento, tente reduzir tarefas pesadas primeiro.",
+    "urgent": "A temperatura está alta. Pare com tarefas pesadas e mantenha o dispositivo ventilado.",
+    "unavailable": "O sistema operacional ou hardware não estão fornecendo uma leitura de temperatura para o StatusOrbit."
+  },
+  "battery": {
+    "label": "Bateria",
+    "notPresent": "Sem bateria detectada",
+    "unavailable": "Computadores e dispositivos sem bateria reportados aparecem desta forma.",
+    "normal": "Bateria em bom estado",
+    "attention": "A bateria está fraca; prepare-se para conectar o carregador",
+    "urgent": "A bateria está muito baixa; conecte o carregador o mais rápido possível",
+    "remaining": "aproximadamente {{hours}} horas e {{minutes}} minutos",
+    "state": {
+      "charging": "Carregando",
+      "discharging": "Utilizando a bateria",
+      "full": "Bateria totalmente carregada",
+      "not_charging": "Em uso, sem carregamento",
+      "unknown": "Status desconhecido"
+    }
+  },
+  "sleep": {
+    "label": "Modo de suspensão automático",
+    "unavailableValue": "Indisponível",
+    "unavailable": "Esta plataforma não está fornecendo informações confiáveis sobre bloqueio de sono para o StatusOrbit.",
+    "clearValue": "Sono disponível",
+    "clear": "Nenhum aplicativo está impedindo que o computador desligue automaticamente.",
+    "blockedValue": "{{count}} aplicativos",
+    "blockedValue_many": "{{count}} aplicativos",
+    "blockedValue_one": "{{count}} aplicativo",
+    "blockedValue_other": "{{count}} aplicativos",
+    "blocked": "{{name}} impediu o sono automático para {{duration}}{{more}}. Fechar o aplicativo ou pausar sua tarefa geralmente restaurará o sono.",
+    "more": ", mais {{count}}",
+    "systemValue": "Atividade do sistema",
+    "system": "Uma tarefa do sistema está mantendo o computador ligado temporariamente. Geralmente, não é necessário tomar nenhuma ação, e os processos do sistema não devem ser encerrados.",
+    "duration": {
+      "unknown": "um momento",
+      "lessThanMinute": "menos de um minuto",
+      "minutes": "cerca de {{count}} minutos",
+      "minutes_many": "cerca de {{count}} minutos",
+      "minutes_one": "cerca de 1 minuto",
+      "minutes_other": "cerca de {{count}} minutos",
+      "hours": "cerca de {{count}} horas",
+      "hours_many": "cerca de {{count}} horas",
+      "hours_one": "cerca de 1 hora",
+      "hours_other": "cerca de {{count}} horas"
+    }
+  }
+}

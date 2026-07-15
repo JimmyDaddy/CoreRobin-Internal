@@ -1,0 +1,58 @@
+{
+  "eyebrow": "设备状态",
+  "title": "温度、电池与休眠",
+  "description": "低频读取系统状态，并解释是否有应用让电脑无法自动休眠。",
+  "overall": {
+    "normal": "状态正常",
+    "attention": "需要留意",
+    "urgent": "建议处理",
+    "unavailable": "系统未提供读数"
+  },
+  "temperature": {
+    "label": "设备温度",
+    "normal": "当前温度在正常范围内。",
+    "attention": "设备有些热；如果同时卡顿，可先减少高负荷任务。",
+    "urgent": "温度持续偏高，建议停止高负荷任务并保持通风。",
+    "unavailable": "当前系统或硬件没有向 StatusOrbit 提供温度读数。"
+  },
+  "battery": {
+    "label": "电池",
+    "notPresent": "未检测到电池",
+    "unavailable": "台式机或未提供电池信息的设备会显示在这里。",
+    "normal": "电量状态正常",
+    "attention": "剩余电量不多，建议准备连接电源",
+    "urgent": "电量很低，建议尽快连接电源",
+    "remaining": "约 {{hours}} 小时 {{minutes}} 分钟",
+    "state": {
+      "charging": "正在充电",
+      "discharging": "正在使用电池",
+      "full": "已充满",
+      "not_charging": "已接电源，未充电",
+      "unknown": "状态未知"
+    }
+  },
+  "sleep": {
+    "label": "自动休眠",
+    "unavailableValue": "无法读取",
+    "unavailable": "当前平台没有向 StatusOrbit 提供可靠的休眠阻止信息。",
+    "clearValue": "可以正常休眠",
+    "clear": "没有发现应用阻止电脑自动休眠。",
+    "blockedValue": "{{count}} 个应用",
+    "blockedValue_one": "{{count}} 个应用",
+    "blockedValue_other": "{{count}} 个应用",
+    "blocked": "{{name}} 正在阻止自动休眠，已持续{{duration}}{{more}}。退出应用或暂停相关任务后通常会恢复。",
+    "more": "，另有 {{count}} 个应用",
+    "systemValue": "系统活动",
+    "system": "系统任务暂时保持电脑唤醒，通常无需处理，也不建议结束系统进程。",
+    "duration": {
+      "unknown": "一段时间",
+      "lessThanMinute": "不到 1 分钟",
+      "minutes": "约 {{count}} 分钟",
+      "minutes_one": "约 1 分钟",
+      "minutes_other": "约 {{count}} 分钟",
+      "hours": "约 {{count}} 小时",
+      "hours_one": "约 1 小时",
+      "hours_other": "约 {{count}} 小时"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
-use std::fs::Metadata;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -12,6 +12,7 @@ use crate::models::{
     StartupManagementAction, StartupManagementExecutionRequest, StartupManagementLease,
     StartupManagementLeaseRequest, StartupManagementResult, StartupManagementStatus,
 };
+use crate::safe_fs::{BoundFileMove, SafeFileMoveRoot, SafeFileSnapshot};
 
 const STARTUP_LEASE_TTL: Duration = Duration::from_secs(60);
 const MAX_STARTUP_LEASES: usize = 16;
@@ -29,10 +30,8 @@ struct StartupLeaseEntry {
     expires_at: Instant,
     item_id: String,
     action: StartupManagementAction,
-    source_path: PathBuf,
-    destination_path: PathBuf,
     source_fingerprint: FileFingerprint,
-    canonical_home: PathBuf,
+    bound_move: BoundFileMove,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -83,39 +82,24 @@ impl StartupController {
                 "This startup confirmation expired. Review the item and confirm again.",
             ));
         }
-        validate_startup_source(
-            &lease.source_path,
-            lease.source_fingerprint,
-            &lease.canonical_home,
-        )?;
-        if lease.destination_path.exists() {
+        let snapshot = lease
+            .bound_move
+            .source_snapshot(MAX_STARTUP_FILE_BYTES)
+            .map_err(|error| {
+                CommandError::new(
+                    "startup_state_changed",
+                    format!(
+                        "This startup file changed after confirmation. StatusOrbit changed nothing: {error}"
+                    ),
+                )
+            })?;
+        if file_fingerprint(&snapshot) != lease.source_fingerprint {
             return Err(CommandError::new(
-                "startup_destination_conflict",
-                "Another startup configuration now exists at the destination. StatusOrbit changed nothing.",
+                "startup_state_changed",
+                "This startup file changed after confirmation. StatusOrbit changed nothing.",
             ));
         }
-        let destination_parent = lease.destination_path.parent().ok_or_else(|| {
-            CommandError::internal("The startup destination has no parent directory.")
-        })?;
-        fs::create_dir_all(destination_parent).map_err(|error| {
-            CommandError::new(
-                "startup_management_failed",
-                format!("StatusOrbit could not prepare its reversible startup storage: {error}"),
-            )
-        })?;
-        let canonical_destination_parent = destination_parent.canonicalize().map_err(|error| {
-            CommandError::new(
-                "startup_management_failed",
-                format!("StatusOrbit could not verify the startup destination: {error}"),
-            )
-        })?;
-        if !canonical_destination_parent.starts_with(&lease.canonical_home) {
-            return Err(CommandError::new(
-                "startup_item_protected",
-                "The startup destination is outside the current user's profile. StatusOrbit changed nothing.",
-            ));
-        }
-        move_startup_file_without_overwrite(&lease.source_path, &lease.destination_path)?;
+        lease.bound_move.execute().map_err(map_startup_move_error)?;
         Ok(StartupManagementResult {
             item_id: lease.item_id,
             enabled: lease.action == StartupManagementAction::Enable,
@@ -175,13 +159,52 @@ impl StartupController {
                 format!("StatusOrbit could not verify the current user's home directory: {error}"),
             )
         })?;
-        let source_fingerprint = startup_file_fingerprint(&source_path, &canonical_home)?;
-        if destination_path.exists() {
-            return Err(CommandError::new(
-                "startup_destination_conflict",
-                "Another startup configuration already exists at the destination. StatusOrbit changed nothing.",
-            ));
+        let move_root = SafeFileMoveRoot::open(&canonical_home).map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("StatusOrbit could not open a stable home directory handle: {error}"),
+            )
+        })?;
+        let source_relative = relative_to_home(&source_path, home, &canonical_home)?;
+        let destination_relative = relative_to_home(&destination_path, home, &canonical_home)?;
+        let source_parent = source_relative
+            .parent()
+            .ok_or_else(|| CommandError::internal("The startup source has no parent directory."))?;
+        let destination_parent = destination_relative.parent().ok_or_else(|| {
+            CommandError::internal("The startup destination has no parent directory.")
+        })?;
+        if request.action == StartupManagementAction::Enable {
+            move_root
+                .ensure_directory(source_parent, true)
+                .map_err(|error| {
+                    CommandError::new(
+                        "startup_management_failed",
+                        format!(
+                            "StatusOrbit could not secure its reversible startup storage: {error}"
+                        ),
+                    )
+                })?;
         }
+        move_root
+            .ensure_directory(
+                destination_parent,
+                request.action == StartupManagementAction::Disable,
+            )
+            .map_err(|error| {
+                CommandError::new(
+                    "startup_management_failed",
+                    format!(
+                        "StatusOrbit could not prepare its reversible startup storage: {error}"
+                    ),
+                )
+            })?;
+        let bound_move = move_root
+            .bind_file_move(&source_relative, &destination_relative)
+            .map_err(map_startup_binding_error)?;
+        let source_snapshot = bound_move
+            .source_snapshot(MAX_STARTUP_FILE_BYTES)
+            .map_err(map_startup_binding_error)?;
+        let source_fingerprint = file_fingerprint(&source_snapshot);
         let id = format!(
             "startup-{}-{}",
             now_millis(),
@@ -193,10 +216,8 @@ impl StartupController {
             expires_at,
             item_id: item.id.clone(),
             action: request.action,
-            source_path,
-            destination_path,
             source_fingerprint,
-            canonical_home,
+            bound_move,
         });
         Ok(StartupManagementLease {
             id,
@@ -769,76 +790,69 @@ fn disabled_path_for_item(_home: &Path, _item: &StartupItem) -> Result<PathBuf, 
     ))
 }
 
-fn startup_file_fingerprint(
-    path: &Path,
-    canonical_home: &Path,
-) -> Result<FileFingerprint, CommandError> {
-    let metadata = fs::symlink_metadata(path).map_err(|error| {
-        CommandError::new(
-            "startup_item_unavailable",
-            format!("StatusOrbit could not inspect the startup file: {error}"),
-        )
-    })?;
-    validate_startup_file_type(&metadata)?;
-    let canonical_path = path.canonicalize().map_err(|error| {
-        CommandError::new(
-            "startup_item_unavailable",
-            format!("StatusOrbit could not verify the startup file: {error}"),
-        )
-    })?;
-    if !canonical_path.starts_with(canonical_home) {
-        return Err(CommandError::new(
-            "startup_item_protected",
-            "The startup file is outside the current user's profile. StatusOrbit changed nothing.",
-        ));
-    }
-    if metadata.len() > MAX_STARTUP_FILE_BYTES {
-        return Err(CommandError::new(
-            "startup_item_protected",
-            "The startup file is unexpectedly large. StatusOrbit changed nothing.",
-        ));
-    }
-    let content = fs::read(path).map_err(|error| {
-        CommandError::new(
-            "startup_item_unavailable",
-            format!("StatusOrbit could not read the startup file for verification: {error}"),
-        )
-    })?;
-    Ok(file_fingerprint(&metadata, &content))
-}
-
-fn validate_startup_source(
-    path: &Path,
-    expected: FileFingerprint,
-    canonical_home: &Path,
-) -> Result<(), CommandError> {
-    let actual = startup_file_fingerprint(path, canonical_home)?;
-    if actual != expected {
-        return Err(CommandError::new(
-            "startup_state_changed",
-            "This startup file changed after confirmation. StatusOrbit changed nothing.",
-        ));
-    }
-    Ok(())
-}
-
-fn validate_startup_file_type(metadata: &Metadata) -> Result<(), CommandError> {
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
-        return Err(CommandError::new(
-            "startup_item_protected",
-            "StatusOrbit will not manage links or special files as startup items.",
-        ));
-    }
-    Ok(())
-}
-
-fn file_fingerprint(metadata: &Metadata, content: &[u8]) -> FileFingerprint {
+fn file_fingerprint(snapshot: &SafeFileSnapshot) -> FileFingerprint {
     let mut hasher = DefaultHasher::new();
-    content.hash(&mut hasher);
+    snapshot.contents.hash(&mut hasher);
     FileFingerprint {
-        length: metadata.len(),
-        modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+        length: snapshot.length,
+        modified_at_ms: snapshot.modified_at.and_then(system_time_millis),
         content_hash: hasher.finish(),
+    }
+}
+
+fn relative_to_home(
+    path: &Path,
+    home: &Path,
+    canonical_home: &Path,
+) -> Result<PathBuf, CommandError> {
+    path.strip_prefix(home)
+        .or_else(|_| path.strip_prefix(canonical_home))
+        .map(Path::to_path_buf)
+        .map_err(|_| {
+            CommandError::new(
+                "startup_item_protected",
+                "The startup file is outside the current user's profile. StatusOrbit changed nothing.",
+            )
+        })
+}
+
+fn map_startup_binding_error(error: io::Error) -> CommandError {
+    match error.kind() {
+        io::ErrorKind::AlreadyExists => CommandError::new(
+            "startup_destination_conflict",
+            "Another startup configuration already exists at the destination. StatusOrbit changed nothing.",
+        ),
+        io::ErrorKind::NotFound => CommandError::new(
+            "startup_item_unavailable",
+            format!("The startup file or its parent is no longer available: {error}"),
+        ),
+        io::ErrorKind::InvalidData | io::ErrorKind::PermissionDenied => CommandError::new(
+            "startup_item_protected",
+            format!("StatusOrbit refused an unsafe startup file operation: {error}"),
+        ),
+        _ => CommandError::new(
+            "startup_management_failed",
+            format!("StatusOrbit could not safely bind the startup file: {error}"),
+        ),
+    }
+}
+
+fn map_startup_move_error(error: io::Error) -> CommandError {
+    match error.kind() {
+        io::ErrorKind::AlreadyExists => CommandError::new(
+            "startup_destination_conflict",
+            "Another startup configuration appeared at the destination. StatusOrbit refused to overwrite it.",
+        ),
+        io::ErrorKind::NotFound | io::ErrorKind::InvalidData => CommandError::new(
+            "startup_state_changed",
+            format!(
+                "The startup source or destination changed. StatusOrbit stopped safely: {error}"
+            ),
+        ),
+        _ => CommandError::new(
+            "startup_management_failed",
+            format!("StatusOrbit could not safely move the startup configuration: {error}"),
+        ),
     }
 }
 
@@ -847,33 +861,6 @@ fn system_time_millis(value: SystemTime) -> Option<u64> {
         .duration_since(UNIX_EPOCH)
         .ok()
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
-}
-
-fn move_startup_file_without_overwrite(
-    source: &Path,
-    destination: &Path,
-) -> Result<(), CommandError> {
-    fs::hard_link(source, destination).map_err(|error| {
-        if error.kind() == std::io::ErrorKind::AlreadyExists {
-            CommandError::new(
-                "startup_destination_conflict",
-                "Another startup configuration appeared at the destination. StatusOrbit refused to overwrite it.",
-            )
-        } else {
-            CommandError::new(
-                "startup_management_failed",
-                format!("StatusOrbit could not create a reversible startup copy: {error}"),
-            )
-        }
-    })?;
-    if let Err(error) = fs::remove_file(source) {
-        let _ = fs::remove_file(destination);
-        return Err(CommandError::new(
-            "startup_management_failed",
-            format!("StatusOrbit could not finish moving the startup configuration: {error}"),
-        ));
-    }
-    Ok(())
 }
 
 #[cfg(any(target_os = "macos", windows, test))]
@@ -992,6 +979,15 @@ mod tests {
             macos_disabled_directories(&root)[0]
                 .join("com.example.sync.plist")
                 .exists()
+        );
+        use std::os::unix::fs::PermissionsExt as _;
+        assert_eq!(
+            fs::metadata(&macos_disabled_directories(&root)[0])
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
         );
 
         let (items, _) = platform_startup_items(&root);
@@ -1131,6 +1127,33 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.code, "startup_item_protected");
         assert!(linked.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn startup_management_never_overwrites_a_competing_destination() {
+        let root = test_root("destination-conflict");
+        let active = write_launch_agent(&root, "com.example.sync.plist", "com.example.sync");
+        let mut controller = StartupController::default();
+        let lease = controller
+            .create_lease_for_home(
+                StartupManagementLeaseRequest {
+                    item_id: format!("launch-agent:{}", active.to_string_lossy()),
+                    action: StartupManagementAction::Disable,
+                },
+                &root,
+            )
+            .unwrap();
+        let destination = macos_disabled_directories(&root)[0].join("com.example.sync.plist");
+        fs::write(&destination, b"competition").unwrap();
+
+        let error = controller
+            .execute(StartupManagementExecutionRequest { lease_id: lease.id })
+            .unwrap_err();
+        assert_eq!(error.code, "startup_destination_conflict");
+        assert!(active.exists());
+        assert_eq!(fs::read(destination).unwrap(), b"competition");
         fs::remove_dir_all(root).unwrap();
     }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHistoryStories } from "./historyStories";
+import { buildHistoryStories, groupHistoryStoriesByDay } from "./historyStories";
 import type { ResourceAlertEvent } from "./resourceAlerts";
 
 function event(
@@ -25,6 +25,20 @@ function event(
 }
 
 describe("history stories", () => {
+  it("groups records into stable day sections", () => {
+    const now = new Date(2026, 6, 15, 12).getTime();
+    const stories = [
+      { id: "today", startedAtMs: now - 1_000 },
+      { id: "yesterday", startedAtMs: now - 24 * 60 * 60 * 1_000 },
+      { id: "earlier", startedAtMs: now - 3 * 24 * 60 * 60 * 1_000 },
+    ] as ReturnType<typeof buildHistoryStories>;
+
+    expect(groupHistoryStoriesByDay(stories, now).map(({ key }) => key)).toEqual([
+      "today",
+      "yesterday",
+      "earlier",
+    ]);
+  });
   it("pairs trigger and recovery into one readable incident", () => {
     expect(buildHistoryStories([
       event("cpu", "triggered", 110, 100, {

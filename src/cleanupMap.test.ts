@@ -5,6 +5,7 @@ import {
   cleanupNodeVisual,
   collectCleanupPlanNode,
   hitTestCleanupMap,
+  isCleanupNodeCoveredByPlan,
   layoutCleanupMap,
   ringBounds,
   type CleanupMapNode,
@@ -144,5 +145,18 @@ describe("cleanup map", () => {
     planned = collectCleanupPlanNode(planned, "cache", parents);
     planned = collectCleanupPlanNode(planned, "cache", parents);
     expect([...planned]).toEqual(["downloads", "cache"]);
+  });
+
+  it("marks planned nodes and descendants as already collected", () => {
+    const parents = new Map([
+      ["downloads/installers", "downloads"],
+      ["downloads/installers/old", "downloads/installers"],
+      ["cache", "root"],
+    ]);
+    const planned = new Set(["downloads/installers", "cache"]);
+
+    expect(isCleanupNodeCoveredByPlan(planned, "downloads/installers", parents)).toBe(true);
+    expect(isCleanupNodeCoveredByPlan(planned, "downloads/installers/old", parents)).toBe(true);
+    expect(isCleanupNodeCoveredByPlan(planned, "downloads", parents)).toBe(false);
   });
 });

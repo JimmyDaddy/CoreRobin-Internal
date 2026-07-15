@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "메인 메뉴",
+  "monitor": "모니터링",
+  "diagnostics": "진단",
+  "overview": "개요",
+  "applications": "애플리케이션",
+  "processes": "프로세스",
+  "storage": "저장 공간",
+  "cleanup": "정리",
+  "network": "네트워크",
+  "startup": "시작",
+  "history": "이전 기록",
+  "settings": "설정",
+  "soon": "곧",
+  "comingSoon": "곧 출시 예정",
+  "localSampling": "로컬 샘플링",
+  "viewEyebrow": {
+    "overview": "시스템 요약",
+    "applications": "애플리케이션 영향",
+    "processes": "프로세스 진단",
+    "storage": "저장소 진단",
+    "cleanup": "공간 정리",
+    "network": "네트워크 진단",
+    "startup": "시작 프로그램 확인",
+    "history": "사용 기록 분석",
+    "settings": "설정"
+  },
+  "demoData": "브라우저 데모 데이터",
+  "paused": "일시 중지",
+  "live": "실시간 모니터링",
+  "refreshNow": "지금 갱신",
+  "resume": "재개",
+  "pause": "일시 정지",
+  "switchLanguage": "인터페이스 언어를 변경",
+  "samplerConnecting": "로컬 샘플러에 연결 중…",
+  "samplerFailed": "샘플러 시작 실패",
+  "samplerNoData": "시스템 데이터를 받지 못했습니다.",
+  "sampleFailed": "일시적인 샘플링 실패: {{message}}",
+  "staleTarget": "프로세스 정보가 변경되었습니다. 작업이 취소되었으며, 다시 선택하여 진행하세요.",
+  "metricsLabel": "시스템 자원 요약",
+  "mode": {
+    "simple": "일상 모드",
+    "professional": "전문 모드",
+    "short": {
+      "simple": "일상",
+      "professional": "전문 모드"
+    },
+    "switchTo": {
+      "simple": "일상 모드로 전환",
+      "professional": "전문 모드로 전환"
+    }
+  },
+  "companion": {
+    "show": "Orbit 동반자 표시",
+    "hide": "Orbit 동반자 숨기기"
+  },
+  "technicalOverview": {
+    "title": "실시간 자원 정보 보기",
+    "description": "CPU, 메모리, 디스크, 네트워크 사용량 및 5분간의 변화 추이를 확인합니다."
+  },
+  "metrics": {
+    "memory": "메모리 사용량",
+    "disk": "디스크 I/O",
+    "network": "네트워크 대역폭",
+    "cpuContext": "{{count}} 하나의 프로세스가 최대 100개의 논리 코어를 사용할 수 있습니다.",
+    "memoryContext": "{{total}} 총 메모리 사용량 {{swap}} 스왑 공간 사용량",
+    "diskContext": "읽기 속도 {{read}} 쓰기 속도 {{write}}",
+    "networkContext": "다운로드 속도 {{receive}} 업로드 속도 {{send}}"
+  },
+  "status": {
+    "interval": "샘플링 간격 {{interval}} 밀리초(ms)",
+    "interfacesAndConnections": "{{interfaces}} 네트워크 인터페이스 목록 {{connections}} 연결 상태",
+    "applicationCount": "{{count}} 실행 중인 애플리케이션 및 시스템 구성 요소 수",
+    "savedHistory": "{{count}} 저장된 사용 기록",
+    "processCount": "{{count}} 실행 중인 프로세스 수",
+    "cleanupEntries": "{{count}} 검사된 항목"
+  }
+}

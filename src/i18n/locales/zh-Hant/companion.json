@@ -1,0 +1,17 @@
+{
+  "kicker": "Orbit 小夥伴",
+  "dragHint": "拖動 Orbit 移動；懸停檢視狀態；右鍵開啟選單",
+  "expand": "開啟 Orbit 小夥伴",
+  "collapse": "收起 Orbit 小夥伴",
+  "menu": "Orbit 小夥伴選單",
+  "hide": "隱藏小夥伴",
+  "reason": "{{resource}}最近值得留意，可以開啟主視窗看看原因。",
+  "action": {
+    "loading": "開啟日常助手",
+    "observing": "檢視當前狀態",
+    "normal": "我遇到了問題",
+    "attention": "看看原因",
+    "urgent": "現在檢視"
+  },
+  "recovering": "指標已回落，我再觀察一會兒確認它是否恢復。"
+}

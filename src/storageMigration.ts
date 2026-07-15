@@ -7,6 +7,8 @@ export const LEGACY_STORAGE_KEYS = {
   resourceHistory: ["pulse.resource-history.v1"],
   resourceAlerts: ["pulse.resource-alert-events.v1"],
   cleanupScan: [
+    "status-orbit.cleanup-scan.v4",
+    "status-orbit.cleanup-scan.v3",
     "status-orbit.cleanup-scan.v2",
     "status-orbit.cleanup-scan.v1",
     "pulse.cleanup-scan.v1",

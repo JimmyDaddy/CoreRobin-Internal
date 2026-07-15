@@ -1,0 +1,227 @@
+{
+  "kicker": "Analyse de l'espace disque",
+  "title": "Assistant d'organisation du stockage",
+  "description": "Scannez le disque système et visualisez l'utilisation de l'espace par chemin de fichier réel.",
+  "startScan": "Débuter une analyse en lecture seule",
+  "scanAgain": "Réaliser une nouvelle analyse",
+  "scanning": "Analyse…",
+  "cancelScan": "Annuler l'analyse",
+  "cancelling": "Annulation…",
+  "readOnlyTitle": "Vérifiez d'abord, décidez ensuite",
+  "readOnlyDescription": "L'analyse en arrière-plan lit les noms, les tailles et autres métadonnées jusqu'à ce qu'elle soit terminée. Elle ne lit jamais le contenu des fichiers ni ne modifie, déplace ou télécharge de fichiers.",
+  "failed": "La numérisation du disque n'a pas pu être terminée",
+  "access": {
+    "kicker": "Avant de commencer la numérisation",
+    "title": "Autoriser l'accès à l'intégralité du disque système",
+    "description": "macOS protège Mail, Messages et d'autres données d'applications. L'accès complet au disque permet à StatusOrbit de créer une carte complète de l'espace ; StatusOrbit lit toujours les métadonnées telles que les noms, les tailles et les dates.",
+    "checking": "Vérification de l'accès…",
+    "checkingReturn": "Confirmation de l'accès…",
+    "openSettings": "Ouvrir les Préférences Système",
+    "openAgain": "Réouvrir les Préférences Système",
+    "revealApp": "Afficher l'application dans Finder",
+    "checkAgain": "Accès activé — vérifier à nouveau",
+    "continueLimited": "Numériser les zones accessibles",
+    "waiting": "Les Préférences Système sont ouvertes. Si StatusOrbit est manquant, cliquez sur le signe + sous la liste et sélectionnez StatusOrbit.app. Activez-le, puis redémarrez pour que la numérisation se lance automatiquement.",
+    "unknown": "L'accès n'a pas pu être confirmé. Vous pouvez toujours ouvrir les Préférences Système ou effectuer une numérisation limitée.",
+    "bundleRequired": "Lancez d'abord StatusOrbit.app",
+    "bundleMissingTitle": "Cette application ne peut pas être ajoutée à la liste des applications autorisées",
+    "bundleMissingDescription": "macOS ne peut pas autoriser cette application ici. Installez StatusOrbit.app et rouvrez-la depuis Applications ; une numérisation limitée est toujours disponible.",
+    "privacy": "macOS contrôle cette permission, et vous pouvez la désactiver à tout moment. StatusOrbit ne lit jamais le contenu des fichiers ni ne modifie les fichiers pendant la numérisation.",
+    "steps": {
+      "open": "Ouvrir les Préférences Système",
+      "add": "Cliquez sur le signe + et sélectionnez StatusOrbit.app",
+      "return": "Activez-le et redémarrez"
+    }
+  },
+  "reclaimableEstimate": "Espace potentiellement récupérable",
+  "estimateBoundary": "Ceci est une estimation pour les caches et les fichiers temporaires, et non une recommandation de suppression complète.",
+  "entriesScanned": "{{count}} éléments vérifiés",
+  "scanDuration": "{{seconds}} secondes",
+  "snapshot": {
+    "retained": "Sauvegardé sur cet appareil ; les modifications sont vérifiées au fur et à mesure de la navigation",
+    "refresh": "Actualiser le résultat",
+    "cached": {
+      "title": "Résultat de la dernière analyse restauré",
+      "description": "Continuez à explorer sans attendre une nouvelle analyse. StatusOrbit vérifie un répertoire pour les modifications uniquement lorsque vous y naviguez."
+    },
+    "expired": {
+      "title": "Ce résultat a plus de 24 heures",
+      "description": "StatusOrbit maintient la carte disponible afin que vous puissiez continuer à explorer. Actualisez-la avant de prendre des décisions concernant le nettoyage."
+    }
+  },
+  "progress": {
+    "scanningLocation": "Analyse de {{location}} éléments",
+    "showPath": "Afficher le chemin technique actuel",
+    "entries": "Éléments vérifiés",
+    "discovered": "Découvert",
+    "elapsed": "Temps écoulé",
+    "foundSpace": "Espace trouvé",
+    "stageKicker": "Construction de la carte d'espace",
+    "locations": {
+      "downloads": "fichiers téléchargés",
+      "trash": "dossier poubelle",
+      "appCache": "caches des applications",
+      "developerCache": "Caches des développeurs",
+      "hiddenData": "Données d'applications cachées",
+      "applications": "Applications installées",
+      "personal": "Fichiers personnels",
+      "systemDisk": "Le disque système"
+    }
+  },
+  "categories": {
+    "title": "Utilisation courante de cet espace"
+  },
+  "map": {
+    "title": "Emplacement de l'espace",
+    "description": "La zone représente l'espace disque alloué. Les couleurs correspondantes appartiennent à une branche de dossiers ; les secteurs gris représentent des fichiers.",
+    "descriptionPath": "Affiché par le chemin réel sur le disque système : chaque anneau représente le niveau de répertoire suivant, et la zone représente l'espace disque alloué.",
+    "descriptionCategory": "Le même scan est regroupé par objectif. Les catégories sont une vue d'aide, et non la hiérarchie des répertoires réelle.",
+    "allScanned": "Résultats de tous les scans",
+    "categoryRoot": "Catégories d'utilisation",
+    "mode": {
+      "label": "Affichage de la carte de l'espace",
+      "path": "Chemins de fichiers",
+      "category": "Utilisation"
+    },
+    "ariaLabel": "Carte en forme de soleil pour {{name}}",
+    "back": "Revenir d'un niveau",
+    "breadcrumbs": "Hiérarchie de la carte de l'espace",
+    "centerBack": "Retour au dossier parent",
+    "details": "Détails de l'espace",
+    "selected": "Sélectionné",
+    "grouped": "Catégorie groupée",
+    "smallerObjects": "Objets plus petits",
+    "restrictedObjects": "Objets non accessibles",
+    "allocatedSize": "Alloué sur le disque",
+    "logicalSize": "{{size}} taille logique",
+    "unreadable": "Non accessible",
+    "restrictedHint": "Le système d'exploitation n'a pas accordé l'accès en lecture ; cet élément ne peut pas être collecté",
+    "types": {
+      "folder": "Dossier",
+      "file": "Fichier",
+      "aggregate": "Objets de petite taille regroupés",
+      "restricted": "Restreints"
+    },
+    "noDeeperBreakdown": "Aucun regroupement de dossiers supplémentaire n'est disponible à ce niveau.",
+    "loadDeeperHint": "Sélectionnez cet dossier pour charger le niveau suivant sans rescanner l'ensemble de l'ordinateur.",
+    "loadingFolder": "Chargement de ce dossier…",
+    "loadFailed": "Impossible de charger le dossier",
+    "directActionHint": "Maintenez une section et faites-la glisser vers le bac de nettoyage situé en bas à gauche de la carte",
+    "protectedSelectionHint": "Les chemins système, les nœuds groupés et le répertoire racine sont consultables uniquement ; seuls certains éléments dans votre dossier personnel peuvent être ajoutés au bac",
+    "trashRootProtected": "Le dossier Corbeille lui-même est protégé ; ouvrez-le et sélectionnez précisément le contenu à supprimer",
+    "planSummary": "{{count}} éléments sélectionnés · {{size}}",
+    "reviewCleanup": "Examiner et supprimer définitivement",
+    "refreshCleanup": "Rafraîchir le choix avant l'examen",
+    "deletionUnavailable": "La suppression permanente n'est pas disponible",
+    "basket": {
+      "title": "Panier de nettoyage",
+      "empty": "Sélectionnez une zone et faites-la glisser ici pour collecter les éléments d'abord",
+      "release": "Libérer pour ajouter au panier",
+      "collected": "Dans le panier de nettoyage",
+      "collectedHint": "Déjà ajouté ; retirez-le du panier ci-dessous ou continuez l'examen",
+      "remove": "Retirer {{name}} du panier",
+      "clear": "Effacer",
+      "completed": "Supprimé définitivement {{deletedCount}} éléments",
+      "partial": "Supprimé {{deletedCount}} éléments; {{failedCount}} n'a pas pu être traité",
+      "cancelled": "La suppression a été interrompue après avoir supprimé {{deletedCount}} éléments"
+    },
+    "deleteResult": {
+      "success": "Supprimé définitivement {{deletedCount}} éléments",
+      "partial": "Supprimé {{deletedCount}} éléments; {{failedCount}} a échoué",
+      "failed": "Aucun élément n'a été supprimé; {{failedCount}} éléments ont échoué",
+      "cancelled": "La suppression a été interrompue après avoir supprimé {{deletedCount}} éléments",
+      "cancelledNoDeletion": "La suppression a été interrompue avant que tout élément ne soit complètement supprimé",
+      "reclaimed": "L'espace alloué vérifié avant la suppression : environ {{size}}"
+    },
+    "freshness": {
+      "cached": "Affichage du résultat de l'analyse précédente",
+      "expired": "Cette analyse est ancienne ; une nouvelle analyse est recommandée",
+      "changed": "Ce dossier a été modifié ; les tailles peuvent être inexactes",
+      "changedShort": "Contenu modifié"
+    }
+  },
+  "deleteDialog": {
+    "title": "Vérifiez avant la suppression définitive",
+    "description": "Confirme la suppression directe des éléments à partir du disque, au lieu de les déplacer dans le dossier",
+    "itemUnit": "éléments",
+    "estimatedSize": "estimé",
+    "irreversible": "Ne peut pas être annulé",
+    "changed": "Modifié depuis la dernière analyse",
+    "changedWarning": "{{count}} Les éléments sont différents de la vue précédente. Les tailles et les nombres d'éléments ont été mis à jour ; veuillez rafraîchir avant de confirmer.",
+    "preparing": "Vérification des chemins et de l'état actuel des fichiers…",
+    "refreshSelection": "Recharger la sélection",
+    "deleteConfirmTitle": "Je comprends que ces éléments seront définitivement supprimés",
+    "deleteConfirmDescription": "Les fichiers ne seront pas déplacés vers le dossier",
+    "confirm": "Supprimer définitivement {{count}} éléments",
+    "deleting": "Suppression en cours…",
+    "selection": "éléments sélectionnés",
+    "progressPreparing": "Vérification des éléments sélectionnés",
+    "progressDeleting": "Suppression définitive…",
+    "progressCancelling": "Arrêt sécurisé",
+    "progressCurrent": "En cours : {{name}}",
+    "progressInspecting": "Analyse des fichiers et dossiers",
+    "progressEntries": "{{processed}} / {{total}} fichiers et dossiers",
+    "progressTargets": "{{completed}} / {{total}} éléments terminés",
+    "progressDeleted": "Environ {{size}} éléments supprimés",
+    "cancelDelete": "Annuler la suppression",
+    "cancelling": "Suppression en cours…",
+    "cancelHint": "Les suppressions effectuées ne peuvent pas être restaurées. StatusOrbit s'arrêtera après l'opération de suppression actuelle.",
+    "errors": {
+      "protected_cleanup_path": "StatusOrbit ne supprimera ni votre dossier personnel ni le dossier Corbeille lui-même.",
+      "cleanup_target_outside_home": "Pour des raisons de sécurité, StatusOrbit ne traite que les fichiers contenus dans votre dossier personnel.",
+      "cleanup_cross_filesystem": "Le répertoire sélectionné se trouve sur un autre disque ou point de montage, ce qui empêche la suppression récursive par StatusOrbit.",
+      "cleanup_target_changed": "Un fichier a été modifié après la confirmation, StatusOrbit n'a donc supprimé rien. Annuler et vérifier à nouveau.",
+      "cleanup_confirmation_unavailable": "La confirmation n'est plus disponible. Annuler et rouvrir la vérification.",
+      "cleanup_confirmation_expired": "Cette confirmation a expiré. Annuler et vérifier les fichiers actuels à nouveau.",
+      "cleanup_target_unavailable": "Certains éléments ne sont plus présents ou n'ont pas pu être accédés. Relancer la recherche et réessayer.",
+      "invalid_cleanup_selection": "La sélection dans le bac de nettoyage est invalide. Choisir les éléments à nouveau.",
+      "overlapping_cleanup_targets": "Un dossier et l'un de ses sous-dossiers sont sélectionnés. Ne conserver qu'un seul niveau."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "Téléchargements",
+      "description": "Peut contenir des installateurs, des documents et des fichiers dont vous pourriez avoir encore besoin."
+    },
+    "trash": {
+      "title": "Corbeille",
+      "description": "Les éléments ne sont généralement plus récupérables une fois que la corbeille a été vidée."
+    },
+    "app_cache": {
+      "title": "Caches d'applications",
+      "description": "Les applications peuvent recréer ou télécharger ces données ultérieurement."
+    },
+    "developer_cache": {
+      "title": "Caches des développeurs",
+      "description": "Données que les outils de construction et les gestionnaires de paquets peuvent recréer."
+    },
+    "hidden_data": {
+      "title": "Dossiers utilisateurs cachés",
+      "description": "Données d'applications et configurations préfixées par un point. Mesuré uniquement ; la suppression directe n'est pas recommandée."
+    }
+  },
+  "safety": {
+    "reclaimable": "Généralement récupérables",
+    "review": "Revue nécessaire"
+  },
+  "itemCount": "{{count}} fichiers",
+  "unavailable": "Non disponible sur cette plateforme",
+  "pathUnavailable": "Aucun emplacement accessible",
+  "morePaths": "et {{count}} d'autres emplacements",
+  "applications": {
+    "kicker": "Inventaire des applications en lecture seule",
+    "title": "Applications non utilisées depuis longtemps",
+    "boundary": "Uniquement les apps dont macOS confirme qu'elles n'ont pas été ouvertes depuis au moins six mois ; StatusOrbit ne les désinstalle jamais automatiquement",
+    "lastUsed": "Dernière utilisation {{date}} · non ouverte depuis {{days}} jours",
+    "none": "Aucune application n'a pu être confirmée comme inutilisée depuis plus de six mois.",
+    "unavailable": "Cette plateforme ne peut actuellement fournir des dates fiables de dernière utilisation des applications.",
+    "unknownExcluded": "{{count}} Les autres applications n'ont pas de date d'utilisation confirmée, donc StatusOrbit ne les a pas classées comme inutilisées."
+  },
+  "reviewFirst": "Examiner les éléments un par un",
+  "largestFiles": "Fichiers volumineux sur le disque système",
+  "largeFileBoundary": "Seuls les fichiers de plus de 500 Mo sont listés ; la suppression automatique n'est pas recommandée",
+  "noLargeFiles": "Aucun fichier de plus de 500 Mo n'a été trouvé dans les emplacements accessibles du disque système.",
+  "unreadable": "{{count}} Les emplacements étaient protégés ou temporairement inaccessibles. Seuls ces emplacements sont exclus des résultats.",
+  "fullDiskAccessHint": "Sur macOS, accordez l'accès complet au disque à StatusOrbit dans les Paramètres Système → Confidentialité & Sécurité, puis relancez la recherche.",
+  "safetyBoundary": "La recherche n'a pas de limite de temps ou d'éléments et ne suit jamais les liens symboliques. Seuls les éléments placés dans le bac, vérifiés par le chemin et explicitement confirmés sont définitivement supprimés et ne peuvent être restaurés."
+}

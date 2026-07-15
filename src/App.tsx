@@ -1,15 +1,15 @@
 import {
-  ChevronDown,
-  ChevronUp,
+  CircleHelp,
   CircleGauge,
   Cpu,
   Database,
   Gauge,
   History,
-  Languages,
+  House,
   ListTree,
   MemoryStick,
   Network,
+  Orbit,
   Pause,
   Play,
   RefreshCw,
@@ -19,36 +19,53 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { emitTo, listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useAppTranslation } from "./i18n/useAppTranslation";
 
 import {
   createProcessControlLease,
   executeProcessAction,
+  getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
   releaseProcessControlLease,
+  setDockIconVisible,
+  setLaunchAtLogin,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
-import { ApplicationImpactPanel } from "./components/ApplicationImpactPanel";
-import { CleanupAssistant } from "./components/CleanupAssistant";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
-import { HistoryExplorer } from "./components/HistoryExplorer";
+import { DailyHome } from "./components/DailyHome";
 import { MetricCard } from "./components/MetricCard";
-import { NetworkExplorer } from "./components/NetworkExplorer";
+import { LocaleSelect } from "./components/LocaleSelect";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
-import { SettingsExplorer } from "./components/SettingsExplorer";
 import { SmartDiagnosis } from "./components/SmartDiagnosis";
-import { StorageExplorer } from "./components/StorageExplorer";
-import { StartupExplorer } from "./components/StartupExplorer";
-import { analyzeSystemHealth, type ApplicationImpact } from "./diagnosis";
+import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
+import {
+  type DailyIntent,
+  type DailyRecheck,
+} from "./dailyExperience";
+import {
+  type DailyIncident,
+} from "./dailyIncidents";
+import { buildHealthStateUpdate } from "./healthState";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useCleanupScan } from "./hooks/useCleanupScan";
 import { useDesktopNotifications } from "./hooks/useDesktopNotifications";
+import { useDailyIncidents } from "./hooks/useDailyIncidents";
+import { usePublishHealthState } from "./hooks/usePublishHealthState";
 import { usePersistentHistory } from "./hooks/usePersistentHistory";
+import { useMainVisibility } from "./hooks/useMainVisibility";
 import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
@@ -64,11 +81,11 @@ import {
 } from "./processExplorer";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import {
+  applyAppAppearance,
   loadAppSettings,
   saveAppSettings,
   type AppSettings,
 } from "./settings";
-import { buildTraySummary } from "./traySummary";
 import type {
   CommandError,
   ProcessAction,
@@ -90,10 +107,35 @@ import {
 } from "./utils";
 import "./App.css";
 
-type ActiveView = "overview" | "processes" | "storage" | "cleanup" | "network" | "startup" | "history" | "settings";
+type ActiveView = "overview" | "processes" | "storage" | "cleanup" | "network" | "startup" | "history" | "settings" | "more";
+
+const PROFESSIONAL_VIEW_EYEBROW = {
+  overview: "app:viewEyebrow.overview",
+  processes: "app:viewEyebrow.processes",
+  storage: "app:viewEyebrow.storage",
+  cleanup: "app:viewEyebrow.cleanup",
+  network: "app:viewEyebrow.network",
+  startup: "app:viewEyebrow.startup",
+  history: "app:viewEyebrow.history",
+  settings: "app:viewEyebrow.settings",
+  more: "app:viewEyebrow.overview",
+} as const satisfies Record<ActiveView, string>;
 
 const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
+
+const CleanupAssistant = lazy(async () => ({ default: (await import("./components/CleanupAssistant")).CleanupAssistant }));
+const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
+const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
+const DailyRecords = lazy(async () => ({ default: (await import("./components/DailyRecords")).DailyRecords }));
+const DailySettings = lazy(async () => ({ default: (await import("./components/DailySettings")).DailySettings }));
+const DailySolve = lazy(async () => ({ default: (await import("./components/DailySolve")).DailySolve }));
+const DailySpace = lazy(async () => ({ default: (await import("./components/DailySpace")).DailySpace }));
+const HistoryExplorer = lazy(async () => ({ default: (await import("./components/HistoryExplorer")).HistoryExplorer }));
+const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
+const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
+const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
+const StartupExplorer = lazy(async () => ({ default: (await import("./components/StartupExplorer")).StartupExplorer }));
 
 function isActiveView(value: unknown): value is ActiveView {
   return typeof value === "string" && [
@@ -105,7 +147,26 @@ function isActiveView(value: unknown): value is ActiveView {
     "startup",
     "history",
     "settings",
+    "more",
   ].includes(value);
+}
+
+interface OpenDailyRequest {
+  view: ActiveView;
+  occurrenceId: string | null;
+}
+
+function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
+  if (isActiveView(value)) return { view: value, occurrenceId: null };
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as { view?: unknown; occurrenceId?: unknown };
+  if (!isActiveView(candidate.view)) return null;
+  return {
+    view: candidate.view,
+    occurrenceId: typeof candidate.occurrenceId === "string"
+      ? candidate.occurrenceId
+      : null,
+  };
 }
 
 interface PendingProcessAction {
@@ -116,23 +177,37 @@ interface PendingProcessAction {
   key: ProcessKey;
   lease: ProcessControlLease;
   detail: ProcessDetail;
+  dailyIntent: DailyIntent | null;
 }
 
 function App() {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [settings, setSettings] = useState<AppSettings>(() =>
     loadAppSettings(normalizeLanguage(i18n.resolvedLanguage)),
   );
+  const [launchAtLoginReady, setLaunchAtLoginReady] = useState(false);
+  const launchAtLoginActualRef = useRef<boolean | null>(null);
+  const launchAtLoginEpochRef = useRef(0);
+  const [companionVisible, setCompanionVisible] = useState(
+    settings.companionShowOnStartup,
+  );
+  const mainVisible = useMainVisibility();
   const {
     snapshot,
+    healthSnapshot,
     history,
     error,
     paused,
     setPaused,
     loading,
     refreshNow,
-  } = useSystemMonitor(settings.systemSampleIntervalMs);
+  } = useSystemMonitor(settings.systemSampleIntervalMs, mainVisible);
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
+  const [selectedDailyIncident, setSelectedDailyIncident] =
+    useState<DailyIncident | null>(null);
+  const [dailyRecheck, setDailyRecheck] = useState<DailyRecheck | null>(null);
+  const [modeTransition, setModeTransition] = useState<AppSettings["experienceMode"] | null>(null);
   const [diagnosisExpanded, setDiagnosisExpanded] = useState(false);
   const handleOpenAlertEvidence = useCallback((resource: ResourceAlertResource) => {
     if (resource === "volume") {
@@ -146,6 +221,7 @@ function App() {
     history,
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
+    mainVisible,
   );
   const resourceAlerts = useResourceAlerts(
     snapshot,
@@ -161,9 +237,10 @@ function App() {
     settings.mutedNotificationResources,
     handleOpenAlertEvidence,
   );
-  const [technicalOverviewExpanded, setTechnicalOverviewExpanded] = useState(false);
   const cleanupScan = useCleanupScan();
-  const startupItems = useStartupItems(activeView === "startup");
+  const startupItems = useStartupItems(
+    activeView === "startup" || dailyIntent === "startup" || dailyIntent === "checkup",
+  );
   const {
     snapshot: connectionsSnapshot,
     error: connectionsError,
@@ -171,9 +248,11 @@ function App() {
     refreshNow: refreshConnections,
   } = useNetworkConnections(
     activeView === "network" ||
-      (activeView === "overview" && diagnosisExpanded),
+      (activeView === "overview" && diagnosisExpanded) ||
+      dailyIntent === "slow" || dailyIntent === "network" || dailyIntent === "checkup",
     paused,
     settings.connectionRefreshIntervalMs,
+    mainVisible,
   );
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<ProcessRow | null>(null);
@@ -196,17 +275,56 @@ function App() {
   const preparingActionRef = useRef(false);
   const submittingActionRef = useRef(false);
   const startupCompletedRef = useRef(false);
+  const modeTransitionTimeoutRef = useRef<number | null>(null);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
+  const diagnosticConnections = mainVisible ? connectionsSnapshot : null;
   const diagnosis = useMemo(
-    () => snapshot
+    () => healthSnapshot
       ? analyzeSystemHealth({
-          snapshot,
+          snapshot: healthSnapshot,
           history,
-          connections: connectionsSnapshot,
+          connections: diagnosticConnections,
         })
       : null,
-    [connectionsSnapshot, history, snapshot],
+    [diagnosticConnections, healthSnapshot, history],
   );
+  const dailyIncidents = useDailyIncidents(
+    diagnosis,
+    healthSnapshot,
+    diagnosticConnections,
+  );
+  const dailyIncidentsRef = useRef(dailyIncidents.retained);
+  dailyIncidentsRef.current = dailyIncidents.retained;
+  const healthStateUpdate = useMemo(
+    () => healthSnapshot && diagnosis
+      ? buildHealthStateUpdate(
+          healthSnapshot,
+          paused,
+          dailyIncidents.active,
+          dailyIncidents.pendingCount,
+          diagnosis.baselineReady,
+          mainVisible ? "foreground" : "background",
+        )
+      : null,
+    [
+      dailyIncidents.active,
+      dailyIncidents.pendingCount,
+      diagnosis,
+      healthSnapshot,
+      mainVisible,
+      paused,
+    ],
+  );
+  usePublishHealthState(healthStateUpdate);
+
+  useEffect(() => {
+    setSelectedDailyIncident((current) => {
+      if (!current) return null;
+      return dailyIncidents.retained.find(
+        ({ occurrenceId }) => occurrenceId === current.occurrenceId,
+      ) ?? current;
+    });
+  }, [dailyIncidents.retained]);
   const refreshActiveView = useCallback(async () => {
     await Promise.all([
       refreshNow(),
@@ -214,9 +332,8 @@ function App() {
       (activeView === "overview" && diagnosisExpanded)
         ? [refreshConnections()]
         : []),
-      ...(activeView === "cleanup" ? [cleanupScan.scan()] : []),
     ]);
-  }, [activeView, cleanupScan.scan, diagnosisExpanded, refreshConnections, refreshNow]);
+  }, [activeView, diagnosisExpanded, refreshConnections, refreshNow]);
 
   const selectedProcess = useMemo(
     () =>
@@ -233,6 +350,12 @@ function App() {
   useEffect(() => {
     mainContentRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [activeView]);
+
+  useEffect(() => () => {
+    if (modeTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(modeTransitionTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isDesktopRuntime() || loading || startupCompletedRef.current) return;
@@ -258,8 +381,25 @@ function App() {
       listen<boolean>("status-orbit:set-paused", ({ payload }) => {
         if (!disposed) setPaused(Boolean(payload));
       }),
+      listen<boolean>("status-orbit:companion-visibility", ({ payload }) => {
+        if (!disposed) setCompanionVisible(Boolean(payload));
+      }),
       listen("status-orbit:refresh", () => {
         if (!disposed) void refreshNow();
+      }),
+      listen<unknown>("status-orbit:open-daily", ({ payload }) => {
+        if (disposed) return;
+        const request = parseOpenDailyRequest(payload);
+        if (!request) return;
+        const incident = request.occurrenceId
+          ? dailyIncidentsRef.current.find(
+              ({ occurrenceId }) => occurrenceId === request.occurrenceId,
+            ) ?? null
+          : null;
+        setSettings((current) => ({ ...current, experienceMode: "simple" }));
+        setSelectedDailyIncident(incident);
+        setDailyIntent(incident?.item.intent ?? null);
+        setActiveView(request.view);
       }),
     ]).then((nextUnlisteners) => {
       if (disposed) nextUnlisteners.forEach((unlisten) => unlisten());
@@ -270,15 +410,6 @@ function App() {
       unlisteners.forEach((unlisten) => unlisten());
     };
   }, [refreshNow, setPaused]);
-
-  useEffect(() => {
-    if (!isDesktopRuntime() || !snapshot) return;
-    void emitTo(
-      "tray",
-      "status-orbit:tray-summary",
-      buildTraySummary(snapshot, paused, settings.usageThresholds),
-    );
-  }, [paused, settings.usageThresholds, snapshot]);
 
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
@@ -296,6 +427,11 @@ function App() {
   const updateSettings = useCallback(
     (update: Partial<Omit<AppSettings, "version">>) => {
       setSettings((current) => ({ ...current, ...update }));
+      if (update.experienceMode === "simple") {
+        setSelectedDailyIncident(null);
+        setDailyIntent(null);
+        setActiveView("overview");
+      }
       if (update.defaultProcessView) {
         setProcessPreferences((current) => ({
           ...current,
@@ -307,8 +443,63 @@ function App() {
   );
 
   useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    const epoch = launchAtLoginEpochRef.current + 1;
+    launchAtLoginEpochRef.current = epoch;
+    void getLaunchAtLogin()
+      .then((enabled) => {
+        if (disposed || launchAtLoginEpochRef.current !== epoch) return;
+        launchAtLoginActualRef.current = enabled;
+        setSettings((current) => current.launchAtLogin === enabled
+          ? current
+          : { ...current, launchAtLogin: enabled });
+        setLaunchAtLoginReady(true);
+      })
+      .catch(() => {
+        if (!disposed && launchAtLoginEpochRef.current === epoch) {
+          setLaunchAtLoginReady(true);
+        }
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopRuntime() || !launchAtLoginReady) return;
+    const desired = settings.launchAtLogin;
+    if (launchAtLoginActualRef.current === desired) return;
+    const previous = launchAtLoginActualRef.current ?? false;
+    const epoch = launchAtLoginEpochRef.current + 1;
+    launchAtLoginEpochRef.current = epoch;
+    launchAtLoginActualRef.current = desired;
+    void setLaunchAtLogin(desired).catch(() => {
+      if (launchAtLoginEpochRef.current !== epoch) return;
+      launchAtLoginActualRef.current = previous;
+      setSettings((current) => current.launchAtLogin === desired
+        ? { ...current, launchAtLogin: previous }
+        : current);
+    });
+  }, [launchAtLoginReady, settings.launchAtLogin]);
+
+  useEffect(() => {
     saveAppSettings(settings);
+    applyAppAppearance(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    void setDockIconVisible(settings.showDockIcon);
+  }, [settings.showDockIcon]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    void invoke("configure_companion_window", {
+      alwaysOnTop: settings.companionAlwaysOnTop,
+      show: settings.companionShowOnStartup,
+    });
+  }, [settings.companionAlwaysOnTop, settings.companionShowOnStartup]);
 
   useEffect(() => {
     if (normalizeLanguage(i18n.resolvedLanguage) !== settings.language) {
@@ -389,14 +580,18 @@ function App() {
         event.preventDefault();
         document.querySelector<HTMLInputElement>(".search-field input")?.focus();
       }
-      if (event.key === " " && event.target === document.body) {
+      if (
+        event.key === " " &&
+        event.target === document.body &&
+        settings.experienceMode === "professional"
+      ) {
         event.preventDefault();
         setPaused((current) => !current);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setPaused]);
+  }, [setPaused, settings.experienceMode]);
 
   const discardPendingAction = useCallback((pending: PendingProcessAction | null) => {
     if (!pending) return;
@@ -417,17 +612,6 @@ function App() {
       setNotice(null);
     },
     [discardPendingAction, pendingAction],
-  );
-
-  const selectApplication = useCallback(
-    (application: ApplicationImpact) => {
-      const representative = snapshot?.processes.find(
-        (process) =>
-          processIdentity(process) === application.representativeIdentity,
-      );
-      if (representative) selectProcess(representative);
-    },
-    [selectProcess, snapshot],
   );
 
   const beginProcessAction = useCallback(
@@ -458,7 +642,7 @@ function App() {
           !processKeysEqual(activeDetailKeyRef.current, key)
         ) {
           await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         setPendingAction({
@@ -469,6 +653,7 @@ function App() {
           key,
           lease,
           detail: activeDetail,
+          dailyIntent: null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -481,13 +666,13 @@ function App() {
   );
 
   const beginDiagnosisRequestClose = useCallback(
-    async (identity: string, applicationName: string) => {
+    async (identity: string, applicationName: string, requestedDailyIntent?: DailyIntent) => {
       if (preparingActionRef.current || !snapshot) return;
       const process = snapshot.processes.find(
         (candidate) => processIdentity(candidate) === identity,
       );
       if (!process || process.protected || !process.birthToken) {
-        setNotice(t("diagnosis.recommendations.actionUnavailable"));
+        setNotice(t("diagnosis:recommendations.actionUnavailable"));
         return;
       }
 
@@ -510,14 +695,14 @@ function App() {
           !detailMatchesProcess(nextDetail, process) ||
           !nextDetail.key
         ) {
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         if (!nextDetail.canTerminate) {
           setNotice(
             nextDetail.protectedReason ??
             nextDetail.identityError ??
-            t("diagnosis.recommendations.actionUnavailable"),
+            t("diagnosis:recommendations.actionUnavailable"),
           );
           return;
         }
@@ -532,7 +717,7 @@ function App() {
         });
         if (selectedIdentityRef.current !== identity) {
           await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         setDetail(nextDetail);
@@ -544,6 +729,9 @@ function App() {
           key: nextDetail.key,
           lease,
           detail: nextDetail,
+          dailyIntent: settings.experienceMode === "simple"
+            ? requestedDailyIntent ?? dailyIntent ?? "slow"
+            : null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -552,7 +740,7 @@ function App() {
         setPreparingAction(false);
       }
     },
-    [discardPendingAction, pendingAction, snapshot, t],
+    [dailyIntent, discardPendingAction, pendingAction, settings.experienceMode, snapshot, t],
   );
 
   const handleAction = async () => {
@@ -567,7 +755,7 @@ function App() {
       !processKeysEqual(currentKey, pendingAction.key)
     ) {
       await releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
-      setNotice(t("app.staleTarget"));
+      setNotice(t("app:staleTarget"));
       setPendingAction(null);
       return;
     }
@@ -581,6 +769,13 @@ function App() {
         action: pendingAction.action,
       });
       setNotice(result.message);
+      if (pendingAction.dailyIntent) {
+        setDailyRecheck({
+          intent: pendingAction.dailyIntent,
+          outcome: result.outcome,
+          checkedAtMs: Date.now(),
+        });
+      }
       setPendingAction(null);
       await refreshNow();
     } catch (caughtError) {
@@ -599,7 +794,7 @@ function App() {
       <main className="boot-screen">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
         <strong>StatusOrbit</strong>
-        <span><i className="live-status-dot" />{t("app.samplerConnecting")}</span>
+        <span><i className="live-status-dot" />{t("app:samplerConnecting")}</span>
       </main>
     );
   }
@@ -608,9 +803,9 @@ function App() {
     return (
       <main className="boot-screen boot-screen--error">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
-        <strong>{t("app.samplerFailed")}</strong>
-        <span>{error?.message ?? t("app.samplerNoData")}</span>
-        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common.retry")}</button>
+        <strong>{t("app:samplerFailed")}</strong>
+        <span>{error?.message ?? t("app:samplerNoData")}</span>
+        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common:retry")}</button>
       </main>
     );
   }
@@ -629,109 +824,316 @@ function App() {
       ? null
       : snapshot.network.receivedBytesPerSecond +
         snapshot.network.transmittedBytesPerSecond;
+  const dailyMode = settings.experienceMode === "simple";
+  const activeDiagnosis = diagnosis!;
+  const dailyLevel = healthStateUpdate?.health ?? "observing";
+  const recommendedDailyIntent = dailyIncidents.active[0]?.item.intent ?? null;
+  const openDailyIntent = (intent: DailyIntent) => {
+    setSelectedDailyIncident(null);
+    setDailyIntent(intent);
+    setActiveView("overview");
+    setDailyRecheck((current) => current?.intent === intent ? current : null);
+  };
+  const openDailyIncident = (incident: DailyIncident) => {
+    setSelectedDailyIncident(incident);
+    setDailyIntent(incident.item.intent);
+    setActiveView("overview");
+    setDailyRecheck(null);
+  };
+  const navigateDaily = (view: ActiveView) => {
+    setSelectedDailyIncident(null);
+    setDailyIntent(null);
+    setActiveView(view);
+  };
+  const openDailyCleanup = () => {
+    navigateDaily("cleanup");
+  };
+  const switchExperienceMode = (experienceMode: AppSettings["experienceMode"]) => {
+    if (experienceMode === settings.experienceMode || modeTransition !== null) return;
+    if (modeTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(modeTransitionTimeoutRef.current);
+    }
+    setModeTransition(experienceMode);
+    updateSettings({ experienceMode });
+    modeTransitionTimeoutRef.current = window.setTimeout(() => {
+      setModeTransition(null);
+      modeTransitionTimeoutRef.current = null;
+    }, settings.reduceMotion ? 40 : 820);
+  };
+  const openProfessional = (view: ActiveView = "overview") => {
+    setSelectedDailyIncident(null);
+    setDailyIntent(null);
+    setActiveView(view === "more" ? "overview" : view);
+    switchExperienceMode("professional");
+  };
+  const runDailyRefresh = async (intent: DailyIntent) => {
+    setDailyRecheck(null);
+    await Promise.all([
+      refreshNow(),
+      ...(intent === "slow" || intent === "network" || intent === "checkup"
+        ? [refreshConnections()]
+        : []),
+      ...(intent === "startup" || intent === "checkup"
+        ? [startupItems.refresh()]
+        : []),
+    ]);
+    setDailyRecheck({ intent, outcome: "refreshed", checkedAtMs: Date.now() });
+  };
+  const refreshDailyGuide = async () => {
+    if (dailyIntent) await runDailyRefresh(dailyIntent);
+  };
+  const checkFromDailyHome = async () => {
+    await runDailyRefresh("checkup");
+    setDailyIntent("checkup");
+    setActiveView("overview");
+  };
+  const refreshDailyApplications = async () => {
+    const nextSnapshot = await refreshNow();
+    const captured = nextSnapshot ?? snapshot;
+    return {
+      applications: aggregateApplications(captured.processes),
+      totalMemoryBytes: captured.memory.totalBytes,
+      sampledAtMs: captured.sampledAtMs,
+    };
+  };
   return (
-    <div className="app-shell">
-      <nav className="sidebar" aria-label={t("app.mainNavigation")}>
+    <div className={`app-shell${dailyMode ? " app-shell--daily" : " app-shell--professional"}${modeTransition ? ` is-mode-transitioning mode-transition--to-${modeTransition}` : ""}`}>
+      <nav className="sidebar" aria-label={t("app:mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
-          <span><strong>StatusOrbit</strong><small>LOCAL MONITOR</small></span>
+          <span><strong>StatusOrbit</strong><small>{dailyMode ? t("daily:shell.label") : "LOCAL MONITOR"}</small></span>
         </div>
 
-        <div className="nav-group">
-          <span className="nav-label">{t("app.monitor")}</span>
-          <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}>
-            <CircleGauge size={17} />{t("app.overview")}
-          </button>
-          <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}>
-            <ListTree size={17} />{settings.experienceMode === "simple" ? t("app.applications") : t("app.processes")}
-          </button>
-          <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}>
-            <Database size={17} />{t("app.storage")}
-          </button>
-          <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}>
-            <Sparkles size={17} />{t("app.cleanup")}
-          </button>
-          <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}>
-            <Network size={17} />{t("app.network")}
-          </button>
-        </div>
-
-        <div className="nav-group">
-          <span className="nav-label">{t("app.diagnostics")}</span>
-          <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}>
-            <Rocket size={17} />{t("app.startup")}
-          </button>
-          <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}>
-            <History size={17} />{t("app.history")}
-            {resourceAlerts.activeAlerts.length > 0 ? (
-              <small className="nav-alert-badge" aria-label={t("history.alerts.active", { count: resourceAlerts.activeAlerts.length })}>
-                {resourceAlerts.activeAlerts.length}
-              </small>
-            ) : null}
-          </button>
-          <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app.settings")}</button>
-        </div>
-
-        <div className="sidebar-footer">
-          <span className="live-indicator"><i />{t("app.localSampling")}</span>
-          <small>Schema v{snapshot.schemaVersion}</small>
-        </div>
+        {dailyMode ? (
+          <>
+            <div className="nav-group daily-nav">
+              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
+              <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
+              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
+              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="nav-group">
+              <span className="nav-label">{t("app:monitor")}</span>
+              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app:overview")}</button>
+              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><ListTree size={17} />{t("app:processes")}</button>
+              <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
+              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
+              <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app:network")}</button>
+            </div>
+            <div className="nav-group">
+              <span className="nav-label">{t("app:diagnostics")}</span>
+              <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app:startup")}</button>
+              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
+              <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app:settings")}</button>
+            </div>
+            <div className="sidebar-footer">
+              <span className="live-indicator"><i />{t("app:localSampling")}</span>
+            </div>
+          </>
+        )}
       </nav>
 
       <div className="workspace">
         <header className="topbar">
-          <div className="host-heading">
-            <span className="eyebrow">
-              {activeView === "processes" && settings.experienceMode === "simple"
-                ? t("app.viewEyebrow.applications")
-                : t(`app.viewEyebrow.${activeView}`)}
-            </span>
-            <h1>{snapshot.host.hostname}</h1>
-            <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
-          </div>
-          <div className="topbar-actions">
-            {!isDesktopRuntime() ? <span className="demo-badge">{t("app.demoData")}</span> : null}
+          {dailyMode ? (
+            <>
+              <div className="daily-topbar-heading">
+                <span className="eyebrow">{dailyIntent
+                  ? t(`daily:intents.${dailyIntent}.title`)
+                  : t(`daily:nav.${activeView === "more"
+                    ? "solve"
+                    : activeView === "cleanup" || activeView === "storage"
+                      ? "cleanup"
+                      : activeView === "history"
+                        ? "records"
+                        : activeView === "settings"
+                          ? "settings"
+                          : activeView === "processes"
+                            ? "applications"
+                            : "today"}`)}</span>
+                <h1>{snapshot.host.osName.toLocaleLowerCase().includes("darwin") ? t("daily:topbar.thisMac") : t("daily:topbar.thisComputer")}</h1>
+              </div>
+              <div className="daily-topbar-actions">
+                <span className={`daily-topbar-status is-${dailyLevel}`}><i />{t(`daily:status.${dailyLevel}.short`)}</span>
+                {isDesktopRuntime() ? <button
+                  className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
+                  type="button"
+                  data-tooltip={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+                  aria-label={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+                  aria-pressed={companionVisible}
+                  onClick={() => void invoke("toggle_companion_window")}
+                >
+                  <Orbit size={16} />
+                </button> : null}
+                <button
+                  className="button mode-switch mode-switch--to-professional"
+                  type="button"
+                  title={t("app:mode.switchTo.professional")}
+                  aria-label={t("app:mode.switchTo.professional")}
+                  aria-busy={modeTransition !== null}
+                  disabled={modeTransition !== null}
+                  onClick={() => openProfessional("overview")}
+                >
+                  <span className="mode-switch__icon" aria-hidden="true"><SlidersHorizontal size={15} /></span>
+                  <span>{t("app:mode.short.professional")}</span>
+                </button>
+                <button className={`icon-button${activeView === "settings" ? " is-active" : ""}`} type="button" title={t("daily:nav.settings")} aria-label={t("daily:nav.settings")} onClick={() => navigateDaily("settings")}><Settings2 size={16} /></button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="host-heading">
+                <span className="eyebrow">{t(PROFESSIONAL_VIEW_EYEBROW[activeView])}</span>
+                <h1>{snapshot.host.hostname}</h1>
+                <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
+              </div>
+              <div className="topbar-actions">
+            {!isDesktopRuntime() ? <span className="demo-badge">{t("app:demoData")}</span> : null}
             <span className={`sample-status${paused ? " is-paused" : ""}`}>
-              <i />{paused ? t("app.paused") : snapshot.warmingUp ? t("common.warmup") : t("app.live")}
+              <i />{paused ? t("app:paused") : snapshot.warmingUp ? t("common:warmup") : t("app:live")}
             </span>
-            <button
-              className="button button--secondary mode-button"
+            {isDesktopRuntime() ? <button
+              className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
               type="button"
-              title={t(`app.mode.switchTo.${settings.experienceMode === "simple" ? "professional" : "simple"}`)}
-              aria-label={t(`app.mode.switchTo.${settings.experienceMode === "simple" ? "professional" : "simple"}`)}
-              onClick={() => updateSettings({
-                experienceMode: settings.experienceMode === "simple" ? "professional" : "simple",
-              })}
+              data-tooltip={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+              aria-label={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+              aria-pressed={companionVisible}
+              onClick={() => void invoke("toggle_companion_window")}
             >
-              <SlidersHorizontal size={15} />
-              <span>{t(`app.mode.${settings.experienceMode}`)}</span>
+              <Orbit size={16} />
+            </button> : null}
+            <button
+              className="button mode-switch mode-switch--to-simple"
+              type="button"
+              title={t("app:mode.switchTo.simple")}
+              aria-label={t("app:mode.switchTo.simple")}
+              aria-busy={modeTransition !== null}
+              disabled={modeTransition !== null}
+              onClick={() => switchExperienceMode("simple")}
+            >
+              <span className="mode-switch__icon" aria-hidden="true"><Sparkles size={15} /></span>
+              <span>{t("app:mode.short.simple")}</span>
             </button>
-            <button className="icon-button" type="button" title={t("app.refreshNow")} aria-label={t("app.refreshNow")} onClick={() => void refreshActiveView()}>
+            <button className="icon-button" type="button" title={t("app:refreshNow")} aria-label={t("app:refreshNow")} onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
             </button>
-            <button
-              className="button button--secondary language-button"
-              type="button"
-              title={t("app.switchLanguage")}
-              aria-label={t("app.switchLanguage")}
-              onClick={() => updateSettings({ language: settings.language === "en" ? "zh-CN" : "en" })}
-            >
-              <Languages size={15} />
-              {i18n.resolvedLanguage === "en" ? "中文" : "EN"}
-            </button>
+            <LocaleSelect
+              compact
+              withIcon
+              className="language-button"
+              value={settings.language}
+              label={t("app:switchLanguage")}
+              onChange={(language) => updateSettings({ language })}
+            />
             <button className="button button--secondary" type="button" onClick={() => setPaused(!paused)}>
               {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? t("app.resume") : t("app.pause")}
+              {paused ? t("app:resume") : t("app:pause")}
             </button>
-          </div>
+              </div>
+            </>
+          )}
         </header>
 
-        {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
-        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
+        {error ? <div className="global-error">{t("app:sampleFailed", { message: error.message })}</div> : null}
+        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common:close")}</button></div> : null}
 
-        <div className={`content-layout${activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" || (settings.experienceMode === "simple" && (activeView === "overview" || activeView === "processes" || activeView === "storage")) ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${dailyMode || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
-            {activeView === "overview" ? (
+            <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>}>
+            {dailyMode ? (
+              dailyIntent ? (
+                <DailyGuide
+                  intent={dailyIntent}
+                  incident={selectedDailyIncident}
+                  incidents={dailyIncidents.active}
+                  pendingIncidentCount={dailyIncidents.pendingCount}
+                  diagnosis={activeDiagnosis}
+                  snapshot={snapshot}
+                  cleanupSnapshot={cleanupScan.snapshot}
+                  cleanupLoading={cleanupScan.loading}
+                  startupSnapshot={startupItems.snapshot}
+                  startupError={startupItems.error}
+                  startupLoading={startupItems.loading}
+                  connectionsSnapshot={connectionsSnapshot}
+                  connectionsError={connectionsError}
+                  connectionsLoading={connectionsLoading}
+                  preparingAction={preparingAction}
+                  recheck={dailyRecheck}
+                  onBack={() => {
+                    setSelectedDailyIncident(null);
+                    setDailyIntent(null);
+                  }}
+                  onRefresh={refreshDailyGuide}
+                  onOpenCleanup={openDailyCleanup}
+                  onOpenSpace={() => navigateDaily("storage")}
+                  onOpenApplications={() => navigateDaily("processes")}
+                  onOpenIntent={openDailyIntent}
+                  onOpenIncident={openDailyIncident}
+                  onRefreshStartup={startupItems.refresh}
+                  onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, dailyIntent)}
+                />
+              ) : activeView === "overview" ? (
+                <DailyHome
+                  diagnosis={activeDiagnosis}
+                  snapshot={snapshot}
+                  incidents={dailyIncidents.active}
+                  alertEvents={resourceAlerts.events}
+                  onOpenIncident={openDailyIncident}
+                  onOpenSolve={() => navigateDaily("more")}
+                  onOpenRecords={() => navigateDaily("history")}
+                  onRefresh={checkFromDailyHome}
+                />
+              ) : activeView === "processes" ? (
+                <DailyApplications
+                  applications={activeDiagnosis.applications}
+                  totalMemoryBytes={snapshot.memory.totalBytes}
+                  sampledAtMs={snapshot.sampledAtMs}
+                  preparingAction={preparingAction}
+                  recheck={dailyRecheck?.intent === "slow" ? dailyRecheck : null}
+                  onRefresh={refreshDailyApplications}
+                  onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, "slow")}
+                />
+              ) : activeView === "storage" ? (
+                <DailySpace
+                  snapshot={snapshot}
+                  cleanupSnapshot={cleanupScan.snapshot}
+                  cleanupLoading={cleanupScan.loading}
+                  onOpenCleanup={openDailyCleanup}
+                  onRefresh={async () => { await refreshNow(); }}
+                />
+              ) : activeView === "cleanup" ? (
+                <CleanupAssistant
+                  snapshot={cleanupScan.snapshot}
+                  error={cleanupScan.error}
+                  loading={cleanupScan.loading}
+                  cancelling={cleanupScan.cancelling}
+                  progress={cleanupScan.progress}
+                  snapshotStatus={cleanupScan.snapshotStatus}
+                  onScan={() => void cleanupScan.scan()}
+                  onCancel={() => void cleanupScan.cancel()}
+                  onDeletionApplied={cleanupScan.applyDeletion}
+                />
+              ) : activeView === "more" ? (
+                <DailySolve
+                  onOpenIntent={openDailyIntent}
+                  onOpenApplications={() => navigateDaily("processes")}
+                  recommendedIntent={recommendedDailyIntent}
+                />
+              ) : activeView === "history" ? (
+                <DailyRecords alertEvents={resourceAlerts.events} />
+              ) : activeView === "settings" ? (
+                <DailySettings settings={settings} notificationStatus={desktopNotifications.status} onChange={updateSettings} />
+              ) : (
+                <DailySolve
+                  onOpenIntent={openDailyIntent}
+                  onOpenApplications={() => navigateDaily("processes")}
+                  recommendedIntent={recommendedDailyIntent}
+                />
+              )
+            ) : activeView === "overview" ? (
               <>
                 {diagnosis ? (
                   <SmartDiagnosis
@@ -762,51 +1164,22 @@ function App() {
                   sensors={snapshot.sensors}
                   applications={diagnosis?.applications ?? []}
                 />
-                {settings.experienceMode === "simple" && diagnosis ? (
-                  <ApplicationImpactPanel
-                    compact
-                    applications={diagnosis.applications}
-                    totalMemoryBytes={snapshot.memory.totalBytes}
-                    selectedIdentity={selectedIdentity}
-                    onSelect={(application) => {
-                      selectApplication(application);
-                      setActiveView("processes");
-                    }}
-                    onViewAll={() => setActiveView("processes")}
-                  />
-                ) : null}
-                {settings.experienceMode === "simple" ? (
-                  <button
-                    className="technical-overview-toggle"
-                    type="button"
-                    aria-expanded={technicalOverviewExpanded}
-                    onClick={() => setTechnicalOverviewExpanded((current) => !current)}
-                  >
-                    <Gauge size={15} />
-                    <span>
-                      <strong>{t("app.technicalOverview.title")}</strong>
-                      <small>{t("app.technicalOverview.description")}</small>
-                    </span>
-                    {technicalOverviewExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </button>
-                ) : null}
-                {settings.experienceMode === "professional" || technicalOverviewExpanded ? (
-                  <>
-                    <section className="metric-grid" aria-label={t("app.metricsLabel")}>
+                <>
+                    <section className="metric-grid" aria-label={t("app:metricsLabel")}>
                       <MetricCard
                         icon={Cpu}
                         label="CPU"
                         value={formatPercent(snapshot.cpu.usagePercent)}
-                        context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
+                        context={t("app:metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
                         tone="blue"
                         progress={snapshot.cpu.usagePercent ?? 0}
                         usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent, settings.usageThresholds)}
                       />
                       <MetricCard
                         icon={MemoryStick}
-                        label={t("app.metrics.memory")}
+                        label={t("app:metrics.memory")}
                         value={formatBytes(snapshot.memory.usedBytes)}
-                        context={t("app.metrics.memoryContext", {
+                        context={t("app:metrics.memoryContext", {
                           total: formatBytes(snapshot.memory.totalBytes),
                           swap: formatBytes(snapshot.memory.swapUsedBytes),
                         })}
@@ -816,9 +1189,9 @@ function App() {
                       />
                       <MetricCard
                         icon={Database}
-                        label={t("app.metrics.disk")}
+                        label={t("app:metrics.disk")}
                         value={formatRate(diskRate)}
-                        context={t("app.metrics.diskContext", {
+                        context={t("app:metrics.diskContext", {
                           read: formatRate(snapshot.disk.readBytesPerSecond),
                           write: formatRate(snapshot.disk.writeBytesPerSecond),
                         })}
@@ -826,9 +1199,9 @@ function App() {
                       />
                       <MetricCard
                         icon={Network}
-                        label={t("app.metrics.network")}
+                        label={t("app:metrics.network")}
                         value={formatRate(networkRate)}
-                        context={t("app.metrics.networkContext", {
+                        context={t("app:metrics.networkContext", {
                           receive: formatRate(snapshot.network.receivedBytesPerSecond),
                           send: formatRate(snapshot.network.transmittedBytesPerSecond),
                         })}
@@ -836,10 +1209,8 @@ function App() {
                       />
                     </section>
                     <ResourceHistory history={history} usageThresholds={settings.usageThresholds} />
-                  </>
-                ) : null}
-                {settings.experienceMode === "professional" ? (
-                  <ProcessTable
+                </>
+                <ProcessTable
                     compact
                     processes={snapshot.processes}
                     selectedIdentity={selectedIdentity}
@@ -851,23 +1222,10 @@ function App() {
                     onSortChange={(sortKey, sortDirection) =>
                       updateProcessPreferences({ sortKey, sortDirection })
                     }
-                  />
-                ) : null}
+                />
               </>
             ) : activeView === "processes" ? (
-              settings.experienceMode === "simple" && diagnosis ? (
-                <ApplicationImpactPanel
-                  applications={diagnosis.applications}
-                  totalMemoryBytes={snapshot.memory.totalBytes}
-                  selectedIdentity={selectedIdentity}
-                  onSelect={selectApplication}
-                  onOpenProfessionalDetails={(application) => {
-                    selectApplication(application);
-                    updateSettings({ experienceMode: "professional" });
-                  }}
-                />
-              ) : (
-                <ProcessTable
+              <ProcessTable
                   processes={snapshot.processes}
                   selectedIdentity={selectedIdentity}
                   onSelect={selectProcess}
@@ -896,8 +1254,7 @@ function App() {
                       viewMode: settings.defaultProcessView,
                     })
                   }
-                />
-              )
+              />
             ) : activeView === "storage" ? (
               <StorageExplorer
                 disk={snapshot.disk}
@@ -906,7 +1263,6 @@ function App() {
                 selectedIdentity={selectedIdentity}
                 onSelectProcess={(process) => {
                   selectProcess(process);
-                  if (settings.experienceMode === "simple") setActiveView("processes");
                 }}
                 usageThresholds={settings.usageThresholds}
                 onOpenCleanup={() => setActiveView("cleanup")}
@@ -975,6 +1331,7 @@ function App() {
                 onChange={updateSettings}
               />
             )}
+            </Suspense>
           </main>
 
           {settings.experienceMode === "professional" && (activeView === "overview" || activeView === "processes" || activeView === "storage") ? (
@@ -994,31 +1351,27 @@ function App() {
           ) : null}
         </div>
 
-        <footer className="statusbar">
-          <span><Gauge size={13} />{t("app.status.interval", { interval: snapshot.sampleIntervalMs })}</span>
+        {!dailyMode ? <footer className="statusbar">
+          <span><Gauge size={13} />{t("app:status.interval", { interval: snapshot.sampleIntervalMs })}</span>
           <span>
             {activeView === "network"
-              ? t("app.status.interfacesAndConnections", {
+              ? t("app:status.interfacesAndConnections", {
                   interfaces: snapshot.network.interfaceCount,
                   connections: connectionsSnapshot?.summary.totalCount ?? "—",
                 })
-              : activeView === "processes" && settings.experienceMode === "simple"
-                ? t("app.status.applicationCount", {
-                    count: diagnosis?.applications.length ?? 0,
-                  })
               : activeView === "history"
-                ? t("app.status.savedHistory", {
+                ? t("app:status.savedHistory", {
                     count: persistentHistory.storedPoints.length,
                   })
               : activeView === "cleanup"
-                ? t("app.status.cleanupEntries", {
+                ? t("app:status.cleanupEntries", {
                     count: cleanupScan.progress?.scannedEntryCount ?? cleanupScan.snapshot?.scannedEntryCount ?? 0,
                   })
-              : t("app.status.processCount", { count: snapshot.processes.length })}
+              : t("app:status.processCount", { count: snapshot.processes.length })}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>
           <span className="statusbar__sequence">#{snapshot.sequence}</span>
-        </footer>
+        </footer> : null}
       </div>
 
       {pendingAction ? (

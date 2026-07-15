@@ -33,6 +33,12 @@ describe("application settings", () => {
           historyRetentionDays: 30,
           desktopNotificationsEnabled: true,
           mutedNotificationResources: ["cpu"],
+          interfaceScale: "large",
+          reduceMotion: true,
+          showDockIcon: true,
+          launchAtLogin: true,
+          companionAlwaysOnTop: true,
+          companionShowOnStartup: true,
         }),
       ),
     ).toEqual({
@@ -48,13 +54,19 @@ describe("application settings", () => {
       historyRetentionDays: 30,
       desktopNotificationsEnabled: true,
       mutedNotificationResources: ["cpu"],
+      interfaceScale: "large",
+      reduceMotion: true,
+      showDockIcon: true,
+      launchAtLogin: true,
+      companionAlwaysOnTop: true,
+      companionShowOnStartup: true,
     });
 
     expect(
       parseAppSettings(
         JSON.stringify({
           version: 1,
-          language: "fr",
+          language: "it",
           experienceMode: "expert",
           systemSampleIntervalMs: 42,
           connectionRefreshIntervalMs: 42,

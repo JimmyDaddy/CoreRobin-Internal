@@ -1,0 +1,126 @@
+{
+  "eyebrow": "Starten und Anmeldung",
+  "title": "Anmelde-Items",
+  "description": "Sehen Sie, welche Anwendungen beim Anmelden oder bei bestimmten Bedingungen gestartet werden. Drittanbieter-Programme werden zuerst erklärt; Systemdienste werden niemals als einfache Schalter dargestellt.",
+  "guided": {
+    "kicker": "Drittanbieter-Anmelde-Items",
+    "title": "Wichtige Startprogramme zur Überprüfung",
+    "description": "Nur sichere Drittanbieter-Anmelde-Programme erscheinen hier. Änderungen werden beim nächsten Anmelden angewendet.",
+    "found": "{{count}} Diese Elemente sollten überprüft werden",
+    "foundDescription": "Weniger genutzte Anwendungen können nach Bestätigung deaktiviert werden; die Änderung gilt beim nächsten Anmelden.",
+    "clear": "Keines der Drittanbieter-Anmelde-Programme erfordert Aufmerksamkeit",
+    "clearDescription": "Systemdienste und bedingte Wartungsitems werden niemals als einfache Schalter dargestellt."
+  },
+  "scanning": "Überprüfung…",
+  "loadingTitle": "Start-Up-Positionen lesen",
+  "loadingDescription": "StatusOrbit liest nur öffentliche Start-Konfigurationen und führt niemals Befehle darin aus.",
+  "summary": "Zusammenfassung der Start-Up-Items",
+  "reviewCount": "Es lohnt sich, dies zu überprüfen",
+  "reviewHint": "Drittanbieter-Items, die beim Anmelden gestartet werden",
+  "thirdPartyCount": "Drittanbieter-Items",
+  "thirdPartyHint": "Enthält bedingte Hintergrund-Helper",
+  "systemCount": "System-Items",
+  "systemHint": "Nur Leseberechtigung und nicht als normale Schalter angezeigt",
+  "inventory": "Start-Up-Inventar",
+  "listTitle": "Welche Items starten automatisch",
+  "filters": "Filter für Start-Up-Items",
+  "filter": {
+    "review": "Es lohnt sich, dies zu überprüfen",
+    "all": "Alle",
+    "system": "System-Items"
+  },
+  "search": "Suche nach Name, Publisher oder Pfad",
+  "emptyTitle": "Keine Items zum Überprüfen",
+  "emptyDescription": "Wähle 'Alle', um bedingte und System-Wartungsitems zu überprüfen.",
+  "publisherUnknown": "Unbekannter Publisher",
+  "enabled": "Startet automatisch",
+  "disabled": "Deaktiviert",
+  "technicalDetails": "Zeigt technische Details",
+  "managementBoundary": "Nur umkehrbare Benutzer-Startup-Dateien können deaktiviert werden. System-Elemente und nicht unterstützte Quellen bleiben schreibgeschützt.",
+  "readOnlyBoundary": "Diese Plattform stellt keine Startup-Quelle zur Verfügung, die StatusOrbit sicher wiederherstellen kann, sodass das Inventar schreibgeschützt bleibt.",
+  "unreadable": "{{count}} Startprogramme konnten aufgrund von Berechtigungen nicht gelesen werden",
+  "actions": {
+    "disable": "Deaktivieren beim Anmelden",
+    "enable": "Wiederherstellen beim Anmelden"
+  },
+  "managementStatus": {
+    "system": "System-Element · schreibgeschützt",
+    "protected": "Geschütztes Element",
+    "unsupported": "Diese Quelle ist noch nicht verwaltbar"
+  },
+  "impact": {
+    "none": {
+      "title": "Kein aktueller Startup-Einfluss"
+    },
+    "low": {
+      "title": "Geringer erwarteter Einfluss"
+    },
+    "moderate": {
+      "title": "Kann die Anmeldegeschwindigkeit beeinflussen"
+    },
+    "high": {
+      "title": "Hoher Hintergrund-Einfluss jetzt"
+    },
+    "running": "Wird gerade ausgeführt: CPU {{cpu}} · Arbeitsspeicher {{memory}}",
+    "notMatched": "Keine aktuell laufende Anwendung konnte gefunden werden"
+  },
+  "outcome": {
+    "disabled": "Automatische Startup für {{name}} ist deaktiviert. Die laufende Anwendung wurde nicht geschlossen.",
+    "enabled": "Automatische Startup für {{name}} ist wiederhergestellt."
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "Automatische Startup für {{name}} deaktivieren?",
+      "description": "StatusOrbit verschiebt diese Benutzer-Startdatei in ein eigenes, wiederherstellbares Speicherverzeichnis und löscht sie nicht.",
+      "whenDescription": "Dies tritt beim nächsten Anmelden in Kraft. Das Wiederherstellen hat ebenfalls ab einem zukünftigen Anmeldenen Wirkung.",
+      "confirm": "Bestätigen Sie das Deaktivieren beim Anmelden"
+    },
+    "enable": {
+      "title": "Automatischen Start für {{name}} wiederherstellen?",
+      "description": "StatusOrbit verschiebt die gespeicherte Konfiguration zurück an den ursprünglichen Ort.",
+      "whenDescription": "Ab dem nächsten Anmeldenen kann das System diesen Eintrag erneut automatisch starten.",
+      "confirm": "Bestätigen Sie das Wiederherstellen beim Anmelden"
+    },
+    "reversibleTitle": "Sie können es später wiederherstellen",
+    "reversibleDescription": "Die Datei wird nur zwischen zwei Benutzerordnern verschoben und niemals bearbeitet oder gelöscht.",
+    "whenTitle": "Die aktuelle Sitzung ändert sich nicht sofort",
+    "runningTitle": "Die laufende Anwendung bleibt geöffnet",
+    "runningDescription": "Das Deaktivieren des Starts beendet die aktuelle Anwendung nicht und unterbricht keine bereits laufenden Arbeiten.",
+    "preparing": "Überprüfung des Start-Eintrags und seines Zustands…",
+    "applying": "Sicher aktualisieren…",
+    "errors": {
+      "startup_item_protected": "Dies ist kein von StatusOrbit sicher verwalteter, benutzerdefinierter Start-Eintrag, daher hat sich nichts geändert.",
+      "startup_item_unavailable": "Dieser Start-Eintrag wurde verändert oder gelöscht. Aktualisieren Sie die Liste und versuchen Sie es erneut.",
+      "startup_state_changed": "Die Startdatei wurde nach der Bestätigung geändert, daher hat StatusOrbit nichts geändert.",
+      "startup_destination_conflict": "Ein anderer Eintrag befindet sich bereits am Zielort. StatusOrbit hat die Überschreibung verhindert.",
+      "startup_confirmation_unavailable": "Diese Bestätigung ist nicht mehr verfügbar. Abbrechen und erneut öffnen.",
+      "startup_confirmation_expired": "Die Bestätigung ist abgelaufen. Überprüfen Sie den Eintrag erneut, bevor Sie fortfahren.",
+      "startup_management_failed": "Das System konnte die Startdatei nicht sicher verschieben. Der ursprüngliche Zustand wurde beibehalten."
+    }
+  },
+  "source": {
+    "launch_agent": "Start-Agent",
+    "launch_daemon": "Daemon",
+    "desktop_entry": "Automatische Ausführung",
+    "registry_run": "Registry Run",
+    "startup_folder": "Startordner"
+  },
+  "advice": {
+    "review": {
+      "title": "Überlegen Sie, ob Sie es benötigen",
+      "description": "Es wird jedes Mal gestartet, wenn Sie sich anmelden. Wenn Sie es selten verwenden, können Sie es nach Bestätigung deaktivieren."
+    },
+    "normal": {
+      "title": "Startet bedingt",
+      "description": "Es startet normalerweise für Updates, Synchronisation oder ein bestimmtes Ereignis und kann die Anmeldung nicht verlangsamen."
+    },
+    "system": {
+      "title": "System- oder Geräte-Dienst",
+      "description": "Behandeln Sie dies nicht als eine normale Startanwendung. StatusOrbit hält sie schreibgeschützt."
+    },
+    "disabled": {
+      "title": "Derzeit deaktiviert",
+      "description": "Die Konfiguration bleibt erhalten, aber das System startet es nicht automatisch von diesem Eintrag aus."
+    }
+  }
+}

@@ -8,7 +8,7 @@ import {
   type SortDirection,
   type SystemSnapshot,
 } from "./types";
-import i18n from "./i18n";
+import i18n, { appT } from "./i18n";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
 const BYTE_NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>();
@@ -25,7 +25,7 @@ export function assertSupportedSnapshotSchema(
 ): void {
   if (snapshot.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) {
     throw new Error(
-      i18n.t("format.unsupportedSchema", { version: snapshot.schemaVersion }),
+      appT("format:unsupportedSchema", { version: snapshot.schemaVersion }),
     );
   }
 }
@@ -52,33 +52,33 @@ export function formatBytes(bytes: number, maximumFractionDigits = 1): string {
 
 export function formatRate(bytesPerSecond: number | null): string {
   return bytesPerSecond === null
-    ? i18n.t("common.warmup")
+    ? appT("common:warmup")
     : `${formatBytes(bytesPerSecond)}/s`;
 }
 
 export function formatPercent(value: number | null): string {
   return value === null
-    ? i18n.t("common.warmup")
+    ? appT("common:warmup")
     : `${value.toFixed(value >= 10 ? 0 : 1)}%`;
 }
 
 export function formatDuration(totalSeconds: number): string {
   if (totalSeconds < 60) {
-    return i18n.t("format.seconds", {
+    return appT("format:seconds", {
       count: Math.max(0, Math.floor(totalSeconds)),
     });
   }
   if (totalSeconds < 3_600) {
-    return i18n.t("format.minutes", {
+    return appT("format:minutes", {
       count: Math.floor(totalSeconds / 60),
     });
   }
   if (totalSeconds < 86_400) {
-    return i18n.t("format.hours", {
+    return appT("format:hours", {
       count: Math.floor(totalSeconds / 3_600),
     });
   }
-  return i18n.t("format.days", {
+  return appT("format:days", {
     count: Math.floor(totalSeconds / 86_400),
   });
 }
@@ -210,11 +210,22 @@ export function normalizeCommandError(error: unknown): CommandError {
 
   return {
     code: "unknown_error",
-    message: typeof error === "string" ? error : i18n.t("format.unknownError"),
+    message: typeof error === "string" ? error : appT("format:unknownError"),
   };
 }
 
 export function statusLabel(status: string): string {
-  const key = `process.status.${status}`;
-  return i18n.exists(key) ? i18n.t(key) : status;
+  const key = PROCESS_STATUS_KEYS[status as keyof typeof PROCESS_STATUS_KEYS];
+  return key ? appT(key) : status;
 }
+
+const PROCESS_STATUS_KEYS = {
+  Run: "process:status.Run",
+  Sleep: "process:status.Sleep",
+  Idle: "process:status.Idle",
+  Stop: "process:status.Stop",
+  Zombie: "process:status.Zombie",
+  Dead: "process:status.Dead",
+  LockBlocked: "process:status.LockBlocked",
+  UninterruptibleDiskSleep: "process:status.UninterruptibleDiskSleep",
+} as const;

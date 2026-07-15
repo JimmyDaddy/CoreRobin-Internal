@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "tray",
+  "description": "Narrow event, window and application controls for the tray panel",
+  "windows": ["tray"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit-to",
+    "core:window:allow-hide",
+    "allow-get-health-state",
+    "allow-show-main-window",
+    "allow-toggle-companion-window"
+  ]
+}

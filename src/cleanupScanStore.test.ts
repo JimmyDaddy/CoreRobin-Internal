@@ -21,7 +21,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = 10_000;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: now - 500,
       snapshot,
     }), now);
@@ -33,28 +33,30 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = CLEANUP_SCAN_STALE_AFTER_MS + 2_000;
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: 1_000,
       snapshot,
     }), now)?.status).toBe("expired");
   });
 
-  it("uses the current guarded cleanup capability for older retained scans", () => {
+  it("does not invent cleanup capability for an older retained scan", () => {
     const snapshot = { ...getMockCleanupScan(), deletionAvailable: false };
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000);
 
-    expect(parsed?.snapshot.deletionAvailable).toBe(true);
+    expect(parsed?.snapshot.deletionAvailable).toBe(false);
   });
 
-  it("keeps retained v3 maps usable without inventing application activity", () => {
+  it("keeps retained v5 maps usable without inventing application activity", () => {
     const snapshot = getMockCleanupScan();
     const { installedApplications: _applications, applicationInventoryAvailable: _available, ...legacy } = snapshot;
+    void _applications;
+    void _available;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: 9_500,
       snapshot: legacy,
     }), 10_000);
@@ -68,7 +70,7 @@ describe("cleanup scan persistence", () => {
     const now = CLEANUP_SCAN_RETENTION_MS + 2_000;
     expect(parseStoredCleanupScan("not-json", now)).toBeNull();
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: 1_000,
       snapshot,
     }), now)).toBeNull();
@@ -82,12 +84,28 @@ describe("cleanup scan persistence", () => {
     }), 10_000)).toBeNull();
   });
 
-  it("rejects v3 maps that cannot advertise lazily loadable folders", () => {
+  it("rejects v3 maps because they do not contain a canonical path root", () => {
+    expect(parseStoredCleanupScan(JSON.stringify({
+      version: 3,
+      savedAtMs: 9_500,
+      snapshot: getMockCleanupScan(),
+    }), 10_000)).toBeNull();
+  });
+
+  it("rejects v4 home-only maps after the scan scope expands to the system disk", () => {
+    expect(parseStoredCleanupScan(JSON.stringify({
+      version: 4,
+      savedAtMs: 9_500,
+      snapshot: getMockCleanupScan(),
+    }), 10_000)).toBeNull();
+  });
+
+  it("rejects v5 maps that cannot advertise lazily loadable folders", () => {
     const snapshot = getMockCleanupScan();
     delete (snapshot.locations[0].nodes[0] as { hasChildren?: boolean }).hasChildren;
 
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 3,
+      version: 5,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000)).toBeNull();
@@ -129,6 +147,8 @@ describe("cleanup scan persistence", () => {
     expect(updatedParent.logicalSizeBytes).toBe(parent.logicalSizeBytes - target.logicalSizeBytes);
     expect(updatedParent.itemCount).toBe(parent.itemCount - target.itemCount);
     expect(updatedParent.children.some((child) => child.path === target.path)).toBe(false);
+    expect(updated.root.allocatedSizeBytes).toBe(snapshot.root.allocatedSizeBytes - target.allocatedSizeBytes);
+    expect(updated.root.itemCount).toBe(snapshot.root.itemCount - target.itemCount);
   });
 
   it("updates a pruned ancestor even when the deleted child was loaded lazily", () => {

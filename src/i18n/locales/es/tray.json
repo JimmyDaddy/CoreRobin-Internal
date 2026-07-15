@@ -1,0 +1,52 @@
+{
+  "localMonitor": "Monitor del sistema local",
+  "available": "Espacio disponible",
+  "open": "Vista general",
+  "companion": "Compañía Orbit",
+  "cleanup": "Limpieza de espacio",
+  "health": {
+    "loading": "Conectando",
+    "observing": "Analizando estado",
+    "normal": "Estado normal",
+    "attention": "Advertencia",
+    "urgent": "Acción recomendada"
+  },
+  "status": {
+    "loading": {
+      "title": "Analizando el estado del sistema",
+      "description": "La primera medición aparecerá en breve."
+    },
+    "observing": {
+      "title": "Estudiando el estado de este equipo",
+      "description": "Observando durante un tiempo para evitar confundir un pico breve con un problema."
+    },
+    "normal": {
+      "title": "El equipo funciona correctamente",
+      "description": "No hay problemas de recursos que requieran atención inmediata."
+    },
+    "attention": {
+      "title": "Un recurso requiere supervisión",
+      "description": "Abra StatusOrbit para ver la razón y las instrucciones."
+    },
+    "urgent": {
+      "title": "Un recurso está bajo presión",
+      "description": "Revise la información en StatusOrbit antes de tomar medidas."
+    }
+  },
+  "reason": "{{resource}} requiere atención",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "Memoria RAM",
+    "storage": "Almacenamiento",
+    "temperature": "Temperatura",
+    "battery": "Batería",
+    "network": "Red",
+    "sleep": "Entrar en modo de suspensión",
+    "none": "Sistema"
+  },
+  "incidentTitle": {
+    "attention": "Elementos a observar: {{count}}",
+    "urgent": "Elementos para revisar pronto: {{count}}"
+  },
+  "recovering": "El indicador ha mejorado; confirmando que permanece en estado normal"
+}

@@ -1,0 +1,82 @@
+{
+  "localPreferences": "Preferências locais",
+  "title": "Configurações",
+  "description": "Essas preferências permanecem neste dispositivo e se aplicam à coleta de dados e à interface imediatamente.",
+  "intervalMs": "{{interval}} ms",
+  "intervalSeconds": "{{seconds}} segundos",
+  "experience": {
+    "title": "Modo da interface",
+    "description": "O modo 'Diário' começa com problemas reais e fornece etapas guiadas; o modo 'Profissional' monitora todos os processos e métricas.",
+    "label": "Modo da interface",
+    "simple": "Modo 'Diário'",
+    "professional": "Modo 'Profissional'"
+  },
+  "language": {
+    "title": "Idioma da interface",
+    "description": "Alterar o texto nos menus, guias e status do StatusOrbit.",
+    "label": "Idioma"
+  },
+  "background": {
+    "title": "Configurações de fundo e área de trabalho",
+    "description": "Controlar quando o StatusOrbit fica disponível, iniciar automaticamente na entrada e exibir o Orbit.",
+    "showDockIcon": "Mostrar no Dock",
+    "showDockIconDescription": "Quando desativado, use o menu da barra sem ocupar o Dock ou o aplicativo alternador",
+    "launchAtLogin": "Iniciar automaticamente na entrada",
+    "launchAtLoginDescription": "Inicie o serviço da barra de menus discretamente, sem abrir a janela principal",
+    "companionShowOnStartup": "Manter o Orbit na área de trabalho",
+    "companionShowOnStartupDescription": "Exiba o companheiro do Orbit sempre que o aplicativo iniciar",
+    "companionAlwaysOnTop": "Mantenha o Orbit sempre visível acima de outras janelas",
+    "companionAlwaysOnTopDescription": "Permaneça acima de outras janelas; quando desativado, o Orbit pode ser coberto"
+  },
+  "sampling": {
+    "title": "Amostragem do sistema",
+    "description": "Intervalos mais curtos reagem mais rapidamente e aumentam a sobrecarga de amostragem.",
+    "system": "CPU, memória e processos"
+  },
+  "connections": {
+    "title": "Atualização de conexões",
+    "description": "Conexões ativas utilizam uma varredura independente em baixa frequência.",
+    "refresh": "Conexões ativas"
+  },
+  "processView": {
+    "title": "Visualização padrão de processos",
+    "description": "Utilizada quando o explorador de processos é iniciado ou reiniciado.",
+    "label": "Visualização padrão de processos"
+  },
+  "history": {
+    "title": "Histórico",
+    "description": "Salve instantâneos agregados e eventos de alerta com baixa frequência, sem detalhes sobre processos ou conexões.",
+    "persist": "Salvar histórico neste dispositivo",
+    "applicationNames": "Permitir exibição dos nomes de aplicativos no histórico",
+    "applicationNamesHint": "Só salva um nome quando um aplicativo indica claramente a pressão. Desativar remove os nomes dos aplicativos dos eventos salvos.",
+    "retention": "Tempo de retenção",
+    "days": "{{count}} dias"
+  },
+  "notifications": {
+    "title": "Notificações do desktop",
+    "description": "Apenas cargas pesadas, pressão real de memória e baixo espaço em disco interrompem o status. O StatusOrbit segue após a recuperação estável do problema.",
+    "enable": "Habilitar alertas moderados",
+    "categories": "Categorias de alertas permitidas",
+    "resources": {
+      "cpu": "Carga elevada constante",
+      "memory": "Uso elevado de memória",
+      "volume": "Espaço em disco"
+    },
+    "status": {
+      "disabled": "Desativado",
+      "requesting": "Aguardando permissão",
+      "ready": "Permitido",
+      "denied": "Não permitido pelo sistema",
+      "unavailable": "Somente para aplicativos da área de trabalho"
+    }
+  },
+  "thresholds": {
+    "title": "Limiares de alerta de recursos",
+    "description": "Níveis de cor para uso de CPU, memória e volume; leituras altas sustentadas criam alertas.",
+    "preview": "Pré-visualização de cores de alerta de recursos",
+    "low": "Normal",
+    "moderate": "Atenção",
+    "high": "Alto",
+    "critical": "Crítico"
+  }
+}

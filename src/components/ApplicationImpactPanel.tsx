@@ -1,6 +1,6 @@
 import { AppWindow, ArrowRight, ChevronDown, ChevronUp, Search, ShieldCheck } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   applicationImpactLevel,
@@ -33,7 +33,7 @@ export function ApplicationImpactPanel({
   onViewAll,
   onOpenProfessionalDetails,
 }: ApplicationImpactPanelProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [sortKey, setSortKey] = useState<ApplicationSortKey>("impact");
   const [query, setQuery] = useState("");
   const visibleApplications = useMemo(() => {
@@ -53,15 +53,15 @@ export function ApplicationImpactPanel({
     >
       <header className="application-impact__header">
         <div>
-          <span className="eyebrow">{t("applications.kicker")}</span>
+          <span className="eyebrow">{t("applications:kicker")}</span>
           <h2 id={compact ? "application-impact-overview-title" : "application-impact-title"}>
-            {compact ? t("applications.overviewTitle") : t("applications.title")}
+            {compact ? t("applications:overviewTitle") : t("applications:title")}
           </h2>
-          <p>{t("applications.description")}</p>
+          <p>{t("applications:description")}</p>
         </div>
         {compact && onViewAll ? (
           <button className="application-impact__view-all" type="button" onClick={onViewAll}>
-            {t("applications.viewAll")}<ArrowRight size={14} />
+            {t("applications:viewAll")}<ArrowRight size={14} />
           </button>
         ) : null}
       </header>
@@ -70,15 +70,15 @@ export function ApplicationImpactPanel({
         <div className="application-impact__toolbar">
           <label className="application-impact__search">
             <Search size={14} />
-            <span className="sr-only">{t("applications.search")}</span>
+            <span className="sr-only">{t("applications:search")}</span>
             <input
               type="search"
               value={query}
-              placeholder={t("applications.searchPlaceholder")}
+              placeholder={t("applications:searchPlaceholder")}
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <div className="application-impact__sort" role="group" aria-label={t("applications.sortLabel")}>
+          <div className="application-impact__sort" role="group" aria-label={t("applications:sortLabel")}>
             {SORT_KEYS.map((key) => (
               <button
                 className={sortKey === key ? "is-active" : ""}
@@ -87,7 +87,7 @@ export function ApplicationImpactPanel({
                 aria-pressed={sortKey === key}
                 onClick={() => setSortKey(key)}
               >
-                {t(`applications.sort.${key}`)}
+                {t(`applications:sort.${key}`)}
               </button>
             ))}
           </div>
@@ -124,19 +124,19 @@ export function ApplicationImpactPanel({
                   <strong>{application.name}</strong>
                   <small>
                     {application.systemComponent ? (
-                      <><ShieldCheck size={11} />{t("applications.systemComponent")}</>
+                      <><ShieldCheck size={11} />{t("applications:systemComponent")}</>
                     ) : (
-                      <><AppWindow size={11} />{t("applications.processCount", { count: application.processCount })}</>
+                      <><AppWindow size={11} />{t("applications:processCount", { count: application.processCount })}</>
                     )}
                   </small>
                 </span>
                 <span className="application-impact-row__metrics">
                   <span><small>CPU</small><strong>{formatPercent(application.cpuPercent)}</strong></span>
-                  <span><small>{t("applications.memory")}</small><strong>{formatBytes(application.memoryBytes)}</strong></span>
-                  <span><small>{t("applications.disk")}</small><strong>{formatRate(application.diskBytesPerSecond)}</strong></span>
+                  <span><small>{t("applications:memory")}</small><strong>{formatBytes(application.memoryBytes)}</strong></span>
+                  <span><small>{t("applications:disk")}</small><strong>{formatRate(application.diskBytesPerSecond)}</strong></span>
                 </span>
                 <span className={`application-impact-row__level resource-usage resource-usage--${impact}`}>
-                  {t(`applications.level.${impact}`)}
+                  {t(`applications:level.${impact}`)}
                 </span>
                 {compact ? (
                   <ArrowRight className="application-impact-row__arrow" size={15} />
@@ -149,18 +149,20 @@ export function ApplicationImpactPanel({
               {!compact && selected ? (
                 <div className="application-impact-selection" role="status">
                   <div>
-                    <strong>{t("applications.selected.title", { name: application.name })}</strong>
-                    <span>{t(`applications.selected.${primaryResource}`, { value: primaryValue })}</span>
+                    <strong>{t("applications:selected.title", { name: application.name })}</strong>
+                    <span>{primaryResource === "balanced"
+                      ? t("applications:selected.balanced")
+                      : t(`applications:selected.${primaryResource}`, { value: primaryValue ?? "" })}</span>
                     <small className={application.systemComponent ? "is-warning" : ""}>
                       <ShieldCheck size={12} />
                       {application.systemComponent
-                        ? t("applications.selected.systemSafety")
-                        : t("applications.selected.appSafety")}
+                        ? t("applications:selected.systemSafety")
+                        : t("applications:selected.appSafety")}
                     </small>
                   </div>
                   {onOpenProfessionalDetails ? (
                     <button type="button" onClick={() => onOpenProfessionalDetails(application)}>
-                      {t("applications.selected.professionalDetails")}<ArrowRight size={14} />
+                      {t("applications:selected.professionalDetails")}<ArrowRight size={14} />
                     </button>
                   ) : null}
                 </div>
@@ -171,14 +173,14 @@ export function ApplicationImpactPanel({
         {visibleApplications.length === 0 ? (
           <div className="application-impact__empty">
             <AppWindow size={20} />
-            <strong>{t("applications.empty")}</strong>
+            <strong>{t("applications:empty")}</strong>
           </div>
         ) : null}
       </div>
 
       <footer className="application-impact__footer">
         <ShieldCheck size={13} />
-        <span>{t("applications.safety")}</span>
+        <span>{t("applications:safety")}</span>
       </footer>
     </section>
   );

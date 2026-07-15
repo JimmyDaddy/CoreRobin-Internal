@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "Navigation principale",
+  "monitor": "Surveillance",
+  "diagnostics": "Diagnostics",
+  "overview": "Vue d'ensemble",
+  "applications": "Applications",
+  "processes": "Processus",
+  "storage": "Stockage",
+  "cleanup": "Nettoyage",
+  "network": "Réseau",
+  "startup": "Démarrage",
+  "history": "Historique",
+  "settings": "Paramètres",
+  "soon": "Bientôt disponible",
+  "comingSoon": "En cours de préparation",
+  "localSampling": "Échantillonnage local",
+  "viewEyebrow": {
+    "overview": "Vue d'ensemble du système",
+    "applications": "Impact des applications",
+    "processes": "Diagnostics des processus",
+    "storage": "Diagnostics du stockage",
+    "cleanup": "Nettoyage de l'espace",
+    "network": "Diagnostic réseau",
+    "startup": "Vérification des éléments de démarrage",
+    "history": "Analyse de l'historique",
+    "settings": "Paramètres"
+  },
+  "demoData": "Données de démonstration du navigateur",
+  "paused": "En pause",
+  "live": "Surveillance en direct",
+  "refreshNow": "Rafraîchir maintenant",
+  "resume": "Reprendre",
+  "pause": "Suspendre",
+  "switchLanguage": "Changer la langue de l'interface",
+  "samplerConnecting": "Connexion au échantillon local…",
+  "samplerFailed": "Impossible de démarrer l'échantillon",
+  "samplerNoData": "Aucune donnée système n'a été reçue.",
+  "sampleFailed": "Échantillonnage temporairement échoué : {{message}}",
+  "staleTarget": "L'identité du processus a changé. L'action a été annulée ; sélectionnez-la à nouveau pour continuer.",
+  "metricsLabel": "Résumé des ressources système",
+  "mode": {
+    "simple": "Mode quotidien",
+    "professional": "Mode professionnel",
+    "short": {
+      "simple": "Quotidien",
+      "professional": "Professionnel"
+    },
+    "switchTo": {
+      "simple": "Basculer vers le mode quotidien",
+      "professional": "Basculer vers le mode professionnel"
+    }
+  },
+  "companion": {
+    "show": "Afficher l'assistant Orbit",
+    "hide": "Masquer l'assistant Orbit"
+  },
+  "technicalOverview": {
+    "title": "Afficher les détails des ressources en temps réel",
+    "description": "Visualiser l'utilisation du CPU, de la mémoire, du disque et du réseau, ainsi que les tendances sur cinq minutes."
+  },
+  "metrics": {
+    "memory": "Utilisation de la mémoire",
+    "disk": "E/S disque",
+    "network": "Débit réseau",
+    "cpuContext": "{{count}} cœurs logiques · Une seule application peut dépasser 100%",
+    "memoryContext": "{{total}} total · {{swap}} espace d'échange",
+    "diskContext": "Lecture {{read}} · Écriture {{write}}",
+    "networkContext": "Réception {{receive}} · Envoi {{send}}"
+  },
+  "status": {
+    "interval": "Intervalle d'échantillonnage {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} interfaces · {{connections}} connexions",
+    "applicationCount": "{{count}} applications ou composants système",
+    "savedHistory": "{{count}} points d'historique sauvegardés",
+    "processCount": "{{count}} processus",
+    "cleanupEntries": "{{count}} éléments vérifiés"
+  }
+}

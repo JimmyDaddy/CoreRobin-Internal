@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "Navegación principal",
+  "monitor": "Monitorización",
+  "diagnostics": "Diagnóstico",
+  "overview": "Resumen",
+  "applications": "Aplicaciones",
+  "processes": "Procesos",
+  "storage": "Almacenamiento",
+  "cleanup": "Limpieza",
+  "network": "Red",
+  "startup": "Inicio",
+  "history": "Historial",
+  "settings": "Configuración",
+  "soon": "Próximamente",
+  "comingSoon": "Disponible pronto",
+  "localSampling": "Muestreo local",
+  "viewEyebrow": {
+    "overview": "Visión general del sistema",
+    "applications": "Impacto de las aplicaciones",
+    "processes": "Diagnóstico de procesos",
+    "storage": "Diagnóstico de almacenamiento",
+    "cleanup": "Liberación de espacio",
+    "network": "Diagnóstico de red",
+    "startup": "Revisión de elementos al inicio",
+    "history": "Análisis del historial",
+    "settings": "Configuración"
+  },
+  "demoData": "Datos de demostración del navegador",
+  "paused": "En pausa",
+  "live": "Estado en vivo",
+  "refreshNow": "Actualizar ahora",
+  "resume": "Reanudar",
+  "pause": "Pausar",
+  "switchLanguage": "Cambiar idioma de la interfaz",
+  "samplerConnecting": "Conectando al muestreador local…",
+  "samplerFailed": "No se pudo iniciar el muestreador",
+  "samplerNoData": "No se recibieron datos del sistema.",
+  "sampleFailed": "La toma de muestra temporalmente falló: {{message}}",
+  "staleTarget": "Se ha cambiado la identidad del proceso. La acción se canceló; selecciónela nuevamente para continuar.",
+  "metricsLabel": "Resumen de recursos del sistema",
+  "mode": {
+    "simple": "Modo diario",
+    "professional": "Modo profesional",
+    "short": {
+      "simple": "Diario",
+      "professional": "Profesional"
+    },
+    "switchTo": {
+      "simple": "Cambiar a modo sencillo",
+      "professional": "Cambiar a modo profesional"
+    }
+  },
+  "companion": {
+    "show": "Mostrar asistente Orbit",
+    "hide": "Ocultar asistente Orbit"
+  },
+  "technicalOverview": {
+    "title": "Ver detalles de recursos en tiempo real",
+    "description": "Mostrar uso de CPU, memoria, disco y red, así como tendencias de cinco minutos."
+  },
+  "metrics": {
+    "memory": "Uso de memoria",
+    "disk": "Actividad del disco",
+    "network": "Ancho de banda de la red",
+    "cpuContext": "{{count}} número de núcleos lógicos · un proceso puede superar los 100%",
+    "memoryContext": "{{total}} total {{swap}} uso de memoria virtual",
+    "diskContext": "Lectura {{read}} Escritura {{write}}",
+    "networkContext": "Tráfico descendente {{receive}} Tráfico ascendente {{send}}"
+  },
+  "status": {
+    "interval": "Intervalo de muestreo {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} interfaces {{connections}} conexiones",
+    "applicationCount": "{{count}} aplicaciones o componentes del sistema",
+    "savedHistory": "{{count}} puntos de historial guardados",
+    "processCount": "{{count}} procesos",
+    "cleanupEntries": "{{count}} elementos revisados"
+  }
+}

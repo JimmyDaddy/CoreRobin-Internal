@@ -4,7 +4,7 @@ import type {
   NetworkConnectionsSnapshot,
   ProcessDetailRequest,
   ProcessRow,
-  SystemSnapshot,
+  SystemHealthSnapshot,
 } from "./types";
 import { memoryUsagePercent, processDiskRate, processIdentity } from "./utils";
 
@@ -95,7 +95,7 @@ export interface SmartDiagnosisResult {
 }
 
 export interface SmartDiagnosisInput {
-  snapshot: SystemSnapshot;
+  snapshot: SystemHealthSnapshot;
   history: readonly HistoryPoint[];
   connections: NetworkConnectionsSnapshot | null;
 }
@@ -114,7 +114,7 @@ export function analyzeSystemHealth({
       (orderedHistory[0]?.timestamp ?? snapshot.sampledAtMs),
   );
   const baselineReady = sampleSpanMs >= DIAGNOSIS_SUSTAINED_MS;
-  const applications = aggregateApplications(snapshot.processes);
+  const applications = aggregateApplications(snapshot.processes ?? []);
   const findings = [
     diagnoseCpu(snapshot, orderedHistory, applications),
     diagnoseMemory(snapshot, orderedHistory, applications),
@@ -200,7 +200,7 @@ export function aggregateApplications(
 }
 
 function diagnoseCpu(
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
   history: readonly HistoryPoint[],
   applications: readonly ApplicationImpact[],
 ): DiagnosisFindingDraft | null {
@@ -226,7 +226,7 @@ function diagnoseCpu(
 }
 
 function diagnoseMemory(
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
   history: readonly HistoryPoint[],
   applications: readonly ApplicationImpact[],
 ): DiagnosisFindingDraft | null {
@@ -271,7 +271,7 @@ function diagnoseMemory(
   });
 }
 
-function diagnoseStorage(snapshot: SystemSnapshot): DiagnosisFindingDraft | null {
+function diagnoseStorage(snapshot: SystemHealthSnapshot): DiagnosisFindingDraft | null {
   const volumes = snapshot.disk.volumes
     .filter((volume) => volume.totalBytes >= 4 * GIBIBYTE)
     .map(volumeUsage)
@@ -304,7 +304,7 @@ function diagnoseStorage(snapshot: SystemSnapshot): DiagnosisFindingDraft | null
 }
 
 function diagnoseDisk(
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
   history: readonly HistoryPoint[],
   applications: readonly ApplicationImpact[],
 ): DiagnosisFindingDraft | null {
@@ -343,7 +343,7 @@ function diagnoseDisk(
 }
 
 function diagnoseNetwork(
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
   history: readonly HistoryPoint[],
   connections: NetworkConnectionsSnapshot | null,
 ): DiagnosisFindingDraft | null {
@@ -388,7 +388,7 @@ function diagnoseNetwork(
 function sustainedTailDuration(
   history: readonly HistoryPoint[],
   predicate: (point: HistoryPoint) => boolean,
-  snapshot: Pick<SystemSnapshot, "sampledAtMs" | "sampleIntervalMs">,
+  snapshot: Pick<SystemHealthSnapshot, "sampledAtMs" | "sampleIntervalMs">,
 ): number {
   const latest = history[history.length - 1];
   if (!latest || !predicate(latest)) return 0;
@@ -432,7 +432,7 @@ function finding(
 
 function recommendationFor(
   finding: DiagnosisFindingDraft,
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
 ): DiagnosisRecommendation {
   if (finding.code === "low_storage") {
     return {
@@ -465,7 +465,7 @@ function recommendationFor(
   }
   if (
     culprit?.actionIdentity &&
-    snapshot.capabilities.processControl.requestClose.enabled
+    snapshot.capabilities?.processControl.requestClose.enabled
   ) {
     return {
       kind: "request_close",

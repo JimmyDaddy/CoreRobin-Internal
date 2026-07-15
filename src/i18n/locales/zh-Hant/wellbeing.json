@@ -1,0 +1,58 @@
+{
+  "eyebrow": "裝置狀態",
+  "title": "溫度、電池與休眠",
+  "description": "低頻讀取系統狀態，並解釋是否有應用讓電腦無法自動休眠。",
+  "overall": {
+    "normal": "狀態正常",
+    "attention": "需要留意",
+    "urgent": "建議處理",
+    "unavailable": "系統未提供讀數"
+  },
+  "temperature": {
+    "label": "裝置溫度",
+    "normal": "當前溫度在正常範圍內。",
+    "attention": "裝置有些熱；如果同時卡頓，可先減少高負荷任務。",
+    "urgent": "溫度持續偏高，建議停止高負荷任務並保持通風。",
+    "unavailable": "當前系統或硬體沒有向 StatusOrbit 提供溫度讀數。"
+  },
+  "battery": {
+    "label": "電池",
+    "notPresent": "未檢測到電池",
+    "unavailable": "桌上型電腦或未提供電池資訊的裝置會顯示在這裡。",
+    "normal": "電量狀態正常",
+    "attention": "剩餘電量不多，建議準備連線電源",
+    "urgent": "電量很低，建議儘快連線電源",
+    "remaining": "約 {{hours}} 小時 {{minutes}} 分鐘",
+    "state": {
+      "charging": "正在充電",
+      "discharging": "正在使用電池",
+      "full": "已充滿",
+      "not_charging": "已接電源，未充電",
+      "unknown": "狀態未知"
+    }
+  },
+  "sleep": {
+    "label": "自動休眠",
+    "unavailableValue": "無法讀取",
+    "unavailable": "當前平臺沒有向 StatusOrbit 提供可靠的休眠阻止資訊。",
+    "clearValue": "可以正常休眠",
+    "clear": "沒有發現應用阻止電腦自動休眠。",
+    "blockedValue": "{{count}} 個應用",
+    "blockedValue_one": "{{count}} 個應用",
+    "blockedValue_other": "{{count}} 個應用",
+    "blocked": "{{name}} 正在阻止自動休眠，已持續{{duration}}{{more}}。退出應用或暫停相關任務後通常會恢復。",
+    "more": "，另有 {{count}} 個應用",
+    "systemValue": "系統活動",
+    "system": "系統任務暫時保持電腦喚醒，通常無需處理，也不建議結束系統程序。",
+    "duration": {
+      "unknown": "一段時間",
+      "lessThanMinute": "不到 1 分鐘",
+      "minutes": "約 {{count}} 分鐘",
+      "minutes_one": "約 1 分鐘",
+      "minutes_other": "約 {{count}} 分鐘",
+      "hours": "約 {{count}} 小時",
+      "hours_one": "約 1 小時",
+      "hours_other": "約 {{count}} 小時"
+    }
+  }
+}

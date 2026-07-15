@@ -7,6 +7,17 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react()],
+  build: {
+    manifest: true,
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        splash: "splash.html",
+        tray: "tray.html",
+        companion: "companion.html",
+      },
+    },
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

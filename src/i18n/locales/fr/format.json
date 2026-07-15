@@ -1,0 +1,8 @@
+{
+  "seconds": "{{count}} s",
+  "minutes": "{{count}} min",
+  "hours": "{{count}} h",
+  "days": "{{count}} jours",
+  "unknownError": "Une erreur inconnue s'est produite.",
+  "unsupportedSchema": "Schéma de données non pris en charge : {{version}}"
+}

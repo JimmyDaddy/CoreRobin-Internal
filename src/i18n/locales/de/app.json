@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "Hauptnavigation",
+  "monitor": "Überwachung",
+  "diagnostics": "Diagnose",
+  "overview": "Übersicht",
+  "applications": "Anwendungen",
+  "processes": "Prozesse",
+  "storage": "Speicher",
+  "cleanup": "Bereinigung",
+  "network": "Netzwerk",
+  "startup": "Start",
+  "history": "Anwendungs-Historie",
+  "settings": "Einstellungen",
+  "soon": "Bald verfügbar",
+  "comingSoon": "In Kürze verfügbar",
+  "localSampling": "Lokale Messwerte",
+  "viewEyebrow": {
+    "overview": "Systemübersicht",
+    "applications": "Auswirkungen auf Anwendungen",
+    "processes": "Prozessdiagnose",
+    "storage": "Festplatten-Diagnose",
+    "cleanup": "Festplattenspeicher freigeben",
+    "network": "Netzwerkdiagnose",
+    "startup": "Überprüfung gestarteter Anwendungen",
+    "history": "Analyse der Verlaufsinformationen",
+    "settings": "Einstellungen"
+  },
+  "demoData": "Browser-Demonstrationdaten",
+  "paused": "Pausiert",
+  "live": "Live-Ansicht",
+  "refreshNow": "Aktualisieren",
+  "resume": "Fortsetzen",
+  "pause": "Pausieren",
+  "switchLanguage": "Oberflächensprache ändern",
+  "samplerConnecting": "Verbindung zum lokalen Messdienst wird hergestellt…",
+  "samplerFailed": "Messdienst konnte nicht gestartet werden",
+  "samplerNoData": "Keine Systemdaten empfangen.",
+  "sampleFailed": "Temporäres Sampling fehlgeschlagen: {{message}}",
+  "staleTarget": "Die Prozess-ID hat sich geändert. Die Aktion wurde abgebrochen; wählen Sie sie erneut, um fortzufahren.",
+  "metricsLabel": "Zusammenfassung der Systemressourcen",
+  "mode": {
+    "simple": "Alltagsmodus",
+    "professional": "Professioneller Modus",
+    "short": {
+      "simple": "Alltag",
+      "professional": "Profi-Modus"
+    },
+    "switchTo": {
+      "simple": "Auf den einfachen Modus umschalten",
+      "professional": "Auf den Profi-Modus umschalten"
+    }
+  },
+  "companion": {
+    "show": "Orbit-Assistent anzeigen",
+    "hide": "Orbit-Assistent ausblenden"
+  },
+  "technicalOverview": {
+    "title": "Live-Ressourcenübersicht anzeigen",
+    "description": "CPU, Arbeitsspeicher, Festplatte, Netzwerk und Fünf-Minuten-Trends anzeigen."
+  },
+  "metrics": {
+    "memory": "Speicherauslastung",
+    "disk": "Festplatten-I/O",
+    "network": "Netzwerkdurchsatz",
+    "cpuContext": "{{count}} logische Kerne · Ein einzelner Prozess kann 100% auslasten",
+    "memoryContext": "{{total}} Gesamt · {{swap}} Swap-Speicher",
+    "diskContext": "Lesen {{read}} · Schreiben {{write}}",
+    "networkContext": "Download {{receive}} · Upload {{send}}"
+  },
+  "status": {
+    "interval": "Abtastintervall {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} Schnittstellen · {{connections}} Verbindungen",
+    "applicationCount": "{{count}} Anwendungen oder Systemkomponenten",
+    "savedHistory": "{{count}} gespeicherte Historie",
+    "processCount": "{{count}} Prozesse",
+    "cleanupEntries": "{{count}} überprüfte Elemente"
+  }
+}

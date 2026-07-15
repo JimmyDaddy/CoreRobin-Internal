@@ -1,0 +1,52 @@
+{
+  "localMonitor": "本機資源監控",
+  "available": "可用空間",
+  "open": "開啟概覽",
+  "companion": "Orbit 夥伴",
+  "cleanup": "空間清理",
+  "health": {
+    "loading": "連線中",
+    "observing": "正在瞭解狀態",
+    "normal": "狀態正常",
+    "attention": "需要關注",
+    "urgent": "建議處理"
+  },
+  "status": {
+    "loading": {
+      "title": "正在讀取電腦狀態",
+      "description": "首個取樣結果很快就會出現。"
+    },
+    "observing": {
+      "title": "正在瞭解電腦狀態",
+      "description": "再觀察一會兒，避免把短暫波動誤判成問題。"
+    },
+    "normal": {
+      "title": "電腦執行平穩",
+      "description": "沒有發現需要立即處理的資源問題。"
+    },
+    "attention": {
+      "title": "有一項資源值得留意",
+      "description": "開啟 StatusOrbit 可以檢視原因和對應建議。"
+    },
+    "urgent": {
+      "title": "有一項資源壓力較高",
+      "description": "建議開啟 StatusOrbit 檢視證據後再處理。"
+    }
+  },
+  "reason": "{{resource}}需要關注",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "記憶體",
+    "storage": "儲存",
+    "temperature": "溫度",
+    "battery": "電池",
+    "network": "網路",
+    "sleep": "休眠",
+    "none": "系統"
+  },
+  "incidentTitle": {
+    "attention": "有 {{count}} 項情況值得留意",
+    "urgent": "有 {{count}} 項情況建議儘快檢視"
+  },
+  "recovering": "指標已回落，正在確認是否恢復。"
+}

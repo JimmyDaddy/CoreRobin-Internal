@@ -1,0 +1,52 @@
+{
+  "localMonitor": "本机资源监控",
+  "available": "可用空间",
+  "open": "打开概览",
+  "companion": "Orbit 伙伴",
+  "cleanup": "空间清理",
+  "health": {
+    "loading": "连接中",
+    "observing": "正在了解状态",
+    "normal": "状态正常",
+    "attention": "需要关注",
+    "urgent": "建议处理"
+  },
+  "status": {
+    "loading": {
+      "title": "正在读取电脑状态",
+      "description": "首个采样结果很快就会出现。"
+    },
+    "observing": {
+      "title": "正在了解电脑状态",
+      "description": "再观察一会儿，避免把短暂波动误判成问题。"
+    },
+    "normal": {
+      "title": "电脑运行平稳",
+      "description": "没有发现需要立即处理的资源问题。"
+    },
+    "attention": {
+      "title": "有一项资源值得留意",
+      "description": "打开 StatusOrbit 可以查看原因和对应建议。"
+    },
+    "urgent": {
+      "title": "有一项资源压力较高",
+      "description": "建议打开 StatusOrbit 查看证据后再处理。"
+    }
+  },
+  "reason": "{{resource}}需要关注",
+  "resource": {
+    "cpu": "处理器",
+    "memory": "内存",
+    "storage": "存储",
+    "temperature": "温度",
+    "battery": "电池",
+    "network": "网络",
+    "sleep": "休眠",
+    "none": "系统"
+  },
+  "incidentTitle": {
+    "attention": "有 {{count}} 项情况值得留意",
+    "urgent": "有 {{count}} 项情况建议尽快查看"
+  },
+  "recovering": "指标已回落，正在确认是否恢复。"
+}

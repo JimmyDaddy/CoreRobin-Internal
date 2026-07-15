@@ -1,0 +1,545 @@
+{
+  "shell": {
+    "label": "日常模式",
+    "localOnly": "分析只在本机进行",
+    "openProfessional": "进入专业模式"
+  },
+  "nav": {
+    "home": "电脑状态",
+    "space": "空间",
+    "applications": "应用",
+    "more": "更多",
+    "today": "电脑状态",
+    "solve": "帮我解决",
+    "cleanup": "清理空间",
+    "records": "记录",
+    "settings": "设置"
+  },
+  "topbar": {
+    "thisMac": "这台 Mac",
+    "thisComputer": "这台电脑"
+  },
+  "status": {
+    "observing": {
+      "short": "正在了解状态",
+      "title": "正在了解这台电脑",
+      "summary": "再观察一会儿，避免把短暂波动误判成问题。"
+    },
+    "normal": {
+      "short": "运行平稳",
+      "title": "电脑运行平稳",
+      "summary": "目前没有发现需要你处理的问题。"
+    },
+    "attention": {
+      "short": "有些情况值得留意",
+      "title": "有 {{count}} 项情况值得留意",
+      "summary": "StatusOrbit 已经整理好原因和下一步，你不需要自己判断技术指标。"
+    },
+    "urgent": {
+      "short": "建议尽快看看",
+      "title": "有 {{count}} 项情况建议尽快看看",
+      "summary": "先核对原因，再选择合适的处理方式。"
+    }
+  },
+  "orbit": {
+    "label": "电脑状态轨道",
+    "thisComputer": "这台电脑",
+    "speed": "速度",
+    "space": "空间",
+    "temperature": "温度",
+    "battery": "电池"
+  },
+  "companion": {
+    "name": "ORBIT",
+    "checking": "正在检查"
+  },
+  "home": {
+    "kicker": "电脑状态伙伴",
+    "viewDiagnosis": "查看检查结果",
+    "viewPriority": "看看这件事",
+    "checkNow": "检查一下",
+    "checking": "检查中…",
+    "checkingTitle": "Orbit 正在看看电脑的近况",
+    "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Orbit 会明确告诉你。",
+    "haveProblem": "我遇到了问题",
+    "checkedAt": "{{time}} 更新",
+    "localOnly": "状态和历史都保存在本机",
+    "professional": "查看详细数据"
+  },
+  "intents": {
+    "kicker": "从问题开始",
+    "title": "你想解决什么？",
+    "description": "不需要先理解 CPU 或内存，选择最接近你感受的情况。",
+    "slow": {
+      "title": "电脑变慢了",
+      "description": "找出持续影响速度的应用或资源"
+    },
+    "space": {
+      "title": "空间不够",
+      "description": "确认还剩多少，并找到真正占空间的内容"
+    },
+    "startup": {
+      "title": "开机太慢",
+      "description": "看看哪些第三方应用会随登录启动"
+    },
+    "heat": {
+      "title": "发热或耗电快",
+      "description": "检查温度、电池和阻止休眠的应用"
+    },
+    "network": {
+      "title": "网络好像有问题",
+      "description": "看看当前流量和连接是否能提供线索"
+    },
+    "checkup": {
+      "title": "检查一下",
+      "description": "从当前状态中找出最值得留意的一件事"
+    }
+  },
+  "solve": {
+    "kicker": "从你的感受开始",
+    "title": "你遇到了什么情况？",
+    "description": "不需要先判断是处理器、内存还是网络，选最接近你感受的情况。",
+    "slow": {
+      "title": "电脑有点卡",
+      "description": "找出持续让电脑变慢的应用或活动"
+    },
+    "heat": {
+      "title": "风扇一直很响",
+      "description": "看看温度和持续繁忙的应用"
+    },
+    "battery": {
+      "title": "电池掉得很快",
+      "description": "检查电量、温度和阻止休眠的应用"
+    },
+    "space": {
+      "title": "空间快不够了",
+      "description": "先确认剩余空间，再决定是否扫描文件"
+    },
+    "startup": {
+      "title": "开机越来越慢",
+      "description": "看看哪些第三方应用会自动打开"
+    },
+    "network": {
+      "title": "网络好像有问题",
+      "description": "读取当前流量与活动连接，寻找可用线索"
+    },
+    "applications": {
+      "title": "哪些应用最影响电脑",
+      "description": "只先展示最值得处理的几个应用"
+    },
+    "checkup": {
+      "title": "我只是想检查一下",
+      "description": "读取最新状态并给出一个主结论"
+    },
+    "recommended": "根据当前状态推荐",
+    "otherProblems": "其他情况",
+    "footer": "StatusOrbit 不会为了显得有用而猜测原因；没有足够依据时会继续观察。"
+  },
+  "attention": {
+    "kicker": "现在",
+    "title": "值得留意的情况",
+    "count": "{{count}} 项",
+    "priority": "现在最值得留意",
+    "recovering": "正在确认恢复",
+    "open": "看看原因",
+    "emptyTitle": "现在没有需要处理的事",
+    "emptyDescription": "StatusOrbit 会继续在后台留意持续变化。",
+    "viewApplications": "看看哪些应用正在运行",
+    "temperature": {
+      "title": "电脑温度有些高",
+      "description": "减少高负荷任务并保持通风，通常会逐渐恢复。"
+    },
+    "battery": {
+      "title": "剩余电量不多",
+      "description": "如果还要继续使用一段时间，建议准备连接电源。"
+    },
+    "sleep": {
+      "title": "{{name}} 正在阻止自动休眠",
+      "description": "退出应用或暂停相关任务后通常会恢复。"
+    },
+    "application": {
+      "title": "{{name}} 现在影响较大",
+      "low": "当前影响较低。",
+      "moderate": "正在使用一些电脑资源。",
+      "high": "持续使用较多资源，可能影响流畅度。",
+      "critical": "正在大量使用资源，可能明显影响流畅度。"
+    }
+  },
+  "incident": {
+    "phase": {
+      "active": "仍在发生",
+      "recovering": "正在确认恢复",
+      "resolved": "已经恢复"
+    },
+    "recoveringDescription": "最新指标已经回落，StatusOrbit 正在继续观察，确认它不是一次短暂波动。",
+    "resolvedDescription": "这项情况已经稳定恢复，现在不需要处理；触发时的证据仍保留在这里。",
+    "observedCause": "触发时主要相关",
+    "causeMayHaveChanged": "应用状态可能已经变化，操作只会基于最新检查提供。",
+    "timeline": "{{startedAt}} 确认 · 最近一次命中 {{lastSeenAt}}",
+    "sleepDuration": "已持续约 {{minutes}} 分钟",
+    "viewCurrentNetwork": "查看当前网络状态"
+  },
+  "story": {
+    "kicker": "最近",
+    "title": "最近发生了什么",
+    "emptyTitle": "最近一直很平稳",
+    "emptyDescription": "出现持续的资源压力后，这里会用人话记录发生时间和恢复情况。",
+    "active": "正在发生",
+    "recovered": "已经恢复",
+    "cpu": {
+      "active": "从 {{time}} 起，电脑已持续繁忙约 {{minutes}} 分钟",
+      "recovered": "{{time}} 附近曾繁忙约 {{minutes}} 分钟，现在已经恢复"
+    },
+    "memory": {
+      "active": "从 {{time}} 起，内存压力已持续约 {{minutes}} 分钟",
+      "recovered": "{{time}} 附近曾出现内存压力，现在已经恢复"
+    },
+    "volume": {
+      "active": "从 {{time}} 起，可用空间一直偏少",
+      "recovered": "{{time}} 附近的空间不足提醒已经恢复"
+    },
+    "cause": "当时主要与 {{name}} 有关。",
+    "viewAll": "查看全部记录"
+  },
+  "applications": {
+    "kicker": "正在运行",
+    "title": "哪些应用正在影响电脑",
+    "description": "先看值得留意的应用，需要时再展开查看。",
+    "search": "搜索应用",
+    "system": "系统组件",
+    "ordinary": "普通应用",
+    "level": {
+      "low": "运行正常",
+      "moderate": "有些影响",
+      "high": "影响较大",
+      "critical": "影响明显"
+    },
+    "reason": {
+      "cpu": "{{name}} 当前主要在使用处理能力。",
+      "memory": "{{name}} 当前主要占用较多内存。",
+      "disk": "{{name}} 当前正在频繁读写文件。",
+      "balanced": "目前没有某一项资源特别突出。"
+    },
+    "evidence": {
+      "cpu": "处理能力",
+      "memory": "内存",
+      "disk": "文件读写"
+    },
+    "systemSafety": "这是系统组件，只展示依据，不建议直接结束。",
+    "requestClose": "请求 {{name}} 退出",
+    "viewEvidence": "查看详细依据",
+    "empty": "没有匹配的应用",
+    "refresh": "更新列表",
+    "refreshing": "正在更新…",
+    "snapshotFound": "有 {{count}} 个应用值得先看看",
+    "snapshotClear": "没有应用持续影响电脑",
+    "snapshotTime": "更新于 {{time}}",
+    "calmTitle": "现在没有应用需要处理",
+    "calmDescription": "正常运行的应用仍可按需展开查看，但不会占据首屏。",
+    "showAll": "查看全部 {{count}} 个普通应用",
+    "hideAll": "收起普通应用"
+  },
+  "recheck": {
+    "title": "重新检查完成",
+    "loadingKicker": "正在扫描这台电脑",
+    "checkingTitle": "正在把最新状态汇入轨道",
+    "checkingDescription": "稍等一下，StatusOrbit 正在读取变化并重新整理检查结果。",
+    "steps": {
+      "read": "读取最新状态",
+      "compare": "对比刚才变化",
+      "update": "整理检查结果"
+    },
+    "live": {
+      "slow": {
+        "title": "正在观察电脑为什么会卡",
+        "description": "读取最新状态；持续问题会继续观察，短暂变忙不会被当成故障。"
+      },
+      "space": {
+        "title": "正在确认剩余空间",
+        "description": "这里只读取磁盘容量，不会在后台启动耗时的完整文件扫描。"
+      },
+      "startup": {
+        "title": "正在读取开机项目",
+        "description": "系统项目保持只读，只整理可以安全评估的第三方应用。"
+      },
+      "heat": {
+        "title": "正在读取温度、电量与休眠状态",
+        "description": "缺少的数据会保持未知，不会被误判为正常。"
+      },
+      "network": {
+        "title": "正在读取当前网络活动",
+        "description": "低频读取流量和活动连接，不持续追踪每一条连接。"
+      },
+      "checkup": {
+        "title": "Orbit 正在检查这台电脑",
+        "description": "状态、连接和开机项目会各自返回真实结果，不使用表演性倒计时。"
+      }
+    },
+    "resultKicker": "状态轨道已同步",
+    "updated": "刚刚更新",
+    "completed": "检查完成",
+    "completedAt": "{{time}}",
+    "outcomeTitle": {
+      "exited": "应用已经退出",
+      "still_running": "应用仍在运行",
+      "already_exited": "应用之前已经退出"
+    },
+    "facts": {
+      "currentReading": "当前读数",
+      "observedFor": "持续观察",
+      "seconds": "{{count}} 秒",
+      "sustainedPressure": "持续资源压力",
+      "notFound": "未发现",
+      "worthReviewing": "值得核对",
+      "startupTotal": "启动项总数"
+    },
+    "slow": {
+      "observingDescription": "最新数据已经读取，但还需要继续观察，避免把一次短暂变忙当成持续问题。"
+    },
+    "checkup": {
+      "observingDescription": "最新状态已经读取，但持续问题还需要再观察一会儿。"
+    },
+    "startup": {
+      "unavailableTitle": "暂时无法读取启动项",
+      "unavailableDescription": "系统还没有返回可用的启动项结果，可以稍后再试一次。"
+    },
+    "heat": {
+      "normal": {
+        "title": "温度、电池和休眠状态都很平稳",
+        "description": "这三项目前没有发现需要处理的情况。"
+      },
+      "observing": {
+        "title": "部分设备状态暂时无法读取",
+        "description": "StatusOrbit 会保持未知状态，不会把缺少的数据判断为正常。"
+      },
+      "attention": {
+        "title": "有一项设备状态值得留意",
+        "description": "下面列出了刚刚读取的温度、电池和休眠情况。"
+      },
+      "urgent": {
+        "title": "建议尽快处理当前设备状态",
+        "description": "先减少高负荷任务或连接电源，再重新检查一次。"
+      }
+    },
+    "exited": "应用已经退出，最新状态已重新读取。",
+    "still_running": "应用仍在运行，StatusOrbit 没有继续强制处理。",
+    "already_exited": "应用在操作前已经退出，最新状态已重新读取。",
+    "refreshed": "最新状态已经读取完成。"
+  },
+  "space": {
+    "kicker": "这台电脑的空间",
+    "normal": {
+      "title": "目前还有足够空间",
+      "description": "还剩 {{free}}，暂时不需要为了数字而清理。"
+    },
+    "attention": {
+      "title": "可用空间不多了",
+      "description": "还剩 {{free}}，可以先找出真正占空间的内容。"
+    },
+    "unknown": {
+      "title": "暂时无法读取空间",
+      "description": "系统没有提供可用的磁盘容量信息。"
+    },
+    "checkAgain": "重新检查",
+    "capacity": "主要磁盘容量",
+    "available": "可用",
+    "used": "已使用",
+    "usage": "当前已使用 {{percent}}%",
+    "showDetails": "容量详情",
+    "scan": {
+      "ready": "已有最近扫描结果",
+      "notYet": "还没有分析过文件",
+      "found": "发现约 {{size}} 可优先核对",
+      "title": "看看空间都去了哪里",
+      "cached": "结果来自 {{time}} 的完整扫描；打开后会核对当前目录变化。",
+      "description": "扫描文件名、大小等元数据，生成可以下钻的空间图。",
+      "open": "打开空间清理",
+      "start": "开始空间分析"
+    },
+    "professional": "查看磁盘详细数据"
+  },
+  "more": {
+    "kicker": "按需使用",
+    "title": "更多工具与设置",
+    "description": "这些功能不会占据日常首页，需要时再打开。",
+    "startup": {
+      "title": "开机项目",
+      "description": "查看和停用可恢复的第三方登录项"
+    },
+    "history": {
+      "title": "完整历史",
+      "description": "查看资源趋势、提醒和恢复记录"
+    },
+    "network": {
+      "title": "网络诊断",
+      "description": "查看接口、流量和活动连接详情"
+    },
+    "settings": {
+      "title": "设置",
+      "description": "语言、通知、历史保留和采样偏好"
+    },
+    "language": "界面语言",
+    "professional": "专业模式",
+    "professionalDescription": "查看完整指标、进程树和技术详情"
+  },
+  "records": {
+    "kicker": "最近发生的变化",
+    "title": "处理前后，都有记录",
+    "description": "这里只记录持续出现的情况和恢复结果，不把每一次短暂波动都变成提醒。",
+    "emptyTitle": "最近一直很平稳",
+    "emptyDescription": "以后出现持续卡顿、内存压力或空间不足时，会在这里留下容易理解的记录。",
+    "duration": "约 {{minutes}} 分钟",
+    "groups": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "earlier": "更早"
+    },
+    "showMore": "查看全部 {{count}} 条记录",
+    "showLess": "收起较早记录"
+  },
+  "settings": {
+    "kicker": "日常助手设置",
+    "title": "让 Orbit 按你的方式工作",
+    "description": "这里只保留日常会用到的偏好；专业采样和阈值设置留在专业模式。",
+    "language": "界面语言",
+    "languageDescription": "随时选择适合你的界面语言",
+    "notifications": "桌面提醒",
+    "notificationStatus": {
+      "disabled": "开启后会请求系统权限",
+      "requesting": "正在等待系统权限",
+      "ready": "只提醒持续出现的重要变化",
+      "denied": "提醒权限已关闭",
+      "unavailable": "当前系统不支持桌面提醒"
+    },
+    "history": "保留最近记录",
+    "historyDescription": "关闭后不再把资源变化保存到本机",
+    "textSize": "文字大小",
+    "textSizeDescription": "放大日常页面和列表文字",
+    "textSizeOptions": {
+      "comfortable": "标准",
+      "large": "大号"
+    },
+    "reduceMotion": "减少动态效果",
+    "reduceMotionDescription": "停用持续旋转、呼吸和位移动画",
+    "showDockIcon": "在 Dock 中显示应用",
+    "showDockIconDescription": "默认关闭；主窗口仍可从顶部状态栏打开",
+    "launchAtLogin": "登录时启动",
+    "launchAtLoginDescription": "登录系统后在后台启动，不主动弹出主窗口",
+    "companionAlwaysOnTop": "始终显示在其他窗口上方",
+    "companionAlwaysOnTopDescription": "关闭后 Orbit 仍会留在桌面，但可能被其他窗口遮住",
+    "companionShowOnStartup": "让 Orbit 伙伴常驻桌面",
+    "companionShowOnStartupDescription": "开启后立即显示，并在下次启动时继续出现",
+    "professional": "专业模式",
+    "professionalDescription": "查看完整指标、进程树、网络连接和高级设置",
+    "openProfessional": "进入专业模式"
+  },
+  "guide": {
+    "back": "返回首页",
+    "checkAgain": "重新检查",
+    "checkingAgain": "检查中…",
+    "result": "检查结果",
+    "viewEvidence": "为什么这样判断",
+    "safety": "StatusOrbit 只提出有依据的建议，任何系统操作仍需要你确认。",
+    "professional": "查看全部技术依据",
+    "slow": {
+      "kicker": "流畅度检查",
+      "title": "找出电脑变慢的原因",
+      "description": "先观察持续变化，再告诉你最可能的原因和安全下一步。",
+      "observingKicker": "正在观察",
+      "observingTitle": "先确认这不是一次短暂变忙",
+      "observingDescription": "还需约 {{seconds}} 秒；StatusOrbit 不会把打开网页或启动应用的一瞬间当成故障。",
+      "normalTitle": "没有发现持续的资源压力",
+      "normalDescription": "如果你仍然觉得卡顿，可以查看当前应用；StatusOrbit 不会在没有证据时猜测原因。",
+      "viewApplications": "查看当前应用",
+      "likelyCause": "最可能相关的应用",
+      "applicationExplanation": "{{name}} 的持续活动与当前问题时间一致。",
+      "requestClose": "请求 {{name}} 正常退出"
+    },
+    "space": {
+      "kicker": "空间检查",
+      "title": "看看空间是否真的不够",
+      "description": "先确认剩余空间，再决定是否进行完整文件分析。",
+      "lowTitle": "只剩 {{free}} 可用",
+      "lowDescription": "建议找出大文件和可回收内容，但不需要盲目删除系统缓存。",
+      "normalTitle": "还有 {{free}} 可用",
+      "normalDescription": "空间目前不紧张；只有你确实想整理文件时才需要扫描。",
+      "unknownTitle": "暂时无法读取主要磁盘",
+      "unknownDescription": "系统没有提供可靠的容量信息，StatusOrbit 不会把未知状态当成空间充足。",
+      "cachedScan": "已有完整扫描",
+      "reclaimable": "约 {{size}} 可优先核对",
+      "noScan": "尚未扫描文件",
+      "scanExplanation": "完整扫描会生成可交互空间图，不会自动删除。",
+      "openScan": "打开扫描结果",
+      "startScan": "开始空间分析",
+      "viewSpace": "查看空间概况"
+    },
+    "startup": {
+      "kicker": "登录速度检查",
+      "title": "看看哪些应用会随开机启动",
+      "description": "只优先列出可恢复的第三方登录项，系统服务保持只读。",
+      "resultTitle": "先看真正值得评估的项目",
+      "resultDescription": "停用只是阻止下次自动启动，不会卸载应用。"
+    },
+    "heat": {
+      "kicker": "温度与电量检查",
+      "title": "看看为什么发热或耗电快",
+      "description": "分别检查温度、电池和阻止休眠的应用，不把单个读数说成硬件故障。",
+      "sleepLabel": "自动休眠",
+      "sleepBlocked": "{{name}} 正在保持电脑唤醒",
+      "sleepClear": "可以正常自动休眠",
+      "sleepDescription": "退出应用或暂停相关任务后通常会恢复。",
+      "requestClose": "请求 {{name}} 退出",
+      "viewApplications": "看看当前影响较大的应用",
+      "result": {
+        "temperature": {
+          "title": "电脑现在有些热",
+          "description": "先暂停高负荷任务并保持通风；温度恢复后再判断是否仍有问题。"
+        },
+        "battery": {
+          "title": "剩余电量已经不多",
+          "description": "当前读数只能说明电量偏低；如果下降速度仍异常，可以继续观察正在运行的应用。"
+        },
+        "sleep": {
+          "title": "{{name}} 正在让电脑保持唤醒",
+          "description": "它可能增加待机耗电；退出应用或暂停相关任务后通常会恢复。"
+        },
+        "unknown": {
+          "title": "暂时没有足够的设备状态",
+          "description": "温度、电池和休眠数据都不可用，因此不能判断是否存在发热或耗电问题。"
+        },
+        "normal": {
+          "title": "没有发现持续的发热或休眠问题",
+          "description": "温度、电量和自动休眠目前没有提供需要处理的证据。"
+        }
+      }
+    },
+    "network": {
+      "kicker": "网络检查",
+      "title": "看看网络现在发生了什么",
+      "description": "StatusOrbit 会读取当前流量和活动连接，但不会在没有证据时把网络变慢归咎于某个应用。",
+      "checkingKicker": "正在读取",
+      "checkingTitle": "正在获取活动连接",
+      "checkingDescription": "连接扫描使用独立的低频命令，不影响系统主采样。",
+      "unknownTitle": "暂时没有足够的网络信息",
+      "unknownDescription": "当前流量或连接列表不可用，因此不能判断网络是否正常。",
+      "activeTitle": "现在有网络活动",
+      "quietTitle": "现在没有明显的网络活动",
+      "resultDescription": "这只能说明当前活动情况；网速慢也可能来自路由器、运营商或远端服务。",
+      "currentTraffic": "当前总流量",
+      "activeConnections": "活动连接",
+      "connections": "{{count}} 条活动连接"
+    },
+    "checkup": {
+      "kicker": "日常检查",
+      "title": "看看电脑现在怎么样",
+      "description": "把最新状态整理成一个主结论；没有足够依据时会继续观察。",
+      "observingKicker": "正在观察",
+      "observingTitle": "再看一会儿，避免误判",
+      "observingDescription": "还需约 {{seconds}} 秒，短暂打开应用不会被说成持续问题。",
+      "normalTitle": "现在很顺畅",
+      "normalDescription": "没有发现应用持续占用、真实内存压力或空间不足，现在不用做任何事。",
+      "priorityKicker": "最值得先看",
+      "openPriority": "看看这件事"
+    }
+  }
+}

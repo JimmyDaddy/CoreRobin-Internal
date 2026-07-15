@@ -10,7 +10,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v3";
+export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v5";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -38,13 +38,14 @@ export function reconcileCleanupScanAfterDeletion(
   const targetsByLocation = snapshot.locations.map(() => [] as CleanupDeletionTargetSnapshot[]);
   for (const target of uniqueTargets) {
     const locationIndex = snapshot.locations.findIndex((location) =>
-      location.nodes.some((node) => node.path !== null && isSameOrDescendantPath(target.path, node.path))
+      location.paths.some((path) => isSameOrDescendantPath(target.path, path))
     );
     if (locationIndex >= 0) targetsByLocation[locationIndex].push(target);
   }
 
   return {
     ...snapshot,
+    root: reconcileCleanupNodeAfterDeletion(snapshot.root, uniqueTargets) ?? snapshot.root,
     locations: snapshot.locations.map((location, index) => {
       const locationTargets = targetsByLocation[index];
       if (locationTargets.length === 0) return location;
@@ -75,7 +76,7 @@ export function reconcileCleanupNodeAfterDeletion(
   }
   if (!node.path) return node;
 
-  const nestedTargets = targets.filter((target) => isSameOrDescendantPath(target.path, node.path!));
+  const nestedTargets = targets.filter((target) => cleanupNodeContainsPath(node, target.path));
   if (nestedTargets.length === 0) return node;
   const logicalRemoved = nestedTargets.reduce((total, target) => total + target.logicalSizeBytes, 0);
   const allocatedRemoved = nestedTargets.reduce((total, target) => total + target.allocatedSizeBytes, 0);
@@ -97,6 +98,11 @@ export function reconcileCleanupNodeAfterDeletion(
   };
 }
 
+function cleanupNodeContainsPath(node: CleanupNode, targetPath: string): boolean {
+  if (node.path && isSameOrDescendantPath(targetPath, node.path)) return true;
+  return node.children.some((child) => cleanupNodeContainsPath(child, targetPath));
+}
+
 export function parseStoredCleanupScan(
   serialized: string | null,
   now = Date.now(),
@@ -109,7 +115,7 @@ export function parseStoredCleanupScan(
     );
     if (
       !isRecord(value) ||
-      value.version !== 3 ||
+      value.version !== 5 ||
       !isFiniteNonNegativeNumber(value.savedAtMs) ||
       !isCleanupScan(snapshot)
     ) {
@@ -118,10 +124,7 @@ export function parseStoredCleanupScan(
     const ageMs = Math.max(0, now - value.savedAtMs);
     if (ageMs > CLEANUP_SCAN_RETENTION_MS) return null;
     return {
-      // Cleanup availability belongs to the running StatusOrbit build, not to the
-      // historical scan. Older retained maps become actionable after the
-      // backend adds the guarded permanent-deletion workflow.
-      snapshot: { ...snapshot, deletionAvailable: true },
+      snapshot,
       status: ageMs > CLEANUP_SCAN_STALE_AFTER_MS ? "expired" : "cached",
     };
   } catch {
@@ -159,6 +162,7 @@ function isCleanupScan(value: unknown): value is CleanupScan {
   return (
     isFiniteNonNegativeNumber(value.sampledAtMs) &&
     isFiniteNonNegativeNumber(value.durationMs) &&
+    isCleanupNode(value.root) &&
     Array.isArray(value.locations) &&
     value.locations.every(isCleanupLocation) &&
     Array.isArray(value.largestFiles) &&

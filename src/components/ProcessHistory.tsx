@@ -1,6 +1,8 @@
 import { useId, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
+import {
+  useAppTranslation,
+  type AppTFunction,
+} from "../i18n/useAppTranslation";
 
 import {
   PROCESS_HISTORY_WINDOW_MS,
@@ -45,7 +47,7 @@ const MAX_CONNECTED_SAMPLE_GAP_MS = 5_000;
 const METRICS: HistoryMetric[] = ["cpu", "memory", "io"];
 
 export function ProcessHistory({ history }: ProcessHistoryProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [metric, setMetric] = useState<HistoryMetric>("cpu");
   const titleId = useId();
   const descriptionId = useId();
@@ -55,10 +57,10 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
     <section className="process-history" aria-labelledby={`${titleId}-section`}>
       <header className="process-history__header">
         <div>
-          <span className="eyebrow">{t("process.history.retained")}</span>
-          <h3 id={`${titleId}-section`}>{t("process.history.title")}</h3>
+          <span className="eyebrow">{t("process:history.retained")}</span>
+          <h3 id={`${titleId}-section`}>{t("process:history.title")}</h3>
         </div>
-        <div className="process-history__segments" role="group" aria-label={t("process.history.metrics")}>
+        <div className="process-history__segments" role="group" aria-label={t("process:history.metrics")}>
           {METRICS.map((candidate) => (
             <button
               type="button"
@@ -70,7 +72,7 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
               {candidate === "cpu"
                 ? "CPU"
                 : candidate === "memory"
-                  ? t("process.history.memory")
+                  ? t("process:history.memory")
                   : "I/O"}
             </button>
           ))}
@@ -79,7 +81,7 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
 
       {!history || chart.points.length === 0 ? (
         <div className="process-history__empty">
-          {t("process.history.empty")}
+          {t("process:history.empty")}
         </div>
       ) : (
         <>
@@ -90,9 +92,9 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
             aria-labelledby={`${titleId} ${descriptionId}`}
             focusable="false"
           >
-            <title id={titleId}>{t("process.history.chartTitle", { name: history.name || `PID ${history.pid}`, metric: chart.label })}</title>
+            <title id={titleId}>{t("process:history.chartTitle", { name: history.name || `PID ${history.pid}`, metric: chart.label })}</title>
             <desc id={descriptionId}>
-              {t("process.history.chartDescription", {
+              {t("process:history.chartDescription", {
                 current: chart.summary.current,
                 average: chart.summary.average,
                 peak: chart.summary.peak,
@@ -123,8 +125,8 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
               )}
             </g>
             <g className="process-history__axis" aria-hidden="true">
-              <text x={PLOT_LEFT} y={91}>{t("common.fiveMinutesBack")}</text>
-              <text x={PLOT_RIGHT} y={91} textAnchor="end">{t("common.now")}</text>
+              <text x={PLOT_LEFT} y={91}>{t("common:fiveMinutesBack")}</text>
+              <text x={PLOT_RIGHT} y={91} textAnchor="end">{t("common:now")}</text>
             </g>
           </svg>
 
@@ -140,12 +142,12 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
           ) : null}
 
           <dl className="process-history__summary">
-            <div><dt>{t("common.current")}</dt><dd>{chart.summary.current}</dd></div>
-            <div><dt>{t("common.average")}</dt><dd>{chart.summary.average}</dd></div>
-            <div><dt>{t("common.peak")}</dt><dd>{chart.summary.peak}</dd></div>
+            <div><dt>{t("common:current")}</dt><dd>{chart.summary.current}</dd></div>
+            <div><dt>{t("common:average")}</dt><dd>{chart.summary.average}</dd></div>
+            <div><dt>{t("common:peak")}</dt><dd>{chart.summary.peak}</dd></div>
           </dl>
           {history.missing ? (
-            <p className="process-history__missing" role="status">{t("process.history.exited")}</p>
+            <p className="process-history__missing" role="status">{t("process:history.exited")}</p>
           ) : null}
         </>
       )}
@@ -156,7 +158,7 @@ export function ProcessHistory({ history }: ProcessHistoryProps) {
 function buildChart(
   history: SelectedProcessHistory | null,
   metric: HistoryMetric,
-  t: TFunction,
+  t: AppTFunction,
 ) {
   const allPoints = history?.points ?? [];
   const windowEnd = allPoints[allPoints.length - 1]?.timestamp ?? 0;
@@ -175,23 +177,23 @@ function buildChart(
       windowEnd,
       yMaximum: roundedCpuMaximum(values),
       series: [series("cpu", "CPU", "process-history__line--cpu", false, values)],
-      summary: summarize(values, formatPercent, t("common.unavailable")),
+      summary: summarize(values, formatPercent, t("common:unavailable")),
     };
   }
 
   if (metric === "memory") {
     const values = points.map((point) => finiteOrNull(point.memoryBytes));
     return {
-      label: t("process.history.memory"),
+      label: t("process:history.memory"),
       points,
       windowStart,
       windowEnd,
       yMaximum: positiveMaximum(values),
-      series: [series("memory", t("process.history.memory"), "process-history__line--memory", false, values)],
+      series: [series("memory", t("process:history.memory"), "process-history__line--memory", false, values)],
       summary: summarize(
         values,
-        (value) => (value === null ? t("common.unavailable") : formatBytes(value)),
-        t("common.unavailable"),
+        (value) => (value === null ? t("common:unavailable") : formatBytes(value)),
+        t("common:unavailable"),
       ),
     };
   }
@@ -200,16 +202,16 @@ function buildChart(
   const writeValues = points.map((point) => finiteOrNull(point.diskWriteBytesPerSecond));
   const totals = points.map((_, index) => addNullable(readValues[index], writeValues[index]));
   return {
-    label: t("process.history.diskIo"),
+    label: t("process:history.diskIo"),
     points,
     windowStart,
     windowEnd,
     yMaximum: positiveMaximum([...readValues, ...writeValues]),
     series: [
-      series("read", t("common.read"), "process-history__line--read", false, readValues),
-      series("write", t("common.write"), "process-history__line--write", true, writeValues),
+      series("read", t("common:read"), "process-history__line--read", false, readValues),
+      series("write", t("common:write"), "process-history__line--write", true, writeValues),
     ],
-    summary: summarize(totals, formatRate, t("common.unavailable")),
+    summary: summarize(totals, formatRate, t("common:unavailable")),
   };
 }
 

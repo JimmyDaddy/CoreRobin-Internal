@@ -1,0 +1,227 @@
+{
+  "kicker": "Local space analysis",
+  "title": "Storage cleanup assistant",
+  "description": "Scan the system disk and see space usage by real file path.",
+  "startScan": "Start read-only scan",
+  "scanAgain": "Scan again",
+  "scanning": "Scanning…",
+  "cancelScan": "Stop scan",
+  "cancelling": "Stopping…",
+  "readOnlyTitle": "Review first, decide later",
+  "readOnlyDescription": "The background scan reads names, sizes, and other metadata until complete. It never reads file contents or modifies, moves, or uploads files.",
+  "failed": "The storage scan could not finish",
+  "access": {
+    "kicker": "Before scanning",
+    "title": "Allow access to the whole system disk",
+    "description": "macOS protects Mail, Messages, other app data, and similar locations. Full Disk Access lets the space map be as complete as possible; StatusOrbit still reads metadata such as names, sizes, and dates only.",
+    "checking": "Checking access…",
+    "checkingReturn": "Confirming access…",
+    "openSettings": "Open Full Disk Access",
+    "openAgain": "Open System Settings again",
+    "revealApp": "Show app in Finder",
+    "checkAgain": "Access enabled — check again",
+    "continueLimited": "Scan accessible areas",
+    "waiting": "System Settings is open. If StatusOrbit is missing, click + below the list and select StatusOrbit.app. Enable it, then return to start scanning automatically.",
+    "unknown": "Access could not be confirmed. You can still open System Settings or run a limited scan.",
+    "bundleRequired": "Launch StatusOrbit.app first",
+    "bundleMissingTitle": "This process cannot be added to the access list",
+    "bundleMissingDescription": "macOS cannot authorize a development process here. Install StatusOrbit.app and reopen it from Applications; a limited scan is still available.",
+    "privacy": "macOS controls this permission and you can turn it off at any time. StatusOrbit never reads file contents or changes files during a scan.",
+    "steps": {
+      "open": "Open System Settings",
+      "add": "Click + and select StatusOrbit.app",
+      "return": "Enable it and return"
+    }
+  },
+  "reclaimableEstimate": "Potentially reclaimable space",
+  "estimateBoundary": "This is an estimate for caches and trash, not a recommendation to remove everything.",
+  "entriesScanned": "{{count}} items checked",
+  "scanDuration": "{{seconds}} sec",
+  "snapshot": {
+    "retained": "Saved on this device; changes are checked as you browse",
+    "refresh": "Refresh result",
+    "cached": {
+      "title": "Previous scan restored",
+      "description": "Keep exploring without waiting for another scan. StatusOrbit checks a directory for changes only when you browse into it."
+    },
+    "expired": {
+      "title": "This result is over 24 hours old",
+      "description": "StatusOrbit keeps the map available so you can continue exploring. Refresh it before acting on cleanup choices."
+    }
+  },
+  "progress": {
+    "scanningLocation": "Analyzing {{location}}",
+    "showPath": "Show current technical path",
+    "entries": "Checked",
+    "discovered": "Discovered",
+    "elapsed": "Elapsed",
+    "foundSpace": "Content found",
+    "stageKicker": "Building the space map",
+    "locations": {
+      "downloads": "downloads",
+      "trash": "the trash",
+      "appCache": "application caches",
+      "developerCache": "developer caches",
+      "hiddenData": "hidden application data",
+      "applications": "installed applications",
+      "personal": "personal files",
+      "systemDisk": "the system disk"
+    }
+  },
+  "categories": {
+    "title": "What this space is commonly used for"
+  },
+  "map": {
+    "title": "Where the space went",
+    "description": "Sector area represents allocated disk space. Related hues belong to one folder branch; gray sectors are files.",
+    "descriptionPath": "Shown by real path across the system disk: each ring is the next directory level, and sector area represents allocated disk space.",
+    "descriptionCategory": "The same scan is regrouped by common purpose. Categories are a supporting view, not the real directory hierarchy.",
+    "allScanned": "All scan results",
+    "categoryRoot": "Purpose categories",
+    "mode": {
+      "label": "Space map view",
+      "path": "File paths",
+      "category": "Purpose"
+    },
+    "ariaLabel": "Space sunburst for {{name}}",
+    "back": "Back one level",
+    "breadcrumbs": "Space map hierarchy",
+    "centerBack": "Go to the parent folder",
+    "details": "Space details",
+    "selected": "Selected",
+    "grouped": "Grouped category",
+    "smallerObjects": "Smaller objects",
+    "restrictedObjects": "Unreadable objects",
+    "allocatedSize": "allocated on disk",
+    "logicalSize": "{{size}} logical",
+    "unreadable": "Unreadable",
+    "restrictedHint": "The operating system did not grant read access; this item cannot be collected",
+    "types": {
+      "folder": "Folder",
+      "file": "File",
+      "aggregate": "Grouped small objects",
+      "restricted": "Restricted"
+    },
+    "noDeeperBreakdown": "No deeper directory grouping is available at this level.",
+    "loadDeeperHint": "Select this folder to load the next level without rescanning the whole computer.",
+    "loadingFolder": "Loading this folder…",
+    "loadFailed": "Unable to load folder",
+    "directActionHint": "Hold a sector and drag it to the cleanup basket at the lower-left of the map",
+    "protectedSelectionHint": "System paths, grouped nodes, and the home root are view-only; only specific items inside your home folder can enter the basket",
+    "trashRootProtected": "The Trash folder itself is protected; enter it and select the specific contents you want to remove",
+    "planSummary": "{{count}} items selected · {{size}}",
+    "reviewCleanup": "Review and delete permanently",
+    "refreshCleanup": "Refresh selection before review",
+    "deletionUnavailable": "Permanent deletion unavailable",
+    "basket": {
+      "title": "Cleanup basket",
+      "empty": "Hold a sector and drag it here to collect items first",
+      "release": "Release to add to the basket",
+      "collected": "In cleanup basket",
+      "collectedHint": "Already collected; remove it from the basket below or continue reviewing",
+      "remove": "Remove {{name}} from the basket",
+      "clear": "Clear",
+      "completed": "Permanently deleted {{deletedCount}} items",
+      "partial": "Deleted {{deletedCount}} items; {{failedCount}} could not be handled",
+      "cancelled": "Deletion stopped after completing {{deletedCount}} items"
+    },
+    "deleteResult": {
+      "success": "Permanently deleted {{deletedCount}} items",
+      "partial": "Deleted {{deletedCount}} items; {{failedCount}} failed",
+      "failed": "Nothing was deleted; {{failedCount}} items failed",
+      "cancelled": "Deletion stopped after completing {{deletedCount}} items",
+      "cancelledNoDeletion": "Deletion stopped before any item was fully removed",
+      "reclaimed": "Allocated space verified before deletion: about {{size}}"
+    },
+    "freshness": {
+      "cached": "Showing the previous scan result",
+      "expired": "This scan is old; a rescan is recommended",
+      "changed": "This folder changed; sizes may be inaccurate",
+      "changedShort": "Content changed"
+    }
+  },
+  "deleteDialog": {
+    "title": "Review before permanent deletion",
+    "description": "Confirming deletes these items directly from disk instead of moving them to Trash.",
+    "itemUnit": "items",
+    "estimatedSize": "estimated",
+    "irreversible": "Cannot be undone",
+    "changed": "Changed since scan",
+    "changedWarning": "{{count}} items differ from the previous view. Sizes and item counts were updated; refresh again before confirming.",
+    "preparing": "Rechecking paths and current file state…",
+    "refreshSelection": "Refresh selection again",
+    "deleteConfirmTitle": "I understand these items will be permanently deleted",
+    "deleteConfirmDescription": "Files will not enter Trash. Downloads, settings, and personal data may not be reproducible.",
+    "confirm": "Permanently delete {{count}} items",
+    "deleting": "Deleting permanently…",
+    "selection": "selected content",
+    "progressPreparing": "Checking the selected content",
+    "progressDeleting": "Deleting permanently",
+    "progressCancelling": "Stopping safely",
+    "progressCurrent": "Current: {{name}}",
+    "progressInspecting": "Counting files and folders",
+    "progressEntries": "{{processed}} / {{total}} files and folders",
+    "progressTargets": "{{completed}} / {{total}} items complete",
+    "progressDeleted": "About {{size}} released",
+    "cancelDelete": "Stop deleting",
+    "cancelling": "Stopping…",
+    "cancelHint": "Completed deletions cannot be restored. StatusOrbit will stop after the current file operation.",
+    "errors": {
+      "protected_cleanup_path": "StatusOrbit will not delete your home directory or the Trash folder itself.",
+      "cleanup_target_outside_home": "For safety, StatusOrbit only handles content inside your personal folder.",
+      "cleanup_cross_filesystem": "The selected directory enters another disk or mount point, so StatusOrbit refused recursive deletion.",
+      "cleanup_target_changed": "A file changed after confirmation, so StatusOrbit deleted nothing. Cancel and review it again.",
+      "cleanup_confirmation_unavailable": "This confirmation is no longer available. Cancel and reopen the review.",
+      "cleanup_confirmation_expired": "This confirmation expired. Cancel and review the current files again.",
+      "cleanup_target_unavailable": "Some content no longer exists or cannot be accessed. Rescan and try again.",
+      "invalid_cleanup_selection": "The cleanup basket selection is invalid. Choose the items again.",
+      "overlapping_cleanup_targets": "A folder and one of its children are both selected. Keep only one level."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "Downloads",
+      "description": "May contain installers, documents, and files you still need."
+    },
+    "trash": {
+      "title": "Trash",
+      "description": "Items are usually no longer recoverable after the trash is emptied."
+    },
+    "app_cache": {
+      "title": "Application caches",
+      "description": "Apps may recreate or download this data again later."
+    },
+    "developer_cache": {
+      "title": "Developer caches",
+      "description": "Data that build tools and package managers can recreate."
+    },
+    "hidden_data": {
+      "title": "Hidden user folders",
+      "description": "Dot-prefixed app data and configuration. Measured only; direct cleanup is not recommended."
+    }
+  },
+  "safety": {
+    "reclaimable": "Usually reclaimable",
+    "review": "Review required"
+  },
+  "itemCount": "{{count}} files",
+  "unavailable": "Unavailable on this platform",
+  "pathUnavailable": "No scannable location",
+  "morePaths": " and {{count}} more locations",
+  "applications": {
+    "kicker": "Read-only app inventory",
+    "title": "Applications not used for a long time",
+    "boundary": "Only apps macOS confirms were unopened for at least six months; StatusOrbit never uninstalls them automatically",
+    "lastUsed": "Last used {{date}} · unopened for {{days}} days",
+    "none": "No application could be confirmed as unused for more than six months.",
+    "unavailable": "This platform cannot currently provide reliable application last-use dates.",
+    "unknownExcluded": "{{count}} other apps have no confirmed last-use date, so StatusOrbit did not classify them as unused."
+  },
+  "reviewFirst": "Review one by one",
+  "largestFiles": "Large files on the system disk",
+  "largeFileBoundary": "Only files over 500 MB are listed; automatic deletion is not recommended",
+  "noLargeFiles": "No files over 500 MB were found in accessible system-disk locations.",
+  "unreadable": "{{count}} locations were protected or temporarily unreadable. Only those locations are excluded from the result.",
+  "fullDiskAccessHint": "On macOS, grant StatusOrbit Full Disk Access in System Settings → Privacy & Security, then scan again.",
+  "safetyBoundary": "The scan has no time or item limit and never follows symbolic links. Only items placed in the basket, path-checked, and explicitly confirmed are permanently deleted, and they cannot be restored."
+}

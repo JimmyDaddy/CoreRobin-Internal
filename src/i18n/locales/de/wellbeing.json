@@ -1,0 +1,58 @@
+{
+  "eyebrow": "Zustand des Geräts",
+  "title": "Temperatur, Akku und Ruhezustand",
+  "description": "Liest den Systemzustand in regelmäßigen Abständen und erklärt, ob eine App das automatische Ruhen verhindert.",
+  "overall": {
+    "normal": "Alles ist in Ordnung",
+    "attention": "Wichtig",
+    "urgent": "Empfohlene Aktion",
+    "unavailable": "Kein Systemwert verfügbar"
+  },
+  "temperature": {
+    "label": "Temperatur des Geräts",
+    "normal": "Die Temperatur liegt im normalen Bereich.",
+    "attention": "Das Gerät ist warm. Reduzieren Sie zunächst anspruchsvolle Aufgaben.",
+    "urgent": "Die Temperatur bleibt hoch. Beenden Sie anspruchsvolle Aufgaben und sorgen Sie für eine gute Belüftung des Geräts.",
+    "unavailable": "Das Betriebssystem oder die Hardware melden keine Temperaturdaten an StatusOrbit."
+  },
+  "battery": {
+    "label": "Akku",
+    "notPresent": "Kein Akku erkannt",
+    "unavailable": "Desktop-Computer und Geräte ohne Akku-Berichterstattung werden so angezeigt.",
+    "normal": "Der Akkustatus ist normal",
+    "attention": "Die Batterie wird schwach; bereiten Sie sich darauf vor, einen Ladegerät anzuschließen",
+    "urgent": "Die Batterie ist sehr niedrig; schließen Sie den Akku schnell an",
+    "remaining": "ca. {{hours}} Stunden {{minutes}} Minuten",
+    "state": {
+      "charging": "Aufladen",
+      "discharging": "Verwendung des Akkus",
+      "full": "Vollständig geladen",
+      "not_charging": "Im Betrieb, nicht aufladend",
+      "unknown": "Status unbekannt"
+    }
+  },
+  "sleep": {
+    "label": "Automatische Schlafphase",
+    "unavailableValue": "Nicht verfügbar",
+    "unavailable": "Diese Plattform stellt keine zuverlässigen Informationen zum automatischen Ausschalten des Bildschirms an StatusOrbit bereit.",
+    "clearValue": "Automatische Abschaltung ist möglich",
+    "clear": "Keine App verhindert, dass der Computer automatisch ausgeschaltet wird.",
+    "blockedValue": "{{count}} App",
+    "blockedValue_one": "{{count}} App",
+    "blockedValue_other": "{{count}} Apps",
+    "blocked": "{{name}} hat die automatische Abschaltung für {{duration}}{{more}} verhindert. Das Beenden der App oder das Deaktivieren ihrer Aufgabe stellt die automatische Abschaltung in der Regel wieder her.",
+    "more": ", zusätzlich {{count}} weitere",
+    "systemValue": "Systemaktivität",
+    "system": "Eine Systemaufgabe hält den Computer vorübergehend aktiv. In der Regel ist keine Aktion erforderlich, und Systemprozesse sollten nicht beendet werden.",
+    "duration": {
+      "unknown": "eine Weile",
+      "lessThanMinute": "weniger als eine Minute",
+      "minutes": "ungefähr {{count}} Minuten",
+      "minutes_one": "ungefähr 1 Minute",
+      "minutes_other": "ungefähr {{count}} Minuten",
+      "hours": "ungefähr {{count}} Stunden",
+      "hours_one": "ungefähr 1 Stunde",
+      "hours_other": "ungefähr {{count}} Stunden"
+    }
+  }
+}

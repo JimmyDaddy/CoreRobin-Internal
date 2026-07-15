@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   buildFlatProcessRows,
@@ -101,7 +101,7 @@ export function ProcessTable({
   onResetPreferences,
   compact = false,
 }: ProcessTableProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingFocusIdentity = useRef<string | null>(null);
@@ -383,45 +383,45 @@ export function ProcessTable({
       <div className="process-toolbar">
         <div className="process-heading">
           <div>
-            <span className="eyebrow">{t("process.realtime")}</span>
+            <span className="eyebrow">{t("process:realtime")}</span>
             <h2 id="process-title">
-              {compact ? t("process.topProcesses") : t("process.allProcesses")}
+              {compact ? t("process:topProcesses") : t("process:allProcesses")}
             </h2>
           </div>
           {!compact ? (
-            <div className="process-view-controls" aria-label={t("process.viewSettings")}>
-              <div className="segmented-control" aria-label={t("process.viewMode")}>
+            <div className="process-view-controls" aria-label={t("process:viewSettings")}>
+              <div className="segmented-control" aria-label={t("process:viewMode")}>
                 <button
                   type="button"
                   aria-pressed={effectiveViewMode === "flat"}
-                  title={t("process.flatTitle")}
+                  title={t("process:flatTitle")}
                   onClick={() => onViewModeChange?.("flat")}
                 >
-                  <List size={14} />{t("process.flat")}
+                  <List size={14} />{t("process:flat")}
                 </button>
                 <button
                   type="button"
                   aria-pressed={effectiveViewMode === "tree"}
-                  title={t("process.treeTitle")}
+                  title={t("process:treeTitle")}
                   onClick={showTreeView}
                 >
-                  <ListTree size={14} />{t("process.tree")}
+                  <ListTree size={14} />{t("process:tree")}
                 </button>
               </div>
               <button
                 className="process-tool-button"
                 type="button"
                 aria-pressed={followSelection}
-                title={t("process.followTitle")}
+                title={t("process:followTitle")}
                 onClick={() => onFollowSelectionChange?.(!followSelection)}
               >
-                <LocateFixed size={14} />{t("process.follow")}
+                <LocateFixed size={14} />{t("process:follow")}
               </button>
               <button
                 className="process-tool-button process-tool-button--icon"
                 type="button"
-                aria-label={t("process.resetView")}
-                title={t("process.resetView")}
+                aria-label={t("process:resetView")}
+                title={t("process:resetView")}
                 onClick={onResetPreferences}
               >
                 <RotateCcw size={14} />
@@ -431,12 +431,12 @@ export function ProcessTable({
         </div>
         <label className="search-field">
           <Search size={15} aria-hidden="true" />
-          <span className="sr-only">{t("process.search")}</span>
+          <span className="sr-only">{t("process:search")}</span>
           <input
             value={query}
             maxLength={256}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
-            placeholder={t("process.searchPlaceholder")}
+            placeholder={t("process:searchPlaceholder")}
             spellCheck={false}
           />
           {query ? <kbd>{matchCount}</kbd> : <kbd>⌘K</kbd>}
@@ -446,7 +446,7 @@ export function ProcessTable({
       <div
         className="process-table"
         role={effectiveViewMode === "tree" ? "treegrid" : "grid"}
-        aria-label={t("process.systemProcesses")}
+        aria-label={t("process:systemProcesses")}
         aria-rowcount={rows.length + 1}
         aria-colcount={6}
       >
@@ -456,7 +456,7 @@ export function ProcessTable({
             aria-sort={sortAriaValue("name", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("name")}>
-              {t("process.columns.process")} {sortIcon("name")}
+              {t("process:columns.process")} {sortIcon("name")}
             </button>
           </span>
           <span role="columnheader">PID</span>
@@ -473,7 +473,7 @@ export function ProcessTable({
             aria-sort={sortAriaValue("memory", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("memory")}>
-              {t("process.columns.memory")} {sortIcon("memory")}
+              {t("process:columns.memory")} {sortIcon("memory")}
             </button>
           </span>
           <span
@@ -481,10 +481,10 @@ export function ProcessTable({
             aria-sort={sortAriaValue("disk", sortKey, direction)}
           >
             <button type="button" onClick={() => requestSort("disk")}>
-              {t("process.columns.disk")} {sortIcon("disk")}
+              {t("process:columns.disk")} {sortIcon("disk")}
             </button>
           </span>
-          <span role="columnheader">{t("process.columns.status")}</span>
+          <span role="columnheader">{t("process:columns.status")}</span>
         </div>
 
         <div
@@ -540,8 +540,8 @@ export function ProcessTable({
                         className="tree-toggle"
                         type="button"
                         aria-label={t(
-                          row.expanded ? "process.collapse" : "process.expand",
-                          { name: process.name || t("common.unnamedProcess") },
+                          row.expanded ? "process:collapse" : "process:expand",
+                          { name: process.name || t("common:unnamedProcess") },
                         )}
                         tabIndex={-1}
                         onClick={(event) => {
@@ -582,10 +582,10 @@ export function ProcessTable({
                       onSelect(process);
                     }}
                   >
-                    {process.name || t("common.unnamedProcess")}
+                    {process.name || t("common:unnamedProcess")}
                   </button>
                   {process.protected ? (
-                    <ShieldCheck size={13} aria-label={t("process.protected")} />
+                    <ShieldCheck size={13} aria-label={t("process:protected")} />
                   ) : null}
                 </span>
                 <span className="tabular" role="gridcell">
@@ -623,7 +623,7 @@ export function ProcessTable({
             />
           ) : null}
           {rows.length === 0 ? (
-            <div className="process-empty">{t("process.noMatches")}</div>
+            <div className="process-empty">{t("process:noMatches")}</div>
           ) : null}
         </div>
       </div>
@@ -631,14 +631,14 @@ export function ProcessTable({
       <footer className="process-footer">
         {compact ? (
           <span>
-            {t("process.footer.compact", {
+            {t("process:footer.compact", {
               visible: rows.length,
               total: allRows.length,
             })}
           </span>
         ) : effectiveViewMode === "tree" ? (
           <span>
-            {t("process.footer.tree", {
+            {t("process:footer.tree", {
               visible: rows.length,
               matches: matchCount,
               total: processes.length,
@@ -646,18 +646,18 @@ export function ProcessTable({
           </span>
         ) : (
           <span>
-            {t("process.footer.flat", {
+            {t("process:footer.flat", {
               visible: rows.length,
               total: processes.length,
             })}
           </span>
         )}
         {!compact && effectiveViewMode === "tree" ? (
-          <span>{t("process.footer.siblingSort")}</span>
+          <span>{t("process:footer.siblingSort")}</span>
         ) : null}
         {selectionFiltered ? (
           <button type="button" onClick={() => onQueryChange("")}>
-            {t("process.footer.selectionFiltered")}
+            {t("process:footer.selectionFiltered")}
           </button>
         ) : null}
       </footer>

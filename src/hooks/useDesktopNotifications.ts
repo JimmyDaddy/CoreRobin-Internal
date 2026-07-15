@@ -11,6 +11,10 @@ import type { SupportedLanguage } from "../i18n";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import type { ResourceAlertResource } from "../resourceAlerts";
 import { isDesktopRuntime } from "../api";
+import {
+  createSeenResourceAlertIds,
+  reconcileSeenResourceAlertIds,
+} from "../desktopNotificationSeenIds";
 
 export function useDesktopNotifications(
   events: readonly ResourceAlertEvent[],
@@ -19,7 +23,7 @@ export function useDesktopNotifications(
   mutedResources: readonly ResourceAlertResource[],
   onOpenEvidence: (resource: ResourceAlertResource) => void,
 ) {
-  const seenIds = useRef(new Set(events.map((event) => event.id)));
+  const seenIds = useRef(createSeenResourceAlertIds(events));
   const sentAtMs = useRef(loadDesktopNotificationLog());
   const [status, setStatus] = useState<DesktopNotificationStatus>(
     enabled ? "requesting" : "disabled",
@@ -67,8 +71,7 @@ export function useDesktopNotifications(
   }, [enabled, onOpenEvidence]);
 
   useEffect(() => {
-    const unseen = events.filter((event) => !seenIds.current.has(event.id));
-    unseen.forEach((event) => seenIds.current.add(event.id));
+    const unseen = reconcileSeenResourceAlertIds(seenIds.current, events);
     if (!enabled || status !== "ready") return;
     const now = Date.now();
     const selected = selectNotificationsWithinDailyBudget(
@@ -107,7 +110,7 @@ async function sendResourceNotification(
   try {
     const { sendNotification } = await import("@tauri-apps/plugin-notification");
     sendNotification({
-      ...desktopNotificationCopy(event, language),
+      ...(await desktopNotificationCopy(event, language)),
       autoCancel: true,
       extra: { statusOrbitResource: event.resource },
     });

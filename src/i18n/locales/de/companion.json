@@ -1,0 +1,17 @@
+{
+  "kicker": "Orbit-Assistent",
+  "dragHint": "Ziehen Sie Orbit, um ihn zu verschieben; halten Sie die Maustaste gedrückt, um den Status anzuzeigen; klicken Sie mit der rechten Maustaste, um das Menü aufzurufen",
+  "expand": "Öffnen Sie den Orbit-Assistenten",
+  "collapse": "Schließen Sie den Orbit-Assistenten",
+  "menu": "Orbit-Assistenten-Menü",
+  "hide": "Verstecken Sie den Assistenten",
+  "reason": "{{resource}} ist in letzter Zeit interessant. Öffnen Sie das Hauptfenster, um mehr zu erfahren.",
+  "action": {
+    "loading": "Öffnen Sie den täglichen Helfer",
+    "observing": "Zeigen Sie den aktuellen Status an",
+    "normal": "Ich habe ein Problem",
+    "attention": "Überprüfen Sie die Ursache",
+    "urgent": "Sofort überprüfen"
+  },
+  "recovering": "Der Wert hat sich verbessert. Ich beobachte es noch etwas, um die Erholung zu bestätigen."
+}
