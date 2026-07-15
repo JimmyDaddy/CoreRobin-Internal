@@ -4,6 +4,12 @@
   "open": "概要表示",
   "companion": "Orbit ユーティリティ",
   "cleanup": "ディスクの整理",
+  "quit": "アプリを終了",
+  "updatedAt": "{{time}} 更新",
+  "dataMode": {
+    "foreground": "フォアグラウンド取得",
+    "background": "バックグラウンド取得"
+  },
   "health": {
     "loading": "接続中",
     "observing": "システムの状況を学習中",

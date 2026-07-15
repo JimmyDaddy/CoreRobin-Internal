@@ -968,6 +968,14 @@ function App() {
                 >
                   <Orbit size={16} />
                 </button> : null}
+                <LocaleSelect
+                  compact
+                  withIcon
+                  className="language-button daily-language-button"
+                  value={settings.language}
+                  label={t("app:switchLanguage")}
+                  onChange={(language) => updateSettings({ language })}
+                />
                 <button
                   className="button mode-switch mode-switch--to-professional"
                   type="button"

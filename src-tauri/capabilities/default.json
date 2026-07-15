@@ -34,6 +34,7 @@
     "allow-cancel-cleanup-delete",
     "allow-complete-startup",
     "allow-show-main-window",
+    "allow-quit-application",
     "allow-set-dock-icon-visible",
     "allow-get-launch-at-login",
     "allow-set-launch-at-login",

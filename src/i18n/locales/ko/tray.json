@@ -4,6 +4,12 @@
   "open": "전체 보기",
   "companion": "Orbit 데스크톱 앱",
   "cleanup": "공간 정리",
+  "quit": "앱 종료",
+  "updatedAt": "{{time}} 업데이트",
+  "dataMode": {
+    "foreground": "포그라운드 샘플링",
+    "background": "백그라운드 샘플링"
+  },
   "health": {
     "loading": "연결 중",
     "observing": "상태 학습",

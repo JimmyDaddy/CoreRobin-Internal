@@ -4,6 +4,12 @@
   "open": "打开概览",
   "companion": "Orbit 伙伴",
   "cleanup": "空间清理",
+  "quit": "退出应用",
+  "updatedAt": "{{time}} 更新",
+  "dataMode": {
+    "foreground": "前台采样",
+    "background": "后台采样"
+  },
   "health": {
     "loading": "连接中",
     "observing": "正在了解状态",

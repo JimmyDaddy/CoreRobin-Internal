@@ -10,6 +10,7 @@
     "core:window:allow-hide",
     "allow-get-health-state",
     "allow-show-main-window",
+    "allow-quit-application",
     "allow-toggle-companion-window"
   ]
 }

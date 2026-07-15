@@ -169,6 +169,21 @@ fn require_main_window(window: &WebviewWindow) -> Result<(), CommandError> {
     require_main_window_label(window.label())
 }
 
+fn require_tray_window_label(label: &str) -> Result<(), CommandError> {
+    if label == "tray" {
+        Ok(())
+    } else {
+        Err(CommandError::new(
+            "window_not_authorized",
+            "This operation is only available from the StatusOrbit tray panel.",
+        ))
+    }
+}
+
+fn require_tray_window(window: &WebviewWindow) -> Result<(), CommandError> {
+    require_tray_window_label(window.label())
+}
+
 #[derive(Clone)]
 struct AppState {
     background_launch: bool,
@@ -591,6 +606,13 @@ fn finish_startup(app: &AppHandle) {
 #[tauri::command]
 fn show_main_window(app: AppHandle) {
     show_main(&app);
+}
+
+#[tauri::command]
+fn quit_application(window: WebviewWindow, app: AppHandle) -> Result<(), CommandError> {
+    require_tray_window(&window)?;
+    app.exit(0);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1304,6 +1326,7 @@ pub fn run() {
             cancel_cleanup_delete,
             complete_startup,
             show_main_window,
+            quit_application,
             set_dock_icon_visible,
             get_launch_at_login,
             set_launch_at_login,
@@ -1430,7 +1453,9 @@ mod security_boundary_tests {
 
     use serde_json::Value;
 
-    use super::{command_names::ALL_COMMANDS, require_main_window_label};
+    use super::{
+        command_names::ALL_COMMANDS, require_main_window_label, require_tray_window_label,
+    };
 
     const PROTECTED_COMMANDS: &[&str] = &[
         "create_startup_management_lease",
@@ -1552,6 +1577,15 @@ mod security_boundary_tests {
         assert!(require_main_window_label("main").is_ok());
         for label in ["tray", "companion", "splashscreen", "unexpected"] {
             let error = require_main_window_label(label).expect_err("window must be rejected");
+            assert_eq!(error.code, "window_not_authorized");
+        }
+    }
+
+    #[test]
+    fn tray_handler_guard_accepts_only_the_tray_panel() {
+        assert!(require_tray_window_label("tray").is_ok());
+        for label in ["main", "companion", "splashscreen", "unexpected"] {
+            let error = require_tray_window_label(label).expect_err("window must be rejected");
             assert_eq!(error.code, "window_not_authorized");
         }
     }

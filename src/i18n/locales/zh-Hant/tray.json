@@ -4,6 +4,12 @@
   "open": "開啟概覽",
   "companion": "Orbit 夥伴",
   "cleanup": "空間清理",
+  "quit": "結束應用",
+  "updatedAt": "{{time}} 更新",
+  "dataMode": {
+    "foreground": "前景取樣",
+    "background": "背景取樣"
+  },
   "health": {
     "loading": "連線中",
     "observing": "正在瞭解狀態",

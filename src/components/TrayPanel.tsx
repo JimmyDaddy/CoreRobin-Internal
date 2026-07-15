@@ -2,9 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  Activity,
   BatteryMedium,
   CircleGauge,
+  Clock3,
   Database,
+  LogOut,
   Maximize2,
   MemoryStick,
   Orbit,
@@ -19,6 +22,7 @@ import { useEffect, type ReactNode } from "react";
 import brandMark from "../../src-tauri/icons/128x128.png";
 import { createAsyncListenerRegistry } from "../asyncListener";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
+import { getAuxiliaryLanguage } from "../i18nAuxiliary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
 
@@ -59,6 +63,15 @@ export function TrayPanel() {
     await invoke("toggle_companion_window");
     await getCurrentWindow().hide();
   };
+  const quitApplication = async () => {
+    await invoke("quit_application");
+  };
+  const lastUpdated = summary
+    ? new Date(summary.sampledAtMs).toLocaleTimeString(getAuxiliaryLanguage(), {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <main className="tray-surface">
@@ -109,19 +122,39 @@ export function TrayPanel() {
         </div>
 
         <div className="tray-device-row">
-          <span><Thermometer size={14} />{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</span>
-          <span><BatteryMedium size={14} />{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</span>
+          <span>
+            <Thermometer size={15} />
+            <span><small>{t("tray:resource.temperature")}</small><strong>{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</strong></span>
+          </span>
+          <span>
+            <BatteryMedium size={15} />
+            <span>
+              <small>{t("tray:resource.battery")}</small>
+              <strong>{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</strong>
+              {summary?.batteryPercent !== null && summary?.batteryPercent !== undefined ? <em>{t(`wellbeing:battery.state.${summary.batteryState}`)}</em> : null}
+            </span>
+          </span>
+        </div>
+
+        <div className="tray-context">
+          <span><Clock3 size={13} />{lastUpdated ? t("tray:updatedAt", { time: lastUpdated }) : t("tray:health.loading")}</span>
+          <span><Activity size={13} />{summary?.paused ? t("app:paused") : t(`tray:dataMode.${summary?.dataMode ?? "background"}`)}</span>
         </div>
 
         <div className="tray-actions">
-          <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
-          <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray:companion")}</span></button>
-          <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
-          <button type="button" onClick={() => void togglePaused()}>
-            {summary?.paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{summary?.paused ? t("app:resume") : t("app:pause")}</span>
-          </button>
-          <button type="button" onClick={() => void openView("settings")}><Settings2 size={16} /><span>{t("app:settings")}</span></button>
+          <div className="tray-actions__primary">
+            <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
+            <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray:companion")}</span></button>
+            <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
+          </div>
+          <div className="tray-actions__utility">
+            <button type="button" onClick={() => void togglePaused()}>
+              {summary?.paused ? <Play size={14} /> : <Pause size={14} />}
+              <span>{summary?.paused ? t("app:resume") : t("app:pause")}</span>
+            </button>
+            <button type="button" onClick={() => void openView("settings")}><Settings2 size={14} /><span>{t("app:settings")}</span></button>
+            <button className="tray-action--quit" type="button" onClick={() => void quitApplication()}><LogOut size={14} /><span>{t("tray:quit")}</span></button>
+          </div>
         </div>
       </section>
     </main>

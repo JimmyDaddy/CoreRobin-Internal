@@ -4,6 +4,12 @@
   "open": "Vista general",
   "companion": "Compañía Orbit",
   "cleanup": "Limpieza de espacio",
+  "quit": "Salir de la aplicación",
+  "updatedAt": "Actualizado a las {{time}}",
+  "dataMode": {
+    "foreground": "Muestreo en primer plano",
+    "background": "Muestreo en segundo plano"
+  },
   "health": {
     "loading": "Conectando",
     "observing": "Analizando estado",

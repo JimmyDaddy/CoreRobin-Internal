@@ -6577,6 +6577,7 @@ code,
 .daily-topbar-heading h1 { margin: 0; font-size: 20px; letter-spacing: -0.025em; }
 .daily-topbar-heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 11px; }
 .daily-topbar-actions { display: flex; align-items: center; gap: 9px; overflow: visible; -webkit-app-region: no-drag; }
+.daily-language-button { min-width: 104px; }
 .daily-topbar-status {
   display: inline-flex;
   align-items: center;
@@ -7167,6 +7168,7 @@ code,
   .daily-sidebar-footer { display: none; }
   .app-shell--daily .content-layout { padding: 14px; }
   .daily-topbar-actions .daily-topbar-status { display: none; }
+  .daily-topbar-actions .daily-language-button { min-width: 96px; }
   .daily-topbar-actions .button { min-width: 36px; padding-inline: 10px; font-size: 0; }
   .daily-orbit-hero { grid-template-columns: minmax(0, 1fr); }
   .daily-orbit { width: min(58vw, 330px); }

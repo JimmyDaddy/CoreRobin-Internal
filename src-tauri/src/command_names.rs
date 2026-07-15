@@ -25,6 +25,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "cancel_cleanup_delete",
     "complete_startup",
     "show_main_window",
+    "quit_application",
     "set_dock_icon_visible",
     "get_launch_at_login",
     "set_launch_at_login",

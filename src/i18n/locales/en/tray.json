@@ -4,6 +4,12 @@
   "open": "Open overview",
   "companion": "Orbit companion",
   "cleanup": "Space cleanup",
+  "quit": "Quit app",
+  "updatedAt": "Updated {{time}}",
+  "dataMode": {
+    "foreground": "Foreground sampling",
+    "background": "Background sampling"
+  },
   "health": {
     "loading": "Connecting",
     "observing": "Learning status",

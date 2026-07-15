@@ -1647,6 +1647,10 @@ export default interface Resources {
     "available": "可用空间",
     "cleanup": "空间清理",
     "companion": "Orbit 伙伴",
+    "dataMode": {
+      "background": "后台采样",
+      "foreground": "前台采样"
+    },
     "health": {
       "attention": "需要关注",
       "loading": "连接中",
@@ -1660,6 +1664,7 @@ export default interface Resources {
     },
     "localMonitor": "本机资源监控",
     "open": "打开概览",
+    "quit": "退出应用",
     "reason": "{{resource}}需要关注",
     "recovering": "指标已回落，正在确认是否恢复。",
     "resource": {
@@ -1693,7 +1698,8 @@ export default interface Resources {
         "description": "建议打开 StatusOrbit 查看证据后再处理。",
         "title": "有一项资源压力较高"
       }
-    }
+    },
+    "updatedAt": "{{time}} 更新"
   },
   "wellbeing": {
     "battery": {

@@ -35,6 +35,7 @@ export const DEFAULT_NAMESPACE: TranslationNamespace = "common";
 export const AUXILIARY_NAMESPACES = [
   "common",
   "app",
+  "wellbeing",
   ...AUXILIARY_ONLY_NAMESPACES,
 ] as const satisfies readonly TranslationNamespace[];
 

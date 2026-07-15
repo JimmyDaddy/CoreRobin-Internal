@@ -92,14 +92,36 @@
   font-size: 11px;
 }
 
+.tray-device-row > span > svg { flex: 0 0 auto; color: var(--blue); }
+.tray-device-row > span > span { display: grid; min-width: 0; grid-template-columns: auto 1fr; gap: 1px 6px; padding: 0; border: 0; background: transparent; }
+.tray-device-row small { color: var(--text-muted); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.tray-device-row strong { font-size: 11px; font-variant-numeric: tabular-nums; }
+.tray-device-row em { overflow: hidden; grid-column: 1 / -1; color: var(--text-muted); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+
+.tray-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.tray-context span { display: inline-flex; min-width: 0; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tray-context svg { flex: 0 0 auto; color: var(--text-soft); }
+
 .tray-actions {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 7px;
   margin-top: auto;
   padding-top: 11px;
   border-top: 1px solid var(--border);
 }
+
+.tray-actions__primary,
+.tray-actions__utility { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 
 .tray-actions button {
   display: flex;
@@ -119,3 +141,7 @@
 
 .tray-actions button:hover { color: var(--text); border-color: rgba(99, 168, 255, 0.35); background: var(--blue-soft); transform: translateY(-1px); }
 .tray-actions button span { overflow: hidden; max-width: 100%; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.tray-actions__utility button { min-height: 34px; flex-direction: row; gap: 5px; }
+.tray-actions__utility button span { font-size: 10px; }
+.tray-actions button.tray-action--quit { color: rgba(255, 157, 148, 0.92); border-color: rgba(255, 125, 115, 0.18); background: rgba(255, 125, 115, 0.045); }
+.tray-actions button.tray-action--quit:hover { color: #ffd3cf; border-color: rgba(255, 125, 115, 0.4); background: rgba(255, 125, 115, 0.1); }
