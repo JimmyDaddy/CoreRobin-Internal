@@ -7,6 +7,7 @@ mod identity;
 mod models;
 mod monitor;
 mod network_connections;
+mod private_storage;
 mod process_control;
 mod sensors;
 mod startup;

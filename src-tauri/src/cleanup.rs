@@ -36,6 +36,7 @@ use crate::models::{
     CleanupLocation, CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupPathState,
     CleanupSafety, CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
 };
+use crate::private_storage;
 
 #[cfg(not(test))]
 const LARGE_FILE_THRESHOLD_BYTES: u64 = 500 * 1_024 * 1_024;
@@ -745,22 +746,14 @@ pub fn inspect_cleanup_path(display_path: &str) -> Result<CleanupPathState, Comm
 }
 
 pub fn load_cleanup_scan_cache(path: &Path) -> Result<Option<String>, CommandError> {
-    let metadata = match fs::metadata(path) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(CommandError::internal(format!(
-                "Could not inspect the cleanup scan cache: {error}"
-            )));
-        }
+    let bytes = match private_storage::read_limited(path, MAX_CLEANUP_SCAN_CACHE_BYTES) {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(None),
     };
-    if metadata.len() > MAX_CLEANUP_SCAN_CACHE_BYTES {
-        remove_cleanup_scan_cache(path)?;
+    let Some(bytes) = bytes else {
         return Ok(None);
-    }
-    fs::read_to_string(path).map(Some).map_err(|error| {
-        CommandError::internal(format!("Could not read the cleanup scan cache: {error}"))
-    })
+    };
+    Ok(String::from_utf8(bytes).ok())
 }
 
 pub fn save_cleanup_scan_cache(path: &Path, serialized: &str) -> Result<(), CommandError> {
@@ -770,28 +763,9 @@ pub fn save_cleanup_scan_cache(path: &Path, serialized: &str) -> Result<(), Comm
             "The cleanup scan cache is too large to retain safely.",
         ));
     }
-    let parent = path.parent().ok_or_else(|| {
-        CommandError::internal("The cleanup scan cache path has no parent directory.")
-    })?;
-    fs::create_dir_all(parent).map_err(|error| {
+    private_storage::write_atomic(path, serialized.as_bytes()).map_err(|error| {
         CommandError::internal(format!(
-            "Could not create the cleanup scan cache folder: {error}"
-        ))
-    })?;
-    let temporary_path = path.with_extension("json.tmp");
-    fs::write(&temporary_path, serialized).map_err(|error| {
-        CommandError::internal(format!("Could not write the cleanup scan cache: {error}"))
-    })?;
-    #[cfg(windows)]
-    if path.exists() {
-        fs::remove_file(path).map_err(|error| {
-            CommandError::internal(format!("Could not replace the cleanup scan cache: {error}"))
-        })?;
-    }
-    fs::rename(&temporary_path, path).map_err(|error| {
-        let _ = fs::remove_file(&temporary_path);
-        CommandError::internal(format!(
-            "Could not finalize the cleanup scan cache: {error}"
+            "Could not securely update the cleanup scan cache: {error}"
         ))
     })
 }
@@ -820,13 +794,11 @@ pub fn save_cleanup_scan_snapshot_cache_at(
 }
 
 pub fn remove_cleanup_scan_cache(path: &Path) -> Result<(), CommandError> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(CommandError::internal(format!(
-            "Could not clear the cleanup scan cache: {error}"
-        ))),
-    }
+    private_storage::remove(path).map_err(|error| {
+        CommandError::internal(format!(
+            "Could not securely clear the cleanup scan cache: {error}"
+        ))
+    })
 }
 
 fn validate_cleanup_targets(
