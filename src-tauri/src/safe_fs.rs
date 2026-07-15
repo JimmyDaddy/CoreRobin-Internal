@@ -985,20 +985,21 @@ fn ensure_entry_absent(directory: &Dir, name: &OsStr) -> io::Result<()> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn sync_directory(directory: &Dir) -> io::Result<()> {
-    #[cfg(target_os = "linux")]
-    {
-        use rustix::fs::{Mode, OFlags, fsync, openat};
+    use rustix::fs::{Mode, OFlags, fsync, openat};
 
-        let handle = openat(
-            directory,
-            ".",
-            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
-            Mode::empty(),
-        )?;
-        return fsync(handle);
-    }
-    #[cfg(not(target_os = "linux"))]
+    let handle = openat(
+        directory,
+        ".",
+        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::empty(),
+    )?;
+    Ok(fsync(handle)?)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn sync_directory(directory: &Dir) -> io::Result<()> {
     let result = directory.try_clone()?.into_std_file().sync_all();
     #[cfg(windows)]
     if result

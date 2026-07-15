@@ -15,6 +15,8 @@ use cap_std::fs as cap_fs;
 use cap_std::fs::PermissionsExt as _;
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt as _;
 
 const TEMP_NAME_ATTEMPTS: usize = 32;
 
@@ -222,25 +224,12 @@ impl PrivateDir {
     }
 
     fn sync(&self) -> io::Result<()> {
-        #[cfg(target_os = "linux")]
-        {
-            return sync_linux_directory(&self.dir);
-        }
-        #[cfg(not(target_os = "linux"))]
-        let result = self.dir.try_clone()?.into_std_file().sync_all();
-        #[cfg(windows)]
-        if result
-            .as_ref()
-            .is_err_and(|error| error.kind() == io::ErrorKind::Unsupported)
-        {
-            return Ok(());
-        }
-        result
+        sync_private_directory(&self.dir)
     }
 }
 
 #[cfg(target_os = "linux")]
-fn sync_linux_directory(directory: &Dir) -> io::Result<()> {
+fn sync_private_directory(directory: &Dir) -> io::Result<()> {
     use rustix::fs::{Mode, OFlags, fsync, openat};
 
     let handle = openat(
@@ -249,7 +238,20 @@ fn sync_linux_directory(directory: &Dir) -> io::Result<()> {
         OFlags::RDONLY | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
         Mode::empty(),
     )?;
-    fsync(handle)
+    Ok(fsync(handle)?)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn sync_private_directory(directory: &Dir) -> io::Result<()> {
+    let result = directory.try_clone()?.into_std_file().sync_all();
+    #[cfg(windows)]
+    if result
+        .as_ref()
+        .is_err_and(|error| error.kind() == io::ErrorKind::Unsupported)
+    {
+        return Ok(());
+    }
+    result
 }
 
 fn random_temporary_name() -> io::Result<OsString> {
