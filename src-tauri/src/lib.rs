@@ -9,6 +9,7 @@ mod monitor;
 mod network_connections;
 mod private_storage;
 mod process_control;
+mod safe_fs;
 mod sensors;
 mod startup;
 

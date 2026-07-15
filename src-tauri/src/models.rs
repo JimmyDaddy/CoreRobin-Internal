@@ -429,7 +429,6 @@ pub struct CleanupDeleteResult {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupDeleteProgressPhase {
-    Preparing,
     Deleting,
 }
 

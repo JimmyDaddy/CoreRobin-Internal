@@ -37,6 +37,7 @@ use crate::models::{
     CleanupSafety, CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
 };
 use crate::private_storage;
+use crate::safe_fs::{BoundDeleteTarget, DeleteRoot};
 
 #[cfg(not(test))]
 const LARGE_FILE_THRESHOLD_BYTES: u64 = 500 * 1_024 * 1_024;
@@ -167,6 +168,7 @@ struct CleanupDeleteTarget {
     display_path: String,
     canonical_path: PathBuf,
     modified_at_ms: Option<u64>,
+    bound: BoundDeleteTarget,
 }
 
 #[derive(Debug)]
@@ -213,44 +215,10 @@ impl CleanupDeleteController {
     ) -> Result<CleanupDeleteResult, CommandError> {
         let targets = self.take_validated_targets(request)?;
         let total_target_count = targets.len();
-        let mut inspections = Vec::with_capacity(total_target_count);
-        let mut preparation_count = 0_usize;
-        for target in &targets {
-            if cancelled.load(Ordering::Relaxed) {
-                return Ok(cancelled_delete_result(Vec::new(), 0, Vec::new(), None));
-            }
-            on_progress(CleanupDeleteProgress {
-                phase: CleanupDeleteProgressPhase::Preparing,
-                processed_entry_count: preparation_count,
-                total_entry_count: 0,
-                completed_target_count: 0,
-                total_target_count,
-                current_path: target.display_path.clone(),
-                deleted_bytes: 0,
-            });
-            let metadata = fs::symlink_metadata(&target.canonical_path).map_err(|error| {
-                CommandError::new(
-                    "cleanup_target_changed",
-                    format!("{} changed before deletion: {error}", target.display_path),
-                )
-            })?;
-            let Some(inspection) = inspect_cleanup_target(
-                &target.canonical_path,
-                &metadata,
-                cancelled,
-                &mut preparation_count,
-            )
-            .map_err(|message| CommandError::new("cleanup_target_unavailable", message))?
-            else {
-                return Ok(cancelled_delete_result(Vec::new(), 0, Vec::new(), None));
-            };
-            inspections.push(inspection);
-        }
-
-        let total_entry_count = inspections
-            .iter()
-            .map(|inspection| inspection.entry_count)
-            .sum();
+        // Deletion deliberately uses indeterminate progress. A complete pre-scan
+        // doubles metadata I/O and widens the race window between validation and
+        // removal without making the operation atomic.
+        let total_entry_count = 0;
         let mut deleted = Vec::new();
         let mut deleted_bytes = 0_u64;
         let mut failed = Vec::new();
@@ -278,15 +246,13 @@ impl CleanupDeleteController {
                 deleted_bytes,
             });
             let mut target_deleted_bytes = 0_u64;
-            let result = delete_cleanup_target_cancellable(
-                &target.canonical_path,
-                cancelled,
-                &mut |entry_deleted_bytes| {
+            let result = target
+                .bound
+                .delete_cancellable(cancelled, &mut |entry_deleted_bytes| {
                     processed_entry_count = processed_entry_count.saturating_add(1);
                     target_deleted_bytes = target_deleted_bytes.saturating_add(entry_deleted_bytes);
                     deleted_bytes = deleted_bytes.saturating_add(entry_deleted_bytes);
-                    if processed_entry_count == total_entry_count
-                        || processed_entry_count.saturating_sub(last_emitted_entry_count) >= 128
+                    if processed_entry_count.saturating_sub(last_emitted_entry_count) >= 128
                         || last_emitted_at.elapsed() >= Duration::from_millis(100)
                     {
                         on_progress(CleanupDeleteProgress {
@@ -301,8 +267,7 @@ impl CleanupDeleteController {
                         last_emitted_entry_count = processed_entry_count;
                         last_emitted_at = Instant::now();
                     }
-                },
-            );
+                });
             match result {
                 Ok(true) => {
                     deleted.push(CleanupDeleteSuccess {
@@ -447,11 +412,6 @@ impl CleanupDeleteController {
         }
         Ok(lease.targets)
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct CleanupDeleteInspection {
-    entry_count: usize,
 }
 
 fn cancelled_delete_result(
@@ -817,64 +777,47 @@ fn validate_cleanup_targets(
             format!("StatusOrbit could not verify the home directory: {error}"),
         )
     })?;
-    #[cfg(unix)]
-    let home_device = fs::metadata(&canonical_home)
-        .map_err(|error| {
-            CommandError::new(
-                "home_directory_unavailable",
-                format!("StatusOrbit could not inspect the home filesystem: {error}"),
-            )
-        })?
-        .dev();
+    let delete_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+        CommandError::new(
+            "home_directory_unavailable",
+            format!("StatusOrbit could not open a stable home directory handle: {error}"),
+        )
+    })?;
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
     let mut targets = Vec::with_capacity(request.paths.len());
     for display in &request.paths {
         let path = expand_cleanup_path(display, &canonical_home)?;
-        if path == canonical_home || trash_roots.contains(&path) {
-            return Err(CommandError::new(
-                "protected_cleanup_path",
-                "StatusOrbit will not delete the home directory or the system Trash folder itself.",
-            ));
-        }
-        let metadata = fs::symlink_metadata(&path).map_err(|error| {
-            CommandError::new(
-                "cleanup_target_unavailable",
-                format!("StatusOrbit could not inspect {display}: {error}"),
-            )
-        })?;
-        if metadata.file_type().is_symlink() || (!metadata.is_file() && !metadata.is_dir()) {
-            return Err(CommandError::new(
-                "unsupported_cleanup_target",
-                format!("StatusOrbit will not delete links or special files: {display}"),
-            ));
-        }
-        #[cfg(unix)]
-        if metadata.is_dir() && metadata.dev() != home_device {
-            return Err(CommandError::new(
-                "cleanup_cross_filesystem",
-                format!("StatusOrbit will not recursively delete a mounted filesystem: {display}"),
-            ));
-        }
-        #[cfg(windows)]
-        if metadata.is_dir() && is_windows_reparse_point(&metadata) {
-            return Err(CommandError::new(
-                "cleanup_cross_filesystem",
-                format!("StatusOrbit will not recursively delete a reparse point: {display}"),
-            ));
-        }
-        let canonical_path = path.canonicalize().map_err(|error| {
-            CommandError::new(
-                "cleanup_target_unavailable",
-                format!("StatusOrbit could not verify {display}: {error}"),
-            )
-        })?;
+        let relative_path = path
+            .strip_prefix(home)
+            .or_else(|_| path.strip_prefix(&canonical_home))
+            .map_err(|_| {
+                CommandError::new(
+                    "cleanup_target_outside_home",
+                    format!("StatusOrbit only deletes items inside your home folder: {display}"),
+                )
+            })?;
+        let canonical_path = canonical_home.join(relative_path);
         if canonical_path == canonical_home || trash_roots.contains(&canonical_path) {
             return Err(CommandError::new(
                 "protected_cleanup_path",
                 "StatusOrbit will not delete the home directory or the system Trash folder itself.",
             ));
         }
+        let bound = delete_root.bind(relative_path).map_err(|error| {
+            let message = error.to_string();
+            let code = if message.contains("volume") {
+                "cleanup_cross_filesystem"
+            } else if message.contains("symbolic") || message.contains("special") {
+                "unsupported_cleanup_target"
+            } else {
+                "cleanup_target_unavailable"
+            };
+            CommandError::new(
+                code,
+                format!("StatusOrbit could not safely bind {display}: {error}"),
+            )
+        })?;
         if !canonical_path.starts_with(&canonical_home) {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
@@ -890,7 +833,8 @@ fn validate_cleanup_targets(
         targets.push(CleanupDeleteTarget {
             display_path: display.clone(),
             canonical_path,
-            modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+            modified_at_ms: bound.modified_at().and_then(system_time_millis),
+            bound,
         });
     }
     for left in 0..targets.len() {
@@ -932,7 +876,10 @@ fn expand_cleanup_path(display_path: &str, home: &Path) -> Result<PathBuf, Comma
 }
 
 fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), CommandError> {
-    let metadata = fs::symlink_metadata(&target.canonical_path).map_err(|error| {
+    let modified_at_ms = target
+        .bound
+        .current_modified_at()
+        .map_err(|error| {
         CommandError::new(
             "cleanup_target_changed",
             format!(
@@ -940,11 +887,9 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
                 target.display_path
             ),
         )
-    })?;
-    if metadata.file_type().is_symlink()
-        || target.canonical_path.canonicalize().ok().as_ref() != Some(&target.canonical_path)
-        || metadata.modified().ok().and_then(system_time_millis) != target.modified_at_ms
-    {
+    })?
+        .and_then(system_time_millis);
+    if modified_at_ms != target.modified_at_ms {
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
@@ -954,199 +899,6 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         ));
     }
     Ok(())
-}
-
-fn inspect_cleanup_target(
-    root: &Path,
-    root_metadata: &Metadata,
-    cancelled: &AtomicBool,
-    processed_entry_count: &mut usize,
-) -> Result<Option<CleanupDeleteInspection>, String> {
-    if cancelled.load(Ordering::Relaxed) {
-        return Ok(None);
-    }
-    if root_metadata.file_type().is_symlink() {
-        return Err("StatusOrbit will not delete symbolic links.".to_owned());
-    }
-    if root_metadata.is_file() {
-        *processed_entry_count = processed_entry_count.saturating_add(1);
-        return Ok(Some(CleanupDeleteInspection { entry_count: 1 }));
-    }
-    if !root_metadata.is_dir() {
-        return Err("StatusOrbit will not delete special files.".to_owned());
-    }
-
-    #[cfg(unix)]
-    let root_device = root_metadata.dev();
-    #[cfg(not(unix))]
-    let _ = root_metadata;
-    let mut entry_count = 1_usize;
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(directory) = stack.pop() {
-        if cancelled.load(Ordering::Relaxed) {
-            return Ok(None);
-        }
-        let entries = fs::read_dir(&directory).map_err(|error| {
-            format!(
-                "StatusOrbit could not verify {} before deletion: {error}",
-                directory.display()
-            )
-        })?;
-        for entry in entries {
-            if cancelled.load(Ordering::Relaxed) {
-                return Ok(None);
-            }
-            let entry = entry.map_err(|error| {
-                format!(
-                    "StatusOrbit could not read {} before deletion: {error}",
-                    directory.display()
-                )
-            })?;
-            let path = entry.path();
-            let metadata = fs::symlink_metadata(&path).map_err(|error| {
-                format!(
-                    "StatusOrbit could not verify {} before deletion: {error}",
-                    path.display()
-                )
-            })?;
-            entry_count = entry_count.saturating_add(1);
-            *processed_entry_count = processed_entry_count.saturating_add(1);
-            if metadata.file_type().is_symlink() {
-                continue;
-            }
-            #[cfg(windows)]
-            if is_windows_reparse_point(&metadata) {
-                return Err(format!(
-                    "StatusOrbit refused to delete {} because it contains a Windows reparse point.",
-                    path.display()
-                ));
-            }
-            if metadata.is_dir() {
-                #[cfg(unix)]
-                if cleanup_filesystem_changed(root_device, metadata.dev()) {
-                    return Err(format!(
-                        "StatusOrbit refused to delete {} because it crosses into another mounted filesystem.",
-                        path.display()
-                    ));
-                }
-                stack.push(path);
-            } else if !metadata.is_file() {
-                return Err(format!(
-                    "StatusOrbit refused to delete {} because it is a special file.",
-                    path.display()
-                ));
-            }
-        }
-    }
-    *processed_entry_count = processed_entry_count.saturating_add(1);
-    Ok(Some(CleanupDeleteInspection { entry_count }))
-}
-
-enum CleanupDeleteWorkItem {
-    Visit(PathBuf),
-    RemoveDirectory(PathBuf),
-}
-
-fn delete_cleanup_target_cancellable(
-    root: &Path,
-    cancelled: &AtomicBool,
-    on_entry_deleted: &mut dyn FnMut(u64),
-) -> Result<bool, String> {
-    let root_metadata = fs::symlink_metadata(root).map_err(|error| error.to_string())?;
-    if root_metadata.file_type().is_symlink() {
-        return Err("StatusOrbit will not delete symbolic links.".to_owned());
-    }
-    #[cfg(unix)]
-    let root_device = root_metadata.dev();
-    #[cfg(not(unix))]
-    let _ = &root_metadata;
-
-    let mut seen_files = HashSet::new();
-    let mut stack = vec![CleanupDeleteWorkItem::Visit(root.to_path_buf())];
-    while let Some(work_item) = stack.pop() {
-        if cancelled.load(Ordering::Relaxed) {
-            return Ok(false);
-        }
-        match work_item {
-            CleanupDeleteWorkItem::Visit(path) => {
-                let metadata = fs::symlink_metadata(&path).map_err(|error| {
-                    format!(
-                        "StatusOrbit could not verify {} during deletion: {error}",
-                        path.display()
-                    )
-                })?;
-                if metadata.file_type().is_symlink() || metadata.is_file() {
-                    let deleted_bytes = if metadata.is_file()
-                        && should_count_file(&path, &metadata, &mut seen_files)
-                    {
-                        allocated_file_size(&path, &metadata)
-                    } else {
-                        0
-                    };
-                    fs::remove_file(&path).map_err(|error| {
-                        format!("StatusOrbit could not delete {}: {error}", path.display())
-                    })?;
-                    on_entry_deleted(deleted_bytes);
-                } else if metadata.is_dir() {
-                    #[cfg(windows)]
-                    if is_windows_reparse_point(&metadata) {
-                        return Err(format!(
-                            "StatusOrbit refused to delete {} because it is a Windows reparse point.",
-                            path.display()
-                        ));
-                    }
-                    #[cfg(unix)]
-                    if cleanup_filesystem_changed(root_device, metadata.dev()) {
-                        return Err(format!(
-                            "StatusOrbit refused to delete {} because it crosses into another mounted filesystem.",
-                            path.display()
-                        ));
-                    }
-                    let entries = fs::read_dir(&path).map_err(|error| {
-                        format!(
-                            "StatusOrbit could not read {} during deletion: {error}",
-                            path.display()
-                        )
-                    })?;
-                    let mut children = Vec::new();
-                    for entry in entries {
-                        if cancelled.load(Ordering::Relaxed) {
-                            return Ok(false);
-                        }
-                        children.push(
-                            entry
-                                .map_err(|error| {
-                                    format!(
-                                        "StatusOrbit could not read {} during deletion: {error}",
-                                        path.display()
-                                    )
-                                })?
-                                .path(),
-                        );
-                    }
-                    stack.push(CleanupDeleteWorkItem::RemoveDirectory(path));
-                    stack.extend(children.into_iter().rev().map(CleanupDeleteWorkItem::Visit));
-                } else {
-                    return Err(format!(
-                        "StatusOrbit refused to delete {} because it is a special file.",
-                        path.display()
-                    ));
-                }
-            }
-            CleanupDeleteWorkItem::RemoveDirectory(path) => {
-                fs::remove_dir(&path).map_err(|error| {
-                    format!("StatusOrbit could not delete {}: {error}", path.display())
-                })?;
-                on_entry_deleted(0);
-            }
-        }
-    }
-    Ok(true)
-}
-
-#[cfg(unix)]
-fn cleanup_filesystem_changed(root_device: u64, candidate_device: u64) -> bool {
-    root_device != candidate_device
 }
 
 #[cfg(windows)]
@@ -2505,13 +2257,6 @@ mod tests {
 
     use super::*;
 
-    #[cfg(unix)]
-    #[test]
-    fn cleanup_mount_guard_detects_a_device_boundary() {
-        assert!(!cleanup_filesystem_changed(7, 7));
-        assert!(cleanup_filesystem_changed(7, 8));
-    }
-
     #[test]
     fn platform_cleanup_roots_do_not_double_count_the_same_path() {
         let root = test_root("unique-platform-roots");
@@ -3245,7 +2990,7 @@ mod tests {
         assert!(fs::read_dir(&target).unwrap().count() < 180);
         assert!(progress_events.iter().any(|progress| {
             progress.phase == CleanupDeleteProgressPhase::Deleting
-                && progress.total_entry_count == 181
+                && progress.total_entry_count == 0
                 && progress.processed_entry_count >= 128
         }));
         fs::remove_dir_all(root).unwrap();
@@ -3297,7 +3042,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn cleanup_delete_does_not_follow_nested_symbolic_links() {
+    fn cleanup_delete_fails_closed_on_nested_symbolic_links() {
         use std::os::unix::fs::symlink;
 
         let root = test_root("delete-nested-symlink");
@@ -3323,8 +3068,10 @@ mod tests {
             .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
             .unwrap();
 
-        assert_eq!(result.deleted.len(), 1);
-        assert!(!target.exists());
+        assert!(result.deleted.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert!(result.failed[0].message.contains("symbolic link"));
+        assert!(target.exists());
         assert!(outside.join("keep.txt").exists());
         fs::remove_dir_all(root).unwrap();
     }
