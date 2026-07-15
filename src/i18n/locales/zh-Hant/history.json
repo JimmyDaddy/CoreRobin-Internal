@@ -1,0 +1,107 @@
+{
+  "title": "資源趨勢",
+  "legend": "圖表圖例",
+  "memory": "記憶體",
+  "warmup": "預熱",
+  "establishing": "正在建立趨勢基線…",
+  "chartLabel": "CPU {{cpu}}%，記憶體 {{memory}}%",
+  "localArchive": "本機資源檔案",
+  "archiveTitle": "歷史",
+  "archiveDescription": "跨重啟檢視資源長期變化，以及持續超限與恢復事件。",
+  "saving": "正在本機儲存",
+  "sessionOnly": "僅當前會話",
+  "controls": "歷史記錄設定",
+  "saveOnDevice": "在此裝置儲存聚合歷史",
+  "retention": "保留",
+  "retentionDays": "{{count}} 天",
+  "noRange": "尚無時間範圍",
+  "savedPoints": "{{count}} 個已儲存點",
+  "clearSaved": "清除已儲存資料",
+  "emptyTitle": "正在建立歷史基線",
+  "emptyDescription": "收到第一個有效取樣後會顯示趨勢；啟用本機儲存後可跨重啟保留。",
+  "summary": "歷史摘要",
+  "averageCpu": "平均 CPU",
+  "averageMemory": "平均記憶體",
+  "peakDisk": "磁碟峰值",
+  "peakNetwork": "網路峰值",
+  "fiveMinuteResolution": "5 分鐘解析度",
+  "resourceChart": "CPU 與記憶體",
+  "throughputChart": "磁碟與網路吞吐",
+  "resourceChartLabel": "歷史 CPU 與記憶體趨勢",
+  "throughputChartLabel": "歷史磁碟與網路吞吐趨勢",
+  "stories": {
+    "eyebrow": "發生過什麼",
+    "title": "電腦狀態故事",
+    "description": "把成對的告警與恢復合併成一件事，用普通語言說明影響和結果。",
+    "cause": "主要原因：{{name}} 當時佔用最高",
+    "timeline": "事件時間線",
+    "startedAt": "{{time}} 開始",
+    "peakedAt": "{{time}} 達到峰值 {{value}}%",
+    "endedAt": "{{time}} 恢復",
+    "count": "最近 {{count}} 件",
+    "happeningNow": "仍在發生",
+    "resolved": "已經恢復",
+    "emptyTitle": "最近沒有值得擔心的事情",
+    "emptyDescription": "StatusOrbit 會忽略短暫波動，只把持續影響電腦的情況整理在這裡。",
+    "cpu": {
+      "active": {
+        "title": "電腦正在持續忙碌",
+        "description": "處理器已高負荷執行 {{duration}}，峰值約 {{value}}%；電腦可能會卡頓、發熱或更耗電。"
+      },
+      "recovered": {
+        "title": "電腦曾忙了一陣，現在已經恢復",
+        "description": "這次高負荷持續約 {{duration}}，峰值約 {{value}}%，之後已回到正常範圍。"
+      },
+      "guidance": "如果仍然覺得卡，可以到“應用”檢視是誰影響最大；StatusOrbit 不會自動關閉任何應用。"
+    },
+    "memory": {
+      "active": {
+        "title": "可用記憶體正在變得緊張",
+        "description": "低可用記憶體和交換活動已持續 {{duration}}；切換應用時可能變慢。"
+      },
+      "recovered": {
+        "title": "記憶體壓力曾經升高，現在已經緩解",
+        "description": "這次記憶體緊張持續約 {{duration}}，隨後可用記憶體和交換活動恢復。"
+      },
+      "guidance": "單純“記憶體用得多”並不是問題；StatusOrbit 只記錄低可用記憶體同時伴隨明顯交換活動的情況。"
+    },
+    "volume": {
+      "active": {
+        "title": "磁碟剩餘空間偏少",
+        "description": "磁碟佔用已持續高於提醒線 {{duration}}，當前最高約 {{value}}%。"
+      },
+      "recovered": {
+        "title": "磁碟空間壓力已經緩解",
+        "description": "磁碟空間曾緊張約 {{duration}}，現在已經回到提醒線以下。"
+      },
+      "guidance": "可以先開啟“清理”檢視空間地圖；任何檔案處理都需要你確認。"
+    }
+  },
+  "alerts": {
+    "eyebrow": "本機事件記錄",
+    "title": "告警與恢復事件",
+    "description": "資源持續達到“偏高”閾值後觸發；恢復回差與冷卻機制會減少尖峰和重複事件。",
+    "active": "{{count}} 個活動告警",
+    "normal": "當前正常",
+    "savedEvents": "{{count}} 個已儲存事件",
+    "filters": "告警資源篩選",
+    "all": "全部",
+    "volume": "卷佔用",
+    "eventCount": "{{count}} 條事件",
+    "emptyTitle": "暫無告警事件",
+    "emptyDescription": "短暫尖峰不會產生記錄；持續超限或恢復後會在這裡顯示。",
+    "recovered": "已恢復",
+    "severity": {
+      "high": "偏高",
+      "critical": "嚴重"
+    },
+    "triggeredDetail": "{{value}}%，高於 {{threshold}}% 已持續 {{duration}}。",
+    "recoveredDetail": "已回落到 {{value}}%，本次告警持續 {{duration}}。"
+  },
+  "privacyEyebrow": "資料邊界",
+  "privacyTitle": "隱私說明",
+  "privacyLocal": "歷史只儲存在當前裝置的 StatusOrbit WebView 儲存中，不會上傳或同步。",
+  "privacyCollected": "僅記錄整機 CPU、記憶體百分比、磁碟和網路吞吐快照、資源超限與恢復事件；應用顯示名只有在設定中單獨允許後才會隨事件儲存。",
+  "privacyExcluded": "不記錄程序命令、使用者、路徑、檔名、本地或遠端連線地址。",
+  "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
+}

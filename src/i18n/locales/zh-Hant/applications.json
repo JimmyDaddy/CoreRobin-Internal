@@ -1,0 +1,38 @@
+{
+  "kicker": "應用級彙總",
+  "overviewTitle": "現在誰影響最大",
+  "title": "應用資源影響",
+  "description": "StatusOrbit 會把輔助程序合併到熟悉的應用名稱下，再彙總 CPU、記憶體和磁碟活動。",
+  "viewAll": "檢視全部應用",
+  "search": "搜尋應用",
+  "searchPlaceholder": "按應用名稱搜尋",
+  "sortLabel": "應用排序方式",
+  "sort": {
+    "impact": "綜合影響",
+    "cpu": "CPU",
+    "memory": "記憶體",
+    "disk": "磁碟"
+  },
+  "systemComponent": "系統元件 · 不建議結束",
+  "processCount": "{{count}} 個相關程序",
+  "memory": "記憶體",
+  "disk": "磁碟",
+  "level": {
+    "low": "影響較低",
+    "moderate": "有些影響",
+    "high": "影響較高",
+    "critical": "影響明顯"
+  },
+  "selected": {
+    "title": "{{name}} 的影響說明",
+    "cpu": "當前主要影響來自處理器佔用（{{value}}）。持續偏高時可能導致卡頓、發熱或耗電增加。",
+    "memory": "當前主要影響來自記憶體佔用（{{value}}）。只有同時出現記憶體壓力和交換活動時才需要處理。",
+    "disk": "當前主要影響來自磁碟活動（{{value}}）。同步、下載或構建任務都可能造成短時讀寫。",
+    "balanced": "當前沒有某一項資源特別突出，整體影響較低。",
+    "systemSafety": "這是系統元件，不建議直接結束；如有異常請先檢視專業證據。",
+    "appSafety": "這是普通應用。StatusOrbit 不會自動關閉它，結束操作仍需單獨確認。",
+    "professionalDetails": "用專業模式檢視程序"
+  },
+  "empty": "沒有匹配的應用",
+  "safety": "點選應用只會開啟資源證據；任何結束操作仍需單獨確認。"
+}

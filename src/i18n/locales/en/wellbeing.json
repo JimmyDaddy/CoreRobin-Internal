@@ -1,0 +1,58 @@
+{
+  "eyebrow": "Device wellbeing",
+  "title": "Temperature, battery, and sleep",
+  "description": "Reads system state at a low frequency and explains whether an app is preventing automatic sleep.",
+  "overall": {
+    "normal": "Looking good",
+    "attention": "Worth watching",
+    "urgent": "Action recommended",
+    "unavailable": "No system reading"
+  },
+  "temperature": {
+    "label": "Device temperature",
+    "normal": "Temperature is currently within the normal range.",
+    "attention": "The device is warm. If it also feels slow, reduce heavy tasks first.",
+    "urgent": "Temperature is staying high. Stop heavy tasks and keep the device ventilated.",
+    "unavailable": "The operating system or hardware is not exposing a temperature reading to StatusOrbit."
+  },
+  "battery": {
+    "label": "Battery",
+    "notPresent": "No battery detected",
+    "unavailable": "Desktop computers and devices without battery reporting appear this way.",
+    "normal": "Battery status is healthy",
+    "attention": "Power is getting low; prepare to connect a charger",
+    "urgent": "Power is very low; connect a charger soon",
+    "remaining": "about {{hours}} hr {{minutes}} min",
+    "state": {
+      "charging": "Charging",
+      "discharging": "Using battery",
+      "full": "Fully charged",
+      "not_charging": "On power, not charging",
+      "unknown": "Status unknown"
+    }
+  },
+  "sleep": {
+    "label": "Automatic sleep",
+    "unavailableValue": "Unavailable",
+    "unavailable": "This platform is not exposing reliable sleep-blocker information to StatusOrbit.",
+    "clearValue": "Sleep is available",
+    "clear": "No app is preventing the computer from sleeping automatically.",
+    "blockedValue": "{{count}} app",
+    "blockedValue_one": "{{count}} app",
+    "blockedValue_other": "{{count}} apps",
+    "blocked": "{{name}} has prevented automatic sleep for {{duration}}{{more}}. Quitting the app or pausing its task will usually restore sleep.",
+    "more": ", plus {{count}} more",
+    "systemValue": "System activity",
+    "system": "A system task is temporarily keeping the computer awake. It usually needs no action, and system processes should not be quit.",
+    "duration": {
+      "unknown": "a while",
+      "lessThanMinute": "less than a minute",
+      "minutes": "about {{count}} minutes",
+      "minutes_one": "about 1 minute",
+      "minutes_other": "about {{count}} minutes",
+      "hours": "about {{count}} hours",
+      "hours_one": "about 1 hour",
+      "hours_other": "about {{count}} hours"
+    }
+  }
+}

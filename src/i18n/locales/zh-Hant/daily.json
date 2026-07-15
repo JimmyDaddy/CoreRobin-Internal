@@ -1,0 +1,545 @@
+{
+  "shell": {
+    "label": "日常模式",
+    "localOnly": "分析只在本機進行",
+    "openProfessional": "進入專業模式"
+  },
+  "nav": {
+    "home": "電腦狀態",
+    "space": "空間",
+    "applications": "應用",
+    "more": "更多",
+    "today": "電腦狀態",
+    "solve": "幫我解決",
+    "cleanup": "清理空間",
+    "records": "記錄",
+    "settings": "設定"
+  },
+  "topbar": {
+    "thisMac": "這臺 Mac",
+    "thisComputer": "這臺電腦"
+  },
+  "status": {
+    "observing": {
+      "short": "正在瞭解狀態",
+      "title": "正在瞭解這臺電腦",
+      "summary": "再觀察一會兒，避免把短暫波動誤判成問題。"
+    },
+    "normal": {
+      "short": "執行平穩",
+      "title": "電腦執行平穩",
+      "summary": "目前沒有發現需要你處理的問題。"
+    },
+    "attention": {
+      "short": "有些情況值得留意",
+      "title": "有 {{count}} 項情況值得留意",
+      "summary": "StatusOrbit 已經整理好原因和下一步，你不需要自己判斷技術指標。"
+    },
+    "urgent": {
+      "short": "建議儘快看看",
+      "title": "有 {{count}} 項情況建議儘快看看",
+      "summary": "先核對原因，再選擇合適的處理方式。"
+    }
+  },
+  "orbit": {
+    "label": "電腦狀態軌道",
+    "thisComputer": "這臺電腦",
+    "speed": "速度",
+    "space": "空間",
+    "temperature": "溫度",
+    "battery": "電池"
+  },
+  "companion": {
+    "name": "ORBIT",
+    "checking": "正在檢查"
+  },
+  "home": {
+    "kicker": "電腦狀態夥伴",
+    "viewDiagnosis": "檢視檢查結果",
+    "viewPriority": "看看這件事",
+    "checkNow": "檢查一下",
+    "checking": "檢查中…",
+    "checkingTitle": "Orbit 正在看看電腦的近況",
+    "checkingSummary": "最新狀態會直接匯入這裡；如果還需要持續觀察，Orbit 會明確告訴你。",
+    "haveProblem": "我遇到了問題",
+    "checkedAt": "{{time}} 更新",
+    "localOnly": "狀態和歷史都儲存在本機",
+    "professional": "檢視詳細資料"
+  },
+  "intents": {
+    "kicker": "從問題開始",
+    "title": "你想解決什麼？",
+    "description": "不需要先理解 CPU 或記憶體，選擇最接近你感受的情況。",
+    "slow": {
+      "title": "電腦變慢了",
+      "description": "找出持續影響速度的應用或資源"
+    },
+    "space": {
+      "title": "空間不夠",
+      "description": "確認還剩多少，並找到真正佔空間的內容"
+    },
+    "startup": {
+      "title": "開機太慢",
+      "description": "看看哪些第三方應用會隨登入啟動"
+    },
+    "heat": {
+      "title": "發熱或耗電快",
+      "description": "檢查溫度、電池和阻止休眠的應用"
+    },
+    "network": {
+      "title": "網路好像有問題",
+      "description": "看看當前流量和連線是否能提供線索"
+    },
+    "checkup": {
+      "title": "檢查一下",
+      "description": "從當前狀態中找出最值得留意的一件事"
+    }
+  },
+  "solve": {
+    "kicker": "從你的感受開始",
+    "title": "你遇到了什麼情況？",
+    "description": "不需要先判斷是 CPU、記憶體還是網路，選最接近你感受的情況。",
+    "slow": {
+      "title": "電腦有點卡",
+      "description": "找出持續讓電腦變慢的應用或活動"
+    },
+    "heat": {
+      "title": "風扇一直很響",
+      "description": "看看溫度和持續繁忙的應用"
+    },
+    "battery": {
+      "title": "電池掉得很快",
+      "description": "檢查電量、溫度和阻止休眠的應用"
+    },
+    "space": {
+      "title": "空間快不夠了",
+      "description": "先確認剩餘空間，再決定是否掃描檔案"
+    },
+    "startup": {
+      "title": "開機越來越慢",
+      "description": "看看哪些第三方應用會自動開啟"
+    },
+    "network": {
+      "title": "網路好像有問題",
+      "description": "讀取當前流量與活動連線，尋找可用線索"
+    },
+    "applications": {
+      "title": "哪些應用最影響電腦",
+      "description": "只先展示最值得處理的幾個應用"
+    },
+    "checkup": {
+      "title": "我只是想檢查一下",
+      "description": "讀取最新狀態並給出一個主結論"
+    },
+    "recommended": "根據當前狀態推薦",
+    "otherProblems": "其他情況",
+    "footer": "StatusOrbit 不會為了顯得有用而猜測原因；沒有足夠依據時會繼續觀察。"
+  },
+  "attention": {
+    "kicker": "現在",
+    "title": "值得留意的情況",
+    "count": "{{count}} 項",
+    "priority": "現在最值得留意",
+    "recovering": "正在確認恢復",
+    "open": "看看原因",
+    "emptyTitle": "現在沒有需要處理的事",
+    "emptyDescription": "StatusOrbit 會繼續在後臺留意持續變化。",
+    "viewApplications": "看看哪些應用正在執行",
+    "temperature": {
+      "title": "電腦溫度有些高",
+      "description": "減少高負荷任務並保持通風，通常會逐漸恢復。"
+    },
+    "battery": {
+      "title": "剩餘電量不多",
+      "description": "如果還要繼續使用一段時間，建議準備連線電源。"
+    },
+    "sleep": {
+      "title": "{{name}} 正在阻止自動休眠",
+      "description": "退出應用或暫停相關任務後通常會恢復。"
+    },
+    "application": {
+      "title": "{{name}} 現在影響較大",
+      "low": "當前影響較低。",
+      "moderate": "正在使用一些電腦資源。",
+      "high": "持續使用較多資源，可能影響流暢度。",
+      "critical": "正在大量使用資源，可能明顯影響流暢度。"
+    }
+  },
+  "incident": {
+    "phase": {
+      "active": "仍在發生",
+      "recovering": "正在確認恢復",
+      "resolved": "已經恢復"
+    },
+    "recoveringDescription": "最新指標已經回落，StatusOrbit 正在繼續觀察，確認它不是一次短暫波動。",
+    "resolvedDescription": "這項情況已經穩定恢復，現在不需要處理；觸發時的證據仍保留在這裡。",
+    "observedCause": "觸發時主要相關",
+    "causeMayHaveChanged": "應用狀態可能已經變化，操作只會基於最新檢查提供。",
+    "timeline": "{{startedAt}} 確認 · 最近一次命中 {{lastSeenAt}}",
+    "sleepDuration": "已持續約 {{minutes}} 分鐘",
+    "viewCurrentNetwork": "檢視當前網路狀態"
+  },
+  "story": {
+    "kicker": "最近",
+    "title": "最近發生了什麼",
+    "emptyTitle": "最近一直很平穩",
+    "emptyDescription": "出現持續的資源壓力後，這裡會用人話記錄發生時間和恢復情況。",
+    "active": "正在發生",
+    "recovered": "已經恢復",
+    "cpu": {
+      "active": "從 {{time}} 起，電腦已持續繁忙約 {{minutes}} 分鐘",
+      "recovered": "{{time}} 附近曾繁忙約 {{minutes}} 分鐘，現在已經恢復"
+    },
+    "memory": {
+      "active": "從 {{time}} 起，記憶體壓力已持續約 {{minutes}} 分鐘",
+      "recovered": "{{time}} 附近曾出現記憶體壓力，現在已經恢復"
+    },
+    "volume": {
+      "active": "從 {{time}} 起，可用空間一直偏少",
+      "recovered": "{{time}} 附近的空間不足提醒已經恢復"
+    },
+    "cause": "當時主要與 {{name}} 有關。",
+    "viewAll": "檢視全部記錄"
+  },
+  "applications": {
+    "kicker": "正在執行",
+    "title": "哪些應用正在影響電腦",
+    "description": "先看值得留意的應用，需要時再展開檢視。",
+    "search": "搜尋應用",
+    "system": "系統元件",
+    "ordinary": "普通應用",
+    "level": {
+      "low": "執行正常",
+      "moderate": "有些影響",
+      "high": "影響較大",
+      "critical": "影響明顯"
+    },
+    "reason": {
+      "cpu": "{{name}} 當前主要在使用處理能力。",
+      "memory": "{{name}} 當前主要佔用較多記憶體。",
+      "disk": "{{name}} 當前正在頻繁讀寫檔案。",
+      "balanced": "目前沒有某一項資源特別突出。"
+    },
+    "evidence": {
+      "cpu": "處理能力",
+      "memory": "記憶體",
+      "disk": "檔案讀寫"
+    },
+    "systemSafety": "這是系統元件，只展示依據，不建議直接結束。",
+    "requestClose": "請求 {{name}} 退出",
+    "viewEvidence": "檢視詳細依據",
+    "empty": "沒有匹配的應用",
+    "refresh": "更新列表",
+    "refreshing": "正在更新…",
+    "snapshotFound": "有 {{count}} 個應用值得先看看",
+    "snapshotClear": "沒有應用持續影響電腦",
+    "snapshotTime": "更新於 {{time}}",
+    "calmTitle": "現在沒有應用需要處理",
+    "calmDescription": "正常執行的應用仍可按需展開檢視，但不會佔據首屏。",
+    "showAll": "檢視全部 {{count}} 個普通應用",
+    "hideAll": "收起普通應用"
+  },
+  "recheck": {
+    "title": "重新檢查完成",
+    "loadingKicker": "正在掃描這臺電腦",
+    "checkingTitle": "正在把最新狀態匯入軌道",
+    "checkingDescription": "稍等一下，StatusOrbit 正在讀取變化並重新整理檢查結果。",
+    "steps": {
+      "read": "讀取最新狀態",
+      "compare": "對比剛才變化",
+      "update": "整理檢查結果"
+    },
+    "live": {
+      "slow": {
+        "title": "正在觀察電腦為什麼會卡",
+        "description": "讀取最新狀態；持續問題會繼續觀察，短暫變忙不會被當成故障。"
+      },
+      "space": {
+        "title": "正在確認剩餘空間",
+        "description": "這裡只讀取磁碟容量，不會在後臺啟動耗時的完整檔案掃描。"
+      },
+      "startup": {
+        "title": "正在讀取開機專案",
+        "description": "系統專案保持只讀，只整理可以安全評估的第三方應用。"
+      },
+      "heat": {
+        "title": "正在讀取溫度、電量與休眠狀態",
+        "description": "缺少的資料會保持未知，不會被誤判為正常。"
+      },
+      "network": {
+        "title": "正在讀取當前網路活動",
+        "description": "低頻讀取流量和活動連線，不持續追蹤每一條連線。"
+      },
+      "checkup": {
+        "title": "Orbit 正在檢查這臺電腦",
+        "description": "狀態、連線和開機專案會各自返回真實結果，不使用表演性倒計時。"
+      }
+    },
+    "resultKicker": "狀態軌道已同步",
+    "updated": "剛剛更新",
+    "completed": "檢查完成",
+    "completedAt": "{{time}}",
+    "outcomeTitle": {
+      "exited": "應用已經退出",
+      "still_running": "應用仍在執行",
+      "already_exited": "應用之前已經退出"
+    },
+    "facts": {
+      "currentReading": "當前讀數",
+      "observedFor": "持續觀察",
+      "seconds": "{{count}} 秒",
+      "sustainedPressure": "持續資源壓力",
+      "notFound": "未發現",
+      "worthReviewing": "值得核對",
+      "startupTotal": "啟動項總數"
+    },
+    "slow": {
+      "observingDescription": "最新資料已經讀取，但 StatusOrbit 還需要繼續觀察，避免把一次短暫變忙當成持續問題。"
+    },
+    "checkup": {
+      "observingDescription": "最新狀態已經讀取，但持續問題還需要再觀察一會兒。"
+    },
+    "startup": {
+      "unavailableTitle": "暫時無法讀取啟動項",
+      "unavailableDescription": "系統還沒有返回可用的啟動項結果，可以稍後再試一次。"
+    },
+    "heat": {
+      "normal": {
+        "title": "溫度、電池和休眠狀態都很平穩",
+        "description": "這三專案前沒有發現需要處理的情況。"
+      },
+      "observing": {
+        "title": "部分裝置狀態暫時無法讀取",
+        "description": "StatusOrbit 會保持未知狀態，不會把缺少的資料判斷為正常。"
+      },
+      "attention": {
+        "title": "有一項裝置狀態值得留意",
+        "description": "下面列出了剛剛讀取的溫度、電池和休眠情況。"
+      },
+      "urgent": {
+        "title": "建議儘快處理當前裝置狀態",
+        "description": "先減少高負荷任務或連線電源，再重新檢查一次。"
+      }
+    },
+    "exited": "應用已經退出，最新狀態已重新讀取。",
+    "still_running": "應用仍在執行，StatusOrbit 沒有繼續強制處理。",
+    "already_exited": "應用在操作前已經退出，最新狀態已重新讀取。",
+    "refreshed": "最新狀態已經讀取完成。"
+  },
+  "space": {
+    "kicker": "這臺電腦的空間",
+    "normal": {
+      "title": "目前還有足夠空間",
+      "description": "還剩 {{free}}，暫時不需要為了數字而清理。"
+    },
+    "attention": {
+      "title": "可用空間不多了",
+      "description": "還剩 {{free}}，可以先找出真正佔空間的內容。"
+    },
+    "unknown": {
+      "title": "暫時無法讀取空間",
+      "description": "系統沒有提供可用的磁碟容量資訊。"
+    },
+    "checkAgain": "重新檢查",
+    "capacity": "主要磁碟容量",
+    "available": "可用",
+    "used": "已使用",
+    "usage": "當前已使用 {{percent}}%",
+    "showDetails": "容量詳情",
+    "scan": {
+      "ready": "已有最近掃描結果",
+      "notYet": "還沒有分析過檔案",
+      "found": "發現約 {{size}} 可優先核對",
+      "title": "看看空間都去了哪裡",
+      "cached": "結果來自 {{time}} 的完整掃描；開啟後會核對當前目錄變化。",
+      "description": "掃描檔名、大小等後設資料，生成可以下鑽的空間圖。",
+      "open": "開啟空間清理",
+      "start": "開始空間分析"
+    },
+    "professional": "檢視磁碟詳細資料"
+  },
+  "more": {
+    "kicker": "按需使用",
+    "title": "更多工具與設定",
+    "description": "這些功能不會佔據日常首頁，需要時再開啟。",
+    "startup": {
+      "title": "開機專案",
+      "description": "檢視和停用可恢復的第三方登入項"
+    },
+    "history": {
+      "title": "完整歷史",
+      "description": "檢視資源趨勢、提醒和恢復記錄"
+    },
+    "network": {
+      "title": "網路診斷",
+      "description": "檢視介面、流量和活動連線詳情"
+    },
+    "settings": {
+      "title": "設定",
+      "description": "語言、通知、歷史保留和取樣偏好"
+    },
+    "language": "介面語言",
+    "professional": "專業模式",
+    "professionalDescription": "檢視完整指標、程序樹和技術詳情"
+  },
+  "records": {
+    "kicker": "最近發生的變化",
+    "title": "處理前後，都有記錄",
+    "description": "這裡只記錄持續出現的情況和恢復結果，不把每一次短暫波動都變成提醒。",
+    "emptyTitle": "最近一直很平穩",
+    "emptyDescription": "以後出現持續卡頓、記憶體壓力或空間不足時，會在這裡留下容易理解的記錄。",
+    "duration": "約 {{minutes}} 分鐘",
+    "groups": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "earlier": "更早"
+    },
+    "showMore": "檢視全部 {{count}} 條記錄",
+    "showLess": "收起較早記錄"
+  },
+  "settings": {
+    "kicker": "日常助手設定",
+    "title": "讓 Orbit 按你的方式工作",
+    "description": "這裡只保留日常會用到的偏好；專業取樣和閾值設定留在專業模式。",
+    "language": "介面語言",
+    "languageDescription": "隨時選擇適合你的介面語言",
+    "notifications": "桌面提醒",
+    "notificationStatus": {
+      "disabled": "開啟後會請求系統許可權",
+      "requesting": "正在等待系統許可權",
+      "ready": "只提醒持續出現的重要變化",
+      "denied": "提醒許可權已關閉",
+      "unavailable": "當前系統不支援桌面提醒"
+    },
+    "history": "保留最近記錄",
+    "historyDescription": "關閉後不再把資源變化儲存到本機",
+    "textSize": "文字大小",
+    "textSizeDescription": "放大日常頁面和列表文字",
+    "textSizeOptions": {
+      "comfortable": "標準",
+      "large": "大號"
+    },
+    "reduceMotion": "減少動態效果",
+    "reduceMotionDescription": "停用持續旋轉、呼吸和位移動畫",
+    "showDockIcon": "在 Dock 中顯示應用",
+    "showDockIconDescription": "預設關閉；主視窗仍可從頂部狀態列開啟",
+    "launchAtLogin": "登入時啟動",
+    "launchAtLoginDescription": "登入系統後在背景啟動，不主動顯示主視窗",
+    "companionAlwaysOnTop": "讓 Orbit 始終顯示在其他視窗上方",
+    "companionAlwaysOnTopDescription": "關閉後 Orbit 仍會留在桌面，但可能被其他視窗遮住",
+    "companionShowOnStartup": "讓 Orbit 夥伴常駐桌面",
+    "companionShowOnStartupDescription": "開啟後立即顯示 Orbit，並在下次啟動 StatusOrbit 時繼續出現",
+    "professional": "專業模式",
+    "professionalDescription": "檢視完整指標、程序樹、網路連線和高階設定",
+    "openProfessional": "進入專業模式"
+  },
+  "guide": {
+    "back": "返回首頁",
+    "checkAgain": "重新檢查",
+    "checkingAgain": "檢查中…",
+    "result": "檢查結果",
+    "viewEvidence": "為什麼 StatusOrbit 這樣判斷",
+    "safety": "StatusOrbit 只提出有依據的建議，任何系統操作仍需要你確認。",
+    "professional": "檢視全部技術依據",
+    "slow": {
+      "kicker": "流暢度檢查",
+      "title": "找出電腦變慢的原因",
+      "description": "先觀察持續變化，再告訴你最可能的原因和安全下一步。",
+      "observingKicker": "正在觀察",
+      "observingTitle": "先確認這不是一次短暫變忙",
+      "observingDescription": "還需約 {{seconds}} 秒；StatusOrbit 不會把開啟網頁或啟動應用的一瞬間當成故障。",
+      "normalTitle": "沒有發現持續的資源壓力",
+      "normalDescription": "如果你仍然覺得卡頓，可以檢視當前應用；StatusOrbit 不會在沒有證據時猜測原因。",
+      "viewApplications": "檢視當前應用",
+      "likelyCause": "最可能相關的應用",
+      "applicationExplanation": "{{name}} 的持續活動與當前問題時間一致。",
+      "requestClose": "請求 {{name}} 正常退出"
+    },
+    "space": {
+      "kicker": "空間檢查",
+      "title": "看看空間是否真的不夠",
+      "description": "先確認剩餘空間，再決定是否進行完整檔案分析。",
+      "lowTitle": "只剩 {{free}} 可用",
+      "lowDescription": "建議找出大檔案和可回收內容，但不需要盲目刪除系統快取。",
+      "normalTitle": "還有 {{free}} 可用",
+      "normalDescription": "空間目前不緊張；只有你確實想整理檔案時才需要掃描。",
+      "unknownTitle": "暫時無法讀取主要磁碟",
+      "unknownDescription": "系統沒有提供可靠的容量資訊，StatusOrbit 不會把未知狀態當成空間充足。",
+      "cachedScan": "已有完整掃描",
+      "reclaimable": "約 {{size}} 可優先核對",
+      "noScan": "尚未掃描檔案",
+      "scanExplanation": "完整掃描會生成可互動空間圖，不會自動刪除。",
+      "openScan": "開啟掃描結果",
+      "startScan": "開始空間分析",
+      "viewSpace": "檢視空間概況"
+    },
+    "startup": {
+      "kicker": "登入速度檢查",
+      "title": "看看哪些應用會隨開機啟動",
+      "description": "只優先列出可恢復的第三方登入項，系統服務保持只讀。",
+      "resultTitle": "先看真正值得評估的專案",
+      "resultDescription": "停用只是阻止下次自動啟動，不會解除安裝應用。"
+    },
+    "heat": {
+      "kicker": "溫度與電量檢查",
+      "title": "看看為什麼發熱或耗電快",
+      "description": "分別檢查溫度、電池和阻止休眠的應用，不把單個讀數說成硬體故障。",
+      "sleepLabel": "自動休眠",
+      "sleepBlocked": "{{name}} 正在保持電腦喚醒",
+      "sleepClear": "可以正常自動休眠",
+      "sleepDescription": "退出應用或暫停相關任務後通常會恢復。",
+      "requestClose": "請求 {{name}} 退出",
+      "viewApplications": "看看當前影響較大的應用",
+      "result": {
+        "temperature": {
+          "title": "電腦現在有些熱",
+          "description": "先暫停高負荷任務並保持通風；溫度恢復後再判斷是否仍有問題。"
+        },
+        "battery": {
+          "title": "剩餘電量已經不多",
+          "description": "當前讀數只能說明電量偏低；如果下降速度仍異常，可以繼續觀察正在執行的應用。"
+        },
+        "sleep": {
+          "title": "{{name}} 正在讓電腦保持喚醒",
+          "description": "它可能增加待機耗電；退出應用或暫停相關任務後通常會恢復。"
+        },
+        "unknown": {
+          "title": "暫時沒有足夠的裝置狀態",
+          "description": "溫度、電池和休眠資料都不可用，因此 StatusOrbit 不能判斷是否存在發熱或耗電問題。"
+        },
+        "normal": {
+          "title": "沒有發現持續的發熱或休眠問題",
+          "description": "溫度、電量和自動休眠目前沒有提供需要處理的證據。"
+        }
+      }
+    },
+    "network": {
+      "kicker": "網路檢查",
+      "title": "看看網路現在發生了什麼",
+      "description": "StatusOrbit 會讀取當前流量和活動連線，但不會在沒有證據時把網路變慢歸咎於某個應用。",
+      "checkingKicker": "正在讀取",
+      "checkingTitle": "正在獲取活動連線",
+      "checkingDescription": "連線掃描使用獨立的低頻命令，不影響系統主取樣。",
+      "unknownTitle": "暫時沒有足夠的網路資訊",
+      "unknownDescription": "當前流量或連線列表不可用，因此 StatusOrbit 不能判斷網路是否正常。",
+      "activeTitle": "現在有網路活動",
+      "quietTitle": "現在沒有明顯的網路活動",
+      "resultDescription": "這隻能說明當前活動情況；網速慢也可能來自路由器、運營商或遠端服務。",
+      "currentTraffic": "當前總流量",
+      "activeConnections": "活動連線",
+      "connections": "{{count}} 條活動連線"
+    },
+    "checkup": {
+      "kicker": "日常檢查",
+      "title": "看看電腦現在怎麼樣",
+      "description": "把最新狀態整理成一個主結論；沒有足夠依據時會繼續觀察。",
+      "observingKicker": "正在觀察",
+      "observingTitle": "再看一會兒，避免誤判",
+      "observingDescription": "還需約 {{seconds}} 秒，短暫開啟應用不會被說成持續問題。",
+      "normalTitle": "現在很順暢",
+      "normalDescription": "沒有發現應用持續佔用、真實記憶體壓力或空間不足，現在不用做任何事。",
+      "priorityKicker": "最值得先看",
+      "openPriority": "看看這件事"
+    }
+  }
+}

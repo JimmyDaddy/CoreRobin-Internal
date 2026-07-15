@@ -47,6 +47,10 @@ import type {
   StartupManagementLeaseRequest,
   StartupManagementResult,
 } from "./types";
+import type {
+  HealthStateSnapshot,
+  HealthStateUpdate,
+} from "./healthState";
 
 let mockCleanupCancelled = false;
 let mockCleanupDeleteCancelled = false;
@@ -61,6 +65,31 @@ declare global {
 
 export function isDesktopRuntime(): boolean {
   return typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
+}
+
+export async function setDockIconVisible(visible: boolean): Promise<void> {
+  if (!isDesktopRuntime()) return;
+  await invoke<void>("set_dock_icon_visible", { visible });
+}
+
+export async function getLaunchAtLogin(): Promise<boolean> {
+  if (!isDesktopRuntime()) return false;
+  return invoke<boolean>("get_launch_at_login");
+}
+
+export async function setLaunchAtLogin(enabled: boolean): Promise<void> {
+  if (!isDesktopRuntime()) return;
+  await invoke<void>("set_launch_at_login", { enabled });
+}
+
+export async function publishHealthState(
+  update: HealthStateUpdate,
+): Promise<HealthStateSnapshot> {
+  return invoke<HealthStateSnapshot>("publish_health_state", { update });
+}
+
+export async function getHealthState(): Promise<HealthStateSnapshot | null> {
+  return invoke<HealthStateSnapshot | null>("get_health_state");
 }
 
 function canUseDevelopmentMock(): boolean {
@@ -78,10 +107,13 @@ export async function getSystemSummary(): Promise<SystemSummary> {
   if (canUseDevelopmentMock()) {
     const snapshot = getMockSnapshot();
     return {
+      sequence: snapshot.sequence,
       sampledAtMs: snapshot.sampledAtMs,
+      sampleIntervalMs: snapshot.sampleIntervalMs,
       cpu: snapshot.cpu,
       memory: snapshot.memory,
-      volumes: snapshot.disk.volumes,
+      disk: snapshot.disk,
+      network: snapshot.network,
       sensors: snapshot.sensors,
     };
   }

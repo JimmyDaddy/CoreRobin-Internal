@@ -242,7 +242,9 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NOTES: |
-        StatusOrbit ${{ github.ref_name }} 提供日常助手、系统监控、应用与进程详情、网络连接、存储分析，以及可交互的空间清理扇形图。
+        StatusOrbit ${{ github.ref_name }} 提供稳定事件生命周期与恢复记录、跨主窗口/状态栏/Orbit 的共享健康状态、登录时后台启动，以及系统监控、应用与进程详情、网络连接、存储分析和可交互的空间清理扇形图。
+
+        界面支持简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어和Русский。
 
         Windows 与 Linux 安装包目前作为早期预览版本提供。当前安装包未配置平台发布签名；macOS 安装包尚未经过 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
     steps:

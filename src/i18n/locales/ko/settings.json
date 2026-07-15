@@ -1,0 +1,82 @@
+{
+  "localPreferences": "로컬 설정",
+  "title": "설정",
+  "description": "이 설정은 이 장치에 저장되며, 샘플링 및 인터페이스에 즉시 적용됩니다.",
+  "intervalMs": "{{interval}} 밀리초",
+  "intervalSeconds": "{{seconds}} 초",
+  "experience": {
+    "title": "인터페이스 모드",
+    "description": "일상 모드는 실제 문제와 안내된 다음 단계를 시작합니다. 전문 모드는 모든 프로세스와 지표를 유지합니다.",
+    "label": "인터페이스 모드",
+    "simple": "일상 모드",
+    "professional": "전문 모드"
+  },
+  "language": {
+    "title": "인터페이스 언어",
+    "description": "StatusOrbit 메뉴, 안내 및 상태 텍스트를 변경합니다.",
+    "label": "언어"
+  },
+  "background": {
+    "title": "배경 및 데스크톱 설정",
+    "description": "StatusOrbit가 실행되는 방식, 로그인 시 자동 시작 여부, Orbit 표시 설정을 제어합니다.",
+    "showDockIcon": "도크 아이콘 표시",
+    "showDockIconDescription": "비활성화 상태에서는 도크 또는 앱 스위처를 사용하지 않고 메뉴 막대를 사용합니다.",
+    "launchAtLogin": "로그인 시 자동 시작",
+    "launchAtLoginDescription": "메뉴 막 서비스가 자동으로 실행되지만, 메인 창을 열지 않습니다.",
+    "companionShowOnStartup": "시작 시 Orbit를 데스크톱에 표시",
+    "companionShowOnStartupDescription": "앱이 시작될 때 Orbit 컴패니언을 표시합니다",
+    "companionAlwaysOnTop": "Orbit를 다른 창 위에 표시합니다",
+    "companionAlwaysOnTopDescription": "다른 창 위에 표시되도록 유지합니다. 끄면 Orbit가 가려질 수 있습니다"
+  },
+  "sampling": {
+    "title": "시스템 샘플링",
+    "description": "짧은 간격으로 샘플링하면 더 빠르게 반응하고 오버헤드가 증가합니다.",
+    "system": "CPU, 메모리 및 프로세스"
+  },
+  "connections": {
+    "title": "연결 갱신",
+    "description": "활성 연결은 독립적인 저빈도 스캔을 사용합니다.",
+    "refresh": "활성 연결"
+  },
+  "processView": {
+    "title": "기본 프로세스 보기",
+    "description": "프로세스 탐색기를 시작하거나 재설정할 때 사용됩니다.",
+    "label": "기본 프로세스 보기"
+  },
+  "history": {
+    "title": "이력",
+    "description": "프로세스 또는 연결 정보 없이 낮은 빈도로의 요약 스냅샷 및 알림 이벤트를 저장합니다.",
+    "persist": "장치에 이력을 저장",
+    "applicationNames": "이력에 앱 이름을 표시 허용",
+    "applicationNamesHint": "앱 이름은 명확하게 설명될 때만 저장됩니다. 이 기능을 끄면 저장된 이벤트에서 앱 이름이 제거됩니다.",
+    "retention": "보관 기간",
+    "days": "{{count}}일"
+  },
+  "notifications": {
+    "title": "데스크톱 알림",
+    "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. StatusOrbit는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
+    "enable": "제한적인 알림 활성화",
+    "categories": "알림 설정 가능한 카테고리",
+    "resources": {
+      "cpu": "높은 CPU 사용량 감지",
+      "memory": "메모리 부족 감지",
+      "volume": "디스크 공간 부족 감지"
+    },
+    "status": {
+      "disabled": "알림 끄기",
+      "requesting": "알림 권한 대기 중",
+      "ready": "알림 허용",
+      "denied": "시스템에서 알림 차단됨",
+      "unavailable": "데스크톱 앱 전용"
+    }
+  },
+  "thresholds": {
+    "title": "리소스 경고 임계값",
+    "description": "CPU, 메모리 및 볼륨 사용량에 대한 색상 수준; 지속적으로 높은 값이 발생하면 경고가 생성됩니다.",
+    "preview": "리소스 경고 색상 미리보기",
+    "low": "정상",
+    "moderate": "주의",
+    "high": "높음",
+    "critical": "심각"
+  }
+}

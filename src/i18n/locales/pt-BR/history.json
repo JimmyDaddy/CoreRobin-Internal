@@ -1,0 +1,107 @@
+{
+  "title": "Tendência de recursos",
+  "legend": "Legenda do gráfico",
+  "memory": "Memória",
+  "warmup": "Aquecimento",
+  "establishing": "Estabelecendo a linha de base...",
+  "chartLabel": "CPU {{cpu}}%, memória {{memory}}%",
+  "localArchive": "Arquivo de recursos local",
+  "archiveTitle": "Histórico",
+  "archiveDescription": "Revise as mudanças de recursos ao longo do tempo, incluindo picos e recuperação após reinicializações.",
+  "saving": "Salvar neste dispositivo",
+  "sessionOnly": "Apenas para a sessão atual",
+  "controls": "Configurações de histórico",
+  "saveOnDevice": "Salvar o histórico agregado neste dispositivo",
+  "retention": "Manter",
+  "retentionDays": "{{count}} dias",
+  "noRange": "Sem intervalo de tempo definido",
+  "savedPoints": "{{count}} pontos salvos",
+  "clearSaved": "Limpar dados salvos",
+  "emptyTitle": "Criando a base do histórico",
+  "emptyDescription": "As tendências são exibidas após a primeira leitura válida; habilite o salvamento local para mantê-las após reinicializações.",
+  "summary": "Resumo da história",
+  "averageCpu": "CPU média",
+  "averageMemory": "Uso médio de memória",
+  "peakDisk": "Maior uso do disco",
+  "peakNetwork": "Maior uso da rede",
+  "fiveMinuteResolution": "Resolução a cada 5 minutos",
+  "resourceChart": "Gráfico de uso do CPU e memória",
+  "throughputChart": "Gráfico de taxa de transferência do disco e da rede",
+  "resourceChartLabel": "Tendência histórica do uso do CPU e memória",
+  "throughputChartLabel": "Tendência histórica de desempenho do disco e da rede",
+  "stories": {
+    "eyebrow": "O que aconteceu?",
+    "title": "Histórico do computador",
+    "description": "Agrupa alertas e recuperação em um único incidente, explicando seu impacto e resultado em linguagem clara.",
+    "cause": "Causa principal: {{name}} teve o maior impacto no momento",
+    "timeline": "Cronograma do incidente",
+    "startedAt": "Iniciado por {{time}}",
+    "peakedAt": "Atingiu o pico em {{value}}% · {{time}}",
+    "endedAt": "Recuperado {{time}}",
+    "count": "{{count}} recente",
+    "happeningNow": "Em andamento",
+    "resolved": "Resolvido",
+    "emptyTitle": "Não há informações recentes",
+    "emptyDescription": "O StatusOrbit ignora pequenas variações e registra apenas condições que persistem por tempo suficiente para afetar o computador.",
+    "cpu": {
+      "active": {
+        "title": "O computador está com alta carga",
+        "description": "A carga do processador permaneceu alta por {{duration}}, atingindo cerca de {{value}}%. O computador pode parecer lento, quente ou consumir mais bateria."
+      },
+      "recovered": {
+        "title": "O computador estava com alta carga e agora está normalizado",
+        "description": "A alta carga durou por aproximadamente {{duration}}, atingiu cerca de {{value}}% e retornou ao normal."
+      },
+      "guidance": "Se o computador ainda parecer lento, abra os aplicativos para identificar a causa. O StatusOrbit nunca fecha um aplicativo automaticamente."
+    },
+    "memory": {
+      "active": {
+        "title": "A memória disponível está ficando limitada",
+        "description": "Pouca memória disponível e uso intenso do espaço de troca continuaram por {{duration}}. A alternância entre aplicativos pode parecer mais lenta."
+      },
+      "recovered": {
+        "title": "A pressão na memória diminuiu",
+        "description": "A memória permaneceu limitada por cerca de {{duration}}, mas a memória disponível e o uso do espaço de troca normalizaram."
+      },
+      "guidance": "O uso elevado da memória é normal. O StatusOrbit registra essa situação apenas quando há baixa disponibilidade e uma atividade significativa no uso do espaço em disco."
+    },
+    "volume": {
+      "active": {
+        "title": "O espaço livre no disco está baixo",
+        "description": "O uso do disco permaneceu acima do limite de aviso por {{duration}}, atingindo cerca de {{value}}%."
+      },
+      "recovered": {
+        "title": "A pressão no espaço em disco diminuiu",
+        "description": "O espaço em disco estava limitado por cerca de {{duration}} e agora está abaixo do limite de aviso."
+      },
+      "guidance": "Abra a ferramenta de limpeza para verificar o uso do espaço em disco. Todas as ações com arquivos ainda exigem sua confirmação."
+    }
+  },
+  "alerts": {
+    "eyebrow": "Registro de eventos locais",
+    "title": "Eventos de alerta e recuperação",
+    "description": "Alertas são acionadas quando os valores estão consistentemente altos; a histerese e o tempo de resfriamento reduzem picos e eventos repetidos.",
+    "active": "{{count}} alertas ativos",
+    "normal": "Todos os recursos estão normais",
+    "savedEvents": "{{count}} eventos salvos",
+    "filters": "Filtre os recursos de alerta",
+    "all": "Todos",
+    "volume": "Uso do volume",
+    "eventCount": "{{count}} eventos",
+    "emptyTitle": "Nenhum evento de alerta",
+    "emptyDescription": "Picos curtos são ignorados. Eventos de pressão contínua e recuperação serão exibidos aqui.",
+    "recovered": "Recuperado",
+    "severity": {
+      "high": "Alto",
+      "critical": "Crítico"
+    },
+    "triggeredDetail": "{{value}}%, acima de {{threshold}}% por {{duration}}.",
+    "recoveredDetail": "Retornou para {{value}}% após {{duration}}."
+  },
+  "privacyEyebrow": "Limites de dados",
+  "privacyTitle": "Política de privacidade",
+  "privacyLocal": "O histórico permanece armazenado na área de armazenamento do StatusOrbit WebView deste dispositivo e nunca é carregado ou sincronizado.",
+  "privacyCollected": "Apenas as porcentagens de uso da CPU e memória, capturas de taxa de transferência de disco e rede, e eventos de pressão e recuperação são armazenados. Os nomes dos aplicativos são salvos somente após você permitir isso separadamente nas Configurações.",
+  "privacyExcluded": "Os comandos, usuários, caminhos e endereços de conexão locais ou remotos não são armazenados.",
+  "privacyControl": "Desativar impede novas gravações; os registros existentes permanecem até expirarem ou serem apagados manualmente."
+}

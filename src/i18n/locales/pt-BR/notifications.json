@@ -1,0 +1,30 @@
+{
+  "triggered": {
+    "cpu": {
+      "title": "O computador está com alta carga",
+      "body": "O processador tem permanecido ocupado, o que pode causar lentidão, superaquecimento ou maior consumo de bateria. Abra o StatusOrbit para identificar os aplicativos mais impactantes."
+    },
+    "memory": {
+      "title": "Memória disponível está baixa",
+      "body": "Pouca memória disponível e uso significativo do espaço de troca estão ocorrendo simultaneamente. O StatusOrbit nunca fecha aplicativos automaticamente."
+    },
+    "volume": {
+      "title": "Espaço livre em disco está baixo",
+      "body": "O uso do disco permaneceu acima de 85%. Verifique o mapa de espaço disponível primeiro; todas as ações com arquivos ainda exigem confirmação."
+    }
+  },
+  "recovered": {
+    "cpu": {
+      "title": "Carga do computador voltou ao normal",
+      "body": "O uso do processador permaneceu dentro da faixa normal. A lentidão, o superaquecimento ou o impacto na bateria anteriores devem estar diminuindo."
+    },
+    "memory": {
+      "title": "Pressão de memória diminuiu",
+      "body": "A memória disponível e a atividade de swap estão dentro de uma faixa saudável, o que deve resultar em uma troca de aplicativos mais suave."
+    },
+    "volume": {
+      "title": "Espaço em disco está dentro de uma faixa saudável",
+      "body": "O uso do disco permanece em um nível seguro, portanto, nenhuma limpeza adicional é necessária no momento."
+    }
+  }
+}

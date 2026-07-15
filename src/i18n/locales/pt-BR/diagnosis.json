@@ -1,0 +1,133 @@
+{
+  "kicker": "Diagnóstico Inteligente",
+  "explain": "Visualize o diagnóstico",
+  "collapse": "Ocultar diagnóstico",
+  "checkedLabel": "Diagnóstico Inteligente está ativo",
+  "thisDisk": "Disco do sistema",
+  "safety": "O StatusOrbit não age automaticamente. As ações recomendadas ainda precisam da sua confirmação, e a opção de forçar o encerramento permanece no modo profissional.",
+  "duration": "por {{seconds}} segundos",
+  "status": {
+    "observing": {
+      "title": "Analisando o comportamento normal",
+      "summary": "Observando por mais {{seconds}} segundos para evitar classificar um pico breve como um problema."
+    },
+    "healthy": {
+      "title": "Tudo parece normal",
+      "summary": "Não foram detectados altos de uso, pressão na memória, pouco espaço ou tráfego excessivo."
+    },
+    "attention": {
+      "title": "Seu computador pode estar lento",
+      "summary": "StatusOrbit identificou possíveis problemas de desempenho ({{count}}). Clique aqui para ver mais detalhes."
+    },
+    "urgent": {
+      "title": "É necessário verificar a situação com urgência",
+      "summary": "StatusOrbit identificou problemas de desempenho significativos ({{count}}). Analise os dados antes de tomar qualquer medida."
+    }
+  },
+  "categories": {
+    "cpu": "Processador",
+    "memory": "Uso da memória",
+    "storage": "Espaço livre em disco",
+    "disk_io": "Atividade no disco",
+    "network": "Atividade na rede"
+  },
+  "severity": {
+    "attention": "Recomendado verificar",
+    "urgent": "Impacto imediato"
+  },
+  "empty": {
+    "observing": {
+      "title": "Estabelecendo uma base estável",
+      "description": "Problemas imediatos, como falta de espaço, ainda ocorrem; cargas de trabalho prolongadas exigem um pouco mais de tempo."
+    },
+    "healthy": {
+      "title": "Todos os cinco testes parecem estar normais",
+      "description": "Se o computador ainda parece lento, verifique a lista de processos e as tendências de cinco minutos."
+    }
+  },
+  "connectionScan": {
+    "loading": "Verificando conexões ativas em baixa frequência…",
+    "unavailable": "Conexões ativas estão temporariamente indisponíveis; a verificação de tráfego continua funcionando."
+  },
+  "findings": {
+    "sustained_cpu": {
+      "title": "Processador permanece ocupado",
+      "description": "Cargas de trabalho prolongadas podem fazer com que os aplicativos respondam lentamente, aumentar o ruído do ventilador e consumir mais energia."
+    },
+    "memory_pressure": {
+      "title": "Memória disponível é baixa",
+      "description": "O sistema está usando a memória virtual (swap), portanto, alternar entre aplicativos e abrir janelas pode causar lentidão."
+    },
+    "low_storage": {
+      "title": "{{resource}} está com pouco espaço disponível",
+      "description": "Pouco espaço livre afeta atualizações, caches e arquivos temporários, podendo deixar o sistema mais lento."
+    },
+    "busy_disk": {
+      "title": "O disco permanece ocupado",
+      "description": "Leituras e escritas intensas podem retardar a abertura de aplicativos, salvamento de arquivos e respostas do sistema."
+    },
+    "high_network": {
+      "title": "A atividade de rede está muito alta",
+      "description": "Downloads, sincronização, vídeos ou muitas conexões podem consumir a largura de banda necessária para outros aplicativos."
+    }
+  },
+  "evidence": {
+    "cpu": "CPU {{value}} · {{duration}}",
+    "memory": "Memória RAM {{value}} · Espaço de troca {{swap}}",
+    "storage": "{{value}} em uso · {{available}} livre",
+    "disk": "{{value}} · {{duration}}",
+    "network": "{{value}} · {{count}} conexões"
+  },
+  "culprit": {
+    "summary": "{{name}} destaca-se em {{metric}}, agrupadas de {{count}} processos relacionados.",
+    "system": "Este é um componente do sistema ou processo protegido; não recomendamos encerrá-lo."
+  },
+  "networkBoundary": "Indica alto volume de tráfego ou conexões, mas não identifica software malicioso.",
+  "actions": {
+    "inspectApp": "Verificar o processo {{name}}",
+    "processes": "Visualizar evidências dos processos",
+    "storage": "Revisar o uso do armazenamento",
+    "network": "Analisar a atividade de rede"
+  },
+  "recommendations": {
+    "safety": {
+      "safe": "Opção segura",
+      "confirmation": "Confirmação necessária",
+      "protected": "Sistema protegido"
+    },
+    "request_close": {
+      "title": "Solicite o encerramento do {{name}} primeiro",
+      "description": "Esta é a ação mais segura disponível. O StatusOrbit verifica a identidade do processo e exibe uma confirmação antes de realizar qualquer operação.",
+      "action": "Solicite o encerramento do {{name}}"
+    },
+    "open_cleanup": {
+      "title": "Limpeza de Espaço",
+      "description": "Visualize onde o espaço foi usado primeiro. Os itens colocados na lixeira são removidos permanentemente somente após confirmação explícita.",
+      "action": "Limpeza de Espaço"
+    },
+    "open_network": {
+      "title": "Verificar atividade de rede",
+      "description": "Verifique protocolos, estados e pontos de extremidade para decidir se é uma transferência de download, sincronização ou tráfego que você ainda não consegue identificar.",
+      "action": "Verificar atividade de rede"
+    },
+    "inspect_process": {
+      "title": "Verificar as informações disponíveis",
+      "description": "O StatusOrbit não oferece uma ação direta aqui. Verifique a identidade do aplicativo, alterações de recursos e o motivo da proteção primeiro.",
+      "action": "Verificar evidências detalhadas"
+    },
+    "inspectEvidence": "Verificar evidências do aplicativo",
+    "preparing": "Verificando…",
+    "actionUnavailable": "O StatusOrbit não conseguiu verificar ou controlar este aplicativo com segurança, portanto, nenhuma alteração foi feita."
+  },
+  "actionDialog": {
+    "title": "Solicitar que o {{name}} encerre a execução?",
+    "description": "O StatusOrbit enviará uma solicitação de término normal. Esta é a ação suave, e não forçar o encerramento.",
+    "safeTitle": "Não exclui o aplicativo ou seus arquivos",
+    "safeDescription": "Isso apenas solicita que o aplicativo em execução pare e não limpa seus dados.",
+    "riskTitle": "Salve qualquer coisa que esteja editando primeiro",
+    "riskDescription": "A exibição de um aviso de salvamento depende do aplicativo; o trabalho não salvo ainda pode ser perdido.",
+    "stableIdentity": "Um identificador estável está vinculado ao processo selecionado e será verificado novamente antes da execução.",
+    "bestEffortIdentity": "Esta plataforma só pode reduzir o risco de reutilização de PID por meio de verificações de identidade. O StatusOrbit rejeita a ação se o processo tiver mudado.",
+    "confirm": "Confirmar solicitação de saída para {{name}}"
+  }
+}

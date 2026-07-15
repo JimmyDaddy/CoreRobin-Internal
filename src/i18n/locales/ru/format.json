@@ -1,0 +1,8 @@
+{
+  "seconds": "{{count}} сек",
+  "minutes": "{{count}} мин",
+  "hours": "{{count}} час",
+  "days": "{{count}} дней",
+  "unknownError": "Произошла неизвестная ошибка.",
+  "unsupportedSchema": "Неподдерживаемый формат данных: {{version}}"
+}

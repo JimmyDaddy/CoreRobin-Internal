@@ -1,0 +1,82 @@
+{
+  "localPreferences": "本机偏好",
+  "title": "设置",
+  "description": "这些偏好只保存在当前设备上，并会立即应用到采样与界面。",
+  "intervalMs": "{{interval}} 毫秒",
+  "intervalSeconds": "{{seconds}} 秒",
+  "experience": {
+    "title": "界面模式",
+    "description": "日常模式从实际问题出发并给出引导；专业模式保留完整进程与指标。",
+    "label": "界面模式",
+    "simple": "日常模式",
+    "professional": "专业模式"
+  },
+  "language": {
+    "title": "界面语言",
+    "description": "切换 StatusOrbit 的菜单、说明与状态文本。",
+    "label": "语言"
+  },
+  "background": {
+    "title": "后台与桌面",
+    "description": "控制 StatusOrbit 如何常驻、登录启动，以及 Orbit 小伙伴的桌面行为。",
+    "showDockIcon": "在 Dock 中显示",
+    "showDockIconDescription": "关闭后不占用 Dock 和应用切换器，仍可从顶部状态栏唤起",
+    "launchAtLogin": "登录时启动",
+    "launchAtLoginDescription": "登录后静默启动状态栏服务，不自动打开主窗口",
+    "companionShowOnStartup": "让 Orbit 常驻桌面",
+    "companionShowOnStartupDescription": "应用启动后自动显示 Orbit 小伙伴",
+    "companionAlwaysOnTop": "Orbit 始终置顶",
+    "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡"
+  },
+  "sampling": {
+    "title": "系统采样",
+    "description": "更短的间隔响应更快，也会带来更高的采样开销。",
+    "system": "CPU、内存与进程"
+  },
+  "connections": {
+    "title": "连接刷新",
+    "description": "活动连接使用独立的低频扫描，不影响系统主采样。",
+    "refresh": "活动连接"
+  },
+  "processView": {
+    "title": "默认进程视图",
+    "description": "启动与重置进程浏览器时使用的布局。",
+    "label": "默认进程视图"
+  },
+  "history": {
+    "title": "历史记录",
+    "description": "保存整机资源的低频聚合快照与告警事件，不包含进程与连接详情。",
+    "persist": "在本机保存历史",
+    "applicationNames": "允许历史保存应用显示名",
+    "applicationNamesHint": "仅当某个应用明显解释资源压力时保存名称；关闭后会移除已保存事件中的应用名。",
+    "retention": "保留时间",
+    "days": "{{count}} 天"
+  },
+  "notifications": {
+    "title": "桌面提醒",
+    "description": "只提醒持续高负荷、真实内存压力和磁盘空间不足；问题稳定恢复后会再告知一次。",
+    "enable": "允许克制提醒",
+    "categories": "允许提醒的类别",
+    "resources": {
+      "cpu": "持续高负荷",
+      "memory": "内存压力",
+      "volume": "磁盘空间"
+    },
+    "status": {
+      "disabled": "未开启",
+      "requesting": "等待系统授权",
+      "ready": "已允许",
+      "denied": "系统未授权",
+      "unavailable": "仅桌面应用可用"
+    }
+  },
+  "thresholds": {
+    "title": "资源告警阈值",
+    "description": "用于 CPU、内存与卷占用的颜色分级；持续达到“偏高”时记录告警。",
+    "preview": "资源告警颜色预览",
+    "low": "正常",
+    "moderate": "关注",
+    "high": "偏高",
+    "critical": "严重"
+  }
+}

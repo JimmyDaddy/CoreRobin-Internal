@@ -1,0 +1,38 @@
+{
+  "kicker": "Résumé de l'application",
+  "overviewTitle": "Quelles applications ont le plus d'impact ?",
+  "title": "Impact des ressources par application",
+  "description": "StatusOrbit regroupe les processus associés à des applications, puis affiche les totaux pour l'utilisation du CPU, de la mémoire et du disque.",
+  "viewAll": "Afficher toutes les applications",
+  "search": "Rechercher une application",
+  "searchPlaceholder": "Rechercher par nom d'application",
+  "sortLabel": "Ordre de tri des applications",
+  "sort": {
+    "impact": "Impact global",
+    "cpu": "CPU",
+    "memory": "Mémoire",
+    "disk": "Disque"
+  },
+  "systemComponent": "Composant système · Ne pas fermer",
+  "processCount": "{{count}} Processus associés",
+  "memory": "Mémoire",
+  "disk": "Disque",
+  "level": {
+    "low": "Faible impact",
+    "moderate": "Impact notable",
+    "high": "Impact important",
+    "critical": "Impact majeur"
+  },
+  "selected": {
+    "title": "Comment {{name}} affecte l'ordinateur",
+    "cpu": "L'utilisation du processeur est actuellement la principale cause ({{value}}). Si elle reste élevée, l'ordinateur peut sembler lent, chaud ou consommer plus d'énergie.",
+    "memory": "La mémoire est actuellement la principale cause ({{value}}). Une action n'est nécessaire que lorsque la pression sur la mémoire et l'activité de swap sont également présentes.",
+    "disk": "L'activité du disque est actuellement la principale cause ({{value}}). Les synchronisations, les téléchargements et les constructions peuvent tous entraîner des lectures et des écritures temporaires.",
+    "balanced": "Aucune ressource n'est particulièrement problématique pour le moment, de sorte que l'impact global est faible.",
+    "systemSafety": "Il s'agit d'un composant système. Ne le fermez pas directement ; examinez les preuves professionnelles avant de prendre des mesures si quelque chose semble anormal.",
+    "appSafety": "Il s'agit d'une application standard. StatusOrbit ne la fermera jamais automatiquement, et chaque action de fermeture nécessite une confirmation.",
+    "professionalDetails": "Inspectez les processus en mode professionnel"
+  },
+  "empty": "Aucune application correspondante",
+  "safety": "Sélectionner une application n'ouvre que ses informations sur les ressources ; chaque action de fermeture nécessite toujours une confirmation séparée."
+}

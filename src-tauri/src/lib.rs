@@ -3,6 +3,7 @@ mod cleanup;
 #[cfg(test)]
 mod command_names;
 mod error;
+mod health_state;
 mod identity;
 mod models;
 mod monitor;
@@ -32,6 +33,7 @@ use cleanup::{
     save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
 };
 use error::CommandError;
+use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
 use models::{
     ApplicationIcon, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteProgress,
@@ -44,8 +46,18 @@ use models::{
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
+#[cfg(target_os = "macos")]
+use objc2::runtime::NSObjectProtocol;
+#[cfg(target_os = "macos")]
+use objc2::{MainThreadMarker, sel};
+#[cfg(target_os = "macos")]
+use objc2_app_kit::{
+    NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
+};
 use process_control::ProcessController;
 use startup::{StartupController, scan_startup_items};
+#[cfg(target_os = "macos")]
+use tauri::ActivationPolicy;
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Rect, State,
     WebviewWindow, WindowEvent,
@@ -53,6 +65,24 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+#[cfg(target_os = "macos")]
+use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
+
+#[cfg(target_os = "macos")]
+mod tray_panel_native {
+    use tauri::Manager;
+
+    tauri_nspanel::tauri_panel! {
+        panel!(StatusOrbitTrayPanel {
+            config: {
+                can_become_key_window: true,
+                can_become_main_window: false
+            }
+        })
+    }
+}
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -141,7 +171,9 @@ fn require_main_window(window: &WebviewWindow) -> Result<(), CommandError> {
 
 #[derive(Clone)]
 struct AppState {
+    background_launch: bool,
     monitor: Arc<Mutex<SystemMonitor>>,
+    health_state: Arc<HealthStateStore>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupWorkCoordinator>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
@@ -150,13 +182,15 @@ struct AppState {
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(background_launch: bool) -> Self {
         let process_controller = ProcessController::new();
         let process_control_capabilities = process_controller.capabilities();
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
         Self {
+            background_launch,
             monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
+            health_state: Arc::new(HealthStateStore::default()),
             process_controller,
             cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
@@ -267,6 +301,28 @@ async fn get_system_summary(state: State<'_, AppState>) -> Result<SystemSummary,
         Ok(monitor.sample_summary())
     })
     .await
+}
+
+#[tauri::command]
+fn publish_health_state(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    update: HealthStateUpdate,
+) -> Result<HealthStateSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let snapshot = state.health_state.publish(update)?;
+    app.emit(HEALTH_STATE_EVENT, &snapshot).map_err(|error| {
+        CommandError::internal(format!("Health state broadcast failed: {error}"))
+    })?;
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn get_health_state(
+    state: State<'_, AppState>,
+) -> Result<Option<HealthStateSnapshot>, CommandError> {
+    state.health_state.current()
 }
 
 #[tauri::command]
@@ -520,7 +576,13 @@ fn cancel_cleanup_delete(
 
 #[tauri::command]
 fn complete_startup(app: AppHandle) {
-    show_main(&app);
+    finish_startup(&app);
+}
+
+fn finish_startup(app: &AppHandle) {
+    if !app.state::<AppState>().background_launch {
+        show_main(app);
+    }
     if let Some(splash) = app.get_webview_window("splashscreen") {
         let _ = splash.close();
     }
@@ -531,13 +593,117 @@ fn show_main_window(app: AppHandle) {
     show_main(&app);
 }
 
+#[tauri::command]
+fn set_dock_icon_visible(
+    window: WebviewWindow,
+    app: AppHandle,
+    visible: bool,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    #[cfg(target_os = "macos")]
+    {
+        let policy = if visible {
+            ActivationPolicy::Regular
+        } else {
+            ActivationPolicy::Accessory
+        };
+        app.set_activation_policy(policy).map_err(|error| {
+            CommandError::new(
+                "dock_visibility_failed",
+                format!("Could not update the macOS Dock visibility: {error}"),
+            )
+        })?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, visible);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_launch_at_login(window: WebviewWindow, app: AppHandle) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    {
+        app.autolaunch().is_enabled().map_err(|error| {
+            CommandError::new(
+                "autostart_status_failed",
+                format!("Could not read the login startup status: {error}"),
+            )
+        })
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+fn set_launch_at_login(
+    window: WebviewWindow,
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    {
+        let manager = app.autolaunch();
+        let result = if enabled {
+            manager.enable()
+        } else {
+            manager.disable()
+        };
+        result.map_err(|error| {
+            CommandError::new(
+                "autostart_update_failed",
+                format!("Could not update the login startup status: {error}"),
+            )
+        })
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    {
+        let _ = (app, enabled);
+        Ok(())
+    }
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
+        #[cfg(target_os = "macos")]
+        {
+            let main_window = window.clone();
+            if app
+                .run_on_main_thread(move || reveal_main_window(&main_window))
+                .is_err()
+            {
+                reveal_main_window(&window);
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        reveal_main_window(&window);
         let _ = app.emit_to("main", "status-orbit:main-visibility", true);
     }
+}
+
+fn reveal_main_window(window: &tauri::WebviewWindow) {
+    let _ = window.unminimize();
+    let _ = window.show();
+    #[cfg(target_os = "macos")]
+    if let Some(mtm) = MainThreadMarker::new() {
+        if let Ok(ns_window) = window.ns_window()
+            && let Some(ns_window) = unsafe { ns_window.cast::<NSWindow>().as_ref() }
+        {
+            ns_window.makeKeyAndOrderFront(None);
+        }
+        let application = NSApplication::sharedApplication(mtm);
+        if application.respondsToSelector(sel!(activate)) {
+            application.activate();
+        } else {
+            #[allow(deprecated)]
+            application.activateIgnoringOtherApps(true);
+        }
+    }
+    let _ = window.set_focus();
 }
 
 fn navigate_main(app: &AppHandle, view: &str) {
@@ -547,22 +713,87 @@ fn navigate_main(app: &AppHandle, view: &str) {
 
 const TRAY_PANEL_GAP_LOGICAL: f64 = 4.0;
 const TRAY_PANEL_SCREEN_MARGIN_LOGICAL: f64 = 6.0;
+const TRAY_DOUBLE_CLICK_INTERVAL: Duration = Duration::from_millis(500);
+
+#[derive(Debug, PartialEq, Eq)]
+enum TrayLeftClickAction {
+    TogglePanel,
+    OpenMain,
+    Ignore,
+}
+
+#[derive(Default)]
+struct TrayLeftClickTracker {
+    last_click_up: Option<Instant>,
+    suppress_click_up_until: Option<Instant>,
+}
+
+impl TrayLeftClickTracker {
+    fn register_click_up(&mut self, clicked_at: Instant) -> TrayLeftClickAction {
+        if self
+            .suppress_click_up_until
+            .is_some_and(|deadline| clicked_at <= deadline)
+        {
+            self.suppress_click_up_until = None;
+            self.last_click_up = None;
+            return TrayLeftClickAction::Ignore;
+        }
+        self.suppress_click_up_until = None;
+
+        if self.last_click_up.is_some_and(|previous| {
+            clicked_at.saturating_duration_since(previous) <= TRAY_DOUBLE_CLICK_INTERVAL
+        }) {
+            self.last_click_up = None;
+            TrayLeftClickAction::OpenMain
+        } else {
+            self.last_click_up = Some(clicked_at);
+            TrayLeftClickAction::TogglePanel
+        }
+    }
+
+    fn register_native_double_click(&mut self, clicked_at: Instant) {
+        self.last_click_up = None;
+        self.suppress_click_up_until = Some(clicked_at + TRAY_DOUBLE_CLICK_INTERVAL);
+    }
+}
+
+fn open_main_from_tray(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("tray") {
+        let _ = window.hide();
+    }
+    show_main(app);
+}
 
 fn toggle_tray_panel(app: &AppHandle, tray_rect: Rect) {
     let Some(window) = app.get_webview_window("tray") else {
         return;
     };
     if window.is_visible().unwrap_or(false) {
+        #[cfg(target_os = "macos")]
+        if let Ok(panel) = app.get_webview_panel("tray") {
+            panel.hide();
+            return;
+        }
         let _ = window.hide();
         return;
     }
 
     position_tray_panel(&window, tray_rect);
+    #[cfg(target_os = "macos")]
+    if let Ok(panel) = app.get_webview_panel("tray") {
+        panel.show_and_make_key();
+        return;
+    }
     let _ = window.show();
     let _ = window.set_focus();
 }
 
 fn position_tray_panel(window: &tauri::WebviewWindow, tray_rect: Rect) {
+    #[cfg(target_os = "macos")]
+    if position_tray_panel_on_cursor_screen(window) {
+        return;
+    }
+
     let Ok(panel_size) = window.outer_size() else {
         return;
     };
@@ -592,6 +823,74 @@ fn position_tray_panel(window: &tauri::WebviewWindow, tray_rect: Rect) {
         margin,
     );
     let _ = window.set_position(position);
+}
+
+#[cfg(target_os = "macos")]
+fn position_tray_panel_on_cursor_screen(window: &tauri::WebviewWindow) -> bool {
+    let Some(mtm) = MainThreadMarker::new() else {
+        return false;
+    };
+    let cursor = NSEvent::mouseLocation();
+    let screens = NSScreen::screens(mtm);
+    let Some(screen) = screens.iter().find(|screen| {
+        let frame = screen.frame();
+        cursor.x >= frame.origin.x
+            && cursor.x < frame.origin.x + frame.size.width
+            && cursor.y >= frame.origin.y
+            && cursor.y < frame.origin.y + frame.size.height
+    }) else {
+        return false;
+    };
+    let Ok(ns_window) = window.ns_window() else {
+        return false;
+    };
+    let Some(ns_window) = (unsafe { ns_window.cast::<NSWindow>().as_ref() }) else {
+        return false;
+    };
+    let mut collection_behavior = ns_window.collectionBehavior();
+    collection_behavior.remove(NSWindowCollectionBehavior::MoveToActiveSpace);
+    collection_behavior.insert(NSWindowCollectionBehavior::CanJoinAllSpaces);
+    collection_behavior.insert(NSWindowCollectionBehavior::Transient);
+    collection_behavior.insert(NSWindowCollectionBehavior::FullScreenAuxiliary);
+    ns_window.setCollectionBehavior(collection_behavior);
+    let panel_frame = ns_window.frame();
+    let work_area = screen.visibleFrame();
+    let (x, y) = calculate_tray_panel_origin_on_screen(
+        cursor.x,
+        panel_frame.size.width,
+        panel_frame.size.height,
+        work_area.origin.x,
+        work_area.origin.y,
+        work_area.size.width,
+        work_area.size.height,
+        TRAY_PANEL_GAP_LOGICAL,
+        TRAY_PANEL_SCREEN_MARGIN_LOGICAL,
+    );
+    let mut origin = panel_frame.origin;
+    origin.x = x;
+    origin.y = y;
+    ns_window.setFrameOrigin(origin);
+    true
+}
+
+#[allow(clippy::too_many_arguments)]
+fn calculate_tray_panel_origin_on_screen(
+    anchor_x: f64,
+    panel_width: f64,
+    panel_height: f64,
+    work_area_x: f64,
+    work_area_y: f64,
+    work_area_width: f64,
+    work_area_height: f64,
+    gap: f64,
+    margin: f64,
+) -> (f64, f64) {
+    let min_x = work_area_x + margin;
+    let max_x = (work_area_x + work_area_width - panel_width - margin).max(min_x);
+    let x = (anchor_x - panel_width / 2.0).clamp(min_x, max_x);
+    let min_y = work_area_y + margin;
+    let y = (work_area_y + work_area_height - panel_height - gap).max(min_y);
+    (x, y)
 }
 
 fn calculate_tray_panel_position(
@@ -857,16 +1156,51 @@ async fn execute_process_action(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_notification::init())
-        .manage(AppState::new())
+    let background_launch = std::env::args_os().any(|argument| argument == "--background");
+    let builder = tauri::Builder::default().plugin(tauri_plugin_notification::init());
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    let builder = builder.plugin(tauri_plugin_autostart::init(
+        MacosLauncher::LaunchAgent,
+        Some(vec!["--background"]),
+    ));
+    builder
+        .manage(AppState::new(background_launch))
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            {
+                app.handle()
+                    .set_activation_policy(ActivationPolicy::Accessory)?;
+                if let Some(tray_window) = app.get_webview_window("tray") {
+                    let panel =
+                        tray_window.to_panel::<tray_panel_native::StatusOrbitTrayPanel>()?;
+                    panel.set_collection_behavior(
+                        NSWindowCollectionBehavior::CanJoinAllSpaces
+                            | NSWindowCollectionBehavior::Transient
+                            | NSWindowCollectionBehavior::FullScreenAuxiliary
+                            | NSWindowCollectionBehavior::IgnoresCycle,
+                    );
+                    panel.set_style_mask(
+                        panel.as_panel().styleMask() | NSWindowStyleMask::NonactivatingPanel,
+                    );
+                    panel.set_floating_panel(true);
+                    panel.set_hides_on_deactivate(false);
+                    panel.set_released_when_closed(false);
+                }
+            }
+            if app.state::<AppState>().background_launch
+                && let Some(splash) = app.get_webview_window("splashscreen")
+            {
+                let _ = splash.close();
+            }
             let open = MenuItem::with_id(app, "open", "Open StatusOrbit", true, None::<&str>)?;
             let companion =
                 MenuItem::with_id(app, "companion", "Orbit Companion", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit StatusOrbit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &companion, &cleanup, &quit])?;
+            let tray_left_click_tracker = Arc::new(Mutex::new(TrayLeftClickTracker::default()));
             let mut tray = TrayIconBuilder::with_id("status-orbit-status")
                 .tooltip("StatusOrbit · Local Monitor")
                 .menu(&menu)
@@ -878,16 +1212,37 @@ pub fn run() {
                     "quit" => app.exit(0),
                     _ => {}
                 })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
+                .on_tray_icon_event(move |tray, event| match event {
+                    TrayIconEvent::Click {
                         rect,
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
-                    } = event
-                    {
-                        toggle_tray_panel(tray.app_handle(), rect);
+                    } => {
+                        let action = tray_left_click_tracker
+                            .lock()
+                            .map(|mut tracker| tracker.register_click_up(Instant::now()))
+                            .unwrap_or(TrayLeftClickAction::TogglePanel);
+                        match action {
+                            TrayLeftClickAction::TogglePanel => {
+                                toggle_tray_panel(tray.app_handle(), rect);
+                            }
+                            TrayLeftClickAction::OpenMain => {
+                                open_main_from_tray(tray.app_handle());
+                            }
+                            TrayLeftClickAction::Ignore => {}
+                        }
                     }
+                    TrayIconEvent::DoubleClick {
+                        button: MouseButton::Left,
+                        ..
+                    } => {
+                        if let Ok(mut tracker) = tray_left_click_tracker.lock() {
+                            tracker.register_native_double_click(Instant::now());
+                        }
+                        open_main_from_tray(tray.app_handle());
+                    }
+                    _ => {}
                 });
             #[cfg(target_os = "macos")]
             {
@@ -905,7 +1260,7 @@ pub fn run() {
                 .spawn(move || {
                     std::thread::sleep(Duration::from_secs(10));
                     if handle.get_webview_window("splashscreen").is_some() {
-                        complete_startup(handle);
+                        finish_startup(&handle);
                     }
                 })?;
             Ok(())
@@ -924,6 +1279,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_system_snapshot,
             get_system_summary,
+            publish_health_state,
+            get_health_state,
             get_network_connections,
             get_startup_items,
             create_startup_management_lease,
@@ -946,6 +1303,9 @@ pub fn run() {
             cancel_cleanup_delete,
             complete_startup,
             show_main_window,
+            set_dock_icon_visible,
+            get_launch_at_login,
+            set_launch_at_login,
             toggle_companion_window,
             hide_companion_window,
             set_companion_expanded,
@@ -962,7 +1322,12 @@ pub fn run() {
 
 #[cfg(test)]
 mod tray_panel_position_tests {
-    use super::calculate_tray_panel_position;
+    use std::time::{Duration, Instant};
+
+    use super::{
+        TRAY_DOUBLE_CLICK_INTERVAL, TrayLeftClickAction, TrayLeftClickTracker,
+        calculate_tray_panel_origin_on_screen, calculate_tray_panel_position,
+    };
     use tauri::{PhysicalPosition, PhysicalSize};
 
     #[test]
@@ -994,6 +1359,68 @@ mod tray_panel_position_tests {
 
         assert_eq!(position, PhysicalPosition::new(12, 56));
     }
+
+    #[test]
+    fn positions_the_panel_in_the_secondary_screen_coordinate_space() {
+        let origin = calculate_tray_panel_origin_on_screen(
+            2_500.0, 360.0, 440.0, 1_920.0, 0.0, 1_600.0, 900.0, 4.0, 6.0,
+        );
+
+        assert_eq!(origin, (2_320.0, 456.0));
+    }
+
+    #[test]
+    fn clamps_the_panel_to_the_clicked_screens_visible_area() {
+        let origin = calculate_tray_panel_origin_on_screen(
+            3_510.0, 360.0, 440.0, 1_920.0, 0.0, 1_600.0, 900.0, 4.0, 6.0,
+        );
+
+        assert_eq!(origin, (3_154.0, 456.0));
+    }
+
+    #[test]
+    fn opens_main_when_two_left_clicks_arrive_within_the_double_click_interval() {
+        let started_at = Instant::now();
+        let mut tracker = TrayLeftClickTracker::default();
+
+        assert_eq!(
+            tracker.register_click_up(started_at),
+            TrayLeftClickAction::TogglePanel
+        );
+        assert_eq!(
+            tracker.register_click_up(started_at + TRAY_DOUBLE_CLICK_INTERVAL),
+            TrayLeftClickAction::OpenMain
+        );
+    }
+
+    #[test]
+    fn treats_slow_left_clicks_as_independent_panel_toggles() {
+        let started_at = Instant::now();
+        let mut tracker = TrayLeftClickTracker::default();
+
+        assert_eq!(
+            tracker.register_click_up(started_at),
+            TrayLeftClickAction::TogglePanel
+        );
+        assert_eq!(
+            tracker.register_click_up(
+                started_at + TRAY_DOUBLE_CLICK_INTERVAL + Duration::from_millis(1)
+            ),
+            TrayLeftClickAction::TogglePanel
+        );
+    }
+
+    #[test]
+    fn ignores_the_click_up_that_follows_a_native_double_click_event() {
+        let started_at = Instant::now();
+        let mut tracker = TrayLeftClickTracker::default();
+        tracker.register_native_double_click(started_at);
+
+        assert_eq!(
+            tracker.register_click_up(started_at + Duration::from_millis(20)),
+            TrayLeftClickAction::Ignore
+        );
+    }
 }
 
 #[cfg(test)]
@@ -1014,6 +1441,10 @@ mod security_boundary_tests {
         "release_cleanup_delete_lease",
         "execute_cleanup_delete",
         "cancel_cleanup_delete",
+        "publish_health_state",
+        "set_dock_icon_visible",
+        "get_launch_at_login",
+        "set_launch_at_login",
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",

@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { getSystemSnapshot, getSystemSummary } from "../api";
 import type {
   CommandError,
   HistoryPoint,
+  SystemHealthSnapshot,
   SystemSnapshot,
   SystemSummary,
 } from "../types";
@@ -20,6 +28,8 @@ export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
   const [summary, setSummary] = useState<SystemSummary | null>(null);
+  const [healthSnapshot, setHealthSnapshot] =
+    useState<SystemHealthSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [error, setError] = useState<CommandError | null>(null);
   const [paused, setPaused] = useState(false);
@@ -54,29 +64,9 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
 
         lastSequence.current = nextSnapshot.sequence;
         setSnapshot(nextSnapshot);
+        setHealthSnapshot(nextSnapshot);
         setError(null);
-        if (nextSnapshot.cpu.usagePercent !== null) {
-          setHistory((current) => {
-            const point: HistoryPoint = {
-              timestamp: nextSnapshot.sampledAtMs,
-              cpuPercent: nextSnapshot.cpu.usagePercent ?? 0,
-              memoryPercent: memoryUsagePercent(
-                nextSnapshot.memory.usedBytes,
-                nextSnapshot.memory.totalBytes,
-              ),
-              diskReadBytesPerSecond: nextSnapshot.disk.readBytesPerSecond,
-              diskWriteBytesPerSecond: nextSnapshot.disk.writeBytesPerSecond,
-              networkReceivedBytesPerSecond:
-                nextSnapshot.network.receivedBytesPerSecond,
-              networkTransmittedBytesPerSecond:
-                nextSnapshot.network.transmittedBytesPerSecond,
-            };
-            const cutoff = nextSnapshot.sampledAtMs - HISTORY_WINDOW_MS;
-            return [...current, point]
-              .filter((candidate) => candidate.timestamp >= cutoff)
-              .slice(-MAX_HISTORY_POINTS);
-          });
-        }
+        appendHistorySample(setHistory, nextSnapshot);
         return nextSnapshot;
       } catch (caughtError) {
         setError(normalizeCommandError(caughtError));
@@ -103,8 +93,15 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     const request = (async () => {
       try {
         const nextSummary = await getSystemSummary();
-        if (pausedRef.current || visibleRef.current) return null;
+        if (
+          pausedRef.current ||
+          visibleRef.current ||
+          nextSummary.sequence <= lastSequence.current
+        ) return null;
+        lastSequence.current = nextSummary.sequence;
         setSummary(nextSummary);
+        setHealthSnapshot(nextSummary);
+        appendHistorySample(setHistory, nextSummary);
         setError(null);
         return nextSummary;
       } catch (caughtError) {
@@ -155,6 +152,7 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
   return {
     snapshot,
     summary,
+    healthSnapshot,
     history,
     error,
     paused,
@@ -163,4 +161,31 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     refreshNow,
     refreshSummaryNow,
   };
+}
+
+function appendHistorySample(
+  setHistory: Dispatch<SetStateAction<HistoryPoint[]>>,
+  snapshot: SystemHealthSnapshot,
+): void {
+  if (snapshot.cpu.usagePercent === null) return;
+  setHistory((current) => {
+    const point: HistoryPoint = {
+      timestamp: snapshot.sampledAtMs,
+      cpuPercent: snapshot.cpu.usagePercent ?? 0,
+      memoryPercent: memoryUsagePercent(
+        snapshot.memory.usedBytes,
+        snapshot.memory.totalBytes,
+      ),
+      diskReadBytesPerSecond: snapshot.disk.readBytesPerSecond,
+      diskWriteBytesPerSecond: snapshot.disk.writeBytesPerSecond,
+      networkReceivedBytesPerSecond:
+        snapshot.network.receivedBytesPerSecond,
+      networkTransmittedBytesPerSecond:
+        snapshot.network.transmittedBytesPerSecond,
+    };
+    const cutoff = snapshot.sampledAtMs - HISTORY_WINDOW_MS;
+    return [...current, point]
+      .filter((candidate) => candidate.timestamp >= cutoff)
+      .slice(-MAX_HISTORY_POINTS);
+  });
 }

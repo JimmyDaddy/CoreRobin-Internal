@@ -26,10 +26,13 @@ vi.mock("../api", async (importOriginal) => ({
 function mockSummary(): SystemSummary {
   const snapshot = getMockSnapshot();
   return {
+    sequence: snapshot.sequence,
     sampledAtMs: snapshot.sampledAtMs,
+    sampleIntervalMs: snapshot.sampleIntervalMs,
     cpu: snapshot.cpu,
     memory: snapshot.memory,
-    volumes: snapshot.disk.volumes,
+    disk: snapshot.disk,
+    network: snapshot.network,
     sensors: snapshot.sensors,
   };
 }
@@ -70,12 +73,13 @@ describe("visibility-aware system monitoring", () => {
     expect(getSystemSnapshot).toHaveBeenCalledTimes(2);
 
     const foregroundSnapshot = result.current.snapshot;
-    const foregroundHistory = result.current.history;
+    const foregroundHistoryLength = result.current.history.length;
     rerender({ visible: false });
     await flushEffects();
     expect(getSystemSummary).toHaveBeenCalledTimes(1);
     expect(result.current.snapshot).toBe(foregroundSnapshot);
-    expect(result.current.history).toBe(foregroundHistory);
+    expect(result.current.healthSnapshot).toBe(result.current.summary);
+    expect(result.current.history.length).toBeGreaterThan(foregroundHistoryLength);
 
     await act(async () =>
       vi.advanceTimersByTimeAsync(HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS - 1),
@@ -84,7 +88,8 @@ describe("visibility-aware system monitoring", () => {
     await act(async () => vi.advanceTimersByTimeAsync(1));
     expect(getSystemSummary).toHaveBeenCalledTimes(2);
     expect(result.current.snapshot).toBe(foregroundSnapshot);
-    expect(result.current.history).toBe(foregroundHistory);
+    expect(result.current.healthSnapshot).toBe(result.current.summary);
+    expect(result.current.history.length).toBeGreaterThan(foregroundHistoryLength + 1);
 
     rerender({ visible: true });
     await flushEffects();

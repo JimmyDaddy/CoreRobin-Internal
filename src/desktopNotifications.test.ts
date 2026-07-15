@@ -32,11 +32,11 @@ describe("desktop notifications", () => {
     expect(shouldSendDesktopNotification(event({ resource: "volume", severity: "high" }))).toBe(true);
   });
 
-  it("uses plain-language localized copy", () => {
-    expect(desktopNotificationCopy(event({ resource: "volume" }), "zh-CN").body).toContain("空间地图");
-    expect(desktopNotificationCopy(event({ resource: "memory" }), "en").body).toContain("swap");
-    expect(desktopNotificationCopy(event({ kind: "recovered", resource: "cpu" }), "zh-CN").title).toContain("恢复");
-    expect(desktopNotificationCopy(event({ kind: "recovered", resource: "volume" }), "en").body).toContain("safe range");
+  it("uses plain-language localized copy", async () => {
+    expect((await desktopNotificationCopy(event({ resource: "volume" }), "zh-CN")).body).toContain("空间地图");
+    expect((await desktopNotificationCopy(event({ resource: "memory" }), "en")).body).toContain("swap");
+    expect((await desktopNotificationCopy(event({ kind: "recovered", resource: "cpu" }), "zh-CN")).title).toContain("恢复");
+    expect((await desktopNotificationCopy(event({ kind: "recovered", resource: "volume" }), "en")).body).toContain("safe range");
   });
 
   it("caps interruptions per local day after applying actionability rules", () => {

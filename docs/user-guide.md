@@ -11,7 +11,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
 2. Everyday mode first tells you how the computer is doing and offers one useful next step. You do not need to inspect a row of status cards.
 3. If you already notice slowness, heat, battery drain, low space, slow startup, or a network problem, open Help me solve and choose the closest description.
-4. Use the upper-right Settings menu for language, notifications, and history. When you need a process tree, connection details, or command lines, use the clearly labeled Pro mode button in the top bar.
+4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. When you need a process tree, connection details, or command lines, use the clearly labeled Pro mode button in the top bar.
 
 ## Main pages
 
@@ -20,6 +20,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 - The Orbit companion gives one current conclusion and one primary action. When no sustained issue is present, it simply says there is nothing to do.
 - When something needs attention, the primary action opens the highest-priority problem instead of asking you to choose between CPU, memory, storage, and network.
 - The page keeps one priority item and one recent change. StatusOrbit checks recent trends before raising a concern, so a brief spike is not treated as a problem. It does not invent a health score.
+- A confirmed condition keeps a stable identity instead of disappearing after one normal sample. When the reading drops, it stays in a recovering state until recovery is stable.
 - Data that cannot be read is marked unavailable instead of being treated as normal.
 
 ### Help me solve
@@ -88,21 +89,24 @@ Full scan results stay on this computer for 7 days for browsing. Cached or expir
 ### History
 
 - Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Pro mode keeps the full technical history and filters.
+- A warning and its recovery are paired into one incident with its start time, duration, likely cause, and outcome.
 - Keep history for 1, 7, or 30 days, turn it off, or clear it anytime.
 - Notifications appear only when a problem lasts for a while, and the same warning is not repeated constantly.
+- StatusOrbit follows up once after the problem has stably recovered. The main window, menu bar panel, and Orbit companion share the same health state.
 - CPU, memory, and storage notifications can be turned off separately.
 - Command lines, file locations, filenames, and connection addresses are not stored.
 
 ### Settings
 
 - Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Orbit companion preferences together.
+- StatusOrbit can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view.
 
 ## Menu bar panel
 
-Closing the main window leaves StatusOrbit available in the menu bar. Open the menu bar panel for a quick look at CPU, memory, storage, and network activity, or to reopen the main window.
+Closing the main window leaves StatusOrbit available in the menu bar. Click the menu bar icon to toggle a compact panel that shares the main window's current health conclusion; double-click it to open the main window directly. A quiet login launch does not show the splash screen or main window.
 
-Choose Orbit companion to open a compact bottom-right window with one current conclusion and one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
+Choose Orbit companion to open a compact bottom-right window that shares the same conclusion as the main window and menu bar panel, with one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
 
 To stop monitoring completely, quit StatusOrbit instead of only closing the window.
 

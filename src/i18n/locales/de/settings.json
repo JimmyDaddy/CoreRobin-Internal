@@ -1,0 +1,82 @@
+{
+  "localPreferences": "Lokale Einstellungen",
+  "title": "Einstellungen",
+  "description": "Diese Einstellungen bleiben auf diesem Gerät und gelten für die Datenerhebung sowie die Benutzeroberfläche.",
+  "intervalMs": "{{interval}} ms",
+  "intervalSeconds": "{{seconds}} Sek.",
+  "experience": {
+    "title": "Benutzeroberflächen-Modus",
+    "description": "Der Alltag-Modus startet mit realen Problemen und führt den Benutzer durch die nächsten Schritte; der Professional-Modus zeigt alle Prozesse und Metriken an.",
+    "label": "Benutzeroberflächen-Modus",
+    "simple": "Alltag-Modus",
+    "professional": "Professioneller Modus"
+  },
+  "language": {
+    "title": "Sprache der Benutzeroberfläche",
+    "description": "Ändern Sie Menü, Hilfetexte und Statusmeldungen von StatusOrbit.",
+    "label": "Sprache"
+  },
+  "background": {
+    "title": "Hintergrund und Desktop",
+    "description": "Steuern Sie, wann StatusOrbit verfügbar ist, ob es beim Anmelden gestartet wird und ob Orbit angezeigt wird.",
+    "showDockIcon": "In der Dock anzeigen",
+    "showDockIconDescription": "Wenn deaktiviert, verwenden Sie die Menüleiste ohne Nutzung der Dock oder des App-Wechselfensters",
+    "launchAtLogin": "Beim Anmelden starten",
+    "launchAtLoginDescription": "Starten Sie den Menüdienst unauffällig, ohne das Hauptfenster zu öffnen",
+    "companionShowOnStartup": "Orbit auf dem Desktop anzeigen",
+    "companionShowOnStartupDescription": "Zeigen Sie den Orbit-Begleiter an, sobald die App gestartet wird",
+    "companionAlwaysOnTop": "Orbit über anderen Fenstern anzeigen",
+    "companionAlwaysOnTopDescription": "Bleiben Sie über anderen Fenstern; wenn deaktiviert, kann Orbit verdeckt sein"
+  },
+  "sampling": {
+    "title": "Systemüberwachung",
+    "description": "Kürzere Intervalle reagieren schneller und verursachen mehr Überwachungsaufwand.",
+    "system": "CPU, Speicher und Prozesse"
+  },
+  "connections": {
+    "title": "Verbindungsaktualisierung",
+    "description": "Aktive Verbindungen verwenden einen unabhängigen, langsamen Scan.",
+    "refresh": "Aktive Verbindungen"
+  },
+  "processView": {
+    "title": "Standard-Prozessansicht",
+    "description": "Wird verwendet, wenn der Prozess-Explorer gestartet oder zurückgesetzt wird.",
+    "label": "Standard Prozessansicht"
+  },
+  "history": {
+    "title": "Protokoll",
+    "description": "Speichern von aggregierten Snapshots und Ereignissen mit geringer Häufigkeit, ohne Prozess- oder Verbindungsdetails.",
+    "persist": "Protokoll auf diesem Gerät speichern",
+    "applicationNames": "Anwendungnamen im Protokoll anzeigen",
+    "applicationNamesHint": "Speichert nur einen Namen, wenn eine Anwendung die Ursache klar erklärt. Das Deaktivieren entfernt Anwendungnamen aus den gespeicherten Ereignissen.",
+    "retention": "Aufbewahrungsdauer",
+    "days": "{{count}} Tage"
+  },
+  "notifications": {
+    "title": "Desktop-Benachrichtigungen",
+    "description": "Nur anhaltende hohe Last, tatsächlicher Speicherbedarf und geringer Festplattenspeicher stören Sie. StatusOrbit informiert Sie nach der stabilen Wiederherstellung einmal.",
+    "enable": "Eingeschränkte Benachrichtigungen zulassen",
+    "categories": "Erlaubte Benachrichtigungskategorien",
+    "resources": {
+      "cpu": "Anhaltende hohe Last",
+      "memory": "Speicherbedarf",
+      "volume": "Festplattenspeicher"
+    },
+    "status": {
+      "disabled": "Deaktiviert",
+      "requesting": "Wartet auf Berechtigung",
+      "ready": "Erlaubt",
+      "denied": "Nicht vom System erlaubt",
+      "unavailable": "Nur für Desktop-Anwendungen"
+    }
+  },
+  "thresholds": {
+    "title": "Schwellenwerte für Ressourcenwarnungen",
+    "description": "Farbskalen für CPU-, Speicher- und Festplattennutzung; anhaltend hohe Werte erzeugen Warnmeldungen.",
+    "preview": "Vorschau der Farben für Ressourcenwarnungen",
+    "low": "Normal",
+    "moderate": "Beobachten",
+    "high": "Hoch",
+    "critical": "Kritisch"
+  }
+}

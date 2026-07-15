@@ -1,0 +1,545 @@
+{
+  "shell": {
+    "label": "Everyday mode",
+    "localOnly": "Analysis stays on this device",
+    "openProfessional": "Open professional mode"
+  },
+  "nav": {
+    "home": "Status",
+    "space": "Space",
+    "applications": "Apps",
+    "more": "More",
+    "today": "Status",
+    "solve": "Help me fix it",
+    "cleanup": "Clean up space",
+    "records": "Records",
+    "settings": "Settings"
+  },
+  "topbar": {
+    "thisMac": "This Mac",
+    "thisComputer": "This computer"
+  },
+  "status": {
+    "observing": {
+      "short": "Learning its normal state",
+      "title": "Learning this computer's normal state",
+      "summary": "Watching a little longer so a brief spike is not mistaken for a problem."
+    },
+    "normal": {
+      "short": "Running smoothly",
+      "title": "Your computer is running smoothly",
+      "summary": "Nothing needs your attention right now."
+    },
+    "attention": {
+      "short": "Something is worth a look",
+      "title": "{{count}} things are worth a look",
+      "summary": "StatusOrbit has organized the reasons and next steps, so you do not need to interpret technical metrics."
+    },
+    "urgent": {
+      "short": "Take a look soon",
+      "title": "Take a look at {{count}} things soon",
+      "summary": "Review the reason first, then choose the right action."
+    }
+  },
+  "orbit": {
+    "label": "Computer status orbit",
+    "thisComputer": "This computer",
+    "speed": "Speed",
+    "space": "Space",
+    "temperature": "Temperature",
+    "battery": "Battery"
+  },
+  "companion": {
+    "name": "ORBIT",
+    "checking": "Checking"
+  },
+  "home": {
+    "kicker": "Your computer companion",
+    "viewDiagnosis": "View check results",
+    "viewPriority": "Take a look",
+    "checkNow": "Check now",
+    "checking": "Checking…",
+    "checkingTitle": "Orbit is checking in on your computer",
+    "checkingSummary": "Fresh status flows straight into this view. If something needs longer observation, Orbit will say so clearly.",
+    "haveProblem": "Something feels wrong",
+    "checkedAt": "Updated {{time}}",
+    "localOnly": "Status and history stay on this device",
+    "professional": "View detailed data"
+  },
+  "intents": {
+    "kicker": "Start with the problem",
+    "title": "What would you like to fix?",
+    "description": "You do not need to understand CPU or memory. Pick what feels closest.",
+    "slow": {
+      "title": "My computer feels slow",
+      "description": "Find apps or resources that keep affecting speed"
+    },
+    "space": {
+      "title": "I am running out of space",
+      "description": "See what is left and find what really takes up room"
+    },
+    "startup": {
+      "title": "Startup feels slow",
+      "description": "Review third-party apps that open when you sign in"
+    },
+    "heat": {
+      "title": "It is hot or draining fast",
+      "description": "Check temperature, battery, and apps preventing sleep"
+    },
+    "network": {
+      "title": "The network feels off",
+      "description": "Look for clues in current traffic and connections"
+    },
+    "checkup": {
+      "title": "Run a check",
+      "description": "Find the one thing most worth your attention"
+    }
+  },
+  "solve": {
+    "kicker": "Start with what you notice",
+    "title": "What are you noticing?",
+    "description": "You do not need to decide whether CPU, memory, or the network is responsible. Pick what feels closest.",
+    "slow": {
+      "title": "My computer feels slow",
+      "description": "Find sustained activity that may be slowing it down"
+    },
+    "heat": {
+      "title": "The fan keeps running",
+      "description": "Check temperature and apps that stay busy"
+    },
+    "battery": {
+      "title": "The battery drains quickly",
+      "description": "Check battery, temperature, and apps preventing sleep"
+    },
+    "space": {
+      "title": "I am running out of space",
+      "description": "Check what remains before deciding whether to scan files"
+    },
+    "startup": {
+      "title": "Startup keeps getting slower",
+      "description": "Review third-party apps that open automatically"
+    },
+    "network": {
+      "title": "The network feels off",
+      "description": "Read current traffic and active connections for useful clues"
+    },
+    "applications": {
+      "title": "Which apps affect this computer most?",
+      "description": "Start with only the few apps worth reviewing"
+    },
+    "checkup": {
+      "title": "I just want to run a check",
+      "description": "Read the latest state and return one main conclusion"
+    },
+    "recommended": "Recommended for the current state",
+    "otherProblems": "Other situations",
+    "footer": "StatusOrbit does not guess just to look useful. It keeps observing when the evidence is not strong enough."
+  },
+  "attention": {
+    "kicker": "Right now",
+    "title": "Worth your attention",
+    "count": "{{count}} items",
+    "priority": "Most worth your attention now",
+    "recovering": "Confirming recovery",
+    "open": "See why",
+    "emptyTitle": "Nothing needs attention now",
+    "emptyDescription": "StatusOrbit will keep watching for sustained changes in the background.",
+    "viewApplications": "See which apps are running",
+    "temperature": {
+      "title": "Your computer is running warm",
+      "description": "Reduce heavy tasks and keep airflow clear; it should usually cool down."
+    },
+    "battery": {
+      "title": "Battery is running low",
+      "description": "If you need to keep working, consider connecting power soon."
+    },
+    "sleep": {
+      "title": "{{name}} is preventing automatic sleep",
+      "description": "Quitting the app or pausing its task will usually restore sleep."
+    },
+    "application": {
+      "title": "{{name}} has a larger impact now",
+      "low": "Its current impact is low.",
+      "moderate": "It is using some computer resources.",
+      "high": "It is using more resources for a sustained period and may affect responsiveness.",
+      "critical": "It is using a large amount of resources and may noticeably affect responsiveness."
+    }
+  },
+  "incident": {
+    "phase": {
+      "active": "Still happening",
+      "recovering": "Confirming recovery",
+      "resolved": "Recovered"
+    },
+    "recoveringDescription": "The latest reading has dropped. StatusOrbit is watching a little longer to confirm this is not a brief fluctuation.",
+    "resolvedDescription": "This condition has recovered steadily and needs no action now. The evidence that triggered it remains available here.",
+    "observedCause": "Mainly associated at trigger time",
+    "causeMayHaveChanged": "The app state may have changed. Actions are offered only from the latest check.",
+    "timeline": "Confirmed at {{startedAt}} · last matched at {{lastSeenAt}}",
+    "sleepDuration": "Lasted about {{minutes}} minutes",
+    "viewCurrentNetwork": "View current network status"
+  },
+  "story": {
+    "kicker": "Recently",
+    "title": "What happened recently",
+    "emptyTitle": "Things have been steady recently",
+    "emptyDescription": "Sustained resource pressure will appear here as a plain-language timeline with its recovery.",
+    "active": "Happening now",
+    "recovered": "Recovered",
+    "cpu": {
+      "active": "The computer has been busy for about {{minutes}} minutes since {{time}}",
+      "recovered": "The computer was busy for about {{minutes}} minutes near {{time}} and has recovered"
+    },
+    "memory": {
+      "active": "Memory pressure has lasted about {{minutes}} minutes since {{time}}",
+      "recovered": "Memory pressure appeared near {{time}} and has recovered"
+    },
+    "volume": {
+      "active": "Available space has stayed low since {{time}}",
+      "recovered": "The low-space warning near {{time}} has recovered"
+    },
+    "cause": "It was mainly associated with {{name}}.",
+    "viewAll": "View all records"
+  },
+  "applications": {
+    "kicker": "Running now",
+    "title": "Which apps are affecting your computer",
+    "description": "Start with the apps worth attention, then expand one when you need details.",
+    "search": "Search apps",
+    "system": "System component",
+    "ordinary": "Regular app",
+    "level": {
+      "low": "Running normally",
+      "moderate": "Some impact",
+      "high": "Larger impact",
+      "critical": "Significant impact"
+    },
+    "reason": {
+      "cpu": "{{name}} is mainly using processing power right now.",
+      "memory": "{{name}} is mainly using more memory right now.",
+      "disk": "{{name}} is reading or writing files frequently right now.",
+      "balanced": "No single resource stands out right now."
+    },
+    "evidence": {
+      "cpu": "Processing",
+      "memory": "Memory",
+      "disk": "File activity"
+    },
+    "systemSafety": "This is a system component. Evidence is shown, but quitting it is not recommended.",
+    "requestClose": "Ask {{name}} to quit",
+    "viewEvidence": "View detailed evidence",
+    "empty": "No matching apps",
+    "refresh": "Update list",
+    "refreshing": "Updating…",
+    "snapshotFound": "{{count}} apps are worth a look",
+    "snapshotClear": "No app is continuously affecting this computer",
+    "snapshotTime": "Updated {{time}}",
+    "calmTitle": "No app needs attention now",
+    "calmDescription": "Normally running apps stay available on demand without taking over this screen.",
+    "showAll": "View all {{count}} regular apps",
+    "hideAll": "Hide regular apps"
+  },
+  "recheck": {
+    "title": "Check complete",
+    "loadingKicker": "Scanning this computer",
+    "checkingTitle": "Bringing the latest state into orbit",
+    "checkingDescription": "StatusOrbit is reading recent changes and rebuilding the result.",
+    "steps": {
+      "read": "Read latest state",
+      "compare": "Compare changes",
+      "update": "Build the result"
+    },
+    "live": {
+      "slow": {
+        "title": "Watching for what makes the computer feel slow",
+        "description": "Reading the latest state. Sustained problems stay under observation; a brief burst is not treated as a fault."
+      },
+      "space": {
+        "title": "Checking available space",
+        "description": "This reads disk capacity only and does not start a long full-file scan in the background."
+      },
+      "startup": {
+        "title": "Reading startup items",
+        "description": "System items stay read-only while recoverable third-party apps are organized for review."
+      },
+      "heat": {
+        "title": "Reading temperature, battery, and sleep",
+        "description": "Missing data stays unknown instead of being mislabeled as normal."
+      },
+      "network": {
+        "title": "Reading current network activity",
+        "description": "Traffic and active connections are sampled at low frequency instead of being watched continuously."
+      },
+      "checkup": {
+        "title": "Orbit is checking this computer",
+        "description": "System status, connections, and startup items return real results without a theatrical countdown."
+      }
+    },
+    "resultKicker": "Status orbit synchronized",
+    "updated": "Updated just now",
+    "completed": "Check complete",
+    "completedAt": "{{time}}",
+    "outcomeTitle": {
+      "exited": "The app has quit",
+      "still_running": "The app is still running",
+      "already_exited": "The app had already quit"
+    },
+    "facts": {
+      "currentReading": "Current reading",
+      "observedFor": "Observed for",
+      "seconds": "{{count}} seconds",
+      "sustainedPressure": "Sustained pressure",
+      "notFound": "Not found",
+      "worthReviewing": "Worth reviewing",
+      "startupTotal": "Startup items"
+    },
+    "slow": {
+      "observingDescription": "The latest data is ready, but StatusOrbit needs to watch longer before calling a brief burst a sustained issue."
+    },
+    "checkup": {
+      "observingDescription": "The latest state is ready, but sustained conditions still need a little more observation."
+    },
+    "startup": {
+      "unavailableTitle": "Startup items are temporarily unavailable",
+      "unavailableDescription": "The system has not returned a usable startup result yet. Try checking again shortly."
+    },
+    "heat": {
+      "normal": {
+        "title": "Temperature, battery, and sleep look steady",
+        "description": "Nothing in these three areas needs attention right now."
+      },
+      "observing": {
+        "title": "Some device state is temporarily unavailable",
+        "description": "StatusOrbit keeps missing data unknown instead of treating it as normal."
+      },
+      "attention": {
+        "title": "One device condition is worth a look",
+        "description": "The latest temperature, battery, and sleep readings are summarized below."
+      },
+      "urgent": {
+        "title": "Take care of the current device condition soon",
+        "description": "Reduce heavy work or connect power, then check again."
+      }
+    },
+    "exited": "The app exited and the latest status was read again.",
+    "still_running": "The app is still running. StatusOrbit did not force it to stop.",
+    "already_exited": "The app had already exited, and the latest status was read again.",
+    "refreshed": "The latest status has been read."
+  },
+  "space": {
+    "kicker": "Space on this computer",
+    "normal": {
+      "title": "There is enough space for now",
+      "description": "{{free}} remains, so there is no need to clean just for a better number."
+    },
+    "attention": {
+      "title": "Available space is getting low",
+      "description": "{{free}} remains. Start by finding what truly takes up room."
+    },
+    "unknown": {
+      "title": "Space is temporarily unavailable",
+      "description": "The system did not provide usable disk capacity information."
+    },
+    "checkAgain": "Check again",
+    "capacity": "Main disk capacity",
+    "available": "Available",
+    "used": "Used",
+    "usage": "{{percent}}% is currently used",
+    "showDetails": "Capacity details",
+    "scan": {
+      "ready": "A recent scan is ready",
+      "notYet": "Files have not been analyzed yet",
+      "found": "About {{size}} is worth reviewing first",
+      "title": "See where the space went",
+      "cached": "This full scan is from {{time}}. The current folder will be checked when you open it.",
+      "description": "Scan file metadata such as names and sizes to build an explorable space map.",
+      "open": "Open space cleanup",
+      "start": "Start space analysis"
+    },
+    "professional": "View detailed disk data"
+  },
+  "more": {
+    "kicker": "Use when needed",
+    "title": "More tools and settings",
+    "description": "These tools stay off the everyday home screen until you need them.",
+    "startup": {
+      "title": "Startup items",
+      "description": "Review and disable recoverable third-party sign-in items"
+    },
+    "history": {
+      "title": "Full history",
+      "description": "View resource trends, alerts, and recovery records"
+    },
+    "network": {
+      "title": "Network diagnostics",
+      "description": "View interface, traffic, and active connection details"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Language, notifications, history retention, and sampling"
+    },
+    "language": "Interface language",
+    "professional": "Professional mode",
+    "professionalDescription": "View every metric, process tree, and technical detail"
+  },
+  "records": {
+    "kicker": "Recent changes",
+    "title": "See what happened before and after",
+    "description": "Only sustained conditions and their recovery are recorded. Brief spikes do not become noise.",
+    "emptyTitle": "Things have been steady recently",
+    "emptyDescription": "Sustained slowdowns, memory pressure, or low space will appear here in plain language.",
+    "duration": "About {{minutes}} min",
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    },
+    "showMore": "View all {{count}} records",
+    "showLess": "Hide older records"
+  },
+  "settings": {
+    "kicker": "Everyday guide settings",
+    "title": "Make Orbit work your way",
+    "description": "Only everyday preferences live here. Sampling and threshold controls remain in professional mode.",
+    "language": "Interface language",
+    "languageDescription": "Choose the interface language that works for you",
+    "notifications": "Desktop notifications",
+    "notificationStatus": {
+      "disabled": "Turn this on to request system permission",
+      "requesting": "Waiting for system permission",
+      "ready": "Only sustained important changes are reported",
+      "denied": "Notification permission is off",
+      "unavailable": "Desktop notifications are unavailable here"
+    },
+    "history": "Keep recent records",
+    "historyDescription": "Turn this off to stop saving resource changes locally",
+    "textSize": "Text size",
+    "textSizeDescription": "Make everyday pages and lists easier to read",
+    "textSizeOptions": {
+      "comfortable": "Standard",
+      "large": "Large"
+    },
+    "reduceMotion": "Reduce motion",
+    "reduceMotionDescription": "Stop continuous orbit, breathing, and movement effects",
+    "showDockIcon": "Show the app in the Dock",
+    "showDockIconDescription": "Off by default; reopen the main window from the menu bar",
+    "launchAtLogin": "Launch at login",
+    "launchAtLoginDescription": "Start quietly after you sign in without opening the main window",
+    "companionAlwaysOnTop": "Keep Orbit above other windows",
+    "companionAlwaysOnTopDescription": "When off, Orbit stays on the desktop but may be covered by other windows",
+    "companionShowOnStartup": "Keep Orbit on the desktop",
+    "companionShowOnStartupDescription": "Shows Orbit immediately and brings it back the next time StatusOrbit starts",
+    "professional": "Professional mode",
+    "professionalDescription": "View every metric, process tree, network connection, and advanced setting",
+    "openProfessional": "Open professional mode"
+  },
+  "guide": {
+    "back": "Back home",
+    "checkAgain": "Check again",
+    "checkingAgain": "Checking…",
+    "result": "Check result",
+    "viewEvidence": "Why StatusOrbit says this",
+    "safety": "StatusOrbit suggests only evidence-backed actions. Any system action still needs your confirmation.",
+    "professional": "View all technical evidence",
+    "slow": {
+      "kicker": "Responsiveness check",
+      "title": "Find out why your computer feels slow",
+      "description": "Watch for sustained changes first, then show the most likely reason and a safe next step.",
+      "observingKicker": "Watching now",
+      "observingTitle": "First, make sure this is not a brief burst",
+      "observingDescription": "About {{seconds}} seconds remain. Opening a page or launching an app is not treated as a fault.",
+      "normalTitle": "No sustained resource pressure was found",
+      "normalDescription": "If it still feels slow, review the current apps. StatusOrbit will not guess without evidence.",
+      "viewApplications": "View current apps",
+      "likelyCause": "Most likely related app",
+      "applicationExplanation": "{{name}} had sustained activity at the same time as this issue.",
+      "requestClose": "Ask {{name}} to quit normally"
+    },
+    "space": {
+      "kicker": "Space check",
+      "title": "See whether space is actually running low",
+      "description": "Check what remains first, then decide whether a full file analysis is useful.",
+      "lowTitle": "Only {{free}} is available",
+      "lowDescription": "Find large files and reclaimable content first instead of blindly deleting system caches.",
+      "normalTitle": "{{free}} is still available",
+      "normalDescription": "Space is not tight. Scan only if you actually want to organize files.",
+      "unknownTitle": "The main disk is temporarily unavailable",
+      "unknownDescription": "The system did not provide reliable capacity data, so StatusOrbit will not treat the unknown state as enough space.",
+      "cachedScan": "Full scan available",
+      "reclaimable": "About {{size}} is worth reviewing",
+      "noScan": "Files have not been scanned",
+      "scanExplanation": "A full scan builds an interactive space map and never deletes automatically.",
+      "openScan": "Open scan results",
+      "startScan": "Start space analysis",
+      "viewSpace": "View space summary"
+    },
+    "startup": {
+      "kicker": "Sign-in speed check",
+      "title": "See which apps open when you sign in",
+      "description": "Prioritize recoverable third-party sign-in items while keeping system services read-only.",
+      "resultTitle": "Start with items that are actually worth reviewing",
+      "resultDescription": "Disabling an item only stops its next automatic launch. It does not uninstall the app."
+    },
+    "heat": {
+      "kicker": "Heat and battery check",
+      "title": "See why it feels hot or drains quickly",
+      "description": "Check temperature, battery, and sleep blockers separately without calling one reading a hardware fault.",
+      "sleepLabel": "Automatic sleep",
+      "sleepBlocked": "{{name}} is keeping the computer awake",
+      "sleepClear": "Automatic sleep is available",
+      "sleepDescription": "Quitting the app or pausing its task will usually restore sleep.",
+      "requestClose": "Ask {{name}} to quit",
+      "viewApplications": "See apps with the largest impact now",
+      "result": {
+        "temperature": {
+          "title": "This computer is running warm",
+          "description": "Pause heavy work and keep airflow clear. Check again after the temperature has time to settle."
+        },
+        "battery": {
+          "title": "The remaining battery is low",
+          "description": "This reading only shows a low charge. Keep watching running apps if the battery still drops unusually fast."
+        },
+        "sleep": {
+          "title": "{{name}} is keeping the computer awake",
+          "description": "This may increase standby drain. Quitting the app or pausing its task will usually restore sleep."
+        },
+        "unknown": {
+          "title": "There is not enough device information yet",
+          "description": "Temperature, battery, and sleep data are unavailable, so StatusOrbit cannot judge heat or drain."
+        },
+        "normal": {
+          "title": "No sustained heat or sleep issue was found",
+          "description": "Temperature, battery, and automatic sleep do not currently provide evidence of a problem."
+        }
+      }
+    },
+    "network": {
+      "kicker": "Network check",
+      "title": "See what the network is doing now",
+      "description": "StatusOrbit reads current traffic and active connections, but it will not blame an app without evidence.",
+      "checkingKicker": "Reading now",
+      "checkingTitle": "Getting active connections",
+      "checkingDescription": "Connection scanning uses a separate low-frequency command and does not affect the main sampler.",
+      "unknownTitle": "There is not enough network information yet",
+      "unknownDescription": "Current traffic or connections are unavailable, so StatusOrbit cannot say whether the network is healthy.",
+      "activeTitle": "There is network activity now",
+      "quietTitle": "There is no significant network activity now",
+      "resultDescription": "This describes current activity only. Slow internet may also come from the router, provider, or remote service.",
+      "currentTraffic": "Current traffic",
+      "activeConnections": "Active connections",
+      "connections": "{{count}} active connections"
+    },
+    "checkup": {
+      "kicker": "Everyday check",
+      "title": "See how this computer is doing",
+      "description": "Turn the latest state into one main conclusion and keep watching when the evidence is not ready.",
+      "observingKicker": "Watching now",
+      "observingTitle": "Watch a little longer to avoid a false alarm",
+      "observingDescription": "About {{seconds}} seconds remain. Brief app launches are not treated as sustained problems.",
+      "normalTitle": "Everything feels smooth now",
+      "normalDescription": "No sustained app activity, real memory pressure, or low space was found. Nothing needs to be done.",
+      "priorityKicker": "Start here",
+      "openPriority": "Take a look"
+    }
+  }
+}

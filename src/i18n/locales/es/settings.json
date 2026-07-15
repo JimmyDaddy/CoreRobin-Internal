@@ -1,0 +1,82 @@
+{
+  "localPreferences": "Preferencias locales",
+  "title": "Configuración",
+  "description": "Estas preferencias permanecen en este dispositivo y se aplican a la recopilación de datos e inmediatamente a la interfaz.",
+  "intervalMs": "{{interval}} ms",
+  "intervalSeconds": "{{seconds}} segundos",
+  "experience": {
+    "title": "Modo de interfaz",
+    "description": "El modo diario comienza con problemas reales y pasos guiados; el modo profesional mantiene todos los procesos y métricas.",
+    "label": "Modo de interfaz",
+    "simple": "Modo diario",
+    "professional": "Modo profesional"
+  },
+  "language": {
+    "title": "Idioma de la interfaz",
+    "description": "Cambiar el idioma de los menús, la guía y el texto del estado de StatusOrbit.",
+    "label": "Idioma"
+  },
+  "background": {
+    "title": "Fondo y escritorio",
+    "description": "Controlar cómo permanece disponible StatusOrbit, se inicia al iniciar sesión y muestra Orbit.",
+    "showDockIcon": "Mostrar en la barra de aplicaciones",
+    "showDockIconDescription": "Cuando esté desactivado, use la barra de menús sin ocupar la barra de aplicaciones o el cambiador de aplicaciones",
+    "launchAtLogin": "Iniciar al iniciar sesión",
+    "launchAtLoginDescription": "Inicie silenciosamente el servicio de la barra de menús sin abrir la ventana principal",
+    "companionShowOnStartup": "Mantener Orbit en el escritorio",
+    "companionShowOnStartupDescription": "Mostrar el compañero de Orbit siempre que se inicie la aplicación",
+    "companionAlwaysOnTop": "Mantener Orbit encima de otras ventanas",
+    "companionAlwaysOnTopDescription": "Permanecer por encima de otras ventanas; cuando está desactivado, Orbit puede estar oculto"
+  },
+  "sampling": {
+    "title": "Muestreo del sistema",
+    "description": "Intervalos más cortos reaccionan más rápido y aumentan la carga de muestreo.",
+    "system": "CPU, memoria y procesos"
+  },
+  "connections": {
+    "title": "Actualización de conexiones",
+    "description": "Las conexiones activas utilizan un escaneo independiente de baja frecuencia.",
+    "refresh": "Conexiones activas"
+  },
+  "processView": {
+    "title": "Vista predeterminada de procesos",
+    "description": "Se utiliza cuando se inicia o restablece el explorador de procesos.",
+    "label": "Vista predeterminada de procesos"
+  },
+  "history": {
+    "title": "Historial",
+    "description": "Guardar instantáneas y eventos de alerta agregados con baja frecuencia sin detalles de proceso o conexión.",
+    "persist": "Guardar historial en este dispositivo",
+    "applicationNames": "Mostrar nombres de aplicaciones en el historial",
+    "applicationNamesHint": "Solo guarda un nombre cuando una aplicación indica claramente la carga. Desactivar esto elimina los nombres de las aplicaciones de los eventos guardados.",
+    "retention": "Retención",
+    "days": "{{count}} días"
+  },
+  "notifications": {
+    "title": "Notificaciones del escritorio",
+    "description": "Solo una alta carga sostenida, presión real de memoria y bajo espacio en disco interrumpen el funcionamiento. StatusOrbit realiza un seguimiento una vez después de que el problema se haya recuperado de forma estable.",
+    "enable": "Activar alertas moderadas",
+    "categories": "Categorías de alertas permitidas",
+    "resources": {
+      "cpu": "Carga alta sostenida",
+      "memory": "Uso intensivo de memoria",
+      "volume": "Espacio en disco"
+    },
+    "status": {
+      "disabled": "Desactivado",
+      "requesting": "Esperando autorización",
+      "ready": "Permitido",
+      "denied": "No permitido por el sistema",
+      "unavailable": "Solo para aplicaciones de escritorio"
+    }
+  },
+  "thresholds": {
+    "title": "Umbrales de alerta de recursos",
+    "description": "Niveles de color para el uso de CPU, memoria y volumen; lecturas altas sostenidas generan alertas.",
+    "preview": "Vista previa de colores de alerta de recursos",
+    "low": "Normal",
+    "moderate": "Supervisar",
+    "high": "Alto",
+    "critical": "Crítico"
+  }
+}

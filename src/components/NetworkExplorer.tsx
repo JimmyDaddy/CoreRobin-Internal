@@ -9,7 +9,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   filterNetworkConnections,
@@ -71,7 +71,7 @@ export function NetworkExplorer({
   processes,
   onSelectProcess,
 }: NetworkExplorerProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
   const visible = useMemo(
     () => visibleNetworkInterfaces(network.interfaces, showAllInterfaces),
@@ -88,34 +88,34 @@ export function NetworkExplorer({
       <section className="panel network-overview">
         <header className="network-overview__heading">
           <div>
-            <span className="eyebrow">{t("network.local")}</span>
-            <h2 id="network-title">{t("network.title")}</h2>
-            <p>{t("network.description")}</p>
+            <span className="eyebrow">{t("network:local")}</span>
+            <h2 id="network-title">{t("network:title")}</h2>
+            <p>{t("network:description")}</p>
           </div>
           <span className="network-overview__badge">
             <Network size={14} />
-            {t("network.connectedInterfaces", { connected: connectedCount, total: network.interfaceCount })}
+            {t("network:connectedInterfaces", { connected: connectedCount, total: network.interfaceCount })}
           </span>
         </header>
 
-        <div className="network-summary" aria-label={t("network.summary")}>
+        <div className="network-summary" aria-label={t("network:summary")}>
           <NetworkSummaryItem
             icon={ArrowDownToLine}
-            label={t("network.receiveNow")}
+            label={t("network:receiveNow")}
             value={formatRate(network.receivedBytesPerSecond)}
             tone="received"
           />
           <NetworkSummaryItem
             icon={ArrowUpFromLine}
-            label={t("network.sendNow")}
+            label={t("network:sendNow")}
             value={formatRate(network.transmittedBytesPerSecond)}
             tone="transmitted"
           />
           <NetworkSummaryItem
             icon={Activity}
-            label={t("network.sessionTotal")}
+            label={t("network:sessionTotal")}
             value={formatBytes(sessionTotal)}
-            context={t("network.sessionContext", {
+            context={t("network:sessionContext", {
               receive: formatBytes(network.receivedBytesSinceLaunch),
               send: formatBytes(network.transmittedBytesSinceLaunch),
             })}
@@ -139,8 +139,8 @@ export function NetworkExplorer({
       <section className="panel network-interface-panel" aria-labelledby="interface-title">
         <header className="network-section-heading">
           <div>
-            <span className="eyebrow">{t("network.interfaces")}</span>
-            <h2 id="interface-title">{t("network.interfaceActivity")}</h2>
+            <span className="eyebrow">{t("network:interfaces")}</span>
+            <h2 id="interface-title">{t("network:interfaceActivity")}</h2>
           </div>
           {visible.hiddenCount > 0 || showAllInterfaces ? (
             <button
@@ -150,13 +150,13 @@ export function NetworkExplorer({
               onClick={() => setShowAllInterfaces((current) => !current)}
             >
               {showAllInterfaces ? (
-                <><ChevronUp size={13} />{t("network.collapseUnused")}</>
+                <><ChevronUp size={13} />{t("network:collapseUnused")}</>
               ) : (
-                <><ChevronDown size={13} />{t("network.showOtherInterfaces", { count: visible.hiddenCount })}</>
+                <><ChevronDown size={13} />{t("network:showOtherInterfaces", { count: visible.hiddenCount })}</>
               )}
             </button>
           ) : (
-            <span>{t("network.sortedByTraffic")}</span>
+            <span>{t("network:sortedByTraffic")}</span>
           )}
         </header>
 
@@ -171,7 +171,7 @@ export function NetworkExplorer({
           </ul>
         ) : (
           <div className="network-empty">
-            <Network size={20} />{t("network.noInterfaces")}
+            <Network size={20} />{t("network:noInterfaces")}
           </div>
         )}
       </section>
@@ -196,7 +196,7 @@ function NetworkConnectionsPanel({
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [filter, setFilter] = useState<NetworkConnectionFilter>("all");
   const [rowLimit, setRowLimit] = useState(CONNECTION_PAGE_SIZE);
   const filteredConnections = useMemo(
@@ -214,55 +214,55 @@ function NetworkConnectionsPanel({
     >
       <header className="network-connections__heading">
         <div>
-          <span className="eyebrow">{t("network.connections.collection")}</span>
-          <h2 id="network-connections-title">{t("network.connections.title")}</h2>
-          <p>{t("network.connections.description", { seconds: refreshIntervalMs / 1_000 })}</p>
+          <span className="eyebrow">{t("network:connections.collection")}</span>
+          <h2 id="network-connections-title">{t("network:connections.title")}</h2>
+          <p>{t("network:connections.description", { seconds: refreshIntervalMs / 1_000 })}</p>
         </div>
         <div className="network-connections__status">
           <span>
             {snapshot
-              ? t("network.connections.updatedAt", {
+              ? t("network:connections.updatedAt", {
                   time: new Date(snapshot.sampledAtMs).toLocaleTimeString(
                     i18n.resolvedLanguage,
                     { hour12: false },
                   ),
                 })
-              : t("network.connections.waiting")}
+              : t("network:connections.waiting")}
           </span>
           <button
             className="network-connections__refresh"
             type="button"
-            aria-label={t("network.connections.refresh")}
-            title={t("network.connections.refresh")}
+            aria-label={t("network:connections.refresh")}
+            title={t("network:connections.refresh")}
             onClick={onRefresh}
           >
             <RefreshCw size={13} aria-hidden="true" />
-            {t("common.refresh")}
+            {t("common:refresh")}
           </button>
         </div>
       </header>
 
       {snapshot ? (
-        <div className="network-connection-summary" aria-label={t("network.connections.summary")}>
+        <div className="network-connection-summary" aria-label={t("network:connections.summary")}>
           <ConnectionSummaryItem
-            label={t("network.connections.allConnections")}
+            label={t("network:connections.allConnections")}
             value={snapshot.summary.totalCount}
-            context={t("network.connections.attributedSummary", {
+            context={t("network:connections.attributedSummary", {
               count: snapshot.summary.attributedCount,
             })}
           />
           <ConnectionSummaryItem
-            label={t("network.connections.established")}
+            label={t("network:connections.established")}
             value={snapshot.summary.establishedCount}
             tone="established"
           />
           <ConnectionSummaryItem
-            label={t("network.connections.listening")}
+            label={t("network:connections.listening")}
             value={snapshot.summary.listeningCount}
             tone="listen"
           />
           <ConnectionSummaryItem
-            label={t("network.connections.tcpUdp")}
+            label={t("network:connections.tcpUdp")}
             value={`${snapshot.summary.tcpCount} / ${snapshot.summary.udpCount}`}
           />
         </div>
@@ -271,17 +271,17 @@ function NetworkConnectionsPanel({
       {error ? (
         <div className="network-connections__notice is-error" role="alert">
           <AlertTriangle size={13} aria-hidden="true" />
-          {t("network.connections.failure", { message: error.message })}
+          {t("network:connections.failure", { message: error.message })}
         </div>
       ) : null}
 
       {snapshot && (snapshot.truncated || snapshot.skippedEntryCount > 0) ? (
         <div className="network-connections__notice" role="status">
           <AlertTriangle size={13} aria-hidden="true" />
-          {snapshot.truncated ? t("network.connections.truncated") : null}
+          {snapshot.truncated ? t("network:connections.truncated") : null}
           {snapshot.truncated && snapshot.skippedEntryCount > 0 ? " " : null}
           {snapshot.skippedEntryCount > 0
-            ? t("network.connections.skipped", { count: snapshot.skippedEntryCount })
+            ? t("network:connections.skipped", { count: snapshot.skippedEntryCount })
             : null}
         </div>
       ) : null}
@@ -290,13 +290,13 @@ function NetworkConnectionsPanel({
         <div className="network-connections__notice" role="status">
           <AlertTriangle size={13} aria-hidden="true" />
           {t(
-            `network.connections.attribution.${snapshot.processAttribution}`,
+            `network:connections.attribution.${snapshot.processAttribution}`,
           )}
         </div>
       ) : null}
 
       <div className="network-connections__toolbar">
-        <div className="network-connection-filters" role="group" aria-label={t("network.connections.filters")}>
+        <div className="network-connection-filters" role="group" aria-label={t("network:connections.filters")}>
           {CONNECTION_FILTERS.map((value) => (
             <button
               className={filter === value ? "is-active" : ""}
@@ -308,25 +308,25 @@ function NetworkConnectionsPanel({
                 setRowLimit(CONNECTION_PAGE_SIZE);
               }}
             >
-              {t(`network.connections.filtersLabel.${value}`)}
+              {t(`network:connections.filtersLabel.${value}`)}
             </button>
           ))}
         </div>
         <span>
-          {t("network.connections.count", { count: filteredConnections.length })}
-          {loading ? ` · ${t("network.connections.updating")}` : ""}
+          {t("network:connections.count", { count: filteredConnections.length })}
+          {loading ? ` · ${t("network:connections.updating")}` : ""}
         </span>
       </div>
 
       {snapshot && visibleConnections.length > 0 ? (
         <>
-          <div className="network-connection-table" role="table" aria-label={t("network.connections.table")}>
+          <div className="network-connection-table" role="table" aria-label={t("network:connections.table")}>
             <div className="network-connection-row network-connection-row--header" role="row">
-              <span role="columnheader">{t("network.connections.protocol")}</span>
-              <span role="columnheader">{t("network.connections.state")}</span>
-              <span role="columnheader">{t("network.connections.localAddress")}</span>
-              <span role="columnheader">{t("network.connections.remoteAddress")}</span>
-              <span role="columnheader">{t("network.connections.process")}</span>
+              <span role="columnheader">{t("network:connections.protocol")}</span>
+              <span role="columnheader">{t("network:connections.state")}</span>
+              <span role="columnheader">{t("network:connections.localAddress")}</span>
+              <span role="columnheader">{t("network:connections.remoteAddress")}</span>
+              <span role="columnheader">{t("network:connections.process")}</span>
             </div>
             {visibleConnections.map((connection, index) => (
               <div
@@ -340,7 +340,7 @@ function NetworkConnectionsPanel({
                 </span>
                 <span role="cell">
                   <i className={`network-connection-state network-connection-state--${connection.state}`}>
-                    {t(`network.connections.states.${connection.state}`)}
+                    {t(`network:connections.states.${connection.state}`)}
                   </i>
                 </span>
                 <code role="cell" title={formatNetworkEndpoint(connection.localEndpoint)}>
@@ -363,7 +363,7 @@ function NetworkConnectionsPanel({
               type="button"
               onClick={() => setRowLimit((current) => current + CONNECTION_PAGE_SIZE)}
             >
-              {t("network.connections.more", { count: filteredConnections.length - visibleConnections.length })}
+              {t("network:connections.more", { count: filteredConnections.length - visibleConnections.length })}
             </button>
           ) : null}
         </>
@@ -371,10 +371,10 @@ function NetworkConnectionsPanel({
         <div className="network-empty" aria-live="polite">
           <Network size={20} />
           {loading && !snapshot
-            ? t("network.connections.collecting")
+            ? t("network:connections.collecting")
             : error && !snapshot
-              ? t("network.connections.unavailable")
-              : t("network.connections.empty")}
+              ? t("network:connections.unavailable")
+              : t("network:connections.empty")}
         </div>
       )}
     </section>
@@ -390,7 +390,7 @@ function ConnectionOwnersCell({
   processByPid: NetworkProcessIndex;
   onSelectProcess: (process: ProcessRow) => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const owners = resolveNetworkConnectionOwners(connection, processByPid);
   const primary = owners.processes[0];
   const reportedCount =
@@ -401,7 +401,7 @@ function ConnectionOwnersCell({
       <div className="network-connection-owner" role="cell">
         <button
           type="button"
-          title={t("network.connections.inspectProcess", {
+          title={t("network:connections.inspectProcess", {
             name: primary.name || `PID ${primary.pid}`,
           })}
           onClick={() => onSelectProcess(primary)}
@@ -418,7 +418,7 @@ function ConnectionOwnersCell({
     return (
       <div className="network-connection-owner is-unavailable" role="cell">
         <span>PID {owners.unavailablePids[0]}</span>
-        <small>{t("network.connections.ownerUnavailable")}</small>
+        <small>{t("network:connections.ownerUnavailable")}</small>
         {reportedCount > 1 ? <em>+{reportedCount - 1}</em> : null}
       </div>
     );
@@ -426,7 +426,7 @@ function ConnectionOwnersCell({
 
   return (
     <div className="network-connection-owner is-empty" role="cell">
-      {t("network.connections.unattributed")}
+      {t("network:connections.unattributed")}
     </div>
   );
 }
@@ -485,7 +485,7 @@ function NetworkThroughput({
   history: HistoryPoint[];
   network: NetworkSnapshot;
 }) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const points = networkHistoryWindow(history);
   const receivedSegments = networkHistorySegments(points, "received");
   const transmittedSegments = networkHistorySegments(points, "transmitted");
@@ -508,18 +508,18 @@ function NetworkThroughput({
     <section className="panel network-history" aria-labelledby="network-history-title">
       <header className="network-section-heading">
         <div>
-          <span className="eyebrow">{t("common.fiveMinutes")}</span>
-          <h2 id="network-history-title">{t("network.throughput")}</h2>
+          <span className="eyebrow">{t("common:fiveMinutes")}</span>
+          <h2 id="network-history-title">{t("network:throughput")}</h2>
         </div>
-        <div className="network-history__legend" aria-label={t("network.throughputLegend")}>
-          <span><i className="is-received" />{t("network.receive")} {formatRate(network.receivedBytesPerSecond)}</span>
-          <span><i className="is-transmitted" />{t("network.send")} {formatRate(network.transmittedBytesPerSecond)}</span>
+        <div className="network-history__legend" aria-label={t("network:throughputLegend")}>
+          <span><i className="is-received" />{t("network:receive")} {formatRate(network.receivedBytesPerSecond)}</span>
+          <span><i className="is-transmitted" />{t("network:send")} {formatRate(network.transmittedBytesPerSecond)}</span>
         </div>
       </header>
 
       {points.length < 2 ? (
         <div className="network-history__empty">
-          <span className="live-status-dot" />{t("network.establishingBaseline")}
+          <span className="live-status-dot" />{t("network:establishingBaseline")}
         </div>
       ) : (
         <>
@@ -528,7 +528,7 @@ function NetworkThroughput({
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label={t("network.chartLabel", {
+            aria-label={t("network:chartLabel", {
               receive: formatRate(network.receivedBytesPerSecond),
               send: formatRate(network.transmittedBytesPerSecond),
             })}
@@ -557,12 +557,12 @@ function NetworkThroughput({
                 key={`transmitted-${index}`}
               />
             ))}
-            <text x="0" y="172">{t("common.fiveMinutesBack")}</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common.now")}</text>
+            <text x="0" y="172">{t("common:fiveMinutesBack")}</text>
+            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common:now")}</text>
           </svg>
           <div className="network-history__peaks">
-            <span>{t("network.receivePeak")} <strong>{formatRate(receivedPeak)}</strong></span>
-            <span>{t("network.sendPeak")} <strong>{formatRate(transmittedPeak)}</strong></span>
+            <span>{t("network:receivePeak")} <strong>{formatRate(receivedPeak)}</strong></span>
+            <span>{t("network:sendPeak")} <strong>{formatRate(transmittedPeak)}</strong></span>
           </div>
         </>
       )}
@@ -575,7 +575,7 @@ function NetworkInterfaceRow({
 }: {
   networkInterface: NetworkInterfaceSnapshot;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useAppTranslation();
   const errorCount =
     networkInterface.receiveErrorsSinceLaunch +
     networkInterface.transmitErrorsSinceLaunch;
@@ -586,7 +586,7 @@ function NetworkInterfaceRow({
     networkInterface.receivedBytesSinceLaunch +
     networkInterface.transmittedBytesSinceLaunch;
   const stateLabel = t(
-    `network.interfaceStates.${networkInterface.operationalState}`,
+    `network:interfaceStates.${networkInterface.operationalState}`,
   );
 
   return (
@@ -601,33 +601,33 @@ function NetworkInterfaceRow({
         <code title={networkInterface.ipNetworks.join(" · ")}>
           {networkInterface.ipNetworks.length > 0
             ? networkInterface.ipNetworks.join(" · ")
-            : t("network.noIp")}
+            : t("network:noIp")}
         </code>
       </div>
       <div className="network-interface-metric network-interface-metric--received">
-        <small>{t("network.receive")}</small>
+        <small>{t("network:receive")}</small>
         <strong>{formatRate(networkInterface.receivedBytesPerSecond)}</strong>
-        <span>{t("network.accumulated", { value: formatBytes(networkInterface.receivedBytesSinceLaunch) })}</span>
+        <span>{t("network:accumulated", { value: formatBytes(networkInterface.receivedBytesSinceLaunch) })}</span>
       </div>
       <div className="network-interface-metric network-interface-metric--transmitted">
-        <small>{t("network.send")}</small>
+        <small>{t("network:send")}</small>
         <strong>{formatRate(networkInterface.transmittedBytesPerSecond)}</strong>
-        <span>{t("network.accumulated", { value: formatBytes(networkInterface.transmittedBytesSinceLaunch) })}</span>
+        <span>{t("network:accumulated", { value: formatBytes(networkInterface.transmittedBytesSinceLaunch) })}</span>
       </div>
       <div className="network-interface-session">
-        <small>{t("common.session")}</small>
+        <small>{t("common:session")}</small>
         <strong>{formatBytes(sessionTotal)}</strong>
-        <span>{t("network.packets", { count: packetCount.toLocaleString(i18n.resolvedLanguage) })}</span>
+        <span>{t("network:packets", { count: packetCount })}</span>
       </div>
       <div className="network-interface-details">
-        <span>MTU {networkInterface.mtu || t("network.unknownMtu")}</span>
+        <span>MTU {networkInterface.mtu || t("network:unknownMtu")}</span>
         <span title={networkInterface.macAddress ?? undefined}>
-          {networkInterface.macAddress ?? t("network.noMac")}
+          {networkInterface.macAddress ?? t("network:noMac")}
         </span>
         {errorCount > 0 ? (
-          <em><AlertTriangle size={10} />{t("common.errors", { count: errorCount })}</em>
+          <em><AlertTriangle size={10} />{t("common:errors", { count: errorCount })}</em>
         ) : (
-          <em className="is-healthy">{t("common.errors", { count: 0 })}</em>
+          <em className="is-healthy">{t("common:errors", { count: 0 })}</em>
         )}
       </div>
     </li>

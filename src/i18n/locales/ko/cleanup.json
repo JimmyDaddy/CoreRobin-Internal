@@ -1,0 +1,227 @@
+{
+  "kicker": "로컬 저장 공간 분석",
+  "title": "저장 공간 정리 도우미",
+  "description": "시스템 디스크를 스캔하여 실제 파일 경로별 사용량을 확인합니다.",
+  "startScan": "읽기 전용 스캔 시작",
+  "scanAgain": "다시 스캔",
+  "scanning": "스캔 중…",
+  "cancelScan": "스캔 중단",
+  "cancelling": "중단 중…",
+  "readOnlyTitle": "먼저 검토하고, 나중에 결정",
+  "readOnlyDescription": "배경 스캔은 파일 이름, 크기 및 기타 메타데이터를 읽습니다. 파일 내용을 읽거나 수정, 이동 또는 업로드하지 않습니다.",
+  "failed": "저장소 검사가 완료되지 않았습니다",
+  "access": {
+    "kicker": "검사 시작 전",
+    "title": "전체 시스템 디스크 접근 허용",
+    "description": "macOS는 Mail, Messages 및 기타 앱 데이터를 보호합니다. 전체 디스크 접근을 활성화하면 SpaceMap이 가능한 한 완전하게 스캔됩니다. StatusOrbit는 파일 이름, 크기 및 날짜와 같은 메타데이터만 읽습니다.",
+    "checking": "접근 권한 확인 중…",
+    "checkingReturn": "접근 권한 확인 완료…",
+    "openSettings": "전체 디스크 접근 설정 열기",
+    "openAgain": "시스템 설정 다시 열기",
+    "revealApp": "Finder에서 앱 표시",
+    "checkAgain": "접근 허용됨 — 다시 확인",
+    "continueLimited": "접근 가능한 영역을 검색합니다",
+    "waiting": "시스템 설정이 열려 있습니다. 'StatusOrbit'가 보이지 않으면 목록 아래의 '+'를 클릭하여 'StatusOrbit.app'를 선택하고 활성화한 후 자동으로 다시 검색을 시작할 수 있습니다.",
+    "unknown": "접근 권한을 확인할 수 없습니다. 시스템 설정을 열거나 제한적인 검색을 수행할 수 있습니다.",
+    "bundleRequired": "먼저 'StatusOrbit.app'를 실행하십시오",
+    "bundleMissingTitle": "이 프로세스를 접근 목록에 추가할 수 없습니다",
+    "bundleMissingDescription": "macOS에서 이 위치에서 개발 프로세스에 대한 권한을 부여할 수 없습니다. 'StatusOrbit.app'를 설치하고 응용 프로그램 폴더에서 다시 실행하십시오. 제한적인 검색은 여전히 가능합니다.",
+    "privacy": "macOS가 이 권한을 제어하며, 필요에 따라 언제든지 비활성화할 수 있습니다. 'StatusOrbit'는 스캔 중에 파일 내용을 읽거나 파일을 변경하지 않습니다.",
+    "steps": {
+      "open": "시스템 설정을 엽니다",
+      "add": "'+'를 클릭하고 'StatusOrbit.app'를 선택합니다",
+      "return": "활성화하고 다시 시작합니다"
+    }
+  },
+  "reclaimableEstimate": "복구 가능한 공간",
+  "estimateBoundary": "캐시 및 쓰레기 관련 추정치이며, 모든 데이터를 삭제하는 권장 사항이 아닙니다.",
+  "entriesScanned": "{{count}} 항목 확인",
+  "scanDuration": "{{seconds}} 초",
+  "snapshot": {
+    "retained": "이 장치에 저장되며, 브라우징 시 변경 사항을 확인합니다.",
+    "refresh": "결과 새로 고침",
+    "cached": {
+      "title": "이전 스캔 복원",
+      "description": "다른 스캔 결과를 기다리지 않고 계속 탐색할 수 있습니다. StatusOrbit는 브라우징 시에만 디렉터리의 변경 사항을 확인합니다."
+    },
+    "expired": {
+      "title": "결과가 24시간 이상 오래되었습니다",
+      "description": "StatusOrbit는 지도를 유지하여 계속 탐색할 수 있도록 합니다. 정리 작업을 수행하기 전에 새로 고침하십시오."
+    }
+  },
+  "progress": {
+    "scanningLocation": "스캔 중 {{location}}",
+    "showPath": "현재 경로 표시",
+    "entries": "확인됨",
+    "discovered": "발견됨",
+    "elapsed": "소요 시간",
+    "foundSpace": "콘텐츠 발견",
+    "stageKicker": "공간 맵 생성 중",
+    "locations": {
+      "downloads": "다운로드",
+      "trash": "쓰레기",
+      "appCache": "애플리케이션 캐시",
+      "developerCache": "개발자 캐시",
+      "hiddenData": "숨겨진 애플리케이션 데이터",
+      "applications": "설치된 애플리케이션",
+      "personal": "개인 파일",
+      "systemDisk": "시스템 디스크"
+    }
+  },
+  "categories": {
+    "title": "이 공간을 주로 사용하는 목적"
+  },
+  "map": {
+    "title": "공간의 위치",
+    "description": "섹터 영역은 할당된 디스크 공간을 나타냅니다. 관련된 색상은 하나의 폴더 브랜치에 속하며, 회색 섹터는 파일입니다.",
+    "descriptionPath": "시스템 디스크 전체를 따라 실제 경로가 표시됩니다. 각 원은 다음 디렉토리 레벨이며, 섹터 영역은 할당된 디스크 공간을 나타냅니다.",
+    "descriptionCategory": "동일한 스캔이 공통 목적에 따라 그룹화됩니다. 카테고리는 실제 디렉토리 계층 구조가 아닌 보조적인 보기입니다.",
+    "allScanned": "전체 검색 결과",
+    "categoryRoot": "목적 카테고리",
+    "mode": {
+      "label": "공간 지도 보기",
+      "path": "파일 경로",
+      "category": "목적"
+    },
+    "ariaLabel": "공간에서 태양을 시각화합니다 {{name}}",
+    "back": "한 단계 뒤로 이동",
+    "breadcrumbs": "공간 지도 계층 구조",
+    "centerBack": "상위 폴더로 이동",
+    "details": "공간 정보",
+    "selected": "선택된 항목",
+    "grouped": "그룹화된 카테고리",
+    "smallerObjects": "작은 크기의 객체",
+    "restrictedObjects": "접근이 제한된 객체",
+    "allocatedSize": "디스크에 할당된 용량",
+    "logicalSize": "{{size}} 논리적 크기",
+    "unreadable": "읽을 수 없는 항목",
+    "restrictedHint": "운영 체제가 읽기 권한을 부여하지 않았습니다. 이 항목은 수집할 수 없습니다.",
+    "types": {
+      "folder": "폴더",
+      "file": "파일",
+      "aggregate": "작은 항목들을 그룹화",
+      "restricted": "제한된 항목"
+    },
+    "noDeeperBreakdown": "현재 수준에서는 더 깊이의 디렉토리 그룹화를 사용할 수 없습니다.",
+    "loadDeeperHint": "이 폴더를 선택하여 전체 컴퓨터를 다시 스캔하지 않고 다음 레벨을 로드합니다.",
+    "loadingFolder": "이 폴더를 로딩 중…",
+    "loadFailed": "폴더 로딩 실패",
+    "directActionHint": "섹터를 길게 누른 뒤 지도 왼쪽 아래의 정리 바구니로 드래그하세요.",
+    "protectedSelectionHint": "시스템 경로, 그룹화된 노드 및 홈 루트는 읽기 전용입니다. 홈 폴더 내 특정 항목만 정리 바구니에 추가할 수 있습니다.",
+    "trashRootProtected": "쓰레기 폴더 자체는 보호되어 있습니다. 해당 폴더를 열고 삭제하려는 특정 항목을 선택하세요.",
+    "planSummary": "{{count}} 선택된 항목 · {{size}}",
+    "reviewCleanup": "영구 삭제를 위한 검토 및 삭제",
+    "refreshCleanup": "삭제 전에 선택 항목을 다시 확인",
+    "deletionUnavailable": "영구 삭제 기능이 없습니다.",
+    "basket": {
+      "title": "클리어링 바구니",
+      "empty": "먼지 영역을 드래그하여 먼저 아이템을 모으세요.",
+      "release": "바구니에 추가",
+      "collected": "클리어링 바구니에 담긴 항목",
+      "collectedHint": "이미 클리어링 바구니에 담겨 있습니다. 아래에서 제거하거나 계속 검토하세요.",
+      "remove": "바구니에서 {{name}} 삭제",
+      "clear": "지우기",
+      "completed": "영구적으로 {{deletedCount}}개의 항목을 삭제했습니다",
+      "partial": "{{deletedCount}}개의 항목을 삭제했지만, {{failedCount}}은 처리하지 못했습니다",
+      "cancelled": "{{deletedCount}} 항목 삭제를 완료한 후 중단됨"
+    },
+    "deleteResult": {
+      "success": "영구적으로 {{deletedCount}}개의 항목을 삭제했습니다",
+      "partial": "{{deletedCount}}개의 항목을 삭제했지만, {{failedCount}} 실패했습니다",
+      "failed": "삭제되지 않았습니다; {{failedCount}} 항목 삭제에 실패함",
+      "cancelled": "{{deletedCount}}개의 항목 삭제 후 중단됨",
+      "cancelledNoDeletion": "어떤 항목도 완전히 삭제하지 않고 중단됨",
+      "reclaimed": "삭제 전에 사용 가능한 공간 확인: 약 {{size}}"
+    },
+    "freshness": {
+      "cached": "이전 스캔 결과를 표시",
+      "expired": "이 스캔은 오래되었습니다. 다시 검사하는 것이 좋습니다",
+      "changed": "이 폴더가 변경되었습니다. 크기가 부정확할 수 있습니다",
+      "changedShort": "내용이 변경됨"
+    }
+  },
+  "deleteDialog": {
+    "title": "영구 삭제 전에 확인",
+    "description": "디스크에서 직접 삭제하며, 쓰레기로 이동하지 않습니다.",
+    "itemUnit": "항목",
+    "estimatedSize": "예상 크기",
+    "irreversible": "취소할 수 없습니다",
+    "changed": "검사 이후 변경됨",
+    "changedWarning": "{{count}} 항목이 이전 뷰와 다릅니다. 크기와 항목 수는 업데이트되었습니다. 확인하기 전에 다시 검사하세요.",
+    "preparing": "선택된 파일의 경로 및 상태를 다시 확인 중…",
+    "refreshSelection": "선택 항목을 다시 새로 고침",
+    "deleteConfirmTitle": "이 항목들은 영구적으로 삭제될 것임을 이해합니다",
+    "deleteConfirmDescription": "파일은 휴지통으로 이동되지 않습니다. 다운로드, 설정 및 개인 데이터는 복원할 수 없습니다.",
+    "confirm": "영구 삭제 {{count}} 항목",
+    "deleting": "영구 삭제 중…",
+    "selection": "선택된 콘텐츠",
+    "progressPreparing": "선택된 콘텐츠를 확인 중",
+    "progressDeleting": "영구 삭제 중",
+    "progressCancelling": "안전하게 중단",
+    "progressCurrent": "현재: {{name}}",
+    "progressInspecting": "파일 및 폴더 검사 중",
+    "progressEntries": "{{processed}} / {{total}} 파일 및 폴더 처리 중",
+    "progressTargets": "{{completed}} / {{total}} 항목 완료",
+    "progressDeleted": "약 {{size}} 건 삭제 완료",
+    "cancelDelete": "삭제를 취소",
+    "cancelling": "삭제 중…",
+    "cancelHint": "완료된 삭제는 복구할 수 없습니다. StatusOrbit는 현재 파일 작업이 끝난 뒤 삭제를 중단합니다.",
+    "errors": {
+      "protected_cleanup_path": "StatusOrbit는 홈 디렉토리 또는 쓰레기 폴더 자체를 삭제하지 않습니다.",
+      "cleanup_target_outside_home": "안전을 위해, StatusOrbit는 개인 폴더 내의 콘텐츠만 처리합니다.",
+      "cleanup_cross_filesystem": "선택한 폴더가 다른 디스크나 마운트 지점을 포함하여, StatusOrbit는 재귀 삭제를 거부했습니다.",
+      "cleanup_target_changed": "확인 후 파일이 변경되어, StatusOrbit는 삭제 작업을 수행하지 않았습니다. 취소하고 다시 확인해 주세요.",
+      "cleanup_confirmation_unavailable": "이 확인 기능은 더 이상 사용할 수 없습니다. 취소하고 다시 확인해 주세요.",
+      "cleanup_confirmation_expired": "이 확인 기능이 만료되었습니다. 현재 파일들을 다시 확인해 주세요.",
+      "cleanup_target_unavailable": "일부 콘텐츠가 존재하지 않거나 접근할 수 없습니다. 다시 스캔하고 시도해 보세요.",
+      "invalid_cleanup_selection": "클린업 바스켓 선택이 유효하지 않습니다. 항목을 다시 선택하세요.",
+      "overlapping_cleanup_targets": "폴더와 그 하위 폴더 중 하나를 모두 선택했습니다. 하나의 레벨만 유지해 주세요."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "다운로드",
+      "description": "설치 프로그램, 문서 및 필요한 파일을 포함할 수 있습니다."
+    },
+    "trash": {
+      "title": "쓰레기",
+      "description": "쓰레기통을 비우면 대부분 복구할 수 없습니다."
+    },
+    "app_cache": {
+      "title": "애플리케이션 캐시",
+      "description": "애플리케이션은 이 데이터를 다시 생성하거나 다운로드할 수 있습니다."
+    },
+    "developer_cache": {
+      "title": "개발자 캐시",
+      "description": "빌드 도구 및 패키지 관리자가 재생할 수 있는 데이터입니다."
+    },
+    "hidden_data": {
+      "title": "숨겨진 사용자 폴더",
+      "description": "점(.)으로 시작하는 애플리케이션 데이터와 설정입니다. 측정만 가능하며, 직접 삭제는 권장되지 않습니다."
+    }
+  },
+  "safety": {
+    "reclaimable": "일반적으로 복구 가능",
+    "review": "검토 필요"
+  },
+  "itemCount": "{{count}} 개",
+  "unavailable": "이 플랫폼에서는 사용할 수 없습니다",
+  "pathUnavailable": "스캔할 수 없는 위치입니다",
+  "morePaths": "그리고 {{count}} 추가 위치",
+  "applications": {
+    "kicker": "읽기 전용 앱 목록",
+    "title": "오래 사용하지 않은 앱",
+    "boundary": "macOS에서 6개월 이상 사용되지 않은 앱만 포함됩니다; StatusOrbit는 자동으로 제거하지 않습니다",
+    "lastUsed": "마지막으로 사용한 {{date}} · 아직 열지 않은 상태에서 {{days}} 일",
+    "none": "6개월 이상 사용하지 않은 앱을 확인할 수 없습니다.",
+    "unavailable": "현재 이 플랫폼에서는 앱의 마지막 사용 시간을 정확하게 표시할 수 없습니다.",
+    "unknownExcluded": "{{count}} 다른 앱의 마지막 사용 날짜 정보는 확인되지 않아, StatusOrbit에서 사용하지 않는 앱으로 분류하지 않았습니다."
+  },
+  "reviewFirst": "각 파일을 개별적으로 확인",
+  "largestFiles": "시스템 디스크에 있는 큰 파일들",
+  "largeFileBoundary": "500MB 이상의 파일만 표시되며, 자동 삭제는 권장되지 않습니다.",
+  "noLargeFiles": "500MB 이상의 파일이 접근 가능한 시스템 디스크 위치에서 발견되지 않았습니다.",
+  "unreadable": "{{count}} 위치가 보호되었거나 일시적으로 읽을 수 없는 상태입니다. 해당 위치만 결과에서 제외됩니다.",
+  "fullDiskAccessHint": "macOS에서는 시스템 설정 → 개인 정보 및 보안에서 StatusOrbit에 전체 디스크 접근 권한을 부여한 후 다시 스캔하십시오.",
+  "safetyBoundary": "스캔에는 시간 또는 항목 제한이 없으며, 심볼릭 링크를 따르지 않습니다. 바구니에 추가되고, 경로가 확인되었으며, 명시적으로 확인된 항목만 영구적으로 삭제되며, 복구가 불가능합니다."
+}

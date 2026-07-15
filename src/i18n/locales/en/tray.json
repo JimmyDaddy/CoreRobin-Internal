@@ -1,0 +1,52 @@
+{
+  "localMonitor": "Local system monitor",
+  "available": "Available space",
+  "open": "Open overview",
+  "companion": "Orbit companion",
+  "cleanup": "Space cleanup",
+  "health": {
+    "loading": "Connecting",
+    "observing": "Learning status",
+    "normal": "Healthy",
+    "attention": "Attention",
+    "urgent": "Action advised"
+  },
+  "status": {
+    "loading": {
+      "title": "Reading system health",
+      "description": "The first sample will appear shortly."
+    },
+    "observing": {
+      "title": "Learning this computer's state",
+      "description": "Watching a little longer so a brief spike is not mistaken for a problem."
+    },
+    "normal": {
+      "title": "Your computer is running smoothly",
+      "description": "No resource issue needs immediate attention."
+    },
+    "attention": {
+      "title": "One resource is worth watching",
+      "description": "Open StatusOrbit to see the reason and guidance."
+    },
+    "urgent": {
+      "title": "One resource is under pressure",
+      "description": "Review the evidence in StatusOrbit before taking action."
+    }
+  },
+  "reason": "{{resource}} needs attention",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "Memory",
+    "storage": "Storage",
+    "temperature": "Temperature",
+    "battery": "Battery",
+    "network": "Network",
+    "sleep": "Sleep",
+    "none": "System"
+  },
+  "incidentTitle": {
+    "attention": "Items worth watching: {{count}}",
+    "urgent": "Items to review soon: {{count}}"
+  },
+  "recovering": "The metric has eased; confirming that it stays recovered."
+}

@@ -1,0 +1,8 @@
+{
+  "seconds": "{{count}} 초",
+  "minutes": "{{count}} 분",
+  "hours": "{{count}} 시간",
+  "days": "{{count}} 일",
+  "unknownError": "알 수 없는 오류가 발생했습니다.",
+  "unsupportedSchema": "지원되지 않는 데이터 스키마입니다. {{version}}"
+}

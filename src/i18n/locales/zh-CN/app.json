@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "主导航",
+  "monitor": "监控",
+  "diagnostics": "诊断",
+  "overview": "概览",
+  "applications": "应用",
+  "processes": "进程",
+  "storage": "存储",
+  "cleanup": "清理",
+  "network": "网络",
+  "startup": "启动项",
+  "history": "历史",
+  "settings": "设置",
+  "soon": "稍后",
+  "comingSoon": "即将推出",
+  "localSampling": "本机采样",
+  "viewEyebrow": {
+    "overview": "系统概览",
+    "applications": "应用影响",
+    "processes": "进程诊断",
+    "storage": "存储诊断",
+    "cleanup": "空间清理",
+    "network": "网络诊断",
+    "startup": "启动项检查",
+    "history": "历史分析",
+    "settings": "偏好设置"
+  },
+  "demoData": "浏览器演示数据",
+  "paused": "已暂停",
+  "live": "实时",
+  "refreshNow": "立即刷新",
+  "resume": "继续",
+  "pause": "暂停",
+  "switchLanguage": "切换界面语言",
+  "samplerConnecting": "正在连接本机采样器…",
+  "samplerFailed": "无法启动采样器",
+  "samplerNoData": "没有收到系统数据。",
+  "sampleFailed": "采样暂时失败：{{message}}",
+  "staleTarget": "目标进程身份已经变化，操作已取消。请重新选择并确认。",
+  "metricsLabel": "系统资源摘要",
+  "mode": {
+    "simple": "日常模式",
+    "professional": "专业模式",
+    "short": {
+      "simple": "日常",
+      "professional": "专业"
+    },
+    "switchTo": {
+      "simple": "切换到日常模式",
+      "professional": "切换到专业模式"
+    }
+  },
+  "companion": {
+    "show": "唤起 Orbit 小伙伴",
+    "hide": "隐藏 Orbit 小伙伴"
+  },
+  "technicalOverview": {
+    "title": "查看实时资源详情",
+    "description": "展开 CPU、内存、磁盘、网络和五分钟趋势。"
+  },
+  "metrics": {
+    "memory": "内存使用",
+    "disk": "磁盘 I/O",
+    "network": "网络吞吐",
+    "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
+    "memoryContext": "共 {{total}} · 交换 {{swap}}",
+    "diskContext": "读 {{read}} · 写 {{write}}",
+    "networkContext": "下行 {{receive}} · 上行 {{send}}"
+  },
+  "status": {
+    "interval": "采样间隔 {{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} 个网络接口 · {{connections}} 个连接",
+    "applicationCount": "{{count}} 个应用或系统组件",
+    "savedHistory": "{{count}} 个已保存历史点",
+    "processCount": "{{count}} 个进程",
+    "cleanupEntries": "已检查 {{count}} 个项目"
+  }
+}

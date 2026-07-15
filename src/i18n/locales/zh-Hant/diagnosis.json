@@ -1,0 +1,133 @@
+{
+  "kicker": "智慧診斷",
+  "explain": "檢視診斷結果",
+  "collapse": "收起診斷",
+  "checkedLabel": "智慧診斷檢查項",
+  "thisDisk": "系統磁碟",
+  "safety": "StatusOrbit 不會自動操作；推薦動作仍需你確認，強制結束只保留在專業模式。",
+  "duration": "持續 {{seconds}} 秒",
+  "status": {
+    "observing": {
+      "title": "正在瞭解這臺電腦",
+      "summary": "再觀察約 {{seconds}} 秒，避免把一瞬間的波動誤判成問題。"
+    },
+    "healthy": {
+      "title": "目前執行正常",
+      "summary": "沒有發現持續佔用、記憶體壓力、空間不足或異常大流量。"
+    },
+    "attention": {
+      "title": "電腦可能正在變慢",
+      "summary": "StatusOrbit 發現 {{count}} 個可能影響使用體驗的問題，可以展開檢視原因。"
+    },
+    "urgent": {
+      "title": "有問題需要儘快處理",
+      "summary": "發現 {{count}} 個影響較明顯的問題，StatusOrbit 會先帶你核對證據。"
+    }
+  },
+  "categories": {
+    "cpu": "處理器",
+    "memory": "記憶體壓力",
+    "storage": "剩餘空間",
+    "disk_io": "磁碟活動",
+    "network": "網路活動"
+  },
+  "severity": {
+    "attention": "建議關注",
+    "urgent": "影響明顯"
+  },
+  "empty": {
+    "observing": {
+      "title": "正在建立穩定基線",
+      "description": "空間不足等即時問題仍會立即提示；持續佔用需要多觀察一會兒。"
+    },
+    "healthy": {
+      "title": "五項檢查均未發現明顯問題",
+      "description": "如果體感仍然卡頓，可以繼續檢視程序列表和五分鐘趨勢。"
+    }
+  },
+  "connectionScan": {
+    "loading": "正在低頻掃描活動連線…",
+    "unavailable": "活動連線暫時無法掃描；網路流量檢查仍然有效。"
+  },
+  "findings": {
+    "sustained_cpu": {
+      "title": "處理器持續繁忙",
+      "description": "長時間高佔用會讓應用響應變慢、風扇加速，並增加耗電。"
+    },
+    "memory_pressure": {
+      "title": "可用記憶體不足",
+      "description": "系統已經開始依賴交換空間，切換應用和開啟視窗可能出現停頓。"
+    },
+    "low_storage": {
+      "title": "{{resource}} 空間不足",
+      "description": "剩餘空間太少會影響更新、快取和臨時檔案，也可能拖慢系統。"
+    },
+    "busy_disk": {
+      "title": "磁碟持續忙碌",
+      "description": "大量讀寫會讓應用啟動、儲存檔案和系統響應變慢。"
+    },
+    "high_network": {
+      "title": "網路活動明顯增多",
+      "description": "下載、同步、影片或大量連線可能佔用頻寬並影響其他應用。"
+    }
+  },
+  "evidence": {
+    "cpu": "CPU {{value}} · {{duration}}",
+    "memory": "記憶體 {{value}} · 交換 {{swap}}",
+    "storage": "已用 {{value}} · 剩餘 {{available}}",
+    "disk": "{{value}} · {{duration}}",
+    "network": "{{value}} · {{count}} 個連線"
+  },
+  "culprit": {
+    "summary": "{{name}} 最突出：{{metric}}，合併統計 {{count}} 個相關程序。",
+    "system": "這是系統元件或受保護程序，不建議直接結束。"
+  },
+  "networkBoundary": "這裡只表示流量或連線數量較高，不代表發現了惡意程式。",
+  "actions": {
+    "inspectApp": "檢視 {{name}}",
+    "processes": "檢視程序證據",
+    "storage": "檢視儲存空間",
+    "network": "檢視網路活動"
+  },
+  "recommendations": {
+    "safety": {
+      "safe": "安全入口",
+      "confirmation": "需要確認",
+      "protected": "系統保護"
+    },
+    "request_close": {
+      "title": "建議先請求 {{name}} 退出",
+      "description": "這是優先順序最高的溫和處理方式。StatusOrbit 會先核對程序身份並顯示確認視窗，不會直接強制結束。",
+      "action": "請求退出 {{name}}"
+    },
+    "open_cleanup": {
+      "title": "建議開啟空間清理助手",
+      "description": "先預覽空間去向；拖入清理籃的內容只有在明確確認後才會永久刪除。",
+      "action": "開啟清理助手"
+    },
+    "open_network": {
+      "title": "建議核對聯網活動",
+      "description": "檢視協議、狀態和連線物件，確認這是下載、同步還是暫時無法解釋的流量。",
+      "action": "檢視網路活動"
+    },
+    "inspect_process": {
+      "title": "先檢視詳細證據",
+      "description": "StatusOrbit 當前不提供直接處理按鈕；先確認應用身份、資源變化和系統保護原因。",
+      "action": "檢視詳細證據"
+    },
+    "inspectEvidence": "先看應用證據",
+    "preparing": "正在核對…",
+    "actionUnavailable": "這個應用當前無法安全核對或處理，StatusOrbit 沒有執行任何操作。"
+  },
+  "actionDialog": {
+    "title": "請求 {{name}} 退出？",
+    "description": "StatusOrbit 將嚮應用傳送正常結束請求；這是溫和處理，不是強制結束。",
+    "safeTitle": "不會刪除應用或檔案",
+    "safeDescription": "這項操作只請求當前應用結束執行，不會清理它的資料。",
+    "riskTitle": "先儲存正在編輯的內容",
+    "riskDescription": "應用是否顯示儲存提示取決於它自身；未儲存內容仍可能丟失。",
+    "stableIdentity": "已透過穩定控制代碼鎖定你剛剛選擇的程序，執行前還會再次複核。",
+    "bestEffortIdentity": "此平臺只能透過程序身份複核來降低 PID 重複使用的風險；如果程序已變化，StatusOrbit 會拒絕執行。",
+    "confirm": "確認請求 {{name}} 退出"
+  }
+}

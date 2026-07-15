@@ -1,0 +1,133 @@
+{
+  "kicker": "Smart Diagnosis",
+  "explain": "View diagnosis",
+  "collapse": "Hide diagnosis",
+  "checkedLabel": "Smart Diagnosis checks",
+  "thisDisk": "System disk",
+  "safety": "StatusOrbit never acts automatically. Recommended actions still need your confirmation, and force quit stays in professional mode.",
+  "duration": "for {{seconds}} sec",
+  "status": {
+    "observing": {
+      "title": "Learning what is normal",
+      "summary": "Observing for about {{seconds}} more seconds to avoid treating a brief spike as a problem."
+    },
+    "healthy": {
+      "title": "Everything looks normal",
+      "summary": "No sustained load, memory pressure, low space, or unusually heavy traffic was found."
+    },
+    "attention": {
+      "title": "Your computer may be slowing down",
+      "summary": "StatusOrbit found possible performance issues ({{count}}). Expand this card to see why."
+    },
+    "urgent": {
+      "title": "Something needs attention soon",
+      "summary": "StatusOrbit found significant performance issues ({{count}}). Review the evidence before taking action."
+    }
+  },
+  "categories": {
+    "cpu": "Processor",
+    "memory": "Memory pressure",
+    "storage": "Free space",
+    "disk_io": "Disk activity",
+    "network": "Network activity"
+  },
+  "severity": {
+    "attention": "Worth checking",
+    "urgent": "Clear impact"
+  },
+  "empty": {
+    "observing": {
+      "title": "Building a stable baseline",
+      "description": "Immediate problems such as low space still appear now; sustained load needs a little more time."
+    },
+    "healthy": {
+      "title": "All five checks look clear",
+      "description": "If the computer still feels slow, inspect the process list and five-minute trends next."
+    }
+  },
+  "connectionScan": {
+    "loading": "Scanning active connections at low frequency…",
+    "unavailable": "Active connections are temporarily unavailable; the traffic check still works."
+  },
+  "findings": {
+    "sustained_cpu": {
+      "title": "Processor stays busy",
+      "description": "Sustained load can make apps respond slowly, increase fan noise, and use more power."
+    },
+    "memory_pressure": {
+      "title": "Available memory is low",
+      "description": "The system is relying on swap, so switching apps and opening windows may pause."
+    },
+    "low_storage": {
+      "title": "{{resource}} is running out of space",
+      "description": "Low free space affects updates, caches, and temporary files and may slow the system."
+    },
+    "busy_disk": {
+      "title": "The disk stays busy",
+      "description": "Heavy reads and writes can slow app launches, file saves, and system responses."
+    },
+    "high_network": {
+      "title": "Network activity is unusually high",
+      "description": "Downloads, sync, video, or many connections may use bandwidth needed by other apps."
+    }
+  },
+  "evidence": {
+    "cpu": "CPU {{value}} · {{duration}}",
+    "memory": "Memory {{value}} · Swap {{swap}}",
+    "storage": "{{value}} used · {{available}} free",
+    "disk": "{{value}} · {{duration}}",
+    "network": "{{value}} · {{count}} connections"
+  },
+  "culprit": {
+    "summary": "{{name}} stands out at {{metric}}, grouped from {{count}} related processes.",
+    "system": "This is a system component or protected process; quitting it is not recommended."
+  },
+  "networkBoundary": "This only means traffic or connection volume is high; it does not identify malicious software.",
+  "actions": {
+    "inspectApp": "Inspect {{name}}",
+    "processes": "View process evidence",
+    "storage": "Review storage",
+    "network": "Review network activity"
+  },
+  "recommendations": {
+    "safety": {
+      "safe": "Safe path",
+      "confirmation": "Confirmation required",
+      "protected": "System protected"
+    },
+    "request_close": {
+      "title": "First ask {{name}} to quit",
+      "description": "This is the gentlest available action. StatusOrbit verifies the process identity and shows a confirmation before doing anything.",
+      "action": "Ask {{name}} to quit"
+    },
+    "open_cleanup": {
+      "title": "Open Space Cleanup",
+      "description": "Preview where space went first. Items placed in the basket are permanently deleted only after explicit confirmation.",
+      "action": "Open Space Cleanup"
+    },
+    "open_network": {
+      "title": "Review network activity",
+      "description": "Check protocols, states, and endpoints to decide whether this is a download, sync, or traffic you cannot yet explain.",
+      "action": "Review network activity"
+    },
+    "inspect_process": {
+      "title": "Inspect the evidence first",
+      "description": "StatusOrbit does not offer a direct action here. Verify the app identity, resource changes, and protection reason first.",
+      "action": "Inspect detailed evidence"
+    },
+    "inspectEvidence": "Inspect app evidence",
+    "preparing": "Verifying…",
+    "actionUnavailable": "StatusOrbit could not safely verify or control this app, so nothing was changed."
+  },
+  "actionDialog": {
+    "title": "Ask {{name}} to quit?",
+    "description": "StatusOrbit will send a normal termination request. This is the gentle action, not force quit.",
+    "safeTitle": "Does not delete the app or its files",
+    "safeDescription": "This only asks the running app to stop and does not clean up its data.",
+    "riskTitle": "Save anything you are editing first",
+    "riskDescription": "Whether a save prompt appears depends on the app; unsaved work could still be lost.",
+    "stableIdentity": "A stable handle is bound to the process you selected and will be checked again before execution.",
+    "bestEffortIdentity": "This platform can only reduce PID-reuse risk through identity checks. StatusOrbit refuses the action if the process has changed.",
+    "confirm": "Confirm quit request for {{name}}"
+  }
+}

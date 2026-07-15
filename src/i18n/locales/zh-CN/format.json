@@ -1,0 +1,8 @@
+{
+  "seconds": "{{count}} 秒",
+  "minutes": "{{count}} 分钟",
+  "hours": "{{count}} 小时",
+  "days": "{{count}} 天",
+  "unknownError": "发生了未知错误。",
+  "unsupportedSchema": "不支持的数据版本：{{version}}"
+}

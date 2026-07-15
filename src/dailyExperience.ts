@@ -19,10 +19,12 @@ import type {
   CleanupScan,
   ProcessActionOutcome,
   SensorsSnapshot,
-  SystemSnapshot,
+  SystemHealthSnapshot,
 } from "./types";
 
 const GIBIBYTE = 1_024 ** 3;
+
+export const DAILY_SLEEP_BLOCKER_MIN_DURATION_SECONDS = 120;
 
 export const DAILY_INTENTS = [
   "slow",
@@ -42,6 +44,8 @@ export type DailyStatusReason =
   | "storage"
   | "temperature"
   | "battery"
+  | "network"
+  | "sleep"
   | "none";
 
 export interface DailyStatusSummary {
@@ -64,25 +68,26 @@ export type DailyAttentionItem =
       finding: DiagnosisFinding;
     }
   | {
-      id: string;
-      kind: "temperature" | "battery";
+      id: "wellbeing:temperature";
+      kind: "temperature";
       level: "attention" | "urgent";
       intent: "heat";
+      valueCelsius: number;
     }
   | {
-      id: string;
+      id: "wellbeing:battery";
+      kind: "battery";
+      level: "attention" | "urgent";
+      intent: "heat";
+      chargePercent: number;
+    }
+  | {
+      id: "wellbeing:sleep";
       kind: "sleep";
       level: "attention";
       intent: "heat";
       name: string;
-    }
-  | {
-      id: string;
-      kind: "application";
-      level: "attention" | "urgent";
-      intent: "slow";
-      application: ApplicationImpact;
-      impact: ApplicationImpactLevel;
+      durationSeconds: number;
     };
 
 export interface DailyApplicationSummary {
@@ -98,7 +103,7 @@ export interface DailyRecheck {
 
 export function dailyOverallLevel(
   diagnosis: SmartDiagnosisResult,
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
 ): DailyLevel {
   const sensorLevels = [
     temperatureWellbeingLevel(snapshot.sensors.temperature),
@@ -124,7 +129,7 @@ export function dailyOverallLevel(
 
 export function buildDailyStatusSummary(
   diagnosis: SmartDiagnosisResult,
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
 ): DailyStatusSummary {
   const level = dailyOverallLevel(diagnosis, snapshot);
   if (level === "normal" || level === "observing") {
@@ -137,29 +142,19 @@ export function buildDailyStatusSummary(
     return { level, reason: primary.kind };
   }
   if (primary.kind === "diagnosis") {
-    const reason = primary.finding.category === "storage"
-      ? "storage"
-      : primary.finding.category === "memory"
-        ? "memory"
-        : "cpu";
+    const reason = primary.finding.category === "storage" ||
+      primary.finding.category === "memory" ||
+      primary.finding.category === "network"
+      ? primary.finding.category
+      : "cpu";
     return { level, reason };
   }
-  if (primary.kind === "application") {
-    const resource = dailyApplicationSummary(
-      primary.application,
-      snapshot.memory.totalBytes,
-    ).primaryResource;
-    return {
-      level,
-      reason: resource === "memory" ? "memory" : "cpu",
-    };
-  }
-  return { level, reason: "cpu" };
+  return { level, reason: "sleep" };
 }
 
 export function buildDailyOrbitItems(
   diagnosis: SmartDiagnosisResult,
-  snapshot: SystemSnapshot,
+  snapshot: SystemHealthSnapshot,
 ): DailyOrbitItem[] {
   const speedFinding = strongestFinding(
     diagnosis.findings.filter(({ category }) => category !== "storage"),
@@ -194,8 +189,8 @@ export function buildDailyOrbitItems(
 
 export function buildDailyAttentionItems(
   diagnosis: SmartDiagnosisResult,
-  snapshot: SystemSnapshot,
-  limit = 3,
+  snapshot: SystemHealthSnapshot,
+  limit = Number.POSITIVE_INFINITY,
 ): DailyAttentionItem[] {
   const items: DailyAttentionItem[] = diagnosis.findings.map((finding) => ({
     id: `diagnosis:${finding.id}`,
@@ -211,6 +206,7 @@ export function buildDailyAttentionItems(
       kind: "temperature",
       level: temperature,
       intent: "heat",
+      valueCelsius: snapshot.sensors.temperature.celsius!,
     });
   }
   const battery = batteryWellbeingLevel(snapshot.sensors.battery);
@@ -220,50 +216,33 @@ export function buildDailyAttentionItems(
       kind: "battery",
       level: battery,
       intent: "heat",
+      chargePercent: snapshot.sensors.battery.chargePercent!,
     });
   }
   const sleepBlocker = summarizeSleepBlockers(
     snapshot.sensors.sleep,
     diagnosis.applications,
-  ).find(({ systemComponent }) => !systemComponent);
+  ).find(({ durationSeconds, systemComponent }) =>
+    !systemComponent &&
+    durationSeconds !== null &&
+    durationSeconds >= DAILY_SLEEP_BLOCKER_MIN_DURATION_SECONDS);
   if (sleepBlocker) {
     items.push({
-      id: `wellbeing:sleep:${sleepBlocker.name}`,
+      id: "wellbeing:sleep",
       kind: "sleep",
       level: "attention",
       intent: "heat",
       name: sleepBlocker.name,
-    });
-  }
-
-  const diagnosedApplicationIds = new Set(
-    diagnosis.findings.flatMap(({ culprit }) => culprit ? [culprit.id] : []),
-  );
-  const application = diagnosis.findings.length > 0
-    ? diagnosis.applications.find((candidate) => {
-        if (diagnosedApplicationIds.has(candidate.id) || candidate.systemComponent) return false;
-        const impact = applicationImpactLevel(candidate, snapshot.memory.totalBytes);
-        return impact === "high" || impact === "critical";
-      })
-    : undefined;
-  if (application) {
-    const impact = applicationImpactLevel(application, snapshot.memory.totalBytes);
-    items.push({
-      id: `application:${application.id}`,
-      kind: "application",
-      level: impact === "critical" ? "urgent" : "attention",
-      intent: "slow",
-      application,
-      impact,
+      durationSeconds: sleepBlocker.durationSeconds!,
     });
   }
 
   return items
     .sort((left, right) => levelRank(right.level) - levelRank(left.level))
-    .slice(0, Math.max(0, limit));
+    .slice(0, Number.isFinite(limit) ? Math.max(0, limit) : undefined);
 }
 
-export function primaryDailyVolume(snapshot: SystemSnapshot): VolumeUsage | null {
+export function primaryDailyVolume(snapshot: SystemHealthSnapshot): VolumeUsage | null {
   const candidates = snapshot.disk.volumes
     .filter(({ totalBytes }) => totalBytes >= 4 * GIBIBYTE)
     .map(volumeUsage)

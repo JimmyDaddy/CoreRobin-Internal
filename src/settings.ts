@@ -2,7 +2,10 @@ import {
   APP_SETTINGS_STORAGE_KEY,
   type InterfaceScale,
 } from "./appearance";
-import type { SupportedLanguage } from "./language";
+import {
+  isSupportedLanguage,
+  type SupportedLanguage,
+} from "./language";
 import type { HistoryRetentionDays } from "./historyStore";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
@@ -37,6 +40,8 @@ export interface AppSettings {
   mutedNotificationResources: ResourceAlertResource[];
   interfaceScale: InterfaceScale;
   reduceMotion: boolean;
+  showDockIcon: boolean;
+  launchAtLogin: boolean;
   companionAlwaysOnTop: boolean;
   companionShowOnStartup: boolean;
 }
@@ -59,6 +64,8 @@ export function defaultAppSettings(
     mutedNotificationResources: [],
     interfaceScale: "comfortable",
     reduceMotion: false,
+    showDockIcon: false,
+    launchAtLogin: false,
     companionAlwaysOnTop: false,
     companionShowOnStartup: false,
   };
@@ -125,6 +132,12 @@ export function parseAppSettings(
       reduceMotion: typeof value.reduceMotion === "boolean"
         ? value.reduceMotion
         : fallback.reduceMotion,
+      showDockIcon: typeof value.showDockIcon === "boolean"
+        ? value.showDockIcon
+        : fallback.showDockIcon,
+      launchAtLogin: typeof value.launchAtLogin === "boolean"
+        ? value.launchAtLogin
+        : fallback.launchAtLogin,
       companionAlwaysOnTop: typeof value.companionAlwaysOnTop === "boolean"
         ? value.companionAlwaysOnTop
         : fallback.companionAlwaysOnTop,
@@ -171,10 +184,6 @@ export function saveAppSettings(settings: AppSettings): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isSupportedLanguage(value: unknown): value is SupportedLanguage {
-  return value === "zh-CN" || value === "en";
 }
 
 function isExperienceMode(value: unknown): value is ExperienceMode {

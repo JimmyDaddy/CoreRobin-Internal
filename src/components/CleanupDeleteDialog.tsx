@@ -1,6 +1,6 @@
 import { AlertTriangle, CircleStop, LoaderCircle, RefreshCw, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import type { CleanupMapNode } from "../cleanupMap";
 import { cleanupLeaseCanExecute } from "../cleanupDeleteFreshness";
@@ -38,7 +38,7 @@ export function CleanupDeleteDialog({
   onRefresh,
   onConfirm,
 }: CleanupDeleteDialogProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
@@ -76,31 +76,31 @@ export function CleanupDeleteDialog({
         <header>
           <span className={`cleanup-delete-dialog__icon${submitting ? " is-active" : ""}`}><Trash2 size={20} /></span>
           <div>
-            <h2 id="cleanup-delete-title">{t("cleanup.deleteDialog.title")}</h2>
-            <p>{t("cleanup.deleteDialog.description")}</p>
+            <h2 id="cleanup-delete-title">{t("cleanup:deleteDialog.title")}</h2>
+            <p>{t("cleanup:deleteDialog.description")}</p>
           </div>
-          <button className="icon-button" type="button" aria-label={t("common.cancel")} disabled={submitting} onClick={onCancel}>
+          <button className="icon-button" type="button" aria-label={t("common:cancel")} disabled={submitting} onClick={onCancel}>
             <X size={17} />
           </button>
         </header>
 
         <div className="cleanup-delete-dialog__summary">
-          <span><strong>{items.length}</strong>{t("cleanup.deleteDialog.itemUnit")}</span>
-          <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup.deleteDialog.estimatedSize")}</span>
-          <small><AlertTriangle size={13} />{t("cleanup.deleteDialog.irreversible")}</small>
+          <span><strong>{items.length}</strong>{t("cleanup:deleteDialog.itemUnit")}</span>
+          <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup:deleteDialog.estimatedSize")}</span>
+          <small><AlertTriangle size={13} />{t("cleanup:deleteDialog.irreversible")}</small>
         </div>
 
         <ol className="cleanup-delete-dialog__items">
           {items.map((item) => (
             <li key={item.id} className={submitting && currentItem?.id === item.id ? "is-current" : undefined}>
-              <span className={`is-${item.safety}`}><i />{t(`cleanup.safety.${item.safety}`)}</span>
+              <span className={`is-${item.safety}`}><i />{t(`cleanup:safety.${item.safety}`)}</span>
               <div>
                 <strong>{item.name}</strong>
                 <code title={item.path ?? item.name}>{item.path}</code>
               </div>
               <b>{formatBytes(item.sizeBytes)}</b>
               {item.path && changedPaths.has(item.path) ? (
-                <small><AlertTriangle size={12} />{t("cleanup.deleteDialog.changed")}</small>
+                <small><AlertTriangle size={12} />{t("cleanup:deleteDialog.changed")}</small>
               ) : null}
             </li>
           ))}
@@ -115,13 +115,13 @@ export function CleanupDeleteDialog({
             <div className="cleanup-delete-dialog__progress-copy">
               <strong>{t(
                 cancelling
-                  ? "cleanup.deleteDialog.progressCancelling"
+                  ? "cleanup:deleteDialog.progressCancelling"
                   : progress?.phase === "deleting"
-                    ? "cleanup.deleteDialog.progressDeleting"
-                    : "cleanup.deleteDialog.progressPreparing",
+                    ? "cleanup:deleteDialog.progressDeleting"
+                    : "cleanup:deleteDialog.progressPreparing",
               )}</strong>
-              <span>{t("cleanup.deleteDialog.progressCurrent", {
-                name: currentItem?.name ?? progress?.currentPath ?? t("cleanup.deleteDialog.selection"),
+              <span>{t("cleanup:deleteDialog.progressCurrent", {
+                name: currentItem?.name ?? progress?.currentPath ?? t("cleanup:deleteDialog.selection"),
               })}</span>
             </div>
             <div
@@ -135,32 +135,32 @@ export function CleanupDeleteDialog({
             </div>
             <div className="cleanup-delete-dialog__progress-stats">
               <span>{progress && progress.totalEntryCount > 0
-                ? t("cleanup.deleteDialog.progressEntries", {
+                ? t("cleanup:deleteDialog.progressEntries", {
                     processed: progress.processedEntryCount.toLocaleString(),
                     total: progress.totalEntryCount.toLocaleString(),
                   })
-                : t("cleanup.deleteDialog.progressInspecting")}</span>
-              <span>{t("cleanup.deleteDialog.progressTargets", {
+                : t("cleanup:deleteDialog.progressInspecting")}</span>
+              <span>{t("cleanup:deleteDialog.progressTargets", {
                 completed: progress?.completedTargetCount ?? 0,
                 total: progress?.totalTargetCount ?? items.length,
               })}</span>
-              <span>{t("cleanup.deleteDialog.progressDeleted", { size: formatBytes(progress?.deletedBytes ?? 0) })}</span>
+              <span>{t("cleanup:deleteDialog.progressDeleted", { size: formatBytes(progress?.deletedBytes ?? 0) })}</span>
             </div>
-            {cancelling ? <small>{t("cleanup.deleteDialog.cancelHint")}</small> : null}
+            {cancelling ? <small>{t("cleanup:deleteDialog.cancelHint")}</small> : null}
           </div>
         ) : null}
 
         {preparing && !submitting ? (
           <div className="cleanup-delete-dialog__preparing" role="status">
             <LoaderCircle className="is-spinning" size={15} />
-            {t("cleanup.deleteDialog.preparing")}
+            {t("cleanup:deleteDialog.preparing")}
           </div>
         ) : null}
 
         {lease && lease.changedPaths.length > 0 && !submitting ? (
           <p className="cleanup-delete-dialog__warning">
             <AlertTriangle size={14} />
-            {t("cleanup.deleteDialog.changedWarning", { count: lease.changedPaths.length })}
+            {t("cleanup:deleteDialog.changedWarning", { count: lease.changedPaths.length })}
           </p>
         ) : null}
 
@@ -171,12 +171,12 @@ export function CleanupDeleteDialog({
             disabled={submitting || preparing || lease?.executable !== true || lease.changedPaths.length > 0}
             onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
           />
-          <span><strong>{t("cleanup.deleteDialog.deleteConfirmTitle")}</strong><small>{t("cleanup.deleteDialog.deleteConfirmDescription")}</small></span>
+          <span><strong>{t("cleanup:deleteDialog.deleteConfirmTitle")}</strong><small>{t("cleanup:deleteDialog.deleteConfirmDescription")}</small></span>
         </label> : null}
 
         {error ? (
           <p className="cleanup-delete-dialog__error" role="alert">
-            {t(`cleanup.deleteDialog.errors.${error.code}`, { defaultValue: error.message })}
+            {t(`cleanup:deleteDialog.errors.${error.code}`, { defaultValue: error.message })}
           </p>
         ) : null}
 
@@ -184,21 +184,21 @@ export function CleanupDeleteDialog({
           {submitting ? (
             <button ref={cancelButton} className="button button--danger cleanup-delete-dialog__stop" type="button" disabled={cancelling} onClick={onCancelExecution}>
               {cancelling ? <LoaderCircle className="is-spinning" size={15} /> : <CircleStop size={15} />}
-              {cancelling ? t("cleanup.deleteDialog.cancelling") : t("cleanup.deleteDialog.cancelDelete")}
+              {cancelling ? t("cleanup:deleteDialog.cancelling") : t("cleanup:deleteDialog.cancelDelete")}
             </button>
           ) : (
             <>
               <button ref={cancelButton} className="button button--secondary" type="button" onClick={onCancel}>
-                {t("common.cancel")}
+                {t("common:cancel")}
               </button>
               {lease && !lease.executable ? (
                 <button className="button button--primary" type="button" disabled={preparing} onClick={onRefresh}>
                   <RefreshCw className={preparing ? "is-spinning" : undefined} size={14} />
-                  {t("cleanup.deleteDialog.refreshSelection")}
+                  {t("cleanup:deleteDialog.refreshSelection")}
                 </button>
               ) : (
                 <button className="button button--danger" type="button" disabled={!canConfirm} onClick={onConfirm}>
-                  {t("cleanup.deleteDialog.confirm", { count: items.length })}
+                  {t("cleanup:deleteDialog.confirm", { count: items.length })}
                 </button>
               )}
             </>

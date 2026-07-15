@@ -1,0 +1,82 @@
+{
+  "localPreferences": "Préférences locales",
+  "title": "Paramètres",
+  "description": "Ces préférences sont conservées sur cet appareil et s'appliquent à l'échantillonnage et à l'interface immédiatement.",
+  "intervalMs": "{{interval}} ms",
+  "intervalSeconds": "{{seconds}} s",
+  "experience": {
+    "title": "Mode d'interface",
+    "description": "Le mode quotidien démarre avec les problèmes réels et des étapes guidées ; le mode professionnel conserve tous les processus et les mesures.",
+    "label": "Mode d'interface",
+    "simple": "Mode quotidien",
+    "professional": "Mode professionnel"
+  },
+  "language": {
+    "title": "Langue de l'interface",
+    "description": "Modifier les menus, les instructions et le texte d'état de StatusOrbit.",
+    "label": "Langue"
+  },
+  "background": {
+    "title": "Arrière-plan et bureau",
+    "description": "Contrôler la disponibilité de StatusOrbit, son lancement au démarrage et l'affichage d'Orbit.",
+    "showDockIcon": "Afficher dans le Dock",
+    "showDockIconDescription": "Lorsque désactivé, utiliser la barre des menus sans occuper le Dock ou le commutateur d'applications",
+    "launchAtLogin": "Lancer au démarrage",
+    "launchAtLoginDescription": "Démarrer silencieusement le service de la barre des menus sans ouvrir la fenêtre principale",
+    "companionShowOnStartup": "Afficher Orbit sur le bureau",
+    "companionShowOnStartupDescription": "Afficher l'assistant Orbit chaque fois que l'application démarre",
+    "companionAlwaysOnTop": "Maintenir Orbit au-dessus des fenêtres",
+    "companionAlwaysOnTopDescription": "Rester au-dessus des autres fenêtres ; lorsque désactivé, Orbit peut être masqué"
+  },
+  "sampling": {
+    "title": "Échantillonnage du système",
+    "description": "Des intervalles plus courts réagissent plus rapidement et ajoutent une surcharge d'échantillonnage supplémentaire.",
+    "system": "CPU, mémoire et processus"
+  },
+  "connections": {
+    "title": "Rafraîchissement des connexions",
+    "description": "Les connexions actives utilisent un scan à faible fréquence indépendant.",
+    "refresh": "Connexions actives"
+  },
+  "processView": {
+    "title": "Affichage par défaut des processus",
+    "description": "Utilisé lorsque l'explorateur de processus démarre ou est réinitialisé.",
+    "label": "Affichage par défaut des processus"
+  },
+  "history": {
+    "title": "Historique",
+    "description": "Enregistrer des captures d'écran agrégées et des événements d'alerte sans détails sur les processus ou les connexions.",
+    "persist": "Enregistrer l'historique sur cet appareil",
+    "applicationNames": "Afficher les noms d'applications dans l'historique",
+    "applicationNamesHint": "Ne sauvegarde un nom que si une application explique clairement la charge. Désactiver cette option supprime les noms d'applications des événements enregistrés.",
+    "retention": "Période de conservation",
+    "days": "{{count}} jours"
+  },
+  "notifications": {
+    "title": "Notifications sur le bureau",
+    "description": "Seules les charges lourdes, la forte pression mémoire et l'espace disque insuffisant vous alertent. StatusOrbit suit la situation une fois que le problème est durablement résolu.",
+    "enable": "Activer les alertes limitées",
+    "categories": "Catégories d'alertes autorisées",
+    "resources": {
+      "cpu": "Charge élevée persistante",
+      "memory": "Utilisation importante de la mémoire",
+      "volume": "Espace disque disponible"
+    },
+    "status": {
+      "disabled": "Désactivé",
+      "requesting": "En attente d'autorisation",
+      "ready": "Autorisé",
+      "denied": "Non autorisé par le système",
+      "unavailable": "Uniquement pour l'application de bureau"
+    }
+  },
+  "thresholds": {
+    "title": "Seuil d'alerte des ressources",
+    "description": "Niveaux de couleur pour l'utilisation du CPU, de la mémoire et du disque ; les lectures",
+    "preview": "Prévisualisation des seuils d'alerte des ressources",
+    "low": "Normal",
+    "moderate": "Attention",
+    "high": "Élevé",
+    "critical": "Critique"
+  }
+}

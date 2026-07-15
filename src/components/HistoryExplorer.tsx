@@ -13,7 +13,10 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  useAppTranslation,
+  type AppTFunction,
+} from "../i18n/useAppTranslation";
 
 import {
   HISTORY_RETENTION_OPTIONS,
@@ -60,7 +63,7 @@ export function HistoryExplorer({
   onRetentionDaysChange,
   onClear,
 }: HistoryExplorerProps) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [alertFilter, setAlertFilter] = useState<"all" | ResourceAlertResource>("all");
   const summary = useMemo(() => summarizeHistory(points), [points]);
   const visibleAlertEvents = useMemo(
@@ -81,17 +84,17 @@ export function HistoryExplorer({
     <section className="history-explorer" aria-labelledby="persistent-history-title">
       <header className="panel history-hero">
         <div>
-          <span className="eyebrow">{t("history.localArchive")}</span>
-          <h2 id="persistent-history-title">{t("history.archiveTitle")}</h2>
-          <p>{t("history.archiveDescription")}</p>
+          <span className="eyebrow">{t("history:localArchive")}</span>
+          <h2 id="persistent-history-title">{t("history:archiveTitle")}</h2>
+          <p>{t("history:archiveDescription")}</p>
         </div>
         <span className={`history-hero__status${persistenceEnabled ? "" : " is-disabled"}`}>
           <i />
-          {persistenceEnabled ? t("history.saving") : t("history.sessionOnly")}
+          {persistenceEnabled ? t("history:saving") : t("history:sessionOnly")}
         </span>
       </header>
 
-      <section className="panel history-controls" aria-label={t("history.controls")}>
+      <section className="panel history-controls" aria-label={t("history:controls")}>
         <label className="settings-switch">
           <input
             type="checkbox"
@@ -99,10 +102,10 @@ export function HistoryExplorer({
             checked={persistenceEnabled}
             onChange={(event) => onPersistenceEnabledChange(event.target.checked)}
           />
-          <span>{t("history.saveOnDevice")}</span>
+          <span>{t("history:saveOnDevice")}</span>
         </label>
         <label className="history-controls__retention">
-          <span>{t("history.retention")}</span>
+          <span>{t("history:retention")}</span>
           <select
             value={retentionDays}
             onChange={(event) =>
@@ -113,14 +116,14 @@ export function HistoryExplorer({
           >
             {HISTORY_RETENTION_OPTIONS.map((days) => (
               <option key={days} value={days}>
-                {t("history.retentionDays", { count: days })}
+                {t("history:retentionDays", { count: days })}
               </option>
             ))}
           </select>
         </label>
         <span className="history-controls__range">
-          {range ?? t("history.noRange")} · {t("history.savedPoints", { count: storedPointCount })}
-          {" · "}{t("history.alerts.savedEvents", { count: storedAlertEventCount })}
+          {range ?? t("history:noRange")} · {t("history:savedPoints", { count: storedPointCount })}
+          {" · "}{t("history:alerts.savedEvents", { count: storedAlertEventCount })}
         </span>
         <button
           className="button button--danger-ghost"
@@ -128,31 +131,31 @@ export function HistoryExplorer({
           disabled={storedPointCount === 0 && storedAlertEventCount === 0}
           onClick={onClear}
         >
-          <Trash2 size={14} />{t("history.clearSaved")}
+          <Trash2 size={14} />{t("history:clearSaved")}
         </button>
       </section>
 
       {points.length === 0 ? (
         <section className="panel history-archive-empty">
           <History size={23} />
-          <strong>{t("history.emptyTitle")}</strong>
-          <span>{t("history.emptyDescription")}</span>
+          <strong>{t("history:emptyTitle")}</strong>
+          <span>{t("history:emptyDescription")}</span>
         </section>
       ) : (
         <>
-          <section className="history-archive-summary" aria-label={t("history.summary")}>
+          <section className="history-archive-summary" aria-label={t("history:summary")}>
             <HistorySummaryItem
-              label={t("history.averageCpu")}
+              label={t("history:averageCpu")}
               value={`${summary.averageCpu.toFixed(0)}%`}
               level={resourceUsageLevel(summary.averageCpu, usageThresholds)}
             />
             <HistorySummaryItem
-              label={t("history.averageMemory")}
+              label={t("history:averageMemory")}
               value={`${summary.averageMemory.toFixed(0)}%`}
               level={resourceUsageLevel(summary.averageMemory, usageThresholds)}
             />
-            <HistorySummaryItem label={t("history.peakDisk")} value={formatRate(summary.peakDisk)} />
-            <HistorySummaryItem label={t("history.peakNetwork")} value={formatRate(summary.peakNetwork)} />
+            <HistorySummaryItem label={t("history:peakDisk")} value={formatRate(summary.peakDisk)} />
+            <HistorySummaryItem label={t("history:peakNetwork")} value={formatRate(summary.peakNetwork)} />
           </section>
 
           <ResourceArchiveChart points={points} />
@@ -163,11 +166,11 @@ export function HistoryExplorer({
       <section className="panel history-stories" aria-labelledby="history-stories-title">
         <header className="history-stories__header">
           <div>
-            <span className="eyebrow">{t("history.stories.eyebrow")}</span>
-            <h3 id="history-stories-title"><BookOpen size={16} />{t("history.stories.title")}</h3>
-            <p>{t("history.stories.description")}</p>
+            <span className="eyebrow">{t("history:stories.eyebrow")}</span>
+            <h3 id="history-stories-title"><BookOpen size={16} />{t("history:stories.title")}</h3>
+            <p>{t("history:stories.description")}</p>
           </div>
-          <span>{t("history.stories.count", { count: stories.length })}</span>
+          <span>{t("history:stories.count", { count: stories.length })}</span>
         </header>
         {stories.length > 0 ? (
           <div className="history-story-list">
@@ -176,7 +179,7 @@ export function HistoryExplorer({
         ) : (
           <div className="history-stories__empty">
             <CheckCircle2 size={20} />
-            <div><strong>{t("history.stories.emptyTitle")}</strong><span>{t("history.stories.emptyDescription")}</span></div>
+            <div><strong>{t("history:stories.emptyTitle")}</strong><span>{t("history:stories.emptyDescription")}</span></div>
           </div>
         )}
       </section>
@@ -184,18 +187,18 @@ export function HistoryExplorer({
       <section className="panel history-alerts" aria-labelledby="history-alerts-title">
         <header className="history-alerts__header">
           <div>
-            <span className="eyebrow">{t("history.alerts.eyebrow")}</span>
-            <h3 id="history-alerts-title"><BellRing size={16} />{t("history.alerts.title")}</h3>
-            <p>{t("history.alerts.description")}</p>
+            <span className="eyebrow">{t("history:alerts.eyebrow")}</span>
+            <h3 id="history-alerts-title"><BellRing size={16} />{t("history:alerts.title")}</h3>
+            <p>{t("history:alerts.description")}</p>
           </div>
           <span className={`history-alerts__status${activeAlertCount > 0 ? " is-active" : ""}`}>
             {activeAlertCount > 0
-              ? t("history.alerts.active", { count: activeAlertCount })
-              : t("history.alerts.normal")}
+              ? t("history:alerts.active", { count: activeAlertCount })
+              : t("history:alerts.normal")}
           </span>
         </header>
         <div className="history-alerts__toolbar">
-          <div className="history-alert-filters" role="group" aria-label={t("history.alerts.filters")}>
+          <div className="history-alert-filters" role="group" aria-label={t("history:alerts.filters")}>
             {(["all", "cpu", "memory", "volume"] as const).map((filter) => (
               <button
                 key={filter}
@@ -205,18 +208,18 @@ export function HistoryExplorer({
                 onClick={() => setAlertFilter(filter)}
               >
                 {filter === "all"
-                  ? t("history.alerts.all")
+                  ? t("history:alerts.all")
                   : alertResourceLabel(filter, t)}
               </button>
             ))}
           </div>
-          <span>{t("history.alerts.eventCount", { count: visibleAlertEvents.length })}</span>
+          <span>{t("history:alerts.eventCount", { count: visibleAlertEvents.length })}</span>
         </div>
         {visibleAlertEvents.length === 0 ? (
           <div className="history-alerts__empty">
             <CheckCircle2 size={20} />
-            <strong>{t("history.alerts.emptyTitle")}</strong>
-            <span>{t("history.alerts.emptyDescription")}</span>
+            <strong>{t("history:alerts.emptyTitle")}</strong>
+            <span>{t("history:alerts.emptyDescription")}</span>
           </div>
         ) : (
           <div className="history-alert-list">
@@ -230,13 +233,13 @@ export function HistoryExplorer({
       <section className="panel history-privacy" aria-labelledby="history-privacy-title">
         <span className="history-privacy__icon" aria-hidden="true"><ShieldCheck size={19} /></span>
         <div>
-          <span className="eyebrow">{t("history.privacyEyebrow")}</span>
-          <h3 id="history-privacy-title">{t("history.privacyTitle")}</h3>
+          <span className="eyebrow">{t("history:privacyEyebrow")}</span>
+          <h3 id="history-privacy-title">{t("history:privacyTitle")}</h3>
           <ul>
-            <li>{t("history.privacyLocal")}</li>
-            <li>{t("history.privacyCollected")}</li>
-            <li>{t("history.privacyExcluded")}</li>
-            <li>{t("history.privacyControl")}</li>
+            <li>{t("history:privacyLocal")}</li>
+            <li>{t("history:privacyCollected")}</li>
+            <li>{t("history:privacyExcluded")}</li>
+            <li>{t("history:privacyControl")}</li>
           </ul>
         </div>
       </section>
@@ -245,7 +248,7 @@ export function HistoryExplorer({
 }
 
 function HistoryStoryCard({ story }: { story: HistoryStory }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const Icon = story.status === "active" ? TriangleAlert : CheckCircle2;
   const duration = formatAlertDuration(story.durationMs, t);
   const startedAt = formatTimestamp(story.startedAtMs, i18n.resolvedLanguage);
@@ -257,26 +260,26 @@ function HistoryStoryCard({ story }: { story: HistoryStory }) {
     <article className={`history-story is-${story.resource} is-${story.status} is-${story.severity}`}>
       <span className="history-story__icon" aria-hidden="true"><Icon size={17} /></span>
       <div>
-        <span>{story.status === "active" ? t("history.stories.happeningNow") : t("history.stories.resolved")}</span>
-        <h4>{t(`history.stories.${story.resource}.${story.status}.title`)}</h4>
-        <p>{t(`history.stories.${story.resource}.${story.status}.description`, {
+        <span>{story.status === "active" ? t("history:stories.happeningNow") : t("history:stories.resolved")}</span>
+        <h4>{t(`history:stories.${story.resource}.${story.status}.title`)}</h4>
+        <p>{t(`history:stories.${story.resource}.${story.status}.description`, {
           duration,
           value: story.peakPercent.toFixed(0),
         })}</p>
         {story.culpritName ? (
           <p className="history-story__cause">
-            {t("history.stories.cause", { name: story.culpritName })}
+            {t("history:stories.cause", { name: story.culpritName })}
           </p>
         ) : null}
-        <div className="history-story__timeline" aria-label={t("history.stories.timeline")}>
-          <span>{t("history.stories.startedAt", { time: startedAt })}</span>
-          <span>{t("history.stories.peakedAt", {
+        <div className="history-story__timeline" aria-label={t("history:stories.timeline")}>
+          <span>{t("history:stories.startedAt", { time: startedAt })}</span>
+          <span>{t("history:stories.peakedAt", {
             time: peakAt,
             value: story.peakPercent.toFixed(0),
           })}</span>
-          {endedAt ? <span>{t("history.stories.endedAt", { time: endedAt })}</span> : null}
+          {endedAt ? <span>{t("history:stories.endedAt", { time: endedAt })}</span> : null}
         </div>
-        <small>{t(`history.stories.${story.resource}.guidance`)}</small>
+        <small>{t(`history:stories.${story.resource}.guidance`)}</small>
       </div>
       <time dateTime={new Date(story.startedAtMs).toISOString()}>
         {startedAt}
@@ -286,7 +289,7 @@ function HistoryStoryCard({ story }: { story: HistoryStory }) {
 }
 
 function ResourceAlertRow({ event }: { event: ResourceAlertEvent }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const Icon = event.resource === "cpu"
     ? Cpu
     : event.resource === "memory"
@@ -300,17 +303,17 @@ function ResourceAlertRow({ event }: { event: ResourceAlertEvent }) {
         <div>
           <strong>{alertResourceLabel(event.resource, t)}</strong>
           <span>{event.kind === "triggered"
-            ? t(`history.alerts.severity.${event.severity}`)
-            : t("history.alerts.recovered")}</span>
+            ? t(`history:alerts.severity.${event.severity}`)
+            : t("history:alerts.recovered")}</span>
         </div>
         <p>
           {event.kind === "triggered"
-            ? t("history.alerts.triggeredDetail", {
+            ? t("history:alerts.triggeredDetail", {
                 value: event.valuePercent.toFixed(0),
                 threshold: event.thresholdPercent.toFixed(0),
                 duration,
               })
-            : t("history.alerts.recoveredDetail", {
+            : t("history:alerts.recoveredDetail", {
                 value: event.valuePercent.toFixed(0),
                 duration,
               })}
@@ -325,24 +328,24 @@ function ResourceAlertRow({ event }: { event: ResourceAlertEvent }) {
 
 function alertResourceLabel(
   resource: ResourceAlertResource,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: AppTFunction,
 ): string {
   if (resource === "cpu") return "CPU";
-  if (resource === "memory") return t("history.memory");
-  return t("history.alerts.volume");
+  if (resource === "memory") return t("history:memory");
+  return t("history:alerts.volume");
 }
 
 function formatAlertDuration(
   durationMs: number,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: AppTFunction,
 ): string {
   const seconds = Math.max(1, Math.round(durationMs / 1_000));
-  if (seconds < 60) return t("format.seconds", { count: seconds });
+  if (seconds < 60) return t("format:seconds", { count: seconds });
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return t("format.minutes", { count: minutes });
+  if (minutes < 60) return t("format:minutes", { count: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return t("format.hours", { count: hours });
-  return t("format.days", { count: Math.round(hours / 24) });
+  if (hours < 24) return t("format:hours", { count: hours });
+  return t("format:days", { count: Math.round(hours / 24) });
 }
 
 function HistorySummaryItem({
@@ -363,22 +366,22 @@ function HistorySummaryItem({
 }
 
 function ResourceArchiveChart({ points }: { points: HistoryPoint[] }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const cpuPath = percentagePath(points.map((point) => point.cpuPercent));
   const memoryPath = percentagePath(points.map((point) => point.memoryPercent));
   return (
     <section className="panel history-archive-chart" aria-labelledby="history-resource-chart-title">
       <ArchiveChartHeader
-        eyebrow={t("history.fiveMinuteResolution")}
-        title={t("history.resourceChart")}
+        eyebrow={t("history:fiveMinuteResolution")}
+        title={t("history:resourceChart")}
         icon={History}
         legends={[
           { label: "CPU", className: "is-cpu" },
-          { label: t("history.memory"), className: "is-memory" },
+          { label: t("history:memory"), className: "is-memory" },
         ]}
       />
       <HistorySvg
-        label={t("history.resourceChartLabel")}
+        label={t("history:resourceChartLabel")}
         points={points}
         language={i18n.resolvedLanguage}
       >
@@ -390,7 +393,7 @@ function ResourceArchiveChart({ points }: { points: HistoryPoint[] }) {
 }
 
 function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const diskValues = points.map(
     (point) => (point.diskReadBytesPerSecond ?? 0) + (point.diskWriteBytesPerSecond ?? 0),
   );
@@ -401,16 +404,16 @@ function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
   return (
     <section className="panel history-archive-chart" aria-labelledby="history-throughput-chart-title">
       <ArchiveChartHeader
-        eyebrow={t("history.fiveMinuteResolution")}
-        title={t("history.throughputChart")}
+        eyebrow={t("history:fiveMinuteResolution")}
+        title={t("history:throughputChart")}
         icon={Database}
         legends={[
-          { label: t("app.metrics.disk"), className: "is-disk" },
-          { label: t("app.metrics.network"), className: "is-network" },
+          { label: t("app:metrics.disk"), className: "is-disk" },
+          { label: t("app:metrics.network"), className: "is-network" },
         ]}
       />
       <HistorySvg
-        label={t("history.throughputChartLabel")}
+        label={t("history:throughputChartLabel")}
         points={points}
         language={i18n.resolvedLanguage}
       >
@@ -418,8 +421,8 @@ function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
         <path className="history-archive-line is-network" d={scaledPath(networkValues, scale)} />
       </HistorySvg>
       <div className="history-throughput-peaks">
-        <span><Database size={13} />{t("history.peakDisk")} <strong>{formatRate(Math.max(...diskValues))}</strong></span>
-        <span><Network size={13} />{t("history.peakNetwork")} <strong>{formatRate(Math.max(...networkValues))}</strong></span>
+        <span><Database size={13} />{t("history:peakDisk")} <strong>{formatRate(Math.max(...diskValues))}</strong></span>
+        <span><Network size={13} />{t("history:peakNetwork")} <strong>{formatRate(Math.max(...networkValues))}</strong></span>
       </div>
     </section>
   );

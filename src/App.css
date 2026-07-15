@@ -680,6 +680,87 @@ code,
   grid-column: span 6;
 }
 
+.settings-card--background {
+  min-height: 190px;
+  grid-column: span 6;
+}
+
+.settings-background-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-background-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 11px;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  cursor: pointer;
+}
+
+.settings-background-option > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--blue);
+  border-radius: 9px;
+  background: var(--blue-soft);
+}
+
+.settings-background-option > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-background-option strong { color: var(--text); font-size: 12px; }
+.settings-background-option small { color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.settings-background-option input {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  appearance: none;
+  background: var(--panel-soft);
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.settings-background-option input::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  content: "";
+  transition: 140ms ease;
+}
+
+.settings-background-option input:checked {
+  border-color: rgba(99, 168, 255, 0.4);
+  background: rgba(99, 168, 255, 0.2);
+}
+
+.settings-background-option input:checked::after {
+  background: var(--blue);
+  box-shadow: 0 0 8px rgba(99, 168, 255, 0.45);
+  transform: translateX(16px);
+}
+
 .settings-card--mode {
   min-height: 102px;
   grid-column: span 6;
@@ -782,6 +863,24 @@ code,
 .settings-select:focus-within > svg {
   color: var(--blue);
   transform: translateY(-50%) rotate(180deg);
+}
+
+.locale-select--with-icon select {
+  padding-left: 34px;
+}
+
+.locale-select:not(.settings-select--compact) {
+  min-width: 184px;
+}
+
+.locale-select > .locale-select__icon {
+  right: auto;
+  left: 11px;
+  transform: translateY(-50%);
+}
+
+.locale-select:focus-within > .locale-select__icon {
+  transform: translateY(-50%);
 }
 
 .settings-select--compact {
@@ -6059,6 +6158,7 @@ code,
   .settings-card--half,
   .settings-card--thresholds { grid-column: 1 / -1; }
   .settings-card--mode { grid-template-columns: minmax(0, 1fr); }
+  .settings-background-controls { grid-template-columns: minmax(0, 1fr); }
   .settings-thresholds { grid-template-columns: minmax(0, 1fr); }
   .device-wellbeing__grid { grid-template-columns: minmax(0, 1fr); }
   .startup-summary { grid-template-columns: minmax(0, 1fr); }
@@ -6184,7 +6284,8 @@ code,
 .brand small { font-size: 12px; }
 .nav-label,
 .eyebrow { font-size: 11px; }
-.language-button { min-width: 62px; }
+.language-button { min-width: 104px; }
+.language-button select { min-height: 36px; border-radius: 999px; }
 
 .mode-switch {
   --mode-switch-rgb: 99, 168, 255;
@@ -7460,6 +7561,7 @@ code,
 .daily-settings__segmented { display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-soft); }
 .daily-settings__segmented button { min-height: 31px; padding: 0 12px; color: var(--text-muted); border-radius: 7px; background: transparent; cursor: pointer; font-size: 12px; }
 .daily-settings__segmented button.is-active { color: var(--text); background: var(--blue-soft); box-shadow: inset 0 0 0 1px rgba(99, 168, 255, 0.2); }
+.daily-settings__locale { min-width: 132px; }
 .daily-settings__switch { position: relative; width: 42px; height: 24px; }
 .daily-settings__switch input { position: absolute; opacity: 0; }
 .daily-settings__switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--border); cursor: pointer; transition: 160ms ease; }

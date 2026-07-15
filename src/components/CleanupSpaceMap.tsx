@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   createCleanupDeleteLease,
@@ -68,7 +68,7 @@ type CleanupMapMode = "path" | "category";
 const CLEANUP_MAP_MODE_STORAGE_KEY = "status-orbit.cleanup-map-mode.v1";
 
 export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapshotStatus, onDeletionApplied }: CleanupSpaceMapProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(() => new Map());
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
   const pathRoot = useMemo<CleanupMapNode>(
@@ -77,7 +77,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
   );
   const categoryRoot = useMemo<CleanupMapNode>(() => ({
     id: "cleanup-category-root",
-    name: t("cleanup.map.categoryRoot"),
+    name: t("cleanup:map.categoryRoot"),
     path: null,
     sizeBytes: snapshot.locations.reduce((total, location) => total + location.sizeBytes, 0),
     logicalSizeBytes: snapshot.locations.reduce(
@@ -98,7 +98,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
           location.nodes.some((node) => node.kind === "restricted");
         return {
           id: `location:${location.kind}`,
-          name: t(`cleanup.locations.${location.kind}.title`),
+          name: t(`cleanup:locations.${location.kind}.title`),
           path: null,
           sizeBytes: location.sizeBytes,
           logicalSizeBytes: location.nodes.reduce((total, node) => total + node.logicalSizeBytes, 0),
@@ -644,9 +644,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     <section className="cleanup-map" aria-labelledby="cleanup-map-title">
       <header className="cleanup-map__heading">
         <div>
-          <h3 id="cleanup-map-title">{t("cleanup.map.title")}</h3>
-          {mapMode === "category" ? <p>{t("cleanup.map.descriptionCategory")}</p> : null}
-          <nav className="cleanup-map__breadcrumbs" aria-label={t("cleanup.map.breadcrumbs")}>
+          <h3 id="cleanup-map-title">{t("cleanup:map.title")}</h3>
+          {mapMode === "category" ? <p>{t("cleanup:map.descriptionCategory")}</p> : null}
+          <nav className="cleanup-map__breadcrumbs" aria-label={t("cleanup:map.breadcrumbs")}>
             {breadcrumbs.map((node, index) => (
               <span key={node.id}>
                 {index > 0 ? <ChevronRight size={11} /> : null}
@@ -661,12 +661,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
             ))}
           </nav>
         </div>
-        <div className="cleanup-map__mode" role="group" aria-label={t("cleanup.map.mode.label")}>
+        <div className="cleanup-map__mode" role="group" aria-label={t("cleanup:map.mode.label")}>
           <button type="button" className={mapMode === "path" ? "is-active" : undefined} aria-pressed={mapMode === "path"} onClick={() => setMapMode("path")}>
-            {t("cleanup.map.mode.path")}
+            {t("cleanup:map.mode.path")}
           </button>
           <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => setMapMode("category")}>
-            {t("cleanup.map.mode.category")}
+            {t("cleanup:map.mode.category")}
           </button>
         </div>
       </header>
@@ -677,13 +677,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
             {freshness !== "current" ? (
               <div className={`cleanup-map__freshness is-${freshness}`} role="status">
                 {freshness === "changed" ? <RefreshCw size={13} /> : <Clock3 size={13} />}
-                <span>{t(`cleanup.map.freshness.${freshness}`)}</span>
+                <span>{t(`cleanup:map.freshness.${freshness}`)}</span>
               </div>
             ) : null}
             {loadingNodeId ? (
               <div className="cleanup-map__subtree-loading" role="status">
                 <LoaderCircle size={14} />
-                <span>{t("cleanup.map.loadingFolder")}</span>
+                <span>{t("cleanup:map.loadingFolder")}</span>
               </div>
             ) : null}
             <div className="cleanup-map__surface">
@@ -694,7 +694,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                 changedIds={changedIds}
                 collectedIds={collectedIds}
                 focusKey={focus.id}
-                ariaLabel={t("cleanup.map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects")) })}
+                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects")) })}
                 onSelect={selectMapNode}
                 onActivate={(node) => {
                   if (suppressNextClickRef.current) {
@@ -710,38 +710,38 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                 className={`cleanup-map__center-control${focusChanged ? " is-changed" : ""}`}
                 type="button"
                 disabled={!parentId}
-                aria-label={parentId ? t("cleanup.map.centerBack") : undefined}
+                aria-label={parentId ? t("cleanup:map.centerBack") : undefined}
                 onClick={() => {
                   const parent = parentId ? nodes.get(parentId) : null;
                   if (parent) navigateTo(parent);
                 }}
               >
-                <span>{nodeDisplayName(focus, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</span>
+                <span>{nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</span>
                 <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
-                {focusChanged ? <small>{t("cleanup.map.freshness.changedShort")}</small> : null}
+                {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
               </button>
             </div>
 
             <div className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone ? " is-active" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}`}>
               <span className="cleanup-map__basket-icon"><Trash2 size={18} /></span>
               <div className="cleanup-map__basket-copy">
-                <small>{dragState?.overDropzone ? t("cleanup.map.basket.release") : t("cleanup.map.basket.title")}</small>
+                <small>{dragState?.overDropzone ? t("cleanup:map.basket.release") : t("cleanup:map.basket.title")}</small>
                 <strong>{planned.length > 0
-                    ? t("cleanup.map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
+                    ? t("cleanup:map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
                     : deleteOutcome
                     ? t(
                         deleteOutcome.cancelled
-                          ? "cleanup.map.basket.cancelled"
+                          ? "cleanup:map.basket.cancelled"
                           : deleteOutcome.failed.length > 0
-                            ? "cleanup.map.basket.partial"
-                            : "cleanup.map.basket.completed",
+                            ? "cleanup:map.basket.partial"
+                            : "cleanup:map.basket.completed",
                         { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
                       )
-                    : t("cleanup.map.basket.empty")}</strong>
+                    : t("cleanup:map.basket.empty")}</strong>
                 {planned.length > 0 ? (
                   <div className="cleanup-map__basket-items">
                     {planned.map((node) => (
-                      <button className={node.path && failedPaths.has(node.path) ? "is-failed" : undefined} type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup.map.basket.remove", { name: node.name })}>
+                      <button className={node.path && failedPaths.has(node.path) ? "is-failed" : undefined} type="button" key={node.id} onClick={() => removeFromPlan(node.id)} title={t("cleanup:map.basket.remove", { name: node.name })}>
                         <span>{node.name}</span><X size={11} />
                       </button>
                     ))}
@@ -751,13 +751,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
               {planned.length > 0 ? (
                 <>
                   <button className="cleanup-map__basket-clear" type="button" onClick={() => setPlannedIds(new Set())}>
-                    {t("cleanup.map.basket.clear")}
+                    {t("cleanup:map.basket.clear")}
                   </button>
                   <button className="button button--danger" type="button" disabled={!snapshot.deletionAvailable} onClick={() => void openDeleteDialog()}>
                     <Trash2 size={14} />
                     {snapshot.deletionAvailable
-                      ? t(snapshotStatus === "current" ? "cleanup.map.reviewCleanup" : "cleanup.map.refreshCleanup")
-                      : t("cleanup.map.deletionUnavailable")}
+                      ? t(snapshotStatus === "current" ? "cleanup:map.reviewCleanup" : "cleanup:map.refreshCleanup")
+                      : t("cleanup:map.deletionUnavailable")}
                   </button>
                 </>
               ) : null}
@@ -765,20 +765,20 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
           </div>
         </div>
 
-        <aside className="cleanup-map__details" aria-label={t("cleanup.map.details")}>
+        <aside className="cleanup-map__details" aria-label={t("cleanup:map.details")}>
           <div className={`cleanup-map__selected${selectedCollected ? " is-collected" : ""}`}>
             <span className={`cleanup-map__selected-icon is-${selected.kind}`}>
               {selected.kind === "file" ? <File size={17} /> : selected.kind === "aggregate" ? <Layers3 size={17} /> : selected.kind === "restricted" ? <LockKeyhole size={17} /> : <FolderOpen size={17} />}
             </span>
             <div>
-              <small>{t(selectedCollected ? "cleanup.map.basket.collected" : "cleanup.map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</strong>
-              <code title={selected.path ?? selected.name}>{selected.path ?? t("cleanup.map.grouped")}</code>
+              <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
+              <code title={selected.path ?? selected.name}>{selected.path ?? t("cleanup:map.grouped")}</code>
             </div>
             <span>
               <strong>{formatBytes(selected.allocatedSizeBytes)}</strong>
-              <small>{t("cleanup.map.allocatedSize")}</small>
-              {selected.logicalSizeBytes !== selected.allocatedSizeBytes ? <small>{t("cleanup.map.logicalSize", { size: formatBytes(selected.logicalSizeBytes) })}</small> : null}
+              <small>{t("cleanup:map.allocatedSize")}</small>
+              {selected.logicalSizeBytes !== selected.allocatedSizeBytes ? <small>{t("cleanup:map.logicalSize", { size: formatBytes(selected.logicalSizeBytes) })}</small> : null}
             </span>
           </div>
 
@@ -788,13 +788,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
               <div>
                 <strong>{t(
                   deleteOutcome.cancelled
-                    ? deleteOutcome.deletedCount > 0 ? "cleanup.map.deleteResult.cancelled" : "cleanup.map.deleteResult.cancelledNoDeletion"
+                    ? deleteOutcome.deletedCount > 0 ? "cleanup:map.deleteResult.cancelled" : "cleanup:map.deleteResult.cancelledNoDeletion"
                     : deleteOutcome.failed.length > 0
-                    ? deleteOutcome.deletedCount > 0 ? "cleanup.map.deleteResult.partial" : "cleanup.map.deleteResult.failed"
-                    : "cleanup.map.deleteResult.success",
+                    ? deleteOutcome.deletedCount > 0 ? "cleanup:map.deleteResult.partial" : "cleanup:map.deleteResult.failed"
+                    : "cleanup:map.deleteResult.success",
                   { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
                 )}</strong>
-                <small>{t("cleanup.map.deleteResult.reclaimed", { size: formatBytes(deleteOutcome.deletedBytes) })}</small>
+                <small>{t("cleanup:map.deleteResult.reclaimed", { size: formatBytes(deleteOutcome.deletedBytes) })}</small>
                 {deleteOutcome.failed.slice(0, 3).map((failure) => (
                   <code key={failure.path} title={failure.message}>{failure.path}</code>
                 ))}
@@ -822,13 +822,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                         {child.kind === "restricted" ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
-                        <strong>{nodeDisplayName(child, t("cleanup.map.smallerObjects"), t("cleanup.map.restrictedObjects"))}</strong>
+                        <strong>{nodeDisplayName(child, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
-                          {t(`cleanup.map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
-                          {collected ? ` · ${t("cleanup.map.basket.collected")}` : ""}
+                          {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
+                          {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
                         </small>
                       </span>
-                      <b>{child.kind === "restricted" ? t("cleanup.map.unreadable") : formatBytes(child.allocatedSizeBytes)}</b>
+                      <b>{child.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(child.allocatedSizeBytes)}</b>
                     </button>
                   </li>
                 );
@@ -836,27 +836,27 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
             </ol>
           ) : (
             <div className="cleanup-map__leaf">
-              {focus.hasChildren ? t("cleanup.map.loadDeeperHint") : t("cleanup.map.noDeeperBreakdown")}
+              {focus.hasChildren ? t("cleanup:map.loadDeeperHint") : t("cleanup:map.noDeeperBreakdown")}
             </div>
           )}
 
           {subtreeError ? (
             <div className="cleanup-map__subtree-error" role="alert">
-              {t("cleanup.map.loadFailed")}: {subtreeError.message}
+              {t("cleanup:map.loadFailed")}: {subtreeError.message}
             </div>
           ) : null}
 
           <div className="cleanup-map__review">
-            <span><ShieldAlert size={14} />{t(`cleanup.safety.${selected.safety}`)}</span>
+            <span><ShieldAlert size={14} />{t(`cleanup:safety.${selected.safety}`)}</span>
             <small>{selectedCollected
-              ? t("cleanup.map.basket.collectedHint")
+              ? t("cleanup:map.basket.collectedHint")
               : selected.kind === "restricted"
-                ? t("cleanup.map.restrictedHint")
+                ? t("cleanup:map.restrictedHint")
                 : isTrashRootPath(selected.path)
-                  ? t("cleanup.map.trashRootProtected")
+                  ? t("cleanup:map.trashRootProtected")
                   : canCollectCleanupNode(selected)
-                    ? t("cleanup.map.directActionHint")
-                    : t("cleanup.map.protectedSelectionHint")}</small>
+                    ? t("cleanup:map.directActionHint")
+                    : t("cleanup:map.protectedSelectionHint")}</small>
           </div>
         </aside>
       </div>

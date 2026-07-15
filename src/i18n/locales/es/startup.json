@@ -1,0 +1,126 @@
+{
+  "eyebrow": "Inicio y acceso",
+  "title": "Elementos de inicio",
+  "description": "Visualice qué se inicia al acceder o cuando se cumplen ciertas condiciones. Los elementos de terceros se explican primero; los servicios del sistema nunca se presentan como interruptores comunes.",
+  "guided": {
+    "kicker": "Elementos de inicio de terceros",
+    "title": "Elementos de inicio recomendados para revisar",
+    "description": "Solo los elementos de inicio de terceros que pueden ser restaurados de forma segura aparecen aquí.",
+    "found": "{{count}} Los elementos son dignos de revisión",
+    "foundDescription": "Puede deshabilitar las aplicaciones que rara vez utiliza después de confirmar; el cambio se aplica al siguiente acceso.",
+    "clear": "Ningún elemento de inicio de terceros requiere atención",
+    "clearDescription": "Los servicios del sistema y los elementos de mantenimiento condicionales nunca se presentan como interruptores comunes."
+  },
+  "scanning": "Verificando…",
+  "loadingTitle": "Leyendo ubicaciones de inicio",
+  "loadingDescription": "StatusOrbit solo lee la configuración de inicio pública y nunca ejecuta los comandos contenidos en ella.",
+  "summary": "Resumen de inicio",
+  "reviewCount": "Vale la pena revisar",
+  "reviewHint": "Aplicaciones de terceros que se inician al iniciar sesión",
+  "thirdPartyCount": "Aplicaciones de terceros",
+  "thirdPartyHint": "Incluye ayudantes de fondo condicionales",
+  "systemCount": "Elementos del sistema",
+  "systemHint": "Solo lectura y nunca mostrados como interruptores normales",
+  "inventory": "Inventario de inicio",
+  "listTitle": "Qué se inicia automáticamente",
+  "filters": "Filtros para elementos de inicio",
+  "filter": {
+    "review": "Revisar",
+    "all": "Todos",
+    "system": "Elementos del sistema"
+  },
+  "search": "Buscar por nombre, editor o ruta",
+  "emptyTitle": "No hay nada que revisar",
+  "emptyDescription": "Cambiar a 'Todos' para inspeccionar los elementos de mantenimiento y del sistema.",
+  "publisherUnknown": "Editor desconocido",
+  "enabled": "Inicia automáticamente",
+  "disabled": "Deshabilitado",
+  "technicalDetails": "Mostrar detalles técnicos",
+  "managementBoundary": "Solo se pueden deshabilitar los archivos de inicio de terceros del usuario, y no los elementos del sistema ni las fuentes no compatibles.",
+  "readOnlyBoundary": "Esta plataforma no expone ninguna fuente de inicio que StatusOrbit pueda restaurar de forma segura, por lo que el inventario permanece en modo de solo lectura.",
+  "unreadable": "{{count}} No se pudieron leer las ubicaciones de inicio debido a permisos",
+  "actions": {
+    "disable": "Deshabilitar al iniciar sesión",
+    "enable": "Restaurar al iniciar sesión"
+  },
+  "managementStatus": {
+    "system": "Elemento del sistema · Solo lectura",
+    "protected": "Elemento protegido",
+    "unsupported": "No se puede gestionar aún"
+  },
+  "impact": {
+    "none": {
+      "title": "Impacto de inicio sin efecto"
+    },
+    "low": {
+      "title": "Impacto de inicio bajo esperado"
+    },
+    "moderate": {
+      "title": "Puede afectar la velocidad de inicio de sesión"
+    },
+    "high": {
+      "title": "Alto impacto en segundo plano"
+    },
+    "running": "En ejecución actualmente: CPU {{cpu}} · Memoria {{memory}}",
+    "notMatched": "No se pudo identificar ninguna aplicación en ejecución"
+  },
+  "outcome": {
+    "disabled": "El inicio automático para {{name}} está deshabilitado. La aplicación en ejecución no fue cerrada.",
+    "enabled": "El inicio automático para {{name}} ha sido restaurado."
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "Deshabilitar el inicio automático para {{name}}?",
+      "description": "StatusOrbit guarda este archivo de inicio en su propio almacenamiento recuperable y no lo elimina.",
+      "whenDescription": "Esto se aplica al siguiente inicio de sesión. Restaurarlo también se aplicará a partir del próximo inicio de sesión.",
+      "confirm": "Confirmar desactivación al iniciar sesión"
+    },
+    "enable": {
+      "title": "¿Restaurar el inicio automático para {{name}}?",
+      "description": "StatusOrbit mueve la configuración que guardó a su ubicación original.",
+      "whenDescription": "A partir del siguiente inicio de sesión, el sistema puede volver a lanzar este elemento automáticamente.",
+      "confirm": "Confirmar restauración al iniciar sesión"
+    },
+    "reversibleTitle": "Puede restaurarlo más tarde",
+    "reversibleDescription": "El archivo solo se mueve entre dos carpetas del usuario y nunca se edita ni elimina.",
+    "whenTitle": "La sesión actual no cambia inmediatamente",
+    "runningTitle": "La aplicación permanece abierta",
+    "runningDescription": "Desactivar el inicio no cierra la aplicación actual ni interrumpe el trabajo en curso.",
+    "preparing": "Verificando el elemento de inicio y su estado…",
+    "applying": "Actualizando de forma segura…",
+    "errors": {
+      "startup_item_protected": "Este es un elemento de inicio de terceros no gestionado por StatusOrbit, por lo que no se realizaron cambios.",
+      "startup_item_unavailable": "Este elemento de inicio ha cambiado o desaparecido. Refresque la lista e inténtelo de nuevo.",
+      "startup_state_changed": "El archivo de inicio ha cambiado después de la confirmación, por lo que StatusOrbit no realizó cambios.",
+      "startup_destination_conflict": "Otra configuración apareció en el destino. StatusOrbit se negó a sobrescribirla.",
+      "startup_confirmation_unavailable": "Esta confirmación ya no está disponible. Cancela y ábrela de nuevo.",
+      "startup_confirmation_expired": "La confirmación ha caducado. Revise el elemento nuevamente antes de continuar.",
+      "startup_management_failed": "El sistema no pudo mover el archivo de inicio de forma segura. Se ha mantenido el estado original."
+    }
+  },
+  "source": {
+    "launch_agent": "Agente de inicio",
+    "launch_daemon": "Daemon de inicio",
+    "desktop_entry": "Entrada automática",
+    "registry_run": "Ejecución desde el registro",
+    "startup_folder": "Carpeta de inicio"
+  },
+  "advice": {
+    "review": {
+      "title": "Considere si es necesario",
+      "description": "Se inicia cada vez que inicia sesión. Si no lo utiliza con frecuencia, puede desactivarlo después de confirmar."
+    },
+    "normal": {
+      "title": "Ejecución condicional",
+      "description": "Normalmente se inicia para actualizaciones, sincronización o un evento específico y podría no ralentizar el inicio de sesión."
+    },
+    "system": {
+      "title": "Servicio del sistema o dispositivo",
+      "description": "No lo trate como una aplicación de inicio normal. StatusOrbit lo mantiene en modo de solo lectura."
+    },
+    "disabled": {
+      "title": "Actualmente deshabilitado",
+      "description": "La configuración permanece, pero el sistema no la iniciará automáticamente a partir de esta entrada."
+    }
+  }
+}

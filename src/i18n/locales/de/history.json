@@ -1,0 +1,107 @@
+{
+  "title": "Ressourcen-Trend",
+  "legend": "Legende",
+  "memory": "Speicher",
+  "warmup": "Aufwärmphase",
+  "establishing": "Erstellung der Trendbasis…",
+  "chartLabel": "CPU {{cpu}}%, Speicher {{memory}}%",
+  "localArchive": "Lokale Ressourcen-Archiv",
+  "archiveTitle": "Historie",
+  "archiveDescription": "Überprüfen Sie langfristige Änderungen an Ressourcen, sowie anhaltenden Druck und Erholungsereignisse nach Neustarts.",
+  "saving": "Speichern auf diesem Gerät",
+  "sessionOnly": "Nur für die aktuelle Sitzung",
+  "controls": "Einstellungen für den Verlauf",
+  "saveOnDevice": "Gesamten Verlauf auf diesem Gerät speichern",
+  "retention": "Beibehalten",
+  "retentionDays": "{{count}} Tage",
+  "noRange": "Kein Zeitraum ausgewählt",
+  "savedPoints": "{{count}} gespeicherte Daten",
+  "clearSaved": "Gespeicherte Daten löschen",
+  "emptyTitle": "Verlauf erstellen",
+  "emptyDescription": "Trends werden nach dem ersten gültigen Messwert angezeigt; Aktivieren Sie das Speichern auf dem Gerät, um sie auch nach Neustarts beizubehalten.",
+  "summary": "Verlaufssummary",
+  "averageCpu": "Durchschnittliche CPU-Auslastung",
+  "averageMemory": "Durchschnittlicher Speicherverbrauch",
+  "peakDisk": "Höchste Festplattenauslastung",
+  "peakNetwork": "Höchste Netzwerkaktivität",
+  "fiveMinuteResolution": "Auflösung von 5 Minuten",
+  "resourceChart": "CPU- und Speicherdarstellung",
+  "throughputChart": "Festplatten- und Netzwerkdurchsatz",
+  "resourceChartLabel": "Historische CPU- und Speicherentwicklung",
+  "throughputChartLabel": "Historische Daten für Festplatte und Netzwerk, Trend",
+  "stories": {
+    "eyebrow": "Was ist passiert?",
+    "title": "Computer-Ereignisse",
+    "description": "Verknüpft Alarme und Wiederherstellungen zu einem Ereignis und erklärt dessen Auswirkungen und Ergebnis in einfacher Sprache.",
+    "cause": "Hauptursache: {{name}} hatte den größten Einfluss zum Zeitpunkt",
+    "timeline": "Zeitlicher Ablauf des Ereignisses",
+    "startedAt": "Startet {{time}}",
+    "peakedAt": "Erreichte ihren Höhepunkt bei {{value}}% · {{time}}",
+    "endedAt": "Wiederhergestellt {{time}}",
+    "count": "{{count}} kürzlich",
+    "happeningNow": "Ist noch aktiv",
+    "resolved": "Wurde behoben",
+    "emptyTitle": "Keine relevanten Ereignisse zuletzt",
+    "emptyDescription": "StatusOrbit ignoriert kurzzeitige Schwankungen und protokolliert nur Bedingungen, die lange genug anhalten, um den Computer zu beeinflussen.",
+    "cpu": {
+      "active": {
+        "title": "Der Computer arbeitet intensiv",
+        "description": "Die CPU-Auslastung war für {{duration}} hoch, erreichte kurzzeitig {{value}}%. Der Computer kann sich langsam anfühlen, warm werden oder mehr Akku verbrauchen."
+      },
+      "recovered": {
+        "title": "Der Computer war intensiv ausgelastet und hat sich normalisiert",
+        "description": "Die hohe Auslastung dauerte etwa {{duration}}, erreichte kurzzeitig {{value}}% und kehrte dann in den Normalbereich zurück."
+      },
+      "guidance": "Wenn der Computer weiterhin langsam ist, öffnen Sie Anwendungen, um die größten Auswirkungen zu sehen. StatusOrbit schließt keine Apps automatisch."
+    },
+    "memory": {
+      "active": {
+        "title": "Der verfügbare Speicher wird knapp",
+        "description": "Es gibt wenig verfügbaren Speicher und Swap-Aktivität seit {{duration}}.\nDas Umschalten von Anwendungen kann sich dadurch verlangsamen."
+      },
+      "recovered": {
+        "title": "Speicherbedarf ist gestiegen und hat sich wieder normalisiert",
+        "description": "Der Speicher war für etwa {{duration}} eng, danach haben verfügbarer Speicher und Swap-Aktivität sich wieder normalisiert."
+      },
+      "guidance": "Hohe Speicherauslastung ist normal. StatusOrbit protokolliert dies nur, wenn geringe Verfügbarkeit und aussagekräftige Swap-Aktivität zusammen auftreten."
+    },
+    "volume": {
+      "active": {
+        "title": "Weniger freier Festplattenspeicher",
+        "description": "Die Festplattenauslastung liegt seit {{duration}} über dem Warnwert und erreicht etwa {{value}}%."
+      },
+      "recovered": {
+        "title": "Festplattenspeicher ist wieder ausreichend",
+        "description": "Der Festplattenspeicher war für etwa {{duration}} eng, ist jetzt aber unter dem Warnwert."
+      },
+      "guidance": "Öffnen Sie den Aufräum-Bereich, um zuerst die Speicherkarte zu überprüfen. Jede Dateivorgabe erfordert Ihre Bestätigung."
+    }
+  },
+  "alerts": {
+    "eyebrow": "Lokales Ereignisprotokoll",
+    "title": "Warnungen und Wiederherstellungsereignisse",
+    "description": "Warnungen benötigen hohe, anhaltende Werte; Wiederherstellungshysteresis und Kühlzeiten reduzieren Spitzen und wiederholte Ereignisse.",
+    "active": "{{count}} aktive Warnungen",
+    "normal": "Alle Ressourcen sind normal",
+    "savedEvents": "{{count}} gespeicherte Ereignisse",
+    "filters": "Filter für Warnungen",
+    "all": "Alle",
+    "volume": "Festplattennutzung",
+    "eventCount": "{{count}} Ereignisse",
+    "emptyTitle": "Keine Warnungsereignisse",
+    "emptyDescription": "Kurze Spitzen werden ignoriert. Langanhaltende Druck- und Erholungsereignisse erscheinen hier.",
+    "recovered": "Erholt",
+    "severity": {
+      "high": "Hoch",
+      "critical": "Kritisch"
+    },
+    "triggeredDetail": "{{value}}%, über {{threshold}}% für {{duration}}.",
+    "recoveredDetail": "Zurück zu {{value}}% nach {{duration}}."
+  },
+  "privacyEyebrow": "Datengrenzen",
+  "privacyTitle": "Datenschutzrichtlinie",
+  "privacyLocal": "Die Historie bleibt im StatusOrbit WebView-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
+  "privacyCollected": "Nur CPU- und Speicherauslastung in Prozent, Festplatten- und Netzwerkdurchsatz sowie Ereignisse über Ressourcenverbrauch und -erholung werden gespeichert. App-Namen werden nur dann gespeichert, wenn Sie dies separat in den Einstellungen aktivieren.",
+  "privacyExcluded": "Prozessbefehle, Benutzer, Pfade, Dateinamen und Adressen lokaler oder externer Verbindungen werden nicht gespeichert.",
+  "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden."
+}

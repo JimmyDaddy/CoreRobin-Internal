@@ -6,7 +6,7 @@ StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、�
 
 项目使用 Tauri 2、React、TypeScript 和 Rust 构建。
 
-界面支持简体中文与英文，可在右上角直接切换。
+界面支持简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어和Русский，可在右上角直接切换。
 
 - [产品网站](https://jimmydaddy.github.io/StatusOrbit/)
 - [下载最新版本](https://github.com/JimmyDaddy/StatusOrbit/releases/latest)
@@ -20,7 +20,7 @@ StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、�
 - macOS 已完成真实设备验证；当前发布构建未配置 Developer ID 签名或 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
 - Windows 与 Linux 安装包由对应系统的 GitHub Actions 构建，目前作为未配置平台发布签名的早期预览版本提供。
 - Release 同时提供 SHA-256 校验表和 SPDX SBOM，并为校验表中的安装包生成 GitHub artifact provenance；这些来源证据不能替代尚未配置的平台签名。
-- `0.0.1` 是 StatusOrbit 的首个公开版本。遇到问题时，请在仓库的 Issues 中附上系统版本和复现步骤。
+- `0.0.2` 增加稳定事件生命周期、跨窗口后台状态、登录时启动和 8 种新界面语言。遇到问题时，请在仓库的 Issues 中附上系统版本和复现步骤。
 
 ## 功能
 
@@ -34,6 +34,7 @@ StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、�
 - 技术指标按需展开，不使用缺乏依据的“健康分数”
 - “智能诊断”先告诉用户电脑是否正常，再显示可能变慢的原因、原始证据和相关应用
 - 只有 CPU、内存、磁盘或网络问题持续一段时间时才提示，短暂波动不会被当成故障
+- 已确认的问题会保持稳定身份，指标回落后先等待恢复确认；主窗口、状态栏和 Orbit 伙伴共享同一结论
 - 把同一应用的相关进程合在一起，方便看出哪个应用最忙
 - 实时展示 CPU、内存、交换空间、磁盘和网络吞吐
 - 展示整机 CPU / 内存与磁盘读写的最近 5 分钟趋势
@@ -80,6 +81,7 @@ macOS 与 Linux 可能因系统权限只返回部分连接归属。
 
 - 每 5 分钟在本机保存一次 CPU、内存、磁盘和网络的整体状态
 - 问题持续一段时间时记录提醒，恢复正常后也会留下记录
+- 同一次问题的提醒与恢复会合并为一个事件，便于回看开始时间、持续时长、可能原因和最终结果
 - 短暂尖峰和重复提醒会被过滤，事件可以按资源类型筛选
 - 支持保留 1、7 或 30 天，并可随时停用写入或清除已保存记录
 - 默认不保存应用名称；用户可以单独开启这一项，但命令行、用户、路径、文件名和连接地址仍不会写入历史
@@ -88,9 +90,11 @@ macOS 与 Linux 可能因系统权限只返回部分连接归属。
 ### 设置
 
 - 支持切换界面语言、系统采样间隔与活动连接刷新间隔
+- 支持登录系统后静默启动；macOS 可以选择是否在 Dock 和应用切换器中显示 StatusOrbit
 - 支持配置 CPU、内存和卷占用百分比的颜色与告警阈值
 - 支持选择默认进程视图和历史保留期；偏好只保存在当前设备
 - 桌面提醒只针对持续问题，同一问题不会反复弹出，并设有每日数量上限；CPU、内存和磁盘提醒可以分别关闭
+- 问题稳定恢复后会补充一次恢复通知，避免只知道“出现过问题”却不知道是否已经恢复
 
 ## 安全保护与平台限制
 
@@ -141,9 +145,11 @@ pnpm site:build
 ## 验证
 
 ```bash
+pnpm i18n:check
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm site:build
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
@@ -156,6 +162,8 @@ Release workflow 的 verify/build job 只有只读仓库权限，构建结果先
 ## 目录
 
 - `src/`：React 界面、国际化、轮询状态与交互逻辑
+- `src/i18n/`：按语言和 namespace 拆分的界面、辅助窗口与桌面通知资源
+- `src/dailyIncidents.ts`、`src/healthState.ts`：日常事件生命周期和跨窗口展示状态
 - `src/diagnosis.ts`：纯函数智能诊断规则与应用归因
 - `src/cleanupMap.ts`：空间扇形图布局与下钻模型
 - `src-tauri/src/cleanup.rs`：文件扫描、应用盘点、进度/取消、空间层级聚合与受保护的永久删除操作
@@ -164,6 +172,7 @@ Release workflow 的 verify/build job 只有只读仓库权限，构建结果先
 - `src-tauri/src/process_control.rs`：跨平台进程控制租约与执行
 - `src-tauri/src/identity.rs`：跨平台进程启动标识读取
 - `src-tauri/src/models.rs`：前后端数据契约
+- `src-tauri/src/health_state.rs`：版本化健康状态注册表与跨窗口分发
 - `site/`：产品网站与网页版中英文使用指南
 - `docs/user-guide.zh-CN.md`、`docs/user-guide.md`：仓库内中英文用户指南
 - `scripts/build-site.mjs`：静态网站构建、品牌资产复制与本地链接校验

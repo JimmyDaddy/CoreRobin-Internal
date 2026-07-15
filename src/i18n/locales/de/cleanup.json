@@ -1,0 +1,227 @@
+{
+  "kicker": "Lokaler Speicherverbrauch analysieren",
+  "title": "Hilfe zur Speicherbereinigung",
+  "description": "Scannen Sie die Systemfestplatte und sehen Sie den Speicherverbrauch nach Dateipfad.",
+  "startScan": "Nur Lesen-Scan starten",
+  "scanAgain": "Nochmal scannen",
+  "scanning": "Wird gescannt…",
+  "cancelScan": "Scan abbrechen",
+  "cancelling": "Wird abgebrochen…",
+  "readOnlyTitle": "Zuerst prüfen, dann entscheiden",
+  "readOnlyDescription": "Der Hintergrund-Scan liest Namen, Größen und andere Metadaten, bis er abgeschlossen ist. Er liest niemals Dateiinhalte oder ändert, verschiebt oder lädt Dateien.",
+  "failed": "Der Speicher-Scan konnte nicht abgeschlossen werden",
+  "access": {
+    "kicker": "Vor dem Scan",
+    "title": "Zugriff auf die gesamte Festplatte erlauben",
+    "description": "macOS schützt Mail, Nachrichten und andere App-Daten sowie ähnliche Bereiche. Vollständiger Zugriff ermöglicht es StatusOrbit, eine möglichst vollständige Speicherkarte zu erstellen; StatusOrbit liest weiterhin nur Metadaten wie Namen, Größen und Datumsangaben.",
+    "checking": "Zugriff wird geprüft…",
+    "checkingReturn": "Zugriff wurde bestätigt…",
+    "openSettings": "Vollständigen Zugriff öffnen",
+    "openAgain": "Systemeinstellungen erneut öffnen",
+    "revealApp": "App in Finder anzeigen",
+    "checkAgain": "Zugriff aktiviert — erneut prüfen",
+    "continueLimited": "Scannen der zugänglichen Bereiche",
+    "waiting": "Die Systemeinstellungen sind geöffnet. Wenn StatusOrbit fehlt, klicken Sie auf + unter der Liste und wählen Sie StatusOrbit.app aus. Aktivieren Sie es und kehren Sie zum automatischen Scannen zurück.",
+    "unknown": "Zugriff konnte nicht bestätigt werden. Sie können die Systemeinstellungen weiterhin öffnen oder einen begrenzten Scan durchführen.",
+    "bundleRequired": "Starten Sie zuerst StatusOrbit.app",
+    "bundleMissingTitle": "Dieser Prozess kann nicht zur Zugriffsberechtigungsliste hinzugefügt werden",
+    "bundleMissingDescription": "macOS erlaubt hier keine Berechtigung für eine Entwicklungsanwendung. Installieren Sie StatusOrbit.app und öffnen Sie es erneut aus dem Anwendungsordner; ein begrenzter Scan ist weiterhin verfügbar.",
+    "privacy": "macOS kontrolliert diese Berechtigung, und Sie können sie jederzeit deaktivieren. StatusOrbit liest niemals Dateiinhalte oder ändert Dateien während eines Scans.",
+    "steps": {
+      "open": "Öffnen Sie die Systemeinstellungen",
+      "add": "Klicken Sie auf + und wählen Sie StatusOrbit.app aus",
+      "return": "Aktivieren Sie es und kehren Sie zurück"
+    }
+  },
+  "reclaimableEstimate": "Möglicherweise freigewordbarer Speicherplatz",
+  "estimateBoundary": "Dies ist eine Schätzung für Caches und temporäre Dateien, keine Empfehlung zur vollständigen Löschung.",
+  "entriesScanned": "{{count}} Elemente überprüft",
+  "scanDuration": "{{seconds}} Sekunden",
+  "snapshot": {
+    "retained": "Auf diesem Gerät gespeichert; Änderungen werden beim Durchsuchen geprüft",
+    "refresh": "Ergebnis aktualisieren",
+    "cached": {
+      "title": "Vorheriges Scan-Ergebnis wiederhergestellt",
+      "description": "Setzen Sie die Erkundung fort, ohne auf ein erneutes Scannen warten zu müssen. StatusOrbit prüft einen Ordner auf Änderungen nur beim Durchsuchen."
+    },
+    "expired": {
+      "title": "Dieses Ergebnis ist älter als 24 Stunden",
+      "description": "StatusOrbit stellt die Karte zur Verfügung, damit Sie weiter erkunden können. Aktualisieren Sie sie, bevor Sie Entscheidungen bezüglich der Bereinigung treffen."
+    }
+  },
+  "progress": {
+    "scanningLocation": "Analysiere {{location}}",
+    "showPath": "Aktuellen Pfad anzeigen",
+    "entries": "Überprüft",
+    "discovered": "Gefunden",
+    "elapsed": "Verstrichene Zeit",
+    "foundSpace": "Inhalt gefunden",
+    "stageKicker": "Erstelle die Speicherkarte",
+    "locations": {
+      "downloads": "Downloads",
+      "trash": "Papierkorb",
+      "appCache": "Anwendungscaches",
+      "developerCache": "Entwickler-Zwischenspeicher",
+      "hiddenData": "versteckte Anwendungsdaten",
+      "applications": "installierte Anwendungen",
+      "personal": "persönliche Dateien",
+      "systemDisk": "der Systemlaufwerk"
+    }
+  },
+  "categories": {
+    "title": "Für welchen Zweck dieser Bereich typischerweise verwendet wird"
+  },
+  "map": {
+    "title": "Wo sich der Bereich befindet",
+    "description": "Der Sektorbereich stellt den zugewiesenen Festplattenspeicher dar. Zuordnungen zu Farben gehören zu einem Ordnerverzweig; graue Sektoren sind Dateien.",
+    "descriptionPath": "Zeigt den realen Pfad über das Systemlaufwerk an: jeder Ring ist das nächste Verzeichnis, und der Sektorbereich stellt den zugewiesenen Festplattenspeicher dar.",
+    "descriptionCategory": "Der gleiche Scan wird nach gemeinsamem Zweck gruppiert. Kategorien sind eine Hilfsansicht, nicht die tatsächliche Ordnerhierarchie.",
+    "allScanned": "Alle Suchergebnisse",
+    "categoryRoot": "Zwecke",
+    "mode": {
+      "label": "Ansicht der Speicherkarte",
+      "path": "Dateipfade",
+      "category": "Zweck"
+    },
+    "ariaLabel": "Speicherkarte für {{name}}",
+    "back": "Zurück ein Level",
+    "breadcrumbs": "Hierarchische Ansicht der Speicherkarte",
+    "centerBack": "Zurück zum übergeordneten Ordner",
+    "details": "Details des Bereichs",
+    "selected": "Ausgewählt",
+    "grouped": "Gruppierte Kategorie",
+    "smallerObjects": "Kleinere Objekte",
+    "restrictedObjects": "Nicht zugängliche Objekte",
+    "allocatedSize": "Auf der Festplatte allokiert",
+    "logicalSize": "{{size}} logische Größe",
+    "unreadable": "Nicht lesbar",
+    "restrictedHint": "Das Betriebssystem hat keinen Lesezugriff gewährt; dieses Element kann nicht gesammelt werden",
+    "types": {
+      "folder": "Ordner",
+      "file": "Datei",
+      "aggregate": "Gruppierte kleine Objekte",
+      "restricted": "Beschränkte Objekte"
+    },
+    "noDeeperBreakdown": "Eine tiefere Verzeichnisstruktur ist auf dieser Ebene nicht verfügbar.",
+    "loadDeeperHint": "Wählen Sie diesen Ordner, um das nächste Level zu laden, ohne den gesamten Computer neu zu scannen.",
+    "loadingFolder": "Dieser Ordner wird geladen…",
+    "loadFailed": "Ordner konnte nicht geladen werden",
+    "directActionHint": "Ziehen Sie einen Eintrag und legen Sie ihn in den Aufräumkorb am unteren linken Rand des Bereichs ab",
+    "protectedSelectionHint": "Systempfade, gruppierte Knoten und das Home-Verzeichnis sind nur zum Anzeigen; nur bestimmte Elemente innerhalb Ihres Home-Verzeichnisses können in den Korb gelangen",
+    "trashRootProtected": "Der Papierkorb-Ordner selbst ist geschützt; öffnen Sie ihn und wählen Sie die spezifischen Inhalte aus, die Sie entfernen möchten",
+    "planSummary": "{{count}} ausgewählte Elemente · {{size}}",
+    "reviewCleanup": "Überprüfen und dauerhaft löschen",
+    "refreshCleanup": "Auswahl vor der Überprüfung aktualisieren",
+    "deletionUnavailable": "Dauerhaftes Löschen nicht verfügbar",
+    "basket": {
+      "title": "Löschkorb",
+      "empty": "Halten Sie einen Bereich und ziehen Sie ihn hier, um zuerst Elemente zu sammeln",
+      "release": "Zum Korb hinzufügen",
+      "collected": "Im Löschkorb",
+      "collectedHint": "Bereits gelöscht; entfernen Sie es aus dem Korb unten oder setzen Sie die Überprüfung fort",
+      "remove": "{{name}} aus dem Korb entfernen",
+      "clear": "Korb leeren",
+      "completed": "{{deletedCount}} Elemente dauerhaft gelöscht",
+      "partial": "{{deletedCount}} Elemente gelöscht; {{failedCount}} konnte nicht verarbeitet werden",
+      "cancelled": "Löschvorgang nach dem Löschen von {{deletedCount}} Elementen abgebrochen"
+    },
+    "deleteResult": {
+      "success": "{{deletedCount}} Elemente dauerhaft gelöscht",
+      "partial": "{{deletedCount}} Elemente gelöscht; {{failedCount}} fehlgeschlagen",
+      "failed": "Nichts wurde gelöscht; {{failedCount}} Elemente fehlgeschlagen",
+      "cancelled": "Löschvorgang nach dem Löschen von {{deletedCount}} Elementen abgebrochen",
+      "cancelledNoDeletion": "Löschvorgang wurde vor vollständiger Entfernung eines Elements abgebrochen",
+      "reclaimed": "Verfügbarer Speicherplatz wurde vor der Löschung überprüft: ca. {{size}}"
+    },
+    "freshness": {
+      "cached": "Zeigt das Ergebnis des vorherigen Scans an",
+      "expired": "Dieser Scan ist veraltet; ein erneuter Scan wird empfohlen",
+      "changed": "Dieses Verzeichnis wurde geändert; Größenangaben können ungenau sein",
+      "changedShort": "Inhalt wurde geändert"
+    }
+  },
+  "deleteDialog": {
+    "title": "Überprüfung vor dauerhafter Löschung",
+    "description": "Bestätigt das direkte Löschen von Dateien vom Datenträger, anstatt sie in den Papierkorb zu verschieben.",
+    "itemUnit": "Dateien",
+    "estimatedSize": "geschätzter Wert",
+    "irreversible": "Kann nicht rückgängig gemacht werden",
+    "changed": "Seit dem Scan geändert",
+    "changedWarning": "{{count}} Dateien unterscheiden sich von der vorherigen Ansicht. Größenangaben und Anzahl wurden aktualisiert; bitte erneut überprüfen, bevor Sie bestätigen.",
+    "preparing": "Überprüfe Pfade und aktuellen Dateizustand…",
+    "refreshSelection": "Auswahl erneut aktualisieren",
+    "deleteConfirmTitle": "Ich verstehe, dass diese Dateien dauerhaft gelöscht werden",
+    "deleteConfirmDescription": "Dateien gelangen nicht in den Papierkorb. Downloads, Einstellungen und persönliche Daten können möglicherweise nicht wiederhergestellt werden.",
+    "confirm": "Dauerhaft {{count}} Dateien löschen",
+    "deleting": "Löscht dauerhaft…",
+    "selection": "ausgewählte Inhalte",
+    "progressPreparing": "Überprüfe die ausgewählten Inhalte",
+    "progressDeleting": "Löscht dauerhaft",
+    "progressCancelling": "Sicher stoppen",
+    "progressCurrent": "Aktuell: {{name}}",
+    "progressInspecting": "Dateien und Ordner werden überprüft",
+    "progressEntries": "{{processed}} / {{total}} Dateien und Ordner",
+    "progressTargets": "{{completed}} / {{total}} Elemente erfolgreich gelöscht",
+    "progressDeleted": "Ungefähr {{size}} freigegeben",
+    "cancelDelete": "Löschen abbrechen",
+    "cancelling": "Abbrechen…",
+    "cancelHint": "Bereits abgeschlossene Löschungen können nicht wiederhergestellt werden. StatusOrbit stoppt nach der aktuellen Dateioperation.",
+    "errors": {
+      "protected_cleanup_path": "StatusOrbit löscht weder Ihr Home-Verzeichnis noch den Papierkorb selbst.",
+      "cleanup_target_outside_home": "Aus Sicherheitsgründen verarbeitet StatusOrbit nur Inhalte innerhalb Ihres persönlichen Ordners.",
+      "cleanup_cross_filesystem": "Das ausgewählte Verzeichnis befindet sich auf einem anderen Datenträger oder Mount-Punkt, daher hat StatusOrbit keine rekursive Löschung durchgeführt.",
+      "cleanup_target_changed": "Eine Datei wurde nach der Bestätigung geändert, daher hat StatusOrbit nichts gelöscht. Abbrechen und erneut überprüfen.",
+      "cleanup_confirmation_unavailable": "Diese Bestätigung ist nicht mehr verfügbar. Abbrechen und den Vorgang erneut starten.",
+      "cleanup_confirmation_expired": "Diese Bestätigung ist abgelaufen. Abbrechen und die aktuellen Dateien erneut überprüfen.",
+      "cleanup_target_unavailable": "Einige Inhalte sind möglicherweise nicht mehr vorhanden oder nicht zugänglich. Scannen Sie neu und versuchen Sie es erneut.",
+      "invalid_cleanup_selection": "Die Auswahl im Löschkorb ist ungültig. Wählen Sie die Elemente erneut aus.",
+      "overlapping_cleanup_targets": "Ein Ordner und eines seiner Unterverzeichnisse sind gleichzeitig ausgewählt. Nur ein Level auswählen."
+    }
+  },
+  "locations": {
+    "downloads": {
+      "title": "Downloads",
+      "description": "Kann Installationen, Dokumente und Dateien enthalten, die Sie noch benötigen."
+    },
+    "trash": {
+      "title": "Papierkorb",
+      "description": "Elemente sind nach dem Leeren des Papierkorbs in der Regel nicht mehr wiederherstellbar."
+    },
+    "app_cache": {
+      "title": "Anwendungs-Cache",
+      "description": "Apps können diese Daten später neu erstellen oder herunterladen."
+    },
+    "developer_cache": {
+      "title": "Entwickler-Cache",
+      "description": "Daten, die Build-Tools und Paketmanager neu erstellen können."
+    },
+    "hidden_data": {
+      "title": "Versteckte Benutzerordner",
+      "description": "App-spezifische Daten und Konfigurationen mit einem Punkt als Präfix. Nur gemessen; direkte Löschung wird nicht empfohlen."
+    }
+  },
+  "safety": {
+    "reclaimable": "Normalerweise freigebbar",
+    "review": "Überprüfung erforderlich"
+  },
+  "itemCount": "{{count}} Dateien",
+  "unavailable": "Nicht auf dieser Plattform verfügbar",
+  "pathUnavailable": "Kein scannbarer Speicherort",
+  "morePaths": "und {{count}} weitere Speicherorte",
+  "applications": {
+    "kicker": "Nur-Lese-App-Inventar",
+    "title": "Apps, die seit längerem nicht verwendet werden",
+    "boundary": "Nur Apps, deren letzte Nutzung laut macOS mindestens sechs Monate zurückliegt; StatusOrbit deinstalliert sie niemals automatisch",
+    "lastUsed": "Letzte Verwendung {{date}} · seit {{days}} Tagen nicht verwendet",
+    "none": "Keine App konnte bestätigt werden, dass sie länger als sechs Monate nicht verwendet wurde.",
+    "unavailable": "Diese Plattform kann derzeit keine zuverlässigen Informationen über das letzte Verwendungsdatum von Apps bereitstellen.",
+    "unknownExcluded": "{{count}} andere Apps haben kein bestätigtes letztes Verwendungsdatum, daher hat StatusOrbit sie nicht als nicht verwendet klassifiziert."
+  },
+  "reviewFirst": "Einzeln überprüfen",
+  "largestFiles": "Große Dateien auf der Systemfestplatte",
+  "largeFileBoundary": "Nur Dateien über 500 MB werden angezeigt; automatische Löschung wird nicht empfohlen",
+  "noLargeFiles": "Keine Dateien über 500 MB wurden an den überprüften Speicherorten gefunden.",
+  "unreadable": "{{count}} Diese Speicherbereiche waren geschützt oder vorübergehend nicht zugänglich. Nur diese Bereiche werden von dem Ergebnis ausgeschlossen.",
+  "fullDiskAccessHint": "Unter macOS: Erteilen Sie StatusOrbit die Berechtigung für den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen → Datenschutz & Sicherheit, und führen Sie dann erneut einen Scan durch.",
+  "safetyBoundary": "Der Scan hat keine zeitlichen oder itembezogenen Beschränkungen und folgt niemals symbolischen Links. Nur Elemente, die in den Papierkorb gelegt, anhand des Pfads überprüft und explizit bestätigt wurden, werden dauerhaft gelöscht und können nicht wiederhergestellt werden."
+}

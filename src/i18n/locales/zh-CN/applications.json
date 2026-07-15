@@ -1,0 +1,38 @@
+{
+  "kicker": "应用级汇总",
+  "overviewTitle": "现在谁影响最大",
+  "title": "应用资源影响",
+  "description": "StatusOrbit 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
+  "viewAll": "查看全部应用",
+  "search": "搜索应用",
+  "searchPlaceholder": "按应用名称搜索",
+  "sortLabel": "应用排序方式",
+  "sort": {
+    "impact": "综合影响",
+    "cpu": "CPU",
+    "memory": "内存",
+    "disk": "磁盘"
+  },
+  "systemComponent": "系统组件 · 不建议结束",
+  "processCount": "{{count}} 个相关进程",
+  "memory": "内存",
+  "disk": "磁盘",
+  "level": {
+    "low": "影响较低",
+    "moderate": "有些影响",
+    "high": "影响较高",
+    "critical": "影响明显"
+  },
+  "selected": {
+    "title": "{{name}} 的影响说明",
+    "cpu": "当前主要影响来自处理器占用（{{value}}）。持续偏高时可能导致卡顿、发热或耗电增加。",
+    "memory": "当前主要影响来自内存占用（{{value}}）。只有同时出现内存压力和交换活动时才需要处理。",
+    "disk": "当前主要影响来自磁盘活动（{{value}}）。同步、下载或构建任务都可能造成短时读写。",
+    "balanced": "当前没有某一项资源特别突出，整体影响较低。",
+    "systemSafety": "这是系统组件，不建议直接结束；如有异常请先查看专业证据。",
+    "appSafety": "这是普通应用。StatusOrbit 不会自动关闭它，结束操作仍需单独确认。",
+    "professionalDetails": "用专业模式查看进程"
+  },
+  "empty": "没有匹配的应用",
+  "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。"
+}

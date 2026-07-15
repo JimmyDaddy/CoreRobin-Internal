@@ -45,6 +45,26 @@ describe("Orbit companion interactions", () => {
     expect(screen.queryByRole("button", { name: "关闭" })).toBeNull();
   });
 
+  it("carries the stable incident identity into the main window", async () => {
+    const opened: Array<[string, string | null | undefined]> = [];
+
+    await openDailyFromCompanion(
+      "attention",
+      async () => undefined,
+      {
+        showMainWindow: async () => undefined,
+        openDaily: async (target, occurrenceId) => {
+          opened.push([target, occurrenceId]);
+        },
+      },
+      "diagnosis:sustained_cpu:100",
+    );
+
+    expect(opened).toEqual([
+      ["overview", "diagnosis:sustained_cpu:100"],
+    ]);
+  });
+
   it("offers hiding through the right-click menu", () => {
     render(<OrbitCompanionWindow />);
     const mascot = screen.getByRole("button", { name: /拖动 Orbit 移动/ });

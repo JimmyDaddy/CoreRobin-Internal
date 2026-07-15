@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { emitTo, listen } from "@tauri-apps/api/event";
+import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   BatteryMedium,
@@ -14,11 +14,11 @@ import {
   Sparkles,
   Thermometer,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import brandMark from "../../src-tauri/icons/128x128.png";
 import { createAsyncListenerRegistry } from "../asyncListener";
-import type { TraySummary } from "../traySummary";
+import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
 
@@ -28,16 +28,11 @@ const desktopRuntime = typeof window !== "undefined"
 
 export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
-  const [summary, setSummary] = useState<TraySummary | null>(null);
+  const summary = useSharedHealthState();
 
   useEffect(() => {
     if (!desktopRuntime) return;
     const listeners = createAsyncListenerRegistry();
-    listeners.register(
-      listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
-        if (!listeners.disposed) setSummary(payload);
-      }),
-    );
     listeners.register(
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
         if (!listeners.disposed && !focused) void getCurrentWindow().hide();
@@ -48,6 +43,13 @@ export function TrayPanel() {
 
   const openView = async (view: "overview" | "cleanup" | "settings") => {
     await invoke("show_main_window");
+    if (view === "overview" && summary?.primaryIncident) {
+      await emitTo("main", "status-orbit:open-daily", {
+        view,
+        occurrenceId: summary.primaryIncident.occurrenceId,
+      });
+      return;
+    }
     await emitTo("main", "status-orbit:navigate", view);
   };
   const togglePaused = async () => {
@@ -63,18 +65,25 @@ export function TrayPanel() {
       <section className="tray-panel">
         <header className="tray-header">
           <span className="tray-logo"><img src={brandMark} alt="" /></span>
-          <span className="tray-brand"><strong>StatusOrbit</strong><small>{t("tray.localMonitor")}</small></span>
+          <span className="tray-brand"><strong>StatusOrbit</strong><small>{t("tray:localMonitor")}</small></span>
           <span className={`tray-health tray-health--${summary?.health ?? "loading"}`}>
-            <i />{t(`tray.health.${summary?.health ?? "loading"}`)}
+            <i />{t(`tray:health.${summary?.health ?? "loading"}`)}
           </span>
         </header>
 
         <div className="tray-message">
-          <strong>{t(`tray.status.${summary?.health ?? "loading"}.title`)}</strong>
+          <strong>
+            {summary && summary.activeCount > 0 &&
+              (summary.health === "attention" || summary.health === "urgent")
+              ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
+              : t(`tray:status.${summary?.health ?? "loading"}.title`)}
+          </strong>
           <span>
-            {summary?.reason && summary.reason !== "none"
-              ? t("tray.reason", { resource: t(`tray.resource.${summary.reason}`) })
-              : t(`tray.status.${summary?.health ?? "loading"}.description`)}
+            {summary?.primaryIncident?.phase === "recovering"
+              ? t("tray:recovering")
+              : summary?.reason && summary.reason !== "none"
+              ? t("tray:reason", { resource: t(`tray:resource.${summary.reason}`) })
+              : t(`tray:status.${summary?.health ?? "loading"}.description`)}
           </span>
         </div>
 
@@ -87,32 +96,32 @@ export function TrayPanel() {
           />
           <TrayMetric
             icon={<MemoryStick size={15} />}
-            label={t("tray.resource.memory")}
+            label={t("tray:resource.memory")}
             value={summary ? formatPercent(summary.memoryPercent) : "—"}
             percent={summary?.memoryPercent ?? 0}
           />
           <TrayMetric
             icon={<Database size={15} />}
-            label={t("tray.available")}
+            label={t("tray:available")}
             value={summary?.storageAvailableBytes === null || summary?.storageAvailableBytes === undefined ? "—" : formatBytes(summary.storageAvailableBytes)}
             percent={summary?.storageUsedPercent ?? 0}
           />
         </div>
 
         <div className="tray-device-row">
-          <span><Thermometer size={14} />{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common.unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</span>
-          <span><BatteryMedium size={14} />{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common.unavailable") : formatPercent(summary.batteryPercent)}</span>
+          <span><Thermometer size={14} />{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</span>
+          <span><BatteryMedium size={14} />{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</span>
         </div>
 
         <div className="tray-actions">
-          <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray.open")}</span></button>
-          <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray.companion")}</span></button>
-          <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray.cleanup")}</span></button>
+          <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
+          <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray:companion")}</span></button>
+          <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
           <button type="button" onClick={() => void togglePaused()}>
             {summary?.paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{summary?.paused ? t("app.resume") : t("app.pause")}</span>
+            <span>{summary?.paused ? t("app:resume") : t("app:pause")}</span>
           </button>
-          <button type="button" onClick={() => void openView("settings")}><Settings2 size={16} /><span>{t("app.settings")}</span></button>
+          <button type="button" onClick={() => void openView("settings")}><Settings2 size={16} /><span>{t("app:settings")}</span></button>
         </div>
       </section>
     </main>

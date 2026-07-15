@@ -17,12 +17,27 @@ export interface SystemSnapshot {
 }
 
 export interface SystemSummary {
+  sequence: number;
   sampledAtMs: number;
+  sampleIntervalMs: number;
   cpu: CpuSnapshot;
   memory: MemorySnapshot;
-  volumes: VolumeSnapshot[];
+  disk: DiskSnapshot;
+  network: NetworkSnapshot;
   sensors: SensorsSnapshot;
 }
+
+export type SystemHealthSnapshot = Pick<
+  SystemSnapshot,
+  | "sequence"
+  | "sampledAtMs"
+  | "sampleIntervalMs"
+  | "cpu"
+  | "memory"
+  | "disk"
+  | "network"
+  | "sensors"
+> & Partial<Pick<SystemSnapshot, "processes" | "capabilities">>;
 
 export type BatteryState =
   | "charging"

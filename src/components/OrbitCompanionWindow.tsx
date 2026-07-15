@@ -12,22 +12,30 @@ import {
 } from "react";
 
 import { createAsyncListenerRegistry } from "../asyncListener";
-import type { TraySummary } from "../traySummary";
+import type { HealthStateSnapshot } from "../healthState";
+import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 
 const COMPANION_POSITION_KEY = "status-orbit.companion-position.v1";
 const COMPANION_EXPANDED_LOGICAL_SIZE = { width: 386, height: 92 };
 const COMPANION_HOVER_COLLAPSE_DELAY_MS = 220;
-type CompanionHealth = TraySummary["health"] | "loading";
+type CompanionHealth = HealthStateSnapshot["health"] | "loading";
 type CompanionDailyTarget = "more" | "overview";
 interface CompanionDailyBridge {
   showMainWindow: () => Promise<unknown>;
-  openDaily: (target: CompanionDailyTarget) => Promise<void>;
+  openDaily: (
+    target: CompanionDailyTarget,
+    occurrenceId?: string | null,
+  ) => Promise<void>;
 }
 
 const nativeCompanionDailyBridge: CompanionDailyBridge = {
   showMainWindow: () => invoke("show_main_window"),
-  openDaily: (target) => emitTo("main", "status-orbit:open-daily", target),
+  openDaily: (target, occurrenceId) => emitTo(
+    "main",
+    "status-orbit:open-daily",
+    occurrenceId ? { view: target, occurrenceId } : target,
+  ),
 };
 const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
@@ -35,7 +43,7 @@ const desktopRuntime = typeof window !== "undefined"
 
 export function OrbitCompanionWindow() {
   const { t } = useAuxiliaryTranslation();
-  const [summary, setSummary] = useState<TraySummary | null>(null);
+  const summary = useSharedHealthState();
   const previewExpanded = !desktopRuntime
     && new URLSearchParams(window.location.search).get("preview") === "expanded";
   const [expanded, setExpanded] = useState(previewExpanded);
@@ -54,17 +62,6 @@ export function OrbitCompanionWindow() {
         window.clearTimeout(hoverCollapseTimerRef.current);
       }
     };
-  }, []);
-
-  useEffect(() => {
-    if (!desktopRuntime) return;
-    const listeners = createAsyncListenerRegistry();
-    listeners.register(
-      listen<TraySummary>("status-orbit:tray-summary", ({ payload }) => {
-        if (!listeners.disposed) setSummary(payload);
-      }),
-    );
-    return () => listeners.dispose();
   }, []);
 
   useEffect(() => {
@@ -225,7 +222,12 @@ export function OrbitCompanionWindow() {
   const openDaily = async () => {
     contextMenuOpenRef.current = false;
     setContextMenuOpen(false);
-    await openDailyFromCompanion(health, () => updateExpanded(false));
+    await openDailyFromCompanion(
+      health,
+      () => updateExpanded(false),
+      nativeCompanionDailyBridge,
+      summary?.primaryIncident?.occurrenceId,
+    );
   };
 
   const beginDragging = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -272,7 +274,7 @@ export function OrbitCompanionWindow() {
           role="button"
           tabIndex={0}
           aria-expanded={expanded}
-          aria-label={t("companion.dragHint")}
+          aria-label={t("companion:dragHint")}
           onMouseDown={beginDragging}
           onKeyDown={handleMascotKeyDown}
         >
@@ -289,21 +291,28 @@ export function OrbitCompanionWindow() {
           <span className="orbit-buddy-status" aria-hidden="true" />
         </div>
 
-        {contextMenuOpen ? <div className="orbit-buddy-menu" role="menu" aria-label={t("companion.menu")}>
+        {contextMenuOpen ? <div className="orbit-buddy-menu" role="menu" aria-label={t("companion:menu")}>
           <button type="button" role="menuitem" onClick={hideFromContextMenu}>
             <EyeOff size={14} />
-            <span>{t("companion.hide")}</span>
+            <span>{t("companion:hide")}</span>
           </button>
         </div> : expanded ? <div className="orbit-buddy-bubble">
-          <small>{t("companion.kicker")}</small>
-          <strong>{t(`tray.status.${health}.title`)}</strong>
+          <small>{t("companion:kicker")}</small>
+          <strong>
+            {summary && summary.activeCount > 0 &&
+              (summary.health === "attention" || summary.health === "urgent")
+              ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
+              : t(`tray:status.${health}.title`)}
+          </strong>
           <p>
-            {summary?.reason && summary.reason !== "none"
-              ? t("companion.reason", { resource: t(`tray.resource.${summary.reason}`) })
-              : t(`tray.status.${health}.description`)}
+            {summary?.primaryIncident?.phase === "recovering"
+              ? t("companion:recovering")
+              : summary?.reason && summary.reason !== "none"
+              ? t("companion:reason", { resource: t(`tray:resource.${summary.reason}`) })
+              : t(`tray:status.${health}.description`)}
           </p>
           <button type="button" onClick={() => void openDaily()}>
-            {t(`companion.action.${health}`)}<ArrowRight size={13} />
+            {t(`companion:action.${health}`)}<ArrowRight size={13} />
           </button>
         </div> : null}
       </section>
@@ -315,10 +324,14 @@ export async function openDailyFromCompanion(
   health: CompanionHealth,
   collapse: () => Promise<void>,
   bridge: CompanionDailyBridge = nativeCompanionDailyBridge,
+  occurrenceId?: string | null,
 ) {
   await collapse();
   await bridge.showMainWindow();
-  await bridge.openDaily(health === "normal" ? "more" : "overview");
+  await bridge.openDaily(
+    health === "normal" ? "more" : "overview",
+    occurrenceId,
+  );
 }
 
 async function hideCompanion() {

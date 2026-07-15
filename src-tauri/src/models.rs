@@ -23,10 +23,13 @@ pub struct SystemSnapshot {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemSummary {
+    pub sequence: u64,
     pub sampled_at_ms: u64,
+    pub sample_interval_ms: u64,
     pub cpu: CpuSnapshot,
     pub memory: MemorySnapshot,
-    pub volumes: Vec<VolumeSnapshot>,
+    pub disk: DiskSnapshot,
+    pub network: NetworkSnapshot,
     pub sensors: SensorsSnapshot,
 }
 

@@ -8,7 +8,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   createStartupManagementLease,
@@ -51,7 +51,7 @@ export function StartupExplorer({
   totalMemoryBytes,
   onRefresh,
 }: StartupExplorerProps) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [filter, setFilter] = useState<"review" | "all" | "system">("review");
   const [query, setQuery] = useState("");
   const [actionItem, setActionItem] = useState<StartupItem | null>(null);
@@ -158,18 +158,18 @@ export function StartupExplorer({
       {variant === "professional" ? <header className="panel startup-hero">
         <span className="startup-hero__icon"><Rocket size={20} /></span>
         <div>
-          <span className="eyebrow">{t("startup.eyebrow")}</span>
-          <h2 id="startup-title">{t("startup.title")}</h2>
-          <p>{t("startup.description")}</p>
+          <span className="eyebrow">{t("startup:eyebrow")}</span>
+          <h2 id="startup-title">{t("startup:title")}</h2>
+          <p>{t("startup:description")}</p>
         </div>
         <button className="button button--secondary" type="button" disabled={loading} onClick={onRefresh}>
           <RefreshCw className={loading ? "is-spinning" : undefined} size={14} />
-          {loading ? t("startup.scanning") : t("common.refresh")}
+          {loading ? t("startup:scanning") : t("common:refresh")}
         </button>
       </header> : (
         <header className="startup-guided-header">
-          <div><span className="eyebrow">{t("startup.guided.kicker")}</span><h2 id="startup-title">{t("startup.guided.title")}</h2><p>{t("startup.guided.description")}</p></div>
-          <button className="button button--secondary" type="button" disabled={loading} onClick={onRefresh}><RefreshCw className={loading ? "is-spinning" : undefined} size={14} />{loading ? t("startup.scanning") : t("common.refresh")}</button>
+          <div><span className="eyebrow">{t("startup:guided.kicker")}</span><h2 id="startup-title">{t("startup:guided.title")}</h2><p>{t("startup:guided.description")}</p></div>
+          <button className="button button--secondary" type="button" disabled={loading} onClick={onRefresh}><RefreshCw className={loading ? "is-spinning" : undefined} size={14} />{loading ? t("startup:scanning") : t("common:refresh")}</button>
         </header>
       )}
 
@@ -180,38 +180,38 @@ export function StartupExplorer({
       {outcome ? (
         <div className="panel startup-outcome" role="status">
           <CheckCircle2 size={16} />
-          <span>{t(outcome.enabled ? "startup.outcome.enabled" : "startup.outcome.disabled", { name: outcome.name })}</span>
-          <button type="button" onClick={() => setOutcome(null)}>{t("common.close")}</button>
+          <span>{t(outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled", { name: outcome.name })}</span>
+          <button type="button" onClick={() => setOutcome(null)}>{t("common:close")}</button>
         </div>
       ) : null}
 
       {!snapshot && loading ? (
-        <div className="panel startup-loading"><RefreshCw className="is-spinning" size={20} /><strong>{t("startup.loadingTitle")}</strong><span>{t("startup.loadingDescription")}</span></div>
+        <div className="panel startup-loading"><RefreshCw className="is-spinning" size={20} /><strong>{t("startup:loadingTitle")}</strong><span>{t("startup:loadingDescription")}</span></div>
       ) : snapshot ? (
         <>
-          {variant === "professional" ? <section className="startup-summary" aria-label={t("startup.summary")}>
-            <article className="panel is-review"><strong>{reviewCount}</strong><span>{t("startup.reviewCount")}</span><small>{t("startup.reviewHint")}</small></article>
-            <article className="panel"><strong>{items.length - systemCount}</strong><span>{t("startup.thirdPartyCount")}</span><small>{t("startup.thirdPartyHint")}</small></article>
-            <article className="panel is-system"><strong>{systemCount}</strong><span>{t("startup.systemCount")}</span><small>{t("startup.systemHint")}</small></article>
+          {variant === "professional" ? <section className="startup-summary" aria-label={t("startup:summary")}>
+            <article className="panel is-review"><strong>{reviewCount}</strong><span>{t("startup:reviewCount")}</span><small>{t("startup:reviewHint")}</small></article>
+            <article className="panel"><strong>{items.length - systemCount}</strong><span>{t("startup:thirdPartyCount")}</span><small>{t("startup:thirdPartyHint")}</small></article>
+            <article className="panel is-system"><strong>{systemCount}</strong><span>{t("startup:systemCount")}</span><small>{t("startup:systemHint")}</small></article>
           </section> : (
             <section className={`startup-guided-summary${reviewCount > 0 ? " has-items" : ""}`}>
               {reviewCount > 0 ? <Rocket size={20} /> : <CheckCircle2 size={20} />}
-              <div><strong>{reviewCount > 0 ? t("startup.guided.found", { count: reviewCount }) : t("startup.guided.clear")}</strong><span>{reviewCount > 0 ? t("startup.guided.foundDescription") : t("startup.guided.clearDescription")}</span></div>
+              <div><strong>{reviewCount > 0 ? t("startup:guided.found", { count: reviewCount }) : t("startup:guided.clear")}</strong><span>{reviewCount > 0 ? t("startup:guided.foundDescription") : t("startup:guided.clearDescription")}</span></div>
             </section>
           )}
 
           <section className="panel startup-list" aria-labelledby="startup-list-title">
             {variant === "professional" ? <header>
-              <div><span className="eyebrow">{t("startup.inventory")}</span><h3 id="startup-list-title">{t("startup.listTitle")}</h3></div>
+              <div><span className="eyebrow">{t("startup:inventory")}</span><h3 id="startup-list-title">{t("startup:listTitle")}</h3></div>
               <span>{new Date(snapshot.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" })}</span>
             </header> : null}
             {variant === "professional" ? <div className="startup-toolbar">
-              <div className="startup-filters" role="group" aria-label={t("startup.filters")}>
+              <div className="startup-filters" role="group" aria-label={t("startup:filters")}>
                 {(["review", "all", "system"] as const).map((value) => (
-                  <button type="button" className={filter === value ? "is-active" : ""} aria-pressed={filter === value} key={value} onClick={() => setFilter(value)}>{t(`startup.filter.${value}`)}</button>
+                  <button type="button" className={filter === value ? "is-active" : ""} aria-pressed={filter === value} key={value} onClick={() => setFilter(value)}>{t(`startup:filter.${value}`)}</button>
                 ))}
               </div>
-              <label className="startup-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("startup.search")} /></label>
+              <label className="startup-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("startup:search")} /></label>
             </div> : null}
             {visible.length > 0 ? (
               <div className="startup-items">
@@ -227,12 +227,12 @@ export function StartupExplorer({
                 ))}
               </div>
             ) : (
-              <div className="startup-empty"><CheckCircle2 size={20} /><strong>{t("startup.emptyTitle")}</strong><span>{t("startup.emptyDescription")}</span></div>
+              <div className="startup-empty"><CheckCircle2 size={20} /><strong>{t("startup:emptyTitle")}</strong><span>{t("startup:emptyDescription")}</span></div>
             )}
             <footer>
               <ShieldCheck size={14} />
-              <span>{t(snapshot.managementAvailable ? "startup.managementBoundary" : "startup.readOnlyBoundary")}</span>
-              {snapshot.unreadableLocationCount > 0 ? <em>{t("startup.unreadable", { count: snapshot.unreadableLocationCount })}</em> : null}
+              <span>{t(snapshot.managementAvailable ? "startup:managementBoundary" : "startup:readOnlyBoundary")}</span>
+              {snapshot.unreadableLocationCount > 0 ? <em>{t("startup:unreadable", { count: snapshot.unreadableLocationCount })}</em> : null}
             </footer>
           </section>
         </>
@@ -266,7 +266,7 @@ function StartupItemRow({
   guided: boolean;
   onManage: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const advice = startupAdvice(item);
   const application = startupRuntimeApplication(item, applications);
   const impact = startupImpactLevel(item, application, totalMemoryBytes);
@@ -277,35 +277,35 @@ function StartupItemRow({
       </span>
       <div className="startup-item__identity">
         <strong>{item.name}</strong>
-        <span>{item.publisher ?? t("startup.publisherUnknown")} · {t(`startup.source.${item.source}`)}</span>
+        <span>{item.publisher ?? t("startup:publisherUnknown")} · {t(`startup:source.${item.source}`)}</span>
       </div>
       <div className="startup-item__meaning">
-        <strong>{t(`startup.advice.${advice}.title`)}</strong>
-        <span>{t(`startup.advice.${advice}.description`)}</span>
+        <strong>{t(`startup:advice.${advice}.title`)}</strong>
+        <span>{t(`startup:advice.${advice}.description`)}</span>
       </div>
       <div className={`startup-item__impact is-${impact}`}>
-        <strong>{t(`startup.impact.${impact}.title`)}</strong>
+        <strong>{t(`startup:impact.${impact}.title`)}</strong>
         <span>
           {application
-            ? t("startup.impact.running", {
+            ? t("startup:impact.running", {
                 cpu: formatPercent(application.cpuPercent),
                 memory: formatBytes(application.memoryBytes),
               })
-            : t("startup.impact.notMatched")}
+            : t("startup:impact.notMatched")}
         </span>
       </div>
       <div className="startup-item__controls">
-        <span className={`startup-item__state is-${item.enabled ? "enabled" : "disabled"}`}><i />{t(item.enabled ? "startup.enabled" : "startup.disabled")}</span>
+        <span className={`startup-item__state is-${item.enabled ? "enabled" : "disabled"}`}><i />{t(item.enabled ? "startup:enabled" : "startup:disabled")}</span>
         {item.managementStatus === "available" ? (
           <button type="button" onClick={onManage}>
-            {t(item.enabled ? "startup.actions.disable" : "startup.actions.enable")}
+            {t(item.enabled ? "startup:actions.disable" : "startup:actions.enable")}
           </button>
         ) : (
-          <small>{t(`startup.managementStatus.${item.managementStatus}`)}</small>
+          <small>{t(`startup:managementStatus.${item.managementStatus}`)}</small>
         )}
       </div>
       {!guided ? <details>
-        <summary>{t("startup.technicalDetails")}</summary>
+        <summary>{t("startup:technicalDetails")}</summary>
         <code title={item.command ?? item.path}>{item.command ?? item.path}</code>
       </details> : null}
     </article>

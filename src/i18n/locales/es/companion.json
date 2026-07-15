@@ -1,0 +1,17 @@
+{
+  "kicker": "Asistente de Orbit",
+  "dragHint": "Arrastra el Asistente de Orbit para moverlo; mantén el puntero sobre él para ver información; haz clic derecho para acceder al menú",
+  "expand": "Abrir el asistente de Orbit",
+  "collapse": "Cerrar el asistente de Orbit",
+  "menu": "Menú del asistente de Orbit",
+  "hide": "Ocultar el asistente",
+  "reason": "Ha sido útil monitorizar a {{resource}}. Abra la ventana principal para ver por qué.",
+  "action": {
+    "loading": "Abrir herramienta diaria",
+    "observing": "Ver estado actual",
+    "normal": "Necesito ayuda",
+    "attention": "Ver detalles",
+    "urgent": "Revisar ahora"
+  },
+  "recovering": "El valor ha mejorado. Estoy observando un poco más para confirmar la recuperación."
+}

@@ -1,0 +1,107 @@
+{
+  "title": "Resource trend",
+  "legend": "Chart legend",
+  "memory": "Memory",
+  "warmup": "Warmup",
+  "establishing": "Establishing trend baseline…",
+  "chartLabel": "CPU {{cpu}}%, memory {{memory}}%",
+  "localArchive": "Local resource archive",
+  "archiveTitle": "History",
+  "archiveDescription": "Review long-term resource changes plus sustained pressure and recovery events across restarts.",
+  "saving": "Saving on this device",
+  "sessionOnly": "Current session only",
+  "controls": "History settings",
+  "saveOnDevice": "Save aggregate history on this device",
+  "retention": "Keep",
+  "retentionDays": "{{count}} days",
+  "noRange": "No time range yet",
+  "savedPoints": "{{count}} saved points",
+  "clearSaved": "Clear saved data",
+  "emptyTitle": "Building the history baseline",
+  "emptyDescription": "Trends appear after the first valid sample; enable on-device saving to retain them across restarts.",
+  "summary": "History summary",
+  "averageCpu": "Average CPU",
+  "averageMemory": "Average memory",
+  "peakDisk": "Peak disk",
+  "peakNetwork": "Peak network",
+  "fiveMinuteResolution": "5-minute resolution",
+  "resourceChart": "CPU and memory",
+  "throughputChart": "Disk and network throughput",
+  "resourceChartLabel": "Historical CPU and memory trend",
+  "throughputChartLabel": "Historical disk and network throughput trend",
+  "stories": {
+    "eyebrow": "What happened",
+    "title": "Computer stories",
+    "description": "Pairs alerts and recoveries into one incident, then explains its impact and outcome in plain language.",
+    "cause": "Main cause: {{name}} had the highest impact at the time",
+    "timeline": "Incident timeline",
+    "startedAt": "Started {{time}}",
+    "peakedAt": "Peaked at {{value}}% · {{time}}",
+    "endedAt": "Recovered {{time}}",
+    "count": "{{count}} recent",
+    "happeningNow": "Still happening",
+    "resolved": "Recovered",
+    "emptyTitle": "Nothing concerning recently",
+    "emptyDescription": "StatusOrbit ignores brief fluctuations and only records conditions that persist long enough to affect the computer.",
+    "cpu": {
+      "active": {
+        "title": "The computer is staying busy",
+        "description": "Processor load has stayed high for {{duration}}, peaking near {{value}}%. The computer may feel slow, warm, or use more battery."
+      },
+      "recovered": {
+        "title": "The computer was busy and has recovered",
+        "description": "The high load lasted about {{duration}}, peaked near {{value}}%, and then returned to the normal range."
+      },
+      "guidance": "If the computer still feels slow, open Applications to see the biggest impact. StatusOrbit never closes an app automatically."
+    },
+    "memory": {
+      "active": {
+        "title": "Available memory is getting tight",
+        "description": "Low available memory and swap activity have continued for {{duration}}. Switching apps may feel slower."
+      },
+      "recovered": {
+        "title": "Memory pressure rose and has eased",
+        "description": "Memory stayed tight for about {{duration}}, then available memory and swap activity recovered."
+      },
+      "guidance": "High memory use alone is normal. StatusOrbit records this only when low availability and meaningful swap activity happen together."
+    },
+    "volume": {
+      "active": {
+        "title": "Disk free space is running low",
+        "description": "Disk usage has stayed above the reminder level for {{duration}}, reaching about {{value}}%."
+      },
+      "recovered": {
+        "title": "Disk space pressure has eased",
+        "description": "Disk space was tight for about {{duration}} and is now below the reminder level."
+      },
+      "guidance": "Open Cleanup to inspect the space map first. Every file action still requires your confirmation."
+    }
+  },
+  "alerts": {
+    "eyebrow": "Local event log",
+    "title": "Alert and recovery events",
+    "description": "Alerts require sustained High readings; recovery hysteresis and cooldown reduce spikes and repeated events.",
+    "active": "{{count}} active alerts",
+    "normal": "All resources normal",
+    "savedEvents": "{{count}} saved events",
+    "filters": "Filter alert resources",
+    "all": "All",
+    "volume": "Volume usage",
+    "eventCount": "{{count}} events",
+    "emptyTitle": "No alert events",
+    "emptyDescription": "Brief spikes are ignored. Sustained pressure and recovery events will appear here.",
+    "recovered": "Recovered",
+    "severity": {
+      "high": "High",
+      "critical": "Critical"
+    },
+    "triggeredDetail": "{{value}}%, above {{threshold}}% for {{duration}}.",
+    "recoveredDetail": "Returned to {{value}}% after {{duration}}."
+  },
+  "privacyEyebrow": "Data boundaries",
+  "privacyTitle": "Privacy policy",
+  "privacyLocal": "History stays in this device's StatusOrbit WebView storage and is never uploaded or synchronized.",
+  "privacyCollected": "Only system CPU and memory percentages, disk and network throughput snapshots, and resource pressure and recovery events are stored. App display names are saved only after you allow them separately in Settings.",
+  "privacyExcluded": "Process commands, users, paths, file names, and local or remote connection addresses are not stored.",
+  "privacyControl": "Disabling stops new writes; existing records remain until they expire or you clear them manually."
+}

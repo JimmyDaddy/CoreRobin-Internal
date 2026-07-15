@@ -1,0 +1,107 @@
+{
+  "title": "リソースの推移",
+  "legend": "凡例",
+  "memory": "メモリの使用状況",
+  "warmup": "初期化状態",
+  "establishing": "現在のリソース使用状況を把握中…",
+  "chartLabel": "CPU {{cpu}}メモリの使用量（％） {{memory}}ディスク使用量（％）",
+  "localArchive": "ローカルのリソース履歴",
+  "archiveTitle": "過去のデータ",
+  "archiveDescription": "長期間のリソースの使用状況や、再起動時の負荷と回復を確認できます。",
+  "saving": "このデバイスへの保存",
+  "sessionOnly": "現在のセッションのみ",
+  "controls": "履歴設定",
+  "saveOnDevice": "集計された履歴をこのデバイスに保存",
+  "retention": "保持",
+  "retentionDays": "{{count}} 日間",
+  "noRange": "期間はまだ指定されていません",
+  "savedPoints": "{{count}} 件の保存データ",
+  "clearSaved": "保存データをクリア",
+  "emptyTitle": "履歴を初期化",
+  "emptyDescription": "最初の有効な測定値以降にトレンドが表示されます。再起動後も記録するため、デバイス上で保存を有効にする必要があります。",
+  "summary": "履歴の概要",
+  "averageCpu": "平均CPU使用率",
+  "averageMemory": "平均メモリ使用量",
+  "peakDisk": "最大ディスク使用量",
+  "peakNetwork": "最大ネットワーク帯域幅",
+  "fiveMinuteResolution": "5分間隔での測定",
+  "resourceChart": "CPUとメモリの使用状況",
+  "throughputChart": "ディスクとネットワークの処理速度",
+  "resourceChartLabel": "過去のCPUとメモリの使用状況の変化",
+  "throughputChartLabel": "過去のディスクとネットワークのパフォーマンス推移",
+  "stories": {
+    "eyebrow": "何が起きたか",
+    "title": "コンピューターに関する情報",
+    "description": "アラートと復旧を1つのインシデントにまとめ、その影響と結果を分かりやすく説明します。",
+    "cause": "主な原因：{{name}} が最も影響を与えた時間帯です",
+    "timeline": "インシデントのタイムライン",
+    "startedAt": "{{time}} で開始",
+    "peakedAt": "{{value}}% · {{time}} でピーク",
+    "endedAt": "{{time}} で復旧",
+    "count": "{{count}} の最近の状況",
+    "happeningNow": "現在も発生中",
+    "resolved": "正常に戻りました",
+    "emptyTitle": "最近の状況に異常はありません",
+    "emptyDescription": "StatusOrbitは、一時的な変動を無視し、コンピュータに影響を与える十分な時間だけ記録される状態のみを記録します。",
+    "cpu": {
+      "active": {
+        "title": "コンピュータが活発に動作しています",
+        "description": "CPUの使用状況が長時間高負荷状態です。 {{duration}}ピーク時には、ほぼ {{value}}%まで上昇します。これにより、コンピューターの動作が遅くなったり、熱くなったり、バッテリー消費が増加したりすることがあります。"
+      },
+      "recovered": {
+        "title": "コンピュータは活発に動作し、正常に戻りました",
+        "description": "高負荷状態は約{{duration}}秒続き、ピーク時にはほぼ{{value}}%まで上昇した後、通常の状態に戻りました。"
+      },
+      "guidance": "もしコンピュータが引き続き遅く感じられる場合は、開いているアプリケーションを確認し、最も影響を受けているものを特定してください。StatusOrbitは、アプリを自動的に閉じません。"
+    },
+    "memory": {
+      "active": {
+        "title": "利用可能なメモリが不足しています",
+        "description": "利用可能なメモリが不足し、スワップの使用状況が続いています。 {{duration}}. アプリケーションの切り替えが遅く感じられる場合があります。"
+      },
+      "recovered": {
+        "title": "メモリ使用量が一時的に高くなり、落ち着いています",
+        "description": "メモリはしばらく圧迫された状態でしたが、その後、利用可能なメモリとスワップの使用状況が回復しました。 {{duration}},現在は正常な状態に戻っています。"
+      },
+      "guidance": "メモリ使用量が多いだけなら正常です。StatusOrbit は、利用可能なメモリが少なく、明確なスワップ動作もある場合にのみ記録します。"
+    },
+    "volume": {
+      "active": {
+        "title": "ディスクの空き容量が不足しています",
+        "description": "ディスクの使用量が、警告レベルを超えて続いています。 {{duration}},約 {{value}}%まで上昇しています。"
+      },
+      "recovered": {
+        "title": "ディスクの空き容量が回復しました",
+        "description": "ディスク容量はしばらく不足していた状態でしたが、現在は警告レベルを下回っています。 {{duration}} }"
+      },
+      "guidance": "まずは、クリーンアップを開いてディスクの使用状況を確認してください。ファイルの操作には、引き続き確認が必要です。"
+    }
+  },
+  "alerts": {
+    "eyebrow": "ローカルイベントログ",
+    "title": "アラートと復旧イベント",
+    "description": "アラートは、継続的に高い状態を示す場合に発生します。復旧のヒステリシスとクールダウンにより、急激な変動や繰り返しを抑制します。",
+    "active": "{{count}} 現在表示されているアラート",
+    "normal": "すべてのリソースが正常",
+    "savedEvents": "{{count}} 保存されたイベント",
+    "filters": "アラートのリソースをフィルタリング",
+    "all": "すべて",
+    "volume": "ボリュームの使用状況",
+    "eventCount": "{{count}} イベント数",
+    "emptyTitle": "アラートイベントはありません",
+    "emptyDescription": "一時的な上昇は記録されません。持続的な負荷と回復のイベントはこの場所に表示されます。",
+    "recovered": "正常に復旧しました",
+    "severity": {
+      "high": "高い",
+      "critical": "非常に高い"
+    },
+    "triggeredDetail": "{{value}}指定された閾値を超えた場合 {{threshold}}指定された範囲内 {{duration}}。",
+    "recoveredDetail": "{{value}}%に戻りました（{{duration}}%を超えた状態から）"
+  },
+  "privacyEyebrow": "データに関する情報",
+  "privacyTitle": "プライバシーポリシー",
+  "privacyLocal": "このデバイスのStatusOrbit WebViewに保存され、アップロードまたは同期されません。",
+  "privacyCollected": "CPUとメモリの使用率、ディスクとネットワークのパフォーマンス、およびリソースの負荷と回復イベントのみが記録されます。アプリの名前は、設定で個別に許可した場合のみ保存されます。",
+  "privacyExcluded": "プロセス、ユーザー、パス、ファイル名、およびローカルまたはリモート接続アドレスに関する情報は記録されません。",
+  "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。"
+}

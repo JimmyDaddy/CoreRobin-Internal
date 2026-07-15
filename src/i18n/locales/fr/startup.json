@@ -1,0 +1,126 @@
+{
+  "eyebrow": "Démarrage et connexion",
+  "title": "Éléments de démarrage",
+  "description": "Visualisez les applications qui se lancent lors de la connexion ou lorsque certaines conditions sont remplies. Les éléments tiers sont expliqués en premier; les services système ne sont jamais présentés comme des commutateurs ordinaires.",
+  "guided": {
+    "kicker": "Éléments de connexion tiers",
+    "title": "Éléments de démarrage à examiner",
+    "description": "Seuls les éléments de connexion tiers qui peuvent être restaurés en toute sécurité s'affichent ici.",
+    "found": "{{count}} à examiner",
+    "foundDescription": "Vous pouvez désactiver les applications rarement utilisées après confirmation; le changement prend effet lors de la prochaine connexion.",
+    "clear": "Aucun élément de connexion tiers n'a besoin d'attention",
+    "clearDescription": "Les services système et les éléments de maintenance conditionnelle ne sont jamais présentés comme des commutateurs ordinaires."
+  },
+  "scanning": "Vérification…",
+  "loadingTitle": "Lecture des emplacements de démarrage",
+  "loadingDescription": "StatusOrbit ne lit que la configuration de démarrage publique et n'exécute jamais les commandes qu'elle contient.",
+  "summary": "Résumé du démarrage",
+  "reviewCount": "À examiner",
+  "reviewHint": "Applications tierces qui démarrent à l'authentification",
+  "thirdPartyCount": "Applications tierces",
+  "thirdPartyHint": "Inclut des assistants d'arrière-plan conditionnels",
+  "systemCount": "Applications système",
+  "systemHint": "Lecture seule et jamais affichées comme des commutateurs ordinaires",
+  "inventory": "Inventaire des programmes de démarrage",
+  "listTitle": "Quels programmes démarrent automatiquement ?",
+  "filters": "Filtres pour les programmes de démarrage",
+  "filter": {
+    "review": "À examiner",
+    "all": "Tous",
+    "system": "Programmes système"
+  },
+  "search": "Rechercher par nom, éditeur ou chemin",
+  "emptyTitle": "Aucun programme à examiner",
+  "emptyDescription": "Sélectionnez « Tous » pour inspecter les programmes de maintenance et système.",
+  "publisherUnknown": "Éditeur inconnu",
+  "enabled": "Démarrage automatique",
+  "disabled": "Désactivé",
+  "technicalDetails": "Afficher les détails techniques",
+  "managementBoundary": "Seuls les fichiers de démarrage tiers réversibles au niveau de l'utilisateur peuvent être désactivés. Les éléments système et les sources non prises en charge restent en lecture seule.",
+  "readOnlyBoundary": "Cette plateforme ne permet pas à StatusOrbit de restaurer un fichier de démarrage, ce qui maintient l'inventaire en lecture seule.",
+  "unreadable": "{{count}} Impossible de lire les emplacements de démarrage en raison des permissions",
+  "actions": {
+    "disable": "Désactiver au démarrage",
+    "enable": "Restaurer au démarrage"
+  },
+  "managementStatus": {
+    "system": "Élément système · Lecture seule",
+    "protected": "Élément protégé",
+    "unsupported": "Cette fonctionnalité n'est pas encore disponible"
+  },
+  "impact": {
+    "none": {
+      "title": "Aucune impact de démarrage actuel"
+    },
+    "low": {
+      "title": "Impact faible attendu"
+    },
+    "moderate": {
+      "title": "Peut affecter la vitesse de connexion"
+    },
+    "high": {
+      "title": "Impact important en arrière-plan"
+    },
+    "running": "En cours : CPU {{cpu}} · Mémoire {{memory}}",
+    "notMatched": "Aucune application en cours ne peut être associée"
+  },
+  "outcome": {
+    "disabled": "Le démarrage automatique pour {{name}} est désactivé. L'application en cours n'a pas été fermée.",
+    "enabled": "Le démarrage automatique pour {{name}} est rétabli."
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "Désactiver le démarrage automatique pour {{name}}?",
+      "description": "StatusOrbit conserve ce fichier de démarrage spécifique à l'utilisateur dans son propre espace de stockage et ne le supprime pas.",
+      "whenDescription": "Cela prend effet lors du prochain authentification. La restauration prend également effet lors d'une future authentification.",
+      "confirm": "Confirmer la désactivation lors de l'authentification"
+    },
+    "enable": {
+      "title": "Restaurer le démarrage automatique pour {{name}}?",
+      "description": "StatusOrbit restaure la configuration sauvegardée à son emplacement d'origine.",
+      "whenDescription": "À partir de la prochaine authentification, le système peut lancer cet élément automatiquement à nouveau.",
+      "confirm": "Confirmer la restauration lors de l'authentification"
+    },
+    "reversibleTitle": "Vous pouvez le restaurer ultérieurement",
+    "reversibleDescription": "Le fichier ne se déplace que entre deux dossiers utilisateur et n'est jamais modifié ou supprimé.",
+    "whenTitle": "La session actuelle ne change pas immédiatement",
+    "runningTitle": "L'application reste ouverte",
+    "runningDescription": "La désactivation du démarrage ne ferme pas l'application actuelle ni n'interrompt les tâches en cours.",
+    "preparing": "Vérification de l'élément de démarrage et de son état…",
+    "applying": "Mise à jour sécurisée…",
+    "errors": {
+      "startup_item_protected": "Il s'agit d'un élément de démarrage tiers non géré par StatusOrbit, donc aucune modification n'a été effectuée.",
+      "startup_item_unavailable": "Cet élément de démarrage a été modifié ou supprimé. Rafraîchissez la liste et réessayez.",
+      "startup_state_changed": "Le fichier de démarrage a été modifié après la confirmation, StatusOrbit n'a donc rien changé.",
+      "startup_destination_conflict": "Une autre configuration a été trouvée à la destination. StatusOrbit a refusé de l'écraser.",
+      "startup_confirmation_unavailable": "Cette confirmation n'est plus disponible. Annuler et rouvrir.",
+      "startup_confirmation_expired": "La confirmation est expirée. Vérifiez à nouveau l'élément avant de continuer.",
+      "startup_management_failed": "Le système n'a pas pu déplacer le fichier de démarrage en toute sécurité. L'état initial a été conservé."
+    }
+  },
+  "source": {
+    "launch_agent": "Agent de lancement",
+    "launch_daemon": "Daemon de lancement",
+    "desktop_entry": "Entrée d'autostart",
+    "registry_run": "Exécution via le registre",
+    "startup_folder": "Dossier de démarrage"
+  },
+  "advice": {
+    "review": {
+      "title": "Vérifiez si vous en avez besoin",
+      "description": "Il démarre à chaque connexion. Si vous ne l'utilisez rarement, vous pouvez le désactiver après confirmation."
+    },
+    "normal": {
+      "title": "Démarre conditionnellement",
+      "description": "Il démarre généralement pour les mises à jour, la synchronisation ou un événement spécifique et peut ne pas ralentir la connexion."
+    },
+    "system": {
+      "title": "Service système ou de périphérique",
+      "description": "Ne considérez pas cela comme une application de démarrage ordinaire. StatusOrbit le maintient en lecture seule."
+    },
+    "disabled": {
+      "title": "Actuellement désactivé",
+      "description": "La configuration reste, mais le système ne la démarrera plus automatiquement à partir de cet élément."
+    }
+  }
+}

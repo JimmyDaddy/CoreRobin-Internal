@@ -1,0 +1,126 @@
+{
+  "eyebrow": "Inicialização e login",
+  "title": "Itens de inicialização",
+  "description": "Veja quais aplicativos são iniciados ao fazer login ou quando certas condições são atendidas. Os itens de terceiros são explicados primeiro; os serviços do sistema nunca aparecem como interruptores comuns.",
+  "guided": {
+    "kicker": "Itens de login de terceiros",
+    "title": "Itens de inicialização para revisar",
+    "description": "Apenas os itens de login de terceiros que podem ser restaurados com segurança aparecem aqui.",
+    "found": "{{count}} requerem atenção",
+    "foundDescription": "Você pode desativar aplicativos raramente usados após a confirmação; a alteração é aplicada no próximo login.",
+    "clear": "Nenhum item de login de terceiros precisa de atenção",
+    "clearDescription": "Serviços do sistema e itens de manutenção condicional nunca aparecem como interruptores comuns."
+  },
+  "scanning": "Verificando…",
+  "loadingTitle": "Lendo configurações de inicialização",
+  "loadingDescription": "O StatusOrbit apenas lê a configuração de inicialização pública e nunca executa os comandos dentro dela.",
+  "summary": "Resumo da inicialização",
+  "reviewCount": "Vale a pena verificar",
+  "reviewHint": "Itens de terceiros que são iniciados no login",
+  "thirdPartyCount": "Itens de terceiros",
+  "thirdPartyHint": "Inclui auxiliares de fundo condicionais",
+  "systemCount": "Itens do sistema",
+  "systemHint": "Apenas leitura e nunca exibidos como interruptores comuns",
+  "inventory": "Inventário de inicialização",
+  "listTitle": "Quais programas iniciam automaticamente?",
+  "filters": "Filtros para itens de inicialização",
+  "filter": {
+    "review": "Revisar",
+    "all": "Todos",
+    "system": "Itens do sistema"
+  },
+  "search": "Pesquisar por nome, editor ou caminho",
+  "emptyTitle": "Nenhum item precisa ser revisado",
+  "emptyDescription": "Selecione 'Todos' para inspecionar itens condicionais e de manutenção do sistema.",
+  "publisherUnknown": "Editor desconhecido",
+  "enabled": "Inicia automaticamente",
+  "disabled": "Desativado",
+  "technicalDetails": "Mostrar detalhes técnicos",
+  "managementBoundary": "Apenas arquivos de inicialização de terceiros reversíveis podem ser desativados. Itens do sistema e fontes não suportadas permanecem somente leitura.",
+  "readOnlyBoundary": "Esta plataforma não expõe nenhum arquivo de inicialização do StatusOrbit que possa ser restaurado com segurança, portanto, o inventário permanece somente leitura.",
+  "unreadable": "{{count}} Não foi possível ler as localizações de inicialização devido a permissões",
+  "actions": {
+    "disable": "Desativar no login",
+    "enable": "Restaurar no login"
+  },
+  "managementStatus": {
+    "system": "Item do sistema · somente leitura",
+    "protected": "Item protegido",
+    "unsupported": "Não é possível gerenciar esta opção ainda"
+  },
+  "impact": {
+    "none": {
+      "title": "Nenhum impacto no momento"
+    },
+    "low": {
+      "title": "Impacto baixo esperado"
+    },
+    "moderate": {
+      "title": "Pode afetar a velocidade de login"
+    },
+    "high": {
+      "title": "Alto impacto em segundo plano"
+    },
+    "running": "Em execução: CPU {{cpu}} · Memória {{memory}}",
+    "notMatched": "Nenhuma aplicação em execução pode ser identificada"
+  },
+  "outcome": {
+    "disabled": "A inicialização automática para {{name}} está desativada. A aplicação não foi fechada.",
+    "enabled": "A inicialização automática para {{name}} foi restaurada."
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "Desativar a inicialização automática para {{name}}?",
+      "description": "O StatusOrbit move este arquivo de inicialização do usuário para seu próprio armazenamento recuperável e não o exclui.",
+      "whenDescription": "Isso entra em vigor na próxima vez que você fizer login. Restaurar também entrará em vigor a partir da próxima vez que você fizer login.",
+      "confirm": "Confirmar desativar no login"
+    },
+    "enable": {
+      "title": "Restaurar inicialização automática para {{name}}?",
+      "description": "O StatusOrbit move a configuração salva de volta para o local original.",
+      "whenDescription": "A partir da próxima vez que você fizer login, o sistema poderá iniciar este item automaticamente novamente.",
+      "confirm": "Confirmar restaurar no login"
+    },
+    "reversibleTitle": "Você pode restaurá-lo mais tarde",
+    "reversibleDescription": "O arquivo apenas se move entre duas pastas do usuário e nunca é editado ou excluído.",
+    "whenTitle": "A sessão atual não muda imediatamente",
+    "runningTitle": "A aplicação permanece aberta",
+    "runningDescription": "Desativar a inicialização não fecha a aplicação atual ou interrompe o trabalho em andamento.",
+    "preparing": "Verificando o item de inicialização e o estado do arquivo…",
+    "applying": "Atualizando com segurança…",
+    "errors": {
+      "startup_item_protected": "Este não é um item de inicialização de terceiros gerenciado com segurança pelo StatusOrbit, portanto, nada foi alterado.",
+      "startup_item_unavailable": "Este item de inicialização foi alterado ou removido. Atualize a lista e tente novamente.",
+      "startup_state_changed": "O arquivo de inicialização foi alterado após a confirmação, portanto, o StatusOrbit não fez alterações.",
+      "startup_destination_conflict": "Outra configuração apareceu no destino. O StatusOrbit recusou sobrescrevê-la.",
+      "startup_confirmation_unavailable": "Esta confirmação não está mais disponível. Cancele e abra novamente.",
+      "startup_confirmation_expired": "A confirmação expirou. Revise o item novamente antes de continuar.",
+      "startup_management_failed": "O sistema não conseguiu mover o arquivo de inicialização com segurança. O estado original foi preservado."
+    }
+  },
+  "source": {
+    "launch_agent": "Agente de inicialização",
+    "launch_daemon": "Demônio de inicialização",
+    "desktop_entry": "Entrada automática",
+    "registry_run": "Execução no Registro",
+    "startup_folder": "Pasta de inicialização"
+  },
+  "advice": {
+    "review": {
+      "title": "Verifique se é necessário",
+      "description": "Ele é executado sempre que você faz login. Se você raramente o usa, pode desativá-lo após a confirmação."
+    },
+    "normal": {
+      "title": "Executa condicionalmente",
+      "description": "Geralmente inicia para atualizações, sincronização ou um evento específico e pode não afetar o tempo de login."
+    },
+    "system": {
+      "title": "Serviço do sistema ou dispositivo",
+      "description": "Não trate como um aplicativo de inicialização comum. O StatusOrbit mantém-no em modo somente leitura."
+    },
+    "disabled": {
+      "title": "Atualmente desativado",
+      "description": "A configuração permanece, mas o sistema não iniciará automaticamente a partir desta entrada."
+    }
+  }
+}

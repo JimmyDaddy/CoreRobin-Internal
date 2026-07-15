@@ -1,0 +1,30 @@
+{
+  "triggered": {
+    "cpu": {
+      "title": "The computer is staying under heavy load",
+      "body": "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open StatusOrbit to see the biggest app impact."
+    },
+    "memory": {
+      "title": "Available memory is staying tight",
+      "body": "Low available memory and meaningful swap activity are happening together. StatusOrbit will never close apps automatically."
+    },
+    "volume": {
+      "title": "Disk free space is running low",
+      "body": "Disk usage has stayed above 85%. Inspect the Cleanup space map first; every file action still requires confirmation."
+    }
+  },
+  "recovered": {
+    "cpu": {
+      "title": "Computer load has returned to normal",
+      "body": "Processor use has stayed back in the normal range. The earlier slowness, heat, or power impact should now be easing."
+    },
+    "memory": {
+      "title": "Memory pressure has eased",
+      "body": "Available memory and swap activity have stayed back in a healthy range, so switching apps should feel smoother."
+    },
+    "volume": {
+      "title": "Disk space is back in a healthy range",
+      "body": "Disk usage has stayed back in a safe range, so no further cleanup is needed right now."
+    }
+  }
+}

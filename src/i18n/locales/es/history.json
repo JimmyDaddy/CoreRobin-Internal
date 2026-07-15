@@ -1,0 +1,107 @@
+{
+  "title": "Tendencia de recursos",
+  "legend": "Leyenda del gráfico",
+  "memory": "Memoria",
+  "warmup": "Calentamiento",
+  "establishing": "Estableciendo línea base…",
+  "chartLabel": "CPU {{cpu}}%, memoria {{memory}}%",
+  "localArchive": "Archivo de recursos local",
+  "archiveTitle": "Historial",
+  "archiveDescription": "Revisar cambios a largo plazo en los recursos, así como picos y recuperaciones tras reinicios.",
+  "saving": "Guardar en este dispositivo",
+  "sessionOnly": "Solo la sesión actual",
+  "controls": "Configuración del historial",
+  "saveOnDevice": "Guardar el historial agregado en este dispositivo",
+  "retention": "Mantener",
+  "retentionDays": "{{count}} días",
+  "noRange": "Sin rango de tiempo definido",
+  "savedPoints": "{{count}} puntos guardados",
+  "clearSaved": "Borrar datos guardados",
+  "emptyTitle": "Creando la base del historial",
+  "emptyDescription": "Las tendencias se muestran después de la primera muestra válida; habilite el guardado en el dispositivo para conservarlas tras reiniciar.",
+  "summary": "Resumen del historial",
+  "averageCpu": "Uso promedio de la CPU",
+  "averageMemory": "Uso promedio de la memoria",
+  "peakDisk": "Uso máximo del disco",
+  "peakNetwork": "Uso máximo de la red",
+  "fiveMinuteResolution": "Resolución de 5 minutos",
+  "resourceChart": "Gráfico de uso de CPU y memoria",
+  "throughputChart": "Gráfico de rendimiento del disco y la red",
+  "resourceChartLabel": "Tendencia histórica de uso de CPU y memoria",
+  "throughputChartLabel": "Tendencia histórica de rendimiento del disco y la red",
+  "stories": {
+    "eyebrow": "Qué ocurrió",
+    "title": "Informes del sistema",
+    "description": "Agrupa alertas y recuperaciones en un solo incidente, explicando su impacto y resultado en lenguaje claro.",
+    "cause": "Causa principal: {{name}} tuvo el mayor impacto en ese momento",
+    "timeline": "Cronología del incidente",
+    "startedAt": "Comenzó {{time}}",
+    "peakedAt": "Alcanzó su máximo nivel en {{value}}% · {{time}}",
+    "endedAt": "Se recuperó a {{time}}",
+    "count": "{{count}} recientes",
+    "happeningNow": "En curso",
+    "resolved": "Resuelto",
+    "emptyTitle": "No hay información reciente",
+    "emptyDescription": "StatusOrbit ignora fluctuaciones breves y solo registra condiciones que persisten lo suficiente para afectar al ordenador.",
+    "cpu": {
+      "active": {
+        "title": "El ordenador está funcionando intensamente",
+        "description": "La carga del procesador ha permanecido alta durante {{duration}}, alcanzando un máximo de cerca de {{value}}%. El ordenador puede sentirse lento, cálido o consumir más batería."
+      },
+      "recovered": {
+        "title": "El ordenador estaba funcionando intensamente y se ha recuperado",
+        "description": "La alta carga duró aproximadamente {{duration}}, alcanzó un máximo de cerca de {{value}}%, y luego volvió a la normalidad."
+      },
+      "guidance": "Si el ordenador sigue sintiéndose lento, abra Aplicaciones para ver qué está causando el mayor impacto. StatusOrbit nunca cierra una aplicación automáticamente."
+    },
+    "memory": {
+      "active": {
+        "title": "La memoria disponible se está agotando",
+        "description": "La memoria disponible y la actividad de intercambio son bajas desde {{duration}}. Cambiar de aplicaciones puede sentirse más lento."
+      },
+      "recovered": {
+        "title": "La presión en la memoria ha aumentado y se ha normalizado",
+        "description": "La memoria estuvo limitada durante aproximadamente {{duration}}, luego, la memoria disponible y la actividad de intercambio se recuperaron."
+      },
+      "guidance": "El uso elevado de memoria es normal. StatusOrbit solo registra esta situación cuando hay poca memoria disponible y una actividad significativa de intercambio."
+    },
+    "volume": {
+      "active": {
+        "title": "El espacio libre en disco está bajo",
+        "description": "El uso del disco ha permanecido por encima del nivel de advertencia desde {{duration}}, alcanzando aproximadamente {{value}}%."
+      },
+      "recovered": {
+        "title": "La presión en el espacio de disco se ha normalizado",
+        "description": "El espacio de disco estuvo limitado durante aproximadamente {{duration}} y ahora está por debajo del nivel de advertencia."
+      },
+      "guidance": "Abra la herramienta de limpieza para inspeccionar el mapa del espacio primero. Cada acción con un archivo requiere su confirmación."
+    }
+  },
+  "alerts": {
+    "eyebrow": "Registro de eventos locales",
+    "title": "Eventos de alerta y recuperación",
+    "description": "Las alertas requieren lecturas sostenidas altas; la histéresis y el enfriamiento de recuperación reducen los picos y los eventos repetidos.",
+    "active": "{{count}} alertas activas",
+    "normal": "Todos los recursos son normales",
+    "savedEvents": "{{count}} eventos guardados",
+    "filters": "Filtrar recursos de alerta",
+    "all": "Todos",
+    "volume": "Uso del volumen",
+    "eventCount": "{{count}} cantidad de eventos",
+    "emptyTitle": "No hay eventos de alerta",
+    "emptyDescription": "Las fluctuaciones menores se ignoran. Las situaciones de presión sostenida y recuperación se mostrarán aquí.",
+    "recovered": "Recuperado",
+    "severity": {
+      "high": "Alto",
+      "critical": "Crítico"
+    },
+    "triggeredDetail": "{{value}}%, por encima del {{threshold}}% durante {{duration}}.",
+    "recoveredDetail": "Regresó al {{value}}% después del {{duration}}."
+  },
+  "privacyEyebrow": "Límites de datos",
+  "privacyTitle": "Política de privacidad",
+  "privacyLocal": "El historial permanece almacenado en el almacenamiento StatusOrbit WebView de este dispositivo y nunca se sube ni sincroniza.",
+  "privacyCollected": "Solo se guardan los porcentajes del uso del CPU y la memoria, instantáneas del rendimiento del disco y la red, y eventos de presión y recuperación de recursos. Los nombres de las aplicaciones solo se guardan después de que lo permita explícitamente en la configuración.",
+  "privacyExcluded": "Los comandos, usuarios, rutas y direcciones de conexión locales o remotas no se almacenan.",
+  "privacyControl": "Desactivar detiene nuevas escrituras; los registros existentes permanecen hasta que caduquen o los elimine manualmente."
+}

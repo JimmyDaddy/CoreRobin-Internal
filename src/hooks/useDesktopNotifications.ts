@@ -110,7 +110,7 @@ async function sendResourceNotification(
   try {
     const { sendNotification } = await import("@tauri-apps/plugin-notification");
     sendNotification({
-      ...desktopNotificationCopy(event, language),
+      ...(await desktopNotificationCopy(event, language)),
       autoCancel: true,
       extra: { statusOrbitResource: event.resource },
     });

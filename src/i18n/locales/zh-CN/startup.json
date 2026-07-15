@@ -1,0 +1,126 @@
+{
+  "eyebrow": "开机与登录",
+  "title": "启动项",
+  "description": "查看会在登录时或后台条件满足时启动的项目，优先解释第三方项目，不把系统服务包装成普通开关。",
+  "guided": {
+    "kicker": "第三方登录项",
+    "title": "值得评估的开机项目",
+    "description": "这里只列出登录时启动且可以安全恢复的第三方项目。",
+    "found": "找到 {{count}} 个值得评估的项目",
+    "foundDescription": "不常用的应用可以确认后停用，下次登录时生效。",
+    "clear": "没有需要处理的第三方登录项",
+    "clearDescription": "系统服务和按条件运行的维护项目不会被当成普通开关。"
+  },
+  "scanning": "正在检查…",
+  "loadingTitle": "正在读取启动位置",
+  "loadingDescription": "StatusOrbit 只读取系统公开的启动配置，不会加载或运行其中的命令。",
+  "summary": "启动项摘要",
+  "reviewCount": "建议看一眼",
+  "reviewHint": "登录时启动的第三方项目",
+  "thirdPartyCount": "第三方项目",
+  "thirdPartyHint": "包含按条件启动的后台助手",
+  "systemCount": "系统项目",
+  "systemHint": "保持只读，不提供普通开关",
+  "inventory": "启动项清单",
+  "listTitle": "哪些内容会自动启动",
+  "filters": "启动项筛选",
+  "filter": {
+    "review": "建议查看",
+    "all": "全部",
+    "system": "系统项目"
+  },
+  "search": "搜索名称、发布者或路径",
+  "emptyTitle": "没有需要查看的项目",
+  "emptyDescription": "可以切换到“全部”查看按条件启动和系统维护项目。",
+  "publisherUnknown": "发布者未知",
+  "enabled": "会自动启动",
+  "disabled": "已停用",
+  "technicalDetails": "查看技术位置",
+  "managementBoundary": "只有可恢复的用户级第三方启动文件可以停用；系统项目和不支持的来源保持只读。",
+  "readOnlyBoundary": "当前平台没有可安全恢复的启动项来源，因此只读展示。",
+  "unreadable": "{{count}} 个启动位置因权限不足未能读取",
+  "actions": {
+    "disable": "停用开机启动",
+    "enable": "恢复开机启动"
+  },
+  "managementStatus": {
+    "system": "系统项目只读",
+    "protected": "受保护项目",
+    "unsupported": "此来源暂不支持管理"
+  },
+  "impact": {
+    "none": {
+      "title": "当前无启动影响"
+    },
+    "low": {
+      "title": "预计影响较低"
+    },
+    "moderate": {
+      "title": "可能影响登录速度"
+    },
+    "high": {
+      "title": "当前后台影响较高"
+    },
+    "running": "当前运行：CPU {{cpu}} · 内存 {{memory}}",
+    "notMatched": "未匹配到当前正在运行的应用"
+  },
+  "outcome": {
+    "disabled": "已停用 {{name}} 的自动启动；当前应用不会被关闭。",
+    "enabled": "已恢复 {{name}} 的自动启动。"
+  },
+  "actionDialog": {
+    "disable": {
+      "title": "停用 {{name}} 的自动启动？",
+      "description": "StatusOrbit 会把这份用户级启动配置移到自己的可恢复存储中，不会删除它。",
+      "whenDescription": "下次登录时生效；恢复后也会从下一次登录开始重新允许自动启动。",
+      "confirm": "确认停用自动启动"
+    },
+    "enable": {
+      "title": "恢复 {{name}} 的自动启动？",
+      "description": "StatusOrbit 会把之前保存的配置放回原位置。",
+      "whenDescription": "从下次登录开始，系统会再次允许这个项目自动启动。",
+      "confirm": "确认恢复自动启动"
+    },
+    "reversibleTitle": "随时可以恢复",
+    "reversibleDescription": "配置文件只会在两个用户目录之间移动，不会被编辑或删除。",
+    "whenTitle": "不会立刻改变当前会话",
+    "runningTitle": "当前应用会继续运行",
+    "runningDescription": "停用自动启动不会关闭正在运行的应用，也不会中断正在进行的工作。",
+    "preparing": "正在核对启动项与文件状态…",
+    "applying": "正在安全更新…",
+    "errors": {
+      "startup_item_protected": "这不是可安全管理的用户级第三方启动项，StatusOrbit 没有执行操作。",
+      "startup_item_unavailable": "这个启动项已经变化或不存在，请刷新列表后再试。",
+      "startup_state_changed": "启动配置在确认后发生变化，StatusOrbit 没有执行操作。",
+      "startup_destination_conflict": "目标位置出现了另一份配置，为避免覆盖，StatusOrbit 没有执行操作。",
+      "startup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开。",
+      "startup_confirmation_expired": "确认已超时，请重新检查后再操作。",
+      "startup_management_failed": "系统未能安全移动启动配置；原文件仍保留在当前状态。"
+    }
+  },
+  "source": {
+    "launch_agent": "LaunchAgent",
+    "launch_daemon": "LaunchDaemon",
+    "desktop_entry": "自动启动条目",
+    "registry_run": "注册表 Run",
+    "startup_folder": "启动文件夹"
+  },
+  "advice": {
+    "review": {
+      "title": "可评估是否需要",
+      "description": "每次登录都会启动；如果你不常用它，可以确认后停用。"
+    },
+    "normal": {
+      "title": "按条件运行",
+      "description": "通常只在更新、同步或特定事件发生时启动，不一定拖慢登录。"
+    },
+    "system": {
+      "title": "系统或设备服务",
+      "description": "不建议作为普通启动项处理，StatusOrbit 保持只读展示。"
+    },
+    "disabled": {
+      "title": "当前未启用",
+      "description": "配置仍然存在，但系统不会按该条目自动启动。"
+    }
+  }
+}

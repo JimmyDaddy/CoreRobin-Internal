@@ -52,7 +52,7 @@ describe("daily experience model", () => {
     expect(dailyOverallLevel(diagnosis, snapshot)).toBe("observing");
   });
 
-  it("prioritizes urgent findings and never returns more than three items", () => {
+  it("keeps the complete count while allowing a caller to cap presentation", () => {
     const snapshot = structuredClone(getMockSnapshot());
     snapshot.disk.volumes[0] = {
       ...snapshot.disk.volumes[0]!,
@@ -73,10 +73,37 @@ describe("daily experience model", () => {
     };
     const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
 
-    const items = buildDailyAttentionItems(diagnosis, snapshot, 3);
-    expect(items).toHaveLength(3);
-    expect(items.every(({ level }) => level === "urgent")).toBe(true);
+    const allItems = buildDailyAttentionItems(diagnosis, snapshot);
+    const visibleItems = buildDailyAttentionItems(diagnosis, snapshot, 3);
+    expect(allItems).toHaveLength(4);
+    expect(visibleItems).toHaveLength(3);
+    expect(visibleItems.every(({ level }) => level === "urgent")).toBe(true);
     expect(dailyOverallLevel(diagnosis, snapshot)).toBe("urgent");
+  });
+
+  it("ignores brief sleep blockers until their duration is trustworthy", () => {
+    const snapshot = structuredClone(getMockSnapshot());
+    snapshot.sensors.temperature.celsius = 55;
+    snapshot.sensors.battery = {
+      ...snapshot.sensors.battery,
+      present: true,
+      chargePercent: 80,
+      state: "discharging",
+    };
+    snapshot.sensors.sleep.blockers = [{
+      pid: null,
+      processName: "Video Export",
+      reason: "Exporting",
+      kind: "idle_sleep",
+      durationSeconds: 119,
+    }];
+    const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
+
+    expect(buildDailyAttentionItems(diagnosis, snapshot)).toHaveLength(0);
+    snapshot.sensors.sleep.blockers[0]!.durationSeconds = 120;
+    expect(buildDailyAttentionItems(diagnosis, snapshot)).toMatchObject([
+      { id: "wellbeing:sleep", kind: "sleep", durationSeconds: 120 },
+    ]);
   });
 
   it("includes plain-language attention items in the overall home status", () => {

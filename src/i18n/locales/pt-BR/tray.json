@@ -1,0 +1,52 @@
+{
+  "localMonitor": "Monitor do sistema local",
+  "available": "Espaço disponível",
+  "open": "Visão geral",
+  "companion": "Assistente Orbit",
+  "cleanup": "Limpeza de espaço",
+  "health": {
+    "loading": "Conectando",
+    "observing": "Analisando status",
+    "normal": "Estado normal",
+    "attention": "Atenção",
+    "urgent": "Recomendação de ação"
+  },
+  "status": {
+    "loading": {
+      "title": "Verificando o estado do sistema",
+      "description": "A primeira leitura será exibida em breve."
+    },
+    "observing": {
+      "title": "Analisando o estado do computador",
+      "description": "Observando por mais tempo para evitar que um pico temporário seja interpretado como um problema."
+    },
+    "normal": {
+      "title": "Seu computador está funcionando corretamente",
+      "description": "Não há problemas de recursos que exijam atenção imediata."
+    },
+    "attention": {
+      "title": "Um recurso requer monitoramento",
+      "description": "Abra o StatusOrbit para ver a causa e as instruções."
+    },
+    "urgent": {
+      "title": "Um recurso está com problemas",
+      "description": "Revise as informações no StatusOrbit antes de tomar qualquer medida."
+    }
+  },
+  "reason": "{{resource}} requer atenção",
+  "resource": {
+    "cpu": "CPU",
+    "memory": "Memória RAM",
+    "storage": "Armazenamento",
+    "temperature": "Temperatura",
+    "battery": "Bateria",
+    "network": "Rede",
+    "sleep": "Entrar em modo de suspensão",
+    "none": "Sistema"
+  },
+  "incidentTitle": {
+    "attention": "Itens para monitorar: {{count}}",
+    "urgent": "Itens para revisar em breve: {{count}}"
+  },
+  "recovering": "A métrica está normalizada; confirmando que permanece normalizada."
+}

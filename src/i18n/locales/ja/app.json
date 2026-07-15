@@ -1,0 +1,78 @@
+{
+  "mainNavigation": "メインのナビゲーション",
+  "monitor": "システムの状態を監視",
+  "diagnostics": "システムの診断",
+  "overview": "概要を表示",
+  "applications": "アプリケーションの一覧",
+  "processes": "実行中のプロセスの一覧",
+  "storage": "ストレージの使用状況",
+  "cleanup": "不要なファイルの削除",
+  "network": "ネットワーク接続の状態",
+  "startup": "起動時に自動的に開始される項目",
+  "history": "履歴",
+  "settings": "設定",
+  "soon": "近日公開",
+  "comingSoon": "近日公開",
+  "localSampling": "ローカルでの測定",
+  "viewEyebrow": {
+    "overview": "システム全体の状況",
+    "applications": "アプリケーションの影響",
+    "processes": "プロセスに関する情報",
+    "storage": "ストレージに関する情報",
+    "cleanup": "不要ファイルの削除",
+    "network": "ネットワーク診断",
+    "startup": "起動アプリケーションの確認",
+    "history": "履歴分析",
+    "settings": "設定"
+  },
+  "demoData": "ブラウザデモデータ",
+  "paused": "一時停止",
+  "live": "リアルタイム監視",
+  "refreshNow": "今すぐ更新",
+  "resume": "再開",
+  "pause": "一時停止",
+  "switchLanguage": "インターフェースの言語を変更",
+  "samplerConnecting": "ローカルのサンプラーへの接続中…",
+  "samplerFailed": "サンプラーの起動に失敗しました",
+  "samplerNoData": "システムデータを受信できませんでした。",
+  "sampleFailed": "一時的にサンプリングが失敗しました：{{message}}",
+  "staleTarget": "プロセスIDが変更されました。操作はキャンセルされました。再度選択して続行してください。",
+  "metricsLabel": "システムリソースの概要",
+  "mode": {
+    "simple": "通常モード",
+    "professional": "プロフェッショナルモード",
+    "short": {
+      "simple": "通常",
+      "professional": "プロフェッショナルモード"
+    },
+    "switchTo": {
+      "simple": "日常モードに切り替える",
+      "professional": "プロフェッショナルモードに切り替える"
+    }
+  },
+  "companion": {
+    "show": "Orbitコンパニオンを表示",
+    "hide": "Orbitコンパニオンを非表示"
+  },
+  "technicalOverview": {
+    "title": "リアルタイムのリソース詳細を表示",
+    "description": "CPU、メモリ、ディスク、ネットワーク、および5分間のトレンドを確認できます。"
+  },
+  "metrics": {
+    "memory": "メモリ使用量",
+    "disk": "ディスクI/O",
+    "network": "ネットワーク帯域幅",
+    "cpuContext": "{{count}} 論理的なコア数 · 1つのプロセスで100%を超える可能性があります",
+    "memoryContext": "{{total}} 合計 {{swap}} スワップ領域",
+    "diskContext": "読み込み {{read}} 書き込み {{write}}",
+    "networkContext": "受信 {{receive}} 送信 {{send}}"
+  },
+  "status": {
+    "interval": "サンプリング間隔：{{interval}} ms",
+    "interfacesAndConnections": "{{interfaces}} ネットワークインターフェース {{connections}} 接続数",
+    "applicationCount": "{{count}} アプリケーションまたはシステムコンポーネントの数",
+    "savedHistory": "{{count}} 保存された履歴ポイント",
+    "processCount": "{{count}} 実行中のプロセス数",
+    "cleanupEntries": "{{count}} 確認されたアイテム"
+  }
+}

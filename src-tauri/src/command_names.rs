@@ -1,6 +1,8 @@
 pub const ALL_COMMANDS: &[&str] = &[
     "get_system_snapshot",
     "get_system_summary",
+    "publish_health_state",
+    "get_health_state",
     "get_network_connections",
     "get_startup_items",
     "create_startup_management_lease",
@@ -23,6 +25,9 @@ pub const ALL_COMMANDS: &[&str] = &[
     "cancel_cleanup_delete",
     "complete_startup",
     "show_main_window",
+    "set_dock_icon_visible",
+    "get_launch_at_login",
+    "set_launch_at_login",
     "toggle_companion_window",
     "hide_companion_window",
     "set_companion_expanded",

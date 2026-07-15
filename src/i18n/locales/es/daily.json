@@ -1,0 +1,545 @@
+{
+  "shell": {
+    "label": "Modo diario",
+    "localOnly": "El análisis se realiza en este dispositivo",
+    "openProfessional": "Abrir modo profesional"
+  },
+  "nav": {
+    "home": "Estado",
+    "space": "Espacio",
+    "applications": "Aplicaciones",
+    "more": "Más",
+    "today": "Estado",
+    "solve": "Ayúdame a solucionarlo",
+    "cleanup": "Liberar espacio",
+    "records": "Registros",
+    "settings": "Configuración"
+  },
+  "topbar": {
+    "thisMac": "Este equipo",
+    "thisComputer": "Este ordenador"
+  },
+  "status": {
+    "observing": {
+      "short": "Analizando su estado normal",
+      "title": "Analizando el estado normal de este equipo",
+      "summary": "Observando durante un tiempo para evitar confundir un pico breve con un problema."
+    },
+    "normal": {
+      "short": "Funcionando correctamente",
+      "title": "Su computadora está funcionando correctamente",
+      "summary": "No hay nada que deba llamar su atención en este momento."
+    },
+    "attention": {
+      "short": "Algo merece una revisión",
+      "title": "{{count}} cosas merecen una revisión",
+      "summary": "StatusOrbit ha organizado las razones y los pasos a seguir, para que no tenga que interpretar métricas técnicas."
+    },
+    "urgent": {
+      "short": "Revise pronto",
+      "title": "Revise {{count}} cosas pronto",
+      "summary": "Primero revise la razón, luego elija la acción adecuada."
+    }
+  },
+  "orbit": {
+    "label": "Estado de la computadora",
+    "thisComputer": "Esta computadora",
+    "speed": "Velocidad",
+    "space": "Espacio",
+    "temperature": "Temperatura",
+    "battery": "Batería"
+  },
+  "companion": {
+    "name": "ORBIT",
+    "checking": "Verificación"
+  },
+  "home": {
+    "kicker": "Tu asistente de escritorio",
+    "viewDiagnosis": "Ver resultados de la verificación",
+    "viewPriority": "Revisar",
+    "checkNow": "Verificar ahora",
+    "checking": "Verificando…",
+    "checkingTitle": "Orbit está revisando su computadora",
+    "checkingSummary": "Información de estado actualizada directamente en esta vista. Si se requiere una revisión más detallada, Orbit lo indicará claramente.",
+    "haveProblem": "Detectado un problema",
+    "checkedAt": "Última actualización {{time}}",
+    "localOnly": "La información y el historial permanecen en este dispositivo",
+    "professional": "Ver datos detallados"
+  },
+  "intents": {
+    "kicker": "Comenzar con el problema",
+    "title": "¿Qué desea solucionar?",
+    "description": "No es necesario entender el uso de CPU o memoria. Elija la opción que mejor se ajuste a su experiencia.",
+    "slow": {
+      "title": "Mi computadora parece lenta",
+      "description": "Identifique las aplicaciones o recursos que están afectando el rendimiento."
+    },
+    "space": {
+      "title": "Se está quedando sin espacio",
+      "description": "Revise qué ocupa más espacio y encuentre los elementos que lo utilizan."
+    },
+    "startup": {
+      "title": "El inicio parece lento",
+      "description": "Revisar las aplicaciones de terceros que se abren al iniciar sesión."
+    },
+    "heat": {
+      "title": "La temperatura es alta o el consumo es elevado",
+      "description": "Verifique la temperatura, la batería y las aplicaciones que impiden el sueño."
+    },
+    "network": {
+      "title": "La conexión a internet parece problemática",
+      "description": "Busque pistas en el tráfico y las conexiones actuales"
+    },
+    "checkup": {
+      "title": "Realizar una comprobación",
+      "description": "Encuentre lo más importante que deba revisar"
+    }
+  },
+  "solve": {
+    "kicker": "Comience por lo que observa",
+    "title": "¿Qué está observando?",
+    "description": "No es necesario decidir si el CPU, la memoria o la red son los responsables. Elija lo que le parezca más relevante.",
+    "slow": {
+      "title": "Mi computadora se siente lenta",
+      "description": "Identifique la actividad sostenida que podría estar causando lentitud"
+    },
+    "heat": {
+      "title": "El ventilador sigue funcionando",
+      "description": "Verifique la temperatura y las aplicaciones que permanecen activas"
+    },
+    "battery": {
+      "title": "La batería se descarga rápidamente",
+      "description": "Verificar estado de la batería, temperatura y aplicaciones que impiden el sueño"
+    },
+    "space": {
+      "title": "Se está quedando sin espacio",
+      "description": "Revisar el espacio disponible antes de decidir si es necesario escanear archivos"
+    },
+    "startup": {
+      "title": "El inicio se ha vuelto más lento",
+      "description": "Revisar las aplicaciones de terceros que se abren automáticamente"
+    },
+    "network": {
+      "title": "La conexión a internet parece defectuosa",
+      "description": "Consultar el tráfico actual y las conexiones activas para obtener información útil"
+    },
+    "applications": {
+      "title": "¿Qué aplicaciones están afectando más este equipo?",
+      "description": "Comenzar revisando solo las aplicaciones más relevantes"
+    },
+    "checkup": {
+      "title": "Realizar una revisión",
+      "description": "Mostrar el estado actual y obtener una conclusión principal"
+    },
+    "recommended": "Recomendado para el estado actual",
+    "otherProblems": "Otras situaciones",
+    "footer": "StatusOrbit no hace suposiciones solo para parecer útil. Continúa observando cuando todavía no hay suficiente evidencia."
+  },
+  "attention": {
+    "kicker": "En este momento",
+    "title": "Importante",
+    "count": "{{count}} elementos",
+    "priority": "Más importante en este momento",
+    "recovering": "Confirmando recuperación",
+    "open": "Ver detalles",
+    "emptyTitle": "No hay nada pendiente ahora",
+    "emptyDescription": "StatusOrbit seguirá vigilando por cambios sostenidos en segundo plano.",
+    "viewApplications": "Ver qué aplicaciones están abiertas",
+    "temperature": {
+      "title": "Su computadora está funcionando a alta temperatura",
+      "description": "Reduzca las tareas intensas y mantenga la ventilación, debería enfriarse normalmente."
+    },
+    "battery": {
+      "title": "La batería está baja",
+      "description": "Si necesita continuar trabajando, considere conectar la alimentación pronto."
+    },
+    "sleep": {
+      "title": "{{name}} está impidiendo el sueño automático",
+      "description": "Cerrar la aplicación o pausar su tarea generalmente restaurará el sueño."
+    },
+    "application": {
+      "title": "{{name}} tiene un impacto mayor actualmente",
+      "low": "Su impacto actual es bajo.",
+      "moderate": "Está utilizando algunos recursos del ordenador.",
+      "high": "Está utilizando más recursos durante un período prolongado y puede afectar la capacidad de respuesta.",
+      "critical": "Está utilizando una gran cantidad de recursos y puede afectar notablemente la capacidad de respuesta."
+    }
+  },
+  "incident": {
+    "phase": {
+      "active": "Aún está ocurriendo",
+      "recovering": "Confirmando recuperación",
+      "resolved": "Recuperado"
+    },
+    "recoveringDescription": "La última lectura ha disminuido. StatusOrbit está observando un poco más para confirmar que no es una fluctuación breve.",
+    "resolvedDescription": "Esta condición se ha recuperado de forma constante y no requiere ninguna acción en este momento. La evidencia que la provocó sigue disponible aquí.",
+    "observedCause": "Principalmente asociado al momento de la incidencia",
+    "causeMayHaveChanged": "El estado de la aplicación puede haber cambiado. Las acciones solo están disponibles a partir del último análisis.",
+    "timeline": "Confirmado en {{startedAt}} · Última coincidencia en {{lastSeenAt}}",
+    "sleepDuration": "Duró aproximadamente {{minutes}} minutos",
+    "viewCurrentNetwork": "Ver el estado de la red actual"
+  },
+  "story": {
+    "kicker": "Recientemente",
+    "title": "¿Qué ocurrió recientemente?",
+    "emptyTitle": "Las cosas han sido estables recientemente",
+    "emptyDescription": "La presión de recursos se mostrará aquí como una línea de tiempo en lenguaje sencillo, junto con su recuperación.",
+    "active": "Ocurriendo actualmente",
+    "recovered": "Recuperado",
+    "cpu": {
+      "active": "El equipo ha estado activo durante aproximadamente {{minutes}} minutos desde {{time}}",
+      "recovered": "El equipo estuvo activo durante aproximadamente {{minutes}} minutos cerca de {{time}} y se ha recuperado"
+    },
+    "memory": {
+      "active": "La presión en la memoria ha durado aproximadamente {{minutes}} minutos desde {{time}}",
+      "recovered": "La presión en la memoria apareció cerca de {{time}} y se ha recuperado"
+    },
+    "volume": {
+      "active": "El espacio disponible ha permanecido bajo desde {{time}}",
+      "recovered": "La advertencia sobre el espacio bajo cerca de {{time}} se ha recuperado"
+    },
+    "cause": "Principalmente asociado con {{name}}.",
+    "viewAll": "Ver todos los registros"
+  },
+  "applications": {
+    "kicker": "En ejecución",
+    "title": "¿Qué aplicaciones están afectando tu computadora?",
+    "description": "Comienza con las aplicaciones que requieren atención, y luego amplía la información cuando sea necesario.",
+    "search": "Buscar aplicaciones",
+    "system": "Componente del sistema",
+    "ordinary": "Aplicación normal",
+    "level": {
+      "low": "Ejecutándose normalmente",
+      "moderate": "Impacto moderado",
+      "high": "Mayor impacto",
+      "critical": "Impacto significativo"
+    },
+    "reason": {
+      "cpu": "La aplicación {{name}} está utilizando principalmente la potencia de procesamiento en este momento.",
+      "memory": "{{name}} está utilizando principalmente más memoria en este momento.",
+      "disk": "{{name}} está leyendo o escribiendo archivos con frecuencia en este momento.",
+      "balanced": "Ningún recurso destaca de forma destacada en este momento."
+    },
+    "evidence": {
+      "cpu": "Procesamiento",
+      "memory": "Uso de memoria",
+      "disk": "Actividad de archivos"
+    },
+    "systemSafety": "Este es un componente del sistema. Se muestra evidencia, pero no se recomienda cerrarlo.",
+    "requestClose": "Solicitar que {{name}} cierre",
+    "viewEvidence": "Ver evidencia detallada",
+    "empty": "No hay aplicaciones coincidentes",
+    "refresh": "Actualizar lista",
+    "refreshing": "Actualizando…",
+    "snapshotFound": "{{count}} Las aplicaciones merecen ser revisadas",
+    "snapshotClear": "Ninguna aplicación está afectando actualmente este equipo",
+    "snapshotTime": "Última actualización: {{time}}",
+    "calmTitle": "No hay aplicaciones que requieran atención en este momento",
+    "calmDescription": "Las aplicaciones que se están ejecutando normalmente permanecen disponibles según sea necesario sin ocupar la pantalla",
+    "showAll": "Ver todas {{count}} Aplicaciones habituales",
+    "hideAll": "Ocultar aplicaciones regulares"
+  },
+  "recheck": {
+    "title": "Revisar completamente",
+    "loadingKicker": "Analizando este equipo",
+    "checkingTitle": "Actualizando el estado actual",
+    "checkingDescription": "StatusOrbit está leyendo los cambios recientes y reconstruyendo el resultado.",
+    "steps": {
+      "read": "Leer el estado más reciente",
+      "compare": "Comparar cambios",
+      "update": "Construir el resultado"
+    },
+    "live": {
+      "slow": {
+        "title": "Supervisando problemas de lentitud",
+        "description": "Leyendo el estado más reciente. Los problemas persistentes se monitorean; un breve pico no se considera un fallo."
+      },
+      "space": {
+        "title": "Verificando espacio disponible",
+        "description": "Esto solo lee la capacidad del disco y no inicia una búsqueda exhaustiva en segundo plano."
+      },
+      "startup": {
+        "title": "Revisar elementos de inicio",
+        "description": "Los elementos del sistema permanecen en modo de solo lectura mientras se organizan las aplicaciones de terceros para su revisión."
+      },
+      "heat": {
+        "title": "Revisar temperatura, batería y estado de sueño",
+        "description": "Los datos faltantes permanecen sin información en lugar de ser etiquetados incorrectamente como normales."
+      },
+      "network": {
+        "title": "Revisar actividad de red actual",
+        "description": "El tráfico y las conexiones activas se muestrean a baja frecuencia en lugar de monitorearse continuamente."
+      },
+      "checkup": {
+        "title": "Orbit está revisando este equipo",
+        "description": "Estado del sistema, conexiones e elementos de inicio devuelven resultados reales sin una cuenta regresiva dramática."
+      }
+    },
+    "resultKicker": "Estado sincronizado con Orbit",
+    "updated": "Actualizado justo ahora",
+    "completed": "Completado",
+    "completedAt": "{{time}}",
+    "outcomeTitle": {
+      "exited": "La aplicación ha finalizado",
+      "still_running": "La aplicación sigue en ejecución",
+      "already_exited": "La aplicación ya había finalizado"
+    },
+    "facts": {
+      "currentReading": "Lectura actual",
+      "observedFor": "Observado durante",
+      "seconds": "{{count}} segundos",
+      "sustainedPressure": "Presión sostenida",
+      "notFound": "No encontrado",
+      "worthReviewing": "Revisar",
+      "startupTotal": "Elementos de inicio"
+    },
+    "slow": {
+      "observingDescription": "Los datos más recientes están disponibles, pero StatusOrbit necesita observar por más tiempo antes de considerar un problema breve como persistente."
+    },
+    "checkup": {
+      "observingDescription": "El estado actual está disponible, pero las condiciones sostenidas aún necesitan una observación adicional."
+    },
+    "startup": {
+      "unavailableTitle": "Los elementos de inicio están temporalmente indisponibles",
+      "unavailableDescription": "El sistema no ha devuelto un resultado utilizable para los elementos de inicio. Intente verificar nuevamente más tarde."
+    },
+    "heat": {
+      "normal": {
+        "title": "Temperatura, batería y estado de suspensión parecen estables",
+        "description": "Ninguno de estos tres ámbitos requiere atención en este momento."
+      },
+      "observing": {
+        "title": "Alguno de los estados del dispositivo está temporalmente indisponible",
+        "description": "StatusOrbit no obtiene datos desconocidos, sino que los trata como normales."
+      },
+      "attention": {
+        "title": "Se recomienda revisar una condición del dispositivo",
+        "description": "Las lecturas más recientes de temperatura, batería y sueño se resumen a continuación."
+      },
+      "urgent": {
+        "title": "Atender la condición actual del dispositivo pronto",
+        "description": "Reducir el uso intensivo o conectar energía, y luego verificar nuevamente."
+      }
+    },
+    "exited": "La aplicación ha finalizado y se han leído las últimas indicaciones.",
+    "still_running": "La aplicación sigue en funcionamiento. StatusOrbit no la ha forzado a detenerse.",
+    "already_exited": "La aplicación ya había finalizado, y se han leído las últimas indicaciones.",
+    "refreshed": "Se han leído las últimas indicaciones."
+  },
+  "space": {
+    "kicker": "Espacio disponible en este equipo",
+    "normal": {
+      "title": "Hay suficiente espacio disponible actualmente",
+      "description": "{{free}} permanece, por lo que no es necesario limpiarlo solo para obtener un mejor resultado."
+    },
+    "attention": {
+      "title": "El espacio disponible está disminuyendo",
+      "description": "{{free}} permanece. Comience identificando qué ocupa realmente espacio."
+    },
+    "unknown": {
+      "title": "El espacio está temporalmente inaccesible",
+      "description": "El sistema no proporcionó información sobre la capacidad del disco disponible."
+    },
+    "checkAgain": "Verificar nuevamente",
+    "capacity": "Capacidad total del disco",
+    "available": "Disponible",
+    "used": "Utilizado",
+    "usage": "{{percent}}% del espacio está actualmente disponible",
+    "showDetails": "Detalles de uso",
+    "scan": {
+      "ready": "Un análisis reciente está listo",
+      "notYet": "Los archivos aún no han sido analizados",
+      "found": "Revisar la información sobre {{size}} es recomendable",
+      "title": "Ver el uso del espacio",
+      "cached": "Este análisis completo proviene de {{time}}. La carpeta actual se revisará al abrirla.",
+      "description": "Analiza los metadatos de archivos, como nombres y tamaños, para crear un mapa explorable del espacio.",
+      "open": "Abrir limpieza de espacio",
+      "start": "Iniciar análisis de espacio"
+    },
+    "professional": "Ver datos detallados del disco"
+  },
+  "more": {
+    "kicker": "Utilizar cuando sea necesario",
+    "title": "Más herramientas y opciones",
+    "description": "Estas herramientas no aparecen en la pantalla de inicio principal hasta que las necesite.",
+    "startup": {
+      "title": "Elementos al iniciar sesión",
+      "description": "Revisar y desactivar elementos de inicio de sesión de terceros recuperables"
+    },
+    "history": {
+      "title": "Historial completo",
+      "description": "Ver tendencias de recursos, alertas y registros de recuperación"
+    },
+    "network": {
+      "title": "Diagnóstico de red",
+      "description": "Ver detalles de la interfaz, el tráfico y las conexiones activas"
+    },
+    "settings": {
+      "title": "Configuración",
+      "description": "Idioma, notificaciones, retención de historial y muestreo"
+    },
+    "language": "Idioma de la interfaz",
+    "professional": "Modo profesional",
+    "professionalDescription": "Visualizar todas las métricas, el árbol de procesos y los detalles técnicos"
+  },
+  "records": {
+    "kicker": "Cambios recientes",
+    "title": "Ver lo que ocurrió antes y después",
+    "description": "Solo se registran las condiciones sostenidas y su recuperación. Los picos breves no se consideran ruido.",
+    "emptyTitle": "Las condiciones han sido estables recientemente",
+    "emptyDescription": "Ralentizaciones, presión de memoria o espacio bajo persistentes aparecerán aquí en lenguaje claro.",
+    "duration": "Aproximadamente {{minutes}} min",
+    "groups": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "earlier": "Antes"
+    },
+    "showMore": "Ver todos los registros {{count}} Registros",
+    "showLess": "Ocultar registros antiguos"
+  },
+  "settings": {
+    "kicker": "Configuración de la guía diaria",
+    "title": "Personaliza Orbit según tus necesidades",
+    "description": "Solo las preferencias diarias se almacenan aquí. Los controles de muestreo y umbral permanecen en el modo profesional.",
+    "language": "Idioma de la interfaz",
+    "languageDescription": "Selecciona el idioma de la interfaz que prefieras",
+    "notifications": "Notificaciones del escritorio",
+    "notificationStatus": {
+      "disabled": "Activar esto para solicitar permiso al sistema",
+      "requesting": "Esperando permiso del sistema",
+      "ready": "Solo se informan los cambios importantes de forma continua",
+      "denied": "Las notificaciones están desactivadas",
+      "unavailable": "Las notificaciones del escritorio no están disponibles aquí"
+    },
+    "history": "Mantener registros recientes",
+    "historyDescription": "Desactivar esto para dejar de guardar cambios de recursos localmente",
+    "textSize": "Tamaño del texto",
+    "textSizeDescription": "Facilitar la lectura de páginas y listas cotidianas",
+    "textSizeOptions": {
+      "comfortable": "Estándar",
+      "large": "Grande"
+    },
+    "reduceMotion": "Reducir animaciones",
+    "reduceMotionDescription": "Detener animaciones continuas de Orbit, respiración y movimiento",
+    "showDockIcon": "Mostrar la aplicación en el Dock",
+    "showDockIconDescription": "Desactivado por defecto; reabrir la ventana principal desde el menú",
+    "launchAtLogin": "Iniciar al iniciar sesión",
+    "launchAtLoginDescription": "Iniciar en segundo plano después de iniciar sesión, sin abrir la ventana principal",
+    "companionAlwaysOnTop": "Mantener Orbit encima de otras ventanas",
+    "companionAlwaysOnTopDescription": "Cuando está desactivado, Orbit permanece en el escritorio pero puede estar cubierto por otras ventanas",
+    "companionShowOnStartup": "Mantener Orbit en el escritorio",
+    "companionShowOnStartupDescription": "Muestra Orbit inmediatamente y lo vuelve a abrir la próxima vez que se inicie StatusOrbit",
+    "professional": "Modo profesional",
+    "professionalDescription": "Visualizar todas las métricas, árbol de procesos, conexiones de red y opciones avanzadas",
+    "openProfessional": "Abrir modo profesional"
+  },
+  "guide": {
+    "back": "Volver a inicio",
+    "checkAgain": "Revisar nuevamente",
+    "checkingAgain": "Verificando…",
+    "result": "Resultado de la verificación",
+    "viewEvidence": "Explicación de StatusOrbit",
+    "safety": "StatusOrbit sugiere solo acciones basadas en evidencia. Cualquier acción del sistema aún requiere su confirmación.",
+    "professional": "Ver toda la evidencia técnica",
+    "slow": {
+      "kicker": "Comprobación de respuesta",
+      "title": "Descubra por qué su computadora se siente lenta",
+      "description": "Observe primero los cambios sostenidos, luego muestre la razón más probable y el siguiente paso seguro.",
+      "observingKicker": "Observando ahora",
+      "observingTitle": "Primero, asegúrese de que esto no sea un breve pico",
+      "observingDescription": "Quedan aproximadamente {{seconds}} segundos. Abrir una página o lanzar una aplicación no se considera un fallo.",
+      "normalTitle": "No se encontró presión de recursos sostenida",
+      "normalDescription": "Si aún se siente lento, revise las aplicaciones actuales. StatusOrbit no adivinará sin evidencia.",
+      "viewApplications": "Mostrar aplicaciones en ejecución",
+      "likelyCause": "Aplicación más probable relacionada",
+      "applicationExplanation": "La aplicación {{name}} estaba activa al mismo tiempo que este problema.",
+      "requestClose": "Solicitar a {{name}} que cierre normalmente"
+    },
+    "space": {
+      "kicker": "Verificar espacio disponible",
+      "title": "Comprobar si el espacio está realmente bajo",
+      "description": "Verifique primero qué recursos quedan disponibles, y luego decida si es necesario realizar un análisis completo de archivos.",
+      "lowTitle": "Solo {{free}} está disponible",
+      "lowDescription": "Busque archivos grandes y contenido recuperable antes de eliminar archivos temporales del sistema.",
+      "normalTitle": "{{free}} sigue disponible",
+      "normalDescription": "El espacio disponible es suficiente. Realice el escaneo solo si desea organizar archivos.",
+      "unknownTitle": "El disco principal no está disponible temporalmente",
+      "unknownDescription": "El sistema no proporciona datos de capacidad fiables, por lo que StatusOrbit no considerará este estado como espacio suficiente.",
+      "cachedScan": "Escaneo completo disponible",
+      "reclaimable": "Revisar aproximadamente {{size}} es recomendable",
+      "noScan": "Los archivos no han sido escaneados",
+      "scanExplanation": "Un escaneo completo crea un mapa interactivo del espacio y nunca elimina automáticamente.",
+      "openScan": "Mostrar resultados del escaneo",
+      "startScan": "Iniciar análisis de espacio",
+      "viewSpace": "Ver resumen del espacio"
+    },
+    "startup": {
+      "kicker": "Verificación de la velocidad de inicio",
+      "title": "Observar qué aplicaciones se abren al iniciar sesión",
+      "description": "Priorizar elementos de inicio de sesión de terceros recuperables, manteniendo los servicios del sistema como de solo lectura.",
+      "resultTitle": "Comenzar con elementos que realmente valen la pena revisar",
+      "resultDescription": "Desactivar un elemento solo detiene su próxima ejecución automática. No desinstala la aplicación."
+    },
+    "heat": {
+      "kicker": "Verificación de temperatura y batería",
+      "title": "Identificar por qué se siente caliente o baja rápidamente la batería",
+      "description": "Comprobar la temperatura, la batería y los bloqueos de sueño por separado, sin considerar que una lectura es un fallo de hardware.",
+      "sleepLabel": "Modo de suspensión automática",
+      "sleepBlocked": "{{name}} Mantiene el ordenador encendido",
+      "sleepClear": "El modo de suspensión automática está disponible",
+      "sleepDescription": "Cerrar la aplicación o pausar su tarea generalmente restaurará el modo de suspensión.",
+      "requestClose": "Solicitar a {{name}} que cierre",
+      "viewApplications": "Ver las aplicaciones con mayor impacto actual",
+      "result": {
+        "temperature": {
+          "title": "El equipo está funcionando a una temperatura elevada",
+          "description": "Pausa tareas intensivas y mantén la ventilación adecuada. Verifica nuevamente después de que la temperatura se haya estabilizado."
+        },
+        "battery": {
+          "title": "La batería restante es baja",
+          "description": "Esta lectura solo indica una carga baja. Vigila las aplicaciones en ejecución si la batería sigue disminuyendo de forma inusual."
+        },
+        "sleep": {
+          "title": "{{name}} está manteniendo el equipo encendido",
+          "description": "Esto puede aumentar el consumo en modo de espera. Cerrar la aplicación o pausar su tarea generalmente restaurará el modo de suspensión."
+        },
+        "unknown": {
+          "title": "Falta información del dispositivo",
+          "description": "La temperatura, la batería y los datos de sueño no están disponibles, por lo que StatusOrbit no puede determinar si hay un problema con el calor o el consumo de energía."
+        },
+        "normal": {
+          "title": "No se ha detectado un problema persistente de calor o sueño",
+          "description": "La temperatura, la batería y el modo de suspensión automática no muestran actualmente ningún problema."
+        }
+      }
+    },
+    "network": {
+      "kicker": "Verificar red",
+      "title": "Mostrar actividad de la red",
+      "description": "StatusOrbit lee el tráfico actual y las conexiones activas, pero no culpa a una aplicación sin pruebas.",
+      "checkingKicker": "Leyendo actualmente",
+      "checkingTitle": "Detectando conexiones activas",
+      "checkingDescription": "El escaneo de conexiones utiliza un comando de baja frecuencia y no afecta al muestreador principal.",
+      "unknownTitle": "Falta información de red",
+      "unknownDescription": "No hay tráfico o conexiones disponibles, por lo que StatusOrbit no puede determinar si la red está funcionando correctamente.",
+      "activeTitle": "Hay actividad en la red",
+      "quietTitle": "No hay actividad de red significativa",
+      "resultDescription": "Esto describe la actividad actual solamente. Una conexión lenta también puede provenir del router, el proveedor o un servicio remoto.",
+      "currentTraffic": "Tráfico actual",
+      "activeConnections": "Conexiones activas",
+      "connections": "{{count}} conexiones activas"
+    },
+    "checkup": {
+      "kicker": "Revisión diaria",
+      "title": "Ver el estado del equipo",
+      "description": "Resumen del estado actual y supervisión continua hasta que se confirme la información.",
+      "observingKicker": "Supervisando...",
+      "observingTitle": "Supervisa un poco más para evitar falsas alarmas",
+      "observingDescription": "Faltan aproximadamente {{seconds}} segundos. Los lanzamientos rápidos de aplicaciones no se consideran problemas persistentes.",
+      "normalTitle": "Todo parece normal ahora",
+      "normalDescription": "No se detecta actividad prolongada de aplicaciones, uso excesivo de memoria o falta de espacio. No es necesario realizar ninguna acción.",
+      "priorityKicker": "Comienza aquí",
+      "openPriority": "Revisa la situación"
+    }
+  }
+}

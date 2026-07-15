@@ -6,7 +6,6 @@ import {
   Gauge,
   History,
   House,
-  Languages,
   ListTree,
   MemoryStick,
   Network,
@@ -20,7 +19,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { emitTo, listen } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import {
   Suspense,
   lazy,
@@ -30,33 +29,41 @@ import {
   useRef,
   useState,
 } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "./i18n/useAppTranslation";
 
 import {
   createProcessControlLease,
   executeProcessAction,
+  getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
   releaseProcessControlLease,
+  setDockIconVisible,
+  setLaunchAtLogin,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { DailyHome } from "./components/DailyHome";
 import { MetricCard } from "./components/MetricCard";
+import { LocaleSelect } from "./components/LocaleSelect";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { SmartDiagnosis } from "./components/SmartDiagnosis";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
 import {
-  buildDailyAttentionItems,
-  dailyOverallLevel,
   type DailyIntent,
   type DailyRecheck,
 } from "./dailyExperience";
+import {
+  type DailyIncident,
+} from "./dailyIncidents";
+import { buildHealthStateUpdate } from "./healthState";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useCleanupScan } from "./hooks/useCleanupScan";
 import { useDesktopNotifications } from "./hooks/useDesktopNotifications";
+import { useDailyIncidents } from "./hooks/useDailyIncidents";
+import { usePublishHealthState } from "./hooks/usePublishHealthState";
 import { usePersistentHistory } from "./hooks/usePersistentHistory";
 import { useMainVisibility } from "./hooks/useMainVisibility";
 import { useResourceAlerts } from "./hooks/useResourceAlerts";
@@ -79,11 +86,6 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "./settings";
-import {
-  buildLightTraySummary,
-  buildTraySummary,
-  type TraySummary,
-} from "./traySummary";
 import type {
   CommandError,
   ProcessAction,
@@ -106,6 +108,18 @@ import {
 import "./App.css";
 
 type ActiveView = "overview" | "processes" | "storage" | "cleanup" | "network" | "startup" | "history" | "settings" | "more";
+
+const PROFESSIONAL_VIEW_EYEBROW = {
+  overview: "app:viewEyebrow.overview",
+  processes: "app:viewEyebrow.processes",
+  storage: "app:viewEyebrow.storage",
+  cleanup: "app:viewEyebrow.cleanup",
+  network: "app:viewEyebrow.network",
+  startup: "app:viewEyebrow.startup",
+  history: "app:viewEyebrow.history",
+  settings: "app:viewEyebrow.settings",
+  more: "app:viewEyebrow.overview",
+} as const satisfies Record<ActiveView, string>;
 
 const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
@@ -137,6 +151,24 @@ function isActiveView(value: unknown): value is ActiveView {
   ].includes(value);
 }
 
+interface OpenDailyRequest {
+  view: ActiveView;
+  occurrenceId: string | null;
+}
+
+function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
+  if (isActiveView(value)) return { view: value, occurrenceId: null };
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as { view?: unknown; occurrenceId?: unknown };
+  if (!isActiveView(candidate.view)) return null;
+  return {
+    view: candidate.view,
+    occurrenceId: typeof candidate.occurrenceId === "string"
+      ? candidate.occurrenceId
+      : null,
+  };
+}
+
 interface PendingProcessAction {
   source: "process" | "diagnosis";
   displayName: string;
@@ -149,17 +181,20 @@ interface PendingProcessAction {
 }
 
 function App() {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [settings, setSettings] = useState<AppSettings>(() =>
     loadAppSettings(normalizeLanguage(i18n.resolvedLanguage)),
   );
+  const [launchAtLoginReady, setLaunchAtLoginReady] = useState(false);
+  const launchAtLoginActualRef = useRef<boolean | null>(null);
+  const launchAtLoginEpochRef = useRef(0);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
   const mainVisible = useMainVisibility();
   const {
     snapshot,
-    summary: systemSummary,
+    healthSnapshot,
     history,
     error,
     paused,
@@ -169,6 +204,8 @@ function App() {
   } = useSystemMonitor(settings.systemSampleIntervalMs, mainVisible);
   const [activeView, setActiveView] = useState<ActiveView>("overview");
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
+  const [selectedDailyIncident, setSelectedDailyIncident] =
+    useState<DailyIncident | null>(null);
   const [dailyRecheck, setDailyRecheck] = useState<DailyRecheck | null>(null);
   const [modeTransition, setModeTransition] = useState<AppSettings["experienceMode"] | null>(null);
   const [diagnosisExpanded, setDiagnosisExpanded] = useState(false);
@@ -239,18 +276,55 @@ function App() {
   const submittingActionRef = useRef(false);
   const startupCompletedRef = useRef(false);
   const modeTransitionTimeoutRef = useRef<number | null>(null);
-  const latestTraySummaryRef = useRef<TraySummary | null>(null);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
+  const diagnosticConnections = mainVisible ? connectionsSnapshot : null;
   const diagnosis = useMemo(
-    () => snapshot
+    () => healthSnapshot
       ? analyzeSystemHealth({
-          snapshot,
+          snapshot: healthSnapshot,
           history,
-          connections: connectionsSnapshot,
+          connections: diagnosticConnections,
         })
       : null,
-    [connectionsSnapshot, history, snapshot],
+    [diagnosticConnections, healthSnapshot, history],
   );
+  const dailyIncidents = useDailyIncidents(
+    diagnosis,
+    healthSnapshot,
+    diagnosticConnections,
+  );
+  const dailyIncidentsRef = useRef(dailyIncidents.retained);
+  dailyIncidentsRef.current = dailyIncidents.retained;
+  const healthStateUpdate = useMemo(
+    () => healthSnapshot && diagnosis
+      ? buildHealthStateUpdate(
+          healthSnapshot,
+          paused,
+          dailyIncidents.active,
+          dailyIncidents.pendingCount,
+          diagnosis.baselineReady,
+          mainVisible ? "foreground" : "background",
+        )
+      : null,
+    [
+      dailyIncidents.active,
+      dailyIncidents.pendingCount,
+      diagnosis,
+      healthSnapshot,
+      mainVisible,
+      paused,
+    ],
+  );
+  usePublishHealthState(healthStateUpdate);
+
+  useEffect(() => {
+    setSelectedDailyIncident((current) => {
+      if (!current) return null;
+      return dailyIncidents.retained.find(
+        ({ occurrenceId }) => occurrenceId === current.occurrenceId,
+      ) ?? current;
+    });
+  }, [dailyIncidents.retained]);
   const refreshActiveView = useCallback(async () => {
     await Promise.all([
       refreshNow(),
@@ -314,11 +388,18 @@ function App() {
         if (!disposed) void refreshNow();
       }),
       listen<unknown>("status-orbit:open-daily", ({ payload }) => {
-        if (!disposed && isActiveView(payload)) {
-          setSettings((current) => ({ ...current, experienceMode: "simple" }));
-          setDailyIntent(null);
-          setActiveView(payload);
-        }
+        if (disposed) return;
+        const request = parseOpenDailyRequest(payload);
+        if (!request) return;
+        const incident = request.occurrenceId
+          ? dailyIncidentsRef.current.find(
+              ({ occurrenceId }) => occurrenceId === request.occurrenceId,
+            ) ?? null
+          : null;
+        setSettings((current) => ({ ...current, experienceMode: "simple" }));
+        setSelectedDailyIncident(incident);
+        setDailyIntent(incident?.item.intent ?? null);
+        setActiveView(request.view);
       }),
     ]).then((nextUnlisteners) => {
       if (disposed) nextUnlisteners.forEach((unlisten) => unlisten());
@@ -329,27 +410,6 @@ function App() {
       unlisteners.forEach((unlisten) => unlisten());
     };
   }, [refreshNow, setPaused]);
-
-  useEffect(() => {
-    if (!isDesktopRuntime()) return;
-    const summary = mainVisible
-      ? snapshot && diagnosis
-        ? buildTraySummary(snapshot, paused, diagnosis)
-        : null
-      : systemSummary
-        ? buildLightTraySummary(
-            systemSummary,
-            paused,
-            latestTraySummaryRef.current,
-          )
-        : null;
-    if (!summary) return;
-    latestTraySummaryRef.current = summary;
-    void Promise.all([
-      emitTo("tray", "status-orbit:tray-summary", summary),
-      emitTo("companion", "status-orbit:tray-summary", summary),
-    ]);
-  }, [diagnosis, mainVisible, paused, snapshot, systemSummary]);
 
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
@@ -368,6 +428,7 @@ function App() {
     (update: Partial<Omit<AppSettings, "version">>) => {
       setSettings((current) => ({ ...current, ...update }));
       if (update.experienceMode === "simple") {
+        setSelectedDailyIncident(null);
         setDailyIntent(null);
         setActiveView("overview");
       }
@@ -382,9 +443,55 @@ function App() {
   );
 
   useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    const epoch = launchAtLoginEpochRef.current + 1;
+    launchAtLoginEpochRef.current = epoch;
+    void getLaunchAtLogin()
+      .then((enabled) => {
+        if (disposed || launchAtLoginEpochRef.current !== epoch) return;
+        launchAtLoginActualRef.current = enabled;
+        setSettings((current) => current.launchAtLogin === enabled
+          ? current
+          : { ...current, launchAtLogin: enabled });
+        setLaunchAtLoginReady(true);
+      })
+      .catch(() => {
+        if (!disposed && launchAtLoginEpochRef.current === epoch) {
+          setLaunchAtLoginReady(true);
+        }
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopRuntime() || !launchAtLoginReady) return;
+    const desired = settings.launchAtLogin;
+    if (launchAtLoginActualRef.current === desired) return;
+    const previous = launchAtLoginActualRef.current ?? false;
+    const epoch = launchAtLoginEpochRef.current + 1;
+    launchAtLoginEpochRef.current = epoch;
+    launchAtLoginActualRef.current = desired;
+    void setLaunchAtLogin(desired).catch(() => {
+      if (launchAtLoginEpochRef.current !== epoch) return;
+      launchAtLoginActualRef.current = previous;
+      setSettings((current) => current.launchAtLogin === desired
+        ? { ...current, launchAtLogin: previous }
+        : current);
+    });
+  }, [launchAtLoginReady, settings.launchAtLogin]);
+
+  useEffect(() => {
     saveAppSettings(settings);
     applyAppAppearance(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    void setDockIconVisible(settings.showDockIcon);
+  }, [settings.showDockIcon]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -535,7 +642,7 @@ function App() {
           !processKeysEqual(activeDetailKeyRef.current, key)
         ) {
           await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         setPendingAction({
@@ -565,7 +672,7 @@ function App() {
         (candidate) => processIdentity(candidate) === identity,
       );
       if (!process || process.protected || !process.birthToken) {
-        setNotice(t("diagnosis.recommendations.actionUnavailable"));
+        setNotice(t("diagnosis:recommendations.actionUnavailable"));
         return;
       }
 
@@ -588,14 +695,14 @@ function App() {
           !detailMatchesProcess(nextDetail, process) ||
           !nextDetail.key
         ) {
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         if (!nextDetail.canTerminate) {
           setNotice(
             nextDetail.protectedReason ??
             nextDetail.identityError ??
-            t("diagnosis.recommendations.actionUnavailable"),
+            t("diagnosis:recommendations.actionUnavailable"),
           );
           return;
         }
@@ -610,7 +717,7 @@ function App() {
         });
         if (selectedIdentityRef.current !== identity) {
           await releaseProcessControlLease({ leaseId: lease.id }).catch(() => undefined);
-          setNotice(t("app.staleTarget"));
+          setNotice(t("app:staleTarget"));
           return;
         }
         setDetail(nextDetail);
@@ -648,7 +755,7 @@ function App() {
       !processKeysEqual(currentKey, pendingAction.key)
     ) {
       await releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
-      setNotice(t("app.staleTarget"));
+      setNotice(t("app:staleTarget"));
       setPendingAction(null);
       return;
     }
@@ -687,7 +794,7 @@ function App() {
       <main className="boot-screen">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
         <strong>StatusOrbit</strong>
-        <span><i className="live-status-dot" />{t("app.samplerConnecting")}</span>
+        <span><i className="live-status-dot" />{t("app:samplerConnecting")}</span>
       </main>
     );
   }
@@ -696,9 +803,9 @@ function App() {
     return (
       <main className="boot-screen boot-screen--error">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
-        <strong>{t("app.samplerFailed")}</strong>
-        <span>{error?.message ?? t("app.samplerNoData")}</span>
-        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common.retry")}</button>
+        <strong>{t("app:samplerFailed")}</strong>
+        <span>{error?.message ?? t("app:samplerNoData")}</span>
+        <button className="button button--primary" type="button" onClick={() => void refreshNow()}>{t("common:retry")}</button>
       </main>
     );
   }
@@ -719,18 +826,22 @@ function App() {
         snapshot.network.transmittedBytesPerSecond;
   const dailyMode = settings.experienceMode === "simple";
   const activeDiagnosis = diagnosis!;
-  const dailyLevel = dailyOverallLevel(activeDiagnosis, snapshot);
-  const recommendedDailyIntent = buildDailyAttentionItems(
-    activeDiagnosis,
-    snapshot,
-    1,
-  )[0]?.intent ?? null;
+  const dailyLevel = healthStateUpdate?.health ?? "observing";
+  const recommendedDailyIntent = dailyIncidents.active[0]?.item.intent ?? null;
   const openDailyIntent = (intent: DailyIntent) => {
+    setSelectedDailyIncident(null);
     setDailyIntent(intent);
     setActiveView("overview");
     setDailyRecheck((current) => current?.intent === intent ? current : null);
   };
+  const openDailyIncident = (incident: DailyIncident) => {
+    setSelectedDailyIncident(incident);
+    setDailyIntent(incident.item.intent);
+    setActiveView("overview");
+    setDailyRecheck(null);
+  };
   const navigateDaily = (view: ActiveView) => {
+    setSelectedDailyIncident(null);
     setDailyIntent(null);
     setActiveView(view);
   };
@@ -750,6 +861,7 @@ function App() {
     }, settings.reduceMotion ? 40 : 820);
   };
   const openProfessional = (view: ActiveView = "overview") => {
+    setSelectedDailyIncident(null);
     setDailyIntent(null);
     setActiveView(view === "more" ? "overview" : view);
     switchExperienceMode("professional");
@@ -786,39 +898,39 @@ function App() {
   };
   return (
     <div className={`app-shell${dailyMode ? " app-shell--daily" : " app-shell--professional"}${modeTransition ? ` is-mode-transitioning mode-transition--to-${modeTransition}` : ""}`}>
-      <nav className="sidebar" aria-label={t("app.mainNavigation")}>
+      <nav className="sidebar" aria-label={t("app:mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
-          <span><strong>StatusOrbit</strong><small>{dailyMode ? t("daily.shell.label") : "LOCAL MONITOR"}</small></span>
+          <span><strong>StatusOrbit</strong><small>{dailyMode ? t("daily:shell.label") : "LOCAL MONITOR"}</small></span>
         </div>
 
         {dailyMode ? (
           <>
             <div className="nav-group daily-nav">
-              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily.nav.today")}</button>
-              <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily.nav.solve")}</button>
-              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily.nav.cleanup")}</button>
-              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily.nav.records")}</button>
+              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
+              <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
+              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
+              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
             </div>
           </>
         ) : (
           <>
             <div className="nav-group">
-              <span className="nav-label">{t("app.monitor")}</span>
-              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app.overview")}</button>
-              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><ListTree size={17} />{t("app.processes")}</button>
-              <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app.storage")}</button>
-              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app.cleanup")}</button>
-              <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app.network")}</button>
+              <span className="nav-label">{t("app:monitor")}</span>
+              <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app:overview")}</button>
+              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><ListTree size={17} />{t("app:processes")}</button>
+              <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
+              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
+              <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app:network")}</button>
             </div>
             <div className="nav-group">
-              <span className="nav-label">{t("app.diagnostics")}</span>
-              <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app.startup")}</button>
-              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app.history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history.alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
-              <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app.settings")}</button>
+              <span className="nav-label">{t("app:diagnostics")}</span>
+              <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app:startup")}</button>
+              <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
+              <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app:settings")}</button>
             </div>
             <div className="sidebar-footer">
-              <span className="live-indicator"><i />{t("app.localSampling")}</span>
+              <span className="live-indicator"><i />{t("app:localSampling")}</span>
             </div>
           </>
         )}
@@ -830,8 +942,8 @@ function App() {
             <>
               <div className="daily-topbar-heading">
                 <span className="eyebrow">{dailyIntent
-                  ? t(`daily.intents.${dailyIntent}.title`)
-                  : t(`daily.nav.${activeView === "more"
+                  ? t(`daily:intents.${dailyIntent}.title`)
+                  : t(`daily:nav.${activeView === "more"
                     ? "solve"
                     : activeView === "cleanup" || activeView === "storage"
                       ? "cleanup"
@@ -842,15 +954,15 @@ function App() {
                           : activeView === "processes"
                             ? "applications"
                             : "today"}`)}</span>
-                <h1>{snapshot.host.osName.toLocaleLowerCase().includes("darwin") ? t("daily.topbar.thisMac") : t("daily.topbar.thisComputer")}</h1>
+                <h1>{snapshot.host.osName.toLocaleLowerCase().includes("darwin") ? t("daily:topbar.thisMac") : t("daily:topbar.thisComputer")}</h1>
               </div>
               <div className="daily-topbar-actions">
-                <span className={`daily-topbar-status is-${dailyLevel}`}><i />{t(`daily.status.${dailyLevel}.short`)}</span>
+                <span className={`daily-topbar-status is-${dailyLevel}`}><i />{t(`daily:status.${dailyLevel}.short`)}</span>
                 {isDesktopRuntime() ? <button
                   className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
                   type="button"
-                  data-tooltip={t(`app.companion.${companionVisible ? "hide" : "show"}`)}
-                  aria-label={t(`app.companion.${companionVisible ? "hide" : "show"}`)}
+                  data-tooltip={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+                  aria-label={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
                   aria-pressed={companionVisible}
                   onClick={() => void invoke("toggle_companion_window")}
                 >
@@ -859,35 +971,35 @@ function App() {
                 <button
                   className="button mode-switch mode-switch--to-professional"
                   type="button"
-                  title={t("app.mode.switchTo.professional")}
-                  aria-label={t("app.mode.switchTo.professional")}
+                  title={t("app:mode.switchTo.professional")}
+                  aria-label={t("app:mode.switchTo.professional")}
                   aria-busy={modeTransition !== null}
                   disabled={modeTransition !== null}
                   onClick={() => openProfessional("overview")}
                 >
                   <span className="mode-switch__icon" aria-hidden="true"><SlidersHorizontal size={15} /></span>
-                  <span>{t("app.mode.short.professional")}</span>
+                  <span>{t("app:mode.short.professional")}</span>
                 </button>
-                <button className={`icon-button${activeView === "settings" ? " is-active" : ""}`} type="button" title={t("daily.nav.settings")} aria-label={t("daily.nav.settings")} onClick={() => navigateDaily("settings")}><Settings2 size={16} /></button>
+                <button className={`icon-button${activeView === "settings" ? " is-active" : ""}`} type="button" title={t("daily:nav.settings")} aria-label={t("daily:nav.settings")} onClick={() => navigateDaily("settings")}><Settings2 size={16} /></button>
               </div>
             </>
           ) : (
             <>
               <div className="host-heading">
-                <span className="eyebrow">{t(`app.viewEyebrow.${activeView === "more" ? "overview" : activeView}`)}</span>
+                <span className="eyebrow">{t(PROFESSIONAL_VIEW_EYEBROW[activeView])}</span>
                 <h1>{snapshot.host.hostname}</h1>
                 <p>{snapshot.host.osName} {snapshot.host.osVersion} · {snapshot.host.architecture}</p>
               </div>
               <div className="topbar-actions">
-            {!isDesktopRuntime() ? <span className="demo-badge">{t("app.demoData")}</span> : null}
+            {!isDesktopRuntime() ? <span className="demo-badge">{t("app:demoData")}</span> : null}
             <span className={`sample-status${paused ? " is-paused" : ""}`}>
-              <i />{paused ? t("app.paused") : snapshot.warmingUp ? t("common.warmup") : t("app.live")}
+              <i />{paused ? t("app:paused") : snapshot.warmingUp ? t("common:warmup") : t("app:live")}
             </span>
             {isDesktopRuntime() ? <button
               className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
               type="button"
-              data-tooltip={t(`app.companion.${companionVisible ? "hide" : "show"}`)}
-              aria-label={t(`app.companion.${companionVisible ? "hide" : "show"}`)}
+              data-tooltip={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
+              aria-label={t(`app:companion.${companionVisible ? "hide" : "show"}`)}
               aria-pressed={companionVisible}
               onClick={() => void invoke("toggle_companion_window")}
             >
@@ -896,47 +1008,48 @@ function App() {
             <button
               className="button mode-switch mode-switch--to-simple"
               type="button"
-              title={t("app.mode.switchTo.simple")}
-              aria-label={t("app.mode.switchTo.simple")}
+              title={t("app:mode.switchTo.simple")}
+              aria-label={t("app:mode.switchTo.simple")}
               aria-busy={modeTransition !== null}
               disabled={modeTransition !== null}
               onClick={() => switchExperienceMode("simple")}
             >
               <span className="mode-switch__icon" aria-hidden="true"><Sparkles size={15} /></span>
-              <span>{t("app.mode.short.simple")}</span>
+              <span>{t("app:mode.short.simple")}</span>
             </button>
-            <button className="icon-button" type="button" title={t("app.refreshNow")} aria-label={t("app.refreshNow")} onClick={() => void refreshActiveView()}>
+            <button className="icon-button" type="button" title={t("app:refreshNow")} aria-label={t("app:refreshNow")} onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
             </button>
-            <button
-              className="button button--secondary language-button"
-              type="button"
-              title={t("app.switchLanguage")}
-              aria-label={t("app.switchLanguage")}
-              onClick={() => updateSettings({ language: settings.language === "en" ? "zh-CN" : "en" })}
-            >
-              <Languages size={15} />
-              {i18n.resolvedLanguage === "en" ? "中文" : "EN"}
-            </button>
+            <LocaleSelect
+              compact
+              withIcon
+              className="language-button"
+              value={settings.language}
+              label={t("app:switchLanguage")}
+              onChange={(language) => updateSettings({ language })}
+            />
             <button className="button button--secondary" type="button" onClick={() => setPaused(!paused)}>
               {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? t("app.resume") : t("app.pause")}
+              {paused ? t("app:resume") : t("app:pause")}
             </button>
               </div>
             </>
           )}
         </header>
 
-        {error ? <div className="global-error">{t("app.sampleFailed", { message: error.message })}</div> : null}
-        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common.close")}</button></div> : null}
+        {error ? <div className="global-error">{t("app:sampleFailed", { message: error.message })}</div> : null}
+        {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common:close")}</button></div> : null}
 
         <div className={`content-layout${dailyMode || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
-            <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common.loading")}</div>}>
+            <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>}>
             {dailyMode ? (
               dailyIntent ? (
                 <DailyGuide
                   intent={dailyIntent}
+                  incident={selectedDailyIncident}
+                  incidents={dailyIncidents.active}
+                  pendingIncidentCount={dailyIncidents.pendingCount}
                   diagnosis={activeDiagnosis}
                   snapshot={snapshot}
                   cleanupSnapshot={cleanupScan.snapshot}
@@ -949,12 +1062,16 @@ function App() {
                   connectionsLoading={connectionsLoading}
                   preparingAction={preparingAction}
                   recheck={dailyRecheck}
-                  onBack={() => setDailyIntent(null)}
+                  onBack={() => {
+                    setSelectedDailyIncident(null);
+                    setDailyIntent(null);
+                  }}
                   onRefresh={refreshDailyGuide}
                   onOpenCleanup={openDailyCleanup}
                   onOpenSpace={() => navigateDaily("storage")}
                   onOpenApplications={() => navigateDaily("processes")}
                   onOpenIntent={openDailyIntent}
+                  onOpenIncident={openDailyIncident}
                   onRefreshStartup={startupItems.refresh}
                   onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, dailyIntent)}
                 />
@@ -962,8 +1079,9 @@ function App() {
                 <DailyHome
                   diagnosis={activeDiagnosis}
                   snapshot={snapshot}
+                  incidents={dailyIncidents.active}
                   alertEvents={resourceAlerts.events}
-                  onOpenIntent={openDailyIntent}
+                  onOpenIncident={openDailyIncident}
                   onOpenSolve={() => navigateDaily("more")}
                   onOpenRecords={() => navigateDaily("history")}
                   onRefresh={checkFromDailyHome}
@@ -1047,21 +1165,21 @@ function App() {
                   applications={diagnosis?.applications ?? []}
                 />
                 <>
-                    <section className="metric-grid" aria-label={t("app.metricsLabel")}>
+                    <section className="metric-grid" aria-label={t("app:metricsLabel")}>
                       <MetricCard
                         icon={Cpu}
                         label="CPU"
                         value={formatPercent(snapshot.cpu.usagePercent)}
-                        context={t("app.metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
+                        context={t("app:metrics.cpuContext", { count: snapshot.cpu.logicalCoreCount })}
                         tone="blue"
                         progress={snapshot.cpu.usagePercent ?? 0}
                         usageLevel={resourceUsageLevel(snapshot.cpu.usagePercent, settings.usageThresholds)}
                       />
                       <MetricCard
                         icon={MemoryStick}
-                        label={t("app.metrics.memory")}
+                        label={t("app:metrics.memory")}
                         value={formatBytes(snapshot.memory.usedBytes)}
-                        context={t("app.metrics.memoryContext", {
+                        context={t("app:metrics.memoryContext", {
                           total: formatBytes(snapshot.memory.totalBytes),
                           swap: formatBytes(snapshot.memory.swapUsedBytes),
                         })}
@@ -1071,9 +1189,9 @@ function App() {
                       />
                       <MetricCard
                         icon={Database}
-                        label={t("app.metrics.disk")}
+                        label={t("app:metrics.disk")}
                         value={formatRate(diskRate)}
-                        context={t("app.metrics.diskContext", {
+                        context={t("app:metrics.diskContext", {
                           read: formatRate(snapshot.disk.readBytesPerSecond),
                           write: formatRate(snapshot.disk.writeBytesPerSecond),
                         })}
@@ -1081,9 +1199,9 @@ function App() {
                       />
                       <MetricCard
                         icon={Network}
-                        label={t("app.metrics.network")}
+                        label={t("app:metrics.network")}
                         value={formatRate(networkRate)}
-                        context={t("app.metrics.networkContext", {
+                        context={t("app:metrics.networkContext", {
                           receive: formatRate(snapshot.network.receivedBytesPerSecond),
                           send: formatRate(snapshot.network.transmittedBytesPerSecond),
                         })}
@@ -1234,22 +1352,22 @@ function App() {
         </div>
 
         {!dailyMode ? <footer className="statusbar">
-          <span><Gauge size={13} />{t("app.status.interval", { interval: snapshot.sampleIntervalMs })}</span>
+          <span><Gauge size={13} />{t("app:status.interval", { interval: snapshot.sampleIntervalMs })}</span>
           <span>
             {activeView === "network"
-              ? t("app.status.interfacesAndConnections", {
+              ? t("app:status.interfacesAndConnections", {
                   interfaces: snapshot.network.interfaceCount,
                   connections: connectionsSnapshot?.summary.totalCount ?? "—",
                 })
               : activeView === "history"
-                ? t("app.status.savedHistory", {
+                ? t("app:status.savedHistory", {
                     count: persistentHistory.storedPoints.length,
                   })
               : activeView === "cleanup"
-                ? t("app.status.cleanupEntries", {
+                ? t("app:status.cleanupEntries", {
                     count: cleanupScan.progress?.scannedEntryCount ?? cleanupScan.snapshot?.scannedEntryCount ?? 0,
                   })
-              : t("app.status.processCount", { count: snapshot.processes.length })}
+              : t("app:status.processCount", { count: snapshot.processes.length })}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>
           <span className="statusbar__sequence">#{snapshot.sequence}</span>

@@ -1,0 +1,17 @@
+{
+  "kicker": "Orbit 어시스턴트",
+  "dragHint": "Orbit를 드래그하여 이동합니다; 마우스를 올려 상태를 확인하고, 오른쪽 클릭하면 메뉴가 표시됩니다",
+  "expand": "Orbit 어시스턴트를 엽니다",
+  "collapse": "Orbit 어시스턴트를 닫습니다",
+  "menu": "Orbit 어시스턴트 메뉴",
+  "hide": "Orbit 어시스턴트를 숨깁니다",
+  "reason": "{{resource}} 최근에 주목할 만한 변화가 있었습니다. 메인 창을 열어 자세히 알아보세요.",
+  "action": {
+    "loading": "일상적인 도움 기능을 엽니다",
+    "observing": "현재 상태를 확인합니다",
+    "normal": "문제 발생",
+    "attention": "상황을 확인해 보세요",
+    "urgent": "지금 바로 확인하세요"
+  },
+  "recovering": "지표가 안정되었습니다. 추가 확인 후 정상 작동 여부를 모니터링합니다."
+}

@@ -41,11 +41,11 @@ if (image) image.src = brandMark;
 
 function renderLanguage(): void {
   const surface = root.querySelector<HTMLElement>(".splash-surface");
-  if (surface) surface.setAttribute("aria-label", translateAuxiliary("splash.title"));
+  if (surface) surface.setAttribute("aria-label", translateAuxiliary("splash:title"));
   const description = root.querySelector<HTMLElement>("[data-i18n='description']");
-  if (description) description.textContent = translateAuxiliary("splash.description");
+  if (description) description.textContent = translateAuxiliary("splash:description");
   const connecting = root.querySelector<HTMLElement>("[data-i18n='connecting']");
-  if (connecting) connecting.textContent = translateAuxiliary("splash.connecting");
+  if (connecting) connecting.textContent = translateAuxiliary("splash:connecting");
 }
 
 renderLanguage();
@@ -54,7 +54,6 @@ window.addEventListener("storage", ({ key }) => {
     applyAppAppearance(loadAppAppearance());
   }
   if (key === LANGUAGE_STORAGE_KEY) {
-    changeAuxiliaryLanguage(initialLanguage());
-    renderLanguage();
+    void changeAuxiliaryLanguage(initialLanguage()).then(renderLanguage);
   }
 });

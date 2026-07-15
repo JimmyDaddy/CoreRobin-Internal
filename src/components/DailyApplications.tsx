@@ -10,7 +10,7 @@ import {
   Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import { sortApplications } from "../applicationImpact";
 import {
@@ -47,7 +47,7 @@ export function DailyApplications({
   onRefresh,
   onRequestClose,
 }: DailyApplicationsProps) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,19 +98,19 @@ export function DailyApplications({
       <header className="daily-page-hero daily-applications__hero">
         <span className="daily-page-hero__icon"><AppWindow size={22} /></span>
         <div>
-          <span className="eyebrow">{t("daily.applications.kicker")}</span>
-          <h1 id="daily-applications-title">{t("daily.applications.title")}</h1>
-          <p>{t("daily.applications.description")}</p>
+          <span className="eyebrow">{t("daily:applications.kicker")}</span>
+          <h1 id="daily-applications-title">{t("daily:applications.title")}</h1>
+          <p>{t("daily:applications.description")}</p>
         </div>
         <Button variant="secondary" disabled={refreshing} onClick={() => void refreshSnapshot()}>
-          <RefreshCw className={refreshing ? "is-spinning" : undefined} size={14} />{t(refreshing ? "daily.applications.refreshing" : "daily.applications.refresh")}
+          <RefreshCw className={refreshing ? "is-spinning" : undefined} size={14} />{t(refreshing ? "daily:applications.refreshing" : "daily:applications.refresh")}
         </Button>
       </header>
 
       {recheck ? (
         <div className="daily-recheck" role="status">
           <Gauge size={17} />
-          <div><strong>{t("daily.recheck.title")}</strong><span>{t(`daily.recheck.${recheck.outcome}`)}</span></div>
+          <div><strong>{t("daily:recheck.title")}</strong><span>{t(`daily:recheck.${recheck.outcome}`)}</span></div>
           <small>{new Date(recheck.checkedAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" })}</small>
         </div>
       ) : null}
@@ -118,15 +118,15 @@ export function DailyApplications({
       <div className="daily-applications__snapshot">
         <span>{noteworthy.length > 0 ? <Gauge size={18} /> : <CheckCircle2 size={18} />}</span>
         <div>
-          <strong>{t(noteworthy.length > 0 ? "daily.applications.snapshotFound" : "daily.applications.snapshotClear", { count: noteworthy.length })}</strong>
-          <small>{t("daily.applications.snapshotTime", { time: new Date(applicationSnapshot.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" }) })}</small>
+          <strong>{t(noteworthy.length > 0 ? "daily:applications.snapshotFound" : "daily:applications.snapshotClear", { count: noteworthy.length })}</strong>
+          <small>{t("daily:applications.snapshotTime", { time: new Date(applicationSnapshot.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" }) })}</small>
         </div>
       </div>
 
       {showAll ? (
         <label className="daily-search daily-applications__search">
           <Search size={15} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("daily.applications.search")} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("daily:applications.search")} />
         </label>
       ) : null}
 
@@ -144,28 +144,28 @@ export function DailyApplications({
                   <ApplicationAvatar application={application} className="daily-application__avatar" />
                   <span className="daily-application__identity">
                     <strong>{application.name}</strong>
-                    <small><AppWindow size={11} />{t("daily.applications.ordinary")}</small>
+                    <small><AppWindow size={11} />{t("daily:applications.ordinary")}</small>
                   </span>
                   <span className="daily-application__meaning">
-                    <strong>{t(`daily.applications.level.${summary.impact}`)}</strong>
-                    <small>{t(`daily.applications.reason.${summary.primaryResource}`, { name: application.name })}</small>
+                    <strong>{t(`daily:applications.level.${summary.impact}`)}</strong>
+                    <small>{t(`daily:applications.reason.${summary.primaryResource}`, { name: application.name })}</small>
                   </span>
                   {selected ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
                 {selected ? (
                   <div className="daily-application__details">
                     <details className="daily-evidence">
-                      <summary><Gauge size={14} />{t("daily.applications.viewEvidence")}</summary>
+                      <summary><Gauge size={14} />{t("daily:applications.viewEvidence")}</summary>
                       <div className="daily-application__evidence">
-                        <span><small>{t("daily.applications.evidence.cpu")}</small><strong>{formatPercent(application.cpuPercent)}</strong></span>
-                        <span><small>{t("daily.applications.evidence.memory")}</small><strong>{formatBytes(application.memoryBytes)}</strong></span>
-                        <span><small>{t("daily.applications.evidence.disk")}</small><strong>{formatRate(application.diskBytesPerSecond)}</strong></span>
+                        <span><small>{t("daily:applications.evidence.cpu")}</small><strong>{formatPercent(application.cpuPercent)}</strong></span>
+                        <span><small>{t("daily:applications.evidence.memory")}</small><strong>{formatBytes(application.memoryBytes)}</strong></span>
+                        <span><small>{t("daily:applications.evidence.disk")}</small><strong>{formatRate(application.diskBytesPerSecond)}</strong></span>
                       </div>
                     </details>
                     {application.actionIdentity ? (
                       <Button variant="primary" disabled={preparingAction} onClick={() => onRequestClose(application.actionIdentity!, application.name)}>
                         {preparingAction ? <LoaderCircle className="is-spinning" size={14} /> : <Power size={14} />}
-                        {t("daily.applications.requestClose", { name: application.name })}
+                        {t("daily:applications.requestClose", { name: application.name })}
                       </Button>
                     ) : null}
                   </div>
@@ -175,9 +175,9 @@ export function DailyApplications({
           })}
         </div>
       ) : !showAll ? (
-        <div className="daily-applications__calm"><CheckCircle2 size={23} /><strong>{t("daily.applications.calmTitle")}</strong><span>{t("daily.applications.calmDescription")}</span></div>
+        <div className="daily-applications__calm"><CheckCircle2 size={23} /><strong>{t("daily:applications.calmTitle")}</strong><span>{t("daily:applications.calmDescription")}</span></div>
       ) : (
-        <div className="daily-list-empty"><AppWindow size={22} /><strong>{t("daily.applications.empty")}</strong></div>
+        <div className="daily-list-empty"><AppWindow size={22} /><strong>{t("daily:applications.empty")}</strong></div>
       )}
 
       <button className="daily-applications__all" type="button" onClick={() => {
@@ -185,7 +185,7 @@ export function DailyApplications({
         setQuery("");
         setExpandedApplicationId(null);
       }}>
-        {t(showAll ? "daily.applications.hideAll" : "daily.applications.showAll", { count: ordered.length })}
+        {t(showAll ? "daily:applications.hideAll" : "daily:applications.showAll", { count: ordered.length })}
         {showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
     </section>

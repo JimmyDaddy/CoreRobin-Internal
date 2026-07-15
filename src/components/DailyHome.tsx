@@ -19,15 +19,20 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  useAppTranslation,
+  type AppTFunction,
+} from "../i18n/useAppTranslation";
 
 import {
-  buildDailyAttentionItems,
-  buildDailyOrbitItems,
-  dailyOverallLevel,
   type DailyAttentionItem,
-  type DailyIntent,
 } from "../dailyExperience";
+import {
+  buildStableDailyOrbitItems,
+  dailyIncidentDisplayLevel,
+  dailyIncidentLevel,
+  type DailyIncident,
+} from "../dailyIncidents";
 import type { SmartDiagnosisResult } from "../diagnosis";
 import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
@@ -38,8 +43,9 @@ import { Button } from "./Button";
 interface DailyHomeProps {
   diagnosis: SmartDiagnosisResult;
   snapshot: SystemSnapshot;
+  incidents: readonly DailyIncident[];
   alertEvents: readonly ResourceAlertEvent[];
-  onOpenIntent: (intent: DailyIntent) => void;
+  onOpenIncident: (incident: DailyIncident) => void;
   onOpenSolve: () => void;
   onOpenRecords: () => void;
   onRefresh: () => void | Promise<void>;
@@ -55,28 +61,25 @@ const ORBIT_ICONS = {
 export function DailyHome({
   diagnosis,
   snapshot,
+  incidents,
   alertEvents,
-  onOpenIntent,
+  onOpenIncident,
   onOpenSolve,
   onOpenRecords,
   onRefresh,
 }: DailyHomeProps) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const [checking, setChecking] = useState(false);
-  const level = dailyOverallLevel(diagnosis, snapshot);
+  const level = dailyIncidentLevel(incidents, diagnosis.baselineReady);
   const orbitItems = useMemo(
-    () => buildDailyOrbitItems(diagnosis, snapshot),
-    [diagnosis, snapshot],
+    () => buildStableDailyOrbitItems(incidents, diagnosis, snapshot),
+    [diagnosis, incidents, snapshot],
   );
-  const attentionItems = useMemo(
-    () => buildDailyAttentionItems(diagnosis, snapshot),
-    [diagnosis, snapshot],
-  );
-  const suggestedPrimary = attentionItems[0] ?? null;
+  const suggestedPrimary = incidents[0] ?? null;
   const [primaryId, setPrimaryId] = useState<string | null>(
     () => suggestedPrimary?.id ?? null,
   );
-  const primary = attentionItems.find(({ id }) => id === primaryId) ??
+  const primary = incidents.find(({ id }) => id === primaryId) ??
     suggestedPrimary;
   const latestStory = useMemo(
     () => buildHistoryStories(alertEvents)[0] ?? null,
@@ -88,10 +91,10 @@ export function DailyHome({
       setPrimaryId(suggestedPrimary.id);
       return;
     }
-    if (primaryId && !attentionItems.some(({ id }) => id === primaryId)) {
+    if (primaryId && !incidents.some(({ id }) => id === primaryId)) {
       setPrimaryId(suggestedPrimary?.id ?? null);
     }
-  }, [attentionItems, primaryId, suggestedPrimary]);
+  }, [incidents, primaryId, suggestedPrimary]);
 
   const refresh = async () => {
     if (checking) return;
@@ -108,7 +111,7 @@ export function DailyHome({
       <section className={`daily-companion-hero is-${level}${checking ? " is-checking" : ""}`}>
         <div
           className="daily-companion"
-          aria-label={t("daily.orbit.label")}
+          aria-label={t("daily:orbit.label")}
           onPointerMove={tiltDailyCompanion}
           onPointerLeave={resetDailyCompanionTilt}
         >
@@ -118,7 +121,7 @@ export function DailyHome({
               <span className="daily-companion__halo daily-companion__halo--inner" aria-hidden="true" />
               <div className="daily-companion__core">
                 <span>{checking ? <LoaderCircle size={29} /> : <Orbit size={29} />}</span>
-                <small>{t("daily.companion.name")}</small>
+                <small>{t("daily:companion.name")}</small>
               </div>
               {orbitItems.map((item, index) => {
                 const Icon = ORBIT_ICONS[item.kind];
@@ -126,7 +129,7 @@ export function DailyHome({
                   <span
                     className={`daily-companion__station daily-companion__station--${index + 1} is-${item.level}`}
                     key={item.kind}
-                    aria-label={`${t(`daily.orbit.${item.kind}`)}: ${t(`daily.status.${item.level === "unavailable" ? "observing" : item.level}.short`)}`}
+                    aria-label={`${t(`daily:orbit.${item.kind}`)}: ${t(`daily:status.${item.level === "unavailable" ? "observing" : item.level}.short`)}`}
                   >
                     <Icon size={15} />
                     <i aria-hidden="true" />
@@ -139,24 +142,24 @@ export function DailyHome({
 
         <div className="daily-companion-hero__message">
           <h1 id="daily-home-title">
-            {t(checking ? "daily.home.checkingTitle" : `daily.status.${level}.title`, {
-              count: attentionItems.length,
+            {t(checking ? "daily:home.checkingTitle" : `daily:status.${level}.title`, {
+              count: incidents.length,
             })}
           </h1>
-          <p>{t(checking ? "daily.home.checkingSummary" : `daily.status.${level}.summary`, {
-            count: attentionItems.length,
+          <p>{t(checking ? "daily:home.checkingSummary" : `daily:status.${level}.summary`, {
+            count: incidents.length,
           })}</p>
           <div className="daily-companion-hero__actions">
             <Button variant="primary" disabled={checking} onClick={() => void refresh()}>
               {checking ? <LoaderCircle className="is-spinning" size={16} /> : <RefreshCw size={16} />}
-              {t(checking ? "daily.home.checking" : "daily.home.checkNow")}
+              {t(checking ? "daily:home.checking" : "daily:home.checkNow")}
               {!checking ? <ArrowRight size={14} /> : null}
             </Button>
             <Button variant="secondary" onClick={onOpenSolve}>
-              <Sparkles size={15} />{t("daily.home.haveProblem")}
+              <Sparkles size={15} />{t("daily:home.haveProblem")}
             </Button>
           </div>
-          <span className="daily-companion-hero__time"><Clock3 size={13} />{t("daily.home.checkedAt", {
+          <span className="daily-companion-hero__time"><Clock3 size={13} />{t("daily:home.checkedAt", {
             time: new Date(diagnosis.analyzedAtMs).toLocaleTimeString(i18n.resolvedLanguage, {
               hour: "2-digit",
               minute: "2-digit",
@@ -166,17 +169,21 @@ export function DailyHome({
       </section>
 
       {primary ? (
-        <section className={`daily-priority is-${primary.level}`} aria-labelledby="daily-priority-title">
+        <section className={`daily-priority is-${dailyIncidentDisplayLevel(primary)}`} aria-labelledby="daily-priority-title">
           <span className="daily-priority__icon">
-            <AttentionIcon item={primary} />
+            <AttentionIcon item={primary.item} />
           </span>
           <div>
-            <small>{t("daily.attention.priority")}</small>
-            <h2 id="daily-priority-title">{attentionTitle(primary, t)}</h2>
-            <p>{attentionDescription(primary, t)}</p>
+            <small>{t(primary.phase === "recovering"
+              ? "daily:attention.recovering"
+              : "daily:attention.priority")}</small>
+            <h2 id="daily-priority-title">{attentionTitle(primary.item, t)}</h2>
+            <p>{primary.phase === "recovering"
+              ? t("daily:incident.recoveringDescription")
+              : attentionDescription(primary.item, t)}</p>
           </div>
-          <Button variant="secondary" onClick={() => onOpenIntent(primary.intent)}>
-            {t("daily.attention.open")}<ArrowRight size={14} />
+          <Button variant="secondary" onClick={() => onOpenIncident(primary)}>
+            {t("daily:attention.open")}<ArrowRight size={14} />
           </Button>
         </section>
       ) : null}
@@ -184,15 +191,15 @@ export function DailyHome({
       <section className="daily-recent" aria-labelledby="daily-recent-title">
         <div className="daily-recent__heading">
           <span><History size={17} /></span>
-          <div><small>{t("daily.story.kicker")}</small><h2 id="daily-recent-title">{t("daily.story.title")}</h2></div>
+          <div><small>{t("daily:story.kicker")}</small><h2 id="daily-recent-title">{t("daily:story.title")}</h2></div>
         </div>
         {latestStory ? <DailyStory story={latestStory} /> : (
           <div className="daily-recent__calm">
             <CheckCircle2 size={18} />
-            <span><strong>{t("daily.story.emptyTitle")}</strong><small>{t("daily.story.emptyDescription")}</small></span>
+            <span><strong>{t("daily:story.emptyTitle")}</strong><small>{t("daily:story.emptyDescription")}</small></span>
           </div>
         )}
-        <button type="button" onClick={onOpenRecords}>{t("daily.story.viewAll")}<ArrowRight size={13} /></button>
+        <button type="button" onClick={onOpenRecords}>{t("daily:story.viewAll")}<ArrowRight size={13} /></button>
       </section>
     </section>
   );
@@ -221,37 +228,31 @@ function resetDailyCompanionTilt(event: ReactPointerEvent<HTMLDivElement>) {
 }
 
 function AttentionIcon({ item }: { item: DailyAttentionItem }) {
-  const application = item.kind === "application"
-    ? item.application
-    : item.kind === "diagnosis"
-      ? item.finding.culprit
-      : null;
+  const application = item.kind === "diagnosis" ? item.finding.culprit : null;
   if (application) return <ApplicationAvatar application={application} />;
   if (item.kind === "battery") return <BatteryCharging size={20} />;
   if (item.kind === "temperature") return <Flame size={20} />;
   return <TriangleAlert size={20} />;
 }
 
-function attentionTitle(item: DailyAttentionItem, t: (key: string, options?: Record<string, unknown>) => string) {
+function attentionTitle(item: DailyAttentionItem, t: AppTFunction) {
   if (item.kind === "diagnosis") {
-    return t(`diagnosis.findings.${item.finding.code}.title`, {
-      resource: item.finding.resourceLabel ?? t("diagnosis.thisDisk"),
+    return t(`diagnosis:findings.${item.finding.code}.title`, {
+      resource: item.finding.resourceLabel ?? t("diagnosis:thisDisk"),
     });
   }
-  if (item.kind === "application") return t("daily.attention.application.title", { name: item.application.name });
-  if (item.kind === "sleep") return t("daily.attention.sleep.title", { name: item.name });
-  return t(`daily.attention.${item.kind}.title`);
+  if (item.kind === "sleep") return t("daily:attention.sleep.title", { name: item.name });
+  return t(`daily:attention.${item.kind}.title`);
 }
 
-function attentionDescription(item: DailyAttentionItem, t: (key: string, options?: Record<string, unknown>) => string) {
-  if (item.kind === "diagnosis") return t(`diagnosis.findings.${item.finding.code}.description`);
-  if (item.kind === "application") return t(`daily.attention.application.${item.impact}`);
-  if (item.kind === "sleep") return t("daily.attention.sleep.description");
-  return t(`daily.attention.${item.kind}.description`);
+function attentionDescription(item: DailyAttentionItem, t: AppTFunction) {
+  if (item.kind === "diagnosis") return t(`diagnosis:findings.${item.finding.code}.description`);
+  if (item.kind === "sleep") return t("daily:attention.sleep.description");
+  return t(`daily:attention.${item.kind}.description`);
 }
 
 function DailyStory({ story }: { story: HistoryStory }) {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useAppTranslation();
   const startedAt = new Date(story.startedAtMs).toLocaleTimeString(i18n.resolvedLanguage, {
     hour: "2-digit",
     minute: "2-digit",
@@ -261,9 +262,9 @@ function DailyStory({ story }: { story: HistoryStory }) {
     <article className={`daily-recent__story is-${story.status}`}>
       {story.status === "active" ? <TriangleAlert size={18} /> : <CheckCircle2 size={18} />}
       <span>
-        <small>{story.status === "active" ? t("daily.story.active") : t("daily.story.recovered")}</small>
-        <strong>{t(`daily.story.${story.resource}.${story.status}`, { time: startedAt, minutes })}</strong>
-        {story.culpritName ? <em>{t("daily.story.cause", { name: story.culpritName })}</em> : null}
+        <small>{story.status === "active" ? t("daily:story.active") : t("daily:story.recovered")}</small>
+        <strong>{t(`daily:story.${story.resource}.${story.status}`, { time: startedAt, minutes })}</strong>
+        {story.culpritName ? <em>{t("daily:story.cause", { name: story.culpritName })}</em> : null}
       </span>
     </article>
   );

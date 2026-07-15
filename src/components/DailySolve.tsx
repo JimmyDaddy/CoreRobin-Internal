@@ -10,7 +10,7 @@ import {
   ScanSearch,
   Sparkles,
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import type { DailyIntent } from "../dailyExperience";
 
@@ -34,7 +34,7 @@ export function DailySolve({
   onOpenApplications,
   recommendedIntent = null,
 }: DailySolveProps) {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
   const orderedProblems = [...PROBLEMS].sort((left, right) => {
     const leftIntent = "intent" in left ? left.intent : left.id;
     const rightIntent = "intent" in right ? right.intent : right.id;
@@ -48,9 +48,9 @@ export function DailySolve({
       <button type="button" key={id} onClick={() => onOpenIntent(intent)}>
         <span><Icon size={20} /></span>
         <div>
-          {intent === recommendedIntent ? <em>{t("daily.solve.recommended")}</em> : null}
-          <strong>{t(`daily.solve.${id}.title`)}</strong>
-          <small>{t(`daily.solve.${id}.description`)}</small>
+          {intent === recommendedIntent ? <em>{t("daily:solve.recommended")}</em> : null}
+          <strong>{t(`daily:solve.${id}.title`)}</strong>
+          <small>{t(`daily:solve.${id}.description`)}</small>
         </div>
         <ArrowRight size={15} />
       </button>
@@ -61,12 +61,12 @@ export function DailySolve({
       <header className="daily-solve__hero">
         <span><Sparkles size={24} /></span>
         <div>
-          <small>{t("daily.solve.kicker")}</small>
-          <h1 id="daily-solve-title">{t("daily.solve.title")}</h1>
-          <p>{t("daily.solve.description")}</p>
+          <small>{t("daily:solve.kicker")}</small>
+          <h1 id="daily-solve-title">{t("daily:solve.title")}</h1>
+          <p>{t("daily:solve.description")}</p>
         </div>
         <button className="button button--primary" type="button" onClick={() => onOpenIntent("checkup")}>
-          <ScanSearch size={16} />{t("daily.solve.checkup.title")}<ArrowRight size={14} />
+          <ScanSearch size={16} />{t("daily:solve.checkup.title")}<ArrowRight size={14} />
         </button>
       </header>
 
@@ -74,13 +74,13 @@ export function DailySolve({
         {primaryProblems.map(renderProblem)}
         <button type="button" onClick={onOpenApplications}>
           <span><AppWindow size={20} /></span>
-          <div><strong>{t("daily.solve.applications.title")}</strong><small>{t("daily.solve.applications.description")}</small></div>
+          <div><strong>{t("daily:solve.applications.title")}</strong><small>{t("daily:solve.applications.description")}</small></div>
           <ArrowRight size={15} />
         </button>
       </div>
 
       <details className="daily-solve__other">
-        <summary>{t("daily.solve.otherProblems")}</summary>
+        <summary>{t("daily:solve.otherProblems")}</summary>
         <div className="daily-problem-list">{otherProblems.map(renderProblem)}</div>
       </details>
     </section>

@@ -1,0 +1,17 @@
+{
+  "kicker": "Assistente Orbit",
+  "dragHint": "Arraste o Orbit para mover; passe o mouse para ver informações; clique com o botão direito para abrir o menu",
+  "expand": "Abra o assistente Orbit",
+  "collapse": "Feche o assistente Orbit",
+  "menu": "Menu do assistente Orbit",
+  "hide": "Esconda o assistente",
+  "reason": "{{resource}} Tem sido interessante acompanhar. Abra a janela principal para ver os detalhes.",
+  "action": {
+    "loading": "Abra o assistente diário",
+    "observing": "Veja o status atual",
+    "normal": "Preciso de ajuda",
+    "attention": "Verifique",
+    "urgent": "Analise agora"
+  },
+  "recovering": "A métrica está melhorando. Estou monitorando por mais tempo para confirmar a recuperação."
+}

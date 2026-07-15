@@ -22,7 +22,7 @@ export function bootstrapAuxiliarySurface(
       applyAppAppearance(loadAppAppearance());
     }
     if (key === LANGUAGE_STORAGE_KEY) {
-      changeAuxiliaryLanguage(initialLanguage());
+      void changeAuxiliaryLanguage(initialLanguage());
     }
   });
 

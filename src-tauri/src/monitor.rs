@@ -58,7 +58,6 @@ pub struct SystemMonitor {
     process_control_capabilities: ProcessControlCapabilities,
     sensors: SensorSampler,
     birth_tokens: BirthTokenCache,
-    last_summary_sample: Instant,
 }
 
 impl SystemMonitor {
@@ -95,7 +94,6 @@ impl SystemMonitor {
             process_control_capabilities,
             sensors: SensorSampler::new(),
             birth_tokens: BirthTokenCache::default(),
-            last_summary_sample: Instant::now(),
         }
     }
 
@@ -306,13 +304,54 @@ impl SystemMonitor {
     }
 
     pub fn sample_summary(&mut self) -> SystemSummary {
-        let elapsed = self.last_summary_sample.elapsed();
+        let elapsed = self.last_sample.elapsed();
         self.system.refresh_cpu_usage();
         self.system.refresh_memory();
-        self.last_summary_sample = Instant::now();
+        for disk in self.disks.list_mut() {
+            disk.refresh_specifics(DiskRefreshKind::nothing().with_io_usage());
+        }
+        self.networks.refresh(true);
 
+        self.sequence = self.sequence.saturating_add(1);
+        self.last_sample = Instant::now();
+
+        let elapsed_ms = elapsed.as_millis().max(1) as u64;
         let cpu_usage = (elapsed >= MINIMUM_CPU_UPDATE_INTERVAL)
             .then(|| self.system.global_cpu_usage().clamp(0.0, 100.0));
+        let disk_read_delta = self.disks.list().iter().fold(0_u64, |total, disk| {
+            total.saturating_add(disk.usage().read_bytes)
+        });
+        let disk_write_delta = self.disks.list().iter().fold(0_u64, |total, disk| {
+            total.saturating_add(disk.usage().written_bytes)
+        });
+        let mut network_received_delta = 0_u64;
+        let mut network_transmitted_delta = 0_u64;
+        for (name, network) in self.networks.list() {
+            let received_delta = network.received();
+            let transmitted_delta = network.transmitted();
+            network_received_delta = network_received_delta.saturating_add(received_delta);
+            network_transmitted_delta = network_transmitted_delta.saturating_add(transmitted_delta);
+            self.network_sessions
+                .entry(name.clone())
+                .or_default()
+                .record(
+                    received_delta,
+                    transmitted_delta,
+                    network.packets_received(),
+                    network.packets_transmitted(),
+                    network.errors_on_received(),
+                    network.errors_on_transmitted(),
+                );
+        }
+        let (network_received_since_launch, network_transmitted_since_launch) = self
+            .network_sessions
+            .values()
+            .fold((0_u64, 0_u64), |(received, transmitted), counters| {
+                (
+                    received.saturating_add(counters.received_bytes),
+                    transmitted.saturating_add(counters.transmitted_bytes),
+                )
+            });
         let volumes = collapse_macos_system_volume_group(
             self.disks
                 .list()
@@ -329,10 +368,12 @@ impl SystemMonitor {
         );
 
         SystemSummary {
+            sequence: self.sequence,
             sampled_at_ms: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or(Duration::ZERO)
                 .as_millis() as u64,
+            sample_interval_ms: elapsed_ms,
             cpu: CpuSnapshot {
                 usage_percent: cpu_usage,
                 per_core_percent: Vec::new(),
@@ -345,7 +386,25 @@ impl SystemMonitor {
                 swap_total_bytes: self.system.total_swap(),
                 swap_used_bytes: self.system.used_swap(),
             },
-            volumes,
+            disk: DiskSnapshot {
+                read_bytes_per_second: Some(bytes_per_second(disk_read_delta, elapsed_ms)),
+                write_bytes_per_second: Some(bytes_per_second(disk_write_delta, elapsed_ms)),
+                volumes,
+            },
+            network: NetworkSnapshot {
+                received_bytes_per_second: Some(bytes_per_second(
+                    network_received_delta,
+                    elapsed_ms,
+                )),
+                transmitted_bytes_per_second: Some(bytes_per_second(
+                    network_transmitted_delta,
+                    elapsed_ms,
+                )),
+                received_bytes_since_launch: network_received_since_launch,
+                transmitted_bytes_since_launch: network_transmitted_since_launch,
+                interface_count: self.networks.list().len(),
+                interfaces: Vec::new(),
+            },
             sensors: self.sensors.sample(),
         }
     }

@@ -1,0 +1,82 @@
+{
+  "localPreferences": "Local preferences",
+  "title": "Settings",
+  "description": "These preferences stay on this device and apply to sampling and the interface immediately.",
+  "intervalMs": "{{interval}} ms",
+  "intervalSeconds": "{{seconds}} sec",
+  "experience": {
+    "title": "Interface mode",
+    "description": "Everyday mode starts with real problems and guided next steps; professional mode keeps every process and metric.",
+    "label": "Interface mode",
+    "simple": "Everyday mode",
+    "professional": "Professional mode"
+  },
+  "language": {
+    "title": "Interface language",
+    "description": "Change StatusOrbit menus, guidance, and status text.",
+    "label": "Language"
+  },
+  "background": {
+    "title": "Background and desktop",
+    "description": "Control how StatusOrbit stays available, launches at login, and displays Orbit.",
+    "showDockIcon": "Show in the Dock",
+    "showDockIconDescription": "When off, use the menu bar without occupying the Dock or app switcher",
+    "launchAtLogin": "Launch at login",
+    "launchAtLoginDescription": "Start the menu bar service quietly without opening the main window",
+    "companionShowOnStartup": "Keep Orbit on the desktop",
+    "companionShowOnStartupDescription": "Show the Orbit companion whenever the app starts",
+    "companionAlwaysOnTop": "Keep Orbit above windows",
+    "companionAlwaysOnTopDescription": "Stay above other windows; when off, Orbit may be covered"
+  },
+  "sampling": {
+    "title": "System sampling",
+    "description": "Shorter intervals react faster and add more sampling overhead.",
+    "system": "CPU, memory, and processes"
+  },
+  "connections": {
+    "title": "Connection refresh",
+    "description": "Active connections use an independent low-frequency scan.",
+    "refresh": "Active connections"
+  },
+  "processView": {
+    "title": "Default process view",
+    "description": "Used when the process explorer starts or is reset.",
+    "label": "Default process view"
+  },
+  "history": {
+    "title": "History",
+    "description": "Save low-frequency aggregate snapshots and alert events without process or connection details.",
+    "persist": "Save history on this device",
+    "applicationNames": "Allow app display names in history",
+    "applicationNamesHint": "Only saves a name when one app clearly explains the pressure. Turning this off removes app names from saved events.",
+    "retention": "Retention",
+    "days": "{{count}} days"
+  },
+  "notifications": {
+    "title": "Desktop notifications",
+    "description": "Only sustained heavy load, real memory pressure, and low disk space interrupt you. StatusOrbit follows up once after the problem has stably recovered.",
+    "enable": "Allow restrained alerts",
+    "categories": "Allowed alert categories",
+    "resources": {
+      "cpu": "Sustained heavy load",
+      "memory": "Memory pressure",
+      "volume": "Disk space"
+    },
+    "status": {
+      "disabled": "Off",
+      "requesting": "Waiting for permission",
+      "ready": "Allowed",
+      "denied": "Not allowed by system",
+      "unavailable": "Desktop app only"
+    }
+  },
+  "thresholds": {
+    "title": "Resource alert thresholds",
+    "description": "Color levels for CPU, memory, and volume usage; sustained High readings create alerts.",
+    "preview": "Resource alert color preview",
+    "low": "Normal",
+    "moderate": "Watch",
+    "high": "High",
+    "critical": "Critical"
+  }
+}
