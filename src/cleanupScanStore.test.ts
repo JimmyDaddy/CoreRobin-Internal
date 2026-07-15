@@ -53,6 +53,8 @@ describe("cleanup scan persistence", () => {
   it("keeps retained v5 maps usable without inventing application activity", () => {
     const snapshot = getMockCleanupScan();
     const { installedApplications: _applications, applicationInventoryAvailable: _available, ...legacy } = snapshot;
+    void _applications;
+    void _available;
     const parsed = parseStoredCleanupScan(JSON.stringify({
       version: 5,
       savedAtMs: 9_500,

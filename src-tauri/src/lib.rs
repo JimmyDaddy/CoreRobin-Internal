@@ -520,7 +520,7 @@ fn hide_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
     let _ = app.emit_to("companion", "status-orbit:companion-exit", ());
     let app = app.clone();
     let window = window.clone();
-    let _ = tauri::async_runtime::spawn_blocking(move || {
+    std::mem::drop(tauri::async_runtime::spawn_blocking(move || {
         std::thread::sleep(Duration::from_millis(COMPANION_EXIT_ANIMATION_MS));
         if COMPANION_TRANSITION_EPOCH.load(Ordering::SeqCst) != transition {
             return;
@@ -528,7 +528,7 @@ fn hide_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
         let _ = window.hide();
         COMPANION_EXIT_PENDING.store(false, Ordering::SeqCst);
         publish_companion_visibility(&app, &window);
-    });
+    }));
 }
 
 #[tauri::command]

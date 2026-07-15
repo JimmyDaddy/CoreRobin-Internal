@@ -612,13 +612,13 @@ pub fn cleanup_scan_access() -> CleanupScanAccess {
                 }
                 Err(_) => CleanupFullDiskAccessStatus::Unknown,
             };
-        return CleanupScanAccess {
+        CleanupScanAccess {
             full_disk_access,
             full_disk_access_recommended: true,
             application_bundle_available: application_bundle.is_some(),
             application_bundle_path: application_bundle
                 .map(|path| path.to_string_lossy().into_owned()),
-        };
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -661,9 +661,9 @@ pub fn open_full_disk_access_settings() -> Result<(), CommandError> {
         if status.success() {
             return Ok(());
         }
-        return Err(CommandError::internal(
+        Err(CommandError::internal(
             "macOS did not open Full Disk Access settings.",
-        ));
+        ))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -694,9 +694,9 @@ pub fn reveal_cleanup_application_bundle() -> Result<(), CommandError> {
         if status.success() {
             return Ok(());
         }
-        return Err(CommandError::internal(
+        Err(CommandError::internal(
             "macOS did not reveal the StatusOrbit application bundle.",
-        ));
+        ))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -1264,7 +1264,7 @@ impl ScanFilesystemBoundary {
     fn allows_directory(self, metadata: &Metadata) -> bool {
         #[cfg(unix)]
         {
-            return metadata.dev() == self.device;
+            metadata.dev() == self.device
         }
         #[cfg(windows)]
         {
