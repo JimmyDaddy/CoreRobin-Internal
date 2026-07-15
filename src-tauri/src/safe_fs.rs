@@ -1386,6 +1386,7 @@ mod tests {
         assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
         assert_eq!(fs::read(&source).unwrap(), b"source");
         assert_eq!(fs::read(&destination).unwrap(), b"competition");
+        drop(root);
         fs::remove_dir_all(home).unwrap();
     }
 

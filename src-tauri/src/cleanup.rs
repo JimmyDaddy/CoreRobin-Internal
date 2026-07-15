@@ -871,6 +871,7 @@ pub fn cleanup_scan_access() -> CleanupScanAccess {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn application_bundle_from_executable(executable: &Path) -> Option<PathBuf> {
     executable
         .ancestors()
