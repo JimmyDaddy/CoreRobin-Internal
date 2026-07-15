@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::fs;
-use std::io;
-use std::path::{Component, Path};
+use std::io::{self, Read, Seek, SeekFrom};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::SystemTime;
@@ -129,6 +129,303 @@ impl DeleteRoot {
             modified_at: handle_metadata.modified().ok().map(|time| time.into_std()),
             handle,
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SafeFileMoveRoot {
+    directory: Arc<Dir>,
+    volume: u64,
+}
+
+impl SafeFileMoveRoot {
+    pub fn open(path: &Path) -> io::Result<Self> {
+        let root = DeleteRoot::open(path)?;
+        Ok(Self {
+            directory: root.directory,
+            volume: root.volume,
+        })
+    }
+
+    pub fn ensure_directory(
+        &self,
+        relative_path: &Path,
+        private_final_directory: bool,
+    ) -> io::Result<()> {
+        let directory = self.open_directory(relative_path, true)?;
+        if private_final_directory {
+            let metadata = directory.directory.dir_metadata()?;
+            #[cfg(unix)]
+            {
+                if cap_std::fs::MetadataExt::uid(&metadata) != unsafe { libc::geteuid() } {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "startup storage directory is not owned by the current user",
+                    ));
+                }
+                use std::os::unix::fs::PermissionsExt as _;
+                directory
+                    .directory
+                    .try_clone()?
+                    .into_std_file()
+                    .set_permissions(fs::Permissions::from_mode(0o700))?;
+            }
+            directory.verify_path()?;
+        }
+        Ok(())
+    }
+
+    pub fn bind_file_move(
+        &self,
+        source_relative_path: &Path,
+        destination_relative_path: &Path,
+    ) -> io::Result<BoundFileMove> {
+        let (source_parent_path, source_name) = split_relative_file(source_relative_path)?;
+        let (destination_parent_path, destination_name) =
+            split_relative_file(destination_relative_path)?;
+        let source_parent = self.open_directory(&source_parent_path, false)?;
+        let destination_parent = self.open_directory(&destination_parent_path, false)?;
+        source_parent.verify_path()?;
+        destination_parent.verify_path()?;
+
+        let source_entry_metadata = source_parent.directory.symlink_metadata(&source_name)?;
+        if source_entry_metadata.file_type().is_symlink() || !source_entry_metadata.is_file() {
+            return Err(invalid_data(
+                "startup source is not a regular no-follow file",
+            ));
+        }
+        let source_file = open_regular_file(&source_parent.directory, &source_name)?;
+        let source_metadata = source_file.metadata()?;
+        ensure_same_volume(&source_metadata, self.volume)?;
+        let source_identity = FileIdentity::from_metadata(&source_metadata);
+        if FileIdentity::from_metadata(&source_entry_metadata) != source_identity {
+            return Err(invalid_data(
+                "startup source changed while it was being bound",
+            ));
+        }
+        ensure_entry_absent(&destination_parent.directory, &destination_name)?;
+
+        Ok(BoundFileMove {
+            source_parent,
+            source_name,
+            source_identity,
+            source_file: Arc::new(source_file),
+            destination_parent,
+            destination_name,
+        })
+    }
+
+    fn open_directory(&self, relative_path: &Path, create: bool) -> io::Result<StableDirectory> {
+        let components = relative_components_allow_empty(relative_path)?;
+        let mut current = self.directory.try_clone()?;
+        let mut chain = Vec::with_capacity(components.len());
+        for component in components {
+            let entry_metadata = match current.symlink_metadata(&component) {
+                Ok(metadata) => metadata,
+                Err(error) if create && error.kind() == io::ErrorKind::NotFound => {
+                    current.create_dir(&component)?;
+                    current.symlink_metadata(&component)?
+                }
+                Err(error) => return Err(error),
+            };
+            if entry_metadata.file_type().is_symlink() || !entry_metadata.is_dir() {
+                return Err(invalid_data(
+                    "startup directory component is not a no-follow directory",
+                ));
+            }
+            let next = current.open_dir_nofollow(&component)?;
+            let handle_metadata = next.dir_metadata()?;
+            ensure_same_volume(&handle_metadata, self.volume)?;
+            let identity = FileIdentity::from_metadata(&handle_metadata);
+            if FileIdentity::from_metadata(&entry_metadata) != identity {
+                return Err(invalid_data(
+                    "startup directory changed while it was being opened",
+                ));
+            }
+            chain.push(DirectoryStep {
+                parent: Arc::new(current.try_clone()?),
+                name: component,
+                identity,
+            });
+            current = next;
+        }
+        Ok(StableDirectory {
+            directory: Arc::new(current),
+            chain: Arc::new(chain),
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct DirectoryStep {
+    parent: Arc<Dir>,
+    name: OsString,
+    identity: FileIdentity,
+}
+
+#[derive(Clone, Debug)]
+struct StableDirectory {
+    directory: Arc<Dir>,
+    chain: Arc<Vec<DirectoryStep>>,
+}
+
+impl StableDirectory {
+    fn verify_path(&self) -> io::Result<()> {
+        for step in self.chain.iter() {
+            verify_entry_identity(&step.parent, &step.name, step.identity)?;
+        }
+        if let Some(last) = self.chain.last()
+            && FileIdentity::from_metadata(&self.directory.dir_metadata()?) != last.identity
+        {
+            return Err(invalid_data("startup directory handle identity changed"));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SafeFileSnapshot {
+    pub length: u64,
+    pub modified_at: Option<SystemTime>,
+    pub contents: Vec<u8>,
+}
+
+#[derive(Clone, Debug)]
+pub struct BoundFileMove {
+    source_parent: StableDirectory,
+    source_name: OsString,
+    source_identity: FileIdentity,
+    source_file: Arc<File>,
+    destination_parent: StableDirectory,
+    destination_name: OsString,
+}
+
+impl BoundFileMove {
+    pub fn source_snapshot(&self, maximum_bytes: u64) -> io::Result<SafeFileSnapshot> {
+        self.verify_source()?;
+        let before = self.source_file.metadata()?;
+        if before.len() > maximum_bytes {
+            return Err(invalid_data("startup source exceeds the allowed size"));
+        }
+        let mut file = self.source_file.try_clone()?;
+        file.seek(SeekFrom::Start(0))?;
+        let capacity = usize::try_from(before.len()).unwrap_or(0);
+        let mut contents = Vec::with_capacity(capacity);
+        Read::by_ref(&mut file)
+            .take(maximum_bytes.saturating_add(1))
+            .read_to_end(&mut contents)?;
+        if u64::try_from(contents.len()).unwrap_or(u64::MAX) > maximum_bytes {
+            return Err(invalid_data("startup source exceeds the allowed size"));
+        }
+        let after = self.source_file.metadata()?;
+        self.verify_source()?;
+        if FileIdentity::from_metadata(&before) != self.source_identity
+            || FileIdentity::from_metadata(&after) != self.source_identity
+            || before.len() != after.len()
+            || before.modified().ok() != after.modified().ok()
+        {
+            return Err(invalid_data(
+                "startup source changed while it was being read",
+            ));
+        }
+        Ok(SafeFileSnapshot {
+            length: after.len(),
+            modified_at: after.modified().ok().map(|time| time.into_std()),
+            contents,
+        })
+    }
+
+    pub fn execute(&self) -> io::Result<()> {
+        self.execute_with_hook(|| {})
+    }
+
+    fn execute_with_hook(&self, after_link: impl FnOnce()) -> io::Result<()> {
+        self.source_parent.verify_path()?;
+        self.destination_parent.verify_path()?;
+        self.verify_source()?;
+        ensure_entry_absent(&self.destination_parent.directory, &self.destination_name)?;
+
+        self.source_parent.directory.hard_link(
+            &self.source_name,
+            &self.destination_parent.directory,
+            &self.destination_name,
+        )?;
+        let linked_metadata = self
+            .destination_parent
+            .directory
+            .symlink_metadata(&self.destination_name)?;
+        let linked_identity = FileIdentity::from_metadata(&linked_metadata);
+        if linked_metadata.file_type().is_symlink()
+            || !linked_metadata.is_file()
+            || linked_identity != self.source_identity
+        {
+            let _ = self.rollback_destination(linked_identity);
+            return Err(invalid_data(
+                "startup source changed while the destination link was created",
+            ));
+        }
+
+        after_link();
+        let before_unlink = (|| {
+            self.source_parent.verify_path()?;
+            self.destination_parent.verify_path()?;
+            self.verify_source()?;
+            verify_entry_identity(
+                &self.destination_parent.directory,
+                &self.destination_name,
+                self.source_identity,
+            )
+        })();
+        if let Err(error) = before_unlink {
+            let _ = self.rollback_destination(self.source_identity);
+            return Err(io::Error::new(
+                error.kind(),
+                format!("startup move stopped before source removal: {error}"),
+            ));
+        }
+
+        if let Err(error) = self.source_parent.directory.remove_file(&self.source_name) {
+            let rollback = self.rollback_destination(self.source_identity);
+            return Err(io::Error::new(
+                error.kind(),
+                format!(
+                    "startup source could not be removed; destination rollback result: {rollback:?}: {error}"
+                ),
+            ));
+        }
+        self.source_parent.verify_path()?;
+        self.destination_parent.verify_path()?;
+        verify_entry_identity(
+            &self.destination_parent.directory,
+            &self.destination_name,
+            self.source_identity,
+        )?;
+        sync_directory(&self.source_parent.directory)?;
+        sync_directory(&self.destination_parent.directory)
+    }
+
+    fn verify_source(&self) -> io::Result<()> {
+        verify_entry_identity(
+            &self.source_parent.directory,
+            &self.source_name,
+            self.source_identity,
+        )?;
+        let metadata = self.source_file.metadata()?;
+        if !metadata.is_file() || FileIdentity::from_metadata(&metadata) != self.source_identity {
+            return Err(invalid_data("startup source handle identity changed"));
+        }
+        Ok(())
+    }
+
+    fn rollback_destination(&self, expected_identity: FileIdentity) -> io::Result<()> {
+        verify_entry_identity(
+            &self.destination_parent.directory,
+            &self.destination_name,
+            expected_identity,
+        )?;
+        self.destination_parent
+            .directory
+            .remove_file(&self.destination_name)
     }
 }
 
@@ -387,6 +684,25 @@ struct DirectoryFrame {
     next_entry: usize,
 }
 
+fn split_relative_file(path: &Path) -> io::Result<(PathBuf, OsString)> {
+    let components = relative_components(path)?;
+    let (name, parent_components) = components
+        .split_last()
+        .ok_or_else(|| invalid_data("filesystem move path cannot be empty"))?;
+    let mut parent = PathBuf::new();
+    for component in parent_components {
+        parent.push(component);
+    }
+    Ok((parent, name.clone()))
+}
+
+fn relative_components_allow_empty(path: &Path) -> io::Result<Vec<OsString>> {
+    if path.as_os_str().is_empty() {
+        return Ok(Vec::new());
+    }
+    relative_components(path)
+}
+
 fn relative_components(path: &Path) -> io::Result<Vec<OsString>> {
     let mut components = Vec::new();
     for component in path.components() {
@@ -403,6 +719,29 @@ fn relative_components(path: &Path) -> io::Result<Vec<OsString>> {
         return Err(invalid_data("cleanup target cannot be empty"));
     }
     Ok(components)
+}
+
+fn ensure_entry_absent(directory: &Dir, name: &OsStr) -> io::Result<()> {
+    match directory.symlink_metadata(name) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Ok(_) => Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "filesystem destination already exists",
+        )),
+        Err(error) => Err(error),
+    }
+}
+
+fn sync_directory(directory: &Dir) -> io::Result<()> {
+    let result = directory.try_clone()?.into_std_file().sync_all();
+    #[cfg(windows)]
+    if result
+        .as_ref()
+        .is_err_and(|error| error.kind() == io::ErrorKind::Unsupported)
+    {
+        return Ok(());
+    }
+    result
 }
 
 fn open_regular_file(directory: &Dir, name: &OsStr) -> io::Result<File> {
@@ -748,6 +1087,172 @@ mod tests {
         assert_eq!(deleted_entries, 1);
         assert!(target.exists());
         assert_eq!(fs::read_dir(&target).unwrap().count(), 7);
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[test]
+    fn bound_file_move_never_overwrites_a_competing_destination() {
+        let home = test_root("move-conflict");
+        let source = home.join("source/item.plist");
+        let destination = home.join("destination/item.plist");
+        fs::create_dir_all(source.parent().unwrap()).unwrap();
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        fs::write(&source, b"source").unwrap();
+        let root = SafeFileMoveRoot::open(&home).unwrap();
+        let bound = root
+            .bind_file_move(
+                Path::new("source/item.plist"),
+                Path::new("destination/item.plist"),
+            )
+            .unwrap();
+        fs::write(&destination, b"competition").unwrap();
+
+        let error = bound
+            .execute()
+            .expect_err("the destination must not be replaced");
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(fs::read(&source).unwrap(), b"source");
+        assert_eq!(fs::read(&destination).unwrap(), b"competition");
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_parent_replacement_stops_a_bound_file_move() {
+        use std::os::unix::fs::symlink;
+
+        let home = test_root("move-source-parent");
+        let source_parent = home.join("source");
+        let moved_source_parent = home.join("moved-source");
+        let destination_parent = home.join("destination");
+        let outside = home.join("outside");
+        fs::create_dir_all(&source_parent).unwrap();
+        fs::create_dir_all(&destination_parent).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(source_parent.join("item.plist"), b"source").unwrap();
+        fs::write(outside.join("item.plist"), b"outside").unwrap();
+        let root = SafeFileMoveRoot::open(&home).unwrap();
+        let bound = root
+            .bind_file_move(
+                Path::new("source/item.plist"),
+                Path::new("destination/item.plist"),
+            )
+            .unwrap();
+        fs::rename(&source_parent, &moved_source_parent).unwrap();
+        symlink(&outside, &source_parent).unwrap();
+
+        bound
+            .execute()
+            .expect_err("the source parent identity must remain bound");
+        assert_eq!(
+            fs::read(moved_source_parent.join("item.plist")).unwrap(),
+            b"source"
+        );
+        assert_eq!(fs::read(outside.join("item.plist")).unwrap(), b"outside");
+        assert!(!destination_parent.join("item.plist").exists());
+
+        fs::remove_file(source_parent).unwrap();
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn destination_parent_replacement_stops_a_bound_file_move() {
+        use std::os::unix::fs::symlink;
+
+        let home = test_root("move-destination-parent");
+        let source_parent = home.join("source");
+        let destination_parent = home.join("destination");
+        let moved_destination_parent = home.join("moved-destination");
+        let outside = home.join("outside");
+        fs::create_dir_all(&source_parent).unwrap();
+        fs::create_dir_all(&destination_parent).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(source_parent.join("item.plist"), b"source").unwrap();
+        fs::write(outside.join("item.plist"), b"outside").unwrap();
+        let root = SafeFileMoveRoot::open(&home).unwrap();
+        let bound = root
+            .bind_file_move(
+                Path::new("source/item.plist"),
+                Path::new("destination/item.plist"),
+            )
+            .unwrap();
+        fs::rename(&destination_parent, &moved_destination_parent).unwrap();
+        symlink(&outside, &destination_parent).unwrap();
+
+        bound
+            .execute()
+            .expect_err("the destination parent identity must remain bound");
+        assert_eq!(
+            fs::read(source_parent.join("item.plist")).unwrap(),
+            b"source"
+        );
+        assert_eq!(fs::read(outside.join("item.plist")).unwrap(), b"outside");
+        assert!(!moved_destination_parent.join("item.plist").exists());
+
+        fs::remove_file(destination_parent).unwrap();
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rollback_does_not_remove_a_replaced_destination() {
+        use std::os::unix::fs::symlink;
+
+        let home = test_root("move-rollback-race");
+        let source = home.join("source/item.plist");
+        let destination = home.join("destination/item.plist");
+        let linked_original = home.join("destination/linked-original.plist");
+        let outside = home.join("outside.plist");
+        fs::create_dir_all(source.parent().unwrap()).unwrap();
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        fs::write(&source, b"source").unwrap();
+        fs::write(&outside, b"outside").unwrap();
+        let root = SafeFileMoveRoot::open(&home).unwrap();
+        let bound = root
+            .bind_file_move(
+                Path::new("source/item.plist"),
+                Path::new("destination/item.plist"),
+            )
+            .unwrap();
+
+        bound
+            .execute_with_hook(|| {
+                fs::rename(&destination, &linked_original).unwrap();
+                symlink(&outside, &destination).unwrap();
+            })
+            .expect_err("a replaced rollback target must fail closed");
+        assert_eq!(fs::read(&source).unwrap(), b"source");
+        assert_eq!(fs::read(&outside).unwrap(), b"outside");
+        assert_eq!(fs::read(&linked_original).unwrap(), b"source");
+        assert!(
+            fs::symlink_metadata(&destination)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn private_move_storage_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let home = test_root("move-private");
+        fs::create_dir_all(&home).unwrap();
+        let root = SafeFileMoveRoot::open(&home).unwrap();
+        root.ensure_directory(Path::new("app/disabled/startup"), true)
+            .unwrap();
+        assert_eq!(
+            fs::metadata(home.join("app/disabled/startup"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
         fs::remove_dir_all(home).unwrap();
     }
 }
