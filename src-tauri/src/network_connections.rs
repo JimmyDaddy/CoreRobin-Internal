@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
@@ -39,14 +40,13 @@ fn now_ms() -> u64 {
 
 fn build_snapshot(
     sampled_at_ms: u64,
-    mut connections: Vec<NetworkConnection>,
+    connections: Vec<NetworkConnection>,
     skipped_entry_count: usize,
     maximum_rows: usize,
 ) -> NetworkConnectionsSnapshot {
     let summary = summarize_connections(&connections);
-    sort_connections(&mut connections);
     let truncated = connections.len() > maximum_rows;
-    connections.truncate(maximum_rows);
+    let connections = select_connection_rows(connections, maximum_rows);
     NetworkConnectionsSnapshot {
         sampled_at_ms,
         summary,
@@ -79,19 +79,48 @@ fn summarize_connections(connections: &[NetworkConnection]) -> NetworkConnection
     summary
 }
 
+fn compare_connections(left: &NetworkConnection, right: &NetworkConnection) -> Ordering {
+    state_rank(left.state)
+        .cmp(&state_rank(right.state))
+        .then_with(|| protocol_rank(left.protocol).cmp(&protocol_rank(right.protocol)))
+        .then_with(|| {
+            left.local_endpoint
+                .address
+                .cmp(&right.local_endpoint.address)
+        })
+        .then_with(|| left.local_endpoint.port.cmp(&right.local_endpoint.port))
+        .then_with(|| left.remote_endpoint.cmp(&right.remote_endpoint))
+}
+
 fn sort_connections(connections: &mut [NetworkConnection]) {
-    connections.sort_by(|left, right| {
-        state_rank(left.state)
-            .cmp(&state_rank(right.state))
-            .then_with(|| protocol_rank(left.protocol).cmp(&protocol_rank(right.protocol)))
-            .then_with(|| {
-                left.local_endpoint
-                    .address
-                    .cmp(&right.local_endpoint.address)
-            })
-            .then_with(|| left.local_endpoint.port.cmp(&right.local_endpoint.port))
-            .then_with(|| left.remote_endpoint.cmp(&right.remote_endpoint))
-    });
+    connections.sort_by(compare_connections);
+}
+
+fn select_connection_rows(
+    connections: Vec<NetworkConnection>,
+    maximum_rows: usize,
+) -> Vec<NetworkConnection> {
+    if connections.len() <= maximum_rows {
+        let mut connections = connections;
+        sort_connections(&mut connections);
+        return connections;
+    }
+
+    // The previous full sort was stable. Preserve that exact tie behavior by
+    // carrying the collection index as the final comparator key while the
+    // unstable selection partitions only the rows that can reach the UI.
+    let mut indexed = connections.into_iter().enumerate().collect::<Vec<_>>();
+    let compare_indexed = |left: &(usize, NetworkConnection),
+                           right: &(usize, NetworkConnection)| {
+        compare_connections(&left.1, &right.1).then_with(|| left.0.cmp(&right.0))
+    };
+    indexed.select_nth_unstable_by(maximum_rows, compare_indexed);
+    indexed.truncate(maximum_rows);
+    indexed.sort_unstable_by(compare_indexed);
+    indexed
+        .into_iter()
+        .map(|(_, connection)| connection)
+        .collect()
 }
 
 fn state_rank(state: NetworkConnectionState) -> u8 {
@@ -241,7 +270,9 @@ fn tcp_state(state: netstat2::TcpState) -> NetworkConnectionState {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_snapshot, sort_connections, summarize_connections};
+    use std::time::Instant;
+
+    use super::{build_snapshot, select_connection_rows, sort_connections, summarize_connections};
     use crate::models::{
         NetworkAddressFamily, NetworkConnection, NetworkConnectionState, NetworkEndpoint,
         NetworkTransportProtocol,
@@ -342,6 +373,56 @@ mod tests {
         assert_eq!(snapshot.connections.len(), 1);
         assert!(snapshot.truncated);
         assert_eq!(snapshot.skipped_entry_count, 2);
+    }
+
+    #[test]
+    fn top_k_matches_the_exact_prefix_of_the_previous_stable_full_sort() {
+        let connections = (0..20_000)
+            .map(|index| {
+                let protocol = if index % 3 == 0 {
+                    NetworkTransportProtocol::Udp
+                } else {
+                    NetworkTransportProtocol::Tcp
+                };
+                let state = match index % 7 {
+                    0 => NetworkConnectionState::Established,
+                    1 => NetworkConnectionState::Listen,
+                    2 => NetworkConnectionState::SynSent,
+                    3 => NetworkConnectionState::CloseWait,
+                    4 => NetworkConnectionState::Unconnected,
+                    5 => NetworkConnectionState::TimeWait,
+                    _ => NetworkConnectionState::Closed,
+                };
+                connection(protocol, state, (index % 2_000) as u16)
+            })
+            .collect::<Vec<_>>();
+        let mut fully_sorted = connections.clone();
+        let full_sort_started_at = Instant::now();
+        sort_connections(&mut fully_sorted);
+        let full_sort_elapsed = full_sort_started_at.elapsed();
+
+        let selection_started_at = Instant::now();
+        let selected = select_connection_rows(connections, 500);
+        let selection_elapsed = selection_started_at.elapsed();
+
+        assert_eq!(selected, fully_sorted[..500]);
+        eprintln!(
+            "20,000 connections: stable full sort={full_sort_elapsed:?}, exact top-500={selection_elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn zero_row_limit_preserves_the_full_summary() {
+        let connections = vec![connection(
+            NetworkTransportProtocol::Tcp,
+            NetworkConnectionState::Established,
+            443,
+        )];
+        let snapshot = build_snapshot(123, connections, 0, 0);
+
+        assert_eq!(snapshot.summary.total_count, 1);
+        assert!(snapshot.connections.is_empty());
+        assert!(snapshot.truncated);
     }
 
     #[cfg(target_os = "macos")]

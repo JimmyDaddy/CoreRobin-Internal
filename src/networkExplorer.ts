@@ -32,11 +32,18 @@ export interface NetworkConnectionOwners {
   unavailablePids: number[];
 }
 
+export type NetworkProcessIndex = ReadonlyMap<number, ProcessRow>;
+
+export function indexNetworkProcesses(
+  processes: readonly ProcessRow[],
+): NetworkProcessIndex {
+  return new Map(processes.map((process) => [process.pid, process]));
+}
+
 export function resolveNetworkConnectionOwners(
   connection: NetworkConnection,
-  processes: readonly ProcessRow[],
+  processByPid: NetworkProcessIndex,
 ): NetworkConnectionOwners {
-  const processByPid = new Map(processes.map((process) => [process.pid, process]));
   const resolved: ProcessRow[] = [];
   const unavailablePids: number[] = [];
   for (const pid of [...new Set(connection.associatedPids)].sort((left, right) => left - right)) {

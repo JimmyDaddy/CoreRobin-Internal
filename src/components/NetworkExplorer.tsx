@@ -14,11 +14,13 @@ import { useTranslation } from "react-i18next";
 import {
   filterNetworkConnections,
   formatNetworkEndpoint,
+  indexNetworkProcesses,
   networkHistorySegments,
   networkHistoryWindow,
   resolveNetworkConnectionOwners,
   visibleNetworkInterfaces,
   type NetworkConnectionFilter,
+  type NetworkProcessIndex,
   type NetworkSeriesPoint,
 } from "../networkExplorer";
 import type {
@@ -201,6 +203,7 @@ function NetworkConnectionsPanel({
     () => filterNetworkConnections(snapshot?.connections ?? [], filter),
     [filter, snapshot?.connections],
   );
+  const processByPid = useMemo(() => indexNetworkProcesses(processes), [processes]);
   const visibleConnections = filteredConnections.slice(0, rowLimit);
   const hasMore = visibleConnections.length < filteredConnections.length;
 
@@ -348,7 +351,7 @@ function NetworkConnectionsPanel({
                 </code>
                 <ConnectionOwnersCell
                   connection={connection}
-                  processes={processes}
+                  processByPid={processByPid}
                   onSelectProcess={onSelectProcess}
                 />
               </div>
@@ -380,15 +383,15 @@ function NetworkConnectionsPanel({
 
 function ConnectionOwnersCell({
   connection,
-  processes,
+  processByPid,
   onSelectProcess,
 }: {
   connection: NetworkConnection;
-  processes: ProcessRow[];
+  processByPid: NetworkProcessIndex;
   onSelectProcess: (process: ProcessRow) => void;
 }) {
   const { t } = useTranslation();
-  const owners = resolveNetworkConnectionOwners(connection, processes);
+  const owners = resolveNetworkConnectionOwners(connection, processByPid);
   const primary = owners.processes[0];
   const reportedCount =
     owners.processes.length + owners.unavailablePids.length;

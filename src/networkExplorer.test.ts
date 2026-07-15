@@ -4,6 +4,7 @@ import {
   NETWORK_HISTORY_WINDOW_MS,
   filterNetworkConnections,
   formatNetworkEndpoint,
+  indexNetworkProcesses,
   networkHistorySegments,
   networkHistoryWindow,
   networkInterfaceRate,
@@ -114,10 +115,49 @@ describe("network connections", () => {
       associatedPids: [99, 42, 42],
     };
 
-    expect(resolveNetworkConnectionOwners(connection, [process])).toEqual({
+    const index = indexNetworkProcesses([process]);
+    expect(resolveNetworkConnectionOwners(connection, index)).toEqual({
       processes: [process],
       unavailablePids: [99],
     });
+  });
+
+  it("builds one reusable PID index for 100 and 500 visible rows", () => {
+    const processes = Array.from({ length: 250 }, (_, index) => ({
+      pid: index + 1,
+      birthToken: `test:${index + 1}`,
+      parentPid: 1,
+      startTime: 100,
+      runTimeSeconds: 10,
+      name: `process-${index + 1}`,
+      user: "tester",
+      status: "Run",
+      cpuPercent: 1,
+      memoryBytes: 1_024,
+      diskReadBytesPerSecond: 0,
+      diskWriteBytesPerSecond: 0,
+      protected: false,
+    } satisfies ProcessRow));
+    const index = indexNetworkProcesses(processes);
+    const rows = Array.from({ length: 500 }, (_, row) => ({
+      ...connectionFixtures[0],
+      associatedPids: [((row * 7) % 300) + 1, ((row * 7) % 300) + 1],
+    }));
+
+    const firstPage = rows
+      .slice(0, 100)
+      .map((connection) => resolveNetworkConnectionOwners(connection, index));
+    const allRows = rows.map((connection) =>
+      resolveNetworkConnectionOwners(connection, index),
+    );
+
+    expect(index.size).toBe(250);
+    expect(firstPage).toHaveLength(100);
+    expect(allRows).toHaveLength(500);
+    expect(allRows[0]?.processes).toHaveLength(1);
+    expect(allRows.some(({ unavailablePids }) => unavailablePids.length === 1)).toBe(
+      true,
+    );
   });
 });
 
