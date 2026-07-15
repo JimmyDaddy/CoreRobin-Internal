@@ -1,7 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "auxiliary-windows",
-  "description": "Narrow window controls for the tray panel and Orbit companion",
-  "windows": ["tray", "companion"],
-  "permissions": ["core:window:allow-hide"]
+  "identifier": "tray",
+  "description": "Narrow event, window and application controls for the tray panel",
+  "windows": ["tray"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit-to",
+    "core:window:allow-hide",
+    "allow-show-main-window",
+    "allow-toggle-companion-window"
+  ]
 }

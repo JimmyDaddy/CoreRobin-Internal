@@ -1,5 +1,7 @@
 mod application_icon;
 mod cleanup;
+#[cfg(test)]
+mod command_names;
 mod error;
 mod identity;
 mod models;
@@ -39,11 +41,26 @@ use process_control::ProcessController;
 use startup::{StartupController, scan_startup_items};
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Rect, State,
-    WindowEvent,
+    WebviewWindow, WindowEvent,
     ipc::Channel,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+
+fn require_main_window_label(label: &str) -> Result<(), CommandError> {
+    if label == "main" {
+        Ok(())
+    } else {
+        Err(CommandError::new(
+            "window_not_authorized",
+            "This operation is only available from the main StatusOrbit window.",
+        ))
+    }
+}
+
+fn require_main_window(window: &WebviewWindow) -> Result<(), CommandError> {
+    require_main_window_label(window.label())
+}
 
 #[derive(Clone)]
 struct AppState {
@@ -183,9 +200,11 @@ async fn get_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
 
 #[tauri::command]
 async fn create_startup_management_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: StartupManagementLeaseRequest,
 ) -> Result<StartupManagementLease, CommandError> {
+    require_main_window(&window)?;
     with_startup_controller(Arc::clone(&state.startup_controller), move |controller| {
         controller.create_lease(request)
     })
@@ -194,9 +213,11 @@ async fn create_startup_management_lease(
 
 #[tauri::command]
 async fn release_startup_management_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: StartupManagementLeaseReleaseRequest,
 ) -> Result<(), CommandError> {
+    require_main_window(&window)?;
     with_startup_controller(Arc::clone(&state.startup_controller), move |controller| {
         controller.release_lease(&request.lease_id);
         Ok(())
@@ -206,9 +227,11 @@ async fn release_startup_management_lease(
 
 #[tauri::command]
 async fn execute_startup_management(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: StartupManagementExecutionRequest,
 ) -> Result<StartupManagementResult, CommandError> {
+    require_main_window(&window)?;
     with_startup_controller(Arc::clone(&state.startup_controller), move |controller| {
         controller.execute(request)
     })
@@ -311,20 +334,24 @@ fn get_cleanup_scan_access() -> CleanupScanAccess {
 }
 
 #[tauri::command]
-fn open_cleanup_full_disk_access_settings() -> Result<(), CommandError> {
+fn open_cleanup_full_disk_access_settings(window: WebviewWindow) -> Result<(), CommandError> {
+    require_main_window(&window)?;
     open_full_disk_access_settings()
 }
 
 #[tauri::command]
-fn reveal_cleanup_app_bundle() -> Result<(), CommandError> {
+fn reveal_cleanup_app_bundle(window: WebviewWindow) -> Result<(), CommandError> {
+    require_main_window(&window)?;
     reveal_cleanup_application_bundle()
 }
 
 #[tauri::command]
 async fn create_cleanup_delete_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: CleanupDeleteLeaseRequest,
 ) -> Result<CleanupDeleteLease, CommandError> {
+    require_main_window(&window)?;
     with_cleanup_delete_controller(
         Arc::clone(&state.cleanup_delete_controller),
         move |controller| controller.create_lease(request),
@@ -334,9 +361,11 @@ async fn create_cleanup_delete_lease(
 
 #[tauri::command]
 async fn release_cleanup_delete_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: CleanupDeleteLeaseReleaseRequest,
 ) -> Result<(), CommandError> {
+    require_main_window(&window)?;
     with_cleanup_delete_controller(
         Arc::clone(&state.cleanup_delete_controller),
         move |controller| {
@@ -349,10 +378,12 @@ async fn release_cleanup_delete_lease(
 
 #[tauri::command]
 async fn execute_cleanup_delete(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: CleanupDeleteExecutionRequest,
     on_progress: Channel<CleanupDeleteProgress>,
 ) -> Result<CleanupDeleteResult, CommandError> {
+    require_main_window(&window)?;
     let coordinator = Arc::clone(&state.cleanup_delete);
     let cancelled = coordinator.begin()?;
     let worker_cancelled = Arc::clone(&cancelled);
@@ -371,7 +402,11 @@ async fn execute_cleanup_delete(
 }
 
 #[tauri::command]
-fn cancel_cleanup_delete(state: State<'_, AppState>) -> Result<bool, CommandError> {
+fn cancel_cleanup_delete(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
     state.cleanup_delete.cancel()
 }
 
@@ -673,9 +708,11 @@ async fn get_application_icon(
 
 #[tauri::command]
 async fn create_process_control_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: ProcessControlLeaseRequest,
 ) -> Result<ProcessControlLease, CommandError> {
+    require_main_window(&window)?;
     with_process_controller(Arc::clone(&state.process_controller), move |controller| {
         controller.create_lease(request)
     })
@@ -684,9 +721,11 @@ async fn create_process_control_lease(
 
 #[tauri::command]
 async fn release_process_control_lease(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: ProcessControlLeaseReleaseRequest,
 ) -> Result<(), CommandError> {
+    require_main_window(&window)?;
     with_process_controller(Arc::clone(&state.process_controller), move |controller| {
         controller.release_lease(request);
         Ok(())
@@ -696,9 +735,11 @@ async fn release_process_control_lease(
 
 #[tauri::command]
 async fn execute_process_action(
+    window: WebviewWindow,
     state: State<'_, AppState>,
     request: ProcessActionRequest,
 ) -> Result<ProcessActionResult, CommandError> {
+    require_main_window(&window)?;
     with_process_controller(Arc::clone(&state.process_controller), move |controller| {
         controller.execute_action(request)
     })
@@ -838,5 +879,134 @@ mod tray_panel_position_tests {
         );
 
         assert_eq!(position, PhysicalPosition::new(12, 56));
+    }
+}
+
+#[cfg(test)]
+mod security_boundary_tests {
+    use std::collections::BTreeSet;
+
+    use serde_json::Value;
+
+    use super::{command_names::ALL_COMMANDS, require_main_window_label};
+
+    const PROTECTED_COMMANDS: &[&str] = &[
+        "create_startup_management_lease",
+        "release_startup_management_lease",
+        "execute_startup_management",
+        "open_cleanup_full_disk_access_settings",
+        "reveal_cleanup_app_bundle",
+        "create_cleanup_delete_lease",
+        "release_cleanup_delete_lease",
+        "execute_cleanup_delete",
+        "cancel_cleanup_delete",
+        "create_process_control_lease",
+        "release_process_control_lease",
+        "execute_process_action",
+    ];
+
+    fn capability(source: &str) -> Value {
+        serde_json::from_str(source).expect("capability JSON must be valid")
+    }
+
+    fn string_set(value: &Value, field: &str) -> BTreeSet<String> {
+        value[field]
+            .as_array()
+            .expect("capability field must be an array")
+            .iter()
+            .map(|entry| {
+                entry
+                    .as_str()
+                    .expect("capability array entries must be strings")
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    fn allow_permission(command: &str) -> String {
+        format!("allow-{}", command.replace('_', "-"))
+    }
+
+    #[test]
+    fn build_manifest_command_list_matches_the_invoke_handler() {
+        let source = include_str!("lib.rs");
+        let handler = source
+            .split_once("tauri::generate_handler![")
+            .expect("invoke handler must exist")
+            .1
+            .split_once("])")
+            .expect("invoke handler must be terminated")
+            .0;
+        let registered = handler
+            .split(',')
+            .map(str::trim)
+            .filter(|command| !command.is_empty())
+            .collect::<BTreeSet<_>>();
+        let declared = ALL_COMMANDS.iter().copied().collect::<BTreeSet<_>>();
+
+        assert_eq!(registered, declared);
+    }
+
+    #[test]
+    fn generated_application_acl_is_not_empty() {
+        let manifests: Value =
+            serde_json::from_str(include_str!("../gen/schemas/acl-manifests.json"))
+                .expect("generated ACL manifest JSON must be valid");
+        let application = manifests
+            .get("__app-acl__")
+            .expect("the application ACL manifest must be generated");
+        assert!(
+            application["permissions"]
+                .as_object()
+                .is_some_and(|permissions| !permissions.is_empty()),
+            "the application ACL manifest must declare command permissions"
+        );
+    }
+
+    #[test]
+    fn capabilities_keep_protected_commands_on_the_main_window() {
+        let main = capability(include_str!("../capabilities/default.json"));
+        let tray = capability(include_str!("../capabilities/auxiliary-windows.json"));
+        let companion = capability(include_str!("../capabilities/companion-position.json"));
+        let main_permissions = string_set(&main, "permissions");
+        let tray_permissions = string_set(&tray, "permissions");
+        let companion_permissions = string_set(&companion, "permissions");
+
+        assert_eq!(
+            string_set(&main, "windows"),
+            BTreeSet::from(["main".to_owned()])
+        );
+        assert_eq!(
+            string_set(&tray, "windows"),
+            BTreeSet::from(["tray".to_owned()])
+        );
+        assert_eq!(
+            string_set(&companion, "windows"),
+            BTreeSet::from(["companion".to_owned()])
+        );
+        assert!(!string_set(&main, "windows").contains("splashscreen"));
+
+        for command in ALL_COMMANDS {
+            assert!(
+                main_permissions.contains(&allow_permission(command)),
+                "main is missing permission for {command}"
+            );
+        }
+        for command in PROTECTED_COMMANDS {
+            let permission = allow_permission(command);
+            assert!(!tray_permissions.contains(&permission));
+            assert!(!companion_permissions.contains(&permission));
+        }
+        assert!(!tray_permissions.contains("core:default"));
+        assert!(!companion_permissions.contains("core:default"));
+    }
+
+    #[test]
+    fn protected_handler_guard_rejects_every_auxiliary_window() {
+        assert!(require_main_window_label("main").is_ok());
+        for label in ["tray", "companion", "splashscreen", "unexpected"] {
+            let error = require_main_window_label(label).expect_err("window must be rejected");
+            assert_eq!(error.code, "window_not_authorized");
+        }
     }
 }
