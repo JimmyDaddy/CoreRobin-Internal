@@ -77,6 +77,28 @@ document.querySelectorAll("[data-year]").forEach((element) => {
   element.textContent = String(new Date().getFullYear());
 });
 
+if (window.matchMedia?.("(pointer: fine)").matches) {
+  document.querySelectorAll(".capability").forEach((card) => {
+    let pointerFrame;
+    card.addEventListener("pointermove", (event) => {
+      const { clientX, clientY } = event;
+      if (pointerFrame !== undefined) window.cancelAnimationFrame(pointerFrame);
+      pointerFrame = window.requestAnimationFrame(() => {
+        const bounds = card.getBoundingClientRect();
+        card.style.setProperty("--spotlight-x", `${clientX - bounds.left}px`);
+        card.style.setProperty("--spotlight-y", `${clientY - bounds.top}px`);
+        pointerFrame = undefined;
+      });
+    });
+    card.addEventListener("pointerleave", () => {
+      if (pointerFrame !== undefined) window.cancelAnimationFrame(pointerFrame);
+      pointerFrame = undefined;
+      card.style.removeProperty("--spotlight-x");
+      card.style.removeProperty("--spotlight-y");
+    });
+  });
+}
+
 const revealElements = [...document.querySelectorAll("[data-reveal]")];
 revealElements.forEach((element) => {
   const delay = Number(element.dataset.delay ?? 0);

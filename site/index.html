@@ -30,6 +30,7 @@
       </button>
       <nav class="main-nav" data-nav aria-label="主要导航" data-aria-zh="主要导航" data-aria-en="Main navigation">
         <a href="#experience" data-zh="看懂电脑状态" data-en="Find the cause">看懂电脑状态</a>
+        <a href="#interfaces" data-zh="界面" data-en="Interface">界面</a>
         <a href="#capabilities" data-zh="功能" data-en="Features">功能</a>
         <a href="#safety" data-zh="安全与隐私" data-en="Safety & privacy">安全与隐私</a>
         <a href="./guide/" data-zh="使用指南" data-en="Guide">使用指南</a>
@@ -118,10 +119,14 @@
       </section>
 
       <section class="signal-strip" aria-label="页面快捷入口" data-aria-zh="页面快捷入口" data-aria-en="Page shortcuts">
+        <div class="signal-strip__hub" aria-hidden="true">
+          <span><img src="./assets/brand-mark.png" alt="" /></span>
+          <small data-zh="探索" data-en="EXPLORE">探索</small>
+        </div>
         <a href="#experience"><strong>01</strong><span data-zh="看懂电脑状态" data-en="Find the cause">看懂电脑状态</span><i aria-hidden="true">↘</i></a>
-        <a href="#capabilities"><strong>02</strong><span data-zh="查看全部功能" data-en="Explore all features">查看全部功能</span><i aria-hidden="true">↘</i></a>
-        <a href="#cleanup"><strong>03</strong><span data-zh="了解空间清理" data-en="Explore space cleanup">了解空间清理</span><i aria-hidden="true">↘</i></a>
-        <a href="#safety"><strong>04</strong><span data-zh="了解安全保护" data-en="Review safeguards">了解安全保护</span><i aria-hidden="true">↘</i></a>
+        <a href="#interfaces"><strong>02</strong><span data-zh="看看真实界面" data-en="See the interface">看看真实界面</span><i aria-hidden="true">↘</i></a>
+        <a href="#capabilities"><strong>03</strong><span data-zh="查看全部功能" data-en="Explore all features">查看全部功能</span><i aria-hidden="true">↘</i></a>
+        <a href="#cleanup"><strong>04</strong><span data-zh="了解空间清理" data-en="Explore space cleanup">了解空间清理</span><i aria-hidden="true">↘</i></a>
       </section>
 
       <section class="experience section-shell" id="experience">
@@ -151,10 +156,77 @@
         </div>
       </section>
 
+      <section class="interface-showcase section-shell" id="interfaces">
+        <div class="section-heading section-heading--split" data-reveal>
+          <div>
+            <div><span class="section-index">02</span><span class="eyebrow-text" data-zh="两种使用方式，同一个 StatusOrbit" data-en="TWO WAYS TO USE STATUSORBIT">两种使用方式，同一个 StatusOrbit</span></div>
+            <h2 data-zh="想简单一点，或看得更深，都可以。" data-en="Keep it simple or go deeper when you need to.">想简单一点，或看得更深，都可以。</h2>
+          </div>
+          <p data-zh="普通版把结论和下一步放在前面；专业版展开资源趋势、进程和网络细节。两种模式随时切换，不需要重复设置。" data-en="Everyday mode leads with a clear conclusion and next step. Pro mode opens up resource trends, processes, and network details. Switch anytime without setting things up again.">普通版把结论和下一步放在前面；专业版展开资源趋势、进程和网络细节。两种模式随时切换，不需要重复设置。</p>
+        </div>
+
+        <article class="mode-showcase mode-showcase--daily" data-reveal>
+          <div class="mode-showcase__intro mode-showcase__intro--horizontal">
+            <div>
+              <span class="mode-chip mode-chip--daily" data-zh="普通版" data-en="EVERYDAY MODE">普通版</span>
+              <h3 data-zh="把问题讲清楚，再给出下一步。" data-en="Understand the problem, then take the next step.">把问题讲清楚，再给出下一步。</h3>
+              <div class="mode-showcase__features"><span data-zh="清晰结论" data-en="Clear summary">清晰结论</span><span data-zh="问题引导" data-en="Guided help">问题引导</span><span data-zh="稳定恢复" data-en="Stable recovery">稳定恢复</span></div>
+            </div>
+            <p data-zh="适合每天快速看一眼电脑状态。遇到变慢、发热或空间不足时，直接从常见问题进入引导，不必先理解 CPU、内存或进程术语。" data-en="Ideal for a quick daily check. When the computer slows down, runs hot, or needs space, start from a familiar problem instead of decoding CPU, memory, and process terminology.">适合每天快速看一眼电脑状态。遇到变慢、发热或空间不足时，直接从常见问题进入引导，不必先理解 CPU、内存或进程术语。</p>
+          </div>
+          <div class="daily-screen-grid">
+            <figure class="screen-card">
+              <div class="screen-card__frame">
+                <img src="./assets/statusorbit-daily-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 普通版电脑状态总览 / Everyday mode status overview" />
+              </div>
+              <figcaption><span data-zh="电脑状态 · 先看结论和最值得做的事" data-en="Computer status · See the conclusion and next best action">电脑状态 · 先看结论和最值得做的事</span></figcaption>
+            </figure>
+            <figure class="screen-card">
+              <div class="screen-card__frame">
+                <img src="./assets/statusorbit-daily-assistant.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 普通版问题引导界面 / Everyday mode guided help" />
+              </div>
+              <figcaption><span data-zh="帮我解决 · 从日常问题进入诊断" data-en="Guided help · Start from an everyday problem">帮我解决 · 从日常问题进入诊断</span></figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="mode-showcase mode-showcase--professional" data-reveal>
+          <div class="mode-showcase__intro mode-showcase__intro--horizontal">
+            <div>
+              <span class="mode-chip mode-chip--professional" data-zh="专业版" data-en="PRO MODE">专业版</span>
+              <h3 data-zh="趋势、进程与网络，一屏深入。" data-en="Go deeper into trends, processes, and network activity.">趋势、进程与网络，一屏深入。</h3>
+            </div>
+            <p data-zh="需要定位具体原因时，专业版同时展示实时指标、五分钟趋势和可操作的详情，适合排查持续占用或异常流量。" data-en="When you need the exact cause, Pro mode combines live metrics, five-minute trends, and actionable detail for sustained load or unusual traffic.">需要定位具体原因时，专业版同时展示实时指标、五分钟趋势和可操作的详情，适合排查持续占用或异常流量。</p>
+          </div>
+          <div class="professional-screen-grid">
+            <figure class="screen-card screen-card--professional">
+              <div class="screen-card__frame">
+                <img src="./assets/statusorbit-professional-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版资源总览 / Pro mode resource overview" />
+              </div>
+              <figcaption><span data-zh="资源总览 · 指标、趋势和进程详情" data-en="Resource overview · Metrics, trends, and process detail">资源总览 · 指标、趋势和进程详情</span></figcaption>
+            </figure>
+            <figure class="screen-card screen-card--professional">
+              <div class="screen-card__frame">
+                <img src="./assets/statusorbit-professional-network.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版网络趋势 / Pro mode network trends" />
+              </div>
+              <figcaption><span data-zh="网络洞察 · 实时吞吐和活动连接" data-en="Network insight · Live throughput and active connections">网络洞察 · 实时吞吐和活动连接</span></figcaption>
+            </figure>
+            <figure class="screen-card screen-card--professional screen-card--wide">
+              <div class="screen-card__frame">
+                <img src="./assets/statusorbit-space-sunburst.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版完整扇形空间图 / Pro mode full sunburst storage map" />
+              </div>
+              <figcaption><span data-zh="空间清理 · 完整扇形图和清理篮" data-en="Space cleanup · Full sunburst map and cleanup basket">空间清理 · 完整扇形图和清理篮</span></figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <p class="showcase-privacy" data-reveal><i></i><span data-zh="全部截图来自真实产品界面，并使用脱敏演示数据；不包含设备型号、用户名、真实路径或网络身份。" data-en="All screenshots come from the real product interface and use sanitized demo data. No device model, username, real path, or network identity is shown.">全部截图来自真实产品界面，并使用脱敏演示数据；不包含设备型号、用户名、真实路径或网络身份。</span></p>
+      </section>
+
       <section class="capabilities section-shell" id="capabilities">
         <div class="section-heading section-heading--split" data-reveal>
           <div>
-            <div><span class="section-index">02</span><span class="eyebrow-text" data-zh="常用工具，都放在一起" data-en="EVERYTHING IN ONE PLACE">常用工具，都放在一起</span></div>
+            <div><span class="section-index">03</span><span class="eyebrow-text" data-zh="常用工具，都放在一起" data-en="EVERYTHING IN ONE PLACE">常用工具，都放在一起</span></div>
             <h2 data-zh="从概览到详情，一路找到原因。" data-en="Go from the big picture to the cause.">从概览到详情，一路找到原因。</h2>
           </div>
           <p data-zh="从概览点进应用、磁盘或网络详情，不用在几套工具之间来回切换。" data-en="Move from the overview into app, storage, or network details without jumping between separate tools.">从概览点进应用、磁盘或网络详情，不用在几套工具之间来回切换。</p>
@@ -215,7 +287,7 @@
             <div class="cleanup-basket-preview"><span>⌁</span><div><small data-zh="清理篮" data-en="CLEANUP BASKET">清理篮</small><b data-zh="拖到这里，稍后统一检查" data-en="Drag here, then review">拖到这里，稍后统一检查</b></div></div>
           </div>
           <div class="cleanup-showcase__copy">
-            <div><span class="section-index">03</span><span class="eyebrow-text" data-zh="扇形空间图" data-en="SUNBURST STORAGE MAP">扇形空间图</span></div>
+            <div><span class="section-index">04</span><span class="eyebrow-text" data-zh="扇形空间图" data-en="SUNBURST STORAGE MAP">扇形空间图</span></div>
             <h2 data-zh="空间去了哪里，一张图看清。" data-en="See what is taking up space at a glance.">空间去了哪里，一张图看清。</h2>
             <p data-zh="扫描完成后，文件和文件夹会按实际占用显示在扇形图上。最大的扇区，就是最值得先查看的地方。" data-en="After a scan, files and folders are sized by the space they actually use. The largest sectors show you where to look first.">扫描完成后，文件和文件夹会按实际占用显示在扇形图上。最大的扇区，就是最值得先查看的地方。</p>
             <ul>
@@ -232,7 +304,7 @@
         <div class="safety__panel" data-reveal>
           <div class="safety__orbit" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /><i></i><i></i></div>
           <div class="safety__copy">
-            <div><span class="section-index">04</span><span class="eyebrow-text" data-zh="重要操作，由你确认" data-en="YOU STAY IN CONTROL">重要操作，由你确认</span></div>
+            <div><span class="section-index">05</span><span class="eyebrow-text" data-zh="重要操作，由你确认" data-en="YOU STAY IN CONTROL">重要操作，由你确认</span></div>
             <h2 data-zh="结束进程和删除文件，都要经过你的确认。" data-en="Processes are stopped and files are deleted only when you confirm.">结束进程和删除文件，都要经过你的确认。</h2>
             <p data-zh="StatusOrbit 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。" data-en="StatusOrbit never stops processes or deletes files automatically. If a process has exited or a file has changed since the scan, the action stops.">StatusOrbit 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。</p>
             <ul>
