@@ -57,9 +57,9 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
 3. **Add items to the basket:** Hold a sector and start dragging; the basket stays visible at the bottom of the window. Adding an item to the basket does not delete or move it.
-4. **Review, then delete:** Check that the name, location, and size are correct before continuing.
+4. **Refresh, then delete:** StatusOrbit rescans only the basket targets and shows their latest size and item count. Continue only after reviewing those results.
 
-Full scan results stay on this computer for 7 days, so returning to Cleanup does not immediately require another scan. When you open a folder, StatusOrbit checks that level and updates the map. Choose Rescan when many files have changed elsewhere.
+Full scan results stay on this computer for 7 days for browsing. Cached or expired results cannot directly authorize permanent deletion: opening the deletion review performs an authoritative rescan of only the basket targets. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
 
 #### Before permanent deletion
 
@@ -67,7 +67,7 @@ Full scan results stay on this computer for 7 days, so returning to Cleanup does
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
 - StatusOrbit removes only regular files and folders inside your home folder.
 - Your home folder, Trash itself, links, special files, and other disks are protected.
-- The app checks each item again right before deletion. If something has changed, the action stops.
+- The app rechecks each complete target tree right before deletion. A deep new file or any other mismatch stops the action and requires another refresh and confirmation.
 - Deleted items disappear from the map and basket. Items that could not be deleted remain visible with an explanation.
 
 ### Network

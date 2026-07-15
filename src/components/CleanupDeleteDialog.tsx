@@ -1,8 +1,9 @@
-import { AlertTriangle, CircleStop, LoaderCircle, Trash2, X } from "lucide-react";
+import { AlertTriangle, CircleStop, LoaderCircle, RefreshCw, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CleanupMapNode } from "../cleanupMap";
+import { cleanupLeaseCanExecute } from "../cleanupDeleteFreshness";
 import type { CleanupDeleteLease, CleanupDeleteProgress, CommandError } from "../types";
 import { formatBytes } from "../utils";
 
@@ -18,6 +19,7 @@ interface CleanupDeleteDialogProps {
   onDeleteAcknowledgedChange: (checked: boolean) => void;
   onCancel: () => void;
   onCancelExecution: () => void;
+  onRefresh: () => void;
   onConfirm: () => void;
 }
 
@@ -33,13 +35,14 @@ export function CleanupDeleteDialog({
   onDeleteAcknowledgedChange,
   onCancel,
   onCancelExecution,
+  onRefresh,
   onConfirm,
 }: CleanupDeleteDialogProps) {
   const { t } = useTranslation();
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
-  const canConfirm = lease !== null && !preparing && !submitting && deleteAcknowledged;
+  const canConfirm = cleanupLeaseCanExecute(lease) && !preparing && !submitting && deleteAcknowledged;
   const currentItem = progress?.currentPath
     ? items.find((item) => item.path === progress.currentPath)
     : null;
@@ -165,7 +168,7 @@ export function CleanupDeleteDialog({
           <input
             type="checkbox"
             checked={deleteAcknowledged}
-            disabled={submitting}
+            disabled={submitting || preparing || lease?.executable !== true || lease.changedPaths.length > 0}
             onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
           />
           <span><strong>{t("cleanup.deleteDialog.deleteConfirmTitle")}</strong><small>{t("cleanup.deleteDialog.deleteConfirmDescription")}</small></span>
@@ -188,9 +191,16 @@ export function CleanupDeleteDialog({
               <button ref={cancelButton} className="button button--secondary" type="button" onClick={onCancel}>
                 {t("common.cancel")}
               </button>
-              <button className="button button--danger" type="button" disabled={!canConfirm} onClick={onConfirm}>
-                {t("cleanup.deleteDialog.confirm", { count: items.length })}
-              </button>
+              {lease && !lease.executable ? (
+                <button className="button button--primary" type="button" disabled={preparing} onClick={onRefresh}>
+                  <RefreshCw className={preparing ? "is-spinning" : undefined} size={14} />
+                  {t("cleanup.deleteDialog.refreshSelection")}
+                </button>
+              ) : (
+                <button className="button button--danger" type="button" disabled={!canConfirm} onClick={onConfirm}>
+                  {t("cleanup.deleteDialog.confirm", { count: items.length })}
+                </button>
+              )}
             </>
           )}
         </footer>

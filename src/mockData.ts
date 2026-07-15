@@ -355,6 +355,9 @@ export function createMockCleanupDeleteLease(
     id: `mock-cleanup-lease-${cleanupLeaseSequence}`,
     paths: [...request.paths],
     changedPaths: [],
+    refreshedTargets: request.expectedTargets.map((target) => ({ ...target })),
+    executable: true,
+    refreshedAtMs: Date.now(),
     expiresAtMs: Date.now() + 60_000,
   };
   mockCleanupLeases.set(lease.id, lease);

@@ -11,6 +11,12 @@ describe("cleanup permanent deletion confirmation mock", () => {
     const lease = createMockCleanupDeleteLease({
       paths: ["~/Downloads/archive.zip"],
       scanSampledAtMs: Date.now(),
+      expectedTargets: [{
+        path: "~/Downloads/archive.zip",
+        logicalSizeBytes: 1,
+        allocatedSizeBytes: 4_096,
+        itemCount: 1,
+      }],
     });
 
     expect(lease.paths).toEqual(["~/Downloads/archive.zip"]);
@@ -30,6 +36,12 @@ describe("cleanup permanent deletion confirmation mock", () => {
     const lease = createMockCleanupDeleteLease({
       paths: ["~/Library/Caches/example"],
       scanSampledAtMs: Date.now(),
+      expectedTargets: [{
+        path: "~/Library/Caches/example",
+        logicalSizeBytes: 1,
+        allocatedSizeBytes: 4_096,
+        itemCount: 1,
+      }],
     });
 
     releaseMockCleanupDeleteLease({ leaseId: lease.id });

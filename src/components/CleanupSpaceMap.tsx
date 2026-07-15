@@ -12,6 +12,11 @@ import {
 } from "../api";
 import { cleanupPathChanged } from "../cleanupFreshness";
 import {
+  applyRefreshedCleanupTargets,
+  buildCleanupDeleteLeaseRequest,
+  cleanupLeaseCanExecute,
+} from "../cleanupDeleteFreshness";
+import {
   buildCleanupHueMap,
   cleanupNodeVisual,
   collectCleanupPlanNode,
@@ -456,32 +461,37 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     setDeleteAcknowledged(false);
   }, []);
 
-  const openDeleteDialog = async () => {
-    if (planned.length === 0 || !snapshot.deletionAvailable) return;
-    const items = [...planned];
+  const prepareDeleteLease = async (
+    items: readonly CleanupMapNode[],
+    scanSampledAtMs: number,
+  ) => {
     const requestId = deleteRequestIdRef.current + 1;
     deleteRequestIdRef.current = requestId;
-    setDeleteDialogItems(items);
-    setDeleteDialogOpen(true);
-    setDeleteLease(null);
+    const previousLease = deleteLeaseRef.current;
     deleteLeaseRef.current = null;
+    if (previousLease) void releaseCleanupDeleteLease({ leaseId: previousLease.id });
+    setDeleteLease(null);
     setDeletePreparing(true);
-    setDeleteSubmitting(false);
-    setDeleteCancelling(false);
-    setDeleteProgress(null);
     setDeleteError(null);
     setDeleteAcknowledged(false);
-    setDeleteOutcome(null);
     try {
-      const lease = await createCleanupDeleteLease({
-        paths: items.flatMap((item) => item.path ? [item.path] : []),
-        scanSampledAtMs: snapshot.sampledAtMs,
-      });
+      const lease = await createCleanupDeleteLease(
+        buildCleanupDeleteLeaseRequest(items, scanSampledAtMs),
+      );
       if (deleteRequestIdRef.current !== requestId) {
-        await releaseCleanupDeleteLease({ leaseId: lease.id });
+        if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
         return;
       }
-      deleteLeaseRef.current = lease;
+      const refreshedItems = applyRefreshedCleanupTargets(items, lease.refreshedTargets);
+      if (!refreshedItems) {
+        if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
+        throw {
+          code: "cleanup_refresh_incomplete",
+          message: "StatusOrbit could not match every refreshed cleanup target by path.",
+        };
+      }
+      setDeleteDialogItems(refreshedItems);
+      if (lease.executable) deleteLeaseRef.current = lease;
       setDeleteLease(lease);
     } catch (caughtError) {
       if (deleteRequestIdRef.current === requestId) {
@@ -492,9 +502,26 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     }
   };
 
+  const openDeleteDialog = async () => {
+    if (planned.length === 0 || !snapshot.deletionAvailable) return;
+    const items = [...planned];
+    setDeleteDialogItems(items);
+    setDeleteDialogOpen(true);
+    setDeleteLease(null);
+    deleteLeaseRef.current = null;
+    setDeletePreparing(false);
+    setDeleteSubmitting(false);
+    setDeleteCancelling(false);
+    setDeleteProgress(null);
+    setDeleteError(null);
+    setDeleteAcknowledged(false);
+    setDeleteOutcome(null);
+    await prepareDeleteLease(items, snapshot.sampledAtMs);
+  };
+
   const confirmPermanentDelete = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || deleteSubmitting) return;
+    if (!lease || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting) return;
     setDeleteSubmitting(true);
     setDeleteCancelling(false);
     setDeleteProgress({
@@ -704,7 +731,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
                   </button>
                   <button className="button button--danger" type="button" disabled={!snapshot.deletionAvailable} onClick={() => void openDeleteDialog()}>
                     <Trash2 size={14} />
-                    {snapshot.deletionAvailable ? t("cleanup.map.reviewCleanup") : t("cleanup.map.deletionUnavailable")}
+                    {snapshot.deletionAvailable
+                      ? t(snapshotStatus === "current" ? "cleanup.map.reviewCleanup" : "cleanup.map.refreshCleanup")
+                      : t("cleanup.map.deletionUnavailable")}
                   </button>
                 </>
               ) : null}
@@ -832,6 +861,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
           onDeleteAcknowledgedChange={setDeleteAcknowledged}
           onCancel={closeDeleteDialog}
           onCancelExecution={() => void cancelPermanentDelete()}
+          onRefresh={() => {
+            if (deleteLease) void prepareDeleteLease(deleteDialogItems, deleteLease.refreshedAtMs);
+          }}
           onConfirm={() => void confirmPermanentDelete()}
         />
       ) : null}

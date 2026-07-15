@@ -393,6 +393,16 @@ pub struct CleanupPathState {
 pub struct CleanupDeleteLeaseRequest {
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
+    pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDeleteTargetEvidence {
+    pub path: String,
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
+    pub item_count: usize,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -401,6 +411,9 @@ pub struct CleanupDeleteLease {
     pub id: String,
     pub paths: Vec<String>,
     pub changed_paths: Vec<String>,
+    pub refreshed_targets: Vec<CleanupDeleteTargetEvidence>,
+    pub executable: bool,
+    pub refreshed_at_ms: u64,
     pub expires_at_ms: u64,
 }
 

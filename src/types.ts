@@ -251,12 +251,23 @@ export interface CleanupPathState {
 export interface CleanupDeleteLeaseRequest {
   paths: string[];
   scanSampledAtMs: number;
+  expectedTargets: CleanupDeleteTargetEvidence[];
+}
+
+export interface CleanupDeleteTargetEvidence {
+  path: string;
+  logicalSizeBytes: number;
+  allocatedSizeBytes: number;
+  itemCount: number;
 }
 
 export interface CleanupDeleteLease {
   id: string;
   paths: string[];
   changedPaths: string[];
+  refreshedTargets: CleanupDeleteTargetEvidence[];
+  executable: boolean;
+  refreshedAtMs: number;
   expiresAtMs: number;
 }
 

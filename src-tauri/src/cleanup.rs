@@ -32,12 +32,13 @@ use crate::error::CommandError;
 use crate::models::{
     CleanupApplication, CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
     CleanupDeleteLeaseRequest, CleanupDeleteProgress, CleanupDeleteProgressPhase,
-    CleanupDeleteResult, CleanupDeleteSuccess, CleanupFile, CleanupFullDiskAccessStatus,
-    CleanupLocation, CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupPathState,
-    CleanupSafety, CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
+    CleanupDeleteResult, CleanupDeleteSuccess, CleanupDeleteTargetEvidence, CleanupFile,
+    CleanupFullDiskAccessStatus, CleanupLocation, CleanupLocationKind, CleanupNode,
+    CleanupNodeKind, CleanupPathState, CleanupSafety, CleanupScan, CleanupScanAccess,
+    CleanupScanProgress, CleanupSubtreeRequest,
 };
 use crate::private_storage;
-use crate::safe_fs::{BoundDeleteTarget, DeleteRoot};
+use crate::safe_fs::{BoundDeleteTarget, DeleteRoot, TreeInspection};
 
 #[cfg(not(test))]
 const LARGE_FILE_THRESHOLD_BYTES: u64 = 500 * 1_024 * 1_024;
@@ -168,6 +169,7 @@ struct CleanupDeleteTarget {
     display_path: String,
     canonical_path: PathBuf,
     modified_at_ms: Option<u64>,
+    inspection: TreeInspection,
     bound: BoundDeleteTarget,
 }
 
@@ -321,22 +323,42 @@ impl CleanupDeleteController {
             ));
         }
         let targets = validate_cleanup_targets(&request, home)?;
+        if request.expected_targets.len() != targets.len() {
+            return Err(CommandError::new(
+                "invalid_cleanup_selection",
+                "Every cleanup path must include the size and item count currently shown for confirmation.",
+            ));
+        }
+        let refreshed_targets = targets
+            .iter()
+            .map(cleanup_target_evidence)
+            .collect::<Vec<_>>();
         let changed_paths = targets
             .iter()
-            .filter(|target| {
-                target
-                    .modified_at_ms
-                    .is_some_and(|modified| modified > request.scan_sampled_at_ms)
+            .zip(&refreshed_targets)
+            .filter(|(target, refreshed)| {
+                let expected = request
+                    .expected_targets
+                    .iter()
+                    .find(|expected| expected.path == target.display_path);
+                expected != Some(*refreshed)
+                    || target
+                        .modified_at_ms
+                        .is_some_and(|modified| modified > request.scan_sampled_at_ms)
             })
-            .map(|target| target.display_path.clone())
+            .map(|(target, _)| target.display_path.clone())
             .collect::<Vec<_>>();
         let id = next_cleanup_lease_id();
         let expires_at = now + CLEANUP_LEASE_TTL;
-        self.leases.push(CleanupDeleteLeaseEntry {
-            id: id.clone(),
-            expires_at,
-            targets: targets.clone(),
-        });
+        let executable = changed_paths.is_empty();
+        if executable {
+            self.leases.push(CleanupDeleteLeaseEntry {
+                id: id.clone(),
+                expires_at,
+                targets: targets.clone(),
+            });
+        }
+        let refreshed_at_ms = now_millis();
         Ok(CleanupDeleteLease {
             id,
             paths: targets
@@ -344,6 +366,9 @@ impl CleanupDeleteController {
                 .map(|target| target.display_path.clone())
                 .collect(),
             changed_paths,
+            refreshed_targets,
+            executable,
+            refreshed_at_ms,
             expires_at_ms: now_millis().saturating_add(CLEANUP_LEASE_TTL.as_millis() as u64),
         })
     }
@@ -830,10 +855,17 @@ fn validate_cleanup_targets(
                 format!("The cleanup selection contains the same item more than once: {display}"),
             ));
         }
+        let inspection = bound.inspect().map_err(|message| {
+            CommandError::new(
+                "cleanup_target_unavailable",
+                format!("StatusOrbit could not refresh {display} before confirmation: {message}"),
+            )
+        })?;
         targets.push(CleanupDeleteTarget {
             display_path: display.clone(),
             canonical_path,
             modified_at_ms: bound.modified_at().and_then(system_time_millis),
+            inspection,
             bound,
         });
     }
@@ -898,7 +930,34 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
             ),
         ));
     }
+    let inspection = target.bound.inspect().map_err(|message| {
+        CommandError::new(
+            "cleanup_target_changed",
+            format!(
+                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again: {message}",
+                target.display_path
+            ),
+        )
+    })?;
+    if inspection != target.inspection {
+        return Err(CommandError::new(
+            "cleanup_target_changed",
+            format!(
+                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again.",
+                target.display_path
+            ),
+        ));
+    }
     Ok(())
+}
+
+fn cleanup_target_evidence(target: &CleanupDeleteTarget) -> CleanupDeleteTargetEvidence {
+    CleanupDeleteTargetEvidence {
+        path: target.display_path.clone(),
+        logical_size_bytes: target.inspection.logical_size_bytes,
+        allocated_size_bytes: target.inspection.allocated_size_bytes,
+        item_count: target.inspection.item_count,
+    }
 }
 
 #[cfg(windows)]
@@ -2257,6 +2316,42 @@ mod tests {
 
     use super::*;
 
+    fn cleanup_delete_request(
+        home: &Path,
+        paths: Vec<String>,
+        scan_sampled_at_ms: u64,
+    ) -> CleanupDeleteLeaseRequest {
+        let canonical_home = home.canonicalize().unwrap();
+        let root = DeleteRoot::open(&canonical_home).unwrap();
+        let expected_targets = paths
+            .iter()
+            .map(|display| {
+                let path = expand_cleanup_path(display, &canonical_home).unwrap();
+                let inspection = path
+                    .strip_prefix(home)
+                    .or_else(|_| path.strip_prefix(&canonical_home))
+                    .ok()
+                    .and_then(|relative| root.bind(relative).ok())
+                    .and_then(|bound| bound.inspect().ok());
+                CleanupDeleteTargetEvidence {
+                    path: display.clone(),
+                    logical_size_bytes: inspection
+                        .as_ref()
+                        .map_or(0, |value| value.logical_size_bytes),
+                    allocated_size_bytes: inspection
+                        .as_ref()
+                        .map_or(0, |value| value.allocated_size_bytes),
+                    item_count: inspection.as_ref().map_or(0, |value| value.item_count),
+                }
+            })
+            .collect();
+        CleanupDeleteLeaseRequest {
+            paths,
+            scan_sampled_at_ms,
+            expected_targets,
+        }
+    }
+
     #[test]
     fn platform_cleanup_roots_do_not_double_count_the_same_path() {
         let root = test_root("unique-platform-roots");
@@ -2802,16 +2897,33 @@ mod tests {
 
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![display.clone()],
-                    scan_sampled_at_ms: 0,
-                },
+                cleanup_delete_request(&root, vec![display.clone()], 0),
                 &root,
             )
             .unwrap();
 
         assert_eq!(lease.paths, vec![display.clone()]);
         assert_eq!(lease.changed_paths, vec![display.clone()]);
+        assert!(!lease.executable);
+        let unavailable = controller
+            .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
+                Ok(0)
+            })
+            .unwrap_err();
+        assert_eq!(unavailable.code, "cleanup_confirmation_unavailable");
+
+        let lease = controller
+            .create_lease_for_home(
+                CleanupDeleteLeaseRequest {
+                    paths: vec![display.clone()],
+                    scan_sampled_at_ms: lease.refreshed_at_ms,
+                    expected_targets: lease.refreshed_targets,
+                },
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+        assert!(lease.changed_paths.is_empty());
         let mut deleted = Vec::new();
         let result = controller
             .execute_with(
@@ -2858,10 +2970,11 @@ mod tests {
 
         let home_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![root.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![root.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2869,10 +2982,11 @@ mod tests {
 
         let trash_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![trash.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![trash.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2881,10 +2995,7 @@ mod tests {
         let trash_item = trash.join("old.txt").to_string_lossy().into_owned();
         let trash_item_lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![trash_item.clone()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(&root, vec![trash_item.clone()], now_millis()),
                 &root,
             )
             .unwrap();
@@ -2893,13 +3004,14 @@ mod tests {
 
         let overlap_error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         folder.to_string_lossy().into_owned(),
                         child.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap_err();
@@ -2919,13 +3031,14 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         file.to_string_lossy().into_owned(),
                         directory.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -2955,10 +3068,7 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![display_path.clone()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(&root, vec![display_path.clone()], now_millis()),
                 &root,
             )
             .unwrap();
@@ -3005,10 +3115,11 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -3054,23 +3165,19 @@ mod tests {
         fs::write(outside.join("keep.txt"), b"keep").unwrap();
         symlink(&outside, target.join("outside-link")).unwrap();
         let mut controller = CleanupDeleteController::default();
-        let lease = controller
+        let error = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
-            .unwrap();
+            .unwrap_err();
 
-        let result = controller
-            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
-            .unwrap();
-
-        assert!(result.deleted.is_empty());
-        assert_eq!(result.failed.len(), 1);
-        assert!(result.failed[0].message.contains("symbolic link"));
+        assert_eq!(error.code, "cleanup_target_unavailable");
+        assert!(error.message.contains("symbolic link"));
         assert!(target.exists());
         assert!(outside.join("keep.txt").exists());
         fs::remove_dir_all(root).unwrap();
@@ -3090,10 +3197,11 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -3117,10 +3225,11 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![target.to_string_lossy().into_owned()],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();
@@ -3142,6 +3251,69 @@ mod tests {
     }
 
     #[test]
+    fn cleanup_delete_rejects_a_deep_change_after_confirmation() {
+        let root = test_root("deep-revalidate");
+        let target = root.join("Downloads");
+        let deep = target.join("one/two/three");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("before.txt"), b"before").unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    now_millis(),
+                ),
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+
+        fs::write(deep.join("after.txt"), b"after").unwrap();
+        let mut attempted = false;
+        let error = controller
+            .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
+                attempted = true;
+                Ok(0)
+            })
+            .unwrap_err();
+
+        assert_eq!(error.code, "cleanup_target_changed");
+        assert!(!attempted);
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_refresh_blocks_a_deep_change_before_lease_issuance() {
+        let root = test_root("deep-refresh");
+        let target = root.join("Downloads");
+        let deep = target.join("one/two/three");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("before.txt"), b"before").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![target.to_string_lossy().into_owned()],
+            now_millis(),
+        );
+        fs::write(deep.join("after.txt"), b"after").unwrap();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller.create_lease_for_home(request, &root).unwrap();
+
+        assert!(!lease.executable);
+        assert_eq!(lease.changed_paths, lease.paths);
+        assert_eq!(lease.refreshed_targets[0].item_count, 2);
+        let error = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_confirmation_unavailable");
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cleanup_delete_reports_partial_platform_failures() {
         let root = test_root("trash-partial");
         let first = root.join("first.txt");
@@ -3152,13 +3324,14 @@ mod tests {
         let mut controller = CleanupDeleteController::default();
         let lease = controller
             .create_lease_for_home(
-                CleanupDeleteLeaseRequest {
-                    paths: vec![
+                cleanup_delete_request(
+                    &root,
+                    vec![
                         first.to_string_lossy().into_owned(),
                         second.to_string_lossy().into_owned(),
                     ],
-                    scan_sampled_at_ms: now_millis(),
-                },
+                    now_millis(),
+                ),
                 &root,
             )
             .unwrap();

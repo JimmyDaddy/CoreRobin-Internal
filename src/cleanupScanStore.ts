@@ -124,10 +124,7 @@ export function parseStoredCleanupScan(
     const ageMs = Math.max(0, now - value.savedAtMs);
     if (ageMs > CLEANUP_SCAN_RETENTION_MS) return null;
     return {
-      // Cleanup availability belongs to the running StatusOrbit build, not to the
-      // historical scan. Older retained maps become actionable after the
-      // backend adds the guarded permanent-deletion workflow.
-      snapshot: { ...snapshot, deletionAvailable: true },
+      snapshot,
       status: ageMs > CLEANUP_SCAN_STALE_AFTER_MS ? "expired" : "cached",
     };
   } catch {

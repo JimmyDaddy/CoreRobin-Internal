@@ -39,7 +39,7 @@ describe("cleanup scan persistence", () => {
     }), now)?.status).toBe("expired");
   });
 
-  it("uses the current guarded cleanup capability for older retained scans", () => {
+  it("does not invent cleanup capability for an older retained scan", () => {
     const snapshot = { ...getMockCleanupScan(), deletionAvailable: false };
     const parsed = parseStoredCleanupScan(JSON.stringify({
       version: 5,
@@ -47,7 +47,7 @@ describe("cleanup scan persistence", () => {
       snapshot,
     }), 10_000);
 
-    expect(parsed?.snapshot.deletionAvailable).toBe(true);
+    expect(parsed?.snapshot.deletionAvailable).toBe(false);
   });
 
   it("keeps retained v5 maps usable without inventing application activity", () => {

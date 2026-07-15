@@ -218,7 +218,7 @@ export async function createCleanupDeleteLease(
 ): Promise<CleanupDeleteLease> {
   if (canUseDevelopmentMock()) {
     const lease = createMockCleanupDeleteLease(request);
-    mockCleanupDeletePaths.set(lease.id, lease.paths);
+    if (lease.executable) mockCleanupDeletePaths.set(lease.id, lease.paths);
     return lease;
   }
   return invoke<CleanupDeleteLease>("create_cleanup_delete_lease", { request });

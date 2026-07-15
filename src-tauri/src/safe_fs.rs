@@ -10,6 +10,7 @@ use std::time::SystemTime;
 use cap_fs_ext::{DirExt, FollowSymlinks, MetadataExt, OpenOptionsFollowExt};
 use cap_std::ambient_authority;
 use cap_std::fs::{Dir, File, Metadata, OpenOptions};
+use sha2::{Digest, Sha256};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BoundTargetKind {
@@ -446,6 +447,14 @@ pub struct BoundDeleteTarget {
     handle: BoundHandle,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TreeInspection {
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
+    pub item_count: usize,
+    fingerprint: [u8; 32],
+}
+
 impl BoundDeleteTarget {
     pub fn modified_at(&self) -> Option<SystemTime> {
         self.modified_at
@@ -457,6 +466,15 @@ impl BoundDeleteTarget {
             .modified()
             .ok()
             .map(|time| time.into_std()))
+    }
+
+    pub fn inspect(&self) -> Result<TreeInspection, String> {
+        self.current_entry_metadata()
+            .map_err(|error| format!("Cleanup target changed before inspection: {error}"))?;
+        match &self.handle {
+            BoundHandle::File(file) => inspect_bound_file(file, self.identity),
+            BoundHandle::Directory(directory) => self.inspect_directory(directory),
+        }
     }
 
     pub fn delete_cancellable(
@@ -658,6 +676,174 @@ impl BoundDeleteTarget {
         Ok(true)
     }
 
+    fn inspect_directory(&self, root: &Dir) -> Result<TreeInspection, String> {
+        let root_directory = root
+            .try_clone()
+            .map_err(|error| format!("Could not retain the cleanup directory: {error}"))?;
+        let root_metadata = root_directory
+            .dir_metadata()
+            .map_err(|error| format!("Could not inspect the cleanup directory: {error}"))?;
+        let root_modified_at = metadata_modified_at(&root_metadata);
+        let root_entries = read_entry_names(&root_directory, Path::new("."))?;
+        let mut frames = vec![InspectionFrame {
+            directory: root_directory,
+            name_in_parent: None,
+            identity: self.identity,
+            modified_at: root_modified_at,
+            display_path: Path::new(".").to_path_buf(),
+            entries: root_entries,
+            next_entry: 0,
+        }];
+        let mut logical_size_bytes = 0_u64;
+        let mut allocated_size_bytes = 0_u64;
+        let mut item_count = 0_usize;
+        let mut seen_files = HashSet::new();
+        let mut fingerprint = Sha256::new();
+        fingerprint.update(b"status-orbit-cleanup-tree-v1");
+        hash_identity(&mut fingerprint, self.identity);
+        hash_modified_at(&mut fingerprint, root_modified_at);
+
+        while !frames.is_empty() {
+            let next_name = {
+                let frame = frames.last_mut().expect("inspection stack is not empty");
+                let name = frame.entries.get(frame.next_entry).cloned();
+                if name.is_some() {
+                    frame.next_entry = frame.next_entry.saturating_add(1);
+                }
+                name
+            };
+            if let Some(name) = next_name {
+                let frame = frames.last().expect("inspection stack is not empty");
+                let display_path = frame.display_path.join(&name);
+                let entry_metadata = frame.directory.symlink_metadata(&name).map_err(|error| {
+                    format!(
+                        "Could not inspect {} while refreshing deletion evidence: {error}",
+                        display_path.display()
+                    )
+                })?;
+                if entry_metadata.file_type().is_symlink() {
+                    return Err(format!(
+                        "Refused to refresh {} because it is a symbolic link or reparse point.",
+                        display_path.display()
+                    ));
+                }
+                hash_os_str(&mut fingerprint, &name);
+
+                if entry_metadata.is_dir() {
+                    let child = frame.directory.open_dir_nofollow(&name).map_err(|error| {
+                        format!(
+                            "Refused to open {} as a no-follow directory: {error}",
+                            display_path.display()
+                        )
+                    })?;
+                    let child_metadata = child.dir_metadata().map_err(|error| {
+                        format!("Could not inspect {}: {error}", display_path.display())
+                    })?;
+                    ensure_same_volume(&child_metadata, self.volume)
+                        .map_err(|error| error.to_string())?;
+                    let child_identity = FileIdentity::from_metadata(&child_metadata);
+                    if FileIdentity::from_metadata(&entry_metadata) != child_identity {
+                        return Err(format!(
+                            "Refused to refresh {} because it changed during traversal.",
+                            display_path.display()
+                        ));
+                    }
+                    let child_modified_at = metadata_modified_at(&child_metadata);
+                    fingerprint.update([b'd']);
+                    hash_identity(&mut fingerprint, child_identity);
+                    hash_modified_at(&mut fingerprint, child_modified_at);
+                    let entries = read_entry_names(&child, &display_path)?;
+                    frames.push(InspectionFrame {
+                        directory: child,
+                        name_in_parent: Some(name),
+                        identity: child_identity,
+                        modified_at: child_modified_at,
+                        display_path,
+                        entries,
+                        next_entry: 0,
+                    });
+                } else if entry_metadata.is_file() {
+                    let file = open_regular_file(&frame.directory, &name).map_err(|error| {
+                        format!(
+                            "Refused to open {} as a no-follow file: {error}",
+                            display_path.display()
+                        )
+                    })?;
+                    let metadata = file.metadata().map_err(|error| {
+                        format!("Could not inspect {}: {error}", display_path.display())
+                    })?;
+                    ensure_same_volume(&metadata, self.volume)
+                        .map_err(|error| error.to_string())?;
+                    let identity = FileIdentity::from_metadata(&metadata);
+                    if FileIdentity::from_metadata(&entry_metadata) != identity {
+                        return Err(format!(
+                            "Refused to refresh {} because it changed during traversal.",
+                            display_path.display()
+                        ));
+                    }
+                    verify_entry_identity(&frame.directory, &name, identity).map_err(|error| {
+                        format!(
+                            "Refused to refresh {} because it changed: {error}",
+                            display_path.display()
+                        )
+                    })?;
+                    fingerprint.update([b'f']);
+                    hash_identity(&mut fingerprint, identity);
+                    fingerprint.update(metadata.len().to_le_bytes());
+                    hash_modified_at(&mut fingerprint, metadata_modified_at(&metadata));
+                    if seen_files.insert(identity) {
+                        logical_size_bytes = logical_size_bytes.saturating_add(metadata.len());
+                        allocated_size_bytes =
+                            allocated_size_bytes.saturating_add(allocated_file_size(&metadata));
+                        item_count = item_count.saturating_add(1);
+                    }
+                } else {
+                    return Err(format!(
+                        "Refused to refresh {} because it is a special filesystem object.",
+                        display_path.display()
+                    ));
+                }
+                continue;
+            }
+
+            let completed = frames.pop().expect("inspection stack is not empty");
+            let current_metadata = completed.directory.dir_metadata().map_err(|error| {
+                format!(
+                    "Could not revalidate {} after inspection: {error}",
+                    completed.display_path.display()
+                )
+            })?;
+            if FileIdentity::from_metadata(&current_metadata) != completed.identity
+                || metadata_modified_at(&current_metadata) != completed.modified_at
+            {
+                return Err(format!(
+                    "Cleanup directory {} changed during inspection.",
+                    completed.display_path.display()
+                ));
+            }
+            if let Some(name) = completed.name_in_parent {
+                let parent = frames.last().expect("child inspection frame has a parent");
+                verify_entry_identity(&parent.directory, &name, completed.identity).map_err(
+                    |error| {
+                        format!(
+                            "Refused to finish refreshing {} because it changed: {error}",
+                            completed.display_path.display()
+                        )
+                    },
+                )?;
+            }
+        }
+        self.current_entry_metadata()
+            .map_err(|error| format!("Cleanup target changed after inspection: {error}"))?;
+        let fingerprint: [u8; 32] = fingerprint.finalize().into();
+        Ok(TreeInspection {
+            logical_size_bytes,
+            allocated_size_bytes,
+            item_count,
+            fingerprint,
+        })
+    }
+
     fn current_entry_metadata(&self) -> io::Result<Metadata> {
         let metadata = self.parent.symlink_metadata(&self.name)?;
         if metadata.file_type().is_symlink() {
@@ -682,6 +868,73 @@ struct DirectoryFrame {
     display_path: std::path::PathBuf,
     entries: Vec<OsString>,
     next_entry: usize,
+}
+
+#[derive(Debug)]
+struct InspectionFrame {
+    directory: Dir,
+    name_in_parent: Option<OsString>,
+    identity: FileIdentity,
+    modified_at: Option<SystemTime>,
+    display_path: PathBuf,
+    entries: Vec<OsString>,
+    next_entry: usize,
+}
+
+fn inspect_bound_file(file: &File, expected: FileIdentity) -> Result<TreeInspection, String> {
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("Could not inspect the bound cleanup file: {error}"))?;
+    if !metadata.is_file() || FileIdentity::from_metadata(&metadata) != expected {
+        return Err("Cleanup file identity changed during inspection.".to_owned());
+    }
+    let mut fingerprint = Sha256::new();
+    fingerprint.update(b"status-orbit-cleanup-tree-v1");
+    fingerprint.update([b'f']);
+    hash_identity(&mut fingerprint, expected);
+    fingerprint.update(metadata.len().to_le_bytes());
+    hash_modified_at(&mut fingerprint, metadata_modified_at(&metadata));
+    Ok(TreeInspection {
+        logical_size_bytes: metadata.len(),
+        allocated_size_bytes: allocated_file_size(&metadata),
+        item_count: 1,
+        fingerprint: fingerprint.finalize().into(),
+    })
+}
+
+fn metadata_modified_at(metadata: &Metadata) -> Option<SystemTime> {
+    metadata.modified().ok().map(|time| time.into_std())
+}
+
+fn hash_identity(hasher: &mut Sha256, identity: FileIdentity) {
+    hasher.update(identity.volume.to_le_bytes());
+    hasher.update(identity.file.to_le_bytes());
+}
+
+fn hash_modified_at(hasher: &mut Sha256, modified_at: Option<SystemTime>) {
+    let nanos = modified_at
+        .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    hasher.update(nanos.to_le_bytes());
+}
+
+#[cfg(unix)]
+fn hash_os_str(hasher: &mut Sha256, value: &OsStr) {
+    use std::os::unix::ffi::OsStrExt as _;
+    let bytes = value.as_bytes();
+    hasher.update((bytes.len() as u64).to_le_bytes());
+    hasher.update(bytes);
+}
+
+#[cfg(windows)]
+fn hash_os_str(hasher: &mut Sha256, value: &OsStr) {
+    use std::os::windows::ffi::OsStrExt as _;
+    let encoded = value.encode_wide().collect::<Vec<_>>();
+    hasher.update((encoded.len() as u64).to_le_bytes());
+    for unit in encoded {
+        hasher.update(unit.to_le_bytes());
+    }
 }
 
 fn split_relative_file(path: &Path) -> io::Result<(PathBuf, OsString)> {
