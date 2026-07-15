@@ -246,7 +246,7 @@ fn sync_private_directory(directory: &Dir) -> io::Result<()> {
     #[cfg(windows)]
     if result
         .as_ref()
-        .is_err_and(|error| error.kind() == io::ErrorKind::Unsupported)
+        .is_err_and(|error| error.raw_os_error() == Some(5))
     {
         return Ok(());
     }

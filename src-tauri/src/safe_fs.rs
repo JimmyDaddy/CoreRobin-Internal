@@ -128,7 +128,7 @@ impl DeleteRoot {
             volume: self.volume,
             kind,
             modified_at: handle_metadata.modified().ok().map(|time| time.into_std()),
-            handle,
+            handle: Some(handle),
         })
     }
 }
@@ -334,11 +334,11 @@ impl BoundFileMove {
         })
     }
 
-    pub fn execute(&self) -> io::Result<()> {
+    pub fn execute(self) -> io::Result<()> {
         self.execute_with_hook(|| {})
     }
 
-    fn execute_with_hook(&self, after_link: impl FnOnce()) -> io::Result<()> {
+    fn execute_with_hook(self, after_link: impl FnOnce()) -> io::Result<()> {
         self.source_parent.verify_path()?;
         self.destination_parent.verify_path()?;
         self.verify_source()?;
@@ -442,7 +442,7 @@ pub struct BoundDeleteTarget {
     volume: u64,
     kind: BoundTargetKind,
     modified_at: Option<SystemTime>,
-    handle: BoundHandle,
+    handle: Option<BoundHandle>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -469,14 +469,14 @@ impl BoundDeleteTarget {
     pub fn inspect(&self) -> Result<TreeInspection, String> {
         self.current_entry_metadata()
             .map_err(|error| format!("Cleanup target changed before inspection: {error}"))?;
-        match &self.handle {
+        match self.handle.as_ref().expect("bound handle is present") {
             BoundHandle::File(file) => inspect_bound_file(file, self.identity),
             BoundHandle::Directory(directory) => self.inspect_directory(directory),
         }
     }
 
     pub fn delete_cancellable(
-        &self,
+        self,
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
     ) -> Result<bool, String> {
@@ -484,7 +484,7 @@ impl BoundDeleteTarget {
     }
 
     fn delete_cancellable_with_hook(
-        &self,
+        mut self,
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
         after_root_validation: impl FnOnce(),
@@ -496,7 +496,11 @@ impl BoundDeleteTarget {
         }
         after_root_validation();
 
-        match &self.handle {
+        let handle = self
+            .handle
+            .take()
+            .ok_or_else(|| "Cleanup target handle was already consumed.".to_owned())?;
+        match handle {
             BoundHandle::File(file) => {
                 if cancelled.load(Ordering::Relaxed) {
                     return Ok(false);
@@ -514,6 +518,9 @@ impl BoundDeleteTarget {
                 Ok(true)
             }
             BoundHandle::Directory(directory) => {
+                let directory = Arc::try_unwrap(directory).map_err(|_| {
+                    "Cleanup directory handle is unexpectedly shared during deletion.".to_owned()
+                })?;
                 self.delete_directory(directory, cancelled, on_entry_deleted)
             }
         }
@@ -521,16 +528,13 @@ impl BoundDeleteTarget {
 
     fn delete_directory(
         &self,
-        root: &Dir,
+        root: Dir,
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
     ) -> Result<bool, String> {
-        let root_directory = root
-            .try_clone()
-            .map_err(|error| format!("Could not retain the cleanup directory: {error}"))?;
-        let root_entries = read_entry_names(&root_directory, Path::new("."))?;
+        let root_entries = read_entry_names(&root, Path::new("."))?;
         let mut frames = vec![DirectoryFrame {
-            directory: root_directory,
+            directory: root,
             name_in_parent: None,
             identity: self.identity,
             display_path: Path::new(".").to_path_buf(),
@@ -538,6 +542,7 @@ impl BoundDeleteTarget {
             next_entry: 0,
         }];
         let mut seen_files = HashSet::new();
+        let mut completed_root = None;
 
         while !frames.is_empty() {
             if cancelled.load(Ordering::Relaxed) {
@@ -652,13 +657,15 @@ impl BoundDeleteTarget {
                         )
                     },
                 )?;
-                parent.directory.remove_dir(&name).map_err(|error| {
+                completed.directory.remove_open_dir().map_err(|error| {
                     format!(
                         "Could not remove {} after deleting its contents: {error}",
                         completed.display_path.display()
                     )
                 })?;
                 on_entry_deleted(0);
+            } else {
+                completed_root = Some(completed.directory);
             }
         }
 
@@ -667,8 +674,9 @@ impl BoundDeleteTarget {
         }
         verify_entry_identity(&self.parent, &self.name, self.identity)
             .map_err(|error| format!("Cleanup target changed before final removal: {error}"))?;
-        self.parent
-            .remove_dir(&self.name)
+        completed_root
+            .ok_or_else(|| "Cleanup root handle was lost during deletion.".to_owned())?
+            .remove_open_dir()
             .map_err(|error| format!("Could not remove the bound cleanup directory: {error}"))?;
         on_entry_deleted(0);
         Ok(true)
@@ -1002,7 +1010,7 @@ fn sync_directory(directory: &Dir) -> io::Result<()> {
     #[cfg(windows)]
     if result
         .as_ref()
-        .is_err_and(|error| error.kind() == io::ErrorKind::Unsupported)
+        .is_err_and(|error| error.raw_os_error() == Some(5))
     {
         return Ok(());
     }
