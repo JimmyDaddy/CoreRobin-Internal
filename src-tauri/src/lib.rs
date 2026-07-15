@@ -38,7 +38,8 @@ use network_connections::sample_network_connections;
 use process_control::ProcessController;
 use startup::{StartupController, scan_startup_items};
 use tauri::{
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WindowEvent,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Rect, State,
+    WindowEvent,
     ipc::Channel,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -400,7 +401,10 @@ fn navigate_main(app: &AppHandle, view: &str) {
     let _ = app.emit_to("main", "status-orbit:navigate", view);
 }
 
-fn toggle_tray_panel(app: &AppHandle) {
+const TRAY_PANEL_GAP_LOGICAL: f64 = 4.0;
+const TRAY_PANEL_SCREEN_MARGIN_LOGICAL: f64 = 6.0;
+
+fn toggle_tray_panel(app: &AppHandle, tray_rect: Rect) {
     let Some(window) = app.get_webview_window("tray") else {
         return;
     };
@@ -409,15 +413,82 @@ fn toggle_tray_panel(app: &AppHandle) {
         return;
     }
 
-    if let (Ok(Some(monitor)), Ok(size)) = (window.current_monitor(), window.outer_size()) {
-        let work_area = monitor.work_area();
-        let right = work_area.position.x + work_area.size.width as i32;
-        let x = right.saturating_sub(size.width as i32).saturating_sub(12);
-        let y = work_area.position.y.saturating_add(10);
-        let _ = window.set_position(PhysicalPosition::new(x, y));
-    }
+    position_tray_panel(&window, tray_rect);
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+fn position_tray_panel(window: &tauri::WebviewWindow, tray_rect: Rect) {
+    let Ok(panel_size) = window.outer_size() else {
+        return;
+    };
+    let anchor_position = tray_rect.position.to_physical::<i32>(1.0);
+    let anchor_size = tray_rect.size.to_physical::<u32>(1.0);
+    let anchor_center_x = f64::from(anchor_position.x) + f64::from(anchor_size.width) / 2.0;
+    let anchor_center_y = f64::from(anchor_position.y) + f64::from(anchor_size.height) / 2.0;
+    let monitor = window
+        .monitor_from_point(anchor_center_x, anchor_center_y)
+        .ok()
+        .flatten()
+        .or_else(|| window.current_monitor().ok().flatten());
+    let Some(monitor) = monitor else {
+        return;
+    };
+    let work_area = monitor.work_area();
+    let scale_factor = monitor.scale_factor();
+    let gap = (TRAY_PANEL_GAP_LOGICAL * scale_factor).round() as i32;
+    let margin = (TRAY_PANEL_SCREEN_MARGIN_LOGICAL * scale_factor).round() as i32;
+    let position = calculate_tray_panel_position(
+        anchor_position,
+        anchor_size,
+        panel_size,
+        work_area.position,
+        work_area.size,
+        gap,
+        margin,
+    );
+    let _ = window.set_position(position);
+}
+
+fn calculate_tray_panel_position(
+    anchor_position: PhysicalPosition<i32>,
+    anchor_size: PhysicalSize<u32>,
+    panel_size: PhysicalSize<u32>,
+    work_area_position: PhysicalPosition<i32>,
+    work_area_size: PhysicalSize<u32>,
+    gap: i32,
+    margin: i32,
+) -> PhysicalPosition<i32> {
+    let anchor_width = anchor_size.width as i32;
+    let anchor_height = anchor_size.height as i32;
+    let panel_width = panel_size.width as i32;
+    let panel_height = panel_size.height as i32;
+    let work_width = work_area_size.width as i32;
+    let work_height = work_area_size.height as i32;
+    let desired_x = anchor_position
+        .x
+        .saturating_add(anchor_width / 2)
+        .saturating_sub(panel_width / 2);
+    let desired_y = anchor_position
+        .y
+        .saturating_add(anchor_height)
+        .saturating_add(gap);
+    let min_x = work_area_position.x.saturating_add(margin);
+    let min_y = work_area_position.y.saturating_add(gap);
+    let max_x = work_area_position
+        .x
+        .saturating_add(work_width)
+        .saturating_sub(panel_width)
+        .saturating_sub(margin)
+        .max(min_x);
+    let max_y = work_area_position
+        .y
+        .saturating_add(work_height)
+        .saturating_sub(panel_height)
+        .saturating_sub(margin)
+        .max(min_y);
+
+    PhysicalPosition::new(desired_x.clamp(min_x, max_x), desired_y.clamp(min_y, max_y))
 }
 
 #[tauri::command]
@@ -658,15 +729,14 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if matches!(
-                        event,
-                        TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        }
-                    ) {
-                        toggle_tray_panel(tray.app_handle());
+                    if let TrayIconEvent::Click {
+                        rect,
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        toggle_tray_panel(tray.app_handle(), rect);
                     }
                 });
             #[cfg(target_os = "macos")]
@@ -733,4 +803,40 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running StatusOrbit");
+}
+
+#[cfg(test)]
+mod tray_panel_position_tests {
+    use super::calculate_tray_panel_position;
+    use tauri::{PhysicalPosition, PhysicalSize};
+
+    #[test]
+    fn centers_the_panel_below_the_tray_icon() {
+        let position = calculate_tray_panel_position(
+            PhysicalPosition::new(760, 0),
+            PhysicalSize::new(44, 48),
+            PhysicalSize::new(720, 880),
+            PhysicalPosition::new(0, 48),
+            PhysicalSize::new(3000, 1952),
+            8,
+            12,
+        );
+
+        assert_eq!(position, PhysicalPosition::new(422, 56));
+    }
+
+    #[test]
+    fn keeps_the_panel_inside_the_monitor_work_area() {
+        let position = calculate_tray_panel_position(
+            PhysicalPosition::new(12, 0),
+            PhysicalSize::new(40, 48),
+            PhysicalSize::new(720, 880),
+            PhysicalPosition::new(0, 48),
+            PhysicalSize::new(3000, 1952),
+            8,
+            12,
+        );
+
+        assert_eq!(position, PhysicalPosition::new(12, 56));
+    }
 }

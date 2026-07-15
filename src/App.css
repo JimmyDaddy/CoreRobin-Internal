@@ -6032,6 +6032,10 @@ body[data-surface="companion"] #root {
   -webkit-app-region: drag;
 }
 
+.splash-surface {
+  padding: 0;
+}
+
 .splash-card {
   position: relative;
   display: flex;
@@ -6045,9 +6049,7 @@ body[data-surface="companion"] #root {
   background:
     linear-gradient(145deg, rgba(23, 35, 48, 0.98), rgba(8, 13, 18, 0.99)),
     var(--background);
-  box-shadow:
-    inset 0 1px rgba(255, 255, 255, 0.05),
-    0 28px 80px rgba(0, 0, 0, 0.48);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .splash-card::after {
@@ -6201,7 +6203,7 @@ body[data-surface="companion"] #root {
 }
 
 .tray-surface {
-  padding: 7px;
+  padding: 0;
   -webkit-app-region: no-drag;
 }
 
@@ -6216,7 +6218,7 @@ body[data-surface="companion"] #root {
   background:
     radial-gradient(circle at 85% 0%, rgba(99, 168, 255, 0.12), transparent 34%),
     rgba(14, 20, 26, 0.97);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 22px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(28px) saturate(1.2);
 }
 
