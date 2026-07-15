@@ -213,6 +213,11 @@ export async function cancelCleanupScan(): Promise<boolean> {
   return invoke<boolean>("cancel_cleanup_scan");
 }
 
+export async function cancelCleanupSubtree(requestId: string): Promise<boolean> {
+  if (canUseDevelopmentMock()) return true;
+  return invoke<boolean>("cancel_cleanup_subtree", { requestId });
+}
+
 export async function createCleanupDeleteLease(
   request: CleanupDeleteLeaseRequest,
 ): Promise<CleanupDeleteLease> {

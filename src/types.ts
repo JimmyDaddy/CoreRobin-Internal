@@ -218,6 +218,7 @@ export interface CleanupNode {
 }
 
 export interface CleanupSubtreeRequest {
+  requestId: string;
   path: string;
   safety: CleanupSafety;
 }

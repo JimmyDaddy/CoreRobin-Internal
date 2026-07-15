@@ -1,5 +1,5 @@
 use std::cmp::Reverse;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
@@ -10,9 +10,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 
 #[cfg(target_os = "macos")]
-use std::collections::HashMap;
+use std::io::Read;
 #[cfg(target_os = "macos")]
-use std::process::Command;
+use std::os::unix::process::CommandExt;
+#[cfg(target_os = "macos")]
+use std::process::{Child, Command, Stdio};
+#[cfg(target_os = "macos")]
+use std::thread;
 
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -63,6 +67,14 @@ const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
 const CLEANUP_SCAN_CACHE_VERSION: u8 = 5;
+#[cfg(target_os = "macos")]
+const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
+#[cfg(target_os = "macos")]
+const APPLICATION_DU_DEADLINE: Duration = Duration::from_secs(30);
+#[cfg(target_os = "macos")]
+const APPLICATION_MDLS_DEADLINE: Duration = Duration::from_secs(15);
+#[cfg(target_os = "macos")]
+const APPLICATION_CHILD_POLL_INTERVAL: Duration = Duration::from_millis(25);
 static NEXT_CLEANUP_LEASE_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Serialize)]
@@ -73,45 +85,137 @@ struct CleanupScanCachePayload<'a> {
     snapshot: &'a CleanupScan,
 }
 
-#[derive(Debug, Default)]
-pub struct CleanupScanCoordinator {
-    active: Mutex<Option<Arc<AtomicBool>>>,
+#[derive(Debug)]
+struct CleanupSubtreeOperation {
+    request_id: String,
+    canonical_path: PathBuf,
+    cancelled: Arc<AtomicBool>,
 }
 
-impl CleanupScanCoordinator {
-    pub fn begin(&self) -> Result<Arc<AtomicBool>, CommandError> {
-        let mut active = self.active.lock().map_err(|_| {
-            CommandError::internal("The cleanup scan coordinator lock was poisoned.")
+#[derive(Debug, Default)]
+pub struct CleanupWorkCoordinator {
+    active_full_scan: Mutex<Option<Arc<AtomicBool>>>,
+    active_subtree: Mutex<Option<CleanupSubtreeOperation>>,
+    execution: Mutex<()>,
+}
+
+impl CleanupWorkCoordinator {
+    pub fn begin_full_scan(&self) -> Result<Arc<AtomicBool>, CommandError> {
+        let mut active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
         })?;
-        if active.is_some() {
+        if active_full_scan.is_some() {
             return Err(CommandError::new(
                 "cleanup_scan_in_progress",
                 "A cleanup scan is already in progress.",
             ));
         }
+        let active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        if let Some(operation) = active_subtree.as_ref() {
+            operation.cancelled.store(true, Ordering::Relaxed);
+        }
         let cancelled = Arc::new(AtomicBool::new(false));
-        *active = Some(Arc::clone(&cancelled));
+        *active_full_scan = Some(Arc::clone(&cancelled));
         Ok(cancelled)
     }
 
-    pub fn cancel(&self) -> Result<bool, CommandError> {
-        let active = self.active.lock().map_err(|_| {
-            CommandError::internal("The cleanup scan coordinator lock was poisoned.")
+    pub fn begin_subtree(
+        &self,
+        request_id: String,
+        canonical_path: PathBuf,
+    ) -> Result<Arc<AtomicBool>, CommandError> {
+        if request_id.trim().is_empty() {
+            return Err(CommandError::new(
+                "cleanup_subtree_request_invalid",
+                "A cleanup subtree request ID is required.",
+            ));
+        }
+        let active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
         })?;
-        let Some(cancelled) = active.as_ref() else {
+        if active_full_scan.is_some() {
+            return Err(CommandError::new(
+                "cleanup_scan_in_progress",
+                "The full cleanup scan must finish before expanding a folder.",
+            ));
+        }
+        let mut active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        if let Some(operation) = active_subtree.as_ref() {
+            if operation.request_id == request_id && operation.canonical_path == canonical_path {
+                return Err(CommandError::new(
+                    "cleanup_subtree_duplicate",
+                    "This cleanup subtree request is already in progress.",
+                ));
+            }
+            operation.cancelled.store(true, Ordering::Relaxed);
+        }
+        let cancelled = Arc::new(AtomicBool::new(false));
+        *active_subtree = Some(CleanupSubtreeOperation {
+            request_id,
+            canonical_path,
+            cancelled: Arc::clone(&cancelled),
+        });
+        Ok(cancelled)
+    }
+
+    pub fn run_exclusive<T>(
+        &self,
+        cancelled: &AtomicBool,
+        operation: impl FnOnce() -> Result<T, CommandError>,
+    ) -> Result<T, CommandError> {
+        let _execution = self.execution.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        ensure_scan_active(cancelled)?;
+        operation()
+    }
+
+    pub fn cancel_full_scan(&self) -> Result<bool, CommandError> {
+        let active_full_scan = self.active_full_scan.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        let Some(cancelled) = active_full_scan.as_ref() else {
             return Ok(false);
         };
         cancelled.store(true, Ordering::Relaxed);
         Ok(true)
     }
 
-    pub fn finish(&self, cancelled: &Arc<AtomicBool>) {
-        if let Ok(mut active) = self.active.lock()
-            && active
+    pub fn cancel_subtree(&self, request_id: &str) -> Result<bool, CommandError> {
+        let active_subtree = self.active_subtree.lock().map_err(|_| {
+            CommandError::internal("The cleanup work coordinator lock was poisoned.")
+        })?;
+        let Some(operation) = active_subtree.as_ref() else {
+            return Ok(false);
+        };
+        if operation.request_id != request_id {
+            return Ok(false);
+        }
+        operation.cancelled.store(true, Ordering::Relaxed);
+        Ok(true)
+    }
+
+    pub fn finish_full_scan(&self, cancelled: &Arc<AtomicBool>) {
+        if let Ok(mut active_full_scan) = self.active_full_scan.lock()
+            && active_full_scan
                 .as_ref()
                 .is_some_and(|current| Arc::ptr_eq(current, cancelled))
         {
-            *active = None;
+            *active_full_scan = None;
+        }
+    }
+
+    pub fn finish_subtree(&self, cancelled: &Arc<AtomicBool>) {
+        if let Ok(mut active_subtree) = self.active_subtree.lock()
+            && active_subtree
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(&current.cancelled, cancelled))
+        {
+            *active_subtree = None;
         }
     }
 }
@@ -480,7 +584,155 @@ pub fn scan_cleanup(
     )
 }
 
-pub fn scan_cleanup_subtree(request: CleanupSubtreeRequest) -> Result<CleanupNode, CommandError> {
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupBenchmarkResult {
+    pub root: String,
+    pub duration_ms: u64,
+    pub cpu_user_ms: Option<u64>,
+    pub cpu_system_ms: Option<u64>,
+    pub peak_rss_bytes: Option<u64>,
+    pub read_bytes: Option<u64>,
+    pub scanned_entry_count: usize,
+    pub unreadable_entry_count: usize,
+    pub discovered_allocated_bytes: u64,
+}
+
+pub fn benchmark_cleanup_root(root: &Path) -> Result<CleanupBenchmarkResult, String> {
+    benchmark_cleanup_root_with_cancel(root, &AtomicBool::new(false))
+}
+
+pub fn benchmark_cleanup_root_with_cancel(
+    root: &Path,
+    cancelled: &AtomicBool,
+) -> Result<CleanupBenchmarkResult, String> {
+    let canonical_root = root.canonicalize().map_err(|error| {
+        format!(
+            "Could not verify benchmark root {}: {error}",
+            root.display()
+        )
+    })?;
+    if !canonical_root.is_dir() {
+        return Err(format!(
+            "Benchmark root is not a directory: {}",
+            canonical_root.display()
+        ));
+    }
+    let resources_before = benchmark_resource_snapshot();
+    let started_at = Instant::now();
+    let mut latest_progress = CleanupScanProgress {
+        scanned_entry_count: 0,
+        discovered_bytes: 0,
+        current_path: canonical_root.to_string_lossy().into_owned(),
+        elapsed_ms: 0,
+    };
+    let scan = scan_filesystem(
+        &canonical_root,
+        &canonical_root,
+        Vec::new(),
+        false,
+        cancelled,
+        &mut |progress| latest_progress = progress,
+    )
+    .map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let resources_after = benchmark_resource_snapshot();
+    Ok(CleanupBenchmarkResult {
+        root: canonical_root.to_string_lossy().into_owned(),
+        duration_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        cpu_user_ms: resource_delta_millis(
+            resources_before.user_time_ns,
+            resources_after.user_time_ns,
+        ),
+        cpu_system_ms: resource_delta_millis(
+            resources_before.system_time_ns,
+            resources_after.system_time_ns,
+        ),
+        peak_rss_bytes: resources_after.peak_rss_bytes,
+        read_bytes: resource_delta(resources_before.read_bytes, resources_after.read_bytes),
+        scanned_entry_count: scan.scanned_entry_count,
+        unreadable_entry_count: scan.unreadable_entry_count,
+        discovered_allocated_bytes: latest_progress.discovered_bytes,
+    })
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct BenchmarkResourceSnapshot {
+    user_time_ns: Option<u64>,
+    system_time_ns: Option<u64>,
+    peak_rss_bytes: Option<u64>,
+    read_bytes: Option<u64>,
+}
+
+fn resource_delta(before: Option<u64>, after: Option<u64>) -> Option<u64> {
+    Some(after?.saturating_sub(before?))
+}
+
+fn resource_delta_millis(before: Option<u64>, after: Option<u64>) -> Option<u64> {
+    resource_delta(before, after).map(|nanoseconds| nanoseconds / 1_000_000)
+}
+
+#[cfg(target_os = "macos")]
+fn benchmark_resource_snapshot() -> BenchmarkResourceSnapshot {
+    use std::mem::MaybeUninit;
+
+    let mut process_usage = MaybeUninit::<libc::rusage_info_v2>::uninit();
+    let process_usage_available = unsafe {
+        libc::proc_pid_rusage(
+            libc::getpid(),
+            libc::RUSAGE_INFO_V2,
+            process_usage.as_mut_ptr().cast(),
+        ) == 0
+    };
+    let process_usage = process_usage_available.then(|| unsafe { process_usage.assume_init() });
+
+    let mut general_usage = MaybeUninit::<libc::rusage>::uninit();
+    let general_usage_available =
+        unsafe { libc::getrusage(libc::RUSAGE_SELF, general_usage.as_mut_ptr()) == 0 };
+    let general_usage = general_usage_available.then(|| unsafe { general_usage.assume_init() });
+    let timeval_nanoseconds = |value: libc::timeval| {
+        (value.tv_sec.max(0) as u64)
+            .saturating_mul(1_000_000_000)
+            .saturating_add((value.tv_usec.max(0) as u64).saturating_mul(1_000))
+    };
+
+    BenchmarkResourceSnapshot {
+        user_time_ns: general_usage
+            .as_ref()
+            .map(|usage| timeval_nanoseconds(usage.ru_utime)),
+        system_time_ns: general_usage
+            .as_ref()
+            .map(|usage| timeval_nanoseconds(usage.ru_stime)),
+        peak_rss_bytes: general_usage.map(|usage| usage.ru_maxrss.max(0) as u64),
+        read_bytes: process_usage.map(|usage| usage.ri_diskio_bytesread),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn benchmark_resource_snapshot() -> BenchmarkResourceSnapshot {
+    BenchmarkResourceSnapshot::default()
+}
+
+pub fn canonical_cleanup_subtree_path(path: &str) -> Result<PathBuf, CommandError> {
+    let home = home_directory().ok_or_else(|| {
+        CommandError::new(
+            "home_directory_unavailable",
+            "StatusOrbit could not locate the current user's home directory.",
+        )
+    })?;
+    expand_cleanup_path(path, &home)?
+        .canonicalize()
+        .map_err(|error| {
+            CommandError::new(
+                "cleanup_subtree_unavailable",
+                format!("StatusOrbit could not verify {path}: {error}"),
+            )
+        })
+}
+
+pub fn scan_cleanup_subtree(
+    request: CleanupSubtreeRequest,
+    cancelled: &AtomicBool,
+) -> Result<CleanupNode, CommandError> {
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
@@ -493,14 +745,16 @@ pub fn scan_cleanup_subtree(request: CleanupSubtreeRequest) -> Result<CleanupNod
             "StatusOrbit could not locate the system disk root.",
         )
     })?;
-    scan_cleanup_subtree_at(request, &home, &scan_root)
+    scan_cleanup_subtree_at(request, &home, &scan_root, cancelled)
 }
 
 fn scan_cleanup_subtree_at(
     request: CleanupSubtreeRequest,
     home: &Path,
     scan_root: &Path,
+    cancelled: &AtomicBool,
 ) -> Result<CleanupNode, CommandError> {
+    ensure_scan_active(cancelled)?;
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
@@ -546,9 +800,9 @@ fn scan_cleanup_subtree_at(
         ));
     }
 
-    let cancelled = AtomicBool::new(false);
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
+    let mut application_sizes = HashMap::new();
     let definitions = Vec::new();
     let mut location_summaries = Vec::new();
     let mut ignore_progress = |_progress: CleanupScanProgress| {};
@@ -560,7 +814,8 @@ fn scan_cleanup_subtree_at(
         boundary,
         definitions: &definitions,
         location_summaries: &mut location_summaries,
-        cancelled: &cancelled,
+        application_sizes: &mut application_sizes,
+        cancelled,
         on_progress: &mut ignore_progress,
     };
     let mut seen_files = HashSet::new();
@@ -1014,6 +1269,7 @@ struct ScanContext<'a> {
     boundary: ScanFilesystemBoundary,
     definitions: &'a [LocationDefinition],
     location_summaries: &'a mut [LocationSummary],
+    application_sizes: &'a mut HashMap<PathBuf, u64>,
     cancelled: &'a AtomicBool,
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
 }
@@ -1068,6 +1324,13 @@ impl ScanContext<'_> {
     }
 
     fn record_file(&mut self, path: &Path, allocated_size_bytes: u64) {
+        if let Some(application_bundle) = application_bundle_for_path(path, self.home) {
+            let size = self
+                .application_sizes
+                .entry(application_bundle)
+                .or_default();
+            *size = size.saturating_add(allocated_size_bytes);
+        }
         let Some((index, _)) = matching_location_definition(self.definitions, path) else {
             return;
         };
@@ -1088,6 +1351,30 @@ impl ScanContext<'_> {
             }
         }
     }
+}
+
+#[cfg(target_os = "macos")]
+fn application_bundle_for_path(path: &Path, home: &Path) -> Option<PathBuf> {
+    for application_root in [PathBuf::from("/Applications"), home.join("Applications")] {
+        let Ok(relative) = path.strip_prefix(&application_root) else {
+            continue;
+        };
+        let bundle_name = relative.components().next()?.as_os_str();
+        let bundle = application_root.join(bundle_name);
+        if bundle
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+        {
+            return Some(bundle);
+        }
+    }
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+fn application_bundle_for_path(_path: &Path, _home: &Path) -> Option<PathBuf> {
+    None
 }
 
 fn matching_location_definition<'a>(
@@ -1139,6 +1426,7 @@ fn scan_filesystem(
     let boundary = ScanFilesystemBoundary::for_root(scan_root)?;
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
+    let mut application_sizes = HashMap::new();
     let mut location_summaries = definitions
         .iter()
         .map(|definition| LocationSummary {
@@ -1158,6 +1446,7 @@ fn scan_filesystem(
             boundary,
             definitions: &definitions,
             location_summaries: &mut location_summaries,
+            application_sizes: &mut application_sizes,
             cancelled,
             on_progress,
         };
@@ -1207,7 +1496,7 @@ fn scan_filesystem(
 
     let (installed_applications, application_inventory_available) = if include_application_inventory
     {
-        scan_installed_applications(home, cancelled, &mut stats, on_progress)?
+        scan_installed_applications(home, cancelled, &mut stats, on_progress, &application_sizes)?
     } else {
         (Vec::new(), false)
     };
@@ -1241,6 +1530,7 @@ fn scan_installed_applications(
     cancelled: &AtomicBool,
     stats: &mut ScanStats,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
+    observed_sizes: &HashMap<PathBuf, u64>,
 ) -> Result<(Vec<CleanupApplication>, bool), CommandError> {
     ensure_scan_active(cancelled)?;
     let application_roots = [PathBuf::from("/Applications"), home.join("Applications")];
@@ -1274,9 +1564,22 @@ fn scan_installed_applications(
     paths.sort();
     ensure_scan_active(cancelled)?;
 
-    let sizes = application_sizes(&paths);
+    let mut inventory_available = true;
+    let sizes = match application_sizes(&paths, observed_sizes, cancelled) {
+        Ok(sizes) => sizes,
+        Err(_) => {
+            inventory_available = false;
+            HashMap::new()
+        }
+    };
     ensure_scan_active(cancelled)?;
-    let last_used = application_last_used_times(&paths);
+    let last_used = match application_last_used_times(&paths, cancelled) {
+        Ok(last_used) => last_used,
+        Err(_) => {
+            inventory_available = false;
+            vec![None; paths.len()]
+        }
+    };
     ensure_scan_active(cancelled)?;
 
     let applications = paths
@@ -1298,7 +1601,7 @@ fn scan_installed_applications(
             }
         })
         .collect();
-    Ok((applications, true))
+    Ok((applications, inventory_available))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -1307,20 +1610,34 @@ fn scan_installed_applications(
     cancelled: &AtomicBool,
     _stats: &mut ScanStats,
     _on_progress: &mut dyn FnMut(CleanupScanProgress),
+    _observed_sizes: &HashMap<PathBuf, u64>,
 ) -> Result<(Vec<CleanupApplication>, bool), CommandError> {
     ensure_scan_active(cancelled)?;
     Ok((Vec::new(), false))
 }
 
 #[cfg(target_os = "macos")]
-fn application_sizes(paths: &[PathBuf]) -> HashMap<PathBuf, u64> {
-    if paths.is_empty() {
-        return HashMap::new();
+fn application_sizes(
+    paths: &[PathBuf],
+    observed_sizes: &HashMap<PathBuf, u64>,
+    cancelled: &AtomicBool,
+) -> Result<HashMap<PathBuf, u64>, ChildCommandFailure> {
+    let mut sizes = paths
+        .iter()
+        .filter_map(|path| observed_sizes.get(path).map(|size| (path.clone(), *size)))
+        .collect::<HashMap<_, _>>();
+    let missing_paths = paths
+        .iter()
+        .filter(|path| !sizes.contains_key(*path))
+        .collect::<Vec<_>>();
+    if missing_paths.is_empty() {
+        return Ok(sizes);
     }
-    let Ok(output) = Command::new("/usr/bin/du").arg("-sk").args(paths).output() else {
-        return HashMap::new();
-    };
-    parse_application_sizes(&String::from_utf8_lossy(&output.stdout))
+    let mut command = Command::new("/usr/bin/du");
+    command.arg("-sk").args(missing_paths);
+    let output = run_bounded_child(&mut command, cancelled, APPLICATION_DU_DEADLINE)?;
+    sizes.extend(parse_application_sizes(&String::from_utf8_lossy(&output)));
+    Ok(sizes)
 }
 
 #[cfg(target_os = "macos")]
@@ -1336,28 +1653,111 @@ fn parse_application_sizes(output: &str) -> HashMap<PathBuf, u64> {
 }
 
 #[cfg(target_os = "macos")]
-fn application_last_used_times(paths: &[PathBuf]) -> Vec<Option<u64>> {
+fn application_last_used_times(
+    paths: &[PathBuf],
+    cancelled: &AtomicBool,
+) -> Result<Vec<Option<u64>>, ChildCommandFailure> {
     if paths.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let Ok(output) = Command::new("/usr/bin/mdls")
-        .arg("-name")
-        .arg("kMDItemLastUsedDate")
-        .args(paths)
-        .output()
-    else {
-        return vec![None; paths.len()];
-    };
-    let mut values = String::from_utf8_lossy(&output.stdout)
+    let mut command = Command::new("/usr/bin/mdls");
+    command.arg("-name").arg("kMDItemLastUsedDate").args(paths);
+    let output = run_bounded_child(&mut command, cancelled, APPLICATION_MDLS_DEADLINE)?;
+    let mut values = String::from_utf8_lossy(&output)
         .lines()
         .map(parse_mdls_timestamp)
         .collect::<Vec<_>>();
     if values.len() != paths.len() {
-        return vec![None; paths.len()];
+        return Err(ChildCommandFailure::UnexpectedOutput);
     }
     values.resize(paths.len(), None);
     values.truncate(paths.len());
-    values
+    Ok(values)
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ChildCommandFailure {
+    Cancelled,
+    DeadlineExceeded,
+    OutputLimitExceeded,
+    SpawnFailed,
+    WaitFailed,
+    ReadFailed,
+    UnsuccessfulExit,
+    UnexpectedOutput,
+}
+
+#[cfg(target_os = "macos")]
+fn run_bounded_child(
+    command: &mut Command,
+    cancelled: &AtomicBool,
+    deadline: Duration,
+) -> Result<Vec<u8>, ChildCommandFailure> {
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
+    command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .process_group(0);
+    let mut child = command
+        .spawn()
+        .map_err(|_| ChildCommandFailure::SpawnFailed)?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or(ChildCommandFailure::SpawnFailed)?;
+    let output_reader = thread::spawn(move || {
+        let mut output = Vec::new();
+        stdout
+            .take((APPLICATION_CHILD_OUTPUT_LIMIT + 1) as u64)
+            .read_to_end(&mut output)
+            .map(|_| output)
+    });
+    let started_at = Instant::now();
+    let status = loop {
+        if cancelled.load(Ordering::Relaxed) {
+            terminate_child_process_group(&mut child);
+            let _ = output_reader.join();
+            return Err(ChildCommandFailure::Cancelled);
+        }
+        if started_at.elapsed() >= deadline {
+            terminate_child_process_group(&mut child);
+            let _ = output_reader.join();
+            return Err(ChildCommandFailure::DeadlineExceeded);
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => thread::sleep(APPLICATION_CHILD_POLL_INTERVAL),
+            Err(_) => {
+                terminate_child_process_group(&mut child);
+                let _ = output_reader.join();
+                return Err(ChildCommandFailure::WaitFailed);
+            }
+        }
+    };
+    let output = output_reader
+        .join()
+        .map_err(|_| ChildCommandFailure::ReadFailed)?
+        .map_err(|_| ChildCommandFailure::ReadFailed)?;
+    if output.len() > APPLICATION_CHILD_OUTPUT_LIMIT {
+        return Err(ChildCommandFailure::OutputLimitExceeded);
+    }
+    if !status.success() {
+        return Err(ChildCommandFailure::UnsuccessfulExit);
+    }
+    Ok(output)
+}
+
+#[cfg(target_os = "macos")]
+fn terminate_child_process_group(child: &mut Child) {
+    let process_group = -(child.id() as libc::pid_t);
+    unsafe {
+        libc::kill(process_group, libc::SIGKILL);
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(target_os = "macos")]
@@ -2312,9 +2712,105 @@ fn next_cleanup_lease_id() -> String {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::sync::Barrier;
+    use std::sync::atomic::AtomicUsize;
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
+
+    #[test]
+    fn subtree_requests_are_last_request_wins_and_never_scan_concurrently() {
+        let coordinator = Arc::new(CleanupWorkCoordinator::default());
+        let path = PathBuf::from("/fixture/shared");
+        let first_cancelled = coordinator
+            .begin_subtree("first".to_owned(), path.clone())
+            .unwrap();
+        let first_started = Arc::new(Barrier::new(2));
+        let active_workers = Arc::new(AtomicUsize::new(0));
+        let maximum_workers = Arc::new(AtomicUsize::new(0));
+
+        let first_worker = {
+            let coordinator = Arc::clone(&coordinator);
+            let cancelled = Arc::clone(&first_cancelled);
+            let first_started = Arc::clone(&first_started);
+            let active_workers = Arc::clone(&active_workers);
+            let maximum_workers = Arc::clone(&maximum_workers);
+            thread::spawn(move || {
+                coordinator.run_exclusive(&cancelled, || {
+                    let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
+                    maximum_workers.fetch_max(active, Ordering::SeqCst);
+                    first_started.wait();
+                    while !cancelled.load(Ordering::Relaxed) {
+                        thread::sleep(Duration::from_millis(1));
+                    }
+                    active_workers.fetch_sub(1, Ordering::SeqCst);
+                    ensure_scan_active(&cancelled)
+                })
+            })
+        };
+        first_started.wait();
+
+        let second_cancelled = coordinator
+            .begin_subtree("second".to_owned(), path)
+            .unwrap();
+        let second_worker = {
+            let coordinator = Arc::clone(&coordinator);
+            let cancelled = Arc::clone(&second_cancelled);
+            let active_workers = Arc::clone(&active_workers);
+            let maximum_workers = Arc::clone(&maximum_workers);
+            thread::spawn(move || {
+                coordinator.run_exclusive(&cancelled, || {
+                    let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
+                    maximum_workers.fetch_max(active, Ordering::SeqCst);
+                    active_workers.fetch_sub(1, Ordering::SeqCst);
+                    Ok(())
+                })
+            })
+        };
+
+        assert_eq!(
+            first_worker.join().unwrap().unwrap_err().code,
+            "cleanup_scan_cancelled"
+        );
+        second_worker.join().unwrap().unwrap();
+        assert_eq!(maximum_workers.load(Ordering::SeqCst), 1);
+        coordinator.finish_subtree(&first_cancelled);
+        coordinator.finish_subtree(&second_cancelled);
+    }
+
+    #[test]
+    fn full_scan_cancels_subtree_and_blocks_new_subtree_requests() {
+        let coordinator = CleanupWorkCoordinator::default();
+        let subtree = coordinator
+            .begin_subtree("subtree".to_owned(), PathBuf::from("/fixture"))
+            .unwrap();
+        let full_scan = coordinator.begin_full_scan().unwrap();
+
+        assert!(subtree.load(Ordering::Relaxed));
+        let error = coordinator
+            .begin_subtree("later".to_owned(), PathBuf::from("/fixture/later"))
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_scan_in_progress");
+
+        coordinator.finish_subtree(&subtree);
+        coordinator.finish_full_scan(&full_scan);
+    }
+
+    #[test]
+    fn subtree_cancellation_is_scoped_to_the_matching_request() {
+        let coordinator = CleanupWorkCoordinator::default();
+        let cancelled = coordinator
+            .begin_subtree("current".to_owned(), PathBuf::from("/fixture"))
+            .unwrap();
+
+        assert!(!coordinator.cancel_subtree("stale").unwrap());
+        assert!(!cancelled.load(Ordering::Relaxed));
+        assert!(coordinator.cancel_subtree("current").unwrap());
+        assert!(cancelled.load(Ordering::Relaxed));
+
+        coordinator.finish_subtree(&cancelled);
+    }
 
     fn cleanup_delete_request(
         home: &Path,
@@ -2428,6 +2924,87 @@ mod tests {
             Some(&(1_024 * 1_024)),
         );
         assert_eq!(sizes.get(Path::new("/Applications/Tiny.app")), Some(&2_048));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reuses_application_sizes_collected_by_the_exact_scan() {
+        let path = PathBuf::from("/Applications/Example.app");
+        let observed = HashMap::from([(path.clone(), 42_000)]);
+
+        let sizes = application_sizes(
+            std::slice::from_ref(&path),
+            &observed,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+
+        assert_eq!(sizes.get(&path), Some(&42_000));
+        assert_eq!(
+            application_bundle_for_path(
+                Path::new("/Applications/Example.app/Contents/MacOS/example"),
+                Path::new("/Users/example"),
+            ),
+            Some(path),
+        );
+        assert_eq!(
+            application_bundle_for_path(
+                Path::new("/Users/example/Applications/Home.app/Contents/home"),
+                Path::new("/Users/example"),
+            ),
+            Some(PathBuf::from("/Users/example/Applications/Home.app")),
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_terminates_a_stuck_process_group() {
+        let cancelled = AtomicBool::new(false);
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c").arg("trap '' TERM; sleep 30");
+        let started_at = Instant::now();
+
+        let error =
+            run_bounded_child(&mut command, &cancelled, Duration::from_millis(75)).unwrap_err();
+
+        assert_eq!(error, ChildCommandFailure::DeadlineExceeded);
+        assert!(started_at.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_observes_scan_cancellation() {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let worker_cancelled = Arc::clone(&cancelled);
+        let worker = thread::spawn(move || {
+            let mut command = Command::new("/bin/sh");
+            command.arg("-c").arg("sleep 30");
+            run_bounded_child(&mut command, &worker_cancelled, Duration::from_secs(10))
+        });
+        thread::sleep(Duration::from_millis(75));
+        let cancellation_started_at = Instant::now();
+        cancelled.store(true, Ordering::Relaxed);
+
+        assert_eq!(
+            worker.join().unwrap().unwrap_err(),
+            ChildCommandFailure::Cancelled
+        );
+        assert!(cancellation_started_at.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn child_watchdog_refuses_output_over_the_limit() {
+        let cancelled = AtomicBool::new(false);
+        let mut command = Command::new("/usr/bin/yes");
+
+        let error =
+            run_bounded_child(&mut command, &cancelled, Duration::from_secs(2)).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ChildCommandFailure::OutputLimitExceeded | ChildCommandFailure::UnsuccessfulExit
+        ));
     }
 
     #[test]
@@ -2620,11 +3197,13 @@ mod tests {
 
         let node = scan_cleanup_subtree_at(
             CleanupSubtreeRequest {
+                request_id: "system-subtree".to_owned(),
                 path: shared.to_string_lossy().into_owned(),
                 safety: CleanupSafety::Reclaimable,
             },
             &home,
             &disk_root,
+            &AtomicBool::new(false),
         )
         .unwrap();
 

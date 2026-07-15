@@ -13,6 +13,10 @@ mod safe_fs;
 mod sensors;
 mod startup;
 
+pub use cleanup::{
+    CleanupBenchmarkResult, benchmark_cleanup_root, benchmark_cleanup_root_with_cancel,
+};
+
 use std::sync::{
     Arc, Mutex, Weak,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -21,9 +25,10 @@ use std::time::Duration;
 
 use application_icon::load_application_icon;
 use cleanup::{
-    CleanupDeleteController, CleanupDeleteCoordinator, CleanupScanCoordinator, cleanup_scan_access,
-    inspect_cleanup_path, load_cleanup_scan_cache, open_full_disk_access_settings,
-    remove_cleanup_scan_cache, reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
+    CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
+    canonical_cleanup_subtree_path, cleanup_scan_access, inspect_cleanup_path,
+    load_cleanup_scan_cache, open_full_disk_access_settings, remove_cleanup_scan_cache,
+    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
     save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
 };
 use error::CommandError;
@@ -68,7 +73,7 @@ fn require_main_window(window: &WebviewWindow) -> Result<(), CommandError> {
 struct AppState {
     monitor: Arc<Mutex<SystemMonitor>>,
     process_controller: Arc<Mutex<ProcessController>>,
-    cleanup_scan: Arc<CleanupScanCoordinator>,
+    cleanup_scan: Arc<CleanupWorkCoordinator>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
     startup_controller: Arc<Mutex<StartupController>>,
@@ -83,7 +88,7 @@ impl AppState {
         Self {
             monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
             process_controller,
-            cleanup_scan: Arc::new(CleanupScanCoordinator::default()),
+            cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
@@ -248,17 +253,20 @@ async fn get_cleanup_scan(
 ) -> Result<CleanupScan, CommandError> {
     let cache_path = cleanup_scan_cache_path(&app)?;
     let coordinator = Arc::clone(&state.cleanup_scan);
-    let cancelled = coordinator.begin()?;
+    let cancelled = coordinator.begin_full_scan()?;
     let worker_cancelled = Arc::clone(&cancelled);
+    let worker_coordinator = Arc::clone(&coordinator);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let scan = scan_cleanup(&worker_cancelled, &mut |progress| {
-            let _ = on_progress.send(progress);
-        })?;
-        let _ = save_cleanup_scan_snapshot_cache(&cache_path, &scan);
-        Ok::<_, CommandError>(scan)
+        worker_coordinator.run_exclusive(&worker_cancelled, || {
+            let scan = scan_cleanup(&worker_cancelled, &mut |progress| {
+                let _ = on_progress.send(progress);
+            })?;
+            let _ = save_cleanup_scan_snapshot_cache(&cache_path, &scan);
+            Ok::<_, CommandError>(scan)
+        })
     })
     .await;
-    coordinator.finish(&cancelled);
+    coordinator.finish_full_scan(&cancelled);
     result.map_err(|error| CommandError::internal(format!("Cleanup scan failed: {error}")))?
 }
 
@@ -271,10 +279,22 @@ async fn get_cleanup_path_state(path: String) -> Result<CleanupPathState, Comman
 
 #[tauri::command]
 async fn get_cleanup_subtree(
+    state: State<'_, AppState>,
     request: CleanupSubtreeRequest,
 ) -> Result<models::CleanupNode, CommandError> {
-    tauri::async_runtime::spawn_blocking(move || scan_cleanup_subtree(request))
-        .await
+    let canonical_path = canonical_cleanup_subtree_path(&request.path)?;
+    let coordinator = Arc::clone(&state.cleanup_scan);
+    let cancelled = coordinator.begin_subtree(request.request_id.clone(), canonical_path)?;
+    let worker_cancelled = Arc::clone(&cancelled);
+    let worker_coordinator = Arc::clone(&coordinator);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        worker_coordinator.run_exclusive(&worker_cancelled, || {
+            scan_cleanup_subtree(request, &worker_cancelled)
+        })
+    })
+    .await;
+    coordinator.finish_subtree(&cancelled);
+    result
         .map_err(|error| CommandError::internal(format!("Cleanup subtree scan failed: {error}")))?
 }
 
@@ -327,7 +347,15 @@ async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError
 
 #[tauri::command]
 fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError> {
-    state.cleanup_scan.cancel()
+    state.cleanup_scan.cancel_full_scan()
+}
+
+#[tauri::command]
+fn cancel_cleanup_subtree(
+    state: State<'_, AppState>,
+    request_id: String,
+) -> Result<bool, CommandError> {
+    state.cleanup_scan.cancel_subtree(&request_id)
 }
 
 #[tauri::command]
@@ -825,6 +853,7 @@ pub fn run() {
             save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
             cancel_cleanup_scan,
+            cancel_cleanup_subtree,
             get_cleanup_scan_access,
             open_cleanup_full_disk_access_settings,
             reveal_cleanup_app_bundle,

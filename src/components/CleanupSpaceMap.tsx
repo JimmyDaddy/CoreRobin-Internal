@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   createCleanupDeleteLease,
   cancelCleanupDelete,
+  cancelCleanupSubtree,
   executeCleanupDelete,
   getCleanupPathState,
   getCleanupSubtree,
@@ -145,8 +146,17 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const deleteRequestIdRef = useRef(0);
   const subtreeRequestIdRef = useRef(0);
+  const activeSubtreeRequestRef = useRef<string | null>(null);
+
+  const cancelActiveSubtree = useCallback(() => {
+    const requestId = activeSubtreeRequestRef.current;
+    if (!requestId) return;
+    activeSubtreeRequestRef.current = null;
+    void cancelCleanupSubtree(requestId);
+  }, []);
 
   useEffect(() => {
+    cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
     setLoadedSubtrees(new Map());
     setFocusId(root.id);
@@ -160,9 +170,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     setDragState(null);
     setLoadingNodeId(null);
     setSubtreeError(null);
-  }, [snapshot.sampledAtMs]);
+  }, [cancelActiveSubtree, snapshot.sampledAtMs]);
 
   useEffect(() => {
+    cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
     setFocusId(root.id);
     setSelectedId(root.id);
@@ -173,7 +184,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
     } catch {
       // The view remains switchable for this session when storage is unavailable.
     }
-  }, [mapMode]);
+  }, [cancelActiveSubtree, mapMode]);
+
+  useEffect(() => () => cancelActiveSubtree(), [cancelActiveSubtree]);
 
   const focus = nodes.get(focusId) ?? root;
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
@@ -282,6 +295,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
 
   const navigateTo = (node: CleanupMapNode) => {
     if (loadingNodeId && node.id !== loadingNodeId) {
+      cancelActiveSubtree();
       subtreeRequestIdRef.current += 1;
       setLoadingNodeId(null);
     }
@@ -297,6 +311,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
   const drillInto = async (node: CleanupMapNode) => {
     if (loadingNodeId === node.id) return;
     if (loadingNodeId) {
+      cancelActiveSubtree();
       subtreeRequestIdRef.current += 1;
       setLoadingNodeId(null);
     }
@@ -310,10 +325,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
 
     const requestId = subtreeRequestIdRef.current + 1;
     subtreeRequestIdRef.current = requestId;
+    const backendRequestId = `cleanup-subtree-${snapshot.sampledAtMs}-${requestId}`;
+    activeSubtreeRequestRef.current = backendRequestId;
     setLoadingNodeId(node.id);
     setSubtreeError(null);
     try {
-      const subtree = await getCleanupSubtree({ path: node.path, safety: node.safety });
+      const subtree = await getCleanupSubtree({
+        requestId: backendRequestId,
+        path: node.path,
+        safety: node.safety,
+      });
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
       setLoadedSubtrees((current) => {
@@ -327,7 +348,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
         setSubtreeError(normalizeCommandError(caughtError));
       }
     } finally {
-      if (subtreeRequestIdRef.current === requestId) setLoadingNodeId(null);
+      if (subtreeRequestIdRef.current === requestId) {
+        activeSubtreeRequestRef.current = null;
+        setLoadingNodeId(null);
+      }
     }
   };
 

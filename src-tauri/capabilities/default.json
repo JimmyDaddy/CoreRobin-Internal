@@ -21,6 +21,7 @@
     "allow-save-persisted-cleanup-scan",
     "allow-clear-persisted-cleanup-scan",
     "allow-cancel-cleanup-scan",
+    "allow-cancel-cleanup-subtree",
     "allow-get-cleanup-scan-access",
     "allow-open-cleanup-full-disk-access-settings",
     "allow-reveal-cleanup-app-bundle",

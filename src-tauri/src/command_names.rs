@@ -12,6 +12,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "save_persisted_cleanup_scan",
     "clear_persisted_cleanup_scan",
     "cancel_cleanup_scan",
+    "cancel_cleanup_subtree",
     "get_cleanup_scan_access",
     "open_cleanup_full_disk_access_settings",
     "reveal_cleanup_app_bundle",

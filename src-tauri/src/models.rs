@@ -348,6 +348,7 @@ pub struct CleanupNode {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupSubtreeRequest {
+    pub request_id: String,
     pub path: String,
     pub safety: CleanupSafety,
 }
