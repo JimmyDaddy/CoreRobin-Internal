@@ -17,10 +17,20 @@ import {
   type CleanupMapNode,
   type CleanupNodeVisual,
 } from "../cleanupMap";
+import { cleanupHatchPattern } from "../cleanupCanvasPatterns";
 
 interface DrawableArc {
   arc: CleanupMapArc;
   visual: CleanupNodeVisual;
+}
+
+interface CollectedLayerCacheEntry {
+  arcs: readonly DrawableArc[];
+  backingSize: number;
+  collectedIds: ReadonlySet<string>;
+  layer: HTMLCanvasElement;
+  pixelRatio: number;
+  themeKey: string;
 }
 
 interface CleanupSunburstCanvasProps {
@@ -55,6 +65,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   const previousArcsRef = useRef<DrawableArc[]>([]);
   const previousFocusRef = useRef(focusKey);
   const hoveredIdRef = useRef<string | null>(null);
+  const collectedLayerCacheRef = useRef<CollectedLayerCacheEntry[]>([]);
   const [canvasWidth, setCanvasWidth] = useState(CLEANUP_MAP_SIZE);
   const drawableArcs = useMemo(
     () => arcs.map((arc) => ({ arc, visual: cleanupNodeVisual(arc.node, arc.depth, hues) })),
@@ -85,6 +96,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     }
     const context = canvas.getContext("2d", { alpha: true });
     if (!context) return;
+    const themeKey = cleanupCanvasThemeKey(canvas);
 
     window.cancelAnimationFrame(animationFrameRef.current);
     const previous = previousArcsRef.current;
@@ -92,15 +104,42 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     const shouldAnimate = previous.length > 0 &&
       (focusChanged || previous !== drawableArcs) &&
       !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const currentCollectedLayer = collectedLayer(
+      collectedLayerCacheRef.current,
+      canvas,
+      drawableArcs,
+      collectedIds,
+      backingSize,
+      pixelRatio,
+      themeKey,
+    );
+    const previousCollectedLayer = shouldAnimate
+      ? collectedLayer(
+          collectedLayerCacheRef.current,
+          canvas,
+          previous,
+          collectedIds,
+          backingSize,
+          pixelRatio,
+          themeKey,
+        )
+      : null;
+    const restrictedPattern = cleanupHatchPattern(context, {
+      color: "rgba(232, 220, 255, 0.72)",
+      lineWidth: 2,
+      pixelRatio,
+      spacing: 8,
+      themeKey,
+    });
 
     const paint = (progress: number) => {
       resetCanvas(context, backingSize);
       configureLogicalCoordinates(context, canvasWidth, pixelRatio);
       if (shouldAnimate) {
-        drawArcCollection(context, previous, 1 - progress, 1 - progress * 0.035, selectedId, changedIds, collectedIds);
-        drawArcCollection(context, drawableArcs, progress, 0.94 + progress * 0.06, selectedId, changedIds, collectedIds);
+        drawArcCollection(context, previous, 1 - progress, 1 - progress * 0.035, selectedId, changedIds, collectedIds, previousCollectedLayer, restrictedPattern);
+        drawArcCollection(context, drawableArcs, progress, 0.94 + progress * 0.06, selectedId, changedIds, collectedIds, currentCollectedLayer, restrictedPattern);
       } else {
-        drawArcCollection(context, drawableArcs, 1, 1, selectedId, changedIds, collectedIds);
+        drawArcCollection(context, drawableArcs, 1, 1, selectedId, changedIds, collectedIds, currentCollectedLayer, restrictedPattern);
       }
     };
 
@@ -197,6 +236,8 @@ function drawArcCollection(
   selectedId: string,
   changedIds: ReadonlySet<string>,
   collectedIds: ReadonlySet<string>,
+  collectedLayer: HTMLCanvasElement | null,
+  restrictedPattern: CanvasPattern | null,
 ) {
   if (alpha <= 0) return;
   context.save();
@@ -205,30 +246,41 @@ function drawArcCollection(
   context.scale(scale, scale);
   context.translate(-CLEANUP_MAP_CENTER, -CLEANUP_MAP_CENTER);
   for (const drawable of arcs) {
-    drawArc(
+    drawArcBase(
+      context,
+      drawable,
+      restrictedPattern,
+    );
+  }
+  if (collectedLayer) {
+    context.drawImage(
+      collectedLayer,
+      0,
+      0,
+      CLEANUP_MAP_SIZE,
+      CLEANUP_MAP_SIZE,
+    );
+  } else {
+    drawCollectedOverlays(context, arcs, collectedIds, null);
+  }
+  for (const drawable of arcs) {
+    drawArcState(
       context,
       drawable,
       drawable.arc.node.id === selectedId,
       changedIds.has(drawable.arc.node.id),
-      collectedIds.has(drawable.arc.node.id),
     );
   }
   context.restore();
 }
 
-function drawArc(
+function drawArcBase(
   context: CanvasRenderingContext2D,
   { arc, visual }: DrawableArc,
-  selected: boolean,
-  changed: boolean,
-  collected: boolean,
+  restrictedPattern: CanvasPattern | null,
 ) {
-  const endAngle = Math.min(arc.endAngle, arc.startAngle + Math.PI * 2 - 0.000_001);
   context.save();
-  context.beginPath();
-  context.arc(CLEANUP_MAP_CENTER, CLEANUP_MAP_CENTER, arc.outerRadius, arc.startAngle, endAngle);
-  context.arc(CLEANUP_MAP_CENTER, CLEANUP_MAP_CENTER, arc.innerRadius, endAngle, arc.startAngle, true);
-  context.closePath();
+  drawArcPath(context, arc);
   const collectionAlpha = context.globalAlpha;
   context.fillStyle = visual.fill;
   context.globalAlpha = collectionAlpha * (arc.node.kind === "file" ? 0.76 : 0.96);
@@ -237,14 +289,8 @@ function drawArc(
   if (arc.node.kind === "restricted") {
     context.save();
     context.clip();
-    context.strokeStyle = "rgba(232, 220, 255, 0.72)";
-    context.lineWidth = 2;
-    for (let offset = -CLEANUP_MAP_SIZE; offset < CLEANUP_MAP_SIZE * 2; offset += 8) {
-      context.beginPath();
-      context.moveTo(offset, 0);
-      context.lineTo(offset + CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
-      context.stroke();
-    }
+    context.fillStyle = restrictedPattern ?? "rgba(232, 220, 255, 0.38)";
+    context.fillRect(0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
     context.restore();
   }
 
@@ -252,27 +298,18 @@ function drawArc(
   context.strokeStyle = "rgba(7, 16, 23, 0.9)";
   context.lineWidth = 1.35;
   context.stroke();
+  context.restore();
+}
 
-  if (collected) {
-    context.save();
-    context.clip();
-    context.fillStyle = "rgba(8, 14, 19, 0.42)";
-    context.fillRect(0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
-    context.strokeStyle = "rgba(255, 125, 115, 0.62)";
-    context.lineWidth = 2.4;
-    for (let offset = -CLEANUP_MAP_SIZE; offset < CLEANUP_MAP_SIZE * 2; offset += 11) {
-      context.beginPath();
-      context.moveTo(offset, 0);
-      context.lineTo(offset + CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
-      context.stroke();
-    }
-    context.restore();
-    context.setLineDash([]);
-    context.strokeStyle = "rgba(255, 125, 115, 0.98)";
-    context.lineWidth = 2.25;
-    context.stroke();
-  }
-
+function drawArcState(
+  context: CanvasRenderingContext2D,
+  { arc }: DrawableArc,
+  selected: boolean,
+  changed: boolean,
+) {
+  if (!selected && !changed) return;
+  context.save();
+  drawArcPath(context, arc);
   if (changed) {
     context.strokeStyle = "rgba(251, 191, 36, 0.95)";
     context.setLineDash([4, 3]);
@@ -288,6 +325,117 @@ function drawArc(
     context.fill();
   }
   context.restore();
+}
+
+function drawArcPath(
+  context: CanvasRenderingContext2D,
+  arc: CleanupMapArc,
+) {
+  const endAngle = Math.min(
+    arc.endAngle,
+    arc.startAngle + Math.PI * 2 - 0.000_001,
+  );
+  context.beginPath();
+  context.arc(
+    CLEANUP_MAP_CENTER,
+    CLEANUP_MAP_CENTER,
+    arc.outerRadius,
+    arc.startAngle,
+    endAngle,
+  );
+  context.arc(
+    CLEANUP_MAP_CENTER,
+    CLEANUP_MAP_CENTER,
+    arc.innerRadius,
+    endAngle,
+    arc.startAngle,
+    true,
+  );
+  context.closePath();
+}
+
+function collectedLayer(
+  cache: CollectedLayerCacheEntry[],
+  canvas: HTMLCanvasElement,
+  arcs: readonly DrawableArc[],
+  collectedIds: ReadonlySet<string>,
+  backingSize: number,
+  pixelRatio: number,
+  themeKey: string,
+): HTMLCanvasElement | null {
+  if (collectedIds.size === 0) return null;
+  const cached = cache.find(
+    (entry) =>
+      entry.arcs === arcs &&
+      entry.collectedIds === collectedIds &&
+      entry.backingSize === backingSize &&
+      entry.pixelRatio === pixelRatio &&
+      entry.themeKey === themeKey,
+  );
+  if (cached) return cached.layer;
+
+  const layer = canvas.ownerDocument.createElement("canvas");
+  layer.width = backingSize;
+  layer.height = backingSize;
+  const context = layer.getContext("2d", { alpha: true });
+  if (!context) return null;
+  resetCanvas(context, backingSize);
+  configureLogicalCoordinates(context, backingSize / pixelRatio, pixelRatio);
+  const pattern = cleanupHatchPattern(context, {
+    color: "rgba(255, 125, 115, 0.62)",
+    lineWidth: 2.4,
+    pixelRatio,
+    spacing: 11,
+    themeKey,
+  });
+  drawCollectedOverlays(context, arcs, collectedIds, pattern);
+  cache.push({
+    arcs,
+    backingSize,
+    collectedIds,
+    layer,
+    pixelRatio,
+    themeKey,
+  });
+  if (cache.length > 4) cache.splice(0, cache.length - 4);
+  return layer;
+}
+
+function drawCollectedOverlays(
+  context: CanvasRenderingContext2D,
+  arcs: readonly DrawableArc[],
+  collectedIds: ReadonlySet<string>,
+  pattern: CanvasPattern | null,
+) {
+  for (const { arc } of arcs) {
+    if (!collectedIds.has(arc.node.id)) continue;
+    context.save();
+    drawArcPath(context, arc);
+    context.save();
+    context.clip();
+    context.fillStyle = "rgba(8, 14, 19, 0.42)";
+    context.fillRect(0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
+    if (pattern) {
+      context.fillStyle = pattern;
+      context.fillRect(0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
+    }
+    context.restore();
+    context.setLineDash([]);
+    context.strokeStyle = "rgba(255, 125, 115, 0.98)";
+    context.lineWidth = 2.25;
+    context.stroke();
+    context.restore();
+  }
+}
+
+function cleanupCanvasThemeKey(canvas: HTMLCanvasElement): string {
+  const root = canvas.ownerDocument.documentElement;
+  return [
+    root.dataset.theme ?? "default",
+    root.dataset.interfaceScale ?? "comfortable",
+    canvas.ownerDocument.defaultView?.getComputedStyle(canvas).colorScheme ??
+      "normal",
+  ].join(":");
 }
 
 function easeOutCubic(value: number) {
