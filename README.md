@@ -9,8 +9,17 @@ StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、�
 界面支持简体中文与英文，可在右上角直接切换。
 
 - [产品网站](https://jimmydaddy.github.io/StatusOrbit/)
+- [下载最新版本](https://github.com/JimmyDaddy/StatusOrbit/releases/latest)
 - [中文使用指南](docs/user-guide.zh-CN.md)
 - [English user guide](docs/user-guide.md)
+
+## 下载与安装
+
+前往 [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest) 下载适合当前系统的安装包。
+
+- macOS 已完成真实设备验证；当前安装包尚未经过 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
+- Windows 与 Linux 安装包由对应系统的 GitHub Actions 构建，目前作为早期预览版本提供。
+- `0.0.1` 是 StatusOrbit 的首个公开版本。遇到问题时，请在仓库的 Issues 中附上系统版本和复现步骤。
 
 ## 功能
 

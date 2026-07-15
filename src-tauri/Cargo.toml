@@ -1,6 +1,6 @@
 [package]
 name = "status-orbit"
-version = "0.1.0"
+version = "0.0.1"
 description = "A local-first desktop resource monitor and process diagnostics tool"
 authors = ["StatusOrbit contributors"]
 edition = "2024"

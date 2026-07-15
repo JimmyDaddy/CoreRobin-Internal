@@ -2,6 +2,10 @@
 
 StatusOrbit 把 CPU、内存、磁盘、网络和正在运行的应用放在一个清晰的桌面界面里。电脑变慢、磁盘快满或网络突然繁忙时，你可以用它更快找到原因。
 
+## 下载与安装
+
+从 [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest) 下载适合当前系统的安装包。macOS 版本已在真实设备上验证，但首个版本尚未经过 Apple 公证；如果系统阻止第一次打开，请前往“系统设置 → 隐私与安全性”，确认打开 StatusOrbit。Windows 与 Linux 安装包目前属于早期预览版本。
+
 ## 第一次打开
 
 1. 先等几秒，让第一轮数据准备好。刚启动时，网络和磁盘速度可能显示“预热”；下一次刷新后就会出现。

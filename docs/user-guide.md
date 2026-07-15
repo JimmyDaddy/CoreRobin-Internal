@@ -2,6 +2,10 @@
 
 StatusOrbit brings CPU, memory, storage, network activity, and running apps into one clear desktop view. When your computer slows down, storage runs low, or network activity spikes, it helps you find the cause.
 
+## Download and install
+
+Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest). The macOS build has been tested on real hardware, but the first release is not Apple-notarized. If macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open StatusOrbit. Windows and Linux packages are currently early previews.
+
 ## First launch
 
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
