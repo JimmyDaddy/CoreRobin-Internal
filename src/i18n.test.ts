@@ -25,8 +25,10 @@ describe("internationalization", () => {
 
   it("switches between complete top-level navigation resources", async () => {
     expect(i18n.t("app.overview")).toBe("概览");
+    expect(i18n.t("diagnosis.kicker")).toBe("智能诊断");
     await i18n.changeLanguage("en");
     expect(i18n.t("app.overview")).toBe("Overview");
+    expect(i18n.t("diagnosis.kicker")).toBe("Smart Diagnosis");
     expect(i18n.t("network.connections.title")).toBe("Active connections");
   });
 

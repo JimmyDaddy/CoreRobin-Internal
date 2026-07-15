@@ -17,7 +17,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ### Overview
 
-- Overview puts CPU, memory, storage, and network activity in one place.
+- Smart Diagnosis appears at the top of Overview, explains whether the computer looks normal, and links its conclusion to CPU, memory, storage, and network evidence.
 - StatusOrbit looks at recent trends before raising a concern, so a brief spike is not treated as a problem.
 - Open any warning to see which app or resource is busiest.
 
