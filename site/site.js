@@ -6,6 +6,7 @@ const languageLabel = document.querySelector("[data-language-label]");
 const header = document.querySelector("[data-header]");
 const nav = document.querySelector("[data-nav]");
 const navToggle = document.querySelector("[data-nav-toggle]");
+const guideSelect = document.querySelector("[data-guide-jump]");
 
 function preferredLanguage() {
   try {
@@ -60,6 +61,11 @@ nav?.querySelectorAll("a").forEach((link) => link.addEventListener("click", clos
 window.addEventListener("resize", () => {
   if (window.innerWidth > 760) closeNavigation();
 });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !nav?.classList.contains("is-open")) return;
+  closeNavigation();
+  navToggle?.focus();
+});
 
 function updateHeader() {
   header?.classList.toggle("is-scrolled", window.scrollY > 16);
@@ -105,6 +111,7 @@ if (guideSections.length > 0) {
       if (active) link.setAttribute("aria-current", "location");
       else link.removeAttribute("aria-current");
     });
+    if (guideSelect) guideSelect.value = `#${section.id}`;
   }
 
   function updateActiveGuideSection() {
@@ -137,6 +144,11 @@ if (guideSections.length > 0) {
   window.addEventListener("scroll", scheduleGuideUpdate, { passive: true });
   window.addEventListener("resize", scheduleGuideUpdate);
 }
+
+guideSelect?.addEventListener("change", () => {
+  const section = document.querySelector(guideSelect.value);
+  section?.scrollIntoView();
+});
 
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
