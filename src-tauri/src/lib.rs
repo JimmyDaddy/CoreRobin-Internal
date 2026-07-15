@@ -873,6 +873,7 @@ fn position_tray_panel_on_cursor_screen(window: &tauri::WebviewWindow) -> bool {
     true
 }
 
+#[cfg(any(target_os = "macos", test))]
 #[allow(clippy::too_many_arguments)]
 fn calculate_tray_panel_origin_on_screen(
     anchor_x: f64,
