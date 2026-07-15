@@ -13,6 +13,7 @@ export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000
 
 export type UsageThresholds = readonly [number, number, number];
 export type ExperienceMode = "simple" | "professional";
+export type InterfaceScale = "comfortable" | "large";
 
 export interface AppSettings {
   version: 1;
@@ -27,6 +28,10 @@ export interface AppSettings {
   historyRetentionDays: HistoryRetentionDays;
   desktopNotificationsEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
+  interfaceScale: InterfaceScale;
+  reduceMotion: boolean;
+  companionAlwaysOnTop: boolean;
+  companionShowOnStartup: boolean;
 }
 
 export function defaultAppSettings(
@@ -45,6 +50,10 @@ export function defaultAppSettings(
     historyRetentionDays: 7,
     desktopNotificationsEnabled: false,
     mutedNotificationResources: [],
+    interfaceScale: "comfortable",
+    reduceMotion: false,
+    companionAlwaysOnTop: false,
+    companionShowOnStartup: false,
   };
 }
 
@@ -103,6 +112,18 @@ export function parseAppSettings(
       mutedNotificationResources: isNotificationResourceArray(value.mutedNotificationResources)
         ? value.mutedNotificationResources
         : fallback.mutedNotificationResources,
+      interfaceScale: isInterfaceScale(value.interfaceScale)
+        ? value.interfaceScale
+        : fallback.interfaceScale,
+      reduceMotion: typeof value.reduceMotion === "boolean"
+        ? value.reduceMotion
+        : fallback.reduceMotion,
+      companionAlwaysOnTop: typeof value.companionAlwaysOnTop === "boolean"
+        ? value.companionAlwaysOnTop
+        : fallback.companionAlwaysOnTop,
+      companionShowOnStartup: typeof value.companionShowOnStartup === "boolean"
+        ? value.companionShowOnStartup
+        : fallback.companionShowOnStartup,
     };
   } catch {
     return fallback;
@@ -141,6 +162,14 @@ export function saveAppSettings(settings: AppSettings): void {
   }
 }
 
+export function applyAppAppearance(
+  settings: Pick<AppSettings, "interfaceScale" | "reduceMotion">,
+  root: HTMLElement = document.documentElement,
+): void {
+  root.dataset.interfaceScale = settings.interfaceScale;
+  root.dataset.reduceMotion = settings.reduceMotion ? "true" : "false";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -151,6 +180,10 @@ function isSupportedLanguage(value: unknown): value is SupportedLanguage {
 
 function isExperienceMode(value: unknown): value is ExperienceMode {
   return value === "simple" || value === "professional";
+}
+
+function isInterfaceScale(value: unknown): value is InterfaceScale {
+  return value === "comfortable" || value === "large";
 }
 
 function isProcessViewMode(value: unknown): value is ProcessViewMode {

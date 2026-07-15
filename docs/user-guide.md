@@ -9,24 +9,35 @@ Download the package for your platform from [GitHub Releases](https://github.com
 ## First launch
 
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
-2. Choose Simple mode in the upper-right corner to see whether your computer is healthy and which app is busiest.
-3. Switch to Pro mode in the upper-right corner when you need to inspect a process, connection, or command line.
-4. Open Settings to change the language, refresh speed, alert colors, history retention, and notifications.
+2. Everyday mode first tells you how the computer is doing and offers one useful next step. You do not need to inspect a row of status cards.
+3. If you already notice slowness, heat, battery drain, low space, slow startup, or a network problem, open Help me solve and choose the closest description.
+4. Use the upper-right Settings menu for language, notifications, and history. When you need a process tree, connection details, or command lines, use the clearly labeled Pro mode button in the top bar.
 
 ## Main pages
 
-### Overview
+### Computer status
 
-- Smart Diagnosis appears at the top of Overview, explains whether the computer looks normal, and links its conclusion to CPU, memory, storage, and network evidence.
-- StatusOrbit looks at recent trends before raising a concern, so a brief spike is not treated as a problem.
-- Open any warning to see which app or resource is busiest.
+- The Orbit companion gives one current conclusion and one primary action. When no sustained issue is present, it simply says there is nothing to do.
+- When something needs attention, the primary action opens the highest-priority problem instead of asking you to choose between CPU, memory, storage, and network.
+- The page keeps one priority item and one recent change. StatusOrbit checks recent trends before raising a concern, so a brief spike is not treated as a problem. It does not invent a health score.
+- Data that cannot be read is marked unavailable instead of being treated as normal.
+
+### Help me solve
+
+- Start with what you notice: a slow computer, a loud fan, fast battery drain, low space, slow startup, or a network problem.
+- The page shows only the current stage: observing, finding a cause, choosing an action, or checking again.
+- Each result explains what happened, why it matters, and what you can do. CPU, memory, and disk numbers stay under Why this conclusion.
+- StatusOrbit asks before requesting an app to quit, changing a startup item, or deleting a file. It does not act automatically.
 
 ### Apps
 
-- Simple mode groups related processes by app, making it easier to find what is using resources.
+- Apps are no longer a top-level Everyday page. They appear as a stable snapshot only when a check points to an app.
+- The snapshot groups related processes, explains impact first, and does not reorder every second. You can refresh it or reveal the full list when needed.
+- CPU, memory, and disk evidence stays under Why this conclusion.
 - Pro mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
 - Prefer Request Stop so an app has time to save its work. Use Force Stop only when an app is completely unresponsive.
 - StatusOrbit checks the target again before stopping it. If the process has exited or changed, the action stops.
+- After an action, Everyday mode checks again and tells you whether the app actually stopped.
 - Critical system processes and StatusOrbit itself cannot be stopped by mistake.
 
 ### Storage
@@ -37,13 +48,15 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ### Cleanup
 
-Cleanup scans files and folders, then uses a sunburst map to show what is taking up space.
+Cleanup scans the system disk, then uses a sunburst map to show what is taking up space. The default **File paths** view follows the real directory hierarchy; **Purpose** regroups common downloads, caches, and app data as a supporting view. The scan does not cross into external disks or other mounted filesystems.
+
+On macOS, Mail, Messages, other app data, and similar locations are protected by the system. Before the first scan, StatusOrbit explains why Full Disk Access is useful and opens System Settings → Privacy & Security → Full Disk Access. If StatusOrbit is not in the list yet, click `+` below it and select `StatusOrbit.app`; the in-app “Show app in Finder” action locates it for you. Return to the app after enabling it and the scan continues automatically. You can also decline and scan only currently accessible locations. macOS controls this permission, and you can turn it off at any time.
 
 > Delete only items you recognize and know you no longer need. Leave anything you are unsure about. Re-creatable caches are a useful starting point, but not every cache is automatically safe to remove.
 
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
-3. **Add items to the basket:** Hold a sector and drag it to the lower-left basket. Adding an item to the basket does not delete or move it.
+3. **Add items to the basket:** Hold a sector and start dragging; the basket stays visible at the bottom of the window. Adding an item to the basket does not delete or move it.
 4. **Review, then delete:** Check that the name, location, and size are correct before continuing.
 
 Full scan results stay on this computer for 7 days, so returning to Cleanup does not immediately require another scan. When you open a folder, StatusOrbit checks that level and updates the map. Choose Rescan when many files have changed elsewhere.
@@ -59,12 +72,14 @@ Full scan results stay on this computer for 7 days, so returning to Cleanup does
 
 ### Network
 
+- Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
 
 ### Startup items
 
+- Startup items are not a top-level Everyday page. They appear when you choose Slow startup, together with reversible actions where supported.
 - See which apps start with your computer and where they come from.
 - Supported third-party items can be turned off and restored later.
 - System items and sources that cannot be changed safely on the current platform are view-only.
@@ -72,7 +87,7 @@ Full scan results stay on this computer for 7 days, so returning to Cleanup does
 
 ### History
 
-- History records overall CPU, memory, storage, and network changes over time, so you can see when your computer became busy and when it recovered.
+- Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Pro mode keeps the full technical history and filters.
 - Keep history for 1, 7, or 30 days, turn it off, or clear it anytime.
 - Notifications appear only when a problem lasts for a while, and the same warning is not repeated constantly.
 - CPU, memory, and storage notifications can be turned off separately.
@@ -80,13 +95,14 @@ Full scan results stay on this computer for 7 days, so returning to Cleanup does
 
 ### Settings
 
-- Change the language, system sampling rate, connection refresh rate, alert colors, and default app view.
-- Choose how long to keep history and turn CPU, memory, and storage notifications on or off separately.
-- Shorter refresh intervals respond faster but use slightly more system resources.
+- Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Orbit companion preferences together.
+- Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view.
 
 ## Menu bar panel
 
 Closing the main window leaves StatusOrbit available in the menu bar. Open the menu bar panel for a quick look at CPU, memory, storage, and network activity, or to reopen the main window.
+
+Choose Orbit companion to open a compact bottom-right window with one current conclusion and one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
 
 To stop monitoring completely, quit StatusOrbit instead of only closing the window.
 

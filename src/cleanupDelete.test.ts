@@ -18,6 +18,8 @@ describe("cleanup permanent deletion confirmation mock", () => {
       deleted: [{ path: "~/Downloads/archive.zip", deletedBytes: 0 }],
       deletedBytes: 0,
       failed: [],
+      cancelled: false,
+      interruptedPath: null,
     });
     expect(() => executeMockCleanupDelete({ leaseId: lease.id })).toThrow(
       expect.objectContaining({ code: "cleanup_confirmation_unavailable" }),

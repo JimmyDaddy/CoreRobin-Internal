@@ -1,21 +1,39 @@
-import React from "react";
+import React, { type ComponentType } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import { SplashScreen } from "./components/SplashScreen";
-import { TrayPanel } from "./components/TrayPanel";
 import "./i18n";
 import "./App.css";
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  applyAppAppearance,
+  loadAppSettings,
+} from "./settings";
 
 const surface = new URLSearchParams(window.location.search).get("surface");
-document.body.dataset.surface = surface ?? "main";
-const Root = surface === "splash"
-  ? SplashScreen
-  : surface === "tray"
-    ? TrayPanel
-    : App;
+const activeSurface = surface ?? "main";
+document.documentElement.dataset.surface = activeSurface;
+document.body.dataset.surface = activeSurface;
+applyAppAppearance(loadAppSettings());
+window.addEventListener("storage", ({ key }) => {
+  if (key === APP_SETTINGS_STORAGE_KEY) applyAppAppearance(loadAppSettings());
+});
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <Root />
-  </React.StrictMode>,
-);
+async function loadSurface(): Promise<ComponentType> {
+  if (surface === "splash") {
+    return (await import("./components/SplashScreen")).SplashScreen;
+  }
+  if (surface === "tray") {
+    return (await import("./components/TrayPanel")).TrayPanel;
+  }
+  if (surface === "companion") {
+    return (await import("./components/OrbitCompanionWindow")).OrbitCompanionWindow;
+  }
+  return (await import("./App")).default;
+}
+
+void loadSurface().then((Root) => {
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <Root />
+    </React.StrictMode>,
+  );
+});

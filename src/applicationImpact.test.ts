@@ -5,6 +5,7 @@ import {
   applicationImpactLevel,
   applicationMemoryPercent,
   applicationPrimaryResource,
+  reconcileApplicationOrder,
   sortApplications,
 } from "./applicationImpact";
 
@@ -62,5 +63,35 @@ describe("application impact", () => {
     expect(applicationPrimaryResource(application("Photos", { memoryBytes: 4 * GIBIBYTE }), 16 * GIBIBYTE)).toBe("memory");
     expect(applicationPrimaryResource(application("Copy", { diskBytesPerSecond: 40 * MEBIBYTE }), 16 * GIBIBYTE)).toBe("disk");
     expect(applicationPrimaryResource(application("Notes"), 16 * GIBIBYTE)).toBe("balanced");
+  });
+
+  it("keeps the current order while values refresh and appends new applications", () => {
+    const current = ["tester:Browser", "tester:Code"];
+    const refreshed = [
+      application("Code", { cpuPercent: 90 }),
+      application("Browser", { cpuPercent: 2 }),
+      application("Terminal", { cpuPercent: 20 }),
+    ];
+
+    expect(reconcileApplicationOrder(current, refreshed, 16 * GIBIBYTE, false)).toEqual([
+      "tester:Browser",
+      "tester:Code",
+      "tester:Terminal",
+    ]);
+    expect(reconcileApplicationOrder(current, refreshed, 16 * GIBIBYTE, true)).toEqual([
+      "tester:Code",
+      "tester:Terminal",
+      "tester:Browser",
+    ]);
+  });
+
+  it("removes applications that have exited without disturbing the remaining rows", () => {
+    const current = ["tester:Browser", "tester:Code", "tester:Terminal"];
+    const refreshed = [application("Terminal"), application("Browser")];
+
+    expect(reconcileApplicationOrder(current, refreshed, 16 * GIBIBYTE, false)).toEqual([
+      "tester:Browser",
+      "tester:Terminal",
+    ]);
   });
 });

@@ -160,9 +160,9 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: StatusOrbit ${{ github.ref_name }}
           releaseBody: |
-            StatusOrbit 0.0.1 是首个公开版本，提供系统监控、应用与进程详情、网络连接、存储分析，以及可交互的空间清理扇形图。
+            StatusOrbit ${{ github.ref_name }} 提供日常助手、系统监控、应用与进程详情、网络连接、存储分析，以及可交互的空间清理扇形图。
 
-            macOS 已完成真实设备验证。Windows 与 Linux 安装包目前作为早期预览版本提供。
+            具体变化请查看本版本对应的提交记录。Windows 与 Linux 安装包目前作为早期预览版本提供。
 
             macOS 安装包尚未经过 Apple 公证；如果第一次打开被系统阻止，请在“系统设置 → 隐私与安全性”中确认打开。
           releaseDraft: true

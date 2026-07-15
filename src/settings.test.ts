@@ -33,6 +33,10 @@ describe("application settings", () => {
           historyRetentionDays: 30,
           desktopNotificationsEnabled: true,
           mutedNotificationResources: ["cpu"],
+          interfaceScale: "large",
+          reduceMotion: true,
+          companionAlwaysOnTop: true,
+          companionShowOnStartup: true,
         }),
       ),
     ).toEqual({
@@ -48,6 +52,10 @@ describe("application settings", () => {
       historyRetentionDays: 30,
       desktopNotificationsEnabled: true,
       mutedNotificationResources: ["cpu"],
+      interfaceScale: "large",
+      reduceMotion: true,
+      companionAlwaysOnTop: true,
+      companionShowOnStartup: true,
     });
 
     expect(

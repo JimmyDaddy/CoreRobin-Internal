@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "auxiliary-windows",
+  "description": "Narrow window controls for the tray panel and Orbit companion",
+  "windows": ["tray", "companion"],
+  "permissions": ["core:window:allow-hide"]
+}

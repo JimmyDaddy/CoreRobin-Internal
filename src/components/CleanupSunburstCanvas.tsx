@@ -28,6 +28,7 @@ interface CleanupSunburstCanvasProps {
   hues: ReadonlyMap<string, number>;
   selectedId: string;
   changedIds: ReadonlySet<string>;
+  collectedIds: ReadonlySet<string>;
   focusKey: string;
   ariaLabel: string;
   onSelect: (node: CleanupMapNode | null) => void;
@@ -41,6 +42,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   hues,
   selectedId,
   changedIds,
+  collectedIds,
   focusKey,
   ariaLabel,
   onSelect,
@@ -95,10 +97,10 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
       resetCanvas(context, backingSize);
       configureLogicalCoordinates(context, canvasWidth, pixelRatio);
       if (shouldAnimate) {
-        drawArcCollection(context, previous, 1 - progress, 1 - progress * 0.035, selectedId, changedIds);
-        drawArcCollection(context, drawableArcs, progress, 0.94 + progress * 0.06, selectedId, changedIds);
+        drawArcCollection(context, previous, 1 - progress, 1 - progress * 0.035, selectedId, changedIds, collectedIds);
+        drawArcCollection(context, drawableArcs, progress, 0.94 + progress * 0.06, selectedId, changedIds, collectedIds);
       } else {
-        drawArcCollection(context, drawableArcs, 1, 1, selectedId, changedIds);
+        drawArcCollection(context, drawableArcs, 1, 1, selectedId, changedIds, collectedIds);
       }
     };
 
@@ -117,7 +119,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     previousArcsRef.current = drawableArcs;
     previousFocusRef.current = focusKey;
     return () => window.cancelAnimationFrame(animationFrameRef.current);
-  }, [canvasWidth, changedIds, drawableArcs, focusKey, selectedId]);
+  }, [canvasWidth, changedIds, collectedIds, drawableArcs, focusKey, selectedId]);
 
   const arcAtPointer = (event: {
     currentTarget: HTMLCanvasElement;
@@ -194,6 +196,7 @@ function drawArcCollection(
   scale: number,
   selectedId: string,
   changedIds: ReadonlySet<string>,
+  collectedIds: ReadonlySet<string>,
 ) {
   if (alpha <= 0) return;
   context.save();
@@ -202,7 +205,13 @@ function drawArcCollection(
   context.scale(scale, scale);
   context.translate(-CLEANUP_MAP_CENTER, -CLEANUP_MAP_CENTER);
   for (const drawable of arcs) {
-    drawArc(context, drawable, drawable.arc.node.id === selectedId, changedIds.has(drawable.arc.node.id));
+    drawArc(
+      context,
+      drawable,
+      drawable.arc.node.id === selectedId,
+      changedIds.has(drawable.arc.node.id),
+      collectedIds.has(drawable.arc.node.id),
+    );
   }
   context.restore();
 }
@@ -212,6 +221,7 @@ function drawArc(
   { arc, visual }: DrawableArc,
   selected: boolean,
   changed: boolean,
+  collected: boolean,
 ) {
   const endAngle = Math.min(arc.endAngle, arc.startAngle + Math.PI * 2 - 0.000_001);
   context.save();
@@ -242,6 +252,26 @@ function drawArc(
   context.strokeStyle = "rgba(7, 16, 23, 0.9)";
   context.lineWidth = 1.35;
   context.stroke();
+
+  if (collected) {
+    context.save();
+    context.clip();
+    context.fillStyle = "rgba(8, 14, 19, 0.42)";
+    context.fillRect(0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
+    context.strokeStyle = "rgba(255, 125, 115, 0.62)";
+    context.lineWidth = 2.4;
+    for (let offset = -CLEANUP_MAP_SIZE; offset < CLEANUP_MAP_SIZE * 2; offset += 11) {
+      context.beginPath();
+      context.moveTo(offset, 0);
+      context.lineTo(offset + CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
+      context.stroke();
+    }
+    context.restore();
+    context.setLineDash([]);
+    context.strokeStyle = "rgba(255, 125, 115, 0.98)";
+    context.lineWidth = 2.25;
+    context.stroke();
+  }
 
   if (changed) {
     context.strokeStyle = "rgba(251, 191, 36, 0.95)";

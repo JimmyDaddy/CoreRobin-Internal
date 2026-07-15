@@ -172,6 +172,8 @@ export type CleanupNodeKind = "folder" | "file" | "aggregate" | "restricted";
 export interface CleanupScan {
   sampledAtMs: number;
   durationMs: number;
+  /** The actual directory hierarchy rooted at the scanned system disk. */
+  root: CleanupNode;
   locations: CleanupLocation[];
   largestFiles: CleanupFile[];
   installedApplications: CleanupApplication[];
@@ -227,6 +229,19 @@ export interface CleanupScanProgress {
   elapsedMs: number;
 }
 
+export type CleanupFullDiskAccessStatus =
+  | "granted"
+  | "not_granted"
+  | "not_required"
+  | "unknown";
+
+export interface CleanupScanAccess {
+  fullDiskAccess: CleanupFullDiskAccessStatus;
+  fullDiskAccessRecommended: boolean;
+  applicationBundleAvailable: boolean;
+  applicationBundlePath: string | null;
+}
+
 export interface CleanupPathState {
   path: string;
   exists: boolean;
@@ -257,6 +272,20 @@ export interface CleanupDeleteResult {
   deleted: CleanupDeleteSuccess[];
   deletedBytes: number;
   failed: CleanupDeleteFailure[];
+  cancelled: boolean;
+  interruptedPath: string | null;
+}
+
+export type CleanupDeleteProgressPhase = "preparing" | "deleting";
+
+export interface CleanupDeleteProgress {
+  phase: CleanupDeleteProgressPhase;
+  processedEntryCount: number;
+  totalEntryCount: number;
+  completedTargetCount: number;
+  totalTargetCount: number;
+  currentPath: string;
+  deletedBytes: number;
 }
 
 export interface CleanupDeleteSuccess {

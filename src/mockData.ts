@@ -163,10 +163,7 @@ function cleanupNode(
 }
 
 export function getMockCleanupScan(): CleanupScan {
-  return {
-    sampledAtMs: Date.now(),
-    durationMs: 1_840,
-    locations: [
+  const locations: CleanupScan["locations"] = [
       {
         kind: "downloads",
         paths: ["~/Downloads"],
@@ -251,7 +248,54 @@ export function getMockCleanupScan(): CleanupScan {
           cleanupNode("~/.private::restricted", ".private", 0, 1, "review", [], "restricted", "~/.private"),
         ],
       },
-    ],
+    ];
+  const locationNode = (kind: CleanupScan["locations"][number]["kind"], index = 0) =>
+    locations.find((location) => location.kind === kind)!.nodes[index];
+  const downloads = locationNode("downloads");
+  const trash = locationNode("trash");
+  const appCache = locationNode("app_cache");
+  const cargoRegistry = locationNode("developer_cache");
+  const xcodeDerivedData = locationNode("developer_cache", 1);
+  const hiddenNodes = locations.find((location) => location.kind === "hidden_data")!.nodes;
+  const rootChildren = [
+    downloads,
+    cleanupNode("~/Documents", "Documents", 7_480_000_000, 1_420, "review", [
+      cleanupNode("~/Documents/Projects", "Projects", 5_900_000_000, 910, "review"),
+      cleanupNode("~/Documents/Archive", "Archive", 1_580_000_000, 510, "review"),
+    ]),
+    cleanupNode("~/Library", "Library", appCache.sizeBytes + xcodeDerivedData.sizeBytes, appCache.itemCount + xcodeDerivedData.itemCount, "review", [
+      appCache,
+      cleanupNode("~/Library/Developer", "Developer", xcodeDerivedData.sizeBytes, xcodeDerivedData.itemCount, "review", [
+        cleanupNode("~/Library/Developer/Xcode", "Xcode", xcodeDerivedData.sizeBytes, xcodeDerivedData.itemCount, "review", [xcodeDerivedData]),
+      ]),
+    ]),
+    cleanupNode("~/.cargo", ".cargo", cargoRegistry.sizeBytes, cargoRegistry.itemCount, "review", [cargoRegistry]),
+    ...hiddenNodes,
+    trash,
+    cleanupNode("~/Movies", "Movies", 3_160_000_000, 28, "review", [
+      cleanupNode("~/Movies/screen-recording.mov", "screen-recording.mov", 2_180_000_000, 1, "review", [], "file"),
+      cleanupNode("~/Movies/Clips", "Clips", 980_000_000, 27, "review"),
+    ]),
+  ];
+  const homeSize = rootChildren.reduce((total, node) => total + node.allocatedSizeBytes, 0);
+  const homeItems = rootChildren.reduce((total, node) => total + node.itemCount, 0);
+  const homeRoot = cleanupNode("~", "demo", homeSize, homeItems, "review", rootChildren);
+  const systemChildren = [
+    cleanupNode("/Applications", "Applications", 18_400_000_000, 84_200, "review", [
+      cleanupNode("/Applications/Archive Studio.app", "Archive Studio.app", 2_860_000_000, 1_420, "review"),
+    ]),
+    cleanupNode("/Library", "Library", 12_300_000_000, 96_000, "review"),
+    cleanupNode("/System", "System", 16_800_000_000, 210_000, "review"),
+    cleanupNode("/Users", "Users", homeSize, homeItems, "review", [homeRoot]),
+  ];
+  const systemSize = systemChildren.reduce((total, node) => total + node.allocatedSizeBytes, 0);
+  const systemItems = systemChildren.reduce((total, node) => total + node.itemCount, 0);
+
+  return {
+    sampledAtMs: Date.now(),
+    durationMs: 1_840,
+    root: cleanupNode("/", "/", systemSize, systemItems, "review", systemChildren),
+    locations,
     largestFiles: [
       {
         name: "macOS-installer.dmg",
@@ -338,6 +382,8 @@ export function executeMockCleanupDelete(
     deleted: lease.paths.map((path) => ({ path, deletedBytes: 0 })),
     deletedBytes: 0,
     failed: [],
+    cancelled: false,
+    interruptedPath: null,
   };
 }
 // Keep demo identities stable across browser reloads so view preferences can be

@@ -17,6 +17,13 @@ export interface HistoryStory {
   culpritName: string | null;
 }
 
+export type HistoryStoryGroupKey = "today" | "yesterday" | "earlier";
+
+export interface HistoryStoryGroup {
+  key: HistoryStoryGroupKey;
+  stories: HistoryStory[];
+}
+
 export function buildHistoryStories(
   events: readonly ResourceAlertEvent[],
 ): HistoryStory[] {
@@ -79,4 +86,34 @@ export function buildHistoryStories(
   }
 
   return stories.sort((left, right) => right.startedAtMs - left.startedAtMs);
+}
+
+export function groupHistoryStoriesByDay(
+  stories: readonly HistoryStory[],
+  nowMs = Date.now(),
+): HistoryStoryGroup[] {
+  const today = startOfLocalDay(nowMs);
+  const yesterday = today - 24 * 60 * 60 * 1_000;
+  const groups = new Map<HistoryStoryGroupKey, HistoryStory[]>([
+    ["today", []],
+    ["yesterday", []],
+    ["earlier", []],
+  ]);
+  for (const story of stories) {
+    const key: HistoryStoryGroupKey = story.startedAtMs >= today
+      ? "today"
+      : story.startedAtMs >= yesterday
+        ? "yesterday"
+        : "earlier";
+    groups.get(key)?.push(story);
+  }
+  return (["today", "yesterday", "earlier"] as const)
+    .map((key) => ({ key, stories: groups.get(key) ?? [] }))
+    .filter(({ stories: groupedStories }) => groupedStories.length > 0);
+}
+
+function startOfLocalDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }

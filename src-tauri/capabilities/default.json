@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for StatusOrbit application surfaces",
-  "windows": ["main", "splashscreen", "tray"],
+  "windows": ["main", "splashscreen", "tray", "companion"],
   "permissions": [
     "core:default",
     "notification:allow-is-permission-granted",

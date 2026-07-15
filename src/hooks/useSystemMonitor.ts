@@ -18,52 +18,59 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastSequence = useRef(0);
-  const requestInFlight = useRef(false);
+  const requestInFlight = useRef<Promise<SystemSnapshot | null> | null>(null);
 
-  const refreshNow = useCallback(async () => {
+  const refreshNow = useCallback(() => {
     if (requestInFlight.current) {
-      return;
+      return requestInFlight.current;
     }
 
-    requestInFlight.current = true;
-    try {
-      const nextSnapshot = await getSystemSnapshot();
-      assertSupportedSnapshotSchema(nextSnapshot);
-      if (nextSnapshot.sequence <= lastSequence.current) {
-        return;
-      }
+    const request = (async () => {
+      try {
+        const nextSnapshot = await getSystemSnapshot();
+        assertSupportedSnapshotSchema(nextSnapshot);
+        if (nextSnapshot.sequence <= lastSequence.current) {
+          return null;
+        }
 
-      lastSequence.current = nextSnapshot.sequence;
-      setSnapshot(nextSnapshot);
-      setError(null);
-      if (nextSnapshot.cpu.usagePercent !== null) {
-        setHistory((current) => {
-          const point: HistoryPoint = {
-            timestamp: nextSnapshot.sampledAtMs,
-            cpuPercent: nextSnapshot.cpu.usagePercent ?? 0,
-            memoryPercent: memoryUsagePercent(
-              nextSnapshot.memory.usedBytes,
-              nextSnapshot.memory.totalBytes,
-            ),
-            diskReadBytesPerSecond: nextSnapshot.disk.readBytesPerSecond,
-            diskWriteBytesPerSecond: nextSnapshot.disk.writeBytesPerSecond,
-            networkReceivedBytesPerSecond:
-              nextSnapshot.network.receivedBytesPerSecond,
-            networkTransmittedBytesPerSecond:
-              nextSnapshot.network.transmittedBytesPerSecond,
-          };
-          const cutoff = nextSnapshot.sampledAtMs - HISTORY_WINDOW_MS;
-          return [...current, point]
-            .filter((candidate) => candidate.timestamp >= cutoff)
-            .slice(-MAX_HISTORY_POINTS);
-        });
+        lastSequence.current = nextSnapshot.sequence;
+        setSnapshot(nextSnapshot);
+        setError(null);
+        if (nextSnapshot.cpu.usagePercent !== null) {
+          setHistory((current) => {
+            const point: HistoryPoint = {
+              timestamp: nextSnapshot.sampledAtMs,
+              cpuPercent: nextSnapshot.cpu.usagePercent ?? 0,
+              memoryPercent: memoryUsagePercent(
+                nextSnapshot.memory.usedBytes,
+                nextSnapshot.memory.totalBytes,
+              ),
+              diskReadBytesPerSecond: nextSnapshot.disk.readBytesPerSecond,
+              diskWriteBytesPerSecond: nextSnapshot.disk.writeBytesPerSecond,
+              networkReceivedBytesPerSecond:
+                nextSnapshot.network.receivedBytesPerSecond,
+              networkTransmittedBytesPerSecond:
+                nextSnapshot.network.transmittedBytesPerSecond,
+            };
+            const cutoff = nextSnapshot.sampledAtMs - HISTORY_WINDOW_MS;
+            return [...current, point]
+              .filter((candidate) => candidate.timestamp >= cutoff)
+              .slice(-MAX_HISTORY_POINTS);
+          });
+        }
+        return nextSnapshot;
+      } catch (caughtError) {
+        setError(normalizeCommandError(caughtError));
+        return null;
+      } finally {
+        setLoading(false);
       }
-    } catch (caughtError) {
-      setError(normalizeCommandError(caughtError));
-    } finally {
-      setLoading(false);
-      requestInFlight.current = false;
-    }
+    })();
+    requestInFlight.current = request;
+    void request.finally(() => {
+      if (requestInFlight.current === request) requestInFlight.current = null;
+    });
+    return request;
   }, []);
 
   useEffect(() => {

@@ -9,23 +9,27 @@ mod process_control;
 mod sensors;
 mod startup;
 
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{
+    Arc, Mutex, Weak,
+    atomic::{AtomicBool, AtomicU64, Ordering},
+};
 use std::time::Duration;
 
 use application_icon::load_application_icon;
 use cleanup::{
-    CleanupDeleteController, CleanupScanCoordinator, inspect_cleanup_path, load_cleanup_scan_cache,
-    remove_cleanup_scan_cache, save_cleanup_scan_snapshot_cache,
+    CleanupDeleteController, CleanupDeleteCoordinator, CleanupScanCoordinator, cleanup_scan_access,
+    inspect_cleanup_path, load_cleanup_scan_cache, open_full_disk_access_settings,
+    remove_cleanup_scan_cache, reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
     save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
 };
 use error::CommandError;
 use models::{
     ApplicationIcon, CleanupDeleteExecutionRequest, CleanupDeleteLease,
-    CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteResult,
-    CleanupPathState, CleanupScan, CleanupScanProgress, CleanupSubtreeRequest,
-    NetworkConnectionsSnapshot, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
-    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
-    ProcessDetailRequest, StartupItemsSnapshot, StartupManagementExecutionRequest,
+    CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteProgress,
+    CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess, CleanupScanProgress,
+    CleanupSubtreeRequest, NetworkConnectionsSnapshot, ProcessActionRequest, ProcessActionResult,
+    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
+    ProcessDetail, ProcessDetailRequest, StartupItemsSnapshot, StartupManagementExecutionRequest,
     StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
     StartupManagementResult, SystemSnapshot,
 };
@@ -34,7 +38,7 @@ use network_connections::sample_network_connections;
 use process_control::ProcessController;
 use startup::{StartupController, scan_startup_items};
 use tauri::{
-    AppHandle, Emitter, Manager, PhysicalPosition, State, WindowEvent,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WindowEvent,
     ipc::Channel,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -45,6 +49,7 @@ struct AppState {
     monitor: Arc<Mutex<SystemMonitor>>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupScanCoordinator>,
+    cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
     startup_controller: Arc<Mutex<StartupController>>,
 }
@@ -59,6 +64,7 @@ impl AppState {
             monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
             process_controller,
             cleanup_scan: Arc::new(CleanupScanCoordinator::default()),
+            cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
         }
@@ -249,6 +255,8 @@ async fn get_cleanup_subtree(
 fn cleanup_scan_cache_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
     app.path()
         .app_data_dir()
+        // Keep the on-disk location stable so a fresh scan replaces or clears
+        // the previous schema instead of leaving an orphaned cache file.
         .map(|directory| directory.join("cleanup-scan-v3.json"))
         .map_err(|error| {
             CommandError::internal(format!(
@@ -297,6 +305,21 @@ fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError>
 }
 
 #[tauri::command]
+fn get_cleanup_scan_access() -> CleanupScanAccess {
+    cleanup_scan_access()
+}
+
+#[tauri::command]
+fn open_cleanup_full_disk_access_settings() -> Result<(), CommandError> {
+    open_full_disk_access_settings()
+}
+
+#[tauri::command]
+fn reveal_cleanup_app_bundle() -> Result<(), CommandError> {
+    reveal_cleanup_application_bundle()
+}
+
+#[tauri::command]
 async fn create_cleanup_delete_lease(
     state: State<'_, AppState>,
     request: CleanupDeleteLeaseRequest,
@@ -327,12 +350,28 @@ async fn release_cleanup_delete_lease(
 async fn execute_cleanup_delete(
     state: State<'_, AppState>,
     request: CleanupDeleteExecutionRequest,
+    on_progress: Channel<CleanupDeleteProgress>,
 ) -> Result<CleanupDeleteResult, CommandError> {
-    with_cleanup_delete_controller(
-        Arc::clone(&state.cleanup_delete_controller),
-        move |controller| controller.execute(request),
-    )
-    .await
+    let coordinator = Arc::clone(&state.cleanup_delete);
+    let cancelled = coordinator.begin()?;
+    let worker_cancelled = Arc::clone(&cancelled);
+    let controller = Arc::clone(&state.cleanup_delete_controller);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let mut controller = controller
+            .lock()
+            .map_err(|_| CommandError::internal("The cleanup controller lock was poisoned."))?;
+        controller.execute_cancellable(request, &worker_cancelled, &mut |progress| {
+            let _ = on_progress.send(progress);
+        })
+    })
+    .await;
+    coordinator.finish(&cancelled);
+    result.map_err(|error| CommandError::internal(format!("Cleanup task failed: {error}")))?
+}
+
+#[tauri::command]
+fn cancel_cleanup_delete(state: State<'_, AppState>) -> Result<bool, CommandError> {
+    state.cleanup_delete.cancel()
 }
 
 #[tauri::command]
@@ -379,6 +418,156 @@ fn toggle_tray_panel(app: &AppHandle) {
     }
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+#[tauri::command]
+fn toggle_companion_window(app: AppHandle) {
+    toggle_companion(&app);
+}
+
+const COMPANION_COLLAPSED_SIZE: (f64, f64) = (92.0, 92.0);
+const COMPANION_EXPANDED_SIZE: (f64, f64) = (386.0, 92.0);
+const COMPANION_EXIT_ANIMATION_MS: u64 = 300;
+static COMPANION_TRANSITION_EPOCH: AtomicU64 = AtomicU64::new(0);
+static COMPANION_EXIT_PENDING: AtomicBool = AtomicBool::new(false);
+
+fn resize_companion(window: &tauri::WebviewWindow, expanded: bool) {
+    let (width, height) = if expanded {
+        COMPANION_EXPANDED_SIZE
+    } else {
+        COMPANION_COLLAPSED_SIZE
+    };
+    let position = window.outer_position().ok();
+    let previous_size = window.outer_size().ok();
+    let monitor = window.current_monitor().ok().flatten();
+    let scale_factor = window.scale_factor().unwrap_or(1.0);
+    let physical_width = (width * scale_factor).round() as i32;
+    let physical_height = (height * scale_factor).round() as i32;
+
+    let (Some(position), Some(previous_size), Some(monitor)) = (position, previous_size, monitor)
+    else {
+        let _ = window.set_size(LogicalSize::new(width, height));
+        return;
+    };
+    let work_area = monitor.work_area();
+    let min_x = work_area.position.x;
+    let min_y = work_area.position.y;
+    let max_x = min_x
+        .saturating_add(work_area.size.width as i32)
+        .saturating_sub(physical_width)
+        .max(min_x);
+    let max_y = min_y
+        .saturating_add(work_area.size.height as i32)
+        .saturating_sub(physical_height)
+        .max(min_y);
+    let anchor_bottom = position.y.saturating_add(previous_size.height as i32);
+    // The mascot lives at the expanded window's bottom-left. Preserve that
+    // screen-space anchor so showing a bubble never makes Orbit jump sideways.
+    let x = if expanded {
+        position.x.max(min_x)
+    } else {
+        position.x.clamp(min_x, max_x)
+    };
+    let y = anchor_bottom
+        .saturating_sub(physical_height)
+        .clamp(min_y, max_y);
+    let target_position = PhysicalPosition::new(x, y);
+
+    let _ = window.set_size(LogicalSize::new(width, height));
+    let _ = window.set_position(target_position);
+}
+
+fn collapse_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
+    resize_companion(window, false);
+    let _ = app.emit_to("companion", "status-orbit:companion-collapse", ());
+}
+
+fn publish_companion_visibility(app: &AppHandle, window: &tauri::WebviewWindow) {
+    let visible = window.is_visible().unwrap_or(false);
+    let _ = app.emit_to("main", "status-orbit:companion-visibility", visible);
+}
+
+fn show_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
+    COMPANION_TRANSITION_EPOCH.fetch_add(1, Ordering::SeqCst);
+    let was_hiding = COMPANION_EXIT_PENDING.swap(false, Ordering::SeqCst);
+    let was_visible = window.is_visible().unwrap_or(false);
+    if !was_visible || was_hiding {
+        collapse_companion(app, window);
+    }
+    if !was_visible {
+        let _ = window.show();
+    }
+    if !was_visible || was_hiding {
+        let _ = app.emit_to("companion", "status-orbit:companion-enter", ());
+    }
+    // Focus enables Escape and the companion context menu without forcing it open.
+    let _ = window.set_focus();
+    publish_companion_visibility(app, window);
+}
+
+fn hide_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
+    let transition = COMPANION_TRANSITION_EPOCH
+        .fetch_add(1, Ordering::SeqCst)
+        .wrapping_add(1);
+    if !window.is_visible().unwrap_or(false) {
+        COMPANION_EXIT_PENDING.store(false, Ordering::SeqCst);
+        publish_companion_visibility(app, window);
+        return;
+    }
+
+    COMPANION_EXIT_PENDING.store(true, Ordering::SeqCst);
+    collapse_companion(app, window);
+    let _ = app.emit_to("companion", "status-orbit:companion-exit", ());
+    let app = app.clone();
+    let window = window.clone();
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        std::thread::sleep(Duration::from_millis(COMPANION_EXIT_ANIMATION_MS));
+        if COMPANION_TRANSITION_EPOCH.load(Ordering::SeqCst) != transition {
+            return;
+        }
+        let _ = window.hide();
+        COMPANION_EXIT_PENDING.store(false, Ordering::SeqCst);
+        publish_companion_visibility(&app, &window);
+    });
+}
+
+#[tauri::command]
+fn set_companion_expanded(app: AppHandle, expanded: bool) {
+    if let Some(window) = app.get_webview_window("companion") {
+        resize_companion(&window, expanded);
+    }
+}
+
+#[tauri::command]
+fn hide_companion_window(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("companion") {
+        hide_companion(&app, &window);
+    }
+}
+
+#[tauri::command]
+fn configure_companion_window(app: AppHandle, always_on_top: bool, show: bool) {
+    let Some(window) = app.get_webview_window("companion") else {
+        return;
+    };
+    let _ = window.set_always_on_top(always_on_top);
+    if show {
+        show_companion(&app, &window);
+    } else {
+        hide_companion(&app, &window);
+    }
+}
+
+fn toggle_companion(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("companion") else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        hide_companion(app, &window);
+        return;
+    }
+
+    show_companion(app, &window);
 }
 
 #[cfg(target_os = "macos")]
@@ -452,15 +641,18 @@ pub fn run() {
         .manage(AppState::new())
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open StatusOrbit", true, None::<&str>)?;
+            let companion =
+                MenuItem::with_id(app, "companion", "Orbit Companion", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit StatusOrbit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &cleanup, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &companion, &cleanup, &quit])?;
             let mut tray = TrayIconBuilder::with_id("status-orbit-status")
                 .tooltip("StatusOrbit · Local Monitor")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main(app),
+                    "companion" => toggle_companion(app),
                     "cleanup" => navigate_main(app, "cleanup"),
                     "quit" => app.exit(0),
                     _ => {}
@@ -520,11 +712,19 @@ pub fn run() {
             save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
             cancel_cleanup_scan,
+            get_cleanup_scan_access,
+            open_cleanup_full_disk_access_settings,
+            reveal_cleanup_app_bundle,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
             execute_cleanup_delete,
+            cancel_cleanup_delete,
             complete_startup,
             show_main_window,
+            toggle_companion_window,
+            hide_companion_window,
+            set_companion_expanded,
+            configure_companion_window,
             get_process_detail,
             get_application_icon,
             create_process_control_lease,

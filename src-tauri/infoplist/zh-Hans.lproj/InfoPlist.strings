@@ -1,0 +1,6 @@
+NSDesktopFolderUsageDescription = "StatusOrbit 只读取文件元数据，以便在空间地图中统计桌面项目。";
+NSDocumentsFolderUsageDescription = "StatusOrbit 只读取文件元数据，以便在空间地图中统计文稿。";
+NSDownloadsFolderUsageDescription = "StatusOrbit 只读取文件元数据，以便在空间地图中统计下载内容。";
+NSSystemAdministrationUsageDescription = "StatusOrbit 只读取系统文件元数据，以生成完整的只读空间地图。";
+NSAppDataUsageDescription = "StatusOrbit 只读取应用数据的元数据，以显示磁盘空间去向。";
+NSAppBundlesUsageDescription = "StatusOrbit 只读取应用元数据，以统计已安装应用占用的空间。";

@@ -7,6 +7,7 @@ import {
   Database,
   Maximize2,
   MemoryStick,
+  Orbit,
   Pause,
   Play,
   Settings2,
@@ -49,6 +50,10 @@ export function TrayPanel() {
   };
   const togglePaused = async () => {
     await emitTo("main", "status-orbit:set-paused", !summary?.paused);
+  };
+  const toggleCompanion = async () => {
+    await invoke("toggle_companion_window");
+    await getCurrentWindow().hide();
   };
 
   return (
@@ -99,6 +104,7 @@ export function TrayPanel() {
 
         <div className="tray-actions">
           <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray.open")}</span></button>
+          <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray.companion")}</span></button>
           <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray.cleanup")}</span></button>
           <button type="button" onClick={() => void togglePaused()}>
             {summary?.paused ? <Play size={16} /> : <Pause size={16} />}

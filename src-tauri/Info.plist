@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>StatusOrbit reads file metadata to include Desktop items in your storage map.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>StatusOrbit reads file metadata to include Documents in your storage map.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>StatusOrbit reads file metadata to include Downloads in your storage map.</string>
+  <key>NSSystemAdministrationUsageDescription</key>
+  <string>StatusOrbit reads system file metadata to build a complete, read-only storage map.</string>
+  <key>NSAppDataUsageDescription</key>
+  <string>StatusOrbit reads app data metadata to show where disk space is used.</string>
+  <key>NSAppBundlesUsageDescription</key>
+  <string>StatusOrbit reads application metadata to measure installed app storage.</string>
+</dict>
+</plist>

@@ -50,6 +50,20 @@
         "skipTaskbar": true,
         "shadow": true,
         "visible": false
+      },
+      {
+        "label": "companion",
+        "title": "Orbit Companion",
+        "url": "index.html?surface=companion",
+        "width": 92,
+        "height": 92,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
       }
     ],
     "security": {
@@ -59,6 +73,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "infoplist/**/*": "./"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

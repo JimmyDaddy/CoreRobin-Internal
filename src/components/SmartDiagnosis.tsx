@@ -158,17 +158,13 @@ export function SmartDiagnosis({
             </div>
           )}
 
-          <footer className="smart-diagnosis__footer">
-            <span>
-              <ShieldCheck size={14} />
-              {t("diagnosis.safety")}
-            </span>
+          {connectionScanLoading || connectionScanUnavailable ? <footer className="smart-diagnosis__footer">
             {connectionScanLoading ? (
               <small>{t("diagnosis.connectionScan.loading")}</small>
-            ) : connectionScanUnavailable ? (
+            ) : (
               <small>{t("diagnosis.connectionScan.unavailable")}</small>
-            ) : null}
-          </footer>
+            )}
+          </footer> : null}
         </div>
       ) : null}
     </section>

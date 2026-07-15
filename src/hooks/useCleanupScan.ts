@@ -100,12 +100,27 @@ export function useCleanupScan() {
     }
   }, [cancelling]);
 
-  const applyDeletion = useCallback(async (targets: readonly CleanupDeletionTargetSnapshot[]) => {
+  const applyDeletion = useCallback(async (
+    targets: readonly CleanupDeletionTargetSnapshot[],
+    invalidateSnapshot = false,
+  ) => {
     const current = snapshotRef.current;
-    if (!current || targets.length === 0) return;
-    const updated = reconcileCleanupScanAfterDeletion(current, targets);
+    if (!current || (targets.length === 0 && !invalidateSnapshot)) return;
+    const updated = targets.length > 0
+      ? reconcileCleanupScanAfterDeletion(current, targets)
+      : current;
     snapshotRef.current = updated;
     setSnapshot(updated);
+    if (invalidateSnapshot) {
+      setSnapshotStatus("expired");
+      clearStoredCleanupScan();
+      try {
+        await clearPersistedCleanupScan();
+      } catch {
+        // The in-memory map is visibly marked as stale even if disk cleanup fails.
+      }
+      return;
+    }
     try {
       await savePersistedCleanupScan(updated);
     } catch {
