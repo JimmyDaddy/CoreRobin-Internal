@@ -1,4 +1,8 @@
-import type { SupportedLanguage } from "./i18n";
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  type InterfaceScale,
+} from "./appearance";
+import type { SupportedLanguage } from "./language";
 import type { HistoryRetentionDays } from "./historyStore";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
@@ -7,13 +11,16 @@ import {
   readMigratedStorageItem,
 } from "./storageMigration";
 
-export const APP_SETTINGS_STORAGE_KEY = "status-orbit.settings.v1";
+export {
+  APP_SETTINGS_STORAGE_KEY,
+  applyAppAppearance,
+  type InterfaceScale,
+} from "./appearance";
 export const SYSTEM_SAMPLE_INTERVAL_OPTIONS = [500, 1_000, 2_000, 5_000] as const;
 export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000] as const;
 
 export type UsageThresholds = readonly [number, number, number];
 export type ExperienceMode = "simple" | "professional";
-export type InterfaceScale = "comfortable" | "large";
 
 export interface AppSettings {
   version: 1;
@@ -160,14 +167,6 @@ export function saveAppSettings(settings: AppSettings): void {
   } catch {
     // Hardened WebViews may disable storage. Settings still apply in memory.
   }
-}
-
-export function applyAppAppearance(
-  settings: Pick<AppSettings, "interfaceScale" | "reduceMotion">,
-  root: HTMLElement = document.documentElement,
-): void {
-  root.dataset.interfaceScale = settings.interfaceScale;
-  root.dataset.reduceMotion = settings.reduceMotion ? "true" : "false";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

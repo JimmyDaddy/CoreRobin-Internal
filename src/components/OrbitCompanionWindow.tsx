@@ -10,9 +10,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { useTranslation } from "react-i18next";
 
 import type { TraySummary } from "../traySummary";
+import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 
 const COMPANION_POSITION_KEY = "status-orbit.companion-position.v1";
 const COMPANION_EXPANDED_LOGICAL_SIZE = { width: 386, height: 92 };
@@ -33,7 +33,7 @@ const desktopRuntime = typeof window !== "undefined"
   && getCurrentWindow().label === "companion";
 
 export function OrbitCompanionWindow() {
-  const { t } = useTranslation();
+  const { t } = useAuxiliaryTranslation();
   const [summary, setSummary] = useState<TraySummary | null>(null);
   const previewExpanded = !desktopRuntime
     && new URLSearchParams(window.location.search).get("preview") === "expanded";

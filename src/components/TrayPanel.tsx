@@ -15,10 +15,10 @@ import {
   Thermometer,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 
-import brandMark from "../assets/brand-mark.png";
+import brandMark from "../../src-tauri/icons/128x128.png";
 import type { TraySummary } from "../traySummary";
+import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
 
 const desktopRuntime = typeof window !== "undefined"
@@ -26,7 +26,7 @@ const desktopRuntime = typeof window !== "undefined"
   && getCurrentWindow().label === "tray";
 
 export function TrayPanel() {
-  const { t } = useTranslation();
+  const { t } = useAuxiliaryTranslation();
   const [summary, setSummary] = useState<TraySummary | null>(null);
 
   useEffect(() => {

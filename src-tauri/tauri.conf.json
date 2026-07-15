@@ -26,7 +26,7 @@
       {
         "label": "splashscreen",
         "title": "StatusOrbit",
-        "url": "index.html?surface=splash",
+        "url": "splash.html",
         "width": 520,
         "height": 340,
         "center": true,
@@ -40,7 +40,7 @@
       {
         "label": "tray",
         "title": "StatusOrbit Status",
-        "url": "index.html?surface=tray",
+        "url": "tray.html",
         "width": 360,
         "height": 440,
         "decorations": false,
@@ -54,7 +54,7 @@
       {
         "label": "companion",
         "title": "Orbit Companion",
-        "url": "index.html?surface=companion",
+        "url": "companion.html",
         "width": 92,
         "height": 92,
         "decorations": false,

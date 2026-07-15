@@ -7,7 +7,7 @@ import {
   openDailyFromCompanion,
   OrbitCompanionWindow,
 } from "./components/OrbitCompanionWindow";
-import i18n from "./i18n";
+import i18n from "./i18nAuxiliary";
 
 afterEach(() => {
   cleanup();

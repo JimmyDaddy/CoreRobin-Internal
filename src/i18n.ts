@@ -1,12 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import {
-  LEGACY_STORAGE_KEYS,
-  readMigratedStorageItem,
-} from "./storageMigration";
-
-export const LANGUAGE_STORAGE_KEY = "status-orbit.language.v1";
-export type SupportedLanguage = "zh-CN" | "en";
+import { initialLanguage, persistLanguage } from "./language";
+export {
+  LANGUAGE_STORAGE_KEY,
+  normalizeLanguage,
+  type SupportedLanguage,
+} from "./language";
 
 const resources = {
   "zh-CN": {
@@ -3005,24 +3004,6 @@ const resources = {
   },
 } as const;
 
-export function normalizeLanguage(language: string | null | undefined): SupportedLanguage {
-  return language?.toLowerCase().startsWith("en") ? "en" : "zh-CN";
-}
-
-function initialLanguage(): SupportedLanguage {
-  try {
-    const stored = readMigratedStorageItem(
-      window.localStorage,
-      LANGUAGE_STORAGE_KEY,
-      LEGACY_STORAGE_KEYS.language,
-    );
-    if (stored) return normalizeLanguage(stored);
-    return normalizeLanguage(window.navigator.language);
-  } catch {
-    return "zh-CN";
-  }
-}
-
 void i18n.use(initReactI18next).init({
   resources,
   lng: initialLanguage(),
@@ -3032,16 +3013,6 @@ void i18n.use(initReactI18next).init({
   initAsync: false,
   react: { useSuspense: false },
 });
-
-function persistLanguage(language: string): void {
-  const normalized = normalizeLanguage(language);
-  if (typeof document !== "undefined") document.documentElement.lang = normalized;
-  try {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized);
-  } catch {
-    // Language switching remains available for the current session.
-  }
-}
 
 persistLanguage(i18n.resolvedLanguage ?? i18n.language);
 i18n.on("languageChanged", persistLanguage);
