@@ -1,5 +1,6 @@
 pub const ALL_COMMANDS: &[&str] = &[
     "get_system_snapshot",
+    "get_system_summary",
     "get_network_connections",
     "get_startup_items",
     "create_startup_management_lease",

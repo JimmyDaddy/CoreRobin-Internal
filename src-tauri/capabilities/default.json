@@ -9,6 +9,7 @@
     "notification:allow-request-permission",
     "notification:allow-notify",
     "allow-get-system-snapshot",
+    "allow-get-system-summary",
     "allow-get-network-connections",
     "allow-get-startup-items",
     "allow-create-startup-management-lease",

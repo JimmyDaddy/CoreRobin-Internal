@@ -7,12 +7,12 @@ use sysinfo::{
 };
 
 use crate::error::CommandError;
-use crate::identity::{ensure_birth_token, read_birth_token};
+use crate::identity::{BirthTokenCache, ensure_birth_token};
 use crate::models::{
     Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot,
     NetworkInterfaceSnapshot, NetworkSnapshot, ProcessControlCapabilities, ProcessDetail,
     ProcessDetailRequest, ProcessKey, ProcessRow, SNAPSHOT_SCHEMA_VERSION, SystemSnapshot,
-    VolumeSnapshot,
+    SystemSummary, VolumeSnapshot,
 };
 use crate::sensors::SensorSampler;
 
@@ -57,6 +57,8 @@ pub struct SystemMonitor {
     own_pid: u32,
     process_control_capabilities: ProcessControlCapabilities,
     sensors: SensorSampler,
+    birth_tokens: BirthTokenCache,
+    last_summary_sample: Instant,
 }
 
 impl SystemMonitor {
@@ -92,6 +94,8 @@ impl SystemMonitor {
             own_pid: std::process::id(),
             process_control_capabilities,
             sensors: SensorSampler::new(),
+            birth_tokens: BirthTokenCache::default(),
+            last_summary_sample: Instant::now(),
         }
     }
 
@@ -187,6 +191,18 @@ impl SystemMonitor {
                 )
             });
 
+        let live_identities = self
+            .system
+            .processes()
+            .values()
+            .map(|process| (process.pid().as_u32(), process.start_time()))
+            .collect::<HashMap<_, _>>();
+        self.birth_tokens.retain_live(&live_identities);
+        let process_birth_tokens = live_identities
+            .iter()
+            .map(|(&pid, &start_time)| (pid, self.birth_tokens.resolve(pid, start_time)))
+            .collect::<HashMap<_, _>>();
+
         let mut processes = self
             .system
             .processes()
@@ -196,7 +212,7 @@ impl SystemMonitor {
                 let disk_usage = process.disk_usage();
                 ProcessRow {
                     pid,
-                    birth_token: read_birth_token(pid).ok(),
+                    birth_token: process_birth_tokens.get(&pid).cloned().flatten(),
                     parent_pid: process.parent().map(|parent| parent.as_u32()),
                     start_time: process.start_time(),
                     run_time_seconds: process.run_time(),
@@ -286,6 +302,51 @@ impl SystemMonitor {
                 process_control: self.process_control_capabilities.clone(),
                 requires_confirmation: true,
             },
+        }
+    }
+
+    pub fn sample_summary(&mut self) -> SystemSummary {
+        let elapsed = self.last_summary_sample.elapsed();
+        self.system.refresh_cpu_usage();
+        self.system.refresh_memory();
+        self.last_summary_sample = Instant::now();
+
+        let cpu_usage = (elapsed >= MINIMUM_CPU_UPDATE_INTERVAL)
+            .then(|| self.system.global_cpu_usage().clamp(0.0, 100.0));
+        let volumes = collapse_macos_system_volume_group(
+            self.disks
+                .list()
+                .iter()
+                .filter(|disk| disk.total_space() > 0)
+                .map(|disk| VolumeSnapshot {
+                    name: disk.name().to_string_lossy().into_owned(),
+                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
+                    total_bytes: disk.total_space(),
+                    available_bytes: disk.available_space(),
+                    removable: disk.is_removable(),
+                })
+                .collect(),
+        );
+
+        SystemSummary {
+            sampled_at_ms: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::ZERO)
+                .as_millis() as u64,
+            cpu: CpuSnapshot {
+                usage_percent: cpu_usage,
+                per_core_percent: Vec::new(),
+                logical_core_count: self.system.cpus().len(),
+            },
+            memory: MemorySnapshot {
+                total_bytes: self.system.total_memory(),
+                used_bytes: self.system.used_memory(),
+                available_bytes: self.system.available_memory(),
+                swap_total_bytes: self.system.total_swap(),
+                swap_used_bytes: self.system.used_swap(),
+            },
+            volumes,
+            sensors: self.sensors.sample(),
         }
     }
 

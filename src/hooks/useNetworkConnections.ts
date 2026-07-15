@@ -10,30 +10,36 @@ export function useNetworkConnections(
   enabled: boolean,
   paused: boolean,
   refreshIntervalMs = NETWORK_CONNECTION_REFRESH_INTERVAL_MS,
+  visible = true,
 ) {
   const [snapshot, setSnapshot] = useState<NetworkConnectionsSnapshot | null>(null);
   const [error, setError] = useState<CommandError | null>(null);
   const [loading, setLoading] = useState(true);
   const requestInFlight = useRef(false);
+  const samplingEnabledRef = useRef(enabled && !paused && visible);
+  samplingEnabledRef.current = enabled && !paused && visible;
 
   const refreshNow = useCallback(async () => {
-    if (requestInFlight.current) return;
+    if (!samplingEnabledRef.current || requestInFlight.current) return;
 
     requestInFlight.current = true;
     try {
       const nextSnapshot = await getNetworkConnections();
+      if (!samplingEnabledRef.current) return;
       setSnapshot(nextSnapshot);
       setError(null);
     } catch (caughtError) {
-      setError(normalizeCommandError(caughtError));
+      if (samplingEnabledRef.current) {
+        setError(normalizeCommandError(caughtError));
+      }
     } finally {
-      setLoading(false);
+      if (samplingEnabledRef.current) setLoading(false);
       requestInFlight.current = false;
     }
   }, []);
 
   useEffect(() => {
-    if (!enabled || paused) return;
+    if (!enabled || paused || !visible) return;
 
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -47,7 +53,7 @@ export function useNetworkConnections(
       cancelled = true;
       if (timeout !== undefined) clearTimeout(timeout);
     };
-  }, [enabled, paused, refreshIntervalMs, refreshNow]);
+  }, [enabled, paused, refreshIntervalMs, refreshNow, visible]);
 
   return { snapshot, error, loading, refreshNow };
 }

@@ -21,7 +21,7 @@ use std::sync::{
     Arc, Mutex, Weak,
     atomic::{AtomicBool, AtomicU64, Ordering},
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use application_icon::load_application_icon;
 use cleanup::{
@@ -40,7 +40,7 @@ use models::{
     ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
     ProcessDetail, ProcessDetailRequest, StartupItemsSnapshot, StartupManagementExecutionRequest,
     StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
-    StartupManagementResult, SystemSnapshot,
+    StartupManagementResult, SystemSnapshot, SystemSummary,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -53,6 +53,76 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorBenchmarkResult {
+    pub iterations: usize,
+    pub spacing_milliseconds: u64,
+    pub process_count: usize,
+    pub full_snapshot: MonitorTimingStats,
+    pub light_summary: MonitorTimingStats,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorTimingStats {
+    pub median_microseconds: u64,
+    pub p95_microseconds: u64,
+    pub maximum_microseconds: u64,
+}
+
+pub fn benchmark_monitor_sampling(
+    iterations: usize,
+    spacing_milliseconds: u64,
+) -> Result<MonitorBenchmarkResult, String> {
+    if iterations == 0 {
+        return Err("Monitor benchmark iterations must be greater than zero.".to_owned());
+    }
+
+    let process_controller = ProcessController::new();
+    let mut monitor = SystemMonitor::new(process_controller.capabilities());
+    let process_count = monitor.sample().processes.len();
+    let spacing = Duration::from_millis(spacing_milliseconds);
+    let full_snapshot = benchmark_monitor_operation(iterations, spacing, || {
+        let _ = monitor.sample();
+    });
+    let light_summary = benchmark_monitor_operation(iterations, spacing, || {
+        let _ = monitor.sample_summary();
+    });
+
+    Ok(MonitorBenchmarkResult {
+        iterations,
+        spacing_milliseconds,
+        process_count,
+        full_snapshot,
+        light_summary,
+    })
+}
+
+fn benchmark_monitor_operation<F>(
+    iterations: usize,
+    spacing: Duration,
+    mut operation: F,
+) -> MonitorTimingStats
+where
+    F: FnMut(),
+{
+    let mut samples = Vec::with_capacity(iterations);
+    for _ in 0..iterations {
+        std::thread::sleep(spacing);
+        let started_at = Instant::now();
+        operation();
+        samples.push(started_at.elapsed().as_micros().min(u64::MAX as u128) as u64);
+    }
+    samples.sort_unstable();
+    let p95_index = ((samples.len() * 95).div_ceil(100)).saturating_sub(1);
+    MonitorTimingStats {
+        median_microseconds: samples[samples.len() / 2],
+        p95_microseconds: samples[p95_index],
+        maximum_microseconds: *samples.last().unwrap_or(&0),
+    }
+}
 
 fn require_main_window_label(label: &str) -> Result<(), CommandError> {
     if label == "main" {
@@ -189,6 +259,14 @@ where
 #[tauri::command]
 async fn get_system_snapshot(state: State<'_, AppState>) -> Result<SystemSnapshot, CommandError> {
     with_monitor(Arc::clone(&state.monitor), |monitor| Ok(monitor.sample())).await
+}
+
+#[tauri::command]
+async fn get_system_summary(state: State<'_, AppState>) -> Result<SystemSummary, CommandError> {
+    with_monitor(Arc::clone(&state.monitor), |monitor| {
+        Ok(monitor.sample_summary())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -458,6 +536,7 @@ fn show_main(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+        let _ = app.emit_to("main", "status-orbit:main-visibility", true);
     }
 }
 
@@ -837,10 +916,14 @@ pub fn run() {
             {
                 api.prevent_close();
                 let _ = window.hide();
+                let _ = window
+                    .app_handle()
+                    .emit_to("main", "status-orbit:main-visibility", false);
             }
         })
         .invoke_handler(tauri::generate_handler![
             get_system_snapshot,
+            get_system_summary,
             get_network_connections,
             get_startup_items,
             create_startup_management_lease,

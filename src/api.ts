@@ -39,6 +39,7 @@ import type {
   ProcessDetailRequest,
   NetworkConnectionsSnapshot,
   SystemSnapshot,
+  SystemSummary,
   StartupItemsSnapshot,
   StartupManagementExecutionRequest,
   StartupManagementLease,
@@ -71,6 +72,20 @@ export async function getSystemSnapshot(): Promise<SystemSnapshot> {
     return getMockSnapshot();
   }
   return invoke<SystemSnapshot>("get_system_snapshot");
+}
+
+export async function getSystemSummary(): Promise<SystemSummary> {
+  if (canUseDevelopmentMock()) {
+    const snapshot = getMockSnapshot();
+    return {
+      sampledAtMs: snapshot.sampledAtMs,
+      cpu: snapshot.cpu,
+      memory: snapshot.memory,
+      volumes: snapshot.disk.volumes,
+      sensors: snapshot.sensors,
+    };
+  }
+  return invoke<SystemSummary>("get_system_summary");
 }
 
 export async function getNetworkConnections(): Promise<NetworkConnectionsSnapshot> {

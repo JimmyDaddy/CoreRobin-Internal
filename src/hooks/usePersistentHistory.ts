@@ -15,6 +15,7 @@ export function usePersistentHistory(
   liveHistory: readonly HistoryPoint[],
   enabled: boolean,
   retentionDays: HistoryRetentionDays,
+  active = true,
 ) {
   const [storedPoints, setStoredPoints] = useState<HistoryPoint[]>(
     loadPersistentHistory,
@@ -56,11 +57,11 @@ export function usePersistentHistory(
   }, [retentionDays]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !active) return;
     flushLatest();
     const interval = window.setInterval(flushLatest, HISTORY_FLUSH_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [enabled, flushLatest]);
+  }, [active, enabled, flushLatest]);
 
   useEffect(() => {
     const flushBeforeExit = () => {

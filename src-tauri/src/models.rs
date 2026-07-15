@@ -22,6 +22,16 @@ pub struct SystemSnapshot {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SystemSummary {
+    pub sampled_at_ms: u64,
+    pub cpu: CpuSnapshot,
+    pub memory: MemorySnapshot,
+    pub volumes: Vec<VolumeSnapshot>,
+    pub sensors: SensorsSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SensorsSnapshot {
     pub sampled_at_ms: u64,
     pub temperature: TemperatureSnapshot,

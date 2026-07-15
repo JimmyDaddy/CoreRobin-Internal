@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getSystemSnapshot } from "../api";
-import type { CommandError, HistoryPoint, SystemSnapshot } from "../types";
+import { getSystemSnapshot, getSystemSummary } from "../api";
+import type {
+  CommandError,
+  HistoryPoint,
+  SystemSnapshot,
+  SystemSummary,
+} from "../types";
 import {
   assertSupportedSnapshotSchema,
   memoryUsagePercent,
@@ -10,17 +15,27 @@ import {
 
 const MAX_HISTORY_POINTS = 300;
 const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
+export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 
-export function useSystemMonitor(refreshIntervalMs = 1_000) {
+export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
+  const [summary, setSummary] = useState<SystemSummary | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [error, setError] = useState<CommandError | null>(null);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastSequence = useRef(0);
   const requestInFlight = useRef<Promise<SystemSnapshot | null> | null>(null);
+  const summaryRequestInFlight = useRef<Promise<SystemSummary | null> | null>(null);
+  const visibleRef = useRef(visible);
+  const pausedRef = useRef(paused);
+  visibleRef.current = visible;
+  pausedRef.current = paused;
 
   const refreshNow = useCallback(() => {
+    if (pausedRef.current || !visibleRef.current) {
+      return Promise.resolve(null);
+    }
     if (requestInFlight.current) {
       return requestInFlight.current;
     }
@@ -29,7 +44,11 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
       try {
         const nextSnapshot = await getSystemSnapshot();
         assertSupportedSnapshotSchema(nextSnapshot);
-        if (nextSnapshot.sequence <= lastSequence.current) {
+        if (
+          pausedRef.current ||
+          !visibleRef.current ||
+          nextSnapshot.sequence <= lastSequence.current
+        ) {
           return null;
         }
 
@@ -73,6 +92,39 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
     return request;
   }, []);
 
+  const refreshSummaryNow = useCallback(() => {
+    if (pausedRef.current || visibleRef.current) {
+      return Promise.resolve(null);
+    }
+    if (summaryRequestInFlight.current) {
+      return summaryRequestInFlight.current;
+    }
+
+    const request = (async () => {
+      try {
+        const nextSummary = await getSystemSummary();
+        if (pausedRef.current || visibleRef.current) return null;
+        setSummary(nextSummary);
+        setError(null);
+        return nextSummary;
+      } catch (caughtError) {
+        if (!pausedRef.current && !visibleRef.current) {
+          setError(normalizeCommandError(caughtError));
+        }
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    })();
+    summaryRequestInFlight.current = request;
+    void request.finally(() => {
+      if (summaryRequestInFlight.current === request) {
+        summaryRequestInFlight.current = null;
+      }
+    });
+    return request;
+  }, []);
+
   useEffect(() => {
     if (paused) {
       return;
@@ -81,9 +133,13 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
-      await refreshNow();
+      if (visible) await refreshNow();
+      else await refreshSummaryNow();
       if (!cancelled) {
-        timeout = setTimeout(tick, refreshIntervalMs);
+        timeout = setTimeout(
+          tick,
+          visible ? refreshIntervalMs : HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS,
+        );
       }
     };
     void tick();
@@ -94,15 +150,17 @@ export function useSystemMonitor(refreshIntervalMs = 1_000) {
         clearTimeout(timeout);
       }
     };
-  }, [paused, refreshIntervalMs, refreshNow]);
+  }, [paused, refreshIntervalMs, refreshNow, refreshSummaryNow, visible]);
 
   return {
     snapshot,
+    summary,
     history,
     error,
     paused,
     setPaused,
     loading,
     refreshNow,
+    refreshSummaryNow,
   };
 }

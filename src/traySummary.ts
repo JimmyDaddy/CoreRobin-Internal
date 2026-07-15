@@ -3,7 +3,7 @@ import {
   type DailyStatusReason,
 } from "./dailyExperience";
 import type { SmartDiagnosisResult } from "./diagnosis";
-import type { SystemSnapshot } from "./types";
+import type { SystemSnapshot, SystemSummary } from "./types";
 import { memoryUsagePercent } from "./utils";
 
 export type TrayHealth = "observing" | "normal" | "attention" | "urgent";
@@ -55,5 +55,37 @@ export function buildTraySummary(
     temperatureCelsius: temperature,
     batteryPercent: battery.chargePercent,
     batteryState: battery.state,
+  };
+}
+
+export function buildLightTraySummary(
+  summary: SystemSummary,
+  paused: boolean,
+  previous: TraySummary | null,
+): TraySummary {
+  const memoryPercent = memoryUsagePercent(
+    summary.memory.usedBytes,
+    summary.memory.totalBytes,
+  );
+  const volume =
+    summary.volumes.find(({ mountPoint }) => mountPoint === "/") ??
+    summary.volumes[0] ??
+    null;
+  const storageUsedPercent = volume && volume.totalBytes > 0
+    ? ((volume.totalBytes - volume.availableBytes) / volume.totalBytes) * 100
+    : null;
+
+  return {
+    sampledAtMs: summary.sampledAtMs,
+    paused,
+    health: previous?.health ?? "observing",
+    reason: previous?.reason ?? "none",
+    cpuPercent: summary.cpu.usagePercent,
+    memoryPercent,
+    storageUsedPercent,
+    storageAvailableBytes: volume?.availableBytes ?? null,
+    temperatureCelsius: summary.sensors.temperature.celsius,
+    batteryPercent: summary.sensors.battery.chargePercent,
+    batteryState: summary.sensors.battery.state,
   };
 }

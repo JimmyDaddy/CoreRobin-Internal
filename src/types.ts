@@ -16,6 +16,14 @@ export interface SystemSnapshot {
   capabilities: Capabilities;
 }
 
+export interface SystemSummary {
+  sampledAtMs: number;
+  cpu: CpuSnapshot;
+  memory: MemorySnapshot;
+  volumes: VolumeSnapshot[];
+  sensors: SensorsSnapshot;
+}
+
 export type BatteryState =
   | "charging"
   | "discharging"

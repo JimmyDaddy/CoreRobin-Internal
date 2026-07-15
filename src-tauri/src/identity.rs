@@ -1,4 +1,51 @@
+use std::collections::HashMap;
+
 use crate::error::CommandError;
+
+#[derive(Clone, Debug)]
+struct CachedBirthToken {
+    start_time: u64,
+    token: Option<String>,
+}
+
+#[derive(Default)]
+pub struct BirthTokenCache {
+    entries: HashMap<u32, CachedBirthToken>,
+}
+
+impl BirthTokenCache {
+    pub fn retain_live(&mut self, live: &HashMap<u32, u64>) {
+        self.entries.retain(|pid, cached| {
+            live.get(pid)
+                .is_some_and(|start_time| *start_time == cached.start_time)
+        });
+    }
+
+    pub fn resolve(&mut self, pid: u32, start_time: u64) -> Option<String> {
+        self.resolve_with(pid, start_time, read_birth_token)
+    }
+
+    fn resolve_with<F>(&mut self, pid: u32, start_time: u64, read: F) -> Option<String>
+    where
+        F: FnOnce(u32) -> Result<String, CommandError>,
+    {
+        if let Some(cached) = self.entries.get(&pid)
+            && cached.start_time == start_time
+        {
+            return cached.token.clone();
+        }
+
+        let token = read(pid).ok();
+        self.entries.insert(
+            pid,
+            CachedBirthToken {
+                start_time,
+                token: token.clone(),
+            },
+        );
+        token
+    }
+}
 
 pub fn read_birth_token(pid: u32) -> Result<String, CommandError> {
     #[cfg(target_os = "macos")]
@@ -152,7 +199,10 @@ pub(crate) fn windows_birth_token_from_handle(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_linux_start_ticks, verify_birth_token};
+    use std::collections::HashMap;
+
+    use super::{BirthTokenCache, parse_linux_start_ticks, verify_birth_token};
+    use crate::error::CommandError;
 
     #[test]
     fn parses_linux_start_ticks_when_command_contains_spaces() {
@@ -177,5 +227,73 @@ mod tests {
             verify_birth_token("expected", "expected".to_owned()).unwrap(),
             "expected"
         );
+    }
+
+    #[test]
+    fn reuses_birth_tokens_for_the_same_process_identity() {
+        let mut cache = BirthTokenCache::default();
+        let mut reads = 0;
+
+        let first = cache.resolve_with(42, 100, |_| {
+            reads += 1;
+            Ok("token-a".to_owned())
+        });
+        let second = cache.resolve_with(42, 100, |_| {
+            reads += 1;
+            Ok("token-b".to_owned())
+        });
+
+        assert_eq!(first.as_deref(), Some("token-a"));
+        assert_eq!(second.as_deref(), Some("token-a"));
+        assert_eq!(reads, 1);
+    }
+
+    #[test]
+    fn refreshes_birth_tokens_when_a_pid_is_reused() {
+        let mut cache = BirthTokenCache::default();
+        let first = cache.resolve_with(42, 100, |_| Ok("token-a".to_owned()));
+        let second = cache.resolve_with(42, 200, |_| Ok("token-b".to_owned()));
+
+        assert_eq!(first.as_deref(), Some("token-a"));
+        assert_eq!(second.as_deref(), Some("token-b"));
+    }
+
+    #[test]
+    fn caches_unavailable_tokens_until_the_process_identity_changes() {
+        let mut cache = BirthTokenCache::default();
+        let mut reads = 0;
+        let unavailable = || CommandError::new("identity_unavailable", "unavailable");
+
+        assert_eq!(
+            cache.resolve_with(42, 100, |_| {
+                reads += 1;
+                Err(unavailable())
+            }),
+            None
+        );
+        assert_eq!(
+            cache.resolve_with(42, 100, |_| {
+                reads += 1;
+                Ok("unexpected".to_owned())
+            }),
+            None
+        );
+        assert_eq!(reads, 1);
+    }
+
+    #[test]
+    fn prunes_processes_that_have_disappeared() {
+        let mut cache = BirthTokenCache::default();
+        cache.resolve_with(42, 100, |_| Ok("token-a".to_owned()));
+        cache.resolve_with(43, 100, |_| Ok("token-b".to_owned()));
+
+        cache.retain_live(&HashMap::from([(43, 100)]));
+
+        let mut reads = 0;
+        cache.resolve_with(42, 100, |_| {
+            reads += 1;
+            Ok("token-c".to_owned())
+        });
+        assert_eq!(reads, 1);
     }
 }

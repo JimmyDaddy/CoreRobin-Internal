@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getMockSnapshot } from "./mockData";
 import { analyzeSystemHealth } from "./diagnosis";
-import { buildTraySummary } from "./traySummary";
+import { buildLightTraySummary, buildTraySummary } from "./traySummary";
 
 describe("buildTraySummary", () => {
   it("creates a compact snapshot from system data", () => {
@@ -50,5 +50,28 @@ describe("buildTraySummary", () => {
     expect(diagnosis.status).toBe("observing");
     expect(summary.health).toBe("observing");
     expect(summary.reason).toBe("none");
+  });
+
+  it("refreshes hidden tray metrics without changing the last full diagnosis", () => {
+    const snapshot = getMockSnapshot();
+    const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
+    const previous = buildTraySummary(snapshot, false, diagnosis);
+    const light = buildLightTraySummary(
+      {
+        sampledAtMs: snapshot.sampledAtMs + 5_000,
+        cpu: { ...snapshot.cpu, usagePercent: 17 },
+        memory: { ...snapshot.memory, usedBytes: snapshot.memory.totalBytes / 2 },
+        volumes: snapshot.disk.volumes,
+        sensors: snapshot.sensors,
+      },
+      false,
+      previous,
+    );
+
+    expect(light.sampledAtMs).toBe(snapshot.sampledAtMs + 5_000);
+    expect(light.cpuPercent).toBe(17);
+    expect(light.memoryPercent).toBe(50);
+    expect(light.health).toBe(previous.health);
+    expect(light.reason).toBe(previous.reason);
   });
 });

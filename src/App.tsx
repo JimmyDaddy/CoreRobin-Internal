@@ -58,6 +58,7 @@ import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useCleanupScan } from "./hooks/useCleanupScan";
 import { useDesktopNotifications } from "./hooks/useDesktopNotifications";
 import { usePersistentHistory } from "./hooks/usePersistentHistory";
+import { useMainVisibility } from "./hooks/useMainVisibility";
 import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
@@ -78,7 +79,11 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "./settings";
-import { buildTraySummary } from "./traySummary";
+import {
+  buildLightTraySummary,
+  buildTraySummary,
+  type TraySummary,
+} from "./traySummary";
 import type {
   CommandError,
   ProcessAction,
@@ -151,15 +156,17 @@ function App() {
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
+  const mainVisible = useMainVisibility();
   const {
     snapshot,
+    summary: systemSummary,
     history,
     error,
     paused,
     setPaused,
     loading,
     refreshNow,
-  } = useSystemMonitor(settings.systemSampleIntervalMs);
+  } = useSystemMonitor(settings.systemSampleIntervalMs, mainVisible);
   const [activeView, setActiveView] = useState<ActiveView>("overview");
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
   const [dailyRecheck, setDailyRecheck] = useState<DailyRecheck | null>(null);
@@ -177,6 +184,7 @@ function App() {
     history,
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
+    mainVisible,
   );
   const resourceAlerts = useResourceAlerts(
     snapshot,
@@ -207,6 +215,7 @@ function App() {
       dailyIntent === "slow" || dailyIntent === "network" || dailyIntent === "checkup",
     paused,
     settings.connectionRefreshIntervalMs,
+    mainVisible,
   );
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<ProcessRow | null>(null);
@@ -230,6 +239,7 @@ function App() {
   const submittingActionRef = useRef(false);
   const startupCompletedRef = useRef(false);
   const modeTransitionTimeoutRef = useRef<number | null>(null);
+  const latestTraySummaryRef = useRef<TraySummary | null>(null);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
   const diagnosis = useMemo(
     () => snapshot
@@ -321,13 +331,25 @@ function App() {
   }, [refreshNow, setPaused]);
 
   useEffect(() => {
-    if (!isDesktopRuntime() || !snapshot || !diagnosis) return;
-    const summary = buildTraySummary(snapshot, paused, diagnosis);
+    if (!isDesktopRuntime()) return;
+    const summary = mainVisible
+      ? snapshot && diagnosis
+        ? buildTraySummary(snapshot, paused, diagnosis)
+        : null
+      : systemSummary
+        ? buildLightTraySummary(
+            systemSummary,
+            paused,
+            latestTraySummaryRef.current,
+          )
+        : null;
+    if (!summary) return;
+    latestTraySummaryRef.current = summary;
     void Promise.all([
       emitTo("tray", "status-orbit:tray-summary", summary),
       emitTo("companion", "status-orbit:tray-summary", summary),
     ]);
-  }, [diagnosis, paused, snapshot]);
+  }, [diagnosis, mainVisible, paused, snapshot, systemSummary]);
 
   const updateProcessPreferences = useCallback(
     (update: Partial<Omit<ProcessExplorerPreferences, "version">>) => {
