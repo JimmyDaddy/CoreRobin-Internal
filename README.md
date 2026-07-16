@@ -6,20 +6,22 @@ StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、�
 
 项目使用 Tauri 2、React、TypeScript 和 Rust 构建。
 
+应用源码与构建流程保存在当前私有仓库；官网、公开文档、Issue 和可下载 Release 统一由独立的 [`corerobin-monitor`](https://github.com/JimmyDaddy/corerobin-monitor) 公开仓库承载。两个仓库保持同级独立，不使用 Git submodule。
+
 界面支持简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어和Русский，可在右上角直接切换。
 
-- [产品网站](https://jimmydaddy.github.io/StatusOrbit/)
-- [下载最新版本](https://github.com/JimmyDaddy/StatusOrbit/releases/latest)
+- [产品网站](https://monitor-app.corerobin.com/)
+- [下载最新版本](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest)
 - [中文使用指南](docs/user-guide.zh-CN.md)
 - [English user guide](docs/user-guide.md)
 
 ## 下载与安装
 
-前往 [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest) 下载适合当前系统的安装包。
+前往 [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest) 下载适合当前系统的安装包。
 
 - macOS 已完成真实设备验证；当前发布构建未配置 Developer ID 签名或 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
 - Windows 与 Linux 安装包由对应系统的 GitHub Actions 构建，目前作为未配置平台发布签名的早期预览版本提供。
-- Release 同时提供 SHA-256 校验表和 SPDX SBOM，并为校验表中的安装包生成 GitHub artifact provenance；这些来源证据不能替代尚未配置的平台签名。
+- Release 同时提供 SHA-256 校验表、SPDX SBOM 和校验表的 Sigstore 签名包；这些来源完整性记录不能替代尚未配置的平台签名。
 - `0.0.2` 增加稳定事件生命周期、跨窗口后台状态、登录时启动和 8 种新界面语言。遇到问题时，请在仓库的 Issues 中附上系统版本和复现步骤。
 
 ## 功能
@@ -157,7 +159,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D w
 
 GitHub Actions 会在 pull request 和 `main` 分支推送时运行前端检查，并在 Linux、macOS 和 Windows 上编译 Rust/Tauri 目标；Linux 额外运行 Rust 测试、格式检查和 Clippy。
 
-Release workflow 的 verify/build job 只有只读仓库权限，构建结果先进入 workflow artifact；独立 provenance job 生成来源证明，只有绑定受保护 `release` environment 的 publish job 才有仓库写权限。tag 必须使用精确的 `vMAJOR.MINOR.PATCH`、与三处版本一致，并指向受信 `main` 历史中的 commit。平台签名和公证仍待后续单独决策，当前流程不会假装已经具备这项保证。
+Release workflow 的 verify/build job 只有只读仓库权限，构建结果先进入 workflow artifact；独立 sign job 通过 GitHub OIDC 与 Sigstore 为 `SHA256SUMS` 生成可公开验证的签名包。只有绑定受保护 `release` environment 的 publish job 会读取细粒度 `PUBLIC_RELEASE_TOKEN`，并把安装包和验证材料发布到公开仓库。tag 必须使用精确的 `vMAJOR.MINOR.PATCH`、与三处版本一致，并指向受信 `main` 历史中的 commit。平台签名和公证仍待后续单独决策，当前流程不会假装已经具备这项保证。完整边界和配置见 [`docs/release-distribution.md`](docs/release-distribution.md)。
 
 ## 目录
 
@@ -173,7 +175,7 @@ Release workflow 的 verify/build job 只有只读仓库权限，构建结果先
 - `src-tauri/src/identity.rs`：跨平台进程启动标识读取
 - `src-tauri/src/models.rs`：前后端数据契约
 - `src-tauri/src/health_state.rs`：版本化健康状态注册表与跨窗口分发
-- `site/`：产品网站与网页版中英文使用指南
+- `site/`：产品网站的构建源；公开发布的官网以 `corerobin-monitor` 仓库为准
 - `docs/user-guide.zh-CN.md`、`docs/user-guide.md`：仓库内中英文用户指南
 - `scripts/build-site.mjs`：静态网站构建、品牌资产复制与本地链接校验
 - `scripts/verify-release-source.mjs`：发布 tag、版本与受信分支祖先关系验证
