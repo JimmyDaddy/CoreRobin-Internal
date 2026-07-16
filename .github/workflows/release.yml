@@ -173,7 +173,7 @@ jobs:
       contents: read
     steps:
       - name: Download installers
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: statusorbit-*
           path: release-artifacts
@@ -216,7 +216,7 @@ jobs:
       attestations: write
     steps:
       - name: Download release-ready artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-ready-${{ github.sha }}
           path: release-artifacts
@@ -249,7 +249,7 @@ jobs:
         Windows 与 Linux 安装包目前作为早期预览版本提供。当前安装包未配置平台发布签名；macOS 安装包尚未经过 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
     steps:
       - name: Download release-ready artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-ready-${{ github.sha }}
           path: release-artifacts
