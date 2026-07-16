@@ -189,7 +189,7 @@ export async function getCleanupScanAccess(): Promise<CleanupScanAccess> {
         fullDiskAccess: "not_granted",
         fullDiskAccessRecommended: true,
         applicationBundleAvailable: demo === "cleanup-access",
-        applicationBundlePath: demo === "cleanup-access" ? "/Applications/StatusOrbit.app" : null,
+        applicationBundlePath: demo === "cleanup-access" ? "/Applications/CoreRobin.app" : null,
       };
     }
     return {

@@ -1,7 +1,7 @@
 {
   "local": "ローカルネットワーク",
   "title": "ライブインターフェースとセッショントラフィック",
-  "description": "測定値は実際のサンプリング間隔を使用します。合計はStatusOrbitが起動したときに開始されます。",
+  "description": "測定値は実際のサンプリング間隔を使用します。合計はCoreRobinが起動したときに開始されます。",
   "connectedInterfaces": "{{connected}} / {{total}} インターフェースが接続されています",
   "summary": "ネットワークの概要",
   "receiveNow": "現在受信中",

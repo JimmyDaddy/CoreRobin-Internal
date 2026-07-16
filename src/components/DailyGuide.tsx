@@ -49,8 +49,13 @@ import type {
   SystemSnapshot,
   SystemSettingsDestination,
 } from "../types";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import { formatBytes, formatPercent, formatRate } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
 import { StartupExplorer } from "./StartupExplorer";
 
@@ -81,6 +86,8 @@ interface DailyGuideProps {
   onRefreshStartup: () => void | Promise<void>;
   onRequestClose: (identity: string, name: string) => void;
   onOpenSystemSettings: (destination: SystemSettingsDestination) => void;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
 
 const GUIDE_ICONS = {
@@ -411,6 +418,8 @@ function StartupGuide(props: DailyGuideProps) {
         applications={props.diagnosis.applications}
         totalMemoryBytes={props.snapshot.memory.totalBytes}
         onRefresh={props.onRefreshStartup}
+        onUserActionStart={props.onUserActionStart}
+        onUserActionComplete={props.onUserActionComplete}
       />
     </section>
   );
@@ -453,6 +462,8 @@ function HeatGuide({ diagnosis, snapshot, preparingAction, onOpenApplications, o
           <div className="daily-wellbeing-evidence">
             <span><small>{t("wellbeing:temperature.label")}</small><strong>{snapshot.sensors.temperature.celsius === null ? t("common:unknown") : `${snapshot.sensors.temperature.celsius.toFixed(0)} °C`}</strong></span>
             <span><small>{t("wellbeing:battery.label")}</small><strong>{!snapshot.sensors.battery.present || snapshot.sensors.battery.chargePercent === null ? t("wellbeing:battery.notPresent") : `${snapshot.sensors.battery.chargePercent.toFixed(0)}%`}</strong></span>
+            <span><small>{t("wellbeing:battery.healthLabel")}</small><strong>{snapshot.sensors.battery.healthPercent === null ? t("common:unavailable") : formatPercent(snapshot.sensors.battery.healthPercent)}</strong></span>
+            <span><small>{t("wellbeing:battery.cycleCountLabel")}</small><strong>{snapshot.sensors.battery.cycleCount === null ? t("common:unavailable") : snapshot.sensors.battery.cycleCount.toLocaleString()}</strong></span>
             <span><small>{t("wellbeing:sleep.label")}</small><strong>{!sleepAvailable ? t("wellbeing:sleep.unavailableValue") : sleep ? t("wellbeing:sleep.blockedValue", { count: 1 }) : t("wellbeing:sleep.clearValue")}</strong></span>
           </div>
         </details>
@@ -902,6 +913,18 @@ function recheckPresentation(
           : `${snapshot.sensors.battery.chargePercent.toFixed(0)}%`,
       },
       {
+        label: t("wellbeing:battery.healthLabel"),
+        value: snapshot.sensors.battery.healthPercent === null
+          ? t("common:unavailable")
+          : formatPercent(snapshot.sensors.battery.healthPercent),
+      },
+      {
+        label: t("wellbeing:battery.cycleCountLabel"),
+        value: snapshot.sensors.battery.cycleCount === null
+          ? t("common:unavailable")
+          : snapshot.sensors.battery.cycleCount.toLocaleString(),
+      },
+      {
         label: t("wellbeing:sleep.label"),
         value: !sleepAvailable
           ? t("wellbeing:sleep.unavailableValue")
@@ -919,11 +942,7 @@ function RecheckLoadingCard({ intent }: { intent: DailyIntent }) {
     <div className="daily-recheck daily-recheck--loading" role="status" aria-live="polite">
       <i className="daily-recheck__beam" aria-hidden="true" />
       <div className="daily-recheck__visual" aria-hidden="true">
-        <i className="daily-recheck__satellite daily-recheck__satellite--1" />
-        <i className="daily-recheck__satellite daily-recheck__satellite--2" />
-        <i className="daily-recheck__satellite daily-recheck__satellite--3" />
-        <i className="daily-recheck__satellite daily-recheck__satellite--4" />
-        <span><RefreshCw size={24} /></span>
+        <AnimatedRobin active interactive={false} mood="observing" size={112} />
       </div>
       <div className="daily-recheck__content">
         <small>{t("daily:recheck.loadingKicker")}</small>

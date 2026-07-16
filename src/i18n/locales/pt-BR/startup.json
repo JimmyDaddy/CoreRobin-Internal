@@ -13,7 +13,7 @@
   },
   "scanning": "Verificando…",
   "loadingTitle": "Lendo configurações de inicialização",
-  "loadingDescription": "O StatusOrbit apenas lê a configuração de inicialização pública e nunca executa os comandos dentro dela.",
+  "loadingDescription": "O CoreRobin apenas lê a configuração de inicialização pública e nunca executa os comandos dentro dela.",
   "summary": "Resumo da inicialização",
   "reviewCount": "Vale a pena verificar",
   "reviewHint": "Itens de terceiros que são iniciados no login",
@@ -37,7 +37,7 @@
   "disabled": "Desativado",
   "technicalDetails": "Mostrar detalhes técnicos",
   "managementBoundary": "Apenas arquivos de inicialização de terceiros reversíveis podem ser desativados. Itens do sistema e fontes não suportadas permanecem somente leitura.",
-  "readOnlyBoundary": "Esta plataforma não expõe nenhum arquivo de inicialização do StatusOrbit que possa ser restaurado com segurança, portanto, o inventário permanece somente leitura.",
+  "readOnlyBoundary": "Esta plataforma não expõe nenhum arquivo de inicialização do CoreRobin que possa ser restaurado com segurança, portanto, o inventário permanece somente leitura.",
   "unreadable": "{{count}} Não foi possível ler as localizações de inicialização devido a permissões",
   "actions": {
     "disable": "Desativar no login",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "Desativar a inicialização automática para {{name}}?",
-      "description": "O StatusOrbit move este arquivo de inicialização do usuário para seu próprio armazenamento recuperável e não o exclui.",
+      "description": "O CoreRobin move este arquivo de inicialização do usuário para seu próprio armazenamento recuperável e não o exclui.",
       "whenDescription": "Isso entra em vigor na próxima vez que você fizer login. Restaurar também entrará em vigor a partir da próxima vez que você fizer login.",
       "confirm": "Confirmar desativar no login"
     },
     "enable": {
       "title": "Restaurar inicialização automática para {{name}}?",
-      "description": "O StatusOrbit move a configuração salva de volta para o local original.",
+      "description": "O CoreRobin move a configuração salva de volta para o local original.",
       "whenDescription": "A partir da próxima vez que você fizer login, o sistema poderá iniciar este item automaticamente novamente.",
       "confirm": "Confirmar restaurar no login"
     },
@@ -89,10 +89,10 @@
     "preparing": "Verificando o item de inicialização e o estado do arquivo…",
     "applying": "Atualizando com segurança…",
     "errors": {
-      "startup_item_protected": "Este não é um item de inicialização de terceiros gerenciado com segurança pelo StatusOrbit, portanto, nada foi alterado.",
+      "startup_item_protected": "Este não é um item de inicialização de terceiros gerenciado com segurança pelo CoreRobin, portanto, nada foi alterado.",
       "startup_item_unavailable": "Este item de inicialização foi alterado ou removido. Atualize a lista e tente novamente.",
-      "startup_state_changed": "O arquivo de inicialização foi alterado após a confirmação, portanto, o StatusOrbit não fez alterações.",
-      "startup_destination_conflict": "Outra configuração apareceu no destino. O StatusOrbit recusou sobrescrevê-la.",
+      "startup_state_changed": "O arquivo de inicialização foi alterado após a confirmação, portanto, o CoreRobin não fez alterações.",
+      "startup_destination_conflict": "Outra configuração apareceu no destino. O CoreRobin recusou sobrescrevê-la.",
       "startup_confirmation_unavailable": "Esta confirmação não está mais disponível. Cancele e abra novamente.",
       "startup_confirmation_expired": "A confirmação expirou. Revise o item novamente antes de continuar.",
       "startup_management_failed": "O sistema não conseguiu mover o arquivo de inicialização com segurança. O estado original foi preservado."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "Serviço do sistema ou dispositivo",
-      "description": "Não trate como um aplicativo de inicialização comum. O StatusOrbit mantém-no em modo somente leitura."
+      "description": "Não trate como um aplicativo de inicialização comum. O CoreRobin mantém-no em modo somente leitura."
     },
     "disabled": {
       "title": "Atualmente desativado",

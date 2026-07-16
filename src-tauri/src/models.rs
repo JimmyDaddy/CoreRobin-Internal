@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 6;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 7;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,6 +55,8 @@ pub struct TemperatureSnapshot {
 pub struct BatterySnapshot {
     pub present: bool,
     pub charge_percent: Option<f32>,
+    pub health_percent: Option<f32>,
+    pub cycle_count: Option<u64>,
     pub state: BatteryState,
     pub time_remaining_minutes: Option<u64>,
     pub power_source: PowerSource,

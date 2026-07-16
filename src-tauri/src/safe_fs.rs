@@ -705,7 +705,7 @@ impl BoundDeleteTarget {
         let mut item_count = 0_usize;
         let mut seen_files = HashSet::new();
         let mut fingerprint = Sha256::new();
-        fingerprint.update(b"status-orbit-cleanup-tree-v1");
+        fingerprint.update(b"core-robin-cleanup-tree-v1");
         hash_identity(&mut fingerprint, self.identity);
         hash_modified_at(&mut fingerprint, root_modified_at);
 
@@ -895,7 +895,7 @@ fn inspect_bound_file(file: &File, expected: FileIdentity) -> Result<TreeInspect
         return Err("Cleanup file identity changed during inspection.".to_owned());
     }
     let mut fingerprint = Sha256::new();
-    fingerprint.update(b"status-orbit-cleanup-tree-v1");
+    fingerprint.update(b"core-robin-cleanup-tree-v1");
     fingerprint.update([b'f']);
     hash_identity(&mut fingerprint, expected);
     fingerprint.update(metadata.len().to_le_bytes());
@@ -1101,7 +1101,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_nanos();
-        std::env::temp_dir().join(format!("status-orbit-safe-fs-{suffix}-{nonce}"))
+        std::env::temp_dir().join(format!("core-robin-safe-fs-{suffix}-{nonce}"))
     }
 
     #[test]

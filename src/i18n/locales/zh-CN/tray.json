@@ -2,7 +2,7 @@
   "localMonitor": "本机资源监控",
   "available": "可用空间",
   "open": "打开概览",
-  "companion": "Orbit 伙伴",
+  "companion": "Robin 伙伴",
   "cleanup": "空间清理",
   "quit": "退出应用",
   "updatedAt": "{{time}} 更新",
@@ -32,11 +32,11 @@
     },
     "attention": {
       "title": "有一项资源值得留意",
-      "description": "打开 StatusOrbit 可以查看原因和对应建议。"
+      "description": "打开 CoreRobin 可以查看原因和对应建议。"
     },
     "urgent": {
       "title": "有一项资源压力较高",
-      "description": "建议打开 StatusOrbit 查看证据后再处理。"
+      "description": "建议打开 CoreRobin 查看证据后再处理。"
     }
   },
   "reason": "{{resource}}需要关注",

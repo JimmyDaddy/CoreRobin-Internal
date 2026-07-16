@@ -13,7 +13,7 @@
   "access": {
     "kicker": "スキャンを開始する前に",
     "title": "システム全体のディスクへのアクセスを許可",
-    "description": "macOSは、メール、メッセージなどのアプリケーションデータや関連領域を保護しています。フルディスクアクセスを使用すると、スペースマップが可能な限り詳細になります。StatusOrbitは、ファイル名、サイズ、日付などのメタデータを読み取るだけです。",
+    "description": "macOSは、メール、メッセージなどのアプリケーションデータや関連領域を保護しています。フルディスクアクセスを使用すると、スペースマップが可能な限り詳細になります。CoreRobinは、ファイル名、サイズ、日付などのメタデータを読み取るだけです。",
     "checking": "アクセスを確認中…",
     "checkingReturn": "アクセスを確認しています…",
     "openSettings": "フルディスクアクセスを開く",
@@ -21,15 +21,15 @@
     "revealApp": "Finderでアプリケーションを表示",
     "checkAgain": "アクセスが有効になっています。再度確認してください",
     "continueLimited": "利用可能な領域をスキャンします",
-    "waiting": "システム設定が開いています。StatusOrbitが見当たらない場合は、リストの下にある＋をクリックし、StatusOrbit.appを選択してください。有効にし、自動的にスキャンを開始できます。",
+    "waiting": "システム設定が開いています。CoreRobinが見当たらない場合は、リストの下にある＋をクリックし、CoreRobin.appを選択してください。有効にし、自動的にスキャンを開始できます。",
     "unknown": "アクセスを確認できませんでした。引き続きシステム設定を開いたり、制限付きのスキャンを実行したりできます。",
-    "bundleRequired": "まずStatusOrbit.appを起動してください",
+    "bundleRequired": "まずCoreRobin.appを起動してください",
     "bundleMissingTitle": "このプロセスはアクセスリストに追加できません",
-    "bundleMissingDescription": "macOSはこの開発プロセスを許可していません。StatusOrbit.appをインストールし、アプリケーションから再度開いてください。制限付きのスキャンも可能です。",
-    "privacy": "macOSがこの権限を制御しており、いつでも無効にできます。StatusOrbitはスキャン中にファイルの内容を読み取ったり、ファイルを変更したりしません。",
+    "bundleMissingDescription": "macOSはこの開発プロセスを許可していません。CoreRobin.appをインストールし、アプリケーションから再度開いてください。制限付きのスキャンも可能です。",
+    "privacy": "macOSがこの権限を制御しており、いつでも無効にできます。CoreRobinはスキャン中にファイルの内容を読み取ったり、ファイルを変更したりしません。",
     "steps": {
       "open": "システム設定を開きます",
-      "add": "＋をクリックし、StatusOrbit.appを選択します",
+      "add": "＋をクリックし、CoreRobin.appを選択します",
       "return": "有効にし、再度開始します"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "結果を更新",
     "cached": {
       "title": "前のスキャン結果の復元",
-      "description": "別のスキャンを待たずに、引き続き探索できます。StatusOrbitは、あなたがディレクトリを閲覧する際にのみ変更を確認します。"
+      "description": "別のスキャンを待たずに、引き続き探索できます。CoreRobinは、あなたがディレクトリを閲覧する際にのみ変更を確認します。"
     },
     "expired": {
       "title": "この結果は24時間以上経過しています",
-      "description": "StatusOrbitはマップを維持し、継続的な探索を可能にします。クリーンアップの選択を行う前に、更新してください。"
+      "description": "CoreRobinはマップを維持し、継続的な探索を可能にします。クリーンアップの選択を行う前に、更新してください。"
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "約 {{size}} 件削除済み",
     "cancelDelete": "削除操作を停止",
     "cancelling": "停止中…",
-    "cancelHint": "完了した削除は復元できません。StatusOrbit は現在のファイル操作が終了すると停止します。",
+    "cancelHint": "完了した削除は復元できません。CoreRobin は現在のファイル操作が終了すると停止します。",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit は、ホームディレクトリまたはゴミ箱フォルダ自体を削除しません。",
-      "cleanup_target_outside_home": "安全のため、StatusOrbit は、お客様の個人フォルダ内のコンテンツのみを処理します。",
-      "cleanup_cross_filesystem": "選択されたディレクトリが別のディスクまたはマウントポイントにあるため、StatusOrbitは再帰的な削除を拒否しました。",
-      "cleanup_target_changed": "確認後にファイルが変更されたため、StatusOrbitは何も削除しませんでした。キャンセルして再度確認してください。",
+      "protected_cleanup_path": "CoreRobin は、ホームディレクトリまたはゴミ箱フォルダ自体を削除しません。",
+      "cleanup_target_outside_home": "安全のため、CoreRobin は、お客様の個人フォルダ内のコンテンツのみを処理します。",
+      "cleanup_cross_filesystem": "選択されたディレクトリが別のディスクまたはマウントポイントにあるため、CoreRobinは再帰的な削除を拒否しました。",
+      "cleanup_target_changed": "確認後にファイルが変更されたため、CoreRobinは何も削除しませんでした。キャンセルして再度確認してください。",
       "cleanup_confirmation_unavailable": "この確認は利用できません。キャンセルして再度確認してください。",
       "cleanup_confirmation_expired": "この確認は期限切れです。現在のファイルを確認し直してください。",
       "cleanup_target_unavailable": "一部のコンテンツがなくなったり、アクセスできなくなったりしています。再スキャンして再度お試しください。",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "読み取り専用のアプリケーション一覧",
     "title": "しばらく使われていないアプリケーション",
-    "boundary": "macOSが確認した、少なくとも6ヶ月間開かれていないアプリケーションのみです。StatusOrbitはそれらを自動でアンインストールしません",
+    "boundary": "macOSが確認した、少なくとも6ヶ月間開かれていないアプリケーションのみです。CoreRobinはそれらを自動でアンインストールしません",
     "lastUsed": "最後に使用したアプリケーション {{date}} · 使用されていない期間 {{days}} 日",
     "none": "6ヶ月以上前に使われていないアプリケーションは見つかりませんでした。",
     "unavailable": "このプラットフォームでは、アプリケーションの最終使用日を正確に確認できません。",
-    "unknownExcluded": "{{count}} 他のアプリケーションの最終使用日が確認できないため、StatusOrbitはそれらを未使用と分類していません。"
+    "unknownExcluded": "{{count}} 他のアプリケーションの最終使用日が確認できないため、CoreRobinはそれらを未使用と分類していません。"
   },
   "reviewFirst": "一つずつ確認",
   "largestFiles": "システムディスク上の大きなファイル",
   "largeFileBoundary": "500MBを超えるファイルのみが表示されます。自動削除は推奨されません。",
   "noLargeFiles": "500MBを超えるファイルが、アクセス可能なシステムディスクの場所には見つかりませんでした。",
   "unreadable": "{{count}} の場所は保護されていたり、一時的に読み取り不可になっていたため、これらの場所は結果から除外されます。",
-  "fullDiskAccessHint": "macOSでは、システム設定 → プライバシー & セキュリティでStatusOrbitにフルディスクアクセスを許可してから、再度スキャンしてください。",
+  "fullDiskAccessHint": "macOSでは、システム設定 → プライバシー & セキュリティでCoreRobinにフルディスクアクセスを許可してから、再度スキャンしてください。",
   "safetyBoundary": "スキャンには時間や対象の制限がなく、シンボリックリンクも参照しません。ゴミ箱に追加され、パスが確認され、明示的に確認された項目のみが永久に削除され、復元はできません。"
 }

@@ -10,7 +10,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "status-orbit.cleanup-scan.v5";
+export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v5";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 

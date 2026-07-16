@@ -10,7 +10,7 @@ const { invokeMock, sharedHealthState } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   sharedHealthState: {
     current: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       revision: 7,
       sampledAtMs: 1_720_000_000_000,
       dataMode: "background",
@@ -27,6 +27,8 @@ const { invokeMock, sharedHealthState } = vi.hoisted(() => ({
       storageAvailableBytes: 76 * 1_024 ** 3,
       temperatureCelsius: 47,
       batteryPercent: 78,
+      batteryHealthPercent: 94,
+      batteryCycleCount: 173,
       batteryState: "discharging",
     },
   },
@@ -63,6 +65,9 @@ describe("tray panel", () => {
     expect(screen.getByText(`${updatedTime} 更新`)).toBeTruthy();
     expect(screen.getByText("后台采样")).toBeTruthy();
     expect(screen.getByText("正在使用电池")).toBeTruthy();
+    const batteryDetails = [...document.querySelectorAll(".tray-battery-detail")]
+      .map((element) => element.textContent);
+    expect(batteryDetails).toEqual(["健康度94%", "循环次数173"]);
   });
 
   it("exposes a tray-only application quit action", async () => {

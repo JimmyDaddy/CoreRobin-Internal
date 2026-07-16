@@ -5,7 +5,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const PERSISTENT_HISTORY_STORAGE_KEY = "status-orbit.resource-history.v1";
+export const PERSISTENT_HISTORY_STORAGE_KEY = "core-robin.resource-history.v1";
 export const PERSISTENT_HISTORY_BUCKET_MS = 5 * 60 * 1_000;
 export const HISTORY_RETENTION_OPTIONS = [1, 7, 30] as const;
 export const MAX_PERSISTENT_HISTORY_POINTS =

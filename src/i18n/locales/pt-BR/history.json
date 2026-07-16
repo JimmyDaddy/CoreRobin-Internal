@@ -42,7 +42,7 @@
     "happeningNow": "Em andamento",
     "resolved": "Resolvido",
     "emptyTitle": "Não há informações recentes",
-    "emptyDescription": "O StatusOrbit ignora pequenas variações e registra apenas condições que persistem por tempo suficiente para afetar o computador.",
+    "emptyDescription": "O CoreRobin ignora pequenas variações e registra apenas condições que persistem por tempo suficiente para afetar o computador.",
     "cpu": {
       "active": {
         "title": "O computador está com alta carga",
@@ -52,7 +52,7 @@
         "title": "O computador estava com alta carga e agora está normalizado",
         "description": "A alta carga durou por aproximadamente {{duration}}, atingiu cerca de {{value}}% e retornou ao normal."
       },
-      "guidance": "Se o computador ainda parecer lento, abra os aplicativos para identificar a causa. O StatusOrbit nunca fecha um aplicativo automaticamente."
+      "guidance": "Se o computador ainda parecer lento, abra os aplicativos para identificar a causa. O CoreRobin nunca fecha um aplicativo automaticamente."
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "A pressão na memória diminuiu",
         "description": "A memória permaneceu limitada por cerca de {{duration}}, mas a memória disponível e o uso do espaço de troca normalizaram."
       },
-      "guidance": "O uso elevado da memória é normal. O StatusOrbit registra essa situação apenas quando há baixa disponibilidade e uma atividade significativa no uso do espaço em disco."
+      "guidance": "O uso elevado da memória é normal. O CoreRobin registra essa situação apenas quando há baixa disponibilidade e uma atividade significativa no uso do espaço em disco."
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%, acima de {{threshold}}% por {{duration}}.",
     "recoveredDetail": "Retornou para {{value}}% após {{duration}}."
   },
+  "actions": {
+    "eyebrow": "Ações que você confirmou",
+    "title": "Ações e resultados",
+    "description": "Mantém as ações confirmadas e verifica o resultado quando possível.",
+    "count": "{{count}} recentes",
+    "saved": "{{count}} ações salvas",
+    "emptyTitle": "Nenhuma ação ainda",
+    "emptyDescription": "Os resultados aparecerão aqui depois que você fechar um aplicativo, limpar arquivos ou gerenciar um item de inicialização.",
+    "open": "Ver",
+    "clear": "Limpar histórico de ações",
+    "kind": {
+      "process_close": "Fechar aplicativo normalmente",
+      "process_restart": "Reiniciar aplicativo",
+      "process_force_quit": "Forçar encerramento do aplicativo",
+      "cleanup_delete": "Excluir arquivos permanentemente",
+      "startup_disable": "Desativar item de inicialização",
+      "startup_enable": "Restaurar item de inicialização"
+    },
+    "status": {
+      "running": "Em andamento",
+      "succeeded": "Concluída",
+      "partial": "Parcialmente concluída",
+      "failed": "Não concluída",
+      "cancelled": "Cancelada",
+      "interrupted": "Interrompida"
+    },
+    "verification": {
+      "pending": "Verificando o resultado",
+      "verified": "Estado do sistema verificado novamente",
+      "not_confirmed": "O estado final ainda não pôde ser confirmado"
+    },
+    "target": {
+      "application": "Nome do aplicativo não salvo",
+      "files": "Arquivos selecionados",
+      "startup": "Nome do item não salvo"
+    },
+    "cleanupResult": "{{count}} itens processados e {{size}} liberados",
+    "cleanupFailed": "{{count}} itens não concluídos"
+  },
   "privacyEyebrow": "Limites de dados",
   "privacyTitle": "Política de privacidade",
-  "privacyLocal": "O histórico permanece armazenado na área de armazenamento do StatusOrbit WebView deste dispositivo e nunca é carregado ou sincronizado.",
-  "privacyCollected": "Apenas as porcentagens de uso da CPU e memória, capturas de taxa de transferência de disco e rede, e eventos de pressão e recuperação são armazenados. Os nomes dos aplicativos são salvos somente após você permitir isso separadamente nas Configurações.",
+  "privacyLocal": "O histórico permanece armazenado na área de armazenamento do CoreRobin WebView deste dispositivo e nunca é carregado ou sincronizado.",
+  "privacyCollected": "O histórico armazena dados agregados de recursos, eventos de pressão e recuperação, além do tipo, resultado, quantidade e espaço liberado das ações confirmadas. Nomes de aplicativos ou itens de inicialização só são salvos com permissão separada.",
   "privacyExcluded": "Os comandos, usuários, caminhos e endereços de conexão locais ou remotos não são armazenados.",
   "privacyControl": "Desativar impede novas gravações; os registros existentes permanecem até expirarem ou serem apagados manualmente."
 }

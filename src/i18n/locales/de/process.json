@@ -56,7 +56,7 @@
     "launchCommand": "Startbefehl",
     "stableHandle": "Bestätigung erzeugt einen temporären, einmaligen Handle für das Betriebssystem; die Zielverfolgung erfolgt nicht mehr über PID.",
     "unavailableControl": "Sichere Prozesssteuerung ist auf dieser Plattform nicht verfügbar.",
-    "bestEffort": "macOS kann kein stabiles Signal-Handle für jeden Prozess bereitstellen. StatusOrbit überprüft vor dem Senden die Startidentität, aber die Zielverfolgung erfolgt weiterhin über PID.",
+    "bestEffort": "macOS kann kein stabiles Signal-Handle für jeden Prozess bereitstellen. CoreRobin überprüft vor dem Senden die Startidentität, aber die Zielverfolgung erfolgt weiterhin über PID.",
     "allowBestEffort": "Erlaube die Ausführung von Prozessen mit begrenzter Funktionalität.",
     "binding": "Verbindung…",
     "requestClose": "Beenden...",

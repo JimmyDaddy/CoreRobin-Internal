@@ -42,7 +42,7 @@
     "happeningNow": "Ist noch aktiv",
     "resolved": "Wurde behoben",
     "emptyTitle": "Keine relevanten Ereignisse zuletzt",
-    "emptyDescription": "StatusOrbit ignoriert kurzzeitige Schwankungen und protokolliert nur Bedingungen, die lange genug anhalten, um den Computer zu beeinflussen.",
+    "emptyDescription": "CoreRobin ignoriert kurzzeitige Schwankungen und protokolliert nur Bedingungen, die lange genug anhalten, um den Computer zu beeinflussen.",
     "cpu": {
       "active": {
         "title": "Der Computer arbeitet intensiv",
@@ -52,7 +52,7 @@
         "title": "Der Computer war intensiv ausgelastet und hat sich normalisiert",
         "description": "Die hohe Auslastung dauerte etwa {{duration}}, erreichte kurzzeitig {{value}}% und kehrte dann in den Normalbereich zurück."
       },
-      "guidance": "Wenn der Computer weiterhin langsam ist, öffnen Sie Anwendungen, um die größten Auswirkungen zu sehen. StatusOrbit schließt keine Apps automatisch."
+      "guidance": "Wenn der Computer weiterhin langsam ist, öffnen Sie Anwendungen, um die größten Auswirkungen zu sehen. CoreRobin schließt keine Apps automatisch."
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "Speicherbedarf ist gestiegen und hat sich wieder normalisiert",
         "description": "Der Speicher war für etwa {{duration}} eng, danach haben verfügbarer Speicher und Swap-Aktivität sich wieder normalisiert."
       },
-      "guidance": "Hohe Speicherauslastung ist normal. StatusOrbit protokolliert dies nur, wenn geringe Verfügbarkeit und aussagekräftige Swap-Aktivität zusammen auftreten."
+      "guidance": "Hohe Speicherauslastung ist normal. CoreRobin protokolliert dies nur, wenn geringe Verfügbarkeit und aussagekräftige Swap-Aktivität zusammen auftreten."
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%, über {{threshold}}% für {{duration}}.",
     "recoveredDetail": "Zurück zu {{value}}% nach {{duration}}."
   },
+  "actions": {
+    "eyebrow": "Von dir bestätigte Aktionen",
+    "title": "Aktionen und Ergebnisse",
+    "description": "Speichert bestätigte Aktionen und prüft ihr Ergebnis, wenn möglich.",
+    "count": "{{count}} zuletzt",
+    "saved": "{{count}} gespeicherte Aktionen",
+    "emptyTitle": "Noch keine Aktionen",
+    "emptyDescription": "Ergebnisse erscheinen hier, nachdem du eine App beendet, Dateien bereinigt oder ein Autostart-Element verwaltet hast.",
+    "open": "Anzeigen",
+    "clear": "Aktionsverlauf löschen",
+    "kind": {
+      "process_close": "App normal beenden",
+      "process_restart": "App neu starten",
+      "process_force_quit": "App sofort beenden",
+      "cleanup_delete": "Dateien dauerhaft löschen",
+      "startup_disable": "Autostart deaktivieren",
+      "startup_enable": "Autostart wiederherstellen"
+    },
+    "status": {
+      "running": "Wird ausgeführt",
+      "succeeded": "Abgeschlossen",
+      "partial": "Teilweise abgeschlossen",
+      "failed": "Nicht abgeschlossen",
+      "cancelled": "Abgebrochen",
+      "interrupted": "Unterbrochen"
+    },
+    "verification": {
+      "pending": "Ergebnis wird geprüft",
+      "verified": "Systemstatus erneut geprüft",
+      "not_confirmed": "Endstatus konnte noch nicht bestätigt werden"
+    },
+    "target": {
+      "application": "App-Name nicht gespeichert",
+      "files": "Ausgewählte Dateien",
+      "startup": "Name des Autostarts nicht gespeichert"
+    },
+    "cleanupResult": "{{count}} Elemente verarbeitet und {{size}} freigegeben",
+    "cleanupFailed": "{{count}} Elemente nicht abgeschlossen"
+  },
   "privacyEyebrow": "Datengrenzen",
   "privacyTitle": "Datenschutzrichtlinie",
-  "privacyLocal": "Die Historie bleibt im StatusOrbit WebView-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
-  "privacyCollected": "Nur CPU- und Speicherauslastung in Prozent, Festplatten- und Netzwerkdurchsatz sowie Ereignisse über Ressourcenverbrauch und -erholung werden gespeichert. App-Namen werden nur dann gespeichert, wenn Sie dies separat in den Einstellungen aktivieren.",
+  "privacyLocal": "Die Historie bleibt im CoreRobin WebView-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
+  "privacyCollected": "Gespeichert werden zusammengefasste Ressourcendaten, Belastungs- und Erholungsereignisse sowie Art, Ergebnis, Anzahl und freigegebener Speicher bestätigter Aktionen. App- oder Autostart-Namen werden nur mit separater Erlaubnis gespeichert.",
   "privacyExcluded": "Prozessbefehle, Benutzer, Pfade, Dateinamen und Adressen lokaler oder externer Verbindungen werden nicht gespeichert.",
   "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden."
 }

@@ -2,7 +2,7 @@
   "localMonitor": "Local system monitor",
   "available": "Available space",
   "open": "Open overview",
-  "companion": "Orbit companion",
+  "companion": "Robin companion",
   "cleanup": "Space cleanup",
   "quit": "Quit app",
   "updatedAt": "Updated {{time}}",
@@ -32,11 +32,11 @@
     },
     "attention": {
       "title": "One resource is worth watching",
-      "description": "Open StatusOrbit to see the reason and guidance."
+      "description": "Open CoreRobin to see the reason and guidance."
     },
     "urgent": {
       "title": "One resource is under pressure",
-      "description": "Review the evidence in StatusOrbit before taking action."
+      "description": "Review the evidence in CoreRobin before taking action."
     }
   },
   "reason": "{{resource}} needs attention",

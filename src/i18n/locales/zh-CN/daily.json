@@ -33,7 +33,7 @@
     "attention": {
       "short": "有些情况值得留意",
       "title": "有 {{count}} 项情况值得留意",
-      "summary": "StatusOrbit 已经整理好原因和下一步，你不需要自己判断技术指标。"
+      "summary": "CoreRobin 已经整理好原因和下一步，你不需要自己判断技术指标。"
     },
     "urgent": {
       "short": "建议尽快看看",
@@ -41,8 +41,8 @@
       "summary": "先核对原因，再选择合适的处理方式。"
     }
   },
-  "orbit": {
-    "label": "电脑状态轨道",
+  "checks": {
+    "label": "电脑状态概览",
     "thisComputer": "这台电脑",
     "speed": "速度",
     "space": "空间",
@@ -50,7 +50,7 @@
     "battery": "电池"
   },
   "companion": {
-    "name": "ORBIT",
+    "name": "Robin",
     "checking": "正在检查"
   },
   "home": {
@@ -59,8 +59,8 @@
     "viewPriority": "看看这件事",
     "checkNow": "检查一下",
     "checking": "检查中…",
-    "checkingTitle": "Orbit 正在看看电脑的近况",
-    "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Orbit 会明确告诉你。",
+    "checkingTitle": "Robin 正在看看电脑的近况",
+    "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Robin 会明确告诉你。",
     "haveProblem": "我遇到了问题",
     "checkedAt": "{{time}} 更新",
     "localOnly": "状态和历史都保存在本机",
@@ -133,7 +133,7 @@
     },
     "recommended": "根据当前状态推荐",
     "otherProblems": "其他情况",
-    "footer": "StatusOrbit 不会为了显得有用而猜测原因；没有足够依据时会继续观察。"
+    "footer": "CoreRobin 不会为了显得有用而猜测原因；没有足够依据时会继续观察。"
   },
   "attention": {
     "kicker": "现在",
@@ -143,7 +143,7 @@
     "recovering": "正在确认恢复",
     "open": "看看原因",
     "emptyTitle": "现在没有需要处理的事",
-    "emptyDescription": "StatusOrbit 会继续在后台留意持续变化。",
+    "emptyDescription": "CoreRobin 会继续在后台留意持续变化。",
     "viewApplications": "看看哪些应用正在运行",
     "temperature": {
       "title": "电脑温度有些高",
@@ -171,7 +171,7 @@
       "recovering": "正在确认恢复",
       "resolved": "已经恢复"
     },
-    "recoveringDescription": "最新指标已经回落，StatusOrbit 正在继续观察，确认它不是一次短暂波动。",
+    "recoveringDescription": "最新指标已经回落，CoreRobin 正在继续观察，确认它不是一次短暂波动。",
     "resolvedDescription": "这项情况已经稳定恢复，现在不需要处理；触发时的证据仍保留在这里。",
     "observedCause": "触发时主要相关",
     "causeMayHaveChanged": "应用状态可能已经变化，操作只会基于最新检查提供。",
@@ -228,7 +228,7 @@
     "systemSafety": "这是系统组件，只展示依据，不建议直接结束。",
     "requestClose": "请求 {{name}} 退出",
     "restart": "重新启动 {{name}}",
-    "restartUnavailable": "StatusOrbit 暂时无法安全地重新启动 {{name}}。",
+    "restartUnavailable": "CoreRobin 暂时无法安全地重新启动 {{name}}。",
     "restartComplete": "{{name}} 已正常退出并重新打开。",
     "restartStillRunning": "{{name}} 仍在运行，因此没有重复打开。",
     "viewEvidence": "查看详细依据",
@@ -246,8 +246,8 @@
   "recheck": {
     "title": "重新检查完成",
     "loadingKicker": "正在扫描这台电脑",
-    "checkingTitle": "正在把最新状态汇入轨道",
-    "checkingDescription": "稍等一下，StatusOrbit 正在读取变化并重新整理检查结果。",
+    "checkingTitle": "正在汇总最新状态",
+    "checkingDescription": "稍等一下，CoreRobin 正在读取变化并重新整理检查结果。",
     "steps": {
       "read": "读取最新状态",
       "compare": "对比刚才变化",
@@ -275,11 +275,11 @@
         "description": "低频读取流量和活动连接，不持续追踪每一条连接。"
       },
       "checkup": {
-        "title": "Orbit 正在检查这台电脑",
+        "title": "Robin 正在检查这台电脑",
         "description": "状态、连接和开机项目会各自返回真实结果，不使用表演性倒计时。"
       }
     },
-    "resultKicker": "状态轨道已同步",
+    "resultKicker": "最新状态已同步",
     "updated": "刚刚更新",
     "completed": "检查完成",
     "completedAt": "{{time}}",
@@ -314,7 +314,7 @@
       },
       "observing": {
         "title": "部分设备状态暂时无法读取",
-        "description": "StatusOrbit 会保持未知状态，不会把缺少的数据判断为正常。"
+        "description": "CoreRobin 会保持未知状态，不会把缺少的数据判断为正常。"
       },
       "attention": {
         "title": "有一项设备状态值得留意",
@@ -326,7 +326,7 @@
       }
     },
     "exited": "应用已经退出，最新状态已重新读取。",
-    "still_running": "应用仍在运行，StatusOrbit 没有继续强制处理。",
+    "still_running": "应用仍在运行，CoreRobin 没有继续强制处理。",
     "already_exited": "应用在操作前已经退出，最新状态已重新读取。",
     "refreshed": "最新状态已经读取完成。"
   },
@@ -389,7 +389,7 @@
   "records": {
     "kicker": "最近发生的变化",
     "title": "处理前后，都有记录",
-    "description": "这里只记录持续出现的情况和恢复结果，不把每一次短暂波动都变成提醒。",
+    "description": "持续出现的电脑变化，以及你确认执行的操作和结果，都会整理在这里。",
     "emptyTitle": "最近一直很平稳",
     "emptyDescription": "以后出现持续卡顿、内存压力或空间不足时，会在这里留下容易理解的记录。",
     "duration": "约 {{minutes}} 分钟",
@@ -403,7 +403,7 @@
   },
   "settings": {
     "kicker": "日常助手设置",
-    "title": "让 Orbit 按你的方式工作",
+    "title": "让 Robin 按你的方式工作",
     "description": "这里只保留日常会用到的偏好；专业采样和阈值设置留在专业模式。",
     "language": "界面语言",
     "languageDescription": "随时选择适合你的界面语言",
@@ -430,8 +430,8 @@
     "launchAtLogin": "登录时启动",
     "launchAtLoginDescription": "登录系统后在后台启动，不主动弹出主窗口",
     "companionAlwaysOnTop": "始终显示在其他窗口上方",
-    "companionAlwaysOnTopDescription": "关闭后 Orbit 仍会留在桌面，但可能被其他窗口遮住",
-    "companionShowOnStartup": "让 Orbit 伙伴常驻桌面",
+    "companionAlwaysOnTopDescription": "关闭后 Robin 仍会留在桌面，但可能被其他窗口遮住",
+    "companionShowOnStartup": "让 Robin 伙伴常驻桌面",
     "companionShowOnStartupDescription": "开启后立即显示，并在下次启动时继续出现",
     "professional": "专业模式",
     "professionalDescription": "查看完整指标、进程树、网络连接和高级设置",
@@ -443,7 +443,7 @@
     "checkingAgain": "检查中…",
     "result": "检查结果",
     "viewEvidence": "为什么这样判断",
-    "safety": "StatusOrbit 只提出有依据的建议，任何系统操作仍需要你确认。",
+    "safety": "CoreRobin 只提出有依据的建议，任何系统操作仍需要你确认。",
     "professional": "查看全部技术依据",
     "slow": {
       "kicker": "流畅度检查",
@@ -451,9 +451,9 @@
       "description": "先观察持续变化，再告诉你最可能的原因和安全下一步。",
       "observingKicker": "正在观察",
       "observingTitle": "先确认这不是一次短暂变忙",
-      "observingDescription": "还需约 {{seconds}} 秒；StatusOrbit 不会把打开网页或启动应用的一瞬间当成故障。",
+      "observingDescription": "还需约 {{seconds}} 秒；CoreRobin 不会把打开网页或启动应用的一瞬间当成故障。",
       "normalTitle": "没有发现持续的资源压力",
-      "normalDescription": "如果你仍然觉得卡顿，可以查看当前应用；StatusOrbit 不会在没有证据时猜测原因。",
+      "normalDescription": "如果你仍然觉得卡顿，可以查看当前应用；CoreRobin 不会在没有证据时猜测原因。",
       "viewApplications": "查看当前应用",
       "likelyCause": "最可能相关的应用",
       "applicationExplanation": "{{name}} 的持续活动与当前问题时间一致。",
@@ -468,7 +468,7 @@
       "normalTitle": "还有 {{free}} 可用",
       "normalDescription": "空间目前不紧张；只有你确实想整理文件时才需要扫描。",
       "unknownTitle": "暂时无法读取主要磁盘",
-      "unknownDescription": "系统没有提供可靠的容量信息，StatusOrbit 不会把未知状态当成空间充足。",
+      "unknownDescription": "系统没有提供可靠的容量信息，CoreRobin 不会把未知状态当成空间充足。",
       "cachedScan": "已有完整扫描",
       "reclaimable": "约 {{size}} 可优先核对",
       "noScan": "尚未扫描文件",
@@ -520,7 +520,7 @@
     "network": {
       "kicker": "网络检查",
       "title": "看看网络现在发生了什么",
-      "description": "StatusOrbit 会读取当前流量和活动连接，但不会在没有证据时把网络变慢归咎于某个应用。",
+      "description": "CoreRobin 会读取当前流量和活动连接，但不会在没有证据时把网络变慢归咎于某个应用。",
       "checkingKicker": "正在读取",
       "checkingTitle": "正在获取活动连接",
       "checkingDescription": "连接扫描使用独立的低频命令，不影响系统主采样。",

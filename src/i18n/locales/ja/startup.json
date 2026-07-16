@@ -13,7 +13,7 @@
   },
   "scanning": "確認中…",
   "loadingTitle": "起動設定の読み込み中",
-  "loadingDescription": "StatusOrbitは、公開されている起動設定のみを読み取り、その中に含まれるコマンドを実行または起動しません。",
+  "loadingDescription": "CoreRobinは、公開されている起動設定のみを読み取り、その中に含まれるコマンドを実行または起動しません。",
   "summary": "起動設定の概要",
   "reviewCount": "確認する価値あり",
   "reviewHint": "ログイン時に起動されるサードパーティ製のアイテム",
@@ -37,7 +37,7 @@
   "disabled": "無効化されています",
   "technicalDetails": "詳細情報を表示",
   "managementBoundary": "特定のユーザーレベルのサードパーティ製の起動ファイルを無効化できます。システム関連のアイテムやサポートされていないソースは読み取り専用です。",
-  "readOnlyBoundary": "StatusOrbit が安全に復元できる起動ソースは存在しないため、一覧は読み取り専用になります。",
+  "readOnlyBoundary": "CoreRobin が安全に復元できる起動ソースは存在しないため、一覧は読み取り専用になります。",
   "unreadable": "{{count}} 起動設定の読み込みに失敗しました。権限が不足している可能性があります。",
   "actions": {
     "disable": "ログイン時に無効化",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "{{name}}の自動起動を無効にしますか？",
-      "description": "StatusOrbitは、このユーザー固有の起動ファイルを自身の管理領域に移動し、削除しません。",
+      "description": "CoreRobinは、このユーザー固有の起動ファイルを自身の管理領域に移動し、削除しません。",
       "whenDescription": "設定変更は、次のサインイン時に適用されます。復元も、今後のサインインから適用されます。",
       "confirm": "サインイン時に無効化を確認"
     },
     "enable": {
       "title": "{{name}}の自動起動を復元しますか？",
-      "description": "StatusOrbitは、保存した設定を元の場所に移動します。",
+      "description": "CoreRobinは、保存した設定を元の場所に移動します。",
       "whenDescription": "次のサインインから、システムがこの項目を自動的に起動できるようになります。",
       "confirm": "サインイン時に復元を確認"
     },
@@ -89,10 +89,10 @@
     "preparing": "起動アイテムとファイルの確認中…",
     "applying": "安全に更新中…",
     "errors": {
-      "startup_item_protected": "StatusOrbitが安全に管理できるユーザーレベルのサードパーティアプリケーションではありません。そのため、何も変更されませんでした。",
+      "startup_item_protected": "CoreRobinが安全に管理できるユーザーレベルのサードパーティアプリケーションではありません。そのため、何も変更されませんでした。",
       "startup_item_unavailable": "この起動アイテムが変更または削除されました。リストを更新して再度お試しください。",
-      "startup_state_changed": "確認後にファイルの状態が変更されたため、StatusOrbitは何も変更しませんでした。",
-      "startup_destination_conflict": "別の設定が宛先に存在します。StatusOrbitは上書きしませんでした。",
+      "startup_state_changed": "確認後にファイルの状態が変更されたため、CoreRobinは何も変更しませんでした。",
+      "startup_destination_conflict": "別の設定が宛先に存在します。CoreRobinは上書きしませんでした。",
       "startup_confirmation_unavailable": "この確認は利用できません。キャンセルして再度開いてください。",
       "startup_confirmation_expired": "確認が無効になりました。続行する前に、アイテムを再度確認してください。",
       "startup_management_failed": "システムが起動ファイルの移動を安全に行うことができませんでした。元の状態は保持されています。"
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "システムまたはデバイスのサービス",
-      "description": "通常の使用とは異なるため、このアプリは読み取り専用です。StatusOrbitによって管理されます。"
+      "description": "通常の使用とは異なるため、このアプリは読み取り専用です。CoreRobinによって管理されます。"
     },
     "disabled": {
       "title": "現在無効化されています",

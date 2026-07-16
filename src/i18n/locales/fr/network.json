@@ -1,7 +1,7 @@
 {
   "local": "Réseau local",
   "title": "Interfaces et trafic réseau en temps réel",
-  "description": "Les taux utilisent l'intervalle d'échantillonnage actuel ; les totaux commencent lorsque StatusOrbit est lancé.",
+  "description": "Les taux utilisent l'intervalle d'échantillonnage actuel ; les totaux commencent lorsque CoreRobin est lancé.",
   "connectedInterfaces": "Interfaces connectées : {{connected}} / {{total}}",
   "summary": "Résumé du réseau",
   "receiveNow": "Envoi en cours",

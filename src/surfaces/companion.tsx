@@ -1,6 +1,6 @@
 import "../styles/companion.css";
 
-import { OrbitCompanionWindow } from "../components/OrbitCompanionWindow";
+import { RobinCompanionWindow } from "../components/RobinCompanionWindow";
 import { bootstrapAuxiliarySurface } from "./bootstrapAuxiliarySurface";
 
-bootstrapAuxiliarySurface("companion", OrbitCompanionWindow);
+bootstrapAuxiliarySurface("companion", RobinCompanionWindow);

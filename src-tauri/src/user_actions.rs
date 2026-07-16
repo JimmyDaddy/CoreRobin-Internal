@@ -203,7 +203,7 @@ fn spawn_and_reap(command: &mut Command, failure_message: &str) -> Result<(), Co
         .spawn()
         .map_err(|error| CommandError::internal(format!("{failure_message} {error}")))?;
     std::thread::Builder::new()
-        .name("status-orbit-user-action".to_owned())
+        .name("core-robin-user-action".to_owned())
         .spawn(move || {
             let _ = child.wait();
         })

@@ -2,7 +2,7 @@
   "kicker": "應用級彙總",
   "overviewTitle": "現在誰影響最大",
   "title": "應用資源影響",
-  "description": "StatusOrbit 會把輔助程序合併到熟悉的應用名稱下，再彙總 CPU、記憶體和磁碟活動。",
+  "description": "CoreRobin 會把輔助程序合併到熟悉的應用名稱下，再彙總 CPU、記憶體和磁碟活動。",
   "viewAll": "檢視全部應用",
   "search": "搜尋應用",
   "searchPlaceholder": "按應用名稱搜尋",
@@ -30,7 +30,7 @@
     "disk": "當前主要影響來自磁碟活動（{{value}}）。同步、下載或構建任務都可能造成短時讀寫。",
     "balanced": "當前沒有某一項資源特別突出，整體影響較低。",
     "systemSafety": "這是系統元件，不建議直接結束；如有異常請先檢視專業證據。",
-    "appSafety": "這是普通應用。StatusOrbit 不會自動關閉它，結束操作仍需單獨確認。",
+    "appSafety": "這是普通應用。CoreRobin 不會自動關閉它，結束操作仍需單獨確認。",
     "professionalDetails": "用專業模式檢視程序"
   },
   "empty": "沒有匹配的應用",

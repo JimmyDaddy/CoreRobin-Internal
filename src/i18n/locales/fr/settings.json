@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "Langue de l'interface",
-    "description": "Modifier les menus, les instructions et le texte d'état de StatusOrbit.",
+    "description": "Modifier les menus, les instructions et le texte d'état de CoreRobin.",
     "label": "Langue"
   },
   "background": {
     "title": "Arrière-plan et bureau",
-    "description": "Contrôler la disponibilité de StatusOrbit, son lancement au démarrage et l'affichage d'Orbit.",
+    "description": "Contrôler la disponibilité de CoreRobin, son lancement au démarrage et l'affichage d'Robin.",
     "showDockIcon": "Afficher dans le Dock",
     "showDockIconDescription": "Lorsque désactivé, utiliser la barre des menus sans occuper le Dock ou le commutateur d'applications",
     "launchAtLogin": "Lancer au démarrage",
     "launchAtLoginDescription": "Démarrer silencieusement le service de la barre des menus sans ouvrir la fenêtre principale",
-    "companionShowOnStartup": "Afficher Orbit sur le bureau",
-    "companionShowOnStartupDescription": "Afficher l'assistant Orbit chaque fois que l'application démarre",
-    "companionAlwaysOnTop": "Maintenir Orbit au-dessus des fenêtres",
-    "companionAlwaysOnTopDescription": "Rester au-dessus des autres fenêtres ; lorsque désactivé, Orbit peut être masqué"
+    "companionShowOnStartup": "Afficher Robin sur le bureau",
+    "companionShowOnStartupDescription": "Afficher l'assistant Robin chaque fois que l'application démarre",
+    "companionAlwaysOnTop": "Maintenir Robin au-dessus des fenêtres",
+    "companionAlwaysOnTopDescription": "Rester au-dessus des autres fenêtres ; lorsque désactivé, Robin peut être masqué"
   },
   "sampling": {
     "title": "Échantillonnage du système",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "Notifications sur le bureau",
-    "description": "Seules les charges lourdes, la forte pression mémoire et l'espace disque insuffisant vous alertent. StatusOrbit suit la situation une fois que le problème est durablement résolu.",
+    "description": "Seules les charges lourdes, la forte pression mémoire et l'espace disque insuffisant vous alertent. CoreRobin suit la situation une fois que le problème est durablement résolu.",
     "enable": "Activer les alertes limitées",
     "categories": "Catégories d'alertes autorisées",
     "resources": {

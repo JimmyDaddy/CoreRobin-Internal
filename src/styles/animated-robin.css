@@ -1,0 +1,234 @@
+.animated-robin {
+  --robin-accent: #56cf93;
+  --robin-head-x: 0px;
+  --robin-head-y: 0px;
+  --robin-head-turn: 0deg;
+  --robin-eye-x: 0px;
+  --robin-eye-y: 0px;
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  transform: translateZ(0);
+  -webkit-app-region: inherit;
+}
+
+.animated-robin[data-mood="attention"] { --robin-accent: #efb65e; }
+.animated-robin[data-mood="urgent"] { --robin-accent: #ff7d73; }
+.animated-robin[data-mood="loading"],
+.animated-robin[data-mood="observing"],
+.animated-robin[data-active="true"] { --robin-accent: #63a8ff; }
+
+.animated-robin svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.2));
+  -webkit-app-region: inherit;
+}
+
+.animated-robin__shadow {
+  fill: rgba(3, 8, 13, 0.34);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: animated-robin-shadow 3.8s ease-in-out infinite;
+}
+
+.animated-robin__tail,
+.animated-robin__body,
+.animated-robin__head-track,
+.animated-robin__head,
+.animated-robin__wing,
+.animated-robin__eye {
+  transform-box: fill-box;
+}
+
+.animated-robin__tail {
+  transform-origin: 88% 30%;
+  animation: animated-robin-tail 6.8s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+.animated-robin__tail-back { fill: #decdbb; }
+.animated-robin__tail-coral,
+.animated-robin__breast,
+.animated-robin__cheek,
+.animated-robin__beak { fill: #f15a43; }
+
+.animated-robin__body {
+  transform-origin: 52% 88%;
+  animation: animated-robin-breathe 3.8s ease-in-out infinite;
+}
+
+.animated-robin__body-fill,
+.animated-robin__head-fill { fill: #decdbb; }
+
+.animated-robin__wing {
+  fill: #122038;
+  transform-origin: 80% 26%;
+  animation: animated-robin-wing 5.9s ease-in-out infinite;
+}
+
+.animated-robin__wing-fold {
+  fill: none;
+  stroke: rgba(222, 205, 187, 0.48);
+  stroke-linecap: square;
+  stroke-linejoin: bevel;
+  stroke-width: 3;
+}
+
+.animated-robin__status {
+  fill: var(--robin-accent);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--robin-accent) 72%, transparent));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: animated-robin-status 2.6s ease-in-out infinite;
+}
+
+.animated-robin__head-track {
+  transform:
+    translate(
+      calc(var(--robin-head-x) - 3px),
+      calc(var(--robin-head-y) - 5px)
+    )
+    rotate(calc(var(--robin-head-turn) - 1.2deg));
+  transform-origin: 38% 76%;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animated-robin__head {
+  transform-origin: 39% 78%;
+  animation: animated-robin-head 5.4s ease-in-out infinite;
+}
+
+.animated-robin__eye {
+  fill: #122038;
+  transform: translate(var(--robin-eye-x), var(--robin-eye-y));
+  transform-origin: center;
+  transition: transform 120ms ease-out;
+  animation: animated-robin-blink 7.2s linear infinite;
+}
+
+.animated-robin__eye-light { fill: #decdbb; }
+
+.animated-robin__scanner {
+  fill: none;
+  stroke-linecap: square;
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.animated-robin__scanner-track {
+  stroke: color-mix(in srgb, var(--robin-accent) 23%, transparent);
+}
+
+.animated-robin__scanner-beam {
+  stroke: var(--robin-accent);
+  stroke-dasharray: 50 101;
+  filter: drop-shadow(0 0 4px var(--robin-accent));
+}
+
+.animated-robin[data-active="true"] .animated-robin__scanner {
+  opacity: 1;
+}
+
+.animated-robin[data-active="true"] .animated-robin__scanner-beam {
+  animation: animated-robin-scan 1.25s linear infinite;
+}
+
+.animated-robin[data-active="true"] .animated-robin__body {
+  animation: animated-robin-check 1.15s ease-in-out infinite;
+}
+
+.animated-robin[data-active="true"] .animated-robin__head {
+  animation: animated-robin-check-head 1.15s ease-in-out infinite;
+}
+
+.animated-robin[data-active="true"] .animated-robin__wing {
+  animation: animated-robin-check-wing 0.72s ease-in-out infinite alternate;
+}
+
+.animated-robin.is-interactive:hover .animated-robin__tail {
+  animation-duration: 2.1s;
+}
+
+.animated-robin.is-interactive:hover .animated-robin__head {
+  animation-duration: 3.4s;
+}
+
+@keyframes animated-robin-breathe {
+  0%, 100% { transform: translateY(1px) scale(0.992, 1); }
+  50% { transform: translateY(-2px) scale(1.012, 1.025); }
+}
+
+@keyframes animated-robin-shadow {
+  0%, 100% { opacity: 0.48; transform: scaleX(1); }
+  50% { opacity: 0.3; transform: scaleX(0.86); }
+}
+
+@keyframes animated-robin-head {
+  0%, 21%, 100% { transform: rotate(0deg) translateY(0); }
+  27%, 42% { transform: rotate(-3deg) translateY(-1px); }
+  47%, 82% { transform: rotate(1.5deg) translateY(0); }
+}
+
+@keyframes animated-robin-tail {
+  0%, 38%, 48%, 100% { transform: rotate(0deg); }
+  41% { transform: rotate(-8deg); }
+  44% { transform: rotate(5deg); }
+  71% { transform: rotate(0deg); }
+  75% { transform: rotate(-4deg); }
+}
+
+@keyframes animated-robin-wing {
+  0%, 72%, 100% { transform: rotate(0deg); }
+  78% { transform: rotate(-2.5deg) translateY(-1px); }
+  84% { transform: rotate(1deg); }
+}
+
+@keyframes animated-robin-blink {
+  0%, 41%, 44%, 73%, 76%, 100% { transform: translate(var(--robin-eye-x), var(--robin-eye-y)) scaleY(1); }
+  42%, 43%, 74%, 75% { transform: translate(var(--robin-eye-x), var(--robin-eye-y)) scaleY(0.08); }
+}
+
+@keyframes animated-robin-status {
+  0%, 100% { opacity: 0.68; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes animated-robin-scan {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -151; }
+}
+
+@keyframes animated-robin-check {
+  0%, 100% { transform: translate(1px, 1px) rotate(0deg); }
+  50% { transform: translate(4px, -1px) rotate(1deg); }
+}
+
+@keyframes animated-robin-check-head {
+  0%, 100% { transform: translate(1px, 1px) rotate(1deg); }
+  50% { transform: translate(5px, -1px) rotate(5deg); }
+}
+
+@keyframes animated-robin-check-wing {
+  from { transform: rotate(-1deg) translateY(0); }
+  to { transform: rotate(-5deg) translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-robin *,
+  .animated-robin *::before,
+  .animated-robin *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+html[data-reduce-motion="true"] .animated-robin *,
+html[data-reduce-motion="true"] .animated-robin *::before,
+html[data-reduce-motion="true"] .animated-robin *::after {
+  animation: none !important;
+  transition: none !important;
+}

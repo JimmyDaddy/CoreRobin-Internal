@@ -2,11 +2,11 @@
   "triggered": {
     "cpu": {
       "title": "The computer is staying under heavy load",
-      "body": "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open StatusOrbit to see the biggest app impact."
+      "body": "The processor has stayed busy and may cause slowness, heat, or extra battery use. Open CoreRobin to see the biggest app impact."
     },
     "memory": {
       "title": "Available memory is staying tight",
-      "body": "Low available memory and meaningful swap activity are happening together. StatusOrbit will never close apps automatically."
+      "body": "Low available memory and meaningful swap activity are happening together. CoreRobin will never close apps automatically."
     },
     "volume": {
       "title": "Disk free space is running low",

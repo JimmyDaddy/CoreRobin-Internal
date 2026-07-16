@@ -56,7 +56,7 @@
     "launchCommand": "Launch command",
     "stableHandle": "Confirmation binds a short-lived, single-use stable OS handle; execution does not look up the target by PID again.",
     "unavailableControl": "Safe process control is unavailable on this platform.",
-    "bestEffort": "macOS cannot provide a stable signal handle for every process. StatusOrbit rechecks the launch identity before signaling, but targeting remains best-effort by PID.",
+    "bestEffort": "macOS cannot provide a stable signal handle for every process. CoreRobin rechecks the launch identity before signaling, but targeting remains best-effort by PID.",
     "allowBestEffort": "Allow best-effort process actions for this run",
     "binding": "Binding…",
     "requestClose": "Request exit",

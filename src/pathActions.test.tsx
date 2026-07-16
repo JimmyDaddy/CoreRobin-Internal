@@ -20,13 +20,13 @@ beforeEach(async () => {
 
 describe("filesystem path actions", () => {
   it("reveals and previews only the provided path", async () => {
-    render(<PathActions path="/Applications/StatusOrbit.app" />);
+    render(<PathActions path="/Applications/CoreRobin.app" />);
 
     fireEvent.click(screen.getByRole("button", { name: "在 Finder 中显示" }));
-    await waitFor(() => expect(revealPath).toHaveBeenCalledWith("/Applications/StatusOrbit.app"));
+    await waitFor(() => expect(revealPath).toHaveBeenCalledWith("/Applications/CoreRobin.app"));
 
     fireEvent.click(screen.getByRole("button", { name: "快速预览" }));
-    await waitFor(() => expect(previewPath).toHaveBeenCalledWith("/Applications/StatusOrbit.app"));
+    await waitFor(() => expect(previewPath).toHaveBeenCalledWith("/Applications/CoreRobin.app"));
   });
 
   it("copies the exact path without invoking an operating-system action", async () => {

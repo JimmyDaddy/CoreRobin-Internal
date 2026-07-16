@@ -1,4 +1,4 @@
-import brandMark from "../../src-tauri/icons/128x128@2x.png";
+import brandMark from "../assets/brand-mark.png";
 import {
   APP_SETTINGS_STORAGE_KEY,
   applyAppAppearance,
@@ -24,11 +24,10 @@ root.innerHTML = `
     <div class="splash-card">
       <div class="splash-aurora splash-aurora--one"></div>
       <div class="splash-aurora splash-aurora--two"></div>
-      <div class="splash-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="splash-logo" aria-hidden="true"><img alt="" /></div>
       <div class="splash-copy">
         <span class="splash-eyebrow">LOCAL · PRIVATE · LIVE</span>
-        <h1>StatusOrbit</h1>
+        <h1 aria-label="CoreRobin"><span aria-hidden="true">Core<span class="brand-wordmark__r">R<i></i></span>obin</span></h1>
         <p data-i18n="description"></p>
       </div>
       <div class="splash-progress" aria-hidden="true"><span></span></div>

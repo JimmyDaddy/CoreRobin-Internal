@@ -30,7 +30,15 @@ import {
   reconcileCleanupNodeAfterDeletion,
   type CleanupDeletionTargetSnapshot,
 } from "../cleanupScanStore";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "../storageMigration";
 import type { CleanupDeleteFailure, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CommandError } from "../types";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
@@ -43,6 +51,8 @@ interface CleanupSpaceMapProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
 
 interface CleanupDragState {
@@ -66,9 +76,15 @@ interface CleanupDeleteOutcome {
 
 type CleanupMapMode = "path" | "category";
 
-const CLEANUP_MAP_MODE_STORAGE_KEY = "status-orbit.cleanup-map-mode.v1";
+const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
 
-export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapshotStatus, onDeletionApplied }: CleanupSpaceMapProps) {
+export const CleanupSpaceMap = memo(function CleanupSpaceMap({
+  snapshot,
+  snapshotStatus,
+  onDeletionApplied,
+  onUserActionStart,
+  onUserActionComplete,
+}: CleanupSpaceMapProps) {
   const { t } = useAppTranslation();
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(() => new Map());
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
@@ -512,7 +528,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
         throw {
           code: "cleanup_refresh_incomplete",
-          message: "StatusOrbit could not match every refreshed cleanup target by path.",
+          message: "CoreRobin could not match every refreshed cleanup target by path.",
         };
       }
       setDeleteDialogItems(refreshedItems);
@@ -547,6 +563,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
   const confirmPermanentDelete = async () => {
     const lease = deleteLeaseRef.current;
     if (!lease || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting) return;
+    const actionRecordId = onUserActionStart?.({
+      kind: "cleanup_delete",
+      targetCount: deleteDialogItems.length,
+    }) ?? null;
+    let actionRecorded = false;
     setDeleteSubmitting(true);
     setDeleteCancelling(false);
     setDeleteProgress({
@@ -617,9 +638,30 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
         failed: result.failed,
         cancelled: result.cancelled,
       });
+      if (actionRecordId) {
+        onUserActionComplete?.(actionRecordId, {
+          status: result.cancelled
+            ? "cancelled"
+            : result.failed.length > 0
+              ? result.deleted.length > 0 ? "partial" : "failed"
+              : "succeeded",
+          verification: "verified",
+          targetCount: deleteDialogItems.length,
+          affectedBytes: result.deletedBytes,
+          failedCount: result.failed.length,
+        });
+        actionRecorded = true;
+      }
       await onDeletionApplied(deletionTargets, uncertainPaths.size > 0);
       closeDeleteDialog();
     } catch (caughtError) {
+      if (actionRecordId && !actionRecorded) {
+        onUserActionComplete?.(actionRecordId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: deleteDialogItems.length,
+        });
+      }
       deleteLeaseRef.current = null;
       setDeleteLease(null);
       setDeleteError(normalizeCommandError(caughtError));
@@ -919,7 +961,11 @@ function canCollectCleanupNode(node: CleanupMapNode): boolean {
 
 function readCleanupMapMode(): CleanupMapMode {
   try {
-    return window.localStorage.getItem(CLEANUP_MAP_MODE_STORAGE_KEY) === "category"
+    return readMigratedStorageItem(
+      window.localStorage,
+      CLEANUP_MAP_MODE_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.cleanupMapMode,
+    ) === "category"
       ? "category"
       : "path";
   } catch {

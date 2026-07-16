@@ -13,7 +13,7 @@ import {
 } from "./storageMigration";
 
 export const PROCESS_EXPLORER_STORAGE_KEY =
-  "status-orbit.process-explorer.preferences.v1";
+  "core-robin.process-explorer.preferences.v1";
 export const PROCESS_HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 export const MAX_PROCESS_HISTORY_POINTS = 300;
 

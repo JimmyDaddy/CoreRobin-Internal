@@ -9,7 +9,7 @@ cargo run --locked --manifest-path src-tauri/Cargo.toml --release \
 
 可选的第二个参数是两次采样之间的等待毫秒数，默认 250 ms，用于跨过 `sysinfo` 的最小 CPU 刷新窗口；等待时间不计入采样 wall time。比如 `20 250` 会让完整和轻量路径分别运行约 5 秒。
 
-输出中的采样时间单位是微秒。测试应固定机器、电源模式、后台负载和 StatusOrbit commit，并至少保存三次原始结果。这个微基准不包含 Tauri IPC、前端渲染或 5 秒真实定时器节奏，因此只能用于比较两种后端采样路径的同步工作量，不能替代 Instruments 等整机 CPU/能耗 profile。
+输出中的采样时间单位是微秒。测试应固定机器、电源模式、后台负载和 CoreRobin commit，并至少保存三次原始结果。这个微基准不包含 Tauri IPC、前端渲染或 5 秒真实定时器节奏，因此只能用于比较两种后端采样路径的同步工作量，不能替代 Instruments 等整机 CPU/能耗 profile。
 
 按当前产品节奏，前台最低间隔是 500 ms，隐藏态轻量摘要间隔是 5 s；网络连接扫描在隐藏态停止。发布前的整机 profile 应同时验证：
 

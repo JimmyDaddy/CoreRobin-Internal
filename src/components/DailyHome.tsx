@@ -8,7 +8,6 @@ import {
   HardDrive,
   History,
   LoaderCircle,
-  Orbit,
   RefreshCw,
   Sparkles,
   TriangleAlert,
@@ -26,9 +25,10 @@ import {
 
 import {
   type DailyAttentionItem,
+  type DailyStatusKind,
 } from "../dailyExperience";
 import {
-  buildStableDailyOrbitItems,
+  buildStableDailyStatusItems,
   dailyIncidentDisplayLevel,
   dailyIncidentLevel,
   type DailyIncident,
@@ -38,6 +38,7 @@ import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import type { SystemSnapshot } from "../types";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
 
 interface DailyHomeProps {
@@ -46,17 +47,20 @@ interface DailyHomeProps {
   incidents: readonly DailyIncident[];
   alertEvents: readonly ResourceAlertEvent[];
   onOpenIncident: (incident: DailyIncident) => void;
+  onOpenCheck: (kind: DailyStatusKind) => void;
   onOpenSolve: () => void;
   onOpenRecords: () => void;
   onRefresh: () => void | Promise<void>;
 }
 
-const ORBIT_ICONS = {
+const STATUS_ICONS = {
   speed: Gauge,
   space: HardDrive,
   temperature: Flame,
   battery: BatteryCharging,
 } as const;
+
+type DailyCheckKind = keyof typeof STATUS_ICONS;
 
 export function DailyHome({
   diagnosis,
@@ -64,15 +68,17 @@ export function DailyHome({
   incidents,
   alertEvents,
   onOpenIncident,
+  onOpenCheck,
   onOpenSolve,
   onOpenRecords,
   onRefresh,
 }: DailyHomeProps) {
   const { t, i18n } = useAppTranslation();
   const [checking, setChecking] = useState(false);
+  const [focusedCheck, setFocusedCheck] = useState<DailyCheckKind | null>(null);
   const level = dailyIncidentLevel(incidents, diagnosis.baselineReady);
-  const orbitItems = useMemo(
-    () => buildStableDailyOrbitItems(incidents, diagnosis, snapshot),
+  const statusItems = useMemo(
+    () => buildStableDailyStatusItems(incidents, diagnosis, snapshot),
     [diagnosis, incidents, snapshot],
   );
   const suggestedPrimary = incidents[0] ?? null;
@@ -111,31 +117,65 @@ export function DailyHome({
       <section className={`daily-companion-hero is-${level}${checking ? " is-checking" : ""}`}>
         <div
           className="daily-companion"
-          aria-label={t("daily:orbit.label")}
+          aria-label={t("daily:checks.label")}
           onPointerMove={tiltDailyCompanion}
-          onPointerLeave={resetDailyCompanionTilt}
+          onPointerLeave={(event) => {
+            setFocusedCheck(null);
+            resetDailyCompanionTilt(event);
+          }}
         >
           <div className="daily-companion__scene">
-            <div className="daily-companion__rig">
-              <span className="daily-companion__halo daily-companion__halo--outer" aria-hidden="true" />
-              <span className="daily-companion__halo daily-companion__halo--inner" aria-hidden="true" />
+            <div
+              className="daily-companion__rig"
+              data-focus={focusedCheck ?? undefined}
+              data-level={checking ? "checking" : level}
+            >
               <div className="daily-companion__core">
-                <span>{checking ? <LoaderCircle size={29} /> : <Orbit size={29} />}</span>
-                <small>{t("daily:companion.name")}</small>
+                <AnimatedRobin
+                  active={checking}
+                  mood={level}
+                  size={160}
+                />
+                <span className="daily-companion__console" aria-hidden="true">
+                  <i /><i /><i />
+                </span>
+                <span
+                  className={`daily-companion__callout${focusedCheck ? " is-visible" : ""}`}
+                  aria-hidden="true"
+                >
+                  {focusedCheck ? t(`daily:checks.${focusedCheck}`) : null}
+                </span>
               </div>
-              {orbitItems.map((item, index) => {
-                const Icon = ORBIT_ICONS[item.kind];
-                return (
-                  <span
-                    className={`daily-companion__station daily-companion__station--${index + 1} is-${item.level}`}
-                    key={item.kind}
-                    aria-label={`${t(`daily:orbit.${item.kind}`)}: ${t(`daily:status.${item.level === "unavailable" ? "observing" : item.level}.short`)}`}
-                  >
-                    <Icon size={15} />
-                    <i aria-hidden="true" />
-                  </span>
-                );
-              })}
+              <span className="daily-companion__interaction" aria-hidden="true"><i /></span>
+              <div className="daily-companion__checks">
+                {statusItems.map((item) => {
+                  const Icon = STATUS_ICONS[item.kind];
+                  const displayLevel = item.level === "unavailable" ? "observing" : item.level;
+                  return (
+                    <button
+                      type="button"
+                      className={`daily-companion__station is-${item.level}`}
+                      key={item.kind}
+                      data-active={focusedCheck === item.kind ? "true" : undefined}
+                      aria-label={`${t(`daily:checks.${item.kind}`)}: ${t(`daily:status.${displayLevel}.short`)}`}
+                      onClick={() => onOpenCheck(item.kind)}
+                      onFocus={() => setFocusedCheck(item.kind)}
+                      onBlur={() => setFocusedCheck((current) => current === item.kind ? null : current)}
+                      onPointerEnter={() => setFocusedCheck(item.kind)}
+                      onPointerLeave={() => setFocusedCheck((current) => current === item.kind ? null : current)}
+                    >
+                      <span className="daily-companion__station-icon">
+                        <Icon size={18} />
+                      </span>
+                      <span className="daily-companion__station-label">
+                        <small>{t(`daily:checks.${item.kind}`)}</small>
+                        <ArrowRight size={11} aria-hidden="true" />
+                      </span>
+                      <i aria-hidden="true" />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

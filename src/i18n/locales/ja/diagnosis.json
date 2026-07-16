@@ -4,7 +4,7 @@
   "collapse": "診断情報を非表示にする",
   "checkedLabel": "スマート診断を実行する",
   "thisDisk": "システムディスク",
-  "safety": "StatusOrbitは自動的に動作しません。推奨される操作には、引き続きあなたの確認が必要です。強制終了機能はプロフェッショナルモードでのみ使用できます。",
+  "safety": "CoreRobinは自動的に動作しません。推奨される操作には、引き続きあなたの確認が必要です。強制終了機能はプロフェッショナルモードでのみ使用できます。",
   "duration": "約{{seconds}}秒間",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "コンピューターの動作が遅くなっている可能性があります",
-      "summary": "StatusOrbitがパフォーマンスに関する問題を検出しました ({{count}})。詳細を確認してください。"
+      "summary": "CoreRobinがパフォーマンスに関する問題を検出しました ({{count}})。詳細を確認してください。"
     },
     "urgent": {
       "title": "すぐに確認が必要です",
-      "summary": "StatusOrbitが重要なパフォーマンスの問題を検出しました ({{count}})。状況を確認してから対処してください。"
+      "summary": "CoreRobinが重要なパフォーマンスの問題を検出しました ({{count}})。状況を確認してから対処してください。"
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "まず、{{name}}に終了を依頼してください",
-      "description": "これは最も穏やかな方法です。StatusOrbitはプロセスを特定し、何もしない前に確認を行います。",
+      "description": "これは最も穏やかな方法です。CoreRobinはプロセスを特定し、何もしない前に確認を行います。",
       "action": "{{name}}に終了を依頼する"
     },
     "open_cleanup": {
@@ -112,24 +112,24 @@
     },
     "inspect_process": {
       "title": "関連情報を確認する",
-      "description": "StatusOrbitでは、この操作は直接実行できません。まず、アプリの正当性、リソースの使用状況、および保護理由を確認してください。",
+      "description": "CoreRobinでは、この操作は直接実行できません。まず、アプリの正当性、リソースの使用状況、および保護理由を確認してください。",
       "action": "詳細な情報を確認する"
     },
     "inspectEvidence": "アプリに関する証拠を確認する",
     "preparing": "確認中…",
-    "actionUnavailable": "StatusOrbitは、このアプリを安全に検証または制御できませんでした。そのため、何も変更されませんでした。"
+    "actionUnavailable": "CoreRobinは、このアプリを安全に検証または制御できませんでした。そのため、何も変更されませんでした。"
   },
   "actionDialog": {
     "title": "{{name}} を終了させる？",
-    "description": "StatusOrbitは、通常の終了リクエストを送信します。これは、強制終了ではなく、穏やかな方法です。",
+    "description": "CoreRobinは、通常の終了リクエストを送信します。これは、強制終了ではなく、穏やかな方法です。",
     "restartTitle": "{{name}}を再起動しますか？",
-    "restartDescription": "StatusOrbitはアプリに通常終了を依頼し、確認済みのアプリバンドルを再度開きます。",
+    "restartDescription": "CoreRobinはアプリに通常終了を依頼し、確認済みのアプリバンドルを再度開きます。",
     "safeTitle": "アプリやそのファイルを削除しません",
     "safeDescription": "この操作は、実行中のアプリを停止させるだけで、データの整理は行いません。",
     "riskTitle": "まず、編集中のファイルをすべて保存してください",
     "riskDescription": "保存のプロンプトが表示されるかどうかは、アプリケーションによって異なります。未保存の作業は、予期せず失われる可能性があります。",
     "stableIdentity": "選択したプロセスに紐付けられたハンドルを再確認し、実行前にチェックします。",
-    "bestEffortIdentity": "このシステムは、プロセスの一意性を確認することで、PIDの重複のリスクを軽減できます。StatusOrbitは、プロセスが変更された場合に操作を拒否します。",
+    "bestEffortIdentity": "このシステムは、プロセスの一意性を確認することで、PIDの重複のリスクを軽減できます。CoreRobinは、プロセスが変更された場合に操作を拒否します。",
     "confirm": "{{name}} の終了要求を確認してください",
     "confirmRestart": "{{name}}を再起動"
   }

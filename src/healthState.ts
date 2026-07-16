@@ -14,8 +14,8 @@ import type {
 } from "./types";
 import { memoryUsagePercent } from "./utils";
 
-export const HEALTH_STATE_SCHEMA_VERSION = 1;
-export const HEALTH_STATE_EVENT = "status-orbit:health-state-changed";
+export const HEALTH_STATE_SCHEMA_VERSION = 2;
+export const HEALTH_STATE_EVENT = "core-robin:health-state-changed";
 
 export type HealthLevel = "observing" | "normal" | "attention" | "urgent";
 export type HealthDataMode = "foreground" | "background";
@@ -48,6 +48,8 @@ export interface HealthStateUpdate {
   storageAvailableBytes: number | null;
   temperatureCelsius: number | null;
   batteryPercent: number | null;
+  batteryHealthPercent: number | null;
+  batteryCycleCount: number | null;
   batteryState: SystemSnapshot["sensors"]["battery"]["state"];
 }
 
@@ -108,6 +110,8 @@ export function buildHealthStateUpdate(
     storageAvailableBytes: volume?.availableBytes ?? null,
     temperatureCelsius: snapshot.sensors.temperature.celsius,
     batteryPercent: snapshot.sensors.battery.chargePercent,
+    batteryHealthPercent: snapshot.sensors.battery.healthPercent,
+    batteryCycleCount: snapshot.sensors.battery.cycleCount,
     batteryState: snapshot.sensors.battery.state,
   };
 }

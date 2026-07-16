@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1600" viewBox="0 0 1600 1600" role="img" aria-labelledby="title desc">
+  <title id="title">CoreRobin logo concept board</title>
+  <desc id="desc">Six minimalist CoreRobin logo directions combining a robin, a system heartbeat, and the letters C and R.</desc>
+
+  <rect width="1600" height="1100" fill="#FFFFFF"/>
+
+  <defs>
+    <style>
+      .navy-fill { fill: #132033; }
+      .coral-fill { fill: #F06449; }
+      .navy-stroke { fill: none; stroke: #132033; stroke-linecap: round; stroke-linejoin: round; }
+      .coral-stroke { fill: none; stroke: #F06449; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #132033; font: 700 26px Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .name { fill: #132033; font: 650 46px Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -1.5px; }
+      .caption { fill: #667085; font: 500 18px Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .4px; }
+    </style>
+  </defs>
+
+  <text x="70" y="72" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="-1">CoreRobin</text>
+  <text x="70" y="106" fill="#667085" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" font-weight="500">First-round minimalist logo directions · system signals with a calm companion</text>
+
+  <!-- A · Signal breast -->
+  <g transform="translate(0 178)">
+    <text class="label" x="58" y="42">A</text>
+    <g transform="translate(130 72)">
+      <path class="navy-fill" d="M126 35C72 35 33 76 36 130C39 184 84 219 137 208C183 199 215 162 215 118L270 84L215 80C195 51 163 35 126 35Z"/>
+      <path class="coral-stroke" stroke-width="13" d="M77 133H105L119 105L137 157L156 126H192"/>
+      <path class="coral-fill" d="M47 163C60 196 94 215 130 210C98 231 56 216 37 184Z"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">signal breast</text>
+  </g>
+
+  <!-- B · Open-line robin -->
+  <g transform="translate(533 178)">
+    <text class="label" x="58" y="42">B</text>
+    <g transform="translate(128 70)">
+      <path class="navy-stroke" stroke-width="18" d="M44 166C67 210 139 225 188 184C213 163 225 134 217 105L268 81L215 76C192 44 152 32 114 46C68 63 42 108 50 151"/>
+      <path class="navy-stroke" stroke-width="18" d="M49 151C33 165 27 183 31 201C45 189 63 184 81 188"/>
+      <path class="coral-stroke" stroke-width="12" d="M81 145H108L123 115L142 168L160 136H194"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">open signal</text>
+  </g>
+
+  <!-- C · C-body -->
+  <g transform="translate(1066 178)">
+    <text class="label" x="58" y="42">C</text>
+    <g transform="translate(128 66)">
+      <path class="navy-stroke" stroke-width="28" d="M214 65C178 35 126 32 87 57C44 85 27 141 48 188C71 240 139 261 193 229C220 213 238 188 243 160"/>
+      <path class="navy-fill" d="M237 105L286 135L237 151Z"/>
+      <path class="coral-stroke" stroke-width="13" d="M74 149H105L121 116L141 176L162 140H203"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">core C</text>
+  </g>
+
+  <!-- D · CR monogram -->
+  <g transform="translate(0 792)">
+    <text class="label" x="58" y="42">D</text>
+    <g transform="translate(126 68)">
+      <path class="navy-stroke" stroke-width="24" d="M230 65C198 35 145 31 103 53C58 77 36 130 54 177C73 227 131 252 181 231"/>
+      <path class="navy-stroke" stroke-width="24" d="M126 218V63H169C209 63 230 82 230 112C230 142 208 160 169 160H126M178 160L234 222"/>
+      <path class="coral-fill" d="M228 96L270 117L229 134Z"/>
+      <path class="coral-stroke" stroke-width="11" d="M68 176H100L114 147L132 196L151 165H188"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">CR monogram</text>
+  </g>
+
+  <!-- E · Perched status -->
+  <g transform="translate(533 792)">
+    <text class="label" x="58" y="42">E</text>
+    <g transform="translate(126 63)">
+      <path class="navy-fill" d="M133 43C91 43 60 76 62 118C64 159 98 184 139 178C174 173 201 144 201 111L247 83L200 79C184 56 161 43 133 43Z"/>
+      <path class="coral-fill" d="M91 122C105 147 133 158 160 151C145 178 107 185 81 164Z"/>
+      <path class="navy-stroke" stroke-width="12" d="M82 178L65 205M147 176L158 205"/>
+      <path class="navy-stroke" stroke-width="12" d="M24 209H96L114 180L137 235L160 198H266"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">steady watch</text>
+  </g>
+
+  <!-- F · Pulse wing -->
+  <g transform="translate(1066 792)">
+    <text class="label" x="58" y="42">F</text>
+    <g transform="translate(128 65)">
+      <path class="navy-stroke" stroke-width="18" d="M40 145C83 72 173 45 244 82"/>
+      <path class="coral-stroke" stroke-width="14" d="M58 163H103L122 122L147 188L172 143H235"/>
+      <path class="navy-stroke" stroke-width="18" d="M82 197C128 226 190 218 232 184"/>
+      <path class="navy-fill" d="M238 70L280 86L242 105Z"/>
+    </g>
+    <text class="name" x="266" y="374" text-anchor="middle">Core<tspan fill="#F06449">Robin</tspan></text>
+    <text class="caption" x="266" y="408" text-anchor="middle">pulse wing</text>
+  </g>
+</svg>

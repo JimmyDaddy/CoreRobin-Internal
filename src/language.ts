@@ -3,7 +3,7 @@ import {
   readMigratedStorageItem,
 } from "./storageMigration";
 
-export const LANGUAGE_STORAGE_KEY = "status-orbit.language.v1";
+export const LANGUAGE_STORAGE_KEY = "core-robin.language.v1";
 
 type LocaleDefinition = {
   code: string;

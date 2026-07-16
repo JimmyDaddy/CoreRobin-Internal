@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "インターフェース言語",
-    "description": "StatusOrbitのメニュー、ガイダンス、およびステータステキストを変更します。",
+    "description": "CoreRobinのメニュー、ガイダンス、およびステータステキストを変更します。",
     "label": "言語"
   },
   "background": {
     "title": "背景とデスクトップ",
-    "description": "StatusOrbitが起動し、ログイン時に起動し、Orbitを表示する方法を制御します。",
+    "description": "CoreRobinが起動し、ログイン時に起動し、Robinを表示する方法を制御します。",
     "showDockIcon": "ドックに表示",
     "showDockIconDescription": "オフの場合、メニューバーを使用し、ドックまたはアプリスイッチャーを占有しません。",
     "launchAtLogin": "ログイン時に起動",
     "launchAtLoginDescription": "メインウィンドウを開かずに、静かにメニューバーサービスを開始します。",
-    "companionShowOnStartup": "Orbitをデスクトップに表示",
-    "companionShowOnStartupDescription": "アプリが起動したときにOrbitコンパニオンを表示",
-    "companionAlwaysOnTop": "Orbitを常に最前面に表示する",
-    "companionAlwaysOnTopDescription": "他のウィンドウの上に表示されます。オフになると、Orbitが隠れる可能性があります"
+    "companionShowOnStartup": "Robinをデスクトップに表示",
+    "companionShowOnStartupDescription": "アプリが起動したときにRobinコンパニオンを表示",
+    "companionAlwaysOnTop": "Robinを常に最前面に表示する",
+    "companionAlwaysOnTopDescription": "他のウィンドウの上に表示されます。オフになると、Robinが隠れる可能性があります"
   },
   "sampling": {
     "title": "システム監視の頻度設定",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "デスクトップ通知",
-    "description": "主に、高い負荷、実際のメモリ圧、および低いディスク容量が問題を引き起こした場合にのみ通知します。 StatusOrbitは、問題が安定して回復した後、一度フォローアップします。",
+    "description": "主に、高い負荷、実際のメモリ圧、および低いディスク容量が問題を引き起こした場合にのみ通知します。 CoreRobinは、問題が安定して回復した後、一度フォローアップします。",
     "enable": "控えめな通知を許可する",
     "categories": "許可する通知の種類",
     "resources": {

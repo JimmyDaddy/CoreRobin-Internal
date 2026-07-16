@@ -15,12 +15,24 @@ import {
   type HistoryStory,
 } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
+import type { UserActionKind, UserActionRecord } from "../userActionHistory";
+import { UserActionTimeline } from "./UserActionTimeline";
 
 interface DailyRecordsProps {
   alertEvents: readonly ResourceAlertEvent[];
+  actionRecords: readonly UserActionRecord[];
+  storedActionCount: number;
+  onOpenAction: (kind: UserActionKind) => void;
+  onClearSavedActions: () => void;
 }
 
-export function DailyRecords({ alertEvents }: DailyRecordsProps) {
+export function DailyRecords({
+  alertEvents,
+  actionRecords,
+  storedActionCount,
+  onOpenAction,
+  onClearSavedActions,
+}: DailyRecordsProps) {
   const { t } = useAppTranslation();
   const [showAll, setShowAll] = useState(false);
   const stories = useMemo(() => buildHistoryStories(alertEvents), [alertEvents]);
@@ -36,6 +48,16 @@ export function DailyRecords({ alertEvents }: DailyRecordsProps) {
         <div><small>{t("daily:records.kicker")}</small><h1 id="daily-records-title">{t("daily:records.title")}</h1><p>{t("daily:records.description")}</p></div>
       </header>
 
+      {actionRecords.length > 0 ? (
+        <UserActionTimeline
+          records={actionRecords}
+          storedCount={storedActionCount}
+          compact
+          onOpenAction={onOpenAction}
+          onClearSaved={onClearSavedActions}
+        />
+      ) : null}
+
       {stories.length > 0 ? (
         <div className="daily-records__groups">
           {groups.map((group) => (
@@ -47,12 +69,12 @@ export function DailyRecords({ alertEvents }: DailyRecordsProps) {
             </section>
           ))}
         </div>
-      ) : (
+      ) : actionRecords.length === 0 ? (
         <div className="daily-records__empty">
           <CheckCircle2 size={24} />
           <div><strong>{t("daily:records.emptyTitle")}</strong><span>{t("daily:records.emptyDescription")}</span></div>
         </div>
-      )}
+      ) : null}
 
       {stories.length > 12 ? (
         <button className="daily-records__more" type="button" onClick={() => setShowAll((current) => !current)}>

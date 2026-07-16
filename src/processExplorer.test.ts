@@ -96,6 +96,8 @@ function snapshotFixture(
       battery: {
         present: false,
         chargePercent: null,
+        healthPercent: null,
+        cycleCount: null,
         state: "unknown",
         timeRemainingMinutes: null,
         powerSource: "unknown",

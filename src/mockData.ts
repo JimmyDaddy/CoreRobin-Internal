@@ -221,11 +221,11 @@ export function getMockCleanupScan(): CleanupScan {
         nodes: [
           cleanupNode("~/.cargo/registry", "Cargo registry", 1_890_000_000, 3_820, "reclaimable"),
           cleanupNode("~/Library/Developer/Xcode/DerivedData", "Xcode DerivedData", 4_420_000_000, 4_388, "reclaimable", [
-            cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit", "StatusOrbit", 2_900_000_000, 2_600, "reclaimable", [
-              cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build", "Build", 2_900_000_000, 2_600, "reclaimable", [
-                cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates", "Intermediates", 2_900_000_000, 2_600, "reclaimable", [
-                  cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates/Objects", "Objects", 2_900_000_000, 2_600, "reclaimable", [
-                    cleanupNode("~/Library/Developer/Xcode/DerivedData/StatusOrbit/Build/Intermediates/Objects/app.o", "app.o", 2_900_000_000, 1, "reclaimable", [], "file"),
+            cleanupNode("~/Library/Developer/Xcode/DerivedData/CoreRobin", "CoreRobin", 2_900_000_000, 2_600, "reclaimable", [
+              cleanupNode("~/Library/Developer/Xcode/DerivedData/CoreRobin/Build", "Build", 2_900_000_000, 2_600, "reclaimable", [
+                cleanupNode("~/Library/Developer/Xcode/DerivedData/CoreRobin/Build/Intermediates", "Intermediates", 2_900_000_000, 2_600, "reclaimable", [
+                  cleanupNode("~/Library/Developer/Xcode/DerivedData/CoreRobin/Build/Intermediates/Objects", "Objects", 2_900_000_000, 2_600, "reclaimable", [
+                    cleanupNode("~/Library/Developer/Xcode/DerivedData/CoreRobin/Build/Intermediates/Objects/app.o", "app.o", 2_900_000_000, 1, "reclaimable", [], "file"),
                   ]),
                 ]),
               ]),
@@ -714,6 +714,8 @@ export function getMockSnapshot(): SystemSnapshot {
       battery: {
         present: true,
         chargePercent: 78,
+        healthPercent: 94,
+        cycleCount: 173,
         state: "discharging",
         timeRemainingMinutes: 284,
         powerSource: "battery",

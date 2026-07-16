@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { isDesktopRuntime } from "../api";
 
-export const MAIN_VISIBILITY_EVENT = "status-orbit:main-visibility";
+export const MAIN_VISIBILITY_EVENT = "core-robin:main-visibility";
 
 function documentIsVisible(): boolean {
   return typeof document === "undefined" || document.visibilityState === "visible";

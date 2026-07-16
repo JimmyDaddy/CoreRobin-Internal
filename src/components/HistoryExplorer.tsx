@@ -30,12 +30,16 @@ import type {
   ResourceAlertEvent,
   ResourceAlertResource,
 } from "../resourceAlerts";
+import type { UserActionKind, UserActionRecord } from "../userActionHistory";
+import { UserActionTimeline } from "./UserActionTimeline";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
   storedPointCount: number;
   alertEvents: ResourceAlertEvent[];
   storedAlertEventCount: number;
+  actionRecords: UserActionRecord[];
+  storedUserActionCount: number;
   activeAlertCount: number;
   persistenceEnabled: boolean;
   retentionDays: HistoryRetentionDays;
@@ -43,6 +47,7 @@ interface HistoryExplorerProps {
   onPersistenceEnabledChange: (enabled: boolean) => void;
   onRetentionDaysChange: (days: HistoryRetentionDays) => void;
   onClear: () => void;
+  onOpenUserAction: (kind: UserActionKind) => void;
 }
 
 const CHART_WIDTH = 900;
@@ -55,6 +60,8 @@ export function HistoryExplorer({
   storedPointCount,
   alertEvents,
   storedAlertEventCount,
+  actionRecords,
+  storedUserActionCount,
   activeAlertCount,
   persistenceEnabled,
   retentionDays,
@@ -62,6 +69,7 @@ export function HistoryExplorer({
   onPersistenceEnabledChange,
   onRetentionDaysChange,
   onClear,
+  onOpenUserAction,
 }: HistoryExplorerProps) {
   const { t, i18n } = useAppTranslation();
   const [alertFilter, setAlertFilter] = useState<"all" | ResourceAlertResource>("all");
@@ -124,11 +132,12 @@ export function HistoryExplorer({
         <span className="history-controls__range">
           {range ?? t("history:noRange")} · {t("history:savedPoints", { count: storedPointCount })}
           {" · "}{t("history:alerts.savedEvents", { count: storedAlertEventCount })}
+          {" · "}{t("history:actions.saved", { count: storedUserActionCount })}
         </span>
         <button
           className="button button--danger-ghost"
           type="button"
-          disabled={storedPointCount === 0 && storedAlertEventCount === 0}
+          disabled={storedPointCount === 0 && storedAlertEventCount === 0 && storedUserActionCount === 0}
           onClick={onClear}
         >
           <Trash2 size={14} />{t("history:clearSaved")}
@@ -183,6 +192,14 @@ export function HistoryExplorer({
           </div>
         )}
       </section>
+
+      <div className="panel history-user-actions">
+        <UserActionTimeline
+          records={actionRecords}
+          storedCount={storedUserActionCount}
+          onOpenAction={onOpenUserAction}
+        />
+      </div>
 
       <section className="panel history-alerts" aria-labelledby="history-alerts-title">
         <header className="history-alerts__header">

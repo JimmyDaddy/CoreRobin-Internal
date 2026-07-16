@@ -13,7 +13,7 @@
   "access": {
     "kicker": "掃描前準備",
     "title": "允許檢視整個系統磁碟",
-    "description": "macOS 會保護郵件、資訊和其他應用資料等位置。授予“完全磁碟訪問許可權”後，空間地圖才能儘量完整；StatusOrbit 仍然只讀取檔名、大小和時間等後設資料。",
+    "description": "macOS 會保護郵件、資訊和其他應用資料等位置。授予“完全磁碟訪問許可權”後，空間地圖才能儘量完整；CoreRobin 仍然只讀取檔名、大小和時間等後設資料。",
     "checking": "正在檢查許可權…",
     "checkingReturn": "正在確認授權狀態…",
     "openSettings": "開啟完全磁碟訪問許可權",
@@ -21,15 +21,15 @@
     "revealApp": "在 Finder 中顯示應用",
     "checkAgain": "我已授權，重新檢查",
     "continueLimited": "掃描可訪問區域",
-    "waiting": "系統設定已開啟。如果列表中沒有 StatusOrbit，請點選列表下方的 +，選擇 StatusOrbit.app；開啟後返回，掃描會自動開始。",
+    "waiting": "系統設定已開啟。如果列表中沒有 CoreRobin，請點選列表下方的 +，選擇 CoreRobin.app；開啟後返回，掃描會自動開始。",
     "unknown": "暫時無法確認許可權狀態；你仍可以開啟系統設定授權，或執行有限掃描。",
-    "bundleRequired": "需先從 StatusOrbit.app 啟動",
+    "bundleRequired": "需先從 CoreRobin.app 啟動",
     "bundleMissingTitle": "當前執行的不是可授權的應用包",
-    "bundleMissingDescription": "macOS 無法把開發程序加入許可權列表。請先安裝 StatusOrbit.app 並從“應用程式”中重新開啟；目前仍可執行有限掃描。",
-    "privacy": "許可權由 macOS 管理，可隨時在系統設定中關閉。StatusOrbit 不讀取檔案內容，也不會在掃描時修改任何檔案。",
+    "bundleMissingDescription": "macOS 無法把開發程序加入許可權列表。請先安裝 CoreRobin.app 並從“應用程式”中重新開啟；目前仍可執行有限掃描。",
+    "privacy": "許可權由 macOS 管理，可隨時在系統設定中關閉。CoreRobin 不讀取檔案內容，也不會在掃描時修改任何檔案。",
     "steps": {
       "open": "開啟系統設定",
-      "add": "點選 +，選擇 StatusOrbit.app",
+      "add": "點選 +，選擇 CoreRobin.app",
       "return": "開啟開關並返回"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "更新結果",
     "cached": {
       "title": "已恢復上次掃描結果",
-      "description": "無需重新等待即可繼續檢視；進入具體目錄時，StatusOrbit 會按需核對它是否發生變化。"
+      "description": "無需重新等待即可繼續檢視；進入具體目錄時，CoreRobin 會按需核對它是否發生變化。"
     },
     "expired": {
       "title": "這份結果已超過 24 小時",
-      "description": "StatusOrbit 仍保留空間圖，方便你繼續檢視；涉及清理前建議先更新一次結果。"
+      "description": "CoreRobin 仍保留空間圖，方便你繼續檢視；涉及清理前建議先更新一次結果。"
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "已釋放約 {{size}}",
     "cancelDelete": "停止刪除",
     "cancelling": "正在停止…",
-    "cancelHint": "已完成的刪除無法恢復；StatusOrbit 會在當前檔案操作結束後停止。",
+    "cancelHint": "已完成的刪除無法恢復；CoreRobin 會在當前檔案操作結束後停止。",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit 不會刪除主目錄或廢紙簍目錄本身。",
-      "cleanup_target_outside_home": "出於安全考慮，StatusOrbit 只處理個人目錄內的內容。",
-      "cleanup_cross_filesystem": "所選目錄進入了另一個磁碟或掛載點，StatusOrbit 已拒絕遞迴刪除。",
-      "cleanup_target_changed": "檔案在確認後又發生了變化，因此 StatusOrbit 沒有刪除任何內容。請取消後重新檢查。",
+      "protected_cleanup_path": "CoreRobin 不會刪除主目錄或廢紙簍目錄本身。",
+      "cleanup_target_outside_home": "出於安全考慮，CoreRobin 只處理個人目錄內的內容。",
+      "cleanup_cross_filesystem": "所選目錄進入了另一個磁碟或掛載點，CoreRobin 已拒絕遞迴刪除。",
+      "cleanup_target_changed": "檔案在確認後又發生了變化，因此 CoreRobin 沒有刪除任何內容。請取消後重新檢查。",
       "cleanup_confirmation_unavailable": "本次確認已經失效，請取消後重新開啟檢查視窗。",
       "cleanup_confirmation_expired": "確認已超時，請取消後重新檢查當前檔案。",
       "cleanup_target_unavailable": "部分內容已經不存在或暫時無法訪問，請重新掃描後再試。",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "只讀應用盤點",
     "title": "很久沒用的應用",
-    "boundary": "僅列出 macOS 能確認 6 個月以上未開啟的應用；StatusOrbit 絕不會自動解除安裝",
+    "boundary": "僅列出 macOS 能確認 6 個月以上未開啟的應用；CoreRobin 絕不會自動解除安裝",
     "lastUsed": "{{date}} 最後使用 · 已有 {{days}} 天未開啟",
     "none": "沒有發現能夠確認已超過 6 個月未使用的應用。",
     "unavailable": "當前平臺暫時無法可靠讀取應用的最後使用時間。",
-    "unknownExcluded": "另有 {{count}} 個應用無法確認最後使用時間，StatusOrbit 沒有把它們歸為長期未用。"
+    "unknownExcluded": "另有 {{count}} 個應用無法確認最後使用時間，CoreRobin 沒有把它們歸為長期未用。"
   },
   "reviewFirst": "逐項確認",
   "largestFiles": "系統磁碟中的大檔案",
   "largeFileBoundary": "只列出超過 500 MB 的檔案，不建議自動刪除",
   "noLargeFiles": "可訪問的系統磁碟位置中沒有發現超過 500 MB 的檔案。",
   "unreadable": "有 {{count}} 個位置受許可權保護或暫時無法讀取，只有這些位置未計入結果。",
-  "fullDiskAccessHint": "macOS 上可在“系統設定 → 隱私與安全性 → 完全磁碟訪問許可權”中授權 StatusOrbit 後重新掃描。",
+  "fullDiskAccessHint": "macOS 上可在“系統設定 → 隱私與安全性 → 完全磁碟訪問許可權”中授權 CoreRobin 後重新掃描。",
   "safetyBoundary": "掃描沒有時間或數量上限，也不會跟隨符號連結；只有放入清理籃、核對路徑並明確確認的內容才會永久刪除，且無法恢復。"
 }

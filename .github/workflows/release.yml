@@ -87,22 +87,22 @@ jobs:
             os: macos-latest
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin --bundles dmg --no-sign -- --locked
-            artifact: statusorbit-macos-aarch64
+            artifact: corerobin-macos-aarch64
           - label: macOS Intel
             os: macos-latest
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin --bundles dmg --no-sign -- --locked
-            artifact: statusorbit-macos-x86_64
+            artifact: corerobin-macos-x86_64
           - label: Linux x64
             os: ubuntu-22.04
             target: ""
             args: --bundles deb,appimage -- --locked
-            artifact: statusorbit-linux-x86_64
+            artifact: corerobin-linux-x86_64
           - label: Windows x64
             os: windows-latest
             target: ""
             args: --bundles nsis,msi -- --locked
-            artifact: statusorbit-windows-x86_64
+            artifact: corerobin-windows-x86_64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -175,7 +175,7 @@ jobs:
       - name: Download installers
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          pattern: statusorbit-*
+          pattern: corerobin-*
           path: release-artifacts
 
       - name: Generate SPDX SBOM
@@ -183,8 +183,8 @@ jobs:
         with:
           path: release-artifacts
           format: spdx-json
-          output-file: release-artifacts/statusorbit.spdx.json
-          artifact-name: statusorbit.spdx.json
+          output-file: release-artifacts/corerobin.spdx.json
+          artifact-name: corerobin.spdx.json
           syft-version: v1.46.0
           upload-artifact: false
           upload-release-assets: false
@@ -242,7 +242,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NOTES: |
-        StatusOrbit ${{ github.ref_name }} 提供稳定事件生命周期与恢复记录、跨主窗口/状态栏/Orbit 的共享健康状态、登录时后台启动，以及系统监控、应用与进程详情、网络连接、存储分析和可交互的空间清理扇形图。
+        CoreRobin ${{ github.ref_name }} 提供稳定事件生命周期与恢复记录、跨主窗口/状态栏/Robin 的共享健康状态、登录时后台启动，以及系统监控、应用与进程详情、网络连接、存储分析和可交互的空间清理扇形图。
 
         界面支持简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어和Русский。
 
@@ -279,7 +279,7 @@ jobs:
             gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
               --draft \
               --verify-tag \
-              --title "StatusOrbit $GITHUB_REF_NAME" \
+              --title "CoreRobin $GITHUB_REF_NAME" \
               --notes "$RELEASE_NOTES" \
               --repo "$GITHUB_REPOSITORY"
           fi

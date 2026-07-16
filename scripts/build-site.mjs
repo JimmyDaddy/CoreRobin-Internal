@@ -13,11 +13,11 @@ await cp(join(repositoryRoot, "src/assets/brand-mark.png"), join(outputRoot, "as
 await cp(join(repositoryRoot, "src-tauri/icons/icon.png"), join(outputRoot, "assets/app-icon.png"));
 
 const screenshotAssets = [
-  "statusorbit-daily-overview.jpg",
-  "statusorbit-daily-assistant.jpg",
-  "statusorbit-professional-overview.jpg",
-  "statusorbit-professional-network.jpg",
-  "statusorbit-space-sunburst.jpg",
+  "corerobin-daily-overview.jpg",
+  "corerobin-daily-assistant.jpg",
+  "corerobin-professional-overview.jpg",
+  "corerobin-professional-network.jpg",
+  "corerobin-space-sunburst.jpg",
 ];
 for (const filename of screenshotAssets) {
   await cp(join(repositoryRoot, "docs/assets", filename), join(outputRoot, "assets", filename));
@@ -64,7 +64,7 @@ for (const htmlFile of htmlFiles) {
   }
 }
 
-console.log(`Built StatusOrbit site: ${files.length} files, ${htmlFiles.length} HTML pages.`);
+console.log(`Built CoreRobin site: ${files.length} files, ${htmlFiles.length} HTML pages.`);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });

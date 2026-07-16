@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="src/assets/brand-mark.png" width="120" alt="StatusOrbit Logo" />
+  <img src="src/assets/brand-mark.png" width="120" alt="CoreRobin Logo" />
 
-  <h1>StatusOrbit</h1>
+  <h1>CoreRobin</h1>
 
   <p><strong>看懂电脑状态，找到问题，安全处理。</strong></p>
   <p>一个从真实感受出发的桌面状态伙伴，让电脑变慢、风扇变响、空间不足和网络异常不再只是一堆难懂的指标。</p>
@@ -22,7 +22,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/statusorbit-professional-overview.jpg" width="100%" alt="StatusOrbit 专业模式资源总览与进程详情" />
+  <img src="docs/assets/corerobin-professional-overview.jpg" width="100%" alt="CoreRobin 专业模式资源总览与进程详情" />
 </p>
 
 <p align="center"><sub>专业模式 · 在同一屏查看系统状态、资源趋势与进程详情</sub></p>
@@ -37,10 +37,10 @@
 - 最近 5 分钟的资源趋势与影响最大的应用
 - 进程树、应用详情、活动连接和启动项
 - 磁盘空间、历史事件、桌面提醒与恢复通知
-- 主窗口、状态栏面板和 Orbit 小窗口共享的后台状态
+- 主窗口、状态栏面板和 Robin 小窗口共享的后台状态
 
 <p align="center">
-  <img src="docs/assets/statusorbit-professional-network.jpg" width="100%" alt="StatusOrbit 专业模式网络吞吐趋势与活动连接" />
+  <img src="docs/assets/corerobin-professional-network.jpg" width="100%" alt="CoreRobin 专业模式网络吞吐趋势与活动连接" />
 </p>
 
 <p align="center"><sub>网络诊断 · 实时吞吐、五分钟趋势和活动连接</sub></p>
@@ -50,7 +50,7 @@
 只读扫描会按真实文件路径整理空间占用，并用可下钻的扇形图展示目录层级。扫描只读取文件名、大小等元数据，不读取文件内容，也不会自动移动或删除任何东西。
 
 <p align="center">
-  <img src="docs/assets/statusorbit-space-sunburst.jpg" width="100%" alt="StatusOrbit 空间清理页面的完整扇形图" />
+  <img src="docs/assets/corerobin-space-sunburst.jpg" width="100%" alt="CoreRobin 空间清理页面的完整扇形图" />
 </p>
 
 清理操作始终先加入清理篮，永久删除前还会重新检查目标。如果文件已经变化、目标无法安全确认，或涉及受保护位置，操作会直接停止。
@@ -60,19 +60,20 @@
 普通版保留同一套监控、诊断与安全边界，但把稳定结论和最值得做的一件事放在前面。想快速确认电脑是否正常时看一眼即可，需要定位具体原因时再切回专业模式。
 
 <p align="center">
-  <img src="docs/assets/statusorbit-daily-overview.jpg" width="76%" alt="StatusOrbit 普通版电脑状态概览" />
+  <img src="docs/assets/corerobin-daily-overview.jpg" width="76%" alt="CoreRobin 普通版电脑状态概览" />
 </p>
 
 <p align="center"><sub>普通版 · 用一个稳定结论说明当前是否需要处理</sub></p>
 
-持续问题会保持稳定身份，短暂波动不会被当成故障。指标恢复后，StatusOrbit 还会继续确认并补充恢复记录，让你知道问题是否真的结束。
+持续问题会保持稳定身份，短暂波动不会被当成故障。指标恢复后，CoreRobin 还会继续确认并补充恢复记录，让你知道问题是否真的结束。
 
 ## 本地优先，操作可控
 
 - 监控、历史和偏好保存在当前设备，不上传或同步
 - 默认不把应用名称写入历史，命令行、用户、路径、文件名和连接地址不会进入历史记录
+- 用户确认执行的退出、重启、清理和启动项操作会记录结果；清理记录只保留数量和释放空间
 - 不会自动结束进程、卸载应用或删除文件
-- 系统关键进程、StatusOrbit 自身和受保护目录默认不可操作
+- 系统关键进程、CoreRobin 自身和受保护目录默认不可操作
 - 桌面提醒只针对持续问题，并设有重复抑制与每日数量上限
 
 ## 下载

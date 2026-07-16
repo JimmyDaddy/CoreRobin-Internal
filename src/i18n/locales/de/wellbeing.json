@@ -13,11 +13,13 @@
     "normal": "Die Temperatur liegt im normalen Bereich.",
     "attention": "Das Gerät ist warm. Reduzieren Sie zunächst anspruchsvolle Aufgaben.",
     "urgent": "Die Temperatur bleibt hoch. Beenden Sie anspruchsvolle Aufgaben und sorgen Sie für eine gute Belüftung des Geräts.",
-    "unavailable": "Das Betriebssystem oder die Hardware melden keine Temperaturdaten an StatusOrbit."
+    "unavailable": "Das Betriebssystem oder die Hardware melden keine Temperaturdaten an CoreRobin."
   },
   "battery": {
     "label": "Akku",
     "notPresent": "Kein Akku erkannt",
+    "healthLabel": "Akkuzustand",
+    "cycleCountLabel": "Ladezyklen",
     "unavailable": "Desktop-Computer und Geräte ohne Akku-Berichterstattung werden so angezeigt.",
     "normal": "Der Akkustatus ist normal",
     "attention": "Die Batterie wird schwach; bereiten Sie sich darauf vor, einen Ladegerät anzuschließen",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "Automatische Schlafphase",
     "unavailableValue": "Nicht verfügbar",
-    "unavailable": "Diese Plattform stellt keine zuverlässigen Informationen zum automatischen Ausschalten des Bildschirms an StatusOrbit bereit.",
+    "unavailable": "Diese Plattform stellt keine zuverlässigen Informationen zum automatischen Ausschalten des Bildschirms an CoreRobin bereit.",
     "clearValue": "Automatische Abschaltung ist möglich",
     "clear": "Keine App verhindert, dass der Computer automatisch ausgeschaltet wird.",
     "blockedValue": "{{count}} App",

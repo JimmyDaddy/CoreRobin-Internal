@@ -13,7 +13,7 @@
   },
   "scanning": "正在檢查…",
   "loadingTitle": "正在讀取啟動位置",
-  "loadingDescription": "StatusOrbit 只讀取系統公開的啟動配置，不會載入或執行其中的命令。",
+  "loadingDescription": "CoreRobin 只讀取系統公開的啟動配置，不會載入或執行其中的命令。",
   "summary": "啟動項摘要",
   "reviewCount": "建議看一眼",
   "reviewHint": "登入時啟動的第三方專案",
@@ -37,7 +37,7 @@
   "disabled": "已停用",
   "technicalDetails": "檢視技術位置",
   "managementBoundary": "只有可恢復的使用者級第三方啟動檔案可以停用；系統專案和不支援的來源保持只讀。",
-  "readOnlyBoundary": "當前平臺沒有 StatusOrbit 能安全恢復的啟動項來源，因此只讀展示。",
+  "readOnlyBoundary": "當前平臺沒有 CoreRobin 能安全恢復的啟動項來源，因此只讀展示。",
   "unreadable": "{{count}} 個啟動位置因許可權不足未能讀取",
   "actions": {
     "disable": "停用開機啟動",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "停用 {{name}} 的自動啟動？",
-      "description": "StatusOrbit 會把這份使用者級啟動配置移到自己的可恢復儲存中，不會刪除它。",
+      "description": "CoreRobin 會把這份使用者級啟動配置移到自己的可恢復儲存中，不會刪除它。",
       "whenDescription": "下次登入時生效；恢復後也會從下一次登入開始重新允許自動啟動。",
       "confirm": "確認停用自動啟動"
     },
     "enable": {
       "title": "恢復 {{name}} 的自動啟動？",
-      "description": "StatusOrbit 會把之前儲存的配置放回原位置。",
+      "description": "CoreRobin 會把之前儲存的配置放回原位置。",
       "whenDescription": "從下次登入開始，系統會再次允許這個專案自動啟動。",
       "confirm": "確認恢復自動啟動"
     },
@@ -89,10 +89,10 @@
     "preparing": "正在核對啟動項與檔案狀態…",
     "applying": "正在安全更新…",
     "errors": {
-      "startup_item_protected": "這不是可安全管理的使用者級第三方啟動項，StatusOrbit 沒有執行操作。",
+      "startup_item_protected": "這不是可安全管理的使用者級第三方啟動項，CoreRobin 沒有執行操作。",
       "startup_item_unavailable": "這個啟動項已經變化或不存在，請重新整理列表後再試。",
-      "startup_state_changed": "啟動配置在確認後發生變化，StatusOrbit 沒有執行操作。",
-      "startup_destination_conflict": "目標位置出現了另一份配置，為避免覆蓋，StatusOrbit 沒有執行操作。",
+      "startup_state_changed": "啟動配置在確認後發生變化，CoreRobin 沒有執行操作。",
+      "startup_destination_conflict": "目標位置出現了另一份配置，為避免覆蓋，CoreRobin 沒有執行操作。",
       "startup_confirmation_unavailable": "本次確認已經失效，請取消後重新開啟。",
       "startup_confirmation_expired": "確認已超時，請重新檢查後再操作。",
       "startup_management_failed": "系統未能安全移動啟動配置；原檔案仍保留在當前狀態。"
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "系統或裝置服務",
-      "description": "不建議作為普通啟動項處理，StatusOrbit 保持只讀展示。"
+      "description": "不建議作為普通啟動項處理，CoreRobin 保持只讀展示。"
     },
     "disabled": {
       "title": "當前未啟用",

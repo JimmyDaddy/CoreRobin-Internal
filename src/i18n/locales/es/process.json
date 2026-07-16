@@ -56,7 +56,7 @@
     "launchCommand": "Comando de inicio",
     "stableHandle": "Confirmación establece un control temporal y único del sistema operativo; la ejecución no busca el proceso objetivo por PID nuevamente.",
     "unavailableControl": "El control seguro del proceso no está disponible en esta plataforma.",
-    "bestEffort": "macOS no puede proporcionar un control estable para cada proceso. StatusOrbit verifica la identidad de inicio antes de enviar la señal, pero el objetivo sigue siendo una búsqueda por PID.",
+    "bestEffort": "macOS no puede proporcionar un control estable para cada proceso. CoreRobin verifica la identidad de inicio antes de enviar la señal, pero el objetivo sigue siendo una búsqueda por PID.",
     "allowBestEffort": "Permitir acciones del proceso con esfuerzo limitado para esta ejecución",
     "binding": "Estableciendo conexión…",
     "requestClose": "Solicitar cierre",

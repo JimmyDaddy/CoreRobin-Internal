@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "StatusOrbit",
+  "productName": "CoreRobin",
   "version": "0.0.2",
   "identifier": "com.timetombs.statusorbit",
   "build": {
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "StatusOrbit",
+        "title": "CoreRobin",
         "width": 1440,
         "height": 900,
         "minWidth": 1040,
@@ -25,7 +25,7 @@
       },
       {
         "label": "splashscreen",
-        "title": "StatusOrbit",
+        "title": "CoreRobin",
         "url": "splash.html",
         "width": 520,
         "height": 340,
@@ -39,7 +39,7 @@
       },
       {
         "label": "tray",
-        "title": "StatusOrbit Status",
+        "title": "CoreRobin Status",
         "url": "tray.html",
         "width": 360,
         "height": 440,
@@ -53,7 +53,7 @@
       },
       {
         "label": "companion",
-        "title": "Orbit Companion",
+        "title": "Robin Companion",
         "url": "companion.html",
         "width": 92,
         "height": 92,

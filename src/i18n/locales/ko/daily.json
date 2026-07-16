@@ -33,7 +33,7 @@
     "attention": {
       "short": "확인해 볼 가치가 있는 내용이 있습니다",
       "title": "{{count}} 내용을 확인해 보세요",
-      "summary": "StatusOrbit가 문제 원인과 해결 방법을 정리하여, 기술적인 정보를 직접 해석할 필요가 없습니다."
+      "summary": "CoreRobin가 문제 원인과 해결 방법을 정리하여, 기술적인 정보를 직접 해석할 필요가 없습니다."
     },
     "urgent": {
       "short": "곧 확인해 주세요",
@@ -41,7 +41,7 @@
       "summary": "먼저 이유를 확인한 후, 적절한 조치를 선택하세요."
     }
   },
-  "orbit": {
+  "checks": {
     "label": "컴퓨터 상태",
     "thisComputer": "현재 컴퓨터",
     "speed": "속도",
@@ -50,7 +50,7 @@
     "battery": "배터리 상태"
   },
   "companion": {
-    "name": "ORBIT",
+    "name": "Robin",
     "checking": "확인 중"
   },
   "home": {
@@ -59,8 +59,8 @@
     "viewPriority": "확인",
     "checkNow": "지금 확인",
     "checking": "확인 중…",
-    "checkingTitle": "Orbit가 컴퓨터 상태를 확인 중입니다.",
-    "checkingSummary": "최신 상태가 이 화면에 바로 반영됩니다. 더 오래 관찰해야 하는 항목이 있으면 Orbit가 명확히 알려 줍니다.",
+    "checkingTitle": "Robin가 컴퓨터 상태를 확인 중입니다.",
+    "checkingSummary": "최신 상태가 이 화면에 바로 반영됩니다. 더 오래 관찰해야 하는 항목이 있으면 Robin가 명확히 알려 줍니다.",
     "haveProblem": "뭔가 잘못된 것 같습니다.",
     "checkedAt": "{{time}}에 업데이트됨",
     "localOnly": "상태 및 기록은 이 장치에서 확인 가능",
@@ -133,7 +133,7 @@
     },
     "recommended": "현재 상태에 적합한 제안",
     "otherProblems": "다른 상황",
-    "footer": "StatusOrbit는 유용해 보이기 위해 근거 없이 추측하지 않습니다. 근거가 충분하지 않으면 계속 관찰합니다."
+    "footer": "CoreRobin는 유용해 보이기 위해 근거 없이 추측하지 않습니다. 근거가 충분하지 않으면 계속 관찰합니다."
   },
   "attention": {
     "kicker": "현재",
@@ -143,7 +143,7 @@
     "recovering": "복구 확인",
     "open": "상황을 확인해 보세요",
     "emptyTitle": "현재 주의가 필요한 항목이 없습니다",
-    "emptyDescription": "StatusOrbit는 배경에서 지속적인 변화를 계속 모니터링합니다.",
+    "emptyDescription": "CoreRobin는 배경에서 지속적인 변화를 계속 모니터링합니다.",
     "viewApplications": "실행 중인 앱을 확인하세요",
     "temperature": {
       "title": "컴퓨터 온도가 높습니다",
@@ -171,7 +171,7 @@
       "recovering": "복구 확인 중",
       "resolved": "복구 완료"
     },
-    "recoveringDescription": "최신 측정값은 낮아졌습니다. StatusOrbit는 일시적인 변동이 아닌지 확인하기 위해 조금 더 관찰합니다.",
+    "recoveringDescription": "최신 측정값은 낮아졌습니다. CoreRobin는 일시적인 변동이 아닌지 확인하기 위해 조금 더 관찰합니다.",
     "resolvedDescription": "이 상태가 안정적으로 회복되었으며, 현재 추가 조치가 필요하지 않습니다. 원인이었던 증거는 여기에서 확인할 수 있습니다.",
     "observedCause": "발생 시점에 주로 관련",
     "causeMayHaveChanged": "애플리케이션 상태가 변경되었을 수 있습니다. 최신 확인 시에만 조치가 제공됩니다.",
@@ -228,7 +228,7 @@
     "systemSafety": "이것은 시스템 구성 요소입니다. 증거가 표시되지만, 종료하는 것은 권장되지 않습니다.",
     "requestClose": "{{name}}을 종료하도록 요청",
     "restart": "{{name}} 재시작",
-    "restartUnavailable": "StatusOrbit에서 {{name}}을 안전하게 재시작할 수 없습니다.",
+    "restartUnavailable": "CoreRobin에서 {{name}}을 안전하게 재시작할 수 없습니다.",
     "restartComplete": "{{name}}이 정상적으로 종료된 뒤 다시 열렸습니다.",
     "restartStillRunning": "{{name}}이 아직 실행 중이므로 다시 열지 않았습니다.",
     "viewEvidence": "자세한 증거 보기",
@@ -247,7 +247,7 @@
     "title": "완료 확인",
     "loadingKicker": "이 컴퓨터를 검사 중",
     "checkingTitle": "최신 상태를 업데이트 중",
-    "checkingDescription": "StatusOrbit가 최근 변경 사항을 읽고 결과를 재구성합니다.",
+    "checkingDescription": "CoreRobin가 최근 변경 사항을 읽고 결과를 재구성합니다.",
     "steps": {
       "read": "최신 상태 읽기",
       "compare": "변경 사항 비교",
@@ -275,7 +275,7 @@
         "description": "트래픽 및 활성 연결은 지속적으로 모니터링하는 대신 낮은 빈도로 샘플링됩니다."
       },
       "checkup": {
-        "title": "Orbit가 이 컴퓨터를 확인 중입니다",
+        "title": "Robin가 이 컴퓨터를 확인 중입니다",
         "description": "시스템 상태, 연결 및 시작 프로그램에 대한 실제 정보를 제공하며, 과장된 시간 제한 없이 결과를 표시합니다."
       }
     },
@@ -298,7 +298,7 @@
       "startupTotal": "시작 시 실행되는 항목"
     },
     "slow": {
-      "observingDescription": "최신 데이터는 준비되었지만, StatusOrbit가 짧은 문제를 지속적인 문제로 판단하기 전에는 더 지켜봐야 합니다."
+      "observingDescription": "최신 데이터는 준비되었지만, CoreRobin가 짧은 문제를 지속적인 문제로 판단하기 전에는 더 지켜봐야 합니다."
     },
     "checkup": {
       "observingDescription": "최신 상태는 준비되었지만, 지속적인 조건에 대해서는 추가 확인이 필요합니다."
@@ -314,7 +314,7 @@
       },
       "observing": {
         "title": "일부 장치 상태가 현재 사용 불가능합니다",
-        "description": "StatusOrbit가 데이터를 제대로 처리하지 않고, 오류로 인식하고 있습니다."
+        "description": "CoreRobin가 데이터를 제대로 처리하지 않고, 오류로 인식하고 있습니다."
       },
       "attention": {
         "title": "현재 장치의 상태를 확인해 보세요",
@@ -326,7 +326,7 @@
       }
     },
     "exited": "앱이 종료되었고, 최신 상태가 다시 읽혔습니다.",
-    "still_running": "앱은 계속 실행 중입니다. StatusOrbit는 강제로 종료하지 않았습니다.",
+    "still_running": "앱은 계속 실행 중입니다. CoreRobin는 강제로 종료하지 않았습니다.",
     "already_exited": "앱은 이미 종료되었고, 최신 상태가 다시 읽혔습니다.",
     "refreshed": "최신 상태가 읽혔습니다."
   },
@@ -389,7 +389,7 @@
   "records": {
     "kicker": "최근 변경 사항",
     "title": "이전과 이후의 상황을 확인",
-    "description": "지속적인 상태와 복구 기록만 저장됩니다. 일시적인 급증은 무시됩니다.",
+    "description": "지속된 컴퓨터 변화와 사용자가 확인한 작업의 결과를 여기에 정리합니다.",
     "emptyTitle": "최근 시스템은 안정적으로 작동했습니다",
     "emptyDescription": "지속적인 성능 저하나 메모리 부족, 또는 디스크 공간 부족이 명확하게 표시됩니다.",
     "duration": "약 {{minutes}} 분",
@@ -403,7 +403,7 @@
   },
   "settings": {
     "kicker": "매일 사용 설정",
-    "title": "Orbit를 원하는 대로 사용하기",
+    "title": "Robin를 원하는 대로 사용하기",
     "description": "여기서는 매일 사용하는 설정을만 관리합니다. 샘플링 및 임계값 설정은 전문가 모드에서 관리됩니다.",
     "language": "인터페이스 언어",
     "languageDescription": "원하는 인터페이스 언어를 선택하세요",
@@ -429,10 +429,10 @@
     "showDockIconDescription": "기본적으로 꺼져 있음; 메뉴 막대에서 메인 창을 다시 열 수 있음",
     "launchAtLogin": "로그인 시 자동 실행",
     "launchAtLoginDescription": "로그인 후 메인 창을 열지 않고 백그라운드에서 시작",
-    "companionAlwaysOnTop": "Orbit를 다른 창 위에 표시",
-    "companionAlwaysOnTopDescription": "끄면 Orbit는 데스크탑에 남아있지만 다른 창에 가려질 수 있음",
-    "companionShowOnStartup": "Orbit를 데스크톱에 계속 표시",
-    "companionShowOnStartupDescription": "오빗을 즉시 표시하고, StatusOrbit가 다시 시작될 때 자동으로 복원합니다",
+    "companionAlwaysOnTop": "Robin를 다른 창 위에 표시",
+    "companionAlwaysOnTopDescription": "끄면 Robin는 데스크탑에 남아있지만 다른 창에 가려질 수 있음",
+    "companionShowOnStartup": "Robin를 데스크톱에 계속 표시",
+    "companionShowOnStartupDescription": "오빗을 즉시 표시하고, CoreRobin가 다시 시작될 때 자동으로 복원합니다",
     "professional": "전문 모드",
     "professionalDescription": "모든 지표, 프로세스 트리, 네트워크 연결 및 고급 설정을 확인합니다",
     "openProfessional": "전문 모드를 엽니다"
@@ -442,8 +442,8 @@
     "checkAgain": "다시 확인",
     "checkingAgain": "확인 중…",
     "result": "확인 결과",
-    "viewEvidence": "StatusOrbit가 이 결과를 표시하는 이유",
-    "safety": "StatusOrbit는 과학적으로 검증된 조치만 권장합니다. 시스템 관련 모든 조치는 사용자 확인이 필요합니다.",
+    "viewEvidence": "CoreRobin가 이 결과를 표시하는 이유",
+    "safety": "CoreRobin는 과학적으로 검증된 조치만 권장합니다. 시스템 관련 모든 조치는 사용자 확인이 필요합니다.",
     "professional": "모든 기술적 증거 보기",
     "slow": {
       "kicker": "응답 속도 점검",
@@ -453,7 +453,7 @@
       "observingTitle": "먼저 일시적인 현상이 아닌지 확인하세요",
       "observingDescription": "{{seconds}}초 정도 남았습니다. 페이지 열기 또는 앱 실행은 오류로 간주되지 않습니다.",
       "normalTitle": "지속적인 자원 사용량이 발견되지 않았습니다",
-      "normalDescription": "여전히 느리게 느껴진다면, 현재 실행 중인 앱을 확인하세요. StatusOrbit는 증거 없이 추측하지 않습니다.",
+      "normalDescription": "여전히 느리게 느껴진다면, 현재 실행 중인 앱을 확인하세요. CoreRobin는 증거 없이 추측하지 않습니다.",
       "viewApplications": "현재 실행 중인 앱 보기",
       "likelyCause": "관련될 가능성이 높은 앱",
       "applicationExplanation": "{{name}}가 동시에 활발하게 사용되고 있었을 수 있습니다.",
@@ -468,7 +468,7 @@
       "normalTitle": "{{free}}는 여전히 사용 가능",
       "normalDescription": "공간이 충분합니다. 파일 정리 목적으로만 스캔하세요.",
       "unknownTitle": "메인 저장 공간이 일시적으로 사용 불가능합니다.",
-      "unknownDescription": "시스템에서 안정적인 용량 정보를 제공하지 않으므로, StatusOrbit는 알 수 없는 상태를 충분한 공간으로 간주하지 않습니다.",
+      "unknownDescription": "시스템에서 안정적인 용량 정보를 제공하지 않으므로, CoreRobin는 알 수 없는 상태를 충분한 공간으로 간주하지 않습니다.",
       "cachedScan": "전체 스캔 가능",
       "reclaimable": "{{size}}을 확인해 보세요.",
       "noScan": "파일이 스캔되지 않았습니다.",
@@ -509,7 +509,7 @@
         },
         "unknown": {
           "title": "장치 정보가 충분하지 않아",
-          "description": "온도, 배터리 및 수면 데이터가 없으므로 StatusOrbit는 열 또는 전력 소비를 판단할 수 없습니다."
+          "description": "온도, 배터리 및 수면 데이터가 없으므로 CoreRobin는 열 또는 전력 소비를 판단할 수 없습니다."
         },
         "normal": {
           "title": "지속적인 열 또는 수면 문제는 발견되지 않았습니다",
@@ -520,12 +520,12 @@
     "network": {
       "kicker": "네트워크 확인",
       "title": "현재 네트워크 상태를 확인",
-      "description": "StatusOrbit는 현재 트래픽과 활성 연결을 읽지만, 증거가 없는 앱에 책임을 지지 않습니다.",
+      "description": "CoreRobin는 현재 트래픽과 활성 연결을 읽지만, 증거가 없는 앱에 책임을 지지 않습니다.",
       "checkingKicker": "현재 확인 중",
       "checkingTitle": "활성 연결 확인",
       "checkingDescription": "연결 스캔은 별도의 저빈도 작업으로 실행되며 메인 샘플러에 영향을 주지 않습니다.",
       "unknownTitle": "네트워크 정보가 충분하지 않아",
-      "unknownDescription": "현재 네트워크 활동이나 연결 상태를 확인할 수 없어, StatusOrbit는 네트워크 상태를 판단할 수 없습니다.",
+      "unknownDescription": "현재 네트워크 활동이나 연결 상태를 확인할 수 없어, CoreRobin는 네트워크 상태를 판단할 수 없습니다.",
       "activeTitle": "네트워크 활동이 현재 진행 중입니다",
       "quietTitle": "현재 상당한 네트워크 활동은 없습니다",
       "resultDescription": "이는 현재의 활동만 설명합니다. 느린 인터넷은 라우터, 서비스 제공업체 또는 원격 서비스에서 발생할 수도 있습니다.",

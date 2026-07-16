@@ -42,7 +42,7 @@
     "happeningNow": "En cours",
     "resolved": "Résolu",
     "emptyTitle": "Aucune information récente",
-    "emptyDescription": "StatusOrbit ignore les fluctuations mineures et ne conserve que les conditions qui persistent suffisamment pour affecter l'ordinateur.",
+    "emptyDescription": "CoreRobin ignore les fluctuations mineures et ne conserve que les conditions qui persistent suffisamment pour affecter l'ordinateur.",
     "cpu": {
       "active": {
         "title": "L'ordinateur est en cours d'utilisation",
@@ -52,7 +52,7 @@
         "title": "L'ordinateur était en surcharge et s'est rétabli",
         "description": "La surcharge a duré environ {{duration}}, a atteint un pic proche de {{value}}%, puis est revenue à la normale."
       },
-      "guidance": "Si l'ordinateur reste lent, ouvrez les applications pour identifier l'impact le plus important. StatusOrbit ne ferme jamais une application automatiquement."
+      "guidance": "Si l'ordinateur reste lent, ouvrez les applications pour identifier l'impact le plus important. CoreRobin ne ferme jamais une application automatiquement."
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "La pression sur la mémoire s'est élevée puis est revenue à la normale",
         "description": "La mémoire était limitée pendant environ {{duration}}, avant que la mémoire disponible et l'activité de swap ne reviennent à la normale."
       },
-      "guidance": "Une utilisation élevée de la mémoire est normale. StatusOrbit enregistre cette information uniquement lorsque la disponibilité est faible et qu'une activité de swap significative se produit."
+      "guidance": "Une utilisation élevée de la mémoire est normale. CoreRobin enregistre cette information uniquement lorsque la disponibilité est faible et qu'une activité de swap significative se produit."
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%, supérieur à {{threshold}}% pendant {{duration}}.",
     "recoveredDetail": "Retour à {{value}}% après {{duration}}."
   },
+  "actions": {
+    "eyebrow": "Actions que vous avez confirmées",
+    "title": "Actions et résultats",
+    "description": "Conserve les actions confirmées et vérifie leur résultat lorsque cela est possible.",
+    "count": "{{count}} récentes",
+    "saved": "{{count}} actions enregistrées",
+    "emptyTitle": "Aucune action pour le moment",
+    "emptyDescription": "Les résultats apparaîtront ici après la fermeture d’une application, le nettoyage de fichiers ou la gestion d’un élément de démarrage.",
+    "open": "Voir",
+    "clear": "Effacer l’historique des actions",
+    "kind": {
+      "process_close": "Quitter l’application normalement",
+      "process_restart": "Redémarrer l’application",
+      "process_force_quit": "Forcer l’arrêt de l’application",
+      "cleanup_delete": "Supprimer définitivement des fichiers",
+      "startup_disable": "Désactiver l’élément de démarrage",
+      "startup_enable": "Restaurer l’élément de démarrage"
+    },
+    "status": {
+      "running": "En cours",
+      "succeeded": "Terminée",
+      "partial": "Partiellement terminée",
+      "failed": "Non terminée",
+      "cancelled": "Annulée",
+      "interrupted": "Interrompue"
+    },
+    "verification": {
+      "pending": "Vérification du résultat",
+      "verified": "État du système vérifié à nouveau",
+      "not_confirmed": "L’état final ne peut pas encore être confirmé"
+    },
+    "target": {
+      "application": "Nom de l’application non enregistré",
+      "files": "Fichiers sélectionnés",
+      "startup": "Nom de l’élément non enregistré"
+    },
+    "cleanupResult": "{{count}} éléments traités, {{size}} libérés",
+    "cleanupFailed": "{{count}} éléments non terminés"
+  },
   "privacyEyebrow": "Limites de données",
   "privacyTitle": "Politique de confidentialité",
-  "privacyLocal": "L'historique reste dans le stockage StatusOrbit WebView de cet appareil et n'est jamais téléchargé ou synchronisé.",
-  "privacyCollected": "Seules les pourcentages d'utilisation du CPU et de la mémoire, les captures d'instantané du débit disque et réseau, ainsi que les événements de pression et de récupération sont stockés. Les noms d'applications ne sont enregistrés que si vous l'autorisez séparément dans les Paramètres.",
+  "privacyLocal": "L'historique reste dans le stockage CoreRobin WebView de cet appareil et n'est jamais téléchargé ou synchronisé.",
+  "privacyCollected": "L’historique conserve les données de ressources agrégées, les événements de pression et de récupération, ainsi que le type, le résultat, le nombre d’éléments et l’espace libéré des actions confirmées. Les noms d’applications ou d’éléments de démarrage nécessitent une autorisation séparée.",
   "privacyExcluded": "Les commandes, les utilisateurs, les chemins et les adresses de connexion (locales ou distantes) ne sont pas enregistrés.",
   "privacyControl": "La désactivation arrête l'enregistrement de nouvelles données ; les données existantes restent jusqu'à leur expiration ou jusqu'à ce que vous les effaciez manuellement."
 }

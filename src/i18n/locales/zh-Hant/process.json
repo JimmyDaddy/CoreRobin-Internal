@@ -56,7 +56,7 @@
     "launchCommand": "啟動命令",
     "stableHandle": "確認後會繫結短期、單次使用的穩定系統控制代碼；執行時不會重新按 PID 查詢目標。",
     "unavailableControl": "此平臺暫不支援安全的程序控制。",
-    "bestEffort": "macOS 無法為任意程序提供可發訊號的穩定控制代碼。StatusOrbit 會在發訊號前再次核驗啟動標識，但仍屬於 best-effort PID 定位。",
+    "bestEffort": "macOS 無法為任意程序提供可發訊號的穩定控制代碼。CoreRobin 會在發訊號前再次核驗啟動標識，但仍屬於 best-effort PID 定位。",
     "allowBestEffort": "本次執行中允許 best-effort 程序操作",
     "binding": "正在繫結…",
     "requestClose": "請求結束",

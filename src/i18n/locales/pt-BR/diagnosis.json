@@ -4,7 +4,7 @@
   "collapse": "Ocultar diagnóstico",
   "checkedLabel": "Diagnóstico Inteligente está ativo",
   "thisDisk": "Disco do sistema",
-  "safety": "O StatusOrbit não age automaticamente. As ações recomendadas ainda precisam da sua confirmação, e a opção de forçar o encerramento permanece no modo profissional.",
+  "safety": "O CoreRobin não age automaticamente. As ações recomendadas ainda precisam da sua confirmação, e a opção de forçar o encerramento permanece no modo profissional.",
   "duration": "por {{seconds}} segundos",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "Seu computador pode estar lento",
-      "summary": "StatusOrbit identificou possíveis problemas de desempenho ({{count}}). Clique aqui para ver mais detalhes."
+      "summary": "CoreRobin identificou possíveis problemas de desempenho ({{count}}). Clique aqui para ver mais detalhes."
     },
     "urgent": {
       "title": "É necessário verificar a situação com urgência",
-      "summary": "StatusOrbit identificou problemas de desempenho significativos ({{count}}). Analise os dados antes de tomar qualquer medida."
+      "summary": "CoreRobin identificou problemas de desempenho significativos ({{count}}). Analise os dados antes de tomar qualquer medida."
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "Solicite o encerramento do {{name}} primeiro",
-      "description": "Esta é a ação mais segura disponível. O StatusOrbit verifica a identidade do processo e exibe uma confirmação antes de realizar qualquer operação.",
+      "description": "Esta é a ação mais segura disponível. O CoreRobin verifica a identidade do processo e exibe uma confirmação antes de realizar qualquer operação.",
       "action": "Solicite o encerramento do {{name}}"
     },
     "open_cleanup": {
@@ -112,24 +112,24 @@
     },
     "inspect_process": {
       "title": "Verificar as informações disponíveis",
-      "description": "O StatusOrbit não oferece uma ação direta aqui. Verifique a identidade do aplicativo, alterações de recursos e o motivo da proteção primeiro.",
+      "description": "O CoreRobin não oferece uma ação direta aqui. Verifique a identidade do aplicativo, alterações de recursos e o motivo da proteção primeiro.",
       "action": "Verificar evidências detalhadas"
     },
     "inspectEvidence": "Verificar evidências do aplicativo",
     "preparing": "Verificando…",
-    "actionUnavailable": "O StatusOrbit não conseguiu verificar ou controlar este aplicativo com segurança, portanto, nenhuma alteração foi feita."
+    "actionUnavailable": "O CoreRobin não conseguiu verificar ou controlar este aplicativo com segurança, portanto, nenhuma alteração foi feita."
   },
   "actionDialog": {
     "title": "Solicitar que o {{name}} encerre a execução?",
-    "description": "O StatusOrbit enviará uma solicitação de término normal. Esta é a ação suave, e não forçar o encerramento.",
+    "description": "O CoreRobin enviará uma solicitação de término normal. Esta é a ação suave, e não forçar o encerramento.",
     "restartTitle": "Reiniciar {{name}}?",
-    "restartDescription": "O StatusOrbit solicitará que o aplicativo encerre normalmente e depois reabrirá o pacote verificado.",
+    "restartDescription": "O CoreRobin solicitará que o aplicativo encerre normalmente e depois reabrirá o pacote verificado.",
     "safeTitle": "Não exclui o aplicativo ou seus arquivos",
     "safeDescription": "Isso apenas solicita que o aplicativo em execução pare e não limpa seus dados.",
     "riskTitle": "Salve qualquer coisa que esteja editando primeiro",
     "riskDescription": "A exibição de um aviso de salvamento depende do aplicativo; o trabalho não salvo ainda pode ser perdido.",
     "stableIdentity": "Um identificador estável está vinculado ao processo selecionado e será verificado novamente antes da execução.",
-    "bestEffortIdentity": "Esta plataforma só pode reduzir o risco de reutilização de PID por meio de verificações de identidade. O StatusOrbit rejeita a ação se o processo tiver mudado.",
+    "bestEffortIdentity": "Esta plataforma só pode reduzir o risco de reutilização de PID por meio de verificações de identidade. O CoreRobin rejeita a ação se o processo tiver mudado.",
     "confirm": "Confirmar solicitação de saída para {{name}}",
     "confirmRestart": "Reiniciar {{name}}"
   }

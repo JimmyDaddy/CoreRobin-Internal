@@ -2,11 +2,11 @@
   "triggered": {
     "cpu": {
       "title": "O computador está com alta carga",
-      "body": "O processador tem permanecido ocupado, o que pode causar lentidão, superaquecimento ou maior consumo de bateria. Abra o StatusOrbit para identificar os aplicativos mais impactantes."
+      "body": "O processador tem permanecido ocupado, o que pode causar lentidão, superaquecimento ou maior consumo de bateria. Abra o CoreRobin para identificar os aplicativos mais impactantes."
     },
     "memory": {
       "title": "Memória disponível está baixa",
-      "body": "Pouca memória disponível e uso significativo do espaço de troca estão ocorrendo simultaneamente. O StatusOrbit nunca fecha aplicativos automaticamente."
+      "body": "Pouca memória disponível e uso significativo do espaço de troca estão ocorrendo simultaneamente. O CoreRobin nunca fecha aplicativos automaticamente."
     },
     "volume": {
       "title": "Espaço livre em disco está baixo",

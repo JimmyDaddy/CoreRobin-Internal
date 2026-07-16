@@ -13,7 +13,7 @@
   "access": {
     "kicker": "Vor dem Scan",
     "title": "Zugriff auf die gesamte Festplatte erlauben",
-    "description": "macOS schützt Mail, Nachrichten und andere App-Daten sowie ähnliche Bereiche. Vollständiger Zugriff ermöglicht es StatusOrbit, eine möglichst vollständige Speicherkarte zu erstellen; StatusOrbit liest weiterhin nur Metadaten wie Namen, Größen und Datumsangaben.",
+    "description": "macOS schützt Mail, Nachrichten und andere App-Daten sowie ähnliche Bereiche. Vollständiger Zugriff ermöglicht es CoreRobin, eine möglichst vollständige Speicherkarte zu erstellen; CoreRobin liest weiterhin nur Metadaten wie Namen, Größen und Datumsangaben.",
     "checking": "Zugriff wird geprüft…",
     "checkingReturn": "Zugriff wurde bestätigt…",
     "openSettings": "Vollständigen Zugriff öffnen",
@@ -21,15 +21,15 @@
     "revealApp": "App in Finder anzeigen",
     "checkAgain": "Zugriff aktiviert — erneut prüfen",
     "continueLimited": "Scannen der zugänglichen Bereiche",
-    "waiting": "Die Systemeinstellungen sind geöffnet. Wenn StatusOrbit fehlt, klicken Sie auf + unter der Liste und wählen Sie StatusOrbit.app aus. Aktivieren Sie es und kehren Sie zum automatischen Scannen zurück.",
+    "waiting": "Die Systemeinstellungen sind geöffnet. Wenn CoreRobin fehlt, klicken Sie auf + unter der Liste und wählen Sie CoreRobin.app aus. Aktivieren Sie es und kehren Sie zum automatischen Scannen zurück.",
     "unknown": "Zugriff konnte nicht bestätigt werden. Sie können die Systemeinstellungen weiterhin öffnen oder einen begrenzten Scan durchführen.",
-    "bundleRequired": "Starten Sie zuerst StatusOrbit.app",
+    "bundleRequired": "Starten Sie zuerst CoreRobin.app",
     "bundleMissingTitle": "Dieser Prozess kann nicht zur Zugriffsberechtigungsliste hinzugefügt werden",
-    "bundleMissingDescription": "macOS erlaubt hier keine Berechtigung für eine Entwicklungsanwendung. Installieren Sie StatusOrbit.app und öffnen Sie es erneut aus dem Anwendungsordner; ein begrenzter Scan ist weiterhin verfügbar.",
-    "privacy": "macOS kontrolliert diese Berechtigung, und Sie können sie jederzeit deaktivieren. StatusOrbit liest niemals Dateiinhalte oder ändert Dateien während eines Scans.",
+    "bundleMissingDescription": "macOS erlaubt hier keine Berechtigung für eine Entwicklungsanwendung. Installieren Sie CoreRobin.app und öffnen Sie es erneut aus dem Anwendungsordner; ein begrenzter Scan ist weiterhin verfügbar.",
+    "privacy": "macOS kontrolliert diese Berechtigung, und Sie können sie jederzeit deaktivieren. CoreRobin liest niemals Dateiinhalte oder ändert Dateien während eines Scans.",
     "steps": {
       "open": "Öffnen Sie die Systemeinstellungen",
-      "add": "Klicken Sie auf + und wählen Sie StatusOrbit.app aus",
+      "add": "Klicken Sie auf + und wählen Sie CoreRobin.app aus",
       "return": "Aktivieren Sie es und kehren Sie zurück"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "Ergebnis aktualisieren",
     "cached": {
       "title": "Vorheriges Scan-Ergebnis wiederhergestellt",
-      "description": "Setzen Sie die Erkundung fort, ohne auf ein erneutes Scannen warten zu müssen. StatusOrbit prüft einen Ordner auf Änderungen nur beim Durchsuchen."
+      "description": "Setzen Sie die Erkundung fort, ohne auf ein erneutes Scannen warten zu müssen. CoreRobin prüft einen Ordner auf Änderungen nur beim Durchsuchen."
     },
     "expired": {
       "title": "Dieses Ergebnis ist älter als 24 Stunden",
-      "description": "StatusOrbit stellt die Karte zur Verfügung, damit Sie weiter erkunden können. Aktualisieren Sie sie, bevor Sie Entscheidungen bezüglich der Bereinigung treffen."
+      "description": "CoreRobin stellt die Karte zur Verfügung, damit Sie weiter erkunden können. Aktualisieren Sie sie, bevor Sie Entscheidungen bezüglich der Bereinigung treffen."
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "Ungefähr {{size}} freigegeben",
     "cancelDelete": "Löschen abbrechen",
     "cancelling": "Abbrechen…",
-    "cancelHint": "Bereits abgeschlossene Löschungen können nicht wiederhergestellt werden. StatusOrbit stoppt nach der aktuellen Dateioperation.",
+    "cancelHint": "Bereits abgeschlossene Löschungen können nicht wiederhergestellt werden. CoreRobin stoppt nach der aktuellen Dateioperation.",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit löscht weder Ihr Home-Verzeichnis noch den Papierkorb selbst.",
-      "cleanup_target_outside_home": "Aus Sicherheitsgründen verarbeitet StatusOrbit nur Inhalte innerhalb Ihres persönlichen Ordners.",
-      "cleanup_cross_filesystem": "Das ausgewählte Verzeichnis befindet sich auf einem anderen Datenträger oder Mount-Punkt, daher hat StatusOrbit keine rekursive Löschung durchgeführt.",
-      "cleanup_target_changed": "Eine Datei wurde nach der Bestätigung geändert, daher hat StatusOrbit nichts gelöscht. Abbrechen und erneut überprüfen.",
+      "protected_cleanup_path": "CoreRobin löscht weder Ihr Home-Verzeichnis noch den Papierkorb selbst.",
+      "cleanup_target_outside_home": "Aus Sicherheitsgründen verarbeitet CoreRobin nur Inhalte innerhalb Ihres persönlichen Ordners.",
+      "cleanup_cross_filesystem": "Das ausgewählte Verzeichnis befindet sich auf einem anderen Datenträger oder Mount-Punkt, daher hat CoreRobin keine rekursive Löschung durchgeführt.",
+      "cleanup_target_changed": "Eine Datei wurde nach der Bestätigung geändert, daher hat CoreRobin nichts gelöscht. Abbrechen und erneut überprüfen.",
       "cleanup_confirmation_unavailable": "Diese Bestätigung ist nicht mehr verfügbar. Abbrechen und den Vorgang erneut starten.",
       "cleanup_confirmation_expired": "Diese Bestätigung ist abgelaufen. Abbrechen und die aktuellen Dateien erneut überprüfen.",
       "cleanup_target_unavailable": "Einige Inhalte sind möglicherweise nicht mehr vorhanden oder nicht zugänglich. Scannen Sie neu und versuchen Sie es erneut.",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "Nur-Lese-App-Inventar",
     "title": "Apps, die seit längerem nicht verwendet werden",
-    "boundary": "Nur Apps, deren letzte Nutzung laut macOS mindestens sechs Monate zurückliegt; StatusOrbit deinstalliert sie niemals automatisch",
+    "boundary": "Nur Apps, deren letzte Nutzung laut macOS mindestens sechs Monate zurückliegt; CoreRobin deinstalliert sie niemals automatisch",
     "lastUsed": "Letzte Verwendung {{date}} · seit {{days}} Tagen nicht verwendet",
     "none": "Keine App konnte bestätigt werden, dass sie länger als sechs Monate nicht verwendet wurde.",
     "unavailable": "Diese Plattform kann derzeit keine zuverlässigen Informationen über das letzte Verwendungsdatum von Apps bereitstellen.",
-    "unknownExcluded": "{{count}} andere Apps haben kein bestätigtes letztes Verwendungsdatum, daher hat StatusOrbit sie nicht als nicht verwendet klassifiziert."
+    "unknownExcluded": "{{count}} andere Apps haben kein bestätigtes letztes Verwendungsdatum, daher hat CoreRobin sie nicht als nicht verwendet klassifiziert."
   },
   "reviewFirst": "Einzeln überprüfen",
   "largestFiles": "Große Dateien auf der Systemfestplatte",
   "largeFileBoundary": "Nur Dateien über 500 MB werden angezeigt; automatische Löschung wird nicht empfohlen",
   "noLargeFiles": "Keine Dateien über 500 MB wurden an den überprüften Speicherorten gefunden.",
   "unreadable": "{{count}} Diese Speicherbereiche waren geschützt oder vorübergehend nicht zugänglich. Nur diese Bereiche werden von dem Ergebnis ausgeschlossen.",
-  "fullDiskAccessHint": "Unter macOS: Erteilen Sie StatusOrbit die Berechtigung für den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen → Datenschutz & Sicherheit, und führen Sie dann erneut einen Scan durch.",
+  "fullDiskAccessHint": "Unter macOS: Erteilen Sie CoreRobin die Berechtigung für den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen → Datenschutz & Sicherheit, und führen Sie dann erneut einen Scan durch.",
   "safetyBoundary": "Der Scan hat keine zeitlichen oder itembezogenen Beschränkungen und folgt niemals symbolischen Links. Nur Elemente, die in den Papierkorb gelegt, anhand des Pfads überprüft und explizit bestätigt wurden, werden dauerhaft gelöscht und können nicht wiederhergestellt werden."
 }

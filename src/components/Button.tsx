@@ -6,8 +6,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
 }
 
-const VARIANT_CLASS: Record<ButtonVariant, string | null> = {
-  plain: null,
+const VARIANT_CLASS: Record<ButtonVariant, string> = {
+  plain: "button--plain",
   primary: "button--primary",
   secondary: "button--secondary",
   danger: "button--danger",

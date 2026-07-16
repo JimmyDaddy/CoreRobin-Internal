@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080d12" />
-    <meta name="description" content="StatusOrbit 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的桌面界面，帮你快速找到电脑变慢或空间不足的原因。" />
-    <meta property="og:title" content="StatusOrbit — 电脑变慢，空间不足，原因一眼看清" />
+    <meta name="description" content="CoreRobin 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的桌面界面，帮你快速找到电脑变慢或空间不足的原因。" />
+    <meta property="og:title" content="CoreRobin — 电脑变慢，空间不足，原因一眼看清" />
     <meta property="og:description" content="看状态、找原因、清空间。重要操作由你确认，数据留在本机。" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://jimmydaddy.github.io/StatusOrbit/" />
@@ -13,7 +13,7 @@
     <link rel="canonical" href="https://jimmydaddy.github.io/StatusOrbit/" />
     <link rel="icon" href="./assets/app-icon.png" />
     <link rel="stylesheet" href="./styles.css" />
-    <title>StatusOrbit — 电脑变慢，空间不足，原因一眼看清</title>
+    <title>CoreRobin — 电脑变慢，空间不足，原因一眼看清</title>
   </head>
   <body>
     <a class="skip-link" href="#main-content" data-zh="跳到主要内容" data-en="Skip to main content">跳到主要内容</a>
@@ -21,9 +21,9 @@
     <div class="ambient ambient--two" aria-hidden="true"></div>
 
     <header class="site-header" data-header>
-      <a class="brand" href="#main-content" aria-label="StatusOrbit home">
+      <a class="brand" href="#main-content" aria-label="CoreRobin home">
         <span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span>
-        <span><strong>StatusOrbit</strong><small>SYSTEM MONITOR</small></span>
+        <span><strong aria-label="CoreRobin"><span aria-hidden="true">Core<span class="brand-wordmark__r">R<i></i></span>obin</span></strong><small>SYSTEM MONITOR</small></span>
       </a>
       <button class="nav-toggle" type="button" aria-label="打开导航" aria-expanded="false" data-nav-toggle data-aria-zh="打开导航" data-aria-en="Open navigation">
         <span></span><span></span>
@@ -50,12 +50,12 @@
             <span data-zh="电脑变慢，空间不足，" data-en="Find slowdowns and">电脑变慢，空间不足，</span>
             <em data-zh="原因一眼看清。" data-en="free up space.">原因一眼看清。</em>
           </h1>
-          <p class="hero__lead" data-zh="StatusOrbit 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的界面。电脑变慢、磁盘快满或网络突然繁忙时，帮你更快找到原因。数据留在本机，结束进程和删除文件前都会让你确认。" data-en="StatusOrbit brings CPU, memory, storage, network, and running apps into one clear view. When your computer slows down, storage runs low, or network activity spikes, it helps you find the cause. Your data stays on your device, and nothing is stopped or deleted without your confirmation.">
-            StatusOrbit 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的界面。电脑变慢、磁盘快满或网络突然繁忙时，帮你更快找到原因。数据留在本机，结束进程和删除文件前都会让你确认。
+          <p class="hero__lead" data-zh="CoreRobin 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的界面。电脑变慢、磁盘快满或网络突然繁忙时，帮你更快找到原因。数据留在本机，结束进程和删除文件前都会让你确认。" data-en="CoreRobin brings CPU, memory, storage, network, and running apps into one clear view. When your computer slows down, storage runs low, or network activity spikes, it helps you find the cause. Your data stays on your device, and nothing is stopped or deleted without your confirmation.">
+            CoreRobin 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的界面。电脑变慢、磁盘快满或网络突然繁忙时，帮你更快找到原因。数据留在本机，结束进程和删除文件前都会让你确认。
           </p>
           <div class="hero__actions">
             <a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit/releases/latest">
-              <span data-zh="下载 StatusOrbit" data-en="Download StatusOrbit">下载 StatusOrbit</span><span aria-hidden="true">↓</span>
+              <span data-zh="下载 CoreRobin" data-en="Download CoreRobin">下载 CoreRobin</span><span aria-hidden="true">↓</span>
             </a>
             <a class="button button--ghost" href="./guide/">
               <span data-zh="阅读使用指南" data-en="Read the guide">阅读使用指南</span><span aria-hidden="true">→</span>
@@ -69,15 +69,11 @@
         </div>
 
         <div class="hero__visual" data-reveal data-delay="120" aria-hidden="true">
-          <div class="orbit-emblem" aria-hidden="true">
-            <span class="orbit-emblem__ring orbit-emblem__ring--one"></span>
-            <span class="orbit-emblem__ring orbit-emblem__ring--two"></span>
-            <img src="./assets/brand-mark.png" alt="" />
-          </div>
+          <div class="brand-emblem" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /></div>
           <div class="product-window">
             <div class="product-window__bar">
               <span class="window-lights"><i></i><i></i><i></i></span>
-              <span>StatusOrbit</span>
+              <span>CoreRobin</span>
               <span class="live-pill"><i></i><span data-zh="实时" data-en="Live">实时</span></span>
             </div>
             <div class="product-window__body">
@@ -114,7 +110,7 @@
             </div>
           </div>
           <div class="floating-card floating-card--top"><i></i><span><small data-zh="网络" data-en="NETWORK">网络</small><strong>2.4 MB/s</strong></span></div>
-          <div class="floating-card floating-card--bottom"><span class="mini-orbit"></span><span><small data-zh="状态检查" data-en="STATUS CHECK">状态检查</small><strong data-zh="运行正常" data-en="Running normally">运行正常</strong></span></div>
+          <div class="floating-card floating-card--bottom"><span class="mini-robin"><img src="./assets/brand-mark.png" alt="" /></span><span><small data-zh="状态检查" data-en="STATUS CHECK">状态检查</small><strong data-zh="运行正常" data-en="Running normally">运行正常</strong></span></div>
         </div>
       </section>
 
@@ -133,13 +129,13 @@
         <div class="section-heading" data-reveal>
           <div><span class="section-index">01</span><span class="eyebrow-text" data-zh="从整体到详情" data-en="FROM THE BIG PICTURE TO THE DETAILS">从整体到详情</span></div>
           <h2 data-zh="不用研究每个数字，也能知道电脑是否正常。" data-en="Know how your computer is doing without decoding every number.">不用研究每个数字，也能知道电脑是否正常。</h2>
-          <p data-zh="先看一个稳定结论和最值得做的下一步；需要定位具体进程或网络连接时，再打开专业详情。短暂波动不会变成待处理事项，恢复稳定后也会明确告诉你。" data-en="Start with one stable conclusion and the most useful next step. Open Pro details only when you need a specific process or connection. Brief spikes do not become incidents, and StatusOrbit tells you when recovery is stable.">先看一个稳定结论和最值得做的下一步；需要定位具体进程或网络连接时，再打开专业详情。短暂波动不会变成待处理事项，恢复稳定后也会明确告诉你。</p>
+          <p data-zh="先看一个稳定结论和最值得做的下一步；需要定位具体进程或网络连接时，再打开专业详情。短暂波动不会变成待处理事项，恢复稳定后也会明确告诉你。" data-en="Start with one stable conclusion and the most useful next step. Open Pro details only when you need a specific process or connection. Brief spikes do not become incidents, and CoreRobin tells you when recovery is stable.">先看一个稳定结论和最值得做的下一步；需要定位具体进程或网络连接时，再打开专业详情。短暂波动不会变成待处理事项，恢复稳定后也会明确告诉你。</p>
         </div>
         <div class="experience-flow">
           <article data-reveal>
             <span class="flow-icon">◎</span><small>STATUS</small>
             <h3 data-zh="看整体状态" data-en="Check the overall status">看整体状态</h3>
-            <p data-zh="不用盯着一排数字猜，StatusOrbit 会直接告诉你现在是否需要留意。" data-en="Instead of making you decode a wall of numbers, StatusOrbit tells you when something deserves attention.">不用盯着一排数字猜，StatusOrbit 会直接告诉你现在是否需要留意。</p>
+            <p data-zh="不用盯着一排数字猜，CoreRobin 会直接告诉你现在是否需要留意。" data-en="Instead of making you decode a wall of numbers, CoreRobin tells you when something deserves attention.">不用盯着一排数字猜，CoreRobin 会直接告诉你现在是否需要留意。</p>
           </article>
           <span class="flow-line" aria-hidden="true"><i></i></span>
           <article data-reveal data-delay="100">
@@ -159,7 +155,7 @@
       <section class="interface-showcase section-shell" id="interfaces">
         <div class="section-heading section-heading--split" data-reveal>
           <div>
-            <div><span class="section-index">02</span><span class="eyebrow-text" data-zh="两种使用方式，同一个 StatusOrbit" data-en="TWO WAYS TO USE STATUSORBIT">两种使用方式，同一个 StatusOrbit</span></div>
+            <div><span class="section-index">02</span><span class="eyebrow-text" data-zh="两种使用方式，同一个 CoreRobin" data-en="TWO WAYS TO USE COREROBIN">两种使用方式，同一个 CoreRobin</span></div>
             <h2 data-zh="想简单一点，或看得更深，都可以。" data-en="Keep it simple or go deeper when you need to.">想简单一点，或看得更深，都可以。</h2>
           </div>
           <p data-zh="普通版把结论和下一步放在前面；专业版展开资源趋势、进程和网络细节。两种模式随时切换，不需要重复设置。" data-en="Everyday mode leads with a clear conclusion and next step. Pro mode opens up resource trends, processes, and network details. Switch anytime without setting things up again.">普通版把结论和下一步放在前面；专业版展开资源趋势、进程和网络细节。两种模式随时切换，不需要重复设置。</p>
@@ -177,13 +173,13 @@
           <div class="daily-screen-grid">
             <figure class="screen-card">
               <div class="screen-card__frame">
-                <img src="./assets/statusorbit-daily-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 普通版电脑状态总览 / Everyday mode status overview" />
+                <img src="./assets/corerobin-daily-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="CoreRobin 普通版电脑状态总览 / Everyday mode status overview" />
               </div>
               <figcaption><span data-zh="电脑状态 · 先看结论和最值得做的事" data-en="Computer status · See the conclusion and next best action">电脑状态 · 先看结论和最值得做的事</span></figcaption>
             </figure>
             <figure class="screen-card">
               <div class="screen-card__frame">
-                <img src="./assets/statusorbit-daily-assistant.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 普通版问题引导界面 / Everyday mode guided help" />
+                <img src="./assets/corerobin-daily-assistant.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="CoreRobin 普通版问题引导界面 / Everyday mode guided help" />
               </div>
               <figcaption><span data-zh="帮我解决 · 从日常问题进入诊断" data-en="Guided help · Start from an everyday problem">帮我解决 · 从日常问题进入诊断</span></figcaption>
             </figure>
@@ -201,19 +197,19 @@
           <div class="professional-screen-grid">
             <figure class="screen-card screen-card--professional">
               <div class="screen-card__frame">
-                <img src="./assets/statusorbit-professional-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版资源总览 / Pro mode resource overview" />
+                <img src="./assets/corerobin-professional-overview.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="CoreRobin 专业版资源总览 / Pro mode resource overview" />
               </div>
               <figcaption><span data-zh="资源总览 · 指标、趋势和进程详情" data-en="Resource overview · Metrics, trends, and process detail">资源总览 · 指标、趋势和进程详情</span></figcaption>
             </figure>
             <figure class="screen-card screen-card--professional">
               <div class="screen-card__frame">
-                <img src="./assets/statusorbit-professional-network.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版网络趋势 / Pro mode network trends" />
+                <img src="./assets/corerobin-professional-network.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="CoreRobin 专业版网络趋势 / Pro mode network trends" />
               </div>
               <figcaption><span data-zh="网络洞察 · 实时吞吐和活动连接" data-en="Network insight · Live throughput and active connections">网络洞察 · 实时吞吐和活动连接</span></figcaption>
             </figure>
             <figure class="screen-card screen-card--professional screen-card--wide">
               <div class="screen-card__frame">
-                <img src="./assets/statusorbit-space-sunburst.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="StatusOrbit 专业版完整扇形空间图 / Pro mode full sunburst storage map" />
+                <img src="./assets/corerobin-space-sunburst.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="CoreRobin 专业版完整扇形空间图 / Pro mode full sunburst storage map" />
               </div>
               <figcaption><span data-zh="空间清理 · 完整扇形图和清理篮" data-en="Space cleanup · Full sunburst map and cleanup basket">空间清理 · 完整扇形图和清理篮</span></figcaption>
             </figure>
@@ -259,11 +255,11 @@
           </article>
           <article class="capability" data-reveal>
             <span class="capability__number">07</span><div class="capability__glyph">◌</div>
-            <h3 data-zh="状态栏与 Orbit" data-en="Menu bar & Orbit">状态栏与 Orbit</h3><p data-zh="关闭主窗口后仍共享同一健康结论。可以登录时静默启动，从状态栏查看状态，或让 Orbit 留在桌面。" data-en="Keep one shared health conclusion after the main window closes. Launch quietly at sign-in, check the menu bar, or keep Orbit on the desktop.">关闭主窗口后仍共享同一健康结论。可以登录时静默启动，从状态栏查看状态，或让 Orbit 留在桌面。</p>
+            <h3 data-zh="状态栏与 Robin" data-en="Menu bar & Robin">状态栏与 Robin</h3><p data-zh="关闭主窗口后仍共享同一健康结论。可以登录时静默启动，从状态栏查看状态，或让 Robin 留在桌面。" data-en="Keep one shared health conclusion after the main window closes. Launch quietly at sign-in, check the menu bar, or keep Robin on the desktop.">关闭主窗口后仍共享同一健康结论。可以登录时静默启动，从状态栏查看状态，或让 Robin 留在桌面。</p>
           </article>
           <article class="capability" data-reveal data-delay="80">
             <span class="capability__number">08</span><div class="capability__glyph">文</div>
-            <h3 data-zh="10 种界面语言" data-en="10 interface languages">10 种界面语言</h3><p data-zh="支持简体中文、繁體中文、English、日语、德语、法语、西班牙语、巴西葡萄牙语、韩语和俄语。" data-en="Use StatusOrbit in Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, or Russian.">支持简体中文、繁體中文、English、日语、德语、法语、西班牙语、巴西葡萄牙语、韩语和俄语。</p>
+            <h3 data-zh="10 种界面语言" data-en="10 interface languages">10 种界面语言</h3><p data-zh="支持简体中文、繁體中文、English、日语、德语、法语、西班牙语、巴西葡萄牙语、韩语和俄语。" data-en="Use CoreRobin in Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, or Russian.">支持简体中文、繁體中文、English、日语、德语、法语、西班牙语、巴西葡萄牙语、韩语和俄语。</p>
           </article>
         </div>
       </section>
@@ -302,14 +298,14 @@
 
       <section class="safety section-shell" id="safety">
         <div class="safety__panel" data-reveal>
-          <div class="safety__orbit" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /><i></i><i></i></div>
+          <div class="safety__robin" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /></div>
           <div class="safety__copy">
             <div><span class="section-index">05</span><span class="eyebrow-text" data-zh="重要操作，由你确认" data-en="YOU STAY IN CONTROL">重要操作，由你确认</span></div>
             <h2 data-zh="结束进程和删除文件，都要经过你的确认。" data-en="Processes are stopped and files are deleted only when you confirm.">结束进程和删除文件，都要经过你的确认。</h2>
-            <p data-zh="StatusOrbit 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。" data-en="StatusOrbit never stops processes or deletes files automatically. If a process has exited or a file has changed since the scan, the action stops.">StatusOrbit 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。</p>
+            <p data-zh="CoreRobin 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。" data-en="CoreRobin never stops processes or deletes files automatically. If a process has exited or a file has changed since the scan, the action stops.">CoreRobin 不会自动结束进程或删除文件。如果进程已经退出，或文件在扫描后发生变化，操作会停止，不会继续处理。</p>
             <ul>
               <li><i>✓</i><span data-zh="监控和历史数据只留在这台电脑上" data-en="Monitoring and history data stay on this computer">监控和历史数据只留在这台电脑上</span></li>
-              <li><i>✓</i><span data-zh="不会让你误关系统关键进程或 StatusOrbit 本身" data-en="Critical system processes and StatusOrbit itself cannot be stopped by mistake">不会让你误关系统关键进程或 StatusOrbit 本身</span></li>
+              <li><i>✓</i><span data-zh="不会让你误关系统关键进程或 CoreRobin 本身" data-en="Critical system processes and CoreRobin itself cannot be stopped by mistake">不会让你误关系统关键进程或 CoreRobin 本身</span></li>
               <li><i>✓</i><span data-zh="不会删除主目录、链接、特殊文件或其他磁盘上的内容" data-en="Your home folder, links, special files, and content on other disks are protected">不会删除主目录、链接、特殊文件或其他磁盘上的内容</span></li>
             </ul>
             <a class="text-link" href="./guide/#safety"><span data-zh="了解这些安全保护" data-en="Learn about these safeguards">了解这些安全保护</span><span>→</span></a>
@@ -319,19 +315,19 @@
 
       <section class="guide-cta section-shell" id="guide">
         <div class="guide-cta__panel" data-reveal>
-          <span class="guide-cta__label" data-zh="第一次使用？" data-en="NEW TO STATUSORBIT?">第一次使用？</span>
+          <span class="guide-cta__label" data-zh="第一次使用？" data-en="NEW TO COREROBIN?">第一次使用？</span>
           <h2 data-zh="从这里开始，几分钟就够。" data-en="Start here. It only takes a few minutes.">从这里开始，几分钟就够。</h2>
           <p data-zh="使用指南会告诉你每个页面能解决什么问题，以及结束进程、清理文件时需要注意什么。" data-en="The guide explains what each page is for and what to watch for when stopping processes or cleaning files.">使用指南会告诉你每个页面能解决什么问题，以及结束进程、清理文件时需要注意什么。</p>
           <a class="button button--light" href="./guide/"><span data-zh="打开完整指南" data-en="Open the full guide">打开完整指南</span><span>→</span></a>
-          <div class="guide-cta__rings" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="guide-cta__mark" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /></div>
         </div>
       </section>
 
     </main>
 
     <footer class="site-footer section-shell">
-      <a class="brand brand--footer" href="#main-content"><span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span><span><strong>StatusOrbit</strong><small>SYSTEM MONITOR</small></span></a>
-      <p><span>© </span><span data-year></span><span> StatusOrbit.</span> <span data-zh="看清电脑状态，找出变慢和空间不足的原因。" data-en="Find slowdowns and see what is taking up space.">看清电脑状态，找出变慢和空间不足的原因。</span></p>
+      <a class="brand brand--footer" href="#main-content"><span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span><span><strong aria-label="CoreRobin"><span aria-hidden="true">Core<span class="brand-wordmark__r">R<i></i></span>obin</span></strong><small>SYSTEM MONITOR</small></span></a>
+      <p><span>© </span><span data-year></span><span> CoreRobin.</span> <span data-zh="看清电脑状态，找出变慢和空间不足的原因。" data-en="Find slowdowns and see what is taking up space.">看清电脑状态，找出变慢和空间不足的原因。</span></p>
       <div><a href="./guide/" data-zh="指南" data-en="Guide">指南</a><a href="https://github.com/JimmyDaddy/StatusOrbit/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer">GitHub</a></div>
     </footer>
 

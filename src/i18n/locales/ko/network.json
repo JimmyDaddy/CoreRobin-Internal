@@ -1,7 +1,7 @@
 {
   "local": "로컬 네트워크",
   "title": "실시간 인터페이스 및 세션 트래픽",
-  "description": "통계는 실제 샘플 간격을 사용하며, 총 데이터 양은 StatusOrbit가 시작될 때부터 측정됩니다.",
+  "description": "통계는 실제 샘플 간격을 사용하며, 총 데이터 양은 CoreRobin가 시작될 때부터 측정됩니다.",
   "connectedInterfaces": "{{connected}} / {{total}} 인터페이스 연결됨",
   "summary": "네트워크 상태 요약",
   "receiveNow": "데이터 수신 중",

@@ -2,7 +2,7 @@
   "localMonitor": "Surveillance du système locale",
   "available": "Espace disponible",
   "open": "Vue d'ensemble",
-  "companion": "Assistant Orbit",
+  "companion": "Assistant Robin",
   "cleanup": "Nettoyage de l'espace",
   "quit": "Quitter l’application",
   "updatedAt": "Mis à jour à {{time}}",
@@ -32,11 +32,11 @@
     },
     "attention": {
       "title": "Une ressource mérite d'être surveillée",
-      "description": "Ouvrir StatusOrbit pour consulter la raison et les instructions."
+      "description": "Ouvrir CoreRobin pour consulter la raison et les instructions."
     },
     "urgent": {
       "title": "Une ressource est en surcharge",
-      "description": "Consultez les informations dans StatusOrbit avant d'agir."
+      "description": "Consultez les informations dans CoreRobin avant d'agir."
     }
   },
   "reason": "{{resource}} nécessite une attention",

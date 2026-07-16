@@ -1,9 +1,9 @@
 {
-  "kicker": "Assistant Orbit",
-  "dragHint": "Faites glisser l'Assistant Orbit pour le déplacer ; maintenez le curseur sur l'Assistant pour afficher des informations ; cliquez avec la bonne main pour ouvrir le menu",
-  "expand": "Ouvrir l'assistant Orbit",
-  "collapse": "Réduire l'assistant Orbit",
-  "menu": "Menu de l'assistant Orbit",
+  "kicker": "Assistant Robin",
+  "dragHint": "Faites glisser l'Assistant Robin pour le déplacer ; maintenez le curseur sur l'Assistant pour afficher des informations ; cliquez avec la bonne main pour ouvrir le menu",
+  "expand": "Ouvrir l'assistant Robin",
+  "collapse": "Réduire l'assistant Robin",
+  "menu": "Menu de l'assistant Robin",
   "hide": "Masquer l'assistant",
   "reason": "{{resource}} a suivi de près. Ouvrez la fenêtre principale pour en savoir plus.",
   "action": {

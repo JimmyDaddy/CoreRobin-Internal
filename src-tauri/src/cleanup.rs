@@ -292,7 +292,7 @@ impl CleanupDeleteController {
         let home = home_directory().ok_or_else(|| {
             CommandError::new(
                 "home_directory_unavailable",
-                "StatusOrbit could not locate the current user's home directory.",
+                "CoreRobin could not locate the current user's home directory.",
             )
         })?;
         self.create_lease_for_home(request, &home)
@@ -565,13 +565,13 @@ pub fn scan_cleanup(
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "StatusOrbit could not locate the current user's home directory.",
+            "CoreRobin could not locate the current user's home directory.",
         )
     })?;
     let scan_root = system_disk_root(&home).ok_or_else(|| {
         CommandError::new(
             "cleanup_scan_root_unavailable",
-            "StatusOrbit could not locate the system disk root.",
+            "CoreRobin could not locate the system disk root.",
         )
     })?;
     scan_filesystem(
@@ -716,7 +716,7 @@ pub fn canonical_cleanup_subtree_path(path: &str) -> Result<PathBuf, CommandErro
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "StatusOrbit could not locate the current user's home directory.",
+            "CoreRobin could not locate the current user's home directory.",
         )
     })?;
     expand_cleanup_path(path, &home)?
@@ -724,7 +724,7 @@ pub fn canonical_cleanup_subtree_path(path: &str) -> Result<PathBuf, CommandErro
         .map_err(|error| {
             CommandError::new(
                 "cleanup_subtree_unavailable",
-                format!("StatusOrbit could not verify {path}: {error}"),
+                format!("CoreRobin could not verify {path}: {error}"),
             )
         })
 }
@@ -736,13 +736,13 @@ pub fn scan_cleanup_subtree(
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "StatusOrbit could not locate the current user's home directory.",
+            "CoreRobin could not locate the current user's home directory.",
         )
     })?;
     let scan_root = system_disk_root(&home).ok_or_else(|| {
         CommandError::new(
             "cleanup_scan_root_unavailable",
-            "StatusOrbit could not locate the system disk root.",
+            "CoreRobin could not locate the system disk root.",
         )
     })?;
     scan_cleanup_subtree_at(request, &home, &scan_root, cancelled)
@@ -758,13 +758,13 @@ fn scan_cleanup_subtree_at(
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
-            format!("StatusOrbit could not verify the home directory: {error}"),
+            format!("CoreRobin could not verify the home directory: {error}"),
         )
     })?;
     let canonical_scan_root = scan_root.canonicalize().map_err(|error| {
         CommandError::new(
             "cleanup_scan_root_unavailable",
-            format!("StatusOrbit could not verify the system disk root: {error}"),
+            format!("CoreRobin could not verify the system disk root: {error}"),
         )
     })?;
     let boundary = ScanFilesystemBoundary::for_root(&canonical_scan_root)?;
@@ -772,7 +772,7 @@ fn scan_cleanup_subtree_at(
     let metadata = fs::symlink_metadata(&requested_path).map_err(|error| {
         CommandError::new(
             "cleanup_subtree_unavailable",
-            format!("StatusOrbit could not inspect {}: {error}", request.path),
+            format!("CoreRobin could not inspect {}: {error}", request.path),
         )
     })?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
@@ -784,19 +784,19 @@ fn scan_cleanup_subtree_at(
     let path = requested_path.canonicalize().map_err(|error| {
         CommandError::new(
             "cleanup_subtree_unavailable",
-            format!("StatusOrbit could not verify {}: {error}", request.path),
+            format!("CoreRobin could not verify {}: {error}", request.path),
         )
     })?;
     if !path.starts_with(&canonical_scan_root) {
         return Err(CommandError::new(
             "cleanup_subtree_outside_disk",
-            "StatusOrbit only expands folders on the system disk.",
+            "CoreRobin only expands folders on the system disk.",
         ));
     }
     if !boundary.allows_directory(&metadata) {
         return Err(CommandError::new(
             "cleanup_subtree_outside_disk",
-            "StatusOrbit does not expand another disk or mounted filesystem from this map.",
+            "CoreRobin does not expand another disk or mounted filesystem from this map.",
         ));
     }
 
@@ -897,7 +897,7 @@ pub fn open_full_disk_access_settings() -> Result<(), CommandError> {
             .status()
             .map_err(|error| {
                 CommandError::internal(format!(
-                    "StatusOrbit could not open Full Disk Access settings: {error}"
+                    "CoreRobin could not open Full Disk Access settings: {error}"
                 ))
             })?;
         if status.success() {
@@ -921,7 +921,7 @@ pub fn reveal_cleanup_application_bundle() -> Result<(), CommandError> {
         let application_bundle = current_application_bundle().ok_or_else(|| {
             CommandError::new(
                 "cleanup_application_bundle_unavailable",
-                "StatusOrbit must be launched from its application bundle before it can be added to Full Disk Access.",
+                "CoreRobin must be launched from its application bundle before it can be added to Full Disk Access.",
             )
         })?;
         let status = Command::new("/usr/bin/open")
@@ -930,14 +930,14 @@ pub fn reveal_cleanup_application_bundle() -> Result<(), CommandError> {
             .status()
             .map_err(|error| {
                 CommandError::internal(format!(
-                    "StatusOrbit could not reveal its application bundle: {error}"
+                    "CoreRobin could not reveal its application bundle: {error}"
                 ))
             })?;
         if status.success() {
             return Ok(());
         }
         Err(CommandError::internal(
-            "macOS did not reveal the StatusOrbit application bundle.",
+            "macOS did not reveal the CoreRobin application bundle.",
         ))
     }
 
@@ -952,7 +952,7 @@ pub fn inspect_cleanup_path(display_path: &str) -> Result<CleanupPathState, Comm
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "StatusOrbit could not locate the current user's home directory.",
+            "CoreRobin could not locate the current user's home directory.",
         )
     })?;
     let path = if display_path == "~" {
@@ -1055,13 +1055,13 @@ fn validate_cleanup_targets(
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
-            format!("StatusOrbit could not verify the home directory: {error}"),
+            format!("CoreRobin could not verify the home directory: {error}"),
         )
     })?;
     let delete_root = DeleteRoot::open(&canonical_home).map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
-            format!("StatusOrbit could not open a stable home directory handle: {error}"),
+            format!("CoreRobin could not open a stable home directory handle: {error}"),
         )
     })?;
     let trash_roots = trash_paths(&canonical_home);
@@ -1075,14 +1075,14 @@ fn validate_cleanup_targets(
             .map_err(|_| {
                 CommandError::new(
                     "cleanup_target_outside_home",
-                    format!("StatusOrbit only deletes items inside your home folder: {display}"),
+                    format!("CoreRobin only deletes items inside your home folder: {display}"),
                 )
             })?;
         let canonical_path = canonical_home.join(relative_path);
         if canonical_path == canonical_home || trash_roots.contains(&canonical_path) {
             return Err(CommandError::new(
                 "protected_cleanup_path",
-                "StatusOrbit will not delete the home directory or the system Trash folder itself.",
+                "CoreRobin will not delete the home directory or the system Trash folder itself.",
             ));
         }
         let bound = delete_root.bind(relative_path).map_err(|error| {
@@ -1096,13 +1096,13 @@ fn validate_cleanup_targets(
             };
             CommandError::new(
                 code,
-                format!("StatusOrbit could not safely bind {display}: {error}"),
+                format!("CoreRobin could not safely bind {display}: {error}"),
             )
         })?;
         if !canonical_path.starts_with(&canonical_home) {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
-                format!("StatusOrbit only deletes items inside your home folder: {display}"),
+                format!("CoreRobin only deletes items inside your home folder: {display}"),
             ));
         }
         if !seen.insert(canonical_path.clone()) {
@@ -1114,7 +1114,7 @@ fn validate_cleanup_targets(
         let inspection = bound.inspect().map_err(|message| {
             CommandError::new(
                 "cleanup_target_unavailable",
-                format!("StatusOrbit could not refresh {display} before confirmation: {message}"),
+                format!("CoreRobin could not refresh {display} before confirmation: {message}"),
             )
         })?;
         targets.push(CleanupDeleteTarget {
@@ -1157,7 +1157,7 @@ fn expand_cleanup_path(display_path: &str, home: &Path) -> Result<PathBuf, Comma
     if !path.is_absolute() {
         return Err(CommandError::new(
             "invalid_cleanup_path",
-            format!("StatusOrbit could not resolve this cleanup path: {display_path}"),
+            format!("CoreRobin could not resolve this cleanup path: {display_path}"),
         ));
     }
     Ok(path)
@@ -1171,7 +1171,7 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; StatusOrbit deleted nothing. Review the selection again: {error}",
+                "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again: {error}",
                 target.display_path
             ),
         )
@@ -1181,7 +1181,7 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; StatusOrbit deleted nothing. Review the selection again.",
+                "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again.",
                 target.display_path
             ),
         ));
@@ -1190,7 +1190,7 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again: {message}",
+                "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again: {message}",
                 target.display_path
             ),
         )
@@ -1199,7 +1199,7 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; StatusOrbit deleted nothing. Review the refreshed selection again.",
+                "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again.",
                 target.display_path
             ),
         ));
@@ -1286,7 +1286,7 @@ impl ScanFilesystemBoundary {
         let metadata = fs::metadata(root).map_err(|error| {
             CommandError::new(
                 "cleanup_scan_root_unavailable",
-                format!("StatusOrbit could not inspect the system disk root: {error}"),
+                format!("CoreRobin could not inspect the system disk root: {error}"),
             )
         })?;
         if !metadata.is_dir() {
@@ -3066,7 +3066,7 @@ mod tests {
     fn preserves_a_recursive_directory_tree_with_allocated_sizes() {
         let root = test_root("recursive-tree");
         let downloads = root.join("Downloads");
-        let nested = downloads.join("projects/status-orbit/target");
+        let nested = downloads.join("projects/core-robin/target");
         fs::create_dir_all(&nested).unwrap();
         fs::write(nested.join("artifact.bin"), vec![7_u8; 8_192]).unwrap();
 
@@ -3081,8 +3081,8 @@ mod tests {
 
         let downloads = &scan.locations[0].nodes[0];
         let projects = &downloads.children[0];
-        let status_orbit = &projects.children[0];
-        let target = &status_orbit.children[0];
+        let core_robin = &projects.children[0];
+        let target = &core_robin.children[0];
         let artifact = &target.children[0];
         assert_eq!(projects.kind, CleanupNodeKind::Folder);
         assert_eq!(artifact.kind, CleanupNodeKind::File);
@@ -4020,13 +4020,13 @@ mod tests {
 
     #[test]
     fn finds_the_application_bundle_containing_an_executable() {
-        let executable = Path::new("/Applications/StatusOrbit.app/Contents/MacOS/status-orbit");
+        let executable = Path::new("/Applications/CoreRobin.app/Contents/MacOS/core-robin");
         assert_eq!(
             application_bundle_from_executable(executable),
-            Some(PathBuf::from("/Applications/StatusOrbit.app"))
+            Some(PathBuf::from("/Applications/CoreRobin.app"))
         );
         assert_eq!(
-            application_bundle_from_executable(Path::new("/tmp/status-orbit")),
+            application_bundle_from_executable(Path::new("/tmp/core-robin")),
             None
         );
     }
@@ -4047,6 +4047,6 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        env::temp_dir().join(format!("status-orbit-cleanup-{suffix}-{nonce}"))
+        env::temp_dir().join(format!("core-robin-cleanup-{suffix}-{nonce}"))
     }
 }

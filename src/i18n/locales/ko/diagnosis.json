@@ -4,7 +4,7 @@
   "collapse": "진단 숨기기",
   "checkedLabel": "스마트 진단 실행",
   "thisDisk": "시스템 디스크",
-  "safety": "StatusOrbit는 자동으로 조치하지 않습니다. 권장 조치도 사용자의 확인이 필요하며, 강제 종료 기능은 전문가 모드에서만 사용할 수 있습니다.",
+  "safety": "CoreRobin는 자동으로 조치하지 않습니다. 권장 조치도 사용자의 확인이 필요하며, 강제 종료 기능은 전문가 모드에서만 사용할 수 있습니다.",
   "duration": "{{seconds}} 초 동안",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "컴퓨터 속도가 느려질 수 있습니다",
-      "summary": "StatusOrbit에서 성능 문제를 감지했습니다 ({{count}}). 자세한 내용을 확인하세요."
+      "summary": "CoreRobin에서 성능 문제를 감지했습니다 ({{count}}). 자세한 내용을 확인하세요."
     },
     "urgent": {
       "title": "즉시 확인이 필요합니다",
-      "summary": "StatusOrbit에서 심각한 성능 문제를 감지했습니다 ({{count}}). 조치를 취하기 전에 증거를 검토하십시오."
+      "summary": "CoreRobin에서 심각한 성능 문제를 감지했습니다 ({{count}}). 조치를 취하기 전에 증거를 검토하십시오."
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "먼저 {{name}}에게 종료 요청",
-      "description": "가장 안전한 방법입니다. StatusOrbit는 프로세스 정보를 확인하고, 작업을 수행하기 전에 확인을 받습니다.",
+      "description": "가장 안전한 방법입니다. CoreRobin는 프로세스 정보를 확인하고, 작업을 수행하기 전에 확인을 받습니다.",
       "action": "{{name}}에게 종료 요청"
     },
     "open_cleanup": {
@@ -112,24 +112,24 @@
     },
     "inspect_process": {
       "title": "애플리케이션 정보 확인",
-      "description": "StatusOrbit에서는 직접적인 조치가 제공되지 않습니다. 먼저 애플리케이션의 식별, 리소스 변경 사항 및 보호 이유를 확인하십시오.",
+      "description": "CoreRobin에서는 직접적인 조치가 제공되지 않습니다. 먼저 애플리케이션의 식별, 리소스 변경 사항 및 보호 이유를 확인하십시오.",
       "action": "상세 정보 확인"
     },
     "inspectEvidence": "애플리케이션 정보 확인",
     "preparing": "확인 중…",
-    "actionUnavailable": "StatusOrbit는 이 애플리케이션을 안전하게 확인하거나 제어할 수 없으므로 변경 사항이 없습니다."
+    "actionUnavailable": "CoreRobin는 이 애플리케이션을 안전하게 확인하거나 제어할 수 없으므로 변경 사항이 없습니다."
   },
   "actionDialog": {
     "title": "{{name}}를 종료하시겠습니까?",
-    "description": "StatusOrbit는 정상적인 종료 요청을 보냅니다. 이는 강제 종료가 아닌 부드러운 방법입니다.",
+    "description": "CoreRobin는 정상적인 종료 요청을 보냅니다. 이는 강제 종료가 아닌 부드러운 방법입니다.",
     "restartTitle": "{{name}}을 재시작할까요?",
-    "restartDescription": "StatusOrbit가 앱에 정상 종료를 요청한 뒤 확인된 앱 번들을 다시 엽니다.",
+    "restartDescription": "CoreRobin가 앱에 정상 종료를 요청한 뒤 확인된 앱 번들을 다시 엽니다.",
     "safeTitle": "애플리케이션 또는 파일 삭제하지 않음",
     "safeDescription": "이 기능은 실행 중인 애플리케이션을 종료하는 것만으로, 데이터 정리 기능을 제공하지 않습니다.",
     "riskTitle": "먼저 편집 중인 내용을 저장하세요",
     "riskDescription": "어플리케이션에 따라 저장 프롬프트가 표시될 수 있습니다. 저장이 안 된 작업은 여전히 손실될 수 있습니다.",
     "stableIdentity": "안정적인 핸들은 선택한 프로세스와 연결되며, 실행 전에 다시 확인됩니다.",
-    "bestEffortIdentity": "이 플랫폼에서는 신원 확인을 통해서만 PID 재사용 위험을 줄일 수 있습니다. 프로세스가 변경된 경우 StatusOrbit는 작업을 거부합니다.",
+    "bestEffortIdentity": "이 플랫폼에서는 신원 확인을 통해서만 PID 재사용 위험을 줄일 수 있습니다. 프로세스가 변경된 경우 CoreRobin는 작업을 거부합니다.",
     "confirm": "{{name}} 종료 요청을 확인",
     "confirmRestart": "{{name}} 재시작"
   }

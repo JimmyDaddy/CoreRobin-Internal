@@ -77,7 +77,7 @@ mod tray_panel_native {
     use tauri::Manager;
 
     tauri_nspanel::tauri_panel! {
-        panel!(StatusOrbitTrayPanel {
+        panel!(CoreRobinTrayPanel {
             config: {
                 can_become_key_window: true,
                 can_become_main_window: false
@@ -162,7 +162,7 @@ fn require_main_window_label(label: &str) -> Result<(), CommandError> {
     } else {
         Err(CommandError::new(
             "window_not_authorized",
-            "This operation is only available from the main StatusOrbit window.",
+            "This operation is only available from the main CoreRobin window.",
         ))
     }
 }
@@ -177,7 +177,7 @@ fn require_tray_window_label(label: &str) -> Result<(), CommandError> {
     } else {
         Err(CommandError::new(
             "window_not_authorized",
-            "This operation is only available from the StatusOrbit tray panel.",
+            "This operation is only available from the CoreRobin tray panel.",
         ))
     }
 }
@@ -219,7 +219,7 @@ impl AppState {
 
 fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
     std::thread::Builder::new()
-        .name("status-orbit-control-lease-reaper".to_owned())
+        .name("core-robin-control-lease-reaper".to_owned())
         .spawn(move || {
             loop {
                 std::thread::sleep(Duration::from_secs(1));
@@ -744,7 +744,7 @@ fn show_main(app: &AppHandle) {
         }
         #[cfg(not(target_os = "macos"))]
         reveal_main_window(&window);
-        let _ = app.emit_to("main", "status-orbit:main-visibility", true);
+        let _ = app.emit_to("main", "core-robin:main-visibility", true);
     }
 }
 
@@ -771,7 +771,7 @@ fn reveal_main_window(window: &tauri::WebviewWindow) {
 
 fn navigate_main(app: &AppHandle, view: &str) {
     show_main(app);
-    let _ = app.emit_to("main", "status-orbit:navigate", view);
+    let _ = app.emit_to("main", "core-robin:navigate", view);
 }
 
 const TRAY_PANEL_GAP_LOGICAL: f64 = 4.0;
@@ -1040,7 +1040,7 @@ fn resize_companion(window: &tauri::WebviewWindow, expanded: bool) {
         .max(min_y);
     let anchor_bottom = position.y.saturating_add(previous_size.height as i32);
     // The mascot lives at the expanded window's bottom-left. Preserve that
-    // screen-space anchor so showing a bubble never makes Orbit jump sideways.
+    // screen-space anchor so showing a bubble never makes Robin jump sideways.
     let x = if expanded {
         position.x.max(min_x)
     } else {
@@ -1057,12 +1057,12 @@ fn resize_companion(window: &tauri::WebviewWindow, expanded: bool) {
 
 fn collapse_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
     resize_companion(window, false);
-    let _ = app.emit_to("companion", "status-orbit:companion-collapse", ());
+    let _ = app.emit_to("companion", "core-robin:companion-collapse", ());
 }
 
 fn publish_companion_visibility(app: &AppHandle, window: &tauri::WebviewWindow) {
     let visible = window.is_visible().unwrap_or(false);
-    let _ = app.emit_to("main", "status-orbit:companion-visibility", visible);
+    let _ = app.emit_to("main", "core-robin:companion-visibility", visible);
 }
 
 fn show_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
@@ -1076,7 +1076,7 @@ fn show_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
         let _ = window.show();
     }
     if !was_visible || was_hiding {
-        let _ = app.emit_to("companion", "status-orbit:companion-enter", ());
+        let _ = app.emit_to("companion", "core-robin:companion-enter", ());
     }
     // Focus enables Escape and the companion context menu without forcing it open.
     let _ = window.set_focus();
@@ -1095,7 +1095,7 @@ fn hide_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
 
     COMPANION_EXIT_PENDING.store(true, Ordering::SeqCst);
     collapse_companion(app, window);
-    let _ = app.emit_to("companion", "status-orbit:companion-exit", ());
+    let _ = app.emit_to("companion", "core-robin:companion-exit", ());
     let app = app.clone();
     let window = window.clone();
     std::mem::drop(tauri::async_runtime::spawn_blocking(move || {
@@ -1150,7 +1150,7 @@ fn toggle_companion(app: &AppHandle) {
 
 #[cfg(target_os = "macos")]
 fn tray_icon_image() -> tauri::Result<tauri::image::Image<'static>> {
-    tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
+    tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
 }
 
 #[tauri::command]
@@ -1237,8 +1237,7 @@ pub fn run() {
                 app.handle()
                     .set_activation_policy(ActivationPolicy::Accessory)?;
                 if let Some(tray_window) = app.get_webview_window("tray") {
-                    let panel =
-                        tray_window.to_panel::<tray_panel_native::StatusOrbitTrayPanel>()?;
+                    let panel = tray_window.to_panel::<tray_panel_native::CoreRobinTrayPanel>()?;
                     panel.set_collection_behavior(
                         NSWindowCollectionBehavior::CanJoinAllSpaces
                             | NSWindowCollectionBehavior::Transient
@@ -1258,15 +1257,15 @@ pub fn run() {
             {
                 let _ = splash.close();
             }
-            let open = MenuItem::with_id(app, "open", "Open StatusOrbit", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open CoreRobin", true, None::<&str>)?;
             let companion =
-                MenuItem::with_id(app, "companion", "Orbit Companion", true, None::<&str>)?;
+                MenuItem::with_id(app, "companion", "Robin Companion", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit StatusOrbit", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit CoreRobin", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &companion, &cleanup, &quit])?;
             let tray_left_click_tracker = Arc::new(Mutex::new(TrayLeftClickTracker::default()));
-            let mut tray = TrayIconBuilder::with_id("status-orbit-status")
-                .tooltip("StatusOrbit · Local Monitor")
+            let mut tray = TrayIconBuilder::with_id("core-robin-status")
+                .tooltip("CoreRobin · Local Monitor")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -1320,7 +1319,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             std::thread::Builder::new()
-                .name("status-orbit-splash-fallback".to_owned())
+                .name("core-robin-splash-fallback".to_owned())
                 .spawn(move || {
                     std::thread::sleep(Duration::from_secs(10));
                     if handle.get_webview_window("splashscreen").is_some() {
@@ -1337,7 +1336,7 @@ pub fn run() {
                 let _ = window.hide();
                 let _ = window
                     .app_handle()
-                    .emit_to("main", "status-orbit:main-visibility", false);
+                    .emit_to("main", "core-robin:main-visibility", false);
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -1387,7 +1386,7 @@ pub fn run() {
             execute_process_action
         ])
         .run(tauri::generate_context!())
-        .expect("error while running StatusOrbit");
+        .expect("error while running CoreRobin");
 }
 
 #[cfg(test)]

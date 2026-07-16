@@ -1,10 +1,10 @@
-# StatusOrbit User Guide
+# CoreRobin User Guide
 
-StatusOrbit brings CPU, memory, storage, network activity, and running apps into one clear desktop view. When your computer slows down, storage runs low, or network activity spikes, it helps you find the cause.
+CoreRobin brings CPU, memory, storage, network activity, and running apps into one clear desktop view. When your computer slows down, storage runs low, or network activity spikes, it helps you find the cause.
 
 ## Download and install
 
-Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest). Current release builds do not have Developer ID, Apple notarization, or Windows platform signing configured. The macOS build has been tested on real hardware; if macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open StatusOrbit. Windows and Linux packages are currently early previews. Releases include SHA-256 checksums, an SPDX SBOM, and GitHub artifact provenance; these source-integrity records do not replace platform signing.
+Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest). Current release builds do not have Developer ID, Apple notarization, or Windows platform signing configured. The macOS build has been tested on real hardware; if macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open CoreRobin. Windows and Linux packages are currently early previews. Releases include SHA-256 checksums, an SPDX SBOM, and GitHub artifact provenance; these source-integrity records do not replace platform signing.
 
 ## First launch
 
@@ -17,9 +17,9 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ### Computer status
 
-- The Orbit companion gives one current conclusion and one primary action. When no sustained issue is present, it simply says there is nothing to do.
+- The Robin companion gives one current conclusion and one primary action. When no sustained issue is present, it simply says there is nothing to do.
 - When something needs attention, the primary action opens the highest-priority problem instead of asking you to choose between CPU, memory, storage, and network.
-- The page keeps one priority item and one recent change. StatusOrbit checks recent trends before raising a concern, so a brief spike is not treated as a problem. It does not invent a health score.
+- The page keeps one priority item and one recent change. CoreRobin checks recent trends before raising a concern, so a brief spike is not treated as a problem. It does not invent a health score.
 - A confirmed condition keeps a stable identity instead of disappearing after one normal sample. When the reading drops, it stays in a recovering state until recovery is stable.
 - Data that cannot be read is marked unavailable instead of being treated as normal.
 
@@ -28,7 +28,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 - Start with what you notice: a slow computer, a loud fan, fast battery drain, low space, slow startup, or a network problem.
 - The page shows only the current stage: observing, finding a cause, choosing an action, or checking again.
 - Each result explains what happened, why it matters, and what you can do. CPU, memory, and disk numbers stay under Why this conclusion.
-- StatusOrbit asks before requesting an app to quit, changing a startup item, or deleting a file. It does not act automatically.
+- CoreRobin asks before requesting an app to quit, changing a startup item, or deleting a file. It does not act automatically.
 
 ### Apps
 
@@ -37,9 +37,9 @@ Download the package for your platform from [GitHub Releases](https://github.com
 - CPU, memory, and disk evidence stays under Why this conclusion.
 - Pro mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
 - Prefer Request Stop so an app has time to save its work. Use Force Stop only when an app is completely unresponsive.
-- StatusOrbit checks the target again before stopping it. If the process has exited or changed, the action stops.
+- CoreRobin checks the target again before stopping it. If the process has exited or changed, the action stops.
 - After an action, Everyday mode checks again and tells you whether the app actually stopped.
-- Critical system processes and StatusOrbit itself cannot be stopped by mistake.
+- Critical system processes and CoreRobin itself cannot be stopped by mistake.
 
 ### Storage
 
@@ -51,22 +51,22 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 Cleanup scans the system disk, then uses a sunburst map to show what is taking up space. The default **File paths** view follows the real directory hierarchy; **Purpose** regroups common downloads, caches, and app data as a supporting view. The scan does not cross into external disks or other mounted filesystems.
 
-On macOS, Mail, Messages, other app data, and similar locations are protected by the system. Before the first scan, StatusOrbit explains why Full Disk Access is useful and opens System Settings → Privacy & Security → Full Disk Access. If StatusOrbit is not in the list yet, click `+` below it and select `StatusOrbit.app`; the in-app “Show app in Finder” action locates it for you. Return to the app after enabling it and the scan continues automatically. You can also decline and scan only currently accessible locations. macOS controls this permission, and you can turn it off at any time.
+On macOS, Mail, Messages, other app data, and similar locations are protected by the system. Before the first scan, CoreRobin explains why Full Disk Access is useful and opens System Settings → Privacy & Security → Full Disk Access. If CoreRobin is not in the list yet, click `+` below it and select `CoreRobin.app`; the in-app “Show app in Finder” action locates it for you. Return to the app after enabling it and the scan continues automatically. You can also decline and scan only currently accessible locations. macOS controls this permission, and you can turn it off at any time.
 
 > Delete only items you recognize and know you no longer need. Leave anything you are unsure about. Re-creatable caches are a useful starting point, but not every cache is automatically safe to remove.
 
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
 3. **Add items to the basket:** Hold a sector and start dragging; the basket stays visible at the bottom of the window. Adding an item to the basket does not delete or move it.
-4. **Refresh, then delete:** StatusOrbit rescans only the basket targets and shows their latest size and item count. Continue only after reviewing those results.
+4. **Refresh, then delete:** CoreRobin rescans only the basket targets and shows their latest size and item count. Continue only after reviewing those results.
 
 Full scan results stay on this computer for 7 days for browsing. Cached or expired results cannot directly authorize permanent deletion: opening the deletion review performs an authoritative rescan of only the basket targets. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
 
 #### Before permanent deletion
 
-- Files bypass system Trash and cannot be restored by StatusOrbit.
+- Files bypass system Trash and cannot be restored by CoreRobin.
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
-- StatusOrbit removes only regular files and folders inside your home folder.
+- CoreRobin removes only regular files and folders inside your home folder.
 - Your home folder, Trash itself, links, special files, and other disks are protected.
 - The app rechecks each complete target tree right before deletion. A deep new file or any other mismatch stops the action and requires another refresh and confirmation.
 - Deleted items disappear from the map and basket. Items that could not be deleted remain visible with an explanation.
@@ -84,31 +84,32 @@ Full scan results stay on this computer for 7 days for browsing. Cached or expir
 - See which apps start with your computer and where they come from.
 - Supported third-party items can be turned off and restored later.
 - System items and sources that cannot be changed safely on the current platform are view-only.
-- StatusOrbit does not delete startup configuration files.
+- CoreRobin does not delete startup configuration files.
 
 ### History
 
 - Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Pro mode keeps the full technical history and filters.
 - A warning and its recovery are paired into one incident with its start time, duration, likely cause, and outcome.
+- Confirmed app quit or restart, permanent cleanup, and startup-item actions also record execution and verification results. Cleanup history stores only item counts and reclaimed space, never file paths.
 - Keep history for 1, 7, or 30 days, turn it off, or clear it anytime.
 - Notifications appear only when a problem lasts for a while, and the same warning is not repeated constantly.
-- StatusOrbit follows up once after the problem has stably recovered. The main window, menu bar panel, and Orbit companion share the same health state.
+- CoreRobin follows up once after the problem has stably recovered. The main window, menu bar panel, and Robin companion share the same health state.
 - CPU, memory, and storage notifications can be turned off separately.
-- Command lines, file locations, filenames, and connection addresses are not stored.
+- App and startup item names persist across restarts only after you allow names to be saved. Command lines, file locations, filenames, and connection addresses are not stored.
 
 ### Settings
 
-- Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Orbit companion preferences together.
-- StatusOrbit can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
+- Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Robin companion preferences together.
+- CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view.
 
 ## Menu bar panel
 
-Closing the main window leaves StatusOrbit available in the menu bar. Click the menu bar icon to toggle a compact panel that shares the main window's current health conclusion; double-click it to open the main window directly. A quiet login launch does not show the splash screen or main window.
+Closing the main window leaves CoreRobin available in the menu bar. Click the menu bar icon to toggle a compact panel that shares the main window's current health conclusion; double-click it to open the main window directly. A quiet login launch does not show the splash screen or main window.
 
-Choose Orbit companion to open a compact bottom-right window that shares the same conclusion as the main window and menu bar panel, with one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
+Choose Robin companion to open a compact bottom-right window that shares the same conclusion as the main window and menu bar panel, with one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
 
-To stop monitoring completely, quit StatusOrbit instead of only closing the window.
+To stop monitoring completely, quit CoreRobin instead of only closing the window.
 
 ## Common questions
 
@@ -122,11 +123,11 @@ Scan time depends mostly on the number of files and disk speed, not total disk s
 
 ### Why does the size differ from Finder or Explorer?
 
-StatusOrbit shows the space files actually occupy on disk. Compression, sparse files, and hard links can make this number differ from the listed file size.
+CoreRobin shows the space files actually occupy on disk. Compression, sparse files, and hard links can make this number differ from the listed file size.
 
 ### Why are some connections missing app names?
 
-The operating system may hide which process owns a connection. StatusOrbit does not elevate itself automatically to fill in that information.
+The operating system may hide which process owns a connection. CoreRobin does not elevate itself automatically to fill in that information.
 
 ## Privacy and support
 

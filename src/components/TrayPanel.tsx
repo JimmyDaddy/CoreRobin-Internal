@@ -10,7 +10,6 @@ import {
   LogOut,
   Maximize2,
   MemoryStick,
-  Orbit,
   Pause,
   Play,
   Settings2,
@@ -19,8 +18,10 @@ import {
 } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
-import brandMark from "../../src-tauri/icons/128x128.png";
+import brandMark from "../assets/brand-mark.png";
 import { createAsyncListenerRegistry } from "../asyncListener";
+import { BrandWordmark } from "./BrandWordmark";
+import { RobinIcon } from "./RobinIcon";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { getAuxiliaryLanguage } from "../i18nAuxiliary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
@@ -33,6 +34,7 @@ const desktopRuntime = typeof window !== "undefined"
 export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
+  const language = getAuxiliaryLanguage();
 
   useEffect(() => {
     if (!desktopRuntime) return;
@@ -48,16 +50,16 @@ export function TrayPanel() {
   const openView = async (view: "overview" | "cleanup" | "settings") => {
     await invoke("show_main_window");
     if (view === "overview" && summary?.primaryIncident) {
-      await emitTo("main", "status-orbit:open-daily", {
+      await emitTo("main", "core-robin:open-daily", {
         view,
         occurrenceId: summary.primaryIncident.occurrenceId,
       });
       return;
     }
-    await emitTo("main", "status-orbit:navigate", view);
+    await emitTo("main", "core-robin:navigate", view);
   };
   const togglePaused = async () => {
-    await emitTo("main", "status-orbit:set-paused", !summary?.paused);
+    await emitTo("main", "core-robin:set-paused", !summary?.paused);
   };
   const toggleCompanion = async () => {
     await invoke("toggle_companion_window");
@@ -78,7 +80,7 @@ export function TrayPanel() {
       <section className="tray-panel">
         <header className="tray-header">
           <span className="tray-logo"><img src={brandMark} alt="" /></span>
-          <span className="tray-brand"><strong>StatusOrbit</strong><small>{t("tray:localMonitor")}</small></span>
+          <span className="tray-brand"><BrandWordmark /><small>{t("tray:localMonitor")}</small></span>
           <span className={`tray-health tray-health--${summary?.health ?? "loading"}`}>
             <i />{t(`tray:health.${summary?.health ?? "loading"}`)}
           </span>
@@ -132,6 +134,18 @@ export function TrayPanel() {
               <small>{t("tray:resource.battery")}</small>
               <strong>{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</strong>
               {summary?.batteryPercent !== null && summary?.batteryPercent !== undefined ? <em>{t(`wellbeing:battery.state.${summary.batteryState}`)}</em> : null}
+              <em className="tray-battery-detail">
+                <i>{t("wellbeing:battery.healthLabel")}</i>
+                <b>{summary?.batteryHealthPercent === null || summary?.batteryHealthPercent === undefined
+                  ? t("common:unavailable")
+                  : formatPercent(summary.batteryHealthPercent)}</b>
+              </em>
+              <em className="tray-battery-detail">
+                <i>{t("wellbeing:battery.cycleCountLabel")}</i>
+                <b>{summary?.batteryCycleCount === null || summary?.batteryCycleCount === undefined
+                  ? t("common:unavailable")
+                  : summary.batteryCycleCount.toLocaleString(language)}</b>
+              </em>
             </span>
           </span>
         </div>
@@ -144,7 +158,7 @@ export function TrayPanel() {
         <div className="tray-actions">
           <div className="tray-actions__primary">
             <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
-            <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray:companion")}</span></button>
+            <button type="button" onClick={() => void toggleCompanion()}><RobinIcon size={18} /><span>{t("tray:companion")}</span></button>
             <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
           </div>
           <div className="tray-actions__utility">

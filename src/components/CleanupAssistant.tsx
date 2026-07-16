@@ -40,7 +40,12 @@ import type {
 } from "../types";
 import type { CleanupDeletionTargetSnapshot, CleanupSnapshotStatus } from "../cleanupScanStore";
 import { findUnusedApplications, unusedApplicationDays } from "../cleanupApplications";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
+import { AnimatedRobin } from "./AnimatedRobin";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
 
 interface CleanupAssistantProps {
@@ -56,6 +61,8 @@ interface CleanupAssistantProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
 
 const LOCATION_ICONS = {
@@ -76,6 +83,8 @@ export function CleanupAssistant({
   onScan,
   onCancel,
   onDeletionApplied,
+  onUserActionStart,
+  onUserActionComplete,
 }: CleanupAssistantProps) {
   const { t, i18n } = useAppTranslation();
   const [accessGuideOpen, setAccessGuideOpen] = useState(false);
@@ -348,14 +357,18 @@ export function CleanupAssistant({
 
       {loading && progress && !snapshot ? (
         <section className="cleanup-scan-stage" aria-labelledby="cleanup-scan-stage-title">
-          <div className="cleanup-scan-orbit" aria-hidden="true">
-            <div className="cleanup-scan-orbit__halo" />
-            <div className="cleanup-scan-orbit__ring is-outer" />
-            <div className="cleanup-scan-orbit__ring is-middle" />
-            <div className="cleanup-scan-orbit__ring is-inner" />
-            <div className="cleanup-scan-orbit__sweep" />
+          <div className="cleanup-scan-visual" aria-hidden="true">
+            <div className="cleanup-scan-visual__grid" />
+            <div className="cleanup-scan-visual__beam" />
+            <AnimatedRobin
+              active
+              className="cleanup-scan-visual__robin"
+              interactive={false}
+              mood="observing"
+              size={172}
+            />
             <i className="is-one" /><i className="is-two" /><i className="is-three" />
-            <div className="cleanup-scan-orbit__center">
+            <div className="cleanup-scan-visual__metric">
               <Sparkles size={19} />
               <small>{t("cleanup:progress.foundSpace")}</small>
               <strong>{formatBytes(progress.discoveredBytes)}</strong>
@@ -394,6 +407,8 @@ export function CleanupAssistant({
             snapshot={snapshot}
             snapshotStatus={snapshotStatus}
             onDeletionApplied={onDeletionApplied}
+            onUserActionStart={onUserActionStart}
+            onUserActionComplete={onUserActionComplete}
           />
 
           <header className="cleanup-category-summary__heading">

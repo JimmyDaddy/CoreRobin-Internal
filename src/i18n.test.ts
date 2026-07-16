@@ -55,9 +55,9 @@ function resourceStrings(
 
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
 const PROTECTED_TRANSLATION_TOKENS = [
-  "StatusOrbit.app",
-  "StatusOrbit",
-  "Orbit",
+  "CoreRobin.app",
+  "CoreRobin",
+  "Robin",
   "macOS",
   "Windows",
   "Linux",

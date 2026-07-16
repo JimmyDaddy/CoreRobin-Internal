@@ -2,7 +2,7 @@
   "kicker": "应用级汇总",
   "overviewTitle": "现在谁影响最大",
   "title": "应用资源影响",
-  "description": "StatusOrbit 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
+  "description": "CoreRobin 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
   "viewAll": "查看全部应用",
   "search": "搜索应用",
   "searchPlaceholder": "按应用名称搜索",
@@ -30,7 +30,7 @@
     "disk": "当前主要影响来自磁盘活动（{{value}}）。同步、下载或构建任务都可能造成短时读写。",
     "balanced": "当前没有某一项资源特别突出，整体影响较低。",
     "systemSafety": "这是系统组件，不建议直接结束；如有异常请先查看专业证据。",
-    "appSafety": "这是普通应用。StatusOrbit 不会自动关闭它，结束操作仍需单独确认。",
+    "appSafety": "这是普通应用。CoreRobin 不会自动关闭它，结束操作仍需单独确认。",
     "professionalDetails": "用专业模式查看进程"
   },
   "empty": "没有匹配的应用",

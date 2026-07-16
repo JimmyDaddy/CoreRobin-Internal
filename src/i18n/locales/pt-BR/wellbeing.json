@@ -13,11 +13,13 @@
     "normal": "A temperatura está atualmente dentro da faixa normal.",
     "attention": "O dispositivo está quente. Se também estiver lento, tente reduzir tarefas pesadas primeiro.",
     "urgent": "A temperatura está alta. Pare com tarefas pesadas e mantenha o dispositivo ventilado.",
-    "unavailable": "O sistema operacional ou hardware não estão fornecendo uma leitura de temperatura para o StatusOrbit."
+    "unavailable": "O sistema operacional ou hardware não estão fornecendo uma leitura de temperatura para o CoreRobin."
   },
   "battery": {
     "label": "Bateria",
     "notPresent": "Sem bateria detectada",
+    "healthLabel": "Saúde da bateria",
+    "cycleCountLabel": "Ciclos",
     "unavailable": "Computadores e dispositivos sem bateria reportados aparecem desta forma.",
     "normal": "Bateria em bom estado",
     "attention": "A bateria está fraca; prepare-se para conectar o carregador",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "Modo de suspensão automático",
     "unavailableValue": "Indisponível",
-    "unavailable": "Esta plataforma não está fornecendo informações confiáveis sobre bloqueio de sono para o StatusOrbit.",
+    "unavailable": "Esta plataforma não está fornecendo informações confiáveis sobre bloqueio de sono para o CoreRobin.",
     "clearValue": "Sono disponível",
     "clear": "Nenhum aplicativo está impedindo que o computador desligue automaticamente.",
     "blockedValue": "{{count}} aplicativos",

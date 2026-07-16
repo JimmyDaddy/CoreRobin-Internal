@@ -2,7 +2,7 @@
   "kicker": "Resumo de aplicativos",
   "overviewTitle": "Quais aplicativos estão consumindo mais recursos?",
   "title": "Impacto de recursos dos aplicativos",
-  "description": "O StatusOrbit agrupa processos auxiliares sob nomes de aplicativos familiares e, em seguida, calcula o uso total de CPU, memória e disco.",
+  "description": "O CoreRobin agrupa processos auxiliares sob nomes de aplicativos familiares e, em seguida, calcula o uso total de CPU, memória e disco.",
   "viewAll": "Ver todos os aplicativos",
   "search": "Pesquisar aplicativos",
   "searchPlaceholder": "Pesquise por nome do aplicativo",
@@ -30,7 +30,7 @@
     "disk": "A atividade do disco é o principal impacto no momento ({{value}}). Sincronizações, downloads e compilações podem causar leituras e gravações temporárias.",
     "balanced": "Nenhum recurso se destaca no momento, portanto, o impacto geral é baixo.",
     "systemSafety": "Este é um componente do sistema. Não o encerre diretamente; inspecione evidências profissionais primeiro se algo parecer errado.",
-    "appSafety": "Este é um aplicativo comum. O StatusOrbit nunca o encerrará automaticamente e todas as ações de encerramento ainda exigem confirmação.",
+    "appSafety": "Este é um aplicativo comum. O CoreRobin nunca o encerrará automaticamente e todas as ações de encerramento ainda exigem confirmação.",
     "professionalDetails": "Inspecione processos no modo profissional"
   },
   "empty": "Nenhum aplicativo correspondente",

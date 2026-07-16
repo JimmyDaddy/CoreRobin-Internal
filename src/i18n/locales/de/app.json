@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "Orbit-Assistent anzeigen",
-    "hide": "Orbit-Assistent ausblenden"
+    "show": "Robin-Assistent anzeigen",
+    "hide": "Robin-Assistent ausblenden"
   },
   "technicalOverview": {
     "title": "Live-Ressourcenübersicht anzeigen",

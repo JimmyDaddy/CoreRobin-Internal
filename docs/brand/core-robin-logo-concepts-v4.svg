@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800" role="img" aria-labelledby="title desc">
+  <title id="title">CoreRobin calm logo studies</title>
+  <desc id="desc">Six calm, grid-led CoreRobin logo concepts designed for clear silhouettes and small-size legibility.</desc>
+
+  <rect width="1800" height="1400" fill="#FFFFFF"/>
+
+  <defs>
+    <style>
+      .ink-fill { fill: #132033; }
+      .accent-fill { fill: #F06449; }
+      .ink-stroke { fill: none; stroke: #132033; stroke-linecap: round; stroke-linejoin: round; }
+      .accent-stroke { fill: none; stroke: #F06449; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 28px; font-weight: 700; }
+      .name { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 45px; font-weight: 650; letter-spacing: -1.4px; }
+      .caption { fill: #667085; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 18px; font-weight: 500; letter-spacing: .4px; }
+      .micro { fill: #98A2B3; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; letter-spacing: .5px; }
+    </style>
+
+    <!-- Y · Quiet robin: compact pebble silhouette, no pointed beak or limbs -->
+    <symbol id="mark-y" viewBox="0 0 300 300">
+      <ellipse class="ink-fill" cx="132" cy="169" rx="88" ry="72"/>
+      <circle class="ink-fill" cx="203" cy="111" r="47"/>
+      <rect class="accent-fill" x="232" y="104" width="35" height="16" rx="8"/>
+      <ellipse class="accent-fill" cx="134" cy="178" rx="50" ry="39"/>
+      <path class="ink-stroke" stroke-width="18" d="M68 235H230"/>
+    </symbol>
+
+    <!-- Z · Core status: one circular core and one status cue -->
+    <symbol id="mark-z" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="30" d="M226 78C205 56 177 44 147 44C88 44 41 91 41 150C41 209 88 256 147 256C178 256 206 244 226 222"/>
+      <circle class="accent-fill" cx="244" cy="150" r="22"/>
+    </symbol>
+
+    <!-- AA · Soft monitor: front-facing container and a quiet trend -->
+    <symbol id="mark-aa" viewBox="0 0 300 300">
+      <rect class="ink-stroke" stroke-width="24" x="46" y="48" width="208" height="204" rx="52"/>
+      <path class="accent-stroke" stroke-width="18" d="M76 160C104 160 112 128 139 128C170 128 174 180 204 180C216 180 226 170 232 160"/>
+    </symbol>
+
+    <!-- AB · Nested core: management as a stable container -->
+    <symbol id="mark-ab" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="27" d="M66 76V164C66 218 102 247 150 247C198 247 234 218 234 164V76"/>
+      <circle class="accent-fill" cx="150" cy="153" r="35"/>
+    </symbol>
+
+    <!-- AC · Soft CR: compact monogram with one status dot -->
+    <symbol id="mark-ac" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="27" d="M139 76C121 57 97 49 76 57C38 72 24 119 40 164C57 209 101 228 139 205"/>
+      <path class="ink-stroke" stroke-width="27" d="M139 220V67H194C229 67 248 85 248 112C248 140 227 157 194 157H139M192 157C218 175 231 194 239 220"/>
+      <circle class="accent-fill" cx="246" cy="68" r="15"/>
+    </symbol>
+
+    <!-- AD · Status stack: calm system layers and one active state -->
+    <symbol id="mark-ad" viewBox="0 0 300 300">
+      <rect class="ink-fill" x="47" y="67" width="206" height="30" rx="15"/>
+      <rect class="ink-fill" x="47" y="135" width="151" height="30" rx="15"/>
+      <rect class="ink-fill" x="47" y="203" width="180" height="30" rx="15"/>
+      <circle class="accent-fill" cx="237" cy="150" r="20"/>
+    </symbol>
+  </defs>
+
+  <text x="70" y="72" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="-1">CoreRobin · Calm, grid-led directions</text>
+  <text x="70" y="108" fill="#667085" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" font-weight="500">Front-facing · one metaphor · one accent · small-size checked</text>
+
+  <!-- Y -->
+  <g transform="translate(0 150)">
+    <text class="label" x="58" y="42">Y</text>
+    <use href="#mark-y" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">quiet robin</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-y" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-y" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- Z -->
+  <g transform="translate(600 150)">
+    <text class="label" x="58" y="42">Z</text>
+    <use href="#mark-z" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">core status</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-z" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-z" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AA -->
+  <g transform="translate(1200 150)">
+    <text class="label" x="58" y="42">AA</text>
+    <use href="#mark-aa" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">soft monitor</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-aa" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-aa" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AB -->
+  <g transform="translate(0 690)">
+    <text class="label" x="58" y="42">AB</text>
+    <use href="#mark-ab" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">nested core</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-ab" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-ab" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AC -->
+  <g transform="translate(600 690)">
+    <text class="label" x="58" y="42">AC</text>
+    <use href="#mark-ac" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">soft CR</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-ac" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-ac" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AD -->
+  <g transform="translate(1200 690)">
+    <text class="label" x="58" y="42">AD</text>
+    <use href="#mark-ad" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">status stack</text>
+    <text class="micro" x="211" y="466">48</text>
+    <use href="#mark-ad" x="236" y="430" width="48" height="48"/>
+    <text class="micro" x="302" y="466">24</text>
+    <use href="#mark-ad" x="327" y="446" width="24" height="24"/>
+  </g>
+
+  <text x="70" y="1334" fill="#98A2B3" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="500">Wordmark stays monochrome for legibility; coral is a single supporting accent, never the only status cue.</text>
+</svg>

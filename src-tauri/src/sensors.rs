@@ -12,31 +12,53 @@ use crate::models::{SleepBlocker, SleepBlockerKind};
 
 const SENSOR_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const SLEEP_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
+const BATTERY_DETAILS_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+#[derive(Clone, Copy, Debug, Default)]
+struct BatteryDetails {
+    health_percent: Option<f32>,
+    cycle_count: Option<u64>,
+}
 
 pub struct SensorSampler {
     components: Components,
     last_refresh: Instant,
     snapshot: SensorsSnapshot,
     sleep: Arc<Mutex<SleepSnapshot>>,
+    battery_details: BatteryDetails,
+    last_battery_details_refresh: Instant,
 }
 
 impl SensorSampler {
     pub fn new() -> Self {
         let components = Components::new_with_refreshed_list();
         let sleep = start_sleep_sampler();
-        let snapshot = sample_sensors(&components, &sleep);
+        let battery_details = sample_battery_details().unwrap_or_default();
+        let snapshot = sample_sensors(&components, &sleep, battery_details);
         Self {
             components,
             last_refresh: Instant::now(),
             snapshot,
             sleep,
+            battery_details,
+            last_battery_details_refresh: Instant::now(),
         }
     }
 
     pub fn sample(&mut self) -> SensorsSnapshot {
         if self.last_refresh.elapsed() >= SENSOR_REFRESH_INTERVAL {
             self.components.refresh(true);
-            self.snapshot = sample_sensors(&self.components, &self.sleep);
+            if self.last_battery_details_refresh.elapsed() >= BATTERY_DETAILS_REFRESH_INTERVAL {
+                if let Some(details) = sample_battery_details() {
+                    self.battery_details.health_percent = details
+                        .health_percent
+                        .or(self.battery_details.health_percent);
+                    self.battery_details.cycle_count =
+                        details.cycle_count.or(self.battery_details.cycle_count);
+                }
+                self.last_battery_details_refresh = Instant::now();
+            }
+            self.snapshot = sample_sensors(&self.components, &self.sleep, self.battery_details);
             self.last_refresh = Instant::now();
         }
         self.snapshot.sleep = cached_sleep_snapshot(&self.sleep);
@@ -44,13 +66,72 @@ impl SensorSampler {
     }
 }
 
-fn sample_sensors(components: &Components, sleep: &Arc<Mutex<SleepSnapshot>>) -> SensorsSnapshot {
+fn sample_sensors(
+    components: &Components,
+    sleep: &Arc<Mutex<SleepSnapshot>>,
+    battery_details: BatteryDetails,
+) -> SensorsSnapshot {
+    let mut battery = sample_battery();
+    if battery.present {
+        battery.health_percent = battery.health_percent.or(battery_details.health_percent);
+        battery.cycle_count = battery.cycle_count.or(battery_details.cycle_count);
+    }
     SensorsSnapshot {
         sampled_at_ms: now_millis(),
         temperature: hottest_temperature(components),
-        battery: sample_battery(),
+        battery,
         sleep: cached_sleep_snapshot(sleep),
     }
+}
+
+#[cfg(target_os = "macos")]
+fn sample_battery_details() -> Option<BatteryDetails> {
+    use std::process::Command;
+
+    let output = Command::new("system_profiler")
+        .args(["SPPowerDataType", "-json"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let output = String::from_utf8(output.stdout).ok()?;
+    parse_system_profiler_battery_details(&output)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn sample_battery_details() -> Option<BatteryDetails> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn parse_system_profiler_battery_details(output: &str) -> Option<BatteryDetails> {
+    let root: serde_json::Value = serde_json::from_str(output).ok()?;
+    let health = root
+        .get("SPPowerDataType")?
+        .as_array()?
+        .iter()
+        .find_map(|item| item.get("sppower_battery_health_info"))?;
+    let health_percent = health
+        .get("sppower_battery_health_maximum_capacity")
+        .and_then(|value| {
+            value
+                .as_str()
+                .and_then(|value| value.trim().trim_end_matches('%').parse::<f32>().ok())
+                .or_else(|| value.as_f64().map(|value| value as f32))
+        })
+        .filter(|value| value.is_finite())
+        .map(|value| value.clamp(0.0, 100.0));
+    let cycle_count = health.get("sppower_battery_cycle_count").and_then(|value| {
+        value
+            .as_u64()
+            .or_else(|| value.as_str().and_then(|value| value.trim().parse().ok()))
+    });
+
+    (health_percent.is_some() || cycle_count.is_some()).then_some(BatteryDetails {
+        health_percent,
+        cycle_count,
+    })
 }
 
 fn cached_sleep_snapshot(sleep: &Arc<Mutex<SleepSnapshot>>) -> SleepSnapshot {
@@ -64,7 +145,7 @@ fn start_sleep_sampler() -> Arc<Mutex<SleepSnapshot>> {
     let snapshot = Arc::new(Mutex::new(unavailable_sleep()));
     let worker = Arc::downgrade(&snapshot);
     let _ = thread::Builder::new()
-        .name("status-orbit-sleep-assertions".to_owned())
+        .name("core-robin-sleep-assertions".to_owned())
         .spawn(move || run_sleep_sampler(worker));
     snapshot
 }
@@ -287,6 +368,8 @@ fn parse_pmset_battery(output: &str) -> Option<BatterySnapshot> {
     Some(BatterySnapshot {
         present: true,
         charge_percent: Some(percentage),
+        health_percent: None,
+        cycle_count: None,
         state,
         time_remaining_minutes: parse_time_remaining(&status),
         power_source,
@@ -347,6 +430,9 @@ fn sample_battery() -> BatterySnapshot {
     let snapshot = BatterySnapshot {
         present: true,
         charge_percent,
+        health_percent: linux_battery_health(&battery),
+        cycle_count: read_trimmed(battery.join("cycle_count"))
+            .and_then(|value| value.parse::<u64>().ok()),
         state,
         time_remaining_minutes: linux_time_remaining(&battery, state),
         power_source,
@@ -360,6 +446,25 @@ fn sample_battery() -> BatterySnapshot {
 
     fn read_number(path: PathBuf) -> Option<f64> {
         read_trimmed(path)?.parse().ok()
+    }
+
+    fn linux_battery_health(path: &Path) -> Option<f32> {
+        fn ratio(full: Option<f64>, design: Option<f64>) -> Option<f32> {
+            let (full, design) = (full?, design?);
+            (full.is_finite() && design.is_finite() && full >= 0.0 && design > 0.0)
+                .then(|| ((full / design) * 100.0).clamp(0.0, 100.0) as f32)
+        }
+
+        ratio(
+            read_number(path.join("energy_full")),
+            read_number(path.join("energy_full_design")),
+        )
+        .or_else(|| {
+            ratio(
+                read_number(path.join("charge_full")),
+                read_number(path.join("charge_full_design")),
+            )
+        })
     }
 
     fn linux_time_remaining(path: &Path, state: BatteryState) -> Option<u64> {
@@ -423,6 +528,8 @@ fn sample_battery() -> BatterySnapshot {
         present,
         charge_percent: (present && status.BatteryLifePercent <= 100)
             .then(|| f32::from(status.BatteryLifePercent)),
+        health_percent: None,
+        cycle_count: None,
         state,
         time_remaining_minutes: (present && status.BatteryLifeTime != u32::MAX)
             .then(|| u64::from(status.BatteryLifeTime) / 60),
@@ -443,6 +550,8 @@ fn unavailable_battery() -> BatterySnapshot {
     BatterySnapshot {
         present: false,
         charge_percent: None,
+        health_percent: None,
+        cycle_count: None,
         state: BatteryState::Unknown,
         time_remaining_minutes: None,
         power_source: PowerSource::Unknown,
@@ -461,6 +570,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     use super::{
         BatteryState, PowerSource, SleepBlockerKind, parse_pmset_assertions, parse_pmset_battery,
+        parse_system_profiler_battery_details,
     };
 
     #[cfg(target_os = "macos")]
@@ -486,6 +596,25 @@ mod tests {
         assert_eq!(snapshot.state, BatteryState::Full);
         assert_eq!(snapshot.power_source, PowerSource::Ac);
         assert_eq!(snapshot.time_remaining_minutes, Some(0));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn parses_macos_battery_health_and_cycle_count() {
+        let details = parse_system_profiler_battery_details(
+            r#"{
+              "SPPowerDataType": [{
+                "sppower_battery_health_info": {
+                  "sppower_battery_cycle_count": 173,
+                  "sppower_battery_health_maximum_capacity": "94%"
+                }
+              }]
+            }"#,
+        )
+        .expect("battery details should parse");
+
+        assert_eq!(details.health_percent, Some(94.0));
+        assert_eq!(details.cycle_count, Some(173));
     }
 
     #[cfg(target_os = "macos")]

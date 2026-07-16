@@ -36,8 +36,8 @@ export const DAILY_INTENTS = [
 ] as const;
 export type DailyIntent = (typeof DAILY_INTENTS)[number];
 export type DailyLevel = "observing" | "normal" | "attention" | "urgent";
-export type DailyOrbitLevel = DailyLevel | "unavailable";
-export type DailyOrbitKind = "speed" | "space" | "temperature" | "battery";
+export type DailyStatusLevel = DailyLevel | "unavailable";
+export type DailyStatusKind = "speed" | "space" | "temperature" | "battery";
 export type DailyStatusReason =
   | "cpu"
   | "memory"
@@ -53,9 +53,9 @@ export interface DailyStatusSummary {
   reason: DailyStatusReason;
 }
 
-export interface DailyOrbitItem {
-  kind: DailyOrbitKind;
-  level: DailyOrbitLevel;
+export interface DailyStatusItem {
+  kind: DailyStatusKind;
+  level: DailyStatusLevel;
   intent: DailyIntent;
 }
 
@@ -152,10 +152,10 @@ export function buildDailyStatusSummary(
   return { level, reason: "sleep" };
 }
 
-export function buildDailyOrbitItems(
+export function buildDailyStatusItems(
   diagnosis: SmartDiagnosisResult,
   snapshot: SystemHealthSnapshot,
-): DailyOrbitItem[] {
+): DailyStatusItem[] {
   const speedFinding = strongestFinding(
     diagnosis.findings.filter(({ category }) => category !== "storage"),
   );
@@ -303,7 +303,7 @@ function strongestFinding(findings: readonly DiagnosisFinding[]) {
 
 function wellbeingToDailyLevel(
   level: ReturnType<typeof temperatureWellbeingLevel>,
-): DailyOrbitLevel {
+): DailyStatusLevel {
   return level;
 }
 

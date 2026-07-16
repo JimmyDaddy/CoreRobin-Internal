@@ -2,7 +2,7 @@
   "localMonitor": "ローカルシステムの状態",
   "available": "空き容量",
   "open": "概要表示",
-  "companion": "Orbit ユーティリティ",
+  "companion": "Robin ユーティリティ",
   "cleanup": "ディスクの整理",
   "quit": "アプリを終了",
   "updatedAt": "{{time}} 更新",
@@ -32,11 +32,11 @@
     },
     "attention": {
       "title": "特定のリソースを監視してください",
-      "description": "StatusOrbitを開いて、詳細と対処方法を確認してください。"
+      "description": "CoreRobinを開いて、詳細と対処方法を確認してください。"
     },
     "urgent": {
       "title": "リソースの使用状況が逼迫しています",
-      "description": "対応前に、StatusOrbitで詳細を確認してください。"
+      "description": "対応前に、CoreRobinで詳細を確認してください。"
     }
   },
   "reason": "{{resource}} 注意が必要です",

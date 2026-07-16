@@ -1,5 +1,5 @@
 name: Desktop quality
-description: Run the shared cross-platform StatusOrbit desktop checks.
+description: Run the shared cross-platform CoreRobin desktop checks.
 
 runs:
   using: composite

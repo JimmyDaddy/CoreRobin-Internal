@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Full StatusOrbit application capability for the trusted main window",
+  "description": "Full CoreRobin application capability for the trusted main window",
   "windows": ["main"],
   "permissions": [
     "core:default",

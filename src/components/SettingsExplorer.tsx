@@ -1,5 +1,5 @@
-import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Orbit, Rocket, Timer } from "lucide-react";
-import type { ChangeEventHandler, ReactNode } from "react";
+import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Rocket, Timer } from "lucide-react";
+import type { ChangeEventHandler, ComponentType, ReactNode } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
@@ -11,6 +11,9 @@ import {
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
 import { LocaleSelect } from "./LocaleSelect";
+import { RobinIcon } from "./RobinIcon";
+
+type SettingsIcon = ComponentType<{ size?: number | string }>;
 
 interface SettingsExplorerProps {
   settings: AppSettings;
@@ -100,14 +103,14 @@ export function SettingsExplorer({
               onChange={(checked) => onChange({ launchAtLogin: checked })}
             />
             <BackgroundSwitch
-              icon={Orbit}
+              icon={RobinIcon}
               label={t("settings:background.companionShowOnStartup")}
               description={t("settings:background.companionShowOnStartupDescription")}
               checked={settings.companionShowOnStartup}
               onChange={(checked) => onChange({ companionShowOnStartup: checked })}
             />
             <BackgroundSwitch
-              icon={Orbit}
+              icon={RobinIcon}
               label={t("settings:background.companionAlwaysOnTop")}
               description={t("settings:background.companionAlwaysOnTopDescription")}
               checked={settings.companionAlwaysOnTop}
@@ -322,7 +325,7 @@ function BackgroundSwitch({
   checked,
   onChange,
 }: {
-  icon: typeof AppWindow;
+  icon: SettingsIcon;
   label: string;
   description: string;
   checked: boolean;
@@ -345,7 +348,7 @@ function SettingsCard({
   children,
 }: {
   className?: string;
-  icon: typeof Languages;
+  icon: SettingsIcon;
   title: string;
   description: string;
   children: ReactNode;

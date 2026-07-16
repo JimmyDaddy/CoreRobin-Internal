@@ -49,7 +49,7 @@ impl StartupController {
         let home = home_directory().ok_or_else(|| {
             CommandError::new(
                 "home_directory_unavailable",
-                "StatusOrbit could not locate the current user's home directory.",
+                "CoreRobin could not locate the current user's home directory.",
             )
         })?;
         self.create_lease_for_home(request, &home)
@@ -89,14 +89,14 @@ impl StartupController {
                 CommandError::new(
                     "startup_state_changed",
                     format!(
-                        "This startup file changed after confirmation. StatusOrbit changed nothing: {error}"
+                        "This startup file changed after confirmation. CoreRobin changed nothing: {error}"
                     ),
                 )
             })?;
         if file_fingerprint(&snapshot) != lease.source_fingerprint {
             return Err(CommandError::new(
                 "startup_state_changed",
-                "This startup file changed after confirmation. StatusOrbit changed nothing.",
+                "This startup file changed after confirmation. CoreRobin changed nothing.",
             ));
         }
         lease.bound_move.execute().map_err(map_startup_move_error)?;
@@ -132,7 +132,7 @@ impl StartupController {
         if item.management_status != StartupManagementStatus::Available {
             return Err(CommandError::new(
                 "startup_item_protected",
-                "StatusOrbit only manages recognized third-party startup files in the current user's profile.",
+                "CoreRobin only manages recognized third-party startup files in the current user's profile.",
             ));
         }
         let expected_action = if item.enabled {
@@ -156,13 +156,13 @@ impl StartupController {
         let canonical_home = home.canonicalize().map_err(|error| {
             CommandError::new(
                 "home_directory_unavailable",
-                format!("StatusOrbit could not verify the current user's home directory: {error}"),
+                format!("CoreRobin could not verify the current user's home directory: {error}"),
             )
         })?;
         let move_root = SafeFileMoveRoot::open(&canonical_home).map_err(|error| {
             CommandError::new(
                 "home_directory_unavailable",
-                format!("StatusOrbit could not open a stable home directory handle: {error}"),
+                format!("CoreRobin could not open a stable home directory handle: {error}"),
             )
         })?;
         let source_relative = relative_to_home(&source_path, home, &canonical_home)?;
@@ -180,7 +180,7 @@ impl StartupController {
                     CommandError::new(
                         "startup_management_failed",
                         format!(
-                            "StatusOrbit could not secure its reversible startup storage: {error}"
+                            "CoreRobin could not secure its reversible startup storage: {error}"
                         ),
                     )
                 })?;
@@ -193,9 +193,7 @@ impl StartupController {
             .map_err(|error| {
                 CommandError::new(
                     "startup_management_failed",
-                    format!(
-                        "StatusOrbit could not prepare its reversible startup storage: {error}"
-                    ),
+                    format!("CoreRobin could not prepare its reversible startup storage: {error}"),
                 )
             })?;
         let bound_move = move_root
@@ -233,7 +231,7 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
-            "StatusOrbit could not locate the current user's home directory.",
+            "CoreRobin could not locate the current user's home directory.",
         )
     })?;
     let (mut items, unreadable_location_count) = platform_startup_items(&home);
@@ -659,7 +657,7 @@ fn macos_disabled_directories(home: &Path) -> [PathBuf; 2] {
 #[cfg(target_os = "linux")]
 fn linux_disabled_directories(home: &Path) -> [PathBuf; 2] {
     [
-        home.join(".local/share/status-orbit/disabled-startup/autostart"),
+        home.join(".local/share/core-robin/disabled-startup/autostart"),
         home.join(".local/share/pulse/disabled-startup/autostart"),
     ]
 }
@@ -708,7 +706,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     {
         return Err(CommandError::new(
             "startup_item_protected",
-            "StatusOrbit only manages user LaunchAgent files from the standard folder.",
+            "CoreRobin only manages user LaunchAgent files from the standard folder.",
         ));
     }
     let file_name = active_path.file_name().ok_or_else(|| {
@@ -731,7 +729,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     {
         return Err(CommandError::new(
             "startup_item_protected",
-            "StatusOrbit only manages user desktop autostart files from the standard folder.",
+            "CoreRobin only manages user desktop autostart files from the standard folder.",
         ));
     }
     let file_name = active_path.file_name().ok_or_else(|| {
@@ -751,7 +749,7 @@ fn disabled_path_for_item(home: &Path, item: &StartupItem) -> Result<PathBuf, Co
     if item.source != StartupItemSource::StartupFolder {
         return Err(CommandError::new(
             "startup_item_protected",
-            "StatusOrbit only manages files in the current user's Startup folder on Windows.",
+            "CoreRobin only manages files in the current user's Startup folder on Windows.",
         ));
     }
     let active_path = PathBuf::from(&item.path);
@@ -811,7 +809,7 @@ fn relative_to_home(
         .map_err(|_| {
             CommandError::new(
                 "startup_item_protected",
-                "The startup file is outside the current user's profile. StatusOrbit changed nothing.",
+                "The startup file is outside the current user's profile. CoreRobin changed nothing.",
             )
         })
 }
@@ -820,7 +818,7 @@ fn map_startup_binding_error(error: io::Error) -> CommandError {
     match error.kind() {
         io::ErrorKind::AlreadyExists => CommandError::new(
             "startup_destination_conflict",
-            "Another startup configuration already exists at the destination. StatusOrbit changed nothing.",
+            "Another startup configuration already exists at the destination. CoreRobin changed nothing.",
         ),
         io::ErrorKind::NotFound => CommandError::new(
             "startup_item_unavailable",
@@ -828,11 +826,11 @@ fn map_startup_binding_error(error: io::Error) -> CommandError {
         ),
         io::ErrorKind::InvalidData | io::ErrorKind::PermissionDenied => CommandError::new(
             "startup_item_protected",
-            format!("StatusOrbit refused an unsafe startup file operation: {error}"),
+            format!("CoreRobin refused an unsafe startup file operation: {error}"),
         ),
         _ => CommandError::new(
             "startup_management_failed",
-            format!("StatusOrbit could not safely bind the startup file: {error}"),
+            format!("CoreRobin could not safely bind the startup file: {error}"),
         ),
     }
 }
@@ -841,17 +839,15 @@ fn map_startup_move_error(error: io::Error) -> CommandError {
     match error.kind() {
         io::ErrorKind::AlreadyExists => CommandError::new(
             "startup_destination_conflict",
-            "Another startup configuration appeared at the destination. StatusOrbit refused to overwrite it.",
+            "Another startup configuration appeared at the destination. CoreRobin refused to overwrite it.",
         ),
         io::ErrorKind::NotFound | io::ErrorKind::InvalidData => CommandError::new(
             "startup_state_changed",
-            format!(
-                "The startup source or destination changed. StatusOrbit stopped safely: {error}"
-            ),
+            format!("The startup source or destination changed. CoreRobin stopped safely: {error}"),
         ),
         _ => CommandError::new(
             "startup_management_failed",
-            format!("StatusOrbit could not safely move the startup configuration: {error}"),
+            format!("CoreRobin could not safely move the startup configuration: {error}"),
         ),
     }
 }
@@ -1178,7 +1174,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     fn test_root(name: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!(
-            "status-orbit-startup-{name}-{}-{}",
+            "core-robin-startup-{name}-{}-{}",
             std::process::id(),
             super::now_millis()
         ));

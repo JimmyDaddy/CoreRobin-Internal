@@ -101,7 +101,7 @@ describe("network connections", () => {
       parentPid: 1,
       startTime: 100,
       runTimeSeconds: 10,
-      name: "status-orbit-test",
+      name: "core-robin-test",
       user: "tester",
       status: "Run",
       cpuPercent: 1,

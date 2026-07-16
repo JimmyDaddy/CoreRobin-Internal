@@ -2,11 +2,11 @@
   "triggered": {
     "cpu": {
       "title": "El equipo está bajo una carga intensa",
-      "body": "El procesador ha estado ocupado y puede causar lentitud, sobrecalentamiento o mayor consumo de batería. Abra StatusOrbit para ver el impacto más grande de las aplicaciones."
+      "body": "El procesador ha estado ocupado y puede causar lentitud, sobrecalentamiento o mayor consumo de batería. Abra CoreRobin para ver el impacto más grande de las aplicaciones."
     },
     "memory": {
       "title": "La memoria disponible es limitada",
-      "body": "Se está utilizando poca memoria y hay actividad significativa en el espacio de intercambio. StatusOrbit nunca cerrará aplicaciones automáticamente."
+      "body": "Se está utilizando poca memoria y hay actividad significativa en el espacio de intercambio. CoreRobin nunca cerrará aplicaciones automáticamente."
     },
     "volume": {
       "title": "El espacio libre en disco es bajo",

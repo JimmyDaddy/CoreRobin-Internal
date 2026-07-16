@@ -1,7 +1,7 @@
 {
   "local": "本機網路",
   "title": "實時介面與會話流量",
-  "description": "速率按真實取樣間隔換算；累計值從本次啟動 StatusOrbit 開始。",
+  "description": "速率按真實取樣間隔換算；累計值從本次啟動 CoreRobin 開始。",
   "connectedInterfaces": "{{connected}} / {{total}} 個介面已連線",
   "summary": "網路摘要",
   "receiveNow": "當前接收",

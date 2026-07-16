@@ -33,15 +33,18 @@
   place-items: center;
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(99, 168, 255, 0.18);
+  border: 1px solid rgba(241, 90, 67, 0.22);
   border-radius: 12px;
-  background: var(--blue-soft);
+  background: #122038;
 }
 
 .tray-logo img { width: 34px; height: 34px; object-fit: contain; }
 .tray-brand { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .tray-brand strong { font-size: 14px; }
 .tray-brand small { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.tray-brand .brand-wordmark { color: #decdbb; font-weight: 800; letter-spacing: -0.025em; }
+.tray-brand .brand-wordmark__r { position: relative; display: inline-block; }
+.tray-brand .brand-wordmark__r i { position: absolute; top: 0.39em; left: 0.42em; width: 0.19em; height: 0.32em; background: #f15a43; clip-path: polygon(0 0, 100% 20%, 0 100%); content: ""; pointer-events: none; }
 .tray-health { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; color: var(--text-soft); border: 1px solid var(--border); border-radius: 999px; font-size: 11px; font-weight: 750; }
 .tray-health i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
 .tray-health--normal { color: var(--green); border-color: rgba(86, 207, 147, 0.22); background: var(--green-soft); }
@@ -97,6 +100,9 @@
 .tray-device-row small { color: var(--text-muted); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
 .tray-device-row strong { font-size: 11px; font-variant-numeric: tabular-nums; }
 .tray-device-row em { overflow: hidden; grid-column: 1 / -1; color: var(--text-muted); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.tray-device-row .tray-battery-detail { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; overflow: visible; padding: 1px 0 0; color: var(--text-soft); line-height: 1.2; text-overflow: clip; }
+.tray-battery-detail i { overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.tray-battery-detail b { color: var(--text-soft); font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .tray-context {
   display: flex;

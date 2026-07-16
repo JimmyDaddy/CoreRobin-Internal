@@ -16,9 +16,9 @@ describe("device wellbeing", () => {
   });
 
   it("only warns for a low battery while discharging", () => {
-    expect(batteryWellbeingLevel({ present: true, chargePercent: 8, state: "charging", timeRemainingMinutes: null, powerSource: "ac" })).toBe("normal");
-    expect(batteryWellbeingLevel({ present: true, chargePercent: 8, state: "discharging", timeRemainingMinutes: 22, powerSource: "battery" })).toBe("urgent");
-    expect(batteryWellbeingLevel({ present: false, chargePercent: null, state: "unknown", timeRemainingMinutes: null, powerSource: "unknown" })).toBe("unavailable");
+    expect(batteryWellbeingLevel({ present: true, chargePercent: 8, healthPercent: 94, cycleCount: 173, state: "charging", timeRemainingMinutes: null, powerSource: "ac" })).toBe("normal");
+    expect(batteryWellbeingLevel({ present: true, chargePercent: 8, healthPercent: 94, cycleCount: 173, state: "discharging", timeRemainingMinutes: 22, powerSource: "battery" })).toBe("urgent");
+    expect(batteryWellbeingLevel({ present: false, chargePercent: null, healthPercent: null, cycleCount: null, state: "unknown", timeRemainingMinutes: null, powerSource: "unknown" })).toBe("unavailable");
   });
 
   it("maps sleep assertions back to familiar application names", () => {

@@ -13,11 +13,13 @@
     "normal": "La température est actuellement dans la plage normale.",
     "attention": "L'appareil est chaud. Si cela s'accompagne d'un ralentissement, fermez d'abord les applications gourmandes en ressources.",
     "urgent": "La température reste élevée. Arrêtez les tâches lourdes et assurez une bonne ventilation de l'appareil.",
-    "unavailable": "Le système d'exploitation ou le matériel ne transmet pas de données de température à StatusOrbit."
+    "unavailable": "Le système d'exploitation ou le matériel ne transmet pas de données de température à CoreRobin."
   },
   "battery": {
     "label": "Batterie",
     "notPresent": "Aucune batterie détectée",
+    "healthLabel": "État de la batterie",
+    "cycleCountLabel": "Cycles",
     "unavailable": "Les ordinateurs de bureau et appareils sans rapport de batterie s'affichent ainsi.",
     "normal": "État de la batterie normal",
     "attention": "La batterie est faible ; préparez-vous à brancher un chargeur",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "Mode veille automatique",
     "unavailableValue": "Non disponible",
-    "unavailable": "Cette plateforme ne fournit pas d'informations fiables sur le blocage du sommeil à StatusOrbit.",
+    "unavailable": "Cette plateforme ne fournit pas d'informations fiables sur le blocage du sommeil à CoreRobin.",
     "clearValue": "Le sommeil est possible",
     "clear": "Aucune application n'empêche l'ordinateur de se mettre en veille automatiquement.",
     "blockedValue": "{{count}} application",

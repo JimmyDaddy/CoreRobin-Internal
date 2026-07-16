@@ -13,19 +13,19 @@
   },
   "language": {
     "title": "界面语言",
-    "description": "切换 StatusOrbit 的菜单、说明与状态文本。",
+    "description": "切换 CoreRobin 的菜单、说明与状态文本。",
     "label": "语言"
   },
   "background": {
     "title": "后台与桌面",
-    "description": "控制 StatusOrbit 如何常驻、登录启动，以及 Orbit 小伙伴的桌面行为。",
+    "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 小伙伴的桌面行为。",
     "showDockIcon": "在 Dock 中显示",
     "showDockIconDescription": "关闭后不占用 Dock 和应用切换器，仍可从顶部状态栏唤起",
     "launchAtLogin": "登录时启动",
     "launchAtLoginDescription": "登录后静默启动状态栏服务，不自动打开主窗口",
-    "companionShowOnStartup": "让 Orbit 常驻桌面",
-    "companionShowOnStartupDescription": "应用启动后自动显示 Orbit 小伙伴",
-    "companionAlwaysOnTop": "Orbit 始终置顶",
+    "companionShowOnStartup": "让 Robin 常驻桌面",
+    "companionShowOnStartupDescription": "应用启动后自动显示 Robin 小伙伴",
+    "companionAlwaysOnTop": "Robin 始终置顶",
     "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡"
   },
   "sampling": {

@@ -13,7 +13,7 @@
   "access": {
     "kicker": "Antes de iniciar a verificação",
     "title": "Permitir acesso a todo o disco do sistema",
-    "description": "O macOS protege e-mails, mensagens e outros dados de aplicativos. O acesso completo ao disco permite que o SpaceMap seja o mais completo possível; o StatusOrbit ainda lê apenas metadados como nomes, tamanhos e datas.",
+    "description": "O macOS protege e-mails, mensagens e outros dados de aplicativos. O acesso completo ao disco permite que o SpaceMap seja o mais completo possível; o CoreRobin ainda lê apenas metadados como nomes, tamanhos e datas.",
     "checking": "Verificando acesso…",
     "checkingReturn": "Confirmando acesso…",
     "openSettings": "Abrir Acesso Completo",
@@ -21,15 +21,15 @@
     "revealApp": "Mostrar aplicativo no Finder",
     "checkAgain": "Acesso habilitado — verificar novamente",
     "continueLimited": "Verificar áreas acessíveis",
-    "waiting": "As Configurações do Sistema estão abertas. Se o StatusOrbit estiver ausente, clique no + abaixo da lista e selecione StatusOrbit.app. Ative-o e retorne para iniciar a verificação automaticamente.",
+    "waiting": "As Configurações do Sistema estão abertas. Se o CoreRobin estiver ausente, clique no + abaixo da lista e selecione CoreRobin.app. Ative-o e retorne para iniciar a verificação automaticamente.",
     "unknown": "Não foi possível confirmar o acesso. Você ainda pode abrir as Configurações do Sistema ou executar uma verificação limitada.",
-    "bundleRequired": "Inicie o StatusOrbit.app primeiro",
+    "bundleRequired": "Inicie o CoreRobin.app primeiro",
     "bundleMissingTitle": "Este processo não pode ser adicionado à lista de acesso",
-    "bundleMissingDescription": "O macOS não permite autorizar este processo de desenvolvimento aqui. Instale o StatusOrbit.app e abra-o novamente a partir de Aplicativos; uma verificação limitada ainda está disponível.",
-    "privacy": "O macOS controla esta permissão e você pode desativá-la a qualquer momento. O StatusOrbit nunca lê o conteúdo dos arquivos ou modifica arquivos durante a verificação.",
+    "bundleMissingDescription": "O macOS não permite autorizar este processo de desenvolvimento aqui. Instale o CoreRobin.app e abra-o novamente a partir de Aplicativos; uma verificação limitada ainda está disponível.",
+    "privacy": "O macOS controla esta permissão e você pode desativá-la a qualquer momento. O CoreRobin nunca lê o conteúdo dos arquivos ou modifica arquivos durante a verificação.",
     "steps": {
       "open": "Abrir Configurações do Sistema",
-      "add": "Clique no + e selecione StatusOrbit.app",
+      "add": "Clique no + e selecione CoreRobin.app",
       "return": "Ative-o e retorne"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "Atualizar resultado",
     "cached": {
       "title": "Resultado da última verificação restaurado",
-      "description": "Continue explorando sem esperar por outra verificação. O StatusOrbit verifica um diretório em busca de alterações somente quando você o acessa."
+      "description": "Continue explorando sem esperar por outra verificação. O CoreRobin verifica um diretório em busca de alterações somente quando você o acessa."
     },
     "expired": {
       "title": "Este resultado tem mais de 24 horas",
-      "description": "O StatusOrbit mantém a visualização disponível para que você possa continuar explorando. Atualize-a antes de tomar decisões sobre limpeza."
+      "description": "O CoreRobin mantém a visualização disponível para que você possa continuar explorando. Atualize-a antes de tomar decisões sobre limpeza."
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "~{{size}} liberados",
     "cancelDelete": "Cancelar exclusão",
     "cancelling": "Excluindo…",
-    "cancelHint": "As exclusões concluídas não podem ser restauradas. O StatusOrbit interromperá a exclusão após a operação de arquivo atual.",
+    "cancelHint": "As exclusões concluídas não podem ser restauradas. O CoreRobin interromperá a exclusão após a operação de arquivo atual.",
     "errors": {
-      "protected_cleanup_path": "O StatusOrbit não excluirá seu diretório pessoal nem o próprio diretório da Lixeira.",
-      "cleanup_target_outside_home": "Por segurança, o StatusOrbit só trata arquivos dentro da sua pasta pessoal.",
-      "cleanup_cross_filesystem": "A pasta selecionada está em um disco ou ponto de montagem diferente, por isso o StatusOrbit não conseguiu realizar a exclusão recursiva.",
-      "cleanup_target_changed": "Um arquivo foi alterado após a confirmação, portanto o StatusOrbit não realizou nenhuma exclusão. Cancele e revise novamente.",
+      "protected_cleanup_path": "O CoreRobin não excluirá seu diretório pessoal nem o próprio diretório da Lixeira.",
+      "cleanup_target_outside_home": "Por segurança, o CoreRobin só trata arquivos dentro da sua pasta pessoal.",
+      "cleanup_cross_filesystem": "A pasta selecionada está em um disco ou ponto de montagem diferente, por isso o CoreRobin não conseguiu realizar a exclusão recursiva.",
+      "cleanup_target_changed": "Um arquivo foi alterado após a confirmação, portanto o CoreRobin não realizou nenhuma exclusão. Cancele e revise novamente.",
       "cleanup_confirmation_unavailable": "Esta confirmação não está mais disponível. Cancele e abra novamente a revisão.",
       "cleanup_confirmation_expired": "Esta confirmação expirou. Cancele e revise os arquivos atuais novamente.",
       "cleanup_target_unavailable": "Algum conteúdo pode não existir ou não estar acessível. Verifique novamente e tente novamente.",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "Inventário de aplicativos somente leitura",
     "title": "Aplicativos que não foram utilizados há muito tempo",
-    "boundary": "Apenas aplicativos que, segundo o macOS, não são abertos há pelo menos seis meses; o StatusOrbit nunca os desinstala automaticamente",
+    "boundary": "Apenas aplicativos que, segundo o macOS, não são abertos há pelo menos seis meses; o CoreRobin nunca os desinstala automaticamente",
     "lastUsed": "Última utilização {{date}} · não aberto há {{days}} dias",
     "none": "Nenhum aplicativo pôde ser confirmado como não utilizado por mais de seis meses.",
     "unavailable": "Esta plataforma atualmente não fornece datas de última utilização de aplicativos de forma confiável.",
-    "unknownExcluded": "{{count}} Outros aplicativos não possuem uma data de uso confirmada, portanto, o StatusOrbit não os classificou como não utilizados."
+    "unknownExcluded": "{{count}} Outros aplicativos não possuem uma data de uso confirmada, portanto, o CoreRobin não os classificou como não utilizados."
   },
   "reviewFirst": "Verificar um por um",
   "largestFiles": "Arquivos grandes no disco do sistema",
   "largeFileBoundary": "Apenas arquivos com mais de 500 MB são listados; a exclusão automática não é recomendada",
   "noLargeFiles": "Nenhum arquivo com mais de 500 MB foi encontrado em locais acessíveis do disco do sistema.",
   "unreadable": "{{count}} As localizações estavam protegidas ou temporariamente inacessíveis. Apenas essas localizações são excluídas do resultado.",
-  "fullDiskAccessHint": "No macOS, conceda ao StatusOrbit Acesso Total ao Disco em Ajustes do Sistema → Privacidade e Segurança e verifique novamente.",
+  "fullDiskAccessHint": "No macOS, conceda ao CoreRobin Acesso Total ao Disco em Ajustes do Sistema → Privacidade e Segurança e verifique novamente.",
   "safetyBoundary": "A verificação não tem limite de tempo ou itens e nunca segue links simbólicos. Apenas os itens colocados na lixeira, verificados por caminho e explicitamente confirmados são permanentemente excluídos e não podem ser restaurados."
 }

@@ -7,10 +7,17 @@ const header = document.querySelector("[data-header]");
 const nav = document.querySelector("[data-nav]");
 const navToggle = document.querySelector("[data-nav-toggle]");
 const guideSelect = document.querySelector("[data-guide-jump]");
+const SITE_LANGUAGE_KEY = "core-robin.site-language";
+const LEGACY_SITE_LANGUAGE_KEY = "status-orbit.site-language";
 
 function preferredLanguage() {
   try {
-    const stored = window.localStorage.getItem("status-orbit.site-language");
+    const stored = window.localStorage.getItem(SITE_LANGUAGE_KEY)
+      ?? window.localStorage.getItem(LEGACY_SITE_LANGUAGE_KEY);
+    if (stored) {
+      window.localStorage.setItem(SITE_LANGUAGE_KEY, stored);
+      window.localStorage.removeItem(LEGACY_SITE_LANGUAGE_KEY);
+    }
     if (stored === "zh" || stored === "en") return stored;
   } catch {
     // The site remains usable when browser storage is unavailable.
@@ -31,10 +38,10 @@ function setLanguage(language) {
   if (languageLabel) languageLabel.textContent = next === "zh" ? "EN" : "中文";
   const guidePage = document.body.classList.contains("guide-page");
   document.title = next === "zh"
-    ? guidePage ? "StatusOrbit 使用指南" : "StatusOrbit — 电脑变慢，空间不足，原因一眼看清"
-    : guidePage ? "StatusOrbit User Guide" : "StatusOrbit — Find slowdowns and free up space";
+    ? guidePage ? "CoreRobin 使用指南" : "CoreRobin — 电脑变慢，空间不足，原因一眼看清"
+    : guidePage ? "CoreRobin User Guide" : "CoreRobin — Find slowdowns and free up space";
   try {
-    window.localStorage.setItem("status-orbit.site-language", next);
+    window.localStorage.setItem(SITE_LANGUAGE_KEY, next);
   } catch {
     // Language still applies for the current page.
   }

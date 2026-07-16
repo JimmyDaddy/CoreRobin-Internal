@@ -4,7 +4,7 @@
   "collapse": "Hide diagnosis",
   "checkedLabel": "Smart Diagnosis checks",
   "thisDisk": "System disk",
-  "safety": "StatusOrbit never acts automatically. Recommended actions still need your confirmation, and force quit stays in professional mode.",
+  "safety": "CoreRobin never acts automatically. Recommended actions still need your confirmation, and force quit stays in professional mode.",
   "duration": "for {{seconds}} sec",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "Your computer may be slowing down",
-      "summary": "StatusOrbit found possible performance issues ({{count}}). Expand this card to see why."
+      "summary": "CoreRobin found possible performance issues ({{count}}). Expand this card to see why."
     },
     "urgent": {
       "title": "Something needs attention soon",
-      "summary": "StatusOrbit found significant performance issues ({{count}}). Review the evidence before taking action."
+      "summary": "CoreRobin found significant performance issues ({{count}}). Review the evidence before taking action."
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "First ask {{name}} to quit",
-      "description": "This is the gentlest available action. StatusOrbit verifies the process identity and shows a confirmation before doing anything.",
+      "description": "This is the gentlest available action. CoreRobin verifies the process identity and shows a confirmation before doing anything.",
       "action": "Ask {{name}} to quit"
     },
     "open_cleanup": {
@@ -112,24 +112,24 @@
     },
     "inspect_process": {
       "title": "Inspect the evidence first",
-      "description": "StatusOrbit does not offer a direct action here. Verify the app identity, resource changes, and protection reason first.",
+      "description": "CoreRobin does not offer a direct action here. Verify the app identity, resource changes, and protection reason first.",
       "action": "Inspect detailed evidence"
     },
     "inspectEvidence": "Inspect app evidence",
     "preparing": "Verifying…",
-    "actionUnavailable": "StatusOrbit could not safely verify or control this app, so nothing was changed."
+    "actionUnavailable": "CoreRobin could not safely verify or control this app, so nothing was changed."
   },
   "actionDialog": {
     "title": "Ask {{name}} to quit?",
-    "description": "StatusOrbit will send a normal termination request. This is the gentle action, not force quit.",
+    "description": "CoreRobin will send a normal termination request. This is the gentle action, not force quit.",
     "restartTitle": "Restart {{name}}?",
-    "restartDescription": "StatusOrbit will ask the app to quit normally, then reopen its verified app bundle.",
+    "restartDescription": "CoreRobin will ask the app to quit normally, then reopen its verified app bundle.",
     "safeTitle": "Does not delete the app or its files",
     "safeDescription": "This only asks the running app to stop and does not clean up its data.",
     "riskTitle": "Save anything you are editing first",
     "riskDescription": "Whether a save prompt appears depends on the app; unsaved work could still be lost.",
     "stableIdentity": "A stable handle is bound to the process you selected and will be checked again before execution.",
-    "bestEffortIdentity": "This platform can only reduce PID-reuse risk through identity checks. StatusOrbit refuses the action if the process has changed.",
+    "bestEffortIdentity": "This platform can only reduce PID-reuse risk through identity checks. CoreRobin refuses the action if the process has changed.",
     "confirm": "Confirm quit request for {{name}}",
     "confirmRestart": "Restart {{name}}"
   }

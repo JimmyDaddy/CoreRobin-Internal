@@ -42,7 +42,7 @@
     "happeningNow": "現在も発生中",
     "resolved": "正常に戻りました",
     "emptyTitle": "最近の状況に異常はありません",
-    "emptyDescription": "StatusOrbitは、一時的な変動を無視し、コンピュータに影響を与える十分な時間だけ記録される状態のみを記録します。",
+    "emptyDescription": "CoreRobinは、一時的な変動を無視し、コンピュータに影響を与える十分な時間だけ記録される状態のみを記録します。",
     "cpu": {
       "active": {
         "title": "コンピュータが活発に動作しています",
@@ -52,7 +52,7 @@
         "title": "コンピュータは活発に動作し、正常に戻りました",
         "description": "高負荷状態は約{{duration}}秒続き、ピーク時にはほぼ{{value}}%まで上昇した後、通常の状態に戻りました。"
       },
-      "guidance": "もしコンピュータが引き続き遅く感じられる場合は、開いているアプリケーションを確認し、最も影響を受けているものを特定してください。StatusOrbitは、アプリを自動的に閉じません。"
+      "guidance": "もしコンピュータが引き続き遅く感じられる場合は、開いているアプリケーションを確認し、最も影響を受けているものを特定してください。CoreRobinは、アプリを自動的に閉じません。"
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "メモリ使用量が一時的に高くなり、落ち着いています",
         "description": "メモリはしばらく圧迫された状態でしたが、その後、利用可能なメモリとスワップの使用状況が回復しました。 {{duration}},現在は正常な状態に戻っています。"
       },
-      "guidance": "メモリ使用量が多いだけなら正常です。StatusOrbit は、利用可能なメモリが少なく、明確なスワップ動作もある場合にのみ記録します。"
+      "guidance": "メモリ使用量が多いだけなら正常です。CoreRobin は、利用可能なメモリが少なく、明確なスワップ動作もある場合にのみ記録します。"
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}指定された閾値を超えた場合 {{threshold}}指定された範囲内 {{duration}}。",
     "recoveredDetail": "{{value}}%に戻りました（{{duration}}%を超えた状態から）"
   },
+  "actions": {
+    "eyebrow": "確認して実行した操作",
+    "title": "操作と結果",
+    "description": "確認して実行した操作を記録し、可能な場合は結果を再確認します。",
+    "count": "最近 {{count}} 件",
+    "saved": "保存済みの操作 {{count}} 件",
+    "emptyTitle": "操作履歴はまだありません",
+    "emptyDescription": "アプリの終了、ファイルの整理、起動項目の管理を行うと結果がここに表示されます。",
+    "open": "表示",
+    "clear": "操作履歴を削除",
+    "kind": {
+      "process_close": "アプリを通常終了",
+      "process_restart": "アプリを再起動",
+      "process_force_quit": "アプリを強制終了",
+      "cleanup_delete": "ファイルを完全に削除",
+      "startup_disable": "起動項目を無効化",
+      "startup_enable": "起動項目を復元"
+    },
+    "status": {
+      "running": "実行中",
+      "succeeded": "完了",
+      "partial": "一部完了",
+      "failed": "未完了",
+      "cancelled": "キャンセル済み",
+      "interrupted": "中断"
+    },
+    "verification": {
+      "pending": "結果を確認中",
+      "verified": "システム状態を再確認しました",
+      "not_confirmed": "最終状態をまだ確認できません"
+    },
+    "target": {
+      "application": "アプリ名は保存されていません",
+      "files": "選択したファイル",
+      "startup": "起動項目名は保存されていません"
+    },
+    "cleanupResult": "{{count}} 件を処理し、{{size}} を解放",
+    "cleanupFailed": "{{count}} 件は未完了"
+  },
   "privacyEyebrow": "データに関する情報",
   "privacyTitle": "プライバシーポリシー",
-  "privacyLocal": "このデバイスのStatusOrbit WebViewに保存され、アップロードまたは同期されません。",
-  "privacyCollected": "CPUとメモリの使用率、ディスクとネットワークのパフォーマンス、およびリソースの負荷と回復イベントのみが記録されます。アプリの名前は、設定で個別に許可した場合のみ保存されます。",
+  "privacyLocal": "このデバイスのCoreRobin WebViewに保存され、アップロードまたは同期されません。",
+  "privacyCollected": "集約されたリソース情報、負荷と回復イベントに加え、確認した操作の種類、結果、項目数、解放容量を記録します。アプリ名や起動項目名は、設定で個別に許可した場合のみ保存されます。",
   "privacyExcluded": "プロセス、ユーザー、パス、ファイル名、およびローカルまたはリモート接続アドレスに関する情報は記録されません。",
   "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。"
 }

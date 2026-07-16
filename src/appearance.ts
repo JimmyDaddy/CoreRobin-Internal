@@ -3,7 +3,7 @@ import {
   readMigratedStorageItem,
 } from "./storageMigration";
 
-export const APP_SETTINGS_STORAGE_KEY = "status-orbit.settings.v1";
+export const APP_SETTINGS_STORAGE_KEY = "core-robin.settings.v1";
 
 export type InterfaceScale = "comfortable" | "large";
 
