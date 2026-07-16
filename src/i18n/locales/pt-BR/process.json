@@ -60,6 +60,7 @@
     "allowBestEffort": "Permitir ações do processo com tentativa.",
     "binding": "Vinculando…",
     "requestClose": "Solicitar saída",
+    "restart": "Reiniciar aplicativo",
     "forceKill": "Forçar encerramento…"
   },
   "history": {

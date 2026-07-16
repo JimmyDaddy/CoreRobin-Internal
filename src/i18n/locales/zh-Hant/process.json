@@ -60,6 +60,7 @@
     "allowBestEffort": "本次執行中允許 best-effort 程序操作",
     "binding": "正在繫結…",
     "requestClose": "請求結束",
+    "restart": "重新啟動應用",
     "forceKill": "強制結束…"
   },
   "history": {

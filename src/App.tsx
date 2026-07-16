@@ -32,12 +32,16 @@ import {
 import { useAppTranslation } from "./i18n/useAppTranslation";
 
 import {
+  canRelaunchApplication,
   createProcessControlLease,
   executeProcessAction,
+  getSystemSnapshot,
   getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
+  openSystemSettings,
   releaseProcessControlLease,
+  relaunchApplication,
   setDockIconVisible,
   setLaunchAtLogin,
 } from "./api";
@@ -79,6 +83,7 @@ import {
   saveProcessExplorerPreferences,
   type ProcessExplorerPreferences,
 } from "./processExplorer";
+import { waitForProcessIdentityExit } from "./processRestart";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import {
   applyAppAppearance,
@@ -93,6 +98,7 @@ import type {
   ProcessDetail,
   ProcessKey,
   ProcessRow,
+  SystemSettingsDestination,
 } from "./types";
 import {
   formatBytes,
@@ -170,7 +176,7 @@ function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
 }
 
 interface PendingProcessAction {
-  source: "process" | "diagnosis";
+  source: "process" | "diagnosis" | "restart";
   displayName: string;
   action: ProcessAction;
   selectionIdentity: string;
@@ -178,6 +184,7 @@ interface PendingProcessAction {
   lease: ProcessControlLease;
   detail: ProcessDetail;
   dailyIntent: DailyIntent | null;
+  relaunchExecutable: string | null;
 }
 
 function App() {
@@ -654,6 +661,7 @@ function App() {
           lease,
           detail: activeDetail,
           dailyIntent: null,
+          relaunchExecutable: null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -666,7 +674,12 @@ function App() {
   );
 
   const beginDiagnosisRequestClose = useCallback(
-    async (identity: string, applicationName: string, requestedDailyIntent?: DailyIntent) => {
+    async (
+      identity: string,
+      applicationName: string,
+      requestedDailyIntent?: DailyIntent,
+      restartAfterClose = false,
+    ) => {
       if (preparingActionRef.current || !snapshot) return;
       const process = snapshot.processes.find(
         (candidate) => processIdentity(candidate) === identity,
@@ -706,6 +719,13 @@ function App() {
           );
           return;
         }
+        if (
+          restartAfterClose &&
+          (!nextDetail.executable || !await canRelaunchApplication(nextDetail.executable))
+        ) {
+          setNotice(t("daily:applications.restartUnavailable", { name: applicationName }));
+          return;
+        }
 
         const lease = await createProcessControlLease({
           key: nextDetail.key,
@@ -722,7 +742,7 @@ function App() {
         }
         setDetail(nextDetail);
         setPendingAction({
-          source: "diagnosis",
+          source: restartAfterClose ? "restart" : "diagnosis",
           displayName: applicationName,
           action: "request_close",
           selectionIdentity: identity,
@@ -732,6 +752,7 @@ function App() {
           dailyIntent: settings.experienceMode === "simple"
             ? requestedDailyIntent ?? dailyIntent ?? "slow"
             : null,
+          relaunchExecutable: restartAfterClose ? nextDetail.executable : null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -745,7 +766,7 @@ function App() {
 
   const handleAction = async () => {
     if (!pendingAction || submittingActionRef.current) return;
-    const currentKey = pendingAction.source === "diagnosis"
+    const currentKey = pendingAction.source !== "process"
       ? selectedProcess && processIdentity(selectedProcess) === pendingAction.selectionIdentity
         ? pendingAction.key
         : null
@@ -768,7 +789,26 @@ function App() {
         key: pendingAction.key,
         action: pendingAction.action,
       });
-      setNotice(result.message);
+      let resultMessage = result.message;
+      if (pendingAction.relaunchExecutable) {
+        const exited = result.outcome === "exited" ||
+          result.outcome === "already_exited" ||
+          await waitForProcessIdentityExit(
+            pendingAction.selectionIdentity,
+            getSystemSnapshot,
+          );
+        if (exited) {
+          await relaunchApplication(pendingAction.relaunchExecutable);
+          resultMessage = t("daily:applications.restartComplete", {
+            name: pendingAction.displayName,
+          });
+        } else {
+          resultMessage = t("daily:applications.restartStillRunning", {
+            name: pendingAction.displayName,
+          });
+        }
+      }
+      setNotice(resultMessage);
       if (pendingAction.dailyIntent) {
         setDailyRecheck({
           intent: pendingAction.dailyIntent,
@@ -847,6 +887,14 @@ function App() {
   };
   const openDailyCleanup = () => {
     navigateDaily("cleanup");
+  };
+  const openSystemSettingsPage = async (destination: SystemSettingsDestination) => {
+    setNotice(null);
+    try {
+      await openSystemSettings(destination);
+    } catch (caughtError) {
+      setNotice(normalizeCommandError(caughtError).message);
+    }
   };
   const switchExperienceMode = (experienceMode: AppSettings["experienceMode"]) => {
     if (experienceMode === settings.experienceMode || modeTransition !== null) return;
@@ -1082,6 +1130,7 @@ function App() {
                   onOpenIncident={openDailyIncident}
                   onRefreshStartup={startupItems.refresh}
                   onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, dailyIntent)}
+                  onOpenSystemSettings={(destination) => void openSystemSettingsPage(destination)}
                 />
               ) : activeView === "overview" ? (
                 <DailyHome
@@ -1103,6 +1152,7 @@ function App() {
                   recheck={dailyRecheck?.intent === "slow" ? dailyRecheck : null}
                   onRefresh={refreshDailyApplications}
                   onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, "slow")}
+                  onRequestRestart={(identity, name) => void beginDiagnosisRequestClose(identity, name, "slow", true)}
                 />
               ) : activeView === "storage" ? (
                 <DailySpace
@@ -1355,6 +1405,11 @@ function App() {
               preparingAction={preparingAction}
               onBestEffortOptInChange={setBestEffortOptIn}
               onAction={(action) => void beginProcessAction(action)}
+              onRestart={() => {
+                if (selectedIdentity && activeDetail) {
+                  void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
+                }
+              }}
             />
           ) : null}
         </div>

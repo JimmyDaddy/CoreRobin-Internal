@@ -55,6 +55,7 @@ describe("everyday component interactions", () => {
         recheck={null}
         onRefresh={onRefresh}
         onRequestClose={() => undefined}
+        onRequestRestart={() => undefined}
       />,
     );
 
@@ -70,6 +71,7 @@ describe("everyday component interactions", () => {
         recheck={null}
         onRefresh={onRefresh}
         onRequestClose={() => undefined}
+        onRequestRestart={() => undefined}
       />,
     );
     expect(screen.getByText("84%")).toBeTruthy();
@@ -77,6 +79,27 @@ describe("everyday component interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: /更新列表/ }));
     await waitFor(() => expect(screen.getByText("Beta")).toBeTruthy());
     expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("offers a safe restart action for a user application", () => {
+    const onRequestRestart = vi.fn();
+    render(
+      <DailyApplications
+        applications={[application("Alpha", 84)]}
+        totalMemoryBytes={8 * 1_024 ** 3}
+        sampledAtMs={1_000}
+        preparingAction={false}
+        recheck={null}
+        onRefresh={async () => ({ applications: [], totalMemoryBytes: 0, sampledAtMs: 2_000 })}
+        onRequestClose={() => undefined}
+        onRequestRestart={onRequestRestart}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    fireEvent.click(screen.getByRole("button", { name: "重新启动 Alpha" }));
+
+    expect(onRequestRestart).toHaveBeenCalledWith("Alpha:1", "Alpha");
   });
 
   it("runs the real home check callback instead of only changing decoration", async () => {
@@ -169,6 +192,7 @@ describe("everyday component interactions", () => {
         onOpenIncident={() => undefined}
         onRefreshStartup={() => undefined}
         onRequestClose={() => undefined}
+        onOpenSystemSettings={() => undefined}
       />,
     );
 

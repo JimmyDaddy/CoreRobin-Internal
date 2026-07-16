@@ -4070,6 +4070,27 @@ code,
 }
 .cleanup-map__selected.is-collected > div > small { color: var(--danger); }
 
+.path-actions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.path-actions__buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.path-actions__buttons .button { min-height: 31px; padding: 6px 9px; font-size: 12px; }
+.path-actions.is-compact .path-actions__buttons { flex-wrap: nowrap; }
+.path-actions.is-compact .button { width: 32px; padding: 6px; }
+.path-actions__message {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cleanup-map__path-actions { margin-top: 8px; }
+.inspector-path-actions { margin: 0 14px 12px; }
+.daily-application__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
 .cleanup-map__delete-result {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -7069,7 +7090,7 @@ code,
 .daily-guide-fact > em { margin-left: auto; }
 .daily-guide-embedded { padding: 20px; }
 .daily-guide-embedded__intro { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--blue); }
-.daily-guide-embedded__intro > div { display: flex; flex-direction: column; gap: 3px; }
+.daily-guide-embedded__intro > div { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
 .daily-guide-embedded__intro strong { color: var(--text); font-size: 12px; }
 .daily-guide-embedded__intro span { color: var(--text-muted); font-size: 12px; }
 .daily-guide__footer { display: flex; align-items: center; gap: 7px; padding: 4px 6px; color: var(--text-muted); font-size: 12px; }

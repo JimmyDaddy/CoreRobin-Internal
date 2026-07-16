@@ -122,12 +122,15 @@
   "actionDialog": {
     "title": "Ask {{name}} to quit?",
     "description": "StatusOrbit will send a normal termination request. This is the gentle action, not force quit.",
+    "restartTitle": "Restart {{name}}?",
+    "restartDescription": "StatusOrbit will ask the app to quit normally, then reopen its verified app bundle.",
     "safeTitle": "Does not delete the app or its files",
     "safeDescription": "This only asks the running app to stop and does not clean up its data.",
     "riskTitle": "Save anything you are editing first",
     "riskDescription": "Whether a save prompt appears depends on the app; unsaved work could still be lost.",
     "stableIdentity": "A stable handle is bound to the process you selected and will be checked again before execution.",
     "bestEffortIdentity": "This platform can only reduce PID-reuse risk through identity checks. StatusOrbit refuses the action if the process has changed.",
-    "confirm": "Confirm quit request for {{name}}"
+    "confirm": "Confirm quit request for {{name}}",
+    "confirmRestart": "Restart {{name}}"
   }
 }

@@ -60,6 +60,7 @@
     "allowBestEffort": "このセッションでの、最善のプロセス操作を許可",
     "binding": "バインディング中...",
     "requestClose": "終了リクエスト",
+    "restart": "アプリを再起動",
     "forceKill": "強制終了..."
   },
   "history": {

@@ -11,7 +11,7 @@ import type {
 
 interface ConfirmActionDialogProps {
   action: ProcessAction;
-  source: "process" | "diagnosis";
+  source: "process" | "diagnosis" | "restart";
   displayName: string;
   detail: ProcessDetail;
   targeting: ProcessControlTargeting;
@@ -36,6 +36,8 @@ export function ConfirmActionDialog({
   const cancelButton = useRef<HTMLButtonElement>(null);
   const force = action === "force_kill";
   const diagnosisAction = source === "diagnosis";
+  const restartAction = source === "restart";
+  const guidedAction = diagnosisAction || restartAction;
   const actionDescription = force
     ? semantic === "terminate_process"
       ? t("process:dialog.windowsForce")
@@ -66,20 +68,26 @@ export function ConfirmActionDialog({
           </span>
           <div>
             <h2 id="confirm-title">
-              {diagnosisAction
+              {restartAction
+                ? t("diagnosis:actionDialog.restartTitle", { name: displayName })
+                : diagnosisAction
                 ? t("diagnosis:actionDialog.title", { name: displayName })
                 : force
                   ? t("process:dialog.forceTitle")
                   : t("process:dialog.requestTitle")}
             </h2>
-            <p>{diagnosisAction ? t("diagnosis:actionDialog.description") : actionDescription}</p>
+            <p>{restartAction
+              ? t("diagnosis:actionDialog.restartDescription")
+              : diagnosisAction
+                ? t("diagnosis:actionDialog.description")
+                : actionDescription}</p>
           </div>
           <button className="icon-button" type="button" aria-label={t("common:cancel")} disabled={submitting} onClick={onCancel}>
             <X size={17} />
           </button>
         </header>
 
-        {diagnosisAction ? (
+        {guidedAction ? (
           <div className="diagnosis-action-summary">
             <p><ShieldCheck size={15} /><span><strong>{t("diagnosis:actionDialog.safeTitle")}</strong>{t("diagnosis:actionDialog.safeDescription")}</span></p>
             <p className="is-warning"><AlertTriangle size={15} /><span><strong>{t("diagnosis:actionDialog.riskTitle")}</strong>{t("diagnosis:actionDialog.riskDescription")}</span></p>
@@ -94,7 +102,7 @@ export function ConfirmActionDialog({
         )}
 
         <p className={`identity-note${targeting === "best_effort_pid" ? " identity-note--warning" : ""}`}>
-          {diagnosisAction
+          {guidedAction
             ? targeting === "stable_handle"
               ? t("diagnosis:actionDialog.stableIdentity")
               : t("diagnosis:actionDialog.bestEffortIdentity")
@@ -112,7 +120,9 @@ export function ConfirmActionDialog({
           >
             {submitting
               ? t("process:dialog.validating")
-              : diagnosisAction
+              : restartAction
+                ? t("diagnosis:actionDialog.confirmRestart", { name: displayName })
+                : diagnosisAction
                 ? t("diagnosis:actionDialog.confirm", { name: displayName })
                 : force
                   ? t("process:dialog.confirmForce")

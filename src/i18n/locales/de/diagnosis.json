@@ -122,12 +122,15 @@
   "actionDialog": {
     "title": "Anwendung {{name}} beenden?",
     "description": "StatusOrbit sendet eine normale Beendigungsanforderung. Dies ist die schonende Option, nicht das erzwungene Beenden.",
+    "restartTitle": "{{name}} neu starten?",
+    "restartDescription": "StatusOrbit bittet die App, sich normal zu beenden, und öffnet anschließend das überprüfte App-Paket erneut.",
     "safeTitle": "Löscht App oder Dateien nicht",
     "safeDescription": "Dies fordert nur die laufende App auf, zu stoppen und löscht keine Daten.",
     "riskTitle": "Speichern Sie zuerst alle Änderungen",
     "riskDescription": "Ob eine Speichervorlage angezeigt wird, hängt von der Anwendung ab; ungespeicherte Daten können dennoch verloren gehen.",
     "stableIdentity": "Ein stabiler Handle ist an den ausgewählten Prozess gebunden und wird vor der Ausführung erneut überprüft.",
     "bestEffortIdentity": "Diese Plattform kann das Risiko der PID-Wiederverwendung nur durch Identitätsprüfungen reduzieren. StatusOrbit lehnt die Aktion ab, wenn sich der Prozess geändert hat.",
-    "confirm": "Beenden von {{name}} bestätigen"
+    "confirm": "Beenden von {{name}} bestätigen",
+    "confirmRestart": "{{name}} neu starten"
   }
 }

@@ -122,12 +122,15 @@
   "actionDialog": {
     "title": "Solicitar que o {{name}} encerre a execução?",
     "description": "O StatusOrbit enviará uma solicitação de término normal. Esta é a ação suave, e não forçar o encerramento.",
+    "restartTitle": "Reiniciar {{name}}?",
+    "restartDescription": "O StatusOrbit solicitará que o aplicativo encerre normalmente e depois reabrirá o pacote verificado.",
     "safeTitle": "Não exclui o aplicativo ou seus arquivos",
     "safeDescription": "Isso apenas solicita que o aplicativo em execução pare e não limpa seus dados.",
     "riskTitle": "Salve qualquer coisa que esteja editando primeiro",
     "riskDescription": "A exibição de um aviso de salvamento depende do aplicativo; o trabalho não salvo ainda pode ser perdido.",
     "stableIdentity": "Um identificador estável está vinculado ao processo selecionado e será verificado novamente antes da execução.",
     "bestEffortIdentity": "Esta plataforma só pode reduzir o risco de reutilização de PID por meio de verificações de identidade. O StatusOrbit rejeita a ação se o processo tiver mudado.",
-    "confirm": "Confirmar solicitação de saída para {{name}}"
+    "confirm": "Confirmar solicitação de saída para {{name}}",
+    "confirmRestart": "Reiniciar {{name}}"
   }
 }

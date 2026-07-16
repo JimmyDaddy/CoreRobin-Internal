@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  ExternalLink,
   Flame,
   Gauge,
   HardDrive,
@@ -46,9 +47,11 @@ import type {
   NetworkConnectionsSnapshot,
   StartupItemsSnapshot,
   SystemSnapshot,
+  SystemSettingsDestination,
 } from "../types";
 import { formatBytes, formatPercent, formatRate } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { Button } from "./Button";
 import { StartupExplorer } from "./StartupExplorer";
 
 interface DailyGuideProps {
@@ -77,6 +80,7 @@ interface DailyGuideProps {
   onOpenIncident: (incident: DailyIncident) => void;
   onRefreshStartup: () => void | Promise<void>;
   onRequestClose: (identity: string, name: string) => void;
+  onOpenSystemSettings: (destination: SystemSettingsDestination) => void;
 }
 
 const GUIDE_ICONS = {
@@ -392,7 +396,13 @@ function StartupGuide(props: DailyGuideProps) {
   const { t } = useAppTranslation();
   return (
     <section className="daily-guide-embedded">
-      <div className="daily-guide-embedded__intro"><Rocket size={19} /><div><strong>{t("daily:guide.startup.resultTitle")}</strong><span>{t("daily:guide.startup.resultDescription")}</span></div></div>
+      <div className="daily-guide-embedded__intro">
+        <Rocket size={19} />
+        <div><strong>{t("daily:guide.startup.resultTitle")}</strong><span>{t("daily:guide.startup.resultDescription")}</span></div>
+        <Button variant="secondary" onClick={() => props.onOpenSystemSettings("login_items")}>
+          <ExternalLink size={14} />{t("common:systemSettings.login_items")}
+        </Button>
+      </div>
       <StartupExplorer
         variant="guided"
         snapshot={props.startupSnapshot}
@@ -406,7 +416,7 @@ function StartupGuide(props: DailyGuideProps) {
   );
 }
 
-function HeatGuide({ diagnosis, snapshot, preparingAction, onOpenApplications, onRequestClose }: DailyGuideProps) {
+function HeatGuide({ diagnosis, snapshot, preparingAction, onOpenApplications, onRequestClose, onOpenSystemSettings }: DailyGuideProps) {
   const { t } = useAppTranslation();
   const temperature = temperatureWellbeingLevel(snapshot.sensors.temperature);
   const battery = batteryWellbeingLevel(snapshot.sensors.battery);
@@ -452,6 +462,7 @@ function HeatGuide({ diagnosis, snapshot, preparingAction, onOpenApplications, o
           <button className="button button--primary" type="button" disabled={preparingAction} onClick={() => onRequestClose(sleep.application!.actionIdentity!, sleep.application!.name)}>{preparingAction ? <LoaderCircle className="is-spinning" size={14} /> : <Power size={14} />}{t("daily:guide.heat.requestClose", { name: sleep.application.name })}</button>
         ) : null}
         {(tone === "attention" || tone === "urgent") ? <button className="button button--secondary" type="button" onClick={onOpenApplications}><Gauge size={15} />{t("daily:guide.heat.viewApplications")}</button> : null}
+        <Button variant="secondary" onClick={() => onOpenSystemSettings("battery")}><ExternalLink size={14} />{t("common:systemSettings.battery")}</Button>
       </div>
     </section>
   );
@@ -462,6 +473,7 @@ function NetworkGuide({
   connectionsSnapshot,
   connectionsError,
   connectionsLoading,
+  onOpenSystemSettings,
 }: DailyGuideProps) {
   const { t } = useAppTranslation();
   const received = snapshot.network.receivedBytesPerSecond;
@@ -493,6 +505,9 @@ function NetworkGuide({
             {connectionsSnapshot ? <small>{t("daily:guide.network.connections", { count: connectionsSnapshot.summary.totalCount })}</small> : null}
           </div>
         </details>
+      </div>
+      <div className="daily-guide-result__actions">
+        <Button variant="secondary" onClick={() => onOpenSystemSettings("network")}><ExternalLink size={14} />{t("common:systemSettings.network")}</Button>
       </div>
     </section>
   );

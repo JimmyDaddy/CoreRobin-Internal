@@ -122,12 +122,15 @@
   "actionDialog": {
     "title": "请求 {{name}} 退出？",
     "description": "StatusOrbit 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
+    "restartTitle": "重新启动 {{name}}？",
+    "restartDescription": "StatusOrbit 会先请求应用正常退出，再重新打开已经核验的应用包。",
     "safeTitle": "不会删除应用或文件",
     "safeDescription": "这项操作只请求当前应用结束运行，不会清理它的数据。",
     "riskTitle": "先保存正在编辑的内容",
     "riskDescription": "应用是否显示保存提示取决于它自身；未保存内容仍可能丢失。",
     "stableIdentity": "已通过稳定句柄锁定你刚刚选择的进程，执行前还会再次复核。",
     "bestEffortIdentity": "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，StatusOrbit 会拒绝执行。",
-    "confirm": "确认请求 {{name}} 退出"
+    "confirm": "确认请求 {{name}} 退出",
+    "confirmRestart": "重新启动 {{name}}"
   }
 }

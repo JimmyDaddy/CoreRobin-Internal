@@ -122,12 +122,15 @@
   "actionDialog": {
     "title": "{{name}} を終了させる？",
     "description": "StatusOrbitは、通常の終了リクエストを送信します。これは、強制終了ではなく、穏やかな方法です。",
+    "restartTitle": "{{name}}を再起動しますか？",
+    "restartDescription": "StatusOrbitはアプリに通常終了を依頼し、確認済みのアプリバンドルを再度開きます。",
     "safeTitle": "アプリやそのファイルを削除しません",
     "safeDescription": "この操作は、実行中のアプリを停止させるだけで、データの整理は行いません。",
     "riskTitle": "まず、編集中のファイルをすべて保存してください",
     "riskDescription": "保存のプロンプトが表示されるかどうかは、アプリケーションによって異なります。未保存の作業は、予期せず失われる可能性があります。",
     "stableIdentity": "選択したプロセスに紐付けられたハンドルを再確認し、実行前にチェックします。",
     "bestEffortIdentity": "このシステムは、プロセスの一意性を確認することで、PIDの重複のリスクを軽減できます。StatusOrbitは、プロセスが変更された場合に操作を拒否します。",
-    "confirm": "{{name}} の終了要求を確認してください"
+    "confirm": "{{name}} の終了要求を確認してください",
+    "confirmRestart": "{{name}}を再起動"
   }
 }

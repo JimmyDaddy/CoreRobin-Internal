@@ -21,5 +21,16 @@
   "unknownUser": "Unknown user",
   "errors": "{{count}} errors",
   "fiveMinutes": "Last 5 minutes",
-  "fiveMinutesBack": "−5 min"
+  "fiveMinutesBack": "−5 min",
+  "pathActions": {
+    "reveal": "Show in Finder",
+    "preview": "Quick Look",
+    "copy": "Copy path",
+    "copied": "Path copied"
+  },
+  "systemSettings": {
+    "login_items": "Open Login Items settings",
+    "battery": "Open Battery settings",
+    "network": "Open Network settings"
+  }
 }

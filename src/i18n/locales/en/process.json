@@ -60,6 +60,7 @@
     "allowBestEffort": "Allow best-effort process actions for this run",
     "binding": "Binding…",
     "requestClose": "Request exit",
+    "restart": "Restart app",
     "forceKill": "Force quit…"
   },
   "history": {

@@ -60,6 +60,7 @@
     "allowBestEffort": "Autoriser les actions des processus avec une approche optimiste",
     "binding": "Association…",
     "requestClose": "Demander la fermeture",
+    "restart": "Redémarrer l’application",
     "forceKill": "Fermeture forcée…"
   },
   "history": {

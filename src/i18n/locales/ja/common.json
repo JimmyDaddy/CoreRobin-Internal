@@ -21,5 +21,16 @@
   "unknownUser": "不明なユーザー",
   "errors": "{{count}} エラー",
   "fiveMinutes": "過去5分間",
-  "fiveMinutesBack": "−5 分前"
+  "fiveMinutesBack": "−5 分前",
+  "pathActions": {
+    "reveal": "Finderに表示",
+    "preview": "クイックルック",
+    "copy": "パスをコピー",
+    "copied": "パスをコピーしました"
+  },
+  "systemSettings": {
+    "login_items": "ログイン項目設定を開く",
+    "battery": "バッテリー設定を開く",
+    "network": "ネットワーク設定を開く"
+  }
 }

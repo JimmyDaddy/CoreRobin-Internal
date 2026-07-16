@@ -60,6 +60,7 @@
     "allowBestEffort": "本次运行中允许 best-effort 进程操作",
     "binding": "正在绑定…",
     "requestClose": "请求结束",
+    "restart": "重新启动应用",
     "forceKill": "强制结束…"
   },
   "history": {

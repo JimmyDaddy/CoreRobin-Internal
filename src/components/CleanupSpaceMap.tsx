@@ -34,6 +34,7 @@ import type { CleanupDeleteFailure, CleanupDeleteProgress, CleanupScan, CleanupD
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
+import { PathActions } from "./PathActions";
 
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
@@ -781,6 +782,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({ snapshot, snapsho
               {selected.logicalSizeBytes !== selected.allocatedSizeBytes ? <small>{t("cleanup:map.logicalSize", { size: formatBytes(selected.logicalSizeBytes) })}</small> : null}
             </span>
           </div>
+          {selected.path ? (
+            <PathActions className="cleanup-map__path-actions" path={selected.path} />
+          ) : null}
 
           {deleteOutcome ? (
             <div className={`cleanup-map__delete-result${deleteOutcome.cancelled ? " is-cancelled" : deleteOutcome.failed.length > 0 ? " is-partial" : " is-success"}`} role="status">

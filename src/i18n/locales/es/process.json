@@ -60,6 +60,7 @@
     "allowBestEffort": "Permitir acciones del proceso con esfuerzo limitado para esta ejecución",
     "binding": "Estableciendo conexión…",
     "requestClose": "Solicitar cierre",
+    "restart": "Reiniciar aplicación",
     "forceKill": "Cerrar forzosamente…"
   },
   "history": {

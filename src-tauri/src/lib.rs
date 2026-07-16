@@ -13,6 +13,7 @@ mod process_control;
 mod safe_fs;
 mod sensors;
 mod startup;
+mod user_actions;
 
 pub use cleanup::{
     CleanupBenchmarkResult, benchmark_cleanup_root, benchmark_cleanup_root_with_cancel,
@@ -69,6 +70,7 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
+use user_actions::SystemSettingsDestination;
 
 #[cfg(target_os = "macos")]
 mod tray_panel_native {
@@ -522,6 +524,45 @@ fn open_cleanup_full_disk_access_settings(window: WebviewWindow) -> Result<(), C
 fn reveal_cleanup_app_bundle(window: WebviewWindow) -> Result<(), CommandError> {
     require_main_window(&window)?;
     reveal_cleanup_application_bundle()
+}
+
+#[tauri::command]
+fn reveal_path(window: WebviewWindow, path: String) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::reveal_path(&path)
+}
+
+#[tauri::command]
+fn preview_path(window: WebviewWindow, path: String) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::preview_path(&path)
+}
+
+#[tauri::command]
+fn open_system_settings(
+    window: WebviewWindow,
+    destination: SystemSettingsDestination,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::open_system_settings(destination)
+}
+
+#[tauri::command]
+fn relaunch_application(
+    window: WebviewWindow,
+    executable_path: String,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::relaunch_application(&executable_path)
+}
+
+#[tauri::command]
+fn can_relaunch_application(
+    window: WebviewWindow,
+    executable_path: String,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    user_actions::can_relaunch_application(&executable_path)
 }
 
 #[tauri::command]
@@ -1320,6 +1361,11 @@ pub fn run() {
             get_cleanup_scan_access,
             open_cleanup_full_disk_access_settings,
             reveal_cleanup_app_bundle,
+            reveal_path,
+            preview_path,
+            open_system_settings,
+            relaunch_application,
+            can_relaunch_application,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
             execute_cleanup_delete,
@@ -1463,6 +1509,12 @@ mod security_boundary_tests {
         "execute_startup_management",
         "open_cleanup_full_disk_access_settings",
         "reveal_cleanup_app_bundle",
+        "reveal_path",
+        "preview_path",
+        "open_system_settings",
+        "relaunch_application",
+        "can_relaunch_application",
+        "can_relaunch_application",
         "create_cleanup_delete_lease",
         "release_cleanup_delete_lease",
         "execute_cleanup_delete",

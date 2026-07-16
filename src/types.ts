@@ -546,6 +546,8 @@ export interface CommandError {
   message: string;
 }
 
+export type SystemSettingsDestination = "login_items" | "battery" | "network";
+
 export interface HistoryPoint {
   timestamp: number;
   cpuPercent: number;

@@ -60,6 +60,7 @@
     "allowBestEffort": "Erlaube die Ausführung von Prozessen mit begrenzter Funktionalität.",
     "binding": "Verbindung…",
     "requestClose": "Beenden...",
+    "restart": "App neu starten",
     "forceKill": "Prozess zwangsweise beenden…"
   },
   "history": {

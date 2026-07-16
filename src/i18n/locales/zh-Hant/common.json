@@ -21,5 +21,16 @@
   "unknownUser": "未知使用者",
   "errors": "{{count}} 個錯誤",
   "fiveMinutes": "最近 5 分鐘",
-  "fiveMinutesBack": "−5 分鐘"
+  "fiveMinutesBack": "−5 分鐘",
+  "pathActions": {
+    "reveal": "在 Finder 中顯示",
+    "preview": "快速預覽",
+    "copy": "複製路徑",
+    "copied": "路徑已複製"
+  },
+  "systemSettings": {
+    "login_items": "開啟登入項目設定",
+    "battery": "開啟電池設定",
+    "network": "開啟網路設定"
+  }
 }
