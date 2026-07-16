@@ -1,11 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
 const releaseWorkflow = readFileSync(".github/workflows/release.yml", "utf8");
-const workflowFiles = ["ci.yml", "pages.yml", "release.yml"].map((name) =>
-  readFileSync(`.github/workflows/${name}`, "utf8"),
-);
+const workflowFiles = readdirSync(".github/workflows")
+  .filter((name) => /\.ya?ml$/.test(name))
+  .sort()
+  .map((name) => readFileSync(`.github/workflows/${name}`, "utf8"));
 
 describe("release workflow privilege separation", () => {
   it("pins every third-party action to a full commit SHA", () => {
@@ -18,23 +19,39 @@ describe("release workflow privilege separation", () => {
     }
   });
 
-  it("keeps repository write permission and the release token out of build jobs", () => {
-    for (const jobName of ["verify", "build", "package", "provenance"]) {
+  it("keeps repository write permission and the public release token out of build jobs", () => {
+    for (const jobName of ["verify", "build", "package", "sign"]) {
       const job = workflowJob(releaseWorkflow, jobName);
       expect(job).not.toContain("contents: write");
       expect(job).not.toContain("secrets.GITHUB_TOKEN");
+      expect(job).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
     }
     expect(workflowJob(releaseWorkflow, "verify")).toContain("contents: read");
     expect(workflowJob(releaseWorkflow, "build")).toContain("contents: read");
   });
 
-  it("grants write permission only to the protected publish job", () => {
+  it("uses OIDC only in the signing job", () => {
+    const sign = workflowJob(releaseWorkflow, "sign");
+    expect(sign).toContain("id-token: write");
+    expect(sign).toContain("cosign sign-blob");
+    expect(sign).toContain("cosign verify-blob");
+    expect(sign).toContain("SHA256SUMS.sigstore.json");
+    expect(workflowJob(releaseWorkflow, "publish")).not.toContain("id-token: write");
+  });
+
+  it("keeps the cross-repository credential in the protected publish job", () => {
     const publish = workflowJob(releaseWorkflow, "publish");
     expect(publish).toContain("name: release");
-    expect(publish).toContain("contents: write");
-    expect(publish).toContain("secrets.GITHUB_TOKEN");
+    expect(publish).toContain("contents: read");
+    expect(publish).not.toContain("contents: write");
+    expect(publish).toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(publish).not.toContain("secrets.GITHUB_TOKEN");
+    expect(releaseWorkflow).toContain(
+      "PUBLIC_RELEASE_REPOSITORY: JimmyDaddy/corerobin-monitor",
+    );
     expect(publish).toContain("sha256sum --check");
-    expect(publish).toContain("gh attestation verify");
+    expect(publish).toContain("cosign verify-blob");
+    expect(publish).toContain('--repo "$PUBLIC_RELEASE_REPOSITORY"');
   });
 });
 
