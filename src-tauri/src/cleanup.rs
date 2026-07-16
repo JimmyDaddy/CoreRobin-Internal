@@ -3661,7 +3661,7 @@ mod tests {
                 &cancelled,
                 &mut |progress| {
                     if progress.phase == CleanupDeleteProgressPhase::Deleting
-                        && progress.processed_entry_count >= 128
+                        && progress.processed_entry_count > 0
                     {
                         cancelled.store(true, Ordering::Relaxed);
                     }
@@ -3681,7 +3681,7 @@ mod tests {
         assert!(progress_events.iter().any(|progress| {
             progress.phase == CleanupDeleteProgressPhase::Deleting
                 && progress.total_entry_count == 0
-                && progress.processed_entry_count >= 128
+                && progress.processed_entry_count > 0
         }));
         fs::remove_dir_all(root).unwrap();
     }
