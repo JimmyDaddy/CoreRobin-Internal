@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -18,111 +19,181 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  changes:
+    name: Detect change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
+      site: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.site == 'true' }}
+      desktop: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
+    steps:
+      - name: Check out repository for git-based events
+        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 20
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        with:
+          filters: |
+            frontend:
+              - 'src/**'
+              - 'index.html'
+              - 'splash.html'
+              - 'tray.html'
+              - 'companion.html'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig*.json'
+              - 'vite.config.*'
+              - 'eslint.config.*'
+              - 'i18next.config.*'
+              - '.github/workflows/**'
+              - '.github/actions/**'
+            site:
+              - 'site/**'
+              - 'scripts/build-site.mjs'
+              - 'src/assets/brand-mark.png'
+              - 'src-tauri/icons/icon.png'
+              - '.github/workflows/**'
+              - '.github/actions/**'
+            desktop:
+              - 'src-tauri/**'
+              - 'rust-toolchain.toml'
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+      - name: Summarize selected scopes
+        env:
+          FRONTEND: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
+          SITE: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.site == 'true' }}
+          DESKTOP: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
+        run: |
+          {
+            echo "## CI change scope"
+            echo
+            echo "| Scope | Selected |"
+            echo "| --- | --- |"
+            echo "| Frontend | $FRONTEND |"
+            echo "| Product site | $SITE |"
+            echo "| Desktop | $DESKTOP |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   frontend:
     name: Frontend quality
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.site == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Require successful change detection
+        if: needs.changes.result != 'success'
+        run: exit 1
+
       - name: Check out repository
+        if: needs.changes.result == 'success'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
 
       - name: Set up Node.js
+        if: needs.changes.result == 'success'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
 
       - name: Enable pinned pnpm
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: corepack enable && corepack prepare pnpm@10.33.0 --activate
 
       - name: Install dependencies
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm lint
 
       - name: Type-check
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm typecheck
 
       - name: Test
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm test
 
       - name: Build web assets
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm build
 
       - name: Build product site
-        run: pnpm site:build
+        if: needs.changes.result == 'success' && needs.changes.outputs.site == 'true'
+        run: node scripts/build-site.mjs
 
-  desktop:
-    name: Desktop (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+  desktop-ubuntu:
+    name: Desktop (ubuntu-latest)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Require successful change detection
+        if: needs.changes.result != 'success'
+        run: exit 1
+
       - name: Check out repository
+        if: needs.changes.result == 'success'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
 
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
+      - name: Run desktop quality checks
+        if: needs.changes.result == 'success'
+        uses: ./.github/actions/desktop-quality
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+  desktop-macos:
+    name: Desktop (macos-latest)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require successful change detection
+        if: needs.changes.result != 'success'
+        run: exit 1
+
+      - name: Check out repository
+        if: needs.changes.result == 'success'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          node-version: 22
+          persist-credentials: false
 
-      - name: Enable pinned pnpm
-        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+      - name: Run desktop quality checks
+        if: needs.changes.result == 'success'
+        uses: ./.github/actions/desktop-quality
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  desktop-windows:
+    name: Desktop (windows-latest)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require successful change detection
+        if: needs.changes.result != 'success'
+        run: exit 1
 
-      - name: Build web assets
-        run: pnpm build
-
-      - name: Activate pinned Rust toolchain
-        run: rustup show active-toolchain
-
-      - name: Restore Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - name: Check out repository
+        if: needs.changes.result == 'success'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-deps-v1-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-deps-v1-
+          persist-credentials: false
 
-      - name: Check desktop targets
-        run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets --locked
-
-      - name: Check Rust formatting
-        if: runner.os == 'Linux'
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-
-      - name: Test Rust backend
-        run: cargo test --manifest-path src-tauri/Cargo.toml --locked
-
-      - name: Lint Rust backend
-        if: runner.os == 'Linux'
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Run desktop quality checks
+        if: needs.changes.result == 'success'
+        uses: ./.github/actions/desktop-quality
