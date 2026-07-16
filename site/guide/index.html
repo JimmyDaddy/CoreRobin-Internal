@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080d12" />
     <meta name="description" content="StatusOrbit 使用指南：从第一次打开，到查看电脑状态、管理应用和清理磁盘空间。" />
-    <link rel="canonical" href="https://jimmydaddy.github.io/StatusOrbit/guide/" />
+    <link rel="canonical" href="https://monitor-app.corerobin.com/guide/" />
     <link rel="icon" href="../assets/app-icon.png" />
     <link rel="stylesheet" href="../styles.css" />
     <title>StatusOrbit 使用指南</title>
@@ -77,7 +77,7 @@
           <span class="guide-section__number">01</span>
           <h2 data-zh="开始使用" data-en="Get started">开始使用</h2>
           <p data-zh="第一次打开 StatusOrbit，可以按这四个步骤熟悉界面。" data-en="Use these four steps to get familiar with StatusOrbit on your first launch.">第一次打开 StatusOrbit，可以按这四个步骤熟悉界面。</p>
-          <div class="guide-callout guide-callout--info"><strong data-zh="先下载适合当前系统的安装包" data-en="Download the package for your platform">先下载适合当前系统的安装包</strong><span><a href="https://github.com/JimmyDaddy/StatusOrbit/releases/latest" data-zh="前往 GitHub Releases 下载。当前构建尚未配置平台发布签名或 Apple 公证；macOS 第一次打开若被阻止，请在“系统设置 → 隐私与安全性”中确认打开。Windows 与 Linux 安装包属于早期预览版本。Release 提供 SHA-256、SPDX SBOM 和来源证明，但它们不能替代平台签名。" data-en="Download from GitHub Releases. Current builds do not have platform release signing or Apple notarization configured; if macOS blocks the first launch, confirm it in System Settings → Privacy & Security. Windows and Linux packages are early previews. Releases include SHA-256 checksums, an SPDX SBOM, and provenance, which do not replace platform signing.">前往 GitHub Releases 下载。当前构建尚未配置平台发布签名或 Apple 公证；macOS 第一次打开若被阻止，请在“系统设置 → 隐私与安全性”中确认打开。Windows 与 Linux 安装包属于早期预览版本。Release 提供 SHA-256、SPDX SBOM 和来源证明，但它们不能替代平台签名。</a></span></div>
+          <div class="guide-callout guide-callout--info"><strong data-zh="先下载适合当前系统的安装包" data-en="Download the package for your platform">先下载适合当前系统的安装包</strong><span><a href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest" data-zh="前往 GitHub Releases 下载。当前构建尚未配置平台发布签名或 Apple 公证；macOS 第一次打开若被阻止，请在“系统设置 → 隐私与安全性”中确认打开。Windows 与 Linux 安装包属于早期预览版本。Release 提供 SHA-256、SPDX SBOM 和校验表的 Sigstore 签名包，但它们不能替代平台签名。" data-en="Download from GitHub Releases. Current builds do not have platform release signing or Apple notarization configured; if macOS blocks the first launch, confirm it in System Settings → Privacy & Security. Windows and Linux packages are early previews. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these records do not replace platform signing.">前往 GitHub Releases 下载。当前构建尚未配置平台发布签名或 Apple 公证；macOS 第一次打开若被阻止，请在“系统设置 → 隐私与安全性”中确认打开。Windows 与 Linux 安装包属于早期预览版本。Release 提供 SHA-256、SPDX SBOM 和校验表的 Sigstore 签名包，但它们不能替代平台签名。</a></span></div>
           <ol class="guide-steps">
             <li><span>1</span><div><strong data-zh="等几秒，让数据准备好" data-en="Give it a few seconds">等几秒，让数据准备好</strong><p data-zh="刚启动时，网络和磁盘速率可能显示“预热”。等到下一次刷新就会出现正常数据。" data-en="Right after launch, disk and network rates may show a warm-up message. They appear after the next refresh.">刚启动时，网络和磁盘速率可能显示“预热”。等到下一次刷新就会出现正常数据。</p></div></li>
             <li><span>2</span><div><strong data-zh="先看电脑状态" data-en="Start with computer status">先看电脑状态</strong><p data-zh="日常模式会先告诉你电脑现在怎么样，并给出一个最值得做的动作；没有问题时不用逐项检查。" data-en="Everyday mode first tells you how the computer is doing and offers one useful next step. When everything looks fine, there is nothing else to inspect.">日常模式会先告诉你电脑现在怎么样，并给出一个最值得做的动作；没有问题时不用逐项检查。</p></div></li>
@@ -171,7 +171,7 @@
             <details><summary data-zh="为什么扫描要等很久？" data-en="Why is the scan taking a long time?">为什么扫描要等很久？</summary><p data-zh="扫描时间主要取决于文件数量和磁盘速度。大量小文件通常比少量大文件更慢。页面会持续更新进度，你也可以主动停止。" data-en="Scan time depends mostly on the number of files and disk speed. Many small files usually take longer than a few large files. Progress keeps updating, and you can stop the scan.">扫描时间主要取决于文件数量和磁盘速度。大量小文件通常比少量大文件更慢。页面会持续更新进度，你也可以主动停止。</p></details>
             <details><summary data-zh="为什么大小和 Finder / Explorer 显示的不一样？" data-en="Why does the size differ from Finder or Explorer?">为什么大小和 Finder / Explorer 显示的不一样？</summary><p data-zh="StatusOrbit 显示文件实际占用的磁盘空间。压缩文件、稀疏文件和硬链接等情况，可能会让这个数字与文件标称大小不同。" data-en="StatusOrbit shows the space files actually occupy on disk. Compression, sparse files, and hard links can make this number differ from the listed file size.">StatusOrbit 显示文件实际占用的磁盘空间。压缩文件、稀疏文件和硬链接等情况，可能会让这个数字与文件标称大小不同。</p></details>
           </div>
-          <div class="guide-help"><div><strong data-zh="还是遇到了问题？" data-en="Still having trouble?">还是遇到了问题？</strong><p data-zh="可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。" data-en="Open an issue on GitHub and include your operating system, what you were doing, and any error message. Use private vulnerability reporting for security issues.">可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。</p></div><a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit/issues" rel="noreferrer"><span data-zh="提交问题" data-en="Report a problem">提交问题</span><span>↗</span></a></div>
+          <div class="guide-help"><div><strong data-zh="还是遇到了问题？" data-en="Still having trouble?">还是遇到了问题？</strong><p data-zh="可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。" data-en="Open an issue on GitHub and include your operating system, what you were doing, and any error message. Use private vulnerability reporting for security issues.">可以在 GitHub 提交问题。写清楚你的操作系统、刚才做了什么，以及看到的错误信息，会更容易定位。安全问题请使用私密漏洞报告。</p></div><a class="button button--primary" href="https://github.com/JimmyDaddy/corerobin-monitor/issues" rel="noreferrer"><span data-zh="提交问题" data-en="Report a problem">提交问题</span><span>↗</span></a></div>
         </section>
       </article>
     </main>
@@ -179,7 +179,7 @@
     <footer class="site-footer section-shell">
       <a class="brand brand--footer" href="../"><span class="brand__mark"><img src="../assets/brand-mark.png" alt="" /></span><span><strong>StatusOrbit</strong><small>USER GUIDE</small></span></a>
       <p>© <span data-year></span> StatusOrbit. <span data-zh="看清电脑状态，找出变慢和空间不足的原因。" data-en="Find slowdowns and see what is taking up space.">看清电脑状态，找出变慢和空间不足的原因。</span></p>
-      <div><a href="../" data-zh="首页" data-en="Home">首页</a><a href="https://github.com/JimmyDaddy/StatusOrbit/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/StatusOrbit">GitHub</a></div>
+      <div><a href="../" data-zh="首页" data-en="Home">首页</a><a href="https://github.com/JimmyDaddy/corerobin-monitor/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/corerobin-monitor">GitHub</a></div>
     </footer>
     <script src="../site.js" defer></script>
   </body>

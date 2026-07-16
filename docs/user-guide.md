@@ -4,7 +4,7 @@ StatusOrbit brings CPU, memory, storage, network activity, and running apps into
 
 ## Download and install
 
-Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest). Current release builds do not have Developer ID, Apple notarization, or Windows platform signing configured. The macOS build has been tested on real hardware; if macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open StatusOrbit. Windows and Linux packages are currently early previews. Releases include SHA-256 checksums, an SPDX SBOM, and GitHub artifact provenance; these source-integrity records do not replace platform signing.
+Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest). Current release builds do not have Developer ID, Apple notarization, or Windows platform signing configured. The macOS build has been tested on real hardware; if macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open StatusOrbit. Windows and Linux packages are currently early previews. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these source-integrity records do not replace platform signing.
 
 ## First launch
 
