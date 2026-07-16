@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://jimmydaddy.github.io/StatusOrbit/sitemap.xml
+Sitemap: https://monitor-app.corerobin.com/sitemap.xml

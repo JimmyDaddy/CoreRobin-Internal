@@ -11,6 +11,7 @@ await cp(sourceRoot, outputRoot, { recursive: true });
 await mkdir(join(outputRoot, "assets"), { recursive: true });
 await cp(join(repositoryRoot, "src/assets/brand-mark.png"), join(outputRoot, "assets/brand-mark.png"));
 await cp(join(repositoryRoot, "src-tauri/icons/icon.png"), join(outputRoot, "assets/app-icon.png"));
+await cp(join(repositoryRoot, "src/styles/animated-robin.css"), join(outputRoot, "animated-robin.css"));
 
 const screenshotAssets = [
   "corerobin-daily-overview.jpg",

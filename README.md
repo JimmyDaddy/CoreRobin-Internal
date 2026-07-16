@@ -7,15 +7,15 @@
   <p>一个从真实感受出发的桌面状态伙伴，让电脑变慢、风扇变响、空间不足和网络异常不再只是一堆难懂的指标。</p>
 
   <p>
-    <a href="https://github.com/JimmyDaddy/StatusOrbit/releases/latest"><img src="https://img.shields.io/github/v/release/JimmyDaddy/StatusOrbit?display_name=tag&amp;style=flat-square&amp;color=6477ff" alt="Latest release" /></a>
+    <a href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest"><img src="https://img.shields.io/github/v/release/JimmyDaddy/corerobin-monitor?display_name=tag&amp;style=flat-square&amp;color=6477ff" alt="Latest release" /></a>
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-171a21?style=flat-square" alt="Supported platforms" />
     <img src="https://img.shields.io/badge/interface_languages-10-ff766f?style=flat-square" alt="10 interface languages" />
   </p>
 
   <p>
-    <a href="https://github.com/JimmyDaddy/StatusOrbit/releases/latest"><strong>下载最新版本</strong></a>
+    <a href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest"><strong>下载最新版本</strong></a>
     ·
-    <a href="https://jimmydaddy.github.io/StatusOrbit/">产品网站</a>
+    <a href="https://monitor-app.corerobin.com/">产品网站</a>
     ·
     <a href="docs/user-guide.zh-CN.md">使用指南</a>
   </p>
@@ -28,6 +28,8 @@
 <p align="center"><sub>专业模式 · 在同一屏查看系统状态、资源趋势与进程详情</sub></p>
 
 > 截图使用内置演示数据，不包含真实设备名称、用户名、文件路径或网络信息。
+
+应用源码与构建流程保存在当前私有仓库；官网、公开文档、Issue 和可下载 Release 统一由独立的 [corerobin-monitor](https://github.com/JimmyDaddy/corerobin-monitor) 公开仓库承载。两个仓库保持同级独立，不使用 Git submodule。发布链路与权限边界见 [Release distribution](docs/release-distribution.md)。
 
 ## 专业模式，把状态、趋势和进程放在同一屏
 
@@ -78,7 +80,7 @@
 
 ## 下载
 
-前往 [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest) 获取适合当前系统的版本：
+前往 [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest) 获取适合当前系统的版本：
 
 | 平台 | 安装包 |
 | --- | --- |
@@ -86,7 +88,7 @@
 | Windows | `.exe` 与 `.msi` |
 | Linux | `.AppImage` 与 `.deb` |
 
-当前发布版本尚未配置平台商业签名或 Apple 公证。Release 同时提供 SHA-256 校验表、SPDX SBOM 和 GitHub artifact provenance，方便核对安装包来源。
+当前发布版本尚未配置平台商业签名或 Apple 公证。Release 同时提供 SHA-256 校验表、SPDX SBOM，以及校验表的 Sigstore 签名包；这些来源完整性记录不能替代平台签名。
 
 ## 10 种界面语言
 
@@ -96,6 +98,6 @@
 
 - [中文使用指南](docs/user-guide.zh-CN.md)
 - [English user guide](docs/user-guide.md)
-- [产品网站](https://jimmydaddy.github.io/StatusOrbit/)
-- [问题反馈](https://github.com/JimmyDaddy/StatusOrbit/issues)
+- [产品网站](https://monitor-app.corerobin.com/)
+- [问题反馈](https://github.com/JimmyDaddy/corerobin-monitor/issues)
 - [安全报告](SECURITY.md)

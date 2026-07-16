@@ -10,6 +10,74 @@ const guideSelect = document.querySelector("[data-guide-jump]");
 const SITE_LANGUAGE_KEY = "core-robin.site-language";
 const LEGACY_SITE_LANGUAGE_KEY = "status-orbit.site-language";
 
+const robinSvg = `
+  <svg viewBox="0 0 220 220" focusable="false">
+    <ellipse class="animated-robin__shadow" cx="106" cy="190" rx="50" ry="8"></ellipse>
+    <g class="animated-robin__tail">
+      <path class="animated-robin__tail-back" d="M82 133 27 176 76 164 97 142Z"></path>
+      <path class="animated-robin__tail-coral" d="m79 151-37 30 38-15 16-22Z"></path>
+    </g>
+    <g class="animated-robin__body">
+      <path class="animated-robin__body-fill" d="m68 76 38-23 35 14 15 39-18 51-33 25-39-17-15-38 6-32Z"></path>
+      <path class="animated-robin__breast" d="m72 108 39-17 31 16-12 47-26 21-29-16-15-31Z"></path>
+      <path class="animated-robin__wing" d="m68 96 40-10 19 22-21 32-34 10-12-25Z"></path>
+      <path class="animated-robin__wing-fold" d="m72 126 32 13 17-28"></path>
+      <path class="animated-robin__status" d="m53 100 6-6 6 6-6 6Z"></path>
+    </g>
+    <g class="animated-robin__head-track">
+      <g class="animated-robin__head">
+        <path class="animated-robin__head-fill" d="m87 62 18-27 35 1 19 18-9 28-28 14-29-14Z"></path>
+        <path class="animated-robin__cheek" d="m121 72 32-16-3 25-20 11-15-10Z"></path>
+        <path class="animated-robin__beak" d="m153 57 22 10-24 8Z"></path>
+        <g class="animated-robin__eye">
+          <ellipse cx="132" cy="55" rx="5" ry="5.5"></ellipse>
+          <circle class="animated-robin__eye-light" cx="133.5" cy="53.5" r="1.35"></circle>
+        </g>
+      </g>
+    </g>
+    <g class="animated-robin__scanner">
+      <path class="animated-robin__scanner-track" d="M34 111h151"></path>
+      <path class="animated-robin__scanner-beam" d="M34 111h50"></path>
+    </g>
+  </svg>`;
+
+document.querySelectorAll("[data-robin]").forEach((robin) => {
+  robin.classList.add("animated-robin", "is-interactive");
+  robin.dataset.active = robin.dataset.robinActive === "true" ? "true" : "false";
+  robin.dataset.mood = robin.dataset.robinMood ?? "normal";
+  robin.innerHTML = robinSvg;
+  robin.addEventListener("pointermove", trackRobinPointer);
+  robin.addEventListener("pointerleave", resetRobinPointer);
+});
+
+function trackRobinPointer(event) {
+  if (
+    event.pointerType !== "mouse"
+    || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  ) return;
+
+  const bounds = event.currentTarget.getBoundingClientRect();
+  const horizontal = clamp((event.clientX - bounds.left) / bounds.width - 0.5, -0.5, 0.5) * 2;
+  const vertical = clamp((event.clientY - bounds.top) / bounds.height - 0.5, -0.5, 0.5) * 2;
+  event.currentTarget.style.setProperty("--robin-head-x", `${(horizontal * 4.5).toFixed(2)}px`);
+  event.currentTarget.style.setProperty("--robin-head-y", `${(vertical * 2.5).toFixed(2)}px`);
+  event.currentTarget.style.setProperty("--robin-head-turn", `${(horizontal * 3.4).toFixed(2)}deg`);
+  event.currentTarget.style.setProperty("--robin-eye-x", `${(horizontal * 1.7).toFixed(2)}px`);
+  event.currentTarget.style.setProperty("--robin-eye-y", `${(vertical * 1.2).toFixed(2)}px`);
+}
+
+function resetRobinPointer(event) {
+  event.currentTarget.style.removeProperty("--robin-head-x");
+  event.currentTarget.style.removeProperty("--robin-head-y");
+  event.currentTarget.style.removeProperty("--robin-head-turn");
+  event.currentTarget.style.removeProperty("--robin-eye-x");
+  event.currentTarget.style.removeProperty("--robin-eye-y");
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function preferredLanguage() {
   try {
     const stored = window.localStorage.getItem(SITE_LANGUAGE_KEY)

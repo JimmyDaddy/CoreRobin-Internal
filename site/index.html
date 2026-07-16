@@ -8,10 +8,11 @@
     <meta property="og:title" content="CoreRobin — 电脑变慢，空间不足，原因一眼看清" />
     <meta property="og:description" content="看状态、找原因、清空间。重要操作由你确认，数据留在本机。" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://jimmydaddy.github.io/StatusOrbit/" />
-    <meta property="og:image" content="https://jimmydaddy.github.io/StatusOrbit/assets/app-icon.png" />
-    <link rel="canonical" href="https://jimmydaddy.github.io/StatusOrbit/" />
+    <meta property="og:url" content="https://monitor-app.corerobin.com/" />
+    <meta property="og:image" content="https://monitor-app.corerobin.com/assets/app-icon.png" />
+    <link rel="canonical" href="https://monitor-app.corerobin.com/" />
     <link rel="icon" href="./assets/app-icon.png" />
+    <link rel="stylesheet" href="./animated-robin.css" />
     <link rel="stylesheet" href="./styles.css" />
     <title>CoreRobin — 电脑变慢，空间不足，原因一眼看清</title>
   </head>
@@ -54,7 +55,7 @@
             CoreRobin 把 CPU、内存、磁盘、网络和正在运行的应用放进一个清晰的界面。电脑变慢、磁盘快满或网络突然繁忙时，帮你更快找到原因。数据留在本机，结束进程和删除文件前都会让你确认。
           </p>
           <div class="hero__actions">
-            <a class="button button--primary" href="https://github.com/JimmyDaddy/StatusOrbit/releases/latest">
+            <a class="button button--primary" href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest">
               <span data-zh="下载 CoreRobin" data-en="Download CoreRobin">下载 CoreRobin</span><span aria-hidden="true">↓</span>
             </a>
             <a class="button button--ghost" href="./guide/">
@@ -116,7 +117,7 @@
 
       <section class="signal-strip" aria-label="页面快捷入口" data-aria-zh="页面快捷入口" data-aria-en="Page shortcuts">
         <div class="signal-strip__hub" aria-hidden="true">
-          <span><img src="./assets/brand-mark.png" alt="" /></span>
+          <span class="site-robin" data-robin data-robin-mood="normal"><img src="./assets/brand-mark.png" alt="" /></span>
           <small data-zh="探索" data-en="EXPLORE">探索</small>
         </div>
         <a href="#experience"><strong>01</strong><span data-zh="看懂电脑状态" data-en="Find the cause">看懂电脑状态</span><i aria-hidden="true">↘</i></a>
@@ -298,7 +299,7 @@
 
       <section class="safety section-shell" id="safety">
         <div class="safety__panel" data-reveal>
-          <div class="safety__robin" aria-hidden="true"><img src="./assets/brand-mark.png" alt="" /></div>
+          <div class="safety__robin" aria-hidden="true"><span class="site-robin" data-robin data-robin-mood="normal"><img src="./assets/brand-mark.png" alt="" /></span></div>
           <div class="safety__copy">
             <div><span class="section-index">05</span><span class="eyebrow-text" data-zh="重要操作，由你确认" data-en="YOU STAY IN CONTROL">重要操作，由你确认</span></div>
             <h2 data-zh="结束进程和删除文件，都要经过你的确认。" data-en="Processes are stopped and files are deleted only when you confirm.">结束进程和删除文件，都要经过你的确认。</h2>
@@ -328,7 +329,7 @@
     <footer class="site-footer section-shell">
       <a class="brand brand--footer" href="#main-content"><span class="brand__mark"><img src="./assets/brand-mark.png" alt="" /></span><span><strong aria-label="CoreRobin"><span aria-hidden="true">Core<span class="brand-wordmark__r">R<i></i></span>obin</span></strong><small>SYSTEM MONITOR</small></span></a>
       <p><span>© </span><span data-year></span><span> CoreRobin.</span> <span data-zh="看清电脑状态，找出变慢和空间不足的原因。" data-en="Find slowdowns and see what is taking up space.">看清电脑状态，找出变慢和空间不足的原因。</span></p>
-      <div><a href="./guide/" data-zh="指南" data-en="Guide">指南</a><a href="https://github.com/JimmyDaddy/StatusOrbit/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/StatusOrbit" rel="noreferrer">GitHub</a></div>
+      <div><a href="./guide/" data-zh="指南" data-en="Guide">指南</a><a href="https://github.com/JimmyDaddy/corerobin-monitor/blob/main/SECURITY.md" data-zh="安全" data-en="Security">安全</a><a href="https://github.com/JimmyDaddy/corerobin-monitor" rel="noreferrer">GitHub</a></div>
     </footer>
 
     <script src="./site.js" defer></script>

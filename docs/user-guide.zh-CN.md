@@ -4,7 +4,7 @@ CoreRobin 把 CPU、内存、磁盘、网络和正在运行的应用放在一个
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/JimmyDaddy/StatusOrbit/releases/latest) 下载适合当前系统的安装包。当前发布构建尚未配置 Developer ID、Apple 公证或 Windows 平台签名。macOS 版本已在真实设备上验证；如果系统阻止第一次打开，请前往“系统设置 → 隐私与安全性”，确认打开 CoreRobin。Windows 与 Linux 安装包目前属于早期预览版本。Release 会同时提供 SHA-256 校验表、SPDX SBOM 和 GitHub artifact provenance；这些来源完整性记录不能代替平台签名。
+从 [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest) 下载适合当前系统的安装包。当前发布构建尚未配置 Developer ID、Apple 公证或 Windows 平台签名。macOS 版本已在真实设备上验证；如果系统阻止第一次打开，请前往“系统设置 → 隐私与安全性”，确认打开 CoreRobin。Windows 与 Linux 安装包目前属于早期预览版本。Release 会同时提供 SHA-256 校验表、SPDX SBOM，以及校验表的 Sigstore 签名包；这些来源完整性记录不能代替平台签名。
 
 ## 第一次打开
 
