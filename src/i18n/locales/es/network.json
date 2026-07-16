@@ -1,7 +1,7 @@
 {
   "local": "Red local",
   "title": "Interfaces activas y tráfico de sesión",
-  "description": "Las tasas utilizan el intervalo de muestra real; los totales comienzan cuando se inicia StatusOrbit.",
+  "description": "Las tasas utilizan el intervalo de muestra real; los totales comienzan cuando se inicia CoreRobin.",
   "connectedInterfaces": "Interfaces conectadas: {{connected}} / {{total}}",
   "summary": "Resumen de la red",
   "receiveNow": "Recibiendo ahora",

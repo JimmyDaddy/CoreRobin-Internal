@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY_INTENTS,
   buildDailyAttentionItems,
-  buildDailyOrbitItems,
+  buildDailyStatusItems,
   cleanupReclaimableBytes,
   dailyOverallLevel,
   intentForFinding,
@@ -34,7 +34,7 @@ describe("daily experience model", () => {
 
     expect(dailyOverallLevel(diagnosis, snapshot)).toBe("observing");
     expect(buildDailyAttentionItems(diagnosis, snapshot)).toHaveLength(0);
-    expect(buildDailyOrbitItems(diagnosis, snapshot).map(({ kind }) => kind)).toEqual([
+    expect(buildDailyStatusItems(diagnosis, snapshot).map(({ kind }) => kind)).toEqual([
       "speed",
       "space",
       "temperature",
@@ -67,6 +67,8 @@ describe("daily experience model", () => {
     snapshot.sensors.battery = {
       present: true,
       chargePercent: 5,
+      healthPercent: 94,
+      cycleCount: 173,
       state: "discharging",
       timeRemainingMinutes: 18,
       powerSource: "battery",
@@ -145,13 +147,13 @@ describe("daily experience model", () => {
     expect(primaryDailyVolume(snapshot)?.volume.name).toBe("System");
   });
 
-  it("marks the space orbit unavailable when no usable volume exists", () => {
+  it("marks the space status unavailable when no usable volume exists", () => {
     const snapshot = structuredClone(getMockSnapshot());
     snapshot.disk.volumes = [];
     const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
 
     expect(
-      buildDailyOrbitItems(diagnosis, snapshot).find(({ kind }) => kind === "space")
+      buildDailyStatusItems(diagnosis, snapshot).find(({ kind }) => kind === "space")
         ?.level,
     ).toBe("unavailable");
   });

@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "唤起 Orbit 小伙伴",
-    "hide": "隐藏 Orbit 小伙伴"
+    "show": "唤起 Robin 小伙伴",
+    "hide": "隐藏 Robin 小伙伴"
   },
   "technicalOverview": {
     "title": "查看实时资源详情",

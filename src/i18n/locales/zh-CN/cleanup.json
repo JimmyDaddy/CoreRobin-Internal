@@ -13,7 +13,7 @@
   "access": {
     "kicker": "扫描前准备",
     "title": "允许查看整个系统磁盘",
-    "description": "macOS 会保护邮件、信息和其他应用数据等位置。授予“完全磁盘访问权限”后，空间地图才能尽量完整；StatusOrbit 仍然只读取文件名、大小和时间等元数据。",
+    "description": "macOS 会保护邮件、信息和其他应用数据等位置。授予“完全磁盘访问权限”后，空间地图才能尽量完整；CoreRobin 仍然只读取文件名、大小和时间等元数据。",
     "checking": "正在检查权限…",
     "checkingReturn": "正在确认授权状态…",
     "openSettings": "打开完全磁盘访问权限",
@@ -21,15 +21,15 @@
     "revealApp": "在访达中显示应用",
     "checkAgain": "我已授权，重新检查",
     "continueLimited": "扫描可访问区域",
-    "waiting": "系统设置已打开。如果列表中没有 StatusOrbit，请点击列表下方的 +，选择 StatusOrbit.app；开启后返回，扫描会自动开始。",
+    "waiting": "系统设置已打开。如果列表中没有 CoreRobin，请点击列表下方的 +，选择 CoreRobin.app；开启后返回，扫描会自动开始。",
     "unknown": "暂时无法确认权限状态；你仍可以打开系统设置授权，或执行有限扫描。",
-    "bundleRequired": "需先从 StatusOrbit.app 启动",
+    "bundleRequired": "需先从 CoreRobin.app 启动",
     "bundleMissingTitle": "当前运行的不是可授权的应用包",
-    "bundleMissingDescription": "macOS 无法把开发进程加入权限列表。请先安装 StatusOrbit.app 并从“应用程序”中重新打开；目前仍可执行有限扫描。",
-    "privacy": "权限由 macOS 管理，可随时在系统设置中关闭。StatusOrbit 不读取文件内容，也不会在扫描时修改任何文件。",
+    "bundleMissingDescription": "macOS 无法把开发进程加入权限列表。请先安装 CoreRobin.app 并从“应用程序”中重新打开；目前仍可执行有限扫描。",
+    "privacy": "权限由 macOS 管理，可随时在系统设置中关闭。CoreRobin 不读取文件内容，也不会在扫描时修改任何文件。",
     "steps": {
       "open": "打开系统设置",
-      "add": "点击 +，选择 StatusOrbit.app",
+      "add": "点击 +，选择 CoreRobin.app",
       "return": "开启开关并返回"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "更新结果",
     "cached": {
       "title": "已恢复上次扫描结果",
-      "description": "无需重新等待即可继续查看；进入具体目录时，StatusOrbit 会按需核对它是否发生变化。"
+      "description": "无需重新等待即可继续查看；进入具体目录时，CoreRobin 会按需核对它是否发生变化。"
     },
     "expired": {
       "title": "这份结果已超过 24 小时",
-      "description": "StatusOrbit 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。"
+      "description": "CoreRobin 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。"
     }
   },
   "progress": {
@@ -165,11 +165,11 @@
     "progressDeleted": "已释放约 {{size}}",
     "cancelDelete": "停止删除",
     "cancelling": "正在停止…",
-    "cancelHint": "已完成的删除无法恢复；StatusOrbit 会在当前文件操作结束后停止。",
+    "cancelHint": "已完成的删除无法恢复；CoreRobin 会在当前文件操作结束后停止。",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit 不会删除主目录或废纸篓目录本身。",
-      "cleanup_target_outside_home": "出于安全考虑，StatusOrbit 只处理个人目录内的内容。",
-      "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，StatusOrbit 已拒绝递归删除。",
+      "protected_cleanup_path": "CoreRobin 不会删除主目录或废纸篓目录本身。",
+      "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录内的内容。",
+      "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
       "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
       "cleanup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开检查窗口。",
       "cleanup_confirmation_expired": "确认已超时，请取消后重新检查当前文件。",
@@ -215,13 +215,13 @@
     "lastUsed": "{{date}} 最后使用 · 已有 {{days}} 天未打开",
     "none": "没有发现能够确认已超过 6 个月未使用的应用。",
     "unavailable": "当前平台暂时无法可靠读取应用的最后使用时间。",
-    "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，StatusOrbit 没有把它们归为长期未用。"
+    "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，CoreRobin 没有把它们归为长期未用。"
   },
   "reviewFirst": "逐项确认",
   "largestFiles": "系统磁盘中的大文件",
   "largeFileBoundary": "只列出超过 500 MB 的文件，不建议自动删除",
   "noLargeFiles": "可访问的系统磁盘位置中没有发现超过 500 MB 的文件。",
   "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。",
-  "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 StatusOrbit 后重新扫描。",
+  "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 CoreRobin 后重新扫描。",
   "safetyBoundary": "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮、核对路径并明确确认的内容才会永久删除，且无法恢复。"
 }

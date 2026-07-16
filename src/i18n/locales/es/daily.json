@@ -33,7 +33,7 @@
     "attention": {
       "short": "Algo merece una revisión",
       "title": "{{count}} cosas merecen una revisión",
-      "summary": "StatusOrbit ha organizado las razones y los pasos a seguir, para que no tenga que interpretar métricas técnicas."
+      "summary": "CoreRobin ha organizado las razones y los pasos a seguir, para que no tenga que interpretar métricas técnicas."
     },
     "urgent": {
       "short": "Revise pronto",
@@ -41,7 +41,7 @@
       "summary": "Primero revise la razón, luego elija la acción adecuada."
     }
   },
-  "orbit": {
+  "checks": {
     "label": "Estado de la computadora",
     "thisComputer": "Esta computadora",
     "speed": "Velocidad",
@@ -50,7 +50,7 @@
     "battery": "Batería"
   },
   "companion": {
-    "name": "ORBIT",
+    "name": "Robin",
     "checking": "Verificación"
   },
   "home": {
@@ -59,8 +59,8 @@
     "viewPriority": "Revisar",
     "checkNow": "Verificar ahora",
     "checking": "Verificando…",
-    "checkingTitle": "Orbit está revisando su computadora",
-    "checkingSummary": "Información de estado actualizada directamente en esta vista. Si se requiere una revisión más detallada, Orbit lo indicará claramente.",
+    "checkingTitle": "Robin está revisando su computadora",
+    "checkingSummary": "Información de estado actualizada directamente en esta vista. Si se requiere una revisión más detallada, Robin lo indicará claramente.",
     "haveProblem": "Detectado un problema",
     "checkedAt": "Última actualización {{time}}",
     "localOnly": "La información y el historial permanecen en este dispositivo",
@@ -133,7 +133,7 @@
     },
     "recommended": "Recomendado para el estado actual",
     "otherProblems": "Otras situaciones",
-    "footer": "StatusOrbit no hace suposiciones solo para parecer útil. Continúa observando cuando todavía no hay suficiente evidencia."
+    "footer": "CoreRobin no hace suposiciones solo para parecer útil. Continúa observando cuando todavía no hay suficiente evidencia."
   },
   "attention": {
     "kicker": "En este momento",
@@ -143,7 +143,7 @@
     "recovering": "Confirmando recuperación",
     "open": "Ver detalles",
     "emptyTitle": "No hay nada pendiente ahora",
-    "emptyDescription": "StatusOrbit seguirá vigilando por cambios sostenidos en segundo plano.",
+    "emptyDescription": "CoreRobin seguirá vigilando por cambios sostenidos en segundo plano.",
     "viewApplications": "Ver qué aplicaciones están abiertas",
     "temperature": {
       "title": "Su computadora está funcionando a alta temperatura",
@@ -171,7 +171,7 @@
       "recovering": "Confirmando recuperación",
       "resolved": "Recuperado"
     },
-    "recoveringDescription": "La última lectura ha disminuido. StatusOrbit está observando un poco más para confirmar que no es una fluctuación breve.",
+    "recoveringDescription": "La última lectura ha disminuido. CoreRobin está observando un poco más para confirmar que no es una fluctuación breve.",
     "resolvedDescription": "Esta condición se ha recuperado de forma constante y no requiere ninguna acción en este momento. La evidencia que la provocó sigue disponible aquí.",
     "observedCause": "Principalmente asociado al momento de la incidencia",
     "causeMayHaveChanged": "El estado de la aplicación puede haber cambiado. Las acciones solo están disponibles a partir del último análisis.",
@@ -227,6 +227,10 @@
     },
     "systemSafety": "Este es un componente del sistema. Se muestra evidencia, pero no se recomienda cerrarlo.",
     "requestClose": "Solicitar que {{name}} cierre",
+    "restart": "Reiniciar {{name}}",
+    "restartUnavailable": "CoreRobin no puede reiniciar {{name}} de forma segura.",
+    "restartComplete": "{{name}} se cerró normalmente y volvió a abrirse.",
+    "restartStillRunning": "{{name}} sigue en ejecución, así que no se abrió de nuevo.",
     "viewEvidence": "Ver evidencia detallada",
     "empty": "No hay aplicaciones coincidentes",
     "refresh": "Actualizar lista",
@@ -243,7 +247,7 @@
     "title": "Revisar completamente",
     "loadingKicker": "Analizando este equipo",
     "checkingTitle": "Actualizando el estado actual",
-    "checkingDescription": "StatusOrbit está leyendo los cambios recientes y reconstruyendo el resultado.",
+    "checkingDescription": "CoreRobin está leyendo los cambios recientes y reconstruyendo el resultado.",
     "steps": {
       "read": "Leer el estado más reciente",
       "compare": "Comparar cambios",
@@ -271,11 +275,11 @@
         "description": "El tráfico y las conexiones activas se muestrean a baja frecuencia en lugar de monitorearse continuamente."
       },
       "checkup": {
-        "title": "Orbit está revisando este equipo",
+        "title": "Robin está revisando este equipo",
         "description": "Estado del sistema, conexiones e elementos de inicio devuelven resultados reales sin una cuenta regresiva dramática."
       }
     },
-    "resultKicker": "Estado sincronizado con Orbit",
+    "resultKicker": "Estado sincronizado con Robin",
     "updated": "Actualizado justo ahora",
     "completed": "Completado",
     "completedAt": "{{time}}",
@@ -294,7 +298,7 @@
       "startupTotal": "Elementos de inicio"
     },
     "slow": {
-      "observingDescription": "Los datos más recientes están disponibles, pero StatusOrbit necesita observar por más tiempo antes de considerar un problema breve como persistente."
+      "observingDescription": "Los datos más recientes están disponibles, pero CoreRobin necesita observar por más tiempo antes de considerar un problema breve como persistente."
     },
     "checkup": {
       "observingDescription": "El estado actual está disponible, pero las condiciones sostenidas aún necesitan una observación adicional."
@@ -310,7 +314,7 @@
       },
       "observing": {
         "title": "Alguno de los estados del dispositivo está temporalmente indisponible",
-        "description": "StatusOrbit no obtiene datos desconocidos, sino que los trata como normales."
+        "description": "CoreRobin no obtiene datos desconocidos, sino que los trata como normales."
       },
       "attention": {
         "title": "Se recomienda revisar una condición del dispositivo",
@@ -322,7 +326,7 @@
       }
     },
     "exited": "La aplicación ha finalizado y se han leído las últimas indicaciones.",
-    "still_running": "La aplicación sigue en funcionamiento. StatusOrbit no la ha forzado a detenerse.",
+    "still_running": "La aplicación sigue en funcionamiento. CoreRobin no la ha forzado a detenerse.",
     "already_exited": "La aplicación ya había finalizado, y se han leído las últimas indicaciones.",
     "refreshed": "Se han leído las últimas indicaciones."
   },
@@ -385,7 +389,7 @@
   "records": {
     "kicker": "Cambios recientes",
     "title": "Ver lo que ocurrió antes y después",
-    "description": "Solo se registran las condiciones sostenidas y su recuperación. Los picos breves no se consideran ruido.",
+    "description": "Aquí se organizan los cambios sostenidos del equipo y los resultados de las acciones que confirmas.",
     "emptyTitle": "Las condiciones han sido estables recientemente",
     "emptyDescription": "Ralentizaciones, presión de memoria o espacio bajo persistentes aparecerán aquí en lenguaje claro.",
     "duration": "Aproximadamente {{minutes}} min",
@@ -399,7 +403,7 @@
   },
   "settings": {
     "kicker": "Configuración de la guía diaria",
-    "title": "Personaliza Orbit según tus necesidades",
+    "title": "Personaliza Robin según tus necesidades",
     "description": "Solo las preferencias diarias se almacenan aquí. Los controles de muestreo y umbral permanecen en el modo profesional.",
     "language": "Idioma de la interfaz",
     "languageDescription": "Selecciona el idioma de la interfaz que prefieras",
@@ -420,15 +424,15 @@
       "large": "Grande"
     },
     "reduceMotion": "Reducir animaciones",
-    "reduceMotionDescription": "Detener animaciones continuas de Orbit, respiración y movimiento",
+    "reduceMotionDescription": "Detener animaciones continuas de Robin, respiración y movimiento",
     "showDockIcon": "Mostrar la aplicación en el Dock",
     "showDockIconDescription": "Desactivado por defecto; reabrir la ventana principal desde el menú",
     "launchAtLogin": "Iniciar al iniciar sesión",
     "launchAtLoginDescription": "Iniciar en segundo plano después de iniciar sesión, sin abrir la ventana principal",
-    "companionAlwaysOnTop": "Mantener Orbit encima de otras ventanas",
-    "companionAlwaysOnTopDescription": "Cuando está desactivado, Orbit permanece en el escritorio pero puede estar cubierto por otras ventanas",
-    "companionShowOnStartup": "Mantener Orbit en el escritorio",
-    "companionShowOnStartupDescription": "Muestra Orbit inmediatamente y lo vuelve a abrir la próxima vez que se inicie StatusOrbit",
+    "companionAlwaysOnTop": "Mantener Robin encima de otras ventanas",
+    "companionAlwaysOnTopDescription": "Cuando está desactivado, Robin permanece en el escritorio pero puede estar cubierto por otras ventanas",
+    "companionShowOnStartup": "Mantener Robin en el escritorio",
+    "companionShowOnStartupDescription": "Muestra Robin inmediatamente y lo vuelve a abrir la próxima vez que se inicie CoreRobin",
     "professional": "Modo profesional",
     "professionalDescription": "Visualizar todas las métricas, árbol de procesos, conexiones de red y opciones avanzadas",
     "openProfessional": "Abrir modo profesional"
@@ -438,8 +442,8 @@
     "checkAgain": "Revisar nuevamente",
     "checkingAgain": "Verificando…",
     "result": "Resultado de la verificación",
-    "viewEvidence": "Explicación de StatusOrbit",
-    "safety": "StatusOrbit sugiere solo acciones basadas en evidencia. Cualquier acción del sistema aún requiere su confirmación.",
+    "viewEvidence": "Explicación de CoreRobin",
+    "safety": "CoreRobin sugiere solo acciones basadas en evidencia. Cualquier acción del sistema aún requiere su confirmación.",
     "professional": "Ver toda la evidencia técnica",
     "slow": {
       "kicker": "Comprobación de respuesta",
@@ -449,7 +453,7 @@
       "observingTitle": "Primero, asegúrese de que esto no sea un breve pico",
       "observingDescription": "Quedan aproximadamente {{seconds}} segundos. Abrir una página o lanzar una aplicación no se considera un fallo.",
       "normalTitle": "No se encontró presión de recursos sostenida",
-      "normalDescription": "Si aún se siente lento, revise las aplicaciones actuales. StatusOrbit no adivinará sin evidencia.",
+      "normalDescription": "Si aún se siente lento, revise las aplicaciones actuales. CoreRobin no adivinará sin evidencia.",
       "viewApplications": "Mostrar aplicaciones en ejecución",
       "likelyCause": "Aplicación más probable relacionada",
       "applicationExplanation": "La aplicación {{name}} estaba activa al mismo tiempo que este problema.",
@@ -464,7 +468,7 @@
       "normalTitle": "{{free}} sigue disponible",
       "normalDescription": "El espacio disponible es suficiente. Realice el escaneo solo si desea organizar archivos.",
       "unknownTitle": "El disco principal no está disponible temporalmente",
-      "unknownDescription": "El sistema no proporciona datos de capacidad fiables, por lo que StatusOrbit no considerará este estado como espacio suficiente.",
+      "unknownDescription": "El sistema no proporciona datos de capacidad fiables, por lo que CoreRobin no considerará este estado como espacio suficiente.",
       "cachedScan": "Escaneo completo disponible",
       "reclaimable": "Revisar aproximadamente {{size}} es recomendable",
       "noScan": "Los archivos no han sido escaneados",
@@ -505,7 +509,7 @@
         },
         "unknown": {
           "title": "Falta información del dispositivo",
-          "description": "La temperatura, la batería y los datos de sueño no están disponibles, por lo que StatusOrbit no puede determinar si hay un problema con el calor o el consumo de energía."
+          "description": "La temperatura, la batería y los datos de sueño no están disponibles, por lo que CoreRobin no puede determinar si hay un problema con el calor o el consumo de energía."
         },
         "normal": {
           "title": "No se ha detectado un problema persistente de calor o sueño",
@@ -516,12 +520,12 @@
     "network": {
       "kicker": "Verificar red",
       "title": "Mostrar actividad de la red",
-      "description": "StatusOrbit lee el tráfico actual y las conexiones activas, pero no culpa a una aplicación sin pruebas.",
+      "description": "CoreRobin lee el tráfico actual y las conexiones activas, pero no culpa a una aplicación sin pruebas.",
       "checkingKicker": "Leyendo actualmente",
       "checkingTitle": "Detectando conexiones activas",
       "checkingDescription": "El escaneo de conexiones utiliza un comando de baja frecuencia y no afecta al muestreador principal.",
       "unknownTitle": "Falta información de red",
-      "unknownDescription": "No hay tráfico o conexiones disponibles, por lo que StatusOrbit no puede determinar si la red está funcionando correctamente.",
+      "unknownDescription": "No hay tráfico o conexiones disponibles, por lo que CoreRobin no puede determinar si la red está funcionando correctamente.",
       "activeTitle": "Hay actividad en la red",
       "quietTitle": "No hay actividad de red significativa",
       "resultDescription": "Esto describe la actividad actual solamente. Una conexión lenta también puede provenir del router, el proveedor o un servicio remoto.",

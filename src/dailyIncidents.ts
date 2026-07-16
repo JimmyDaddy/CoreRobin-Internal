@@ -1,9 +1,9 @@
 import {
   buildDailyAttentionItems,
-  buildDailyOrbitItems,
+  buildDailyStatusItems,
   type DailyAttentionItem,
   type DailyLevel,
-  type DailyOrbitItem,
+  type DailyStatusItem,
   type DailyStatusReason,
   type DailyStatusSummary,
 } from "./dailyExperience";
@@ -234,13 +234,13 @@ export function dailyIncidentStatusSummary(
   };
 }
 
-export function buildStableDailyOrbitItems(
+export function buildStableDailyStatusItems(
   incidents: readonly DailyIncident[],
   diagnosis: SmartDiagnosisResult,
   snapshot: SystemHealthSnapshot,
-): DailyOrbitItem[] {
-  return buildDailyOrbitItems(diagnosis, snapshot).map((base) => {
-    const matching = incidents.filter((incident) => incidentMatchesOrbit(incident, base.kind));
+): DailyStatusItem[] {
+  return buildDailyStatusItems(diagnosis, snapshot).map((base) => {
+    const matching = incidents.filter((incident) => incidentMatchesStatus(incident, base.kind));
     if (matching.length > 0) {
       const level = matching.reduce<"attention" | "urgent">(
         (strongest, incident) =>
@@ -448,9 +448,9 @@ function reasonFor(item: DailyAttentionItem): DailyStatusReason {
   return "cpu";
 }
 
-function incidentMatchesOrbit(
+function incidentMatchesStatus(
   incident: DailyIncident,
-  kind: DailyOrbitItem["kind"],
+  kind: DailyStatusItem["kind"],
 ): boolean {
   if (kind === "temperature") return incident.item.kind === "temperature";
   if (kind === "battery") return incident.item.kind === "battery";

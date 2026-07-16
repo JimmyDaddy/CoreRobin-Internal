@@ -33,7 +33,7 @@
     "attention": {
       "short": "Something is worth a look",
       "title": "{{count}} things are worth a look",
-      "summary": "StatusOrbit has organized the reasons and next steps, so you do not need to interpret technical metrics."
+      "summary": "CoreRobin has organized the reasons and next steps, so you do not need to interpret technical metrics."
     },
     "urgent": {
       "short": "Take a look soon",
@@ -41,8 +41,8 @@
       "summary": "Review the reason first, then choose the right action."
     }
   },
-  "orbit": {
-    "label": "Computer status orbit",
+  "checks": {
+    "label": "Computer status checks",
     "thisComputer": "This computer",
     "speed": "Speed",
     "space": "Space",
@@ -50,7 +50,7 @@
     "battery": "Battery"
   },
   "companion": {
-    "name": "ORBIT",
+    "name": "Robin",
     "checking": "Checking"
   },
   "home": {
@@ -59,8 +59,8 @@
     "viewPriority": "Take a look",
     "checkNow": "Check now",
     "checking": "Checking…",
-    "checkingTitle": "Orbit is checking in on your computer",
-    "checkingSummary": "Fresh status flows straight into this view. If something needs longer observation, Orbit will say so clearly.",
+    "checkingTitle": "Robin is checking in on your computer",
+    "checkingSummary": "Fresh status flows straight into this view. If something needs longer observation, Robin will say so clearly.",
     "haveProblem": "Something feels wrong",
     "checkedAt": "Updated {{time}}",
     "localOnly": "Status and history stay on this device",
@@ -133,7 +133,7 @@
     },
     "recommended": "Recommended for the current state",
     "otherProblems": "Other situations",
-    "footer": "StatusOrbit does not guess just to look useful. It keeps observing when the evidence is not strong enough."
+    "footer": "CoreRobin does not guess just to look useful. It keeps observing when the evidence is not strong enough."
   },
   "attention": {
     "kicker": "Right now",
@@ -143,7 +143,7 @@
     "recovering": "Confirming recovery",
     "open": "See why",
     "emptyTitle": "Nothing needs attention now",
-    "emptyDescription": "StatusOrbit will keep watching for sustained changes in the background.",
+    "emptyDescription": "CoreRobin will keep watching for sustained changes in the background.",
     "viewApplications": "See which apps are running",
     "temperature": {
       "title": "Your computer is running warm",
@@ -171,7 +171,7 @@
       "recovering": "Confirming recovery",
       "resolved": "Recovered"
     },
-    "recoveringDescription": "The latest reading has dropped. StatusOrbit is watching a little longer to confirm this is not a brief fluctuation.",
+    "recoveringDescription": "The latest reading has dropped. CoreRobin is watching a little longer to confirm this is not a brief fluctuation.",
     "resolvedDescription": "This condition has recovered steadily and needs no action now. The evidence that triggered it remains available here.",
     "observedCause": "Mainly associated at trigger time",
     "causeMayHaveChanged": "The app state may have changed. Actions are offered only from the latest check.",
@@ -227,6 +227,10 @@
     },
     "systemSafety": "This is a system component. Evidence is shown, but quitting it is not recommended.",
     "requestClose": "Ask {{name}} to quit",
+    "restart": "Restart {{name}}",
+    "restartUnavailable": "{{name}} cannot be safely restarted from CoreRobin.",
+    "restartComplete": "{{name}} quit normally and reopened.",
+    "restartStillRunning": "{{name}} is still running, so it was not opened again.",
     "viewEvidence": "View detailed evidence",
     "empty": "No matching apps",
     "refresh": "Update list",
@@ -242,8 +246,8 @@
   "recheck": {
     "title": "Check complete",
     "loadingKicker": "Scanning this computer",
-    "checkingTitle": "Bringing the latest state into orbit",
-    "checkingDescription": "StatusOrbit is reading recent changes and rebuilding the result.",
+    "checkingTitle": "Bringing the latest state into view",
+    "checkingDescription": "CoreRobin is reading recent changes and rebuilding the result.",
     "steps": {
       "read": "Read latest state",
       "compare": "Compare changes",
@@ -271,11 +275,11 @@
         "description": "Traffic and active connections are sampled at low frequency instead of being watched continuously."
       },
       "checkup": {
-        "title": "Orbit is checking this computer",
+        "title": "Robin is checking this computer",
         "description": "System status, connections, and startup items return real results without a theatrical countdown."
       }
     },
-    "resultKicker": "Status orbit synchronized",
+    "resultKicker": "Status checks synchronized",
     "updated": "Updated just now",
     "completed": "Check complete",
     "completedAt": "{{time}}",
@@ -294,7 +298,7 @@
       "startupTotal": "Startup items"
     },
     "slow": {
-      "observingDescription": "The latest data is ready, but StatusOrbit needs to watch longer before calling a brief burst a sustained issue."
+      "observingDescription": "The latest data is ready, but CoreRobin needs to watch longer before calling a brief burst a sustained issue."
     },
     "checkup": {
       "observingDescription": "The latest state is ready, but sustained conditions still need a little more observation."
@@ -310,7 +314,7 @@
       },
       "observing": {
         "title": "Some device state is temporarily unavailable",
-        "description": "StatusOrbit keeps missing data unknown instead of treating it as normal."
+        "description": "CoreRobin keeps missing data unknown instead of treating it as normal."
       },
       "attention": {
         "title": "One device condition is worth a look",
@@ -322,7 +326,7 @@
       }
     },
     "exited": "The app exited and the latest status was read again.",
-    "still_running": "The app is still running. StatusOrbit did not force it to stop.",
+    "still_running": "The app is still running. CoreRobin did not force it to stop.",
     "already_exited": "The app had already exited, and the latest status was read again.",
     "refreshed": "The latest status has been read."
   },
@@ -385,7 +389,7 @@
   "records": {
     "kicker": "Recent changes",
     "title": "See what happened before and after",
-    "description": "Only sustained conditions and their recovery are recorded. Brief spikes do not become noise.",
+    "description": "Sustained computer changes and the results of actions you confirm are organized here.",
     "emptyTitle": "Things have been steady recently",
     "emptyDescription": "Sustained slowdowns, memory pressure, or low space will appear here in plain language.",
     "duration": "About {{minutes}} min",
@@ -399,7 +403,7 @@
   },
   "settings": {
     "kicker": "Everyday guide settings",
-    "title": "Make Orbit work your way",
+    "title": "Make Robin work your way",
     "description": "Only everyday preferences live here. Sampling and threshold controls remain in professional mode.",
     "language": "Interface language",
     "languageDescription": "Choose the interface language that works for you",
@@ -420,15 +424,15 @@
       "large": "Large"
     },
     "reduceMotion": "Reduce motion",
-    "reduceMotionDescription": "Stop continuous orbit, breathing, and movement effects",
+    "reduceMotionDescription": "Stop continuous ambient, breathing, and movement effects",
     "showDockIcon": "Show the app in the Dock",
     "showDockIconDescription": "Off by default; reopen the main window from the menu bar",
     "launchAtLogin": "Launch at login",
     "launchAtLoginDescription": "Start quietly after you sign in without opening the main window",
-    "companionAlwaysOnTop": "Keep Orbit above other windows",
-    "companionAlwaysOnTopDescription": "When off, Orbit stays on the desktop but may be covered by other windows",
-    "companionShowOnStartup": "Keep Orbit on the desktop",
-    "companionShowOnStartupDescription": "Shows Orbit immediately and brings it back the next time StatusOrbit starts",
+    "companionAlwaysOnTop": "Keep Robin above other windows",
+    "companionAlwaysOnTopDescription": "When off, Robin stays on the desktop but may be covered by other windows",
+    "companionShowOnStartup": "Keep Robin on the desktop",
+    "companionShowOnStartupDescription": "Shows Robin immediately and brings it back the next time CoreRobin starts",
     "professional": "Professional mode",
     "professionalDescription": "View every metric, process tree, network connection, and advanced setting",
     "openProfessional": "Open professional mode"
@@ -438,8 +442,8 @@
     "checkAgain": "Check again",
     "checkingAgain": "Checking…",
     "result": "Check result",
-    "viewEvidence": "Why StatusOrbit says this",
-    "safety": "StatusOrbit suggests only evidence-backed actions. Any system action still needs your confirmation.",
+    "viewEvidence": "Why CoreRobin says this",
+    "safety": "CoreRobin suggests only evidence-backed actions. Any system action still needs your confirmation.",
     "professional": "View all technical evidence",
     "slow": {
       "kicker": "Responsiveness check",
@@ -449,7 +453,7 @@
       "observingTitle": "First, make sure this is not a brief burst",
       "observingDescription": "About {{seconds}} seconds remain. Opening a page or launching an app is not treated as a fault.",
       "normalTitle": "No sustained resource pressure was found",
-      "normalDescription": "If it still feels slow, review the current apps. StatusOrbit will not guess without evidence.",
+      "normalDescription": "If it still feels slow, review the current apps. CoreRobin will not guess without evidence.",
       "viewApplications": "View current apps",
       "likelyCause": "Most likely related app",
       "applicationExplanation": "{{name}} had sustained activity at the same time as this issue.",
@@ -464,7 +468,7 @@
       "normalTitle": "{{free}} is still available",
       "normalDescription": "Space is not tight. Scan only if you actually want to organize files.",
       "unknownTitle": "The main disk is temporarily unavailable",
-      "unknownDescription": "The system did not provide reliable capacity data, so StatusOrbit will not treat the unknown state as enough space.",
+      "unknownDescription": "The system did not provide reliable capacity data, so CoreRobin will not treat the unknown state as enough space.",
       "cachedScan": "Full scan available",
       "reclaimable": "About {{size}} is worth reviewing",
       "noScan": "Files have not been scanned",
@@ -505,7 +509,7 @@
         },
         "unknown": {
           "title": "There is not enough device information yet",
-          "description": "Temperature, battery, and sleep data are unavailable, so StatusOrbit cannot judge heat or drain."
+          "description": "Temperature, battery, and sleep data are unavailable, so CoreRobin cannot judge heat or drain."
         },
         "normal": {
           "title": "No sustained heat or sleep issue was found",
@@ -516,12 +520,12 @@
     "network": {
       "kicker": "Network check",
       "title": "See what the network is doing now",
-      "description": "StatusOrbit reads current traffic and active connections, but it will not blame an app without evidence.",
+      "description": "CoreRobin reads current traffic and active connections, but it will not blame an app without evidence.",
       "checkingKicker": "Reading now",
       "checkingTitle": "Getting active connections",
       "checkingDescription": "Connection scanning uses a separate low-frequency command and does not affect the main sampler.",
       "unknownTitle": "There is not enough network information yet",
-      "unknownDescription": "Current traffic or connections are unavailable, so StatusOrbit cannot say whether the network is healthy.",
+      "unknownDescription": "Current traffic or connections are unavailable, so CoreRobin cannot say whether the network is healthy.",
       "activeTitle": "There is network activity now",
       "quietTitle": "There is no significant network activity now",
       "resultDescription": "This describes current activity only. Slow internet may also come from the router, provider, or remote service.",

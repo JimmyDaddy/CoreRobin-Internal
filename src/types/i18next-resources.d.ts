@@ -5,8 +5,8 @@ export default interface Resources {
     "cleanup": "清理",
     "comingSoon": "即将推出",
     "companion": {
-      "hide": "隐藏 Orbit 小伙伴",
-      "show": "唤起 Orbit 小伙伴"
+      "hide": "隐藏 Robin 小伙伴",
+      "show": "唤起 Robin 小伙伴"
     },
     "demoData": "浏览器演示数据",
     "diagnostics": "诊断",
@@ -79,7 +79,7 @@ export default interface Resources {
     }
   },
   "applications": {
-    "description": "StatusOrbit 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
+    "description": "CoreRobin 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
     "disk": "磁盘",
     "empty": "没有匹配的应用",
     "kicker": "应用级汇总",
@@ -96,7 +96,7 @@ export default interface Resources {
     "search": "搜索应用",
     "searchPlaceholder": "按应用名称搜索",
     "selected": {
-      "appSafety": "这是普通应用。StatusOrbit 不会自动关闭它，结束操作仍需单独确认。",
+      "appSafety": "这是普通应用。CoreRobin 不会自动关闭它，结束操作仍需单独确认。",
       "balanced": "当前没有某一项资源特别突出，整体影响较低。",
       "cpu": "当前主要影响来自处理器占用（{{value}}）。持续偏高时可能导致卡顿、发热或耗电增加。",
       "disk": "当前主要影响来自磁盘活动（{{value}}）。同步、下载或构建任务都可能造成短时读写。",
@@ -118,27 +118,27 @@ export default interface Resources {
   },
   "cleanup": {
     "access": {
-      "bundleMissingDescription": "macOS 无法把开发进程加入权限列表。请先安装 StatusOrbit.app 并从“应用程序”中重新打开；目前仍可执行有限扫描。",
+      "bundleMissingDescription": "macOS 无法把开发进程加入权限列表。请先安装 CoreRobin.app 并从“应用程序”中重新打开；目前仍可执行有限扫描。",
       "bundleMissingTitle": "当前运行的不是可授权的应用包",
-      "bundleRequired": "需先从 StatusOrbit.app 启动",
+      "bundleRequired": "需先从 CoreRobin.app 启动",
       "checkAgain": "我已授权，重新检查",
       "checking": "正在检查权限…",
       "checkingReturn": "正在确认授权状态…",
       "continueLimited": "扫描可访问区域",
-      "description": "macOS 会保护邮件、信息和其他应用数据等位置。授予“完全磁盘访问权限”后，空间地图才能尽量完整；StatusOrbit 仍然只读取文件名、大小和时间等元数据。",
+      "description": "macOS 会保护邮件、信息和其他应用数据等位置。授予“完全磁盘访问权限”后，空间地图才能尽量完整；CoreRobin 仍然只读取文件名、大小和时间等元数据。",
       "kicker": "扫描前准备",
       "openAgain": "重新打开系统设置",
       "openSettings": "打开完全磁盘访问权限",
-      "privacy": "权限由 macOS 管理，可随时在系统设置中关闭。StatusOrbit 不读取文件内容，也不会在扫描时修改任何文件。",
+      "privacy": "权限由 macOS 管理，可随时在系统设置中关闭。CoreRobin 不读取文件内容，也不会在扫描时修改任何文件。",
       "revealApp": "在访达中显示应用",
       "steps": {
-        "add": "点击 +，选择 StatusOrbit.app",
+        "add": "点击 +，选择 CoreRobin.app",
         "open": "打开系统设置",
         "return": "开启开关并返回"
       },
       "title": "允许查看整个系统磁盘",
       "unknown": "暂时无法确认权限状态；你仍可以打开系统设置授权，或执行有限扫描。",
-      "waiting": "系统设置已打开。如果列表中没有 StatusOrbit，请点击列表下方的 +，选择 StatusOrbit.app；开启后返回，扫描会自动开始。"
+      "waiting": "系统设置已打开。如果列表中没有 CoreRobin，请点击列表下方的 +，选择 CoreRobin.app；开启后返回，扫描会自动开始。"
     },
     "applications": {
       "boundary": "仅列出系统能确认 6 个月以上未打开的应用，不会自动卸载",
@@ -147,7 +147,7 @@ export default interface Resources {
       "none": "没有发现能够确认已超过 6 个月未使用的应用。",
       "title": "很久没用的应用",
       "unavailable": "当前平台暂时无法可靠读取应用的最后使用时间。",
-      "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，StatusOrbit 没有把它们归为长期未用。"
+      "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，CoreRobin 没有把它们归为长期未用。"
     },
     "cancelScan": "停止扫描",
     "cancelling": "正在停止…",
@@ -156,7 +156,7 @@ export default interface Resources {
     },
     "deleteDialog": {
       "cancelDelete": "停止删除",
-      "cancelHint": "已完成的删除无法恢复；StatusOrbit 会在当前文件操作结束后停止。",
+      "cancelHint": "已完成的删除无法恢复；CoreRobin 会在当前文件操作结束后停止。",
       "cancelling": "正在停止…",
       "changed": "扫描后有变化",
       "changedWarning": "其中 {{count}} 项与上次展示不同。已更新大小和文件数；请再次刷新，稳定后重新确认。",
@@ -168,13 +168,13 @@ export default interface Resources {
       "errors": {
         "cleanup_confirmation_expired": "确认已超时，请取消后重新检查当前文件。",
         "cleanup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开检查窗口。",
-        "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，StatusOrbit 已拒绝递归删除。",
+        "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
         "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
-        "cleanup_target_outside_home": "出于安全考虑，StatusOrbit 只处理个人目录内的内容。",
+        "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录内的内容。",
         "cleanup_target_unavailable": "部分内容已经不存在或暂时无法访问，请重新扫描后再试。",
         "invalid_cleanup_selection": "清理篮中的选择无效，请重新选择后再试。",
         "overlapping_cleanup_targets": "同时选择了文件夹和它的子内容，请只保留其中一层。",
-        "protected_cleanup_path": "StatusOrbit 不会删除主目录或废纸篓目录本身。"
+        "protected_cleanup_path": "CoreRobin 不会删除主目录或废纸篓目录本身。"
       },
       "estimatedSize": "预估大小",
       "irreversible": "无法撤销",
@@ -196,7 +196,7 @@ export default interface Resources {
     "entriesScanned": "已检查 {{count}} 个项目",
     "estimateBoundary": "这是缓存与废纸篓的估算值，不代表必须清理。",
     "failed": "无法完成空间扫描",
-    "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 StatusOrbit 后重新扫描。",
+    "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 CoreRobin 后重新扫描。",
     "itemCount": "{{count}} 个文件",
     "kicker": "本机空间分析",
     "largeFileBoundary": "只列出超过 500 MB 的文件，不建议自动删除",
@@ -328,11 +328,11 @@ export default interface Resources {
     "scanning": "扫描中…",
     "snapshot": {
       "cached": {
-        "description": "无需重新等待即可继续查看；进入具体目录时，StatusOrbit 会按需核对它是否发生变化。",
+        "description": "无需重新等待即可继续查看；进入具体目录时，CoreRobin 会按需核对它是否发生变化。",
         "title": "已恢复上次扫描结果"
       },
       "expired": {
-        "description": "StatusOrbit 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。",
+        "description": "CoreRobin 仍保留空间图，方便你继续查看；涉及清理前建议先更新一次结果。",
         "title": "这份结果已超过 24 小时"
       },
       "refresh": "更新结果",
@@ -355,11 +355,22 @@ export default interface Resources {
     "loading": "正在加载…",
     "none": "无",
     "now": "现在",
+    "pathActions": {
+      "copied": "路径已复制",
+      "copy": "复制路径",
+      "preview": "快速预览",
+      "reveal": "在 Finder 中显示"
+    },
     "peak": "峰值",
     "read": "读取",
     "refresh": "刷新",
     "retry": "重试",
     "session": "本次启动",
+    "systemSettings": {
+      "battery": "打开电池设置",
+      "login_items": "打开登录项设置",
+      "network": "打开网络设置"
+    },
     "total": "合计",
     "unavailable": "不可用",
     "unknown": "未知",
@@ -376,12 +387,12 @@ export default interface Resources {
       "observing": "查看当前状态",
       "urgent": "现在查看"
     },
-    "collapse": "收起 Orbit 小伙伴",
-    "dragHint": "拖动 Orbit 移动；悬停查看状态；右键打开菜单",
-    "expand": "打开 Orbit 小伙伴",
+    "collapse": "收起 Robin 小伙伴",
+    "dragHint": "拖动 Robin 移动；悬停查看状态；右键打开菜单",
+    "expand": "打开 Robin 小伙伴",
     "hide": "隐藏小伙伴",
-    "kicker": "Orbit 小伙伴",
-    "menu": "Orbit 小伙伴菜单",
+    "kicker": "Robin 小伙伴",
+    "menu": "Robin 小伙伴菜单",
     "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
     "recovering": "指标已回落，我再观察一会儿确认它是否恢复。"
   },
@@ -414,6 +425,10 @@ export default interface Resources {
       "refresh": "更新列表",
       "refreshing": "正在更新…",
       "requestClose": "请求 {{name}} 退出",
+      "restart": "重新启动 {{name}}",
+      "restartComplete": "{{name}} 已正常退出并重新打开。",
+      "restartStillRunning": "{{name}} 仍在运行，因此没有重复打开。",
+      "restartUnavailable": "CoreRobin 暂时无法安全地重新启动 {{name}}。",
       "search": "搜索应用",
       "showAll": "查看全部 {{count}} 个普通应用",
       "snapshotClear": "没有应用持续影响电脑",
@@ -437,7 +452,7 @@ export default interface Resources {
         "title": "剩余电量不多"
       },
       "count": "{{count}} 项",
-      "emptyDescription": "StatusOrbit 会继续在后台留意持续变化。",
+      "emptyDescription": "CoreRobin 会继续在后台留意持续变化。",
       "emptyTitle": "现在没有需要处理的事",
       "kicker": "现在",
       "open": "看看原因",
@@ -454,9 +469,17 @@ export default interface Resources {
       "title": "值得留意的情况",
       "viewApplications": "看看哪些应用正在运行"
     },
+    "checks": {
+      "battery": "电池",
+      "label": "电脑状态概览",
+      "space": "空间",
+      "speed": "速度",
+      "temperature": "温度",
+      "thisComputer": "这台电脑"
+    },
     "companion": {
       "checking": "正在检查",
-      "name": "ORBIT"
+      "name": "Robin"
     },
     "guide": {
       "back": "返回首页",
@@ -515,7 +538,7 @@ export default interface Resources {
         "checkingTitle": "正在获取活动连接",
         "connections": "{{count}} 条活动连接",
         "currentTraffic": "当前总流量",
-        "description": "StatusOrbit 会读取当前流量和活动连接，但不会在没有证据时把网络变慢归咎于某个应用。",
+        "description": "CoreRobin 会读取当前流量和活动连接，但不会在没有证据时把网络变慢归咎于某个应用。",
         "kicker": "网络检查",
         "quietTitle": "现在没有明显的网络活动",
         "resultDescription": "这只能说明当前活动情况；网速慢也可能来自路由器、运营商或远端服务。",
@@ -525,15 +548,15 @@ export default interface Resources {
       },
       "professional": "查看全部技术依据",
       "result": "检查结果",
-      "safety": "StatusOrbit 只提出有依据的建议，任何系统操作仍需要你确认。",
+      "safety": "CoreRobin 只提出有依据的建议，任何系统操作仍需要你确认。",
       "slow": {
         "applicationExplanation": "{{name}} 的持续活动与当前问题时间一致。",
         "description": "先观察持续变化，再告诉你最可能的原因和安全下一步。",
         "kicker": "流畅度检查",
         "likelyCause": "最可能相关的应用",
-        "normalDescription": "如果你仍然觉得卡顿，可以查看当前应用；StatusOrbit 不会在没有证据时猜测原因。",
+        "normalDescription": "如果你仍然觉得卡顿，可以查看当前应用；CoreRobin 不会在没有证据时猜测原因。",
         "normalTitle": "没有发现持续的资源压力",
-        "observingDescription": "还需约 {{seconds}} 秒；StatusOrbit 不会把打开网页或启动应用的一瞬间当成故障。",
+        "observingDescription": "还需约 {{seconds}} 秒；CoreRobin 不会把打开网页或启动应用的一瞬间当成故障。",
         "observingKicker": "正在观察",
         "observingTitle": "先确认这不是一次短暂变忙",
         "requestClose": "请求 {{name}} 正常退出",
@@ -554,7 +577,7 @@ export default interface Resources {
         "scanExplanation": "完整扫描会生成可交互空间图，不会自动删除。",
         "startScan": "开始空间分析",
         "title": "看看空间是否真的不够",
-        "unknownDescription": "系统没有提供可靠的容量信息，StatusOrbit 不会把未知状态当成空间充足。",
+        "unknownDescription": "系统没有提供可靠的容量信息，CoreRobin 不会把未知状态当成空间充足。",
         "unknownTitle": "暂时无法读取主要磁盘",
         "viewSpace": "查看空间概况"
       },
@@ -571,8 +594,8 @@ export default interface Resources {
       "checkNow": "检查一下",
       "checkedAt": "{{time}} 更新",
       "checking": "检查中…",
-      "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Orbit 会明确告诉你。",
-      "checkingTitle": "Orbit 正在看看电脑的近况",
+      "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Robin 会明确告诉你。",
+      "checkingTitle": "Robin 正在看看电脑的近况",
       "haveProblem": "我遇到了问题",
       "kicker": "电脑状态伙伴",
       "localOnly": "状态和历史都保存在本机",
@@ -588,7 +611,7 @@ export default interface Resources {
         "recovering": "正在确认恢复",
         "resolved": "已经恢复"
       },
-      "recoveringDescription": "最新指标已经回落，StatusOrbit 正在继续观察，确认它不是一次短暂波动。",
+      "recoveringDescription": "最新指标已经回落，CoreRobin 正在继续观察，确认它不是一次短暂波动。",
       "resolvedDescription": "这项情况已经稳定恢复，现在不需要处理；触发时的证据仍保留在这里。",
       "sleepDuration": "已持续约 {{minutes}} 分钟",
       "timeline": "{{startedAt}} 确认 · 最近一次命中 {{lastSeenAt}}",
@@ -658,18 +681,10 @@ export default interface Resources {
       "space": "空间",
       "today": "电脑状态"
     },
-    "orbit": {
-      "battery": "电池",
-      "label": "电脑状态轨道",
-      "space": "空间",
-      "speed": "速度",
-      "temperature": "温度",
-      "thisComputer": "这台电脑"
-    },
     "recheck": {
       "already_exited": "应用在操作前已经退出，最新状态已重新读取。",
-      "checkingDescription": "稍等一下，StatusOrbit 正在读取变化并重新整理检查结果。",
-      "checkingTitle": "正在把最新状态汇入轨道",
+      "checkingDescription": "稍等一下，CoreRobin 正在读取变化并重新整理检查结果。",
+      "checkingTitle": "正在汇总最新状态",
       "checkup": {
         "observingDescription": "最新状态已经读取，但持续问题还需要再观察一会儿。"
       },
@@ -695,7 +710,7 @@ export default interface Resources {
           "title": "温度、电池和休眠状态都很平稳"
         },
         "observing": {
-          "description": "StatusOrbit 会保持未知状态，不会把缺少的数据判断为正常。",
+          "description": "CoreRobin 会保持未知状态，不会把缺少的数据判断为正常。",
           "title": "部分设备状态暂时无法读取"
         },
         "urgent": {
@@ -706,7 +721,7 @@ export default interface Resources {
       "live": {
         "checkup": {
           "description": "状态、连接和开机项目会各自返回真实结果，不使用表演性倒计时。",
-          "title": "Orbit 正在检查这台电脑"
+          "title": "Robin 正在检查这台电脑"
         },
         "heat": {
           "description": "缺少的数据会保持未知，不会被误判为正常。",
@@ -736,7 +751,7 @@ export default interface Resources {
         "still_running": "应用仍在运行"
       },
       "refreshed": "最新状态已经读取完成。",
-      "resultKicker": "状态轨道已同步",
+      "resultKicker": "最新状态已同步",
       "slow": {
         "observingDescription": "最新数据已经读取，但还需要继续观察，避免把一次短暂变忙当成持续问题。"
       },
@@ -749,12 +764,12 @@ export default interface Resources {
         "read": "读取最新状态",
         "update": "整理检查结果"
       },
-      "still_running": "应用仍在运行，StatusOrbit 没有继续强制处理。",
+      "still_running": "应用仍在运行，CoreRobin 没有继续强制处理。",
       "title": "重新检查完成",
       "updated": "刚刚更新"
     },
     "records": {
-      "description": "这里只记录持续出现的情况和恢复结果，不把每一次短暂波动都变成提醒。",
+      "description": "持续出现的电脑变化，以及你确认执行的操作和结果，都会整理在这里。",
       "duration": "约 {{minutes}} 分钟",
       "emptyDescription": "以后出现持续卡顿、内存压力或空间不足时，会在这里留下容易理解的记录。",
       "emptyTitle": "最近一直很平稳",
@@ -770,8 +785,8 @@ export default interface Resources {
     },
     "settings": {
       "companionAlwaysOnTop": "始终显示在其他窗口上方",
-      "companionAlwaysOnTopDescription": "关闭后 Orbit 仍会留在桌面，但可能被其他窗口遮住",
-      "companionShowOnStartup": "让 Orbit 伙伴常驻桌面",
+      "companionAlwaysOnTopDescription": "关闭后 Robin 仍会留在桌面，但可能被其他窗口遮住",
+      "companionShowOnStartup": "让 Robin 伙伴常驻桌面",
       "companionShowOnStartupDescription": "开启后立即显示，并在下次启动时继续出现",
       "description": "这里只保留日常会用到的偏好；专业采样和阈值设置留在专业模式。",
       "history": "保留最近记录",
@@ -802,7 +817,7 @@ export default interface Resources {
         "comfortable": "标准",
         "large": "大号"
       },
-      "title": "让 Orbit 按你的方式工作"
+      "title": "让 Robin 按你的方式工作"
     },
     "shell": {
       "label": "日常模式",
@@ -823,7 +838,7 @@ export default interface Resources {
         "title": "我只是想检查一下"
       },
       "description": "不需要先判断是处理器、内存还是网络，选最接近你感受的情况。",
-      "footer": "StatusOrbit 不会为了显得有用而猜测原因；没有足够依据时会继续观察。",
+      "footer": "CoreRobin 不会为了显得有用而猜测原因；没有足够依据时会继续观察。",
       "heat": {
         "description": "看看温度和持续繁忙的应用",
         "title": "风扇一直很响"
@@ -884,7 +899,7 @@ export default interface Resources {
     "status": {
       "attention": {
         "short": "有些情况值得留意",
-        "summary": "StatusOrbit 已经整理好原因和下一步，你不需要自己判断技术指标。",
+        "summary": "CoreRobin 已经整理好原因和下一步，你不需要自己判断技术指标。",
         "title": "有 {{count}} 项情况值得留意"
       },
       "normal": {
@@ -932,9 +947,12 @@ export default interface Resources {
   },
   "diagnosis": {
     "actionDialog": {
-      "bestEffortIdentity": "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，StatusOrbit 会拒绝执行。",
+      "bestEffortIdentity": "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，CoreRobin 会拒绝执行。",
       "confirm": "确认请求 {{name}} 退出",
-      "description": "StatusOrbit 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
+      "confirmRestart": "重新启动 {{name}}",
+      "description": "CoreRobin 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
+      "restartDescription": "CoreRobin 会先请求应用正常退出，再重新打开已经核验的应用包。",
+      "restartTitle": "重新启动 {{name}}？",
       "riskDescription": "应用是否显示保存提示取决于它自身；未保存内容仍可能丢失。",
       "riskTitle": "先保存正在编辑的内容",
       "safeDescription": "这项操作只请求当前应用结束运行，不会清理它的数据。",
@@ -1009,11 +1027,11 @@ export default interface Resources {
     "kicker": "智能诊断",
     "networkBoundary": "这里只表示流量或连接数量较高，不代表发现了恶意程序。",
     "recommendations": {
-      "actionUnavailable": "这个应用当前无法安全核对或处理，StatusOrbit 没有执行任何操作。",
+      "actionUnavailable": "这个应用当前无法安全核对或处理，CoreRobin 没有执行任何操作。",
       "inspectEvidence": "先看应用证据",
       "inspect_process": {
         "action": "查看详细证据",
-        "description": "StatusOrbit 当前不提供直接处理按钮；先确认应用身份、资源变化和系统保护原因。",
+        "description": "CoreRobin 当前不提供直接处理按钮；先确认应用身份、资源变化和系统保护原因。",
         "title": "先查看详细证据"
       },
       "open_cleanup": {
@@ -1029,7 +1047,7 @@ export default interface Resources {
       "preparing": "正在核对…",
       "request_close": {
         "action": "请求退出 {{name}}",
-        "description": "这是优先级最高的温和处理方式。StatusOrbit 会先核对进程身份并显示确认窗口，不会直接强制结束。",
+        "description": "这是优先级最高的温和处理方式。CoreRobin 会先核对进程身份并显示确认窗口，不会直接强制结束。",
         "title": "建议先请求 {{name}} 退出"
       },
       "safety": {
@@ -1038,7 +1056,7 @@ export default interface Resources {
         "safe": "安全入口"
       }
     },
-    "safety": "StatusOrbit 不会自动操作；推荐动作仍需你确认，强制结束只保留在专业模式。",
+    "safety": "CoreRobin 不会自动操作；推荐动作仍需你确认，强制结束只保留在专业模式。",
     "severity": {
       "attention": "建议关注",
       "urgent": "影响明显"
@@ -1057,7 +1075,7 @@ export default interface Resources {
         "title": "正在了解这台电脑"
       },
       "urgent": {
-        "summary": "发现 {{count}} 个影响较明显的问题，StatusOrbit 会先带你核对证据。",
+        "summary": "发现 {{count}} 个影响较明显的问题，CoreRobin 会先带你核对证据。",
         "title": "有问题需要尽快处理"
       }
     },
@@ -1072,6 +1090,45 @@ export default interface Resources {
     "unsupportedSchema": "不支持的数据版本：{{version}}"
   },
   "history": {
+    "actions": {
+      "cleanupFailed": "{{count}} 项未完成",
+      "cleanupResult": "处理 {{count}} 项，释放 {{size}}",
+      "clear": "清除操作记录",
+      "count": "最近 {{count}} 项",
+      "description": "记录你确认执行的操作，并在可能时核对是否生效。",
+      "emptyDescription": "关闭应用、清理文件或管理启动项后，结果会显示在这里。",
+      "emptyTitle": "还没有执行过操作",
+      "eyebrow": "你执行过的操作",
+      "kind": {
+        "cleanup_delete": "永久清理文件",
+        "process_close": "正常退出应用",
+        "process_force_quit": "强制结束应用",
+        "process_restart": "重新启动应用",
+        "startup_disable": "停用启动项",
+        "startup_enable": "恢复启动项"
+      },
+      "open": "查看",
+      "saved": "{{count}} 项已保存操作",
+      "status": {
+        "cancelled": "已取消",
+        "failed": "未完成",
+        "interrupted": "意外中断",
+        "partial": "部分完成",
+        "running": "正在执行",
+        "succeeded": "已完成"
+      },
+      "target": {
+        "application": "应用名称未保存",
+        "files": "已选择的文件",
+        "startup": "启动项名称未保存"
+      },
+      "title": "操作与结果",
+      "verification": {
+        "not_confirmed": "暂时无法确认最终状态",
+        "pending": "正在核对结果",
+        "verified": "已重新核对系统状态"
+      }
+    },
     "alerts": {
       "active": "{{count}} 个活动告警",
       "all": "全部",
@@ -1110,11 +1167,11 @@ export default interface Resources {
     "noRange": "尚无时间范围",
     "peakDisk": "磁盘峰值",
     "peakNetwork": "网络峰值",
-    "privacyCollected": "仅记录整机 CPU、内存百分比、磁盘和网络吞吐快照、资源超限与恢复事件；应用显示名只有在设置中单独允许后才会随事件保存。",
+    "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
     "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
     "privacyExcluded": "不记录进程命令、用户、路径、文件名、本地或远端连接地址。",
     "privacyEyebrow": "数据边界",
-    "privacyLocal": "历史只保存在当前设备的 StatusOrbit WebView 存储中，不会上传或同步。",
+    "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
     "privacyTitle": "隐私说明",
     "resourceChart": "CPU 与内存",
     "resourceChartLabel": "历史 CPU 与内存趋势",
@@ -1132,14 +1189,14 @@ export default interface Resources {
           "description": "处理器已高负荷运行 {{duration}}，峰值约 {{value}}%；电脑可能会卡顿、发热或更耗电。",
           "title": "电脑正在持续忙碌"
         },
-        "guidance": "如果仍然觉得卡，可以到“应用”查看是谁影响最大；StatusOrbit 不会自动关闭任何应用。",
+        "guidance": "如果仍然觉得卡，可以到“应用”查看是谁影响最大；CoreRobin 不会自动关闭任何应用。",
         "recovered": {
           "description": "这次高负荷持续约 {{duration}}，峰值约 {{value}}%，之后已回到正常范围。",
           "title": "电脑曾忙了一阵，现在已经恢复"
         }
       },
       "description": "把成对的告警与恢复合并成一件事，用普通语言说明影响和结果。",
-      "emptyDescription": "StatusOrbit 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
+      "emptyDescription": "CoreRobin 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
       "emptyTitle": "最近没有值得担心的事情",
       "endedAt": "{{time}} 恢复",
       "eyebrow": "发生过什么",
@@ -1244,7 +1301,7 @@ export default interface Resources {
       "updating": "正在更新",
       "waiting": "等待首次采集"
     },
-    "description": "速率按真实采样间隔换算；累计值从本次启动 StatusOrbit 开始。",
+    "description": "速率按真实采样间隔换算；累计值从本次启动 CoreRobin 开始。",
     "establishingBaseline": "正在建立网络吞吐基线…",
     "interfaceActivity": "接口活动",
     "interfaceStates": {
@@ -1296,11 +1353,11 @@ export default interface Resources {
     },
     "triggered": {
       "cpu": {
-        "body": "处理器持续繁忙，可能导致卡顿、发热或更耗电。打开 StatusOrbit 可查看影响最大的应用。",
+        "body": "处理器持续繁忙，可能导致卡顿、发热或更耗电。打开 CoreRobin 可查看影响最大的应用。",
         "title": "电脑持续处于高负荷"
       },
       "memory": {
-        "body": "低可用内存与明显交换活动同时出现，切换应用可能变慢。StatusOrbit 不会自动关闭应用。",
+        "body": "低可用内存与明显交换活动同时出现，切换应用可能变慢。CoreRobin 不会自动关闭应用。",
         "title": "可用内存持续紧张"
       },
       "volume": {
@@ -1357,7 +1414,7 @@ export default interface Resources {
     },
     "inspector": {
       "allowBestEffort": "本次运行中允许 best-effort 进程操作",
-      "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。StatusOrbit 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
+      "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。CoreRobin 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
       "binding": "正在绑定…",
       "choose": "选择一个进程",
       "chooseDetail": "查看资源证据、父进程和安全操作。",
@@ -1370,6 +1427,7 @@ export default interface Resources {
       "parent": "父进程",
       "requestClose": "请求结束",
       "residentMemory": "常驻内存",
+      "restart": "重新启动应用",
       "runtime": "已运行",
       "stableHandle": "确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
       "unavailableControl": "此平台暂不支持安全的进程控制。",
@@ -1401,11 +1459,11 @@ export default interface Resources {
   },
   "settings": {
     "background": {
-      "companionAlwaysOnTop": "Orbit 始终置顶",
+      "companionAlwaysOnTop": "Robin 始终置顶",
       "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡",
-      "companionShowOnStartup": "让 Orbit 常驻桌面",
-      "companionShowOnStartupDescription": "应用启动后自动显示 Orbit 小伙伴",
-      "description": "控制 StatusOrbit 如何常驻、登录启动，以及 Orbit 小伙伴的桌面行为。",
+      "companionShowOnStartup": "让 Robin 常驻桌面",
+      "companionShowOnStartupDescription": "应用启动后自动显示 Robin 小伙伴",
+      "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 小伙伴的桌面行为。",
       "launchAtLogin": "登录时启动",
       "launchAtLoginDescription": "登录后静默启动状态栏服务，不自动打开主窗口",
       "showDockIcon": "在 Dock 中显示",
@@ -1437,7 +1495,7 @@ export default interface Resources {
     "intervalMs": "{{interval}} 毫秒",
     "intervalSeconds": "{{seconds}} 秒",
     "language": {
-      "description": "切换 StatusOrbit 的菜单、说明与状态文本。",
+      "description": "切换 CoreRobin 的菜单、说明与状态文本。",
       "label": "语言",
       "title": "界面语言"
     },
@@ -1484,31 +1542,31 @@ export default interface Resources {
   "splash": {
     "connecting": "正在连接本机采样器",
     "description": "本机资源状态，清晰呈现。",
-    "title": "正在启动 StatusOrbit"
+    "title": "正在启动 CoreRobin"
   },
   "startup": {
     "actionDialog": {
       "applying": "正在安全更新…",
       "disable": {
         "confirm": "确认停用自动启动",
-        "description": "StatusOrbit 会把这份用户级启动配置移到自己的可恢复存储中，不会删除它。",
+        "description": "CoreRobin 会把这份用户级启动配置移到自己的可恢复存储中，不会删除它。",
         "title": "停用 {{name}} 的自动启动？",
         "whenDescription": "下次登录时生效；恢复后也会从下一次登录开始重新允许自动启动。"
       },
       "enable": {
         "confirm": "确认恢复自动启动",
-        "description": "StatusOrbit 会把之前保存的配置放回原位置。",
+        "description": "CoreRobin 会把之前保存的配置放回原位置。",
         "title": "恢复 {{name}} 的自动启动？",
         "whenDescription": "从下次登录开始，系统会再次允许这个项目自动启动。"
       },
       "errors": {
         "startup_confirmation_expired": "确认已超时，请重新检查后再操作。",
         "startup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开。",
-        "startup_destination_conflict": "目标位置出现了另一份配置，为避免覆盖，StatusOrbit 没有执行操作。",
-        "startup_item_protected": "这不是可安全管理的用户级第三方启动项，StatusOrbit 没有执行操作。",
+        "startup_destination_conflict": "目标位置出现了另一份配置，为避免覆盖，CoreRobin 没有执行操作。",
+        "startup_item_protected": "这不是可安全管理的用户级第三方启动项，CoreRobin 没有执行操作。",
         "startup_item_unavailable": "这个启动项已经变化或不存在，请刷新列表后再试。",
         "startup_management_failed": "系统未能安全移动启动配置；原文件仍保留在当前状态。",
-        "startup_state_changed": "启动配置在确认后发生变化，StatusOrbit 没有执行操作。"
+        "startup_state_changed": "启动配置在确认后发生变化，CoreRobin 没有执行操作。"
       },
       "preparing": "正在核对启动项与文件状态…",
       "reversibleDescription": "配置文件只会在两个用户目录之间移动，不会被编辑或删除。",
@@ -1535,7 +1593,7 @@ export default interface Resources {
         "title": "可评估是否需要"
       },
       "system": {
-        "description": "不建议作为普通启动项处理，StatusOrbit 保持只读展示。",
+        "description": "不建议作为普通启动项处理，CoreRobin 保持只读展示。",
         "title": "系统或设备服务"
       }
     },
@@ -1578,7 +1636,7 @@ export default interface Resources {
     },
     "inventory": "启动项清单",
     "listTitle": "哪些内容会自动启动",
-    "loadingDescription": "StatusOrbit 只读取系统公开的启动配置，不会加载或运行其中的命令。",
+    "loadingDescription": "CoreRobin 只读取系统公开的启动配置，不会加载或运行其中的命令。",
     "loadingTitle": "正在读取启动位置",
     "managementBoundary": "只有可恢复的用户级第三方启动文件可以停用；系统项目和不支持的来源保持只读。",
     "managementStatus": {
@@ -1646,7 +1704,11 @@ export default interface Resources {
   "tray": {
     "available": "可用空间",
     "cleanup": "空间清理",
-    "companion": "Orbit 伙伴",
+    "companion": "Robin 伙伴",
+    "dataMode": {
+      "background": "后台采样",
+      "foreground": "前台采样"
+    },
     "health": {
       "attention": "需要关注",
       "loading": "连接中",
@@ -1660,6 +1722,7 @@ export default interface Resources {
     },
     "localMonitor": "本机资源监控",
     "open": "打开概览",
+    "quit": "退出应用",
     "reason": "{{resource}}需要关注",
     "recovering": "指标已回落，正在确认是否恢复。",
     "resource": {
@@ -1674,7 +1737,7 @@ export default interface Resources {
     },
     "status": {
       "attention": {
-        "description": "打开 StatusOrbit 可以查看原因和对应建议。",
+        "description": "打开 CoreRobin 可以查看原因和对应建议。",
         "title": "有一项资源值得留意"
       },
       "loading": {
@@ -1690,14 +1753,17 @@ export default interface Resources {
         "title": "正在了解电脑状态"
       },
       "urgent": {
-        "description": "建议打开 StatusOrbit 查看证据后再处理。",
+        "description": "建议打开 CoreRobin 查看证据后再处理。",
         "title": "有一项资源压力较高"
       }
-    }
+    },
+    "updatedAt": "{{time}} 更新"
   },
   "wellbeing": {
     "battery": {
       "attention": "剩余电量不多，建议准备连接电源",
+      "cycleCountLabel": "循环次数",
+      "healthLabel": "健康度",
       "label": "电池",
       "normal": "电量状态正常",
       "notPresent": "未检测到电池",
@@ -1741,14 +1807,14 @@ export default interface Resources {
       "more": "，另有 {{count}} 个应用",
       "system": "系统任务暂时保持电脑唤醒，通常无需处理，也不建议结束系统进程。",
       "systemValue": "系统活动",
-      "unavailable": "当前平台没有向 StatusOrbit 提供可靠的休眠阻止信息。",
+      "unavailable": "当前平台没有向 CoreRobin 提供可靠的休眠阻止信息。",
       "unavailableValue": "无法读取"
     },
     "temperature": {
       "attention": "设备有些热；如果同时卡顿，可先减少高负荷任务。",
       "label": "设备温度",
       "normal": "当前温度在正常范围内。",
-      "unavailable": "当前系统或硬件没有向 StatusOrbit 提供温度读数。",
+      "unavailable": "当前系统或硬件没有向 CoreRobin 提供温度读数。",
       "urgent": "温度持续偏高，建议停止高负荷任务并保持通风。"
     },
     "title": "温度、电池与休眠"

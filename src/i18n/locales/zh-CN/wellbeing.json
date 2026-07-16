@@ -13,11 +13,13 @@
     "normal": "当前温度在正常范围内。",
     "attention": "设备有些热；如果同时卡顿，可先减少高负荷任务。",
     "urgent": "温度持续偏高，建议停止高负荷任务并保持通风。",
-    "unavailable": "当前系统或硬件没有向 StatusOrbit 提供温度读数。"
+    "unavailable": "当前系统或硬件没有向 CoreRobin 提供温度读数。"
   },
   "battery": {
     "label": "电池",
     "notPresent": "未检测到电池",
+    "healthLabel": "健康度",
+    "cycleCountLabel": "循环次数",
     "unavailable": "台式机或未提供电池信息的设备会显示在这里。",
     "normal": "电量状态正常",
     "attention": "剩余电量不多，建议准备连接电源",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "自动休眠",
     "unavailableValue": "无法读取",
-    "unavailable": "当前平台没有向 StatusOrbit 提供可靠的休眠阻止信息。",
+    "unavailable": "当前平台没有向 CoreRobin 提供可靠的休眠阻止信息。",
     "clearValue": "可以正常休眠",
     "clear": "没有发现应用阻止电脑自动休眠。",
     "blockedValue": "{{count}} 个应用",

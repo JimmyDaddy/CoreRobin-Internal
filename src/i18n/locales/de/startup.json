@@ -13,7 +13,7 @@
   },
   "scanning": "Überprüfung…",
   "loadingTitle": "Start-Up-Positionen lesen",
-  "loadingDescription": "StatusOrbit liest nur öffentliche Start-Konfigurationen und führt niemals Befehle darin aus.",
+  "loadingDescription": "CoreRobin liest nur öffentliche Start-Konfigurationen und führt niemals Befehle darin aus.",
   "summary": "Zusammenfassung der Start-Up-Items",
   "reviewCount": "Es lohnt sich, dies zu überprüfen",
   "reviewHint": "Drittanbieter-Items, die beim Anmelden gestartet werden",
@@ -37,7 +37,7 @@
   "disabled": "Deaktiviert",
   "technicalDetails": "Zeigt technische Details",
   "managementBoundary": "Nur umkehrbare Benutzer-Startup-Dateien können deaktiviert werden. System-Elemente und nicht unterstützte Quellen bleiben schreibgeschützt.",
-  "readOnlyBoundary": "Diese Plattform stellt keine Startup-Quelle zur Verfügung, die StatusOrbit sicher wiederherstellen kann, sodass das Inventar schreibgeschützt bleibt.",
+  "readOnlyBoundary": "Diese Plattform stellt keine Startup-Quelle zur Verfügung, die CoreRobin sicher wiederherstellen kann, sodass das Inventar schreibgeschützt bleibt.",
   "unreadable": "{{count}} Startprogramme konnten aufgrund von Berechtigungen nicht gelesen werden",
   "actions": {
     "disable": "Deaktivieren beim Anmelden",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "Automatische Startup für {{name}} deaktivieren?",
-      "description": "StatusOrbit verschiebt diese Benutzer-Startdatei in ein eigenes, wiederherstellbares Speicherverzeichnis und löscht sie nicht.",
+      "description": "CoreRobin verschiebt diese Benutzer-Startdatei in ein eigenes, wiederherstellbares Speicherverzeichnis und löscht sie nicht.",
       "whenDescription": "Dies tritt beim nächsten Anmelden in Kraft. Das Wiederherstellen hat ebenfalls ab einem zukünftigen Anmeldenen Wirkung.",
       "confirm": "Bestätigen Sie das Deaktivieren beim Anmelden"
     },
     "enable": {
       "title": "Automatischen Start für {{name}} wiederherstellen?",
-      "description": "StatusOrbit verschiebt die gespeicherte Konfiguration zurück an den ursprünglichen Ort.",
+      "description": "CoreRobin verschiebt die gespeicherte Konfiguration zurück an den ursprünglichen Ort.",
       "whenDescription": "Ab dem nächsten Anmeldenen kann das System diesen Eintrag erneut automatisch starten.",
       "confirm": "Bestätigen Sie das Wiederherstellen beim Anmelden"
     },
@@ -89,10 +89,10 @@
     "preparing": "Überprüfung des Start-Eintrags und seines Zustands…",
     "applying": "Sicher aktualisieren…",
     "errors": {
-      "startup_item_protected": "Dies ist kein von StatusOrbit sicher verwalteter, benutzerdefinierter Start-Eintrag, daher hat sich nichts geändert.",
+      "startup_item_protected": "Dies ist kein von CoreRobin sicher verwalteter, benutzerdefinierter Start-Eintrag, daher hat sich nichts geändert.",
       "startup_item_unavailable": "Dieser Start-Eintrag wurde verändert oder gelöscht. Aktualisieren Sie die Liste und versuchen Sie es erneut.",
-      "startup_state_changed": "Die Startdatei wurde nach der Bestätigung geändert, daher hat StatusOrbit nichts geändert.",
-      "startup_destination_conflict": "Ein anderer Eintrag befindet sich bereits am Zielort. StatusOrbit hat die Überschreibung verhindert.",
+      "startup_state_changed": "Die Startdatei wurde nach der Bestätigung geändert, daher hat CoreRobin nichts geändert.",
+      "startup_destination_conflict": "Ein anderer Eintrag befindet sich bereits am Zielort. CoreRobin hat die Überschreibung verhindert.",
       "startup_confirmation_unavailable": "Diese Bestätigung ist nicht mehr verfügbar. Abbrechen und erneut öffnen.",
       "startup_confirmation_expired": "Die Bestätigung ist abgelaufen. Überprüfen Sie den Eintrag erneut, bevor Sie fortfahren.",
       "startup_management_failed": "Das System konnte die Startdatei nicht sicher verschieben. Der ursprüngliche Zustand wurde beibehalten."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "System- oder Geräte-Dienst",
-      "description": "Behandeln Sie dies nicht als eine normale Startanwendung. StatusOrbit hält sie schreibgeschützt."
+      "description": "Behandeln Sie dies nicht als eine normale Startanwendung. CoreRobin hält sie schreibgeschützt."
     },
     "disabled": {
       "title": "Derzeit deaktiviert",

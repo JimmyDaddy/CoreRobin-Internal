@@ -13,11 +13,13 @@
     "normal": "현재 온도가 정상 범위 내입니다.",
     "attention": "기기가 뜨겁습니다. 속도가 느리다면, 우선 무거운 작업을 멈추세요.",
     "urgent": "온도가 계속 높습니다. 무거운 작업을 중단하고 기기를 환기시키세요.",
-    "unavailable": "운영체제 또는 하드웨어가 온도 정보를 StatusOrbit에 전송하지 않습니다."
+    "unavailable": "운영체제 또는 하드웨어가 온도 정보를 CoreRobin에 전송하지 않습니다."
   },
   "battery": {
     "label": "배터리",
     "notPresent": "배터리가 감지되지 않았습니다.",
+    "healthLabel": "배터리 성능 상태",
+    "cycleCountLabel": "사이클 수",
     "unavailable": "데스크톱 컴퓨터와 배터리 정보를 제공하지 않는 기기는 이렇게 표시됩니다.",
     "normal": "배터리 상태가 정상입니다",
     "attention": "배터리가 부족합니다; 충전기를 연결하세요",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "자동 절전 모드",
     "unavailableValue": "사용 불가",
-    "unavailable": "이 플랫폼은 StatusOrbit에 안정적인 수면 차단 정보를 제공하지 않습니다.",
+    "unavailable": "이 플랫폼은 CoreRobin에 안정적인 수면 차단 정보를 제공하지 않습니다.",
     "clearValue": "수면 기능 사용 가능",
     "clear": "어떤 앱도 컴퓨터가 자동으로 잠드는 것을 방지하지 않습니다.",
     "blockedValue": "{{count}} 앱",

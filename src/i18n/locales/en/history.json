@@ -42,7 +42,7 @@
     "happeningNow": "Still happening",
     "resolved": "Recovered",
     "emptyTitle": "Nothing concerning recently",
-    "emptyDescription": "StatusOrbit ignores brief fluctuations and only records conditions that persist long enough to affect the computer.",
+    "emptyDescription": "CoreRobin ignores brief fluctuations and only records conditions that persist long enough to affect the computer.",
     "cpu": {
       "active": {
         "title": "The computer is staying busy",
@@ -52,7 +52,7 @@
         "title": "The computer was busy and has recovered",
         "description": "The high load lasted about {{duration}}, peaked near {{value}}%, and then returned to the normal range."
       },
-      "guidance": "If the computer still feels slow, open Applications to see the biggest impact. StatusOrbit never closes an app automatically."
+      "guidance": "If the computer still feels slow, open Applications to see the biggest impact. CoreRobin never closes an app automatically."
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "Memory pressure rose and has eased",
         "description": "Memory stayed tight for about {{duration}}, then available memory and swap activity recovered."
       },
-      "guidance": "High memory use alone is normal. StatusOrbit records this only when low availability and meaningful swap activity happen together."
+      "guidance": "High memory use alone is normal. CoreRobin records this only when low availability and meaningful swap activity happen together."
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%, above {{threshold}}% for {{duration}}.",
     "recoveredDetail": "Returned to {{value}}% after {{duration}}."
   },
+  "actions": {
+    "eyebrow": "Actions you confirmed",
+    "title": "Actions and results",
+    "description": "Keeps the operations you confirmed and verifies their outcome when possible.",
+    "count": "{{count}} recent",
+    "saved": "{{count}} saved actions",
+    "emptyTitle": "No actions yet",
+    "emptyDescription": "Results will appear here after you close an app, clean files, or manage a startup item.",
+    "open": "View",
+    "clear": "Clear action history",
+    "kind": {
+      "process_close": "Quit application normally",
+      "process_restart": "Restart application",
+      "process_force_quit": "Force quit application",
+      "cleanup_delete": "Permanently clean files",
+      "startup_disable": "Disable startup item",
+      "startup_enable": "Restore startup item"
+    },
+    "status": {
+      "running": "In progress",
+      "succeeded": "Completed",
+      "partial": "Partially completed",
+      "failed": "Not completed",
+      "cancelled": "Cancelled",
+      "interrupted": "Interrupted"
+    },
+    "verification": {
+      "pending": "Checking the result",
+      "verified": "System state checked again",
+      "not_confirmed": "Final state could not be confirmed yet"
+    },
+    "target": {
+      "application": "Application name not saved",
+      "files": "Selected files",
+      "startup": "Startup item name not saved"
+    },
+    "cleanupResult": "Processed {{count}} items and reclaimed {{size}}",
+    "cleanupFailed": "{{count}} items not completed"
+  },
   "privacyEyebrow": "Data boundaries",
   "privacyTitle": "Privacy policy",
-  "privacyLocal": "History stays in this device's StatusOrbit WebView storage and is never uploaded or synchronized.",
-  "privacyCollected": "Only system CPU and memory percentages, disk and network throughput snapshots, and resource pressure and recovery events are stored. App display names are saved only after you allow them separately in Settings.",
+  "privacyLocal": "History stays in this device's CoreRobin WebView storage and is never uploaded or synchronized.",
+  "privacyCollected": "History stores aggregate resource snapshots, pressure and recovery events, plus the type, result, item count, and reclaimed space of actions you confirm. App or startup item names are saved only after you allow them separately in Settings.",
   "privacyExcluded": "Process commands, users, paths, file names, and local or remote connection addresses are not stored.",
   "privacyControl": "Disabling stops new writes; existing records remain until they expire or you clear them manually."
 }

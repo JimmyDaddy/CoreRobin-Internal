@@ -1,7 +1,7 @@
 {
   "local": "Local network",
   "title": "Live interfaces and session traffic",
-  "description": "Rates use the actual sample interval; totals begin when StatusOrbit launches.",
+  "description": "Rates use the actual sample interval; totals begin when CoreRobin launches.",
   "connectedInterfaces": "{{connected}} / {{total}} interfaces connected",
   "summary": "Network summary",
   "receiveNow": "Receiving now",

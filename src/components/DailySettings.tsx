@@ -3,7 +3,6 @@ import {
   BellRing,
   History,
   Languages,
-  Orbit,
   Rocket,
   Settings2,
   Type,
@@ -14,6 +13,7 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
 import type { AppSettings } from "../settings";
 import { LocaleSelect } from "./LocaleSelect";
+import { RobinIcon } from "./RobinIcon";
 
 interface DailySettingsProps {
   settings: AppSettings;
@@ -104,7 +104,7 @@ export function DailySettings({
         </section>
 
         <section>
-          <span><Orbit size={19} /></span>
+          <span><RobinIcon size={22} /></span>
           <div><strong>{t("daily:settings.companionAlwaysOnTop")}</strong><small>{t("daily:settings.companionAlwaysOnTopDescription")}</small></div>
           <label className="daily-settings__switch">
             <input type="checkbox" role="switch" aria-label={t("daily:settings.companionAlwaysOnTop")} checked={settings.companionAlwaysOnTop} onChange={(event) => onChange({ companionAlwaysOnTop: event.target.checked })} />
@@ -113,7 +113,7 @@ export function DailySettings({
         </section>
 
         <section>
-          <span><Orbit size={19} /></span>
+          <span><RobinIcon size={22} /></span>
           <div><strong>{t("daily:settings.companionShowOnStartup")}</strong><small>{t("daily:settings.companionShowOnStartupDescription")}</small></div>
           <label className="daily-settings__switch">
             <input type="checkbox" role="switch" aria-label={t("daily:settings.companionShowOnStartup")} checked={settings.companionShowOnStartup} onChange={(event) => onChange({ companionShowOnStartup: event.target.checked })} />

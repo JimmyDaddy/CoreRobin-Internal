@@ -18,7 +18,7 @@ export interface DesktopNotificationCopy {
   body: string;
 }
 
-export const DESKTOP_NOTIFICATION_LOG_KEY = "status-orbit.desktop-notification-log.v1";
+export const DESKTOP_NOTIFICATION_LOG_KEY = "core-robin.desktop-notification-log.v1";
 export const MAX_DESKTOP_NOTIFICATIONS_PER_DAY = 4;
 
 export function selectNotificationsWithinDailyBudget(

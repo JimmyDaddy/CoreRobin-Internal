@@ -121,7 +121,7 @@ fn temporary_icon_output() -> Option<(TemporaryIconDirectory, PathBuf)> {
     for _ in 0..64 {
         let sequence = NEXT_ICON_ID.fetch_add(1, Ordering::Relaxed);
         let directory = std::env::temp_dir().join(format!(
-            "status-orbit-app-icon-{}-{sequence}",
+            "core-robin-app-icon-{}-{sequence}",
             std::process::id(),
         ));
         match fs::create_dir(&directory) {
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn resolves_the_declared_bundle_icon_without_leaving_the_bundle() {
         let root = std::env::temp_dir().join(format!(
-            "status-orbit-icon-test-{}",
+            "core-robin-icon-test-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
@@ -183,14 +183,14 @@ mod tests {
         fs::write(
             bundle.join("Contents/Info.plist"),
             r#"<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict><key>CFBundleIconFile</key><string>StatusOrbitIcon</string></dict></plist>"#,
+<plist version="1.0"><dict><key>CFBundleIconFile</key><string>CoreRobinIcon</string></dict></plist>"#,
         )
         .unwrap();
-        fs::write(resources.join("StatusOrbitIcon.icns"), b"test").unwrap();
+        fs::write(resources.join("CoreRobinIcon.icns"), b"test").unwrap();
 
         assert_eq!(
             bundle_icon_path(&bundle).as_deref(),
-            fs::canonicalize(resources.join("StatusOrbitIcon.icns"))
+            fs::canonicalize(resources.join("CoreRobinIcon.icns"))
                 .ok()
                 .as_deref(),
         );

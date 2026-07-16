@@ -29,6 +29,10 @@ import type {
   StartupManagementAction,
   StartupManagementLease,
 } from "../types";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import { formatBytes, formatPercent, normalizeCommandError } from "../utils";
 import { StartupActionDialog } from "./StartupActionDialog";
 
@@ -40,6 +44,8 @@ interface StartupExplorerProps {
   applications: readonly ApplicationImpact[];
   totalMemoryBytes: number;
   onRefresh: () => void | Promise<void>;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
 
 export function StartupExplorer({
@@ -50,6 +56,8 @@ export function StartupExplorer({
   applications,
   totalMemoryBytes,
   onRefresh,
+  onUserActionStart,
+  onUserActionComplete,
 }: StartupExplorerProps) {
   const { t, i18n } = useAppTranslation();
   const [filter, setFilter] = useState<"review" | "all" | "system">("review");
@@ -133,11 +141,25 @@ export function StartupExplorer({
 
   const confirmAction = async () => {
     if (!actionItem || !action || !lease || submitting) return;
+    const actionRecordId = onUserActionStart?.({
+      kind: action === "enable" ? "startup_enable" : "startup_disable",
+      targetName: actionItem.name,
+      targetCount: 1,
+    }) ?? null;
+    let actionRecorded = false;
     setSubmitting(true);
     setActionError(null);
     try {
       const result = await executeStartupManagement({ leaseId: lease.id });
       leaseRef.current = null;
+      if (actionRecordId) {
+        onUserActionComplete?.(actionRecordId, {
+          status: "succeeded",
+          verification: "verified",
+          targetCount: 1,
+        });
+        actionRecorded = true;
+      }
       setOutcome({ name: actionItem.name, enabled: result.enabled });
       requestIdRef.current += 1;
       setActionItem(null);
@@ -145,6 +167,13 @@ export function StartupExplorer({
       setLease(null);
       await onRefresh();
     } catch (caughtError) {
+      if (actionRecordId && !actionRecorded) {
+        onUserActionComplete?.(actionRecordId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: 1,
+        });
+      }
       leaseRef.current = null;
       setLease(null);
       setActionError(normalizeCommandError(caughtError));

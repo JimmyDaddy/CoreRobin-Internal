@@ -2,11 +2,11 @@
   "triggered": {
     "cpu": {
       "title": "L'ordinateur fonctionne sous forte charge",
-      "body": "Le processeur est sollicité et peut entraîner des ralentissements, de la surchauffe ou une consommation accrue d'énergie. Ouvrez StatusOrbit pour identifier les applications les plus gourmandes en ressources."
+      "body": "Le processeur est sollicité et peut entraîner des ralentissements, de la surchauffe ou une consommation accrue d'énergie. Ouvrez CoreRobin pour identifier les applications les plus gourmandes en ressources."
     },
     "memory": {
       "title": "La mémoire disponible est limitée",
-      "body": "Une faible quantité de mémoire disponible et une activité significative du fichier d'échange se produisent simultanément. StatusOrbit ne ferme jamais automatiquement les applications."
+      "body": "Une faible quantité de mémoire disponible et une activité significative du fichier d'échange se produisent simultanément. CoreRobin ne ferme jamais automatiquement les applications."
     },
     "volume": {
       "title": "L'espace disque libre est faible",

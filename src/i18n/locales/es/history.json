@@ -42,7 +42,7 @@
     "happeningNow": "En curso",
     "resolved": "Resuelto",
     "emptyTitle": "No hay información reciente",
-    "emptyDescription": "StatusOrbit ignora fluctuaciones breves y solo registra condiciones que persisten lo suficiente para afectar al ordenador.",
+    "emptyDescription": "CoreRobin ignora fluctuaciones breves y solo registra condiciones que persisten lo suficiente para afectar al ordenador.",
     "cpu": {
       "active": {
         "title": "El ordenador está funcionando intensamente",
@@ -52,7 +52,7 @@
         "title": "El ordenador estaba funcionando intensamente y se ha recuperado",
         "description": "La alta carga duró aproximadamente {{duration}}, alcanzó un máximo de cerca de {{value}}%, y luego volvió a la normalidad."
       },
-      "guidance": "Si el ordenador sigue sintiéndose lento, abra Aplicaciones para ver qué está causando el mayor impacto. StatusOrbit nunca cierra una aplicación automáticamente."
+      "guidance": "Si el ordenador sigue sintiéndose lento, abra Aplicaciones para ver qué está causando el mayor impacto. CoreRobin nunca cierra una aplicación automáticamente."
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "La presión en la memoria ha aumentado y se ha normalizado",
         "description": "La memoria estuvo limitada durante aproximadamente {{duration}}, luego, la memoria disponible y la actividad de intercambio se recuperaron."
       },
-      "guidance": "El uso elevado de memoria es normal. StatusOrbit solo registra esta situación cuando hay poca memoria disponible y una actividad significativa de intercambio."
+      "guidance": "El uso elevado de memoria es normal. CoreRobin solo registra esta situación cuando hay poca memoria disponible y una actividad significativa de intercambio."
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%, por encima del {{threshold}}% durante {{duration}}.",
     "recoveredDetail": "Regresó al {{value}}% después del {{duration}}."
   },
+  "actions": {
+    "eyebrow": "Acciones que confirmaste",
+    "title": "Acciones y resultados",
+    "description": "Guarda las acciones confirmadas y verifica su resultado cuando es posible.",
+    "count": "{{count}} recientes",
+    "saved": "{{count}} acciones guardadas",
+    "emptyTitle": "Todavía no hay acciones",
+    "emptyDescription": "Los resultados aparecerán aquí después de cerrar una aplicación, limpiar archivos o gestionar un elemento de inicio.",
+    "open": "Ver",
+    "clear": "Borrar historial de acciones",
+    "kind": {
+      "process_close": "Cerrar la aplicación normalmente",
+      "process_restart": "Reiniciar la aplicación",
+      "process_force_quit": "Forzar el cierre de la aplicación",
+      "cleanup_delete": "Eliminar archivos permanentemente",
+      "startup_disable": "Desactivar elemento de inicio",
+      "startup_enable": "Restaurar elemento de inicio"
+    },
+    "status": {
+      "running": "En curso",
+      "succeeded": "Completada",
+      "partial": "Completada parcialmente",
+      "failed": "No completada",
+      "cancelled": "Cancelada",
+      "interrupted": "Interrumpida"
+    },
+    "verification": {
+      "pending": "Comprobando el resultado",
+      "verified": "Estado del sistema comprobado de nuevo",
+      "not_confirmed": "Aún no se pudo confirmar el estado final"
+    },
+    "target": {
+      "application": "Nombre de la aplicación no guardado",
+      "files": "Archivos seleccionados",
+      "startup": "Nombre del elemento no guardado"
+    },
+    "cleanupResult": "{{count}} elementos procesados y {{size}} liberados",
+    "cleanupFailed": "{{count}} elementos no completados"
+  },
   "privacyEyebrow": "Límites de datos",
   "privacyTitle": "Política de privacidad",
-  "privacyLocal": "El historial permanece almacenado en el almacenamiento StatusOrbit WebView de este dispositivo y nunca se sube ni sincroniza.",
-  "privacyCollected": "Solo se guardan los porcentajes del uso del CPU y la memoria, instantáneas del rendimiento del disco y la red, y eventos de presión y recuperación de recursos. Los nombres de las aplicaciones solo se guardan después de que lo permita explícitamente en la configuración.",
+  "privacyLocal": "El historial permanece almacenado en el almacenamiento CoreRobin WebView de este dispositivo y nunca se sube ni sincroniza.",
+  "privacyCollected": "El historial guarda datos agregados de recursos, eventos de presión y recuperación, y el tipo, resultado, cantidad y espacio liberado de las acciones confirmadas. Los nombres de aplicaciones o elementos de inicio solo se guardan con permiso independiente.",
   "privacyExcluded": "Los comandos, usuarios, rutas y direcciones de conexión locales o remotas no se almacenan.",
   "privacyControl": "Desactivar detiene nuevas escrituras; los registros existentes permanecen hasta que caduquen o los elimine manualmente."
 }

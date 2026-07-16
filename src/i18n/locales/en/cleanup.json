@@ -13,7 +13,7 @@
   "access": {
     "kicker": "Before scanning",
     "title": "Allow access to the whole system disk",
-    "description": "macOS protects Mail, Messages, other app data, and similar locations. Full Disk Access lets the space map be as complete as possible; StatusOrbit still reads metadata such as names, sizes, and dates only.",
+    "description": "macOS protects Mail, Messages, other app data, and similar locations. Full Disk Access lets the space map be as complete as possible; CoreRobin still reads metadata such as names, sizes, and dates only.",
     "checking": "Checking access…",
     "checkingReturn": "Confirming access…",
     "openSettings": "Open Full Disk Access",
@@ -21,15 +21,15 @@
     "revealApp": "Show app in Finder",
     "checkAgain": "Access enabled — check again",
     "continueLimited": "Scan accessible areas",
-    "waiting": "System Settings is open. If StatusOrbit is missing, click + below the list and select StatusOrbit.app. Enable it, then return to start scanning automatically.",
+    "waiting": "System Settings is open. If CoreRobin is missing, click + below the list and select CoreRobin.app. Enable it, then return to start scanning automatically.",
     "unknown": "Access could not be confirmed. You can still open System Settings or run a limited scan.",
-    "bundleRequired": "Launch StatusOrbit.app first",
+    "bundleRequired": "Launch CoreRobin.app first",
     "bundleMissingTitle": "This process cannot be added to the access list",
-    "bundleMissingDescription": "macOS cannot authorize a development process here. Install StatusOrbit.app and reopen it from Applications; a limited scan is still available.",
-    "privacy": "macOS controls this permission and you can turn it off at any time. StatusOrbit never reads file contents or changes files during a scan.",
+    "bundleMissingDescription": "macOS cannot authorize a development process here. Install CoreRobin.app and reopen it from Applications; a limited scan is still available.",
+    "privacy": "macOS controls this permission and you can turn it off at any time. CoreRobin never reads file contents or changes files during a scan.",
     "steps": {
       "open": "Open System Settings",
-      "add": "Click + and select StatusOrbit.app",
+      "add": "Click + and select CoreRobin.app",
       "return": "Enable it and return"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "Refresh result",
     "cached": {
       "title": "Previous scan restored",
-      "description": "Keep exploring without waiting for another scan. StatusOrbit checks a directory for changes only when you browse into it."
+      "description": "Keep exploring without waiting for another scan. CoreRobin checks a directory for changes only when you browse into it."
     },
     "expired": {
       "title": "This result is over 24 hours old",
-      "description": "StatusOrbit keeps the map available so you can continue exploring. Refresh it before acting on cleanup choices."
+      "description": "CoreRobin keeps the map available so you can continue exploring. Refresh it before acting on cleanup choices."
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "About {{size}} released",
     "cancelDelete": "Stop deleting",
     "cancelling": "Stopping…",
-    "cancelHint": "Completed deletions cannot be restored. StatusOrbit will stop after the current file operation.",
+    "cancelHint": "Completed deletions cannot be restored. CoreRobin will stop after the current file operation.",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit will not delete your home directory or the Trash folder itself.",
-      "cleanup_target_outside_home": "For safety, StatusOrbit only handles content inside your personal folder.",
-      "cleanup_cross_filesystem": "The selected directory enters another disk or mount point, so StatusOrbit refused recursive deletion.",
-      "cleanup_target_changed": "A file changed after confirmation, so StatusOrbit deleted nothing. Cancel and review it again.",
+      "protected_cleanup_path": "CoreRobin will not delete your home directory or the Trash folder itself.",
+      "cleanup_target_outside_home": "For safety, CoreRobin only handles content inside your personal folder.",
+      "cleanup_cross_filesystem": "The selected directory enters another disk or mount point, so CoreRobin refused recursive deletion.",
+      "cleanup_target_changed": "A file changed after confirmation, so CoreRobin deleted nothing. Cancel and review it again.",
       "cleanup_confirmation_unavailable": "This confirmation is no longer available. Cancel and reopen the review.",
       "cleanup_confirmation_expired": "This confirmation expired. Cancel and review the current files again.",
       "cleanup_target_unavailable": "Some content no longer exists or cannot be accessed. Rescan and try again.",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "Read-only app inventory",
     "title": "Applications not used for a long time",
-    "boundary": "Only apps macOS confirms were unopened for at least six months; StatusOrbit never uninstalls them automatically",
+    "boundary": "Only apps macOS confirms were unopened for at least six months; CoreRobin never uninstalls them automatically",
     "lastUsed": "Last used {{date}} · unopened for {{days}} days",
     "none": "No application could be confirmed as unused for more than six months.",
     "unavailable": "This platform cannot currently provide reliable application last-use dates.",
-    "unknownExcluded": "{{count}} other apps have no confirmed last-use date, so StatusOrbit did not classify them as unused."
+    "unknownExcluded": "{{count}} other apps have no confirmed last-use date, so CoreRobin did not classify them as unused."
   },
   "reviewFirst": "Review one by one",
   "largestFiles": "Large files on the system disk",
   "largeFileBoundary": "Only files over 500 MB are listed; automatic deletion is not recommended",
   "noLargeFiles": "No files over 500 MB were found in accessible system-disk locations.",
   "unreadable": "{{count}} locations were protected or temporarily unreadable. Only those locations are excluded from the result.",
-  "fullDiskAccessHint": "On macOS, grant StatusOrbit Full Disk Access in System Settings → Privacy & Security, then scan again.",
+  "fullDiskAccessHint": "On macOS, grant CoreRobin Full Disk Access in System Settings → Privacy & Security, then scan again.",
   "safetyBoundary": "The scan has no time or item limit and never follows symbolic links. Only items placed in the basket, path-checked, and explicitly confirmed are permanently deleted, and they cannot be restored."
 }

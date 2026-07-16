@@ -23,7 +23,7 @@ describe("shared health state", () => {
     );
 
     expect(state).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       dataMode: "background",
       health: "attention",
       reason: "battery",
@@ -35,6 +35,8 @@ describe("shared health state", () => {
         phase: "recovering",
         intent: "heat",
       },
+      batteryHealthPercent: snapshot.sensors.battery.healthPercent,
+      batteryCycleCount: snapshot.sensors.battery.cycleCount,
     });
   });
 

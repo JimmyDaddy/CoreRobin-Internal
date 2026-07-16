@@ -42,7 +42,7 @@
     "happeningNow": "仍在发生",
     "resolved": "已经恢复",
     "emptyTitle": "最近没有值得担心的事情",
-    "emptyDescription": "StatusOrbit 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
+    "emptyDescription": "CoreRobin 会忽略短暂波动，只把持续影响电脑的情况整理在这里。",
     "cpu": {
       "active": {
         "title": "电脑正在持续忙碌",
@@ -52,7 +52,7 @@
         "title": "电脑曾忙了一阵，现在已经恢复",
         "description": "这次高负荷持续约 {{duration}}，峰值约 {{value}}%，之后已回到正常范围。"
       },
-      "guidance": "如果仍然觉得卡，可以到“应用”查看是谁影响最大；StatusOrbit 不会自动关闭任何应用。"
+      "guidance": "如果仍然觉得卡，可以到“应用”查看是谁影响最大；CoreRobin 不会自动关闭任何应用。"
     },
     "memory": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%，高于 {{threshold}}% 已持续 {{duration}}。",
     "recoveredDetail": "已回落到 {{value}}%，本次告警持续 {{duration}}。"
   },
+  "actions": {
+    "eyebrow": "你执行过的操作",
+    "title": "操作与结果",
+    "description": "记录你确认执行的操作，并在可能时核对是否生效。",
+    "count": "最近 {{count}} 项",
+    "saved": "{{count}} 项已保存操作",
+    "emptyTitle": "还没有执行过操作",
+    "emptyDescription": "关闭应用、清理文件或管理启动项后，结果会显示在这里。",
+    "open": "查看",
+    "clear": "清除操作记录",
+    "kind": {
+      "process_close": "正常退出应用",
+      "process_restart": "重新启动应用",
+      "process_force_quit": "强制结束应用",
+      "cleanup_delete": "永久清理文件",
+      "startup_disable": "停用启动项",
+      "startup_enable": "恢复启动项"
+    },
+    "status": {
+      "running": "正在执行",
+      "succeeded": "已完成",
+      "partial": "部分完成",
+      "failed": "未完成",
+      "cancelled": "已取消",
+      "interrupted": "意外中断"
+    },
+    "verification": {
+      "pending": "正在核对结果",
+      "verified": "已重新核对系统状态",
+      "not_confirmed": "暂时无法确认最终状态"
+    },
+    "target": {
+      "application": "应用名称未保存",
+      "files": "已选择的文件",
+      "startup": "启动项名称未保存"
+    },
+    "cleanupResult": "处理 {{count}} 项，释放 {{size}}",
+    "cleanupFailed": "{{count}} 项未完成"
+  },
   "privacyEyebrow": "数据边界",
   "privacyTitle": "隐私说明",
-  "privacyLocal": "历史只保存在当前设备的 StatusOrbit WebView 存储中，不会上传或同步。",
-  "privacyCollected": "仅记录整机 CPU、内存百分比、磁盘和网络吞吐快照、资源超限与恢复事件；应用显示名只有在设置中单独允许后才会随事件保存。",
+  "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
+  "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
   "privacyExcluded": "不记录进程命令、用户、路径、文件名、本地或远端连接地址。",
   "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。"
 }

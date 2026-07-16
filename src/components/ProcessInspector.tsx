@@ -5,6 +5,7 @@ import {
   FileTerminal,
   GitFork,
   LoaderCircle,
+  RotateCw,
   ShieldCheck,
   UserRound,
   XCircle,
@@ -27,6 +28,8 @@ import {
   statusLabel,
 } from "../utils";
 import { ProcessHistory } from "./ProcessHistory";
+import { PathActions } from "./PathActions";
+import { Button } from "./Button";
 
 interface ProcessInspectorProps {
   selected: ProcessRow | null;
@@ -40,6 +43,7 @@ interface ProcessInspectorProps {
   preparingAction: boolean;
   onBestEffortOptInChange: (enabled: boolean) => void;
   onAction: (action: ProcessAction) => void;
+  onRestart: () => void;
 }
 
 export function ProcessInspector({
@@ -54,6 +58,7 @@ export function ProcessInspector({
   preparingAction,
   onBestEffortOptInChange,
   onAction,
+  onRestart,
 }: ProcessInspectorProps) {
   const { t } = useAppTranslation();
   if (selectionMissing) {
@@ -165,6 +170,10 @@ export function ProcessInspector({
         </div>
       ) : null}
 
+      {detail?.executable ? (
+        <PathActions className="inspector-path-actions" path={detail.executable} />
+      ) : null}
+
       <div className="inspector-actions">
         {protectedReason ? (
           <p className="action-guard"><ShieldCheck size={14} />{protectedReason}</p>
@@ -185,6 +194,13 @@ export function ProcessInspector({
             </label>
           </div>
         )}
+        <Button
+          variant="secondary"
+          disabled={!requestCloseEnabled || preparingAction || !detail?.executable}
+          onClick={onRestart}
+        >
+          <RotateCw size={14} />{t("process:inspector.restart")}
+        </Button>
         <button
           type="button"
           className="button button--secondary"

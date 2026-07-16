@@ -2,7 +2,7 @@
   "kicker": "Résumé de l'application",
   "overviewTitle": "Quelles applications ont le plus d'impact ?",
   "title": "Impact des ressources par application",
-  "description": "StatusOrbit regroupe les processus associés à des applications, puis affiche les totaux pour l'utilisation du CPU, de la mémoire et du disque.",
+  "description": "CoreRobin regroupe les processus associés à des applications, puis affiche les totaux pour l'utilisation du CPU, de la mémoire et du disque.",
   "viewAll": "Afficher toutes les applications",
   "search": "Rechercher une application",
   "searchPlaceholder": "Rechercher par nom d'application",
@@ -30,7 +30,7 @@
     "disk": "L'activité du disque est actuellement la principale cause ({{value}}). Les synchronisations, les téléchargements et les constructions peuvent tous entraîner des lectures et des écritures temporaires.",
     "balanced": "Aucune ressource n'est particulièrement problématique pour le moment, de sorte que l'impact global est faible.",
     "systemSafety": "Il s'agit d'un composant système. Ne le fermez pas directement ; examinez les preuves professionnelles avant de prendre des mesures si quelque chose semble anormal.",
-    "appSafety": "Il s'agit d'une application standard. StatusOrbit ne la fermera jamais automatiquement, et chaque action de fermeture nécessite une confirmation.",
+    "appSafety": "Il s'agit d'une application standard. CoreRobin ne la fermera jamais automatiquement, et chaque action de fermeture nécessite une confirmation.",
     "professionalDetails": "Inspectez les processus en mode professionnel"
   },
   "empty": "Aucune application correspondante",

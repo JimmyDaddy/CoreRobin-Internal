@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">CoreRobin application icon</title>
+  <rect width="512" height="512" rx="112" fill="#122038"/>
+  <g transform="translate(86 61) scale(1.34)">
+    <path fill="#DECDBB" d="M38 230 54 98 118 24h58l33 34-31 18 2 52-70 73Z"/>
+    <path fill="#F15A43" d="m110 201 68-125 2 52Z"/>
+  </g>
+</svg>

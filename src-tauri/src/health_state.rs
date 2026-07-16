@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CommandError;
 
-pub const HEALTH_STATE_SCHEMA_VERSION: u16 = 1;
-pub const HEALTH_STATE_EVENT: &str = "status-orbit:health-state-changed";
+pub const HEALTH_STATE_SCHEMA_VERSION: u16 = 2;
+pub const HEALTH_STATE_EVENT: &str = "core-robin:health-state-changed";
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -96,6 +96,8 @@ pub struct HealthStateUpdate {
     pub storage_available_bytes: Option<u64>,
     pub temperature_celsius: Option<f32>,
     pub battery_percent: Option<f32>,
+    pub battery_health_percent: Option<f32>,
+    pub battery_cycle_count: Option<u64>,
     pub battery_state: BatteryState,
 }
 
@@ -151,7 +153,10 @@ fn validate_update(update: &HealthStateUpdate) -> Result<(), CommandError> {
         && (update.active_count == 0
             || matches!(update.health, HealthLevel::Attention | HealthLevel::Urgent))
         && update.memory_percent.is_finite()
-        && (0.0..=100.0).contains(&update.memory_percent);
+        && (0.0..=100.0).contains(&update.memory_percent)
+        && update
+            .battery_health_percent
+            .is_none_or(|value| value.is_finite() && (0.0..=100.0).contains(&value));
     if valid {
         Ok(())
     } else {
@@ -201,6 +206,8 @@ mod tests {
             storage_available_bytes: Some(100),
             temperature_celsius: Some(55.0),
             battery_percent: Some(80.0),
+            battery_health_percent: Some(94.0),
+            battery_cycle_count: Some(173),
             battery_state: BatteryState::Discharging,
         }
     }

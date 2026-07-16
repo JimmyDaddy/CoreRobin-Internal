@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800" role="img" aria-labelledby="title desc">
+  <title id="title">CoreRobin logo concepts, robin without mascot</title>
+  <desc id="desc">Six restrained robin-derived CoreRobin logo directions using compact silhouettes, folded forms, negative space, and letterforms.</desc>
+
+  <rect width="1800" height="1800" fill="#FFFFFF"/>
+
+  <defs>
+    <style>
+      .ink-fill { fill: #132033; }
+      .accent-fill { fill: #E85D45; }
+      .ink-stroke { fill: none; stroke: #132033; stroke-linecap: round; stroke-linejoin: round; }
+      .accent-stroke { fill: none; stroke: #E85D45; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 28px; font-weight: 700; }
+      .name { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 45px; font-weight: 650; letter-spacing: -1.4px; }
+      .caption { fill: #667085; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 18px; font-weight: 500; letter-spacing: .4px; }
+      .micro { fill: #98A2B3; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; letter-spacing: .5px; }
+    </style>
+
+    <!-- AK · Calm profile: one compact silhouette, no eye or feet -->
+    <symbol id="mark-ak" viewBox="0 0 300 300">
+      <path class="ink-fill" d="M55 187C46 143 67 104 106 85C132 73 160 72 181 81C185 55 207 40 231 46C257 53 270 80 260 104C253 120 239 130 223 134C228 176 207 216 170 235C127 256 67 231 55 187Z"/>
+      <path class="accent-fill" d="M73 171C94 209 141 229 183 206C166 237 132 247 103 233C80 222 68 198 73 171Z"/>
+      <rect class="ink-fill" x="238" y="84" width="36" height="15" rx="7.5"/>
+    </symbol>
+
+    <!-- AL · Tucked in C: robin character contained by Core -->
+    <symbol id="mark-al" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="27" d="M224 70C204 51 177 41 148 41C88 41 40 89 40 150C40 211 88 259 148 259C180 259 207 248 227 226"/>
+      <circle class="ink-fill" cx="203" cy="102" r="31"/>
+      <circle class="accent-fill" cx="165" cy="174" r="42"/>
+      <rect class="ink-fill" x="223" y="96" width="35" height="14" rx="7"/>
+    </symbol>
+
+    <!-- AM · Robin R: brand initial with a quiet breast counter -->
+    <symbol id="mark-am" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="27" d="M82 235V57H166C214 57 240 82 240 119C240 157 212 179 168 179H82M171 179C205 195 225 214 238 237"/>
+      <circle class="accent-fill" cx="150" cy="119" r="30"/>
+      <rect class="ink-fill" x="227" y="102" width="39" height="15" rx="7.5"/>
+    </symbol>
+
+    <!-- AN · Folded robin: breast and back as two calm fields -->
+    <symbol id="mark-an" viewBox="0 0 300 300">
+      <path class="ink-fill" d="M49 220C69 129 135 56 248 58C238 159 174 232 67 241Z"/>
+      <path class="accent-fill" d="M68 211C111 221 163 194 201 146C178 205 129 239 75 235Z"/>
+      <path fill="#FFFFFF" d="M95 200C128 177 161 141 201 88C173 136 142 171 105 200Z"/>
+    </symbol>
+
+    <!-- AO · One-line robin: profile reduced to a single calm contour -->
+    <symbol id="mark-ao" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="21" d="M53 222C78 195 76 149 100 113C119 84 151 70 180 80C187 55 207 42 228 49C252 57 263 83 252 104C244 119 231 128 215 131C221 176 193 220 149 235C111 248 75 239 53 222Z"/>
+      <path class="accent-stroke" stroke-width="18" d="M82 180C102 213 140 226 176 207"/>
+      <rect class="ink-fill" x="232" y="83" width="35" height="15" rx="7.5"/>
+    </symbol>
+  </defs>
+
+  <text x="70" y="72" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="-1">CoreRobin · Robin, not mascot</text>
+  <text x="70" y="108" fill="#667085" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" font-weight="500">Compact silhouettes · folded forms · no eyes, feet, or wingspreads</text>
+
+  <!-- AK -->
+  <g transform="translate(0 150)">
+    <text class="label" x="58" y="42">AK</text>
+    <use href="#mark-ak" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">calm profile</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-ak" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-ak" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AL -->
+  <g transform="translate(600 150)">
+    <text class="label" x="58" y="42">AL</text>
+    <use href="#mark-al" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">tucked in C</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-al" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-al" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AM -->
+  <g transform="translate(1200 150)">
+    <text class="label" x="58" y="42">AM</text>
+    <use href="#mark-am" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">robin R</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-am" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-am" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AN -->
+  <g transform="translate(0 690)">
+    <text class="label" x="58" y="42">AN</text>
+    <use href="#mark-an" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">folded robin</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-an" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-an" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AO -->
+  <g transform="translate(600 690)">
+    <text class="label" x="58" y="42">AO</text>
+    <use href="#mark-ao" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">one-line robin</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-ao" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-ao" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AP · Integrated R wordmark -->
+  <g transform="translate(1200 690)">
+    <text class="label" x="58" y="42">AP</text>
+    <g transform="translate(58 101)">
+      <text x="0" y="124" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="70" font-weight="600" letter-spacing="-2.8">Core</text>
+      <path class="ink-stroke" stroke-width="12" d="M174 124V58H205C228 58 240 69 240 87C240 105 227 115 206 115H174M206 115C221 121 231 130 238 142"/>
+      <circle class="accent-fill" cx="204" cy="87" r="11"/>
+      <text x="244" y="124" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="70" font-weight="600" letter-spacing="-2.8">obin</text>
+    </g>
+    <text class="caption" x="300" y="388" text-anchor="middle">integrated robin R</text>
+    <text class="micro" x="300" y="423" text-anchor="middle">bird cue stays inside the wordmark</text>
+  </g>
+
+  <text x="70" y="1334" fill="#98A2B3" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="500">No ECG line, shield, orbit, network nodes, eye detail, or open-wing pose.</text>
+</svg>

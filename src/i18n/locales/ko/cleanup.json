@@ -13,7 +13,7 @@
   "access": {
     "kicker": "검사 시작 전",
     "title": "전체 시스템 디스크 접근 허용",
-    "description": "macOS는 Mail, Messages 및 기타 앱 데이터를 보호합니다. 전체 디스크 접근을 활성화하면 SpaceMap이 가능한 한 완전하게 스캔됩니다. StatusOrbit는 파일 이름, 크기 및 날짜와 같은 메타데이터만 읽습니다.",
+    "description": "macOS는 Mail, Messages 및 기타 앱 데이터를 보호합니다. 전체 디스크 접근을 활성화하면 SpaceMap이 가능한 한 완전하게 스캔됩니다. CoreRobin는 파일 이름, 크기 및 날짜와 같은 메타데이터만 읽습니다.",
     "checking": "접근 권한 확인 중…",
     "checkingReturn": "접근 권한 확인 완료…",
     "openSettings": "전체 디스크 접근 설정 열기",
@@ -21,15 +21,15 @@
     "revealApp": "Finder에서 앱 표시",
     "checkAgain": "접근 허용됨 — 다시 확인",
     "continueLimited": "접근 가능한 영역을 검색합니다",
-    "waiting": "시스템 설정이 열려 있습니다. 'StatusOrbit'가 보이지 않으면 목록 아래의 '+'를 클릭하여 'StatusOrbit.app'를 선택하고 활성화한 후 자동으로 다시 검색을 시작할 수 있습니다.",
+    "waiting": "시스템 설정이 열려 있습니다. 'CoreRobin'가 보이지 않으면 목록 아래의 '+'를 클릭하여 'CoreRobin.app'를 선택하고 활성화한 후 자동으로 다시 검색을 시작할 수 있습니다.",
     "unknown": "접근 권한을 확인할 수 없습니다. 시스템 설정을 열거나 제한적인 검색을 수행할 수 있습니다.",
-    "bundleRequired": "먼저 'StatusOrbit.app'를 실행하십시오",
+    "bundleRequired": "먼저 'CoreRobin.app'를 실행하십시오",
     "bundleMissingTitle": "이 프로세스를 접근 목록에 추가할 수 없습니다",
-    "bundleMissingDescription": "macOS에서 이 위치에서 개발 프로세스에 대한 권한을 부여할 수 없습니다. 'StatusOrbit.app'를 설치하고 응용 프로그램 폴더에서 다시 실행하십시오. 제한적인 검색은 여전히 가능합니다.",
-    "privacy": "macOS가 이 권한을 제어하며, 필요에 따라 언제든지 비활성화할 수 있습니다. 'StatusOrbit'는 스캔 중에 파일 내용을 읽거나 파일을 변경하지 않습니다.",
+    "bundleMissingDescription": "macOS에서 이 위치에서 개발 프로세스에 대한 권한을 부여할 수 없습니다. 'CoreRobin.app'를 설치하고 응용 프로그램 폴더에서 다시 실행하십시오. 제한적인 검색은 여전히 가능합니다.",
+    "privacy": "macOS가 이 권한을 제어하며, 필요에 따라 언제든지 비활성화할 수 있습니다. 'CoreRobin'는 스캔 중에 파일 내용을 읽거나 파일을 변경하지 않습니다.",
     "steps": {
       "open": "시스템 설정을 엽니다",
-      "add": "'+'를 클릭하고 'StatusOrbit.app'를 선택합니다",
+      "add": "'+'를 클릭하고 'CoreRobin.app'를 선택합니다",
       "return": "활성화하고 다시 시작합니다"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "결과 새로 고침",
     "cached": {
       "title": "이전 스캔 복원",
-      "description": "다른 스캔 결과를 기다리지 않고 계속 탐색할 수 있습니다. StatusOrbit는 브라우징 시에만 디렉터리의 변경 사항을 확인합니다."
+      "description": "다른 스캔 결과를 기다리지 않고 계속 탐색할 수 있습니다. CoreRobin는 브라우징 시에만 디렉터리의 변경 사항을 확인합니다."
     },
     "expired": {
       "title": "결과가 24시간 이상 오래되었습니다",
-      "description": "StatusOrbit는 지도를 유지하여 계속 탐색할 수 있도록 합니다. 정리 작업을 수행하기 전에 새로 고침하십시오."
+      "description": "CoreRobin는 지도를 유지하여 계속 탐색할 수 있도록 합니다. 정리 작업을 수행하기 전에 새로 고침하십시오."
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "약 {{size}} 건 삭제 완료",
     "cancelDelete": "삭제를 취소",
     "cancelling": "삭제 중…",
-    "cancelHint": "완료된 삭제는 복구할 수 없습니다. StatusOrbit는 현재 파일 작업이 끝난 뒤 삭제를 중단합니다.",
+    "cancelHint": "완료된 삭제는 복구할 수 없습니다. CoreRobin는 현재 파일 작업이 끝난 뒤 삭제를 중단합니다.",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit는 홈 디렉토리 또는 쓰레기 폴더 자체를 삭제하지 않습니다.",
-      "cleanup_target_outside_home": "안전을 위해, StatusOrbit는 개인 폴더 내의 콘텐츠만 처리합니다.",
-      "cleanup_cross_filesystem": "선택한 폴더가 다른 디스크나 마운트 지점을 포함하여, StatusOrbit는 재귀 삭제를 거부했습니다.",
-      "cleanup_target_changed": "확인 후 파일이 변경되어, StatusOrbit는 삭제 작업을 수행하지 않았습니다. 취소하고 다시 확인해 주세요.",
+      "protected_cleanup_path": "CoreRobin는 홈 디렉토리 또는 쓰레기 폴더 자체를 삭제하지 않습니다.",
+      "cleanup_target_outside_home": "안전을 위해, CoreRobin는 개인 폴더 내의 콘텐츠만 처리합니다.",
+      "cleanup_cross_filesystem": "선택한 폴더가 다른 디스크나 마운트 지점을 포함하여, CoreRobin는 재귀 삭제를 거부했습니다.",
+      "cleanup_target_changed": "확인 후 파일이 변경되어, CoreRobin는 삭제 작업을 수행하지 않았습니다. 취소하고 다시 확인해 주세요.",
       "cleanup_confirmation_unavailable": "이 확인 기능은 더 이상 사용할 수 없습니다. 취소하고 다시 확인해 주세요.",
       "cleanup_confirmation_expired": "이 확인 기능이 만료되었습니다. 현재 파일들을 다시 확인해 주세요.",
       "cleanup_target_unavailable": "일부 콘텐츠가 존재하지 않거나 접근할 수 없습니다. 다시 스캔하고 시도해 보세요.",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "읽기 전용 앱 목록",
     "title": "오래 사용하지 않은 앱",
-    "boundary": "macOS에서 6개월 이상 사용되지 않은 앱만 포함됩니다; StatusOrbit는 자동으로 제거하지 않습니다",
+    "boundary": "macOS에서 6개월 이상 사용되지 않은 앱만 포함됩니다; CoreRobin는 자동으로 제거하지 않습니다",
     "lastUsed": "마지막으로 사용한 {{date}} · 아직 열지 않은 상태에서 {{days}} 일",
     "none": "6개월 이상 사용하지 않은 앱을 확인할 수 없습니다.",
     "unavailable": "현재 이 플랫폼에서는 앱의 마지막 사용 시간을 정확하게 표시할 수 없습니다.",
-    "unknownExcluded": "{{count}} 다른 앱의 마지막 사용 날짜 정보는 확인되지 않아, StatusOrbit에서 사용하지 않는 앱으로 분류하지 않았습니다."
+    "unknownExcluded": "{{count}} 다른 앱의 마지막 사용 날짜 정보는 확인되지 않아, CoreRobin에서 사용하지 않는 앱으로 분류하지 않았습니다."
   },
   "reviewFirst": "각 파일을 개별적으로 확인",
   "largestFiles": "시스템 디스크에 있는 큰 파일들",
   "largeFileBoundary": "500MB 이상의 파일만 표시되며, 자동 삭제는 권장되지 않습니다.",
   "noLargeFiles": "500MB 이상의 파일이 접근 가능한 시스템 디스크 위치에서 발견되지 않았습니다.",
   "unreadable": "{{count}} 위치가 보호되었거나 일시적으로 읽을 수 없는 상태입니다. 해당 위치만 결과에서 제외됩니다.",
-  "fullDiskAccessHint": "macOS에서는 시스템 설정 → 개인 정보 및 보안에서 StatusOrbit에 전체 디스크 접근 권한을 부여한 후 다시 스캔하십시오.",
+  "fullDiskAccessHint": "macOS에서는 시스템 설정 → 개인 정보 및 보안에서 CoreRobin에 전체 디스크 접근 권한을 부여한 후 다시 스캔하십시오.",
   "safetyBoundary": "스캔에는 시간 또는 항목 제한이 없으며, 심볼릭 링크를 따르지 않습니다. 바구니에 추가되고, 경로가 확인되었으며, 명시적으로 확인된 항목만 영구적으로 삭제되며, 복구가 불가능합니다."
 }

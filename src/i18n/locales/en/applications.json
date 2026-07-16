@@ -2,7 +2,7 @@
   "kicker": "Application summary",
   "overviewTitle": "What has the most impact now",
   "title": "Application resource impact",
-  "description": "StatusOrbit groups helper processes under familiar application names, then totals CPU, memory, and disk activity.",
+  "description": "CoreRobin groups helper processes under familiar application names, then totals CPU, memory, and disk activity.",
   "viewAll": "View all apps",
   "search": "Search applications",
   "searchPlaceholder": "Search by application name",
@@ -30,7 +30,7 @@
     "disk": "Disk activity is the main impact right now ({{value}}). Sync, downloads, and builds can all cause temporary reads and writes.",
     "balanced": "No single resource stands out right now, so the overall impact is low.",
     "systemSafety": "This is a system component. Do not quit it directly; inspect professional evidence first if something looks wrong.",
-    "appSafety": "This is a regular app. StatusOrbit will never close it automatically, and every quit action still requires confirmation.",
+    "appSafety": "This is a regular app. CoreRobin will never close it automatically, and every quit action still requires confirmation.",
     "professionalDetails": "Inspect processes in professional mode"
   },
   "empty": "No matching applications",

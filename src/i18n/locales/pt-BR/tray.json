@@ -2,8 +2,14 @@
   "localMonitor": "Monitor do sistema local",
   "available": "Espaço disponível",
   "open": "Visão geral",
-  "companion": "Assistente Orbit",
+  "companion": "Assistente Robin",
   "cleanup": "Limpeza de espaço",
+  "quit": "Sair do aplicativo",
+  "updatedAt": "Atualizado às {{time}}",
+  "dataMode": {
+    "foreground": "Amostragem em primeiro plano",
+    "background": "Amostragem em segundo plano"
+  },
   "health": {
     "loading": "Conectando",
     "observing": "Analisando status",
@@ -26,11 +32,11 @@
     },
     "attention": {
       "title": "Um recurso requer monitoramento",
-      "description": "Abra o StatusOrbit para ver a causa e as instruções."
+      "description": "Abra o CoreRobin para ver a causa e as instruções."
     },
     "urgent": {
       "title": "Um recurso está com problemas",
-      "description": "Revise as informações no StatusOrbit antes de tomar qualquer medida."
+      "description": "Revise as informações no CoreRobin antes de tomar qualquer medida."
     }
   },
   "reason": "{{resource}} requer atenção",

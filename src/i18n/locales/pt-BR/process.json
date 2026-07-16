@@ -56,10 +56,11 @@
     "launchCommand": "Comando de lançamento",
     "stableHandle": "Confirmação vincula um handle temporário e de uso único do sistema operacional; a execução não procura novamente o alvo pelo PID.",
     "unavailableControl": "Controle seguro do processo não está disponível nesta plataforma.",
-    "bestEffort": "O macOS não pode fornecer um handle de sinal estável para cada processo. O StatusOrbit verifica a identidade de lançamento antes de enviar o sinal, mas o direcionamento via PID continua sendo de melhor esforço.",
+    "bestEffort": "O macOS não pode fornecer um handle de sinal estável para cada processo. O CoreRobin verifica a identidade de lançamento antes de enviar o sinal, mas o direcionamento via PID continua sendo de melhor esforço.",
     "allowBestEffort": "Permitir ações do processo com tentativa.",
     "binding": "Vinculando…",
     "requestClose": "Solicitar saída",
+    "restart": "Reiniciar aplicativo",
     "forceKill": "Forçar encerramento…"
   },
   "history": {

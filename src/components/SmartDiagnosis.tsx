@@ -29,6 +29,7 @@ import type {
 } from "../diagnosis";
 import { formatBytes, formatPercent, formatRate } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { AnimatedRobin } from "./AnimatedRobin";
 
 interface SmartDiagnosisProps {
   result: SmartDiagnosisResult;
@@ -89,8 +90,15 @@ export function SmartDiagnosis({
       aria-labelledby="smart-diagnosis-title"
     >
       <div className="smart-diagnosis__hero">
-        <span className="smart-diagnosis__status-icon" aria-hidden="true">
-          <StatusIcon size={22} strokeWidth={1.9} />
+        <span className="smart-diagnosis__robin" aria-hidden="true">
+          <AnimatedRobin
+            active={result.status === "observing" || connectionScanLoading}
+            mood={result.status === "healthy" ? "normal" : result.status}
+            size={88}
+          />
+          <span className="smart-diagnosis__status-icon">
+            <StatusIcon size={14} strokeWidth={2} />
+          </span>
         </span>
         <div className="smart-diagnosis__message">
           <span>{t("diagnosis:kicker")}</span>

@@ -19,6 +19,7 @@ import {
 } from "../deviceWellbeing";
 import type { ApplicationImpact } from "../diagnosis";
 import type { SensorsSnapshot } from "../types";
+import { formatPercent } from "../utils";
 
 export function DeviceWellbeing({
   sensors,
@@ -27,7 +28,7 @@ export function DeviceWellbeing({
   sensors: SensorsSnapshot;
   applications?: readonly ApplicationImpact[];
 }) {
-  const { t } = useAppTranslation();
+  const { t, i18n } = useAppTranslation();
   const temperatureLevel = temperatureWellbeingLevel(sensors.temperature);
   const batteryLevel = batteryWellbeingLevel(sensors.battery);
   const sleepLevel = sleepWellbeingLevel(sensors.sleep, applications);
@@ -64,6 +65,20 @@ export function DeviceWellbeing({
               ? `${sensors.battery.chargePercent.toFixed(0)}%`
               : t("wellbeing:battery.notPresent")}</strong>
             <p>{batteryDescription(sensors, batteryLevel, t)}</p>
+            <dl className="device-wellbeing__battery-facts">
+              <div>
+                <dt>{t("wellbeing:battery.healthLabel")}</dt>
+                <dd>{sensors.battery.healthPercent === null
+                  ? t("common:unavailable")
+                  : formatPercent(sensors.battery.healthPercent)}</dd>
+              </div>
+              <div>
+                <dt>{t("wellbeing:battery.cycleCountLabel")}</dt>
+                <dd>{sensors.battery.cycleCount === null
+                  ? t("common:unavailable")
+                  : sensors.battery.cycleCount.toLocaleString(i18n.resolvedLanguage)}</dd>
+              </div>
+            </dl>
           </div>
         </article>
         <article className={`is-${sleepLevel}`}>

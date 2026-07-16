@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "인터페이스 언어",
-    "description": "StatusOrbit 메뉴, 안내 및 상태 텍스트를 변경합니다.",
+    "description": "CoreRobin 메뉴, 안내 및 상태 텍스트를 변경합니다.",
     "label": "언어"
   },
   "background": {
     "title": "배경 및 데스크톱 설정",
-    "description": "StatusOrbit가 실행되는 방식, 로그인 시 자동 시작 여부, Orbit 표시 설정을 제어합니다.",
+    "description": "CoreRobin가 실행되는 방식, 로그인 시 자동 시작 여부, Robin 표시 설정을 제어합니다.",
     "showDockIcon": "도크 아이콘 표시",
     "showDockIconDescription": "비활성화 상태에서는 도크 또는 앱 스위처를 사용하지 않고 메뉴 막대를 사용합니다.",
     "launchAtLogin": "로그인 시 자동 시작",
     "launchAtLoginDescription": "메뉴 막 서비스가 자동으로 실행되지만, 메인 창을 열지 않습니다.",
-    "companionShowOnStartup": "시작 시 Orbit를 데스크톱에 표시",
-    "companionShowOnStartupDescription": "앱이 시작될 때 Orbit 컴패니언을 표시합니다",
-    "companionAlwaysOnTop": "Orbit를 다른 창 위에 표시합니다",
-    "companionAlwaysOnTopDescription": "다른 창 위에 표시되도록 유지합니다. 끄면 Orbit가 가려질 수 있습니다"
+    "companionShowOnStartup": "시작 시 Robin를 데스크톱에 표시",
+    "companionShowOnStartupDescription": "앱이 시작될 때 Robin 컴패니언을 표시합니다",
+    "companionAlwaysOnTop": "Robin를 다른 창 위에 표시합니다",
+    "companionAlwaysOnTopDescription": "다른 창 위에 표시되도록 유지합니다. 끄면 Robin가 가려질 수 있습니다"
   },
   "sampling": {
     "title": "시스템 샘플링",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "데스크톱 알림",
-    "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. StatusOrbit는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
+    "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. CoreRobin는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
     "enable": "제한적인 알림 활성화",
     "categories": "알림 설정 가능한 카테고리",
     "resources": {

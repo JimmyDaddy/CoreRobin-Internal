@@ -2,7 +2,7 @@
   "kicker": "Anwendungsübersicht",
   "overviewTitle": "Welche Anwendung hat den größten Einfluss?",
   "title": "Ressourcenverbrauch der Anwendungen",
-  "description": "StatusOrbit gruppiert Hilfsprozesse unter bekannten Anwendungsnamen und zeigt dann die Gesamtaktivität für CPU, Speicher und Festplatte an.",
+  "description": "CoreRobin gruppiert Hilfsprozesse unter bekannten Anwendungsnamen und zeigt dann die Gesamtaktivität für CPU, Speicher und Festplatte an.",
   "viewAll": "Alle Anwendungen anzeigen",
   "search": "Anwendungen suchen",
   "searchPlaceholder": "Nach Anwendungsname suchen",
@@ -30,7 +30,7 @@
     "disk": "Hohe Festplattenaktivität ist aktuell der Hauptgrund ({{value}}). Synchronisierungen, Downloads und Builds können temporäre Lese- und Schreibvorgänge verursachen.",
     "balanced": "Ein einzelner Ressourceneinsatz sticht aktuell nicht hervor, sodass die Gesamtauswirkung gering ist.",
     "systemSafety": "Dies ist ein Systemprozess. Schließen Sie ihn nicht direkt; prüfen Sie professionelle Informationen, falls etwas ungewöhnlich erscheint.",
-    "appSafety": "Dies ist eine normale Anwendung. StatusOrbit schließt sie niemals automatisch und jede Schließaktion erfordert eine separate Bestätigung.",
+    "appSafety": "Dies ist eine normale Anwendung. CoreRobin schließt sie niemals automatisch und jede Schließaktion erfordert eine separate Bestätigung.",
     "professionalDetails": "Überprüfen Sie Prozesse im erweiterten Modus"
   },
   "empty": "Keine passende Anwendung gefunden",

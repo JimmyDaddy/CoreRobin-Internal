@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "Orbitコンパニオンを表示",
-    "hide": "Orbitコンパニオンを非表示"
+    "show": "Robinコンパニオンを表示",
+    "hide": "Robinコンパニオンを非表示"
   },
   "technicalOverview": {
     "title": "リアルタイムのリソース詳細を表示",

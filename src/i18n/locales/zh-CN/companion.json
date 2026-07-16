@@ -1,9 +1,9 @@
 {
-  "kicker": "Orbit 小伙伴",
-  "dragHint": "拖动 Orbit 移动；悬停查看状态；右键打开菜单",
-  "expand": "打开 Orbit 小伙伴",
-  "collapse": "收起 Orbit 小伙伴",
-  "menu": "Orbit 小伙伴菜单",
+  "kicker": "Robin 小伙伴",
+  "dragHint": "拖动 Robin 移动；悬停查看状态；右键打开菜单",
+  "expand": "打开 Robin 小伙伴",
+  "collapse": "收起 Robin 小伙伴",
+  "menu": "Robin 小伙伴菜单",
   "hide": "隐藏小伙伴",
   "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
   "action": {

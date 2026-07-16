@@ -1,4 +1,4 @@
-export const SNAPSHOT_SCHEMA_VERSION = 6;
+export const SNAPSHOT_SCHEMA_VERSION = 7;
 
 export interface SystemSnapshot {
   schemaVersion: number;
@@ -63,6 +63,8 @@ export interface TemperatureSnapshot {
 export interface BatterySnapshot {
   present: boolean;
   chargePercent: number | null;
+  healthPercent: number | null;
+  cycleCount: number | null;
   state: BatteryState;
   timeRemainingMinutes: number | null;
   powerSource: PowerSource;
@@ -545,6 +547,8 @@ export interface CommandError {
   code: string;
   message: string;
 }
+
+export type SystemSettingsDestination = "login_items" | "battery" | "network";
 
 export interface HistoryPoint {
   timestamp: number;

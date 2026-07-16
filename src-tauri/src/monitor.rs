@@ -524,7 +524,7 @@ fn collapse_macos_system_volume_group(mut volumes: Vec<VolumeSnapshot>) -> Vec<V
 
 pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
     if pid == own_pid {
-        Some("StatusOrbit cannot terminate itself.")
+        Some("CoreRobin cannot terminate itself.")
     } else if pid <= 1 {
         Some("This critical system process is protected.")
     } else {
@@ -568,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn accumulates_network_counters_for_the_current_status_orbit_session() {
+    fn accumulates_network_counters_for_the_current_core_robin_session() {
         let mut counters = NetworkSessionCounters::default();
         counters.record(1_024, 512, 10, 5, 1, 0);
         counters.record(2_048, 256, 20, 4, 0, 2);

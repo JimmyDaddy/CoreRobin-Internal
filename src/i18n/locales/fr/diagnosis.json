@@ -4,7 +4,7 @@
   "collapse": "Masquer le diagnostic",
   "checkedLabel": "Le diagnostic intelligent est activé",
   "thisDisk": "Disque système",
-  "safety": "StatusOrbit ne prend jamais d'actions automatiquement. Les actions recommandées nécessitent toujours votre confirmation, et la fermeture forcée reste en mode professionnel.",
+  "safety": "CoreRobin ne prend jamais d'actions automatiquement. Les actions recommandées nécessitent toujours votre confirmation, et la fermeture forcée reste en mode professionnel.",
   "duration": "pour {{seconds}} secondes",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "Votre ordinateur pourrait être lent",
-      "summary": "StatusOrbit a détecté des problèmes de performance possibles ({{count}}). Cliquez sur cette carte pour en savoir plus."
+      "summary": "CoreRobin a détecté des problèmes de performance possibles ({{count}}). Cliquez sur cette carte pour en savoir plus."
     },
     "urgent": {
       "title": "Une attention est nécessaire rapidement",
-      "summary": "StatusOrbit a détecté des problèmes de performance importants ({{count}}). Examinez les informations avant d'agir."
+      "summary": "CoreRobin a détecté des problèmes de performance importants ({{count}}). Examinez les informations avant d'agir."
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "Demander à {{name}} de quitter",
-      "description": "C'est l'action la plus douce disponible. StatusOrbit vérifie l'identité du processus et affiche une confirmation avant toute action.",
+      "description": "C'est l'action la plus douce disponible. CoreRobin vérifie l'identité du processus et affiche une confirmation avant toute action.",
       "action": "Demander à {{name}} de quitter"
     },
     "open_cleanup": {
@@ -112,22 +112,25 @@
     },
     "inspect_process": {
       "title": "Examiner les éléments disponibles",
-      "description": "StatusOrbit ne propose pas d'action directe ici. Vérifiez l'identité de l'application, les modifications des ressources et la raison de la protection en premier.",
+      "description": "CoreRobin ne propose pas d'action directe ici. Vérifiez l'identité de l'application, les modifications des ressources et la raison de la protection en premier.",
       "action": "Examiner les preuves détaillées"
     },
     "inspectEvidence": "Examiner les preuves de l'application",
     "preparing": "Vérification…",
-    "actionUnavailable": "StatusOrbit n'a pas pu vérifier ou contrôler cette application en toute sécurité, donc aucune modification n'a été effectuée."
+    "actionUnavailable": "CoreRobin n'a pas pu vérifier ou contrôler cette application en toute sécurité, donc aucune modification n'a été effectuée."
   },
   "actionDialog": {
     "title": "Demander à {{name}} de quitter?",
-    "description": "StatusOrbit enverra une demande de fermeture normale. C'est l'action douce, et non la fermeture forcée.",
+    "description": "CoreRobin enverra une demande de fermeture normale. C'est l'action douce, et non la fermeture forcée.",
+    "restartTitle": "Redémarrer {{name}} ?",
+    "restartDescription": "CoreRobin demandera à l’application de se fermer normalement, puis rouvrira son paquet vérifié.",
     "safeTitle": "Ne supprime pas l'application ni ses fichiers",
     "safeDescription": "Cela ne demande qu'à l'application en cours d'exécution de s'arrêter et ne nettoie pas ses données.",
     "riskTitle": "Sauvegardez d'abord tout ce que vous modifiez",
     "riskDescription": "La présence d'une demande de sauvegarde dépend de l'application ; la perte de données non sauvegardées est toujours possible.",
     "stableIdentity": "Une identité stable est associée au processus sélectionné et sera vérifiée avant l'exécution.",
-    "bestEffortIdentity": "Cette plateforme ne peut réduire que le risque de réutilisation des PID grâce aux vérifications d'identité. StatusOrbit refuse l'action si le processus a changé.",
-    "confirm": "Confirmer la demande de fermeture pour {{name}}"
+    "bestEffortIdentity": "Cette plateforme ne peut réduire que le risque de réutilisation des PID grâce aux vérifications d'identité. CoreRobin refuse l'action si le processus a changé.",
+    "confirm": "Confirmer la demande de fermeture pour {{name}}",
+    "confirmRestart": "Redémarrer {{name}}"
   }
 }

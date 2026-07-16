@@ -15,8 +15,13 @@ import { createAsyncListenerRegistry } from "../asyncListener";
 import type { HealthStateSnapshot } from "../healthState";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
+import {
+  LEGACY_STORAGE_KEYS,
+  readMigratedStorageItem,
+} from "../storageMigration";
+import { AnimatedRobin } from "./AnimatedRobin";
 
-const COMPANION_POSITION_KEY = "status-orbit.companion-position.v1";
+const COMPANION_POSITION_KEY = "core-robin.companion-position.v1";
 const COMPANION_EXPANDED_LOGICAL_SIZE = { width: 386, height: 92 };
 const COMPANION_HOVER_COLLAPSE_DELAY_MS = 220;
 type CompanionHealth = HealthStateSnapshot["health"] | "loading";
@@ -33,7 +38,7 @@ const nativeCompanionDailyBridge: CompanionDailyBridge = {
   showMainWindow: () => invoke("show_main_window"),
   openDaily: (target, occurrenceId) => emitTo(
     "main",
-    "status-orbit:open-daily",
+    "core-robin:open-daily",
     occurrenceId ? { view: target, occurrenceId } : target,
   ),
 };
@@ -41,7 +46,7 @@ const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
   && getCurrentWindow().label === "companion";
 
-export function OrbitCompanionWindow() {
+export function RobinCompanionWindow() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
   const previewExpanded = !desktopRuntime
@@ -105,7 +110,11 @@ export function OrbitCompanionWindow() {
         y: workArea.position.y + workArea.size.height - size.height - 18,
       };
       try {
-        const saved = JSON.parse(window.localStorage.getItem(COMPANION_POSITION_KEY) ?? "null") as unknown;
+        const saved = JSON.parse(readMigratedStorageItem(
+          window.localStorage,
+          COMPANION_POSITION_KEY,
+          LEGACY_STORAGE_KEYS.companionPosition,
+        ) ?? "null") as unknown;
         if (isSavedPosition(saved)) position = saved;
       } catch {
         // Use the safe bottom-right default when storage is unavailable.
@@ -158,7 +167,7 @@ export function OrbitCompanionWindow() {
       }),
     );
     listeners.register(
-      listen("status-orbit:companion-collapse", () => {
+      listen("core-robin:companion-collapse", () => {
         if (listeners.disposed) return;
         contextMenuOpenRef.current = false;
         setContextMenuOpen(false);
@@ -166,8 +175,8 @@ export function OrbitCompanionWindow() {
         setExpanded(false);
       }),
     );
-    listeners.register(listen("status-orbit:companion-enter", playEntrance));
-    listeners.register(listen("status-orbit:companion-exit", playExit));
+    listeners.register(listen("core-robin:companion-enter", playEntrance));
+    listeners.register(listen("core-robin:companion-exit", playExit));
     void companionWindow.isVisible().then((visible) => {
       if (!listeners.disposed && visible) playEntrance();
     });
@@ -263,13 +272,13 @@ export function OrbitCompanionWindow() {
     <main className={`companion-surface is-${health} ${expanded ? "is-expanded" : "is-collapsed"}${visibilityPhase === "idle" ? "" : ` is-${visibilityPhase}`} ${desktopRuntime ? "" : "is-preview"}`}>
       <section
         ref={shellRef}
-        className="orbit-buddy-shell"
+        className="robin-buddy-shell"
         onMouseEnter={expandFromHover}
         onMouseLeave={collapseFromHover}
         onContextMenu={openContextMenu}
       >
         <div
-          className="orbit-buddy-mascot"
+          className="robin-buddy-mascot"
           data-tauri-drag-region
           role="button"
           tabIndex={0}
@@ -278,25 +287,22 @@ export function OrbitCompanionWindow() {
           onMouseDown={beginDragging}
           onKeyDown={handleMascotKeyDown}
         >
-          <span className="orbit-buddy-halo" data-tauri-drag-region />
-          <span className="orbit-buddy-antenna" data-tauri-drag-region><i /></span>
-          <span
-            className="orbit-buddy-face"
-            data-tauri-drag-region
-          >
-            <span className="orbit-buddy-eyes" aria-hidden="true"><i /><i /></span>
-            <span className="orbit-buddy-mouth" aria-hidden="true" />
-          </span>
-          <span className="orbit-buddy-moon" data-tauri-drag-region />
-          <span className="orbit-buddy-status" aria-hidden="true" />
+          <AnimatedRobin
+            active={health === "loading"}
+            className="robin-buddy-character"
+            dragRegion
+            mood={health}
+            size="100%"
+          />
+          <span className="robin-buddy-status" aria-hidden="true" />
         </div>
 
-        {contextMenuOpen ? <div className="orbit-buddy-menu" role="menu" aria-label={t("companion:menu")}>
+        {contextMenuOpen ? <div className="robin-buddy-menu" role="menu" aria-label={t("companion:menu")}>
           <button type="button" role="menuitem" onClick={hideFromContextMenu}>
             <EyeOff size={14} />
             <span>{t("companion:hide")}</span>
           </button>
-        </div> : expanded ? <div className="orbit-buddy-bubble">
+        </div> : expanded ? <div className="robin-buddy-bubble">
           <small>{t("companion:kicker")}</small>
           <strong>
             {summary && summary.activeCount > 0 &&

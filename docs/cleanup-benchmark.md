@@ -29,7 +29,7 @@ cargo run --manifest-path src-tauri/Cargo.toml --release --example cleanup-bench
 
 ## 可复现协议
 
-1. 固定机器、卷、供电模式和 Full Disk Access 状态；记录 OS、硬件、StatusOrbit commit、DaisyDisk 版本及 fixture 条目数。
+1. 固定机器、卷、供电模式和 Full Disk Access 状态；记录 OS、硬件、CoreRobin commit、DaisyDisk 版本及 fixture 条目数。
 2. 冷态数据必须在重启后首次运行，不能把 `purge` 或手工删缓存冒充重启冷态。
 3. 热态连续运行至少 3 次，记录原始 JSON，并以中位数比较。
 4. 同时记录 `child_watchdog_*` 与 `subtree_requests_are_last_request_wins_and_never_scan_concurrently` 测试结果，覆盖卡死 child 和快速连续 subtree。

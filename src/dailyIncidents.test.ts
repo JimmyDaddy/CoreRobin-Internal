@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   activeDailyIncidents,
-  buildStableDailyOrbitItems,
+  buildStableDailyStatusItems,
   createDailyIncidentEvaluationState,
   dailyIncidentLevel,
   evaluateDailyIncidents,
@@ -35,7 +35,7 @@ describe("daily incident lifecycle", () => {
     expect(pendingDailyIncidentCount(state)).toBe(1);
     expect(dailyIncidentLevel([], true, 1)).toBe("observing");
     expect(
-      buildStableDailyOrbitItems(
+      buildStableDailyStatusItems(
         [],
         candidateInput.diagnosis,
         candidateInput.snapshot,
@@ -47,7 +47,7 @@ describe("daily incident lifecycle", () => {
     const active = activeDailyIncidents(state);
     expect(active).toHaveLength(1);
     expect(
-      buildStableDailyOrbitItems(
+      buildStableDailyStatusItems(
         active,
         activeInput.diagnosis,
         activeInput.snapshot,

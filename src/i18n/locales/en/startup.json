@@ -13,7 +13,7 @@
   },
   "scanning": "Checking…",
   "loadingTitle": "Reading startup locations",
-  "loadingDescription": "StatusOrbit only reads public startup configuration and never loads or runs the commands inside it.",
+  "loadingDescription": "CoreRobin only reads public startup configuration and never loads or runs the commands inside it.",
   "summary": "Startup summary",
   "reviewCount": "Worth a look",
   "reviewHint": "Third-party items that launch at sign-in",
@@ -37,7 +37,7 @@
   "disabled": "Disabled",
   "technicalDetails": "Show technical location",
   "managementBoundary": "Only reversible user-level third-party startup files can be disabled. System items and unsupported sources stay read-only.",
-  "readOnlyBoundary": "This platform exposes no startup source StatusOrbit can safely restore, so the inventory remains read-only.",
+  "readOnlyBoundary": "This platform exposes no startup source CoreRobin can safely restore, so the inventory remains read-only.",
   "unreadable": "{{count}} startup locations could not be read due to permissions",
   "actions": {
     "disable": "Disable at sign-in",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "Disable automatic startup for {{name}}?",
-      "description": "StatusOrbit moves this user-level startup file into its own recoverable storage and does not delete it.",
+      "description": "CoreRobin moves this user-level startup file into its own recoverable storage and does not delete it.",
       "whenDescription": "This takes effect at the next sign-in. Restoring it also takes effect from a future sign-in.",
       "confirm": "Confirm disable at sign-in"
     },
     "enable": {
       "title": "Restore automatic startup for {{name}}?",
-      "description": "StatusOrbit moves the configuration it saved back to the original location.",
+      "description": "CoreRobin moves the configuration it saved back to the original location.",
       "whenDescription": "From the next sign-in, the system can launch this item automatically again.",
       "confirm": "Confirm restore at sign-in"
     },
@@ -89,10 +89,10 @@
     "preparing": "Verifying the startup item and file state…",
     "applying": "Updating safely…",
     "errors": {
-      "startup_item_protected": "This is not a user-level third-party startup item StatusOrbit can manage safely, so nothing changed.",
+      "startup_item_protected": "This is not a user-level third-party startup item CoreRobin can manage safely, so nothing changed.",
       "startup_item_unavailable": "This startup item changed or disappeared. Refresh the list and try again.",
-      "startup_state_changed": "The startup file changed after confirmation, so StatusOrbit changed nothing.",
-      "startup_destination_conflict": "Another configuration appeared at the destination. StatusOrbit refused to overwrite it.",
+      "startup_state_changed": "The startup file changed after confirmation, so CoreRobin changed nothing.",
+      "startup_destination_conflict": "Another configuration appeared at the destination. CoreRobin refused to overwrite it.",
       "startup_confirmation_unavailable": "This confirmation is no longer available. Cancel and open it again.",
       "startup_confirmation_expired": "The confirmation expired. Review the item again before continuing.",
       "startup_management_failed": "The system could not move the startup file safely. The original state was preserved."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "System or device service",
-      "description": "Do not treat this as an ordinary startup app. StatusOrbit keeps it read-only."
+      "description": "Do not treat this as an ordinary startup app. CoreRobin keeps it read-only."
     },
     "disabled": {
       "title": "Currently disabled",

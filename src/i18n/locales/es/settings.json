@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "Idioma de la interfaz",
-    "description": "Cambiar el idioma de los menús, la guía y el texto del estado de StatusOrbit.",
+    "description": "Cambiar el idioma de los menús, la guía y el texto del estado de CoreRobin.",
     "label": "Idioma"
   },
   "background": {
     "title": "Fondo y escritorio",
-    "description": "Controlar cómo permanece disponible StatusOrbit, se inicia al iniciar sesión y muestra Orbit.",
+    "description": "Controlar cómo permanece disponible CoreRobin, se inicia al iniciar sesión y muestra Robin.",
     "showDockIcon": "Mostrar en la barra de aplicaciones",
     "showDockIconDescription": "Cuando esté desactivado, use la barra de menús sin ocupar la barra de aplicaciones o el cambiador de aplicaciones",
     "launchAtLogin": "Iniciar al iniciar sesión",
     "launchAtLoginDescription": "Inicie silenciosamente el servicio de la barra de menús sin abrir la ventana principal",
-    "companionShowOnStartup": "Mantener Orbit en el escritorio",
-    "companionShowOnStartupDescription": "Mostrar el compañero de Orbit siempre que se inicie la aplicación",
-    "companionAlwaysOnTop": "Mantener Orbit encima de otras ventanas",
-    "companionAlwaysOnTopDescription": "Permanecer por encima de otras ventanas; cuando está desactivado, Orbit puede estar oculto"
+    "companionShowOnStartup": "Mantener Robin en el escritorio",
+    "companionShowOnStartupDescription": "Mostrar el compañero de Robin siempre que se inicie la aplicación",
+    "companionAlwaysOnTop": "Mantener Robin encima de otras ventanas",
+    "companionAlwaysOnTopDescription": "Permanecer por encima de otras ventanas; cuando está desactivado, Robin puede estar oculto"
   },
   "sampling": {
     "title": "Muestreo del sistema",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "Notificaciones del escritorio",
-    "description": "Solo una alta carga sostenida, presión real de memoria y bajo espacio en disco interrumpen el funcionamiento. StatusOrbit realiza un seguimiento una vez después de que el problema se haya recuperado de forma estable.",
+    "description": "Solo una alta carga sostenida, presión real de memoria y bajo espacio en disco interrumpen el funcionamiento. CoreRobin realiza un seguimiento una vez después de que el problema se haya recuperado de forma estable.",
     "enable": "Activar alertas moderadas",
     "categories": "Categorías de alertas permitidas",
     "resources": {

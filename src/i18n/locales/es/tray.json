@@ -2,8 +2,14 @@
   "localMonitor": "Monitor del sistema local",
   "available": "Espacio disponible",
   "open": "Vista general",
-  "companion": "Compañía Orbit",
+  "companion": "Compañía Robin",
   "cleanup": "Limpieza de espacio",
+  "quit": "Salir de la aplicación",
+  "updatedAt": "Actualizado a las {{time}}",
+  "dataMode": {
+    "foreground": "Muestreo en primer plano",
+    "background": "Muestreo en segundo plano"
+  },
   "health": {
     "loading": "Conectando",
     "observing": "Analizando estado",
@@ -26,11 +32,11 @@
     },
     "attention": {
       "title": "Un recurso requiere supervisión",
-      "description": "Abra StatusOrbit para ver la razón y las instrucciones."
+      "description": "Abra CoreRobin para ver la razón y las instrucciones."
     },
     "urgent": {
       "title": "Un recurso está bajo presión",
-      "description": "Revise la información en StatusOrbit antes de tomar medidas."
+      "description": "Revise la información en CoreRobin antes de tomar medidas."
     }
   },
   "reason": "{{resource}} requiere atención",

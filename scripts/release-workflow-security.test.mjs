@@ -13,9 +13,21 @@ describe("release workflow privilege separation", () => {
     const actionReferences = workflowFiles.flatMap((workflow) =>
       [...workflow.matchAll(/^\s*uses:\s*([^\s#]+)/gm)].map((match) => match[1]),
     );
-    expect(actionReferences.length).toBeGreaterThan(0);
-    for (const reference of actionReferences) {
+    const thirdPartyReferences = actionReferences.filter(
+      (reference) => !reference.startsWith("./"),
+    );
+    expect(thirdPartyReferences.length).toBeGreaterThan(0);
+    for (const reference of thirdPartyReferences) {
       expect(reference).toMatch(/^[^@\s]+@[0-9a-f]{40}$/);
+    }
+  });
+
+  it("keeps local action references inside the repository actions directory", () => {
+    const localReferences = workflowFiles.flatMap((workflow) =>
+      [...workflow.matchAll(/^\s*uses:\s*(\.\/[^\s#]+)/gm)].map((match) => match[1]),
+    );
+    for (const reference of localReferences) {
+      expect(reference).toMatch(/^\.\/\.github\/actions\/[a-z0-9][a-z0-9/_-]*$/);
     }
   });
 

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    status_orbit_lib::run()
+    core_robin_lib::run()
 }

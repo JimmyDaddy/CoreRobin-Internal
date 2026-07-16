@@ -261,7 +261,7 @@ fn random_temporary_name() -> io::Result<OsString> {
         use std::fmt::Write as _;
         write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
     }
-    Ok(OsString::from(format!(".status-orbit-cache-{encoded}.tmp")))
+    Ok(OsString::from(format!(".core-robin-cache-{encoded}.tmp")))
 }
 
 fn validate_private_file_handle(file: &File) -> io::Result<()> {
@@ -342,7 +342,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock must be after epoch")
             .as_nanos();
-        std::env::temp_dir().join(format!("status-orbit-private-{suffix}-{nonce}"))
+        std::env::temp_dir().join(format!("core-robin-private-{suffix}-{nonce}"))
     }
 
     #[test]

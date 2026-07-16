@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "Orbit 동반자 표시",
-    "hide": "Orbit 동반자 숨기기"
+    "show": "Robin 동반자 표시",
+    "hide": "Robin 동반자 숨기기"
   },
   "technicalOverview": {
     "title": "실시간 자원 정보 보기",

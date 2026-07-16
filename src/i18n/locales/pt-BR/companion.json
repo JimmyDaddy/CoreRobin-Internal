@@ -1,9 +1,9 @@
 {
-  "kicker": "Assistente Orbit",
-  "dragHint": "Arraste o Orbit para mover; passe o mouse para ver informações; clique com o botão direito para abrir o menu",
-  "expand": "Abra o assistente Orbit",
-  "collapse": "Feche o assistente Orbit",
-  "menu": "Menu do assistente Orbit",
+  "kicker": "Assistente Robin",
+  "dragHint": "Arraste o Robin para mover; passe o mouse para ver informações; clique com o botão direito para abrir o menu",
+  "expand": "Abra o assistente Robin",
+  "collapse": "Feche o assistente Robin",
+  "menu": "Menu do assistente Robin",
   "hide": "Esconda o assistente",
   "reason": "{{resource}} Tem sido interessante acompanhar. Abra a janela principal para ver os detalhes.",
   "action": {

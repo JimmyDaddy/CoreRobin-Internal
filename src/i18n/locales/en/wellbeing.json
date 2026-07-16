@@ -13,11 +13,13 @@
     "normal": "Temperature is currently within the normal range.",
     "attention": "The device is warm. If it also feels slow, reduce heavy tasks first.",
     "urgent": "Temperature is staying high. Stop heavy tasks and keep the device ventilated.",
-    "unavailable": "The operating system or hardware is not exposing a temperature reading to StatusOrbit."
+    "unavailable": "The operating system or hardware is not exposing a temperature reading to CoreRobin."
   },
   "battery": {
     "label": "Battery",
     "notPresent": "No battery detected",
+    "healthLabel": "Battery health",
+    "cycleCountLabel": "Cycle count",
     "unavailable": "Desktop computers and devices without battery reporting appear this way.",
     "normal": "Battery status is healthy",
     "attention": "Power is getting low; prepare to connect a charger",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "Automatic sleep",
     "unavailableValue": "Unavailable",
-    "unavailable": "This platform is not exposing reliable sleep-blocker information to StatusOrbit.",
+    "unavailable": "This platform is not exposing reliable sleep-blocker information to CoreRobin.",
     "clearValue": "Sleep is available",
     "clear": "No app is preventing the computer from sleeping automatically.",
     "blockedValue": "{{count}} app",

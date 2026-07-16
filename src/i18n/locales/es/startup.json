@@ -13,7 +13,7 @@
   },
   "scanning": "Verificando…",
   "loadingTitle": "Leyendo ubicaciones de inicio",
-  "loadingDescription": "StatusOrbit solo lee la configuración de inicio pública y nunca ejecuta los comandos contenidos en ella.",
+  "loadingDescription": "CoreRobin solo lee la configuración de inicio pública y nunca ejecuta los comandos contenidos en ella.",
   "summary": "Resumen de inicio",
   "reviewCount": "Vale la pena revisar",
   "reviewHint": "Aplicaciones de terceros que se inician al iniciar sesión",
@@ -37,7 +37,7 @@
   "disabled": "Deshabilitado",
   "technicalDetails": "Mostrar detalles técnicos",
   "managementBoundary": "Solo se pueden deshabilitar los archivos de inicio de terceros del usuario, y no los elementos del sistema ni las fuentes no compatibles.",
-  "readOnlyBoundary": "Esta plataforma no expone ninguna fuente de inicio que StatusOrbit pueda restaurar de forma segura, por lo que el inventario permanece en modo de solo lectura.",
+  "readOnlyBoundary": "Esta plataforma no expone ninguna fuente de inicio que CoreRobin pueda restaurar de forma segura, por lo que el inventario permanece en modo de solo lectura.",
   "unreadable": "{{count}} No se pudieron leer las ubicaciones de inicio debido a permisos",
   "actions": {
     "disable": "Deshabilitar al iniciar sesión",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "Deshabilitar el inicio automático para {{name}}?",
-      "description": "StatusOrbit guarda este archivo de inicio en su propio almacenamiento recuperable y no lo elimina.",
+      "description": "CoreRobin guarda este archivo de inicio en su propio almacenamiento recuperable y no lo elimina.",
       "whenDescription": "Esto se aplica al siguiente inicio de sesión. Restaurarlo también se aplicará a partir del próximo inicio de sesión.",
       "confirm": "Confirmar desactivación al iniciar sesión"
     },
     "enable": {
       "title": "¿Restaurar el inicio automático para {{name}}?",
-      "description": "StatusOrbit mueve la configuración que guardó a su ubicación original.",
+      "description": "CoreRobin mueve la configuración que guardó a su ubicación original.",
       "whenDescription": "A partir del siguiente inicio de sesión, el sistema puede volver a lanzar este elemento automáticamente.",
       "confirm": "Confirmar restauración al iniciar sesión"
     },
@@ -89,10 +89,10 @@
     "preparing": "Verificando el elemento de inicio y su estado…",
     "applying": "Actualizando de forma segura…",
     "errors": {
-      "startup_item_protected": "Este es un elemento de inicio de terceros no gestionado por StatusOrbit, por lo que no se realizaron cambios.",
+      "startup_item_protected": "Este es un elemento de inicio de terceros no gestionado por CoreRobin, por lo que no se realizaron cambios.",
       "startup_item_unavailable": "Este elemento de inicio ha cambiado o desaparecido. Refresque la lista e inténtelo de nuevo.",
-      "startup_state_changed": "El archivo de inicio ha cambiado después de la confirmación, por lo que StatusOrbit no realizó cambios.",
-      "startup_destination_conflict": "Otra configuración apareció en el destino. StatusOrbit se negó a sobrescribirla.",
+      "startup_state_changed": "El archivo de inicio ha cambiado después de la confirmación, por lo que CoreRobin no realizó cambios.",
+      "startup_destination_conflict": "Otra configuración apareció en el destino. CoreRobin se negó a sobrescribirla.",
       "startup_confirmation_unavailable": "Esta confirmación ya no está disponible. Cancela y ábrela de nuevo.",
       "startup_confirmation_expired": "La confirmación ha caducado. Revise el elemento nuevamente antes de continuar.",
       "startup_management_failed": "El sistema no pudo mover el archivo de inicio de forma segura. Se ha mantenido el estado original."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "Servicio del sistema o dispositivo",
-      "description": "No lo trate como una aplicación de inicio normal. StatusOrbit lo mantiene en modo de solo lectura."
+      "description": "No lo trate como una aplicación de inicio normal. CoreRobin lo mantiene en modo de solo lectura."
     },
     "disabled": {
       "title": "Actualmente deshabilitado",

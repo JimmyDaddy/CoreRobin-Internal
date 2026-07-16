@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "Sprache der Benutzeroberfläche",
-    "description": "Ändern Sie Menü, Hilfetexte und Statusmeldungen von StatusOrbit.",
+    "description": "Ändern Sie Menü, Hilfetexte und Statusmeldungen von CoreRobin.",
     "label": "Sprache"
   },
   "background": {
     "title": "Hintergrund und Desktop",
-    "description": "Steuern Sie, wann StatusOrbit verfügbar ist, ob es beim Anmelden gestartet wird und ob Orbit angezeigt wird.",
+    "description": "Steuern Sie, wann CoreRobin verfügbar ist, ob es beim Anmelden gestartet wird und ob Robin angezeigt wird.",
     "showDockIcon": "In der Dock anzeigen",
     "showDockIconDescription": "Wenn deaktiviert, verwenden Sie die Menüleiste ohne Nutzung der Dock oder des App-Wechselfensters",
     "launchAtLogin": "Beim Anmelden starten",
     "launchAtLoginDescription": "Starten Sie den Menüdienst unauffällig, ohne das Hauptfenster zu öffnen",
-    "companionShowOnStartup": "Orbit auf dem Desktop anzeigen",
-    "companionShowOnStartupDescription": "Zeigen Sie den Orbit-Begleiter an, sobald die App gestartet wird",
-    "companionAlwaysOnTop": "Orbit über anderen Fenstern anzeigen",
-    "companionAlwaysOnTopDescription": "Bleiben Sie über anderen Fenstern; wenn deaktiviert, kann Orbit verdeckt sein"
+    "companionShowOnStartup": "Robin auf dem Desktop anzeigen",
+    "companionShowOnStartupDescription": "Zeigen Sie den Robin-Begleiter an, sobald die App gestartet wird",
+    "companionAlwaysOnTop": "Robin über anderen Fenstern anzeigen",
+    "companionAlwaysOnTopDescription": "Bleiben Sie über anderen Fenstern; wenn deaktiviert, kann Robin verdeckt sein"
   },
   "sampling": {
     "title": "Systemüberwachung",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "Desktop-Benachrichtigungen",
-    "description": "Nur anhaltende hohe Last, tatsächlicher Speicherbedarf und geringer Festplattenspeicher stören Sie. StatusOrbit informiert Sie nach der stabilen Wiederherstellung einmal.",
+    "description": "Nur anhaltende hohe Last, tatsächlicher Speicherbedarf und geringer Festplattenspeicher stören Sie. CoreRobin informiert Sie nach der stabilen Wiederherstellung einmal.",
     "enable": "Eingeschränkte Benachrichtigungen zulassen",
     "categories": "Erlaubte Benachrichtigungskategorien",
     "resources": {

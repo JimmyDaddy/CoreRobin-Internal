@@ -2,11 +2,11 @@
   "triggered": {
     "cpu": {
       "title": "Der Computer läuft unter hoher Last",
-      "body": "Die CPU ist stark ausgelastet und kann zu Leistungseinbußen, Überhitzung oder erhöhtem Energieverbrauch führen. Öffnen Sie StatusOrbit, um die größten App-Auswirkungen zu sehen."
+      "body": "Die CPU ist stark ausgelastet und kann zu Leistungseinbußen, Überhitzung oder erhöhtem Energieverbrauch führen. Öffnen Sie CoreRobin, um die größten App-Auswirkungen zu sehen."
     },
     "memory": {
       "title": "Verfügbarer Speicher ist knapp",
-      "body": "Geringer verfügbarer Speicher und deutliche Swap-Aktivität sind gleichzeitig vorhanden. StatusOrbit schließt Apps niemals automatisch."
+      "body": "Geringer verfügbarer Speicher und deutliche Swap-Aktivität sind gleichzeitig vorhanden. CoreRobin schließt Apps niemals automatisch."
     },
     "volume": {
       "title": "Freier Festplattenspeicher ist niedrig",

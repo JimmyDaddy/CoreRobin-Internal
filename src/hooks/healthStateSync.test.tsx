@@ -126,7 +126,7 @@ describe("health state synchronization", () => {
 
 function updateAt(sampledAtMs: number): HealthStateUpdate {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sampledAtMs,
     dataMode: "foreground",
     paused: false,
@@ -142,6 +142,8 @@ function updateAt(sampledAtMs: number): HealthStateUpdate {
     storageAvailableBytes: 40,
     temperatureCelsius: 50,
     batteryPercent: 60,
+    batteryHealthPercent: 94,
+    batteryCycleCount: 173,
     batteryState: "discharging",
   };
 }

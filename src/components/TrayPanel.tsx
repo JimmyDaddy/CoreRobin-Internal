@@ -2,12 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  Activity,
   BatteryMedium,
   CircleGauge,
+  Clock3,
   Database,
+  LogOut,
   Maximize2,
   MemoryStick,
-  Orbit,
   Pause,
   Play,
   Settings2,
@@ -16,9 +18,12 @@ import {
 } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
-import brandMark from "../../src-tauri/icons/128x128.png";
+import brandMark from "../assets/brand-mark.png";
 import { createAsyncListenerRegistry } from "../asyncListener";
+import { BrandWordmark } from "./BrandWordmark";
+import { RobinIcon } from "./RobinIcon";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
+import { getAuxiliaryLanguage } from "../i18nAuxiliary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
 
@@ -29,6 +34,7 @@ const desktopRuntime = typeof window !== "undefined"
 export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
+  const language = getAuxiliaryLanguage();
 
   useEffect(() => {
     if (!desktopRuntime) return;
@@ -44,28 +50,37 @@ export function TrayPanel() {
   const openView = async (view: "overview" | "cleanup" | "settings") => {
     await invoke("show_main_window");
     if (view === "overview" && summary?.primaryIncident) {
-      await emitTo("main", "status-orbit:open-daily", {
+      await emitTo("main", "core-robin:open-daily", {
         view,
         occurrenceId: summary.primaryIncident.occurrenceId,
       });
       return;
     }
-    await emitTo("main", "status-orbit:navigate", view);
+    await emitTo("main", "core-robin:navigate", view);
   };
   const togglePaused = async () => {
-    await emitTo("main", "status-orbit:set-paused", !summary?.paused);
+    await emitTo("main", "core-robin:set-paused", !summary?.paused);
   };
   const toggleCompanion = async () => {
     await invoke("toggle_companion_window");
     await getCurrentWindow().hide();
   };
+  const quitApplication = async () => {
+    await invoke("quit_application");
+  };
+  const lastUpdated = summary
+    ? new Date(summary.sampledAtMs).toLocaleTimeString(getAuxiliaryLanguage(), {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <main className="tray-surface">
       <section className="tray-panel">
         <header className="tray-header">
           <span className="tray-logo"><img src={brandMark} alt="" /></span>
-          <span className="tray-brand"><strong>StatusOrbit</strong><small>{t("tray:localMonitor")}</small></span>
+          <span className="tray-brand"><BrandWordmark /><small>{t("tray:localMonitor")}</small></span>
           <span className={`tray-health tray-health--${summary?.health ?? "loading"}`}>
             <i />{t(`tray:health.${summary?.health ?? "loading"}`)}
           </span>
@@ -109,19 +124,51 @@ export function TrayPanel() {
         </div>
 
         <div className="tray-device-row">
-          <span><Thermometer size={14} />{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</span>
-          <span><BatteryMedium size={14} />{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</span>
+          <span>
+            <Thermometer size={15} />
+            <span><small>{t("tray:resource.temperature")}</small><strong>{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</strong></span>
+          </span>
+          <span>
+            <BatteryMedium size={15} />
+            <span>
+              <small>{t("tray:resource.battery")}</small>
+              <strong>{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</strong>
+              {summary?.batteryPercent !== null && summary?.batteryPercent !== undefined ? <em>{t(`wellbeing:battery.state.${summary.batteryState}`)}</em> : null}
+              <em className="tray-battery-detail">
+                <i>{t("wellbeing:battery.healthLabel")}</i>
+                <b>{summary?.batteryHealthPercent === null || summary?.batteryHealthPercent === undefined
+                  ? t("common:unavailable")
+                  : formatPercent(summary.batteryHealthPercent)}</b>
+              </em>
+              <em className="tray-battery-detail">
+                <i>{t("wellbeing:battery.cycleCountLabel")}</i>
+                <b>{summary?.batteryCycleCount === null || summary?.batteryCycleCount === undefined
+                  ? t("common:unavailable")
+                  : summary.batteryCycleCount.toLocaleString(language)}</b>
+              </em>
+            </span>
+          </span>
+        </div>
+
+        <div className="tray-context">
+          <span><Clock3 size={13} />{lastUpdated ? t("tray:updatedAt", { time: lastUpdated }) : t("tray:health.loading")}</span>
+          <span><Activity size={13} />{summary?.paused ? t("app:paused") : t(`tray:dataMode.${summary?.dataMode ?? "background"}`)}</span>
         </div>
 
         <div className="tray-actions">
-          <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
-          <button type="button" onClick={() => void toggleCompanion()}><Orbit size={16} /><span>{t("tray:companion")}</span></button>
-          <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
-          <button type="button" onClick={() => void togglePaused()}>
-            {summary?.paused ? <Play size={16} /> : <Pause size={16} />}
-            <span>{summary?.paused ? t("app:resume") : t("app:pause")}</span>
-          </button>
-          <button type="button" onClick={() => void openView("settings")}><Settings2 size={16} /><span>{t("app:settings")}</span></button>
+          <div className="tray-actions__primary">
+            <button type="button" onClick={() => void openView("overview")}><Maximize2 size={16} /><span>{t("tray:open")}</span></button>
+            <button type="button" onClick={() => void toggleCompanion()}><RobinIcon size={18} /><span>{t("tray:companion")}</span></button>
+            <button type="button" onClick={() => void openView("cleanup")}><Sparkles size={16} /><span>{t("tray:cleanup")}</span></button>
+          </div>
+          <div className="tray-actions__utility">
+            <button type="button" onClick={() => void togglePaused()}>
+              {summary?.paused ? <Play size={14} /> : <Pause size={14} />}
+              <span>{summary?.paused ? t("app:resume") : t("app:pause")}</span>
+            </button>
+            <button type="button" onClick={() => void openView("settings")}><Settings2 size={14} /><span>{t("app:settings")}</span></button>
+            <button className="tray-action--quit" type="button" onClick={() => void quitApplication()}><LogOut size={14} /><span>{t("tray:quit")}</span></button>
+          </div>
         </div>
       </section>
     </main>

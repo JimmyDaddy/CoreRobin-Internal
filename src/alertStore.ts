@@ -9,7 +9,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const RESOURCE_ALERT_STORAGE_KEY = "status-orbit.resource-alert-events.v1";
+export const RESOURCE_ALERT_STORAGE_KEY = "core-robin.resource-alert-events.v1";
 export const MAX_RESOURCE_ALERT_EVENTS = 5_000;
 
 interface ResourceAlertPayload {

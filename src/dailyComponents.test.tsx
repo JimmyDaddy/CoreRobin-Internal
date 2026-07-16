@@ -55,6 +55,7 @@ describe("everyday component interactions", () => {
         recheck={null}
         onRefresh={onRefresh}
         onRequestClose={() => undefined}
+        onRequestRestart={() => undefined}
       />,
     );
 
@@ -70,6 +71,7 @@ describe("everyday component interactions", () => {
         recheck={null}
         onRefresh={onRefresh}
         onRequestClose={() => undefined}
+        onRequestRestart={() => undefined}
       />,
     );
     expect(screen.getByText("84%")).toBeTruthy();
@@ -77,6 +79,27 @@ describe("everyday component interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: /更新列表/ }));
     await waitFor(() => expect(screen.getByText("Beta")).toBeTruthy());
     expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("offers a safe restart action for a user application", () => {
+    const onRequestRestart = vi.fn();
+    render(
+      <DailyApplications
+        applications={[application("Alpha", 84)]}
+        totalMemoryBytes={8 * 1_024 ** 3}
+        sampledAtMs={1_000}
+        preparingAction={false}
+        recheck={null}
+        onRefresh={async () => ({ applications: [], totalMemoryBytes: 0, sampledAtMs: 2_000 })}
+        onRequestClose={() => undefined}
+        onRequestRestart={onRequestRestart}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Alpha/ }));
+    fireEvent.click(screen.getByRole("button", { name: "重新启动 Alpha" }));
+
+    expect(onRequestRestart).toHaveBeenCalledWith("Alpha:1", "Alpha");
   });
 
   it("runs the real home check callback instead of only changing decoration", async () => {
@@ -105,6 +128,7 @@ describe("everyday component interactions", () => {
         incidents={[]}
         alertEvents={[]}
         onOpenIncident={() => undefined}
+        onOpenCheck={() => undefined}
         onOpenSolve={() => undefined}
         onOpenRecords={() => undefined}
         onRefresh={onRefresh}
@@ -113,6 +137,107 @@ describe("everyday component interactions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /检查一下/ }));
     await waitFor(() => expect(onRefresh).toHaveBeenCalledOnce());
+  });
+
+  it("lets Robin react to the status item being observed", () => {
+    const snapshot = calmSnapshot();
+    const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
+    render(
+      <DailyHome
+        diagnosis={diagnosis}
+        snapshot={snapshot}
+        incidents={[]}
+        alertEvents={[]}
+        onOpenIncident={() => undefined}
+        onOpenCheck={() => undefined}
+        onOpenSolve={() => undefined}
+        onOpenRecords={() => undefined}
+        onRefresh={() => undefined}
+      />,
+    );
+
+    const speedCheck = screen.getByLabelText(/^速度:/);
+    const rig = speedCheck.closest(".daily-companion__rig");
+    const callout = rig?.querySelector(".daily-companion__callout");
+
+    fireEvent.pointerEnter(speedCheck);
+    expect(rig?.getAttribute("data-focus")).toBe("speed");
+    expect(speedCheck.getAttribute("data-active")).toBe("true");
+    expect(callout?.textContent).toBe("速度");
+
+    fireEvent.pointerLeave(speedCheck);
+    expect(rig?.hasAttribute("data-focus")).toBe(false);
+  });
+
+  it("opens the matching destination from every companion status button", () => {
+    const snapshot = calmSnapshot();
+    const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
+    const onOpenCheck = vi.fn();
+    render(
+      <DailyHome
+        diagnosis={diagnosis}
+        snapshot={snapshot}
+        incidents={[]}
+        alertEvents={[]}
+        onOpenIncident={() => undefined}
+        onOpenCheck={onOpenCheck}
+        onOpenSolve={() => undefined}
+        onOpenRecords={() => undefined}
+        onRefresh={() => undefined}
+      />,
+    );
+
+    for (const label of ["速度", "空间", "温度", "电池"]) {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}:`) }));
+    }
+
+    expect(onOpenCheck.mock.calls.map(([kind]) => kind)).toEqual([
+      "speed",
+      "space",
+      "temperature",
+      "battery",
+    ]);
+  });
+
+  it("shows battery health and cycle count in the heat evidence", () => {
+    const snapshot = calmSnapshot();
+    const diagnosis = analyzeSystemHealth({ snapshot, history: [], connections: null });
+    render(
+      <DailyGuide
+        intent="heat"
+        incident={null}
+        incidents={[]}
+        pendingIncidentCount={0}
+        diagnosis={diagnosis}
+        snapshot={snapshot}
+        cleanupSnapshot={null}
+        cleanupLoading={false}
+        startupSnapshot={null}
+        startupError={null}
+        startupLoading={false}
+        connectionsSnapshot={null}
+        connectionsError={null}
+        connectionsLoading={false}
+        preparingAction={false}
+        recheck={null}
+        onBack={() => undefined}
+        onRefresh={() => undefined}
+        onOpenCleanup={() => undefined}
+        onOpenSpace={() => undefined}
+        onOpenApplications={() => undefined}
+        onOpenIntent={() => undefined}
+        onOpenIncident={() => undefined}
+        onRefreshStartup={() => undefined}
+        onRequestClose={() => undefined}
+        onOpenSystemSettings={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("为什么这样判断"));
+    expect(screen.getByText("健康度")).toBeTruthy();
+    expect(screen.getByText("94%")).toBeTruthy();
+    expect(screen.getByText("循环次数")).toBeTruthy();
+    expect(screen.getByText("173")).toBeTruthy();
   });
 
   it("opens the exact stable incident represented by the home count", () => {
@@ -127,6 +252,7 @@ describe("everyday component interactions", () => {
         incidents={[incident]}
         alertEvents={[]}
         onOpenIncident={onOpenIncident}
+        onOpenCheck={() => undefined}
         onOpenSolve={() => undefined}
         onOpenRecords={() => undefined}
         onRefresh={() => undefined}
@@ -169,6 +295,7 @@ describe("everyday component interactions", () => {
         onOpenIncident={() => undefined}
         onRefreshStartup={() => undefined}
         onRequestClose={() => undefined}
+        onOpenSystemSettings={() => undefined}
       />,
     );
 

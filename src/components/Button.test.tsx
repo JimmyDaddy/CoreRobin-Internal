@@ -20,6 +20,7 @@ describe("Button", () => {
 
     const button = screen.getByRole("button", { name: "更新" }) as HTMLButtonElement;
     expect(button.classList.contains("button")).toBe(true);
+    expect(button.classList.contains("button--plain")).toBe(true);
     expect(button.classList.contains("toolbar-action")).toBe(true);
     expect(button.disabled).toBe(true);
   });

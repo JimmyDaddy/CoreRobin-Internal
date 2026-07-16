@@ -56,10 +56,11 @@
     "launchCommand": "시작 명령어",
     "stableHandle": "안정적인 OS 핸들을 사용하여 실행합니다 (단, 한 번만 사용 가능). PID를 다시 확인하지 않습니다.",
     "unavailableControl": "이 플랫폼에서는 안전한 프로세스 제어가 지원되지 않습니다.",
-    "bestEffort": "macOS는 모든 프로세스에 대해 안정적인 신호 핸들을 제공할 수 없습니다. StatusOrbit는 신호를 보내기 전에 실행 식별을 다시 확인하지만, PID를 통한 타겟팅은 여전히 시도입니다.",
+    "bestEffort": "macOS는 모든 프로세스에 대해 안정적인 신호 핸들을 제공할 수 없습니다. CoreRobin는 신호를 보내기 전에 실행 식별을 다시 확인하지만, PID를 통한 타겟팅은 여전히 시도입니다.",
     "allowBestEffort": "이 세션에서 최선의 노력을 통해 프로세스를 제어합니다.",
     "binding": "연결…",
     "requestClose": "종료 요청",
+    "restart": "앱 재시작",
     "forceKill": "강제 종료…"
   },
   "history": {

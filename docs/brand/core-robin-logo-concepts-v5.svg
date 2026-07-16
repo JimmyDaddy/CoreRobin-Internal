@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800" role="img" aria-labelledby="title desc">
+  <title id="title">CoreRobin logo concepts, brandable and typographic</title>
+  <desc id="desc">Six restrained CoreRobin logo directions: three abstract marks and three wordmark-led systems.</desc>
+
+  <rect width="1800" height="1800" fill="#FFFFFF"/>
+
+  <defs>
+    <style>
+      .ink-fill { fill: #132033; }
+      .accent-fill { fill: #E85D45; }
+      .ink-stroke { fill: none; stroke: #132033; stroke-linecap: round; stroke-linejoin: round; }
+      .accent-stroke { fill: none; stroke: #E85D45; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 28px; font-weight: 700; }
+      .name { fill: #132033; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 45px; font-weight: 650; letter-spacing: -1.4px; }
+      .caption { fill: #667085; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 18px; font-weight: 500; letter-spacing: .4px; }
+      .micro { fill: #98A2B3; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; font-weight: 600; letter-spacing: .5px; }
+    </style>
+
+    <!-- AE · Layered core: nested systems with one active core -->
+    <symbol id="mark-ae" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="24" d="M91 52H210C231 52 248 69 248 90V210C248 231 231 248 210 248H90C69 248 52 231 52 210V91"/>
+      <path class="ink-stroke" stroke-width="22" d="M114 94H184C197 94 207 104 207 117V184C207 197 197 207 184 207H116C103 207 93 197 93 184V116"/>
+      <circle class="accent-fill" cx="73" cy="73" r="23"/>
+    </symbol>
+
+    <!-- AF · Core loop: one continuous, inward-moving gesture -->
+    <symbol id="mark-af" viewBox="0 0 300 300">
+      <path class="ink-stroke" stroke-width="26" d="M222 79C198 53 158 42 121 52C68 66 39 120 53 172C68 226 124 258 177 237C223 219 245 168 224 126C207 91 166 77 134 95C105 112 97 149 116 174C132 195 164 199 185 183"/>
+      <circle class="accent-fill" cx="153" cy="149" r="19"/>
+    </symbol>
+
+    <!-- AG · Quiet feather: one silhouette and one calm cut -->
+    <symbol id="mark-ag" viewBox="0 0 300 300">
+      <path class="ink-fill" d="M53 242C69 145 135 57 247 48C242 153 176 236 71 251Z"/>
+      <path fill="#FFFFFF" d="M75 225C122 190 164 151 218 82C179 134 140 176 92 215C85 221 80 225 75 225Z"/>
+      <circle class="accent-fill" cx="76" cy="230" r="20"/>
+    </symbol>
+  </defs>
+
+  <text x="70" y="72" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="-1">CoreRobin · Brandable / typographic</text>
+  <text x="70" y="108" fill="#667085" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" font-weight="500">Less illustration · less UI icon · more ownable silhouette</text>
+
+  <!-- AE · Layered core -->
+  <g transform="translate(0 150)">
+    <text class="label" x="58" y="42">AE</text>
+    <use href="#mark-ae" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">layered core</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-ae" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-ae" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AF · Core loop -->
+  <g transform="translate(600 150)">
+    <text class="label" x="58" y="42">AF</text>
+    <use href="#mark-af" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">core loop</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-af" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-af" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AG · Quiet feather -->
+  <g transform="translate(1200 150)">
+    <text class="label" x="58" y="42">AG</text>
+    <use href="#mark-ag" x="150" y="42" width="300" height="300"/>
+    <text class="name" x="300" y="388" text-anchor="middle">CoreRobin</text>
+    <text class="caption" x="300" y="422" text-anchor="middle">quiet feather</text>
+    <text class="micro" x="218" y="466">48</text>
+    <use href="#mark-ag" x="244" y="430" width="48" height="48"/>
+    <text class="micro" x="309" y="466">24</text>
+    <use href="#mark-ag" x="335" y="446" width="24" height="24"/>
+  </g>
+
+  <!-- AH · Split-weight wordmark -->
+  <g transform="translate(0 690)">
+    <text class="label" x="58" y="42">AH</text>
+    <g transform="translate(68 100)">
+      <text x="0" y="125" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="78" font-weight="470" letter-spacing="-3">Core</text>
+      <text x="172" y="125" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="78" font-weight="740" letter-spacing="-3">Robin</text>
+    </g>
+    <text class="caption" x="300" y="388" text-anchor="middle">split-weight wordmark</text>
+    <text class="micro" x="300" y="423" text-anchor="middle">quiet contrast · no added symbol</text>
+  </g>
+
+  <!-- AI · Custom lowercase wordmark -->
+  <g transform="translate(600 690)">
+    <text class="label" x="58" y="42">AI</text>
+    <g transform="translate(0 104)">
+      <text x="300" y="123" text-anchor="middle" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="76" font-weight="560" letter-spacing="-3.2">corerob<tspan fill="#E85D45">i</tspan>n</text>
+    </g>
+    <text class="caption" x="300" y="388" text-anchor="middle">lowercase wordmark</text>
+    <text class="micro" x="300" y="423" text-anchor="middle">friendly · understated · no mascot</text>
+  </g>
+
+  <!-- AJ · Core-counter wordmark -->
+  <g transform="translate(1200 690)">
+    <text class="label" x="58" y="42">AJ</text>
+    <g transform="translate(54 99)">
+      <text x="0" y="128" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="72" font-weight="650" letter-spacing="-2.6">C</text>
+      <circle class="ink-fill" cx="82" cy="102" r="31"/>
+      <circle fill="#FFFFFF" cx="82" cy="102" r="17"/>
+      <circle class="accent-fill" cx="82" cy="102" r="8"/>
+      <text x="112" y="128" fill="#132033" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="72" font-weight="650" letter-spacing="-2.6">reRobin</text>
+    </g>
+    <text class="caption" x="300" y="388" text-anchor="middle">core-counter wordmark</text>
+    <text class="micro" x="300" y="423" text-anchor="middle">the product idea lives inside the name</text>
+  </g>
+
+  <text x="70" y="1334" fill="#98A2B3" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="500">All directions avoid shields, wingspreads, ECG spikes, orbit rings, and multi-node diagrams.</text>
+</svg>

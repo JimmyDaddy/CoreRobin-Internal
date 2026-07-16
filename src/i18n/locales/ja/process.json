@@ -56,10 +56,11 @@
     "launchCommand": "起動コマンド",
     "stableHandle": "一時的なOSハンドルを確立します。実行時に、ターゲットプロセスをPIDで再度検索しません。",
     "unavailableControl": "このプラットフォームでは、安全なプロセス制御が利用できません。",
-    "bestEffort": "macOSは、すべてのプロセスに対して安定したシグナルハンドルを提供できません。StatusOrbitは起動時のIDを再確認しますが、PIDによるターゲット指定は依然として試行錯誤です。",
+    "bestEffort": "macOSは、すべてのプロセスに対して安定したシグナルハンドルを提供できません。CoreRobinは起動時のIDを再確認しますが、PIDによるターゲット指定は依然として試行錯誤です。",
     "allowBestEffort": "このセッションでの、最善のプロセス操作を許可",
     "binding": "バインディング中...",
     "requestClose": "終了リクエスト",
+    "restart": "アプリを再起動",
     "forceKill": "強制終了..."
   },
   "history": {

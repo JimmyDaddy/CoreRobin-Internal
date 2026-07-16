@@ -4,7 +4,7 @@
   "collapse": "Diagnose ausblenden",
   "checkedLabel": "Die intelligente Diagnose läuft",
   "thisDisk": "Systemlaufwerk",
-  "safety": "StatusOrbit handelt niemals automatisch. Empfohlene Aktionen benötigen Ihre Bestätigung, und das erzwungene Beenden bleibt im professionellen Modus.",
+  "safety": "CoreRobin handelt niemals automatisch. Empfohlene Aktionen benötigen Ihre Bestätigung, und das erzwungene Beenden bleibt im professionellen Modus.",
   "duration": "für {{seconds}} Sekunden",
   "status": {
     "observing": {
@@ -17,11 +17,11 @@
     },
     "attention": {
       "title": "Ihr Computer könnte langsam werden",
-      "summary": "StatusOrbit hat mögliche Leistungsengpässe ({{count}}) festgestellt. Klicken Sie auf diese Karte, um weitere Informationen zu erhalten."
+      "summary": "CoreRobin hat mögliche Leistungsengpässe ({{count}}) festgestellt. Klicken Sie auf diese Karte, um weitere Informationen zu erhalten."
     },
     "urgent": {
       "title": "Es gibt dringende Probleme",
-      "summary": "StatusOrbit hat erhebliche Leistungsengpässe ({{count}}) festgestellt. Überprüfen Sie die Beweise, bevor Sie Maßnahmen ergreifen."
+      "summary": "CoreRobin hat erhebliche Leistungsengpässe ({{count}}) festgestellt. Überprüfen Sie die Beweise, bevor Sie Maßnahmen ergreifen."
     }
   },
   "categories": {
@@ -97,7 +97,7 @@
     },
     "request_close": {
       "title": "Bitte zuerst {{name}} beenden",
-      "description": "Dies ist die schonendste verfügbare Option. StatusOrbit überprüft die Prozessidentität und zeigt eine Bestätigung an, bevor etwas unternommen wird.",
+      "description": "Dies ist die schonendste verfügbare Option. CoreRobin überprüft die Prozessidentität und zeigt eine Bestätigung an, bevor etwas unternommen wird.",
       "action": "Bitte {{name}} beenden"
     },
     "open_cleanup": {
@@ -112,22 +112,25 @@
     },
     "inspect_process": {
       "title": "Zuerst die Situation prüfen",
-      "description": "StatusOrbit bietet hier keine direkte Aktion an. Überprüfen Sie zuerst die App-Identität, Ressourcenänderungen und den Grund für den Schutz.",
+      "description": "CoreRobin bietet hier keine direkte Aktion an. Überprüfen Sie zuerst die App-Identität, Ressourcenänderungen und den Grund für den Schutz.",
       "action": "Detaillierte Informationen anzeigen"
     },
     "inspectEvidence": "App-Informationen prüfen",
     "preparing": "Überprüfung…",
-    "actionUnavailable": "StatusOrbit konnte die App nicht sicher überprüfen oder steuern, daher wurden keine Änderungen vorgenommen."
+    "actionUnavailable": "CoreRobin konnte die App nicht sicher überprüfen oder steuern, daher wurden keine Änderungen vorgenommen."
   },
   "actionDialog": {
     "title": "Anwendung {{name}} beenden?",
-    "description": "StatusOrbit sendet eine normale Beendigungsanforderung. Dies ist die schonende Option, nicht das erzwungene Beenden.",
+    "description": "CoreRobin sendet eine normale Beendigungsanforderung. Dies ist die schonende Option, nicht das erzwungene Beenden.",
+    "restartTitle": "{{name}} neu starten?",
+    "restartDescription": "CoreRobin bittet die App, sich normal zu beenden, und öffnet anschließend das überprüfte App-Paket erneut.",
     "safeTitle": "Löscht App oder Dateien nicht",
     "safeDescription": "Dies fordert nur die laufende App auf, zu stoppen und löscht keine Daten.",
     "riskTitle": "Speichern Sie zuerst alle Änderungen",
     "riskDescription": "Ob eine Speichervorlage angezeigt wird, hängt von der Anwendung ab; ungespeicherte Daten können dennoch verloren gehen.",
     "stableIdentity": "Ein stabiler Handle ist an den ausgewählten Prozess gebunden und wird vor der Ausführung erneut überprüft.",
-    "bestEffortIdentity": "Diese Plattform kann das Risiko der PID-Wiederverwendung nur durch Identitätsprüfungen reduzieren. StatusOrbit lehnt die Aktion ab, wenn sich der Prozess geändert hat.",
-    "confirm": "Beenden von {{name}} bestätigen"
+    "bestEffortIdentity": "Diese Plattform kann das Risiko der PID-Wiederverwendung nur durch Identitätsprüfungen reduzieren. CoreRobin lehnt die Aktion ab, wenn sich der Prozess geändert hat.",
+    "confirm": "Beenden von {{name}} bestätigen",
+    "confirmRestart": "{{name}} neu starten"
   }
 }

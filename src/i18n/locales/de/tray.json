@@ -2,8 +2,14 @@
   "localMonitor": "Lokaler Systemüberblick",
   "available": "Freier Speicherplatz",
   "open": "Übersicht anzeigen",
-  "companion": "Orbit-Assistent",
+  "companion": "Robin-Assistent",
   "cleanup": "Speicher freigeben",
+  "quit": "App beenden",
+  "updatedAt": "Aktualisiert um {{time}}",
+  "dataMode": {
+    "foreground": "Aktive Messung",
+    "background": "Hintergrundmessung"
+  },
   "health": {
     "loading": "Verbinde...",
     "observing": "Status wird analysiert",
@@ -26,11 +32,11 @@
     },
     "attention": {
       "title": "Eine Ressource ist im Blick",
-      "description": "Öffnen Sie StatusOrbit, um den Grund und die Anweisungen anzuzeigen."
+      "description": "Öffnen Sie CoreRobin, um den Grund und die Anweisungen anzuzeigen."
     },
     "urgent": {
       "title": "Eine Ressource ist stark belastet",
-      "description": "Überprüfen Sie die Informationen in StatusOrbit, bevor Sie Maßnahmen ergreifen."
+      "description": "Überprüfen Sie die Informationen in CoreRobin, bevor Sie Maßnahmen ergreifen."
     }
   },
   "reason": "{{resource}} benötigt Aufmerksamkeit",

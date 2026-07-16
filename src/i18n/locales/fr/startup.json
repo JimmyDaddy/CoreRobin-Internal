@@ -13,7 +13,7 @@
   },
   "scanning": "Vérification…",
   "loadingTitle": "Lecture des emplacements de démarrage",
-  "loadingDescription": "StatusOrbit ne lit que la configuration de démarrage publique et n'exécute jamais les commandes qu'elle contient.",
+  "loadingDescription": "CoreRobin ne lit que la configuration de démarrage publique et n'exécute jamais les commandes qu'elle contient.",
   "summary": "Résumé du démarrage",
   "reviewCount": "À examiner",
   "reviewHint": "Applications tierces qui démarrent à l'authentification",
@@ -37,7 +37,7 @@
   "disabled": "Désactivé",
   "technicalDetails": "Afficher les détails techniques",
   "managementBoundary": "Seuls les fichiers de démarrage tiers réversibles au niveau de l'utilisateur peuvent être désactivés. Les éléments système et les sources non prises en charge restent en lecture seule.",
-  "readOnlyBoundary": "Cette plateforme ne permet pas à StatusOrbit de restaurer un fichier de démarrage, ce qui maintient l'inventaire en lecture seule.",
+  "readOnlyBoundary": "Cette plateforme ne permet pas à CoreRobin de restaurer un fichier de démarrage, ce qui maintient l'inventaire en lecture seule.",
   "unreadable": "{{count}} Impossible de lire les emplacements de démarrage en raison des permissions",
   "actions": {
     "disable": "Désactiver au démarrage",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "Désactiver le démarrage automatique pour {{name}}?",
-      "description": "StatusOrbit conserve ce fichier de démarrage spécifique à l'utilisateur dans son propre espace de stockage et ne le supprime pas.",
+      "description": "CoreRobin conserve ce fichier de démarrage spécifique à l'utilisateur dans son propre espace de stockage et ne le supprime pas.",
       "whenDescription": "Cela prend effet lors du prochain authentification. La restauration prend également effet lors d'une future authentification.",
       "confirm": "Confirmer la désactivation lors de l'authentification"
     },
     "enable": {
       "title": "Restaurer le démarrage automatique pour {{name}}?",
-      "description": "StatusOrbit restaure la configuration sauvegardée à son emplacement d'origine.",
+      "description": "CoreRobin restaure la configuration sauvegardée à son emplacement d'origine.",
       "whenDescription": "À partir de la prochaine authentification, le système peut lancer cet élément automatiquement à nouveau.",
       "confirm": "Confirmer la restauration lors de l'authentification"
     },
@@ -89,10 +89,10 @@
     "preparing": "Vérification de l'élément de démarrage et de son état…",
     "applying": "Mise à jour sécurisée…",
     "errors": {
-      "startup_item_protected": "Il s'agit d'un élément de démarrage tiers non géré par StatusOrbit, donc aucune modification n'a été effectuée.",
+      "startup_item_protected": "Il s'agit d'un élément de démarrage tiers non géré par CoreRobin, donc aucune modification n'a été effectuée.",
       "startup_item_unavailable": "Cet élément de démarrage a été modifié ou supprimé. Rafraîchissez la liste et réessayez.",
-      "startup_state_changed": "Le fichier de démarrage a été modifié après la confirmation, StatusOrbit n'a donc rien changé.",
-      "startup_destination_conflict": "Une autre configuration a été trouvée à la destination. StatusOrbit a refusé de l'écraser.",
+      "startup_state_changed": "Le fichier de démarrage a été modifié après la confirmation, CoreRobin n'a donc rien changé.",
+      "startup_destination_conflict": "Une autre configuration a été trouvée à la destination. CoreRobin a refusé de l'écraser.",
       "startup_confirmation_unavailable": "Cette confirmation n'est plus disponible. Annuler et rouvrir.",
       "startup_confirmation_expired": "La confirmation est expirée. Vérifiez à nouveau l'élément avant de continuer.",
       "startup_management_failed": "Le système n'a pas pu déplacer le fichier de démarrage en toute sécurité. L'état initial a été conservé."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "Service système ou de périphérique",
-      "description": "Ne considérez pas cela comme une application de démarrage ordinaire. StatusOrbit le maintient en lecture seule."
+      "description": "Ne considérez pas cela comme une application de démarrage ordinaire. CoreRobin le maintient en lecture seule."
     },
     "disabled": {
       "title": "Actuellement désactivé",

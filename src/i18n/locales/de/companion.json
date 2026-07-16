@@ -1,9 +1,9 @@
 {
-  "kicker": "Orbit-Assistent",
-  "dragHint": "Ziehen Sie Orbit, um ihn zu verschieben; halten Sie die Maustaste gedrückt, um den Status anzuzeigen; klicken Sie mit der rechten Maustaste, um das Menü aufzurufen",
-  "expand": "Öffnen Sie den Orbit-Assistenten",
-  "collapse": "Schließen Sie den Orbit-Assistenten",
-  "menu": "Orbit-Assistenten-Menü",
+  "kicker": "Robin-Assistent",
+  "dragHint": "Ziehen Sie Robin, um ihn zu verschieben; halten Sie die Maustaste gedrückt, um den Status anzuzeigen; klicken Sie mit der rechten Maustaste, um das Menü aufzurufen",
+  "expand": "Öffnen Sie den Robin-Assistenten",
+  "collapse": "Schließen Sie den Robin-Assistenten",
+  "menu": "Robin-Assistenten-Menü",
   "hide": "Verstecken Sie den Assistenten",
   "reason": "{{resource}} ist in letzter Zeit interessant. Öffnen Sie das Hauptfenster, um mehr zu erfahren.",
   "action": {

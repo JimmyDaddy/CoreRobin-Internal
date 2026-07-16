@@ -9,7 +9,6 @@ import {
   ListTree,
   MemoryStick,
   Network,
-  Orbit,
   Pause,
   Play,
   RefreshCw,
@@ -32,22 +31,28 @@ import {
 import { useAppTranslation } from "./i18n/useAppTranslation";
 
 import {
+  canRelaunchApplication,
   createProcessControlLease,
   executeProcessAction,
+  getSystemSnapshot,
   getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
+  openSystemSettings,
   releaseProcessControlLease,
+  relaunchApplication,
   setDockIconVisible,
   setLaunchAtLogin,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
+import { BrandWordmark } from "./components/BrandWordmark";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { DailyHome } from "./components/DailyHome";
 import { MetricCard } from "./components/MetricCard";
 import { LocaleSelect } from "./components/LocaleSelect";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
+import { RobinIcon } from "./components/RobinIcon";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { SmartDiagnosis } from "./components/SmartDiagnosis";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
@@ -70,6 +75,7 @@ import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import { useStartupItems } from "./hooks/useStartupItems";
+import { useUserActionHistory } from "./hooks/useUserActionHistory";
 import { normalizeLanguage } from "./i18n";
 import brandMark from "./assets/brand-mark.png";
 import {
@@ -79,7 +85,12 @@ import {
   saveProcessExplorerPreferences,
   type ProcessExplorerPreferences,
 } from "./processExplorer";
+import {
+  waitForProcessIdentityExit,
+  waitForProcessReplacement,
+} from "./processRestart";
 import type { ResourceAlertResource } from "./resourceAlerts";
+import type { UserActionKind } from "./userActionHistory";
 import {
   applyAppAppearance,
   loadAppSettings,
@@ -93,6 +104,7 @@ import type {
   ProcessDetail,
   ProcessKey,
   ProcessRow,
+  SystemSettingsDestination,
 } from "./types";
 import {
   formatBytes,
@@ -170,7 +182,7 @@ function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
 }
 
 interface PendingProcessAction {
-  source: "process" | "diagnosis";
+  source: "process" | "diagnosis" | "restart";
   displayName: string;
   action: ProcessAction;
   selectionIdentity: string;
@@ -178,6 +190,7 @@ interface PendingProcessAction {
   lease: ProcessControlLease;
   detail: ProcessDetail;
   dailyIntent: DailyIntent | null;
+  relaunchExecutable: string | null;
 }
 
 function App() {
@@ -226,6 +239,11 @@ function App() {
   const resourceAlerts = useResourceAlerts(
     snapshot,
     settings.usageThresholds,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+    settings.historyApplicationNamesEnabled,
+  );
+  const userActions = useUserActionHistory(
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
     settings.historyApplicationNamesEnabled,
@@ -375,19 +393,19 @@ function App() {
     let disposed = false;
     const unlisteners: Array<() => void> = [];
     void Promise.all([
-      listen<unknown>("status-orbit:navigate", ({ payload }) => {
+      listen<unknown>("core-robin:navigate", ({ payload }) => {
         if (!disposed && isActiveView(payload)) setActiveView(payload);
       }),
-      listen<boolean>("status-orbit:set-paused", ({ payload }) => {
+      listen<boolean>("core-robin:set-paused", ({ payload }) => {
         if (!disposed) setPaused(Boolean(payload));
       }),
-      listen<boolean>("status-orbit:companion-visibility", ({ payload }) => {
+      listen<boolean>("core-robin:companion-visibility", ({ payload }) => {
         if (!disposed) setCompanionVisible(Boolean(payload));
       }),
-      listen("status-orbit:refresh", () => {
+      listen("core-robin:refresh", () => {
         if (!disposed) void refreshNow();
       }),
-      listen<unknown>("status-orbit:open-daily", ({ payload }) => {
+      listen<unknown>("core-robin:open-daily", ({ payload }) => {
         if (disposed) return;
         const request = parseOpenDailyRequest(payload);
         if (!request) return;
@@ -654,6 +672,7 @@ function App() {
           lease,
           detail: activeDetail,
           dailyIntent: null,
+          relaunchExecutable: null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -666,7 +685,12 @@ function App() {
   );
 
   const beginDiagnosisRequestClose = useCallback(
-    async (identity: string, applicationName: string, requestedDailyIntent?: DailyIntent) => {
+    async (
+      identity: string,
+      applicationName: string,
+      requestedDailyIntent?: DailyIntent,
+      restartAfterClose = false,
+    ) => {
       if (preparingActionRef.current || !snapshot) return;
       const process = snapshot.processes.find(
         (candidate) => processIdentity(candidate) === identity,
@@ -706,6 +730,13 @@ function App() {
           );
           return;
         }
+        if (
+          restartAfterClose &&
+          (!nextDetail.executable || !await canRelaunchApplication(nextDetail.executable))
+        ) {
+          setNotice(t("daily:applications.restartUnavailable", { name: applicationName }));
+          return;
+        }
 
         const lease = await createProcessControlLease({
           key: nextDetail.key,
@@ -722,7 +753,7 @@ function App() {
         }
         setDetail(nextDetail);
         setPendingAction({
-          source: "diagnosis",
+          source: restartAfterClose ? "restart" : "diagnosis",
           displayName: applicationName,
           action: "request_close",
           selectionIdentity: identity,
@@ -732,6 +763,7 @@ function App() {
           dailyIntent: settings.experienceMode === "simple"
             ? requestedDailyIntent ?? dailyIntent ?? "slow"
             : null,
+          relaunchExecutable: restartAfterClose ? nextDetail.executable : null,
         });
       } catch (caughtError) {
         setNotice(normalizeCommandError(caughtError).message);
@@ -745,7 +777,7 @@ function App() {
 
   const handleAction = async () => {
     if (!pendingAction || submittingActionRef.current) return;
-    const currentKey = pendingAction.source === "diagnosis"
+    const currentKey = pendingAction.source !== "process"
       ? selectedProcess && processIdentity(selectedProcess) === pendingAction.selectionIdentity
         ? pendingAction.key
         : null
@@ -760,6 +792,15 @@ function App() {
       return;
     }
 
+    const actionRecordId = userActions.start({
+      kind: pendingAction.source === "restart"
+        ? "process_restart"
+        : pendingAction.action === "force_kill"
+          ? "process_force_quit"
+          : "process_close",
+      targetName: pendingAction.displayName,
+      targetCount: 1,
+    });
     submittingActionRef.current = true;
     setSubmittingAction(true);
     try {
@@ -768,7 +809,48 @@ function App() {
         key: pendingAction.key,
         action: pendingAction.action,
       });
-      setNotice(result.message);
+      let resultMessage = result.message;
+      let actionStatus: "succeeded" | "failed" = "succeeded";
+      let actionVerification: "verified" | "not_confirmed" = "verified";
+      if (pendingAction.relaunchExecutable) {
+        const exited = result.outcome === "exited" ||
+          result.outcome === "already_exited" ||
+          await waitForProcessIdentityExit(
+            pendingAction.selectionIdentity,
+            getSystemSnapshot,
+          );
+        if (exited) {
+          await relaunchApplication(pendingAction.relaunchExecutable);
+          const relaunched = await waitForProcessReplacement(
+            pendingAction.selectionIdentity,
+            pendingAction.displayName,
+            getSystemSnapshot,
+          );
+          resultMessage = t("daily:applications.restartComplete", {
+            name: pendingAction.displayName,
+          });
+          actionVerification = relaunched ? "verified" : "not_confirmed";
+        } else {
+          resultMessage = t("daily:applications.restartStillRunning", {
+            name: pendingAction.displayName,
+          });
+          actionStatus = "failed";
+        }
+      } else {
+        const exited = result.outcome === "exited" ||
+          result.outcome === "already_exited" ||
+          await waitForProcessIdentityExit(
+            pendingAction.selectionIdentity,
+            getSystemSnapshot,
+          );
+        actionStatus = exited ? "succeeded" : "failed";
+      }
+      userActions.complete(actionRecordId, {
+        status: actionStatus,
+        verification: actionVerification,
+        targetCount: 1,
+      });
+      setNotice(resultMessage);
       if (pendingAction.dailyIntent) {
         setDailyRecheck({
           intent: pendingAction.dailyIntent,
@@ -780,6 +862,11 @@ function App() {
       await refreshNow();
     } catch (caughtError) {
       const actionError = normalizeCommandError(caughtError);
+      userActions.complete(actionRecordId, {
+        status: "failed",
+        verification: "not_confirmed",
+        targetCount: 1,
+      });
       void releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
       setNotice(actionError.message);
       setPendingAction(null);
@@ -793,7 +880,7 @@ function App() {
     return (
       <main className="boot-screen">
         <span className="brand-mark"><img src={brandMark} alt="" /></span>
-        <strong>StatusOrbit</strong>
+        <BrandWordmark />
         <span><i className="live-status-dot" />{t("app:samplerConnecting")}</span>
       </main>
     );
@@ -848,6 +935,26 @@ function App() {
   const openDailyCleanup = () => {
     navigateDaily("cleanup");
   };
+  const openUserActionDestination = (kind: UserActionKind) => {
+    if (kind === "cleanup_delete") {
+      navigateDaily("cleanup");
+      return;
+    }
+    if (kind === "startup_disable" || kind === "startup_enable") {
+      if (dailyMode) openDailyIntent("startup");
+      else setActiveView("startup");
+      return;
+    }
+    navigateDaily("processes");
+  };
+  const openSystemSettingsPage = async (destination: SystemSettingsDestination) => {
+    setNotice(null);
+    try {
+      await openSystemSettings(destination);
+    } catch (caughtError) {
+      setNotice(normalizeCommandError(caughtError).message);
+    }
+  };
   const switchExperienceMode = (experienceMode: AppSettings["experienceMode"]) => {
     if (experienceMode === settings.experienceMode || modeTransition !== null) return;
     if (modeTransitionTimeoutRef.current !== null) {
@@ -901,7 +1008,7 @@ function App() {
       <nav className="sidebar" aria-label={t("app:mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
-          <span><strong>StatusOrbit</strong><small>{dailyMode ? t("daily:shell.label") : "LOCAL MONITOR"}</small></span>
+          <span><BrandWordmark /><small>{dailyMode ? t("daily:shell.label") : "LOCAL MONITOR"}</small></span>
         </div>
 
         {dailyMode ? (
@@ -966,8 +1073,16 @@ function App() {
                   aria-pressed={companionVisible}
                   onClick={() => void invoke("toggle_companion_window")}
                 >
-                  <Orbit size={16} />
+                  <RobinIcon size={18} />
                 </button> : null}
+                <LocaleSelect
+                  compact
+                  withIcon
+                  className="language-button daily-language-button"
+                  value={settings.language}
+                  label={t("app:switchLanguage")}
+                  onChange={(language) => updateSettings({ language })}
+                />
                 <button
                   className="button mode-switch mode-switch--to-professional"
                   type="button"
@@ -1003,7 +1118,7 @@ function App() {
               aria-pressed={companionVisible}
               onClick={() => void invoke("toggle_companion_window")}
             >
-              <Orbit size={16} />
+              <RobinIcon size={18} />
             </button> : null}
             <button
               className="button mode-switch mode-switch--to-simple"
@@ -1074,6 +1189,9 @@ function App() {
                   onOpenIncident={openDailyIncident}
                   onRefreshStartup={startupItems.refresh}
                   onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, dailyIntent)}
+                  onOpenSystemSettings={(destination) => void openSystemSettingsPage(destination)}
+                  onUserActionStart={userActions.start}
+                  onUserActionComplete={userActions.complete}
                 />
               ) : activeView === "overview" ? (
                 <DailyHome
@@ -1082,6 +1200,15 @@ function App() {
                   incidents={dailyIncidents.active}
                   alertEvents={resourceAlerts.events}
                   onOpenIncident={openDailyIncident}
+                  onOpenCheck={(kind) => {
+                    if (kind === "speed") {
+                      navigateDaily("processes");
+                    } else if (kind === "space") {
+                      navigateDaily("storage");
+                    } else {
+                      openDailyIntent("heat");
+                    }
+                  }}
                   onOpenSolve={() => navigateDaily("more")}
                   onOpenRecords={() => navigateDaily("history")}
                   onRefresh={checkFromDailyHome}
@@ -1095,6 +1222,7 @@ function App() {
                   recheck={dailyRecheck?.intent === "slow" ? dailyRecheck : null}
                   onRefresh={refreshDailyApplications}
                   onRequestClose={(identity, name) => void beginDiagnosisRequestClose(identity, name, "slow")}
+                  onRequestRestart={(identity, name) => void beginDiagnosisRequestClose(identity, name, "slow", true)}
                 />
               ) : activeView === "storage" ? (
                 <DailySpace
@@ -1115,6 +1243,8 @@ function App() {
                   onScan={() => void cleanupScan.scan()}
                   onCancel={() => void cleanupScan.cancel()}
                   onDeletionApplied={cleanupScan.applyDeletion}
+                  onUserActionStart={userActions.start}
+                  onUserActionComplete={userActions.complete}
                 />
               ) : activeView === "more" ? (
                 <DailySolve
@@ -1123,7 +1253,13 @@ function App() {
                   recommendedIntent={recommendedDailyIntent}
                 />
               ) : activeView === "history" ? (
-                <DailyRecords alertEvents={resourceAlerts.events} />
+                <DailyRecords
+                  alertEvents={resourceAlerts.events}
+                  actionRecords={userActions.records}
+                  storedActionCount={userActions.storedRecords.length}
+                  onOpenAction={openUserActionDestination}
+                  onClearSavedActions={userActions.clearSaved}
+                />
               ) : activeView === "settings" ? (
                 <DailySettings settings={settings} notificationStatus={desktopNotifications.status} onChange={updateSettings} />
               ) : (
@@ -1278,6 +1414,8 @@ function App() {
                 onScan={() => void cleanupScan.scan()}
                 onCancel={() => void cleanupScan.cancel()}
                 onDeletionApplied={cleanupScan.applyDeletion}
+                onUserActionStart={userActions.start}
+                onUserActionComplete={userActions.complete}
               />
             ) : activeView === "network" ? (
               <NetworkExplorer
@@ -1302,6 +1440,8 @@ function App() {
                 applications={diagnosis?.applications ?? []}
                 totalMemoryBytes={snapshot.memory.totalBytes}
                 onRefresh={startupItems.refresh}
+                onUserActionStart={userActions.start}
+                onUserActionComplete={userActions.complete}
               />
             ) : activeView === "history" ? (
               <HistoryExplorer
@@ -1309,6 +1449,8 @@ function App() {
                 storedPointCount={persistentHistory.storedPoints.length}
                 alertEvents={resourceAlerts.events}
                 storedAlertEventCount={resourceAlerts.storedEvents.length}
+                actionRecords={userActions.records}
+                storedUserActionCount={userActions.storedRecords.length}
                 activeAlertCount={resourceAlerts.activeAlerts.length}
                 persistenceEnabled={settings.historyPersistenceEnabled}
                 retentionDays={settings.historyRetentionDays}
@@ -1322,7 +1464,9 @@ function App() {
                 onClear={() => {
                   persistentHistory.clear();
                   resourceAlerts.clearSaved();
+                  userActions.clearSaved();
                 }}
+                onOpenUserAction={openUserActionDestination}
               />
             ) : (
               <SettingsExplorer
@@ -1347,6 +1491,11 @@ function App() {
               preparingAction={preparingAction}
               onBestEffortOptInChange={setBestEffortOptIn}
               onAction={(action) => void beginProcessAction(action)}
+              onRestart={() => {
+                if (selectedIdentity && activeDetail) {
+                  void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
+                }
+              }}
             />
           ) : null}
         </div>

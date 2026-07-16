@@ -6,5 +6,5 @@ fn main() {
         tauri_build::Attributes::new()
             .app_manifest(tauri_build::AppManifest::new().commands(command_names::ALL_COMMANDS)),
     )
-    .expect("failed to build StatusOrbit's Tauri application manifest");
+    .expect("failed to build CoreRobin's Tauri application manifest");
 }

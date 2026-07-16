@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "Interface language",
-    "description": "Change StatusOrbit menus, guidance, and status text.",
+    "description": "Change CoreRobin menus, guidance, and status text.",
     "label": "Language"
   },
   "background": {
     "title": "Background and desktop",
-    "description": "Control how StatusOrbit stays available, launches at login, and displays Orbit.",
+    "description": "Control how CoreRobin stays available, launches at login, and displays Robin.",
     "showDockIcon": "Show in the Dock",
     "showDockIconDescription": "When off, use the menu bar without occupying the Dock or app switcher",
     "launchAtLogin": "Launch at login",
     "launchAtLoginDescription": "Start the menu bar service quietly without opening the main window",
-    "companionShowOnStartup": "Keep Orbit on the desktop",
-    "companionShowOnStartupDescription": "Show the Orbit companion whenever the app starts",
-    "companionAlwaysOnTop": "Keep Orbit above windows",
-    "companionAlwaysOnTopDescription": "Stay above other windows; when off, Orbit may be covered"
+    "companionShowOnStartup": "Keep Robin on the desktop",
+    "companionShowOnStartupDescription": "Show the Robin companion whenever the app starts",
+    "companionAlwaysOnTop": "Keep Robin above windows",
+    "companionAlwaysOnTopDescription": "Stay above other windows; when off, Robin may be covered"
   },
   "sampling": {
     "title": "System sampling",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "Desktop notifications",
-    "description": "Only sustained heavy load, real memory pressure, and low disk space interrupt you. StatusOrbit follows up once after the problem has stably recovered.",
+    "description": "Only sustained heavy load, real memory pressure, and low disk space interrupt you. CoreRobin follows up once after the problem has stably recovered.",
     "enable": "Allow restrained alerts",
     "categories": "Allowed alert categories",
     "resources": {

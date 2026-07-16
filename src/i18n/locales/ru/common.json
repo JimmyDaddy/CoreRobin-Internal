@@ -21,5 +21,16 @@
   "unknownUser": "Пользователь не указан",
   "errors": "{{count}} ошибок",
   "fiveMinutes": "Последние 5 минут",
-  "fiveMinutesBack": "−5 мин"
+  "fiveMinutesBack": "−5 мин",
+  "pathActions": {
+    "reveal": "Показать в Finder",
+    "preview": "Быстрый просмотр",
+    "copy": "Копировать путь",
+    "copied": "Путь скопирован"
+  },
+  "systemSettings": {
+    "login_items": "Открыть настройки объектов входа",
+    "battery": "Открыть настройки батареи",
+    "network": "Открыть настройки сети"
+  }
 }

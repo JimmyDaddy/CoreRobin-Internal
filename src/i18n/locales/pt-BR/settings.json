@@ -13,20 +13,20 @@
   },
   "language": {
     "title": "Idioma da interface",
-    "description": "Alterar o texto nos menus, guias e status do StatusOrbit.",
+    "description": "Alterar o texto nos menus, guias e status do CoreRobin.",
     "label": "Idioma"
   },
   "background": {
     "title": "Configurações de fundo e área de trabalho",
-    "description": "Controlar quando o StatusOrbit fica disponível, iniciar automaticamente na entrada e exibir o Orbit.",
+    "description": "Controlar quando o CoreRobin fica disponível, iniciar automaticamente na entrada e exibir o Robin.",
     "showDockIcon": "Mostrar no Dock",
     "showDockIconDescription": "Quando desativado, use o menu da barra sem ocupar o Dock ou o aplicativo alternador",
     "launchAtLogin": "Iniciar automaticamente na entrada",
     "launchAtLoginDescription": "Inicie o serviço da barra de menus discretamente, sem abrir a janela principal",
-    "companionShowOnStartup": "Manter o Orbit na área de trabalho",
-    "companionShowOnStartupDescription": "Exiba o companheiro do Orbit sempre que o aplicativo iniciar",
-    "companionAlwaysOnTop": "Mantenha o Orbit sempre visível acima de outras janelas",
-    "companionAlwaysOnTopDescription": "Permaneça acima de outras janelas; quando desativado, o Orbit pode ser coberto"
+    "companionShowOnStartup": "Manter o Robin na área de trabalho",
+    "companionShowOnStartupDescription": "Exiba o companheiro do Robin sempre que o aplicativo iniciar",
+    "companionAlwaysOnTop": "Mantenha o Robin sempre visível acima de outras janelas",
+    "companionAlwaysOnTopDescription": "Permaneça acima de outras janelas; quando desativado, o Robin pode ser coberto"
   },
   "sampling": {
     "title": "Amostragem do sistema",
@@ -54,7 +54,7 @@
   },
   "notifications": {
     "title": "Notificações do desktop",
-    "description": "Apenas cargas pesadas, pressão real de memória e baixo espaço em disco interrompem o status. O StatusOrbit segue após a recuperação estável do problema.",
+    "description": "Apenas cargas pesadas, pressão real de memória e baixo espaço em disco interrompem o status. O CoreRobin segue após a recuperação estável do problema.",
     "enable": "Habilitar alertas moderados",
     "categories": "Categorias de alertas permitidas",
     "resources": {

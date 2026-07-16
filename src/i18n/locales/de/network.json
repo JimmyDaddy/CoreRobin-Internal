@@ -1,7 +1,7 @@
 {
   "local": "Lokales Netzwerk",
   "title": "Aktive Schnittstellen und Sitzungstrafik",
-  "description": "Die Werte basieren auf dem tatsächlichen Messintervall; Gesamtsummen beginnen, wenn StatusOrbit gestartet wird.",
+  "description": "Die Werte basieren auf dem tatsächlichen Messintervall; Gesamtsummen beginnen, wenn CoreRobin gestartet wird.",
   "connectedInterfaces": "{{connected}} / {{total}} Schnittstellen verbunden",
   "summary": "Netzwerkübersicht",
   "receiveNow": "Empfangen",

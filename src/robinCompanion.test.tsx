@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   openDailyFromCompanion,
-  OrbitCompanionWindow,
-} from "./components/OrbitCompanionWindow";
+  RobinCompanionWindow,
+} from "./components/RobinCompanionWindow";
 import i18n from "./i18nAuxiliary";
 
 afterEach(() => {
@@ -15,7 +15,7 @@ afterEach(() => {
 });
 beforeEach(async () => { await i18n.changeLanguage("zh-CN"); });
 
-describe("Orbit companion interactions", () => {
+describe("Robin companion interactions", () => {
   it("opens the main window without hiding the companion", async () => {
     const calls: string[] = [];
 
@@ -32,8 +32,8 @@ describe("Orbit companion interactions", () => {
   });
 
   it("opens the status bubble on hover without showing a close button", () => {
-    render(<OrbitCompanionWindow />);
-    const mascot = screen.getByRole("button", { name: /拖动 Orbit 移动/ });
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
     const shell = mascot.parentElement;
     expect(shell).not.toBeNull();
     expect(mascot.getAttribute("title")).toBeNull();
@@ -41,8 +41,37 @@ describe("Orbit companion interactions", () => {
     fireEvent.mouseEnter(shell!);
 
     expect(mascot.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Orbit 小伙伴")).toBeTruthy();
+    expect(screen.getByText("Robin 小伙伴")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "关闭" })).toBeNull();
+  });
+
+  it("renders a stateful Robin that follows the pointer", () => {
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
+    const robin = mascot.querySelector<HTMLElement>(".animated-robin");
+    expect(robin).not.toBeNull();
+    expect(robin?.dataset.mood).toBe("loading");
+    expect(robin?.dataset.active).toBe("true");
+
+    vi.spyOn(robin!, "getBoundingClientRect").mockReturnValue({
+      bottom: 80,
+      height: 80,
+      left: 0,
+      right: 80,
+      top: 0,
+      width: 80,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerMove(robin!, {
+      clientX: 80,
+      clientY: 20,
+      pointerType: "mouse",
+    });
+
+    expect(robin?.style.getPropertyValue("--robin-head-x")).toBe("4.50px");
+    expect(robin?.style.getPropertyValue("--robin-head-turn")).toBe("3.40deg");
   });
 
   it("carries the stable incident identity into the main window", async () => {
@@ -66,23 +95,23 @@ describe("Orbit companion interactions", () => {
   });
 
   it("offers hiding through the right-click menu", () => {
-    render(<OrbitCompanionWindow />);
-    const mascot = screen.getByRole("button", { name: /拖动 Orbit 移动/ });
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
     const shell = mascot.parentElement;
     expect(shell).not.toBeNull();
 
     fireEvent.contextMenu(shell!);
-    expect(screen.getByRole("menu", { name: "Orbit 小伙伴菜单" })).toBeTruthy();
+    expect(screen.getByRole("menu", { name: "Robin 小伙伴菜单" })).toBeTruthy();
     fireEvent.click(screen.getByRole("menuitem", { name: "隐藏小伙伴" }));
 
     expect(mascot.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("menu", { name: "Orbit 小伙伴菜单" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Robin 小伙伴菜单" })).toBeNull();
   });
 
   it("ignores a transient mouse leave while the native window is expanding", () => {
     vi.useFakeTimers();
-    render(<OrbitCompanionWindow />);
-    const mascot = screen.getByRole("button", { name: /拖动 Orbit 移动/ });
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
     const shell = mascot.parentElement;
     expect(shell).not.toBeNull();
 
@@ -92,6 +121,6 @@ describe("Orbit companion interactions", () => {
     act(() => vi.advanceTimersByTime(300));
 
     expect(mascot.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Orbit 小伙伴")).toBeTruthy();
+    expect(screen.getByText("Robin 小伙伴")).toBeTruthy();
   });
 });

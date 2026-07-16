@@ -56,10 +56,11 @@
     "launchCommand": "Commande de lancement",
     "stableHandle": "La confirmation utilise un handle OS temporaire et unique; l'exécution ne recherche plus le processus cible par PID.",
     "unavailableControl": "Le contrôle des processus n'est pas disponible sur cette plateforme.",
-    "bestEffort": "macOS ne peut pas fournir un handle stable pour chaque processus. StatusOrbit vérifie l'identité de lancement avant d'envoyer le signal, mais la cible reste déterminée par PID.",
+    "bestEffort": "macOS ne peut pas fournir un handle stable pour chaque processus. CoreRobin vérifie l'identité de lancement avant d'envoyer le signal, mais la cible reste déterminée par PID.",
     "allowBestEffort": "Autoriser les actions des processus avec une approche optimiste",
     "binding": "Association…",
     "requestClose": "Demander la fermeture",
+    "restart": "Redémarrer l’application",
     "forceKill": "Fermeture forcée…"
   },
   "history": {

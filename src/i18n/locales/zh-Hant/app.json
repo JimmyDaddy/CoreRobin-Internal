@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "喚起 Orbit 小夥伴",
-    "hide": "隱藏 Orbit 小夥伴"
+    "show": "喚起 Robin 小夥伴",
+    "hide": "隱藏 Robin 小夥伴"
   },
   "technicalOverview": {
     "title": "檢視實時資源詳情",

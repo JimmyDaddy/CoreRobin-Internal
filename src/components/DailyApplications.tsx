@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   Power,
   RefreshCw,
+  RotateCw,
   Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -30,6 +31,7 @@ interface DailyApplicationsProps {
   recheck: DailyRecheck | null;
   onRefresh: () => Promise<DailyApplicationSnapshot>;
   onRequestClose: (identity: string, name: string) => void;
+  onRequestRestart: (identity: string, name: string) => void;
 }
 
 export interface DailyApplicationSnapshot {
@@ -46,6 +48,7 @@ export function DailyApplications({
   recheck,
   onRefresh,
   onRequestClose,
+  onRequestRestart,
 }: DailyApplicationsProps) {
   const { t, i18n } = useAppTranslation();
   const [query, setQuery] = useState("");
@@ -163,10 +166,16 @@ export function DailyApplications({
                       </div>
                     </details>
                     {application.actionIdentity ? (
-                      <Button variant="primary" disabled={preparingAction} onClick={() => onRequestClose(application.actionIdentity!, application.name)}>
-                        {preparingAction ? <LoaderCircle className="is-spinning" size={14} /> : <Power size={14} />}
-                        {t("daily:applications.requestClose", { name: application.name })}
-                      </Button>
+                      <div className="daily-application__actions">
+                        <Button variant="secondary" disabled={preparingAction} onClick={() => onRequestRestart(application.actionIdentity!, application.name)}>
+                          {preparingAction ? <LoaderCircle className="is-spinning" size={14} /> : <RotateCw size={14} />}
+                          {t("daily:applications.restart", { name: application.name })}
+                        </Button>
+                        <Button variant="primary" disabled={preparingAction} onClick={() => onRequestClose(application.actionIdentity!, application.name)}>
+                          {preparingAction ? <LoaderCircle className="is-spinning" size={14} /> : <Power size={14} />}
+                          {t("daily:applications.requestClose", { name: application.name })}
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
                 ) : null}

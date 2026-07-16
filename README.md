@@ -1,181 +1,103 @@
-# StatusOrbit
+<div align="center">
+  <img src="src/assets/brand-mark.png" width="120" alt="CoreRobin Logo" />
 
-StatusOrbit 是一款桌面端电脑状态和空间管理工具。它把 CPU、内存、磁盘、网络和正在运行的应用放在一起，帮助用户看懂电脑为什么变慢、空间被什么占用，以及哪些项目需要处理。
+  <h1>CoreRobin</h1>
 
-日常模式像一个电脑状态伙伴：先告诉你电脑现在怎么样，再从“电脑有点卡”“风扇一直很响”“空间快不够了”等实际感受出发，带你检查、处理并确认是否恢复。需要 PID、进程树、命令行或连接详情时，可以用页面顶部的明显入口打开专业模式。
+  <p><strong>看懂电脑状态，找到问题，安全处理。</strong></p>
+  <p>一个从真实感受出发的桌面状态伙伴，让电脑变慢、风扇变响、空间不足和网络异常不再只是一堆难懂的指标。</p>
 
-项目使用 Tauri 2、React、TypeScript 和 Rust 构建。
+  <p>
+    <a href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest"><img src="https://img.shields.io/github/v/release/JimmyDaddy/corerobin-monitor?display_name=tag&amp;style=flat-square&amp;color=6477ff" alt="Latest release" /></a>
+    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-171a21?style=flat-square" alt="Supported platforms" />
+    <img src="https://img.shields.io/badge/interface_languages-10-ff766f?style=flat-square" alt="10 interface languages" />
+  </p>
 
-应用源码与构建流程保存在当前私有仓库；官网、公开文档、Issue 和可下载 Release 统一由独立的 [`corerobin-monitor`](https://github.com/JimmyDaddy/corerobin-monitor) 公开仓库承载。两个仓库保持同级独立，不使用 Git submodule。
+  <p>
+    <a href="https://github.com/JimmyDaddy/corerobin-monitor/releases/latest"><strong>下载最新版本</strong></a>
+    ·
+    <a href="https://monitor-app.corerobin.com/">产品网站</a>
+    ·
+    <a href="docs/user-guide.zh-CN.md">使用指南</a>
+  </p>
+</div>
 
-界面支持简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어和Русский，可在右上角直接切换。
+<p align="center">
+  <img src="docs/assets/corerobin-professional-overview.jpg" width="100%" alt="CoreRobin 专业模式资源总览与进程详情" />
+</p>
 
-- [产品网站](https://monitor-app.corerobin.com/)
-- [下载最新版本](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest)
+<p align="center"><sub>专业模式 · 在同一屏查看系统状态、资源趋势与进程详情</sub></p>
+
+> 截图使用内置演示数据，不包含真实设备名称、用户名、文件路径或网络信息。
+
+应用源码与构建流程保存在当前私有仓库；官网、公开文档、Issue 和可下载 Release 统一由独立的 [corerobin-monitor](https://github.com/JimmyDaddy/corerobin-monitor) 公开仓库承载。两个仓库保持同级独立，不使用 Git submodule。发布链路与权限边界见 [Release distribution](docs/release-distribution.md)。
+
+## 专业模式，把状态、趋势和进程放在同一屏
+
+专业模式面向希望直接理解系统行为的用户：先给出稳定的健康判断，同时保留定位问题需要的实时指标、时间趋势与对象详情。你可以从概览继续进入进程、存储、网络、启动项和历史事件，而不必在多套工具之间切换。
+
+- CPU、内存、交换空间、磁盘与网络实时状态
+- 最近 5 分钟的资源趋势与影响最大的应用
+- 进程树、应用详情、活动连接和启动项
+- 磁盘空间、历史事件、桌面提醒与恢复通知
+- 主窗口、状态栏面板和 Robin 小窗口共享的后台状态
+
+<p align="center">
+  <img src="docs/assets/corerobin-professional-network.jpg" width="100%" alt="CoreRobin 专业模式网络吞吐趋势与活动连接" />
+</p>
+
+<p align="center"><sub>网络诊断 · 实时吞吐、五分钟趋势和活动连接</sub></p>
+
+## 看清空间去了哪里
+
+只读扫描会按真实文件路径整理空间占用，并用可下钻的扇形图展示目录层级。扫描只读取文件名、大小等元数据，不读取文件内容，也不会自动移动或删除任何东西。
+
+<p align="center">
+  <img src="docs/assets/corerobin-space-sunburst.jpg" width="100%" alt="CoreRobin 空间清理页面的完整扇形图" />
+</p>
+
+清理操作始终先加入清理篮，永久删除前还会重新检查目标。如果文件已经变化、目标无法安全确认，或涉及受保护位置，操作会直接停止。
+
+## 普通版，需要时快速看一眼
+
+普通版保留同一套监控、诊断与安全边界，但把稳定结论和最值得做的一件事放在前面。想快速确认电脑是否正常时看一眼即可，需要定位具体原因时再切回专业模式。
+
+<p align="center">
+  <img src="docs/assets/corerobin-daily-overview.jpg" width="76%" alt="CoreRobin 普通版电脑状态概览" />
+</p>
+
+<p align="center"><sub>普通版 · 用一个稳定结论说明当前是否需要处理</sub></p>
+
+持续问题会保持稳定身份，短暂波动不会被当成故障。指标恢复后，CoreRobin 还会继续确认并补充恢复记录，让你知道问题是否真的结束。
+
+## 本地优先，操作可控
+
+- 监控、历史和偏好保存在当前设备，不上传或同步
+- 默认不把应用名称写入历史，命令行、用户、路径、文件名和连接地址不会进入历史记录
+- 用户确认执行的退出、重启、清理和启动项操作会记录结果；清理记录只保留数量和释放空间
+- 不会自动结束进程、卸载应用或删除文件
+- 系统关键进程、CoreRobin 自身和受保护目录默认不可操作
+- 桌面提醒只针对持续问题，并设有重复抑制与每日数量上限
+
+## 下载
+
+前往 [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest) 获取适合当前系统的版本：
+
+| 平台 | 安装包 |
+| --- | --- |
+| macOS | Apple Silicon 与 Intel `.dmg` |
+| Windows | `.exe` 与 `.msi` |
+| Linux | `.AppImage` 与 `.deb` |
+
+当前发布版本尚未配置平台商业签名或 Apple 公证。Release 同时提供 SHA-256 校验表、SPDX SBOM，以及校验表的 Sigstore 签名包；这些来源完整性记录不能替代平台签名。
+
+## 10 种界面语言
+
+简体中文、繁體中文、English、日本語、Deutsch、Français、Español、Português (Brasil)、한국어、Русский。
+
+## 了解更多
+
 - [中文使用指南](docs/user-guide.zh-CN.md)
 - [English user guide](docs/user-guide.md)
-
-## 下载与安装
-
-前往 [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest) 下载适合当前系统的安装包。
-
-- macOS 已完成真实设备验证；当前发布构建未配置 Developer ID 签名或 Apple 公证，第一次打开时可能需要在“系统设置 → 隐私与安全性”中确认打开。
-- Windows 与 Linux 安装包由对应系统的 GitHub Actions 构建，目前作为未配置平台发布签名的早期预览版本提供。
-- Release 同时提供 SHA-256 校验表、SPDX SBOM 和校验表的 Sigstore 签名包；这些来源完整性记录不能替代尚未配置的平台签名。
-- `0.0.2` 增加稳定事件生命周期、跨窗口后台状态、登录时启动和 8 种新界面语言。遇到问题时，请在仓库的 Issues 中附上系统版本和复现步骤。
-
-## 功能
-
-### 概览
-
-- 日常模式使用“电脑状态、帮我解决、清理空间、记录”四个入口，不要求用户先理解资源指标
-- 首页始终只给出一个当前结论和一个最值得做的动作；没有问题时会直接说明现在不用处理
-- 可以从电脑卡顿、风扇响、耗电快、空间不足、开机慢或网络异常等感受开始检查；处理后会重新读取真实状态
-- Orbit 状态伙伴会显示正在检查应用、内存、空间或启动项；开启“减少动态效果”后会使用静态过渡
-- 状态栏面板可以唤出紧凑的 Orbit 桌面小窗口，只保留当前结论和一个下一步；按 Esc、点击关闭按钮或点到其他窗口都会收起
-- 技术指标按需展开，不使用缺乏依据的“健康分数”
-- “智能诊断”先告诉用户电脑是否正常，再显示可能变慢的原因、原始证据和相关应用
-- 只有 CPU、内存、磁盘或网络问题持续一段时间时才提示，短暂波动不会被当成故障
-- 已确认的问题会保持稳定身份，指标回落后先等待恢复确认；主窗口、状态栏和 Orbit 伙伴共享同一结论
-- 把同一应用的相关进程合在一起，方便看出哪个应用最忙
-- 实时展示 CPU、内存、交换空间、磁盘和网络吞吐
-- 展示整机 CPU / 内存与磁盘读写的最近 5 分钟趋势
-- 支持暂停、继续和立即刷新
-- 刚启动时，网络和磁盘速度会显示“预热”，下一次刷新后出现正常数据
-
-### 应用
-
-- 日常模式只在诊断需要时展示稳定的应用快照，不会随着每次采样不断重新排序；CPU、内存和磁盘证据按需展开
-- 平铺与父子树两种视图，支持虚拟滚动、搜索和排序
-- 展示进程 CPU、内存、磁盘 I/O、状态、用户和运行时长
-- 详情面板提供位置、启动命令、父进程与最近 5 分钟的资源变化
-- 支持请求结束和强制结束进程；真正执行前会再次确认目标没有变化
-
-### 存储
-
-- 展示卷容量、已用比例、剩余空间与低空间告警
-- 展示最近 5 分钟系统磁盘读写趋势和高 I/O 进程
-- macOS 会合并显示属于同一 APFS 系统卷组的 `/` 与 Data 卷
-
-### 清理
-
-- 在独立页面完整扫描系统磁盘，直到完成或用户主动停止；不会跨入外置磁盘或其他挂载点
-- macOS 扫描前会说明“完全磁盘访问权限”的用途，并可一键打开系统设置；未授权时仍可选择只扫描可访问区域
-- 扫描时持续显示正在检查的位置、项目数量、找到的空间和已经用掉的时间
-- 默认按真实文件路径生成可点击的扇形图，也可以切换到用途分类视图；扇区越大，占用越多
-- 按住扇区并拖进清理篮，只会收集待处理项目，不会立即删除
-- 扫描结果在本机保留 7 天用于浏览；准备永久删除时只权威重扫清理篮中的目标，不会直接使用缓存结果
-- macOS 可以列出系统能够确认长期未打开的应用，但不会猜测未知使用时间，也不会自动卸载
-- 永久删除前会再次显示名称、位置、最新大小和文件数；若有变化，旧确认立即失效，刷新稳定并重新勾选后才能继续
-- 删除成功后，扇形图和清理篮会立即更新；失败的项目会保留并说明原因
-- 扫描只读取文件名称、大小等信息，不读取文件内容，也不会沿着链接进入其他位置
-
-### 网络
-
-- 展示当前上传和下载速度、本次启动后的累计流量，以及每个网络接口的使用情况
-- 低频刷新 TCP / UDP 活动连接，避免连接列表影响日常监控性能
-- 支持按协议和状态筛选，并显示本地地址与远端地址
-- 系统允许时显示连接所属应用，并可直接打开对应进程的详情
-
-macOS 与 Linux 可能因系统权限只返回部分连接归属。
-
-### 历史
-
-- 每 5 分钟在本机保存一次 CPU、内存、磁盘和网络的整体状态
-- 问题持续一段时间时记录提醒，恢复正常后也会留下记录
-- 同一次问题的提醒与恢复会合并为一个事件，便于回看开始时间、持续时长、可能原因和最终结果
-- 短暂尖峰和重复提醒会被过滤，事件可以按资源类型筛选
-- 支持保留 1、7 或 30 天，并可随时停用写入或清除已保存记录
-- 默认不保存应用名称；用户可以单独开启这一项，但命令行、用户、路径、文件名和连接地址仍不会写入历史
-- 所有历史只留在当前设备，不会上传或同步
-
-### 设置
-
-- 支持切换界面语言、系统采样间隔与活动连接刷新间隔
-- 支持登录系统后静默启动；macOS 可以选择是否在 Dock 和应用切换器中显示 StatusOrbit
-- 支持配置 CPU、内存和卷占用百分比的颜色与告警阈值
-- 支持选择默认进程视图和历史保留期；偏好只保存在当前设备
-- 桌面提醒只针对持续问题，同一问题不会反复弹出，并设有每日数量上限；CPU、内存和磁盘提醒可以分别关闭
-- 问题稳定恢复后会补充一次恢复通知，避免只知道“出现过问题”却不知道是否已经恢复
-
-## 安全保护与平台限制
-
-StatusOrbit 不会自动结束进程或删除文件。只有用户主动选择并确认后才会继续；如果进程已经退出，或文件在扫描后发生变化，应用会取消操作。
-
-系统关键进程和 StatusOrbit 自身默认受保护。永久删除只允许处理用户主目录内的普通文件和文件夹，主目录、废纸篓本身、链接、特殊文件和其他磁盘都会被拒绝。
-
-应用不会绕过系统权限或静默提权。macOS 的完整磁盘扫描由用户在系统设置中明确授予“完全磁盘访问权限”；Linux 和 Windows 会使用各自可用的系统接口。在操作前，StatusOrbit 会尽量确认目标仍然正确；系统无法安全确认时，操作会停止。
-
-目前已在 macOS 完成真实窗口和原生应用构建验证。Linux 与 Windows 由 CI 编译对应平台分支，但仍需要持续补充目标系统上的运行时验证。
-
-## 开发
-
-需要准备：
-
-- Node.js 22+
-- pnpm 10.33（项目通过 `packageManager` 固定）
-- Rust 1.95（项目通过 `rust-toolchain.toml` 固定）
-- 当前平台所需的 [Tauri 系统依赖](https://v2.tauri.app/start/prerequisites/)
-
-安装依赖并启动桌面应用：
-
-```bash
-corepack enable
-pnpm install
-pnpm dev
-```
-
-`pnpm dev` 会启动 Vite、Tauri 窗口和 Rust 后端。只调试浏览器界面与 mock 数据时可使用：
-
-```bash
-pnpm dev:web
-```
-
-构建桌面应用：
-
-```bash
-pnpm tauri build
-```
-
-本地预览产品网站或只构建 GitHub Pages 静态文件：
-
-```bash
-pnpm site:dev
-pnpm site:build
-```
-
-## 验证
-
-```bash
-pnpm i18n:check
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm site:build
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo test --manifest-path src-tauri/Cargo.toml --locked
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
-```
-
-GitHub Actions 会在 pull request 和 `main` 分支推送时运行前端检查，并在 Linux、macOS 和 Windows 上编译 Rust/Tauri 目标；Linux 额外运行 Rust 测试、格式检查和 Clippy。
-
-Release workflow 的 verify/build job 只有只读仓库权限，构建结果先进入 workflow artifact；独立 sign job 通过 GitHub OIDC 与 Sigstore 为 `SHA256SUMS` 生成可公开验证的签名包。只有绑定受保护 `release` environment 的 publish job 会读取细粒度 `PUBLIC_RELEASE_TOKEN`，并把安装包和验证材料发布到公开仓库。tag 必须使用精确的 `vMAJOR.MINOR.PATCH`、与三处版本一致，并指向受信 `main` 历史中的 commit。平台签名和公证仍待后续单独决策，当前流程不会假装已经具备这项保证。完整边界和配置见 [`docs/release-distribution.md`](docs/release-distribution.md)。
-
-## 目录
-
-- `src/`：React 界面、国际化、轮询状态与交互逻辑
-- `src/i18n/`：按语言和 namespace 拆分的界面、辅助窗口与桌面通知资源
-- `src/dailyIncidents.ts`、`src/healthState.ts`：日常事件生命周期和跨窗口展示状态
-- `src/diagnosis.ts`：纯函数智能诊断规则与应用归因
-- `src/cleanupMap.ts`：空间扇形图布局与下钻模型
-- `src-tauri/src/cleanup.rs`：文件扫描、应用盘点、进度/取消、空间层级聚合与受保护的永久删除操作
-- `src-tauri/src/monitor.rs`：系统资源与进程采样
-- `src-tauri/src/network_connections.rs`：活动连接采集与解析
-- `src-tauri/src/process_control.rs`：跨平台进程控制租约与执行
-- `src-tauri/src/identity.rs`：跨平台进程启动标识读取
-- `src-tauri/src/models.rs`：前后端数据契约
-- `src-tauri/src/health_state.rs`：版本化健康状态注册表与跨窗口分发
-- `site/`：产品网站的构建源；公开发布的官网以 `corerobin-monitor` 仓库为准
-- `docs/user-guide.zh-CN.md`、`docs/user-guide.md`：仓库内中英文用户指南
-- `scripts/build-site.mjs`：静态网站构建、品牌资产复制与本地链接校验
-- `scripts/verify-release-source.mjs`：发布 tag、版本与受信分支祖先关系验证
+- [产品网站](https://monitor-app.corerobin.com/)
+- [问题反馈](https://github.com/JimmyDaddy/corerobin-monitor/issues)
+- [安全报告](SECURITY.md)

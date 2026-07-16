@@ -56,10 +56,11 @@
     "launchCommand": "启动命令",
     "stableHandle": "确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
     "unavailableControl": "此平台暂不支持安全的进程控制。",
-    "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。StatusOrbit 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
+    "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。CoreRobin 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
     "allowBestEffort": "本次运行中允许 best-effort 进程操作",
     "binding": "正在绑定…",
     "requestClose": "请求结束",
+    "restart": "重新启动应用",
     "forceKill": "强制结束…"
   },
   "history": {

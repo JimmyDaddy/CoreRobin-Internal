@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "Mostrar assistente Orbit",
-    "hide": "Ocultar assistente Orbit"
+    "show": "Mostrar assistente Robin",
+    "hide": "Ocultar assistente Robin"
   },
   "technicalOverview": {
     "title": "Visualizar detalhes de recursos em tempo real",

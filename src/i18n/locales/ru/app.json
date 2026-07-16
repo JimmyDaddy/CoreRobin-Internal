@@ -51,8 +51,8 @@
     }
   },
   "companion": {
-    "show": "Показать помощника Orbit",
-    "hide": "Скрыть помощника Orbit"
+    "show": "Показать помощника Robin",
+    "hide": "Скрыть помощника Robin"
   },
   "technicalOverview": {
     "title": "Просмотр текущих данных о ресурсах",

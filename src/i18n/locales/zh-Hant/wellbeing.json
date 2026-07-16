@@ -13,11 +13,13 @@
     "normal": "當前溫度在正常範圍內。",
     "attention": "裝置有些熱；如果同時卡頓，可先減少高負荷任務。",
     "urgent": "溫度持續偏高，建議停止高負荷任務並保持通風。",
-    "unavailable": "當前系統或硬體沒有向 StatusOrbit 提供溫度讀數。"
+    "unavailable": "當前系統或硬體沒有向 CoreRobin 提供溫度讀數。"
   },
   "battery": {
     "label": "電池",
     "notPresent": "未檢測到電池",
+    "healthLabel": "健康度",
+    "cycleCountLabel": "循環次數",
     "unavailable": "桌上型電腦或未提供電池資訊的裝置會顯示在這裡。",
     "normal": "電量狀態正常",
     "attention": "剩餘電量不多，建議準備連線電源",
@@ -34,7 +36,7 @@
   "sleep": {
     "label": "自動休眠",
     "unavailableValue": "無法讀取",
-    "unavailable": "當前平臺沒有向 StatusOrbit 提供可靠的休眠阻止資訊。",
+    "unavailable": "當前平臺沒有向 CoreRobin 提供可靠的休眠阻止資訊。",
     "clearValue": "可以正常休眠",
     "clear": "沒有發現應用阻止電腦自動休眠。",
     "blockedValue": "{{count}} 個應用",

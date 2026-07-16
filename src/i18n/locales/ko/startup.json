@@ -13,7 +13,7 @@
   },
   "scanning": "검사 중…",
   "loadingTitle": "시작 항목 읽기",
-  "loadingDescription": "StatusOrbit는 공개된 시작 구성만 읽으며 그 안의 명령을 불러오거나 실행하지 않습니다.",
+  "loadingDescription": "CoreRobin는 공개된 시작 구성만 읽으며 그 안의 명령을 불러오거나 실행하지 않습니다.",
   "summary": "시작 항목 요약",
   "reviewCount": "확인해 볼 가치가 있습니다",
   "reviewHint": "로그인 시 시작되는 타사 프로그램",
@@ -37,7 +37,7 @@
   "disabled": "비활성화",
   "technicalDetails": "기술 정보 표시",
   "managementBoundary": "사용자 레벨의 특정 프로그램만 비활성화할 수 있습니다. 시스템 항목 및 지원되지 않는 소스는 읽기 전용 상태로 유지됩니다.",
-  "readOnlyBoundary": "이 플랫폼에는 StatusOrbit가 안전하게 복원할 수 있는 시작 항목 소스가 없으므로 목록은 읽기 전용으로 유지됩니다.",
+  "readOnlyBoundary": "이 플랫폼에는 CoreRobin가 안전하게 복원할 수 있는 시작 항목 소스가 없으므로 목록은 읽기 전용으로 유지됩니다.",
   "unreadable": "{{count}} 시작 위치를 읽을 수 없습니다 (권한 문제)",
   "actions": {
     "disable": "로그인 시 비활성화",
@@ -71,13 +71,13 @@
   "actionDialog": {
     "disable": {
       "title": "{{name}}의 자동 시작을 끄시겠습니까?",
-      "description": "StatusOrbit는 이 사용자 설정 파일을 자체 복구 저장소로 이동시키고 삭제하지 않습니다.",
+      "description": "CoreRobin는 이 사용자 설정 파일을 자체 복구 저장소로 이동시키고 삭제하지 않습니다.",
       "whenDescription": "이 변경 사항은 다음 로그인 시에 적용됩니다. 복원도 다음 로그인부터 적용됩니다.",
       "confirm": "로그인 시 비활성화 확인"
     },
     "enable": {
       "title": "{{name}}의 자동 시작을 복원하시겠습니까?",
-      "description": "StatusOrbit는 저장했던 설정을 원래 위치로 되돌립니다.",
+      "description": "CoreRobin는 저장했던 설정을 원래 위치로 되돌립니다.",
       "whenDescription": "다음 로그인부터 시스템이 이 항목을 자동으로 다시 시작할 수 있습니다.",
       "confirm": "로그인 시 복원 확인"
     },
@@ -89,10 +89,10 @@
     "preparing": "시작 항목 및 파일 상태 확인 중…",
     "applying": "안정적으로 업데이트 중…",
     "errors": {
-      "startup_item_protected": "StatusOrbit가 안전하게 관리할 수 있는 일반적인 사용자 앱이 아닙니다. 따라서 변경되지 않았습니다.",
+      "startup_item_protected": "CoreRobin가 안전하게 관리할 수 있는 일반적인 사용자 앱이 아닙니다. 따라서 변경되지 않았습니다.",
       "startup_item_unavailable": "이 시작 항목이 변경되거나 사라졌습니다. 목록을 새로 고쳐 다시 시도해 보세요.",
-      "startup_state_changed": "확인 후 파일 상태가 변경되어 StatusOrbit는 아무런 변경도 하지 않았습니다.",
-      "startup_destination_conflict": "다른 설정이 대상 위치에 존재합니다. StatusOrbit는 덮어쓰기를 거부했습니다.",
+      "startup_state_changed": "확인 후 파일 상태가 변경되어 CoreRobin는 아무런 변경도 하지 않았습니다.",
+      "startup_destination_conflict": "다른 설정이 대상 위치에 존재합니다. CoreRobin는 덮어쓰기를 거부했습니다.",
       "startup_confirmation_unavailable": "이 확인은 더 이상 사용할 수 없습니다. 취소하고 다시 열어보세요.",
       "startup_confirmation_expired": "확인이 만료되었습니다. 계속하기 전에 항목을 다시 검토하세요.",
       "startup_management_failed": "시스템이 시작 파일을 안전하게 이동하지 못했습니다. 원래 상태가 유지되었습니다."
@@ -116,7 +116,7 @@
     },
     "system": {
       "title": "시스템 또는 장치 서비스",
-      "description": "일반적인 시작 앱으로 사용하지 마세요. StatusOrbit는 이를 읽기 전용으로 유지합니다."
+      "description": "일반적인 시작 앱으로 사용하지 마세요. CoreRobin는 이를 읽기 전용으로 유지합니다."
     },
     "disabled": {
       "title": "현재 비활성화됨",

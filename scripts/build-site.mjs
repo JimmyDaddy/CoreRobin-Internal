@@ -11,6 +11,18 @@ await cp(sourceRoot, outputRoot, { recursive: true });
 await mkdir(join(outputRoot, "assets"), { recursive: true });
 await cp(join(repositoryRoot, "src/assets/brand-mark.png"), join(outputRoot, "assets/brand-mark.png"));
 await cp(join(repositoryRoot, "src-tauri/icons/icon.png"), join(outputRoot, "assets/app-icon.png"));
+await cp(join(repositoryRoot, "src/styles/animated-robin.css"), join(outputRoot, "animated-robin.css"));
+
+const screenshotAssets = [
+  "corerobin-daily-overview.jpg",
+  "corerobin-daily-assistant.jpg",
+  "corerobin-professional-overview.jpg",
+  "corerobin-professional-network.jpg",
+  "corerobin-space-sunburst.jpg",
+];
+for (const filename of screenshotAssets) {
+  await cp(join(repositoryRoot, "docs/assets", filename), join(outputRoot, "assets", filename));
+}
 
 const files = await walk(outputRoot);
 const htmlFiles = files.filter((path) => extname(path) === ".html");
@@ -53,7 +65,7 @@ for (const htmlFile of htmlFiles) {
   }
 }
 
-console.log(`Built StatusOrbit site: ${files.length + 2} files, ${htmlFiles.length} HTML pages.`);
+console.log(`Built CoreRobin site: ${files.length} files, ${htmlFiles.length} HTML pages.`);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });

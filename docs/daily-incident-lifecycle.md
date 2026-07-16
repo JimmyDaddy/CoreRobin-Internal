@@ -15,7 +15,7 @@
 - [Grafana alert lifecycle](https://grafana.com/docs/grafana-cloud/alerting-and-irm/alerting/fundamentals/alert-rule-evaluation/) 明确区分 Normal、Pending、Alerting、Recovering；[recovery threshold](https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rules/queries-conditions/) 使用与触发阈值不同的恢复阈值，避免在边界附近反复切换。
 - [Netdata alert delay](https://learn.netdata.cloud/docs/alerts-%26-notifications/alert-configuration-reference) 分别设置状态上升和下降延迟，避免告警通知频繁翻转。
 
-StatusOrbit 采用三者共同的核心原则：持续确认、恢复回差、恢复确认和稳定事件身份；不采用 Netdata 的倍增延迟，因为本地桌面场景需要让恢复反馈保持可预期。
+CoreRobin 采用三者共同的核心原则：持续确认、恢复回差、恢复确认和稳定事件身份；不采用 Netdata 的倍增延迟，因为本地桌面场景需要让恢复反馈保持可预期。
 
 ## 用户可见状态
 
@@ -106,7 +106,7 @@ StatusOrbit 采用三者共同的核心原则：持续确认、恢复回差、�
 
 ## 统一应用健康状态服务
 
-事件生命周期不属于任何窗口。StatusOrbit 使用一个长生命周期健康引擎生成事件，Rust
+事件生命周期不属于任何窗口。CoreRobin 使用一个长生命周期健康引擎生成事件，Rust
 应用状态保存最后一份版本化展示快照，并将它分发给主窗口、状态栏面板和桌面小伙伴。
 外观主题与语言仍是独立服务，不能承载健康状态。
 
@@ -148,7 +148,7 @@ StatusOrbit 采用三者共同的核心原则：持续确认、恢复回差、�
 
 Tauri 事件不是保留消息，辅助窗口不能假设自己一定赶上首次广播。每个辅助窗口启动时必须：
 
-1. 先注册 `status-orbit:health-state-changed` 监听器；
+1. 先注册 `core-robin:health-state-changed` 监听器；
 2. 再调用 `get_health_state` 读取注册表当前值；
 3. 同时到达时只接受 revision 更高的状态；
 4. 卸载时取消监听。

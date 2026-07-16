@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use status_orbit_lib::{benchmark_cleanup_root, benchmark_cleanup_root_with_cancel};
+use core_robin_lib::{benchmark_cleanup_root, benchmark_cleanup_root_with_cancel};
 
 fn main() -> Result<(), String> {
     let arguments = env::args().skip(1).collect::<Vec<_>>();

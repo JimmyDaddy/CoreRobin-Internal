@@ -42,7 +42,7 @@
     "happeningNow": "仍在發生",
     "resolved": "已經恢復",
     "emptyTitle": "最近沒有值得擔心的事情",
-    "emptyDescription": "StatusOrbit 會忽略短暫波動，只把持續影響電腦的情況整理在這裡。",
+    "emptyDescription": "CoreRobin 會忽略短暫波動，只把持續影響電腦的情況整理在這裡。",
     "cpu": {
       "active": {
         "title": "電腦正在持續忙碌",
@@ -52,7 +52,7 @@
         "title": "電腦曾忙了一陣，現在已經恢復",
         "description": "這次高負荷持續約 {{duration}}，峰值約 {{value}}%，之後已回到正常範圍。"
       },
-      "guidance": "如果仍然覺得卡，可以到“應用”檢視是誰影響最大；StatusOrbit 不會自動關閉任何應用。"
+      "guidance": "如果仍然覺得卡，可以到“應用”檢視是誰影響最大；CoreRobin 不會自動關閉任何應用。"
     },
     "memory": {
       "active": {
@@ -63,7 +63,7 @@
         "title": "記憶體壓力曾經升高，現在已經緩解",
         "description": "這次記憶體緊張持續約 {{duration}}，隨後可用記憶體和交換活動恢復。"
       },
-      "guidance": "單純“記憶體用得多”並不是問題；StatusOrbit 只記錄低可用記憶體同時伴隨明顯交換活動的情況。"
+      "guidance": "單純“記憶體用得多”並不是問題；CoreRobin 只記錄低可用記憶體同時伴隨明顯交換活動的情況。"
     },
     "volume": {
       "active": {
@@ -98,10 +98,49 @@
     "triggeredDetail": "{{value}}%，高於 {{threshold}}% 已持續 {{duration}}。",
     "recoveredDetail": "已回落到 {{value}}%，本次告警持續 {{duration}}。"
   },
+  "actions": {
+    "eyebrow": "你確認過的操作",
+    "title": "操作與結果",
+    "description": "記錄你確認執行的操作，並在可能時核對是否生效。",
+    "count": "最近 {{count}} 項",
+    "saved": "{{count}} 項已儲存操作",
+    "emptyTitle": "尚未執行任何操作",
+    "emptyDescription": "關閉應用程式、清理檔案或管理啟動項目後，結果會顯示在這裡。",
+    "open": "查看",
+    "clear": "清除操作記錄",
+    "kind": {
+      "process_close": "正常結束應用程式",
+      "process_restart": "重新啟動應用程式",
+      "process_force_quit": "強制結束應用程式",
+      "cleanup_delete": "永久清理檔案",
+      "startup_disable": "停用啟動項目",
+      "startup_enable": "恢復啟動項目"
+    },
+    "status": {
+      "running": "正在執行",
+      "succeeded": "已完成",
+      "partial": "部分完成",
+      "failed": "未完成",
+      "cancelled": "已取消",
+      "interrupted": "意外中斷"
+    },
+    "verification": {
+      "pending": "正在核對結果",
+      "verified": "已重新核對系統狀態",
+      "not_confirmed": "暫時無法確認最終狀態"
+    },
+    "target": {
+      "application": "未儲存應用程式名稱",
+      "files": "已選取的檔案",
+      "startup": "未儲存啟動項目名稱"
+    },
+    "cleanupResult": "已處理 {{count}} 項，釋放 {{size}}",
+    "cleanupFailed": "{{count}} 項未完成"
+  },
   "privacyEyebrow": "資料邊界",
   "privacyTitle": "隱私說明",
-  "privacyLocal": "歷史只儲存在當前裝置的 StatusOrbit WebView 儲存中，不會上傳或同步。",
-  "privacyCollected": "僅記錄整機 CPU、記憶體百分比、磁碟和網路吞吐快照、資源超限與恢復事件；應用顯示名只有在設定中單獨允許後才會隨事件儲存。",
+  "privacyLocal": "歷史只儲存在當前裝置的 CoreRobin WebView 儲存中，不會上傳或同步。",
+  "privacyCollected": "記錄整機資源快照、超限與恢復事件，以及你確認執行的操作類型、結果、數量和釋放空間；應用程式或啟動項目名稱只有在設定中單獨允許後才會儲存。",
   "privacyExcluded": "不記錄程序命令、使用者、路徑、檔名、本地或遠端連線地址。",
   "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
 }

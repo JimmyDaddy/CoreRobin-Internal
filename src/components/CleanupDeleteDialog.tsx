@@ -108,7 +108,7 @@ export function CleanupDeleteDialog({
 
         {submitting ? (
           <div className={`cleanup-delete-dialog__progress${cancelling ? " is-cancelling" : ""}`} role="status" aria-live="polite">
-            <span className="cleanup-delete-dialog__progress-orbit" aria-hidden="true">
+            <span className="cleanup-delete-dialog__progress-mark" aria-hidden="true">
               <i /><i /><i />
               {cancelling ? <CircleStop size={18} /> : <Trash2 size={17} />}
             </span>

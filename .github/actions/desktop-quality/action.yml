@@ -1,0 +1,70 @@
+name: Desktop quality
+description: Run the shared cross-platform CoreRobin desktop checks.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Linux system dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libwebkit2gtk-4.1-dev \
+          build-essential \
+          curl \
+          wget \
+          file \
+          libxdo-dev \
+          libssl-dev \
+          libayatana-appindicator3-dev \
+          librsvg2-dev
+
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      with:
+        node-version: 22
+
+    - name: Enable pinned pnpm
+      shell: bash
+      run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Build web assets
+      shell: bash
+      run: pnpm build
+
+    - name: Activate pinned Rust toolchain
+      shell: bash
+      run: rustup show active-toolchain
+
+    - name: Restore Cargo cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-deps-v1-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-deps-v1-
+
+    - name: Check desktop targets
+      shell: bash
+      run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets --locked
+
+    - name: Check Rust formatting
+      if: runner.os == 'Linux'
+      shell: bash
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+    - name: Test Rust backend
+      shell: bash
+      run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+
+    - name: Lint Rust backend
+      if: runner.os == 'Linux'
+      shell: bash
+      run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings

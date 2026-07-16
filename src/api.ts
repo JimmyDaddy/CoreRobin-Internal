@@ -46,6 +46,7 @@ import type {
   StartupManagementLeaseReleaseRequest,
   StartupManagementLeaseRequest,
   StartupManagementResult,
+  SystemSettingsDestination,
 } from "./types";
 import type {
   HealthStateSnapshot,
@@ -188,7 +189,7 @@ export async function getCleanupScanAccess(): Promise<CleanupScanAccess> {
         fullDiskAccess: "not_granted",
         fullDiskAccessRecommended: true,
         applicationBundleAvailable: demo === "cleanup-access",
-        applicationBundlePath: demo === "cleanup-access" ? "/Applications/StatusOrbit.app" : null,
+        applicationBundlePath: demo === "cleanup-access" ? "/Applications/CoreRobin.app" : null,
       };
     }
     return {
@@ -209,6 +210,33 @@ export async function openCleanupFullDiskAccessSettings(): Promise<void> {
 export async function revealCleanupApplicationBundle(): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("reveal_cleanup_app_bundle");
+}
+
+export async function revealPath(path: string): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("reveal_path", { path });
+}
+
+export async function previewPath(path: string): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("preview_path", { path });
+}
+
+export async function openSystemSettings(
+  destination: SystemSettingsDestination,
+): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("open_system_settings", { destination });
+}
+
+export async function canRelaunchApplication(executablePath: string): Promise<boolean> {
+  if (canUseDevelopmentMock()) return executablePath.includes(".app/");
+  return invoke<boolean>("can_relaunch_application", { executablePath });
+}
+
+export async function relaunchApplication(executablePath: string): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("relaunch_application", { executablePath });
 }
 
 export async function getCleanupPathState(path: string): Promise<CleanupPathState> {

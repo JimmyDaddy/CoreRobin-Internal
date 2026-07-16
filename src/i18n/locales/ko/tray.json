@@ -2,8 +2,14 @@
   "localMonitor": "로컬 시스템 모니터",
   "available": "사용 가능한 공간",
   "open": "전체 보기",
-  "companion": "Orbit 데스크톱 앱",
+  "companion": "Robin 데스크톱 앱",
   "cleanup": "공간 정리",
+  "quit": "앱 종료",
+  "updatedAt": "{{time}} 업데이트",
+  "dataMode": {
+    "foreground": "포그라운드 샘플링",
+    "background": "백그라운드 샘플링"
+  },
   "health": {
     "loading": "연결 중",
     "observing": "상태 학습",
@@ -26,11 +32,11 @@
     },
     "attention": {
       "title": "특정 자원 사용량이 높습니다",
-      "description": "StatusOrbit를 열어 자세한 내용과 안내를 확인하세요."
+      "description": "CoreRobin를 열어 자세한 내용과 안내를 확인하세요."
     },
     "urgent": {
       "title": "리소스 사용량이 높습니다.",
-      "description": "조치를 취하기 전에 StatusOrbit에서 관련 정보를 확인하세요."
+      "description": "조치를 취하기 전에 CoreRobin에서 관련 정보를 확인하세요."
     }
   },
   "reason": "{{resource}} 주의가 필요한 상태",

@@ -13,7 +13,7 @@
   "access": {
     "kicker": "Avant de commencer la numérisation",
     "title": "Autoriser l'accès à l'intégralité du disque système",
-    "description": "macOS protège Mail, Messages et d'autres données d'applications. L'accès complet au disque permet à StatusOrbit de créer une carte complète de l'espace ; StatusOrbit lit toujours les métadonnées telles que les noms, les tailles et les dates.",
+    "description": "macOS protège Mail, Messages et d'autres données d'applications. L'accès complet au disque permet à CoreRobin de créer une carte complète de l'espace ; CoreRobin lit toujours les métadonnées telles que les noms, les tailles et les dates.",
     "checking": "Vérification de l'accès…",
     "checkingReturn": "Confirmation de l'accès…",
     "openSettings": "Ouvrir les Préférences Système",
@@ -21,15 +21,15 @@
     "revealApp": "Afficher l'application dans Finder",
     "checkAgain": "Accès activé — vérifier à nouveau",
     "continueLimited": "Numériser les zones accessibles",
-    "waiting": "Les Préférences Système sont ouvertes. Si StatusOrbit est manquant, cliquez sur le signe + sous la liste et sélectionnez StatusOrbit.app. Activez-le, puis redémarrez pour que la numérisation se lance automatiquement.",
+    "waiting": "Les Préférences Système sont ouvertes. Si CoreRobin est manquant, cliquez sur le signe + sous la liste et sélectionnez CoreRobin.app. Activez-le, puis redémarrez pour que la numérisation se lance automatiquement.",
     "unknown": "L'accès n'a pas pu être confirmé. Vous pouvez toujours ouvrir les Préférences Système ou effectuer une numérisation limitée.",
-    "bundleRequired": "Lancez d'abord StatusOrbit.app",
+    "bundleRequired": "Lancez d'abord CoreRobin.app",
     "bundleMissingTitle": "Cette application ne peut pas être ajoutée à la liste des applications autorisées",
-    "bundleMissingDescription": "macOS ne peut pas autoriser cette application ici. Installez StatusOrbit.app et rouvrez-la depuis Applications ; une numérisation limitée est toujours disponible.",
-    "privacy": "macOS contrôle cette permission, et vous pouvez la désactiver à tout moment. StatusOrbit ne lit jamais le contenu des fichiers ni ne modifie les fichiers pendant la numérisation.",
+    "bundleMissingDescription": "macOS ne peut pas autoriser cette application ici. Installez CoreRobin.app et rouvrez-la depuis Applications ; une numérisation limitée est toujours disponible.",
+    "privacy": "macOS contrôle cette permission, et vous pouvez la désactiver à tout moment. CoreRobin ne lit jamais le contenu des fichiers ni ne modifie les fichiers pendant la numérisation.",
     "steps": {
       "open": "Ouvrir les Préférences Système",
-      "add": "Cliquez sur le signe + et sélectionnez StatusOrbit.app",
+      "add": "Cliquez sur le signe + et sélectionnez CoreRobin.app",
       "return": "Activez-le et redémarrez"
     }
   },
@@ -42,11 +42,11 @@
     "refresh": "Actualiser le résultat",
     "cached": {
       "title": "Résultat de la dernière analyse restauré",
-      "description": "Continuez à explorer sans attendre une nouvelle analyse. StatusOrbit vérifie un répertoire pour les modifications uniquement lorsque vous y naviguez."
+      "description": "Continuez à explorer sans attendre une nouvelle analyse. CoreRobin vérifie un répertoire pour les modifications uniquement lorsque vous y naviguez."
     },
     "expired": {
       "title": "Ce résultat a plus de 24 heures",
-      "description": "StatusOrbit maintient la carte disponible afin que vous puissiez continuer à explorer. Actualisez-la avant de prendre des décisions concernant le nettoyage."
+      "description": "CoreRobin maintient la carte disponible afin que vous puissiez continuer à explorer. Actualisez-la avant de prendre des décisions concernant le nettoyage."
     }
   },
   "progress": {
@@ -165,12 +165,12 @@
     "progressDeleted": "Environ {{size}} éléments supprimés",
     "cancelDelete": "Annuler la suppression",
     "cancelling": "Suppression en cours…",
-    "cancelHint": "Les suppressions effectuées ne peuvent pas être restaurées. StatusOrbit s'arrêtera après l'opération de suppression actuelle.",
+    "cancelHint": "Les suppressions effectuées ne peuvent pas être restaurées. CoreRobin s'arrêtera après l'opération de suppression actuelle.",
     "errors": {
-      "protected_cleanup_path": "StatusOrbit ne supprimera ni votre dossier personnel ni le dossier Corbeille lui-même.",
-      "cleanup_target_outside_home": "Pour des raisons de sécurité, StatusOrbit ne traite que les fichiers contenus dans votre dossier personnel.",
-      "cleanup_cross_filesystem": "Le répertoire sélectionné se trouve sur un autre disque ou point de montage, ce qui empêche la suppression récursive par StatusOrbit.",
-      "cleanup_target_changed": "Un fichier a été modifié après la confirmation, StatusOrbit n'a donc supprimé rien. Annuler et vérifier à nouveau.",
+      "protected_cleanup_path": "CoreRobin ne supprimera ni votre dossier personnel ni le dossier Corbeille lui-même.",
+      "cleanup_target_outside_home": "Pour des raisons de sécurité, CoreRobin ne traite que les fichiers contenus dans votre dossier personnel.",
+      "cleanup_cross_filesystem": "Le répertoire sélectionné se trouve sur un autre disque ou point de montage, ce qui empêche la suppression récursive par CoreRobin.",
+      "cleanup_target_changed": "Un fichier a été modifié après la confirmation, CoreRobin n'a donc supprimé rien. Annuler et vérifier à nouveau.",
       "cleanup_confirmation_unavailable": "La confirmation n'est plus disponible. Annuler et rouvrir la vérification.",
       "cleanup_confirmation_expired": "Cette confirmation a expiré. Annuler et vérifier les fichiers actuels à nouveau.",
       "cleanup_target_unavailable": "Certains éléments ne sont plus présents ou n'ont pas pu être accédés. Relancer la recherche et réessayer.",
@@ -211,17 +211,17 @@
   "applications": {
     "kicker": "Inventaire des applications en lecture seule",
     "title": "Applications non utilisées depuis longtemps",
-    "boundary": "Uniquement les apps dont macOS confirme qu'elles n'ont pas été ouvertes depuis au moins six mois ; StatusOrbit ne les désinstalle jamais automatiquement",
+    "boundary": "Uniquement les apps dont macOS confirme qu'elles n'ont pas été ouvertes depuis au moins six mois ; CoreRobin ne les désinstalle jamais automatiquement",
     "lastUsed": "Dernière utilisation {{date}} · non ouverte depuis {{days}} jours",
     "none": "Aucune application n'a pu être confirmée comme inutilisée depuis plus de six mois.",
     "unavailable": "Cette plateforme ne peut actuellement fournir des dates fiables de dernière utilisation des applications.",
-    "unknownExcluded": "{{count}} Les autres applications n'ont pas de date d'utilisation confirmée, donc StatusOrbit ne les a pas classées comme inutilisées."
+    "unknownExcluded": "{{count}} Les autres applications n'ont pas de date d'utilisation confirmée, donc CoreRobin ne les a pas classées comme inutilisées."
   },
   "reviewFirst": "Examiner les éléments un par un",
   "largestFiles": "Fichiers volumineux sur le disque système",
   "largeFileBoundary": "Seuls les fichiers de plus de 500 Mo sont listés ; la suppression automatique n'est pas recommandée",
   "noLargeFiles": "Aucun fichier de plus de 500 Mo n'a été trouvé dans les emplacements accessibles du disque système.",
   "unreadable": "{{count}} Les emplacements étaient protégés ou temporairement inaccessibles. Seuls ces emplacements sont exclus des résultats.",
-  "fullDiskAccessHint": "Sur macOS, accordez l'accès complet au disque à StatusOrbit dans les Paramètres Système → Confidentialité & Sécurité, puis relancez la recherche.",
+  "fullDiskAccessHint": "Sur macOS, accordez l'accès complet au disque à CoreRobin dans les Paramètres Système → Confidentialité & Sécurité, puis relancez la recherche.",
   "safetyBoundary": "La recherche n'a pas de limite de temps ou d'éléments et ne suit jamais les liens symboliques. Seuls les éléments placés dans le bac, vérifiés par le chemin et explicitement confirmés sont définitivement supprimés et ne peuvent être restaurés."
 }

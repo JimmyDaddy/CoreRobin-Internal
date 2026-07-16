@@ -1,6 +1,6 @@
 use std::env;
 
-use status_orbit_lib::benchmark_monitor_sampling;
+use core_robin_lib::benchmark_monitor_sampling;
 
 fn main() -> Result<(), String> {
     let iterations = match env::args().nth(1) {

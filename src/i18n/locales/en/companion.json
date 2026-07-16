@@ -1,9 +1,9 @@
 {
-  "kicker": "Orbit companion",
-  "dragHint": "Drag Orbit to move; hover for status; right-click for menu",
-  "expand": "Open Orbit companion",
-  "collapse": "Collapse Orbit companion",
-  "menu": "Orbit companion menu",
+  "kicker": "Robin companion",
+  "dragHint": "Drag Robin to move; hover for status; right-click for menu",
+  "expand": "Open Robin companion",
+  "collapse": "Collapse Robin companion",
+  "menu": "Robin companion menu",
   "hide": "Hide companion",
   "reason": "{{resource}} has been worth watching recently. Open the main window to see why.",
   "action": {
