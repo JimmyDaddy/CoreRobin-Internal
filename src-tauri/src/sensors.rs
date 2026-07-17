@@ -88,10 +88,36 @@ fn sample_sensors(
 fn sample_battery_details() -> Option<BatteryDetails> {
     use std::process::Command;
 
-    let output = Command::new("system_profiler")
-        .args(["SPPowerDataType", "-json"])
-        .output()
-        .ok()?;
+    let mut system_profiler = Command::new("system_profiler");
+    system_profiler.args(["SPPowerDataType", "-json"]);
+    let mut details = run_system_profiler_battery_details(&mut system_profiler)?;
+
+    // An x86_64 process running through Rosetta omits maximum-capacity data from
+    // system_profiler on Apple Silicon. Retry the system tool natively so the
+    // Intel package still reports battery health when it is used as a fallback.
+    if details.health_percent.is_none() {
+        let mut native_system_profiler = Command::new("/usr/bin/arch");
+        native_system_profiler.args([
+            "-arm64",
+            "/usr/sbin/system_profiler",
+            "SPPowerDataType",
+            "-json",
+        ]);
+        if let Some(native_details) =
+            run_system_profiler_battery_details(&mut native_system_profiler)
+        {
+            details = merge_battery_details(details, native_details);
+        }
+    }
+
+    Some(details)
+}
+
+#[cfg(target_os = "macos")]
+fn run_system_profiler_battery_details(
+    command: &mut std::process::Command,
+) -> Option<BatteryDetails> {
+    let output = command.output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -132,6 +158,14 @@ fn parse_system_profiler_battery_details(output: &str) -> Option<BatteryDetails>
         health_percent,
         cycle_count,
     })
+}
+
+#[cfg(target_os = "macos")]
+fn merge_battery_details(preferred: BatteryDetails, fallback: BatteryDetails) -> BatteryDetails {
+    BatteryDetails {
+        health_percent: preferred.health_percent.or(fallback.health_percent),
+        cycle_count: preferred.cycle_count.or(fallback.cycle_count),
+    }
 }
 
 fn cached_sleep_snapshot(sleep: &Arc<Mutex<SleepSnapshot>>) -> SleepSnapshot {
@@ -569,8 +603,8 @@ fn now_millis() -> u64 {
 mod tests {
     #[cfg(target_os = "macos")]
     use super::{
-        BatteryState, PowerSource, SleepBlockerKind, parse_pmset_assertions, parse_pmset_battery,
-        parse_system_profiler_battery_details,
+        BatteryDetails, BatteryState, PowerSource, SleepBlockerKind, merge_battery_details,
+        parse_pmset_assertions, parse_pmset_battery, parse_system_profiler_battery_details,
     };
 
     #[cfg(target_os = "macos")]
@@ -615,6 +649,24 @@ mod tests {
 
         assert_eq!(details.health_percent, Some(94.0));
         assert_eq!(details.cycle_count, Some(173));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn fills_rosetta_battery_health_without_replacing_existing_cycle_count() {
+        let merged = merge_battery_details(
+            BatteryDetails {
+                health_percent: None,
+                cycle_count: Some(173),
+            },
+            BatteryDetails {
+                health_percent: Some(94.0),
+                cycle_count: Some(999),
+            },
+        );
+
+        assert_eq!(merged.health_percent, Some(94.0));
+        assert_eq!(merged.cycle_count, Some(173));
     }
 
     #[cfg(target_os = "macos")]
