@@ -1,28 +1,41 @@
 import packageMetadata from "../package.json";
 
+import {
+  DEFAULT_LANGUAGE,
+  normalizeLanguage,
+  type SupportedLanguage,
+} from "./language";
 import type { AppSettings } from "./settings";
 import type { SystemSnapshot } from "./types";
 
 export const PRODUCT_URLS = {
   releaseManifest: "https://monitor-app.corerobin.com/release-manifest.json",
-  releases_zh: "https://monitor-app.corerobin.com/releases/",
-  releases_en: "https://monitor-app.corerobin.com/en/releases/",
-  guide_zh: "https://monitor-app.corerobin.com/guide/",
-  guide_en: "https://monitor-app.corerobin.com/en/guide/",
-  privacy_zh: "https://monitor-app.corerobin.com/privacy/",
-  privacy_en: "https://monitor-app.corerobin.com/en/privacy/",
   issues: "https://github.com/JimmyDaddy/corerobin-monitor/issues/new/choose",
 } as const;
 
-export type ProductPage = Exclude<keyof typeof PRODUCT_URLS, "releaseManifest">;
+export type ProductPage = "releases" | "guide" | "privacy" | "issues";
 export type LocalizedProductPage = "releases" | "guide" | "privacy";
 
-export function localizedProductPage(
-  page: LocalizedProductPage,
-  language: string | undefined,
-): ProductPage {
-  const suffix = language === "zh-CN" || language === "zh-Hant" ? "zh" : "en";
-  return `${page}_${suffix}`;
+const PRODUCT_LANGUAGE_SLUGS: Record<SupportedLanguage, string> = {
+  "zh-CN": "",
+  en: "en",
+  "zh-Hant": "zh-hant",
+  ja: "ja",
+  de: "de",
+  fr: "fr",
+  es: "es",
+  "pt-BR": "pt-br",
+  ko: "ko",
+  ru: "ru",
+};
+
+export function productPageUrl(
+  page: ProductPage,
+  language: string | undefined = DEFAULT_LANGUAGE,
+): string {
+  if (page === "issues") return PRODUCT_URLS.issues;
+  const slug = PRODUCT_LANGUAGE_SLUGS[normalizeLanguage(language)];
+  return `https://monitor-app.corerobin.com/${slug ? `${slug}/` : ""}${page}/`;
 }
 
 export const CURRENT_APP_VERSION = packageMetadata.version;

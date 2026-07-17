@@ -10,7 +10,8 @@ import {
   compareStableVersions,
   completeOnboarding,
   hasCompletedOnboarding,
-  localizedProductPage,
+  PRODUCT_URLS,
+  productPageUrl,
   parseReleaseManifest,
 } from "./productSupport";
 import { getMockSnapshot } from "./mockData";
@@ -77,10 +78,11 @@ describe("product support", () => {
     expect(hasCompletedOnboarding()).toBe(true);
   });
 
-  it("routes Chinese and other languages to fixed localized product pages", () => {
-    expect(localizedProductPage("guide", "zh-CN")).toBe("guide_zh");
-    expect(localizedProductPage("privacy", "zh-Hant")).toBe("privacy_zh");
-    expect(localizedProductPage("releases", "en")).toBe("releases_en");
-    expect(localizedProductPage("guide", "ja")).toBe("guide_en");
+  it("routes every app language to a fixed localized product page", () => {
+    expect(productPageUrl("guide", "zh-CN")).toBe("https://monitor-app.corerobin.com/guide/");
+    expect(productPageUrl("privacy", "zh-Hant")).toBe("https://monitor-app.corerobin.com/zh-hant/privacy/");
+    expect(productPageUrl("releases", "ja")).toBe("https://monitor-app.corerobin.com/ja/releases/");
+    expect(productPageUrl("guide", "pt-BR")).toBe("https://monitor-app.corerobin.com/pt-br/guide/");
+    expect(productPageUrl("issues", "de")).toBe(PRODUCT_URLS.issues);
   });
 });

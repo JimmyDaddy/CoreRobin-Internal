@@ -70,7 +70,7 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
-use user_actions::{ProductPage, SystemSettingsDestination};
+use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
 mod tray_panel_native {
@@ -548,9 +548,13 @@ fn open_system_settings(
 }
 
 #[tauri::command]
-fn open_product_page(window: WebviewWindow, page: ProductPage) -> Result<(), CommandError> {
+fn open_product_page(
+    window: WebviewWindow,
+    page: ProductPage,
+    language: ProductLanguage,
+) -> Result<(), CommandError> {
     require_main_window(&window)?;
-    user_actions::open_product_page(page)
+    user_actions::open_product_page(page, language)
 }
 
 #[tauri::command]

@@ -63,7 +63,7 @@ describe("AboutSupport", () => {
 
     await waitFor(() => {
       expect(mocks.restartAfterAppUpdate).toHaveBeenCalledOnce();
-      expect(mocks.openProductPage).toHaveBeenCalledWith("guide_zh");
+      expect(mocks.openProductPage).toHaveBeenCalledWith("guide", "zh-CN");
     });
   });
 
@@ -93,7 +93,7 @@ describe("AboutSupport", () => {
     fireEvent.click(screen.getByRole("button", { name: "前往下载" }));
 
     expect(mocks.checkForInstallableAppUpdate).not.toHaveBeenCalled();
-    expect(mocks.openProductPage).toHaveBeenCalledWith("releases_zh");
+    expect(mocks.openProductPage).toHaveBeenCalledWith("releases", "zh-CN");
   });
 });
 

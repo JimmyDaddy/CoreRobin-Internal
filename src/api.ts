@@ -48,7 +48,8 @@ import type {
   StartupManagementResult,
   SystemSettingsDestination,
 } from "./types";
-import { PRODUCT_URLS, type ProductPage } from "./productSupport";
+import { productPageUrl, type ProductPage } from "./productSupport";
+import { DEFAULT_LANGUAGE, normalizeLanguage, type SupportedLanguage } from "./language";
 export type { ProductPage } from "./productSupport";
 import type {
   HealthStateSnapshot,
@@ -231,12 +232,16 @@ export async function openSystemSettings(
   return invoke<void>("open_system_settings", { destination });
 }
 
-export async function openProductPage(page: ProductPage): Promise<void> {
+export async function openProductPage(
+  page: ProductPage,
+  language: string | undefined = DEFAULT_LANGUAGE,
+): Promise<void> {
+  const normalizedLanguage: SupportedLanguage = normalizeLanguage(language);
   if (!isDesktopRuntime()) {
-    window.open(PRODUCT_URLS[page], "_blank", "noopener,noreferrer");
+    window.open(productPageUrl(page, normalizedLanguage), "_blank", "noopener,noreferrer");
     return;
   }
-  return invoke<void>("open_product_page", { page });
+  return invoke<void>("open_product_page", { page, language: normalizedLanguage });
 }
 
 export async function canRelaunchApplication(executablePath: string): Promise<boolean> {

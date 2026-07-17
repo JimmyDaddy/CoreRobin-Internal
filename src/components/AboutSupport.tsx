@@ -26,7 +26,6 @@ import {
   checkForProductUpdate,
   copyText,
   CURRENT_APP_VERSION,
-  localizedProductPage,
   type LocalizedProductPage,
   type ProductPage,
   type UpdateCheckResult,
@@ -124,9 +123,9 @@ export function AboutSupport({
       setCopyState("error");
     }
   };
-  const openPage = (page: ProductPage) => void openProductPage(page);
+  const openPage = (page: ProductPage) => void openProductPage(page, i18n.resolvedLanguage);
   const openLocalizedPage = (page: LocalizedProductPage) =>
-    openPage(localizedProductPage(page, i18n.resolvedLanguage));
+    openPage(page);
 
   return (
     <section className="about-support" aria-labelledby="about-support-title">

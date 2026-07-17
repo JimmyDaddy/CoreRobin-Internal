@@ -19,49 +19,77 @@ pub enum SystemSettingsDestination {
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductPage {
-    ReleasesZh,
-    ReleasesEn,
-    GuideZh,
-    GuideEn,
-    PrivacyZh,
-    PrivacyEn,
+    Releases,
+    Guide,
+    Privacy,
     Issues,
 }
 
-pub fn open_product_page(page: ProductPage) -> Result<(), CommandError> {
-    let url = product_page_url(page);
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProductLanguage {
+    #[serde(rename = "zh-CN")]
+    ZhCn,
+    En,
+    #[serde(rename = "zh-Hant")]
+    ZhHant,
+    Ja,
+    De,
+    Fr,
+    Es,
+    #[serde(rename = "pt-BR")]
+    PtBr,
+    Ko,
+    Ru,
+}
+
+pub fn open_product_page(page: ProductPage, language: ProductLanguage) -> Result<(), CommandError> {
+    let url = product_page_url(page, language);
 
     #[cfg(target_os = "macos")]
     return run_command(
-        Command::new("/usr/bin/open").arg(url),
+        Command::new("/usr/bin/open").arg(&url),
         "The product page could not be opened.",
     );
 
     #[cfg(windows)]
     return run_command(
-        Command::new("explorer.exe").arg(url),
+        Command::new("explorer.exe").arg(&url),
         "The product page could not be opened.",
     );
 
     #[cfg(target_os = "linux")]
     {
         run_command(
-            Command::new("xdg-open").arg(url),
+            Command::new("xdg-open").arg(&url),
             "The product page could not be opened.",
         )
     }
 }
 
-fn product_page_url(page: ProductPage) -> &'static str {
-    match page {
-        ProductPage::ReleasesZh => "https://monitor-app.corerobin.com/releases/",
-        ProductPage::ReleasesEn => "https://monitor-app.corerobin.com/en/releases/",
-        ProductPage::GuideZh => "https://monitor-app.corerobin.com/guide/",
-        ProductPage::GuideEn => "https://monitor-app.corerobin.com/en/guide/",
-        ProductPage::PrivacyZh => "https://monitor-app.corerobin.com/privacy/",
-        ProductPage::PrivacyEn => "https://monitor-app.corerobin.com/en/privacy/",
-        ProductPage::Issues => "https://github.com/JimmyDaddy/corerobin-monitor/issues/new/choose",
+fn product_page_url(page: ProductPage, language: ProductLanguage) -> String {
+    if page == ProductPage::Issues {
+        return "https://github.com/JimmyDaddy/corerobin-monitor/issues/new/choose".to_string();
     }
+    let page = match page {
+        ProductPage::Releases => "releases",
+        ProductPage::Guide => "guide",
+        ProductPage::Privacy => "privacy",
+        ProductPage::Issues => unreachable!(),
+    };
+    let language = match language {
+        ProductLanguage::ZhCn => "",
+        ProductLanguage::En => "en/",
+        ProductLanguage::ZhHant => "zh-hant/",
+        ProductLanguage::Ja => "ja/",
+        ProductLanguage::De => "de/",
+        ProductLanguage::Fr => "fr/",
+        ProductLanguage::Es => "es/",
+        ProductLanguage::PtBr => "pt-br/",
+        ProductLanguage::Ko => "ko/",
+        ProductLanguage::Ru => "ru/",
+    };
+    format!("https://monitor-app.corerobin.com/{language}{page}/")
 }
 
 pub fn reveal_path(path: &str) -> Result<(), CommandError> {
@@ -287,17 +315,21 @@ fn windows_settings_uri(destination: SystemSettingsDestination) -> &'static str 
 mod tests {
     use std::path::Path;
 
-    use super::{ProductPage, application_bundle_from_path, product_page_url};
+    use super::{ProductLanguage, ProductPage, application_bundle_from_path, product_page_url};
 
     #[test]
     fn product_pages_are_fixed_to_public_corerobin_destinations() {
         assert_eq!(
-            product_page_url(ProductPage::ReleasesZh),
+            product_page_url(ProductPage::Releases, ProductLanguage::ZhCn),
             "https://monitor-app.corerobin.com/releases/"
         );
         assert_eq!(
-            product_page_url(ProductPage::PrivacyZh),
-            "https://monitor-app.corerobin.com/privacy/"
+            product_page_url(ProductPage::Privacy, ProductLanguage::Ja),
+            "https://monitor-app.corerobin.com/ja/privacy/"
+        );
+        assert_eq!(
+            product_page_url(ProductPage::Guide, ProductLanguage::PtBr),
+            "https://monitor-app.corerobin.com/pt-br/guide/"
         );
     }
 
