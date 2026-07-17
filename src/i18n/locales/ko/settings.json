@@ -82,7 +82,7 @@
   "about": {
     "title": "정보 및 지원", "description": "버전을 확인하고 도움을 받으며 CoreRobin이 이 컴퓨터에 저장한 데이터를 관리합니다.",
     "versionTitle": "버전 및 업데이트", "versionDescription": "공개 릴리스 페이지에서 최신 안정 버전을 확인합니다.", "version": "현재 버전", "platform": "시스템", "architecture": "아키텍처",
-    "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다",
+    "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다", "installUpdate": "다운로드 및 설치", "installingUpdate": "업데이트 중…", "downloadingUpdate": "업데이트 다운로드 및 확인 중", "applyingUpdate": "업데이트 설치 중", "updateReady": "업데이트가 설치되었습니다. CoreRobin을 다시 시작하여 완료하세요.", "restartUpdate": "다시 시작", "updateInstallError": "업데이트를 설치하지 못했습니다. 현재 버전은 변경되지 않았습니다. 나중에 다시 시도하세요.",
     "helpTitle": "도움말 및 피드백", "helpDescription": "공개 가이드를 열거나 문제를 보고하기 전에 포함될 정보를 확인합니다.", "guide": "사용자 가이드", "privacy": "개인정보 보호", "reportIssue": "문제 보고", "reopenGuide": "첫 사용 가이드 다시 보기",
     "diagnosticsTitle": "진단 요약", "diagnosticsDescription": "문제 해결에 도움이 되는 기본 실행 정보를 복사합니다.", "diagnosticsPrivacy": "호스트 이름, 프로세스 이름, 파일 경로, 네트워크 주소 및 기록 값은 기본적으로 제외됩니다.", "diagnosticsPreview": "복사 전 미리보기", "diagnostics": { "idle": "익명화된 요약 복사", "copied": "복사됨", "error": "복사 실패" },
     "clearTitle": "모든 로컬 데이터 지우기", "clearDescription": "환경 설정, 기록, 경고, 작업 기록 및 공간 스캔 캐시를 지웁니다.", "clearConfirm": "이 작업은 되돌릴 수 없습니다. CoreRobin은 기기 데이터를 지우고 다시 시작합니다. 로그인 시 실행과 같은 시스템 권한은 자동으로 제거되지 않습니다.", "clearNow": "지우고 다시 시작", "clearAction": "모든 데이터 지우기"

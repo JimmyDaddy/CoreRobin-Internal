@@ -1227,7 +1227,10 @@ async fn execute_process_action(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let background_launch = std::env::args_os().any(|argument| argument == "--background");
-    let builder = tauri::Builder::default().plugin(tauri_plugin_notification::init());
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]

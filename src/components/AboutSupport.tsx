@@ -11,9 +11,15 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { isDesktopRuntime, openProductPage } from "../api";
+import {
+  checkForInstallableAppUpdate,
+  restartAfterAppUpdate,
+  type AppUpdateProgress,
+  type InstallableAppUpdate,
+} from "../appUpdater";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import {
   buildRedactedDiagnosticSummary,
@@ -29,6 +35,8 @@ import type { AppSettings } from "../settings";
 import type { SystemSnapshot } from "../types";
 import { Button } from "./Button";
 
+type UpdateDisplayResult = Pick<UpdateCheckResult, "status" | "latestVersion">;
+
 export function AboutSupport({
   settings,
   snapshot,
@@ -42,7 +50,10 @@ export function AboutSupport({
 }) {
   const { t, i18n } = useAppTranslation();
   const [checking, setChecking] = useState(false);
-  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | "error" | null>(null);
+  const [updateResult, setUpdateResult] = useState<UpdateDisplayResult | "error" | null>(null);
+  const [installableUpdate, setInstallableUpdate] = useState<InstallableAppUpdate | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<AppUpdateProgress | null>(null);
+  const [updateAction, setUpdateAction] = useState<"idle" | "installing" | "ready" | "error">("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [confirmClear, setConfirmClear] = useState(false);
   const diagnostic = useMemo(
@@ -54,16 +65,53 @@ export function AboutSupport({
     [settings, snapshot],
   );
 
+  useEffect(() => () => {
+    void installableUpdate?.close().catch(() => undefined);
+  }, [installableUpdate]);
+
   const checkForUpdate = async () => {
-    if (checking) return;
+    if (checking || updateAction === "installing") return;
     setChecking(true);
     setUpdateResult(null);
+    setUpdateAction("idle");
+    setUpdateProgress(null);
     try {
-      setUpdateResult(await checkForProductUpdate());
+      if (isDesktopRuntime()) {
+        const update = await checkForInstallableAppUpdate();
+        setInstallableUpdate(update);
+        setUpdateResult(update
+          ? { status: "available", latestVersion: update.version }
+          : { status: "current", latestVersion: CURRENT_APP_VERSION });
+      } else {
+        setInstallableUpdate(null);
+        const result = await checkForProductUpdate();
+        setUpdateResult({ status: result.status, latestVersion: result.latestVersion });
+      }
     } catch {
+      setInstallableUpdate(null);
       setUpdateResult("error");
     } finally {
       setChecking(false);
+    }
+  };
+
+  const installUpdate = async () => {
+    if (!installableUpdate || updateAction === "installing") return;
+    setUpdateAction("installing");
+    setUpdateProgress({ phase: "downloading", downloadedBytes: 0, contentLength: null, percent: null });
+    try {
+      await installableUpdate.install(setUpdateProgress);
+      setUpdateAction("ready");
+    } catch {
+      setUpdateAction("error");
+    }
+  };
+
+  const restartForUpdate = async () => {
+    try {
+      await restartAfterAppUpdate();
+    } catch {
+      setUpdateAction("error");
     }
   };
 
@@ -102,7 +150,7 @@ export function AboutSupport({
             <div><dt>{t("settings:about.architecture")}</dt><dd>{snapshot.host.architecture}</dd></div>
           </dl>
           <div className="about-support__actions">
-            <Button variant="secondary" disabled={checking} onClick={() => void checkForUpdate()}>
+            <Button variant="secondary" disabled={checking || updateAction === "installing"} onClick={() => void checkForUpdate()}>
               {checking ? <LoaderCircle className="is-spinning" size={15} /> : <RefreshCw size={15} />}
               {t(checking ? "settings:about.checking" : "settings:about.checkUpdate")}
             </Button>
@@ -115,10 +163,35 @@ export function AboutSupport({
               {updateResult === "error"
                 ? t("settings:about.updateError")
                 : updateResult.status === "available"
-                  ? <><span>{t("settings:about.updateAvailable", { version: updateResult.latestVersion })}</span><button className="about-support__link-button" type="button" onClick={() => openLocalizedPage("releases")}>{t("settings:about.openRelease")}<ArrowUpRight size={12} /></button></>
+                  ? <>
+                      <span>{t("settings:about.updateAvailable", { version: updateResult.latestVersion })}</span>
+                      {installableUpdate ? (
+                        updateAction === "ready" ? (
+                          <Button variant="secondary" onClick={() => void restartForUpdate()}>{t("settings:about.restartUpdate")}</Button>
+                        ) : (
+                          <Button variant="secondary" disabled={updateAction === "installing"} onClick={() => void installUpdate()}>
+                            {updateAction === "installing" ? <LoaderCircle className="is-spinning" size={14} /> : null}
+                            {t(updateAction === "installing" ? "settings:about.installingUpdate" : "settings:about.installUpdate")}
+                          </Button>
+                        )
+                      ) : (
+                        <button className="about-support__link-button" type="button" onClick={() => openLocalizedPage("releases")}>{t("settings:about.openRelease")}<ArrowUpRight size={12} /></button>
+                      )}
+                    </>
                   : <><Check size={14} />{t("settings:about.upToDate", { version: updateResult.latestVersion })}</>}
             </p>
           ) : null}
+          {updateAction === "installing" && updateProgress ? (
+            <div className="about-support__progress" role="status" aria-live="polite">
+              <div>
+                <span>{t(updateProgress.phase === "installing" ? "settings:about.applyingUpdate" : "settings:about.downloadingUpdate")}</span>
+                {updateProgress.percent !== null ? <strong>{updateProgress.percent}%</strong> : null}
+              </div>
+              <progress max="100" value={updateProgress.percent ?? undefined} />
+            </div>
+          ) : null}
+          {updateAction === "ready" ? <p className="about-support__update-note" role="status"><Check size={14} />{t("settings:about.updateReady")}</p> : null}
+          {updateAction === "error" ? <p className="about-support__result is-error" role="alert">{t("settings:about.updateInstallError")}</p> : null}
         </section>
 
         <section className="about-support__card">

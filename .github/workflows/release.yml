@@ -109,6 +109,9 @@ jobs:
             artifact: corerobin-windows-x86_64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -160,13 +163,20 @@ jobs:
             release-${{ runner.os }}-${{ matrix.target }}-
             release-${{ runner.os }}-
 
-      - name: Build unsigned installer
+      - name: Verify updater signing credential
+        shell: bash
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+
+      - name: Build installer and signed updater artifact
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         with:
           args: ${{ matrix.args }}
           retryAttempts: 2
+          uploadUpdaterJson: false
           uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]
+          workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]
 
       - name: Verify embedded production WebView entries and size budgets
         run: pnpm verify:web-bundle
@@ -202,11 +212,39 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check out release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Download installers
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: corerobin-*
           path: release-artifacts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Render release notes from changelog
+        run: node scripts/render-release-notes.mjs "$GITHUB_REF_NAME" --output release-notes.md
+
+      - name: Generate signed updater manifest
+        shell: bash
+        run: |
+          pub_date="$(git show -s --format=%cI "$GITHUB_SHA")"
+          node scripts/generate-updater-manifest.mjs \
+            "$GITHUB_REF_NAME" \
+            release-artifacts \
+            release-notes.md \
+            "$pub_date"
+          test -s release-artifacts/latest.json
+
+      - name: Prepare uniquely named public assets
+        run: node scripts/flatten-release-artifacts.mjs release-artifacts
 
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
@@ -222,10 +260,12 @@ jobs:
       - name: Generate and verify SHA-256 checksums
         shell: bash
         run: |
-          find release-artifacts -type f ! -name SHA256SUMS -print0 \
+          cd release-artifacts
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
             | sort -z \
-            | xargs -0 sha256sum > release-artifacts/SHA256SUMS
-          sha256sum --check release-artifacts/SHA256SUMS
+            | xargs -0 sha256sum \
+            | sed 's#  \./#  #' > SHA256SUMS
+          sha256sum --check SHA256SUMS
 
       - name: Upload release-ready artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -306,7 +346,7 @@ jobs:
       - name: Verify checksums and signature
         shell: bash
         run: |
-          sha256sum --check release-artifacts/SHA256SUMS
+          (cd release-artifacts && sha256sum --check SHA256SUMS)
           cosign verify-blob \
             --bundle release-artifacts/SHA256SUMS.sigstore.json \
             --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF" \

@@ -52,6 +52,19 @@ describe("release workflow privilege separation", () => {
     expect(workflowJob(releaseWorkflow, "build")).toContain("contents: read");
   });
 
+  it("exposes updater signing secrets only to isolated platform build jobs", () => {
+    const build = workflowJob(releaseWorkflow, "build");
+    expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+    expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD");
+    expect(build).toContain("Build installer and signed updater artifact");
+    expect(build).toContain("test -n \"$TAURI_SIGNING_PRIVATE_KEY\"");
+    expect(build).toContain("uploadUpdaterJson: false");
+    expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
+    for (const jobName of ["verify", "package", "sign", "publish"]) {
+      expect(workflowJob(releaseWorkflow, jobName)).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+    }
+  });
+
   it("uses OIDC only in the signing job", () => {
     const sign = workflowJob(releaseWorkflow, "sign");
     expect(sign).toContain("id-token: write");
@@ -117,6 +130,9 @@ describe("release workflow privilege separation", () => {
     expect(build).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("scripts/verify-packaged-linux.sh");
     expect(build).toContain("scripts/verify-packaged-windows.ps1");
+    expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");
+    expect(workflowJob(releaseWorkflow, "package")).toContain("flatten-release-artifacts.mjs");
+    expect(workflowJob(releaseWorkflow, "package")).toContain("latest.json");
   });
 });
 

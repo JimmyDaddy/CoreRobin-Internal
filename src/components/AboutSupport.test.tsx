@@ -9,13 +9,21 @@ import { defaultAppSettings } from "../settings";
 import { AboutSupport } from "./AboutSupport";
 
 const mocks = vi.hoisted(() => ({
+  desktopRuntime: true,
+  checkForInstallableAppUpdate: vi.fn(),
+  restartAfterAppUpdate: vi.fn(),
   checkForProductUpdate: vi.fn(),
   openProductPage: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
-  isDesktopRuntime: () => true,
+  isDesktopRuntime: () => mocks.desktopRuntime,
   openProductPage: mocks.openProductPage,
+}));
+
+vi.mock("../appUpdater", () => ({
+  checkForInstallableAppUpdate: mocks.checkForInstallableAppUpdate,
+  restartAfterAppUpdate: mocks.restartAfterAppUpdate,
 }));
 
 vi.mock("../productSupport", async () => {
@@ -24,7 +32,10 @@ vi.mock("../productSupport", async () => {
 });
 
 beforeEach(async () => {
+  mocks.desktopRuntime = true;
   mocks.checkForProductUpdate.mockReset();
+  mocks.checkForInstallableAppUpdate.mockReset();
+  mocks.restartAfterAppUpdate.mockReset();
   mocks.openProductPage.mockReset();
   await i18n.changeLanguage("zh-CN");
 });
@@ -33,21 +44,26 @@ afterEach(() => cleanup());
 
 describe("AboutSupport", () => {
   it("checks updates and opens only allowlisted product pages", async () => {
-    mocks.checkForProductUpdate.mockResolvedValue({
-      status: "available",
-      latestVersion: "9.0.0",
-      releaseUrl: "https://github.com/JimmyDaddy/corerobin-monitor/releases/tag/v9.0.0",
+    const install = vi.fn().mockResolvedValue(undefined);
+    mocks.checkForInstallableAppUpdate.mockResolvedValue({
+      version: "9.0.0",
+      notes: null,
+      install,
+      close: vi.fn().mockResolvedValue(undefined),
     });
     renderSupport();
 
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
     expect(await screen.findByText("CoreRobin v9.0.0 已发布")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "前往下载" }));
+    fireEvent.click(screen.getByRole("button", { name: "下载并安装" }));
+    expect(await screen.findByText("更新已安装，重新启动 CoreRobin 即可完成更新。")).toBeTruthy();
+    expect(install).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "重新启动" }));
     fireEvent.click(screen.getByRole("button", { name: "用户指南" }));
 
     await waitFor(() => {
-      expect(mocks.openProductPage).toHaveBeenNthCalledWith(1, "releases_zh");
-      expect(mocks.openProductPage).toHaveBeenNthCalledWith(2, "guide_zh");
+      expect(mocks.restartAfterAppUpdate).toHaveBeenCalledOnce();
+      expect(mocks.openProductPage).toHaveBeenCalledWith("guide_zh");
     });
   });
 
@@ -61,6 +77,23 @@ describe("AboutSupport", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "清空并重新启动" }));
     expect(onClearAllData).toHaveBeenCalledOnce();
+  });
+
+  it("keeps browser demos on the public download path", async () => {
+    mocks.desktopRuntime = false;
+    mocks.checkForProductUpdate.mockResolvedValue({
+      status: "available",
+      latestVersion: "9.0.0",
+      releaseUrl: "https://github.com/JimmyDaddy/corerobin-monitor/releases/tag/v9.0.0",
+    });
+    renderSupport();
+
+    fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
+    expect(await screen.findByText("CoreRobin v9.0.0 已发布")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "前往下载" }));
+
+    expect(mocks.checkForInstallableAppUpdate).not.toHaveBeenCalled();
+    expect(mocks.openProductPage).toHaveBeenCalledWith("releases_zh");
   });
 });
 

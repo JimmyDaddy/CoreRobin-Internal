@@ -26,5 +26,17 @@ describe("release engineering boundaries", () => {
     expect(packageJson.scripts["public:sync"]).toBe("node scripts/sync-public-content.mjs");
     expect(existsSync("scripts/sync-public-content.mjs")).toBe(true);
     expect(existsSync("scripts/update-public-release-manifest.mjs")).toBe(true);
+    expect(existsSync("scripts/generate-updater-manifest.mjs")).toBe(true);
+    expect(existsSync("scripts/flatten-release-artifacts.mjs")).toBe(true);
+    expect(packageJson.scripts["release:updater-manifest"]).toBe("node scripts/generate-updater-manifest.mjs");
+    expect(packageJson.scripts["release:flatten-artifacts"]).toBe("node scripts/flatten-release-artifacts.mjs");
+  });
+
+  it("configures mandatory signed updates from the official public release", () => {
+    expect(tauriConfig.bundle.createUpdaterArtifacts).toBe(true);
+    expect(tauriConfig.plugins.updater.pubkey).toMatch(/^[A-Za-z0-9+/=]+$/);
+    expect(tauriConfig.plugins.updater.endpoints).toEqual([
+      "https://github.com/JimmyDaddy/corerobin-monitor/releases/latest/download/latest.json",
+    ]);
   });
 });
