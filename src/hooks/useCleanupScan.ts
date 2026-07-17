@@ -133,6 +133,26 @@ export function useCleanupScan() {
     }
   }, []);
 
+  const clear = useCallback(async () => {
+    stateTouched.current = true;
+    if (inFlight.current) {
+      try {
+        await cancelCleanupScan();
+      } catch {
+        // Continue clearing cached state even if an active scan cannot be cancelled.
+      }
+    }
+    clearStoredCleanupScan();
+    snapshotRef.current = null;
+    setSnapshot(null);
+    setSnapshotStatus("current");
+    setError(null);
+    setLoading(false);
+    setCancelling(false);
+    setProgress(null);
+    await clearPersistedCleanupScan();
+  }, []);
+
   return {
     snapshot,
     snapshotStatus,
@@ -142,6 +162,7 @@ export function useCleanupScan() {
     progress,
     scan,
     cancel,
+    clear,
     applyDeletion,
   };
 }

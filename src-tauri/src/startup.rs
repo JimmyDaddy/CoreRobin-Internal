@@ -649,7 +649,7 @@ fn platform_startup_items(_home: &Path) -> (Vec<StartupItem>, usize) {
 #[cfg(target_os = "macos")]
 fn macos_disabled_directories(home: &Path) -> [PathBuf; 2] {
     [
-        home.join("Library/Application Support/StatusOrbit/Disabled Startup Items/LaunchAgents"),
+        home.join("Library/Application Support/CoreRobin/Disabled Startup Items/LaunchAgents"),
         home.join("Library/Application Support/Pulse/Disabled Startup Items/LaunchAgents"),
     ]
 }
@@ -668,7 +668,7 @@ fn windows_disabled_directories(home: &Path) -> [PathBuf; 2] {
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join("AppData/Local"));
     [
-        local_app_data.join("StatusOrbit/Disabled Startup Items/Startup"),
+        local_app_data.join("CoreRobin/Disabled Startup Items/Startup"),
         local_app_data.join("Pulse/Disabled Startup Items/Startup"),
     ]
 }

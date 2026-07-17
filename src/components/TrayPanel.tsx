@@ -23,6 +23,10 @@ import { createAsyncListenerRegistry } from "../asyncListener";
 import { BrandWordmark } from "./BrandWordmark";
 import { RobinIcon } from "./RobinIcon";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
+import {
+  useSensorReadiness,
+  type SensorReadiness,
+} from "../hooks/useSensorReadiness";
 import { getAuxiliaryLanguage } from "../i18nAuxiliary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
@@ -35,6 +39,15 @@ export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
   const language = getAuxiliaryLanguage();
+  const sensorReadiness = useSensorReadiness({
+    sampledAtMs: summary?.sampledAtMs ?? Date.now(),
+    warmingUp: summary == null,
+    temperatureCelsius: summary?.temperatureCelsius ?? null,
+    batteryPresent: summary?.batteryPercent != null,
+    batteryPercent: summary?.batteryPercent ?? null,
+    batteryDetailsAvailable: summary?.batteryHealthPercent != null
+      || summary?.batteryCycleCount != null,
+  });
 
   useEffect(() => {
     if (!desktopRuntime) return;
@@ -126,13 +139,21 @@ export function TrayPanel() {
         <div className="tray-device-row">
           <span>
             <Thermometer size={15} />
-            <span><small>{t("tray:resource.temperature")}</small><strong>{summary?.temperatureCelsius === null || summary?.temperatureCelsius === undefined ? t("common:unavailable") : `${Math.round(summary.temperatureCelsius)}°C`}</strong></span>
+            <span>
+              <small>{t("tray:resource.temperature")}</small>
+              <strong>{summary?.temperatureCelsius == null
+                ? t(`wellbeing:readiness.short.${sensorReadiness.temperature.status}`)
+                : `${Math.round(summary.temperatureCelsius)}°C`}</strong>
+              <TrayReadiness kind="temperature" readiness={sensorReadiness.temperature} />
+            </span>
           </span>
           <span>
             <BatteryMedium size={15} />
             <span>
               <small>{t("tray:resource.battery")}</small>
-              <strong>{summary?.batteryPercent === null || summary?.batteryPercent === undefined ? t("common:unavailable") : formatPercent(summary.batteryPercent)}</strong>
+              <strong>{summary?.batteryPercent == null
+                ? t(`wellbeing:readiness.short.${sensorReadiness.battery.status}`)
+                : formatPercent(summary.batteryPercent)}</strong>
               {summary?.batteryPercent !== null && summary?.batteryPercent !== undefined ? <em>{t(`wellbeing:battery.state.${summary.batteryState}`)}</em> : null}
               <em className="tray-battery-detail">
                 <i>{t("wellbeing:battery.healthLabel")}</i>
@@ -146,6 +167,12 @@ export function TrayPanel() {
                   ? t("common:unavailable")
                   : summary.batteryCycleCount.toLocaleString(language)}</b>
               </em>
+              <TrayReadiness
+                kind={sensorReadiness.battery.status === "available" ? "batteryDetails" : "battery"}
+                readiness={sensorReadiness.battery.status === "available"
+                  ? sensorReadiness.batteryDetails
+                  : sensorReadiness.battery}
+              />
             </span>
           </span>
         </div>
@@ -172,6 +199,31 @@ export function TrayPanel() {
         </div>
       </section>
     </main>
+  );
+}
+
+function TrayReadiness({
+  kind,
+  readiness,
+}: {
+  kind: "temperature" | "battery" | "batteryDetails";
+  readiness: SensorReadiness;
+}) {
+  const { t } = useAuxiliaryTranslation();
+  if (readiness.status === "available") return null;
+  return (
+    <details className="tray-sensor-readiness">
+      <summary>{t("wellbeing:readiness.why")}</summary>
+      <p>{t(`wellbeing:readiness.${kind}.${readiness.status}`)}</p>
+      {readiness.lastSuccessfulAtMs !== null ? (
+        <small>{t("wellbeing:readiness.lastSuccessful", {
+          time: new Date(readiness.lastSuccessfulAtMs).toLocaleTimeString(
+            getAuxiliaryLanguage(),
+            { hour: "2-digit", minute: "2-digit" },
+          ),
+        })}</small>
+      ) : null}
+    </details>
   );
 }
 

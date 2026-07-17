@@ -33,6 +33,31 @@
       "unknown": "Status unknown"
     }
   },
+  "readiness": {
+    "why": "Why is there no reading?",
+    "short": {
+      "waiting": "Waiting for first sample",
+      "available": "Available",
+      "unsupported": "Not provided by system",
+      "unavailable": "Temporarily unavailable"
+    },
+    "temperature": {
+      "waiting": "Waiting for the first temperature sample.",
+      "unsupported": "This system or hardware does not expose a recognized temperature sensor.",
+      "unavailable": "Temperature was available earlier, but this read failed. The app will keep retrying at a low frequency."
+    },
+    "battery": {
+      "waiting": "Waiting for the first battery sample.",
+      "unsupported": "No battery was detected. This is normal on desktop computers and similar devices.",
+      "unavailable": "A battery was detected, but this status read failed. The app will keep retrying."
+    },
+    "batteryDetails": {
+      "waiting": "Reading battery health and cycle count.",
+      "unsupported": "This device does not provide battery details.",
+      "unavailable": "Charge level is available, but the system is not currently providing health or cycle count."
+    },
+    "lastSuccessful": "Last successful reading: {{time}}"
+  },
   "sleep": {
     "label": "Automatic sleep",
     "unavailableValue": "Unavailable",

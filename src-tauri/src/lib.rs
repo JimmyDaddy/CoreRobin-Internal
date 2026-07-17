@@ -70,7 +70,7 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
-use user_actions::SystemSettingsDestination;
+use user_actions::{ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
 mod tray_panel_native {
@@ -545,6 +545,12 @@ fn open_system_settings(
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
     user_actions::open_system_settings(destination)
+}
+
+#[tauri::command]
+fn open_product_page(window: WebviewWindow, page: ProductPage) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::open_product_page(page)
 }
 
 #[tauri::command]
@@ -1258,11 +1264,17 @@ pub fn run() {
                 let _ = splash.close();
             }
             let open = MenuItem::with_id(app, "open", "Open CoreRobin", true, None::<&str>)?;
+            let settings =
+                MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?;
+            let about = MenuItem::with_id(app, "about", "About CoreRobin", true, None::<&str>)?;
             let companion =
                 MenuItem::with_id(app, "companion", "Robin Companion", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit CoreRobin", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &companion, &cleanup, &quit])?;
+            let menu = Menu::with_items(
+                app,
+                &[&open, &settings, &about, &companion, &cleanup, &quit],
+            )?;
             let tray_left_click_tracker = Arc::new(Mutex::new(TrayLeftClickTracker::default()));
             let mut tray = TrayIconBuilder::with_id("core-robin-status")
                 .tooltip("CoreRobin · Local Monitor")
@@ -1270,6 +1282,11 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main(app),
+                    "settings" => navigate_main(app, "settings"),
+                    "about" => {
+                        navigate_main(app, "settings");
+                        let _ = app.emit_to("main", "core-robin:open-about", ());
+                    }
                     "companion" => toggle_companion(app),
                     "cleanup" => navigate_main(app, "cleanup"),
                     "quit" => app.exit(0),
@@ -1363,6 +1380,7 @@ pub fn run() {
             reveal_path,
             preview_path,
             open_system_settings,
+            open_product_page,
             relaunch_application,
             can_relaunch_application,
             create_cleanup_delete_lease,
@@ -1511,6 +1529,7 @@ mod security_boundary_tests {
         "reveal_path",
         "preview_path",
         "open_system_settings",
+        "open_product_page",
         "relaunch_application",
         "can_relaunch_application",
         "can_relaunch_application",

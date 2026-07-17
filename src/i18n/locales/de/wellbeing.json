@@ -33,6 +33,31 @@
       "unknown": "Status unbekannt"
     }
   },
+  "readiness": {
+    "why": "Warum gibt es keinen Messwert?",
+    "short": {
+      "waiting": "Warten auf erste Messung",
+      "available": "Verfügbar",
+      "unsupported": "Nicht vom System bereitgestellt",
+      "unavailable": "Vorübergehend nicht verfügbar"
+    },
+    "temperature": {
+      "waiting": "Die erste Temperaturmessung wird abgewartet.",
+      "unsupported": "Dieses System oder die Hardware stellt keinen erkennbaren Temperatursensor bereit.",
+      "unavailable": "Die Temperatur war zuvor lesbar, aber diese Abfrage ist fehlgeschlagen. Die App versucht es in niedriger Frequenz erneut."
+    },
+    "battery": {
+      "waiting": "Die erste Akkumessung wird abgewartet.",
+      "unsupported": "Kein Akku erkannt. Bei Desktop-Computern und ähnlichen Geräten ist das normal.",
+      "unavailable": "Ein Akku wurde erkannt, aber diese Statusabfrage ist fehlgeschlagen. Die App versucht es erneut."
+    },
+    "batteryDetails": {
+      "waiting": "Akkuzustand und Ladezyklen werden gelesen.",
+      "unsupported": "Dieses Gerät stellt keine Akkudetails bereit.",
+      "unavailable": "Der Ladestand ist verfügbar, aber Zustand oder Ladezyklen werden derzeit nicht vom System bereitgestellt."
+    },
+    "lastSuccessful": "Letzte erfolgreiche Messung: {{time}}"
+  },
   "sleep": {
     "label": "Automatische Schlafphase",
     "unavailableValue": "Nicht verfügbar",

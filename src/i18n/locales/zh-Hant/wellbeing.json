@@ -33,6 +33,31 @@
       "unknown": "狀態未知"
     }
   },
+  "readiness": {
+    "why": "為什麼沒有讀數？",
+    "short": {
+      "waiting": "等待第一個樣本",
+      "available": "可用",
+      "unsupported": "系統未提供",
+      "unavailable": "暫時不可用"
+    },
+    "temperature": {
+      "waiting": "正在等待第一次溫度採樣。",
+      "unsupported": "目前系統或硬體沒有提供可識別的溫度感測器。",
+      "unavailable": "先前可以讀取溫度，但這次讀取失敗；應用程式會繼續低頻重試。"
+    },
+    "battery": {
+      "waiting": "正在等待第一次電池採樣。",
+      "unsupported": "未偵測到電池；桌上型電腦等裝置通常屬於正常情況。",
+      "unavailable": "偵測到電池，但本次狀態讀取失敗；應用程式會繼續重試。"
+    },
+    "batteryDetails": {
+      "waiting": "正在讀取電池健康度與循環次數。",
+      "unsupported": "這台裝置沒有提供電池詳細資料。",
+      "unavailable": "電量讀取正常，但系統暫未提供健康度或循環次數。"
+    },
+    "lastSuccessful": "上次成功讀取：{{time}}"
+  },
   "sleep": {
     "label": "自動休眠",
     "unavailableValue": "無法讀取",

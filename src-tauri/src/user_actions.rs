@@ -16,6 +16,54 @@ pub enum SystemSettingsDestination {
     Network,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProductPage {
+    ReleasesZh,
+    ReleasesEn,
+    GuideZh,
+    GuideEn,
+    PrivacyZh,
+    PrivacyEn,
+    Issues,
+}
+
+pub fn open_product_page(page: ProductPage) -> Result<(), CommandError> {
+    let url = product_page_url(page);
+
+    #[cfg(target_os = "macos")]
+    return run_command(
+        Command::new("/usr/bin/open").arg(url),
+        "The product page could not be opened.",
+    );
+
+    #[cfg(windows)]
+    return run_command(
+        Command::new("explorer.exe").arg(url),
+        "The product page could not be opened.",
+    );
+
+    #[cfg(target_os = "linux")]
+    {
+        run_command(
+            Command::new("xdg-open").arg(url),
+            "The product page could not be opened.",
+        )
+    }
+}
+
+fn product_page_url(page: ProductPage) -> &'static str {
+    match page {
+        ProductPage::ReleasesZh => "https://monitor-app.corerobin.com/releases/",
+        ProductPage::ReleasesEn => "https://monitor-app.corerobin.com/en/releases/",
+        ProductPage::GuideZh => "https://monitor-app.corerobin.com/guide/",
+        ProductPage::GuideEn => "https://monitor-app.corerobin.com/en/guide/",
+        ProductPage::PrivacyZh => "https://monitor-app.corerobin.com/privacy/",
+        ProductPage::PrivacyEn => "https://monitor-app.corerobin.com/en/privacy/",
+        ProductPage::Issues => "https://github.com/JimmyDaddy/corerobin-monitor/issues/new/choose",
+    }
+}
+
 pub fn reveal_path(path: &str) -> Result<(), CommandError> {
     let path = existing_absolute_path(path)?;
 
@@ -239,7 +287,19 @@ fn windows_settings_uri(destination: SystemSettingsDestination) -> &'static str 
 mod tests {
     use std::path::Path;
 
-    use super::application_bundle_from_path;
+    use super::{ProductPage, application_bundle_from_path, product_page_url};
+
+    #[test]
+    fn product_pages_are_fixed_to_public_corerobin_destinations() {
+        assert_eq!(
+            product_page_url(ProductPage::ReleasesZh),
+            "https://monitor-app.corerobin.com/releases/"
+        );
+        assert_eq!(
+            product_page_url(ProductPage::PrivacyZh),
+            "https://monitor-app.corerobin.com/privacy/"
+        );
+    }
 
     #[test]
     fn finds_the_outer_application_bundle_for_nested_helpers() {

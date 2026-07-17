@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entries": {
+    "index.html": {
+      "javascriptBytes": 490000,
+      "javascriptGzipBytes": 150000,
+      "cssBytes": 230000,
+      "cssGzipBytes": 40000
+    },
+    "splash.html": {
+      "javascriptBytes": 80000,
+      "javascriptGzipBytes": 24000,
+      "cssBytes": 7000,
+      "cssGzipBytes": 3000
+    },
+    "tray.html": {
+      "javascriptBytes": 365000,
+      "javascriptGzipBytes": 115000,
+      "cssBytes": 10000,
+      "cssGzipBytes": 3500
+    },
+    "companion.html": {
+      "javascriptBytes": 365000,
+      "javascriptGzipBytes": 115000,
+      "cssBytes": 16000,
+      "cssGzipBytes": 5000
+    }
+  },
+  "totals": {
+    "javascriptBytes": 1750000,
+    "cssBytes": 260000
+  }
+}

@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "site-dist/**", "node_modules/**", "src-tauri/target/**"],
+    ignores: ["dist/**", "node_modules/**", "src-tauri/target/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -19,12 +19,6 @@ export default tseslint.config(
     },
     rules: {
       "react-hooks/rules-of-hooks": "error",
-    },
-  },
-  {
-    files: ["site/**/*.js"],
-    languageOptions: {
-      globals: globals.browser,
     },
   },
   {

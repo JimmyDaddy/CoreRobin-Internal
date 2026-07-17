@@ -33,6 +33,31 @@
       "unknown": "Status desconhecido"
     }
   },
+  "readiness": {
+    "why": "Por que não há uma leitura?",
+    "short": {
+      "waiting": "Aguardando a primeira amostra",
+      "available": "Disponível",
+      "unsupported": "Não fornecido pelo sistema",
+      "unavailable": "Temporariamente indisponível"
+    },
+    "temperature": {
+      "waiting": "Aguardando a primeira amostra de temperatura.",
+      "unsupported": "Este sistema ou hardware não expõe um sensor de temperatura reconhecido.",
+      "unavailable": "A temperatura estava disponível antes, mas esta leitura falhou. O aplicativo continuará tentando em baixa frequência."
+    },
+    "battery": {
+      "waiting": "Aguardando a primeira amostra de bateria.",
+      "unsupported": "Nenhuma bateria foi detectada. Isso é normal em computadores de mesa e dispositivos semelhantes.",
+      "unavailable": "Uma bateria foi detectada, mas esta leitura de estado falhou. O aplicativo continuará tentando."
+    },
+    "batteryDetails": {
+      "waiting": "Lendo a saúde e a contagem de ciclos da bateria.",
+      "unsupported": "Este dispositivo não fornece detalhes da bateria.",
+      "unavailable": "O nível de carga está disponível, mas o sistema não fornece agora a saúde ou a contagem de ciclos."
+    },
+    "lastSuccessful": "Última leitura bem-sucedida: {{time}}"
+  },
   "sleep": {
     "label": "Modo de suspensão automático",
     "unavailableValue": "Indisponível",

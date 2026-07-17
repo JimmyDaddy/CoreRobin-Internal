@@ -8,6 +8,7 @@ import {
   readMigratedStorageItem,
   removeStorageItems,
 } from "./storageMigration";
+import { isProductDataResetInProgress } from "./productSupport";
 
 export const RESOURCE_ALERT_STORAGE_KEY = "core-robin.resource-alert-events.v1";
 export const MAX_RESOURCE_ALERT_EVENTS = 5_000;
@@ -49,6 +50,7 @@ export function loadResourceAlertEvents(): ResourceAlertEvent[] {
 export function saveResourceAlertEvents(
   events: readonly ResourceAlertEvent[],
 ): void {
+  if (isProductDataResetInProgress()) return;
   try {
     const payload: ResourceAlertPayload = {
       version: 1,

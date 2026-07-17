@@ -27,7 +27,10 @@ describe("everyday component interactions", () => {
       <DailySettings
         settings={defaultAppSettings()}
         notificationStatus="disabled"
+        snapshot={getMockSnapshot()}
         onChange={onChange}
+        onOpenOnboarding={() => undefined}
+        onClearAllData={() => undefined}
       />,
     );
 

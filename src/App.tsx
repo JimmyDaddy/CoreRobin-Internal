@@ -45,6 +45,7 @@ import {
   setLaunchAtLogin,
 } from "./api";
 import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
+import { FirstRunGuide } from "./components/FirstRunGuide";
 import { BrandWordmark } from "./components/BrandWordmark";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { DailyHome } from "./components/DailyHome";
@@ -97,6 +98,12 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "./settings";
+import {
+  beginProductDataReset,
+  clearCoreRobinWebData,
+  completeOnboarding,
+  hasCompletedOnboarding,
+} from "./productSupport";
 import type {
   CommandError,
   ProcessAction,
@@ -197,6 +204,9 @@ function App() {
   const { t, i18n } = useAppTranslation();
   const [settings, setSettings] = useState<AppSettings>(() =>
     loadAppSettings(normalizeLanguage(i18n.resolvedLanguage)),
+  );
+  const [onboardingOpen, setOnboardingOpen] = useState(
+    () => !hasCompletedOnboarding(),
   );
   const [launchAtLoginReady, setLaunchAtLoginReady] = useState(false);
   const launchAtLoginActualRef = useRef<boolean | null>(null);
@@ -369,6 +379,17 @@ function App() {
     mainContentRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [activeView]);
 
+  useEffect(() => {
+    const openSettingsShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === ",") {
+        event.preventDefault();
+        setActiveView("settings");
+      }
+    };
+    window.addEventListener("keydown", openSettingsShortcut);
+    return () => window.removeEventListener("keydown", openSettingsShortcut);
+  }, []);
+
   useEffect(() => () => {
     if (modeTransitionTimeoutRef.current !== null) {
       window.clearTimeout(modeTransitionTimeoutRef.current);
@@ -419,6 +440,16 @@ function App() {
         setDailyIntent(incident?.item.intent ?? null);
         setActiveView(request.view);
       }),
+      listen("core-robin:open-about", () => {
+        if (disposed) return;
+        setActiveView("settings");
+        window.setTimeout(() => {
+          document.getElementById("about-support-title")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 80);
+      }),
     ]).then((nextUnlisteners) => {
       if (disposed) nextUnlisteners.forEach((unlisten) => unlisten());
       else unlisteners.push(...nextUnlisteners);
@@ -459,6 +490,28 @@ function App() {
     },
     [],
   );
+
+  const closeOnboarding = useCallback(() => {
+    completeOnboarding();
+    setOnboardingOpen(false);
+  }, []);
+
+  const clearAllProductData = useCallback(async () => {
+    persistentHistory.clear();
+    resourceAlerts.clearSaved();
+    userActions.clearSaved();
+    try {
+      await cleanupScan.clear();
+    } catch {
+      // WebView data should still be reset if the private scan cache is unavailable.
+    }
+    beginProductDataReset();
+    clearCoreRobinWebData();
+    window.setTimeout(() => {
+      clearCoreRobinWebData();
+      window.location.reload();
+    }, 120);
+  }, [cleanupScan, persistentHistory, resourceAlerts, userActions]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -1261,7 +1314,14 @@ function App() {
                   onClearSavedActions={userActions.clearSaved}
                 />
               ) : activeView === "settings" ? (
-                <DailySettings settings={settings} notificationStatus={desktopNotifications.status} onChange={updateSettings} />
+                <DailySettings
+                  settings={settings}
+                  notificationStatus={desktopNotifications.status}
+                  snapshot={snapshot}
+                  onChange={updateSettings}
+                  onOpenOnboarding={() => setOnboardingOpen(true)}
+                  onClearAllData={() => void clearAllProductData()}
+                />
               ) : (
                 <DailySolve
                   onOpenIntent={openDailyIntent}
@@ -1298,6 +1358,7 @@ function App() {
                 ) : null}
                 <DeviceWellbeing
                   sensors={snapshot.sensors}
+                  warmingUp={snapshot.warmingUp}
                   applications={diagnosis?.applications ?? []}
                 />
                 <>
@@ -1472,7 +1533,10 @@ function App() {
               <SettingsExplorer
                 settings={settings}
                 notificationStatus={desktopNotifications.status}
+                snapshot={snapshot}
                 onChange={updateSettings}
+                onOpenOnboarding={() => setOnboardingOpen(true)}
+                onClearAllData={() => void clearAllProductData()}
               />
             )}
             </Suspense>
@@ -1540,6 +1604,7 @@ function App() {
           onConfirm={() => void handleAction()}
         />
       ) : null}
+      {onboardingOpen ? <FirstRunGuide onComplete={closeOnboarding} /> : null}
     </div>
   );
 }

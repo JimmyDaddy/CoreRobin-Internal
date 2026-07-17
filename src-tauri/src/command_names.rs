@@ -22,6 +22,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "reveal_path",
     "preview_path",
     "open_system_settings",
+    "open_product_page",
     "relaunch_application",
     "can_relaunch_application",
     "create_cleanup_delete_lease",

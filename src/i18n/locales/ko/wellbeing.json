@@ -33,6 +33,31 @@
       "unknown": "상태가 알 수 없음"
     }
   },
+  "readiness": {
+    "why": "측정값이 표시되지 않는 이유",
+    "short": {
+      "waiting": "첫 샘플 대기 중",
+      "available": "사용 가능",
+      "unsupported": "시스템에서 제공하지 않음",
+      "unavailable": "일시적으로 사용할 수 없음"
+    },
+    "temperature": {
+      "waiting": "첫 번째 온도 샘플을 기다리는 중입니다.",
+      "unsupported": "이 시스템 또는 하드웨어는 인식 가능한 온도 센서를 제공하지 않습니다.",
+      "unavailable": "이전에는 온도를 읽을 수 있었지만 이번 읽기에 실패했습니다. 앱이 낮은 빈도로 계속 다시 시도합니다."
+    },
+    "battery": {
+      "waiting": "첫 번째 배터리 샘플을 기다리는 중입니다.",
+      "unsupported": "배터리가 감지되지 않았습니다. 데스크톱 컴퓨터와 유사한 기기에서는 정상입니다.",
+      "unavailable": "배터리는 감지되었지만 이번 상태 읽기에 실패했습니다. 앱이 계속 다시 시도합니다."
+    },
+    "batteryDetails": {
+      "waiting": "배터리 성능 상태와 사이클 수를 읽는 중입니다.",
+      "unsupported": "이 기기는 배터리 세부 정보를 제공하지 않습니다.",
+      "unavailable": "충전량은 읽을 수 있지만 현재 시스템에서 성능 상태 또는 사이클 수를 제공하지 않습니다."
+    },
+    "lastSuccessful": "마지막으로 읽은 시간: {{time}}"
+  },
   "sleep": {
     "label": "자동 절전 모드",
     "unavailableValue": "사용 불가",

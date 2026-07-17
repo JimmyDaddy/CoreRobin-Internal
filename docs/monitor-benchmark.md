@@ -48,3 +48,7 @@ cargo run --locked --manifest-path src-tauri/Cargo.toml --release \
 同步工作时间的 18%。它不再具有旧版的两个数量级差距，但在 5 秒后台节奏下仍避免了进程枚举、
 排序和序列化。摘要 max 继续受低频传感器慢路径影响，因此仍需用 Instruments 验证整机能耗，
 不能把这组微基准当成发布级功耗结论。
+
+三轮可比原始结果可以通过 `pnpm performance:baseline` 统一写入带 commit 与机器信息的
+JSON；发布前整机 profile、冷启动和自动门禁边界见
+[发布冒烟与性能门禁](release-smoke-and-performance.md)。

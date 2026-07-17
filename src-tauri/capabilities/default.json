@@ -31,6 +31,7 @@
     "allow-reveal-path",
     "allow-preview-path",
     "allow-open-system-settings",
+    "allow-open-product-page",
     "allow-relaunch-application",
     "allow-can-relaunch-application",
     "allow-create-cleanup-delete-lease",

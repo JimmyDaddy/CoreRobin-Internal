@@ -16,6 +16,7 @@
 - [国际化说明](i18n.md)
 - [新手体验路线图](novice-experience-roadmap.md)（规划记录，实施时需重新核对）
 - [监控、清理、Canvas 与 WebView 基准](monitor-benchmark.md)、[cleanup-benchmark.md](cleanup-benchmark.md)、[cleanup-canvas-performance.md](cleanup-canvas-performance.md)、[webview-bundle-performance.md](webview-bundle-performance.md)
+- [发布冒烟与性能门禁](release-smoke-and-performance.md)
 - [品牌探索素材](brand/)
 
 每次产品行为、权限边界、数据保留或发布方式变更时，先更新“面向用户的规范内容”，再导出公开文档并更新官网摘要。

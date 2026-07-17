@@ -33,6 +33,31 @@
       "unknown": "状态未知"
     }
   },
+  "readiness": {
+    "why": "为什么没有读数？",
+    "short": {
+      "waiting": "等待首个样本",
+      "available": "可用",
+      "unsupported": "系统未提供",
+      "unavailable": "暂时不可用"
+    },
+    "temperature": {
+      "waiting": "正在等待第一次温度采样。",
+      "unsupported": "当前系统或硬件没有提供可识别的温度传感器。",
+      "unavailable": "之前可以读取温度，但这次读取失败；应用会继续低频重试。"
+    },
+    "battery": {
+      "waiting": "正在等待第一次电池采样。",
+      "unsupported": "未检测到电池；台式机等设备通常属于正常情况。",
+      "unavailable": "检测到电池，但本次状态读取失败；应用会继续重试。"
+    },
+    "batteryDetails": {
+      "waiting": "正在读取电池健康度和循环次数。",
+      "unsupported": "这台设备没有提供电池详情。",
+      "unavailable": "电量读取正常，但系统暂未提供健康度或循环次数。"
+    },
+    "lastSuccessful": "上次成功读取：{{time}}"
+  },
   "sleep": {
     "label": "自动休眠",
     "unavailableValue": "无法读取",

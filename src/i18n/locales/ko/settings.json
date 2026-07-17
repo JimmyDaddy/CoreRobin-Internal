@@ -31,7 +31,7 @@
   "sampling": {
     "title": "시스템 샘플링",
     "description": "짧은 간격으로 샘플링하면 더 빠르게 반응하고 오버헤드가 증가합니다.",
-    "system": "CPU, 메모리 및 프로세스"
+    "system": "CPU, 메모리 및 프로세스", "advanced": "고급: 정확한 간격", "presets": { "lowPower": { "label": "저전력", "description": "5초마다 백그라운드 사용" }, "balanced": { "label": "균형", "description": "1초마다, 일상 사용 권장" }, "realtime": { "label": "실시간", "description": "0.5초마다, 더 빠른 반응" } }
   },
   "connections": {
     "title": "연결 갱신",
@@ -78,5 +78,21 @@
     "moderate": "주의",
     "high": "높음",
     "critical": "심각"
+  },
+  "about": {
+    "title": "정보 및 지원", "description": "버전을 확인하고 도움을 받으며 CoreRobin이 이 컴퓨터에 저장한 데이터를 관리합니다.",
+    "versionTitle": "버전 및 업데이트", "versionDescription": "공개 릴리스 페이지에서 최신 안정 버전을 확인합니다.", "version": "현재 버전", "platform": "시스템", "architecture": "아키텍처",
+    "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다",
+    "helpTitle": "도움말 및 피드백", "helpDescription": "공개 가이드를 열거나 문제를 보고하기 전에 포함될 정보를 확인합니다.", "guide": "사용자 가이드", "privacy": "개인정보 보호", "reportIssue": "문제 보고", "reopenGuide": "첫 사용 가이드 다시 보기",
+    "diagnosticsTitle": "진단 요약", "diagnosticsDescription": "문제 해결에 도움이 되는 기본 실행 정보를 복사합니다.", "diagnosticsPrivacy": "호스트 이름, 프로세스 이름, 파일 경로, 네트워크 주소 및 기록 값은 기본적으로 제외됩니다.", "diagnosticsPreview": "복사 전 미리보기", "diagnostics": { "idle": "익명화된 요약 복사", "copied": "복사됨", "error": "복사 실패" },
+    "clearTitle": "모든 로컬 데이터 지우기", "clearDescription": "환경 설정, 기록, 경고, 작업 기록 및 공간 스캔 캐시를 지웁니다.", "clearConfirm": "이 작업은 되돌릴 수 없습니다. CoreRobin은 기기 데이터를 지우고 다시 시작합니다. 로그인 시 실행과 같은 시스템 권한은 자동으로 제거되지 않습니다.", "clearNow": "지우고 다시 시작", "clearAction": "모든 데이터 지우기"
+  },
+  "onboarding": {
+    "kicker": "첫 사용 · {{current}} / {{total}}", "skip": "지금은 건너뛰기", "back": "뒤로", "next": "다음", "finish": "시작하기",
+    "steps": {
+      "one": { "title": "나에게 맞는 화면을 선택하세요", "description": "일상 모드는 안정적인 결론과 다음 단계를 제공합니다. 전문가 모드는 전체 지표, 프로세스 및 네트워크 근거를 유지합니다. 언제든 전환할 수 있습니다.", "note": "두 모드는 같은 기기 상태를 공유하며 같은 결론에 도달합니다." },
+      "two": { "title": "창을 닫아도 조용히 대기합니다", "description": "CoreRobin은 메뉴 막대에 남아 낮은 빈도로 샘플링합니다. 메뉴 패널과 Robin은 하나의 안정적인 상태를 공유합니다.", "note": "메뉴 막대에서 일시 중지하거나 설정을 열고 완전히 종료할 수 있습니다." },
+      "three": { "title": "권한은 필요할 때만 사용합니다", "description": "알림, Robin 및 로그인 시 실행은 선택 사항입니다. 전체 디스크 접근은 공간 정리 스캔을 더 완전하게 할 때만 사용합니다.", "note": "허용하지 않아도 접근 가능한 영역은 스캔됩니다. CoreRobin은 이 가이드에서 권한을 요청하지 않습니다." }
+    }
   }
 }

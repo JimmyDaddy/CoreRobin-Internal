@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./i18n";
 import "./App.css";
+import "./styles/product-support.css";
 import App from "./App";
 import {
   APP_SETTINGS_STORAGE_KEY,

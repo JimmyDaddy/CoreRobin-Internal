@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bundle_root=${1:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER]"}
+expected_arch=${2:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER]"}
+expected_identifier=${3:-com.corerobin.monitor}
+
+shopt -s nullglob
+dmgs=("$bundle_root"/dmg/*.dmg)
+if [[ ${#dmgs[@]} -ne 1 ]]; then
+  echo "Expected exactly one DMG under $bundle_root/dmg; found ${#dmgs[@]}." >&2
+  exit 1
+fi
+dmg_path=${dmgs[0]}
+
+mount_dir=$(mktemp -d)
+cleanup() {
+  hdiutil detach -quiet "$mount_dir" >/dev/null 2>&1 || true
+  rmdir "$mount_dir" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+hdiutil attach -quiet -readonly -nobrowse -mountpoint "$mount_dir" "$dmg_path"
+
+apps=("$mount_dir"/*.app)
+if [[ ${#apps[@]} -ne 1 ]]; then
+  echo "Expected exactly one application in $dmg_path; found ${#apps[@]}." >&2
+  exit 1
+fi
+app_path=${apps[0]}
+info_plist="$app_path/Contents/Info.plist"
+test -f "$info_plist"
+
+identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$info_plist")
+executable_name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$info_plist")
+version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist")
+test "$identifier" = "$expected_identifier"
+test -n "$version"
+test -x "$app_path/Contents/MacOS/$executable_name"
+
+codesign --verify --deep --strict --verbose=4 "$app_path"
+codesign -dv --verbose=4 "$app_path" 2>&1 | grep -F 'Signature=adhoc'
+test "$(lipo -archs "$app_path/Contents/MacOS/$executable_name")" = "$expected_arch"
+
+echo "Verified macOS DMG: $(basename "$dmg_path") ($identifier, $version, $expected_arch, ad-hoc signed)."

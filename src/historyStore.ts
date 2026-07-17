@@ -4,6 +4,7 @@ import {
   readMigratedStorageItem,
   removeStorageItems,
 } from "./storageMigration";
+import { isProductDataResetInProgress } from "./productSupport";
 
 export const PERSISTENT_HISTORY_STORAGE_KEY = "core-robin.resource-history.v1";
 export const PERSISTENT_HISTORY_BUCKET_MS = 5 * 60 * 1_000;
@@ -49,6 +50,7 @@ export function loadPersistentHistory(): HistoryPoint[] {
 }
 
 export function savePersistentHistory(points: readonly HistoryPoint[]): void {
+  if (isProductDataResetInProgress()) return;
   try {
     const payload: PersistentHistoryPayload = {
       version: 1,

@@ -33,6 +33,31 @@
       "unknown": "État inconnu"
     }
   },
+  "readiness": {
+    "why": "Pourquoi aucune mesure n’est-elle affichée ?",
+    "short": {
+      "waiting": "En attente du premier relevé",
+      "available": "Disponible",
+      "unsupported": "Non fourni par le système",
+      "unavailable": "Temporairement indisponible"
+    },
+    "temperature": {
+      "waiting": "En attente du premier relevé de température.",
+      "unsupported": "Ce système ou ce matériel ne fournit aucun capteur de température reconnu.",
+      "unavailable": "La température était disponible auparavant, mais cette lecture a échoué. L’application réessaiera à faible fréquence."
+    },
+    "battery": {
+      "waiting": "En attente du premier relevé de batterie.",
+      "unsupported": "Aucune batterie détectée. C’est normal sur un ordinateur de bureau ou un appareil similaire.",
+      "unavailable": "Une batterie a été détectée, mais cette lecture a échoué. L’application réessaiera."
+    },
+    "batteryDetails": {
+      "waiting": "Lecture de l’état de santé et du nombre de cycles de la batterie.",
+      "unsupported": "Cet appareil ne fournit pas de détails sur la batterie.",
+      "unavailable": "Le niveau de charge est disponible, mais le système ne fournit pas actuellement l’état de santé ou le nombre de cycles."
+    },
+    "lastSuccessful": "Dernière lecture réussie : {{time}}"
+  },
   "sleep": {
     "label": "Mode veille automatique",
     "unavailableValue": "Non disponible",

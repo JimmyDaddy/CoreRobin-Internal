@@ -31,7 +31,7 @@
   "sampling": {
     "title": "Amostragem do sistema",
     "description": "Intervalos mais curtos reagem mais rapidamente e aumentam a sobrecarga de amostragem.",
-    "system": "CPU, memória e processos"
+    "system": "CPU, memória e processos", "advanced": "Avançado: intervalo exato", "presets": { "lowPower": { "label": "Baixo consumo", "description": "A cada 5 segundos em segundo plano" }, "balanced": { "label": "Equilibrado", "description": "A cada segundo, recomendado" }, "realtime": { "label": "Tempo real", "description": "A cada 0,5 segundo, mais rápido" } }
   },
   "connections": {
     "title": "Atualização de conexões",
@@ -78,5 +78,21 @@
     "moderate": "Atenção",
     "high": "Alto",
     "critical": "Crítico"
+  },
+  "about": {
+    "title": "Sobre e suporte", "description": "Confira a versão, obtenha ajuda e gerencie os dados que o CoreRobin mantém neste computador.",
+    "versionTitle": "Versão e atualizações", "versionDescription": "Confira a versão estável mais recente na página pública de lançamentos.", "version": "Versão atual", "platform": "Sistema", "architecture": "Arquitetura",
+    "checking": "Verificando…", "checkUpdate": "Verificar atualizações", "releaseNotes": "Notas da versão", "updateError": "Não foi possível verificar atualizações agora. Tente novamente mais tarde.", "updateAvailable": "CoreRobin v{{version}} está disponível", "openRelease": "Baixar", "upToDate": "A versão v{{version}} está atualizada",
+    "helpTitle": "Ajuda e feedback", "helpDescription": "Abra o guia público ou confira os dados incluídos antes de relatar um problema.", "guide": "Guia do usuário", "privacy": "Privacidade", "reportIssue": "Relatar um problema", "reopenGuide": "Mostrar novamente o guia inicial",
+    "diagnosticsTitle": "Resumo de diagnóstico", "diagnosticsDescription": "Copie dados básicos de execução que ajudam a solucionar problemas.", "diagnosticsPrivacy": "Nome do computador e dos processos, caminhos, endereços de rede e valores históricos são excluídos por padrão.", "diagnosticsPreview": "Visualizar antes de copiar", "diagnostics": { "idle": "Copiar resumo anonimizado", "copied": "Copiado", "error": "Falha ao copiar" },
+    "clearTitle": "Limpar todos os dados locais", "clearDescription": "Limpe preferências, histórico, alertas, ações e cache da análise de espaço.", "clearConfirm": "Esta ação não pode ser desfeita. O CoreRobin limpará os dados locais e reiniciará; permissões do sistema, como iniciar no login, não são removidas silenciosamente.", "clearNow": "Limpar e reiniciar", "clearAction": "Limpar todos os dados"
+  },
+  "onboarding": {
+    "kicker": "Primeiro uso · {{current}} / {{total}}", "skip": "Pular por enquanto", "back": "Voltar", "next": "Avançar", "finish": "Começar",
+    "steps": {
+      "one": { "title": "Escolha a visualização ideal", "description": "O modo Cotidiano oferece conclusões estáveis e uma próxima etapa. O modo Profissional mantém métricas completas e evidências de processos e rede. Alterne quando quiser.", "note": "Os dois modos compartilham o mesmo estado local e chegam às mesmas conclusões." },
+      "two": { "title": "Continua disponível após fechar a janela", "description": "O CoreRobin permanece na barra de menus com amostragem de baixa frequência. O painel e o Robin compartilham um único estado estável.", "note": "Pause, abra as configurações ou encerre completamente pela barra de menus." },
+      "three": { "title": "Permissões opcionais e objetivas", "description": "Notificações, Robin e iniciar no login são opcionais. O Acesso Total ao Disco serve apenas para tornar a análise de espaço mais completa.", "note": "Sem ele, as áreas acessíveis ainda podem ser analisadas. O CoreRobin não pede permissão neste guia." }
+    }
   }
 }

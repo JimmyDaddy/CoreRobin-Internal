@@ -4,6 +4,7 @@ import {
   readMigratedStorageItem,
   removeStorageItems,
 } from "./storageMigration";
+import { isProductDataResetInProgress } from "./productSupport";
 
 export const USER_ACTION_HISTORY_STORAGE_KEY = "core-robin.user-action-history.v1";
 export const MAX_USER_ACTION_RECORDS = 500;
@@ -135,6 +136,7 @@ export function loadUserActionHistory(): UserActionRecord[] {
 }
 
 export function saveUserActionHistory(records: readonly UserActionRecord[]): void {
+  if (isProductDataResetInProgress()) return;
   try {
     const payload: UserActionHistoryPayload = {
       version: 1,

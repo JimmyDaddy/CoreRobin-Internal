@@ -5,11 +5,15 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 import {
   CONNECTION_REFRESH_INTERVAL_OPTIONS,
   SYSTEM_SAMPLE_INTERVAL_OPTIONS,
+  SYSTEM_SAMPLING_PRESETS,
+  systemSamplingPreset,
   type AppSettings,
   type UsageThresholds,
 } from "../settings";
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
+import type { SystemSnapshot } from "../types";
+import { AboutSupport } from "./AboutSupport";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 
@@ -18,7 +22,10 @@ type SettingsIcon = ComponentType<{ size?: number | string }>;
 interface SettingsExplorerProps {
   settings: AppSettings;
   notificationStatus: DesktopNotificationStatus;
+  snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  onOpenOnboarding: () => void;
+  onClearAllData: () => void;
 }
 
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
@@ -28,7 +35,10 @@ const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
 export function SettingsExplorer({
   settings,
   notificationStatus,
+  snapshot,
   onChange,
+  onOpenOnboarding,
+  onClearAllData,
 }: SettingsExplorerProps) {
   const { t } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
@@ -124,21 +134,38 @@ export function SettingsExplorer({
           title={t("settings:sampling.title")}
           description={t("settings:sampling.description")}
         >
-          <label className="settings-field">
-            <span>{t("settings:sampling.system")}</span>
-            <SettingsSelect
-              value={settings.systemSampleIntervalMs}
-              onChange={(event) =>
-                onChange({ systemSampleIntervalMs: Number(event.target.value) })
-              }
-            >
-              {SYSTEM_SAMPLE_INTERVAL_OPTIONS.map((interval) => (
-                <option key={interval} value={interval}>
-                  {t("settings:intervalMs", { interval })}
-                </option>
-              ))}
-            </SettingsSelect>
-          </label>
+          <div className="settings-sampling-presets" role="group" aria-label={t("settings:sampling.system") }>
+            {(Object.keys(SYSTEM_SAMPLING_PRESETS) as Array<keyof typeof SYSTEM_SAMPLING_PRESETS>).map((preset) => (
+              <button
+                type="button"
+                key={preset}
+                className={systemSamplingPreset(settings.systemSampleIntervalMs) === preset ? "is-active" : ""}
+                aria-pressed={systemSamplingPreset(settings.systemSampleIntervalMs) === preset}
+                onClick={() => onChange({ systemSampleIntervalMs: SYSTEM_SAMPLING_PRESETS[preset] })}
+              >
+                <strong>{t(`settings:sampling.presets.${preset}.label`)}</strong>
+                <small>{t(`settings:sampling.presets.${preset}.description`)}</small>
+              </button>
+            ))}
+          </div>
+          <details className="settings-sampling-advanced">
+            <summary>{t("settings:sampling.advanced")}</summary>
+            <label className="settings-field">
+              <span>{t("settings:sampling.system")}</span>
+              <SettingsSelect
+                value={settings.systemSampleIntervalMs}
+                onChange={(event) =>
+                  onChange({ systemSampleIntervalMs: Number(event.target.value) })
+                }
+              >
+                {SYSTEM_SAMPLE_INTERVAL_OPTIONS.map((interval) => (
+                  <option key={interval} value={interval}>
+                    {t("settings:intervalMs", { interval })}
+                  </option>
+                ))}
+              </SettingsSelect>
+            </label>
+          </details>
         </SettingsCard>
 
         <SettingsCard
@@ -314,6 +341,12 @@ export function SettingsExplorer({
           <ThresholdPreview thresholds={settings.usageThresholds} />
         </SettingsCard>
       </div>
+      <AboutSupport
+        settings={settings}
+        snapshot={snapshot}
+        onOpenOnboarding={onOpenOnboarding}
+        onClearAllData={onClearAllData}
+      />
     </section>
   );
 }

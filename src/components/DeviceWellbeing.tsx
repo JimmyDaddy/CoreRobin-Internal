@@ -19,13 +19,16 @@ import {
 } from "../deviceWellbeing";
 import type { ApplicationImpact } from "../diagnosis";
 import type { SensorsSnapshot } from "../types";
+import { useSensorReadiness, type SensorReadiness } from "../hooks/useSensorReadiness";
 import { formatPercent } from "../utils";
 
 export function DeviceWellbeing({
   sensors,
+  warmingUp = false,
   applications = [],
 }: {
   sensors: SensorsSnapshot;
+  warmingUp?: boolean;
   applications?: readonly ApplicationImpact[];
 }) {
   const { t, i18n } = useAppTranslation();
@@ -33,6 +36,14 @@ export function DeviceWellbeing({
   const batteryLevel = batteryWellbeingLevel(sensors.battery);
   const sleepLevel = sleepWellbeingLevel(sensors.sleep, applications);
   const sleepBlockers = summarizeSleepBlockers(sensors.sleep, applications);
+  const readiness = useSensorReadiness({
+    sampledAtMs: sensors.sampledAtMs,
+    warmingUp,
+    temperatureCelsius: sensors.temperature.celsius,
+    batteryPresent: sensors.battery.present,
+    batteryPercent: sensors.battery.chargePercent,
+    batteryDetailsAvailable: sensors.battery.healthPercent !== null || sensors.battery.cycleCount !== null,
+  });
   const userSleepBlockers = sleepBlockers.filter(({ systemComponent }) => !systemComponent);
   return (
     <section className="panel device-wellbeing" aria-labelledby="device-wellbeing-title">
@@ -52,9 +63,10 @@ export function DeviceWellbeing({
           <div>
             <small>{t("wellbeing:temperature.label")}</small>
             <strong>{sensors.temperature.celsius === null
-              ? t("common:unknown")
+              ? t(`wellbeing:readiness.short.${readiness.temperature.status}`)
               : `${sensors.temperature.celsius.toFixed(0)} °C`}</strong>
             <p>{t(`wellbeing:temperature.${temperatureLevel}`)}</p>
+            <ReadinessHint kind="temperature" readiness={readiness.temperature} />
           </div>
         </article>
         <article className={`is-${batteryLevel}`}>
@@ -63,7 +75,7 @@ export function DeviceWellbeing({
             <small>{t("wellbeing:battery.label")}</small>
             <strong>{sensors.battery.present && sensors.battery.chargePercent !== null
               ? `${sensors.battery.chargePercent.toFixed(0)}%`
-              : t("wellbeing:battery.notPresent")}</strong>
+              : t(`wellbeing:readiness.short.${readiness.battery.status}`)}</strong>
             <p>{batteryDescription(sensors, batteryLevel, t)}</p>
             <dl className="device-wellbeing__battery-facts">
               <div>
@@ -79,6 +91,11 @@ export function DeviceWellbeing({
                   : sensors.battery.cycleCount.toLocaleString(i18n.resolvedLanguage)}</dd>
               </div>
             </dl>
+            {readiness.battery.status !== "available"
+              ? <ReadinessHint kind="battery" readiness={readiness.battery} />
+              : readiness.batteryDetails.status !== "available"
+                ? <ReadinessHint kind="batteryDetails" readiness={readiness.batteryDetails} />
+                : null}
           </div>
         </article>
         <article className={`is-${sleepLevel}`}>
@@ -101,6 +118,31 @@ export function DeviceWellbeing({
         </article>
       </div>
     </section>
+  );
+}
+
+function ReadinessHint({
+  kind,
+  readiness,
+}: {
+  kind: "temperature" | "battery" | "batteryDetails";
+  readiness: SensorReadiness;
+}) {
+  const { t, i18n } = useAppTranslation();
+  if (readiness.status === "available") return null;
+  return (
+    <details className="sensor-readiness">
+      <summary>{t("wellbeing:readiness.why")}</summary>
+      <p>{t(`wellbeing:readiness.${kind}.${readiness.status}`)}</p>
+      {readiness.lastSuccessfulAtMs !== null ? (
+        <small>{t("wellbeing:readiness.lastSuccessful", {
+          time: new Date(readiness.lastSuccessfulAtMs).toLocaleTimeString(i18n.resolvedLanguage, {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        })}</small>
+      ) : null}
+    </details>
   );
 }
 

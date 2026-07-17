@@ -31,7 +31,13 @@
   "sampling": {
     "title": "System sampling",
     "description": "Shorter intervals react faster and add more sampling overhead.",
-    "system": "CPU, memory, and processes"
+    "system": "CPU, memory, and processes",
+    "advanced": "Advanced: exact interval",
+    "presets": {
+      "lowPower": { "label": "Low power", "description": "Every 5 seconds for long background use" },
+      "balanced": { "label": "Balanced", "description": "Every second, recommended for daily use" },
+      "realtime": { "label": "Realtime", "description": "Every 0.5 seconds for faster response" }
+    }
   },
   "connections": {
     "title": "Connection refresh",
@@ -78,5 +84,65 @@
     "moderate": "Watch",
     "high": "High",
     "critical": "Critical"
+  },
+  "about": {
+    "title": "About & support",
+    "description": "Check the version, get help, and manage the data CoreRobin keeps on this computer.",
+    "versionTitle": "Version & updates",
+    "versionDescription": "Check the public release page for the latest stable version.",
+    "version": "Current version",
+    "platform": "System",
+    "architecture": "Architecture",
+    "checking": "Checking…",
+    "checkUpdate": "Check for updates",
+    "releaseNotes": "View release notes",
+    "updateError": "Updates cannot be checked right now. Try again later.",
+    "updateAvailable": "CoreRobin v{{version}} is available",
+    "openRelease": "Download",
+    "upToDate": "You are up to date with v{{version}}",
+    "helpTitle": "Help & feedback",
+    "helpDescription": "Open the public guide, or review what is included before reporting a problem.",
+    "guide": "User guide",
+    "privacy": "Privacy",
+    "reportIssue": "Report a problem",
+    "reopenGuide": "Show first-use guide again",
+    "diagnosticsTitle": "Diagnostic summary",
+    "diagnosticsDescription": "Copy basic runtime details that help troubleshoot a problem.",
+    "diagnosticsPrivacy": "Hostnames, process names, file paths, network addresses, and history values are excluded by default.",
+    "diagnosticsPreview": "Preview before copying",
+    "diagnostics": {
+      "idle": "Copy redacted summary",
+      "copied": "Copied",
+      "error": "Copy failed"
+    },
+    "clearTitle": "Clear all local data",
+    "clearDescription": "Clear preferences, history, alerts, action records, and the space-scan cache.",
+    "clearConfirm": "This cannot be undone. CoreRobin will clear on-device data and restart; system permissions such as login startup are not silently removed.",
+    "clearNow": "Clear and restart",
+    "clearAction": "Clear all data"
+  },
+  "onboarding": {
+    "kicker": "First use · {{current}} / {{total}}",
+    "skip": "Skip for now",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Get started",
+    "steps": {
+      "one": {
+        "title": "Choose the view that suits you",
+        "description": "Everyday mode gives stable conclusions and a next step. Professional mode keeps full metrics, process, and network evidence. Switch at any time.",
+        "note": "Both modes share the same on-device state and reach the same conclusions."
+      },
+      "two": {
+        "title": "Quietly stays available after the window closes",
+        "description": "CoreRobin remains in the menu bar with low-frequency sampling. The menu panel and Robin companion share one stable state.",
+        "note": "Pause, open settings, or quit completely from the menu bar."
+      },
+      "three": {
+        "title": "Permissions are optional and purposeful",
+        "description": "Notifications, Robin companion, and launch at login are optional. Full Disk Access only makes a space-cleanup scan more complete.",
+        "note": "Without it, accessible areas can still be scanned. CoreRobin does not request it during this guide."
+      }
+    }
   }
 }

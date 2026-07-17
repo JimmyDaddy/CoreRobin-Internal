@@ -1458,6 +1458,42 @@ export default interface Resources {
     "viewSettings": "进程视图设置"
   },
   "settings": {
+    "about": {
+      "architecture": "架构",
+      "checkUpdate": "检查更新",
+      "checking": "正在检查…",
+      "clearAction": "清空全部数据",
+      "clearConfirm": "此操作无法撤销。CoreRobin 将清除本机数据并重新启动；登录启动等系统授权不会被静默移除。",
+      "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描缓存。",
+      "clearNow": "清空并重新启动",
+      "clearTitle": "清空全部本地数据",
+      "description": "查看版本、获取帮助，并管理 CoreRobin 保存在这台电脑上的数据。",
+      "diagnostics": {
+        "copied": "已复制",
+        "error": "复制失败",
+        "idle": "复制脱敏诊断摘要"
+      },
+      "diagnosticsDescription": "复制有助于排查问题的基础运行信息。",
+      "diagnosticsPreview": "复制前预览",
+      "diagnosticsPrivacy": "默认不包含主机名、进程名、文件路径、网络地址或历史数值。",
+      "diagnosticsTitle": "诊断摘要",
+      "guide": "用户指南",
+      "helpDescription": "打开公开指南，或在提交前查看会包含哪些信息。",
+      "helpTitle": "帮助与反馈",
+      "openRelease": "前往下载",
+      "platform": "系统",
+      "privacy": "隐私说明",
+      "releaseNotes": "查看更新内容",
+      "reopenGuide": "重新查看首次引导",
+      "reportIssue": "报告问题",
+      "title": "关于与支持",
+      "upToDate": "已是最新版本 v{{version}}",
+      "updateAvailable": "CoreRobin v{{version}} 已发布",
+      "updateError": "暂时无法检查更新，请稍后重试。",
+      "version": "当前版本",
+      "versionDescription": "检查公开发布页上的最新稳定版本。",
+      "versionTitle": "版本与更新"
+    },
     "background": {
       "companionAlwaysOnTop": "Robin 始终置顶",
       "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡",
@@ -1518,13 +1554,52 @@ export default interface Resources {
       },
       "title": "桌面提醒"
     },
+    "onboarding": {
+      "back": "上一步",
+      "finish": "开始使用",
+      "kicker": "首次使用 · {{current}} / {{total}}",
+      "next": "下一步",
+      "skip": "暂时跳过",
+      "steps": {
+        "one": {
+          "description": "日常模式会给出稳定结论和下一步；专业模式保留完整指标、进程和网络证据。你可以随时切换。",
+          "note": "两种模式使用同一份本机状态，不会产生不同结论。",
+          "title": "先选择适合你的查看方式"
+        },
+        "three": {
+          "description": "通知、Robin 小伙伴和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
+          "note": "不授权仍可扫描系统允许访问的区域；CoreRobin 不会在这里主动请求权限。",
+          "title": "权限按需要使用，由你决定"
+        },
+        "two": {
+          "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 小伙伴共享同一份稳定状态。",
+          "note": "可以从状态栏暂停、打开设置或彻底退出应用。",
+          "title": "关闭窗口后仍会安静守候"
+        }
+      }
+    },
     "processView": {
       "description": "启动与重置进程浏览器时使用的布局。",
       "label": "默认进程视图",
       "title": "默认进程视图"
     },
     "sampling": {
+      "advanced": "高级：精确采样间隔",
       "description": "更短的间隔响应更快，也会带来更高的采样开销。",
+      "presets": {
+        "balanced": {
+          "description": "1 秒一次，推荐日常使用",
+          "label": "平衡"
+        },
+        "lowPower": {
+          "description": "5 秒一次，适合长期后台运行",
+          "label": "低功耗"
+        },
+        "realtime": {
+          "description": "0.5 秒一次，响应更快",
+          "label": "实时"
+        }
+      },
       "system": "CPU、内存与进程",
       "title": "系统采样"
     },
@@ -1785,6 +1860,31 @@ export default interface Resources {
       "normal": "状态正常",
       "unavailable": "系统未提供读数",
       "urgent": "建议处理"
+    },
+    "readiness": {
+      "battery": {
+        "unavailable": "检测到电池，但本次状态读取失败；应用会继续重试。",
+        "unsupported": "未检测到电池；台式机等设备通常属于正常情况。",
+        "waiting": "正在等待第一次电池采样。"
+      },
+      "batteryDetails": {
+        "unavailable": "电量读取正常，但系统暂未提供健康度或循环次数。",
+        "unsupported": "这台设备没有提供电池详情。",
+        "waiting": "正在读取电池健康度和循环次数。"
+      },
+      "lastSuccessful": "上次成功读取：{{time}}",
+      "short": {
+        "available": "可用",
+        "unavailable": "暂时不可用",
+        "unsupported": "系统未提供",
+        "waiting": "等待首个样本"
+      },
+      "temperature": {
+        "unavailable": "之前可以读取温度，但这次读取失败；应用会继续低频重试。",
+        "unsupported": "当前系统或硬件没有提供可识别的温度传感器。",
+        "waiting": "正在等待第一次温度采样。"
+      },
+      "why": "为什么没有读数？"
     },
     "sleep": {
       "blocked": "{{name}} 正在阻止自动休眠，已持续{{duration}}{{more}}。退出应用或暂停相关任务后通常会恢复。",

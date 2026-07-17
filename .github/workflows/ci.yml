@@ -25,7 +25,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
-      site: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.site == 'true' }}
       desktop: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
     steps:
       - name: Check out repository for git-based events
@@ -53,13 +52,7 @@ jobs:
               - 'vite.config.*'
               - 'eslint.config.*'
               - 'i18next.config.*'
-              - '.github/workflows/**'
-              - '.github/actions/**'
-            site:
-              - 'site/**'
-              - 'scripts/build-site.mjs'
-              - 'src/assets/brand-mark.png'
-              - 'src-tauri/icons/icon.png'
+              - 'scripts/**'
               - '.github/workflows/**'
               - '.github/actions/**'
             desktop:
@@ -71,7 +64,6 @@ jobs:
       - name: Summarize selected scopes
         env:
           FRONTEND: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
-          SITE: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.site == 'true' }}
           DESKTOP: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
         run: |
           {
@@ -80,14 +72,13 @@ jobs:
             echo "| Scope | Selected |"
             echo "| --- | --- |"
             echo "| Frontend | $FRONTEND |"
-            echo "| Product site | $SITE |"
             echo "| Desktop | $DESKTOP |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
     name: Frontend quality
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.site == 'true') }}
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -131,9 +122,21 @@ jobs:
         if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm build
 
-      - name: Build product site
-        if: needs.changes.result == 'success' && needs.changes.outputs.site == 'true'
-        run: node scripts/build-site.mjs
+      - name: Verify production WebView entries and size budgets
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
+        run: pnpm verify:web-bundle
+
+      - name: Verify cross-surface state contracts
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
+        run: pnpm test:surface-contracts
+
+      - name: Verify stable performance contracts
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
+        run: pnpm test:performance-contracts
+
+      - name: Validate release smoke and performance tools
+        if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
+        run: pnpm verify:release-tools
 
   desktop-ubuntu:
     name: Desktop (ubuntu-latest)

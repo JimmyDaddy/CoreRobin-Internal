@@ -13,6 +13,7 @@ import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "./storageMigration";
+import { isProductDataResetInProgress } from "./productSupport";
 
 export {
   APP_SETTINGS_STORAGE_KEY,
@@ -20,10 +21,25 @@ export {
   type InterfaceScale,
 } from "./appearance";
 export const SYSTEM_SAMPLE_INTERVAL_OPTIONS = [500, 1_000, 2_000, 5_000] as const;
+export const SYSTEM_SAMPLING_PRESETS = {
+  lowPower: 5_000,
+  balanced: 1_000,
+  realtime: 500,
+} as const;
+export type SystemSamplingPreset = keyof typeof SYSTEM_SAMPLING_PRESETS;
 export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000] as const;
 
 export type UsageThresholds = readonly [number, number, number];
 export type ExperienceMode = "simple" | "professional";
+
+export function systemSamplingPreset(
+  intervalMs: number,
+): SystemSamplingPreset | "custom" {
+  const entry = Object.entries(SYSTEM_SAMPLING_PRESETS).find(
+    ([, interval]) => interval === intervalMs,
+  );
+  return (entry?.[0] as SystemSamplingPreset | undefined) ?? "custom";
+}
 
 export interface AppSettings {
   version: 1;
@@ -168,6 +184,7 @@ export function loadAppSettings(
 }
 
 export function saveAppSettings(settings: AppSettings): void {
+  if (isProductDataResetInProgress()) return;
   try {
     const sanitized = parseAppSettings(
       JSON.stringify(settings),

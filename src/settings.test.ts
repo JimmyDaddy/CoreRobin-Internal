@@ -6,9 +6,16 @@ import {
   loadAppSettings,
   parseAppSettings,
   saveAppSettings,
+  systemSamplingPreset,
 } from "./settings";
 
 describe("application settings", () => {
+  it("maps readable sampling presets while preserving advanced intervals", () => {
+    expect(systemSamplingPreset(5_000)).toBe("lowPower");
+    expect(systemSamplingPreset(1_000)).toBe("balanced");
+    expect(systemSamplingPreset(500)).toBe("realtime");
+    expect(systemSamplingPreset(2_000)).toBe("custom");
+  });
   it("uses language-aware defaults for missing and unsupported settings", () => {
     expect(parseAppSettings(null, "en")).toEqual(defaultAppSettings("en"));
     expect(parseAppSettings("{", "en")).toEqual(defaultAppSettings("en"));

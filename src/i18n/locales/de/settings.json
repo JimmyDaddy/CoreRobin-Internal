@@ -31,7 +31,7 @@
   "sampling": {
     "title": "Systemüberwachung",
     "description": "Kürzere Intervalle reagieren schneller und verursachen mehr Überwachungsaufwand.",
-    "system": "CPU, Speicher und Prozesse"
+    "system": "CPU, Speicher und Prozesse", "advanced": "Erweitert: genaues Intervall", "presets": { "lowPower": { "label": "Energiesparend", "description": "Alle 5 Sekunden im Hintergrund" }, "balanced": { "label": "Ausgewogen", "description": "Jede Sekunde, empfohlen" }, "realtime": { "label": "Echtzeit", "description": "Alle 0,5 Sekunden, schnelle Reaktion" } }
   },
   "connections": {
     "title": "Verbindungsaktualisierung",
@@ -78,5 +78,21 @@
     "moderate": "Beobachten",
     "high": "Hoch",
     "critical": "Kritisch"
+  },
+  "about": {
+    "title": "Über CoreRobin & Support", "description": "Version prüfen, Hilfe erhalten und die auf diesem Computer gespeicherten CoreRobin-Daten verwalten.",
+    "versionTitle": "Version & Updates", "versionDescription": "Auf der öffentlichen Release-Seite nach der neuesten stabilen Version suchen.", "version": "Aktuelle Version", "platform": "System", "architecture": "Architektur",
+    "checking": "Wird geprüft…", "checkUpdate": "Nach Updates suchen", "releaseNotes": "Versionshinweise", "updateError": "Updates können derzeit nicht geprüft werden. Bitte später erneut versuchen.", "updateAvailable": "CoreRobin v{{version}} ist verfügbar", "openRelease": "Herunterladen", "upToDate": "v{{version}} ist aktuell",
+    "helpTitle": "Hilfe & Feedback", "helpDescription": "Öffentlichen Leitfaden öffnen oder vor einem Bericht prüfen, welche Angaben enthalten sind.", "guide": "Benutzerhandbuch", "privacy": "Datenschutz", "reportIssue": "Problem melden", "reopenGuide": "Einführung erneut anzeigen",
+    "diagnosticsTitle": "Diagnoseübersicht", "diagnosticsDescription": "Grundlegende Laufzeitdaten zur Fehlersuche kopieren.", "diagnosticsPrivacy": "Hostname, Prozessnamen, Dateipfade, Netzwerkadressen und Verlaufswerte sind standardmäßig ausgeschlossen.", "diagnosticsPreview": "Vorschau vor dem Kopieren", "diagnostics": { "idle": "Bereinigte Übersicht kopieren", "copied": "Kopiert", "error": "Kopieren fehlgeschlagen" },
+    "clearTitle": "Alle lokalen Daten löschen", "clearDescription": "Einstellungen, Verlauf, Warnungen, Aktionen und Scan-Zwischenspeicher löschen.", "clearConfirm": "Dies kann nicht rückgängig gemacht werden. CoreRobin löscht lokale Daten und startet neu; Systemberechtigungen wie der Autostart werden nicht still entfernt.", "clearNow": "Löschen und neu starten", "clearAction": "Alle Daten löschen"
+  },
+  "onboarding": {
+    "kicker": "Erster Start · {{current}} / {{total}}", "skip": "Vorerst überspringen", "back": "Zurück", "next": "Weiter", "finish": "Loslegen",
+    "steps": {
+      "one": { "title": "Wählen Sie die passende Ansicht", "description": "Der Alltagsmodus liefert stabile Ergebnisse und den nächsten Schritt. Der Profimodus zeigt vollständige Metriken, Prozesse und Netzwerkbelege. Ein Wechsel ist jederzeit möglich.", "note": "Beide Modi verwenden denselben lokalen Zustand und kommen zu denselben Ergebnissen." },
+      "two": { "title": "Bleibt nach dem Schließen leise verfügbar", "description": "CoreRobin bleibt in der Menüleiste und misst mit niedriger Frequenz weiter. Menüfenster und Robin teilen denselben stabilen Zustand.", "note": "Über die Menüleiste pausieren, Einstellungen öffnen oder die App vollständig beenden." },
+      "three": { "title": "Berechtigungen nur bei Bedarf", "description": "Mitteilungen, Robin und Autostart sind optional. Vollzugriff auf die Festplatte dient nur einer vollständigeren Speicherbereinigung.", "note": "Ohne Freigabe werden zugängliche Bereiche weiter gescannt. CoreRobin fordert in diesem Leitfaden keine Berechtigung an." }
+    }
   }
 }

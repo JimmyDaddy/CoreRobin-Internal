@@ -43,3 +43,14 @@
 此外，三个辅助 WebView 不再加载 1254×1254 主品牌图；该图完全解码时每个 WebView 约需 6 MiB RGBA 像素内存。splash 改用 256×256 图，tray 改用 128×128 图，companion 不加载位图。
 
 以上快照用于发现回归，不作为跨机器的绝对内存承诺。
+
+## 持续门禁
+
+当前 production 构建不再依赖手工抄录上述历史数字。`pnpm verify:web-bundle` 会从
+`dist/.vite/manifest.json` 递归计算四个入口的初始 JS/CSS 原始与 gzip 字节数，同时检查
+Tauri 窗口到 HTML 的映射。预算保存在 `scripts/web-bundle-budgets.json`，CI 和 Release
+都会执行；动态 chunks 的原始字节总量也有独立上限。
+
+这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
+[发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI
+wall-clock 数字替代。

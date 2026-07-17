@@ -31,7 +31,13 @@
   "sampling": {
     "title": "系统采样",
     "description": "更短的间隔响应更快，也会带来更高的采样开销。",
-    "system": "CPU、内存与进程"
+    "system": "CPU、内存与进程",
+    "advanced": "高级：精确采样间隔",
+    "presets": {
+      "lowPower": { "label": "低功耗", "description": "5 秒一次，适合长期后台运行" },
+      "balanced": { "label": "平衡", "description": "1 秒一次，推荐日常使用" },
+      "realtime": { "label": "实时", "description": "0.5 秒一次，响应更快" }
+    }
   },
   "connections": {
     "title": "连接刷新",
@@ -78,5 +84,65 @@
     "moderate": "关注",
     "high": "偏高",
     "critical": "严重"
+  },
+  "about": {
+    "title": "关于与支持",
+    "description": "查看版本、获取帮助，并管理 CoreRobin 保存在这台电脑上的数据。",
+    "versionTitle": "版本与更新",
+    "versionDescription": "检查公开发布页上的最新稳定版本。",
+    "version": "当前版本",
+    "platform": "系统",
+    "architecture": "架构",
+    "checking": "正在检查…",
+    "checkUpdate": "检查更新",
+    "releaseNotes": "查看更新内容",
+    "updateError": "暂时无法检查更新，请稍后重试。",
+    "updateAvailable": "CoreRobin v{{version}} 已发布",
+    "openRelease": "前往下载",
+    "upToDate": "已是最新版本 v{{version}}",
+    "helpTitle": "帮助与反馈",
+    "helpDescription": "打开公开指南，或在提交前查看会包含哪些信息。",
+    "guide": "用户指南",
+    "privacy": "隐私说明",
+    "reportIssue": "报告问题",
+    "reopenGuide": "重新查看首次引导",
+    "diagnosticsTitle": "诊断摘要",
+    "diagnosticsDescription": "复制有助于排查问题的基础运行信息。",
+    "diagnosticsPrivacy": "默认不包含主机名、进程名、文件路径、网络地址或历史数值。",
+    "diagnosticsPreview": "复制前预览",
+    "diagnostics": {
+      "idle": "复制脱敏诊断摘要",
+      "copied": "已复制",
+      "error": "复制失败"
+    },
+    "clearTitle": "清空全部本地数据",
+    "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描缓存。",
+    "clearConfirm": "此操作无法撤销。CoreRobin 将清除本机数据并重新启动；登录启动等系统授权不会被静默移除。",
+    "clearNow": "清空并重新启动",
+    "clearAction": "清空全部数据"
+  },
+  "onboarding": {
+    "kicker": "首次使用 · {{current}} / {{total}}",
+    "skip": "暂时跳过",
+    "back": "上一步",
+    "next": "下一步",
+    "finish": "开始使用",
+    "steps": {
+      "one": {
+        "title": "先选择适合你的查看方式",
+        "description": "日常模式会给出稳定结论和下一步；专业模式保留完整指标、进程和网络证据。你可以随时切换。",
+        "note": "两种模式使用同一份本机状态，不会产生不同结论。"
+      },
+      "two": {
+        "title": "关闭窗口后仍会安静守候",
+        "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 小伙伴共享同一份稳定状态。",
+        "note": "可以从状态栏暂停、打开设置或彻底退出应用。"
+      },
+      "three": {
+        "title": "权限按需要使用，由你决定",
+        "description": "通知、Robin 小伙伴和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
+        "note": "不授权仍可扫描系统允许访问的区域；CoreRobin 不会在这里主动请求权限。"
+      }
+    }
   }
 }

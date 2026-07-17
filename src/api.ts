@@ -48,6 +48,8 @@ import type {
   StartupManagementResult,
   SystemSettingsDestination,
 } from "./types";
+import { PRODUCT_URLS, type ProductPage } from "./productSupport";
+export type { ProductPage } from "./productSupport";
 import type {
   HealthStateSnapshot,
   HealthStateUpdate,
@@ -227,6 +229,14 @@ export async function openSystemSettings(
 ): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("open_system_settings", { destination });
+}
+
+export async function openProductPage(page: ProductPage): Promise<void> {
+  if (!isDesktopRuntime()) {
+    window.open(PRODUCT_URLS[page], "_blank", "noopener,noreferrer");
+    return;
+  }
+  return invoke<void>("open_product_page", { page });
 }
 
 export async function canRelaunchApplication(executablePath: string): Promise<boolean> {

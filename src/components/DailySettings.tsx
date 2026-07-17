@@ -12,19 +12,27 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import type { DesktopNotificationStatus } from "../desktopNotifications";
 import type { AppSettings } from "../settings";
+import type { SystemSnapshot } from "../types";
+import { AboutSupport } from "./AboutSupport";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 
 interface DailySettingsProps {
   settings: AppSettings;
   notificationStatus: DesktopNotificationStatus;
+  snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  onOpenOnboarding: () => void;
+  onClearAllData: () => void;
 }
 
 export function DailySettings({
   settings,
   notificationStatus,
+  snapshot,
   onChange,
+  onOpenOnboarding,
+  onClearAllData,
 }: DailySettingsProps) {
   const { t } = useAppTranslation();
   return (
@@ -121,7 +129,12 @@ export function DailySettings({
           </label>
         </section>
       </div>
-
+      <AboutSupport
+        settings={settings}
+        snapshot={snapshot}
+        onOpenOnboarding={onOpenOnboarding}
+        onClearAllData={onClearAllData}
+      />
     </section>
   );
 }

@@ -31,7 +31,7 @@
   "sampling": {
     "title": "システム監視の頻度設定",
     "description": "短い間隔で監視すると、より早く反応し、監視オーバーヘッドが増えます",
-    "system": "CPU、メモリ、および実行中のプロセスを監視します"
+    "system": "CPU、メモリ、および実行中のプロセスを監視します", "advanced": "詳細：正確な間隔", "presets": { "lowPower": { "label": "低電力", "description": "5 秒ごと、長時間のバックグラウンド利用向け" }, "balanced": { "label": "バランス", "description": "1 秒ごと、日常利用に推奨" }, "realtime": { "label": "リアルタイム", "description": "0.5 秒ごと、より高速な応答" } }
   },
   "connections": {
     "title": "接続情報の更新",
@@ -78,5 +78,21 @@
     "moderate": "注意",
     "high": "高",
     "critical": "重要"
+  },
+  "about": {
+    "title": "情報とサポート", "description": "バージョンの確認、ヘルプ、CoreRobin がこのコンピュータに保存するデータの管理を行います。",
+    "versionTitle": "バージョンと更新", "versionDescription": "公開リリースページで最新の安定版を確認します。", "version": "現在のバージョン", "platform": "システム", "architecture": "アーキテクチャ",
+    "checking": "確認中…", "checkUpdate": "更新を確認", "releaseNotes": "更新内容を見る", "updateError": "現在更新を確認できません。後でもう一度お試しください。", "updateAvailable": "CoreRobin v{{version}} が利用できます", "openRelease": "ダウンロード", "upToDate": "v{{version}} は最新版です",
+    "helpTitle": "ヘルプとフィードバック", "helpDescription": "公開ガイドを開くか、問題報告に含まれる内容を確認します。", "guide": "ユーザーガイド", "privacy": "プライバシー", "reportIssue": "問題を報告", "reopenGuide": "初回ガイドを再表示",
+    "diagnosticsTitle": "診断サマリー", "diagnosticsDescription": "トラブルシューティングに役立つ基本的な実行情報をコピーします。", "diagnosticsPrivacy": "ホスト名、プロセス名、ファイルパス、ネットワークアドレス、履歴値は既定で除外されます。", "diagnosticsPreview": "コピー前にプレビュー", "diagnostics": { "idle": "匿名化サマリーをコピー", "copied": "コピーしました", "error": "コピーに失敗" },
+    "clearTitle": "ローカルデータをすべて消去", "clearDescription": "設定、履歴、警告、操作記録、空間スキャンキャッシュを消去します。", "clearConfirm": "元に戻せません。CoreRobin は端末上のデータを消去して再起動します。ログイン時起動などのシステム権限は暗黙に削除されません。", "clearNow": "消去して再起動", "clearAction": "すべてのデータを消去"
+  },
+  "onboarding": {
+    "kicker": "初回ガイド · {{current}} / {{total}}", "skip": "今はスキップ", "back": "戻る", "next": "次へ", "finish": "使い始める",
+    "steps": {
+      "one": { "title": "自分に合う表示を選びましょう", "description": "日常モードは安定した結論と次の手順を示し、プロモードは完全な指標、プロセス、ネットワークの根拠を表示します。いつでも切り替えられます。", "note": "どちらのモードも同じ端末内状態を共有し、結論は同じです。" },
+      "two": { "title": "ウィンドウを閉じても静かに待機", "description": "CoreRobin はメニューバーに残り、低頻度でサンプリングします。メニューパネルと Robin は同じ安定状態を共有します。", "note": "メニューバーから一時停止、設定、完全終了ができます。" },
+      "three": { "title": "権限は必要なときだけ", "description": "通知、Robin、ログイン時起動は任意です。フルディスクアクセスは空間整理のスキャンをより完全にする場合にのみ使います。", "note": "許可しなくてもアクセス可能な範囲をスキャンできます。CoreRobin はこのガイドで権限を要求しません。" }
+    }
   }
 }

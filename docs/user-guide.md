@@ -110,6 +110,17 @@ Choose Robin companion to open a compact bottom-right window that shares the sam
 
 To stop monitoring completely, quit CoreRobin instead of only closing the window.
 
+## Platform support and known limitations
+
+| Platform | Current status | Validation coverage |
+| --- | --- | --- |
+| macOS · Apple Silicon | Recommended | M-series Macs are the primary hardware-tested path; use the `aarch64.dmg` |
+| macOS · Intel | Available, limited coverage | An `x64.dmg` is built and package integrity is checked, but Intel hardware coverage is smaller than Apple Silicon coverage |
+| Windows · x64 | Early preview | Automated builds and tests pass; real-device, desktop-integration, and installer coverage remain limited |
+| Linux · x64 | Early preview | Automated builds and tests pass; distro, desktop-environment, and WebKitGTK combinations are not comprehensively tested |
+
+Current installers do not have Developer ID signing, Apple notarization, or Windows platform signing. Temperature, battery health, connection ownership, and some startup-item features depend on the operating system and hardware; unavailable readings are labeled as such. The website recommends only an operating system from browser signals, cannot reliably identify a Mac chip, and never downloads automatically. See the public [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes and current limitations.
+
 ## Common questions
 
 ### Why are disk and network speeds missing right after launch?
@@ -150,10 +161,16 @@ Yes. Closing the main window hides it while monitoring continues in the menu bar
 
 ### How do I clear data or uninstall completely?
 
-Use Records to clear saved history and Cleanup to clear a saved scan result. For a full uninstall, quit CoreRobin from the menu bar, clear those local records if desired, then use your operating system's application-uninstall flow. Do not attach local data folders, logs, or unredacted screenshots to a public Issue.
+1. Turn off **Launch after sign-in** in Settings. If you plan to keep the app and only want a reset, choose **Clear all local data** in Settings → About & Support.
+2. You can also clear history in Records and remove the saved scan from Cleanup separately.
+3. On macOS, turn CoreRobin off in System Settings → Privacy & Security → Full Disk Access.
+4. Choose **Quit app** in the menu bar panel, then confirm that no CoreRobin process remains in Activity Monitor, Task Manager, or your system monitor.
+5. Remove the application. To check for leftovers manually, use the [per-platform locations in the Privacy Notice](privacy.md#complete-uninstall-and-local-data-locations).
+
+Do not attach logs, local data folders, unredacted screenshots, or generated diagnostics directly to a public Issue. Copy the version and diagnostic summary from Settings → About & Support, preview it, and remove usernames, paths, IP addresses, and other private details first.
 
 ## Privacy and support
 
 Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Scans read file information such as names, sizes, and locations, not file contents. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
 
-For general problems, open a GitHub issue and include your operating system, what you were doing, and any error message. Use GitHub private vulnerability reporting for security issues.
+For general problems, open a GitHub issue and copy the version and system details from Settings → About & Support. Include what you were doing and any visible error. Read the [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes, and use GitHub private vulnerability reporting for security issues.
