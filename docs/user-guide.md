@@ -11,7 +11,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
 2. Everyday mode first tells you how the computer is doing and offers one useful next step. You do not need to inspect a row of status cards.
 3. If you already notice slowness, heat, battery drain, low space, slow startup, or a network problem, open Help me solve and choose the closest description.
-4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. When you need a process tree, connection details, or command lines, use the clearly labeled Pro mode button in the top bar.
+4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. When you need a process tree, connection details, or command lines, use the clearly labeled Professional mode button in the top bar.
 
 ## Main pages
 
@@ -35,7 +35,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 - Apps are no longer a top-level Everyday page. They appear as a stable snapshot only when a check points to an app.
 - The snapshot groups related processes, explains impact first, and does not reorder every second. You can refresh it or reveal the full list when needed.
 - CPU, memory, and disk evidence stays under Why this conclusion.
-- Pro mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
+- Professional mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
 - Prefer Request Stop so an app has time to save its work. Use Force Stop only when an app is completely unresponsive.
 - CoreRobin checks the target again before stopping it. If the process has exited or changed, the action stops.
 - After an action, Everyday mode checks again and tells you whether the app actually stopped.
@@ -60,7 +60,7 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 3. **Add items to the basket:** Hold a sector and start dragging; the basket stays visible at the bottom of the window. Adding an item to the basket does not delete or move it.
 4. **Refresh, then delete:** CoreRobin rescans only the basket targets and shows their latest size and item count. Continue only after reviewing those results.
 
-Full scan results stay on this computer for 7 days for browsing. Cached or expired results cannot directly authorize permanent deletion: opening the deletion review performs an authoritative rescan of only the basket targets. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
+Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cached or expired results cannot directly authorize permanent deletion: opening the deletion review performs an authoritative rescan of only the basket targets. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
 
 #### Before permanent deletion
 
@@ -88,7 +88,7 @@ Full scan results stay on this computer for 7 days for browsing. Cached or expir
 
 ### History
 
-- Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Pro mode keeps the full technical history and filters.
+- Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Professional mode keeps the full technical history and filters.
 - A warning and its recovery are paired into one incident with its start time, duration, likely cause, and outcome.
 - Confirmed app quit or restart, permanent cleanup, and startup-item actions also record execution and verification results. Cleanup history stores only item counts and reclaimed space, never file paths.
 - Keep history for 1, 7, or 30 days, turn it off, or clear it anytime.
@@ -129,8 +129,28 @@ CoreRobin shows the space files actually occupy on disk. Compression, sparse fil
 
 The operating system may hide which process owns a connection. CoreRobin does not elevate itself automatically to fill in that information.
 
+### Which package should I download?
+
+Use the download page to match your system and chip: `aarch64.dmg` is for Apple Silicon Macs, `x64.dmg` is for Intel Macs, Windows users can choose `x64-setup.exe` or `x64_en-US.msi`, and x64 Linux users can choose AppImage or deb. Windows and Linux are early previews. The download page states package size, platform status, and verification steps.
+
+### macOS says CoreRobin cannot be verified, or it is missing from Full Disk Access. What should I do?
+
+The current installer is not Apple-notarized. If the first launch is blocked, confirm it in System Settings → Privacy & Security. If CoreRobin is missing from Full Disk Access, install `CoreRobin.app` in Applications and launch it from there, then use `+` below the list to choose it. The app can also reveal its location in Finder.
+
+### Can I scan without Full Disk Access?
+
+Yes. Choose **Scan accessible areas** to continue with locations available to the current account and system. Protected or temporarily unreadable locations are identified in the result. The permission only makes the system-disk map more complete; scans still read metadata, not file contents.
+
+### Is CoreRobin still running after I close the main window? How do I close Robin?
+
+Yes. Closing the main window hides it while monitoring continues in the menu bar. Quit CoreRobin from the menu bar to stop monitoring. Dismiss the Robin companion with its close button, Escape, or its setting; dismissing Robin does not quit the app.
+
+### How do I clear data or uninstall completely?
+
+Use Records to clear saved history and Cleanup to clear a saved scan result. For a full uninstall, quit CoreRobin from the menu bar, clear those local records if desired, then use your operating system's application-uninstall flow. Do not attach local data folders, logs, or unredacted screenshots to a public Issue.
+
 ## Privacy and support
 
-Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Scans read file information such as names, sizes, and locations, not file contents.
+Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Scans read file information such as names, sizes, and locations, not file contents. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
 
 For general problems, open a GitHub issue and include your operating system, what you were doing, and any error message. Use GitHub private vulnerability reporting for security issues.

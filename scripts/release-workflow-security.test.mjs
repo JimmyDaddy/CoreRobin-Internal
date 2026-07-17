@@ -63,6 +63,9 @@ describe("release workflow privilege separation", () => {
     );
     expect(publish).toContain("sha256sum --check");
     expect(publish).toContain("cosign verify-blob");
+    expect(publish).toContain("Render release notes from changelog");
+    expect(publish).toContain("--notes-file release-notes.md");
+    expect(publish).toContain("Update public download manifest");
     expect(publish).toContain('--repo "$PUBLIC_RELEASE_REPOSITORY"');
   });
 });

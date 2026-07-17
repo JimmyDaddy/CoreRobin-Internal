@@ -13,7 +13,8 @@ CoreRobin 使用两个同级、互相独立的 GitHub 仓库：
 2. verify/build job 以只读权限测试源码并构建各平台安装包。
 3. package job 生成 `SHA256SUMS` 和 SPDX SBOM。
 4. sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 为 `SHA256SUMS` 生成 `SHA256SUMS.sigstore.json`，随后在 job 内立即复核。
-5. 受保护的 `release` environment 批准 publish job 后，流程使用 `PUBLIC_RELEASE_TOKEN` 把安装包、校验表、SBOM 和签名包发布到 `JimmyDaddy/corerobin-monitor`。
+5. 受保护的 `release` environment 批准 publish job 后，流程使用 `PUBLIC_RELEASE_TOKEN` 把安装包、校验表、SBOM 和签名包发布到 `JimmyDaddy/corerobin-monitor`。Release 说明从当前版本的 `CHANGELOG.md` 段落生成。
+6. Release 发布成功后，流程会把公开仓库的 `site/release-manifest.json` 更新为该版本的安装包、大小、摘要和验证材料链接，触发 Pages 更新下载页。
 
 这组材料可以证明校验表来自指定的 GitHub Actions workflow，并检查下载文件是否与校验表一致；它不能代替 Developer ID、Apple 公证或 Windows Authenticode 等平台签名。
 
