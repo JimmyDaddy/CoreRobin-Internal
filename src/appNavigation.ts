@@ -1,0 +1,55 @@
+export type ActiveView =
+  | "overview"
+  | "processes"
+  | "storage"
+  | "cleanup"
+  | "network"
+  | "startup"
+  | "history"
+  | "settings"
+  | "more";
+
+export const PROFESSIONAL_VIEW_EYEBROW = {
+  overview: "app:viewEyebrow.overview",
+  processes: "app:viewEyebrow.processes",
+  storage: "app:viewEyebrow.storage",
+  cleanup: "app:viewEyebrow.cleanup",
+  network: "app:viewEyebrow.network",
+  startup: "app:viewEyebrow.startup",
+  history: "app:viewEyebrow.history",
+  settings: "app:viewEyebrow.settings",
+  more: "app:viewEyebrow.overview",
+} as const satisfies Record<ActiveView, string>;
+
+const ACTIVE_VIEWS = new Set<ActiveView>([
+  "overview",
+  "processes",
+  "storage",
+  "cleanup",
+  "network",
+  "startup",
+  "history",
+  "settings",
+  "more",
+]);
+
+export function isActiveView(value: unknown): value is ActiveView {
+  return typeof value === "string" && ACTIVE_VIEWS.has(value as ActiveView);
+}
+
+export interface OpenDailyRequest {
+  view: ActiveView;
+  occurrenceId: string | null;
+}
+
+export function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
+  if (isActiveView(value)) return { view: value, occurrenceId: null };
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as { view?: unknown; occurrenceId?: unknown };
+  if (!isActiveView(candidate.view)) return null;
+  return {
+    view: candidate.view,
+    occurrenceId:
+      typeof candidate.occurrenceId === "string" ? candidate.occurrenceId : null,
+  };
+}

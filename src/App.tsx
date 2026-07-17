@@ -29,6 +29,12 @@ import {
   useState,
 } from "react";
 import { useAppTranslation } from "./i18n/useAppTranslation";
+import {
+  isActiveView,
+  parseOpenDailyRequest,
+  PROFESSIONAL_VIEW_EYEBROW,
+  type ActiveView,
+} from "./appNavigation";
 
 import {
   canRelaunchApplication,
@@ -125,20 +131,7 @@ import {
   resourceUsageLevel,
 } from "./utils";
 import "./App.css";
-
-type ActiveView = "overview" | "processes" | "storage" | "cleanup" | "network" | "startup" | "history" | "settings" | "more";
-
-const PROFESSIONAL_VIEW_EYEBROW = {
-  overview: "app:viewEyebrow.overview",
-  processes: "app:viewEyebrow.processes",
-  storage: "app:viewEyebrow.storage",
-  cleanup: "app:viewEyebrow.cleanup",
-  network: "app:viewEyebrow.network",
-  startup: "app:viewEyebrow.startup",
-  history: "app:viewEyebrow.history",
-  settings: "app:viewEyebrow.settings",
-  more: "app:viewEyebrow.overview",
-} as const satisfies Record<ActiveView, string>;
+import "./styles/daily-guide.css";
 
 const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
@@ -155,38 +148,6 @@ const NetworkExplorer = lazy(async () => ({ default: (await import("./components
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
 const StartupExplorer = lazy(async () => ({ default: (await import("./components/StartupExplorer")).StartupExplorer }));
-
-function isActiveView(value: unknown): value is ActiveView {
-  return typeof value === "string" && [
-    "overview",
-    "processes",
-    "storage",
-    "cleanup",
-    "network",
-    "startup",
-    "history",
-    "settings",
-    "more",
-  ].includes(value);
-}
-
-interface OpenDailyRequest {
-  view: ActiveView;
-  occurrenceId: string | null;
-}
-
-function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
-  if (isActiveView(value)) return { view: value, occurrenceId: null };
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as { view?: unknown; occurrenceId?: unknown };
-  if (!isActiveView(candidate.view)) return null;
-  return {
-    view: candidate.view,
-    occurrenceId: typeof candidate.occurrenceId === "string"
-      ? candidate.occurrenceId
-      : null,
-  };
-}
 
 interface PendingProcessAction {
   source: "process" | "diagnosis" | "restart";
