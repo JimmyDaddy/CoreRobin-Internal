@@ -28,8 +28,8 @@ Release 构建还会检查安装包，而不会启动 GUI：
 
 ```bash
 pnpm release:smoke:device -- \
-  --tag v0.0.4 \
-  --artifact /path/to/CoreRobin_0.0.4_aarch64.dmg \
+  --tag v0.1.0 \
+  --artifact /path/to/CoreRobin_0.1.0_aarch64.dmg \
   --app /Applications/CoreRobin.app
 ```
 
@@ -53,9 +53,9 @@ draft 不会出现在公开 Releases 页面。每台验证机器使用具有该 
 下载候选产物，例如：
 
 ```bash
-gh release download v0.0.4 \
+gh release download v0.1.0 \
   --repo JimmyDaddy/corerobin-monitor \
-  --pattern 'CoreRobin_0.0.4_aarch64.dmg'
+  --pattern 'CoreRobin_0.1.0_aarch64.dmg'
 ```
 
 安装后运行上面的命令。不能使用开发构建或另一个 commit 生成证据。脚本输出 JSON 后，在 Internal 仓库 Actions 中手动运行
