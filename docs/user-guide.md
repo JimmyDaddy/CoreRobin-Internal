@@ -44,7 +44,6 @@ Download the package for your platform from [GitHub Releases](https://github.com
 ### Storage
 
 - See how much space is left on each disk, recent read and write activity, and which apps are using the disk heavily.
-- On macOS, `/` and the Data volume are shown as one system volume when they belong to the same APFS volume group.
 - When space is running low, open Cleanup directly from this page.
 
 ### Cleanup
