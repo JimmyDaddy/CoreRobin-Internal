@@ -55,6 +55,7 @@ function parseOptions(args) {
   const parsed = { runs: 3, iterations: 20, spacing: 250, output: null, dryRun: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
+    if (argument === "--") continue;
     if (argument === "--dry-run") parsed.dryRun = true;
     else if (["--runs", "--iterations", "--spacing", "--output"].includes(argument)) {
       const value = args[index + 1];

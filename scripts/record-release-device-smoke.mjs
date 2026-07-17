@@ -96,6 +96,7 @@ function parseOptions(args) {
   const parsed = { tag: null, artifact: null, app: null, output: null, dryRun: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
+    if (argument === "--") continue;
     if (argument === "--dry-run") parsed.dryRun = true;
     else if (["--tag", "--artifact", "--app", "--output"].includes(argument)) {
       const key = argument.slice(2);

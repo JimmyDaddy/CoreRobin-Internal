@@ -18,7 +18,7 @@
     "test:surface-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run scripts/surface-contracts.test.mjs src/healthStatePublisher.test.ts src/hooks/healthStateSync.test.tsx src/trayPanel.test.tsx src/robinCompanion.test.tsx",
     "test:performance-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run src/hooks/monitorVisibility.test.tsx src/cleanupCanvasPatterns.test.ts",
     "verify:web-bundle": "node scripts/verify-web-bundle.mjs",
-    "verify:release-tools": "node scripts/record-release-device-smoke.mjs --dry-run && node scripts/capture-monitor-baseline.mjs --dry-run && bash -n scripts/verify-packaged-macos.sh scripts/verify-packaged-linux.sh",
+    "verify:release-tools": "node scripts/record-release-device-smoke.mjs -- --dry-run && node scripts/capture-monitor-baseline.mjs -- --dry-run && bash -n scripts/verify-packaged-macos.sh scripts/verify-packaged-linux.sh",
     "release:gate:static": "pnpm build && pnpm verify:web-bundle && pnpm test:surface-contracts && pnpm test:performance-contracts",
     "release:smoke:device": "node scripts/record-release-device-smoke.mjs",
     "performance:baseline": "node scripts/capture-monitor-baseline.mjs",
