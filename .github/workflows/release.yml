@@ -87,12 +87,12 @@ jobs:
           - label: macOS Apple Silicon
             os: macos-latest
             target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --bundles dmg --no-sign -- --locked
+            args: --target aarch64-apple-darwin --bundles dmg -- --locked
             artifact: corerobin-macos-aarch64
           - label: macOS Intel
             os: macos-latest
             target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin --bundles dmg --no-sign -- --locked
+            args: --target x86_64-apple-darwin --bundles dmg -- --locked
             artifact: corerobin-macos-x86_64
           - label: Linux x64
             os: ubuntu-22.04
@@ -164,6 +164,32 @@ jobs:
           retryAttempts: 2
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]
+
+      - name: Verify packaged macOS app signature and architecture
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          dmg_path="$(find "src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$dmg_path"
+
+          mount_dir="$(mktemp -d)"
+          hdiutil attach -quiet -readonly -nobrowse -mountpoint "$mount_dir" "$dmg_path"
+          trap 'hdiutil detach -quiet "$mount_dir" || true' EXIT
+
+          app_path="$(find "$mount_dir" -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -n "$app_path"
+          codesign --verify --deep --strict --verbose=4 "$app_path"
+          codesign -dv --verbose=4 "$app_path" 2>&1 | grep -F 'Signature=adhoc'
+
+          executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Contents/Info.plist")"
+          expected_arch="x86_64"
+          case "${{ matrix.target }}" in
+            aarch64-*) expected_arch="arm64" ;;
+          esac
+          test "$(lipo -archs "$app_path/Contents/MacOS/$executable_name")" = "$expected_arch"
+
+          hdiutil detach -quiet "$mount_dir"
+          trap - EXIT
 
   package:
     name: Package release evidence

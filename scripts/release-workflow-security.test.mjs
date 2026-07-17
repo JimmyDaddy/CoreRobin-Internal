@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const releaseWorkflow = readFileSync(".github/workflows/release.yml", "utf8");
+const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const workflowFiles = readdirSync(".github/workflows")
   .filter((name) => /\.ya?ml$/.test(name))
   .sort()
@@ -67,6 +68,16 @@ describe("release workflow privilege separation", () => {
     expect(publish).toContain("--notes-file release-notes.md");
     expect(publish).toContain("Update public download manifest");
     expect(publish).toContain('--repo "$PUBLIC_RELEASE_REPOSITORY"');
+  });
+
+  it("ad-hoc signs and validates complete macOS app bundles", () => {
+    const build = workflowJob(releaseWorkflow, "build");
+    expect(tauriConfig.bundle.macOS.signingIdentity).toBe("-");
+    expect(build).not.toContain("--no-sign");
+    expect(build).toContain("codesign --verify --deep --strict");
+    expect(build).toContain("Signature=adhoc");
+    expect(build).toContain("hdiutil attach");
+    expect(build).toContain("lipo -archs");
   });
 });
 

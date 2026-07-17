@@ -4,7 +4,7 @@ CoreRobin brings CPU, memory, storage, network activity, and running apps into o
 
 ## Download and install
 
-Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest). Current release builds do not have Developer ID, Apple notarization, or Windows platform signing configured. The macOS build has been tested on real hardware; if macOS blocks the first launch, open System Settings → Privacy & Security and confirm that you want to open CoreRobin. Windows and Linux packages are currently early previews. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these source-integrity records do not replace platform signing.
+Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest). macOS app bundles are ad-hoc signed for integrity but do not yet have Developer ID signing or Apple notarization; if macOS says the developer cannot be verified, open System Settings → Privacy & Security and confirm that you want to open CoreRobin. A message saying the app is damaged is different: do not bypass it by removing quarantine attributes; download the latest package again, verify its SHA-256 checksum, and report the release version if the message remains. Windows and Linux packages are currently early previews and do not have platform signing. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these source-integrity records do not replace platform signing.
 
 ## First launch
 
@@ -130,11 +130,15 @@ The operating system may hide which process owns a connection. CoreRobin does no
 
 ### Which package should I download?
 
-Use the download page to match your system and chip: `aarch64.dmg` is for Apple Silicon Macs, `x64.dmg` is for Intel Macs, Windows users can choose `x64-setup.exe` or `x64_en-US.msi`, and x64 Linux users can choose AppImage or deb. Windows and Linux are early previews. The download page states package size, platform status, and verification steps.
+Use the download page to match your system and chip: `aarch64.dmg` is for every Apple Silicon Mac, including M-series chips such as M3; `x64.dmg` is only for Intel Macs. The website can detect macOS but cannot reliably identify the Mac chip, so check Apple menu → About This Mac when unsure. Windows users can choose `x64-setup.exe` or `x64_en-US.msi`, and x64 Linux users can choose AppImage or deb. Windows and Linux are early previews. The download page states package size, platform status, and verification steps.
 
 ### macOS says CoreRobin cannot be verified, or it is missing from Full Disk Access. What should I do?
 
 The current installer is not Apple-notarized. If the first launch is blocked, confirm it in System Settings → Privacy & Security. If CoreRobin is missing from Full Disk Access, install `CoreRobin.app` in Applications and launch it from there, then use `+` below the list to choose it. The app can also reveal its location in Finder.
+
+### macOS says CoreRobin is damaged. Should I use Open Anyway?
+
+No. “Damaged” is not the normal unnotarized-developer prompt, and macOS may not offer Open Anyway for it. The v0.0.3 Apple Silicon DMG had an incomplete ad-hoc app-bundle signature and was replaced by v0.0.4. Delete the old DMG and app copy, download the latest Apple Silicon package, and verify it against `SHA256SUMS`. If the latest package still shows the same message, report the macOS version, Mac chip, CoreRobin version, and checksum result; do not remove quarantine attributes as a workaround.
 
 ### Can I scan without Full Disk Access?
 

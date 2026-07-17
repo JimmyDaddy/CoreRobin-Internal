@@ -10,7 +10,9 @@
   flex-direction: column;
   height: 100%;
   padding: 15px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
   border: 1px solid rgba(115, 157, 197, 0.24);
   border-radius: 20px;
   background:
@@ -19,6 +21,8 @@
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(28px) saturate(1.2);
 }
+
+.tray-panel::-webkit-scrollbar { display: none; }
 
 .tray-header {
   display: grid;

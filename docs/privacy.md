@@ -1,12 +1,12 @@
 # CoreRobin Privacy Notice
 
-Last reviewed: CoreRobin 0.0.3 (2026-07-17)
+Last reviewed: CoreRobin 0.0.4 (2026-07-17)
 
 CoreRobin is a local desktop application. It reads system status, running applications, and the results of a space scan you explicitly start so it can show local status, diagnosis, and cleanup review. This notice covers the application itself. The website, GitHub Releases, and GitHub Issues are also subject to the policies of the services that host them.
 
 ## What CoreRobin does not do
 
-- CoreRobin 0.0.3 does not include product analytics, a crash-reporting SDK, or an account-sync service.
+- CoreRobin 0.0.4 does not include product analytics, a crash-reporting SDK, or an account-sync service.
 - CoreRobin does not upload monitoring, file-scan, process, connection, history, or preference data to our servers.
 - A space scan does not read file contents and never moves, changes, or uploads files while scanning.
 - CoreRobin never automatically stops processes, uninstalls applications, or deletes files.
