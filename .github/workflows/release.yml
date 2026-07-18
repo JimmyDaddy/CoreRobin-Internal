@@ -193,7 +193,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'github'
     needs: verify
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Apple notarization can remain queued for over an hour even after a
+    # successful upload. Keep enough headroom for both hosted macOS targets.
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
