@@ -10,7 +10,7 @@ CoreRobin 使用两个同级、互相独立的 GitHub 仓库：
 ## Release 数据流
 
 1. `vMAJOR.MINOR.PATCH` tag 必须指向私有仓库受信 `main` 历史中的 commit，且与应用版本一致。
-2. verify/build job 以只读权限测试源码并构建各平台安装包。所有平台只在 build job 内通过 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 生成 Tauri 更新签名；macOS 步骤另外从受保护 Secrets 导入 Developer ID Application `.p12`，在 runner 临时目录还原 App Store Connect Team API 私钥，由 Tauri 为应用启用 Hardened Runtime、对应用与 DMG 执行 Developer ID 签名，并完成 DMG 的 Apple 公证与票据装订。Apple 凭据不进入 verify、package、sign 或 publish job。
+2. verify/build job 以只读权限测试源码并构建各平台安装包。所有平台只在 build job 内通过 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 生成 Tauri 更新签名；macOS 步骤另外从受保护 Secrets 导入 Developer ID Application `.p12`，在 runner 临时目录还原 App Store Connect Team API 私钥。Tauri 为应用启用 Hardened Runtime，并对应用与 DMG 执行 Developer ID 签名；workflow 随后把最终 DMG 显式提交给 Apple 公证服务，等待 Accepted 后装订票据，验证通过后才上传 DMG 与 `.app.tar.gz/.sig` 更新资产。Apple 凭据不进入 verify、package、sign 或 publish job。
 3. package job 为 Apple Silicon、Intel Mac、Windows x64 和 Linux x64 汇总独立命名的更新包及 `.sig`，生成 Tauri `latest.json`，再生成 `SHA256SUMS` 和 SPDX SBOM。任一目标缺少更新包或签名都会停止发布。
 4. sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 为 `SHA256SUMS` 生成 `SHA256SUMS.sigstore.json`，随后在 job 内立即复核。
 5. 受保护的 `release` environment 批准 staging job 后，流程使用 `PUBLIC_RELEASE_TOKEN` 把安装包、校验表、SBOM 和签名包写入 `JimmyDaddy/corerobin-monitor` 的 draft。Release 说明从当前版本的 `CHANGELOG.md` 段落生成；此时不会改变 latest 或官网 manifest。

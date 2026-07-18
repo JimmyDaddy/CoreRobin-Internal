@@ -57,7 +57,7 @@ describe("release workflow privilege separation", () => {
     const build = workflowJob(releaseWorkflow, "build");
     expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
     expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD");
-    expect(build).toContain("Build signed and notarized macOS installer");
+    expect(build).toContain("Build Developer ID signed macOS installer and updater");
     expect(build).toContain("Build non-macOS installer");
     expect(build).toContain("test -n \"$TAURI_SIGNING_PRIVATE_KEY\"");
     expect(build).toContain("uploadUpdaterJson: false");
@@ -84,8 +84,9 @@ describe("release workflow privilege separation", () => {
     }
     expect(build).toContain("Prepare Apple signing and notarization credentials");
     expect(build).toContain("if: runner.os == 'macOS'");
-    expect(build).toContain("APPLE_API_KEY_PATH");
-    expect(build).toContain("Build signed and notarized macOS installer");
+    expect(build).toContain("COREROBIN_NOTARY_KEY_PATH");
+    expect(build).toContain("Build Developer ID signed macOS installer and updater");
+    expect(build).toContain("Notarize and staple macOS DMG");
     expect(build).toContain("Build non-macOS installer");
     expect(build).not.toContain("secrets.APPLE_ID");
     expect(build).not.toContain("secrets.APPLE_PASSWORD");
@@ -140,6 +141,10 @@ describe("release workflow privilege separation", () => {
     expect(build).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("com.corerobin.monitor");
     expect(build).toContain('"$APPLE_TEAM_ID"');
+    expect(build).toContain("--bundles app,dmg");
+    expect(build).toContain("xcrun notarytool submit");
+    expect(build).toContain("xcrun stapler staple");
+    expect(build).toContain("Upload notarized macOS installer and updater artifacts");
     expect(macOSPackageVerifier).toContain("codesign --verify --deep --strict");
     expect(macOSPackageVerifier).toContain("Authority=Developer ID Application:");
     expect(macOSPackageVerifier).toContain("runtime");

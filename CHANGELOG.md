@@ -2,6 +2,15 @@
 
 ## 未发布
 
+## 0.1.2 — 2026-07-18
+
+这一版本替代仅进入内部 staging、未公开发布的 0.1.1，保留应用内可信更新与 macOS Developer ID 分发能力，并修正首次 Apple 公证构建暴露出的安装包链路问题。
+
+### 修复
+
+- macOS Release 同时构建 `app` 与 `dmg` 目标，确保 Apple Silicon 与 Intel 包都包含应用内更新所需的 `.app.tar.gz` 和签名文件。
+- 对完成 Developer ID 签名的最终 DMG 显式执行 Apple 公证并装订票据，验证通过后再上传发布资产，避免只公证内部 App 而遗漏外层安装镜像。
+
 ## 0.1.1 — 2026-07-18
 
 这一版本完成应用内可信更新与 macOS Developer ID 分发链路，让 CoreRobin 的公开预览包可以通过 Apple 签名、公证和 Gatekeeper 验证。
