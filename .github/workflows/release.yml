@@ -193,9 +193,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'github'
     needs: verify
     runs-on: macos-latest
-    # Apple notarization can remain queued for over an hour even after a
+    # Apple notarization can remain queued for multiple hours even after a
     # successful upload. Keep enough headroom for both hosted macOS targets.
-    timeout-minutes: 120
+    timeout-minutes: 240
     permissions:
       contents: read
     strategy:
@@ -299,11 +299,63 @@ jobs:
           test "${#updater_signatures[@]}" -eq 1
           test -s "$COREROBIN_NOTARY_KEY_PATH"
 
-          xcrun notarytool submit "${dmgs[0]}" \
+          json_field() {
+            node -e '
+              const fs = require("node:fs");
+              const value = JSON.parse(fs.readFileSync(0, "utf8"))[process.argv[1]];
+              if (typeof value !== "string" || value.length === 0) process.exit(1);
+              process.stdout.write(value);
+            ' "$1"
+          }
+
+          submission_json=$(xcrun notarytool submit "${dmgs[0]}" \
             --key "$COREROBIN_NOTARY_KEY_PATH" \
             --key-id "$APPLE_API_KEY" \
             --issuer "$APPLE_API_ISSUER" \
-            --wait
+            --output-format json)
+          submission_id=$(printf '%s' "$submission_json" | json_field id)
+          echo "Apple notarization submission: $submission_id"
+
+          notary_error=$(mktemp "${RUNNER_TEMP}/corerobin-notary.XXXXXX")
+          trap 'rm -f "$notary_error"' EXIT
+          accepted=false
+          for attempt in $(seq 1 690); do
+            if info_json=$(xcrun notarytool info "$submission_id" \
+              --key "$COREROBIN_NOTARY_KEY_PATH" \
+              --key-id "$APPLE_API_KEY" \
+              --issuer "$APPLE_API_ISSUER" \
+              --output-format json 2>"$notary_error"); then
+              if status=$(printf '%s' "$info_json" | json_field status); then
+                echo "Apple notarization status: $status"
+                case "$status" in
+                  Accepted)
+                    accepted=true
+                    break
+                    ;;
+                  "In Progress")
+                    ;;
+                  Invalid)
+                    xcrun notarytool log "$submission_id" \
+                      --key "$COREROBIN_NOTARY_KEY_PATH" \
+                      --key-id "$APPLE_API_KEY" \
+                      --issuer "$APPLE_API_ISSUER" || true
+                    exit 1
+                    ;;
+                  *)
+                    echo "Unexpected Apple notarization status: $status" >&2
+                    exit 1
+                    ;;
+                esac
+              else
+                echo "::warning::Could not parse Apple notarization status on attempt $attempt; retrying."
+              fi
+            else
+              echo "::warning::Apple notarization status request failed on attempt $attempt; retrying."
+              cat "$notary_error" >&2
+            fi
+            sleep 20
+          done
+          test "$accepted" = true
           xcrun stapler staple "${dmgs[0]}"
 
       - name: Verify embedded production WebView entries and size budgets

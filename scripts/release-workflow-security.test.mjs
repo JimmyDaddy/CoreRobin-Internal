@@ -179,6 +179,17 @@ describe("release workflow privilege separation", () => {
     expect(macOSPackageVerifier).toContain("lipo -archs");
   });
 
+  it("keeps hosted Apple notarization resilient to long queues and transient polling failures", () => {
+    const build = workflowJob(releaseWorkflow, "build_macos_github");
+    expect(build).toContain("timeout-minutes: 240");
+    expect(build).toContain("xcrun notarytool submit");
+    expect(build).toContain("xcrun notarytool info");
+    expect(build).toContain("submission_id");
+    expect(build).toContain("Apple notarization status request failed");
+    expect(build).toContain("sleep 20");
+    expect(build).not.toContain("--wait");
+  });
+
   it("describes the platform trust boundary accurately in generated release notes", () => {
     expect(releaseNotesRenderer).toContain("Hardened Runtime");
     expect(releaseNotesRenderer).toContain("Developer ID Application");

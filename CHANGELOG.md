@@ -2,7 +2,7 @@
 
 ## 未发布
 
-## 0.1.4 — 2026-07-19
+## 0.1.5 — 2026-07-19
 
 这一版本集中完善专业监控与文件清理体验，新增网络、应用、启动项、文件和能耗洞察，并补齐安全清理与可恢复的重复文件工作流。
 
@@ -25,7 +25,11 @@
 ### 发布与质量保障
 
 - macOS Release 默认改为在发布者 Mac 上完成双架构 Developer ID 签名、公证与校验，再由 GitHub Actions 导入带 tag、commit 和 SHA-256 约束的资产；Windows/Linux 继续使用 GitHub-hosted runner，只有手动明确选择时才启用 GitHub-hosted macOS 构建。
-- GitHub-hosted macOS 回退构建为 Apple 公证队列预留更长等待时间，避免上传成功后因队列超过一小时而中断发布。
+- GitHub-hosted macOS 回退构建为 Apple 公证队列预留最长四小时，并按 submission ID 容错轮询；短暂断网只会重试状态查询，不会重复上传 DMG 或中断发布。
+
+## 0.1.4 — 2026-07-19
+
+这一版本已完成内部构建与 Windows、Linux 产物验证，但 Apple 公证提交持续排队超过两小时，且一次状态查询遇到临时网络中断，因此没有创建公开 Release；由 0.1.5 替代发布。
 
 ## 0.1.3 — 2026-07-19
 
