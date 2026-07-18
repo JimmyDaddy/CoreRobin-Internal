@@ -112,7 +112,7 @@
       "process_close": "アプリを通常終了",
       "process_restart": "アプリを再起動",
       "process_force_quit": "アプリを強制終了",
-      "cleanup_delete": "ファイルを完全に削除",
+      "cleanup_delete": "ファイルを整理",
       "startup_disable": "起動項目を無効化",
       "startup_enable": "起動項目を復元"
     },

@@ -49,6 +49,12 @@
     "unsupported": "Невозможно управлять этим сейчас"
   },
   "impact": {
+    "eyebrow": "Measured sign-in launch",
+    "title": "Real sign-in impact",
+    "description": "Samples only when the operating system launches CoreRobin silently as a login item, until the system settles.",
+    "settleTime": "Settle time", "peakCpu": "Peak CPU", "peakDisk": "Peak disk", "samples": "Samples",
+    "boundary": "This measures post-sign-in impact, not firmware boot time. Measurements stop after three minutes and the latest five are kept.",
+    "empty": "No real sign-in measurement yet. Enable Launch at login to measure the next sign-in automatically.",
     "none": {
       "title": "В данный момент нет влияния на запуск"
     },

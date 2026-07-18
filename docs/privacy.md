@@ -1,21 +1,22 @@
 # CoreRobin Privacy Notice
 
-Last reviewed: CoreRobin 0.0.4 (2026-07-17)
+Last reviewed: CoreRobin 0.1.2 (2026-07-18)
 
 CoreRobin is a local desktop application. It reads system status, running applications, and the results of a space scan you explicitly start so it can show local status, diagnosis, and cleanup review. This notice covers the application itself. The website, GitHub Releases, and GitHub Issues are also subject to the policies of the services that host them.
 
 ## What CoreRobin does not do
 
-- CoreRobin 0.0.4 does not include product analytics, a crash-reporting SDK, or an account-sync service.
+- CoreRobin 0.1.2 does not include product analytics, a crash-reporting SDK, or an account-sync service.
 - CoreRobin does not upload monitoring, file-scan, process, connection, history, or preference data to our servers.
-- A space scan does not read file contents and never moves, changes, or uploads files while scanning.
+- A normal space scan does not read file contents. Only an explicit duplicate-file check reads candidate contents and calculates SHA-256 locally. Neither scan uploads, moves, or changes files.
 - CoreRobin never automatically stops processes, uninstalls applications, or deletes files.
 
 ## Data processed and stored on this computer
 
 - **Live status**: local snapshots of CPU, memory, storage, network, applications, processes, startup items, and connections for the current interface and diagnosis.
-- **Local history and action records**: when history is enabled, resource trends, persistent conditions, and results of actions you confirm are stored on the device. History can be kept for 1, 7, or 30 days, disabled, or cleared at any time. App and startup-item names persist across restarts only when you opt in; command lines, file paths, file names, and connection addresses are not saved.
-- **Space-scan results**: scans read metadata such as names, sizes, dates, locations, and file types, not file contents. Results are retained for up to 7 days and marked stale after 24 hours. Before permanent deletion, CoreRobin rechecks only the targets you put in the cleanup basket.
+- **Local history and action records**: resource history stores trends, persistent conditions, and confirmed action results when enabled. App and startup-item names persist only after the separate name opt-in. Connection history has its own switch and is off by default; when enabled it stores application names, reverse-resolved hostnames or remote IPs, protocol, port, and five-minute observation counts locally, capped at 5,000 entries for 1, 7, or 30 days.
+- **Space-scan results**: normal scans read metadata and retain results for up to seven days. The duplicate-file check runs only when explicitly started, reads candidate contents to hash them, and currently does not persist its results across restarts. Before moving items to Trash or deleting them directly, CoreRobin rechecks only cleanup-basket targets.
+- **Sign-in impact**: only a real operating-system background login launch stores a measurement. The latest five include timing, CPU/disk peaks, settle time, and application names with resource peaks.
 - **Preferences**: language, motion, notifications, history retention, background launch, and Robin companion preferences are stored locally to restore your choices.
 
 ## Full Disk Access on macOS
@@ -24,12 +25,18 @@ macOS protects locations such as Mail, Messages, and other application data. Wit
 
 - macOS controls this permission, and you can turn it off in System Settings → Privacy & Security → Full Disk Access.
 - Without it, you can still choose **Scan accessible areas**; protected or temporarily unreadable locations are identified in the result.
-- This permission does not allow a scan to read file contents or to delete anything without confirmation.
+- The normal space map remains metadata-only. An explicit duplicate-file check can read accessible candidate contents to hash them. Full Disk Access never permits deletion without confirmation.
+
+## Explicit network requests
+
+- A network-quality check runs only after you start it. It resolves `example.com` through the system DNS resolver and opens up to six TCP connections to port 443 to estimate latency, jitter, and loss; it sends no HTTP request content.
+- When connection history is enabled, CoreRobin asks the configured system resolver to reverse-resolve up to 32 remote IPs for hostname aggregation. Failed lookups keep the IP fallback; the connection list is not sent to a CoreRobin server.
+- Your network provider, DNS provider, or target host may process these requests under its own policies. Disabling connection history stops new reverse lookups.
 
 ## Clearing data and uninstalling
 
 - Settings → About & Support → **Clear all local data** clears CoreRobin preferences, history, notification records, and saved space-scan results. You can instead clear only history in Records or only the saved scan in Cleanup.
-- Permanent deletion only affects targets you place in the cleanup basket and confirm again; files do not go to Trash.
+- Cleanup only affects targets you place in the cleanup basket and confirm again. You can move them to system Trash or choose irreversible direct deletion; CoreRobin never silently falls back from one mode to the other.
 - To stop background monitoring, choose **Quit app** from the menu bar instead of only closing the main window. You can then confirm that no CoreRobin process remains in Activity Monitor, Task Manager, or your system monitor.
 - Before a full uninstall, turn off **Launch after sign-in** in Settings. On macOS, you can also turn CoreRobin off in System Settings → Privacy & Security → Full Disk Access; clearing app data does not revoke an operating-system permission for you.
 

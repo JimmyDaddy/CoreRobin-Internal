@@ -1,4 +1,6 @@
 {
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "loading": "불러오기 중…",
   "warmup": "준비 중",
   "now": "현재",

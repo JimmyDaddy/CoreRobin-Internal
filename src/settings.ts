@@ -31,6 +31,16 @@ export const CONNECTION_REFRESH_INTERVAL_OPTIONS = [3_000, 5_000, 10_000, 30_000
 
 export type UsageThresholds = readonly [number, number, number];
 export type ExperienceMode = "simple" | "professional";
+export type ApplicationWatchMetric = "cpu" | "memory" | "disk";
+
+export interface ApplicationWatchRule {
+  id: string;
+  applicationName: string;
+  metric: ApplicationWatchMetric;
+  threshold: number;
+  durationSeconds: number;
+  enabled: boolean;
+}
 
 export function systemSamplingPreset(
   intervalMs: number,
@@ -52,6 +62,9 @@ export interface AppSettings {
   historyPersistenceEnabled: boolean;
   historyApplicationNamesEnabled: boolean;
   historyRetentionDays: HistoryRetentionDays;
+  networkConnectionHistoryEnabled: boolean;
+  networkConnectionHistoryRetentionDays: HistoryRetentionDays;
+  applicationWatchRules: ApplicationWatchRule[];
   desktopNotificationsEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
   interfaceScale: InterfaceScale;
@@ -76,6 +89,9 @@ export function defaultAppSettings(
     historyPersistenceEnabled: true,
     historyApplicationNamesEnabled: false,
     historyRetentionDays: 7,
+    networkConnectionHistoryEnabled: false,
+    networkConnectionHistoryRetentionDays: 30,
+    applicationWatchRules: [],
     desktopNotificationsEnabled: false,
     mutedNotificationResources: [],
     interfaceScale: "comfortable",
@@ -135,6 +151,18 @@ export function parseAppSettings(
       historyRetentionDays: isHistoryRetentionDays(value.historyRetentionDays)
         ? value.historyRetentionDays
         : fallback.historyRetentionDays,
+      networkConnectionHistoryEnabled:
+        typeof value.networkConnectionHistoryEnabled === "boolean"
+          ? value.networkConnectionHistoryEnabled
+          : fallback.networkConnectionHistoryEnabled,
+      networkConnectionHistoryRetentionDays: isHistoryRetentionDays(
+        value.networkConnectionHistoryRetentionDays,
+      )
+        ? value.networkConnectionHistoryRetentionDays
+        : fallback.networkConnectionHistoryRetentionDays,
+      applicationWatchRules: isApplicationWatchRuleArray(value.applicationWatchRules)
+        ? value.applicationWatchRules.slice(0, 50)
+        : fallback.applicationWatchRules,
       desktopNotificationsEnabled:
         typeof value.desktopNotificationsEnabled === "boolean"
           ? value.desktopNotificationsEnabled
@@ -222,6 +250,21 @@ function isHistoryRetentionDays(value: unknown): value is HistoryRetentionDays {
 function isNotificationResourceArray(value: unknown): value is ResourceAlertResource[] {
   return Array.isArray(value) && value.every((resource) =>
     resource === "cpu" || resource === "memory" || resource === "volume"
+  );
+}
+
+function isApplicationWatchRuleArray(value: unknown): value is ApplicationWatchRule[] {
+  return Array.isArray(value) && value.every((rule) =>
+    isRecord(rule) &&
+    typeof rule.id === "string" && rule.id.length > 0 && rule.id.length <= 100 &&
+    typeof rule.applicationName === "string" &&
+    rule.applicationName.trim().length > 0 && rule.applicationName.length <= 200 &&
+    (rule.metric === "cpu" || rule.metric === "memory" || rule.metric === "disk") &&
+    typeof rule.threshold === "number" && Number.isFinite(rule.threshold) &&
+    rule.threshold > 0 && rule.threshold <= 1_000_000 &&
+    typeof rule.durationSeconds === "number" && Number.isInteger(rule.durationSeconds) &&
+    rule.durationSeconds >= 5 && rule.durationSeconds <= 3_600 &&
+    typeof rule.enabled === "boolean"
   );
 }
 

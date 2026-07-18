@@ -17,6 +17,7 @@ describe("cleanup permanent deletion confirmation mock", () => {
         allocatedSizeBytes: 4_096,
         itemCount: 1,
       }],
+      mode: "trash",
     });
 
     expect(lease.paths).toEqual(["~/Downloads/archive.zip"]);
@@ -42,6 +43,7 @@ describe("cleanup permanent deletion confirmation mock", () => {
         allocatedSizeBytes: 4_096,
         itemCount: 1,
       }],
+      mode: "permanent",
     });
 
     releaseMockCleanupDeleteLease({ leaseId: lease.id });

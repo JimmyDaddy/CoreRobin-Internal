@@ -82,6 +82,12 @@ jobs:
       - name: Activate pinned Rust toolchain
         run: rustup show active-toolchain
 
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: src-tauri -> target
+          shared-key: release-verify
+
       - name: Check Rust backend
         run: |
           cargo fmt --manifest-path src-tauri/Cargo.toml --check
@@ -148,14 +154,11 @@ jobs:
       - name: Activate pinned Rust toolchain
         run: rustup show active-toolchain
 
-      - name: Restore Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: release-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
-          restore-keys: release-${{ runner.os }}-
+          workspaces: src-tauri -> target
+          shared-key: release-build
 
       - name: Verify updater signing credential
         shell: bash
@@ -231,16 +234,11 @@ jobs:
       - name: Add macOS Rust target
         run: rustup target add ${{ matrix.target }}
 
-      - name: Restore Cargo cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: release-macOS-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
-          restore-keys: |
-            release-macOS-${{ matrix.target }}-
-            release-macOS-
+          workspaces: src-tauri -> target
+          shared-key: release-macos-${{ matrix.target }}
 
       - name: Verify updater signing credential
         shell: bash

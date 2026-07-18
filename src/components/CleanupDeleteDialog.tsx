@@ -1,13 +1,15 @@
-import { AlertTriangle, CircleStop, LoaderCircle, RefreshCw, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArchiveRestore, CircleStop, LoaderCircle, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import type { CleanupMapNode } from "../cleanupMap";
 import { cleanupLeaseCanExecute } from "../cleanupDeleteFreshness";
-import type { CleanupDeleteLease, CleanupDeleteProgress, CommandError } from "../types";
+import type { CleanupDeleteLease, CleanupDeleteMode, CleanupDeleteProgress, CommandError } from "../types";
 import { formatBytes } from "../utils";
 
 interface CleanupDeleteDialogProps {
+  title?: string;
+  description?: string;
   items: readonly CleanupMapNode[];
   lease: CleanupDeleteLease | null;
   preparing: boolean;
@@ -15,7 +17,9 @@ interface CleanupDeleteDialogProps {
   cancelling: boolean;
   progress: CleanupDeleteProgress | null;
   error: CommandError | null;
+  mode: CleanupDeleteMode;
   deleteAcknowledged: boolean;
+  onModeChange: (mode: CleanupDeleteMode) => void;
   onDeleteAcknowledgedChange: (checked: boolean) => void;
   onCancel: () => void;
   onCancelExecution: () => void;
@@ -24,6 +28,8 @@ interface CleanupDeleteDialogProps {
 }
 
 export function CleanupDeleteDialog({
+  title,
+  description,
   items,
   lease,
   preparing,
@@ -31,7 +37,9 @@ export function CleanupDeleteDialog({
   cancelling,
   progress,
   error,
+  mode,
   deleteAcknowledged,
+  onModeChange,
   onDeleteAcknowledgedChange,
   onCancel,
   onCancelExecution,
@@ -42,7 +50,7 @@ export function CleanupDeleteDialog({
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
-  const canConfirm = cleanupLeaseCanExecute(lease) && !preparing && !submitting && deleteAcknowledged;
+  const canConfirm = cleanupLeaseCanExecute(lease) && lease?.mode === mode && !preparing && !submitting && deleteAcknowledged;
   const currentItem = progress?.currentPath
     ? items.find((item) => item.path === progress.currentPath)
     : null;
@@ -67,27 +75,61 @@ export function CleanupDeleteDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={submitting ? undefined : onCancel}>
       <section
-        className="cleanup-delete-dialog"
+        className={`cleanup-delete-dialog is-${mode}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="cleanup-delete-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header>
-          <span className={`cleanup-delete-dialog__icon${submitting ? " is-active" : ""}`}><Trash2 size={20} /></span>
+          <span className={`cleanup-delete-dialog__icon is-${mode}${submitting ? " is-active" : ""}`}>
+            {mode === "trash" ? <ArchiveRestore size={20} /> : <ShieldAlert size={20} />}
+          </span>
           <div>
-            <h2 id="cleanup-delete-title">{t("cleanup:deleteDialog.title")}</h2>
-            <p>{t("cleanup:deleteDialog.description")}</p>
+            <h2 id="cleanup-delete-title">{title ?? t("cleanup:deleteDialog.title")}</h2>
+            <p>{description ?? t("cleanup:deleteDialog.description")}</p>
           </div>
           <button className="icon-button" type="button" aria-label={t("common:cancel")} disabled={submitting} onClick={onCancel}>
             <X size={17} />
           </button>
         </header>
 
+        {!submitting ? (
+          <fieldset className="cleanup-delete-dialog__modes">
+            <legend>{t("cleanup:deleteDialog.modeTitle")}</legend>
+            <button
+              className={mode === "trash" ? "is-selected" : undefined}
+              type="button"
+              role="radio"
+              aria-checked={mode === "trash"}
+              disabled={preparing}
+              onClick={() => onModeChange("trash")}
+            >
+              <span><ArchiveRestore size={17} /></span>
+              <div><strong>{t("cleanup:deleteDialog.trashModeTitle")}</strong><small>{t("cleanup:deleteDialog.trashModeDescription")}</small></div>
+              <em>{t("cleanup:deleteDialog.recommended")}</em>
+            </button>
+            <button
+              className={mode === "permanent" ? "is-selected is-danger" : "is-danger"}
+              type="button"
+              role="radio"
+              aria-checked={mode === "permanent"}
+              disabled={preparing}
+              onClick={() => onModeChange("permanent")}
+            >
+              <span><Trash2 size={17} /></span>
+              <div><strong>{t("cleanup:deleteDialog.permanentModeTitle")}</strong><small>{t("cleanup:deleteDialog.permanentModeDescription")}</small></div>
+            </button>
+          </fieldset>
+        ) : null}
+
         <div className="cleanup-delete-dialog__summary">
           <span><strong>{items.length}</strong>{t("cleanup:deleteDialog.itemUnit")}</span>
           <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup:deleteDialog.estimatedSize")}</span>
-          <small><AlertTriangle size={13} />{t("cleanup:deleteDialog.irreversible")}</small>
+          <small className={mode === "trash" ? "is-recoverable" : undefined}>
+            {mode === "trash" ? <ArchiveRestore size={13} /> : <AlertTriangle size={13} />}
+            {t(mode === "trash" ? "cleanup:deleteDialog.recoverable" : "cleanup:deleteDialog.irreversible")}
+          </small>
         </div>
 
         <ol className="cleanup-delete-dialog__items">
@@ -110,13 +152,15 @@ export function CleanupDeleteDialog({
           <div className={`cleanup-delete-dialog__progress${cancelling ? " is-cancelling" : ""}`} role="status" aria-live="polite">
             <span className="cleanup-delete-dialog__progress-mark" aria-hidden="true">
               <i /><i /><i />
-              {cancelling ? <CircleStop size={18} /> : <Trash2 size={17} />}
+              {cancelling ? <CircleStop size={18} /> : mode === "trash" ? <ArchiveRestore size={17} /> : <Trash2 size={17} />}
             </span>
             <div className="cleanup-delete-dialog__progress-copy">
               <strong>{t(
                 cancelling
                   ? "cleanup:deleteDialog.progressCancelling"
-                  : progress?.phase === "deleting"
+                  : progress?.phase === "moving_to_trash"
+                    ? "cleanup:deleteDialog.progressMovingToTrash"
+                    : progress?.phase === "deleting"
                     ? "cleanup:deleteDialog.progressDeleting"
                     : "cleanup:deleteDialog.progressPreparing",
               )}</strong>
@@ -144,7 +188,7 @@ export function CleanupDeleteDialog({
                 completed: progress?.completedTargetCount ?? 0,
                 total: progress?.totalTargetCount ?? items.length,
               })}</span>
-              <span>{t("cleanup:deleteDialog.progressDeleted", { size: formatBytes(progress?.deletedBytes ?? 0) })}</span>
+              <span>{t(mode === "trash" ? "cleanup:deleteDialog.progressMoved" : "cleanup:deleteDialog.progressDeleted", { size: formatBytes(progress?.deletedBytes ?? 0) })}</span>
             </div>
             {cancelling ? <small>{t("cleanup:deleteDialog.cancelHint")}</small> : null}
           </div>
@@ -171,7 +215,10 @@ export function CleanupDeleteDialog({
             disabled={submitting || preparing || lease?.executable !== true || lease.changedPaths.length > 0}
             onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
           />
-          <span><strong>{t("cleanup:deleteDialog.deleteConfirmTitle")}</strong><small>{t("cleanup:deleteDialog.deleteConfirmDescription")}</small></span>
+          <span>
+            <strong>{t(mode === "trash" ? "cleanup:deleteDialog.trashConfirmTitle" : "cleanup:deleteDialog.deleteConfirmTitle")}</strong>
+            <small>{t(mode === "trash" ? "cleanup:deleteDialog.trashConfirmDescription" : "cleanup:deleteDialog.deleteConfirmDescription")}</small>
+          </span>
         </label> : null}
 
         {error ? (
@@ -197,8 +244,8 @@ export function CleanupDeleteDialog({
                   {t("cleanup:deleteDialog.refreshSelection")}
                 </button>
               ) : (
-                <button className="button button--danger" type="button" disabled={!canConfirm} onClick={onConfirm}>
-                  {t("cleanup:deleteDialog.confirm", { count: items.length })}
+                <button className={`button ${mode === "trash" ? "button--primary" : "button--danger"}`} type="button" disabled={!canConfirm} onClick={onConfirm}>
+                  {t(mode === "trash" ? "cleanup:deleteDialog.confirmTrash" : "cleanup:deleteDialog.confirm", { count: items.length })}
                 </button>
               )}
             </>

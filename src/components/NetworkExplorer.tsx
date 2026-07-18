@@ -5,6 +5,7 @@ import {
   ArrowUpFromLine,
   ChevronDown,
   ChevronUp,
+  Globe2,
   Network,
   RefreshCw,
 } from "lucide-react";
@@ -23,6 +24,9 @@ import {
   type NetworkProcessIndex,
   type NetworkSeriesPoint,
 } from "../networkExplorer";
+import { runNetworkQualityCheck } from "../api";
+import { aggregateConnectionHistory, type ConnectionHistoryGroupBy } from "../connectionHistory";
+import { useConnectionHistory } from "../hooks/useConnectionHistory";
 import type {
   CommandError,
   HistoryPoint,
@@ -30,9 +34,10 @@ import type {
   NetworkConnectionsSnapshot,
   NetworkInterfaceSnapshot,
   NetworkSnapshot,
+  NetworkQualityResult,
   ProcessRow,
 } from "../types";
-import { formatBytes, formatRate } from "../utils";
+import { formatBytes, formatRate, normalizeCommandError } from "../utils";
 
 interface NetworkExplorerProps {
   network: NetworkSnapshot;
@@ -44,6 +49,10 @@ interface NetworkExplorerProps {
   connectionRefreshIntervalMs: number;
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
+  connectionHistoryEnabled: boolean;
+  connectionHistoryRetentionDays: 1 | 7 | 30;
+  onConnectionHistoryChange: (enabled: boolean) => void;
+  onConnectionHistoryRetentionChange: (days: 1 | 7 | 30) => void;
 }
 
 const CHART_WIDTH = 720;
@@ -70,6 +79,10 @@ export function NetworkExplorer({
   connectionRefreshIntervalMs,
   processes,
   onSelectProcess,
+  connectionHistoryEnabled,
+  connectionHistoryRetentionDays,
+  onConnectionHistoryChange,
+  onConnectionHistoryRetentionChange,
 }: NetworkExplorerProps) {
   const { t } = useAppTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
@@ -124,6 +137,8 @@ export function NetworkExplorer({
         </div>
       </section>
 
+      <NetworkQualityPanel />
+
       <NetworkThroughput history={history} network={network} />
 
       <NetworkConnectionsPanel
@@ -134,6 +149,15 @@ export function NetworkExplorer({
         refreshIntervalMs={connectionRefreshIntervalMs}
         processes={processes}
         onSelectProcess={onSelectProcess}
+      />
+
+      <ConnectionHistoryPanel
+        snapshot={connections}
+        processes={processes}
+        enabled={connectionHistoryEnabled}
+        retentionDays={connectionHistoryRetentionDays}
+        onEnabledChange={onConnectionHistoryChange}
+        onRetentionChange={onConnectionHistoryRetentionChange}
       />
 
       <section className="panel network-interface-panel" aria-labelledby="interface-title">
@@ -175,6 +199,141 @@ export function NetworkExplorer({
           </div>
         )}
       </section>
+    </section>
+  );
+}
+
+function NetworkQualityPanel() {
+  const { t, i18n } = useAppTranslation();
+  const [result, setResult] = useState<NetworkQualityResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runCheck = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(await runNetworkQualityCheck());
+    } catch (reason) {
+      setError(normalizeCommandError(reason).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="panel network-quality" aria-labelledby="network-quality-title">
+      <header className="network-section-heading">
+        <div>
+          <span className="eyebrow">{t("network:quality.eyebrow")}</span>
+          <h2 id="network-quality-title">{t("network:quality.title")}</h2>
+          <p>{t("network:quality.description")}</p>
+        </div>
+        <button className="button button--secondary" type="button" disabled={loading} onClick={() => void runCheck()}>
+          <RefreshCw size={14} className={loading ? "is-spinning" : ""} />
+          {loading ? t("network:quality.checking") : t("network:quality.run")}
+        </button>
+      </header>
+      {error ? <div className="network-connections__notice is-error" role="alert">{error}</div> : null}
+      {result ? (
+        <div className="network-quality__results" aria-live="polite">
+          <div className={`network-quality__status is-${result.status}`}>
+            <Globe2 size={20} />
+            <span>{t(`network:quality.status.${result.status}`)}</span>
+            <small>{new Date(result.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour12: false })}</small>
+          </div>
+          <QualityMetric label={t("network:quality.dns")} value={result.dnsLookupMs === null ? t("common:unavailable") : `${result.dnsLookupMs} ms`} />
+          <QualityMetric label={t("network:quality.latency")} value={formatMilliseconds(result.averageLatencyMs)} />
+          <QualityMetric label={t("network:quality.jitter")} value={formatMilliseconds(result.jitterMs)} />
+          <QualityMetric label={t("network:quality.loss")} value={`${result.packetLossPercent.toFixed(1)}%`} />
+        </div>
+      ) : (
+        <p className="network-quality__empty">{t("network:quality.empty")}</p>
+      )}
+      <small className="network-quality__method">{t("network:quality.method")}</small>
+    </section>
+  );
+}
+
+function QualityMetric({ label, value }: { label: string; value: string }) {
+  return <div className="network-quality__metric"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function formatMilliseconds(value: number | null): string {
+  return value === null ? "—" : `${value.toFixed(1)} ms`;
+}
+
+function ConnectionHistoryPanel({
+  snapshot,
+  processes,
+  enabled,
+  retentionDays,
+  onEnabledChange,
+  onRetentionChange,
+}: {
+  snapshot: NetworkConnectionsSnapshot | null;
+  processes: ProcessRow[];
+  enabled: boolean;
+  retentionDays: 1 | 7 | 30;
+  onEnabledChange: (enabled: boolean) => void;
+  onRetentionChange: (days: 1 | 7 | 30) => void;
+}) {
+  const { t, i18n } = useAppTranslation();
+  const [groupBy, setGroupBy] = useState<ConnectionHistoryGroupBy>("application");
+  const { entries, error, clear } = useConnectionHistory(snapshot, processes, enabled, retentionDays);
+  const groups = useMemo(() => aggregateConnectionHistory(entries, groupBy).slice(0, 20), [entries, groupBy]);
+
+  return (
+    <section className="panel connection-history" aria-labelledby="connection-history-title">
+      <header className="network-section-heading">
+        <div>
+          <span className="eyebrow">{t("network:history.eyebrow")}</span>
+          <h2 id="connection-history-title">{t("network:history.title")}</h2>
+          <p>{t("network:history.description")}</p>
+        </div>
+        <label className="settings-switch connection-history__switch">
+          <input type="checkbox" role="switch" checked={enabled} onChange={(event) => onEnabledChange(event.target.checked)} />
+          <span>{enabled ? t("common:enabled") : t("common:disabled")}</span>
+        </label>
+      </header>
+      {!enabled ? (
+        <div className="connection-history__opt-in">
+          <Globe2 size={22} />
+          <p>{t("network:history.optIn")}</p>
+          <button className="button button--primary" type="button" onClick={() => onEnabledChange(true)}>{t("network:history.enable")}</button>
+        </div>
+      ) : (
+        <>
+          <div className="connection-history__toolbar">
+            <div className="network-connection-filters" role="group" aria-label={t("network:history.groupBy") }>
+              {(["application", "domain"] as const).map((value) => (
+                <button type="button" key={value} className={groupBy === value ? "is-active" : ""} onClick={() => setGroupBy(value)}>
+                  {t(`network:history.${value}`)}
+                </button>
+              ))}
+            </div>
+            <label>{t("network:history.retention")}
+              <select value={retentionDays} onChange={(event) => onRetentionChange(Number(event.target.value) as 1 | 7 | 30)}>
+                {[1, 7, 30].map((days) => <option value={days} key={days}>{t("network:history.days", { count: days })}</option>)}
+              </select>
+            </label>
+            <button className="button button--plain" type="button" onClick={clear}>{t("network:history.clear")}</button>
+          </div>
+          {error ? <p className="network-connections__notice">{t("network:history.lookupFallback")}</p> : null}
+          {groups.length > 0 ? (
+            <div className="connection-history__list">
+              {groups.map((group) => (
+                <div key={group.key} className="connection-history__row">
+                  <strong title={group.label}>{group.label}</strong>
+                  <span>{t("network:history.observations", { count: group.observationCount })}</span>
+                  <small>{new Date(group.lastSeenAtMs).toLocaleString(i18n.resolvedLanguage)}</small>
+                </div>
+              ))}
+            </div>
+          ) : <p className="network-quality__empty">{t("network:history.empty")}</p>}
+          <small className="network-quality__method">{t("network:history.privacy")}</small>
+        </>
+      )}
     </section>
   );
 }

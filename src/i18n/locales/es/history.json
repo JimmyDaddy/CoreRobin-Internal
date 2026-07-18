@@ -112,7 +112,7 @@
       "process_close": "Cerrar la aplicación normalmente",
       "process_restart": "Reiniciar la aplicación",
       "process_force_quit": "Forzar el cierre de la aplicación",
-      "cleanup_delete": "Eliminar archivos permanentemente",
+      "cleanup_delete": "Limpiar archivos",
       "startup_disable": "Desactivar elemento de inicio",
       "startup_enable": "Restaurar elemento de inicio"
     },

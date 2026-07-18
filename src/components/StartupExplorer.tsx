@@ -16,6 +16,7 @@ import {
   releaseStartupManagementLease,
 } from "../api";
 import type { ApplicationImpact } from "../diagnosis";
+import type { StartupImpactMeasurement } from "../startupImpact";
 import {
   filterStartupItems,
   startupAdvice,
@@ -43,6 +44,7 @@ interface StartupExplorerProps {
   loading: boolean;
   applications: readonly ApplicationImpact[];
   totalMemoryBytes: number;
+  impactMeasurements?: readonly StartupImpactMeasurement[];
   onRefresh: () => void | Promise<void>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
@@ -55,6 +57,7 @@ export function StartupExplorer({
   loading,
   applications,
   totalMemoryBytes,
+  impactMeasurements = [],
   onRefresh,
   onUserActionStart,
   onUserActionComplete,
@@ -214,6 +217,10 @@ export function StartupExplorer({
         </div>
       ) : null}
 
+      {variant === "professional" ? (
+        <StartupImpactPanel measurements={impactMeasurements} />
+      ) : null}
+
       {!snapshot && loading ? (
         <div className="panel startup-loading"><RefreshCw className="is-spinning" size={20} /><strong>{t("startup:loadingTitle")}</strong><span>{t("startup:loadingDescription")}</span></div>
       ) : snapshot ? (
@@ -278,6 +285,33 @@ export function StartupExplorer({
           onConfirm={() => void confirmAction()}
         />
       ) : null}
+    </section>
+  );
+}
+
+function StartupImpactPanel({ measurements }: { measurements: readonly StartupImpactMeasurement[] }) {
+  const { t, i18n } = useAppTranslation();
+  const latest = measurements[0];
+  return (
+    <section className="panel startup-impact" aria-labelledby="startup-impact-title">
+      <header>
+        <div><span className="eyebrow">{t("startup:impact.eyebrow")}</span><h3 id="startup-impact-title">{t("startup:impact.title")}</h3><p>{t("startup:impact.description")}</p></div>
+        {latest ? <time>{new Date(latest.launchedAtMs).toLocaleString(i18n.resolvedLanguage)}</time> : null}
+      </header>
+      {latest ? (
+        <>
+          <div className="startup-impact__summary">
+            <span><strong>{latest.settledAfterMs === null ? "—" : `${Math.ceil(latest.settledAfterMs / 1_000)}s`}</strong>{t("startup:impact.settleTime")}</span>
+            <span><strong>{formatPercent(latest.peakCpuPercent)}</strong>{t("startup:impact.peakCpu")}</span>
+            <span><strong>{formatBytes(latest.peakDiskBytesPerSecond)}/s</strong>{t("startup:impact.peakDisk")}</span>
+            <span><strong>{latest.sampleCount}</strong>{t("startup:impact.samples")}</span>
+          </div>
+          {latest.applications.length > 0 ? <ol className="startup-impact__apps">{latest.applications.map((application) => (
+            <li key={application.name}><strong>{application.name}</strong><span>{formatPercent(application.peakCpuPercent)}</span><small>{formatBytes(application.peakMemoryBytes)}</small></li>
+          ))}</ol> : null}
+          <small>{t("startup:impact.boundary")}</small>
+        </>
+      ) : <div className="startup-impact__empty"><Rocket size={20} /><p>{t("startup:impact.empty")}</p></div>}
     </section>
   );
 }

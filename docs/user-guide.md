@@ -56,24 +56,28 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
-3. **Add items to the basket:** Hold a sector and start dragging; the basket stays visible at the bottom of the window. Adding an item to the basket does not delete or move it.
-4. **Refresh, then delete:** CoreRobin rescans only the basket targets and shows their latest size and item count. Continue only after reviewing those results.
+3. **Add items to the basket:** Hold a sector or an item in the directory list and start dragging. While scan results exist, the basket stays fixed at the bottom of the window. Adding an item does not move or delete it.
+4. **Refresh and choose a cleanup mode:** CoreRobin rescans only the basket targets and shows their latest size and item count. After reviewing them, choose **Move to Trash** (recommended and recoverable until Trash is emptied) or **Delete directly** (irreversible).
 
-Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cached or expired results cannot directly authorize permanent deletion: opening the deletion review performs an authoritative rescan of only the basket targets. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
+Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cached or expired results cannot directly authorize cleanup: opening the cleanup review performs an authoritative rescan of only the basket targets and binds that confirmation to the selected cleanup mode. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
 
-#### Before permanent deletion
+**Duplicate and long-unmodified files** is a separate explicit check. It scans only Desktop, Documents, Downloads, Movies, Music, and Pictures without following symbolic links. It filters by size before reading likely duplicate candidates and calculating SHA-256 locally. “Long-unused” is approximated as over 100 MB and unchanged for 180 days because reliable last-access data is unavailable on many systems. Results provide preview, copy, and reveal actions only; nothing is deleted automatically.
 
-- Files bypass system Trash and cannot be restored by CoreRobin.
+#### Before cleanup
+
+- **Move to Trash** items can normally be restored until system Trash is emptied. **Delete directly** bypasses Trash and cannot be restored by CoreRobin.
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
 - CoreRobin removes only regular files and folders inside your home folder.
 - Your home folder, Trash itself, links, special files, and other disks are protected.
-- The app rechecks each complete target tree right before deletion. A deep new file or any other mismatch stops the action and requires another refresh and confirmation.
-- Deleted items disappear from the map and basket. Items that could not be deleted remain visible with an explanation.
+- The app rechecks each complete target tree right before cleanup. A deep new file or any other mismatch stops the action and requires another refresh and confirmation.
+- Cleaned items disappear from the map and basket. Items that could not be cleaned remain visible with an explanation.
 
 ### Network
 
 - Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
+- Run an on-demand DNS, TCP connection latency, jitter, estimated loss, and connectivity check; it does not probe continuously in the background.
+- Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
 
@@ -84,6 +88,7 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - Supported third-party items can be turned off and restored later.
 - System items and sources that cannot be changed safely on the current platform are view-only.
 - CoreRobin does not delete startup configuration files.
+- When the operating system really launches CoreRobin as a background login item, it measures CPU, disk, application peaks, and settle time for up to three minutes. Manual launches are not counted as sign-in impact.
 
 ### History
 
@@ -101,6 +106,8 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Robin companion preferences together.
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view.
+- Pro Settings can watch a chosen application's CPU, memory, or disk threshold for a sustained duration. A rule notifies once, waits for recovery, and uses a ten-minute cooldown.
+- The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel
 
@@ -171,6 +178,6 @@ Do not attach logs, local data folders, unredacted screenshots, or generated dia
 
 ## Privacy and support
 
-Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Scans read file information such as names, sizes, and locations, not file contents. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
+Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Normal space scans read metadata such as names, sizes, and locations. Only the duplicate-file check you explicitly start reads candidate contents to hash them locally. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
 
 For general problems, open a GitHub issue and copy the version and system details from Settings → About & Support. Include what you were doing and any visible error. Read the [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes, and use GitHub private vulnerability reporting for security issues.

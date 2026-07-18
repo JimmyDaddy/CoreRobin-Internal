@@ -85,6 +85,14 @@
     "high": "偏高",
     "critical": "严重"
   },
+  "watchRules": {
+    "title": "应用关注与提醒规则", "description": "关注指定应用；指标持续达到条件时发送一次通知，并在恢复后允许再次提醒。",
+    "application": "应用", "applicationPlaceholder": "选择或输入应用名称", "metric": "指标", "threshold": "阈值", "duration": "持续时间",
+    "metrics": { "cpu": "CPU", "memory": "内存", "disk": "磁盘活动" },
+    "seconds": "{{count}} 秒", "add": "添加规则", "notificationHint": "打开桌面通知并授予权限后，规则才能发送系统提醒。",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}}，持续 {{seconds}} 秒", "active": "条件已达到", "remove": "移除 {{name}} 的提醒规则",
+    "empty": "尚未添加应用关注规则。"
+  },
   "about": {
     "title": "关于与支持",
     "description": "查看版本、获取帮助，并管理 CoreRobin 保存在这台电脑上的数据。",

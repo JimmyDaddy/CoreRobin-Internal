@@ -61,6 +61,15 @@
     "high": {
       "title": "当前后台影响较高"
     },
+    "eyebrow": "登录启动实测",
+    "title": "真实登录启动影响",
+    "description": "仅在 CoreRobin 被系统作为登录项静默启动时采样，记录到系统趋于稳定为止。",
+    "settleTime": "趋稳时间",
+    "peakCpu": "CPU 峰值",
+    "peakDisk": "磁盘峰值",
+    "samples": "采样数",
+    "boundary": "这是登录后影响测量，不是固件开机耗时；最多测量 3 分钟，并保留最近 5 次。",
+    "empty": "还没有真实登录启动记录。启用“登录时启动”后，在下一次登录时自动测量。",
     "running": "当前运行：CPU {{cpu}} · 内存 {{memory}}",
     "notMatched": "未匹配到当前正在运行的应用"
   },

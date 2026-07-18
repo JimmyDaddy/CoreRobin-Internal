@@ -66,6 +66,103 @@ describe("cleanup subtree cancellation", () => {
       firstRequest.requestId,
     );
   });
+
+  it("keeps the basket visible and accepts drags from the folder list", async () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.root.children = [
+      folder("first", "~/Downloads/first"),
+      folder("second", "~/Downloads/second"),
+    ];
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+    const basket = document.querySelector<HTMLElement>(".cleanup-map__dropzone");
+    expect(basket).not.toBeNull();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => basket),
+    });
+    const folderButton = screen.getByRole("button", { name: /First folder/ });
+
+    fireEvent.pointerDown(folderButton, { button: 0, pointerId: 9, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 9, clientX: 45, clientY: 45 });
+    fireEvent.pointerUp(window, { pointerId: 9, clientX: 45, clientY: 45 });
+
+    await waitFor(() => expect(folderButton.className).toContain("is-collected"));
+    expect(basket?.textContent).toContain("1 items selected");
+    delete (document as unknown as Record<string, unknown>).elementFromPoint;
+  });
+
+  it("shows a locked rejection effect and refuses protected folders", async () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.root.children = [
+      folder("first", "~/Library/Preferences"),
+      folder("second", "~/Downloads/second"),
+    ];
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+    const basket = document.querySelector<HTMLElement>(".cleanup-map__dropzone");
+    expect(basket).not.toBeNull();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => basket),
+    });
+    const folderButton = screen.getByRole("button", { name: /First folder/ });
+    expect(folderButton.dataset.dragPolicy).toBe("protected");
+
+    fireEvent.pointerDown(folderButton, { button: 0, pointerId: 10, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 10, clientX: 45, clientY: 45 });
+
+    await waitFor(() => {
+      expect(folderButton.className).toContain("is-protected-drag-source");
+      expect(basket?.className).toContain("is-protected-drag");
+      expect(basket?.textContent).toContain("System files and important settings are protected");
+      expect(basket?.querySelector(".lucide-lock-keyhole")).not.toBeNull();
+    });
+
+    fireEvent.pointerUp(window, { pointerId: 10, clientX: 45, clientY: 45 });
+
+    await waitFor(() => expect(basket?.className).toContain("is-blocked"));
+    expect(folderButton.className).not.toContain("is-collected");
+    expect(basket?.textContent).not.toContain("1 items selected");
+    delete (document as unknown as Record<string, unknown>).elementFromPoint;
+  });
+
+  it("keeps the path action slot mounted while hovering between aggregate and real nodes", () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.root.children = [
+      aggregate("smaller"),
+      file("visible", "/fixture/.DS_Store"),
+    ];
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+    const slot = document.querySelector<HTMLElement>(".cleanup-map__path-actions-slot");
+    expect(slot).not.toBeNull();
+
+    fireEvent.mouseEnter(screen.getByRole("button", { name: /Smaller objects/ }));
+    expect(document.querySelector(".cleanup-map__path-actions-slot")).toBe(slot);
+    expect(slot?.className).toContain("is-empty");
+    expect(slot?.querySelector(".cleanup-map__path-actions")).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByRole("button", { name: /Visible file/ }));
+    expect(document.querySelector(".cleanup-map__path-actions-slot")).toBe(slot);
+    expect(slot?.className).not.toContain("is-empty");
+    expect(slot?.querySelector(".cleanup-map__path-actions")).not.toBeNull();
+  });
 });
 
 function folder(id: string, path: string, hasChildren = true): CleanupNode {
@@ -81,6 +178,25 @@ function folder(id: string, path: string, hasChildren = true): CleanupNode {
     kind: "folder",
     hasChildren,
     children: [],
+  };
+}
+
+function aggregate(id: string): CleanupNode {
+  return {
+    ...folder(id, "", false),
+    name: "Smaller objects",
+    path: null,
+    kind: "aggregate",
+    deletionProtected: true,
+    protectionReason: "aggregate",
+  };
+}
+
+function file(id: string, path: string): CleanupNode {
+  return {
+    ...folder(id, path, false),
+    name: "Visible file",
+    kind: "file",
   };
 }
 

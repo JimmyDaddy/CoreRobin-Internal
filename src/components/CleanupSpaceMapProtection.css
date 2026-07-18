@@ -1,0 +1,51 @@
+.cleanup-map__legend button[data-drag-policy="protected"] { cursor: no-drop; }
+.cleanup-map__legend button[data-drag-policy="protected"]:hover {
+  border-color: rgba(239, 182, 94, 0.28);
+  background: rgba(239, 182, 94, 0.035);
+}
+.cleanup-map__legend button.is-protected-drag-source {
+  border-color: rgba(239, 182, 94, 0.58);
+  background: rgba(239, 182, 94, 0.07);
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+
+.cleanup-map__plan.is-protected-drag,
+.cleanup-map__plan.is-blocked {
+  border-color: rgba(239, 182, 94, 0.72);
+  background:
+    radial-gradient(circle at 9% 10%, rgba(239, 182, 94, 0.24), transparent 40%),
+    linear-gradient(135deg, rgba(47, 35, 24, 0.98), rgba(25, 19, 18, 0.98));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48), 0 0 0 2px rgba(239, 182, 94, 0.12);
+}
+.cleanup-map__plan.is-protected-drag { animation: cleanup-basket-protected-pulse 760ms ease-in-out infinite alternate; }
+.cleanup-map__plan.is-blocked { animation: cleanup-basket-reject 420ms ease-out 1; }
+.cleanup-map__plan.is-protected-drag .cleanup-map__basket-attention i,
+.cleanup-map__plan.is-blocked .cleanup-map__basket-attention i { border-color: rgba(239, 182, 94, 0.5); }
+.cleanup-map__plan.is-protected-drag .cleanup-map__basket-icon,
+.cleanup-map__plan.is-blocked .cleanup-map__basket-icon {
+  color: var(--amber);
+  border-color: rgba(239, 182, 94, 0.5);
+  background: var(--amber-soft);
+  transform: scale(1.12) rotate(0deg);
+}
+.cleanup-map__plan.is-protected-drag small,
+.cleanup-map__plan.is-blocked small { color: var(--amber); }
+
+.cleanup-map__drag-preview.is-protected {
+  color: var(--amber);
+  border-color: rgba(239, 182, 94, 0.62);
+  background: rgba(31, 25, 22, 0.96);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.46);
+}
+.cleanup-map__drag-preview.is-protected strong { color: var(--amber); }
+
+@keyframes cleanup-basket-protected-pulse {
+  from { transform: translateX(-50%) translateY(-2px) scale(1.006); }
+  to { transform: translateX(-50%) translateY(-5px) scale(1.014); }
+}
+@keyframes cleanup-basket-reject {
+  0%, 100% { transform: translateX(-50%); }
+  22% { transform: translateX(calc(-50% - 7px)); }
+  46% { transform: translateX(calc(-50% + 6px)); }
+  70% { transform: translateX(calc(-50% - 3px)); }
+}

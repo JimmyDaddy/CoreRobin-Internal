@@ -1,6 +1,7 @@
 import type { CleanupMapNode } from "./cleanupMap";
 import type {
   CleanupDeleteLease,
+  CleanupDeleteMode,
   CleanupDeleteLeaseRequest,
   CleanupDeleteTargetEvidence,
 } from "./types";
@@ -8,12 +9,14 @@ import type {
 export function buildCleanupDeleteLeaseRequest(
   items: readonly CleanupMapNode[],
   scanSampledAtMs: number,
+  mode: CleanupDeleteMode,
 ): CleanupDeleteLeaseRequest {
   const expectedTargets = items.flatMap(cleanupNodeEvidence);
   return {
     paths: expectedTargets.map((target) => target.path),
     scanSampledAtMs,
     expectedTargets,
+    mode,
   };
 }
 

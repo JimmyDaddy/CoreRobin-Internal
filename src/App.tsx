@@ -50,8 +50,6 @@ import {
   setDockIconVisible,
   setLaunchAtLogin,
 } from "./api";
-import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
-import { FirstRunGuide } from "./components/FirstRunGuide";
 import { BrandWordmark } from "./components/BrandWordmark";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { DailyHome } from "./components/DailyHome";
@@ -82,6 +80,8 @@ import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
 import { useSystemMonitor } from "./hooks/useSystemMonitor";
 import { useStartupItems } from "./hooks/useStartupItems";
+import { useStartupImpactMeasurement } from "./hooks/useStartupImpactMeasurement";
+import { useApplicationWatchRules } from "./hooks/useApplicationWatchRules";
 import { useUserActionHistory } from "./hooks/useUserActionHistory";
 import { normalizeLanguage } from "./i18n";
 import brandMark from "./assets/brand-mark.png";
@@ -137,6 +137,7 @@ const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
 
 const CleanupAssistant = lazy(async () => ({ default: (await import("./components/CleanupAssistant")).CleanupAssistant }));
+const ConfirmActionDialog = lazy(async () => ({ default: (await import("./components/ConfirmActionDialog")).ConfirmActionDialog }));
 const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
 const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
 const DailyRecords = lazy(async () => ({ default: (await import("./components/DailyRecords")).DailyRecords }));
@@ -144,6 +145,8 @@ const DailySettings = lazy(async () => ({ default: (await import("./components/D
 const DailySolve = lazy(async () => ({ default: (await import("./components/DailySolve")).DailySolve }));
 const DailySpace = lazy(async () => ({ default: (await import("./components/DailySpace")).DailySpace }));
 const HistoryExplorer = lazy(async () => ({ default: (await import("./components/HistoryExplorer")).HistoryExplorer }));
+const FirstRunGuide = lazy(async () => ({ default: (await import("./components/FirstRunGuide")).FirstRunGuide }));
+const GpuEnergyPanel = lazy(async () => ({ default: (await import("./components/GpuEnergyPanel")).GpuEnergyPanel }));
 const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
@@ -187,6 +190,7 @@ function App() {
     refreshNow,
   } = useSystemMonitor(settings.systemSampleIntervalMs, mainVisible);
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const startupImpactMeasurements = useStartupImpactMeasurement();
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
   const [selectedDailyIncident, setSelectedDailyIncident] =
     useState<DailyIncident | null>(null);
@@ -225,6 +229,13 @@ function App() {
     settings.language,
     settings.mutedNotificationResources,
     handleOpenAlertEvidence,
+  );
+  const applicationWatchRules = useApplicationWatchRules(
+    snapshot,
+    settings.applicationWatchRules,
+    settings.desktopNotificationsEnabled,
+    desktopNotifications.status,
+    settings.language,
   );
   const cleanupScan = useCleanupScan();
   const startupItems = useStartupItems(
@@ -265,6 +276,7 @@ function App() {
   const submittingActionRef = useRef(false);
   const startupCompletedRef = useRef(false);
   const modeTransitionTimeoutRef = useRef<number | null>(null);
+  const experienceModeRef = useRef(settings.experienceMode);
   const selectedHistory = useSelectedProcessHistory(snapshot, selectedIdentity);
   const diagnosticConnections = mainVisible ? connectionsSnapshot : null;
   const diagnosis = useMemo(
@@ -284,6 +296,7 @@ function App() {
   );
   const dailyIncidentsRef = useRef(dailyIncidents.retained);
   dailyIncidentsRef.current = dailyIncidents.retained;
+  experienceModeRef.current = settings.experienceMode;
   const healthStateUpdate = useMemo(
     () => healthSnapshot && diagnosis
       ? buildHealthStateUpdate(
@@ -389,14 +402,19 @@ function App() {
       }),
       listen<unknown>("core-robin:open-daily", ({ payload }) => {
         if (disposed) return;
-        const request = parseOpenDailyRequest(payload);
+        const request = parseOpenDailyRequest(payload, experienceModeRef.current);
         if (!request) return;
+        if (experienceModeRef.current === "professional") {
+          setSelectedDailyIncident(null);
+          setDailyIntent(null);
+          setActiveView(request.view);
+          return;
+        }
         const incident = request.occurrenceId
           ? dailyIncidentsRef.current.find(
               ({ occurrenceId }) => occurrenceId === request.occurrenceId,
             ) ?? null
           : null;
-        setSettings((current) => ({ ...current, experienceMode: "simple" }));
         setSelectedDailyIncident(incident);
         setDailyIntent(incident?.item.intent ?? null);
         setActiveView(request.view);
@@ -1134,6 +1152,14 @@ function App() {
             >
               <RobinIcon size={18} />
             </button> : null}
+            <LocaleSelect
+              compact
+              withIcon
+              className="language-button"
+              value={settings.language}
+              label={t("app:switchLanguage")}
+              onChange={(language) => updateSettings({ language })}
+            />
             <button
               className="button mode-switch mode-switch--to-simple"
               type="button"
@@ -1149,14 +1175,6 @@ function App() {
             <button className="icon-button" type="button" title={t("app:refreshNow")} aria-label={t("app:refreshNow")} onClick={() => void refreshActiveView()}>
               <RefreshCw size={16} />
             </button>
-            <LocaleSelect
-              compact
-              withIcon
-              className="language-button"
-              value={settings.language}
-              label={t("app:switchLanguage")}
-              onChange={(language) => updateSettings({ language })}
-            />
             <button className="button button--secondary" type="button" onClick={() => setPaused(!paused)}>
               {paused ? <Play size={15} /> : <Pause size={15} />}
               {paused ? t("app:resume") : t("app:pause")}
@@ -1381,6 +1399,7 @@ function App() {
                       updateProcessPreferences({ sortKey, sortDirection })
                     }
                 />
+                <GpuEnergyPanel processes={snapshot.processes} />
               </>
             ) : activeView === "processes" ? (
               <ProcessTable
@@ -1448,6 +1467,10 @@ function App() {
                 connectionsLoading={connectionsLoading}
                 onRefreshConnections={() => void refreshConnections()}
                 connectionRefreshIntervalMs={settings.connectionRefreshIntervalMs}
+                connectionHistoryEnabled={settings.networkConnectionHistoryEnabled}
+                connectionHistoryRetentionDays={settings.networkConnectionHistoryRetentionDays}
+                onConnectionHistoryChange={(networkConnectionHistoryEnabled) => updateSettings({ networkConnectionHistoryEnabled })}
+                onConnectionHistoryRetentionChange={(networkConnectionHistoryRetentionDays) => updateSettings({ networkConnectionHistoryRetentionDays })}
                 processes={snapshot.processes}
                 onSelectProcess={(process) => {
                   selectProcess(process);
@@ -1461,6 +1484,7 @@ function App() {
                 loading={startupItems.loading}
                 applications={diagnosis?.applications ?? []}
                 totalMemoryBytes={snapshot.memory.totalBytes}
+                impactMeasurements={startupImpactMeasurements}
                 onRefresh={startupItems.refresh}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
@@ -1494,6 +1518,7 @@ function App() {
               <SettingsExplorer
                 settings={settings}
                 notificationStatus={desktopNotifications.status}
+                activeApplicationWatchRuleIds={applicationWatchRules.activeRuleIds}
                 snapshot={snapshot}
                 onChange={updateSettings}
                 onOpenOnboarding={() => setOnboardingOpen(true)}
@@ -1549,23 +1574,36 @@ function App() {
       </div>
 
       {pendingAction ? (
-        <ConfirmActionDialog
-          action={pendingAction.action}
-          source={pendingAction.source}
-          displayName={pendingAction.displayName}
-          detail={pendingAction.detail}
-          targeting={pendingAction.lease.targeting}
-          semantic={
-            pendingAction.action === "request_close"
-              ? snapshot.capabilities.processControl.requestClose.semantic
-              : snapshot.capabilities.processControl.forceKill.semantic
-          }
-          submitting={submittingAction}
-          onCancel={cancelPendingAction}
-          onConfirm={() => void handleAction()}
-        />
+        <Suspense fallback={null}>
+          <ConfirmActionDialog
+            action={pendingAction.action}
+            source={pendingAction.source}
+            displayName={pendingAction.displayName}
+            detail={pendingAction.detail}
+            targeting={pendingAction.lease.targeting}
+            semantic={
+              pendingAction.action === "request_close"
+                ? snapshot.capabilities.processControl.requestClose.semantic
+                : snapshot.capabilities.processControl.forceKill.semantic
+            }
+            submitting={submittingAction}
+            onCancel={cancelPendingAction}
+            onConfirm={() => void handleAction()}
+          />
+        </Suspense>
       ) : null}
-      {onboardingOpen ? <FirstRunGuide onComplete={closeOnboarding} /> : null}
+      {onboardingOpen ? (
+        <Suspense fallback={(
+          <div className="first-run-guide" role="status" aria-label={t("common:loading")}>
+            <div className="first-run-guide__backdrop" />
+            <section className="first-run-guide__panel">
+              <div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>
+            </section>
+          </div>
+        )}>
+          <FirstRunGuide onComplete={closeOnboarding} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

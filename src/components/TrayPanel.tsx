@@ -3,6 +3,7 @@ import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Activity,
+  ArrowRight,
   BatteryMedium,
   CircleGauge,
   Clock3,
@@ -99,21 +100,29 @@ export function TrayPanel() {
           </span>
         </header>
 
-        <div className="tray-message">
-          <strong>
-            {summary && summary.activeCount > 0 &&
-              (summary.health === "attention" || summary.health === "urgent")
-              ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
-              : t(`tray:status.${summary?.health ?? "loading"}.title`)}
-          </strong>
+        <button
+          className="tray-message"
+          type="button"
+          aria-label={t("tray:open")}
+          onClick={() => void openView("overview")}
+        >
           <span>
-            {summary?.primaryIncident?.phase === "recovering"
-              ? t("tray:recovering")
-              : summary?.reason && summary.reason !== "none"
-              ? t("tray:reason", { resource: t(`tray:resource.${summary.reason}`) })
-              : t(`tray:status.${summary?.health ?? "loading"}.description`)}
+            <strong>
+              {summary && summary.activeCount > 0 &&
+                (summary.health === "attention" || summary.health === "urgent")
+                ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
+                : t(`tray:status.${summary?.health ?? "loading"}.title`)}
+            </strong>
+            <small>
+              {summary?.primaryIncident?.phase === "recovering"
+                ? t("tray:recovering")
+                : summary?.reason && summary.reason !== "none"
+                ? t("tray:reason", { resource: t(`tray:resource.${summary.reason}`) })
+                : t(`tray:status.${summary?.health ?? "loading"}.description`)}
+            </small>
           </span>
-        </div>
+          <ArrowRight size={15} aria-hidden="true" />
+        </button>
 
         <div className="tray-metrics">
           <TrayMetric

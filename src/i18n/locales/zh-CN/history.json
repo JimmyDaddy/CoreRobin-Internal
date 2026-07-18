@@ -112,7 +112,7 @@
       "process_close": "正常退出应用",
       "process_restart": "重新启动应用",
       "process_force_quit": "强制结束应用",
-      "cleanup_delete": "永久清理文件",
+      "cleanup_delete": "清理文件",
       "startup_disable": "停用启动项",
       "startup_enable": "恢复启动项"
     },

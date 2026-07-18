@@ -12,6 +12,13 @@ use cap_std::ambient_authority;
 use cap_std::fs::{Dir, File, Metadata, OpenOptions};
 use sha2::{Digest, Sha256};
 
+#[cfg(unix)]
+use std::ffi::CString;
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BoundTargetKind {
     File,
@@ -129,6 +136,60 @@ impl DeleteRoot {
             kind,
             modified_at: handle_metadata.modified().ok().map(|time| time.into_std()),
             handle: Some(handle),
+        })
+    }
+
+    pub fn open_subdirectory(
+        &self,
+        relative_path: &Path,
+        create: bool,
+        private_final_directory: bool,
+    ) -> io::Result<Self> {
+        let components = relative_components(relative_path)?;
+        let mut current = self.directory.try_clone()?;
+        for component in &components {
+            let entry_metadata = match current.symlink_metadata(component) {
+                Ok(metadata) => metadata,
+                Err(error) if create && error.kind() == io::ErrorKind::NotFound => {
+                    current.create_dir(component)?;
+                    current.symlink_metadata(component)?
+                }
+                Err(error) => return Err(error),
+            };
+            if entry_metadata.file_type().is_symlink() || !entry_metadata.is_dir() {
+                return Err(invalid_data(
+                    "cleanup destination component is not a no-follow directory",
+                ));
+            }
+            let next = current.open_dir_nofollow(component)?;
+            let metadata = next.dir_metadata()?;
+            ensure_same_volume(&metadata, self.volume)?;
+            if FileIdentity::from_metadata(&entry_metadata)
+                != FileIdentity::from_metadata(&metadata)
+            {
+                return Err(invalid_data(
+                    "cleanup destination changed while it was being opened",
+                ));
+            }
+            current = next;
+        }
+        if private_final_directory {
+            #[cfg(unix)]
+            {
+                let metadata = current.dir_metadata()?;
+                if cap_std::fs::MetadataExt::uid(&metadata) != unsafe { libc::geteuid() } {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "cleanup destination is not owned by the current user",
+                    ));
+                }
+                use cap_std::fs::PermissionsExt as _;
+                current.set_permissions(".", cap_std::fs::Permissions::from_mode(0o700))?;
+            }
+        }
+        Ok(Self {
+            directory: Arc::new(current),
+            volume: self.volume,
         })
     }
 }
@@ -473,6 +534,45 @@ impl BoundDeleteTarget {
             BoundHandle::File(file) => inspect_bound_file(file, self.identity),
             BoundHandle::Directory(directory) => self.inspect_directory(directory),
         }
+    }
+
+    pub fn move_to_directory_noreplace(
+        &self,
+        destination: &DeleteRoot,
+        destination_name: &OsStr,
+    ) -> io::Result<()> {
+        if self.volume != destination.volume {
+            return Err(io::Error::new(
+                io::ErrorKind::CrossesDevices,
+                "cleanup target and Trash are on different filesystems",
+            ));
+        }
+        let destination_components = relative_components(Path::new(destination_name))?;
+        if destination_components.len() != 1 {
+            return Err(invalid_data(
+                "cleanup Trash destination must be one filename component",
+            ));
+        }
+        self.current_entry_metadata()?;
+        ensure_entry_absent(&destination.directory, destination_name)?;
+        rename_entry_noreplace(
+            &self.parent,
+            &self.name,
+            &destination.directory,
+            destination_name,
+        )?;
+        verify_entry_identity(&destination.directory, destination_name, self.identity)?;
+        match self.parent.symlink_metadata(&self.name) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Ok(_) => {
+                return Err(invalid_data(
+                    "cleanup target still exists after moving it to Trash",
+                ));
+            }
+            Err(error) => return Err(error),
+        }
+        sync_directory(&self.parent)?;
+        sync_directory(&destination.directory)
     }
 
     pub fn delete_cancellable(
@@ -864,6 +964,70 @@ impl BoundDeleteTarget {
         }
         Ok(metadata)
     }
+}
+
+#[cfg(target_os = "macos")]
+fn rename_entry_noreplace(
+    source: &Dir,
+    source_name: &OsStr,
+    destination: &Dir,
+    destination_name: &OsStr,
+) -> io::Result<()> {
+    let source_name = CString::new(source_name.as_bytes())?;
+    let destination_name = CString::new(destination_name.as_bytes())?;
+    let result = unsafe {
+        libc::renameatx_np(
+            source.as_raw_fd(),
+            source_name.as_ptr(),
+            destination.as_raw_fd(),
+            destination_name.as_ptr(),
+            libc::RENAME_EXCL,
+        )
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn rename_entry_noreplace(
+    source: &Dir,
+    source_name: &OsStr,
+    destination: &Dir,
+    destination_name: &OsStr,
+) -> io::Result<()> {
+    let source_name = CString::new(source_name.as_bytes())?;
+    let destination_name = CString::new(destination_name.as_bytes())?;
+    let result = unsafe {
+        libc::syscall(
+            libc::SYS_renameat2,
+            source.as_raw_fd(),
+            source_name.as_ptr(),
+            destination.as_raw_fd(),
+            destination_name.as_ptr(),
+            libc::RENAME_NOREPLACE,
+        )
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn rename_entry_noreplace(
+    _source: &Dir,
+    _source_name: &OsStr,
+    _destination: &Dir,
+    _destination_name: &OsStr,
+) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "moving cleanup items to the system Trash is not supported on this platform",
+    ))
 }
 
 #[derive(Debug)]

@@ -1,4 +1,6 @@
 {
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "loading": "正在載入…",
   "warmup": "預熱中",
   "now": "現在",

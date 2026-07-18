@@ -31,6 +31,7 @@ import {
   openCleanupFullDiskAccessSettings,
   revealCleanupApplicationBundle,
 } from "../api";
+import { useFileInsightsScan } from "../hooks/useFileInsightsScan";
 import type {
   CleanupLocationKind,
   CleanupScan,
@@ -46,6 +47,7 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
+import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
 
 interface CleanupAssistantProps {
   snapshot: CleanupScan | null;
@@ -93,6 +95,8 @@ export function CleanupAssistant({
   const [revealingApplication, setRevealingApplication] = useState(false);
   const [waitingForAccess, setWaitingForAccess] = useState(false);
   const [accessError, setAccessError] = useState<CommandError | null>(null);
+  const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files">("space");
+  const fileInsights = useFileInsightsScan();
   const accessCheckInFlight = useRef(false);
   const reclaimableBytes = useMemo(
     () => snapshot?.locations.reduce(
@@ -201,6 +205,25 @@ export function CleanupAssistant({
     setAccessError(null);
     onScan();
   };
+
+  if (activeWorkspace === "files") {
+    return (
+      <FileInsightsExplorer
+        scan={fileInsights.snapshot}
+        snapshotStatus={fileInsights.snapshotStatus}
+        progress={fileInsights.progress}
+        loading={fileInsights.loading}
+        error={fileInsights.error}
+        onRun={() => void fileInsights.scan()}
+        onCancel={() => void fileInsights.cancel()}
+        onBack={() => setActiveWorkspace("space")}
+        onFilesRemoved={fileInsights.removePaths}
+        onDeletionApplied={onDeletionApplied}
+        onUserActionStart={onUserActionStart}
+        onUserActionComplete={onUserActionComplete}
+      />
+    );
+  }
 
   return (
     <section className={`panel cleanup-assistant${loading && !snapshot ? " is-scanning" : ""}`} aria-labelledby="cleanup-title">
@@ -382,6 +405,13 @@ export function CleanupAssistant({
           <div><strong>{t("cleanup:failed")}</strong><span>{error.message}</span></div>
         </div>
       ) : null}
+
+      <FileInsightsLauncher
+        scan={fileInsights.snapshot}
+        snapshotStatus={fileInsights.snapshotStatus}
+        loading={fileInsights.loading}
+        onOpen={() => setActiveWorkspace("files")}
+      />
 
       {snapshot ? (
         <>

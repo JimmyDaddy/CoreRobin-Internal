@@ -1,4 +1,12 @@
 {
+  "watchRules": {
+    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
+    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
+    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
+    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
+    "empty": "No application watch rules yet."
+  },
   "localPreferences": "로컬 설정",
   "title": "설정",
   "description": "이 설정은 이 장치에 저장되며, 샘플링 및 인터페이스에 즉시 적용됩니다.",

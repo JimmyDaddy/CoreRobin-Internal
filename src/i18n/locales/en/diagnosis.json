@@ -102,7 +102,7 @@
     },
     "open_cleanup": {
       "title": "Open Space Cleanup",
-      "description": "Preview where space went first. Items placed in the basket are permanently deleted only after explicit confirmation.",
+      "description": "Preview where space went first. Items in the basket move to Trash or are deleted permanently only after explicit confirmation.",
       "action": "Open Space Cleanup"
     },
     "open_network": {

@@ -42,14 +42,24 @@ export interface OpenDailyRequest {
   occurrenceId: string | null;
 }
 
-export function parseOpenDailyRequest(value: unknown): OpenDailyRequest | null {
-  if (isActiveView(value)) return { view: value, occurrenceId: null };
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as { view?: unknown; occurrenceId?: unknown };
-  if (!isActiveView(candidate.view)) return null;
-  return {
-    view: candidate.view,
-    occurrenceId:
-      typeof candidate.occurrenceId === "string" ? candidate.occurrenceId : null,
-  };
+export function parseOpenDailyRequest(
+  value: unknown,
+  experienceMode: "simple" | "professional" = "simple",
+): OpenDailyRequest | null {
+  let request: OpenDailyRequest;
+  if (isActiveView(value)) {
+    request = { view: value, occurrenceId: null };
+  } else {
+    if (!value || typeof value !== "object") return null;
+    const candidate = value as { view?: unknown; occurrenceId?: unknown };
+    if (!isActiveView(candidate.view)) return null;
+    request = {
+      view: candidate.view,
+      occurrenceId:
+        typeof candidate.occurrenceId === "string" ? candidate.occurrenceId : null,
+    };
+  }
+  return experienceMode === "professional"
+    ? { view: "overview", occurrenceId: null }
+    : request;
 }

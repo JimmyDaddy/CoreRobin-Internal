@@ -5,6 +5,8 @@
   "earlier": "Earlier",
   "unknown": "Unknown",
   "unavailable": "Unavailable",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "none": "None",
   "retry": "Retry",
   "refresh": "Refresh",

@@ -112,7 +112,7 @@
       "process_close": "App normal beenden",
       "process_restart": "App neu starten",
       "process_force_quit": "App sofort beenden",
-      "cleanup_delete": "Dateien dauerhaft löschen",
+      "cleanup_delete": "Dateien bereinigen",
       "startup_disable": "Autostart deaktivieren",
       "startup_enable": "Autostart wiederherstellen"
     },

@@ -1,4 +1,13 @@
 {
+  "energy": {
+    "eyebrow": "Optional extended metric", "title": "GPU and relative energy", "description": "Shows GPU activity and relative energy clues for active processes when the operating system provides them.",
+    "collapsedDescription": "Inspect graphics load on demand; it is not continuously sampled or used for health decisions.",
+    "onDemand": "Sample on demand", "activity": "GPU activity {{value}}",
+    "gpu": "GPU", "cores": "{{count}} cores", "gpuUnavailable": "This platform or hardware does not expose a supported GPU metric.",
+    "applicationImpact": "Active process relative energy", "processUnavailable": "This platform does not expose per-process energy impact.",
+    "noProcessActivity": "This sample found no distinguishable process energy activity.",
+    "boundary": "These values are relative scores reported by the operating system, not watts or energy. Zero values are omitted; refreshes every 15 seconds while expanded."
+  },
   "kicker": "Résumé de l'application",
   "overviewTitle": "Quelles applications ont le plus d'impact ?",
   "title": "Impact des ressources par application",

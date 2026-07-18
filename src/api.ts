@@ -38,6 +38,12 @@ import type {
   ProcessDetail,
   ProcessDetailRequest,
   NetworkConnectionsSnapshot,
+  NetworkHostLookup,
+  NetworkQualityResult,
+  StartupContext,
+  FileInsightsProgress,
+  FileInsightsScan,
+  GpuEnergySnapshot,
   SystemSnapshot,
   SystemSummary,
   StartupItemsSnapshot,
@@ -60,6 +66,7 @@ let mockCleanupCancelled = false;
 let mockCleanupDeleteCancelled = false;
 let mockCleanupDeleteInFlight = false;
 const mockCleanupDeletePaths = new Map<string, string[]>();
+const mockCleanupDeleteModes = new Map<string, CleanupDeleteLease["mode"]>();
 
 declare global {
   interface Window {
@@ -129,6 +136,129 @@ export async function getNetworkConnections(): Promise<NetworkConnectionsSnapsho
     return getMockNetworkConnections();
   }
   return invoke<NetworkConnectionsSnapshot>("get_network_connections");
+}
+
+export async function runNetworkQualityCheck(): Promise<NetworkQualityResult> {
+  if (canUseDevelopmentMock()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    return {
+      sampledAtMs: Date.now(),
+      targetHost: "example.com",
+      targetPort: 443,
+      status: "online",
+      dnsAvailable: true,
+      dnsLookupMs: 18,
+      resolvedAddressCount: 4,
+      probeCount: 6,
+      successfulProbeCount: 6,
+      averageLatencyMs: 31.4,
+      minimumLatencyMs: 27.8,
+      maximumLatencyMs: 38.2,
+      jitterMs: 3.7,
+      packetLossPercent: 0,
+    };
+  }
+  return invoke<NetworkQualityResult>("run_network_quality_check");
+}
+
+export async function resolveNetworkHosts(
+  addresses: string[],
+): Promise<NetworkHostLookup[]> {
+  if (canUseDevelopmentMock()) {
+    return addresses.map((address, index) => ({
+      address,
+      hostname: index % 2 === 0 ? `host-${index + 1}.example` : null,
+    }));
+  }
+  return invoke<NetworkHostLookup[]>("resolve_network_hosts", {
+    request: { addresses },
+  });
+}
+
+export async function getStartupContext(): Promise<StartupContext> {
+  if (canUseDevelopmentMock()) {
+    return { backgroundLaunch: false, launchedAtMs: Date.now() };
+  }
+  return invoke<StartupContext>("get_startup_context");
+}
+
+export async function getGpuEnergySnapshot(): Promise<GpuEnergySnapshot> {
+  if (canUseDevelopmentMock()) {
+    const snapshot = getMockSnapshot();
+    return {
+      sampledAtMs: Date.now(),
+      gpuAvailable: true,
+      processEnergyAvailable: true,
+      adapters: [{
+        name: "Apple GPU",
+        utilizationPercent: 18,
+        memoryUsedBytes: 1_420_000_000,
+        memoryTotalBytes: null,
+        coreCount: 14,
+      }],
+      processEnergy: snapshot.processes.slice(0, 6).map((process, index) => ({
+        pid: process.pid,
+        impact: Math.max(0, 18 - index * 2.7),
+      })),
+    };
+  }
+  return invoke<GpuEnergySnapshot>("get_gpu_energy_snapshot");
+}
+
+export async function scanFileInsights(
+  onProgress: (progress: FileInsightsProgress) => void,
+): Promise<FileInsightsScan> {
+  if (canUseDevelopmentMock()) {
+    onProgress({
+      phase: "discovering",
+      scannedEntryCount: 2_480,
+      candidateFileCount: 136,
+      hashedFileCount: 0,
+      currentPath: "~/Downloads",
+    });
+    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    onProgress({
+      phase: "hashing",
+      scannedEntryCount: 8_920,
+      candidateFileCount: 412,
+      hashedFileCount: 48,
+      currentPath: "~/Documents/archive.zip",
+    });
+    await new Promise((resolve) => window.setTimeout(resolve, 600));
+    return {
+      sampledAtMs: Date.now(),
+      durationMs: 1_240,
+      scannedEntryCount: 8_920,
+      candidateFileCount: 412,
+      hashedFileCount: 78,
+      duplicateGroups: [{
+        digest: "demo",
+        sizeBytes: 284_000_000,
+        reclaimableBytes: 284_000_000,
+        files: [
+          { name: "archive.zip", path: "/Users/demo/Downloads/archive.zip", sizeBytes: 284_000_000, logicalSizeBytes: 284_000_000, allocatedSizeBytes: 284_000_000, modifiedAtMs: Date.now() - 20_000_000 },
+          { name: "archive copy.zip", path: "/Users/demo/Documents/archive copy.zip", sizeBytes: 284_000_000, logicalSizeBytes: 284_000_000, allocatedSizeBytes: 284_000_000, modifiedAtMs: Date.now() - 18_000_000 },
+        ],
+      }],
+      longUnmodifiedFiles: [{
+        name: "old-video.mov",
+        path: "/Users/demo/Movies/old-video.mov",
+        sizeBytes: 1_800_000_000,
+        logicalSizeBytes: 1_800_000_000,
+        allocatedSizeBytes: 1_800_000_000,
+        modifiedAtMs: Date.now() - 250 * 86_400_000,
+      }],
+      unreadableEntryCount: 0,
+      truncated: false,
+    };
+  }
+  const progressChannel = new Channel<FileInsightsProgress>(onProgress);
+  return invoke<FileInsightsScan>("scan_file_insights", { onProgress: progressChannel });
+}
+
+export async function cancelFileInsightsScan(): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("cancel_file_insights_scan");
 }
 
 export async function getStartupItems(): Promise<StartupItemsSnapshot> {
@@ -313,7 +443,10 @@ export async function createCleanupDeleteLease(
 ): Promise<CleanupDeleteLease> {
   if (canUseDevelopmentMock()) {
     const lease = createMockCleanupDeleteLease(request);
-    if (lease.executable) mockCleanupDeletePaths.set(lease.id, lease.paths);
+    if (lease.executable) {
+      mockCleanupDeletePaths.set(lease.id, lease.paths);
+      mockCleanupDeleteModes.set(lease.id, lease.mode);
+    }
     return lease;
   }
   return invoke<CleanupDeleteLease>("create_cleanup_delete_lease", { request });
@@ -325,6 +458,7 @@ export async function releaseCleanupDeleteLease(
   if (canUseDevelopmentMock()) {
     releaseMockCleanupDeleteLease(request);
     mockCleanupDeletePaths.delete(request.leaseId);
+    mockCleanupDeleteModes.delete(request.leaseId);
     return;
   }
   return invoke<void>("release_cleanup_delete_lease", { request });
@@ -338,6 +472,7 @@ export async function executeCleanupDelete(
     mockCleanupDeleteCancelled = false;
     mockCleanupDeleteInFlight = true;
     const paths = mockCleanupDeletePaths.get(request.leaseId) ?? [];
+    const mode = mockCleanupDeleteModes.get(request.leaseId) ?? "permanent";
     const currentPath = paths[0] ?? "";
     try {
       onProgress({
@@ -354,10 +489,11 @@ export async function executeCleanupDelete(
         if (mockCleanupDeleteCancelled) {
           releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
           mockCleanupDeletePaths.delete(request.leaseId);
+          mockCleanupDeleteModes.delete(request.leaseId);
           return { deleted: [], deletedBytes: 0, failed: [], cancelled: true, interruptedPath: null };
         }
         onProgress({
-          phase: "deleting",
+          phase: mode === "trash" ? "moving_to_trash" : "deleting",
           processedEntryCount,
           totalEntryCount: 1_000,
           completedTargetCount: 0,
@@ -370,9 +506,11 @@ export async function executeCleanupDelete(
       if (mockCleanupDeleteCancelled) {
         releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
         mockCleanupDeletePaths.delete(request.leaseId);
+        mockCleanupDeleteModes.delete(request.leaseId);
         return { deleted: [], deletedBytes: 0, failed: [], cancelled: true, interruptedPath: null };
       }
       mockCleanupDeletePaths.delete(request.leaseId);
+      mockCleanupDeleteModes.delete(request.leaseId);
       return executeMockCleanupDelete(request);
     } finally {
       mockCleanupDeleteInFlight = false;
