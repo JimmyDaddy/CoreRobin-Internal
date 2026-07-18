@@ -1,10 +1,15 @@
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(target_os = "linux")]
 use std::fs;
+#[cfg(target_os = "macos")]
+use std::process::Command;
 
-use crate::models::{GpuAdapterSnapshot, GpuEnergySnapshot, ProcessEnergySample};
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use crate::models::GpuAdapterSnapshot;
+use crate::models::GpuEnergySnapshot;
+#[cfg(target_os = "macos")]
+use crate::models::ProcessEnergySample;
 
 pub fn sample_gpu_energy() -> GpuEnergySnapshot {
     let mut snapshot = GpuEnergySnapshot {
