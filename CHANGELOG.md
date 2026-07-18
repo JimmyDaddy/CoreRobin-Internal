@@ -2,10 +2,15 @@
 
 ## 未发布
 
+## 0.1.1 — 2026-07-18
+
+这一版本完成应用内可信更新与 macOS Developer ID 分发链路，让 CoreRobin 的公开预览包可以通过 Apple 签名、公证和 Gatekeeper 验证。
+
 ### 新增与改进
 
 - “关于与支持”现在可在应用内检查、下载并验签公开更新，安装完成后由用户明确选择重新启动；浏览器演示模式继续只提供公开 Release 下载入口。
 - Release 流程为 macOS Apple Silicon、macOS Intel、Windows x64 和 Linux x64 自动生成独立命名的签名更新包与 `latest.json`，缺少任一包或签名时停止发布。
+- macOS Release 改用 Developer ID Application 对应用和 DMG 签名，通过 App Store Connect API 完成 Apple 公证并装订票据；发布门禁会同时验证 Hardened Runtime、开发团队、Gatekeeper 和公证票据。
 
 ### 修复
 

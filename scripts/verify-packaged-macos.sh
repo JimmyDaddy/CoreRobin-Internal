@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bundle_root=${1:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER]"}
-expected_arch=${2:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER]"}
+bundle_root=${1:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID]"}
+expected_arch=${2:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID]"}
 expected_identifier=${3:-com.corerobin.monitor}
+expected_team_id=${4:?"Expected Apple Developer Team ID"}
 
 shopt -s nullglob
 dmgs=("$bundle_root"/dmg/*.dmg)
@@ -12,6 +13,13 @@ if [[ ${#dmgs[@]} -ne 1 ]]; then
   exit 1
 fi
 dmg_path=${dmgs[0]}
+
+codesign --verify --strict --verbose=4 "$dmg_path"
+dmg_signature=$(codesign -dv --verbose=4 "$dmg_path" 2>&1)
+grep -F 'Authority=Developer ID Application:' <<<"$dmg_signature"
+grep -F "($expected_team_id)" <<<"$dmg_signature"
+xcrun stapler validate "$dmg_path"
+spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
 
 mount_dir=$(mktemp -d)
 cleanup() {
@@ -38,7 +46,12 @@ test -n "$version"
 test -x "$app_path/Contents/MacOS/$executable_name"
 
 codesign --verify --deep --strict --verbose=4 "$app_path"
-codesign -dv --verbose=4 "$app_path" 2>&1 | grep -F 'Signature=adhoc'
+app_signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
+grep -F 'Authority=Developer ID Application:' <<<"$app_signature"
+grep -F "($expected_team_id)" <<<"$app_signature"
+grep -E '^flags=.*\(.*runtime.*\)' <<<"$app_signature"
+grep -F 'Timestamp=' <<<"$app_signature"
+spctl --assess --type execute --verbose=4 "$app_path"
 test "$(lipo -archs "$app_path/Contents/MacOS/$executable_name")" = "$expected_arch"
 
-echo "Verified macOS DMG: $(basename "$dmg_path") ($identifier, $version, $expected_arch, ad-hoc signed)."
+echo "Verified macOS DMG: $(basename "$dmg_path") ($identifier, $version, $expected_arch, Developer ID signed and notarized)."

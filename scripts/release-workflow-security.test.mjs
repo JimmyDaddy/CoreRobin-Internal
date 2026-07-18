@@ -6,6 +6,7 @@ const releaseWorkflow = readFileSync(".github/workflows/release.yml", "utf8");
 const promoteWorkflow = readFileSync(".github/workflows/promote-release.yml", "utf8");
 const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const macOSPackageVerifier = readFileSync("scripts/verify-packaged-macos.sh", "utf8");
+const releaseNotesRenderer = readFileSync("scripts/render-release-notes.mjs", "utf8");
 const workflowFiles = readdirSync(".github/workflows")
   .filter((name) => /\.ya?ml$/.test(name))
   .sort()
@@ -56,13 +57,38 @@ describe("release workflow privilege separation", () => {
     const build = workflowJob(releaseWorkflow, "build");
     expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
     expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD");
-    expect(build).toContain("Build installer and signed updater artifact");
+    expect(build).toContain("Build signed and notarized macOS installer");
+    expect(build).toContain("Build non-macOS installer");
     expect(build).toContain("test -n \"$TAURI_SIGNING_PRIVATE_KEY\"");
     expect(build).toContain("uploadUpdaterJson: false");
     expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
     for (const jobName of ["verify", "package", "sign", "publish"]) {
       expect(workflowJob(releaseWorkflow, jobName)).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
     }
+  });
+
+  it("exposes Apple signing and notarization secrets only to macOS build steps", () => {
+    const build = workflowJob(releaseWorkflow, "build");
+    for (const secret of [
+      "APPLE_CERTIFICATE",
+      "APPLE_CERTIFICATE_PASSWORD",
+      "APPLE_API_PRIVATE_KEY_BASE64",
+      "APPLE_API_KEY",
+      "APPLE_API_ISSUER",
+      "APPLE_TEAM_ID",
+    ]) {
+      expect(build).toContain(`secrets.${secret}`);
+      for (const jobName of ["verify", "package", "sign", "publish"]) {
+        expect(workflowJob(releaseWorkflow, jobName)).not.toContain(`secrets.${secret}`);
+      }
+    }
+    expect(build).toContain("Prepare Apple signing and notarization credentials");
+    expect(build).toContain("if: runner.os == 'macOS'");
+    expect(build).toContain("APPLE_API_KEY_PATH");
+    expect(build).toContain("Build signed and notarized macOS installer");
+    expect(build).toContain("Build non-macOS installer");
+    expect(build).not.toContain("secrets.APPLE_ID");
+    expect(build).not.toContain("secrets.APPLE_PASSWORD");
   });
 
   it("uses OIDC only in the signing job", () => {
@@ -106,17 +132,30 @@ describe("release workflow privilege separation", () => {
     expect(promote).not.toContain("id-token: write");
   });
 
-  it("ad-hoc signs and validates complete macOS app bundles", () => {
+  it("Developer ID signs, notarizes, and validates complete macOS app bundles", () => {
     const build = workflowJob(releaseWorkflow, "build");
     expect(tauriConfig.identifier).toBe("com.corerobin.monitor");
-    expect(tauriConfig.bundle.macOS.signingIdentity).toBe("-");
+    expect(tauriConfig.bundle.macOS.signingIdentity).toBeUndefined();
     expect(build).not.toContain("--no-sign");
     expect(build).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("com.corerobin.monitor");
+    expect(build).toContain('"$APPLE_TEAM_ID"');
     expect(macOSPackageVerifier).toContain("codesign --verify --deep --strict");
-    expect(macOSPackageVerifier).toContain("Signature=adhoc");
+    expect(macOSPackageVerifier).toContain("Authority=Developer ID Application:");
+    expect(macOSPackageVerifier).toContain("runtime");
+    expect(macOSPackageVerifier).toContain("xcrun stapler validate");
+    expect(macOSPackageVerifier).toContain("spctl --assess --type open");
+    expect(macOSPackageVerifier).toContain("spctl --assess --type execute");
+    expect(macOSPackageVerifier).not.toContain("Signature=adhoc");
     expect(macOSPackageVerifier).toContain("hdiutil attach");
     expect(macOSPackageVerifier).toContain("lipo -archs");
+  });
+
+  it("describes the platform trust boundary accurately in generated release notes", () => {
+    expect(releaseNotesRenderer).toContain("Hardened Runtime");
+    expect(releaseNotesRenderer).toContain("Developer ID Application");
+    expect(releaseNotesRenderer).toContain("DMG 完成 Apple 公证");
+    expect(releaseNotesRenderer).toContain("Windows 与 Linux");
   });
 
   it("gates production entries and every platform package before publishing", () => {

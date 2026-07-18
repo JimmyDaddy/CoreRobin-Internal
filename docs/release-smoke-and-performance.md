@@ -16,7 +16,7 @@ CoreRobin 的发布验证分成自动门禁和真实设备验证。CI 不具备�
 
 Release 构建还会检查安装包，而不会启动 GUI：
 
-- macOS：DMG 可挂载、只有一个 `.app`、bundle identifier/版本/可执行文件正确、ad-hoc 签名完整、架构匹配；
+- macOS：DMG 可挂载且只有一个 `.app`，bundle identifier/版本/可执行文件和架构正确，应用与 DMG 使用预期 Team ID 的 Developer ID Application 签名，应用启用 Hardened Runtime 与安全时间戳，DMG 具有有效 Apple 公证票据，并同时通过 Gatekeeper 的打开与执行评估；
 - Linux：DEB 可解包、desktop entry 与 ELF x64 可执行文件正确，AppImage 可提取且包含 AppRun 与 ELF x64 主程序；
 - Windows：MSI/NSIS 归档可读取，MSI 能静默管理解包，主程序 PE machine 为 x64。
 

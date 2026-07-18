@@ -27,7 +27,7 @@ export function renderReleaseNotes(changelog, tag) {
   const section = changelog.slice(sectionStart, sectionEnd).trim();
   if (!section) throw new Error(`CHANGELOG.md release section for ${version} is empty.`);
 
-  return `CoreRobin v${version}\n\n${section}\n\n## 验证与安装\n\n- Release 附带 SHA-256 校验表、SPDX SBOM，以及校验表的 Sigstore 签名包。\n- 这些来源完整性记录不能替代 Developer ID、Apple 公证或 Windows 平台签名。\n- macOS 安装包尚未经过 Apple 公证；Windows 与 Linux 安装包目前是早期预览版本。\n`;
+  return `CoreRobin v${version}\n\n${section}\n\n## 验证与安装\n\n- macOS 应用启用 Hardened Runtime，应用与 DMG 使用 Developer ID Application 签名；DMG 完成 Apple 公证并装订可离线验证的票据。\n- Release 附带 SHA-256 校验表、SPDX SBOM，以及校验表的 Sigstore 签名包，用于独立验证资产完整性与构建来源。\n- Windows 与 Linux 安装包目前仍是未配置平台发布签名的早期预览版本。\n`;
 }
 
 function parseOptions(args) {
