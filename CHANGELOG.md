@@ -2,6 +2,10 @@
 
 ## 未发布
 
+### 发布与质量保障
+
+- macOS Release 默认改为在发布者 Mac 上完成双架构 Developer ID 签名、公证与校验，再由 GitHub Actions 导入带 tag、commit 和 SHA-256 约束的资产；Windows/Linux 继续使用 GitHub-hosted runner，只有手动明确选择时才启用 GitHub-hosted macOS 构建。
+
 ## 0.1.2 — 2026-07-18
 
 这一版本替代仅进入内部 staging、未公开发布的 0.1.1，保留应用内可信更新与 macOS Developer ID 分发能力，并修正首次 Apple 公证构建暴露出的安装包链路问题。

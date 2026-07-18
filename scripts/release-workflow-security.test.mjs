@@ -43,11 +43,12 @@ describe("release workflow privilege separation", () => {
   });
 
   it("keeps repository write permission and the public release token out of build jobs", () => {
-    for (const jobName of ["verify", "build", "package", "sign"]) {
+    for (const jobName of ["verify", "build", "build_macos_github", "package", "sign"]) {
       const job = workflowJob(releaseWorkflow, jobName);
       expect(job).not.toContain("contents: write");
       expect(job).not.toContain("secrets.GITHUB_TOKEN");
       expect(job).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+      expect(job).not.toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
     }
     expect(workflowJob(releaseWorkflow, "verify")).toContain("contents: read");
     expect(workflowJob(releaseWorkflow, "build")).toContain("contents: read");
@@ -55,20 +56,23 @@ describe("release workflow privilege separation", () => {
 
   it("exposes updater signing secrets only to isolated platform build jobs", () => {
     const build = workflowJob(releaseWorkflow, "build");
-    expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
-    expect(build).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD");
-    expect(build).toContain("Build Developer ID signed macOS installer and updater");
+    const macOSBuild = workflowJob(releaseWorkflow, "build_macos_github");
+    for (const job of [build, macOSBuild]) {
+      expect(job).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+      expect(job).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD");
+      expect(job).toContain("test -n \"$TAURI_SIGNING_PRIVATE_KEY\"");
+      expect(job).toContain("uploadUpdaterJson: false");
+    }
     expect(build).toContain("Build non-macOS installer");
-    expect(build).toContain("test -n \"$TAURI_SIGNING_PRIVATE_KEY\"");
-    expect(build).toContain("uploadUpdaterJson: false");
     expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
-    for (const jobName of ["verify", "package", "sign", "publish"]) {
+    expect(macOSBuild).toContain("Build Developer ID signed macOS installer and updater");
+    for (const jobName of ["verify", "import_macos_local", "package", "sign", "publish"]) {
       expect(workflowJob(releaseWorkflow, jobName)).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
     }
   });
 
   it("exposes Apple signing and notarization secrets only to macOS build steps", () => {
-    const build = workflowJob(releaseWorkflow, "build");
+    const macOSBuild = workflowJob(releaseWorkflow, "build_macos_github");
     for (const secret of [
       "APPLE_CERTIFICATE",
       "APPLE_CERTIFICATE_PASSWORD",
@@ -77,19 +81,38 @@ describe("release workflow privilege separation", () => {
       "APPLE_API_ISSUER",
       "APPLE_TEAM_ID",
     ]) {
-      expect(build).toContain(`secrets.${secret}`);
-      for (const jobName of ["verify", "package", "sign", "publish"]) {
+      expect(macOSBuild).toContain(`secrets.${secret}`);
+      for (const jobName of ["verify", "build", "import_macos_local", "package", "sign", "publish"]) {
         expect(workflowJob(releaseWorkflow, jobName)).not.toContain(`secrets.${secret}`);
       }
     }
-    expect(build).toContain("Prepare Apple signing and notarization credentials");
-    expect(build).toContain("if: runner.os == 'macOS'");
-    expect(build).toContain("COREROBIN_NOTARY_KEY_PATH");
-    expect(build).toContain("Build Developer ID signed macOS installer and updater");
-    expect(build).toContain("Notarize and staple macOS DMG");
-    expect(build).toContain("Build non-macOS installer");
-    expect(build).not.toContain("secrets.APPLE_ID");
-    expect(build).not.toContain("secrets.APPLE_PASSWORD");
+    expect(macOSBuild).toContain("Prepare Apple signing and notarization credentials");
+    expect(macOSBuild).toContain("COREROBIN_NOTARY_KEY_PATH");
+    expect(macOSBuild).toContain("Build Developer ID signed macOS installer and updater");
+    expect(macOSBuild).toContain("Notarize and staple macOS DMG");
+    expect(macOSBuild).not.toContain("secrets.APPLE_ID");
+    expect(macOSBuild).not.toContain("secrets.APPLE_PASSWORD");
+  });
+
+  it("uses local macOS assets by default and enables hosted macOS only by explicit dispatch", () => {
+    const build = workflowJob(releaseWorkflow, "build");
+    const macOSBuild = workflowJob(releaseWorkflow, "build_macos_github");
+    const localImport = workflowJob(releaseWorkflow, "import_macos_local");
+    const packageJob = workflowJob(releaseWorkflow, "package");
+    expect(releaseWorkflow).toContain("default: local");
+    expect(build).not.toContain("macos-latest");
+    expect(macOSBuild).toContain("runs-on: macos-latest");
+    expect(macOSBuild).toContain("inputs.macos_builder == 'github'");
+    expect(localImport).toContain("github.event_name == 'push' || inputs.macos_builder == 'local'");
+    expect(localImport).toContain("scripts/local-macos-release-manifest.mjs verify");
+    expect(localImport).toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
+    expect(localImport).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(localImport).toContain("gh release download");
+    expect(localImport).not.toContain("gh release upload");
+    expect(localImport).not.toContain("gh release create");
+    expect(localImport).not.toContain("gh release edit");
+    expect(packageJob).toContain("needs.build_macos_github.result == 'success'");
+    expect(packageJob).toContain("needs.import_macos_local.result == 'success'");
   });
 
   it("uses OIDC only in the signing job", () => {
@@ -134,7 +157,7 @@ describe("release workflow privilege separation", () => {
   });
 
   it("Developer ID signs, notarizes, and validates complete macOS app bundles", () => {
-    const build = workflowJob(releaseWorkflow, "build");
+    const build = workflowJob(releaseWorkflow, "build_macos_github");
     expect(tauriConfig.identifier).toBe("com.corerobin.monitor");
     expect(tauriConfig.bundle.macOS.signingIdentity).toBeUndefined();
     expect(build).not.toContain("--no-sign");
@@ -166,12 +189,13 @@ describe("release workflow privilege separation", () => {
   it("gates production entries and every platform package before publishing", () => {
     const verify = workflowJob(releaseWorkflow, "verify");
     const build = workflowJob(releaseWorkflow, "build");
+    const macOSBuild = workflowJob(releaseWorkflow, "build_macos_github");
     expect(verify).toContain("pnpm verify:web-bundle");
     expect(verify).toContain("pnpm test:surface-contracts");
     expect(verify).toContain("pnpm test:performance-contracts");
     expect(verify).toContain("pnpm verify:release-tools");
     expect(build).toContain("pnpm verify:web-bundle");
-    expect(build).toContain("scripts/verify-packaged-macos.sh");
+    expect(macOSBuild).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("scripts/verify-packaged-linux.sh");
     expect(build).toContain("scripts/verify-packaged-windows.ps1");
     expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");

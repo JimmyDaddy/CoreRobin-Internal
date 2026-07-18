@@ -39,7 +39,7 @@ CI 只运行 `pnpm release:smoke:device -- --dry-run` 验证清单可解析；�
 
 ## 从 draft 提升为正式 Release
 
-tag 触发的 `release.yml` 只在公开仓库创建或更新 draft，绝不会直接设置 `--draft=false`
+tag 触发的 `release.yml` 默认导入本机已签名、公证并预先上传到 draft 的 macOS 资产，同时在 GitHub Actions 构建 Windows/Linux；完整流程仍只创建或更新公开 draft，绝不会直接设置 `--draft=false`
 或 `--latest`，也不会提前更新官网下载 manifest。候选产物必须完成以下四条真实设备记录：
 
 | 证据 | 设备 | 候选产物 |

@@ -28,6 +28,9 @@ describe("release engineering boundaries", () => {
     expect(existsSync("scripts/update-public-release-manifest.mjs")).toBe(true);
     expect(existsSync("scripts/generate-updater-manifest.mjs")).toBe(true);
     expect(existsSync("scripts/flatten-release-artifacts.mjs")).toBe(true);
+    expect(existsSync("scripts/release-macos-local.sh")).toBe(true);
+    expect(existsSync("scripts/local-macos-release-manifest.mjs")).toBe(true);
+    expect(packageJson.scripts["release:macos:local"]).toBe("bash scripts/release-macos-local.sh");
     expect(packageJson.scripts["release:updater-manifest"]).toBe("node scripts/generate-updater-manifest.mjs");
     expect(packageJson.scripts["release:flatten-artifacts"]).toBe("node scripts/flatten-release-artifacts.mjs");
   });

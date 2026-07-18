@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      macos_builder:
+        description: Build macOS locally by default, or explicitly use GitHub-hosted macOS runners
+        required: true
+        default: local
+        type: choice
+        options:
+          - local
+          - github
 
 permissions:
   contents: read
@@ -87,16 +97,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: macOS Apple Silicon
-            os: macos-latest
-            target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --bundles app,dmg -- --locked
-            artifact: corerobin-macos-aarch64
-          - label: macOS Intel
-            os: macos-latest
-            target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin --bundles app,dmg -- --locked
-            artifact: corerobin-macos-x86_64
           - label: Linux x64
             os: ubuntu-22.04
             target: ""
@@ -148,8 +148,87 @@ jobs:
       - name: Activate pinned Rust toolchain
         run: rustup show active-toolchain
 
+      - name: Restore Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: release-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
+          restore-keys: release-${{ runner.os }}-
+
+      - name: Verify updater signing credential
+        shell: bash
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+
+      - name: Build non-macOS installer
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        with:
+          args: ${{ matrix.args }}
+          retryAttempts: 2
+          uploadUpdaterJson: false
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]
+
+      - name: Verify embedded production WebView entries and size budgets
+        run: pnpm verify:web-bundle
+
+      - name: Verify packaged Linux installer structure and architecture
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash scripts/verify-packaged-linux.sh src-tauri/target/release/bundle
+
+      - name: Verify packaged Windows installer structure and architecture
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-packaged-windows.ps1 -BundleRoot src-tauri/target/release/bundle
+
+  build_macos_github:
+    name: Build ${{ matrix.label }} on GitHub
+    if: github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'github'
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon
+            target: aarch64-apple-darwin
+            expected_arch: arm64
+            artifact: corerobin-macos-aarch64
+          - label: macOS Intel
+            target: x86_64-apple-darwin
+            expected_arch: x86_64
+            artifact: corerobin-macos-x86_64
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+
       - name: Add macOS Rust target
-        if: runner.os == 'macOS'
         run: rustup target add ${{ matrix.target }}
 
       - name: Restore Cargo cache
@@ -158,10 +237,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: release-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
+          key: release-macOS-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
           restore-keys: |
-            release-${{ runner.os }}-${{ matrix.target }}-
-            release-${{ runner.os }}-
+            release-macOS-${{ matrix.target }}-
+            release-macOS-
 
       - name: Verify updater signing credential
         shell: bash
@@ -170,7 +249,6 @@ jobs:
           test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
 
       - name: Prepare Apple signing and notarization credentials
-        if: runner.os == 'macOS'
         shell: bash
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -196,29 +274,17 @@ jobs:
           printf 'COREROBIN_NOTARY_KEY_PATH=%s\n' "$notary_key_path" >> "$GITHUB_ENV"
 
       - name: Build Developer ID signed macOS installer and updater
-        if: runner.os == 'macOS'
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         with:
-          args: ${{ matrix.args }}
+          args: --target ${{ matrix.target }} --bundles app,dmg -- --locked
           retryAttempts: 2
           uploadUpdaterJson: false
           uploadWorkflowArtifacts: false
 
-      - name: Build non-macOS installer
-        if: runner.os != 'macOS'
-        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
-        with:
-          args: ${{ matrix.args }}
-          retryAttempts: 2
-          uploadUpdaterJson: false
-          uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]
-
       - name: Notarize and staple macOS DMG
-        if: runner.os == 'macOS'
         shell: bash
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
@@ -244,33 +310,17 @@ jobs:
         run: pnpm verify:web-bundle
 
       - name: Verify packaged macOS app structure, identity, signature, and architecture
-        if: runner.os == 'macOS'
         shell: bash
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          expected_arch="x86_64"
-          case "${{ matrix.target }}" in
-            aarch64-*) expected_arch="arm64" ;;
-          esac
           bash scripts/verify-packaged-macos.sh \
             "src-tauri/target/${{ matrix.target }}/release/bundle" \
-            "$expected_arch" \
+            "${{ matrix.expected_arch }}" \
             "com.corerobin.monitor" \
             "$APPLE_TEAM_ID"
 
-      - name: Verify packaged Linux installer structure and architecture
-        if: runner.os == 'Linux'
-        shell: bash
-        run: bash scripts/verify-packaged-linux.sh src-tauri/target/release/bundle
-
-      - name: Verify packaged Windows installer structure and architecture
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./scripts/verify-packaged-windows.ps1 -BundleRoot src-tauri/target/release/bundle
-
       - name: Upload notarized macOS installer and updater artifacts
-        if: runner.os == 'macOS'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
@@ -281,9 +331,92 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  import_macos_local:
+    name: Import locally notarized macOS assets
+    if: github.event_name == 'push' || inputs.macos_builder == 'local'
+    needs: verify
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Verify read-only public draft credential
+        shell: bash
+        run: test -n "$GH_TOKEN"
+
+      - name: Download and verify locally built macOS assets
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          manifest="CoreRobin_${version}_macos-local.json"
+          assets=(
+            "CoreRobin_${version}_aarch64.dmg"
+            "CoreRobin_${version}_aarch64.app.tar.gz"
+            "CoreRobin_${version}_aarch64.app.tar.gz.sig"
+            "CoreRobin_${version}_x64.dmg"
+            "CoreRobin_${version}_x64.app.tar.gz"
+            "CoreRobin_${version}_x64.app.tar.gz.sig"
+            "$manifest"
+          )
+
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
+          mkdir -p imported-macos/all imported-macos/aarch64 imported-macos/x86_64
+          for asset in "${assets[@]}"; do
+            gh release download "$GITHUB_REF_NAME" \
+              --repo "$PUBLIC_RELEASE_REPOSITORY" \
+              --dir imported-macos/all \
+              --pattern "$asset"
+          done
+          node scripts/local-macos-release-manifest.mjs verify \
+            "$GITHUB_REF_NAME" \
+            "$GITHUB_SHA" \
+            imported-macos/all
+          cp imported-macos/all/*_aarch64.dmg imported-macos/all/*_aarch64.app.tar.gz* imported-macos/aarch64/
+          cp imported-macos/all/*_x64.dmg imported-macos/all/*_x64.app.tar.gz* imported-macos/x86_64/
+
+      - name: Upload local macOS Apple Silicon artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: corerobin-macos-aarch64
+          path: imported-macos/aarch64
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload local macOS Intel artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: corerobin-macos-x86_64
+          path: imported-macos/x86_64
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload local macOS build evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: corerobin-macos-local-evidence
+          path: imported-macos/all/CoreRobin_*_macos-local.json
+          if-no-files-found: error
+          retention-days: 14
+
   package:
     name: Package release evidence
-    needs: build
+    if: >-
+      ${{
+        always() &&
+        needs.build.result == 'success' &&
+        (needs.build_macos_github.result == 'success' || needs.import_macos_local.result == 'success')
+      }}
+    needs:
+      - build
+      - build_macos_github
+      - import_macos_local
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     permissions:
