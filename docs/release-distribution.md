@@ -7,6 +7,16 @@ CoreRobin 使用两个同级、互相独立的 GitHub 仓库：
 
 公开仓库不是当前仓库的 Git submodule。网站和文档可以独立更新，外部用户也不需要获得私有仓库权限；发布流程则通过受限凭据把构建结果从私有仓库推送到公开仓库。
 
+## 日常 CI 与完整矩阵
+
+Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前端质量门禁与 Rust 全量检查，避免每次源码变更都消耗私有仓库的 Windows 和 macOS hosted-runner 额度。Windows/macOS 桌面检查在以下任一条件下运行：
+
+- 手动运行 `CI` workflow；
+- pull request 带有 `ci:full` 标签；
+- release tag 进入独立的 `Release` workflow。
+
+涉及平台适配、安装包、签名、公证、文件系统安全或进程控制的变更，合并前必须通过手动完整矩阵或 `ci:full` 标签完成 Windows/macOS 复核。标签仅控制额外平台 job，不替代 Ubuntu 必跑门禁。CI 和 Release 使用按 Rust toolchain、Cargo manifests/lockfile 与运行平台隔离的依赖编译缓存；缓存只用于加速，不作为发布证据。
+
 ## Release 数据流
 
 1. `vMAJOR.MINOR.PATCH` tag 必须指向私有仓库受信 `main` 历史中的 commit，且与应用版本一致。

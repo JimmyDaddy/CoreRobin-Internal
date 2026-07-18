@@ -41,15 +41,12 @@ runs:
       shell: bash
       run: rustup show active-toolchain
 
-    - name: Restore Cargo cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+    - name: Restore Rust build cache
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
       with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo-deps-v1-${{ hashFiles('rust-toolchain.toml', 'src-tauri/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-deps-v1-
+        workspaces: src-tauri -> target
+        shared-key: desktop-quality
+        save-if: ${{ github.event_name != 'pull_request' }}
 
     - name: Check desktop targets
       shell: bash

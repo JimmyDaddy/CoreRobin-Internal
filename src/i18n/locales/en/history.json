@@ -112,7 +112,7 @@
       "process_close": "Quit application normally",
       "process_restart": "Restart application",
       "process_force_quit": "Force quit application",
-      "cleanup_delete": "Permanently clean files",
+      "cleanup_delete": "Clean up files",
       "startup_disable": "Disable startup item",
       "startup_enable": "Restore startup item"
     },

@@ -2,6 +2,11 @@ name: CI
 
 on:
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
   push:
     branches:
       - main
@@ -26,6 +31,7 @@ jobs:
     outputs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       desktop: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
+      full_matrix: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:full')) }}
     steps:
       - name: Check out repository for git-based events
         if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
@@ -65,6 +71,7 @@ jobs:
         env:
           FRONTEND: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
           DESKTOP: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.desktop == 'true' }}
+          FULL_MATRIX: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:full')) }}
         run: |
           {
             echo "## CI change scope"
@@ -73,6 +80,7 @@ jobs:
             echo "| --- | --- |"
             echo "| Frontend | $FRONTEND |"
             echo "| Desktop | $DESKTOP |"
+            echo "| Windows/macOS full matrix | $FULL_MATRIX |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
@@ -162,7 +170,7 @@ jobs:
   desktop-macos:
     name: Desktop (macos-latest)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
+    if: ${{ !cancelled() && needs.changes.outputs.full_matrix == 'true' && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
@@ -183,7 +191,7 @@ jobs:
   desktop-windows:
     name: Desktop (windows-latest)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
+    if: ${{ !cancelled() && needs.changes.outputs.full_matrix == 'true' && (needs.changes.result != 'success' || needs.changes.outputs.desktop == 'true') }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:

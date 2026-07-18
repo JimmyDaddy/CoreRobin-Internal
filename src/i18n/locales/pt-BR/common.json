@@ -1,4 +1,6 @@
 {
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "loading": "Carregando…",
   "warmup": "Fazendo o aquecimento",
   "now": "Agora",

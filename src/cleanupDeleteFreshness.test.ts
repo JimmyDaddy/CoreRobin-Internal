@@ -23,7 +23,7 @@ const target: CleanupMapNode = {
 
 describe("cleanup deletion freshness", () => {
   it("binds displayed evidence and scan time into the lease request", () => {
-    expect(buildCleanupDeleteLeaseRequest([target], 123)).toEqual({
+    expect(buildCleanupDeleteLeaseRequest([target], 123, "trash")).toEqual({
       paths: ["~/Downloads/archive"],
       scanSampledAtMs: 123,
       expectedTargets: [{
@@ -32,6 +32,7 @@ describe("cleanup deletion freshness", () => {
         allocatedSizeBytes: 4_096,
         itemCount: 1,
       }],
+      mode: "trash",
     });
   });
 
@@ -58,6 +59,7 @@ describe("cleanup deletion freshness", () => {
     expect(cleanupLeaseCanExecute(null)).toBe(false);
     expect(cleanupLeaseCanExecute({
       id: "refresh-only",
+      mode: "permanent",
       paths: [target.path!],
       changedPaths: [target.path!],
       refreshedTargets: [],

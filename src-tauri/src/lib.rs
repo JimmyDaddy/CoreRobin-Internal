@@ -3,11 +3,14 @@ mod cleanup;
 #[cfg(test)]
 mod command_names;
 mod error;
+mod file_insights;
+mod gpu_energy;
 mod health_state;
 mod identity;
 mod models;
 mod monitor;
 mod network_connections;
+mod network_quality;
 mod private_storage;
 mod process_control;
 mod safe_fs;
@@ -23,7 +26,7 @@ use std::sync::{
     Arc, Mutex, Weak,
     atomic::{AtomicBool, AtomicU64, Ordering},
 };
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use application_icon::load_application_icon;
 use cleanup::{
@@ -34,19 +37,29 @@ use cleanup::{
     save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
 };
 use error::CommandError;
+use file_insights::{
+    FileInsightsCoordinator, load_file_insights_cache, remove_file_insights_cache,
+    save_file_insights_snapshot_cache, scan_file_insights as perform_file_insights_scan,
+};
+use gpu_energy::sample_gpu_energy;
 use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
 use models::{
     ApplicationIcon, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteProgress,
     CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess, CleanupScanProgress,
-    CleanupSubtreeRequest, NetworkConnectionsSnapshot, ProcessActionRequest, ProcessActionResult,
-    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
-    ProcessDetail, ProcessDetailRequest, StartupItemsSnapshot, StartupManagementExecutionRequest,
+    CleanupSubtreeRequest, FileInsightsProgress, FileInsightsScan, GpuEnergySnapshot,
+    NetworkConnectionsSnapshot, NetworkHostLookup, NetworkHostLookupRequest, NetworkQualityResult,
+    ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
+    ProcessDetailRequest, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
     StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
     StartupManagementResult, SystemSnapshot, SystemSummary,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
+use network_quality::{
+    resolve_network_hosts as resolve_hosts, run_network_quality_check as check_network_quality,
+};
 #[cfg(target_os = "macos")]
 use objc2::runtime::NSObjectProtocol;
 #[cfg(target_os = "macos")]
@@ -189,12 +202,14 @@ fn require_tray_window(window: &WebviewWindow) -> Result<(), CommandError> {
 #[derive(Clone)]
 struct AppState {
     background_launch: bool,
+    launched_at_ms: u64,
     monitor: Arc<Mutex<SystemMonitor>>,
     health_state: Arc<HealthStateStore>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupWorkCoordinator>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
+    file_insights: Arc<FileInsightsCoordinator>,
     startup_controller: Arc<Mutex<StartupController>>,
 }
 
@@ -206,15 +221,25 @@ impl AppState {
         start_lease_reaper(Arc::downgrade(&process_controller));
         Self {
             background_launch,
+            launched_at_ms: now_millis(),
             monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
             health_state: Arc::new(HealthStateStore::default()),
             process_controller,
             cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
+            file_insights: Arc::new(FileInsightsCoordinator::default()),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
         }
     }
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
 }
 
 fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
@@ -347,6 +372,118 @@ async fn get_network_connections() -> Result<NetworkConnectionsSnapshot, Command
     tauri::async_runtime::spawn_blocking(sample_network_connections)
         .await
         .map_err(|error| CommandError::internal(format!("Connection scan failed: {error}")))?
+}
+
+#[tauri::command]
+async fn run_network_quality_check(
+    window: WebviewWindow,
+) -> Result<NetworkQualityResult, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(check_network_quality)
+        .await
+        .map_err(|error| CommandError::internal(format!("Network quality check failed: {error}")))?
+}
+
+#[tauri::command]
+async fn resolve_network_hosts(
+    window: WebviewWindow,
+    request: NetworkHostLookupRequest,
+) -> Result<Vec<NetworkHostLookup>, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || resolve_hosts(request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Host lookup failed: {error}")))
+}
+
+#[tauri::command]
+fn get_startup_context(state: State<'_, AppState>) -> StartupContext {
+    StartupContext {
+        background_launch: state.background_launch,
+        launched_at_ms: state.launched_at_ms,
+    }
+}
+
+#[tauri::command]
+async fn get_gpu_energy_snapshot(window: WebviewWindow) -> Result<GpuEnergySnapshot, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(sample_gpu_energy)
+        .await
+        .map_err(|error| CommandError::internal(format!("GPU energy scan failed: {error}")))
+}
+
+#[tauri::command]
+async fn scan_file_insights(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    on_progress: Channel<FileInsightsProgress>,
+) -> Result<FileInsightsScan, CommandError> {
+    require_main_window(&window)?;
+    let coordinator = Arc::clone(&state.file_insights);
+    let cancellation = coordinator.begin()?;
+    let worker_cancellation = Arc::clone(&cancellation);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        perform_file_insights_scan(&worker_cancellation, &mut |progress| {
+            let _ = on_progress.send(progress);
+        })
+    })
+    .await;
+    coordinator.finish(&cancellation);
+    result.map_err(|error| CommandError::internal(format!("File insights scan failed: {error}")))?
+}
+
+fn file_insights_cache_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join("file-insights-v1.json"))
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Could not resolve the application data folder: {error}"
+            ))
+        })
+}
+
+#[tauri::command]
+async fn load_persisted_file_insights_scan(app: AppHandle) -> Result<Option<String>, CommandError> {
+    let path = file_insights_cache_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || load_file_insights_cache(&path))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("File insights cache read failed: {error}"))
+        })?
+}
+
+#[tauri::command]
+async fn save_persisted_file_insights_scan(
+    app: AppHandle,
+    snapshot: FileInsightsScan,
+) -> Result<(), CommandError> {
+    let path = file_insights_cache_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        save_file_insights_snapshot_cache(&path, &snapshot)
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("File insights cache update failed: {error}"))
+    })?
+}
+
+#[tauri::command]
+async fn clear_persisted_file_insights_scan(app: AppHandle) -> Result<(), CommandError> {
+    let path = file_insights_cache_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || remove_file_insights_cache(&path))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("File insights cache removal failed: {error}"))
+        })?
+}
+
+#[tauri::command]
+fn cancel_file_insights_scan(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    state.file_insights.cancel()
 }
 
 #[tauri::command]
@@ -488,9 +625,11 @@ async fn save_persisted_cleanup_scan(
 async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError> {
     let path = cleanup_scan_cache_path(&app)?;
     let legacy_path = path.with_file_name("cleanup-scan-v2.json");
+    let file_insights_path = file_insights_cache_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
         remove_cleanup_scan_cache(&path)?;
-        remove_cleanup_scan_cache(&legacy_path)
+        remove_cleanup_scan_cache(&legacy_path)?;
+        remove_file_insights_cache(&file_insights_path)
     })
     .await
     .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
@@ -1369,6 +1508,15 @@ pub fn run() {
             publish_health_state,
             get_health_state,
             get_network_connections,
+            run_network_quality_check,
+            resolve_network_hosts,
+            get_startup_context,
+            get_gpu_energy_snapshot,
+            scan_file_insights,
+            cancel_file_insights_scan,
+            load_persisted_file_insights_scan,
+            save_persisted_file_insights_scan,
+            clear_persisted_file_insights_scan,
             get_startup_items,
             create_startup_management_lease,
             release_startup_management_lease,
@@ -1551,6 +1699,11 @@ mod security_boundary_tests {
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",
+        "run_network_quality_check",
+        "resolve_network_hosts",
+        "get_gpu_energy_snapshot",
+        "scan_file_insights",
+        "cancel_file_insights_scan",
     ];
 
     fn capability(source: &str) -> Value {

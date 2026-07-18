@@ -339,6 +339,17 @@ pub enum CleanupNodeKind {
     Restricted,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupProtectionReason {
+    SystemLocation,
+    HomeRoot,
+    TrashRoot,
+    SensitiveUserData,
+    Aggregate,
+    Restricted,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupNode {
@@ -353,6 +364,13 @@ pub struct CleanupNode {
     pub item_count: usize,
     pub safety: CleanupSafety,
     pub kind: CleanupNodeKind,
+    /// Defense-in-depth marker for locations that the cleanup workflow must
+    /// never enqueue or delete. The delete lease validates the path again and
+    /// does not trust this UI-facing flag.
+    #[serde(default)]
+    pub deletion_protected: bool,
+    #[serde(default)]
+    pub protection_reason: Option<CleanupProtectionReason>,
     /// Whether the directory contains entries beyond the currently materialized
     /// visualization tree. The frontend can request a fresh bounded subtree on
     /// demand without forcing the initial scan to return every file node.
@@ -410,6 +428,14 @@ pub struct CleanupDeleteLeaseRequest {
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
     pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
+    pub mode: CleanupDeleteMode,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupDeleteMode {
+    Trash,
+    Permanent,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -425,6 +451,7 @@ pub struct CleanupDeleteTargetEvidence {
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteLease {
     pub id: String,
+    pub mode: CleanupDeleteMode,
     pub paths: Vec<String>,
     pub changed_paths: Vec<String>,
     pub refreshed_targets: Vec<CleanupDeleteTargetEvidence>,
@@ -458,6 +485,7 @@ pub struct CleanupDeleteResult {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupDeleteProgressPhase {
+    MovingToTrash,
     Deleting,
 }
 
@@ -522,6 +550,132 @@ pub struct NetworkConnectionsSnapshot {
     pub process_attribution: NetworkProcessAttribution,
     pub truncated: bool,
     pub skipped_entry_count: usize,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkQualityStatus {
+    Online,
+    Limited,
+    Offline,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkQualityResult {
+    pub sampled_at_ms: u64,
+    pub target_host: String,
+    pub target_port: u16,
+    pub status: NetworkQualityStatus,
+    pub dns_available: bool,
+    pub dns_lookup_ms: Option<u64>,
+    pub resolved_address_count: usize,
+    pub probe_count: usize,
+    pub successful_probe_count: usize,
+    pub average_latency_ms: Option<f64>,
+    pub minimum_latency_ms: Option<f64>,
+    pub maximum_latency_ms: Option<f64>,
+    pub jitter_ms: Option<f64>,
+    pub packet_loss_percent: f64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkHostLookupRequest {
+    pub addresses: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkHostLookup {
+    pub address: String,
+    pub hostname: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupContext {
+    pub background_launch: bool,
+    pub launched_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInsightsProgress {
+    pub phase: FileInsightsPhase,
+    pub scanned_entry_count: usize,
+    pub candidate_file_count: usize,
+    pub hashed_file_count: usize,
+    pub current_path: String,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FileInsightsPhase {
+    Discovering,
+    Hashing,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInsightsScan {
+    pub sampled_at_ms: u64,
+    pub duration_ms: u64,
+    pub scanned_entry_count: usize,
+    pub candidate_file_count: usize,
+    pub hashed_file_count: usize,
+    pub duplicate_groups: Vec<DuplicateFileGroup>,
+    pub long_unmodified_files: Vec<FileInsightFile>,
+    pub unreadable_entry_count: usize,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DuplicateFileGroup {
+    pub digest: String,
+    pub size_bytes: u64,
+    pub reclaimable_bytes: u64,
+    pub files: Vec<FileInsightFile>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInsightFile {
+    pub name: String,
+    pub path: String,
+    pub size_bytes: u64,
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
+    pub modified_at_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuEnergySnapshot {
+    pub sampled_at_ms: u64,
+    pub gpu_available: bool,
+    pub process_energy_available: bool,
+    pub adapters: Vec<GpuAdapterSnapshot>,
+    pub process_energy: Vec<ProcessEnergySample>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuAdapterSnapshot {
+    pub name: String,
+    pub utilization_percent: Option<f32>,
+    pub memory_used_bytes: Option<u64>,
+    pub memory_total_bytes: Option<u64>,
+    pub core_count: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessEnergySample {
+    pub pid: u32,
+    /// Platform-provided relative activity score. This is not electrical power.
+    pub impact: f32,
 }
 
 #[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]

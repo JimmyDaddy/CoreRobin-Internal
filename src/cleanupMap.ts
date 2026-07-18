@@ -211,6 +211,8 @@ function createVisualAggregate(
     itemCount: nodes.reduce((total, node) => total + node.itemCount, 0),
     safety: parent.safety,
     kind: "aggregate",
+    deletionProtected: true,
+    protectionReason: "aggregate",
     hasChildren: false,
     children: [],
   };

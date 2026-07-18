@@ -33,4 +33,13 @@ describe("app navigation", () => {
     expect(parseOpenDailyRequest(null)).toBeNull();
     expect(Object.keys(PROFESSIONAL_VIEW_EYEBROW)).toHaveLength(9);
   });
+
+  it("opens auxiliary entry points in the currently selected experience", () => {
+    const incidentRequest = { view: "more" as const, occurrenceId: "incident-1" };
+    expect(parseOpenDailyRequest(incidentRequest, "simple")).toEqual(incidentRequest);
+    expect(parseOpenDailyRequest(incidentRequest, "professional")).toEqual({
+      view: "overview",
+      occurrenceId: null,
+    });
+  });
 });

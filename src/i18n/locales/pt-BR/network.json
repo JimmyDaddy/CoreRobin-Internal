@@ -1,4 +1,18 @@
 {
+  "quality": {
+    "eyebrow": "On-demand network check", "title": "Network quality", "description": "Check DNS, connection latency, jitter, packet loss, and connectivity.",
+    "run": "Run check", "checking": "Checking…", "empty": "No quality check has run yet. CoreRobin does not probe continuously in the background.",
+    "method": "Latency and loss are estimated with six TCP connection probes; no privileged raw packets are used.",
+    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Packet loss",
+    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+  },
+  "history": {
+    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
+    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
+    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
+    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
+    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+  },
   "local": "Rede local",
   "title": "Interfaces ativas e tráfego de sessão",
   "description": "As taxas usam o intervalo de amostra real; os totais começam quando o CoreRobin é iniciado.",

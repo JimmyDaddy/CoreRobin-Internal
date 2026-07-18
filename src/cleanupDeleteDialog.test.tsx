@@ -51,11 +51,20 @@ describe("cleanup deletion dialog freshness", () => {
     fireEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledOnce();
   });
+
+  it("offers Trash and direct deletion as explicit modes", () => {
+    const onModeChange = vi.fn();
+    renderDialog(lease(true, "trash"), { mode: "trash", onModeChange });
+    expect(screen.getByRole("radio", { name: /移到废纸篓/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("radio", { name: /直接删除/ }));
+    expect(onModeChange).toHaveBeenCalledWith("permanent");
+  });
 });
 
-function lease(executable: boolean): CleanupDeleteLease {
+function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanent"): CleanupDeleteLease {
   return {
     id: executable ? "executable" : "refresh-only",
+    mode,
     paths: [item.path!],
     changedPaths: executable ? [] : [item.path!],
     refreshedTargets: [{
@@ -82,7 +91,9 @@ function renderDialog(
     cancelling: false,
     progress: null,
     error: null,
+    mode: "permanent",
     deleteAcknowledged: false,
+    onModeChange: () => undefined,
     onDeleteAcknowledgedChange: () => undefined,
     onCancel: () => undefined,
     onCancelExecution: () => undefined,

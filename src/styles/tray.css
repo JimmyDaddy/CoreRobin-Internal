@@ -61,18 +61,30 @@
 .tray-health--urgent i { background: var(--danger); }
 
 .tray-message {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 4px;
   margin: 14px 0 12px;
   padding: 11px 12px;
+  color: var(--text);
   border: 1px solid rgba(99, 168, 255, 0.14);
   border-radius: 12px;
   background: rgba(99, 168, 255, 0.065);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
+.tray-message:hover,
+.tray-message:focus-visible { border-color: rgba(99, 168, 255, 0.38); background: rgba(99, 168, 255, 0.11); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16); outline: none; transform: translateY(-1px); }
+.tray-message > span { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .tray-message strong { font-size: 12px; }
-.tray-message span { color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+.tray-message small { color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+.tray-message > svg { color: var(--blue); opacity: 0.7; transition: opacity 150ms ease, transform 150ms ease; }
+.tray-message:hover > svg,
+.tray-message:focus-visible > svg { opacity: 1; transform: translateX(2px); }
 .tray-metrics { display: grid; gap: 7px; }
 .tray-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 10px; }
 .tray-metric > span { display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); font-size: 11px; }

@@ -112,7 +112,7 @@
       "process_close": "正常結束應用程式",
       "process_restart": "重新啟動應用程式",
       "process_force_quit": "強制結束應用程式",
-      "cleanup_delete": "永久清理檔案",
+      "cleanup_delete": "清理檔案",
       "startup_disable": "停用啟動項目",
       "startup_enable": "恢復啟動項目"
     },

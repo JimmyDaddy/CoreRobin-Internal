@@ -8,6 +8,7 @@ import i18n from "./i18n";
 
 const cleanupApi = vi.hoisted(() => ({
   getCleanupScanAccess: vi.fn(),
+  loadPersistedFileInsightsScan: vi.fn().mockResolvedValue(null),
   openCleanupFullDiskAccessSettings: vi.fn(),
   revealCleanupApplicationBundle: vi.fn(),
 }));

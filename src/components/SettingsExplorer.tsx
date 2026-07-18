@@ -1,5 +1,5 @@
-import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Rocket, Timer } from "lucide-react";
-import type { ChangeEventHandler, ComponentType, ReactNode } from "react";
+import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Plus, Rocket, Timer, Trash2 } from "lucide-react";
+import { useMemo, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
@@ -8,11 +8,14 @@ import {
   SYSTEM_SAMPLING_PRESETS,
   systemSamplingPreset,
   type AppSettings,
+  type ApplicationWatchMetric,
+  type ApplicationWatchRule,
   type UsageThresholds,
 } from "../settings";
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
 import type { SystemSnapshot } from "../types";
+import { aggregateApplications } from "../diagnosis";
 import { AboutSupport } from "./AboutSupport";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
@@ -26,6 +29,7 @@ interface SettingsExplorerProps {
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
   onOpenOnboarding: () => void;
   onClearAllData: () => void;
+  activeApplicationWatchRuleIds?: readonly string[];
 }
 
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
@@ -39,6 +43,7 @@ export function SettingsExplorer({
   onChange,
   onOpenOnboarding,
   onClearAllData,
+  activeApplicationWatchRuleIds = [],
 }: SettingsExplorerProps) {
   const { t } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
@@ -340,6 +345,21 @@ export function SettingsExplorer({
           </div>
           <ThresholdPreview thresholds={settings.usageThresholds} />
         </SettingsCard>
+
+        <SettingsCard
+          className="settings-card--watch-rules"
+          icon={BellRing}
+          title={t("settings:watchRules.title")}
+          description={t("settings:watchRules.description")}
+        >
+          <ApplicationWatchRulesEditor
+            rules={settings.applicationWatchRules}
+            snapshot={snapshot}
+            activeRuleIds={activeApplicationWatchRuleIds}
+            notificationsReady={settings.desktopNotificationsEnabled && notificationStatus === "ready"}
+            onChange={(applicationWatchRules) => onChange({ applicationWatchRules })}
+          />
+        </SettingsCard>
       </div>
       <AboutSupport
         settings={settings}
@@ -348,6 +368,70 @@ export function SettingsExplorer({
         onClearAllData={onClearAllData}
       />
     </section>
+  );
+}
+
+function ApplicationWatchRulesEditor({
+  rules,
+  snapshot,
+  activeRuleIds,
+  notificationsReady,
+  onChange,
+}: {
+  rules: readonly ApplicationWatchRule[];
+  snapshot: SystemSnapshot;
+  activeRuleIds: readonly string[];
+  notificationsReady: boolean;
+  onChange: (rules: ApplicationWatchRule[]) => void;
+}) {
+  const { t } = useAppTranslation();
+  const applications = useMemo(
+    () => aggregateApplications(snapshot.processes).map(({ name }) => name).sort(),
+    [snapshot.processes],
+  );
+  const [applicationName, setApplicationName] = useState("");
+  const [metric, setMetric] = useState<ApplicationWatchMetric>("cpu");
+  const [threshold, setThreshold] = useState(80);
+  const [durationSeconds, setDurationSeconds] = useState(30);
+
+  const updateMetric = (nextMetric: ApplicationWatchMetric) => {
+    setMetric(nextMetric);
+    setThreshold(nextMetric === "cpu" ? 80 : nextMetric === "memory" ? 1_024 : 50);
+  };
+  const addRule = () => {
+    const name = applicationName.trim();
+    if (!name) return;
+    onChange([...rules, {
+      id: globalThis.crypto?.randomUUID?.() ?? `watch-${Date.now()}-${Math.random()}`,
+      applicationName: name,
+      metric,
+      threshold,
+      durationSeconds,
+      enabled: true,
+    }]);
+    setApplicationName("");
+  };
+
+  return (
+    <div className="watch-rules">
+      <div className="watch-rules__builder">
+        <label><span>{t("settings:watchRules.application")}</span><input list="watch-rule-applications" value={applicationName} onChange={(event) => setApplicationName(event.target.value)} placeholder={t("settings:watchRules.applicationPlaceholder")} /></label>
+        <datalist id="watch-rule-applications">{applications.map((name) => <option key={name} value={name} />)}</datalist>
+        <label><span>{t("settings:watchRules.metric")}</span><select value={metric} onChange={(event) => updateMetric(event.target.value as ApplicationWatchMetric)}>{(["cpu", "memory", "disk"] as const).map((value) => <option key={value} value={value}>{t(`settings:watchRules.metrics.${value}`)}</option>)}</select></label>
+        <label><span>{t("settings:watchRules.threshold")}</span><input type="number" min={1} max={metric === "cpu" ? 100 : 1_000_000} step={metric === "disk" ? 0.5 : 1} value={threshold} onChange={(event) => setThreshold(Math.max(1, Number(event.target.value)))} /><small>{metric === "cpu" ? "%" : metric === "memory" ? "MiB" : "MiB/s"}</small></label>
+        <label><span>{t("settings:watchRules.duration")}</span><select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))}>{[10, 30, 60, 300].map((seconds) => <option key={seconds} value={seconds}>{t("settings:watchRules.seconds", { count: seconds })}</option>)}</select></label>
+        <button className="button button--primary" type="button" disabled={!applicationName.trim()} onClick={addRule}><Plus size={14} />{t("settings:watchRules.add")}</button>
+      </div>
+      {!notificationsReady ? <small className="watch-rules__notice">{t("settings:watchRules.notificationHint")}</small> : null}
+      {rules.length > 0 ? <ul className="watch-rules__list">{rules.map((rule) => (
+        <li key={rule.id} className={activeRuleIds.includes(rule.id) ? "is-active" : ""}>
+          <label className="settings-switch watch-rules__switch"><input type="checkbox" role="switch" aria-label={rule.applicationName} checked={rule.enabled} onChange={(event) => onChange(rules.map((candidate) => candidate.id === rule.id ? { ...candidate, enabled: event.target.checked } : candidate))} /></label>
+          <div><strong>{rule.applicationName}</strong><small>{t("settings:watchRules.summary", { metric: t(`settings:watchRules.metrics.${rule.metric}`), threshold: rule.threshold, unit: rule.metric === "cpu" ? "%" : rule.metric === "memory" ? "MiB" : "MiB/s", seconds: rule.durationSeconds })}</small></div>
+          {activeRuleIds.includes(rule.id) ? <em>{t("settings:watchRules.active")}</em> : null}
+          <button type="button" aria-label={t("settings:watchRules.remove", { name: rule.applicationName })} onClick={() => onChange(rules.filter((candidate) => candidate.id !== rule.id))}><Trash2 size={14} /></button>
+        </li>
+      ))}</ul> : <p className="watch-rules__empty">{t("settings:watchRules.empty")}</p>}
+    </div>
   );
 }
 

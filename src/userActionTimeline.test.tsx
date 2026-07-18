@@ -29,7 +29,7 @@ describe("user action timeline", () => {
       />,
     );
 
-    expect(screen.getByText("永久清理文件")).toBeTruthy();
+    expect(screen.getByText("清理文件")).toBeTruthy();
     expect(screen.getByText(/处理 3 项，释放 2 KB/)).toBeTruthy();
     expect(screen.getByText("已重新核对系统状态")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /查看/ }));

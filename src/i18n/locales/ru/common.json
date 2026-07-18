@@ -1,4 +1,6 @@
 {
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "loading": "Загрузка…",
   "warmup": "Прогрев",
   "now": "Сейчас",

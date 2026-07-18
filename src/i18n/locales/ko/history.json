@@ -112,7 +112,7 @@
       "process_close": "앱 정상 종료",
       "process_restart": "앱 다시 시작",
       "process_force_quit": "앱 강제 종료",
-      "cleanup_delete": "파일 영구 정리",
+      "cleanup_delete": "파일 정리",
       "startup_disable": "시작 항목 비활성화",
       "startup_enable": "시작 항목 복원"
     },

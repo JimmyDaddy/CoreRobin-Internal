@@ -193,6 +193,13 @@ export type CleanupLocationKind =
   | "hidden_data";
 export type CleanupSafety = "reclaimable" | "review";
 export type CleanupNodeKind = "folder" | "file" | "aggregate" | "restricted";
+export type CleanupProtectionReason =
+  | "system_location"
+  | "home_root"
+  | "trash_root"
+  | "sensitive_user_data"
+  | "aggregate"
+  | "restricted";
 
 export interface CleanupScan {
   sampledAtMs: number;
@@ -238,6 +245,9 @@ export interface CleanupNode {
   itemCount: number;
   safety: CleanupSafety;
   kind: CleanupNodeKind;
+  /** Backend-derived hint for the UI. Delete leases enforce the same policy again. */
+  deletionProtected?: boolean;
+  protectionReason?: CleanupProtectionReason | null;
   hasChildren: boolean;
   children: CleanupNode[];
 }
@@ -278,7 +288,10 @@ export interface CleanupDeleteLeaseRequest {
   paths: string[];
   scanSampledAtMs: number;
   expectedTargets: CleanupDeleteTargetEvidence[];
+  mode: CleanupDeleteMode;
 }
+
+export type CleanupDeleteMode = "trash" | "permanent";
 
 export interface CleanupDeleteTargetEvidence {
   path: string;
@@ -289,6 +302,7 @@ export interface CleanupDeleteTargetEvidence {
 
 export interface CleanupDeleteLease {
   id: string;
+  mode: CleanupDeleteMode;
   paths: string[];
   changedPaths: string[];
   refreshedTargets: CleanupDeleteTargetEvidence[];
@@ -313,7 +327,7 @@ export interface CleanupDeleteResult {
   interruptedPath: string | null;
 }
 
-export type CleanupDeleteProgressPhase = "preparing" | "deleting";
+export type CleanupDeleteProgressPhase = "preparing" | "moving_to_trash" | "deleting";
 
 export interface CleanupDeleteProgress {
   phase: CleanupDeleteProgressPhase;
@@ -430,6 +444,94 @@ export interface NetworkConnectionsSnapshot {
   processAttribution: NetworkProcessAttribution;
   truncated: boolean;
   skippedEntryCount: number;
+}
+
+export type NetworkQualityStatus = "online" | "limited" | "offline";
+
+export interface NetworkQualityResult {
+  sampledAtMs: number;
+  targetHost: string;
+  targetPort: number;
+  status: NetworkQualityStatus;
+  dnsAvailable: boolean;
+  dnsLookupMs: number | null;
+  resolvedAddressCount: number;
+  probeCount: number;
+  successfulProbeCount: number;
+  averageLatencyMs: number | null;
+  minimumLatencyMs: number | null;
+  maximumLatencyMs: number | null;
+  jitterMs: number | null;
+  packetLossPercent: number;
+}
+
+export interface NetworkHostLookup {
+  address: string;
+  hostname: string | null;
+}
+
+export interface StartupContext {
+  backgroundLaunch: boolean;
+  launchedAtMs: number;
+}
+
+export type FileInsightsPhase = "discovering" | "hashing";
+
+export interface FileInsightsProgress {
+  phase: FileInsightsPhase;
+  scannedEntryCount: number;
+  candidateFileCount: number;
+  hashedFileCount: number;
+  currentPath: string;
+}
+
+export interface FileInsightsScan {
+  sampledAtMs: number;
+  durationMs: number;
+  scannedEntryCount: number;
+  candidateFileCount: number;
+  hashedFileCount: number;
+  duplicateGroups: DuplicateFileGroup[];
+  longUnmodifiedFiles: FileInsightFile[];
+  unreadableEntryCount: number;
+  truncated: boolean;
+}
+
+export interface DuplicateFileGroup {
+  digest: string;
+  sizeBytes: number;
+  reclaimableBytes: number;
+  files: FileInsightFile[];
+}
+
+export interface FileInsightFile {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  logicalSizeBytes: number;
+  allocatedSizeBytes: number;
+  modifiedAtMs: number | null;
+}
+
+export interface GpuEnergySnapshot {
+  sampledAtMs: number;
+  gpuAvailable: boolean;
+  processEnergyAvailable: boolean;
+  adapters: GpuAdapterSnapshot[];
+  processEnergy: ProcessEnergySample[];
+}
+
+export interface GpuAdapterSnapshot {
+  name: string;
+  utilizationPercent: number | null;
+  memoryUsedBytes: number | null;
+  memoryTotalBytes: number | null;
+  coreCount: number | null;
+}
+
+export interface ProcessEnergySample {
+  pid: number;
+  impact: number;
 }
 
 export interface ProcessRow {

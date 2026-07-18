@@ -353,6 +353,7 @@ export function createMockCleanupDeleteLease(
   cleanupLeaseSequence += 1;
   const lease: CleanupDeleteLease = {
     id: `mock-cleanup-lease-${cleanupLeaseSequence}`,
+    mode: request.mode,
     paths: [...request.paths],
     changedPaths: [],
     refreshedTargets: request.expectedTargets.map((target) => ({ ...target })),

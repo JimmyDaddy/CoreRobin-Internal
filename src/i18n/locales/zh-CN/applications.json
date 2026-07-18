@@ -33,6 +33,15 @@
     "appSafety": "这是普通应用。CoreRobin 不会自动关闭它，结束操作仍需单独确认。",
     "professionalDetails": "用专业模式查看进程"
   },
+  "energy": {
+    "eyebrow": "可选扩展指标", "title": "GPU 与相对能耗", "description": "系统支持时显示 GPU 活动和活跃进程的相对能耗线索。",
+    "collapsedDescription": "按需排查图形负载；默认不持续采样，也不参与健康判断。",
+    "onDemand": "按需采样", "activity": "GPU 活动 {{value}}",
+    "gpu": "GPU", "cores": "{{count}} 核", "gpuUnavailable": "当前平台或硬件未提供可用的 GPU 指标。",
+    "applicationImpact": "活跃进程相对能耗", "processUnavailable": "当前平台未提供按进程的能耗影响。",
+    "noProcessActivity": "本次采样没有检测到可区分的进程能耗活动。",
+    "boundary": "这些数值只是操作系统提供的相对分数，不是瓦特或电量；零值不进入排行，展开时每 15 秒低频刷新。"
+  },
   "empty": "没有匹配的应用",
   "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。"
 }

@@ -665,10 +665,11 @@ dependencies = [
 
 [[package]]
 name = "core-robin"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
+ "dns-lookup",
  "getrandom 0.4.3",
  "libc",
  "netstat2",
@@ -687,6 +688,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "tempfile",
  "windows-sys 0.61.2",
 ]
 
@@ -982,6 +984,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "dns-lookup"
+version = "3.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e39034cee21a2f5bbb66ba0e3689819c4bb5d00382a282006e802a7ffa6c41d"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "socket2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

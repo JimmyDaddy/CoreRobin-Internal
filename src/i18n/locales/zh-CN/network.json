@@ -75,6 +75,20 @@
       "unknown": "未知"
     }
   },
+  "quality": {
+    "eyebrow": "按需网络检查", "title": "网络质量", "description": "检查 DNS、连接延迟、抖动、丢包和当前联网状态。",
+    "run": "开始检查", "checking": "正在检查…", "empty": "尚未执行质量检查，不会在后台持续探测。",
+    "method": "延迟和丢包由 6 次 TCP 连接探测估算，不使用需要提权的原始数据包。",
+    "dns": "DNS", "latency": "平均延迟", "jitter": "抖动", "loss": "丢包",
+    "status": { "online": "联网正常", "limited": "连接受限", "offline": "无法联网" }
+  },
+  "history": {
+    "eyebrow": "本机可选记录", "title": "连接历史与聚合", "description": "按应用或域名查看更长时间的连接活动。",
+    "optIn": "连接历史可能包含应用名称、域名和远端 IP，因此默认关闭。启用后只保存在本机。", "enable": "启用连接历史",
+    "groupBy": "聚合方式", "application": "按应用", "domain": "按域名", "retention": "保留", "days": "{{count}} 天", "clear": "清空历史",
+    "lookupFallback": "部分域名无法解析，已使用 IP 地址继续记录。", "observations": "{{count}} 次观察", "empty": "等待下一次活动连接采集。",
+    "privacy": "只保存五分钟聚合记录；最多 5000 条，可随时关闭或清空。"
+  },
   "throughput": "网络吞吐",
   "throughputLegend": "吞吐图例",
   "receive": "接收",

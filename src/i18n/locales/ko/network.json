@@ -1,4 +1,18 @@
 {
+  "quality": {
+    "eyebrow": "On-demand network check", "title": "Network quality", "description": "Check DNS, connection latency, jitter, packet loss, and connectivity.",
+    "run": "Run check", "checking": "Checking…", "empty": "No quality check has run yet. CoreRobin does not probe continuously in the background.",
+    "method": "Latency and loss are estimated with six TCP connection probes; no privileged raw packets are used.",
+    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Packet loss",
+    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+  },
+  "history": {
+    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
+    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
+    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
+    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
+    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+  },
   "local": "로컬 네트워크",
   "title": "실시간 인터페이스 및 세션 트래픽",
   "description": "통계는 실제 샘플 간격을 사용하며, 총 데이터 양은 CoreRobin가 시작될 때부터 측정됩니다.",
