@@ -50,8 +50,6 @@ import {
   setDockIconVisible,
   setLaunchAtLogin,
 } from "./api";
-import { ConfirmActionDialog } from "./components/ConfirmActionDialog";
-import { FirstRunGuide } from "./components/FirstRunGuide";
 import { BrandWordmark } from "./components/BrandWordmark";
 import { DeviceWellbeing } from "./components/DeviceWellbeing";
 import { DailyHome } from "./components/DailyHome";
@@ -139,6 +137,7 @@ const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
 
 const CleanupAssistant = lazy(async () => ({ default: (await import("./components/CleanupAssistant")).CleanupAssistant }));
+const ConfirmActionDialog = lazy(async () => ({ default: (await import("./components/ConfirmActionDialog")).ConfirmActionDialog }));
 const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
 const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
 const DailyRecords = lazy(async () => ({ default: (await import("./components/DailyRecords")).DailyRecords }));
@@ -146,6 +145,7 @@ const DailySettings = lazy(async () => ({ default: (await import("./components/D
 const DailySolve = lazy(async () => ({ default: (await import("./components/DailySolve")).DailySolve }));
 const DailySpace = lazy(async () => ({ default: (await import("./components/DailySpace")).DailySpace }));
 const HistoryExplorer = lazy(async () => ({ default: (await import("./components/HistoryExplorer")).HistoryExplorer }));
+const FirstRunGuide = lazy(async () => ({ default: (await import("./components/FirstRunGuide")).FirstRunGuide }));
 const GpuEnergyPanel = lazy(async () => ({ default: (await import("./components/GpuEnergyPanel")).GpuEnergyPanel }));
 const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
@@ -1574,23 +1574,36 @@ function App() {
       </div>
 
       {pendingAction ? (
-        <ConfirmActionDialog
-          action={pendingAction.action}
-          source={pendingAction.source}
-          displayName={pendingAction.displayName}
-          detail={pendingAction.detail}
-          targeting={pendingAction.lease.targeting}
-          semantic={
-            pendingAction.action === "request_close"
-              ? snapshot.capabilities.processControl.requestClose.semantic
-              : snapshot.capabilities.processControl.forceKill.semantic
-          }
-          submitting={submittingAction}
-          onCancel={cancelPendingAction}
-          onConfirm={() => void handleAction()}
-        />
+        <Suspense fallback={null}>
+          <ConfirmActionDialog
+            action={pendingAction.action}
+            source={pendingAction.source}
+            displayName={pendingAction.displayName}
+            detail={pendingAction.detail}
+            targeting={pendingAction.lease.targeting}
+            semantic={
+              pendingAction.action === "request_close"
+                ? snapshot.capabilities.processControl.requestClose.semantic
+                : snapshot.capabilities.processControl.forceKill.semantic
+            }
+            submitting={submittingAction}
+            onCancel={cancelPendingAction}
+            onConfirm={() => void handleAction()}
+          />
+        </Suspense>
       ) : null}
-      {onboardingOpen ? <FirstRunGuide onComplete={closeOnboarding} /> : null}
+      {onboardingOpen ? (
+        <Suspense fallback={(
+          <div className="first-run-guide" role="status" aria-label={t("common:loading")}>
+            <div className="first-run-guide__backdrop" />
+            <section className="first-run-guide__panel">
+              <div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>
+            </section>
+          </div>
+        )}>
+          <FirstRunGuide onComplete={closeOnboarding} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
