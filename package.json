@@ -27,6 +27,11 @@
     "release:macos:local": "bash scripts/release-macos-local.sh",
     "release:updater-manifest": "node scripts/generate-updater-manifest.mjs",
     "release:flatten-artifacts": "node scripts/flatten-release-artifacts.mjs",
+    "relay:test": "NODE_OPTIONS=--no-experimental-webstorage vitest run scripts/notary-webhook-relay.test.mjs",
+    "relay:login": "pnpm dlx wrangler@4.112.0 login",
+    "relay:deploy": "pnpm dlx wrangler@4.112.0 deploy --config infra/notary-webhook-relay/wrangler.jsonc",
+    "relay:secret:github": "pnpm dlx wrangler@4.112.0 secret put GITHUB_DISPATCH_TOKEN --config infra/notary-webhook-relay/wrangler.jsonc",
+    "relay:secret:path": "pnpm dlx wrangler@4.112.0 secret put WEBHOOK_PATH_SECRET --config infra/notary-webhook-relay/wrangler.jsonc",
     "preview": "vite preview",
     "tauri": "tauri"
   },

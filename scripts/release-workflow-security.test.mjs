@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const releaseWorkflow = readFileSync(".github/workflows/release.yml", "utf8");
+const finalizeWorkflow = readFileSync(".github/workflows/finalize-release.yml", "utf8");
 const promoteWorkflow = readFileSync(".github/workflows/promote-release.yml", "utf8");
 const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const macOSPackageVerifier = readFileSync("scripts/verify-packaged-macos.sh", "utf8");
@@ -89,21 +90,21 @@ describe("release workflow privilege separation", () => {
     expect(macOSBuild).toContain("Prepare Apple signing and notarization credentials");
     expect(macOSBuild).toContain("COREROBIN_NOTARY_KEY_PATH");
     expect(macOSBuild).toContain("Build Developer ID signed macOS installer and updater");
-    expect(macOSBuild).toContain("Notarize and staple macOS DMG");
+    expect(macOSBuild).toContain("Submit macOS DMG for asynchronous notarization");
     expect(macOSBuild).not.toContain("secrets.APPLE_ID");
     expect(macOSBuild).not.toContain("secrets.APPLE_PASSWORD");
   });
 
-  it("uses local macOS assets by default and enables hosted macOS only by explicit dispatch", () => {
+  it("uses asynchronous hosted macOS builds by default and keeps local import explicit", () => {
     const build = workflowJob(releaseWorkflow, "build");
     const macOSBuild = workflowJob(releaseWorkflow, "build_macos_github");
     const localImport = workflowJob(releaseWorkflow, "import_macos_local");
     const packageJob = workflowJob(releaseWorkflow, "package");
-    expect(releaseWorkflow).toContain("default: local");
+    expect(releaseWorkflow).toContain("default: github");
     expect(build).not.toContain("macos-latest");
     expect(macOSBuild).toContain("runs-on: macos-latest");
-    expect(macOSBuild).toContain("inputs.macos_builder == 'github'");
-    expect(localImport).toContain("github.event_name == 'push' || inputs.macos_builder == 'local'");
+    expect(macOSBuild).toContain("github.event_name == 'push' || inputs.macos_builder == 'github'");
+    expect(localImport).toContain("github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'local'");
     expect(localImport).toContain("scripts/local-macos-release-manifest.mjs verify");
     expect(localImport).toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
     expect(localImport).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
@@ -111,8 +112,8 @@ describe("release workflow privilege separation", () => {
     expect(localImport).not.toContain("gh release upload");
     expect(localImport).not.toContain("gh release create");
     expect(localImport).not.toContain("gh release edit");
-    expect(packageJob).toContain("needs.build_macos_github.result == 'success'");
     expect(packageJob).toContain("needs.import_macos_local.result == 'success'");
+    expect(packageJob).not.toContain("needs.build_macos_github.result == 'success'");
   });
 
   it("uses OIDC only in the signing job", () => {
@@ -144,6 +145,14 @@ describe("release workflow privilege separation", () => {
     expect(publish).not.toContain("--latest");
     expect(publish).not.toContain("Update public download manifest");
 
+    const finalizedPublish = workflowJob(finalizeWorkflow, "publish");
+    expect(finalizedPublish).toContain("name: release");
+    expect(finalizedPublish).toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(finalizedPublish).toContain("cosign verify-blob");
+    expect(finalizedPublish).toContain("--draft");
+    expect(finalizedPublish).not.toContain("--draft=false");
+    expect(finalizedPublish).not.toContain("--latest");
+
     const promote = workflowJob(promoteWorkflow, "promote");
     expect(promote).toContain("name: release");
     expect(promote).toContain("secrets.PUBLIC_RELEASE_TOKEN");
@@ -153,11 +162,13 @@ describe("release workflow privilege separation", () => {
     expect(promote).toContain("--draft=false");
     expect(promote).toContain("--latest");
     expect(promote).toContain("Update public download manifest");
+    expect(promote).toContain("finalize-release.yml@refs/heads/main");
     expect(promote).not.toContain("id-token: write");
   });
 
-  it("Developer ID signs, notarizes, and validates complete macOS app bundles", () => {
+  it("Developer ID signs Preview bundles and validates notarized bundles only during finalization", () => {
     const build = workflowJob(releaseWorkflow, "build_macos_github");
+    const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
     expect(tauriConfig.identifier).toBe("com.corerobin.monitor");
     expect(tauriConfig.bundle.macOS.signingIdentity).toBeUndefined();
     expect(build).not.toContain("--no-sign");
@@ -166,8 +177,12 @@ describe("release workflow privilege separation", () => {
     expect(build).toContain('"$APPLE_TEAM_ID"');
     expect(build).toContain("--bundles app,dmg");
     expect(build).toContain("xcrun notarytool submit");
-    expect(build).toContain("xcrun stapler staple");
-    expect(build).toContain("Upload notarized macOS installer and updater artifacts");
+    expect(build).toContain("signed-preview");
+    expect(build).not.toContain("xcrun stapler staple");
+    expect(build).toContain("Upload pre-staple macOS installer, updater, and notarization state");
+    expect(finalize).toContain("xcrun notarytool info");
+    expect(finalize).toContain("xcrun stapler staple");
+    expect(finalize).toContain("scripts/verify-packaged-macos.sh");
     expect(macOSPackageVerifier).toContain("codesign --verify --deep --strict");
     expect(macOSPackageVerifier).toContain("Authority=Developer ID Application:");
     expect(macOSPackageVerifier).toContain("runtime");
@@ -179,15 +194,52 @@ describe("release workflow privilege separation", () => {
     expect(macOSPackageVerifier).toContain("lipo -archs");
   });
 
-  it("keeps hosted Apple notarization resilient to long queues and transient polling failures", () => {
+  it("submits Apple notarization asynchronously and never polls on the build runner", () => {
     const build = workflowJob(releaseWorkflow, "build_macos_github");
-    expect(build).toContain("timeout-minutes: 240");
+    const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
+    expect(build).toContain("timeout-minutes: 75");
     expect(build).toContain("xcrun notarytool submit");
-    expect(build).toContain("xcrun notarytool info");
+    expect(build).toContain("--webhook");
+    expect(build).toContain("APPLE_NOTARY_WEBHOOK_URL");
+    expect(build).toContain("scripts/macos-notarization-state.mjs create");
     expect(build).toContain("submission_id");
-    expect(build).toContain("Apple notarization status request failed");
-    expect(build).toContain("sleep 20");
+    expect(build).not.toContain("xcrun notarytool info");
+    expect(build).not.toContain("sleep 20");
     expect(build).not.toContain("--wait");
+    expect(finalize).toContain("timeout-minutes: 20");
+    expect(finalize).toContain("xcrun notarytool info");
+    expect(finalize).toContain("status != Accepted");
+    expect(finalize).not.toContain("sleep 20");
+    expect(finalize).not.toContain("--wait");
+  });
+
+  it("publishes Preview as a separate manual-only prerelease", () => {
+    const preview = workflowJob(releaseWorkflow, "preview");
+    expect(preview).toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(preview).toContain("prepare-preview-assets.mjs");
+    expect(preview).toContain("render-preview-release-notes.mjs");
+    expect(preview).toContain("--prerelease");
+    expect(preview).toContain("--latest=false");
+    expect(preview).toContain("-preview.1");
+    expect(preview).toContain("test ! -e preview-assets/latest.json");
+    expect(preview).not.toContain("--clobber");
+    expect(preview).not.toContain("generate-updater-manifest.mjs");
+    expect(preview).not.toContain("Update public download manifest");
+  });
+
+  it("treats webhook dispatch as a wake-up signal and revalidates trusted state", () => {
+    const resolve = workflowJob(finalizeWorkflow, "resolve");
+    const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
+    expect(finalizeWorkflow).toContain("apple-notarization-complete");
+    expect(finalizeWorkflow).toContain("workflow_dispatch");
+    expect(resolve).toContain("scripts/verify-release-source.mjs");
+    expect(resolve).toContain(".github/workflows/release.yml");
+    expect(resolve).toContain("refs/heads/main");
+    expect(resolve).toContain("prerelease");
+    expect(finalize).toContain("scripts/macos-notarization-state.mjs verify");
+    expect(finalize).toContain("APPLE_TEAM_ID");
+    expect(finalize).toContain("Accepted");
+    expect(finalize).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
   });
 
   it("describes the platform trust boundary accurately in generated release notes", () => {
@@ -212,6 +264,8 @@ describe("release workflow privilege separation", () => {
     expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("flatten-release-artifacts.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("latest.json");
+    expect(workflowJob(finalizeWorkflow, "package")).toContain("generate-updater-manifest.mjs");
+    expect(workflowJob(finalizeWorkflow, "package")).toContain("latest.json");
   });
 });
 

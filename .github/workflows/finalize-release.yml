@@ -1,0 +1,425 @@
+name: Finalize macOS release
+
+on:
+  repository_dispatch:
+    types:
+      - apple-notarization-complete
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag whose Preview is already public (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Release workflow run that built and submitted the raw assets
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finalize-release-${{ github.event.client_payload.tag || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  PUBLIC_RELEASE_REPOSITORY: JimmyDaddy/corerobin-monitor
+  RELEASE_TAG: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.tag || inputs.tag }}
+  SOURCE_RUN_ID: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.run_id || inputs.source_run_id }}
+
+jobs:
+  resolve:
+    name: Resolve trusted source run and Preview
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      tag: ${{ steps.source.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
+      run_id: ${{ steps.source.outputs.run_id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out trusted release history
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify tag, Preview, and source workflow run
+        id: source
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          git checkout --detach "refs/tags/$RELEASE_TAG"
+          node scripts/verify-release-source.mjs "$RELEASE_TAG" origin/main
+          release_commit="$(git rev-parse HEAD)"
+
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")"
+          test "$(jq -r .path <<<"$run_json")" = ".github/workflows/release.yml"
+          test "$(jq -r .head_sha <<<"$run_json")" = "$release_commit"
+          test "$(jq -r .status <<<"$run_json")" = "completed"
+          test "$(jq -r .conclusion <<<"$run_json")" = "success"
+
+          preview_tag="${RELEASE_TAG}-preview.1"
+          preview_json="$(curl --fail --silent --show-error --location --retry 3 \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$preview_tag")"
+          test "$(jq -r .draft <<<"$preview_json")" = "false"
+          test "$(jq -r .prerelease <<<"$preview_json")" = "true"
+
+          {
+            echo "tag=$RELEASE_TAG"
+            echo "commit=$release_commit"
+            echo "run_id=$SOURCE_RUN_ID"
+          } >> "$GITHUB_OUTPUT"
+
+  finalize_macos:
+    name: Staple and verify accepted macOS submissions
+    needs: resolve
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+
+      - name: Download pre-staple Apple Silicon artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: corerobin-macos-aarch64
+          path: raw-macos/corerobin-macos-aarch64
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download pre-staple Intel artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: corerobin-macos-x86_64
+          path: raw-macos/corerobin-macos-x86_64
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Prepare Apple notarization credential
+        shell: bash
+        env:
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          test -n "$APPLE_API_PRIVATE_KEY_BASE64"
+          test -n "$APPLE_API_KEY"
+          test -n "$APPLE_API_ISSUER"
+          test -n "$APPLE_TEAM_ID"
+          notary_key_dir="$RUNNER_TEMP/corerobin-notary"
+          notary_key_path="$notary_key_dir/AuthKey_${APPLE_API_KEY}.p8"
+          mkdir -m 700 "$notary_key_dir"
+          printf '%s' "$APPLE_API_PRIVATE_KEY_BASE64" | base64 -D > "$notary_key_path"
+          chmod 600 "$notary_key_path"
+          openssl pkey -in "$notary_key_path" -noout
+          printf 'COREROBIN_NOTARY_KEY_PATH=%s\n' "$notary_key_path" >> "$GITHUB_ENV"
+
+      - name: Recheck Apple status, staple exact DMGs, and validate Gatekeeper
+        shell: bash
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.resolve.outputs.commit }}
+          SOURCE_RUN_ID: ${{ needs.resolve.outputs.run_id }}
+        run: |
+          json_field() {
+            node -e '
+              const fs = require("node:fs");
+              const value = JSON.parse(fs.readFileSync(0, "utf8"))[process.argv[1]];
+              if (typeof value !== "string" || value.length === 0) process.exit(1);
+              process.stdout.write(value);
+            ' "$1"
+          }
+
+          finalize_arch() {
+            local public_arch=$1
+            local expected_arch=$2
+            local artifact_name=$3
+            local raw_root="raw-macos/$artifact_name"
+            local state_matches
+            state_matches=$(find "$raw_root" -type f -name '*_notarization.json' -print)
+            test "$(printf '%s\n' "$state_matches" | sed '/^$/d' | wc -l | tr -d ' ')" = "1"
+            local state_path=$state_matches
+            local state_root
+            state_root=$(dirname "$state_path")
+
+            node scripts/macos-notarization-state.mjs verify \
+              "$state_path" \
+              "$RELEASE_TAG" \
+              "$RELEASE_COMMIT" \
+              "$SOURCE_RUN_ID" \
+              "$public_arch" \
+              "$APPLE_TEAM_ID" \
+              "$state_root"
+
+            local submission_id
+            submission_id=$(node scripts/macos-notarization-state.mjs get "$state_path" submissionId)
+            local info_json
+            info_json=$(xcrun notarytool info "$submission_id" \
+              --key "$COREROBIN_NOTARY_KEY_PATH" \
+              --key-id "$APPLE_API_KEY" \
+              --issuer "$APPLE_API_ISSUER" \
+              --output-format json)
+            local status
+            status=$(printf '%s' "$info_json" | json_field status)
+            echo "Apple notarization status for $public_arch ($submission_id): $status"
+            if [[ $status == Invalid ]]; then
+              xcrun notarytool log "$submission_id" \
+                --key "$COREROBIN_NOTARY_KEY_PATH" \
+                --key-id "$APPLE_API_KEY" \
+                --issuer "$APPLE_API_ISSUER" || true
+              return 1
+            fi
+            if [[ $status != Accepted ]]; then
+              echo "Both macOS submissions must be Accepted before finalization; $public_arch is $status." >&2
+              return 1
+            fi
+
+            local dmg_matches
+            dmg_matches=$(find "$state_root" -type f -name '*.dmg' -print)
+            test "$(printf '%s\n' "$dmg_matches" | sed '/^$/d' | wc -l | tr -d ' ')" = "1"
+            local dmg_path=$dmg_matches
+            xcrun stapler staple "$dmg_path"
+
+            local destination="finalized-macos/$artifact_name"
+            mkdir -p "$destination/dmg" "$destination/macos"
+            cp "$dmg_path" "$destination/dmg/"
+            find "$state_root" -type f -name '*.app.tar.gz' -exec cp {} "$destination/macos/" \;
+            find "$state_root" -type f -name '*.app.tar.gz.sig' -exec cp {} "$destination/macos/" \;
+            bash scripts/verify-packaged-macos.sh \
+              "$destination" \
+              "$expected_arch" \
+              "com.corerobin.monitor" \
+              "$APPLE_TEAM_ID"
+          }
+
+          finalize_arch aarch64 arm64 corerobin-macos-aarch64
+          finalize_arch x64 x86_64 corerobin-macos-x86_64
+
+      - name: Upload finalized macOS artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: finalized-macos-${{ needs.resolve.outputs.commit }}
+          path: finalized-macos
+          if-no-files-found: error
+          retention-days: 14
+
+  package:
+    name: Package finalized release evidence
+    needs:
+      - resolve
+      - finalize_macos
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download Linux source-run artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: corerobin-linux-x86_64-*
+          path: release-artifacts
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Windows source-run artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: corerobin-windows-x86_64-*
+          path: release-artifacts
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download finalized macOS artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: finalized-macos-${{ needs.resolve.outputs.commit }}
+          path: release-artifacts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Render release notes and generate signed updater manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.resolve.outputs.commit }}
+        run: |
+          node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
+          pub_date="$(git show -s --format=%cI "$RELEASE_COMMIT")"
+          node scripts/generate-updater-manifest.mjs \
+            "$RELEASE_TAG" \
+            release-artifacts \
+            release-notes.md \
+            "$pub_date"
+          test -s release-artifacts/latest.json
+          node scripts/flatten-release-artifacts.mjs release-artifacts
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: release-artifacts
+          format: spdx-json
+          output-file: release-artifacts/corerobin.spdx.json
+          artifact-name: finalized-corerobin.spdx.json
+          syft-version: v1.46.0
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Generate and verify SHA-256 checksums
+        shell: bash
+        run: |
+          cd release-artifacts
+          checksum_file="$RUNNER_TEMP/corerobin-SHA256SUMS"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sed 's#  \./#  #' > "$checksum_file"
+          mv "$checksum_file" SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Upload release-ready artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: finalized-release-ready-${{ needs.resolve.outputs.commit }}
+          path: release-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+  sign:
+    name: Sign finalized checksum manifest
+    needs:
+      - resolve
+      - package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download release-ready artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: finalized-release-ready-${{ needs.resolve.outputs.commit }}
+          path: release-artifacts
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign and verify checksum manifest
+        shell: bash
+        run: |
+          cosign sign-blob \
+            --yes \
+            --bundle release-artifacts/SHA256SUMS.sigstore.json \
+            release-artifacts/SHA256SUMS
+          cosign verify-blob \
+            --bundle release-artifacts/SHA256SUMS.sigstore.json \
+            --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/finalize-release.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            release-artifacts/SHA256SUMS
+
+      - name: Upload signed finalized release artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: finalized-release-signed-${{ needs.resolve.outputs.commit }}
+          path: release-artifacts
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Stage finalized public draft release
+    needs:
+      - resolve
+      - sign
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+
+      - name: Download signed finalized release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: finalized-release-signed-${{ needs.resolve.outputs.commit }}
+          path: release-artifacts
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Verify finalized checksums and signature
+        shell: bash
+        run: |
+          (cd release-artifacts && sha256sum --check SHA256SUMS)
+          cosign verify-blob \
+            --bundle release-artifacts/SHA256SUMS.sigstore.json \
+            --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/finalize-release.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            release-artifacts/SHA256SUMS
+
+      - name: Render release notes from changelog
+        run: node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
+
+      - name: Create or update finalized public draft release
+        shell: bash
+        run: |
+          test -n "$GH_TOKEN"
+          mapfile -d '' assets < <(find release-artifacts -type f -print0 | sort -z)
+          if gh release view "$RELEASE_TAG" --repo "$PUBLIC_RELEASE_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
+            gh release upload "$RELEASE_TAG" "${assets[@]}" \
+              --clobber \
+              --repo "$PUBLIC_RELEASE_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --draft \
+              --target main \
+              --title "CoreRobin $RELEASE_TAG" \
+              --notes-file release-notes.md \
+              --repo "$PUBLIC_RELEASE_REPOSITORY"
+          fi
+          gh release edit "$RELEASE_TAG" \
+            --notes-file release-notes.md \
+            --repo "$PUBLIC_RELEASE_REPOSITORY"

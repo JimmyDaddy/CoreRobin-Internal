@@ -91,11 +91,17 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          cosign verify-blob \
-            --bundle release-assets/SHA256SUMS.sigstore.json \
-            --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/tags/$RELEASE_TAG" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            release-assets/SHA256SUMS
+          if ! cosign verify-blob \
+              --bundle release-assets/SHA256SUMS.sigstore.json \
+              --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/tags/$RELEASE_TAG" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              release-assets/SHA256SUMS; then
+            cosign verify-blob \
+              --bundle release-assets/SHA256SUMS.sigstore.json \
+              --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/finalize-release.yml@refs/heads/main" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              release-assets/SHA256SUMS
+          fi
 
       - name: Validate four real-device smoke evidence records
         env:

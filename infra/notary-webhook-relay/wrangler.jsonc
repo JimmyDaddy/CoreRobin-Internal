@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "corerobin-notary-webhook-relay",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-07-19",
+  "workers_dev": true,
+  "vars": {
+    "GITHUB_OWNER": "JimmyDaddy",
+    "GITHUB_REPOSITORY": "CoreRobin-Internal"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RELEASE_COORDINATOR",
+        "class_name": "ReleaseCoordinator"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ReleaseCoordinator"]
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
