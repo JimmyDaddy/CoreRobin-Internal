@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bundle_root=${1:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID]"}
-expected_arch=${2:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID]"}
+bundle_root=${1:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID] [TRUST_MODE]"}
+expected_arch=${2:?"Usage: verify-packaged-macos.sh BUNDLE_ROOT EXPECTED_ARCH [IDENTIFIER] [TEAM_ID] [TRUST_MODE]"}
 expected_identifier=${3:-com.corerobin.monitor}
 expected_team_id=${4:?"Expected Apple Developer Team ID"}
+trust_mode=${5:-notarized}
+
+if [[ $trust_mode != notarized && $trust_mode != signed-preview ]]; then
+  echo "Unsupported macOS package trust mode: $trust_mode" >&2
+  exit 1
+fi
 
 shopt -s nullglob
 dmgs=("$bundle_root"/dmg/*.dmg)
@@ -18,8 +24,10 @@ codesign --verify --strict --verbose=4 "$dmg_path"
 dmg_signature=$(codesign -dv --verbose=4 "$dmg_path" 2>&1)
 grep -F 'Authority=Developer ID Application:' <<<"$dmg_signature"
 grep -F "($expected_team_id)" <<<"$dmg_signature"
-xcrun stapler validate "$dmg_path"
-spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
+if [[ $trust_mode == notarized ]]; then
+  xcrun stapler validate "$dmg_path"
+  spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
+fi
 
 mount_dir=$(mktemp -d)
 cleanup() {
@@ -51,7 +59,14 @@ grep -F 'Authority=Developer ID Application:' <<<"$app_signature"
 grep -F "($expected_team_id)" <<<"$app_signature"
 grep -E '^flags=.*\(.*runtime.*\)' <<<"$app_signature"
 grep -F 'Timestamp=' <<<"$app_signature"
-spctl --assess --type execute --verbose=4 "$app_path"
+if [[ $trust_mode == notarized ]]; then
+  spctl --assess --type execute --verbose=4 "$app_path"
+fi
 test "$(lipo -archs "$app_path/Contents/MacOS/$executable_name")" = "$expected_arch"
 
-echo "Verified macOS DMG: $(basename "$dmg_path") ($identifier, $version, $expected_arch, Developer ID signed and notarized)."
+if [[ $trust_mode == notarized ]]; then
+  trust_description="Developer ID signed and notarized"
+else
+  trust_description="Developer ID signed Preview; notarization pending"
+fi
+echo "Verified macOS DMG: $(basename "$dmg_path") ($identifier, $version, $expected_arch, $trust_description)."

@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       macos_builder:
-        description: Build macOS locally by default, or explicitly use GitHub-hosted macOS runners
+        description: Submit GitHub-hosted macOS builds asynchronously, or import an explicitly prepared local build
         required: true
-        default: local
+        default: github
         type: choice
         options:
           - local
@@ -190,12 +190,10 @@ jobs:
 
   build_macos_github:
     name: Build ${{ matrix.label }} on GitHub
-    if: github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'github'
+    if: github.event_name == 'push' || inputs.macos_builder == 'github'
     needs: verify
     runs-on: macos-latest
-    # Apple notarization can remain queued for multiple hours even after a
-    # successful upload. Keep enough headroom for both hosted macOS targets.
-    timeout-minutes: 240
+    timeout-minutes: 75
     permissions:
       contents: read
     strategy:
@@ -205,10 +203,12 @@ jobs:
           - label: macOS Apple Silicon
             target: aarch64-apple-darwin
             expected_arch: arm64
+            public_arch: aarch64
             artifact: corerobin-macos-aarch64
           - label: macOS Intel
             target: x86_64-apple-darwin
             expected_arch: x86_64
+            public_arch: x64
             artifact: corerobin-macos-x86_64
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -284,16 +284,19 @@ jobs:
           uploadUpdaterJson: false
           uploadWorkflowArtifacts: false
 
-      - name: Notarize and staple macOS DMG
+      - name: Submit macOS DMG for asynchronous notarization
         shell: bash
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARY_WEBHOOK_URL: ${{ secrets.APPLE_NOTARY_WEBHOOK_URL }}
         run: |
           shopt -s nullglob
-          dmgs=("src-tauri/target/${{ matrix.target }}/release/bundle/dmg/"*.dmg)
-          updater_packages=("src-tauri/target/${{ matrix.target }}/release/bundle/macos/"*.app.tar.gz)
-          updater_signatures=("src-tauri/target/${{ matrix.target }}/release/bundle/macos/"*.app.tar.gz.sig)
+          bundle_root="src-tauri/target/${{ matrix.target }}/release/bundle"
+          dmgs=("$bundle_root/dmg/"*.dmg)
+          updater_packages=("$bundle_root/macos/"*.app.tar.gz)
+          updater_signatures=("$bundle_root/macos/"*.app.tar.gz.sig)
           test "${#dmgs[@]}" -eq 1
           test "${#updater_packages[@]}" -eq 1
           test "${#updater_signatures[@]}" -eq 1
@@ -308,60 +311,41 @@ jobs:
             ' "$1"
           }
 
-          submission_json=$(xcrun notarytool submit "${dmgs[0]}" \
+          submit_args=("${dmgs[0]}" \
             --key "$COREROBIN_NOTARY_KEY_PATH" \
             --key-id "$APPLE_API_KEY" \
             --issuer "$APPLE_API_ISSUER" \
             --output-format json)
+          if [[ -n "$APPLE_NOTARY_WEBHOOK_URL" ]]; then
+            separator='?'
+            [[ "$APPLE_NOTARY_WEBHOOK_URL" == *\?* ]] && separator='&'
+            callback_url="${APPLE_NOTARY_WEBHOOK_URL}${separator}tag=${GITHUB_REF_NAME}&run_id=${GITHUB_RUN_ID}&arch=${{ matrix.public_arch }}"
+            submit_args+=(--webhook "$callback_url")
+          else
+            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; use Finalize macOS release manually."
+          fi
+
+          submission_json=$(xcrun notarytool submit "${submit_args[@]}")
           submission_id=$(printf '%s' "$submission_json" | json_field id)
           echo "Apple notarization submission: $submission_id"
-
-          notary_error=$(mktemp "${RUNNER_TEMP}/corerobin-notary.XXXXXX")
-          trap 'rm -f "$notary_error"' EXIT
-          accepted=false
-          for attempt in $(seq 1 690); do
-            if info_json=$(xcrun notarytool info "$submission_id" \
-              --key "$COREROBIN_NOTARY_KEY_PATH" \
-              --key-id "$APPLE_API_KEY" \
-              --issuer "$APPLE_API_ISSUER" \
-              --output-format json 2>"$notary_error"); then
-              if status=$(printf '%s' "$info_json" | json_field status); then
-                echo "Apple notarization status: $status"
-                case "$status" in
-                  Accepted)
-                    accepted=true
-                    break
-                    ;;
-                  "In Progress")
-                    ;;
-                  Invalid)
-                    xcrun notarytool log "$submission_id" \
-                      --key "$COREROBIN_NOTARY_KEY_PATH" \
-                      --key-id "$APPLE_API_KEY" \
-                      --issuer "$APPLE_API_ISSUER" || true
-                    exit 1
-                    ;;
-                  *)
-                    echo "Unexpected Apple notarization status: $status" >&2
-                    exit 1
-                    ;;
-                esac
-              else
-                echo "::warning::Could not parse Apple notarization status on attempt $attempt; retrying."
-              fi
-            else
-              echo "::warning::Apple notarization status request failed on attempt $attempt; retrying."
-              cat "$notary_error" >&2
-            fi
-            sleep 20
-          done
-          test "$accepted" = true
-          xcrun stapler staple "${dmgs[0]}"
+          version="${GITHUB_REF_NAME#v}"
+          state_path="$bundle_root/CoreRobin_${version}_${{ matrix.public_arch }}_notarization.json"
+          node scripts/macos-notarization-state.mjs create \
+            "$GITHUB_REF_NAME" \
+            "$GITHUB_SHA" \
+            "$GITHUB_RUN_ID" \
+            "${{ matrix.target }}" \
+            "${{ matrix.public_arch }}" \
+            "${{ matrix.expected_arch }}" \
+            "$APPLE_TEAM_ID" \
+            "$submission_id" \
+            "$bundle_root" \
+            "$state_path"
 
       - name: Verify embedded production WebView entries and size budgets
         run: pnpm verify:web-bundle
 
-      - name: Verify packaged macOS app structure, identity, signature, and architecture
+      - name: Verify signed Preview app structure, identity, and architecture
         shell: bash
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -370,9 +354,10 @@ jobs:
             "src-tauri/target/${{ matrix.target }}/release/bundle" \
             "${{ matrix.expected_arch }}" \
             "com.corerobin.monitor" \
-            "$APPLE_TEAM_ID"
+            "$APPLE_TEAM_ID" \
+            signed-preview
 
-      - name: Upload notarized macOS installer and updater artifacts
+      - name: Upload pre-staple macOS installer, updater, and notarization state
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
@@ -380,12 +365,13 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+            src-tauri/target/${{ matrix.target }}/release/bundle/*_notarization.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   import_macos_local:
     name: Import locally notarized macOS assets
-    if: github.event_name == 'push' || inputs.macos_builder == 'local'
+    if: github.event_name == 'workflow_dispatch' && inputs.macos_builder == 'local'
     needs: verify
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -457,13 +443,75 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  preview:
+    name: Publish manual-download Preview prerelease
+    if: >-
+      ${{
+        always() &&
+        needs.build.result == 'success' &&
+        needs.build_macos_github.result == 'success'
+      }}
+    needs:
+      - build
+      - build_macos_github
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download signed installers from this run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: corerobin-*
+          path: preview-source
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Prepare manual-download Preview assets
+        run: |
+          node scripts/prepare-preview-assets.mjs "$GITHUB_REF_NAME" preview-source preview-assets
+          node scripts/render-preview-release-notes.mjs "$GITHUB_REF_NAME" preview-release-notes.md
+          (cd preview-assets && sha256sum --check PREVIEW-SHA256SUMS)
+          test ! -e preview-assets/latest.json
+          test -z "$(find preview-assets -type f \( -name '*.tar.gz' -o -name '*.sig' \) -print -quit)"
+
+      - name: Publish immutable Preview channel candidate
+        shell: bash
+        run: |
+          test -n "$GH_TOKEN"
+          preview_tag="${GITHUB_REF_NAME}-preview.1"
+          if gh release view "$preview_tag" --repo "$PUBLIC_RELEASE_REPOSITORY" >/dev/null 2>&1; then
+            echo "Refusing to replace already-published Preview release: $preview_tag" >&2
+            exit 1
+          fi
+          mapfile -d '' assets < <(find preview-assets -type f -print0 | sort -z)
+          gh release create "$preview_tag" "${assets[@]}" \
+            --prerelease \
+            --latest=false \
+            --target main \
+            --title "CoreRobin ${GITHUB_REF_NAME} Preview (未公证)" \
+            --notes-file preview-release-notes.md \
+            --repo "$PUBLIC_RELEASE_REPOSITORY"
+
   package:
     name: Package release evidence
     if: >-
       ${{
         always() &&
         needs.build.result == 'success' &&
-        (needs.build_macos_github.result == 'success' || needs.import_macos_local.result == 'success')
+        needs.import_macos_local.result == 'success'
       }}
     needs:
       - build

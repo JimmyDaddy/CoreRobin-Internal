@@ -30,6 +30,14 @@ describe("release engineering boundaries", () => {
     expect(existsSync("scripts/flatten-release-artifacts.mjs")).toBe(true);
     expect(existsSync("scripts/release-macos-local.sh")).toBe(true);
     expect(existsSync("scripts/local-macos-release-manifest.mjs")).toBe(true);
+    expect(existsSync("scripts/macos-notarization-state.mjs")).toBe(true);
+    expect(existsSync("scripts/prepare-preview-assets.mjs")).toBe(true);
+    expect(existsSync("scripts/render-preview-release-notes.mjs")).toBe(true);
+    expect(existsSync(".github/workflows/finalize-release.yml")).toBe(true);
+    expect(existsSync("infra/notary-webhook-relay/src/index.mjs")).toBe(true);
+    expect(existsSync("infra/notary-webhook-relay/wrangler.jsonc")).toBe(true);
+    expect(packageJson.scripts["relay:test"]).toContain("notary-webhook-relay.test.mjs");
+    expect(packageJson.scripts["relay:deploy"]).toContain("infra/notary-webhook-relay/wrangler.jsonc");
     expect(packageJson.scripts["release:macos:local"]).toBe("bash scripts/release-macos-local.sh");
     expect(packageJson.scripts["release:updater-manifest"]).toBe("node scripts/generate-updater-manifest.mjs");
     expect(packageJson.scripts["release:flatten-artifacts"]).toBe("node scripts/flatten-release-artifacts.mjs");

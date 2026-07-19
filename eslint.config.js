@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "src-tauri/target/**"],
+    ignores: ["**/.local-dev/**", "dist/**", "node_modules/**", "src-tauri/target/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -25,6 +25,12 @@ export default tseslint.config(
     files: ["*.config.{js,ts}", "scripts/**/*.mjs"],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    files: ["infra/notary-webhook-relay/**/*.mjs"],
+    languageOptions: {
+      globals: globals.serviceworker,
     },
   },
 );
