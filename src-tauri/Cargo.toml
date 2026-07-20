@@ -1,6 +1,6 @@
 [package]
 name = "core-robin"
-version = "0.1.8"
+version = "0.1.9"
 description = "A local-first desktop resource monitor and process diagnostics tool"
 authors = ["CoreRobin contributors"]
 edition = "2024"

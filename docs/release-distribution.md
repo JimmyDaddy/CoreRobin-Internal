@@ -42,7 +42,7 @@ Tauri 更新签名用于防止应用内更新包被替换，Developer ID 与 App
 准备新版本时，先使用统一命令更新四个版本源，补充 CHANGELOG，并运行发布前门禁：
 
 ```bash
-pnpm release:prepare -- MAJOR.MINOR.PATCH
+pnpm release:prepare MAJOR.MINOR.PATCH
 # 补充 CHANGELOG.md 的 MAJOR.MINOR.PATCH 小节
 pnpm release:preflight
 ```
