@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "クリーンアップの選択が無効です。もう一度選択してください。",
       "overlapping_cleanup_targets": "フォルダとその子フォルダが両方選択されています。どちらか一方のみを選択してください。",
       "cleanup_target_conflicts_with_trash": "選択した項目はゴミ箱を含むか、すでにゴミ箱にあるため、直接削除のみ選べます。",
-      "cleanup_trash_unavailable": "CoreRobin はシステムのゴミ箱を安全に開けませんでした。直接削除するか、後でもう一度お試しください。"
+      "cleanup_trash_unavailable": "CoreRobin はシステムのゴミ箱を安全に使用できませんでした。選択した項目は処理されていません。後でもう一度お試しください。"
     }
   },
   "locations": {

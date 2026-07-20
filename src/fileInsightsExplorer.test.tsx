@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CleanupAssistant } from "./components/CleanupAssistant";
 import { FileInsightsExplorer } from "./components/FileInsightsExplorer";
 import i18n from "./i18n";
+import { getMockCleanupScan } from "./mockData";
 import type { FileInsightsScan } from "./types";
 
 const cleanupApi = vi.hoisted(() => ({
@@ -25,6 +26,9 @@ const cleanupApi = vi.hoisted(() => ({
 vi.mock("./api", () => cleanupApi);
 vi.mock("./components/PathActions", () => ({
   PathActions: ({ path }: { path: string }) => <button type="button">{`显示 ${path}`}</button>,
+}));
+vi.mock("./components/CleanupSpaceMap", () => ({
+  CleanupSpaceMap: () => null,
 }));
 
 afterEach(() => cleanup());
@@ -54,7 +58,7 @@ describe("file insights workspace", () => {
   it("opens as a separate workspace from the space cleanup page and returns", () => {
     render(
       <CleanupAssistant
-        snapshot={null}
+        snapshot={getMockCleanupScan()}
         error={null}
         loading={false}
         cancelling={false}

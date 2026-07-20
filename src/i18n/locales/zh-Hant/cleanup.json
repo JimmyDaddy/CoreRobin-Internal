@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "清理籃中的選擇無效，請重新選擇後再試。",
       "overlapping_cleanup_targets": "同時選擇了資料夾和它的子內容，請只保留其中一層。",
       "cleanup_target_conflicts_with_trash": "所選內容包含廢紙簍或已經在廢紙簍中，只能選擇直接刪除。",
-      "cleanup_trash_unavailable": "CoreRobin 目前無法安全開啟系統廢紙簍，請改用直接刪除或稍後重試。"
+      "cleanup_trash_unavailable": "CoreRobin 目前無法安全使用系統廢紙簍。所選內容尚未處理，請稍後再試。"
     }
   },
   "locations": {

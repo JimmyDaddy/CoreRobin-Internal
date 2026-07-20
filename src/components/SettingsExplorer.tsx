@@ -1,4 +1,4 @@
-import { AppWindow, BellRing, ChevronDown, History, Languages, LayoutDashboard, ListTree, Network, Plus, Rocket, Timer, Trash2 } from "lucide-react";
+import { AppWindow, BellRing, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, Plus, Rocket, Search, Timer, Trash2 } from "lucide-react";
 import { useMemo, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -36,6 +36,14 @@ interface SettingsExplorerProps {
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
   Math.min(100, (index + 1) * 5),
 );
+
+const WATCH_METRICS = [
+  { value: "cpu", icon: Cpu },
+  { value: "memory", icon: MemoryStick },
+  { value: "disk", icon: HardDrive },
+] as const satisfies readonly { value: ApplicationWatchMetric; icon: SettingsIcon }[];
+
+const WATCH_DURATIONS = [10, 30, 60, 300] as const;
 
 export function SettingsExplorer({
   settings,
@@ -86,6 +94,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          className="settings-card--language"
           icon={Languages}
           title={t("settings:language.title")}
           description={t("settings:language.description")}
@@ -217,6 +226,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          className="settings-card--half"
           icon={History}
           title={t("settings:history.title")}
           description={t("settings:history.description")}
@@ -271,6 +281,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          className="settings-card--half"
           icon={BellRing}
           title={t("settings:notifications.title")}
           description={t("settings:notifications.description")}
@@ -398,6 +409,15 @@ function ApplicationWatchRulesEditor({
   const [threshold, setThreshold] = useState(80);
   const [durationSeconds, setDurationSeconds] = useState(30);
 
+  const thresholdMaximum = metric === "cpu" ? 100 : 1_000_000;
+  const thresholdStep = metric === "disk" ? 0.5 : 1;
+  const thresholdUnit = metric === "cpu" ? "%" : metric === "memory" ? "MiB" : "MiB/s";
+
+  const changeThreshold = (value: number) => {
+    const precisionSafeValue = Math.round(value * 10) / 10;
+    setThreshold(Math.min(thresholdMaximum, Math.max(1, precisionSafeValue)));
+  };
+
   const updateMetric = (nextMetric: ApplicationWatchMetric) => {
     setMetric(nextMetric);
     setThreshold(nextMetric === "cpu" ? 80 : nextMetric === "memory" ? 1_024 : 50);
@@ -419,14 +439,106 @@ function ApplicationWatchRulesEditor({
   return (
     <div className="watch-rules">
       <div className="watch-rules__builder">
-        <label><span>{t("settings:watchRules.application")}</span><input list="watch-rule-applications" value={applicationName} onChange={(event) => setApplicationName(event.target.value)} placeholder={t("settings:watchRules.applicationPlaceholder")} /></label>
-        <datalist id="watch-rule-applications">{applications.map(({ name }) => <option key={name} value={name} />)}</datalist>
-        <label><span>{t("settings:watchRules.metric")}</span><select value={metric} onChange={(event) => updateMetric(event.target.value as ApplicationWatchMetric)}>{(["cpu", "memory", "disk"] as const).map((value) => <option key={value} value={value}>{t(`settings:watchRules.metrics.${value}`)}</option>)}</select></label>
-        <label><span>{t("settings:watchRules.threshold")}</span><input type="number" min={1} max={metric === "cpu" ? 100 : 1_000_000} step={metric === "disk" ? 0.5 : 1} value={threshold} onChange={(event) => setThreshold(Math.max(1, Number(event.target.value)))} /><small>{metric === "cpu" ? "%" : metric === "memory" ? "MiB" : "MiB/s"}</small></label>
-        <label><span>{t("settings:watchRules.duration")}</span><select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))}>{[10, 30, 60, 300].map((seconds) => <option key={seconds} value={seconds}>{t("settings:watchRules.seconds", { count: seconds })}</option>)}</select></label>
-        <button className="button button--primary" type="button" disabled={!applicationName.trim()} onClick={addRule}><Plus size={14} />{t("settings:watchRules.add")}</button>
+        <div className="watch-rules__application-row">
+          <label className="watch-rules__field watch-rules__field--application">
+            <span>{t("settings:watchRules.application")}</span>
+            <span className="watch-rules__application-input">
+              <Search size={16} aria-hidden="true" />
+              <input
+                list="watch-rule-applications"
+                value={applicationName}
+                onChange={(event) => setApplicationName(event.target.value)}
+                placeholder={t("settings:watchRules.applicationPlaceholder")}
+              />
+            </span>
+          </label>
+          <datalist id="watch-rule-applications">
+            {applications.map(({ name }) => <option key={name} value={name} />)}
+          </datalist>
+          <button className="button button--primary watch-rules__add" type="button" disabled={!applicationName.trim()} onClick={addRule}>
+            <Plus size={15} />{t("settings:watchRules.add")}
+          </button>
+        </div>
+
+        <div className="watch-rules__condition-grid">
+          <fieldset className="watch-rules__field">
+            <legend>{t("settings:watchRules.metric")}</legend>
+            <div className="watch-rules__choices watch-rules__choices--metric">
+              {WATCH_METRICS.map(({ value, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={metric === value ? "is-active" : ""}
+                  aria-pressed={metric === value}
+                  onClick={() => updateMetric(value)}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  {t(`settings:watchRules.metrics.${value}`)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="watch-rules__field">
+            <span id="watch-rule-threshold-label">{t("settings:watchRules.threshold")}</span>
+            <div className="watch-rules__number-control">
+              <button
+                type="button"
+                aria-label={`${t("settings:watchRules.threshold")} −`}
+                disabled={threshold <= 1}
+                onClick={() => changeThreshold(threshold - thresholdStep)}
+              >
+                <Minus size={14} aria-hidden="true" />
+              </button>
+              <input
+                aria-labelledby="watch-rule-threshold-label"
+                type="number"
+                min={1}
+                max={thresholdMaximum}
+                step={thresholdStep}
+                value={threshold}
+                onChange={(event) => {
+                  if (Number.isFinite(event.target.valueAsNumber)) {
+                    changeThreshold(event.target.valueAsNumber);
+                  }
+                }}
+              />
+              <small>{thresholdUnit}</small>
+              <button
+                type="button"
+                aria-label={`${t("settings:watchRules.threshold")} +`}
+                disabled={threshold >= thresholdMaximum}
+                onClick={() => changeThreshold(threshold + thresholdStep)}
+              >
+                <Plus size={14} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <fieldset className="watch-rules__field">
+            <legend>{t("settings:watchRules.duration")}</legend>
+            <div className="watch-rules__choices watch-rules__choices--duration">
+              {WATCH_DURATIONS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  className={durationSeconds === seconds ? "is-active" : ""}
+                  aria-pressed={durationSeconds === seconds}
+                  onClick={() => setDurationSeconds(seconds)}
+                >
+                  {t("settings:watchRules.seconds", { count: seconds })}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        </div>
       </div>
-      {!notificationsReady ? <small className="watch-rules__notice">{t("settings:watchRules.notificationHint")}</small> : null}
+      {!notificationsReady ? (
+        <div className="watch-rules__notice">
+          <BellRing size={14} aria-hidden="true" />
+          <small>{t("settings:watchRules.notificationHint")}</small>
+        </div>
+      ) : null}
       {rules.length > 0 ? <ul className="watch-rules__list">{rules.map((rule) => (
         <li key={rule.id} className={activeRuleIds.includes(rule.id) ? "is-active" : ""}>
           <label className="settings-switch watch-rules__switch"><input type="checkbox" role="switch" aria-label={rule.applicationName} checked={rule.enabled} onChange={(event) => onChange(rules.map((candidate) => candidate.id === rule.id ? { ...candidate, enabled: event.target.checked } : candidate))} /></label>

@@ -1,8 +1,12 @@
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::env;
+#[cfg(all(target_os = "macos", not(test)))]
+use std::ffi::CString;
 use std::fs::{self, Metadata};
 use std::path::{Component, Path, PathBuf};
+#[cfg(all(target_os = "macos", not(test)))]
+use std::ptr::NonNull;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -13,6 +17,8 @@ use serde::Serialize;
 
 #[cfg(target_os = "macos")]
 use std::io::Read;
+#[cfg(all(target_os = "macos", not(test)))]
+use std::os::unix::ffi::OsStrExt;
 #[cfg(target_os = "macos")]
 use std::os::unix::process::CommandExt;
 #[cfg(target_os = "macos")]
@@ -49,7 +55,12 @@ use crate::models::{
     CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
 };
 use crate::private_storage;
+#[cfg(all(target_os = "macos", not(test)))]
+use crate::safe_fs::BoundTargetKind;
 use crate::safe_fs::{BoundDeleteTarget, DeleteRoot, TreeInspection};
+
+#[cfg(all(target_os = "macos", not(test)))]
+use objc2_foundation::{NSFileManager, NSURL};
 
 mod paths;
 
@@ -359,15 +370,41 @@ struct CleanupDeleteLeaseEntry {
     id: String,
     expires_at: Instant,
     mode: CleanupDeleteMode,
-    trash_root: Option<DeleteRoot>,
+    trash_destination: Option<CleanupTrashDestination>,
     targets: Vec<CleanupDeleteTarget>,
 }
 
 #[derive(Debug)]
 struct CleanupDeleteExecution {
     mode: CleanupDeleteMode,
-    trash_root: Option<DeleteRoot>,
+    trash_destination: Option<CleanupTrashDestination>,
     targets: Vec<CleanupDeleteTarget>,
+}
+
+#[derive(Debug)]
+enum CleanupTrashDestination {
+    #[cfg(all(target_os = "macos", not(test)))]
+    System(MacOSTrashStaging),
+    #[cfg(any(not(target_os = "macos"), test))]
+    Directory(DeleteRoot),
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Debug)]
+struct MacOSTrashStaging {
+    root: DeleteRoot,
+    path: PathBuf,
+    parent: DeleteRoot,
+    directory_name: String,
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for MacOSTrashStaging {
+    fn drop(&mut self) {
+        let _ = self
+            .parent
+            .remove_empty_subdirectory(self.directory_name.as_ref());
+    }
 }
 
 impl CleanupDeleteController {
@@ -407,7 +444,7 @@ impl CleanupDeleteController {
     ) -> Result<CleanupDeleteResult, CommandError> {
         let execution = self.take_validated_targets(request)?;
         let mode = execution.mode;
-        let trash_root = execution.trash_root;
+        let trash_destination = execution.trash_destination;
         let targets = execution.targets;
         let total_target_count = targets.len();
         // Deletion deliberately uses indeterminate progress. A complete pre-scan
@@ -442,10 +479,10 @@ impl CleanupDeleteController {
             });
             let mut target_deleted_bytes = 0_u64;
             let result = if mode == CleanupDeleteMode::Trash {
-                let trash_root = trash_root.as_ref().ok_or_else(|| {
-                    CommandError::internal("The cleanup Trash handle was not retained.")
+                let trash_destination = trash_destination.as_ref().ok_or_else(|| {
+                    CommandError::internal("The cleanup Trash destination was not retained.")
                 })?;
-                move_cleanup_target_to_trash(&target, trash_root).map(|bytes| {
+                move_cleanup_target_to_trash(&target, trash_destination).map(|bytes| {
                     target_deleted_bytes = bytes;
                     deleted_bytes = deleted_bytes.saturating_add(bytes);
                     processed_entry_count = processed_entry_count.saturating_add(1);
@@ -537,8 +574,8 @@ impl CleanupDeleteController {
                 "Every cleanup path must include the size and item count currently shown for confirmation.",
             ));
         }
-        let trash_root = if request.mode == CleanupDeleteMode::Trash {
-            Some(prepare_cleanup_trash_root(home)?)
+        let trash_destination = if request.mode == CleanupDeleteMode::Trash {
+            Some(prepare_cleanup_trash_destination(home)?)
         } else {
             None
         };
@@ -569,7 +606,7 @@ impl CleanupDeleteController {
                 id: id.clone(),
                 expires_at,
                 mode: request.mode,
-                trash_root,
+                trash_destination,
                 targets: targets.clone(),
             });
         }
@@ -653,7 +690,7 @@ impl CleanupDeleteController {
         }
         Ok(CleanupDeleteExecution {
             mode: lease.mode,
-            trash_root: lease.trash_root,
+            trash_destination: lease.trash_destination,
             targets: lease.targets,
         })
     }
@@ -666,6 +703,83 @@ fn cleanup_progress_phase(mode: CleanupDeleteMode) -> CleanupDeleteProgressPhase
     }
 }
 
+fn prepare_cleanup_trash_destination(home: &Path) -> Result<CleanupTrashDestination, CommandError> {
+    #[cfg(all(target_os = "macos", not(test)))]
+    {
+        prepare_macos_trash_staging(home).map(CleanupTrashDestination::System)
+    }
+
+    #[cfg(any(not(target_os = "macos"), test))]
+    prepare_cleanup_trash_root(home).map(CleanupTrashDestination::Directory)
+}
+
+#[cfg(all(target_os = "macos", not(test)))]
+fn prepare_macos_trash_staging(home: &Path) -> Result<MacOSTrashStaging, CommandError> {
+    let canonical_home = home.canonicalize().map_err(|error| {
+        CommandError::new(
+            "cleanup_trash_unavailable",
+            format!("CoreRobin could not verify the home directory before staging Trash: {error}"),
+        )
+    })?;
+    let home_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+        CommandError::new(
+            "cleanup_trash_unavailable",
+            format!("CoreRobin could not retain a stable home directory handle: {error}"),
+        )
+    })?;
+    let relative_parent = Path::new("Library/Application Support/CoreRobin/Pending Trash");
+    let parent = home_root
+        .open_subdirectory(relative_parent, true, true)
+        .map_err(|error| {
+            CommandError::new(
+                "cleanup_trash_unavailable",
+                format!("CoreRobin could not prepare its private Trash staging area: {error}"),
+            )
+        })?;
+
+    for _ in 0..32 {
+        let directory_name = macos_trash_staging_directory_name()?;
+        match parent.create_private_subdirectory(directory_name.as_ref()) {
+            Ok(root) => {
+                let path = canonical_home.join(relative_parent).join(&directory_name);
+                return Ok(MacOSTrashStaging {
+                    root,
+                    path,
+                    parent,
+                    directory_name,
+                });
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(CommandError::new(
+                    "cleanup_trash_unavailable",
+                    format!("CoreRobin could not create a private Trash staging area: {error}"),
+                ));
+            }
+        }
+    }
+    Err(CommandError::new(
+        "cleanup_trash_unavailable",
+        "CoreRobin could not reserve a private Trash staging area.",
+    ))
+}
+
+#[cfg(all(target_os = "macos", not(test)))]
+fn macos_trash_staging_directory_name() -> Result<String, CommandError> {
+    let mut random = [0_u8; 16];
+    getrandom::fill(&mut random).map_err(|error| {
+        CommandError::internal(format!(
+            "CoreRobin could not generate a private Trash staging name: {error}"
+        ))
+    })?;
+    let token = random
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    Ok(format!("lease-{token}"))
+}
+
+#[cfg(any(not(target_os = "macos"), test))]
 fn prepare_cleanup_trash_root(home: &Path) -> Result<DeleteRoot, CommandError> {
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
@@ -706,6 +820,127 @@ fn prepare_cleanup_trash_root(home: &Path) -> Result<DeleteRoot, CommandError> {
 
 fn move_cleanup_target_to_trash(
     target: &CleanupDeleteTarget,
+    destination: &CleanupTrashDestination,
+) -> Result<u64, String> {
+    match destination {
+        #[cfg(all(target_os = "macos", not(test)))]
+        CleanupTrashDestination::System(staging) => {
+            move_cleanup_target_to_macos_trash(target, staging)
+        }
+        #[cfg(any(not(target_os = "macos"), test))]
+        CleanupTrashDestination::Directory(trash_root) => {
+            move_cleanup_target_to_trash_directory(target, trash_root)
+        }
+    }
+}
+
+#[cfg(all(target_os = "macos", not(test)))]
+fn move_cleanup_target_to_macos_trash(
+    target: &CleanupDeleteTarget,
+    staging: &MacOSTrashStaging,
+) -> Result<u64, String> {
+    move_cleanup_target_via_macos_staging(target, staging, |staged_path| {
+        move_staged_path_to_macos_trash(target, staged_path)
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn move_cleanup_target_via_macos_staging(
+    target: &CleanupDeleteTarget,
+    staging: &MacOSTrashStaging,
+    handoff: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<u64, String> {
+    let original_name = target.canonical_path.file_name().ok_or_else(|| {
+        format!(
+            "CoreRobin could not derive a staging name for {}.",
+            target.display_path
+        )
+    })?;
+    target
+        .bound
+        .move_to_directory_noreplace(&staging.root, original_name)
+        .map_err(|error| {
+            format!(
+                "CoreRobin could not safely stage {} before moving it to Trash: {error}",
+                target.display_path
+            )
+        })?;
+
+    let staged_path = staging.path.join(original_name);
+    let move_result = target
+        .bound
+        .verify_in_directory(&staging.root, original_name)
+        .map_err(|error| {
+            format!(
+                "CoreRobin stopped because {} changed before it could be moved to Trash: {error}",
+                target.display_path
+            )
+        })
+        .and_then(|()| handoff(&staged_path));
+    if let Err(message) = move_result {
+        return match target
+            .bound
+            .restore_from_directory_noreplace(&staging.root, original_name)
+        {
+            Ok(()) => Err(format!("{message} The original item was restored.")),
+            Err(rollback_error) => Err(format!(
+                "{message} CoreRobin could not restore the item automatically; it remains at {}: {rollback_error}",
+                staged_path.display()
+            )),
+        };
+    }
+    target
+        .bound
+        .verify_absent_from_directory(&staging.root, original_name)
+        .map_err(|error| {
+            format!(
+                "CoreRobin could not verify that {} reached Trash: {error}",
+                target.display_path
+            )
+        })?;
+    Ok(target.inspection.allocated_size_bytes)
+}
+
+#[cfg(all(target_os = "macos", not(test)))]
+fn move_staged_path_to_macos_trash(
+    target: &CleanupDeleteTarget,
+    staged_path: &Path,
+) -> Result<(), String> {
+    let path = CString::new(staged_path.as_os_str().as_bytes()).map_err(|_| {
+        format!(
+            "CoreRobin could not represent {} as a macOS file URL.",
+            target.display_path
+        )
+    })?;
+    let path_pointer = NonNull::new(path.as_ptr().cast_mut()).ok_or_else(|| {
+        format!(
+            "CoreRobin could not represent {} as a macOS file URL.",
+            target.display_path
+        )
+    })?;
+    let path_url = unsafe {
+        NSURL::fileURLWithFileSystemRepresentation_isDirectory_relativeToURL(
+            path_pointer,
+            target.bound.kind() == BoundTargetKind::Directory,
+            None,
+        )
+    };
+    NSFileManager::defaultManager()
+        .trashItemAtURL_resultingItemURL_error(&path_url, None)
+        .map_err(|error| {
+            format!(
+                "macOS could not move {} to Trash ({} {}): {}",
+                target.display_path,
+                error.domain(),
+                error.code(),
+                error.localizedDescription()
+            )
+        })
+}
+
+#[cfg(any(not(target_os = "macos"), test))]
+fn move_cleanup_target_to_trash_directory(
+    target: &CleanupDeleteTarget,
     trash_root: &DeleteRoot,
 ) -> Result<u64, String> {
     let original_name = target.canonical_path.file_name().ok_or_else(|| {
@@ -736,6 +971,7 @@ fn move_cleanup_target_to_trash(
     ))
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn cleanup_trash_destination_name(original: &std::ffi::OsStr, suffix: u32) -> std::ffi::OsString {
     if suffix == 0 {
         return original.to_os_string();
@@ -4910,6 +5146,98 @@ mod tests {
         assert_eq!(error.code, "cleanup_trash_unavailable");
         assert!(target.exists());
         assert!(fs::read_dir(&redirected).unwrap().next().is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_trash_staging_restores_the_original_when_native_handoff_fails() {
+        let root = test_root("macos-trash-rollback");
+        let target_path = root.join("Downloads/archive.zip");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"archive").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![target_path.to_string_lossy().into_owned()],
+            now_millis(),
+        );
+        let target = validate_cleanup_targets(&request, &root).unwrap().remove(0);
+        let home_root = DeleteRoot::open(&root.canonicalize().unwrap()).unwrap();
+        let parent_relative = Path::new("Library/Application Support/CoreRobin/Pending Trash");
+        let parent = home_root
+            .open_subdirectory(parent_relative, true, true)
+            .unwrap();
+        let directory_name = "lease-test-rollback".to_owned();
+        let staging_path = root.join(parent_relative).join(&directory_name);
+        let staging = MacOSTrashStaging {
+            root: parent
+                .create_private_subdirectory(directory_name.as_ref())
+                .unwrap(),
+            path: staging_path.clone(),
+            parent,
+            directory_name,
+        };
+
+        let error = move_cleanup_target_via_macos_staging(&target, &staging, |_| {
+            Err("simulated native Trash failure".to_owned())
+        })
+        .unwrap_err();
+
+        assert!(error.contains("simulated native Trash failure"));
+        assert!(error.contains("original item was restored"));
+        assert_eq!(fs::read(&target_path).unwrap(), b"archive");
+        assert!(fs::read_dir(&staging_path).unwrap().next().is_none());
+        drop(staging);
+        assert!(!staging_path.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_trash_staging_hands_off_the_verified_original_name() {
+        let root = test_root("macos-trash-handoff");
+        let target_path = root.join("Downloads/archive.zip");
+        let simulated_trash = root.join("Simulated Trash");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::create_dir_all(&simulated_trash).unwrap();
+        fs::write(&target_path, b"archive").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![target_path.to_string_lossy().into_owned()],
+            now_millis(),
+        );
+        let target = validate_cleanup_targets(&request, &root).unwrap().remove(0);
+        let home_root = DeleteRoot::open(&root.canonicalize().unwrap()).unwrap();
+        let parent_relative = Path::new("Library/Application Support/CoreRobin/Pending Trash");
+        let parent = home_root
+            .open_subdirectory(parent_relative, true, true)
+            .unwrap();
+        let directory_name = "lease-test-handoff".to_owned();
+        let staging_path = root.join(parent_relative).join(&directory_name);
+        let staging = MacOSTrashStaging {
+            root: parent
+                .create_private_subdirectory(directory_name.as_ref())
+                .unwrap(),
+            path: staging_path.clone(),
+            parent,
+            directory_name,
+        };
+
+        let moved_bytes = move_cleanup_target_via_macos_staging(&target, &staging, |staged| {
+            fs::rename(staged, simulated_trash.join("archive.zip"))
+                .map_err(|error| error.to_string())
+        })
+        .unwrap();
+
+        assert!(moved_bytes > 0);
+        assert!(!target_path.exists());
+        assert_eq!(
+            fs::read(simulated_trash.join("archive.zip")).unwrap(),
+            b"archive"
+        );
+        assert!(fs::read_dir(&staging_path).unwrap().next().is_none());
+        drop(staging);
+        assert!(!staging_path.exists());
         fs::remove_dir_all(root).unwrap();
     }
 

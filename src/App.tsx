@@ -90,6 +90,7 @@ import {
   loadProcessExplorerPreferences,
   pruneExpandedIdentities,
   saveProcessExplorerPreferences,
+  selectDefaultInspectorProcess,
   type ProcessExplorerPreferences,
 } from "./processExplorer";
 import {
@@ -583,10 +584,10 @@ function App() {
 
   useEffect(() => {
     if (!snapshot || selectedIdentity !== null) return;
-    const firstProcess = snapshot.processes.find((process) => !process.protected) ?? snapshot.processes[0];
-    if (firstProcess) {
-      setSelectedIdentity(processIdentity(firstProcess));
-      setLastSelected(firstProcess);
+    const defaultProcess = selectDefaultInspectorProcess(snapshot.processes);
+    if (defaultProcess) {
+      setSelectedIdentity(processIdentity(defaultProcess));
+      setLastSelected(defaultProcess);
     }
   }, [selectedIdentity, snapshot]);
 

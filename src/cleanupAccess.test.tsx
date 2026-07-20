@@ -24,6 +24,14 @@ beforeEach(async () => {
 });
 
 describe("cleanup full disk access guide", () => {
+  it("starts with one focused scan action and keeps secondary tools out of the way", () => {
+    renderAssistant(vi.fn());
+
+    expect(screen.getByRole("heading", { name: "先看清楚，再决定是否处理" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "开始只读扫描" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /重复与长期未修改文件/ })).toBeNull();
+  });
+
   it("offers a limited scan instead of blocking when access is not granted", async () => {
     cleanupApi.getCleanupScanAccess.mockResolvedValue({
       fullDiskAccess: "not_granted",

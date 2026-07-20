@@ -79,6 +79,23 @@ export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences 
   };
 }
 
+export function selectDefaultInspectorProcess(
+  processes: readonly ProcessRow[],
+): ProcessRow | null {
+  const controllable = processes.filter((process) => !process.protected);
+  const candidates = controllable.length > 0 ? controllable : processes;
+
+  return candidates.reduce<ProcessRow | null>((best, process) => {
+    if (!best) return process;
+    const cpuDifference = (process.cpuPercent ?? -1) - (best.cpuPercent ?? -1);
+    if (cpuDifference !== 0) return cpuDifference > 0 ? process : best;
+    if (process.memoryBytes !== best.memoryBytes) {
+      return process.memoryBytes > best.memoryBytes ? process : best;
+    }
+    return process.pid < best.pid ? process : best;
+  }, null);
+}
+
 export function parseProcessExplorerPreferences(
   serialized: string | null,
 ): ProcessExplorerPreferences {

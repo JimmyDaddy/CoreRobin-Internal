@@ -9,7 +9,7 @@ import {
   Network,
   RefreshCw,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { processApplicationIconSource } from "../applicationIcon";
 
@@ -62,6 +62,15 @@ const CHART_HEIGHT = 176;
 const CHART_TOP = 12;
 const CHART_BOTTOM = 148;
 const CONNECTION_PAGE_SIZE = 100;
+export const NETWORK_QUALITY_REFRESH_MS = 30 * 1_000;
+export const NETWORK_QUALITY_WINDOW_MS = 15 * 60 * 1_000;
+const NETWORK_QUALITY_MAX_POINTS = NETWORK_QUALITY_WINDOW_MS / NETWORK_QUALITY_REFRESH_MS + 1;
+const QUALITY_CHART_WIDTH = 720;
+const QUALITY_CHART_HEIGHT = 148;
+const QUALITY_CHART_LEFT = 16;
+const QUALITY_CHART_RIGHT = 704;
+const QUALITY_CHART_TOP = 12;
+const QUALITY_CHART_BOTTOM = 126;
 
 const CONNECTION_FILTERS: NetworkConnectionFilter[] = [
   "all",
@@ -205,23 +214,54 @@ export function NetworkExplorer({
   );
 }
 
-function NetworkQualityPanel() {
+export function appendNetworkQualitySample(
+  samples: readonly NetworkQualityResult[],
+  sample: NetworkQualityResult,
+): NetworkQualityResult[] {
+  const cutoff = sample.sampledAtMs - NETWORK_QUALITY_WINDOW_MS;
+  return samples
+    .filter((candidate) => candidate.sampledAtMs >= cutoff && candidate.sampledAtMs !== sample.sampledAtMs)
+    .concat(sample)
+    .sort((left, right) => left.sampledAtMs - right.sampledAtMs)
+    .slice(-NETWORK_QUALITY_MAX_POINTS);
+}
+
+export function NetworkQualityPanel() {
   const { t, i18n } = useAppTranslation();
   const [result, setResult] = useState<NetworkQualityResult | null>(null);
+  const [samples, setSamples] = useState<NetworkQualityResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const checkingRef = useRef(false);
+  const mountedRef = useRef(false);
 
-  const runCheck = async () => {
+  const runCheck = useCallback(async () => {
+    if (checkingRef.current) return;
+    checkingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      setResult(await runNetworkQualityCheck());
+      const nextResult = await runNetworkQualityCheck();
+      if (!mountedRef.current) return;
+      setResult(nextResult);
+      setSamples((current) => appendNetworkQualitySample(current, nextResult));
     } catch (reason) {
-      setError(normalizeCommandError(reason).message);
+      if (mountedRef.current) setError(normalizeCommandError(reason).message);
     } finally {
-      setLoading(false);
+      checkingRef.current = false;
+      if (mountedRef.current) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void runCheck();
+    const interval = window.setInterval(() => void runCheck(), NETWORK_QUALITY_REFRESH_MS);
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(interval);
+    };
+  }, [runCheck]);
 
   return (
     <section className="panel network-quality" aria-labelledby="network-quality-title">
@@ -247,11 +287,21 @@ function NetworkQualityPanel() {
           <QualityMetric label={t("network:quality.dns")} value={result.dnsLookupMs === null ? t("common:unavailable") : `${result.dnsLookupMs} ms`} />
           <QualityMetric label={t("network:quality.latency")} value={formatMilliseconds(result.averageLatencyMs)} />
           <QualityMetric label={t("network:quality.jitter")} value={formatMilliseconds(result.jitterMs)} />
-          <QualityMetric label={t("network:quality.loss")} value={`${result.packetLossPercent.toFixed(1)}%`} />
+          <QualityMetric
+            label={t("network:quality.probes")}
+            value={t("network:quality.probeSuccess", {
+              successful: result.successfulProbeCount,
+              total: result.probeCount,
+            })}
+          />
         </div>
       ) : (
-        <p className="network-quality__empty">{t("network:quality.empty")}</p>
+        <div className="network-quality__starting" role="status">
+          <span className="network-quality__starting-pulse" />
+          {t("network:quality.empty")}
+        </div>
       )}
+      {samples.length > 0 ? <NetworkQualityTrend samples={samples} /> : null}
       <small className="network-quality__method">{t("network:quality.method")}</small>
     </section>
   );
@@ -259,6 +309,117 @@ function NetworkQualityPanel() {
 
 function QualityMetric({ label, value }: { label: string; value: string }) {
   return <div className="network-quality__metric"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResult[] }) {
+  const { t } = useAppTranslation();
+  const latest = samples[samples.length - 1]!;
+  const windowStart = latest.sampledAtMs - NETWORK_QUALITY_WINDOW_MS;
+  const values = samples.flatMap((sample) => [sample.averageLatencyMs, sample.jitterMs])
+    .filter((value): value is number => value !== null);
+  const maximum = Math.max(20, ...values);
+  const xFor = (sampledAtMs: number) => QUALITY_CHART_LEFT +
+    ((sampledAtMs - windowStart) / NETWORK_QUALITY_WINDOW_MS) *
+      (QUALITY_CHART_RIGHT - QUALITY_CHART_LEFT);
+  const yFor = (value: number) => QUALITY_CHART_BOTTOM -
+    (value / maximum) * (QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP);
+  const latencySegments = buildQualityLineSegments(samples, "averageLatencyMs", xFor, yFor);
+  const jitterSegments = buildQualityLineSegments(samples, "jitterMs", xFor, yFor);
+  const latencyValues = samples
+    .map((sample) => sample.averageLatencyMs)
+    .filter((value): value is number => value !== null);
+  const averageLatency = latencyValues.length > 0
+    ? latencyValues.reduce((total, value) => total + value, 0) / latencyValues.length
+    : null;
+  const peakLatency = latencyValues.length > 0 ? Math.max(...latencyValues) : null;
+  const anomalies = samples.filter(isNetworkQualityAnomaly).length;
+  const newestLatency = latest.averageLatencyMs;
+  const newestJitter = latest.jitterMs;
+
+  return (
+    <section className="network-quality__trend" aria-labelledby="network-quality-trend-title">
+      <header>
+        <div>
+          <h3 id="network-quality-trend-title">{t("network:quality.trendTitle")}</h3>
+          <span>{t("network:quality.trendWindow")}</span>
+        </div>
+        <div className="network-quality__legend" aria-label={t("network:quality.legend")}>
+          <span className="is-latency">{t("network:quality.latency")}</span>
+          <span className="is-jitter">{t("network:quality.jitter")}</span>
+          <span className="is-loss">{t("network:quality.loss")}</span>
+        </div>
+      </header>
+      <div className="network-quality__chart-wrap">
+        <svg
+          className="network-quality__chart"
+          viewBox={`0 0 ${QUALITY_CHART_WIDTH} ${QUALITY_CHART_HEIGHT}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={t("network:quality.chartLabel", { count: samples.length })}
+        >
+          {[0, 1, 2, 3].map((index) => {
+            const y = QUALITY_CHART_TOP + index * ((QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP) / 3);
+            return <line className="network-quality__grid" key={index} x1={QUALITY_CHART_LEFT} x2={QUALITY_CHART_RIGHT} y1={y} y2={y} />;
+          })}
+          {samples.map((sample) => {
+            if (sample.packetLossPercent <= 0) return null;
+            const height = Math.max(4, (sample.packetLossPercent / 100) * (QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP));
+            return (
+              <rect
+                className="network-quality__loss-bar"
+                key={`loss-${sample.sampledAtMs}`}
+                x={Math.max(QUALITY_CHART_LEFT, xFor(sample.sampledAtMs) - 4)}
+                y={QUALITY_CHART_BOTTOM - height}
+                width={8}
+                height={height}
+                rx={3}
+              />
+            );
+          })}
+          {latencySegments.map((points, index) => <polyline className="network-quality__line is-latency" key={`latency-${index}`} points={points} />)}
+          {jitterSegments.map((points, index) => <polyline className="network-quality__line is-jitter" key={`jitter-${index}`} points={points} />)}
+          {newestLatency !== null ? <circle className="network-quality__point is-latency" cx={xFor(latest.sampledAtMs)} cy={yFor(newestLatency)} r={4} /> : null}
+          {newestJitter !== null ? <circle className="network-quality__point is-jitter" cx={xFor(latest.sampledAtMs)} cy={yFor(newestJitter)} r={3.5} /> : null}
+        </svg>
+        {samples.length < 2 ? <span className="network-quality__collecting">{t("network:quality.trendCollecting")}</span> : null}
+        <span className="network-quality__axis is-start">−15 min</span>
+        <span className="network-quality__axis is-end">{t("network:quality.now")}</span>
+      </div>
+      <dl className="network-quality__trend-summary">
+        <div><dt>{t("network:quality.windowAverage")}</dt><dd>{formatMilliseconds(averageLatency)}</dd></div>
+        <div><dt>{t("network:quality.windowPeak")}</dt><dd>{formatMilliseconds(peakLatency)}</dd></div>
+        <div><dt>{t("network:quality.anomalies")}</dt><dd>{t("network:quality.anomalyCount", { count: anomalies })}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+function buildQualityLineSegments(
+  samples: readonly NetworkQualityResult[],
+  metric: "averageLatencyMs" | "jitterMs",
+  xFor: (sampledAtMs: number) => number,
+  yFor: (value: number) => number,
+): string[] {
+  const segments: string[] = [];
+  let current: string[] = [];
+  for (const sample of samples) {
+    const value = sample[metric];
+    if (value === null) {
+      if (current.length > 0) segments.push(current.join(" "));
+      current = [];
+      continue;
+    }
+    current.push(`${xFor(sample.sampledAtMs).toFixed(2)},${yFor(value).toFixed(2)}`);
+  }
+  if (current.length > 0) segments.push(current.join(" "));
+  return segments;
+}
+
+function isNetworkQualityAnomaly(sample: NetworkQualityResult): boolean {
+  return sample.status !== "online" ||
+    sample.packetLossPercent > 0 ||
+    (sample.averageLatencyMs ?? 0) >= 150 ||
+    (sample.jitterMs ?? 0) >= 50;
 }
 
 function formatMilliseconds(value: number | null): string {
@@ -307,7 +468,7 @@ function ConnectionHistoryPanel({
       ) : (
         <>
           <div className="connection-history__toolbar">
-            <div className="network-connection-filters" role="group" aria-label={t("network:history.groupBy") }>
+            <div className="network-connection-filters" role="group" aria-label={t("network:history.groupBy")}>
               {(["application", "domain"] as const).map((value) => (
                 <button type="button" key={value} className={groupBy === value ? "is-active" : ""} onClick={() => setGroupBy(value)}>
                   {t(`network:history.${value}`)}

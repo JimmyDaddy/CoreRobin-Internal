@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "A seleção na lixeira é inválida. Escolha os itens novamente.",
       "overlapping_cleanup_targets": "Uma pasta e uma de suas subpastas estão selecionadas. Mantenha apenas um nível.",
       "cleanup_target_conflicts_with_trash": "A seleção contém a Lixeira ou já está nela e só pode ser excluída diretamente.",
-      "cleanup_trash_unavailable": "O CoreRobin não conseguiu abrir a Lixeira com segurança. Exclua diretamente ou tente mais tarde."
+      "cleanup_trash_unavailable": "O CoreRobin não conseguiu usar a Lixeira com segurança. Nada foi removido; tente novamente mais tarde."
     }
   },
   "locations": {
