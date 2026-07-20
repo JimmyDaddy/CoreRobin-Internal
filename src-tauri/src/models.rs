@@ -320,6 +320,66 @@ pub struct CleanupApplication {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct InstalledApplication {
+    pub name: String,
+    pub path: String,
+    pub bundle_id: Option<String>,
+    pub size_bytes: u64,
+    pub last_used_at_ms: Option<u64>,
+    pub modified_at_ms: Option<u64>,
+    pub uninstallable: bool,
+    pub unavailable_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationInventorySnapshot {
+    pub sampled_at_ms: u64,
+    pub platform_supported: bool,
+    pub cached: bool,
+    pub refresh_recommended: bool,
+    pub applications: Vec<InstalledApplication>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[serde(rename_all = "snake_case")]
+pub enum ApplicationArtifactKind {
+    Application,
+    ApplicationSupport,
+    Cache,
+    Preferences,
+    SavedState,
+    Container,
+    WebData,
+    HttpStorage,
+    Cookies,
+    Logs,
+    LaunchAgent,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationUninstallArtifact {
+    pub kind: ApplicationArtifactKind,
+    pub path: String,
+    pub logical_size_bytes: u64,
+    pub allocated_size_bytes: u64,
+    pub item_count: usize,
+    pub required: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationUninstallPlan {
+    pub sampled_at_ms: u64,
+    pub application: InstalledApplication,
+    pub artifacts: Vec<ApplicationUninstallArtifact>,
+    pub skipped_paths: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupLocation {
     pub kind: CleanupLocationKind,
     pub paths: Vec<String>,
@@ -429,6 +489,16 @@ pub struct CleanupDeleteLeaseRequest {
     pub scan_sampled_at_ms: u64,
     pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
     pub mode: CleanupDeleteMode,
+    #[serde(default)]
+    pub application_uninstall: Option<ApplicationUninstallScope>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationUninstallScope {
+    pub application_path: String,
+    pub bundle_id: String,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -851,6 +921,14 @@ pub struct ProcessDetail {
 pub struct ApplicationIcon {
     pub mime_type: String,
     pub bytes: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationIconRequest {
+    pub process: Option<ProcessDetailRequest>,
+    pub application_path: Option<String>,
+    pub executable_path: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]

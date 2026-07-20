@@ -189,9 +189,10 @@
 .startup-impact > header time { color: var(--text-secondary); font-size: 12px; }
 .startup-impact__summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .startup-impact__apps { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
-.startup-impact__apps li { align-items: center; border-bottom: 1px solid var(--border); display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) auto auto; padding: 8px 2px; }
+.startup-impact__apps li { align-items: center; border-bottom: 1px solid var(--border); display: grid; gap: 10px; grid-template-columns: auto minmax(0, 1fr) auto auto; padding: 8px 2px; }
 .startup-impact__apps li span,
 .startup-impact__apps li small { color: var(--text-secondary); }
+.startup-impact-avatar { width: 25px; height: 25px; border-radius: 7px; }
 .startup-impact__empty { align-items: center; color: var(--text-secondary); display: flex; gap: 9px; }
 .startup-impact__empty p { font-size: 12px; margin: 0; }
 
@@ -208,7 +209,8 @@
 .connection-history__toolbar select:focus { border-color: rgba(99, 168, 255, 0.48); outline: 2px solid rgba(99, 168, 255, 0.1); }
 .watch-rules__notice { color: var(--warning); font-size: 11px; line-height: 1.45; }
 .watch-rules__list { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
-.watch-rules__list li { align-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 11px; display: grid; gap: 10px; grid-template-columns: auto minmax(0, 1fr) auto auto; padding: 10px 12px; }
+.watch-rules__list li { align-items: center; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 11px; display: grid; gap: 10px; grid-template-columns: auto auto minmax(0, 1fr) auto auto; padding: 10px 12px; }
+.watch-rule-avatar { width: 29px; height: 29px; border-radius: 8px; }
 .watch-rules__list li.is-active { border-color: var(--warning); }
 .watch-rules__list li small { color: var(--text-secondary); display: block; margin-top: 2px; }
 .watch-rules__list li em { color: var(--warning); font-size: 11px; font-style: normal; }
@@ -1454,10 +1456,8 @@ code,
   border-top: 1px solid rgba(32, 42, 50, 0.72);
 }
 .startup-item:first-child { border-top: 0; }
-.startup-item__icon { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: var(--amber); border-radius: 8px; background: var(--amber-soft); }
-.startup-item.is-normal .startup-item__icon { color: var(--green); background: var(--green-soft); }
-.startup-item.is-system .startup-item__icon { color: var(--blue); background: var(--blue-soft); }
-.startup-item.is-disabled .startup-item__icon { color: var(--text-muted); background: var(--panel-soft); }
+.startup-item__avatar { width: 32px; height: 32px; border-radius: 8px; }
+.startup-item.is-disabled .startup-item__avatar { filter: grayscale(0.72); opacity: 0.72; }
 .startup-item__identity,
 .startup-item__meaning,
 .startup-item__impact { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
@@ -1503,6 +1503,7 @@ code,
 .startup-outcome button { margin-left: auto; color: var(--text-muted); background: transparent; font-size: 12px; cursor: pointer; }
 
 .startup-action-summary { display: grid; gap: 8px; padding: 15px 17px 5px; }
+.startup-action-avatar { width: 40px; height: 40px; border-radius: 11px; }
 .startup-action-summary p {
   display: flex;
   align-items: flex-start;
@@ -2240,17 +2241,26 @@ code,
 
 .application-avatar {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  color: hsl(var(--application-hue) 78% 72%);
-  border: 1px solid hsl(var(--application-hue) 68% 62% / 0.25);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
-  background: hsl(var(--application-hue) 65% 54% / 0.13);
-  font-size: 13px;
-  font-weight: 760;
+  background: var(--panel-soft);
 }
+
+.application-avatar__fallback { opacity: 0.72; }
+
+.process-application-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.process-application-avatar .application-avatar__fallback { width: 12px; }
 
 .application-avatar img {
   display: block;
@@ -2258,6 +2268,30 @@ code,
   height: 100%;
   border-radius: inherit;
   object-fit: contain;
+}
+
+.application-avatar.has-icon {
+  color: transparent;
+  border-color: transparent;
+  background: transparent;
+}
+
+.application-avatar.is-loading {
+  position: relative;
+  overflow: hidden;
+  color: transparent;
+}
+
+.application-avatar__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, 0.14) 45%, transparent 70%);
+  transform: translateX(-100%);
+  animation: application-avatar-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes application-avatar-shimmer {
+  to { transform: translateX(100%); }
 }
 
 .application-impact-row__identity {
@@ -4889,7 +4923,16 @@ code,
   .cleanup-map__plan.is-dragging .cleanup-map__basket-attention i,
   .cleanup-delete-dialog__icon.is-active,
   .cleanup-delete-dialog__progress-mark i,
-  .cleanup-delete-dialog__progress-track.is-indeterminate > i { animation-duration: 0.01ms; animation-iteration-count: 1; }
+  .cleanup-delete-dialog__progress-track.is-indeterminate > i,
+  .application-uninstall__scan-stage::before,
+  .application-uninstall__scan-ring,
+  .application-uninstall__scan-core,
+  .application-uninstall__scan-node,
+  .application-uninstall__scan-progress > i,
+  .application-uninstall__scan-skeleton > span,
+  .application-uninstall__scan-skeleton i,
+  .application-uninstall__scan-skeleton b,
+  .application-uninstall__scan-skeleton em { animation-duration: 0.01ms; animation-iteration-count: 1; }
 }
 
 .cleanup-location-grid {
@@ -5011,6 +5054,8 @@ code,
 .cleanup-applications li:nth-child(-n + 2) { border-top: 0; }
 .cleanup-applications li:nth-child(odd) { border-right: 1px solid rgba(32, 42, 50, 0.65); }
 .cleanup-applications li > span { display: inline-flex; align-items: center; justify-content: center; width: 31px; height: 31px; color: var(--violet); border-radius: 9px; background: rgba(167, 139, 250, 0.09); }
+.cleanup-applications li > .cleanup-application-avatar { color: var(--text-muted); border: 1px solid var(--border-strong); background: var(--panel-soft); }
+.cleanup-applications li > .cleanup-application-avatar.has-icon { border-color: transparent; background: transparent; }
 .cleanup-applications li > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .cleanup-applications li > div strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .cleanup-applications li small { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
@@ -5420,7 +5465,7 @@ code,
 
 .storage-process-list button {
   display: grid;
-  grid-template-columns: 28px minmax(110px, 1.4fr) repeat(3, minmax(74px, 0.8fr)) 14px;
+  grid-template-columns: 22px 29px minmax(110px, 1.4fr) repeat(3, minmax(74px, 0.8fr)) 14px;
   gap: 9px;
   width: 100%;
   min-height: 43px;
@@ -5473,6 +5518,8 @@ code,
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+
+.storage-process-avatar { width: 29px; height: 29px; border-radius: 8px; }
 
 .storage-process-name strong { font-size: 12px; }
 .storage-process-list svg { color: var(--text-muted); }
@@ -5906,12 +5953,12 @@ code,
 }
 
 .network-connection-owner button {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
   flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  align-items: center;
+  gap: 6px;
   padding: 4px 6px;
   overflow: hidden;
   color: var(--text-soft);
@@ -5922,6 +5969,9 @@ code,
   text-align: left;
 }
 
+.network-owner-avatar { width: 25px; height: 25px; border-radius: 6px; }
+.network-connection-owner button > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+
 .network-connection-owner button:hover {
   color: var(--text);
   border-color: rgba(99, 168, 255, 0.35);
@@ -5929,6 +5979,7 @@ code,
 
 .network-connection-owner button strong,
 .network-connection-owner button small,
+.network-connection-owner button > span,
 .network-connection-owner > span {
   max-width: 100%;
   overflow: hidden;

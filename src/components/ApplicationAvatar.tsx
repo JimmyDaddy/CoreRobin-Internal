@@ -1,46 +1,85 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { AppWindow } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { getApplicationIcon } from "../api";
-import type { ApplicationImpact } from "../diagnosis";
-import type { ProcessDetailRequest } from "../types";
+import type { ApplicationIconRequest } from "../types";
 
-const MAX_CACHED_ICONS = 96;
+const MAX_CACHED_ICONS = 128;
+const MAX_CONCURRENT_ICON_LOADS = 4;
 const iconRequests = new Map<string, Promise<string | null>>();
+const queuedIconLoads: Array<() => void> = [];
+let activeIconLoads = 0;
 
 export function ApplicationAvatar({
-  application,
+  name,
+  source,
   className = "",
 }: {
-  application: Pick<ApplicationImpact, "name" | "iconProcess">;
+  name: string;
+  source: ApplicationIconRequest | null;
   className?: string;
 }) {
-  const [iconUrl, setIconUrl] = useState<string | null>(null);
-  const requestKey = iconRequestKey(application.iconProcess);
+  const elementRef = useRef<HTMLSpanElement>(null);
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const requestKey = iconRequestKey(source);
+  const [shouldLoad, setShouldLoad] = useState(
+    () => typeof IntersectionObserver === "undefined",
+  );
+  const [iconUrl, setIconUrl] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (shouldLoad || requestKey === "fallback") return;
+    const element = elementRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setShouldLoad(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "160px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [requestKey, shouldLoad]);
 
   useEffect(() => {
     let cancelled = false;
-    void loadApplicationIcon(application.iconProcess).then((url) => {
+    setIconUrl(undefined);
+    const request = sourceRef.current;
+    if (!request) {
+      setIconUrl(null);
+      return;
+    }
+    if (!shouldLoad) return;
+    void loadApplicationIcon(request).then((url) => {
       if (!cancelled) setIconUrl(url);
     });
     return () => {
       cancelled = true;
     };
-  }, [requestKey]);
+  }, [requestKey, shouldLoad]);
 
+  const loading = source !== null && iconUrl === undefined;
   return (
     <span
-      className={`application-avatar${className ? ` ${className}` : ""}`}
-      style={{ "--application-hue": applicationHue(application.name) } as CSSProperties}
+      ref={elementRef}
+      className={`application-avatar${loading ? " is-loading" : ""}${iconUrl ? " has-icon" : ""}${className ? ` ${className}` : ""}`}
+      title={name}
       aria-hidden="true"
     >
       {iconUrl
-        ? <img src={iconUrl} alt="" />
-        : applicationInitial(application.name)}
+        ? <img src={iconUrl} alt="" draggable={false} />
+        : loading
+          ? <span className="application-avatar__shimmer" />
+          : <AppWindow className="application-avatar__fallback" size={18} />}
     </span>
   );
 }
 
-function loadApplicationIcon(request: ProcessDetailRequest): Promise<string | null> {
+function loadApplicationIcon(request: ApplicationIconRequest): Promise<string | null> {
   const key = iconRequestKey(request);
   const cached = iconRequests.get(key);
   if (cached) {
@@ -48,7 +87,7 @@ function loadApplicationIcon(request: ProcessDetailRequest): Promise<string | nu
     iconRequests.set(key, cached);
     return cached;
   }
-  const pending = getApplicationIcon(request)
+  const pending = enqueueIconLoad(() => getApplicationIcon(request))
     .then((icon) => {
       if (!icon || icon.mimeType !== "image/png" || icon.bytes.length === 0) return null;
       return pngDataUrl(icon.bytes, icon.mimeType);
@@ -63,6 +102,27 @@ function loadApplicationIcon(request: ProcessDetailRequest): Promise<string | nu
   return pending;
 }
 
+function enqueueIconLoad<T>(load: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    queuedIconLoads.push(() => {
+      activeIconLoads += 1;
+      void Promise.resolve().then(load).then(resolve, reject).finally(() => {
+        activeIconLoads -= 1;
+        startQueuedIconLoads();
+      });
+    });
+    startQueuedIconLoads();
+  });
+}
+
+function startQueuedIconLoads() {
+  while (activeIconLoads < MAX_CONCURRENT_ICON_LOADS) {
+    const next = queuedIconLoads.shift();
+    if (!next) return;
+    next();
+  }
+}
+
 function pngDataUrl(bytes: number[], mimeType: string): string {
   const view = new Uint8Array(bytes);
   let binary = "";
@@ -72,16 +132,11 @@ function pngDataUrl(bytes: number[], mimeType: string): string {
   return `data:${mimeType};base64,${btoa(binary)}`;
 }
 
-function iconRequestKey(request: ProcessDetailRequest): string {
-  return `${request.pid}:${request.snapshotBirthToken ?? `fallback:${request.snapshotStartTime}`}`;
-}
-
-function applicationInitial(name: string): string {
-  return Array.from(name.trim())[0]?.toLocaleUpperCase() ?? "?";
-}
-
-function applicationHue(name: string): number {
-  let hash = 0;
-  for (const character of name) hash = (hash * 31 + character.charCodeAt(0)) % 360;
-  return hash;
+function iconRequestKey(request: ApplicationIconRequest | null): string {
+  if (!request) return "fallback";
+  if (request.applicationPath) return `bundle:${request.applicationPath}`;
+  if (request.executablePath) return `executable:${request.executablePath}`;
+  const process = request.process;
+  if (!process) return "fallback";
+  return `process:${process.pid}:${process.snapshotBirthToken ?? `fallback:${process.snapshotStartTime}`}`;
 }

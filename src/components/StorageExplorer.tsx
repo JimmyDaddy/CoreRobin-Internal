@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { processApplicationIconSource } from "../applicationIcon";
 
 import {
   sortVolumesByUsage,
@@ -30,6 +31,7 @@ import {
   processIdentity,
   resourceUsageLevel,
 } from "../utils";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface StorageExplorerProps {
   disk: DiskSnapshot;
@@ -198,6 +200,11 @@ export function StorageExplorer({
                     onClick={() => onSelectProcess(process)}
                   >
                     <span className="storage-process-rank">{index + 1}</span>
+                    <ApplicationAvatar
+                      name={process.name}
+                      source={processApplicationIconSource(process)}
+                      className="storage-process-avatar"
+                    />
                     <span className="storage-process-name">
                       <strong>{process.name || t("common:unnamedProcess")}</strong>
                       <small>PID {process.pid}</small>

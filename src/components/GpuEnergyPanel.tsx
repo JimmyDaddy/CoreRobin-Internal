@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getGpuEnergySnapshot } from "../api";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { processApplicationIconSource } from "../applicationIcon";
 import type { GpuEnergySnapshot, ProcessRow } from "../types";
 import { formatPercent, normalizeCommandError } from "../utils";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 import "./GpuEnergyPanel.css";
 
 const REFRESH_INTERVAL_MS = 15_000;
@@ -39,14 +41,19 @@ export function GpuEnergyPanel({ processes }: { processes: ProcessRow[] }) {
   const applications = useMemo(() => {
     if (!snapshot) return [];
     const byPid = new Map(processes.map((process) => [process.pid, process]));
-    const impact = new Map<string, number>();
+    const impact = new Map<string, { impact: number; process: ProcessRow | null }>();
     for (const sample of snapshot.processEnergy) {
       if (!Number.isFinite(sample.impact) || sample.impact <= MINIMUM_VISIBLE_IMPACT) continue;
-      const name = byPid.get(sample.pid)?.name ?? `PID ${sample.pid}`;
-      impact.set(name, (impact.get(name) ?? 0) + sample.impact);
+      const process = byPid.get(sample.pid) ?? null;
+      const name = process?.name ?? `PID ${sample.pid}`;
+      const current = impact.get(name);
+      impact.set(name, {
+        impact: (current?.impact ?? 0) + sample.impact,
+        process: current?.process ?? process,
+      });
     }
     return [...impact.entries()]
-      .map(([name, value]) => ({ name, impact: value }))
+      .map(([name, value]) => ({ name, ...value }))
       .sort((left, right) => right.impact - left.impact)
       .slice(0, 8);
   }, [processes, snapshot]);
@@ -97,7 +104,16 @@ export function GpuEnergyPanel({ processes }: { processes: ProcessRow[] }) {
           <div className="gpu-energy__applications">
             <h3><Zap size={15} />{t("applications:energy.applicationImpact")}</h3>
             <ol>{applications.map((application) => (
-              <li key={application.name}><strong>{application.name}</strong><span><i style={{ width: `${Math.max(3, application.impact / maximumImpact * 100)}%` }} /></span><b>{application.impact.toFixed(1)}</b></li>
+              <li key={application.name}>
+                <ApplicationAvatar
+                  name={application.name}
+                  source={application.process ? processApplicationIconSource(application.process) : null}
+                  className="gpu-energy-avatar"
+                />
+                <strong>{application.name}</strong>
+                <span><i style={{ width: `${Math.max(3, application.impact / maximumImpact * 100)}%` }} /></span>
+                <b>{application.impact.toFixed(1)}</b>
+              </li>
             ))}</ol>
           </div>
         ) : <p className="gpu-energy__unavailable">{snapshot?.processEnergyAvailable

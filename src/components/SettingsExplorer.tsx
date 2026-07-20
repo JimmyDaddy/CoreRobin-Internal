@@ -17,6 +17,7 @@ import type { DesktopNotificationStatus } from "../desktopNotifications";
 import type { SystemSnapshot } from "../types";
 import { aggregateApplications } from "../diagnosis";
 import { AboutSupport } from "./AboutSupport";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 
@@ -386,8 +387,11 @@ function ApplicationWatchRulesEditor({
 }) {
   const { t } = useAppTranslation();
   const applications = useMemo(
-    () => aggregateApplications(snapshot.processes).map(({ name }) => name).sort(),
+    () => aggregateApplications(snapshot.processes).sort((left, right) => left.name.localeCompare(right.name)),
     [snapshot.processes],
+  );
+  const applicationByName = new Map(
+    applications.map((application) => [application.name.toLocaleLowerCase(), application]),
   );
   const [applicationName, setApplicationName] = useState("");
   const [metric, setMetric] = useState<ApplicationWatchMetric>("cpu");
@@ -416,7 +420,7 @@ function ApplicationWatchRulesEditor({
     <div className="watch-rules">
       <div className="watch-rules__builder">
         <label><span>{t("settings:watchRules.application")}</span><input list="watch-rule-applications" value={applicationName} onChange={(event) => setApplicationName(event.target.value)} placeholder={t("settings:watchRules.applicationPlaceholder")} /></label>
-        <datalist id="watch-rule-applications">{applications.map((name) => <option key={name} value={name} />)}</datalist>
+        <datalist id="watch-rule-applications">{applications.map(({ name }) => <option key={name} value={name} />)}</datalist>
         <label><span>{t("settings:watchRules.metric")}</span><select value={metric} onChange={(event) => updateMetric(event.target.value as ApplicationWatchMetric)}>{(["cpu", "memory", "disk"] as const).map((value) => <option key={value} value={value}>{t(`settings:watchRules.metrics.${value}`)}</option>)}</select></label>
         <label><span>{t("settings:watchRules.threshold")}</span><input type="number" min={1} max={metric === "cpu" ? 100 : 1_000_000} step={metric === "disk" ? 0.5 : 1} value={threshold} onChange={(event) => setThreshold(Math.max(1, Number(event.target.value)))} /><small>{metric === "cpu" ? "%" : metric === "memory" ? "MiB" : "MiB/s"}</small></label>
         <label><span>{t("settings:watchRules.duration")}</span><select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))}>{[10, 30, 60, 300].map((seconds) => <option key={seconds} value={seconds}>{t("settings:watchRules.seconds", { count: seconds })}</option>)}</select></label>
@@ -426,6 +430,13 @@ function ApplicationWatchRulesEditor({
       {rules.length > 0 ? <ul className="watch-rules__list">{rules.map((rule) => (
         <li key={rule.id} className={activeRuleIds.includes(rule.id) ? "is-active" : ""}>
           <label className="settings-switch watch-rules__switch"><input type="checkbox" role="switch" aria-label={rule.applicationName} checked={rule.enabled} onChange={(event) => onChange(rules.map((candidate) => candidate.id === rule.id ? { ...candidate, enabled: event.target.checked } : candidate))} /></label>
+          <ApplicationAvatar
+            name={rule.applicationName}
+            source={applicationByName.has(rule.applicationName.toLocaleLowerCase())
+              ? { process: applicationByName.get(rule.applicationName.toLocaleLowerCase())!.iconProcess }
+              : null}
+            className="watch-rule-avatar"
+          />
           <div><strong>{rule.applicationName}</strong><small>{t("settings:watchRules.summary", { metric: t(`settings:watchRules.metrics.${rule.metric}`), threshold: rule.threshold, unit: rule.metric === "cpu" ? "%" : rule.metric === "memory" ? "MiB" : "MiB/s", seconds: rule.durationSeconds })}</small></div>
           {activeRuleIds.includes(rule.id) ? <em>{t("settings:watchRules.active")}</em> : null}
           <button type="button" aria-label={t("settings:watchRules.remove", { name: rule.applicationName })} onClick={() => onChange(rules.filter((candidate) => candidate.id !== rule.id))}><Trash2 size={14} /></button>

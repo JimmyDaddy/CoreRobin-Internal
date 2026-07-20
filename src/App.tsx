@@ -137,6 +137,7 @@ const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
 
 const CleanupAssistant = lazy(async () => ({ default: (await import("./components/CleanupAssistant")).CleanupAssistant }));
+const ApplicationUninstallAssistant = lazy(async () => ({ default: (await import("./components/ApplicationUninstallAssistant")).ApplicationUninstallAssistant }));
 const ConfirmActionDialog = lazy(async () => ({ default: (await import("./components/ConfirmActionDialog")).ConfirmActionDialog }));
 const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
 const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
@@ -1048,6 +1049,7 @@ function App() {
             <div className="nav-group daily-nav">
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
               <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}><ListTree size={18} />{t("app:applications")}</button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
             </div>
@@ -1057,7 +1059,8 @@ function App() {
             <div className="nav-group">
               <span className="nav-label">{t("app:monitor")}</span>
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app:overview")}</button>
-              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><ListTree size={17} />{t("app:processes")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => setActiveView("applications")}><ListTree size={17} />{t("app:applications")}</button>
+              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><Cpu size={17} />{t("app:processes")}</button>
               <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
               <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app:network")}</button>
@@ -1090,7 +1093,7 @@ function App() {
                         ? "records"
                         : activeView === "settings"
                           ? "settings"
-                          : activeView === "processes"
+                          : activeView === "processes" || activeView === "applications"
                             ? "applications"
                             : "today"}`)}</span>
                 <h1>{snapshot.host.osName.toLocaleLowerCase().includes("darwin") ? t("daily:topbar.thisMac") : t("daily:topbar.thisComputer")}</h1>
@@ -1187,7 +1190,7 @@ function App() {
         {error ? <div className="global-error">{t("app:sampleFailed", { message: error.message })}</div> : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common:close")}</button></div> : null}
 
-        <div className={`content-layout${dailyMode || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${dailyMode || activeView === "applications" || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
             <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>}>
             {dailyMode ? (
@@ -1263,6 +1266,11 @@ function App() {
                   cleanupLoading={cleanupScan.loading}
                   onOpenCleanup={openDailyCleanup}
                   onRefresh={async () => { await refreshNow(); }}
+                />
+              ) : activeView === "applications" ? (
+                <ApplicationUninstallAssistant
+                  onUserActionStart={userActions.start}
+                  onUserActionComplete={userActions.complete}
                 />
               ) : activeView === "cleanup" ? (
                 <CleanupAssistant
@@ -1443,6 +1451,11 @@ function App() {
                 }}
                 usageThresholds={settings.usageThresholds}
                 onOpenCleanup={() => setActiveView("cleanup")}
+              />
+            ) : activeView === "applications" ? (
+              <ApplicationUninstallAssistant
+                onUserActionStart={userActions.start}
+                onUserActionComplete={userActions.complete}
               />
             ) : activeView === "cleanup" ? (
               <CleanupAssistant

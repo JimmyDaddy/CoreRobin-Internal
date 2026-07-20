@@ -224,6 +224,59 @@ export interface CleanupApplication {
   modifiedAtMs: number | null;
 }
 
+export interface InstalledApplication {
+  name: string;
+  path: string;
+  bundleId: string | null;
+  sizeBytes: number;
+  lastUsedAtMs: number | null;
+  modifiedAtMs: number | null;
+  uninstallable: boolean;
+  unavailableReason: string | null;
+}
+
+export interface ApplicationInventorySnapshot {
+  sampledAtMs: number;
+  platformSupported: boolean;
+  cached: boolean;
+  refreshRecommended: boolean;
+  applications: InstalledApplication[];
+}
+
+export type ApplicationArtifactKind =
+  | "application"
+  | "application_support"
+  | "cache"
+  | "preferences"
+  | "saved_state"
+  | "container"
+  | "web_data"
+  | "http_storage"
+  | "cookies"
+  | "logs"
+  | "launch_agent";
+
+export interface ApplicationUninstallArtifact {
+  kind: ApplicationArtifactKind;
+  path: string;
+  logicalSizeBytes: number;
+  allocatedSizeBytes: number;
+  itemCount: number;
+  required: boolean;
+}
+
+export interface ApplicationUninstallPlan {
+  sampledAtMs: number;
+  application: InstalledApplication;
+  artifacts: ApplicationUninstallArtifact[];
+  skippedPaths: string[];
+}
+
+export interface ApplicationUninstallScope {
+  applicationPath: string;
+  bundleId: string;
+}
+
 export interface CleanupLocation {
   kind: CleanupLocationKind;
   paths: string[];
@@ -289,6 +342,7 @@ export interface CleanupDeleteLeaseRequest {
   scanSampledAtMs: number;
   expectedTargets: CleanupDeleteTargetEvidence[];
   mode: CleanupDeleteMode;
+  applicationUninstall?: ApplicationUninstallScope;
 }
 
 export type CleanupDeleteMode = "trash" | "permanent";
@@ -610,6 +664,11 @@ export interface ApplicationIcon {
   mimeType: string;
   bytes: number[];
 }
+
+export type ApplicationIconRequest =
+  | { process: ProcessDetailRequest; applicationPath?: never; executablePath?: never }
+  | { process?: never; applicationPath: string; executablePath?: never }
+  | { process?: never; applicationPath?: never; executablePath: string };
 
 export type ProcessAction = "request_close" | "force_kill";
 

@@ -30,6 +30,7 @@ import {
 import { ProcessHistory } from "./ProcessHistory";
 import { PathActions } from "./PathActions";
 import { Button } from "./Button";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface ProcessInspectorProps {
   selected: ProcessRow | null;
@@ -103,9 +104,17 @@ export function ProcessInspector({
   return (
     <aside className="inspector panel">
       <header className="inspector-header">
-        <div className="process-avatar" aria-hidden="true">
-          {displayName.slice(0, 1).toUpperCase() || "?"}
-        </div>
+        <ApplicationAvatar
+          name={displayName}
+          source={{
+            process: {
+              pid: selected.pid,
+              snapshotStartTime: selected.startTime,
+              snapshotBirthToken: selected.birthToken,
+            },
+          }}
+          className="process-avatar"
+        />
         <div className="inspector-title">
           <h2 title={displayName}>{displayName || t("common:unnamedProcess")}</h2>
           <span>PID {selected.pid} · {displayUser ?? t("common:unknownUser")}</span>

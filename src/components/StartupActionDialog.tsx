@@ -1,6 +1,7 @@
-import { Clock3, LoaderCircle, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { Clock3, LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { startupApplicationIconSource } from "../applicationIcon";
 
 import type {
   CommandError,
@@ -8,6 +9,7 @@ import type {
   StartupManagementAction,
   StartupManagementLease,
 } from "../types";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface StartupActionDialogProps {
   item: StartupItem;
@@ -53,7 +55,11 @@ export function StartupActionDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header>
-          <span className="dialog-icon"><RotateCcw size={20} /></span>
+          <ApplicationAvatar
+            name={item.name}
+            source={startupApplicationIconSource(item)}
+            className="dialog-icon startup-action-avatar"
+          />
           <div>
             <h2 id="startup-action-title">
               {t(`startup:actionDialog.${action}.title`, { name: item.name })}

@@ -1,4 +1,5 @@
 mod application_icon;
+mod application_metadata;
 mod cleanup;
 #[cfg(test)]
 mod command_names;
@@ -28,13 +29,14 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use application_icon::load_application_icon;
+use application_icon::{load_application_bundle_icon, load_application_icon};
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
     canonical_cleanup_subtree_path, cleanup_scan_access, inspect_cleanup_path,
-    load_cleanup_scan_cache, open_full_disk_access_settings, remove_cleanup_scan_cache,
-    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
-    save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
+    load_cleanup_scan_cache, load_or_scan_application_inventory, open_full_disk_access_settings,
+    prepare_application_uninstall, remove_cleanup_scan_cache, reveal_cleanup_application_bundle,
+    save_cleanup_scan_snapshot_cache, save_cleanup_scan_snapshot_cache_at, scan_cleanup,
+    scan_cleanup_subtree,
 };
 use error::CommandError;
 use file_insights::{
@@ -44,7 +46,8 @@ use file_insights::{
 use gpu_energy::sample_gpu_energy;
 use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
 use models::{
-    ApplicationIcon, CleanupDeleteExecutionRequest, CleanupDeleteLease,
+    ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
+    ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteProgress,
     CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess, CleanupScanProgress,
     CleanupSubtreeRequest, FileInsightsProgress, FileInsightsScan, GpuEnergySnapshot,
@@ -715,6 +718,65 @@ fn can_relaunch_application(
 }
 
 #[tauri::command]
+async fn get_installed_applications(
+    app: AppHandle,
+    window: WebviewWindow,
+    language: Option<String>,
+    force_refresh: bool,
+) -> Result<ApplicationInventorySnapshot, CommandError> {
+    require_main_window(&window)?;
+    let cache_path = application_inventory_cache_path(&app, language.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        load_or_scan_application_inventory(&cache_path, language.as_deref(), force_refresh)
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("Application inventory task failed: {error}"))
+    })?
+}
+
+fn application_inventory_cache_path(
+    app: &AppHandle,
+    language: Option<&str>,
+) -> Result<std::path::PathBuf, CommandError> {
+    let language = language
+        .map(str::trim)
+        .filter(|value| {
+            !value.is_empty()
+                && value.len() <= 32
+                && value
+                    .chars()
+                    .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        })
+        .unwrap_or("default")
+        .to_ascii_lowercase();
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join(format!("application-inventory-v1-{language}.json")))
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Could not resolve the application data folder: {error}"
+            ))
+        })
+}
+
+#[tauri::command]
+async fn get_application_uninstall_plan(
+    window: WebviewWindow,
+    application_path: String,
+    language: Option<String>,
+) -> Result<ApplicationUninstallPlan, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        prepare_application_uninstall(&application_path, language.as_deref())
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("Application uninstall scan failed: {error}"))
+    })?
+}
+
+#[tauri::command]
 async fn create_cleanup_delete_lease(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -1316,15 +1378,48 @@ async fn get_process_detail(
 #[tauri::command]
 async fn get_application_icon(
     state: State<'_, AppState>,
-    request: ProcessDetailRequest,
+    request: ApplicationIconRequest,
 ) -> Result<Option<ApplicationIcon>, CommandError> {
-    let executable = with_monitor(Arc::clone(&state.monitor), move |monitor| {
-        Ok(monitor.process_detail(request)?.executable)
+    let icon_source = match (
+        request.process,
+        request.application_path,
+        request.executable_path,
+    ) {
+        (Some(process), None, None) => {
+            let executable = with_monitor(Arc::clone(&state.monitor), move |monitor| {
+                Ok(monitor.process_detail(process)?.executable)
+            })
+            .await?;
+            ApplicationIconSource::Executable(executable)
+        }
+        (None, Some(application_path), None) if !application_path.trim().is_empty() => {
+            ApplicationIconSource::Bundle(application_path)
+        }
+        (None, None, Some(executable_path)) if !executable_path.trim().is_empty() => {
+            ApplicationIconSource::Executable(Some(executable_path))
+        }
+        _ => {
+            return Err(CommandError::new(
+                "application_icon_request_invalid",
+                "Choose exactly one application icon source.",
+            ));
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || match icon_source {
+        ApplicationIconSource::Executable(executable) => {
+            load_application_icon(executable.as_deref())
+        }
+        ApplicationIconSource::Bundle(application_path) => {
+            load_application_bundle_icon(&application_path)
+        }
     })
-    .await?;
-    tauri::async_runtime::spawn_blocking(move || load_application_icon(executable.as_deref()))
-        .await
-        .map_err(|error| CommandError::internal(format!("Application icon task failed: {error}")))
+    .await
+    .map_err(|error| CommandError::internal(format!("Application icon task failed: {error}")))
+}
+
+enum ApplicationIconSource {
+    Executable(Option<String>),
+    Bundle(String),
 }
 
 #[tauri::command]
@@ -1538,6 +1633,8 @@ pub fn run() {
             open_product_page,
             relaunch_application,
             can_relaunch_application,
+            get_installed_applications,
+            get_application_uninstall_plan,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
             execute_cleanup_delete,
@@ -1687,7 +1784,8 @@ mod security_boundary_tests {
         "open_product_page",
         "relaunch_application",
         "can_relaunch_application",
-        "can_relaunch_application",
+        "get_installed_applications",
+        "get_application_uninstall_plan",
         "create_cleanup_delete_lease",
         "release_cleanup_delete_lease",
         "execute_cleanup_delete",

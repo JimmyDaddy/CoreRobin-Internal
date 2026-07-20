@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { processApplicationIconSource } from "../applicationIcon";
 
 import {
   filterNetworkConnections,
@@ -38,6 +39,7 @@ import type {
   ProcessRow,
 } from "../types";
 import { formatBytes, formatRate, normalizeCommandError } from "../utils";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface NetworkExplorerProps {
   network: NetworkSnapshot;
@@ -565,8 +567,15 @@ function ConnectionOwnersCell({
           })}
           onClick={() => onSelectProcess(primary)}
         >
-          <strong>{primary.name || `PID ${primary.pid}`}</strong>
-          <small>PID {primary.pid}</small>
+          <ApplicationAvatar
+            name={primary.name}
+            source={processApplicationIconSource(primary)}
+            className="network-owner-avatar"
+          />
+          <span>
+            <strong>{primary.name || `PID ${primary.pid}`}</strong>
+            <small>PID {primary.pid}</small>
+          </span>
         </button>
         {reportedCount > 1 ? <em>+{reportedCount - 1}</em> : null}
       </div>

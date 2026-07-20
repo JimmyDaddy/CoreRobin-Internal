@@ -48,6 +48,20 @@ pub struct DeleteRoot {
 
 impl DeleteRoot {
     pub fn open(path: &Path) -> io::Result<Self> {
+        Self::open_with_owner_check(path, true)
+    }
+
+    /// Opens a root whose location has already been restricted by the caller.
+    /// This exists for the macOS `/Applications` directory, which is normally
+    /// owned by root even when the user may remove an application inside it.
+    #[cfg(target_os = "macos")]
+    pub(crate) fn open_trusted_system_root(path: &Path) -> io::Result<Self> {
+        Self::open_with_owner_check(path, false)
+    }
+
+    fn open_with_owner_check(path: &Path, require_current_owner: bool) -> io::Result<Self> {
+        #[cfg(not(unix))]
+        let _ = require_current_owner;
         let path_metadata = fs::symlink_metadata(path)?;
         if !path_metadata.is_dir() || path_metadata.file_type().is_symlink() {
             return Err(invalid_data("cleanup root is not a no-follow directory"));
@@ -59,7 +73,7 @@ impl DeleteRoot {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt as _;
-            if path_metadata.uid() != unsafe { libc::geteuid() } {
+            if require_current_owner && path_metadata.uid() != unsafe { libc::geteuid() } {
                 return Err(io::Error::new(
                     io::ErrorKind::PermissionDenied,
                     "cleanup root is not owned by the current user",
@@ -528,11 +542,31 @@ impl BoundDeleteTarget {
     }
 
     pub fn inspect(&self) -> Result<TreeInspection, String> {
+        self.inspect_with_internal_symlinks(false)
+    }
+
+    /// Inspects a verified directory without following symlinks contained in it.
+    ///
+    /// macOS application bundles commonly use internal symlinks for frameworks
+    /// and resources. The selected bundle itself is still required to be a
+    /// no-follow directory; only entries below that verified root are treated as
+    /// leaf nodes and fingerprinted by their no-follow metadata.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub fn inspect_allowing_internal_symlinks(&self) -> Result<TreeInspection, String> {
+        self.inspect_with_internal_symlinks(true)
+    }
+
+    fn inspect_with_internal_symlinks(
+        &self,
+        allow_internal_symlinks: bool,
+    ) -> Result<TreeInspection, String> {
         self.current_entry_metadata()
             .map_err(|error| format!("Cleanup target changed before inspection: {error}"))?;
         match self.handle.as_ref().expect("bound handle is present") {
             BoundHandle::File(file) => inspect_bound_file(file, self.identity),
-            BoundHandle::Directory(directory) => self.inspect_directory(directory),
+            BoundHandle::Directory(directory) => {
+                self.inspect_directory(directory, allow_internal_symlinks)
+            }
         }
     }
 
@@ -580,13 +614,41 @@ impl BoundDeleteTarget {
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
     ) -> Result<bool, String> {
-        self.delete_cancellable_with_hook(cancelled, on_entry_deleted, || {})
+        self.delete_cancellable_with_policy(cancelled, on_entry_deleted, false, || {})
     }
 
+    /// Deletes symlinks contained below a verified directory as link entries,
+    /// never by traversing their targets. Intended for validated application
+    /// bundles; generic cleanup keeps the stricter fail-closed behavior.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub fn delete_cancellable_allowing_internal_symlinks(
+        self,
+        cancelled: &AtomicBool,
+        on_entry_deleted: &mut dyn FnMut(u64),
+    ) -> Result<bool, String> {
+        self.delete_cancellable_with_policy(cancelled, on_entry_deleted, true, || {})
+    }
+
+    #[cfg(test)]
     fn delete_cancellable_with_hook(
+        self,
+        cancelled: &AtomicBool,
+        on_entry_deleted: &mut dyn FnMut(u64),
+        after_root_validation: impl FnOnce(),
+    ) -> Result<bool, String> {
+        self.delete_cancellable_with_policy(
+            cancelled,
+            on_entry_deleted,
+            false,
+            after_root_validation,
+        )
+    }
+
+    fn delete_cancellable_with_policy(
         mut self,
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
+        allow_internal_symlinks: bool,
         after_root_validation: impl FnOnce(),
     ) -> Result<bool, String> {
         self.current_entry_metadata()
@@ -621,7 +683,12 @@ impl BoundDeleteTarget {
                 let directory = Arc::try_unwrap(directory).map_err(|_| {
                     "Cleanup directory handle is unexpectedly shared during deletion.".to_owned()
                 })?;
-                self.delete_directory(directory, cancelled, on_entry_deleted)
+                self.delete_directory(
+                    directory,
+                    cancelled,
+                    on_entry_deleted,
+                    allow_internal_symlinks,
+                )
             }
         }
     }
@@ -631,6 +698,7 @@ impl BoundDeleteTarget {
         root: Dir,
         cancelled: &AtomicBool,
         on_entry_deleted: &mut dyn FnMut(u64),
+        allow_internal_symlinks: bool,
     ) -> Result<bool, String> {
         let root_entries = read_entry_names(&root, Path::new("."))?;
         let mut frames = vec![DirectoryFrame {
@@ -668,10 +736,29 @@ impl BoundDeleteTarget {
                     )
                 })?;
                 if entry_metadata.file_type().is_symlink() {
-                    return Err(format!(
-                        "Refused to delete {} because it is a symbolic link or reparse point.",
-                        display_path.display()
-                    ));
+                    if !allow_internal_symlinks {
+                        return Err(format!(
+                            "Refused to delete {} because it is a symbolic link or reparse point.",
+                            display_path.display()
+                        ));
+                    }
+                    ensure_same_volume(&entry_metadata, self.volume)
+                        .map_err(|error| error.to_string())?;
+                    let identity = FileIdentity::from_metadata(&entry_metadata);
+                    verify_symlink_identity(&frame.directory, &name, identity).map_err(
+                        |error| {
+                            format!(
+                                "Refused to unlink {} because it changed: {error}",
+                                display_path.display()
+                            )
+                        },
+                    )?;
+                    let deleted_bytes = allocated_file_size(&entry_metadata);
+                    frame.directory.remove_file(&name).map_err(|error| {
+                        format!("Could not unlink {}: {error}", display_path.display())
+                    })?;
+                    on_entry_deleted(deleted_bytes);
+                    continue;
                 }
 
                 if entry_metadata.is_dir() {
@@ -782,7 +869,11 @@ impl BoundDeleteTarget {
         Ok(true)
     }
 
-    fn inspect_directory(&self, root: &Dir) -> Result<TreeInspection, String> {
+    fn inspect_directory(
+        &self,
+        root: &Dir,
+        allow_internal_symlinks: bool,
+    ) -> Result<TreeInspection, String> {
         let root_directory = root
             .try_clone()
             .map_err(|error| format!("Could not retain the cleanup directory: {error}"))?;
@@ -828,10 +919,33 @@ impl BoundDeleteTarget {
                     )
                 })?;
                 if entry_metadata.file_type().is_symlink() {
-                    return Err(format!(
-                        "Refused to refresh {} because it is a symbolic link or reparse point.",
-                        display_path.display()
-                    ));
+                    if !allow_internal_symlinks {
+                        return Err(format!(
+                            "Refused to refresh {} because it is a symbolic link or reparse point.",
+                            display_path.display()
+                        ));
+                    }
+                    ensure_same_volume(&entry_metadata, self.volume)
+                        .map_err(|error| error.to_string())?;
+                    let identity = FileIdentity::from_metadata(&entry_metadata);
+                    verify_symlink_identity(&frame.directory, &name, identity).map_err(
+                        |error| {
+                            format!(
+                                "Refused to refresh {} because its link changed: {error}",
+                                display_path.display()
+                            )
+                        },
+                    )?;
+                    hash_os_str(&mut fingerprint, &name);
+                    fingerprint.update([b'l']);
+                    hash_identity(&mut fingerprint, identity);
+                    fingerprint.update(entry_metadata.len().to_le_bytes());
+                    hash_modified_at(&mut fingerprint, metadata_modified_at(&entry_metadata));
+                    logical_size_bytes = logical_size_bytes.saturating_add(entry_metadata.len());
+                    allocated_size_bytes =
+                        allocated_size_bytes.saturating_add(allocated_file_size(&entry_metadata));
+                    item_count = item_count.saturating_add(1);
+                    continue;
                 }
                 hash_os_str(&mut fingerprint, &name);
 
@@ -1224,6 +1338,18 @@ fn verify_entry_identity(directory: &Dir, name: &OsStr, expected: FileIdentity) 
     Ok(())
 }
 
+fn verify_symlink_identity(
+    directory: &Dir,
+    name: &OsStr,
+    expected: FileIdentity,
+) -> io::Result<()> {
+    let metadata = directory.symlink_metadata(name)?;
+    if !metadata.file_type().is_symlink() || FileIdentity::from_metadata(&metadata) != expected {
+        return Err(invalid_data("symbolic link identity changed"));
+    }
+    Ok(())
+}
+
 fn ensure_same_volume(metadata: &Metadata, expected_volume: u64) -> io::Result<()> {
     if MetadataExt::dev(metadata) != expected_volume {
         return Err(invalid_data(
@@ -1381,6 +1507,40 @@ mod tests {
             .expect_err("nested links must fail closed");
         assert!(error.contains("symbolic link"));
         assert_eq!(fs::read(outside.join("sentinel.bin")).unwrap(), b"keep");
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn explicitly_allowed_internal_symlink_is_fingerprinted_and_unlinked_only() {
+        use std::os::unix::fs::symlink;
+
+        let home = test_root("allowed-internal-link");
+        let target = home.join("Example.app");
+        let outside = home.join("outside");
+        fs::create_dir_all(&target).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(target.join("binary"), b"delete").unwrap();
+        fs::write(outside.join("sentinel.bin"), b"keep").unwrap();
+        symlink(&outside, target.join("Resources")).unwrap();
+
+        let root = DeleteRoot::open(&home).unwrap();
+        let bound = root.bind(Path::new("Example.app")).unwrap();
+        let inspection = bound.inspect_allowing_internal_symlinks().unwrap();
+        assert_eq!(inspection.item_count, 2);
+
+        let bound = root.bind(Path::new("Example.app")).unwrap();
+        assert!(
+            bound
+                .delete_cancellable_allowing_internal_symlinks(
+                    &AtomicBool::new(false),
+                    &mut |_| {},
+                )
+                .unwrap()
+        );
+        assert!(!target.exists());
+        assert_eq!(fs::read(outside.join("sentinel.bin")).unwrap(), b"keep");
+
         fs::remove_dir_all(home).unwrap();
     }
 

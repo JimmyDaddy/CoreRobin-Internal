@@ -1,3 +1,5 @@
+#[cfg(target_os = "macos")]
+use crate::application_metadata::bundle_icon_path;
 use crate::models::ApplicationIcon;
 
 #[cfg(target_os = "macos")]
@@ -28,11 +30,29 @@ pub fn load_application_icon(executable: Option<&str>) -> Option<ApplicationIcon
     }
 }
 
+pub fn load_application_bundle_icon(application_path: &str) -> Option<ApplicationIcon> {
+    #[cfg(target_os = "macos")]
+    {
+        let bundle = fs::canonicalize(application_path).ok()?;
+        load_macos_bundle_icon(&bundle)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = application_path;
+        None
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn load_macos_application_icon(executable: &str) -> Option<ApplicationIcon> {
     let executable = fs::canonicalize(executable).ok()?;
     let bundle = outermost_app_bundle(&executable)?;
-    let icon = bundle_icon_path(&bundle)?;
+    load_macos_bundle_icon(&bundle)
+}
+
+#[cfg(target_os = "macos")]
+fn load_macos_bundle_icon(bundle: &Path) -> Option<ApplicationIcon> {
+    let icon = bundle_icon_path(bundle)?;
     let (_cleanup, output) = temporary_icon_output()?;
     let converted = Command::new("/usr/bin/sips")
         .args(["-s", "format", "png", "-Z", "96"])
@@ -65,55 +85,6 @@ fn outermost_app_bundle(executable: &Path) -> Option<PathBuf> {
         })
         .last()
         .map(Path::to_path_buf)
-}
-
-#[cfg(target_os = "macos")]
-fn bundle_icon_path(bundle: &Path) -> Option<PathBuf> {
-    let canonical_bundle = fs::canonicalize(bundle).ok()?;
-    let resources = canonical_bundle.join("Contents/Resources");
-    let plist = plist::Value::from_file(canonical_bundle.join("Contents/Info.plist")).ok();
-    let named_icon = plist
-        .as_ref()
-        .and_then(plist::Value::as_dictionary)
-        .and_then(|dictionary| {
-            dictionary
-                .get("CFBundleIconFile")
-                .or_else(|| dictionary.get("CFBundleIconName"))
-        })
-        .and_then(plist::Value::as_string)
-        .map(|name| {
-            let name = PathBuf::from(name);
-            if name.extension().is_some() {
-                name
-            } else {
-                name.with_extension("icns")
-            }
-        });
-    let candidate = named_icon
-        .map(|name| resources.join(name))
-        .filter(|path| path.is_file())
-        .or_else(|| first_icns_file(&resources))?;
-    let candidate = fs::canonicalize(candidate).ok()?;
-    candidate
-        .starts_with(&canonical_bundle)
-        .then_some(candidate)
-}
-
-#[cfg(target_os = "macos")]
-fn first_icns_file(resources: &Path) -> Option<PathBuf> {
-    let mut icons = fs::read_dir(resources)
-        .ok()?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.is_file()
-                && path
-                    .extension()
-                    .is_some_and(|extension| extension.eq_ignore_ascii_case("icns"))
-        })
-        .collect::<Vec<_>>();
-    icons.sort();
-    icons.into_iter().next()
 }
 
 #[cfg(target_os = "macos")]
@@ -152,10 +123,8 @@ impl Drop for TemporaryIconDirectory {
 
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
-    use super::{bundle_icon_path, outermost_app_bundle};
-    use std::fs;
+    use super::outermost_app_bundle;
     use std::path::Path;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn chooses_the_outer_application_bundle_for_helper_processes() {
@@ -166,34 +135,5 @@ mod tests {
             outermost_app_bundle(executable).as_deref(),
             Some(Path::new("/Applications/Code.app")),
         );
-    }
-
-    #[test]
-    fn resolves_the_declared_bundle_icon_without_leaving_the_bundle() {
-        let root = std::env::temp_dir().join(format!(
-            "core-robin-icon-test-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos(),
-        ));
-        let bundle = root.join("Example.app");
-        let resources = bundle.join("Contents/Resources");
-        fs::create_dir_all(&resources).unwrap();
-        fs::write(
-            bundle.join("Contents/Info.plist"),
-            r#"<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict><key>CFBundleIconFile</key><string>CoreRobinIcon</string></dict></plist>"#,
-        )
-        .unwrap();
-        fs::write(resources.join("CoreRobinIcon.icns"), b"test").unwrap();
-
-        assert_eq!(
-            bundle_icon_path(&bundle).as_deref(),
-            fs::canonicalize(resources.join("CoreRobinIcon.icns"))
-                .ok()
-                .as_deref(),
-        );
-        fs::remove_dir_all(root).unwrap();
     }
 }
