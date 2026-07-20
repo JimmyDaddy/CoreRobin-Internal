@@ -67,6 +67,8 @@ describe("release workflow privilege separation", () => {
     }
     expect(build).toContain("Build non-macOS installer");
     expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
+    expect(build).toContain("Upload updater signature explicitly");
+    expect(build).toContain("if-no-files-found: error");
     expect(macOSBuild).toContain("Build Developer ID signed macOS installer and updater");
     for (const jobName of ["verify", "import_macos_local", "package", "sign", "publish"]) {
       expect(workflowJob(releaseWorkflow, jobName)).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
@@ -254,6 +256,14 @@ describe("release workflow privilege separation", () => {
     expect(packageJob).toContain("path: release-source");
     expect(packageJob).toContain("--changelog release-source/CHANGELOG.md");
     expect(finalizeWorkflow).not.toContain("recover_updaters");
+
+    const signatureRecovery = workflowJob(finalizeWorkflow, "recover_updater_signatures");
+    expect(signatureRecovery).toContain("ref: ${{ github.sha }}");
+    expect(signatureRecovery).toContain("Download exact source updater package");
+    expect(signatureRecovery).toContain("pnpm tauri signer sign");
+    expect(signatureRecovery).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+    expect(signatureRecovery).not.toContain("tauri-action");
+    expect(packageJob).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
   });
 
   it("matches the updater manifest to Tauri v2 uncompressed updater artifacts", () => {
@@ -284,7 +294,7 @@ describe("release workflow privilege separation", () => {
     expect(build).toContain("scripts/verify-packaged-linux.sh");
     expect(build).toContain("scripts/verify-packaged-windows.ps1");
     expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
-    expect(build).not.toContain("Upload signed updater package explicitly");
+    expect(build).toContain("Upload updater signature explicitly");
     expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("flatten-release-artifacts.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("latest.json");
