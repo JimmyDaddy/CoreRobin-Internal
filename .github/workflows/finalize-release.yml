@@ -39,7 +39,6 @@ jobs:
       tag: ${{ steps.source.outputs.tag }}
       commit: ${{ steps.source.outputs.commit }}
       run_id: ${{ steps.source.outputs.run_id }}
-      has_source_updaters: ${{ steps.source.outputs.has_source_updaters }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -78,14 +77,6 @@ jobs:
           test "$(jq -r .head_sha <<<"$run_json")" = "$release_commit"
           test "$(jq -r .conclusion <<<"$run_json")" = "success"
 
-          artifacts_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100")"
-          linux_updaters="$(jq '[.artifacts[] | select(.expired == false and .name == "corerobin-linux-x86_64-updater")] | length' <<<"$artifacts_json")"
-          windows_updaters="$(jq '[.artifacts[] | select(.expired == false and .name == "corerobin-windows-x86_64-updater")] | length' <<<"$artifacts_json")"
-          has_source_updaters=false
-          if [[ "$linux_updaters" == "1" && "$windows_updaters" == "1" ]]; then
-            has_source_updaters=true
-          fi
-
           preview_tag="${RELEASE_TAG}-preview.1"
           preview_json="$(curl --fail --silent --show-error --location --retry 3 \
             -H 'Accept: application/vnd.github+json' \
@@ -98,7 +89,6 @@ jobs:
             echo "tag=$RELEASE_TAG"
             echo "commit=$release_commit"
             echo "run_id=$SOURCE_RUN_ID"
-            echo "has_source_updaters=$has_source_updaters"
           } >> "$GITHUB_OUTPUT"
 
   finalize_macos:
@@ -246,120 +236,35 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  recover_updaters:
-    name: Recover legacy updater packages (${{ matrix.label }})
-    needs: resolve
-    if: needs.resolve.outputs.has_source_updaters != 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: Linux x64
-            os: ubuntu-22.04
-            args: --bundles appimage -- --locked
-            artifact: corerobin-linux-x86_64
-            updater_path: src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz*
-          - label: Windows x64
-            os: windows-latest
-            args: --bundles nsis -- --locked
-            artifact: corerobin-windows-x86_64
-            updater_path: src-tauri/target/release/bundle/nsis/*.nsis.zip*
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    permissions:
-      contents: read
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-    steps:
-      - name: Check out exact release source
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ needs.resolve.outputs.commit }}
-          persist-credentials: false
-
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22
-
-      - name: Enable pinned pnpm
-        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Activate pinned Rust toolchain
-        run: rustup show active-toolchain
-
-      - name: Restore Rust build cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
-        with:
-          workspaces: src-tauri -> target
-          shared-key: finalize-updater-${{ runner.os }}
-
-      - name: Verify updater signing credential
-        shell: bash
-        run: |
-          test -n "$TAURI_SIGNING_PRIVATE_KEY"
-          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
-
-      - name: Rebuild signed updater package from exact release source
-        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
-        with:
-          args: ${{ matrix.args }}
-          retryAttempts: 2
-          uploadUpdaterJson: false
-          uploadWorkflowArtifacts: false
-
-      - name: Upload recovered signed updater package
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.artifact }}-updater-recovered-${{ needs.resolve.outputs.commit }}
-          path: ${{ matrix.updater_path }}
-          if-no-files-found: error
-          retention-days: 14
-
   package:
     name: Package finalized release evidence
     if: >-
       ${{
         always() &&
         needs.resolve.result == 'success' &&
-        needs.finalize_macos.result == 'success' &&
-        (needs.recover_updaters.result == 'success' || needs.recover_updaters.result == 'skipped')
+        needs.finalize_macos.result == 'success'
       }}
     needs:
       - resolve
       - finalize_macos
-      - recover_updaters
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     permissions:
       actions: read
       contents: read
     steps:
-      - name: Check out exact release source
+      - name: Check out trusted finalization tooling
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out exact release source for release notes
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.resolve.outputs.commit }}
-          fetch-depth: 0
+          path: release-source
           persist-credentials: false
 
       - name: Download Linux source-run artifacts
@@ -386,13 +291,6 @@ jobs:
           name: finalized-macos-${{ needs.resolve.outputs.commit }}
           path: release-artifacts
 
-      - name: Download recovered updater packages
-        if: needs.recover_updaters.result == 'success'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: corerobin-*-updater-recovered-${{ needs.resolve.outputs.commit }}
-          path: release-artifacts
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -404,7 +302,10 @@ jobs:
           RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
           RELEASE_COMMIT: ${{ needs.resolve.outputs.commit }}
         run: |
-          node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
+          node scripts/render-release-notes.mjs \
+            "$RELEASE_TAG" \
+            --changelog release-source/CHANGELOG.md \
+            --output release-notes.md
           pub_date="$(git show -s --format=%cI "$RELEASE_COMMIT")"
           node scripts/generate-updater-manifest.mjs \
             "$RELEASE_TAG" \

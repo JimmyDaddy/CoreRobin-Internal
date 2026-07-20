@@ -19,14 +19,14 @@ const TARGETS = [
   {
     platform: "linux-x86_64",
     artifactMarker: "corerobin-linux-x86_64",
-    packagePattern: /\.AppImage\.tar\.gz$/i,
-    publicName: (version) => `CoreRobin_${version}_amd64.AppImage.tar.gz`,
+    packagePattern: /\.AppImage$/i,
+    publicName: (version) => `CoreRobin_${version}_amd64.AppImage`,
   },
   {
     platform: "windows-x86_64",
     artifactMarker: "corerobin-windows-x86_64",
-    packagePattern: /(?:-setup\.exe|\.nsis)\.zip$/i,
-    publicName: (version) => `CoreRobin_${version}_x64-setup.nsis.zip`,
+    packagePattern: /-setup\.exe$/i,
+    publicName: (version) => `CoreRobin_${version}_x64-setup.exe`,
   },
 ];
 

@@ -113,12 +113,16 @@ jobs:
             os: ubuntu-22.04
             args: --bundles deb,appimage -- --locked
             artifact: release-candidate-linux-x86_64
-            updater_path: src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz*
+            signed_updater_path: |
+              src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/appimage/*.AppImage.sig
           - label: Windows x64
             os: windows-latest
             args: --bundles nsis,msi -- --locked
             artifact: release-candidate-windows-x86_64
-            updater_path: src-tauri/target/release/bundle/nsis/*.nsis.zip*
+            signed_updater_path: |
+              src-tauri/target/release/bundle/nsis/*-setup.exe
+              src-tauri/target/release/bundle/nsis/*-setup.exe.sig
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
@@ -193,11 +197,27 @@ jobs:
         shell: pwsh
         run: ./scripts/verify-packaged-windows.ps1 -BundleRoot src-tauri/target/release/bundle
 
+      - name: Verify signed Linux updater pair
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mapfile -t packages < <(find src-tauri/target/release/bundle/appimage -maxdepth 1 -type f -name '*.AppImage' -print)
+          test "${#packages[@]}" = "1"
+          test -s "${packages[0]}.sig"
+
+      - name: Verify signed Windows updater pair
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem src-tauri/target/release/bundle/nsis -Filter '*-setup.exe' -File)
+          if ($packages.Count -ne 1) { throw "Expected exactly one NSIS updater executable; found $($packages.Count)." }
+          if (-not (Test-Path "$($packages[0].FullName).sig" -PathType Leaf)) { throw "Missing NSIS updater signature." }
+
       - name: Retain signed candidate updater for inspection
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}-${{ needs.verify.outputs.commit }}
-          path: ${{ matrix.updater_path }}
+          path: ${{ matrix.signed_updater_path }}
           if-no-files-found: error
           retention-days: 3
 
