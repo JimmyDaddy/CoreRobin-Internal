@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
+#[cfg(target_os = "macos")]
+use serde::Deserialize;
+use serde::Serialize;
 
 #[cfg(target_os = "macos")]
 use std::io::Read;
@@ -81,9 +83,13 @@ const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
 const CLEANUP_SCAN_CACHE_VERSION: u8 = 6;
+#[cfg(target_os = "macos")]
 const MAX_APPLICATION_INVENTORY_CACHE_BYTES: u64 = 8 * 1_024 * 1_024;
+#[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_VERSION: u8 = 1;
+#[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
+#[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_RETENTION_MS: u64 = 7 * 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
 const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
@@ -103,6 +109,7 @@ struct CleanupScanCachePayload<'a> {
     snapshot: &'a CleanupScan,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct ApplicationInventoryFingerprintEntry {
@@ -111,6 +118,7 @@ struct ApplicationInventoryFingerprintEntry {
     info_plist_modified_at_ms: Option<u64>,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ApplicationInventoryCachePayload {
@@ -317,6 +325,7 @@ struct CleanupDeleteTarget {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CleanupTargetInspectionPolicy {
     Strict,
+    #[cfg(target_os = "macos")]
     ApplicationBundle,
 }
 
@@ -324,6 +333,7 @@ impl CleanupTargetInspectionPolicy {
     fn inspect(self, target: &BoundDeleteTarget) -> Result<TreeInspection, String> {
         match self {
             Self::Strict => target.inspect(),
+            #[cfg(target_os = "macos")]
             Self::ApplicationBundle => target.inspect_allowing_internal_symlinks(),
         }
     }
@@ -336,6 +346,7 @@ impl CleanupTargetInspectionPolicy {
     ) -> Result<bool, String> {
         match self {
             Self::Strict => target.delete_cancellable(cancelled, on_entry_deleted),
+            #[cfg(target_os = "macos")]
             Self::ApplicationBundle => {
                 target.delete_cancellable_allowing_internal_symlinks(cancelled, on_entry_deleted)
             }
@@ -1403,6 +1414,7 @@ pub fn load_or_scan_application_inventory(
     }
 }
 
+#[cfg(target_os = "macos")]
 fn application_inventory_cache_language(preferred_language: Option<&str>) -> String {
     preferred_language
         .map(str::trim)
@@ -1412,6 +1424,7 @@ fn application_inventory_cache_language(preferred_language: Option<&str>) -> Str
         .to_ascii_lowercase()
 }
 
+#[cfg(target_os = "macos")]
 fn load_application_inventory_cache(
     path: &Path,
     language: &str,
@@ -1443,6 +1456,7 @@ fn load_application_inventory_cache(
     Ok(Some(snapshot))
 }
 
+#[cfg(target_os = "macos")]
 fn save_application_inventory_cache_at(
     path: &Path,
     language: &str,

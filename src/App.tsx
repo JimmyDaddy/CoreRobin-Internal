@@ -1,7 +1,6 @@
 import {
   CircleHelp,
   CircleGauge,
-  AppWindow,
   Cpu,
   Database,
   Gauge,
@@ -1050,7 +1049,7 @@ function App() {
             <div className="nav-group daily-nav">
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
               <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
-              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}><AppWindow size={18} />{t("app:applications")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}><ListTree size={18} />{t("app:applications")}</button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
             </div>
@@ -1060,8 +1059,8 @@ function App() {
             <div className="nav-group">
               <span className="nav-label">{t("app:monitor")}</span>
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app:overview")}</button>
-              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => setActiveView("applications")}><AppWindow size={17} />{t("app:applications")}</button>
-              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><ListTree size={17} />{t("app:processes")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => setActiveView("applications")}><ListTree size={17} />{t("app:applications")}</button>
+              <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><Cpu size={17} />{t("app:processes")}</button>
               <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
               <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app:network")}</button>

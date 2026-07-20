@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import "./ApplicationUninstallAssistant.css";
+
 import {
   cancelCleanupDelete,
   createCleanupDeleteLease,

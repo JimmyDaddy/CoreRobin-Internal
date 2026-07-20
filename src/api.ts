@@ -430,7 +430,7 @@ async function fetchInstalledApplications(
   language: SupportedLanguage,
   forceRefresh: boolean,
 ): Promise<ApplicationInventorySnapshot> {
-  if (canUseDevelopmentMock()) {
+  if (import.meta.env.DEV && canUseDevelopmentMock()) {
     await new Promise((resolve) => window.setTimeout(resolve, 1_200));
     return getMockInstalledApplications();
   }
@@ -455,7 +455,9 @@ export async function getApplicationUninstallPlan(
   applicationPath: string,
   language: string | undefined = DEFAULT_LANGUAGE,
 ): Promise<ApplicationUninstallPlan> {
-  if (canUseDevelopmentMock()) return getMockApplicationUninstallPlan(applicationPath);
+  if (import.meta.env.DEV && canUseDevelopmentMock()) {
+    return getMockApplicationUninstallPlan(applicationPath);
+  }
   return invoke<ApplicationUninstallPlan>("get_application_uninstall_plan", {
     applicationPath,
     language: normalizeLanguage(language),

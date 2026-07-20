@@ -342,6 +342,7 @@ pub struct ApplicationInventorySnapshot {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 #[serde(rename_all = "snake_case")]
 pub enum ApplicationArtifactKind {
     Application,
@@ -493,6 +494,7 @@ pub struct CleanupDeleteLeaseRequest {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationUninstallScope {
     pub application_path: String,
