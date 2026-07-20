@@ -245,6 +245,8 @@ export function DailyHome({
   );
 }
 
+export default DailyHome;
+
 function tiltDailyCompanion(event: ReactPointerEvent<HTMLDivElement>) {
   if (
     event.pointerType !== "mouse" ||

@@ -183,6 +183,8 @@ export function SmartDiagnosis({
   );
 }
 
+export default SmartDiagnosis;
+
 interface FindingCardProps {
   finding: DiagnosisFinding;
   onOpenTarget: (target: DiagnosisActionTarget) => void;

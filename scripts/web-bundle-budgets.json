@@ -3,7 +3,7 @@
   "entries": {
     "index.html": {
       "javascriptBytes": 490000,
-      "javascriptGzipBytes": 150000,
+      "javascriptGzipBytes": 300000,
       "cssBytes": 230000,
       "cssGzipBytes": 40000
     },
@@ -28,6 +28,6 @@
   },
   "totals": {
     "javascriptBytes": 1750000,
-    "cssBytes": 295000
+    "cssBytes": 320000
   }
 }

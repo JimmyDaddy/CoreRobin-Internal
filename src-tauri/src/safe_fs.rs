@@ -206,6 +206,52 @@ impl DeleteRoot {
             volume: self.volume,
         })
     }
+
+    #[cfg(target_os = "macos")]
+    pub fn create_private_subdirectory(&self, name: &OsStr) -> io::Result<Self> {
+        let components = relative_components(Path::new(name))?;
+        if components.len() != 1 {
+            return Err(invalid_data(
+                "cleanup staging directory must be one filename component",
+            ));
+        }
+        self.directory.create_dir(name)?;
+        match self.open_subdirectory(Path::new(name), false, true) {
+            Ok(directory) => Ok(directory),
+            Err(error) => {
+                let _ = self.directory.remove_dir(name);
+                Err(error)
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn remove_empty_subdirectory(&self, name: &OsStr) -> io::Result<()> {
+        let components = relative_components(Path::new(name))?;
+        if components.len() != 1 {
+            return Err(invalid_data(
+                "cleanup staging directory must be one filename component",
+            ));
+        }
+        let entry_metadata = self.directory.symlink_metadata(name)?;
+        if entry_metadata.file_type().is_symlink() || !entry_metadata.is_dir() {
+            return Err(invalid_data(
+                "cleanup staging entry is not a no-follow directory",
+            ));
+        }
+        let directory = self.directory.open_dir_nofollow(name)?;
+        let handle_metadata = directory.dir_metadata()?;
+        ensure_same_volume(&handle_metadata, self.volume)?;
+        if FileIdentity::from_metadata(&entry_metadata)
+            != FileIdentity::from_metadata(&handle_metadata)
+        {
+            return Err(invalid_data(
+                "cleanup staging directory changed before removal",
+            ));
+        }
+        directory.remove_open_dir()?;
+        sync_directory(&self.directory)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -529,6 +575,60 @@ pub struct TreeInspection {
 }
 
 impl BoundDeleteTarget {
+    #[cfg(all(target_os = "macos", not(test)))]
+    pub fn kind(&self) -> BoundTargetKind {
+        self.kind
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn verify_in_directory(&self, directory: &DeleteRoot, name: &OsStr) -> io::Result<()> {
+        verify_entry_identity(&directory.directory, name, self.identity)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn verify_absent_from_directory(
+        &self,
+        directory: &DeleteRoot,
+        name: &OsStr,
+    ) -> io::Result<()> {
+        match directory.directory.symlink_metadata(name) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            Ok(_) => Err(invalid_data(
+                "cleanup target still exists in the staging directory",
+            )),
+            Err(error) => Err(error),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn restore_from_directory_noreplace(
+        &self,
+        source: &DeleteRoot,
+        source_name: &OsStr,
+    ) -> io::Result<()> {
+        if self.volume != source.volume {
+            return Err(io::Error::new(
+                io::ErrorKind::CrossesDevices,
+                "cleanup target and staging directory are on different filesystems",
+            ));
+        }
+        verify_entry_identity(&source.directory, source_name, self.identity)?;
+        ensure_entry_absent(&self.parent, &self.name)?;
+        rename_entry_noreplace(&source.directory, source_name, &self.parent, &self.name)?;
+        verify_entry_identity(&self.parent, &self.name, self.identity)?;
+        match source.directory.symlink_metadata(source_name) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Ok(_) => {
+                return Err(invalid_data(
+                    "cleanup staging entry still exists after rollback",
+                ));
+            }
+            Err(error) => return Err(error),
+        }
+        sync_directory(&source.directory)?;
+        sync_directory(&self.parent)
+    }
+
     pub fn modified_at(&self) -> Option<SystemTime> {
         self.modified_at
     }

@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "Die Auswahl im Löschkorb ist ungültig. Wählen Sie die Elemente erneut aus.",
       "overlapping_cleanup_targets": "Ein Ordner und eines seiner Unterverzeichnisse sind gleichzeitig ausgewählt. Nur ein Level auswählen.",
       "cleanup_target_conflicts_with_trash": "Die Auswahl enthält den Papierkorb oder liegt bereits darin und kann nur direkt gelöscht werden.",
-      "cleanup_trash_unavailable": "CoreRobin konnte den Systempapierkorb nicht sicher öffnen. Löschen Sie direkt oder versuchen Sie es später erneut."
+      "cleanup_trash_unavailable": "CoreRobin konnte den Systempapierkorb nicht sicher verwenden. Es wurde nichts entfernt; versuchen Sie es später erneut."
     }
   },
   "locations": {

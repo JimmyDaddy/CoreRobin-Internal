@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "클린업 바스켓 선택이 유효하지 않습니다. 항목을 다시 선택하세요.",
       "overlapping_cleanup_targets": "폴더와 그 하위 폴더 중 하나를 모두 선택했습니다. 하나의 레벨만 유지해 주세요.",
       "cleanup_target_conflicts_with_trash": "선택한 항목이 휴지통을 포함하거나 이미 휴지통에 있어 직접 삭제만 가능합니다.",
-      "cleanup_trash_unavailable": "CoreRobin이 시스템 휴지통을 안전하게 열 수 없습니다. 직접 삭제하거나 나중에 다시 시도하세요."
+      "cleanup_trash_unavailable": "CoreRobin이 시스템 휴지통을 안전하게 사용할 수 없습니다. 선택한 항목은 처리되지 않았습니다. 나중에 다시 시도하세요."
     }
   },
   "locations": {

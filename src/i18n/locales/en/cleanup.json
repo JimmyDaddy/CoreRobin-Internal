@@ -193,7 +193,7 @@
       "invalid_cleanup_selection": "The cleanup basket selection is invalid. Choose the items again.",
       "overlapping_cleanup_targets": "A folder and one of its children are both selected. Keep only one level.",
       "cleanup_target_conflicts_with_trash": "The selection contains or is already in Trash and can only be deleted directly.",
-      "cleanup_trash_unavailable": "CoreRobin could not safely open the system Trash. Delete directly or try again later."
+      "cleanup_trash_unavailable": "CoreRobin could not safely use the system Trash. Nothing was removed; try again later."
     }
   },
   "locations": {

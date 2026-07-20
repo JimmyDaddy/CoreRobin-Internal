@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "La sélection dans le bac de nettoyage est invalide. Choisir les éléments à nouveau.",
       "overlapping_cleanup_targets": "Un dossier et l'un de ses sous-dossiers sont sélectionnés. Ne conserver qu'un seul niveau.",
       "cleanup_target_conflicts_with_trash": "La sélection contient la Corbeille ou s’y trouve déjà et ne peut être supprimée que directement.",
-      "cleanup_trash_unavailable": "CoreRobin n’a pas pu ouvrir la Corbeille en toute sécurité. Supprimez directement ou réessayez plus tard."
+      "cleanup_trash_unavailable": "CoreRobin n’a pas pu utiliser la Corbeille en toute sécurité. Aucun élément n’a été supprimé ; réessayez plus tard."
     }
   },
   "locations": {

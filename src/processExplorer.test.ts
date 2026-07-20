@@ -12,6 +12,7 @@ import {
   parseProcessExplorerPreferences,
   pruneExpandedIdentities,
   saveProcessExplorerPreferences,
+  selectDefaultInspectorProcess,
   updateSelectedProcessHistory,
 } from "./processExplorer";
 import {
@@ -129,6 +130,23 @@ function snapshotFixture(
     },
   };
 }
+
+describe("default process inspector selection", () => {
+  it("shows the busiest controllable process before the user makes a selection", () => {
+    const protectedProcess = processFixture(1, { cpuPercent: 99, protected: true });
+    const memoryHeavy = processFixture(2, { cpuPercent: 12, memoryBytes: 8_000 });
+    const cpuHeavy = processFixture(3, { cpuPercent: 42, memoryBytes: 2_000 });
+
+    expect(selectDefaultInspectorProcess([protectedProcess, memoryHeavy, cpuHeavy]))
+      .toBe(cpuHeavy);
+  });
+
+  it("falls back to protected processes when no controllable process exists", () => {
+    const process = processFixture(1, { protected: true });
+    expect(selectDefaultInspectorProcess([process])).toBe(process);
+    expect(selectDefaultInspectorProcess([])).toBeNull();
+  });
+});
 
 interface ProjectionOptions {
   query?: string;

@@ -193,7 +193,7 @@
       "invalid_cleanup_selection": "清理篮中的选择无效，请重新选择后再试。",
       "overlapping_cleanup_targets": "同时选择了文件夹和它的子内容，请只保留其中一层。",
       "cleanup_target_conflicts_with_trash": "所选内容包含废纸篓或已经在废纸篓中，只能选择直接删除。",
-      "cleanup_trash_unavailable": "CoreRobin 当前无法安全打开系统废纸篓，请改用直接删除或稍后重试。"
+      "cleanup_trash_unavailable": "CoreRobin 当前无法安全使用系统废纸篓。所选内容尚未处理，请稍后重试。"
     }
   },
   "locations": {

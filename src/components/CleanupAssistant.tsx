@@ -4,7 +4,6 @@ import {
   Boxes,
   Code2,
   Download,
-  Eye,
   FileArchive,
   FolderOpen,
   FolderSearch,
@@ -46,8 +45,10 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { Button } from "./Button";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
+import "./CleanupAssistant.css";
 
 interface CleanupAssistantProps {
   snapshot: CleanupScan | null;
@@ -122,6 +123,7 @@ export function CleanupAssistant({
     [snapshot],
   );
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
+  const pristine = !snapshot && !loading && !error && !accessGuideOpen;
 
   const checkScanAccess = useCallback(async (startWhenReady: boolean) => {
     if (accessCheckInFlight.current || loading) return;
@@ -226,7 +228,7 @@ export function CleanupAssistant({
   }
 
   return (
-    <section className={`panel cleanup-assistant${loading && !snapshot ? " is-scanning" : ""}`} aria-labelledby="cleanup-title">
+    <section className={`panel cleanup-assistant${loading && !snapshot ? " is-scanning" : ""}${pristine ? " is-pristine" : ""}`} aria-labelledby="cleanup-title">
       <header className="cleanup-assistant__header">
         <span className="cleanup-assistant__icon" aria-hidden="true">
           <ScanSearch size={20} />
@@ -236,23 +238,25 @@ export function CleanupAssistant({
           <h2 id="cleanup-title">{t("cleanup:title")}</h2>
           <p>{t("cleanup:description")}</p>
         </div>
-        <button
-          className="button button--secondary cleanup-assistant__scan"
-          type="button"
-          disabled={cancelling || checkingAccess}
-          onClick={requestScan}
-        >
-          {loading
-            ? cancelling ? <RefreshCw className="is-spinning" size={15} /> : <Square size={13} />
-            : checkingAccess ? <RefreshCw className="is-spinning" size={15} /> : <ScanSearch size={15} />}
-          {checkingAccess
-            ? t("cleanup:access.checking")
-            : loading
-              ? cancelling ? t("cleanup:cancelling") : t("cleanup:cancelScan")
-            : snapshot
-              ? t("cleanup:scanAgain")
-              : t("cleanup:startScan")}
-        </button>
+        {!pristine ? (
+          <button
+            className="button button--secondary cleanup-assistant__scan"
+            type="button"
+            disabled={cancelling || checkingAccess}
+            onClick={requestScan}
+          >
+            {loading
+              ? cancelling ? <RefreshCw className="is-spinning" size={15} /> : <Square size={13} />
+              : checkingAccess ? <RefreshCw className="is-spinning" size={15} /> : <ScanSearch size={15} />}
+            {checkingAccess
+              ? t("cleanup:access.checking")
+              : loading
+                ? cancelling ? t("cleanup:cancelling") : t("cleanup:cancelScan")
+                : snapshot
+                  ? t("cleanup:scanAgain")
+                  : t("cleanup:startScan")}
+          </button>
+        ) : null}
       </header>
 
       {accessGuideOpen && !loading ? (
@@ -348,7 +352,39 @@ export function CleanupAssistant({
         </section>
       ) : null}
 
-      {loading && progress ? (
+      {pristine ? (
+        <section className="cleanup-empty-state" aria-labelledby="cleanup-empty-title">
+          <div className="cleanup-empty-state__visual" aria-hidden="true">
+            <div className="cleanup-empty-state__orbit is-outer" />
+            <div className="cleanup-empty-state__orbit is-inner" />
+            <div className="cleanup-empty-state__sweep" />
+            <span className="cleanup-empty-state__node is-download"><Download size={17} /></span>
+            <span className="cleanup-empty-state__node is-cache"><Boxes size={17} /></span>
+            <span className="cleanup-empty-state__node is-developer"><Code2 size={17} /></span>
+            <span className="cleanup-empty-state__core"><HardDrive size={32} /><i /></span>
+          </div>
+
+          <div className="cleanup-empty-state__content">
+            <h3 id="cleanup-empty-title">{t("cleanup:readOnlyTitle")}</h3>
+            <p>{t("cleanup:readOnlyDescription")}</p>
+            <ul aria-label={t("cleanup:description")}>
+              {(["downloads", "app_cache", "developer_cache"] as const).map((kind) => {
+                const Icon = LOCATION_ICONS[kind];
+                return <li key={kind}><Icon size={14} />{t(`cleanup:locations.${kind}.title`)}</li>;
+              })}
+            </ul>
+            <Button
+              variant="primary"
+              className="cleanup-empty-state__action"
+              disabled={checkingAccess}
+              onClick={requestScan}
+            >
+              {checkingAccess ? <RefreshCw className="is-spinning" size={16} /> : <ScanSearch size={16} />}
+              {t(checkingAccess ? "cleanup:access.checking" : "cleanup:startScan")}
+            </Button>
+          </div>
+        </section>
+      ) : loading && progress ? (
         <div className="cleanup-progress" role="status" aria-live="polite">
           <div className="cleanup-progress__indicator"><i /></div>
           <div className="cleanup-progress__content">
@@ -366,14 +402,6 @@ export function CleanupAssistant({
             <div><dt>{t("cleanup:progress.discovered")}</dt><dd>{formatBytes(progress.discoveredBytes)}</dd></div>
             <div><dt>{t("cleanup:progress.elapsed")}</dt><dd>{Math.max(0.1, progress.elapsedMs / 1_000).toFixed(1)}s</dd></div>
           </dl>
-        </div>
-      ) : !snapshot && !error && !accessGuideOpen ? (
-        <div className="cleanup-assistant__intro">
-          <Eye size={18} />
-          <div>
-            <strong>{t("cleanup:readOnlyTitle")}</strong>
-            <span>{t("cleanup:readOnlyDescription")}</span>
-          </div>
         </div>
       ) : null}
 
@@ -406,12 +434,14 @@ export function CleanupAssistant({
         </div>
       ) : null}
 
-      <FileInsightsLauncher
-        scan={fileInsights.snapshot}
-        snapshotStatus={fileInsights.snapshotStatus}
-        loading={fileInsights.loading}
-        onOpen={() => setActiveWorkspace("files")}
-      />
+      {snapshot ? (
+        <FileInsightsLauncher
+          scan={fileInsights.snapshot}
+          snapshotStatus={fileInsights.snapshotStatus}
+          loading={fileInsights.loading}
+          onOpen={() => setActiveWorkspace("files")}
+        />
+      ) : null}
 
       {snapshot ? (
         <>

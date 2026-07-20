@@ -232,7 +232,7 @@
       "invalid_cleanup_selection": "La selección en la cesta de limpieza es inválida. Elige los elementos nuevamente.",
       "overlapping_cleanup_targets": "Una carpeta y uno de sus subdirectorios están seleccionados. Mantén solo un nivel.",
       "cleanup_target_conflicts_with_trash": "La selección contiene la Papelera o ya está en ella y solo puede eliminarse directamente.",
-      "cleanup_trash_unavailable": "CoreRobin no pudo abrir la Papelera de forma segura. Elimina directamente o inténtalo más tarde."
+      "cleanup_trash_unavailable": "CoreRobin no pudo usar la Papelera de forma segura. No se eliminó nada; inténtalo de nuevo más tarde."
     }
   },
   "locations": {
