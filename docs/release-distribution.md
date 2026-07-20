@@ -23,9 +23,9 @@ Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前
 2. tag push 默认在 GitHub-hosted runner 并行构建 Linux、Windows、Apple Silicon Mac 和 Intel Mac。macOS job 导入 Developer ID、App Store Connect API 与 Tauri 更新签名凭据，生成已签名的 DMG/updater；它只调用一次 `notarytool submit`，保存 submission ID 后立即结束，不在 runner 内轮询 Apple。
 3. 每个 macOS job 上传预装订 DMG、updater、签名和私有 `notarization-state.json`。状态文件绑定 tag、commit、源 workflow run ID、架构、Team ID、submission ID 与三份资产 SHA-256；Finalize 必须先复核该文件，不能只相信 webhook payload。
 4. Linux、Windows 与两个 macOS build 全部成功后，Preview job 只挑选可手动安装的文件，在公开仓库发布独立的 `vMAJOR.MINOR.PATCH-preview.1` prerelease。macOS 文件名带有 `unnotarized-preview`，Preview 不含 updater 压缩包、`.sig`、`latest.json`，不会更新 `site/release-manifest.json`，也不会被标记为 latest。
-5. Apple 分别完成两个 submission 后调用外部 webhook relay；relay 使用 Durable Object 按 tag 与源 run ID 聚合 `aarch64`、`x64` 回调，只在两个架构都到达后向 Internal 发送一次 `apple-notarization-complete` repository dispatch，唤醒 `Finalize macOS release`。如果 relay 回调丢失，可以用同一 tag 与源 run ID 手动 dispatch。
+5. Apple 分别完成两个 submission 后调用外部 webhook relay；Preview job 发布成功后也向 relay 发送 `preview_ready`。relay 使用 Durable Object 按 tag 与源 run ID 聚合 `aarch64`、`x64` 与 Preview 三个信号，只在三者都到达后向 Internal 发送一次 `apple-notarization-complete` repository dispatch，唤醒 `Finalize macOS release`。Finalize 会短暂等待源 Release workflow 完成，以覆盖 Preview 创建与 workflow 状态落盘之间的秒级窗口。如果 relay 回调丢失，可以用同一 tag 与源 run ID 手动 dispatch。
 6. Finalize 先验证源 run 确实是该 tag/commit 的成功 `Release` workflow，且对应 Preview 已公开；随后用一个短时 GitHub-hosted macOS runner 下载两个原始 macOS artifact，重新调用 `notarytool info`。只有两个 submission 都为 `Accepted` 才会对原始 DMG 执行 staple，并通过签名、Hardened Runtime、架构、票据和 Gatekeeper 检查。`In Progress` 或 `Invalid` 都不会进入正式打包。
-7. Finalize package job 从原始 run 取回 Linux/Windows 资产，并与已装订的 macOS 资产汇总，生成 Tauri `latest.json`、`SHA256SUMS` 和 SPDX SBOM。sign job使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
+7. Finalize package job 从原始 run 取回 Linux/Windows 安装包和显式上传的签名 updater 资产，并与已装订的 macOS 资产汇总，生成 Tauri `latest.json`、`SHA256SUMS` 和 SPDX SBOM。对早于该上传约束的源 run，Finalize 会从同一受信 tag commit 一次性补建缺失的 Linux/Windows updater 包；新发布不会重复构建。sign job使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
 8. 受保护的 `release` environment 批准 staging job 后，Finalize 使用 `PUBLIC_RELEASE_TOKEN` 创建或更新独立的正式 `vMAJOR.MINOR.PATCH` draft。此时仍不会改变 latest 或官网 manifest，也不会覆盖已经公开的 Preview 资产。
 9. Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与 smoke 证据，才公开正式 Release、设置 latest，并更新 `site/release-manifest.json`。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
 
@@ -39,12 +39,26 @@ Tauri 更新签名用于防止应用内更新包被替换，Developer ID 与 App
 
 ## 默认发布顺序
 
-发布 commit 合并到 `main` 并推送后，创建并推送 tag：
+准备新版本时，先使用统一命令更新四个版本源，补充 CHANGELOG，并运行发布前门禁：
 
 ```bash
-git tag vMAJOR.MINOR.PATCH
-git push origin vMAJOR.MINOR.PATCH
+pnpm release:prepare -- MAJOR.MINOR.PATCH
+# 补充 CHANGELOG.md 的 MAJOR.MINOR.PATCH 小节
+pnpm release:preflight
 ```
+
+该门禁也在普通 PR/main CI 中运行，会在 tag 创建前检查 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 CHANGELOG。发布 commit 合并到 `main` 并推送后，不再手工创建稳定 tag；先启动无 tag 的四平台候选门禁：
+
+```bash
+gh workflow run release-candidate.yml \
+  --repo JimmyDaddy/CoreRobin-Internal \
+  --ref main \
+  -f version=MAJOR.MINOR.PATCH
+```
+
+候选门禁会在受信 `main` 的同一 commit 上运行完整前端/Rust 门禁，真实打包 Linux、Windows、Apple Silicon Mac 与 Intel Mac，验证 Tauri updater 签名、Developer ID、Hardened Runtime、安装包结构和架构。四个平台全部成功后，受保护的 `release` environment 请求批准；只有批准后才创建不可变的 `vMAJOR.MINOR.PATCH` tag，并以该 tag 自动启动 `Release`。候选失败不会创建任何 tag。候选产物只保留三天用于诊断，不作为正式发布资产；正式 Release 仍从同一 tag commit 独立重建并生成完整来源证明。
+
+紧急情况下仍可手工创建 tag，但这会绕过候选门禁，并重新承担失败 tag 无法安全复用的风险。
 
 tag push 启动 `Release`：所有平台完成构建后发布 `vMAJOR.MINOR.PATCH-preview.1`，macOS runner 在提交公证并上传原始 artifact 后已经释放。记录该次 `Release` run ID；Apple webhook relay 会携带 tag/run ID 唤醒 Finalize。
 

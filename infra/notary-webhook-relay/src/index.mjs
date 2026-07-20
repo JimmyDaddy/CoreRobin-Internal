@@ -23,11 +23,12 @@ export default {
       tag: url.searchParams.get("tag") ?? "",
       runId: url.searchParams.get("run_id") ?? "",
       arch: url.searchParams.get("arch") ?? "",
+      signal: url.searchParams.get("signal") ?? "",
     };
     if (!/^v\d+\.\d+\.\d+$/.test(callback.tag)) return new Response("Invalid tag", { status: 400 });
     if (!/^\d+$/.test(callback.runId)) return new Response("Invalid run_id", { status: 400 });
-    if (!new Set(["aarch64", "x64"]).has(callback.arch)) {
-      return new Response("Invalid arch", { status: 400 });
+    if (!validReleaseSignal(callback)) {
+      return new Response("Invalid release signal", { status: 400 });
     }
 
     const id = env.RELEASE_COORDINATOR.idFromName(`${callback.tag}:${callback.runId}`);
@@ -55,6 +56,7 @@ export class ReleaseCoordinator {
       tag: callback.tag,
       runId: callback.runId,
       arches: {},
+      previewReady: false,
       dispatching: false,
       dispatched: false,
     };
@@ -62,11 +64,17 @@ export class ReleaseCoordinator {
       return new Response("Release coordinator identity mismatch", { status: 409 });
     }
 
-    state.arches[callback.arch] = true;
+    if (callback.signal === "preview_ready") {
+      state.previewReady = true;
+    } else {
+      state.arches[callback.arch] = true;
+    }
     await this.ctx.storage.put("release", state);
     await this.ctx.storage.setAlarm(Date.now() + RELEASE_STATE_TTL_MS);
 
-    const ready = state.arches.aarch64 === true && state.arches.x64 === true;
+    const ready = state.arches.aarch64 === true
+      && state.arches.x64 === true
+      && state.previewReady === true;
     if (!ready) {
       return json({ accepted: true, ready: false, dispatched: false }, 202);
     }
@@ -129,9 +137,16 @@ function validateCallback(callback) {
     throw new Error("Invalid release callback tag.");
   }
   if (!/^\d+$/.test(callback.runId ?? "")) throw new Error("Invalid release callback run ID.");
-  if (!new Set(["aarch64", "x64"]).has(callback.arch)) {
-    throw new Error("Invalid release callback architecture.");
-  }
+  if (!validReleaseSignal(callback)) throw new Error("Invalid release callback signal.");
+}
+
+function validReleaseSignal(callback) {
+  const signal = callback.signal ?? "";
+  const arch = callback.arch ?? "";
+  const isNotarization = signal === ""
+    && new Set(["aarch64", "x64"]).has(arch);
+  const isPreviewReady = signal === "preview_ready" && arch === "";
+  return isNotarization || isPreviewReady;
 }
 
 function validSecret(value) {

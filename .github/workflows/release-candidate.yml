@@ -1,0 +1,350 @@
+name: Validate and activate release candidate
+run-name: Validate CoreRobin ${{ inputs.version }} before stable tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Prepared application version (MAJOR.MINOR.PATCH)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    name: Verify candidate source and quality gates
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      version: ${{ steps.source.outputs.version }}
+    steps:
+      - name: Check out trusted main
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact trusted source and prepared version
+        id: source
+        shell: bash
+        env:
+          CANDIDATE_VERSION: ${{ inputs.version }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$CANDIDATE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          test "$(node -p 'require("./package.json").version')" = "$CANDIDATE_VERSION"
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "version=$CANDIDATE_VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run frontend and release readiness gates
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          pnpm verify:web-bundle
+          pnpm test:surface-contracts
+          pnpm test:performance-contracts
+          pnpm verify:release-tools
+
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: src-tauri -> target
+          shared-key: release-candidate-verify
+
+      - name: Run Rust quality gates
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --check
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+
+  package_non_macos:
+    name: Package candidate (${{ matrix.label }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x64
+            os: ubuntu-22.04
+            args: --bundles deb,appimage -- --locked
+            artifact: release-candidate-linux-x86_64
+            updater_path: src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz*
+          - label: Windows x64
+            os: windows-latest
+            args: --bundles nsis,msi -- --locked
+            artifact: release-candidate-windows-x86_64
+            updater_path: src-tauri/target/release/bundle/nsis/*.nsis.zip*
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: src-tauri -> target
+          shared-key: release-candidate-${{ runner.os }}
+
+      - name: Verify updater signing credential
+        shell: bash
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+
+      - name: Build signed candidate installers and updater
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        with:
+          args: ${{ matrix.args }}
+          retryAttempts: 2
+          uploadUpdaterJson: false
+          uploadWorkflowArtifacts: false
+
+      - name: Verify packaged Linux installer
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash scripts/verify-packaged-linux.sh src-tauri/target/release/bundle
+
+      - name: Verify packaged Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-packaged-windows.ps1 -BundleRoot src-tauri/target/release/bundle
+
+      - name: Retain signed candidate updater for inspection
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-${{ needs.verify.outputs.commit }}
+          path: ${{ matrix.updater_path }}
+          if-no-files-found: error
+          retention-days: 3
+
+  package_macos:
+    name: Package candidate (${{ matrix.label }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon
+            target: aarch64-apple-darwin
+            expected_arch: arm64
+            artifact: release-candidate-macos-aarch64
+          - label: macOS Intel
+            target: x86_64-apple-darwin
+            expected_arch: x86_64
+            artifact: release-candidate-macos-x86_64
+    runs-on: macos-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Add macOS Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: src-tauri -> target
+          shared-key: release-candidate-${{ matrix.target }}
+
+      - name: Verify signing credentials
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          test -n "$APPLE_CERTIFICATE"
+          test -n "$APPLE_CERTIFICATE_PASSWORD"
+          test -n "$APPLE_TEAM_ID"
+
+      - name: Build Developer ID signed candidate installer and updater
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        with:
+          args: --target ${{ matrix.target }} --bundles app,dmg -- --locked
+          retryAttempts: 2
+          uploadUpdaterJson: false
+          uploadWorkflowArtifacts: false
+
+      - name: Verify signed candidate identity and architecture
+        shell: bash
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          bash scripts/verify-packaged-macos.sh \
+            "src-tauri/target/${{ matrix.target }}/release/bundle" \
+            "${{ matrix.expected_arch }}" \
+            "com.corerobin.monitor" \
+            "$APPLE_TEAM_ID" \
+            signed-preview
+
+      - name: Retain signed candidate package for inspection
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-${{ needs.verify.outputs.commit }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+          if-no-files-found: error
+          retention-days: 3
+
+  activate:
+    name: Create stable tag and start Release
+    needs:
+      - verify
+      - package_non_macos
+      - package_macos
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment:
+      name: release
+    permissions:
+      actions: write
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - name: Create immutable stable tag if absent
+        shell: bash
+        run: |
+          release_tag="v$RELEASE_VERSION"
+          existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" --jq .object.sha 2>/dev/null || true)"
+          if [[ -n "$existing_sha" ]]; then
+            test "$existing_sha" = "$RELEASE_COMMIT"
+            echo "Stable tag $release_tag already points to the verified candidate commit."
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$release_tag" \
+              -f sha="$RELEASE_COMMIT" >/dev/null
+            echo "Created stable tag $release_tag at $RELEASE_COMMIT."
+          fi
+
+      - name: Start the stable Release workflow exactly once
+        shell: bash
+        run: |
+          release_tag="v$RELEASE_VERSION"
+          existing_run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/runs?branch=$release_tag&per_page=20" \
+            --jq '[.workflow_runs[] | select(.head_sha == env.RELEASE_COMMIT)] | first | .id // empty')"
+          if [[ -n "$existing_run" ]]; then
+            echo "Release workflow run $existing_run already exists for $release_tag; not dispatching a duplicate."
+            exit 0
+          fi
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$release_tag" \
+            -f macos_builder=github
+          echo "Started Release for $release_tag."

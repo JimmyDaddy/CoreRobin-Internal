@@ -108,11 +108,13 @@ jobs:
             target: ""
             args: --bundles deb,appimage -- --locked
             artifact: corerobin-linux-x86_64
+            updater_path: src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz*
           - label: Windows x64
             os: windows-latest
             target: ""
             args: --bundles nsis,msi -- --locked
             artifact: corerobin-windows-x86_64
+            updater_path: src-tauri/target/release/bundle/nsis/*.nsis.zip*
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
@@ -174,6 +176,14 @@ jobs:
           uploadUpdaterJson: false
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]
+
+      - name: Upload signed updater package explicitly
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-updater
+          path: ${{ matrix.updater_path }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Verify embedded production WebView entries and size budgets
         run: pnpm verify:web-bundle
@@ -462,6 +472,7 @@ jobs:
       contents: read
     env:
       GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+      APPLE_NOTARY_WEBHOOK_URL: ${{ secrets.APPLE_NOTARY_WEBHOOK_URL }}
     steps:
       - name: Check out release source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -504,6 +515,24 @@ jobs:
             --title "CoreRobin ${GITHUB_REF_NAME} Preview (未公证)" \
             --notes-file preview-release-notes.md \
             --repo "$PUBLIC_RELEASE_REPOSITORY"
+
+      - name: Notify notarization coordinator that Preview is ready
+        shell: bash
+        run: |
+          if [[ -z "$APPLE_NOTARY_WEBHOOK_URL" ]]; then
+            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; use Finalize macOS release manually."
+            exit 0
+          fi
+          separator='?'
+          [[ "$APPLE_NOTARY_WEBHOOK_URL" == *\?* ]] && separator='&'
+          callback_url="${APPLE_NOTARY_WEBHOOK_URL}${separator}tag=${GITHUB_REF_NAME}&run_id=${GITHUB_RUN_ID}&signal=preview_ready"
+          if ! curl --fail --silent --show-error --location \
+            --retry 5 --retry-all-errors --request POST \
+            --header 'content-type: application/json' \
+            --data '{}' \
+            "$callback_url"; then
+            echo "::warning::Could not notify the notarization coordinator; use Finalize macOS release manually."
+          fi
 
   package:
     name: Package release evidence

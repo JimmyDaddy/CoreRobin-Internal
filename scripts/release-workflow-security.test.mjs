@@ -229,6 +229,8 @@ describe("release workflow privilege separation", () => {
     expect(preview).not.toContain("--clobber");
     expect(preview).not.toContain("generate-updater-manifest.mjs");
     expect(preview).not.toContain("Update public download manifest");
+    expect(preview).toContain("signal=preview_ready");
+    expect(preview).toContain("APPLE_NOTARY_WEBHOOK_URL");
   });
 
   it("treats webhook dispatch as a wake-up signal and revalidates trusted state", () => {
@@ -240,10 +242,18 @@ describe("release workflow privilege separation", () => {
     expect(resolve).toContain(".github/workflows/release.yml");
     expect(resolve).toContain("refs/heads/main");
     expect(resolve).toContain("prerelease");
+    expect(resolve).toContain("waiting for completion");
+    expect(resolve).toContain("has_source_updaters");
     expect(finalize).toContain("scripts/macos-notarization-state.mjs verify");
     expect(finalize).toContain("APPLE_TEAM_ID");
     expect(finalize).toContain("Accepted");
     expect(finalize).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+
+    const updaterRecovery = workflowJob(finalizeWorkflow, "recover_updaters");
+    expect(updaterRecovery).toContain("ref: ${{ needs.resolve.outputs.commit }}");
+    expect(updaterRecovery).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+    expect(updaterRecovery).toContain("uploadWorkflowArtifacts: false");
+    expect(updaterRecovery).toContain("if-no-files-found: error");
   });
 
   it("describes the platform trust boundary accurately in generated release notes", () => {
@@ -265,6 +275,8 @@ describe("release workflow privilege separation", () => {
     expect(macOSBuild).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("scripts/verify-packaged-linux.sh");
     expect(build).toContain("scripts/verify-packaged-windows.ps1");
+    expect(build).toContain("Upload signed updater package explicitly");
+    expect(build).toContain("if-no-files-found: error");
     expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("flatten-release-artifacts.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("latest.json");
