@@ -247,7 +247,11 @@ function FindingCard({
         <p>{t(`diagnosis:findings.${finding.code}.description`)}</p>
         {culprit ? (
           <div className={`diagnosis-culprit${culprit.systemComponent ? " is-system" : ""}`}>
-            <ApplicationAvatar application={culprit} className="diagnosis-culprit__avatar" />
+            <ApplicationAvatar
+              name={culprit.name}
+              source={{ process: culprit.iconProcess }}
+              className="diagnosis-culprit__avatar"
+            />
             <span>
               {t("diagnosis:culprit.summary", {
                 name: culprit.name,

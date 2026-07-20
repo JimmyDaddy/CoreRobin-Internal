@@ -22,6 +22,7 @@ import {
   useState,
 } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { processApplicationIconSource } from "../applicationIcon";
 
 import {
   buildFlatProcessRows,
@@ -45,6 +46,7 @@ import {
   resourceUsageLevel,
   statusLabel,
 } from "../utils";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface ProcessTableProps {
   processes: ProcessRow[];
@@ -559,6 +561,11 @@ export function ProcessTable({
                       <span className="tree-toggle-spacer" aria-hidden="true" />
                     )
                   ) : null}
+                  <ApplicationAvatar
+                    name={process.name}
+                    source={processApplicationIconSource(process)}
+                    className="process-application-avatar"
+                  />
                   <i
                     className={`activity-dot ${activityClass(process.cpuPercent)}`}
                     aria-hidden="true"

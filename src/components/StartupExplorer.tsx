@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  CircleOff,
   RefreshCw,
   Rocket,
   Search,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { startupApplicationIconSource } from "../applicationIcon";
 
 import {
   createStartupManagementLease,
@@ -36,6 +36,7 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, formatPercent, normalizeCommandError } from "../utils";
 import { StartupActionDialog } from "./StartupActionDialog";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface StartupExplorerProps {
   variant?: "professional" | "guided";
@@ -218,7 +219,7 @@ export function StartupExplorer({
       ) : null}
 
       {variant === "professional" ? (
-        <StartupImpactPanel measurements={impactMeasurements} />
+        <StartupImpactPanel measurements={impactMeasurements} applications={applications} />
       ) : null}
 
       {!snapshot && loading ? (
@@ -289,9 +290,18 @@ export function StartupExplorer({
   );
 }
 
-function StartupImpactPanel({ measurements }: { measurements: readonly StartupImpactMeasurement[] }) {
+function StartupImpactPanel({
+  measurements,
+  applications,
+}: {
+  measurements: readonly StartupImpactMeasurement[];
+  applications: readonly ApplicationImpact[];
+}) {
   const { t, i18n } = useAppTranslation();
   const latest = measurements[0];
+  const runtimeApplications = new Map(
+    applications.map((application) => [application.name.toLocaleLowerCase(), application]),
+  );
   return (
     <section className="panel startup-impact" aria-labelledby="startup-impact-title">
       <header>
@@ -306,9 +316,21 @@ function StartupImpactPanel({ measurements }: { measurements: readonly StartupIm
             <span><strong>{formatBytes(latest.peakDiskBytesPerSecond)}/s</strong>{t("startup:impact.peakDisk")}</span>
             <span><strong>{latest.sampleCount}</strong>{t("startup:impact.samples")}</span>
           </div>
-          {latest.applications.length > 0 ? <ol className="startup-impact__apps">{latest.applications.map((application) => (
-            <li key={application.name}><strong>{application.name}</strong><span>{formatPercent(application.peakCpuPercent)}</span><small>{formatBytes(application.peakMemoryBytes)}</small></li>
-          ))}</ol> : null}
+          {latest.applications.length > 0 ? <ol className="startup-impact__apps">{latest.applications.map((application) => {
+            const runtimeApplication = runtimeApplications.get(application.name.toLocaleLowerCase());
+            return (
+              <li key={application.name}>
+                <ApplicationAvatar
+                  name={application.name}
+                  source={runtimeApplication ? { process: runtimeApplication.iconProcess } : null}
+                  className="startup-impact-avatar"
+                />
+                <strong>{application.name}</strong>
+                <span>{formatPercent(application.peakCpuPercent)}</span>
+                <small>{formatBytes(application.peakMemoryBytes)}</small>
+              </li>
+            );
+          })}</ol> : null}
           <small>{t("startup:impact.boundary")}</small>
         </>
       ) : <div className="startup-impact__empty"><Rocket size={20} /><p>{t("startup:impact.empty")}</p></div>}
@@ -333,11 +355,16 @@ function StartupItemRow({
   const advice = startupAdvice(item);
   const application = startupRuntimeApplication(item, applications);
   const impact = startupImpactLevel(item, application, totalMemoryBytes);
+  const iconSource = application
+    ? { process: application.iconProcess } as const
+    : startupApplicationIconSource(item);
   return (
     <article className={`startup-item is-${advice}${guided ? " is-guided" : ""}`}>
-      <span className="startup-item__icon" aria-hidden="true">
-        {advice === "system" ? <ShieldCheck size={16} /> : advice === "disabled" ? <CircleOff size={16} /> : <Rocket size={16} />}
-      </span>
+      <ApplicationAvatar
+        name={item.name}
+        source={iconSource}
+        className="startup-item__avatar"
+      />
       <div className="startup-item__identity">
         <strong>{item.name}</strong>
         <span>{item.publisher ?? t("startup:publisherUnknown")} · {t(`startup:source.${item.source}`)}</span>

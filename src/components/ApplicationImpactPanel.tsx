@@ -119,7 +119,11 @@ export function ApplicationImpactPanel({
                 aria-pressed={selected}
                 onClick={() => onSelect(application)}
               >
-                <ApplicationAvatar application={application} className="application-impact-row__avatar" />
+                <ApplicationAvatar
+                  name={application.name}
+                  source={{ process: application.iconProcess }}
+                  className="application-impact-row__avatar"
+                />
                 <span className="application-impact-row__identity">
                   <strong>{application.name}</strong>
                   <small>

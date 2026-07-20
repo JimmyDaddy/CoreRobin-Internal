@@ -144,7 +144,11 @@ export function DailyApplications({
             return (
               <article className={`daily-application is-${summary.impact}${selected ? " is-selected" : ""}`} key={application.id}>
                 <button className="daily-application__summary" type="button" aria-expanded={selected} onClick={() => setExpandedApplicationId(selected ? null : application.id)}>
-                  <ApplicationAvatar application={application} className="daily-application__avatar" />
+                  <ApplicationAvatar
+                    name={application.name}
+                    source={{ process: application.iconProcess }}
+                    className="daily-application__avatar"
+                  />
                   <span className="daily-application__identity">
                     <strong>{application.name}</strong>
                     <small><AppWindow size={11} />{t("daily:applications.ordinary")}</small>

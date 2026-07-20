@@ -45,6 +45,8 @@
     "allow-open-product-page",
     "allow-relaunch-application",
     "allow-can-relaunch-application",
+    "allow-get-installed-applications",
+    "allow-get-application-uninstall-plan",
     "allow-create-cleanup-delete-lease",
     "allow-release-cleanup-delete-lease",
     "allow-execute-cleanup-delete",

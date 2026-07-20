@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(target_os = "macos")]
 use std::io::Read;
@@ -32,9 +32,14 @@ use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, GetCompressedFileSizeW, GetFileInformationByHandle,
 };
 
+#[cfg(target_os = "macos")]
+use crate::application_metadata::bundle_display_name;
 use crate::error::CommandError;
+#[cfg(target_os = "macos")]
+use crate::models::{ApplicationArtifactKind, ApplicationUninstallArtifact, InstalledApplication};
 use crate::models::{
-    CleanupApplication, CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
+    ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupApplication,
+    CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
     CleanupDeleteLeaseRequest, CleanupDeleteMode, CleanupDeleteProgress,
     CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
     CleanupDeleteTargetEvidence, CleanupFile, CleanupFullDiskAccessStatus, CleanupLocation,
@@ -76,6 +81,10 @@ const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
 const CLEANUP_SCAN_CACHE_VERSION: u8 = 6;
+const MAX_APPLICATION_INVENTORY_CACHE_BYTES: u64 = 8 * 1_024 * 1_024;
+const APPLICATION_INVENTORY_CACHE_VERSION: u8 = 1;
+const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
+const APPLICATION_INVENTORY_CACHE_RETENTION_MS: u64 = 7 * 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
 const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
 #[cfg(target_os = "macos")]
@@ -92,6 +101,24 @@ struct CleanupScanCachePayload<'a> {
     version: u8,
     saved_at_ms: u64,
     snapshot: &'a CleanupScan,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct ApplicationInventoryFingerprintEntry {
+    path: String,
+    bundle_modified_at_ms: Option<u64>,
+    info_plist_modified_at_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApplicationInventoryCachePayload {
+    version: u8,
+    language: String,
+    saved_at_ms: u64,
+    fingerprint: Vec<ApplicationInventoryFingerprintEntry>,
+    snapshot: ApplicationInventorySnapshot,
 }
 
 #[derive(Debug)]
@@ -283,7 +310,37 @@ struct CleanupDeleteTarget {
     canonical_path: PathBuf,
     modified_at_ms: Option<u64>,
     inspection: TreeInspection,
+    inspection_policy: CleanupTargetInspectionPolicy,
     bound: BoundDeleteTarget,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CleanupTargetInspectionPolicy {
+    Strict,
+    ApplicationBundle,
+}
+
+impl CleanupTargetInspectionPolicy {
+    fn inspect(self, target: &BoundDeleteTarget) -> Result<TreeInspection, String> {
+        match self {
+            Self::Strict => target.inspect(),
+            Self::ApplicationBundle => target.inspect_allowing_internal_symlinks(),
+        }
+    }
+
+    fn delete_cancellable(
+        self,
+        target: BoundDeleteTarget,
+        cancelled: &AtomicBool,
+        on_entry_deleted: &mut dyn FnMut(u64),
+    ) -> Result<bool, String> {
+        match self {
+            Self::Strict => target.delete_cancellable(cancelled, on_entry_deleted),
+            Self::ApplicationBundle => {
+                target.delete_cancellable_allowing_internal_symlinks(cancelled, on_entry_deleted)
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -384,9 +441,10 @@ impl CleanupDeleteController {
                     true
                 })
             } else {
-                target
-                    .bound
-                    .delete_cancellable(cancelled, &mut |entry_deleted_bytes| {
+                target.inspection_policy.delete_cancellable(
+                    target.bound,
+                    cancelled,
+                    &mut |entry_deleted_bytes| {
                         processed_entry_count = processed_entry_count.saturating_add(1);
                         target_deleted_bytes =
                             target_deleted_bytes.saturating_add(entry_deleted_bytes);
@@ -406,7 +464,8 @@ impl CleanupDeleteController {
                             last_emitted_entry_count = processed_entry_count;
                             last_emitted_at = Instant::now();
                         }
-                    })
+                    },
+                )
             };
             match result {
                 Ok(true) => {
@@ -1024,6 +1083,646 @@ fn current_application_bundle() -> Option<PathBuf> {
     application_bundle_from_executable(&executable)
 }
 
+#[cfg(target_os = "macos")]
+#[derive(Clone, Debug)]
+struct ValidatedApplicationBundle {
+    path: PathBuf,
+    root: PathBuf,
+    relative_path: PathBuf,
+    name: String,
+    bundle_id: String,
+    modified_at_ms: Option<u64>,
+}
+
+#[cfg(target_os = "macos")]
+impl ValidatedApplicationBundle {
+    fn path_string(&self) -> String {
+        self.path.to_string_lossy().into_owned()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn validate_application_bundle(
+    application_path: &str,
+    home: &Path,
+    preferred_language: Option<&str>,
+) -> Result<ValidatedApplicationBundle, CommandError> {
+    let requested = PathBuf::from(application_path);
+    let requested_parent = requested.parent().ok_or_else(|| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "The selected application does not have a valid parent directory.",
+        )
+    })?;
+    let system_root = Path::new("/Applications");
+    let user_root = home.join("Applications");
+    let canonical_system_root = system_root.canonicalize().ok();
+    let canonical_user_root = user_root.canonicalize().ok();
+    let selected_root = if requested_parent == system_root
+        || canonical_system_root.as_deref() == Some(requested_parent)
+    {
+        system_root.to_path_buf()
+    } else if requested_parent == user_root
+        || canonical_user_root.as_deref() == Some(requested_parent)
+    {
+        user_root
+    } else {
+        return Err(CommandError::new(
+            "application_bundle_not_allowed",
+            "CoreRobin only uninstalls top-level applications from /Applications or your Applications folder.",
+        ));
+    };
+    let metadata = fs::symlink_metadata(&requested).map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not inspect the selected application: {error}"),
+        )
+    })?;
+    if !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || !requested
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+    {
+        return Err(CommandError::new(
+            "application_bundle_invalid",
+            "The selected item is not a no-follow macOS application bundle.",
+        ));
+    }
+    let canonical_root = selected_root.canonicalize().map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not verify the Applications folder: {error}"),
+        )
+    })?;
+    let canonical_path = requested.canonicalize().map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not verify the selected application: {error}"),
+        )
+    })?;
+    if canonical_path.parent() != Some(canonical_root.as_path()) {
+        return Err(CommandError::new(
+            "application_bundle_not_allowed",
+            "The selected application is not a direct child of an approved Applications folder.",
+        ));
+    }
+    if current_application_bundle()
+        .and_then(|path| path.canonicalize().ok())
+        .is_some_and(|current| current == canonical_path)
+    {
+        return Err(CommandError::new(
+            "current_application_protected",
+            "CoreRobin cannot uninstall itself while it is running.",
+        ));
+    }
+
+    let info_path = canonical_path.join("Contents/Info.plist");
+    let executable_root = canonical_path.join("Contents/MacOS");
+    let info_metadata = fs::symlink_metadata(&info_path).map_err(|_| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "The selected application is missing Contents/Info.plist.",
+        )
+    })?;
+    let executable_metadata = fs::symlink_metadata(&executable_root).map_err(|_| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "The selected application is missing Contents/MacOS.",
+        )
+    })?;
+    if !info_metadata.is_file()
+        || info_metadata.file_type().is_symlink()
+        || !executable_metadata.is_dir()
+        || executable_metadata.file_type().is_symlink()
+    {
+        return Err(CommandError::new(
+            "application_bundle_invalid",
+            "The selected application has an unsupported bundle structure.",
+        ));
+    }
+    let plist = plist::Value::from_file(&info_path).map_err(|_| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "CoreRobin could not read the selected application's Info.plist.",
+        )
+    })?;
+    let dictionary = plist.as_dictionary().ok_or_else(|| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "The selected application's Info.plist is not a dictionary.",
+        )
+    })?;
+    let bundle_id = dictionary
+        .get("CFBundleIdentifier")
+        .and_then(plist::Value::as_string)
+        .filter(|value| is_safe_bundle_identifier(value))
+        .ok_or_else(|| {
+            CommandError::new(
+                "application_bundle_identifier_missing",
+                "This application does not provide a safe bundle identifier, so CoreRobin cannot prove which support files belong to it.",
+            )
+        })?
+        .to_owned();
+    let name = bundle_display_name(&canonical_path, dictionary, preferred_language);
+    let relative_path = canonical_path
+        .strip_prefix(&canonical_root)
+        .expect("validated application is inside its root")
+        .to_path_buf();
+    Ok(ValidatedApplicationBundle {
+        path: canonical_path,
+        root: canonical_root,
+        relative_path,
+        name,
+        bundle_id,
+        modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn is_safe_bundle_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 255
+        && value.contains('.')
+        && value
+            .split('.')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_')
+        })
+}
+
+#[cfg(target_os = "macos")]
+fn open_application_delete_root(path: &Path) -> Result<DeleteRoot, CommandError> {
+    let system_root = Path::new("/Applications");
+    if path == system_root || system_root.canonicalize().ok().as_deref() == Some(path) {
+        DeleteRoot::open_trusted_system_root(path)
+    } else {
+        DeleteRoot::open(path)
+    }
+    .map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not retain a stable Applications folder handle: {error}"),
+        )
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn application_uninstall_candidates(
+    home: &Path,
+    bundle: &ValidatedApplicationBundle,
+) -> Vec<(ApplicationArtifactKind, PathBuf, bool)> {
+    let library = home.join("Library");
+    let bundle_id = &bundle.bundle_id;
+    vec![
+        (
+            ApplicationArtifactKind::Application,
+            bundle.path.clone(),
+            true,
+        ),
+        (
+            ApplicationArtifactKind::ApplicationSupport,
+            library.join("Application Support").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::Cache,
+            library.join("Caches").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::Preferences,
+            library
+                .join("Preferences")
+                .join(format!("{bundle_id}.plist")),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::SavedState,
+            library
+                .join("Saved Application State")
+                .join(format!("{bundle_id}.savedState")),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::Container,
+            library.join("Containers").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::WebData,
+            library.join("WebKit").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::HttpStorage,
+            library.join("HTTPStorages").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::HttpStorage,
+            library
+                .join("HTTPStorages")
+                .join(format!("{bundle_id}.binarycookies")),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::Cookies,
+            library
+                .join("Cookies")
+                .join(format!("{bundle_id}.binarycookies")),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::Logs,
+            library.join("Logs").join(bundle_id),
+            false,
+        ),
+        (
+            ApplicationArtifactKind::LaunchAgent,
+            library
+                .join("LaunchAgents")
+                .join(format!("{bundle_id}.plist")),
+            false,
+        ),
+    ]
+}
+
+pub fn load_or_scan_application_inventory(
+    cache_path: &Path,
+    preferred_language: Option<&str>,
+    force_refresh: bool,
+) -> Result<ApplicationInventorySnapshot, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let language = application_inventory_cache_language(preferred_language);
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        let canonical_home = home.canonicalize().map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not verify the home directory: {error}"),
+            )
+        })?;
+        let fingerprint_before = application_inventory_fingerprint(&canonical_home).ok();
+        if !force_refresh
+            && let Some(fingerprint) = fingerprint_before.as_ref()
+            && let Some(snapshot) =
+                load_application_inventory_cache(cache_path, &language, fingerprint, now_millis())?
+        {
+            return Ok(snapshot);
+        }
+
+        let snapshot = scan_application_inventory(preferred_language)?;
+        let fingerprint_after = application_inventory_fingerprint(&canonical_home).ok();
+        if fingerprint_before.is_some()
+            && fingerprint_before == fingerprint_after
+            && let Some(fingerprint) = fingerprint_after.as_ref()
+        {
+            let _ = save_application_inventory_cache_at(
+                cache_path,
+                &language,
+                fingerprint,
+                &snapshot,
+                now_millis(),
+            );
+        }
+        Ok(snapshot)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (cache_path, force_refresh);
+        scan_application_inventory(preferred_language)
+    }
+}
+
+fn application_inventory_cache_language(preferred_language: Option<&str>) -> String {
+    preferred_language
+        .map(str::trim)
+        .filter(|language| !language.is_empty() && language.len() <= 64)
+        .unwrap_or("default")
+        .replace('_', "-")
+        .to_ascii_lowercase()
+}
+
+fn load_application_inventory_cache(
+    path: &Path,
+    language: &str,
+    fingerprint: &[ApplicationInventoryFingerprintEntry],
+    now_ms: u64,
+) -> Result<Option<ApplicationInventorySnapshot>, CommandError> {
+    let bytes = match private_storage::read_limited(path, MAX_APPLICATION_INVENTORY_CACHE_BYTES) {
+        Ok(bytes) => bytes,
+        Err(_) => return Ok(None),
+    };
+    let Some(bytes) = bytes else {
+        return Ok(None);
+    };
+    let Ok(payload) = serde_json::from_slice::<ApplicationInventoryCachePayload>(&bytes) else {
+        return Ok(None);
+    };
+    let age_ms = now_ms.saturating_sub(payload.saved_at_ms);
+    if payload.version != APPLICATION_INVENTORY_CACHE_VERSION
+        || payload.language != language
+        || age_ms > APPLICATION_INVENTORY_CACHE_RETENTION_MS
+        || !payload.snapshot.platform_supported
+    {
+        return Ok(None);
+    }
+    let mut snapshot = payload.snapshot;
+    snapshot.cached = true;
+    snapshot.refresh_recommended =
+        age_ms > APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS || payload.fingerprint != fingerprint;
+    Ok(Some(snapshot))
+}
+
+fn save_application_inventory_cache_at(
+    path: &Path,
+    language: &str,
+    fingerprint: &[ApplicationInventoryFingerprintEntry],
+    snapshot: &ApplicationInventorySnapshot,
+    saved_at_ms: u64,
+) -> Result<(), CommandError> {
+    let mut snapshot = snapshot.clone();
+    snapshot.cached = false;
+    snapshot.refresh_recommended = false;
+    let bytes = serde_json::to_vec(&ApplicationInventoryCachePayload {
+        version: APPLICATION_INVENTORY_CACHE_VERSION,
+        language: language.to_owned(),
+        saved_at_ms,
+        fingerprint: fingerprint.to_vec(),
+        snapshot,
+    })
+    .map_err(|error| {
+        CommandError::internal(format!(
+            "Could not encode the application inventory cache: {error}"
+        ))
+    })?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_APPLICATION_INVENTORY_CACHE_BYTES {
+        return Err(CommandError::new(
+            "application_inventory_cache_too_large",
+            "The application inventory cache is too large to retain safely.",
+        ));
+    }
+    private_storage::write_atomic(path, &bytes).map_err(|error| {
+        CommandError::internal(format!(
+            "Could not securely update the application inventory cache: {error}"
+        ))
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn application_inventory_fingerprint(
+    home: &Path,
+) -> std::io::Result<Vec<ApplicationInventoryFingerprintEntry>> {
+    let mut fingerprint = Vec::new();
+    for root in [PathBuf::from("/Applications"), home.join("Applications")] {
+        let entries = match fs::read_dir(&root) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error),
+        };
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            if !path
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+                || !entry.file_type()?.is_dir()
+            {
+                continue;
+            }
+            let bundle_modified_at_ms = entry
+                .metadata()?
+                .modified()
+                .ok()
+                .and_then(system_time_millis);
+            let info_plist_modified_at_ms = fs::metadata(path.join("Contents/Info.plist"))
+                .ok()
+                .and_then(|metadata| metadata.modified().ok())
+                .and_then(system_time_millis);
+            fingerprint.push(ApplicationInventoryFingerprintEntry {
+                path: path.to_string_lossy().into_owned(),
+                bundle_modified_at_ms,
+                info_plist_modified_at_ms,
+            });
+        }
+    }
+    fingerprint.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(fingerprint)
+}
+
+pub fn scan_application_inventory(
+    preferred_language: Option<&str>,
+) -> Result<ApplicationInventorySnapshot, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        let canonical_home = home.canonicalize().map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not verify the home directory: {error}"),
+            )
+        })?;
+        let cancelled = AtomicBool::new(false);
+        let mut stats = ScanStats::new();
+        let mut ignore_progress = |_progress: CleanupScanProgress| {};
+        let (scanned, _) = scan_installed_applications(
+            &canonical_home,
+            &cancelled,
+            &mut stats,
+            &mut ignore_progress,
+            &HashMap::new(),
+        )?;
+        let mut applications = scanned
+            .into_iter()
+            .map(|application| {
+                match validate_application_bundle(
+                    &application.path,
+                    &canonical_home,
+                    preferred_language,
+                ) {
+                    Ok(bundle) => {
+                        let path = bundle.path_string();
+                        InstalledApplication {
+                            name: bundle.name,
+                            path,
+                            bundle_id: Some(bundle.bundle_id),
+                            size_bytes: application.size_bytes,
+                            last_used_at_ms: application.last_used_at_ms,
+                            modified_at_ms: bundle.modified_at_ms,
+                            uninstallable: true,
+                            unavailable_reason: None,
+                        }
+                    }
+                    Err(error) => InstalledApplication {
+                        name: application.name,
+                        path: application.path,
+                        bundle_id: None,
+                        size_bytes: application.size_bytes,
+                        last_used_at_ms: application.last_used_at_ms,
+                        modified_at_ms: application.modified_at_ms,
+                        uninstallable: false,
+                        unavailable_reason: Some(error.code),
+                    },
+                }
+            })
+            .collect::<Vec<_>>();
+        applications.sort_by(|left, right| {
+            left.name
+                .to_lowercase()
+                .cmp(&right.name.to_lowercase())
+                .then_with(|| left.path.cmp(&right.path))
+        });
+        Ok(ApplicationInventorySnapshot {
+            sampled_at_ms: now_millis(),
+            platform_supported: true,
+            cached: false,
+            refresh_recommended: false,
+            applications,
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = preferred_language;
+        Ok(ApplicationInventorySnapshot {
+            sampled_at_ms: now_millis(),
+            platform_supported: false,
+            cached: false,
+            refresh_recommended: false,
+            applications: Vec::new(),
+        })
+    }
+}
+
+pub fn prepare_application_uninstall(
+    application_path: &str,
+    preferred_language: Option<&str>,
+) -> Result<ApplicationUninstallPlan, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        let canonical_home = home.canonicalize().map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not verify the home directory: {error}"),
+            )
+        })?;
+        let bundle =
+            validate_application_bundle(application_path, &canonical_home, preferred_language)?;
+        let home_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not retain a stable home directory handle: {error}"),
+            )
+        })?;
+        let application_root = open_application_delete_root(&bundle.root)?;
+        let mut artifacts = Vec::new();
+        let mut skipped_paths = Vec::new();
+        for (kind, path, required) in application_uninstall_candidates(&canonical_home, &bundle) {
+            let display = path.to_string_lossy().into_owned();
+            let bound = if required {
+                application_root.bind(&bundle.relative_path)
+            } else {
+                let Ok(relative) = path.strip_prefix(&canonical_home) else {
+                    skipped_paths.push(display);
+                    continue;
+                };
+                home_root.bind(relative)
+            };
+            let bound = match bound {
+                Ok(bound) => bound,
+                Err(error) if !required && error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(_) if !required => {
+                    skipped_paths.push(display);
+                    continue;
+                }
+                Err(error) => {
+                    return Err(CommandError::new(
+                        "application_bundle_unavailable",
+                        format!(
+                            "CoreRobin could not safely inspect the application bundle: {error}"
+                        ),
+                    ));
+                }
+            };
+            let inspection_policy = if required {
+                CleanupTargetInspectionPolicy::ApplicationBundle
+            } else {
+                CleanupTargetInspectionPolicy::Strict
+            };
+            let inspection = match inspection_policy.inspect(&bound) {
+                Ok(inspection) => inspection,
+                Err(_) if !required => {
+                    skipped_paths.push(display);
+                    continue;
+                }
+                Err(message) => {
+                    return Err(CommandError::new(
+                        "application_bundle_unavailable",
+                        format!("CoreRobin could not inspect the application bundle: {message}"),
+                    ));
+                }
+            };
+            artifacts.push(ApplicationUninstallArtifact {
+                kind,
+                path: display,
+                logical_size_bytes: inspection.logical_size_bytes,
+                allocated_size_bytes: inspection.allocated_size_bytes,
+                item_count: inspection.item_count,
+                required,
+            });
+        }
+        let application_size = artifacts
+            .iter()
+            .find(|artifact| artifact.required)
+            .map_or(0, |artifact| artifact.allocated_size_bytes);
+        let application_path = bundle.path_string();
+        Ok(ApplicationUninstallPlan {
+            sampled_at_ms: now_millis(),
+            application: InstalledApplication {
+                name: bundle.name,
+                path: application_path,
+                bundle_id: Some(bundle.bundle_id),
+                size_bytes: application_size,
+                last_used_at_ms: None,
+                modified_at_ms: bundle.modified_at_ms,
+                uninstallable: true,
+                unavailable_reason: None,
+            },
+            artifacts,
+            skipped_paths,
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (application_path, preferred_language);
+        Err(CommandError::new(
+            "application_uninstall_unsupported",
+            "Complete application uninstall is currently available on macOS only.",
+        ))
+    }
+}
+
 pub fn open_full_disk_access_settings() -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     {
@@ -1187,6 +1886,9 @@ fn validate_cleanup_targets(
             format!("Choose between 1 and {MAX_CLEANUP_TARGETS} cleanup items before continuing."),
         ));
     }
+    if let Some(scope) = request.application_uninstall.as_ref() {
+        return validate_application_uninstall_targets(request, scope, home);
+    }
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
@@ -1267,6 +1969,7 @@ fn validate_cleanup_targets(
             canonical_path,
             modified_at_ms: bound.modified_at().and_then(system_time_millis),
             inspection,
+            inspection_policy: CleanupTargetInspectionPolicy::Strict,
             bound,
         });
     }
@@ -1283,6 +1986,140 @@ fn validate_cleanup_targets(
         }
     }
     Ok(targets)
+}
+
+#[cfg(target_os = "macos")]
+fn validate_application_uninstall_targets(
+    request: &CleanupDeleteLeaseRequest,
+    scope: &crate::models::ApplicationUninstallScope,
+    home: &Path,
+) -> Result<Vec<CleanupDeleteTarget>, CommandError> {
+    let canonical_home = home.canonicalize().map_err(|error| {
+        CommandError::new(
+            "home_directory_unavailable",
+            format!("CoreRobin could not verify the home directory: {error}"),
+        )
+    })?;
+    let bundle = validate_application_bundle(&scope.application_path, &canonical_home, None)?;
+    if bundle.bundle_id != scope.bundle_id {
+        return Err(CommandError::new(
+            "application_identity_changed",
+            "The selected application's bundle identifier changed. Refresh the application list before continuing.",
+        ));
+    }
+    if !request
+        .paths
+        .iter()
+        .any(|path| path == &bundle.path_string())
+    {
+        return Err(CommandError::new(
+            "application_bundle_required",
+            "The application bundle must remain selected for an uninstall operation.",
+        ));
+    }
+
+    let allowed = application_uninstall_candidates(&canonical_home, &bundle)
+        .into_iter()
+        .map(|(_, path, _)| path)
+        .collect::<HashSet<_>>();
+    let home_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+        CommandError::new(
+            "home_directory_unavailable",
+            format!("CoreRobin could not retain a stable home directory handle: {error}"),
+        )
+    })?;
+    let mut application_root = None;
+    let mut seen = HashSet::new();
+    let mut targets = Vec::with_capacity(request.paths.len());
+
+    for display in &request.paths {
+        let path = PathBuf::from(display);
+        if !allowed.contains(&path) {
+            return Err(CommandError::new(
+                "application_artifact_not_allowed",
+                format!(
+                    "CoreRobin could not prove that this item belongs to the selected application: {display}"
+                ),
+            ));
+        }
+        if !seen.insert(path.clone()) {
+            return Err(CommandError::new(
+                "duplicate_cleanup_target",
+                format!("The uninstall selection contains the same item more than once: {display}"),
+            ));
+        }
+
+        let bound = if path == bundle.path {
+            if application_root.is_none() {
+                application_root = Some(open_application_delete_root(&bundle.root)?);
+            }
+            application_root
+                .as_ref()
+                .expect("application root was initialized")
+                .bind(&bundle.relative_path)
+        } else {
+            let relative = path.strip_prefix(&canonical_home).map_err(|_| {
+                CommandError::new(
+                    "application_artifact_not_allowed",
+                    format!(
+                        "Application support data must stay inside your home folder: {display}"
+                    ),
+                )
+            })?;
+            home_root.bind(relative)
+        }
+        .map_err(|error| {
+            CommandError::new(
+                "application_artifact_unavailable",
+                format!("CoreRobin could not safely bind {display}: {error}"),
+            )
+        })?;
+        let inspection_policy = if path == bundle.path {
+            CleanupTargetInspectionPolicy::ApplicationBundle
+        } else {
+            CleanupTargetInspectionPolicy::Strict
+        };
+        let inspection = inspection_policy.inspect(&bound).map_err(|message| {
+            CommandError::new(
+                "application_artifact_unavailable",
+                format!("CoreRobin could not refresh {display} before confirmation: {message}"),
+            )
+        })?;
+        targets.push(CleanupDeleteTarget {
+            display_path: display.clone(),
+            canonical_path: path,
+            modified_at_ms: bound.modified_at().and_then(system_time_millis),
+            inspection,
+            inspection_policy,
+            bound,
+        });
+    }
+
+    for left in 0..targets.len() {
+        for right in (left + 1)..targets.len() {
+            let left_path = &targets[left].canonical_path;
+            let right_path = &targets[right].canonical_path;
+            if left_path.starts_with(right_path) || right_path.starts_with(left_path) {
+                return Err(CommandError::new(
+                    "overlapping_cleanup_targets",
+                    "Choose either a folder or its contents, not both.",
+                ));
+            }
+        }
+    }
+    Ok(targets)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn validate_application_uninstall_targets(
+    _request: &CleanupDeleteLeaseRequest,
+    _scope: &crate::models::ApplicationUninstallScope,
+    _home: &Path,
+) -> Result<Vec<CleanupDeleteTarget>, CommandError> {
+    Err(CommandError::new(
+        "application_uninstall_unsupported",
+        "Complete application uninstall is currently available on macOS only.",
+    ))
 }
 
 fn cleanup_protection_for_path(path: &Path, home: &Path) -> Option<CleanupProtectionReason> {
@@ -1411,14 +2248,14 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         .bound
         .current_modified_at()
         .map_err(|error| {
-        CommandError::new(
-            "cleanup_target_changed",
-            format!(
-                "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again: {error}",
-                target.display_path
-            ),
-        )
-    })?
+            CommandError::new(
+                "cleanup_target_changed",
+                format!(
+                    "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again: {error}",
+                    target.display_path
+                ),
+            )
+        })?
         .and_then(system_time_millis);
     if modified_at_ms != target.modified_at_ms {
         return Err(CommandError::new(
@@ -1429,15 +2266,18 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
             ),
         ));
     }
-    let inspection = target.bound.inspect().map_err(|message| {
-        CommandError::new(
-            "cleanup_target_changed",
-            format!(
-                "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again: {message}",
-                target.display_path
-            ),
-        )
-    })?;
+    let inspection = target
+        .inspection_policy
+        .inspect(&target.bound)
+        .map_err(|message| {
+            CommandError::new(
+                "cleanup_target_changed",
+                format!(
+                    "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again: {message}",
+                    target.display_path
+                ),
+            )
+        })?;
     if inspection != target.inspection {
         return Err(CommandError::new(
             "cleanup_target_changed",
@@ -2968,6 +3808,7 @@ mod tests {
             scan_sampled_at_ms,
             expected_targets,
             mode: CleanupDeleteMode::Permanent,
+            application_uninstall: None,
         }
     }
 
@@ -3018,6 +3859,81 @@ mod tests {
 
         remove_cleanup_scan_cache(&cache_path).unwrap();
         assert_eq!(load_cleanup_scan_cache(&cache_path).unwrap(), None);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn application_inventory_cache_requires_matching_language_fingerprint_and_age() {
+        let root = test_root("application-inventory-cache");
+        let cache_path = root.join("nested/application-inventory-v1-zh-cn.json");
+        let fingerprint = vec![ApplicationInventoryFingerprintEntry {
+            path: "/Applications/Example.app".to_owned(),
+            bundle_modified_at_ms: Some(900),
+            info_plist_modified_at_ms: Some(800),
+        }];
+        let snapshot = ApplicationInventorySnapshot {
+            sampled_at_ms: 1_000,
+            platform_supported: true,
+            cached: false,
+            refresh_recommended: false,
+            applications: vec![crate::models::InstalledApplication {
+                name: "示例".to_owned(),
+                path: "/Applications/Example.app".to_owned(),
+                bundle_id: Some("com.example.app".to_owned()),
+                size_bytes: 4_096,
+                last_used_at_ms: None,
+                modified_at_ms: Some(900),
+                uninstallable: true,
+                unavailable_reason: None,
+            }],
+        };
+
+        save_application_inventory_cache_at(&cache_path, "zh-cn", &fingerprint, &snapshot, 1_000)
+            .unwrap();
+        let cached = load_application_inventory_cache(&cache_path, "zh-cn", &fingerprint, 2_000)
+            .unwrap()
+            .unwrap();
+        assert!(cached.cached);
+        assert!(!cached.refresh_recommended);
+        assert_eq!(cached.applications[0].name, "示例");
+
+        assert!(
+            load_application_inventory_cache(&cache_path, "en", &fingerprint, 2_000)
+                .unwrap()
+                .is_none()
+        );
+        let changed_fingerprint = vec![ApplicationInventoryFingerprintEntry {
+            bundle_modified_at_ms: Some(901),
+            ..fingerprint[0].clone()
+        }];
+        assert!(
+            load_application_inventory_cache(&cache_path, "zh-cn", &changed_fingerprint, 2_000,)
+                .unwrap()
+                .unwrap()
+                .refresh_recommended
+        );
+        assert!(
+            load_application_inventory_cache(
+                &cache_path,
+                "zh-cn",
+                &fingerprint,
+                1_000 + APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS + 1,
+            )
+            .unwrap()
+            .unwrap()
+            .refresh_recommended
+        );
+        assert!(
+            load_application_inventory_cache(
+                &cache_path,
+                "zh-cn",
+                &fingerprint,
+                1_000 + APPLICATION_INVENTORY_CACHE_RETENTION_MS + 1,
+            )
+            .unwrap()
+            .is_none()
+        );
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -3642,6 +4558,7 @@ mod tests {
                     scan_sampled_at_ms: lease.refreshed_at_ms,
                     expected_targets: lease.refreshed_targets,
                     mode: CleanupDeleteMode::Permanent,
+                    application_uninstall: None,
                 },
                 &root,
             )
@@ -3673,6 +4590,69 @@ mod tests {
             })
             .unwrap_err();
         assert_eq!(error.code, "cleanup_confirmation_unavailable");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn application_uninstall_only_accepts_bundle_id_owned_paths() {
+        use std::os::unix::fs::symlink;
+
+        let root = test_root("application-uninstall-scope");
+        let application = root.join("Applications/Example.app");
+        let executable_root = application.join("Contents/MacOS");
+        let cache = root.join("Library/Caches/com.example.safe");
+        fs::create_dir_all(&executable_root).unwrap();
+        fs::create_dir_all(&cache).unwrap();
+        fs::write(executable_root.join("Example"), b"binary").unwrap();
+        fs::write(
+            application.join("Contents/Info.plist"),
+            br#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.example.safe</string>
+<key>CFBundleName</key><string>Example</string>
+</dict></plist>"#,
+        )
+        .unwrap();
+        symlink("Example", executable_root.join("Current")).unwrap();
+        fs::write(cache.join("cache.db"), b"cache").unwrap();
+
+        let application_path = application.canonicalize().unwrap();
+        let cache_path = cache.canonicalize().unwrap();
+        let paths = vec![
+            application_path.to_string_lossy().into_owned(),
+            cache_path.to_string_lossy().into_owned(),
+        ];
+        let mut request = cleanup_delete_request(&root, paths, now_millis());
+        request.application_uninstall = Some(crate::models::ApplicationUninstallScope {
+            application_path: application_path.to_string_lossy().into_owned(),
+            bundle_id: "com.example.safe".to_owned(),
+        });
+        let targets = validate_application_uninstall_targets(
+            &request,
+            request.application_uninstall.as_ref().unwrap(),
+            &root,
+        )
+        .unwrap();
+        assert_eq!(targets.len(), 2);
+        assert_eq!(
+            targets[0].inspection_policy,
+            CleanupTargetInspectionPolicy::ApplicationBundle,
+        );
+        assert_eq!(targets[0].inspection.item_count, 3);
+
+        request.paths.push(
+            root.join("Library/Caches/com.example.safe.backup")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        let error = validate_application_uninstall_targets(
+            &request,
+            request.application_uninstall.as_ref().unwrap(),
+            &root,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "application_artifact_not_allowed");
         fs::remove_dir_all(root).unwrap();
     }
 

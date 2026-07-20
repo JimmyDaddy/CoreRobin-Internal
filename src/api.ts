@@ -2,6 +2,8 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 
 import {
   createMockCleanupDeleteLease,
+  getMockApplicationUninstallPlan,
+  getMockInstalledApplications,
   createMockProcessControlLease,
   createMockStartupManagementLease,
   executeMockCleanupDelete,
@@ -18,6 +20,9 @@ import {
 } from "./mockData";
 import type {
   ApplicationIcon,
+  ApplicationIconRequest,
+  ApplicationInventorySnapshot,
+  ApplicationUninstallPlan,
   CleanupNode,
   CleanupPathState,
   CleanupScan,
@@ -67,6 +72,18 @@ let mockCleanupDeleteCancelled = false;
 let mockCleanupDeleteInFlight = false;
 const mockCleanupDeletePaths = new Map<string, string[]>();
 const mockCleanupDeleteModes = new Map<string, CleanupDeleteLease["mode"]>();
+const APPLICATION_INVENTORY_MEMORY_TTL_MS = 5 * 60 * 1_000;
+const applicationInventoryMemory = new Map<SupportedLanguage, {
+  receivedAtMs: number;
+  snapshot: ApplicationInventorySnapshot;
+}>();
+const applicationInventoryInFlight = new Map<
+  SupportedLanguage,
+  {
+    forceRefresh: boolean;
+    request: Promise<ApplicationInventorySnapshot>;
+  }
+>();
 
 declare global {
   interface Window {
@@ -379,6 +396,72 @@ export async function canRelaunchApplication(executablePath: string): Promise<bo
   return invoke<boolean>("can_relaunch_application", { executablePath });
 }
 
+export async function getInstalledApplications(
+  language: string | undefined = DEFAULT_LANGUAGE,
+  forceRefresh = false,
+): Promise<ApplicationInventorySnapshot> {
+  const normalizedLanguage = normalizeLanguage(language);
+  const memory = applicationInventoryMemory.get(normalizedLanguage);
+  if (!forceRefresh && memory && Date.now() - memory.receivedAtMs <= APPLICATION_INVENTORY_MEMORY_TTL_MS) {
+    return cloneApplicationInventory(memory.snapshot, true);
+  }
+  const existing = applicationInventoryInFlight.get(normalizedLanguage);
+  if (existing && (!forceRefresh || existing.forceRefresh)) {
+    const snapshot = await existing.request;
+    return cloneApplicationInventory(snapshot, snapshot.cached);
+  }
+  const request = fetchInstalledApplications(normalizedLanguage, forceRefresh);
+  applicationInventoryInFlight.set(normalizedLanguage, { forceRefresh, request });
+  try {
+    const snapshot = await request;
+    applicationInventoryMemory.set(normalizedLanguage, {
+      receivedAtMs: Date.now(),
+      snapshot,
+    });
+    return cloneApplicationInventory(snapshot, snapshot.cached);
+  } finally {
+    if (applicationInventoryInFlight.get(normalizedLanguage)?.request === request) {
+      applicationInventoryInFlight.delete(normalizedLanguage);
+    }
+  }
+}
+
+async function fetchInstalledApplications(
+  language: SupportedLanguage,
+  forceRefresh: boolean,
+): Promise<ApplicationInventorySnapshot> {
+  if (canUseDevelopmentMock()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1_200));
+    return getMockInstalledApplications();
+  }
+  return invoke<ApplicationInventorySnapshot>("get_installed_applications", {
+    language,
+    forceRefresh,
+  });
+}
+
+function cloneApplicationInventory(
+  snapshot: ApplicationInventorySnapshot,
+  cached: boolean,
+): ApplicationInventorySnapshot {
+  return {
+    ...snapshot,
+    cached,
+    applications: snapshot.applications.map((application) => ({ ...application })),
+  };
+}
+
+export async function getApplicationUninstallPlan(
+  applicationPath: string,
+  language: string | undefined = DEFAULT_LANGUAGE,
+): Promise<ApplicationUninstallPlan> {
+  if (canUseDevelopmentMock()) return getMockApplicationUninstallPlan(applicationPath);
+  return invoke<ApplicationUninstallPlan>("get_application_uninstall_plan", {
+    applicationPath,
+    language: normalizeLanguage(language),
+  });
+}
+
 export async function relaunchApplication(executablePath: string): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("relaunch_application", { executablePath });
@@ -539,7 +622,7 @@ export async function getProcessDetail(
 }
 
 export async function getApplicationIcon(
-  request: ProcessDetailRequest,
+  request: ApplicationIconRequest,
 ): Promise<ApplicationIcon | null> {
   if (canUseDevelopmentMock()) return null;
   return invoke<ApplicationIcon | null>("get_application_icon", { request });
