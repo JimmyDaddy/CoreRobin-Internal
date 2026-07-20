@@ -51,6 +51,10 @@ describe("release engineering boundaries", () => {
     expect(releaseCandidate).toContain("pnpm verify:release-tools");
     expect(releaseCandidate).toContain('name: Package candidate (${{ matrix.label }})');
     expect(releaseCandidate).toContain("Build Developer ID signed candidate installer and updater");
+    expect(releaseCandidate).toContain("Verify signed Linux updater pair");
+    expect(releaseCandidate).toContain("Verify signed Windows updater pair");
+    expect(releaseCandidate).toContain("*.AppImage.sig");
+    expect(releaseCandidate).toContain("*-setup.exe.sig");
     expect(releaseCandidate).toContain("signed-preview");
     expect(releaseCandidate).toContain("name: release");
     expect(releaseCandidate).toContain("actions: write");

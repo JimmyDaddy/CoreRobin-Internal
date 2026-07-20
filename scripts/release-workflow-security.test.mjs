@@ -8,6 +8,7 @@ const promoteWorkflow = readFileSync(".github/workflows/promote-release.yml", "u
 const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const macOSPackageVerifier = readFileSync("scripts/verify-packaged-macos.sh", "utf8");
 const releaseNotesRenderer = readFileSync("scripts/render-release-notes.mjs", "utf8");
+const updaterManifestGenerator = readFileSync("scripts/generate-updater-manifest.mjs", "utf8");
 const workflowFiles = readdirSync(".github/workflows")
   .filter((name) => /\.ya?ml$/.test(name))
   .sort()
@@ -236,6 +237,7 @@ describe("release workflow privilege separation", () => {
   it("treats webhook dispatch as a wake-up signal and revalidates trusted state", () => {
     const resolve = workflowJob(finalizeWorkflow, "resolve");
     const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
+    const packageJob = workflowJob(finalizeWorkflow, "package");
     expect(finalizeWorkflow).toContain("apple-notarization-complete");
     expect(finalizeWorkflow).toContain("workflow_dispatch");
     expect(resolve).toContain("scripts/verify-release-source.mjs");
@@ -243,17 +245,23 @@ describe("release workflow privilege separation", () => {
     expect(resolve).toContain("refs/heads/main");
     expect(resolve).toContain("prerelease");
     expect(resolve).toContain("waiting for completion");
-    expect(resolve).toContain("has_source_updaters");
     expect(finalize).toContain("scripts/macos-notarization-state.mjs verify");
     expect(finalize).toContain("APPLE_TEAM_ID");
     expect(finalize).toContain("Accepted");
     expect(finalize).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(packageJob).toContain("ref: ${{ github.sha }}");
+    expect(packageJob).toContain("ref: ${{ needs.resolve.outputs.commit }}");
+    expect(packageJob).toContain("path: release-source");
+    expect(packageJob).toContain("--changelog release-source/CHANGELOG.md");
+    expect(finalizeWorkflow).not.toContain("recover_updaters");
+  });
 
-    const updaterRecovery = workflowJob(finalizeWorkflow, "recover_updaters");
-    expect(updaterRecovery).toContain("ref: ${{ needs.resolve.outputs.commit }}");
-    expect(updaterRecovery).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
-    expect(updaterRecovery).toContain("uploadWorkflowArtifacts: false");
-    expect(updaterRecovery).toContain("if-no-files-found: error");
+  it("matches the updater manifest to Tauri v2 uncompressed updater artifacts", () => {
+    expect(tauriConfig.bundle.createUpdaterArtifacts).toBe(true);
+    expect(updaterManifestGenerator).toContain("packagePattern: /\\.AppImage$/i");
+    expect(updaterManifestGenerator).toContain("packagePattern: /-setup\\.exe$/i");
+    expect(updaterManifestGenerator).not.toContain("AppImage.tar.gz");
+    expect(updaterManifestGenerator).not.toContain("nsis.zip");
   });
 
   it("describes the platform trust boundary accurately in generated release notes", () => {
@@ -275,8 +283,8 @@ describe("release workflow privilege separation", () => {
     expect(macOSBuild).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("scripts/verify-packaged-linux.sh");
     expect(build).toContain("scripts/verify-packaged-windows.ps1");
-    expect(build).toContain("Upload signed updater package explicitly");
-    expect(build).toContain("if-no-files-found: error");
+    expect(build).toContain("workflowArtifactNamePattern: ${{ matrix.artifact }}-[bundle]-[ext]");
+    expect(build).not.toContain("Upload signed updater package explicitly");
     expect(workflowJob(releaseWorkflow, "package")).toContain("generate-updater-manifest.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("flatten-release-artifacts.mjs");
     expect(workflowJob(releaseWorkflow, "package")).toContain("latest.json");

@@ -3,8 +3,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const { output, tag } = parseOptions(process.argv.slice(2));
-const changelog = await readFile(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
+const { changelogPath, output, tag } = parseOptions(process.argv.slice(2));
+const changelog = await readFile(resolve(changelogPath ?? resolve(repositoryRoot, "CHANGELOG.md")), "utf8");
 const notes = renderReleaseNotes(changelog, tag);
 
 if (output) {
@@ -32,14 +32,21 @@ export function renderReleaseNotes(changelog, tag) {
 
 function parseOptions(args) {
   const tag = args[0];
-  if (!tag) throw new Error("Usage: node scripts/render-release-notes.mjs vMAJOR.MINOR.PATCH [--output <path>]");
+  if (!tag) {
+    throw new Error("Usage: node scripts/render-release-notes.mjs vMAJOR.MINOR.PATCH [--changelog <path>] [--output <path>]");
+  }
+  let changelogPath = null;
   let output = null;
   for (let index = 1; index < args.length; index += 1) {
-    if (args[index] !== "--output") throw new Error(`Unknown option: ${args[index]}`);
-    output = args[index + 1] ?? null;
+    const option = args[index];
+    const value = args[index + 1] ?? null;
+    if (!value) throw new Error(`Missing value for option: ${option}`);
+    if (option === "--changelog") changelogPath = value;
+    else if (option === "--output") output = value;
+    else throw new Error(`Unknown option: ${option}`);
     index += 1;
   }
-  return { tag, output };
+  return { changelogPath, output, tag };
 }
 
 function normalizeTag(tag) {

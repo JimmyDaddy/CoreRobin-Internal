@@ -29,7 +29,15 @@ describe("signed updater manifest", () => {
       signature: "signature-darwin-aarch64",
       url: "https://github.com/JimmyDaddy/corerobin-monitor/releases/download/v1.2.3/CoreRobin_1.2.3_aarch64.app.tar.gz",
     });
-    await expect(readFile(join(root, "CoreRobin_1.2.3_x64-setup.nsis.zip"), "utf8"))
+    expect(manifest.platforms["linux-x86_64"]).toEqual({
+      signature: "signature-linux-x86_64",
+      url: "https://github.com/JimmyDaddy/corerobin-monitor/releases/download/v1.2.3/CoreRobin_1.2.3_amd64.AppImage",
+    });
+    expect(manifest.platforms["windows-x86_64"]).toEqual({
+      signature: "signature-windows-x86_64",
+      url: "https://github.com/JimmyDaddy/corerobin-monitor/releases/download/v1.2.3/CoreRobin_1.2.3_x64-setup.exe",
+    });
+    await expect(readFile(join(root, "CoreRobin_1.2.3_x64-setup.exe"), "utf8"))
       .resolves.toBe("package-windows-x86_64");
     await expect(readFile(join(root, "latest.json"), "utf8"))
       .resolves.toContain('"linux-x86_64"');
@@ -56,8 +64,8 @@ async function fixtureRoot({ omitSignatureFor } = {}) {
   const fixtures = [
     ["darwin-aarch64", "corerobin-macos-aarch64-updater", "CoreRobin.app.tar.gz"],
     ["darwin-x86_64", "corerobin-macos-x86_64-updater", "CoreRobin.app.tar.gz"],
-    ["linux-x86_64", "corerobin-linux-x86_64-updater", "CoreRobin.AppImage.tar.gz"],
-    ["windows-x86_64", "corerobin-windows-x86_64-updater", "CoreRobin_1.2.3_x64-setup.nsis.zip"],
+    ["linux-x86_64", "corerobin-linux-x86_64-appimage-.AppImage", "CoreRobin_1.2.3_amd64.AppImage"],
+    ["windows-x86_64", "corerobin-windows-x86_64-nsis-.exe", "CoreRobin_1.2.3_x64-setup.exe"],
   ];
   for (const [platform, directory, name] of fixtures) {
     const target = join(root, directory);

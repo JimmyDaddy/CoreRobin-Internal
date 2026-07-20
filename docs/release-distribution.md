@@ -25,7 +25,7 @@ Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前
 4. Linux、Windows 与两个 macOS build 全部成功后，Preview job 只挑选可手动安装的文件，在公开仓库发布独立的 `vMAJOR.MINOR.PATCH-preview.1` prerelease。macOS 文件名带有 `unnotarized-preview`，Preview 不含 updater 压缩包、`.sig`、`latest.json`，不会更新 `site/release-manifest.json`，也不会被标记为 latest。
 5. Apple 分别完成两个 submission 后调用外部 webhook relay；Preview job 发布成功后也向 relay 发送 `preview_ready`。relay 使用 Durable Object 按 tag 与源 run ID 聚合 `aarch64`、`x64` 与 Preview 三个信号，只在三者都到达后向 Internal 发送一次 `apple-notarization-complete` repository dispatch，唤醒 `Finalize macOS release`。Finalize 会短暂等待源 Release workflow 完成，以覆盖 Preview 创建与 workflow 状态落盘之间的秒级窗口。如果 relay 回调丢失，可以用同一 tag 与源 run ID 手动 dispatch。
 6. Finalize 先验证源 run 确实是该 tag/commit 的成功 `Release` workflow，且对应 Preview 已公开；随后用一个短时 GitHub-hosted macOS runner 下载两个原始 macOS artifact，重新调用 `notarytool info`。只有两个 submission 都为 `Accepted` 才会对原始 DMG 执行 staple，并通过签名、Hardened Runtime、架构、票据和 Gatekeeper 检查。`In Progress` 或 `Invalid` 都不会进入正式打包。
-7. Finalize package job 从原始 run 取回 Linux/Windows 安装包和显式上传的签名 updater 资产，并与已装订的 macOS 资产汇总，生成 Tauri `latest.json`、`SHA256SUMS` 和 SPDX SBOM。对早于该上传约束的源 run，Finalize 会从同一受信 tag commit 一次性补建缺失的 Linux/Windows updater 包；新发布不会重复构建。sign job使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
+7. Finalize package job 从原始 run 取回 Linux/Windows 安装包与 Tauri 生成的分离签名，并与已装订的 macOS 资产汇总。`createUpdaterArtifacts: true` 使用当前 Tauri v2 的未压缩 updater 格式：Linux 为 `.AppImage` + `.sig`，Windows 为 NSIS `.exe` + `.sig`；Finalize 直接使用这些已构建资产生成 `latest.json`、`SHA256SUMS` 和 SPDX SBOM，不重复构建。受信 `main` 提供可修复的最终打包工具，发行说明仍从受验证的 tag 源码读取。sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
 8. 受保护的 `release` environment 批准 staging job 后，Finalize 使用 `PUBLIC_RELEASE_TOKEN` 创建或更新独立的正式 `vMAJOR.MINOR.PATCH` draft。此时仍不会改变 latest 或官网 manifest，也不会覆盖已经公开的 Preview 资产。
 9. Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与 smoke 证据，才公开正式 Release、设置 latest，并更新 `site/release-manifest.json`。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
 
@@ -72,7 +72,7 @@ gh workflow run finalize-release.yml \
   -f source_run_id=RELEASE_RUN_ID
 ```
 
-Finalize 的 `--ref` 必须是受保护的 `main`，工作流内部会重新 checkout 和验证 release tag；这也将异步 Finalize 的 Sigstore identity 固定为 `finalize-release.yml@refs/heads/main`。源 `Release` run 必须已经成功结束，且公开 Preview 必须存在。
+Finalize 的 `--ref` 必须是受保护的 `main`，工作流内部会重新 checkout 和验证 release tag；发行资产与发行说明固定到该 tag，最终打包脚本固定到触发时的受信 `main`，因此可以修复打包逻辑而无需移动不可变 tag。这也将异步 Finalize 的 Sigstore identity 固定为 `finalize-release.yml@refs/heads/main`。源 `Release` run 必须已经成功结束，且公开 Preview 必须存在。
 
 明确改用发布者 Mac 时，先在未推送的 tag 上运行本地脚本；推送 tag 后取消自动 hosted run，再对同一远端 tag 手动运行 `Release` 并选择 `macos_builder=local`。本地脚本的 `--no-upload` 仍可用于仅验证构建。
 
