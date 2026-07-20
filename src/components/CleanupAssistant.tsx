@@ -48,6 +48,7 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 import { Button } from "./Button";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
+import "./CleanupAssistant.css";
 
 interface CleanupAssistantProps {
   snapshot: CleanupScan | null;

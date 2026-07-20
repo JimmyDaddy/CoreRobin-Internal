@@ -51,15 +51,12 @@ import {
   setLaunchAtLogin,
 } from "./api";
 import { BrandWordmark } from "./components/BrandWordmark";
-import { DeviceWellbeing } from "./components/DeviceWellbeing";
-import { DailyHome } from "./components/DailyHome";
 import { MetricCard } from "./components/MetricCard";
 import { LocaleSelect } from "./components/LocaleSelect";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
 import { RobinIcon } from "./components/RobinIcon";
 import { ResourceHistory } from "./components/ResourceHistory";
-import { SmartDiagnosis } from "./components/SmartDiagnosis";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
 import {
   type DailyIntent,
@@ -142,15 +139,18 @@ const ApplicationUninstallAssistant = lazy(async () => ({ default: (await import
 const ConfirmActionDialog = lazy(async () => ({ default: (await import("./components/ConfirmActionDialog")).ConfirmActionDialog }));
 const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
 const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
+const DailyHome = lazy(() => import("./components/DailyHome"));
 const DailyRecords = lazy(async () => ({ default: (await import("./components/DailyRecords")).DailyRecords }));
 const DailySettings = lazy(async () => ({ default: (await import("./components/DailySettings")).DailySettings }));
 const DailySolve = lazy(async () => ({ default: (await import("./components/DailySolve")).DailySolve }));
 const DailySpace = lazy(async () => ({ default: (await import("./components/DailySpace")).DailySpace }));
+const DeviceWellbeing = lazy(() => import("./components/DeviceWellbeing"));
 const HistoryExplorer = lazy(async () => ({ default: (await import("./components/HistoryExplorer")).HistoryExplorer }));
 const FirstRunGuide = lazy(async () => ({ default: (await import("./components/FirstRunGuide")).FirstRunGuide }));
 const GpuEnergyPanel = lazy(async () => ({ default: (await import("./components/GpuEnergyPanel")).GpuEnergyPanel }));
 const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
+const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
 const StartupExplorer = lazy(async () => ({ default: (await import("./components/StartupExplorer")).StartupExplorer }));
 

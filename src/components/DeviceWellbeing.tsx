@@ -121,6 +121,8 @@ export function DeviceWellbeing({
   );
 }
 
+export default DeviceWellbeing;
+
 function ReadinessHint({
   kind,
   readiness,

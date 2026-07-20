@@ -1,0 +1,26 @@
+.network-quality__starting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 86px;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 12px;
+}
+
+.network-quality__starting-pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 0 rgba(99, 168, 255, 0.32);
+  animation: network-quality-pulse 1.5s ease-out infinite;
+}
+
+@keyframes network-quality-pulse {
+  70% { box-shadow: 0 0 0 8px rgba(99, 168, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 168, 255, 0); }
+}

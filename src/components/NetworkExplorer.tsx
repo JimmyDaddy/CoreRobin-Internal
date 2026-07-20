@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import "./NetworkExplorer.css";
 import { processApplicationIconSource } from "../applicationIcon";
 
 import {
