@@ -83,6 +83,24 @@ jobs:
             echo "| Windows/macOS full matrix | $FULL_MATRIX |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  release-readiness:
+    name: Release readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Verify four version sources and changelog
+        run: node scripts/verify-release-readiness.mjs
+
   frontend:
     name: Frontend quality
     needs: changes
@@ -142,7 +160,7 @@ jobs:
         if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm test:performance-contracts
 
-      - name: Validate release smoke and performance tools
+      - name: Validate release readiness, smoke, and performance tools
         if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
         run: pnpm verify:release-tools
 

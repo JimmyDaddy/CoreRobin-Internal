@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertMatchingVersions,
+  assertReleaseChangelog,
   commitBelongsToTrustedRef,
+  readProjectVersions,
+  verifyReleaseReadiness,
   versionFromReleaseTag,
 } from "./verify-release-source.mjs";
+import { prepareReleaseFiles } from "./prepare-release.mjs";
 
 describe("release source verification", () => {
   it("accepts only exact stable semantic version tags", () => {
@@ -22,6 +26,35 @@ describe("release source verification", () => {
         "src-tauri/Cargo.toml": "1.2.3",
       }),
     ).toThrow(/tauri\.conf\.json=1\.2\.4/);
+  });
+
+  it("requires a non-empty changelog section for the release", () => {
+    expect(() => assertReleaseChangelog("1.2.3", "# Log\n\n## 未发布\n"))
+      .toThrow(/does not contain/);
+    expect(() => assertReleaseChangelog("1.2.3", "# Log\n\n## 1.2.3\n\n## 1.2.2\nOld\n"))
+      .toThrow(/is empty/);
+    expect(() => assertReleaseChangelog("1.2.3", "# Log\n\n## 1.2.3 — 2026-07-20\n\nReady\n"))
+      .not.toThrow();
+  });
+
+  it("updates all four version sources without changing dependency versions", () => {
+    const prepared = prepareReleaseFiles({
+      packageJson: '{"version":"1.0.0","private":true}\n',
+      tauriConfig: '{"version":"1.0.0","identifier":"example.app"}\n',
+      cargoManifest: '[package]\nname = "core-robin"\nversion = "1.0.0"\n\n[dependencies]\n',
+      cargoLock: '[[package]]\nname = "dependency"\nversion = "9.9.9"\n\n[[package]]\nname = "core-robin"\nversion = "1.0.0"\n',
+    }, "1.2.3");
+
+    expect(JSON.parse(prepared.packageJson).version).toBe("1.2.3");
+    expect(JSON.parse(prepared.tauriConfig).version).toBe("1.2.3");
+    expect(prepared.cargoManifest).toContain('version = "1.2.3"');
+    expect(prepared.cargoLock).toContain('name = "dependency"\nversion = "9.9.9"');
+    expect(prepared.cargoLock).toContain('name = "core-robin"\nversion = "1.2.3"');
+  });
+
+  it("passes release readiness for the checked-in project", () => {
+    const expected = readProjectVersions()["package.json"];
+    expect(verifyReleaseReadiness(expected).expectedVersion).toBe(expected);
   });
 
   it("rejects a tag commit that is not on the trusted branch", () => {
