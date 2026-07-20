@@ -551,6 +551,7 @@ impl BoundDeleteTarget {
     /// and resources. The selected bundle itself is still required to be a
     /// no-follow directory; only entries below that verified root are treated as
     /// leaf nodes and fingerprinted by their no-follow metadata.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn inspect_allowing_internal_symlinks(&self) -> Result<TreeInspection, String> {
         self.inspect_with_internal_symlinks(true)
     }
@@ -619,6 +620,7 @@ impl BoundDeleteTarget {
     /// Deletes symlinks contained below a verified directory as link entries,
     /// never by traversing their targets. Intended for validated application
     /// bundles; generic cleanup keeps the stricter fail-closed behavior.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn delete_cancellable_allowing_internal_symlinks(
         self,
         cancelled: &AtomicBool,

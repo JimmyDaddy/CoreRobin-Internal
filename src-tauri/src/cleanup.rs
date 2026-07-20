@@ -3877,6 +3877,7 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn application_inventory_cache_requires_matching_language_fingerprint_and_age() {
         let root = test_root("application-inventory-cache");
