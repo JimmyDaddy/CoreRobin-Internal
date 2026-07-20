@@ -338,20 +338,15 @@ jobs:
       RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
       RELEASE_VERSION: ${{ needs.verify.outputs.version }}
     steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+
       - name: Create immutable stable tag if absent
         shell: bash
-        run: |
-          release_tag="v$RELEASE_VERSION"
-          existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$release_tag" --jq .object.sha 2>/dev/null || true)"
-          if [[ -n "$existing_sha" ]]; then
-            test "$existing_sha" = "$RELEASE_COMMIT"
-            echo "Stable tag $release_tag already points to the verified candidate commit."
-          else
-            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/tags/$release_tag" \
-              -f sha="$RELEASE_COMMIT" >/dev/null
-            echo "Created stable tag $release_tag at $RELEASE_COMMIT."
-          fi
+        run: bash scripts/ensure-stable-release-tag.sh
 
       - name: Start the stable Release workflow exactly once
         shell: bash

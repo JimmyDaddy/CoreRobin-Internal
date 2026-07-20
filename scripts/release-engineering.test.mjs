@@ -7,6 +7,7 @@ const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")
 const ci = readFileSync(".github/workflows/ci.yml", "utf8");
 const release = readFileSync(".github/workflows/release.yml", "utf8");
 const releaseCandidate = readFileSync(".github/workflows/release-candidate.yml", "utf8");
+const stableTagActivator = readFileSync("scripts/ensure-stable-release-tag.sh", "utf8");
 
 describe("release engineering boundaries", () => {
   it("uses the final CoreRobin application identity without a migration shim", () => {
@@ -59,7 +60,10 @@ describe("release engineering boundaries", () => {
     expect(releaseCandidate).toContain("name: release");
     expect(releaseCandidate).toContain("actions: write");
     expect(releaseCandidate).toContain("contents: write");
-    expect(releaseCandidate).toContain('ref="refs/tags/$release_tag"');
+    expect(releaseCandidate).toContain("bash scripts/ensure-stable-release-tag.sh");
+    expect(stableTagActivator).toContain("git/matching-refs/tags/$release_tag");
+    expect(stableTagActivator).not.toContain("git/ref/tags/$release_tag");
+    expect(stableTagActivator).toContain('-f ref="$release_ref"');
     expect(releaseCandidate).toContain("gh workflow run release.yml");
   });
 
