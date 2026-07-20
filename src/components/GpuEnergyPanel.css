@@ -28,7 +28,8 @@
 .gpu-energy__adapters article small { color: var(--text-secondary); display: block; margin-top: 2px; }
 .gpu-energy__applications h3 { align-items: center; display: flex; font-size: 13px; gap: 7px; margin: 2px 0 9px; }
 .gpu-energy__applications ol { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
-.gpu-energy__applications li { align-items: center; display: grid; gap: 10px; grid-template-columns: minmax(120px, 0.8fr) minmax(120px, 2fr) 48px; }
+.gpu-energy__applications li { align-items: center; display: grid; gap: 10px; grid-template-columns: auto minmax(120px, 0.8fr) minmax(120px, 2fr) 48px; }
+.gpu-energy-avatar { width: 25px; height: 25px; border-radius: 7px; }
 .gpu-energy__applications li > span { background: var(--surface-soft); border-radius: 999px; height: 7px; overflow: hidden; }
 .gpu-energy__applications li i { background: linear-gradient(90deg, var(--accent), var(--warning)); border-radius: inherit; display: block; height: 100%; }
 .gpu-energy__applications li b { font-variant-numeric: tabular-nums; text-align: right; }
@@ -37,7 +38,7 @@
 .gpu-energy__details > small { color: var(--text-secondary); }
 
 @media (max-width: 760px) {
-  .gpu-energy__applications li { grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) 42px; }
+  .gpu-energy__applications li { grid-template-columns: auto minmax(100px, 1fr) minmax(80px, 1fr) 42px; }
   .gpu-energy__disclosure { grid-template-columns: auto minmax(0, 1fr) auto; }
   .gpu-energy__glance { display: none; }
 }

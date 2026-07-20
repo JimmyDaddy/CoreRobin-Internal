@@ -7,6 +7,8 @@ import {
   type CleanupDeleteLeaseReleaseRequest,
   type CleanupDeleteLeaseRequest,
   type CleanupDeleteResult,
+  type ApplicationInventorySnapshot,
+  type ApplicationUninstallPlan,
   type ProcessActionRequest,
   type ProcessActionResult,
   type ProcessControlLease,
@@ -25,6 +27,100 @@ import {
   type StartupManagementLeaseRequest,
   type StartupManagementResult,
 } from "./types";
+
+const MOCK_INSTALLED_APPLICATIONS: ApplicationInventorySnapshot = {
+  sampledAtMs: Date.now(),
+  platformSupported: true,
+  cached: false,
+  refreshRecommended: false,
+  applications: [
+    {
+      name: "Archive Studio",
+      path: "/Applications/Archive Studio.app",
+      bundleId: "com.example.archive-studio",
+      sizeBytes: 2_860_000_000,
+      lastUsedAtMs: Date.now() - 340 * 86_400_000,
+      modifiedAtMs: Date.now() - 400 * 86_400_000,
+      uninstallable: true,
+      unavailableReason: null,
+    },
+    {
+      name: "Sketchbook Classic",
+      path: "/Applications/Sketchbook Classic.app",
+      bundleId: "com.example.sketchbook-classic",
+      sizeBytes: 940_000_000,
+      lastUsedAtMs: Date.now() - 220 * 86_400_000,
+      modifiedAtMs: Date.now() - 250 * 86_400_000,
+      uninstallable: true,
+      unavailableReason: null,
+    },
+    {
+      name: "Daily Notes",
+      path: "/Applications/Daily Notes.app",
+      bundleId: "com.example.daily-notes",
+      sizeBytes: 180_000_000,
+      lastUsedAtMs: Date.now() - 3 * 86_400_000,
+      modifiedAtMs: Date.now() - 20 * 86_400_000,
+      uninstallable: true,
+      unavailableReason: null,
+    },
+  ],
+};
+
+export function getMockInstalledApplications(): ApplicationInventorySnapshot {
+  return {
+    ...MOCK_INSTALLED_APPLICATIONS,
+    sampledAtMs: Date.now(),
+    applications: MOCK_INSTALLED_APPLICATIONS.applications.map((application) => ({ ...application })),
+  };
+}
+
+export function getMockApplicationUninstallPlan(applicationPath: string): ApplicationUninstallPlan {
+  const application = MOCK_INSTALLED_APPLICATIONS.applications.find((item) => item.path === applicationPath);
+  if (!application || !application.bundleId) {
+    throw { code: "application_bundle_unavailable", message: "The application is unavailable." };
+  }
+  const identifier = application.bundleId;
+  return {
+    sampledAtMs: Date.now(),
+    application: { ...application },
+    artifacts: [
+      {
+        kind: "application",
+        path: application.path,
+        logicalSizeBytes: application.sizeBytes,
+        allocatedSizeBytes: application.sizeBytes,
+        itemCount: 1_482,
+        required: true,
+      },
+      {
+        kind: "application_support",
+        path: `/Users/demo/Library/Application Support/${identifier}`,
+        logicalSizeBytes: 186_000_000,
+        allocatedSizeBytes: 186_000_000,
+        itemCount: 248,
+        required: false,
+      },
+      {
+        kind: "cache",
+        path: `/Users/demo/Library/Caches/${identifier}`,
+        logicalSizeBytes: 74_000_000,
+        allocatedSizeBytes: 74_000_000,
+        itemCount: 96,
+        required: false,
+      },
+      {
+        kind: "preferences",
+        path: `/Users/demo/Library/Preferences/${identifier}.plist`,
+        logicalSizeBytes: 12_000,
+        allocatedSizeBytes: 16_384,
+        itemCount: 1,
+        required: false,
+      },
+    ],
+    skippedPaths: [],
+  };
+}
 
 let mockStartupLeaseSequence = 0;
 const mockStartupLeases = new Map<string, StartupManagementLease>();

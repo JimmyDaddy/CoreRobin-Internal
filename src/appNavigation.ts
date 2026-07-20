@@ -1,5 +1,6 @@
 export type ActiveView =
   | "overview"
+  | "applications"
   | "processes"
   | "storage"
   | "cleanup"
@@ -11,6 +12,7 @@ export type ActiveView =
 
 export const PROFESSIONAL_VIEW_EYEBROW = {
   overview: "app:viewEyebrow.overview",
+  applications: "app:viewEyebrow.applications",
   processes: "app:viewEyebrow.processes",
   storage: "app:viewEyebrow.storage",
   cleanup: "app:viewEyebrow.cleanup",
@@ -23,6 +25,7 @@ export const PROFESSIONAL_VIEW_EYEBROW = {
 
 const ACTIVE_VIEWS = new Set<ActiveView>([
   "overview",
+  "applications",
   "processes",
   "storage",
   "cleanup",

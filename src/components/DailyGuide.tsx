@@ -222,7 +222,10 @@ function IncidentGuideResult({
         <p>{statusDescription}</p>
         {item.kind === "diagnosis" && item.finding.culprit ? (
           <div className="daily-guide-culprit">
-            <ApplicationAvatar application={item.finding.culprit} />
+            <ApplicationAvatar
+              name={item.finding.culprit.name}
+              source={{ process: item.finding.culprit.iconProcess }}
+            />
             <span><small>{t("daily:incident.observedCause")}</small><strong>{item.finding.culprit.name}</strong></span>
             <em>{t("daily:incident.causeMayHaveChanged")}</em>
           </div>
@@ -352,7 +355,7 @@ function SlowGuide({
         <p>{t(`diagnosis:findings.${finding.code}.description`)}</p>
         {culprit ? (
           <div className="daily-guide-culprit">
-            <ApplicationAvatar application={culprit} />
+            <ApplicationAvatar name={culprit.name} source={{ process: culprit.iconProcess }} />
             <span><small>{t("daily:guide.slow.likelyCause")}</small><strong>{culprit.name}</strong></span>
             <em>{t("daily:guide.slow.applicationExplanation", { name: culprit.name })}</em>
           </div>

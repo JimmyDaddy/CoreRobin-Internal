@@ -34,6 +34,8 @@ pub const ALL_COMMANDS: &[&str] = &[
     "open_product_page",
     "relaunch_application",
     "can_relaunch_application",
+    "get_installed_applications",
+    "get_application_uninstall_plan",
     "create_cleanup_delete_lease",
     "release_cleanup_delete_lease",
     "execute_cleanup_delete",

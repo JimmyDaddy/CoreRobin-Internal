@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  AppWindow,
   ArchiveRestore,
   Boxes,
   Code2,
@@ -46,6 +45,7 @@ import type {
   StartUserActionInput,
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
+import { ApplicationAvatar } from "./ApplicationAvatar";
 import { CleanupSpaceMap } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
 
@@ -488,7 +488,11 @@ export function CleanupAssistant({
                   const inactiveDays = unusedApplicationDays(application, snapshot.sampledAtMs);
                   return (
                     <li key={application.path} title={application.path}>
-                      <span><AppWindow size={16} /></span>
+                      <ApplicationAvatar
+                        name={application.name}
+                        source={{ applicationPath: application.path }}
+                        className="cleanup-application-avatar"
+                      />
                       <div>
                         <strong>{application.name}</strong>
                         <small>{t("cleanup:applications.lastUsed", {

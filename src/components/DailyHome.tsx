@@ -269,7 +269,9 @@ function resetDailyCompanionTilt(event: ReactPointerEvent<HTMLDivElement>) {
 
 function AttentionIcon({ item }: { item: DailyAttentionItem }) {
   const application = item.kind === "diagnosis" ? item.finding.culprit : null;
-  if (application) return <ApplicationAvatar application={application} />;
+  if (application) {
+    return <ApplicationAvatar name={application.name} source={{ process: application.iconProcess }} />;
+  }
   if (item.kind === "battery") return <BatteryCharging size={20} />;
   if (item.kind === "temperature") return <Flame size={20} />;
   return <TriangleAlert size={20} />;
