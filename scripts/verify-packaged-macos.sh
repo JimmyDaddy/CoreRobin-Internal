@@ -57,7 +57,11 @@ codesign --verify --deep --strict --verbose=4 "$app_path"
 app_signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
 grep -F 'Authority=Developer ID Application:' <<<"$app_signature"
 grep -F "($expected_team_id)" <<<"$app_signature"
-grep -E '^flags=.*\(.*runtime.*\)' <<<"$app_signature"
+if ! grep -E 'flags=.*\(.*runtime.*\)' <<<"$app_signature"; then
+  echo "The application signature does not enable Hardened Runtime." >&2
+  printf '%s\n' "$app_signature" >&2
+  exit 1
+fi
 grep -F 'Timestamp=' <<<"$app_signature"
 if [[ $trust_mode == notarized ]]; then
   spctl --assess --type execute --verbose=4 "$app_path"

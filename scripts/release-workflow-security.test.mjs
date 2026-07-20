@@ -171,6 +171,7 @@ describe("release workflow privilege separation", () => {
     const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
     expect(tauriConfig.identifier).toBe("com.corerobin.monitor");
     expect(tauriConfig.bundle.macOS.signingIdentity).toBeUndefined();
+    expect(tauriConfig.bundle.macOS.hardenedRuntime).toBe(true);
     expect(build).not.toContain("--no-sign");
     expect(build).toContain("scripts/verify-packaged-macos.sh");
     expect(build).toContain("com.corerobin.monitor");
@@ -186,6 +187,9 @@ describe("release workflow privilege separation", () => {
     expect(macOSPackageVerifier).toContain("codesign --verify --deep --strict");
     expect(macOSPackageVerifier).toContain("Authority=Developer ID Application:");
     expect(macOSPackageVerifier).toContain("runtime");
+    expect(macOSPackageVerifier).toContain("grep -E 'flags=");
+    expect(macOSPackageVerifier).not.toContain("grep -E '^flags=");
+    expect(macOSPackageVerifier).toContain("does not enable Hardened Runtime");
     expect(macOSPackageVerifier).toContain("xcrun stapler validate");
     expect(macOSPackageVerifier).toContain("spctl --assess --type open");
     expect(macOSPackageVerifier).toContain("spctl --assess --type execute");
