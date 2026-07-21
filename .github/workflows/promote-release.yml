@@ -7,21 +7,41 @@ on:
         description: Release tag staged as a public draft (vMAJOR.MINOR.PATCH)
         required: true
         type: string
+      promotion_mode:
+        description: Require four device records, or use an audited maintainer risk attestation
+        required: true
+        default: device-evidence
+        type: choice
+        options:
+          - device-evidence
+          - maintainer-attestation
       macos_arm64_evidence:
         description: Complete JSON emitted by release:smoke:device on macOS Apple Silicon
-        required: true
+        required: false
         type: string
       macos_x64_evidence:
         description: Complete JSON emitted by release:smoke:device on macOS Intel
-        required: true
+        required: false
         type: string
       windows_x64_evidence:
         description: Complete JSON emitted by release:smoke:device on Windows x64
-        required: true
+        required: false
         type: string
       linux_x64_evidence:
         description: Complete JSON emitted by release:smoke:device on Linux x64
-        required: true
+        required: false
+        type: string
+      maintainer_tested_platforms:
+        description: "Comma-separated tested IDs: macos-arm64,macos-x64,windows-x64,linux-x64"
+        required: false
+        type: string
+      maintainer_attestation:
+        description: Exact risk statement generated from the tag and unverified platform IDs
+        required: false
+        type: string
+      maintainer_note:
+        description: Human-readable reason for releasing without all four device records
+        required: false
         type: string
 
 permissions:
@@ -49,6 +69,10 @@ jobs:
       SMOKE_EVIDENCE_MACOS_X64: ${{ inputs.macos_x64_evidence }}
       SMOKE_EVIDENCE_WINDOWS_X64: ${{ inputs.windows_x64_evidence }}
       SMOKE_EVIDENCE_LINUX_X64: ${{ inputs.linux_x64_evidence }}
+      PROMOTION_MODE: ${{ inputs.promotion_mode }}
+      MAINTAINER_TESTED_PLATFORMS: ${{ inputs.maintainer_tested_platforms }}
+      MAINTAINER_ATTESTATION: ${{ inputs.maintainer_attestation }}
+      MAINTAINER_NOTE: ${{ inputs.maintainer_note }}
     steps:
       - name: Check out trusted release history
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -103,11 +127,62 @@ jobs:
               release-assets/SHA256SUMS
           fi
 
+      - name: Verify every staged release asset
+        shell: bash
+        run: (cd release-assets && sha256sum --check SHA256SUMS)
+
+      - name: Validate promotion authorization mode
+        shell: bash
+        run: |
+          case "$PROMOTION_MODE" in
+            device-evidence)
+              test -z "$MAINTAINER_TESTED_PLATFORMS"
+              test -z "$MAINTAINER_ATTESTATION"
+              test -z "$MAINTAINER_NOTE"
+              ;;
+            maintainer-attestation)
+              test -z "$SMOKE_EVIDENCE_MACOS_ARM64"
+              test -z "$SMOKE_EVIDENCE_MACOS_X64"
+              test -z "$SMOKE_EVIDENCE_WINDOWS_X64"
+              test -z "$SMOKE_EVIDENCE_LINUX_X64"
+              ;;
+            *)
+              echo "Unsupported promotion mode: $PROMOTION_MODE" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Validate four real-device smoke evidence records
+        if: inputs.promotion_mode == 'device-evidence'
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
         run: node scripts/verify-release-smoke-evidence.mjs "$RELEASE_TAG" "$RELEASE_COMMIT" release-assets
+
+      - name: Record maintainer release attestation
+        if: inputs.promotion_mode == 'maintainer-attestation'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          node scripts/create-maintainer-release-attestation.mjs > maintainer-release-attestation.json
+          cat maintainer-release-attestation.json
+          {
+            echo "### Maintainer release attestation"
+            echo
+            echo '```json'
+            cat maintainer-release-attestation.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain maintainer release attestation
+        if: inputs.promotion_mode == 'maintainer-attestation'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-maintainer-attestation-${{ steps.source.outputs.commit }}
+          path: maintainer-release-attestation.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Publish verified release as latest
         if: steps.release.outputs.is_draft == 'true'
