@@ -1,4 +1,4 @@
-import { AlertTriangle, ArchiveRestore, CircleStop, LoaderCircle, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { AlertTriangle, AppWindow, ArchiveRestore, CircleStop, LoaderCircle, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -19,6 +19,7 @@ interface CleanupDeleteDialogProps {
   error: CommandError | null;
   mode: CleanupDeleteMode;
   deleteAcknowledged: boolean;
+  progressVariant?: "default" | "application";
   onModeChange: (mode: CleanupDeleteMode) => void;
   onDeleteAcknowledgedChange: (checked: boolean) => void;
   onCancel: () => void;
@@ -39,6 +40,7 @@ export function CleanupDeleteDialog({
   error,
   mode,
   deleteAcknowledged,
+  progressVariant = "default",
   onModeChange,
   onDeleteAcknowledgedChange,
   onCancel,
@@ -149,11 +151,21 @@ export function CleanupDeleteDialog({
         </ol>
 
         {submitting ? (
-          <div className={`cleanup-delete-dialog__progress${cancelling ? " is-cancelling" : ""}`} role="status" aria-live="polite">
-            <span className="cleanup-delete-dialog__progress-mark" aria-hidden="true">
-              <i /><i /><i />
-              {cancelling ? <CircleStop size={18} /> : mode === "trash" ? <ArchiveRestore size={17} /> : <Trash2 size={17} />}
-            </span>
+          <div className={`cleanup-delete-dialog__progress${progressVariant === "application" ? " is-application" : ""}${cancelling ? " is-cancelling" : ""}`} role="status" aria-live="polite">
+            {progressVariant === "application" && !cancelling ? (
+              <span className={`cleanup-delete-dialog__app-progress-mark is-${mode}`} aria-hidden="true">
+                <span className="cleanup-delete-dialog__app-progress-origin"><AppWindow size={18} /></span>
+                <span className="cleanup-delete-dialog__app-progress-trail"><i /><i /><i /></span>
+                <span className="cleanup-delete-dialog__app-progress-target">
+                  {mode === "trash" ? <ArchiveRestore size={20} /> : <Trash2 size={20} />}
+                </span>
+              </span>
+            ) : (
+              <span className="cleanup-delete-dialog__progress-mark" aria-hidden="true">
+                <i /><i /><i />
+                {cancelling ? <CircleStop size={18} /> : mode === "trash" ? <ArchiveRestore size={17} /> : <Trash2 size={17} />}
+              </span>
+            )}
             <div className="cleanup-delete-dialog__progress-copy">
               <strong>{t(
                 cancelling

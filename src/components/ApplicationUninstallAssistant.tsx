@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArchiveRestore,
   AppWindow,
   Check,
   FolderOpen,
@@ -10,6 +11,7 @@ import {
   ScanSearch,
   Search,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
@@ -61,7 +63,16 @@ interface UninstallOutcome {
   deletedBytes: number;
   failedCount: number;
   cancelled: boolean;
+  mode: CleanupDeleteMode;
+  applicationRemoved: boolean;
 }
+
+interface RemovedApplicationState {
+  mode: CleanupDeleteMode;
+  failedCount: number;
+}
+
+const removedApplicationsForSession = new Map<string, RemovedApplicationState>();
 
 export function ApplicationUninstallAssistant({
   onUserActionStart,
@@ -78,6 +89,9 @@ export function ApplicationUninstallAssistant({
   const [planning, setPlanning] = useState(false);
   const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
   const [outcome, setOutcome] = useState<UninstallOutcome | null>(null);
+  const [removedApplications, setRemovedApplications] = useState<Map<string, RemovedApplicationState>>(
+    () => new Map(removedApplicationsForSession),
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogItems, setDialogItems] = useState<CleanupMapNode[]>([]);
@@ -103,6 +117,16 @@ export function ApplicationUninstallAssistant({
       const next = await getInstalledApplications(language, forceRefresh);
       if (inventoryRequestIdRef.current !== requestId) return null;
       setInventory(next);
+      if (forceRefresh) {
+        removedApplicationsForSession.clear();
+        setRemovedApplications(new Map());
+      } else {
+        const availablePaths = new Set(next.applications.map((application) => application.path));
+        for (const path of removedApplicationsForSession.keys()) {
+          if (!availablePaths.has(path)) removedApplicationsForSession.delete(path);
+        }
+        setRemovedApplications(new Map(removedApplicationsForSession));
+      }
       setSelectedPath((current) => current && next.applications.some((app) => app.path === current) ? current : null);
       return next;
     } catch (caughtError) {
@@ -140,8 +164,16 @@ export function ApplicationUninstallAssistant({
   }, [inventory, query]);
 
   const totalSize = useMemo(
-    () => (inventory?.applications ?? []).reduce((sum, application) => sum + application.sizeBytes, 0),
-    [inventory],
+    () => (inventory?.applications ?? []).reduce(
+      (sum, application) => sum + (removedApplications.has(application.path) ? 0 : application.sizeBytes),
+      0,
+    ),
+    [inventory, removedApplications],
+  );
+
+  const installedApplicationCount = useMemo(
+    () => (inventory?.applications ?? []).filter((application) => !removedApplications.has(application.path)).length,
+    [inventory, removedApplications],
   );
 
   const selectedSize = useMemo(() => plan?.artifacts
@@ -150,6 +182,7 @@ export function ApplicationUninstallAssistant({
   [plan, selectedArtifacts]);
 
   const selectApplication = async (application: InstalledApplication) => {
+    if (removedApplications.has(application.path)) return;
     setSelectedPath(application.path);
     setPlan(null);
     setOutcome(null);
@@ -261,6 +294,8 @@ export function ApplicationUninstallAssistant({
     const lease = deleteLeaseRef.current;
     if (!lease || !cleanupLeaseCanExecute(lease) || lease.mode !== deleteMode || !deleteAcknowledged || deleteSubmitting || !plan) return;
     const applicationName = plan.application.name;
+    const applicationPath = plan.application.path;
+    const completedMode = deleteMode;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
       targetName: applicationName,
@@ -281,13 +316,23 @@ export function ApplicationUninstallAssistant({
     try {
       const result = await executeCleanupDelete({ leaseId: lease.id }, setDeleteProgress);
       deleteLeaseRef.current = null;
+      const applicationRemoved = result.deleted.some((item) => item.path === applicationPath);
       setOutcome({
         applicationName,
         deletedCount: result.deleted.length,
         deletedBytes: result.deletedBytes,
         failedCount: result.failed.length,
         cancelled: result.cancelled,
+        mode: completedMode,
+        applicationRemoved,
       });
+      if (applicationRemoved) {
+        removedApplicationsForSession.set(applicationPath, {
+          mode: completedMode,
+          failedCount: result.failed.length,
+        });
+        setRemovedApplications(new Map(removedApplicationsForSession));
+      }
       if (actionRecordId) {
         onUserActionComplete?.(actionRecordId, {
           status: result.cancelled
@@ -303,8 +348,7 @@ export function ApplicationUninstallAssistant({
       }
       closeDeleteDialog();
       setPlan(null);
-      setSelectedPath(null);
-      await refreshInventory(true);
+      setSelectedPath(applicationRemoved ? applicationPath : null);
     } catch (caughtError) {
       deleteLeaseRef.current = null;
       setDeleteLease(null);
@@ -340,6 +384,7 @@ export function ApplicationUninstallAssistant({
   };
 
   const selectedApplication = inventory?.applications.find((application) => application.path === selectedPath) ?? null;
+  const selectedRemoval = selectedPath ? removedApplications.get(selectedPath) ?? null : null;
 
   return (
     <section className="application-uninstall" aria-labelledby="application-uninstall-title" aria-busy={loading}>
@@ -389,7 +434,7 @@ export function ApplicationUninstallAssistant({
       ) : (
         <>
           <div className="application-uninstall__summary">
-            <span><AppWindow size={16} /><strong>{inventory?.applications.length ?? 0}</strong>{t("applications:uninstall.applicationUnit")}</span>
+            <span><AppWindow size={16} /><strong>{installedApplicationCount}</strong>{t("applications:uninstall.applicationUnit")}</span>
             <span><HardDrive size={16} /><strong>{formatBytes(totalSize)}</strong>{t("applications:uninstall.installedSize")}</span>
             <small className={loading ? "is-refreshing" : undefined}>
               {loading ? <LoaderCircle className="is-spinning" size={15} /> : <ShieldCheck size={15} />}
@@ -411,7 +456,11 @@ export function ApplicationUninstallAssistant({
               <Check size={17} />
               <span>{t(outcome.failedCount > 0 || outcome.cancelled
                 ? "applications:uninstall.outcomePartial"
-                : "applications:uninstall.outcomeComplete", {
+                : outcome.applicationRemoved
+                  ? outcome.mode === "trash"
+                    ? "applications:uninstall.outcomeMovedToTrash"
+                    : "applications:uninstall.outcomeDeletedPermanently"
+                  : "applications:uninstall.outcomeComplete", {
                 name: outcome.applicationName,
                 count: outcome.deletedCount,
                 size: formatBytes(outcome.deletedBytes),
@@ -432,20 +481,41 @@ export function ApplicationUninstallAssistant({
                 <p className="application-uninstall__empty">{t("applications:uninstall.empty")}</p>
               ) : (
                 <ul className="application-uninstall__list">
-                  {applications.map((application) => (
+                  {applications.map((application) => {
+                    const removed = removedApplications.get(application.path);
+                    const removedLabel = removed
+                      ? t(`applications:uninstall.removed.${removed.mode}`)
+                      : null;
+                    return (
                     <li key={application.path}>
-                      <button className={selectedPath === application.path ? "is-selected" : undefined} type="button" onClick={() => void selectApplication(application)}>
+                      <button
+                        className={`${selectedPath === application.path ? "is-selected" : ""}${removed ? " is-removed" : ""}`.trim() || undefined}
+                        type="button"
+                        disabled={Boolean(removed)}
+                        aria-label={removedLabel ? `${application.name} · ${removedLabel}` : undefined}
+                        onClick={() => void selectApplication(application)}
+                      >
                         <ApplicationAvatar
                           name={application.name}
                           source={{ applicationPath: application.path }}
                           className="application-uninstall__avatar"
                         />
                         <div><strong>{application.name}</strong><small>{application.bundleId ?? application.path}</small></div>
-                        <b>{formatBytes(application.sizeBytes)}</b>
-                        {!application.uninstallable ? <em>{t(`applications:uninstall.unavailable.${application.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</em> : null}
+                        {removed ? (
+                          <b className={`application-uninstall__removed-badge is-${removed.mode}`}>
+                            {removed.mode === "trash" ? <ArchiveRestore size={11} /> : <Trash2 size={11} />}
+                            {removedLabel}
+                          </b>
+                        ) : <b>{formatBytes(application.sizeBytes)}</b>}
+                        {removed ? (
+                          <em className="is-removed">{t(`applications:uninstall.removed.${removed.mode}Description`)}</em>
+                        ) : !application.uninstallable ? (
+                          <em>{t(`applications:uninstall.unavailable.${application.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</em>
+                        ) : null}
                       </button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -503,6 +573,26 @@ export function ApplicationUninstallAssistant({
                     </button>
                   </footer>
                 </>
+              ) : selectedApplication && selectedRemoval ? (
+                <div className={`application-uninstall__removed-panel is-${selectedRemoval.mode}`} role="status">
+                  <div className="application-uninstall__removed-visual" aria-hidden="true">
+                    <i /><i /><i />
+                    <ApplicationAvatar
+                      name={selectedApplication.name}
+                      source={{ applicationPath: selectedApplication.path }}
+                      className="application-uninstall__avatar is-large"
+                    />
+                    <span>{selectedRemoval.mode === "trash" ? <ArchiveRestore size={22} /> : <Trash2 size={22} />}</span>
+                  </div>
+                  <strong>{selectedApplication.name}</strong>
+                  <em>{t(`applications:uninstall.removed.${selectedRemoval.mode}`)}</em>
+                  <p>{t(`applications:uninstall.removed.${selectedRemoval.mode}Description`)}</p>
+                  {selectedRemoval.failedCount > 0 ? <small>{t("applications:uninstall.removed.partial")}</small> : null}
+                  <button className="button button--secondary" type="button" disabled={loading} onClick={() => void refreshInventory(true)}>
+                    <RefreshCw className={loading ? "is-spinning" : undefined} size={14} />
+                    {t("applications:uninstall.refresh")}
+                  </button>
+                </div>
               ) : selectedApplication && !selectedApplication.uninstallable ? (
                 <div className="application-uninstall__selection-empty"><AlertTriangle size={22} /><strong>{t("applications:uninstall.cannotPrepare")}</strong><p>{t(`applications:uninstall.unavailable.${selectedApplication.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</p></div>
               ) : (
@@ -532,6 +622,7 @@ export function ApplicationUninstallAssistant({
           onCancelExecution={() => void cancelUninstall()}
           onRefresh={() => void prepareDeleteLease(dialogItems, latestEvidenceAtRef.current, deleteMode)}
           onConfirm={() => void confirmUninstall()}
+          progressVariant="application"
         />
       ) : null}
     </section>

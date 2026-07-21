@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationUninstallAssistant } from "./components/ApplicationUninstallAssistant";
@@ -20,7 +20,20 @@ const uninstallApi = vi.hoisted(() => ({
 
 vi.mock("./api", () => uninstallApi);
 vi.mock("./components/CleanupDeleteDialog", () => ({
-  CleanupDeleteDialog: () => null,
+  CleanupDeleteDialog: ({
+    onDeleteAcknowledgedChange,
+    onConfirm,
+    progressVariant,
+  }: {
+    onDeleteAcknowledgedChange: (checked: boolean) => void;
+    onConfirm: () => void;
+    progressVariant?: string;
+  }) => (
+    <div data-testid="delete-dialog" data-progress-variant={progressVariant}>
+      <button type="button" onClick={() => onDeleteAcknowledgedChange(true)}>acknowledge removal</button>
+      <button type="button" onClick={onConfirm}>confirm removal</button>
+    </div>
+  ),
 }));
 
 afterEach(() => cleanup());
@@ -98,5 +111,83 @@ describe("application uninstall assistant", () => {
     await waitFor(() => expect(uninstallApi.getInstalledApplications).toHaveBeenCalledTimes(2));
     expect(uninstallApi.getInstalledApplications).toHaveBeenNthCalledWith(1, "zh-CN", false);
     expect(uninstallApi.getInstalledApplications).toHaveBeenNthCalledWith(2, "zh-CN", true);
+  });
+
+  it("keeps a removed app in place with its Trash status instead of rescanning the inventory", async () => {
+    const application = {
+      name: "Example",
+      path: "/Applications/Example.app",
+      bundleId: "com.example.app",
+      sizeBytes: 4_096,
+      lastUsedAtMs: null,
+      modifiedAtMs: 900,
+      uninstallable: true,
+      unavailableReason: null,
+    };
+    uninstallApi.getInstalledApplications.mockResolvedValue({
+      sampledAtMs: 1_000,
+      platformSupported: true,
+      cached: false,
+      refreshRecommended: false,
+      applications: [application],
+    });
+    uninstallApi.getApplicationUninstallPlan.mockResolvedValue({
+      sampledAtMs: 1_000,
+      application,
+      artifacts: [{
+        kind: "application",
+        path: application.path,
+        logicalSizeBytes: application.sizeBytes,
+        allocatedSizeBytes: application.sizeBytes,
+        itemCount: 1,
+        required: true,
+      }],
+      skippedPaths: [],
+    });
+    uninstallApi.createCleanupDeleteLease.mockResolvedValue({
+      id: "lease-1",
+      mode: "trash",
+      paths: [application.path],
+      changedPaths: [],
+      refreshedTargets: [{
+        path: application.path,
+        logicalSizeBytes: application.sizeBytes,
+        allocatedSizeBytes: application.sizeBytes,
+        itemCount: 1,
+      }],
+      executable: true,
+      refreshedAtMs: 1_100,
+      expiresAtMs: Date.now() + 60_000,
+    });
+    uninstallApi.executeCleanupDelete.mockResolvedValue({
+      deleted: [{ path: application.path, deletedBytes: application.sizeBytes }],
+      deletedBytes: application.sizeBytes,
+      failed: [],
+      cancelled: false,
+      interruptedPath: null,
+    });
+
+    const view = render(<ApplicationUninstallAssistant />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Example/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /检查并卸载 Example/ }));
+    await waitFor(() => expect(uninstallApi.createCleanupDeleteLease).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("delete-dialog").getAttribute("data-progress-variant")).toBe("application");
+
+    fireEvent.click(screen.getByRole("button", { name: "acknowledge removal" }));
+    fireEvent.click(screen.getByRole("button", { name: "confirm removal" }));
+
+    await waitFor(() => expect(uninstallApi.executeCleanupDelete).toHaveBeenCalledTimes(1));
+    const removedRow = await screen.findByRole("button", { name: /Example · 已移至废纸篓/ });
+    expect(removedRow.hasAttribute("disabled")).toBe(true);
+    expect(screen.getAllByText("已移至废纸篓").length).toBeGreaterThan(0);
+    expect(screen.getByText(/清空废纸篓前仍可恢复/)).toBeTruthy();
+    expect(uninstallApi.getInstalledApplications).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    render(<ApplicationUninstallAssistant />);
+    const retainedRow = await screen.findByRole("button", { name: /Example · 已移至废纸篓/ });
+    expect(retainedRow.hasAttribute("disabled")).toBe(true);
+    expect(uninstallApi.getInstalledApplications).toHaveBeenNthCalledWith(2, "zh-CN", false);
   });
 });

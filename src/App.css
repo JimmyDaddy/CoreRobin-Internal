@@ -5174,6 +5174,63 @@ code,
 .cleanup-delete-dialog__progress-mark i:nth-child(3) { right: 15px; height: 5px; animation-delay: -0.6s; }
 .cleanup-delete-dialog__progress-mark > svg { position: relative; z-index: 1; transform: translate(-3px, -2px); }
 
+.cleanup-delete-dialog__progress.is-application { grid-template-columns: 106px minmax(0, 1fr); }
+.cleanup-delete-dialog__app-progress-mark {
+  position: relative;
+  display: block;
+  width: 106px;
+  height: 52px;
+  grid-row: 1 / span 2;
+  color: var(--green);
+}
+.cleanup-delete-dialog__app-progress-mark.is-permanent { color: var(--danger); }
+.cleanup-delete-dialog__app-progress-origin,
+.cleanup-delete-dialog__app-progress-target {
+  position: absolute;
+  top: 5px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(99, 168, 255, 0.24);
+  border-radius: 12px;
+  background: rgba(22, 42, 62, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.cleanup-delete-dialog__app-progress-origin {
+  left: 0;
+  color: var(--blue);
+  animation: cleanup-delete-app-travel 1.75s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.cleanup-delete-dialog__app-progress-target {
+  right: 0;
+  z-index: 1;
+  border-color: rgba(86, 207, 147, 0.25);
+  background: rgba(86, 207, 147, 0.11);
+  animation: cleanup-delete-app-target 1.75s ease-in-out infinite;
+}
+.cleanup-delete-dialog__app-progress-mark.is-permanent .cleanup-delete-dialog__app-progress-target { border-color: rgba(255, 125, 115, 0.25); background: rgba(255, 125, 115, 0.1); }
+.cleanup-delete-dialog__app-progress-trail {
+  position: absolute;
+  top: 24px;
+  left: 43px;
+  right: 39px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(99, 168, 255, 0.08), currentColor);
+}
+.cleanup-delete-dialog__app-progress-trail > i {
+  position: absolute;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: cleanup-delete-app-particle 1.05s linear infinite;
+}
+.cleanup-delete-dialog__app-progress-trail > i:nth-child(2) { animation-delay: -0.35s; }
+.cleanup-delete-dialog__app-progress-trail > i:nth-child(3) { animation-delay: -0.7s; }
+
 .cleanup-delete-dialog__progress-copy { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 3px; }
 .cleanup-delete-dialog__progress-copy strong { font-size: 13px; }
 .cleanup-delete-dialog__progress-copy span { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -5230,12 +5287,29 @@ code,
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 125, 115, 0); }
   50% { box-shadow: 0 0 0 5px rgba(255, 125, 115, 0.08); }
 }
+@keyframes cleanup-delete-app-travel {
+  0%, 15% { opacity: 1; transform: translateX(0) scale(1); }
+  68% { opacity: 0.35; transform: translateX(50px) scale(0.58) rotate(5deg); }
+  78%, 100% { opacity: 0; transform: translateX(54px) scale(0.42) rotate(7deg); }
+}
+@keyframes cleanup-delete-app-target {
+  0%, 100% { transform: scale(0.96); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+  64% { transform: scale(1.06); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2), 0 0 18px currentColor; }
+}
+@keyframes cleanup-delete-app-particle {
+  from { left: -2px; opacity: 0; transform: scale(0.6); }
+  20% { opacity: 0.7; }
+  to { left: calc(100% - 3px); opacity: 0; transform: scale(0.2); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .cleanup-map__plan.is-dragging,
   .cleanup-map__plan.is-dragging .cleanup-map__basket-attention i,
   .cleanup-delete-dialog__icon.is-active,
   .cleanup-delete-dialog__progress-mark i,
+  .cleanup-delete-dialog__app-progress-origin,
+  .cleanup-delete-dialog__app-progress-target,
+  .cleanup-delete-dialog__app-progress-trail > i,
   .cleanup-delete-dialog__progress-track.is-indeterminate > i,
   .application-uninstall__scan-stage::before,
   .application-uninstall__scan-ring,

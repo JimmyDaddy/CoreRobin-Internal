@@ -275,11 +275,40 @@
 
 .application-uninstall__list button:hover { background: rgba(255, 255, 255, 0.025); }
 .application-uninstall__list button.is-selected { border-color: rgba(99, 168, 255, 0.26); background: var(--blue-soft); }
+.application-uninstall__list button.is-removed {
+  border-color: rgba(86, 207, 147, 0.14);
+  background: linear-gradient(90deg, rgba(86, 207, 147, 0.065), rgba(86, 207, 147, 0.015));
+  cursor: default;
+}
+.application-uninstall__list button.is-removed.is-selected {
+  border-color: rgba(86, 207, 147, 0.3);
+  box-shadow: inset 2px 0 rgba(86, 207, 147, 0.72);
+}
+.application-uninstall__list button.is-removed .application-uninstall__avatar { filter: saturate(0.45); opacity: 0.68; }
 .application-uninstall__list button > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .application-uninstall__list strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .application-uninstall__list small { overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .application-uninstall__list b { color: var(--text-soft); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .application-uninstall__list em { grid-column: 2 / -1; color: var(--amber); font-size: 10px; font-style: normal; }
+.application-uninstall__list em.is-removed { color: var(--text-muted); }
+
+.application-uninstall__removed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  color: var(--green) !important;
+  border: 1px solid rgba(86, 207, 147, 0.18);
+  border-radius: 999px;
+  background: rgba(86, 207, 147, 0.08);
+  font-size: 9px !important;
+}
+
+.application-uninstall__removed-badge.is-permanent {
+  color: var(--text-muted) !important;
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.025);
+}
 
 .application-uninstall__avatar {
   display: grid;
@@ -363,6 +392,70 @@
 .application-uninstall__selection-empty strong { color: var(--text); font-size: 14px; }
 .application-uninstall__selection-empty p { max-width: 340px; margin: 0; line-height: 1.5; }
 .application-uninstall__selection-empty svg { color: var(--blue); }
+
+.application-uninstall__removed-panel {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 30px;
+  text-align: center;
+}
+
+.application-uninstall__removed-panel > strong { margin-top: 18px; color: var(--text); font-size: 18px; }
+.application-uninstall__removed-panel > em {
+  margin-top: 7px;
+  padding: 4px 9px;
+  color: var(--green);
+  border: 1px solid rgba(86, 207, 147, 0.2);
+  border-radius: 999px;
+  background: var(--green-soft);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+}
+.application-uninstall__removed-panel.is-permanent > em { color: var(--text-soft); border-color: var(--border); background: rgba(255, 255, 255, 0.03); }
+.application-uninstall__removed-panel > p { max-width: 380px; margin: 12px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.application-uninstall__removed-panel > small { margin-top: 9px; color: var(--amber); font-size: 10px; }
+.application-uninstall__removed-panel > .button { margin-top: 20px; }
+
+.application-uninstall__removed-visual {
+  position: relative;
+  display: grid;
+  width: 132px;
+  height: 76px;
+  place-items: center start;
+  color: var(--green);
+}
+
+.application-uninstall__removed-visual::before {
+  position: absolute;
+  right: 18px;
+  width: 50px;
+  height: 50px;
+  border: 1px solid rgba(86, 207, 147, 0.22);
+  border-radius: 17px;
+  background: radial-gradient(circle, rgba(86, 207, 147, 0.14), rgba(86, 207, 147, 0.025));
+  box-shadow: 0 0 30px rgba(86, 207, 147, 0.08);
+  content: "";
+}
+
+.application-uninstall__removed-panel.is-permanent .application-uninstall__removed-visual { color: var(--text-muted); }
+.application-uninstall__removed-panel.is-permanent .application-uninstall__removed-visual::before { border-color: var(--border); background: rgba(255, 255, 255, 0.025); box-shadow: none; }
+.application-uninstall__removed-visual .application-uninstall__avatar { position: absolute; left: 8px; opacity: 0.42; filter: saturate(0.5); }
+.application-uninstall__removed-visual > span { position: absolute; z-index: 1; right: 31px; display: grid; place-items: center; }
+.application-uninstall__removed-visual > i {
+  position: absolute;
+  left: 55px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+}
+.application-uninstall__removed-visual > i:nth-child(2) { left: 66px; opacity: 0.46; }
+.application-uninstall__removed-visual > i:nth-child(3) { left: 77px; opacity: 0.7; }
 
 .application-uninstall__unsupported,
 .application-uninstall__error,
