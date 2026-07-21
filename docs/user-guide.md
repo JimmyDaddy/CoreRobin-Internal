@@ -4,14 +4,14 @@ CoreRobin brings CPU, memory, storage, network activity, and running apps into o
 
 ## Download and install
 
-Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest). macOS app bundles are ad-hoc signed for integrity but do not yet have Developer ID signing or Apple notarization; if macOS says the developer cannot be verified, open System Settings → Privacy & Security and confirm that you want to open CoreRobin. A message saying the app is damaged is different: do not bypass it by removing quarantine attributes; download the latest package again, verify its SHA-256 checksum, and report the release version if the message remains. Windows and Linux packages are currently early previews and do not have platform signing. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these source-integrity records do not replace platform signing.
+Download the package for your platform from [GitHub Releases](https://github.com/JimmyDaddy/corerobin-monitor/releases/latest). Current macOS DMGs are Developer ID signed, Apple-notarized, and stapled; Gatekeeper validation is repeated before publication. Apple Silicon is the primary real-hardware validation path. The Intel package receives the same signing and automated checks but has not completed separate Intel hardware acceptance. Windows and Linux packages are early previews without platform signing or separate real-device validation. Releases include SHA-256 checksums, an SPDX SBOM, and a Sigstore signature bundle for the checksum manifest; these source-integrity records do not replace platform signing or real-device validation.
 
 ## First launch
 
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
 2. Everyday mode first tells you how the computer is doing and offers one useful next step. You do not need to inspect a row of status cards.
 3. If you already notice slowness, heat, battery drain, low space, slow startup, or a network problem, open Help me solve and choose the closest description.
-4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. When you need a process tree, connection details, or command lines, use the clearly labeled Professional mode button in the top bar.
+4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. Language and Everyday/Professional mode use consistent top-bar controls; switch to Professional mode when you need a process tree, connection details, or command lines.
 
 ## Main pages
 
@@ -32,8 +32,9 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ### Apps
 
-- Apps are no longer a top-level Everyday page. They appear as a stable snapshot only when a check points to an app.
-- The snapshot groups related processes, explains impact first, and does not reorder every second. You can refresh it or reveal the full list when needed.
+- Apps is a top-level entry in both Everyday and Professional mode. Everyday mode provides a stable app-impact snapshot; Professional mode opens the Complete Uninstall Assistant directly.
+- The inventory prefers the localized app name that matches the interface language and reuses the app's real icon. A local cache and application-directory fingerprint allow background refresh without a full scan on every visit; manual refresh forces a new read.
+- The Complete Uninstall Assistant currently supports top-level macOS apps. It identifies the app bundle and only leftovers attributed by an exact Bundle ID, then asks you to review every path. Moving to Trash is the default; direct deletion requires separate confirmation. CoreRobin cannot uninstall itself and excludes paths it cannot attribute safely.
 - CPU, memory, and disk evidence stays under Why this conclusion.
 - Professional mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
 - Prefer Request Stop so an app has time to save its work. Use Force Stop only when an app is completely unresponsive.
@@ -48,7 +49,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ### Cleanup
 
-Cleanup scans the system disk, then uses a sunburst map to show what is taking up space. The default **File paths** view follows the real directory hierarchy; **Purpose** regroups common downloads, caches, and app data as a supporting view. The scan does not cross into external disks or other mounted filesystems.
+When no result exists yet, Cleanup first shows the scan scope, read-only boundary, and a **Start read-only scan** button; live progress appears only after scanning begins. Once complete, a sunburst map shows what is taking up space. The default **File paths** view follows the real directory hierarchy; **Purpose** regroups common downloads, caches, and app data as a supporting view. The scan does not cross into external disks or other mounted filesystems.
 
 On macOS, Mail, Messages, other app data, and similar locations are protected by the system. Before the first scan, CoreRobin explains why Full Disk Access is useful and opens System Settings → Privacy & Security → Full Disk Access. If CoreRobin is not in the list yet, click `+` below it and select `CoreRobin.app`; the in-app “Show app in Finder” action locates it for you. Return to the app after enabling it and the scan continues automatically. You can also decline and scan only currently accessible locations. macOS controls this permission, and you can turn it off at any time.
 
@@ -66,6 +67,7 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 #### Before cleanup
 
 - **Move to Trash** items can normally be restored until system Trash is emptied. **Delete directly** bypasses Trash and cannot be restored by CoreRobin.
+- If CoreRobin cannot open the system Trash safely, it explains the failure and lets you retry. It enters the irreversible path only after you explicitly choose direct deletion and confirm again.
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
 - CoreRobin removes only regular files and folders inside your home folder.
 - Your home folder, Trash itself, links, special files, and other disks are protected.
@@ -76,7 +78,7 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 
 - Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
-- Run an on-demand DNS, TCP connection latency, jitter, estimated loss, and connectivity check; it does not probe continuously in the background.
+- Opening Network automatically checks DNS, TCP connection latency, jitter, estimated loss, and connectivity. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute trend with average, peak, and anomaly counts. Sampling stops when you leave the page, and **Retest now** remains available.
 - Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
@@ -103,10 +105,10 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 
 ### Settings
 
-- Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Robin companion preferences together.
+- Settings groups interface, background and desktop, sampling and views, history, and notifications into consistent card grids and controls. Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Robin companion preferences together.
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
-- Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view.
-- Pro Settings can watch a chosen application's CPU, memory, or disk threshold for a sustained duration. A rule notifies once, waits for recovery, and uses a ten-minute cooldown.
+- Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
+- App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.
 - The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel
@@ -122,11 +124,11 @@ To stop monitoring completely, quit CoreRobin instead of only closing the window
 | Platform | Current status | Validation coverage |
 | --- | --- | --- |
 | macOS · Apple Silicon | Recommended | M-series Macs are the primary hardware-tested path; use the `aarch64.dmg` |
-| macOS · Intel | Available, limited coverage | An `x64.dmg` is built and package integrity is checked, but Intel hardware coverage is smaller than Apple Silicon coverage |
+| macOS · Intel | Available, awaiting hardware acceptance | A signed, notarized, and stapled `x64.dmg` passes automated build, architecture, signature, and Gatekeeper checks, but has not completed Intel hardware acceptance |
 | Windows · x64 | Early preview | Automated builds and tests pass; real-device, desktop-integration, and installer coverage remain limited |
 | Linux · x64 | Early preview | Automated builds and tests pass; distro, desktop-environment, and WebKitGTK combinations are not comprehensively tested |
 
-Current installers do not have Developer ID signing, Apple notarization, or Windows platform signing. Temperature, battery health, connection ownership, and some startup-item features depend on the operating system and hardware; unavailable readings are labeled as such. The website recommends only an operating system from browser signals, cannot reliably identify a Mac chip, and never downloads automatically. See the public [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes and current limitations.
+Current macOS installers have Developer ID signing and Apple notarization. Windows installers do not have platform signing, and Windows and Linux remain early previews. Temperature, battery health, connection ownership, and some startup-item features depend on the operating system and hardware; unavailable readings are labeled as such. The website recommends only an operating system from browser signals, cannot reliably identify a Mac chip, and never downloads automatically. See the public [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes and current limitations.
 
 ## Common questions
 
@@ -152,11 +154,11 @@ Use the download page to match your system and chip: `aarch64.dmg` is for every 
 
 ### macOS says CoreRobin cannot be verified, or it is missing from Full Disk Access. What should I do?
 
-The current installer is not Apple-notarized. If the first launch is blocked, confirm it in System Settings → Privacy & Security. If CoreRobin is missing from Full Disk Access, install `CoreRobin.app` in Applications and launch it from there, then use `+` below the list to choose it. The app can also reveal its location in Finder.
+Current macOS installers are Apple-notarized and stapled, so the latest release should not normally require Open Anyway. If it is still blocked, confirm it came from the official Release, install it in Applications, and verify its SHA-256; report the macOS, chip, and CoreRobin versions if the problem remains. If CoreRobin is missing from Full Disk Access, launch it once from Applications, then use `+` below the list to choose it. The app can also reveal its location in Finder.
 
 ### macOS says CoreRobin is damaged. Should I use Open Anyway?
 
-No. “Damaged” is not the normal unnotarized-developer prompt, and macOS may not offer Open Anyway for it. The v0.0.3 Apple Silicon DMG had an incomplete ad-hoc app-bundle signature and was replaced by v0.0.4. Delete the old DMG and app copy, download the latest Apple Silicon package, and verify it against `SHA256SUMS`. If the latest package still shows the same message, report the macOS version, Mac chip, CoreRobin version, and checksum result; do not remove quarantine attributes as a workaround.
+No. “Damaged” indicates a package, signature, or download-integrity problem; do not bypass it with Open Anyway or by removing quarantine attributes. The v0.0.3 Apple Silicon DMG had an incomplete signature and was replaced by later releases. Current macOS packages also pass Developer ID signing, Apple notarization, stapling, and Gatekeeper validation. Delete the old DMG and app copy, download the latest package, and verify it against `SHA256SUMS`. If the message remains, report the macOS version, Mac chip, CoreRobin version, and checksum result.
 
 ### Can I scan without Full Disk Access?
 
@@ -172,7 +174,7 @@ Yes. Closing the main window hides it while monitoring continues in the menu bar
 2. You can also clear history in Records and remove the saved scan from Cleanup separately.
 3. On macOS, turn CoreRobin off in System Settings → Privacy & Security → Full Disk Access.
 4. Choose **Quit app** in the menu bar panel, then confirm that no CoreRobin process remains in Activity Monitor, Task Manager, or your system monitor.
-5. Remove the application. To check for leftovers manually, use the [per-platform locations in the Privacy Notice](privacy.md#complete-uninstall-and-local-data-locations).
+5. Remove the CoreRobin application. The Complete Uninstall Assistant cannot uninstall CoreRobin while it is running; to check for leftovers manually, use the [per-platform locations in the Privacy Notice](privacy.md#complete-uninstall-and-local-data-locations).
 
 Do not attach logs, local data folders, unredacted screenshots, or generated diagnostics directly to a public Issue. Copy the version and diagnostic summary from Settings → About & Support, preview it, and remove usernames, paths, IP addresses, and other private details first.
 

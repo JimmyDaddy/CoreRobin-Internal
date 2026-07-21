@@ -34,6 +34,9 @@ describe("public release manifest", () => {
       "macos-arm64-dmg", "macos-x64-dmg", "windows-x64-exe",
       "windows-x64-msi", "linux-x64-appimage", "linux-x64-deb",
     ]);
+    expect(manifest.installers.map((asset) => asset.status)).toEqual([
+      "tested", "limited", "preview", "preview", "preview", "preview",
+    ]);
     expect(manifest.evidence.map((asset) => asset.name).sort()).toEqual([
       "SHA256SUMS", "SHA256SUMS.sigstore.json", "corerobin.spdx.json",
     ]);
