@@ -128,7 +128,7 @@ describe("release workflow privilege separation", () => {
     expect(workflowJob(releaseWorkflow, "publish")).not.toContain("id-token: write");
   });
 
-  it("stages a public draft without bypassing the real-device promotion gate", () => {
+  it("stages a public draft without bypassing the promotion authorization gate", () => {
     const publish = workflowJob(releaseWorkflow, "publish");
     expect(publish).toContain("name: release");
     expect(publish).toContain("contents: read");
@@ -159,7 +159,15 @@ describe("release workflow privilege separation", () => {
     const promote = workflowJob(promoteWorkflow, "promote");
     expect(promote).toContain("name: release");
     expect(promote).toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(promoteWorkflow).toContain("promotion_mode:");
+    expect(promoteWorkflow).toContain("device-evidence");
+    expect(promoteWorkflow).toContain("maintainer-attestation");
     expect(promote).toContain("verify-release-smoke-evidence.mjs");
+    expect(promote).toContain("create-maintainer-release-attestation.mjs");
+    expect(promote).toContain("release-maintainer-attestation-${{ steps.source.outputs.commit }}");
+    expect(promote).toContain("retention-days: 90");
+    expect(promote).toContain("sha256sum --check SHA256SUMS");
+    expect(promote).toContain("Validate promotion authorization mode");
     expect(promote).toContain("cosign verify-blob");
     expect(promote).toContain("SHA256SUMS.sigstore.json");
     expect(promote).toContain("--draft=false");

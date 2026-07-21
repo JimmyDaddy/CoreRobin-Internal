@@ -27,7 +27,7 @@ Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前
 6. Finalize 先验证源 run 确实是该 tag/commit 的成功 `Release` workflow，且对应 Preview 已公开；随后用一个短时 GitHub-hosted macOS runner 下载两个原始 macOS artifact，重新调用 `notarytool info`。只有两个 submission 都为 `Accepted` 才会对原始 DMG 执行 staple，并通过签名、Hardened Runtime、架构、票据和 Gatekeeper 检查。`In Progress` 或 `Invalid` 都不会进入正式打包。
 7. Finalize package job 从原始 run 取回 Linux/Windows 安装包与显式保留的 Tauri 分离签名，并与已装订的 macOS 资产汇总。`createUpdaterArtifacts: true` 使用当前 Tauri v2 的未压缩 updater 格式：Linux 为 `.AppImage` + `.sig`，Windows 为 NSIS `.exe` + `.sig`。对于尚未显式保留签名的旧源 run，隔离恢复 job 只下载并重新签署原始 updater 文件，不重建应用。Finalize 随后生成 `latest.json`、`SHA256SUMS` 和 SPDX SBOM。受信 `main` 提供可修复的最终打包工具，发行说明仍从受验证的 tag 源码读取。sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
 8. 受保护的 `release` environment 批准 staging job 后，Finalize 使用 `PUBLIC_RELEASE_TOKEN` 创建或更新独立的正式 `vMAJOR.MINOR.PATCH` draft。staging 会先解析 draft 的 release ID，再按 ID 重新读取公开 Release，核对 draft 状态和完整资产清单；不能依赖尚未公开 tag 的 REST tag 查询。终态 job 还会要求解析、公证、打包、签名与发布全部达到预期结果。任何必需 job 被意外跳过都会让 workflow 明确失败，不能以绿色状态结束。此时仍不会改变 latest 或官网 manifest，也不会覆盖已经公开的 Preview 资产。
-9. Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与 smoke 证据，才公开正式 Release、设置 latest，并更新 `site/release-manifest.json`。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
+9. 默认由 Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与发布授权，才公开正式 Release、设置 latest，并更新 `site/release-manifest.json`。当四平台设备不可得、维护者已经完成部分平台验收并明确接受其余平台风险时，可以选择 `maintainer-attestation`：必须列出已测平台、逐项列出未验证平台、填写原因，并再次通过受保护 `release` environment 审批。该放行记录会保存在 Actions artifact 和 Job Summary 中，不能伪装成四平台 smoke。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
 
 发布者的 Mac 仍可作为显式备用 builder。`pnpm release:macos:local -- vMAJOR.MINOR.PATCH` 保持原有的同步公证、装订、验证和 `macos-local.json` 交接逻辑，但它不会消耗 GitHub macOS runner 时间；该路径不会发布 Preview，也不经过异步 Finalize。
 
@@ -142,6 +142,6 @@ relay 收到 Apple 请求后，不负责判断是否 `Accepted`；它按 tag/run
 - Apple webhook 先后触发两次是正常情况。relay 会在 Durable Object 中等待两个架构，不会因首个回调提前启动 Finalize；重复回调也不会重复 dispatch。若第二个回调在 30 天内始终未到达，或 GitHub dispatch 失败，在全部 `Accepted` 后手动运行 Finalize。
 - 若源 artifact 超过 30 天 retention 仍未完成公证，不得从 Preview 下载后直接当作可信输入；发布新的补丁版本并重新构建、提交。
 - 若本地 macOS 构建失败，先检查登录钥匙串授权、`CoreRobin-Notary` profile、更新私钥密码与 Apple 公证结果；不得跳过本地 manifest 校验或回退为 ad-hoc 包继续发布。若默认 GitHub 构建失败，再检查该 matrix job 的 `codesign`/`notarytool` 日志及对应 Secrets。
-- 若 Release 已公开但 manifest 更新失败，使用同样四份证据重跑 promotion；它会再次完整验证证据与资产，只补做 manifest 更新。
+- 若 Release 已公开但 manifest 更新失败，使用原来的四份证据或同一份维护者风险确认重跑 promotion；它会再次完整验证发布授权与资产，只补做 manifest 更新。
 - 若怀疑令牌泄露，立即撤销对应令牌、轮换 `PUBLIC_RELEASE_READ_TOKEN`/`PUBLIC_RELEASE_TOKEN`，再检查公开仓库的 Release 审计记录。
 - 官网由公开仓库的 Pages workflow 部署；私有仓库不再部署 GitHub Pages。

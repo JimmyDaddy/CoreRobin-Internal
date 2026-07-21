@@ -24,7 +24,7 @@ Release 构建还会检查安装包，而不会启动 GUI：
 
 ## 真实设备 smoke
 
-候选 Release 发布前，在每个受支持平台至少使用一台真实设备安装候选产物。macOS 的 Apple Silicon 和 Intel 产物必须分别验证；Windows/Linux 在保持“早期预览”期间至少各验证一台 x64 设备。
+候选 Release 发布前，默认在每个受支持平台至少使用一台真实设备安装候选产物。macOS 的 Apple Silicon 和 Intel 产物分别验证；Windows/Linux 在保持“早期预览”期间各验证一台 x64 设备。
 
 ```bash
 pnpm release:smoke:device -- \
@@ -59,7 +59,7 @@ gh release download v0.1.0 \
 ```
 
 安装后运行上面的命令。不能使用开发构建或另一个 commit 生成证据。脚本输出 JSON 后，在 Internal 仓库 Actions 中手动运行
-`Promote verified release`，填写 tag，并把四份完整 JSON 分别粘贴到对应输入框。
+`Promote verified release`，选择默认的 `device-evidence`，填写 tag，并把四份完整 JSON 分别粘贴到对应输入框。
 
 提升工作流会重新检出 tag 并校验版本/可信 main 祖先关系，下载 draft 的实际资产，然后验证：
 
@@ -71,6 +71,23 @@ gh release download v0.1.0 \
 
 全部通过后工作流才将 draft 发布为 latest，并更新公开站点下载 manifest。工作流在“已发布
 但 manifest 更新失败”的恢复重跑中仍会重新验证四份证据，而不会把已发布状态当成验证结果。
+
+### 维护者风险确认
+
+四个平台的真实设备暂时不可得时，发布维护者可以选择 `maintainer-attestation`，但这不是伪造或省略验收记录。工作流仍会验证可信 tag/commit、正式 draft、Sigstore 来源和 `SHA256SUMS` 中的全部资产，并要求：
+
+- `maintainer_tested_platforms` 使用逗号列出实际完成验收的平台 ID，可用值为 `macos-arm64`、`macos-x64`、`windows-x64`、`linux-x64`；
+- `maintainer_attestation` 必须严格写成 `I ACCEPT UNVERIFIED PLATFORM RISK FOR vMAJOR.MINOR.PATCH: 未验证平台ID列表`，列表按上述固定顺序排列；
+- `maintainer_note` 至少 20 个字符，说明为何本次接受未验证平台风险；
+- 四份 smoke JSON 必须保持为空，并再次通过受保护 `release` environment 人工审批。
+
+例如只完成 Apple Silicon 验收时，确认文本为：
+
+```text
+I ACCEPT UNVERIFIED PLATFORM RISK FOR v0.1.9: macos-x64,windows-x64,linux-x64
+```
+
+工作流会把 tag、commit、触发者、run ID、已测/未测平台、确认文本和原因写入保留 90 天的内部 Actions artifact 与 Job Summary。该模式只改变真实设备证据要求，不会降低签名、公证、哈希、来源和正式资产校验。
 
 ## 性能基线
 
