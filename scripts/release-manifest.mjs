@@ -40,7 +40,7 @@ function classifyInstaller(asset) {
     return { ...base, id: "macos-arm64-dmg", platform: "macos", architecture: "Apple Silicon", format: "DMG", status: "tested", order: 10 };
   }
   if (/^CoreRobin_.*_x64\.dmg$/i.test(asset.name)) {
-    return { ...base, id: "macos-x64-dmg", platform: "macos", architecture: "Intel", format: "DMG", status: "tested", order: 20 };
+    return { ...base, id: "macos-x64-dmg", platform: "macos", architecture: "Intel", format: "DMG", status: "limited", order: 20 };
   }
   if (/^CoreRobin_.*_x64-setup\.exe$/i.test(asset.name)) {
     return { ...base, id: "windows-x64-exe", platform: "windows", architecture: "x64", format: "EXE", status: "preview", order: 30 };
