@@ -438,6 +438,13 @@ jobs:
 
   sign:
     name: Sign finalized checksum manifest
+    if: >-
+      ${{
+        always() &&
+        !cancelled() &&
+        needs.resolve.result == 'success' &&
+        needs.package.result == 'success'
+      }}
     needs:
       - resolve
       - package
@@ -479,6 +486,13 @@ jobs:
 
   publish:
     name: Stage finalized public draft release
+    if: >-
+      ${{
+        always() &&
+        !cancelled() &&
+        needs.resolve.result == 'success' &&
+        needs.sign.result == 'success'
+      }}
     needs:
       - resolve
       - sign
@@ -541,3 +555,62 @@ jobs:
           gh release edit "$RELEASE_TAG" \
             --notes-file release-notes.md \
             --repo "$PUBLIC_RELEASE_REPOSITORY"
+
+      - name: Verify staged public draft release
+        shell: bash
+        run: |
+          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$RELEASE_TAG")"
+          test "$(jq -r .tag_name <<<"$release_json")" = "$RELEASE_TAG"
+          test "$(jq -r .draft <<<"$release_json")" = "true"
+          test "$(jq -r .prerelease <<<"$release_json")" = "false"
+
+          find release-artifacts -maxdepth 1 -type f -exec basename {} \; \
+            | LC_ALL=C sort > "$RUNNER_TEMP/expected-release-assets"
+          jq -r '.assets[].name' <<<"$release_json" \
+            | LC_ALL=C sort > "$RUNNER_TEMP/staged-release-assets"
+          diff -u "$RUNNER_TEMP/expected-release-assets" "$RUNNER_TEMP/staged-release-assets"
+
+          release_url="$(jq -r .html_url <<<"$release_json")"
+          {
+            echo "### Finalized draft staged"
+            echo
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Draft: $release_url"
+            echo "- Assets: $(wc -l < "$RUNNER_TEMP/staged-release-assets" | tr -d ' ')"
+            echo "- Next gate: real-device smoke evidence, then Promote verified release"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify_completion:
+    name: Verify finalization completed
+    if: ${{ always() && !cancelled() }}
+    needs:
+      - resolve
+      - finalize_macos
+      - recover_updater_signatures
+      - package
+      - sign
+      - publish
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      RESOLVE_RESULT: ${{ needs.resolve.result }}
+      FINALIZE_MACOS_RESULT: ${{ needs.finalize_macos.result }}
+      RECOVERY_RESULT: ${{ needs.recover_updater_signatures.result }}
+      PACKAGE_RESULT: ${{ needs.package.result }}
+      SIGN_RESULT: ${{ needs.sign.result }}
+      PUBLISH_RESULT: ${{ needs.publish.result }}
+    steps:
+      - name: Fail closed unless the finalized draft was staged
+        shell: bash
+        run: |
+          test "$RESOLVE_RESULT" = "success"
+          test "$FINALIZE_MACOS_RESULT" = "success"
+          case "$RECOVERY_RESULT" in
+            success|skipped) ;;
+            *) echo "Updater signature recovery ended with $RECOVERY_RESULT" >&2; exit 1 ;;
+          esac
+          test "$PACKAGE_RESULT" = "success"
+          test "$SIGN_RESULT" = "success"
+          test "$PUBLISH_RESULT" = "success"
