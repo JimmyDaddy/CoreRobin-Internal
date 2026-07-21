@@ -559,7 +559,12 @@ jobs:
       - name: Verify staged public draft release
         shell: bash
         run: |
-          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$RELEASE_TAG")"
+          release_id="$(gh release view "$RELEASE_TAG" \
+            --repo "$PUBLIC_RELEASE_REPOSITORY" \
+            --json databaseId \
+            --jq .databaseId)"
+          [[ "$release_id" =~ ^[0-9]+$ ]]
+          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/$release_id")"
           test "$(jq -r .tag_name <<<"$release_json")" = "$RELEASE_TAG"
           test "$(jq -r .draft <<<"$release_json")" = "true"
           test "$(jq -r .prerelease <<<"$release_json")" = "false"
