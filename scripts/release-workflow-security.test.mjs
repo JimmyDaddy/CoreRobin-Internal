@@ -279,6 +279,9 @@ describe("release workflow privilege separation", () => {
     expect(publish).toContain("!cancelled()");
     expect(publish).toContain("needs.sign.result == 'success'");
     expect(publish).toContain("Verify staged public draft release");
+    expect(publish).toContain("--json databaseId");
+    expect(publish).toContain('releases/$release_id');
+    expect(publish).not.toContain('releases/tags/$RELEASE_TAG');
     expect(publish).toContain("expected-release-assets");
     expect(publish).toContain("staged-release-assets");
     expect(completion).toContain("always() && !cancelled()");
@@ -296,6 +299,9 @@ describe("release workflow privilege separation", () => {
     expect(publish).toContain("always() && !cancelled()");
     expect(publish).toContain("needs.sign.result == 'success'");
     expect(publish).toContain("Verify staged public draft release");
+    expect(publish).toContain("--json databaseId");
+    expect(publish).toContain('releases/$release_id');
+    expect(publish).not.toContain('releases/tags/$GITHUB_REF_NAME');
     expect(completion).toContain("always() && !cancelled()");
     expect(completion).toContain("USE_HOSTED_MACOS");
     expect(completion).toContain('test "$PREVIEW_RESULT" = "success"');

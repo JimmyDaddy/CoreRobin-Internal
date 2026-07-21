@@ -728,7 +728,12 @@ jobs:
       - name: Verify staged public draft release
         shell: bash
         run: |
-          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$GITHUB_REF_NAME")"
+          release_id="$(gh release view "$GITHUB_REF_NAME" \
+            --repo "$PUBLIC_RELEASE_REPOSITORY" \
+            --json databaseId \
+            --jq .databaseId)"
+          [[ "$release_id" =~ ^[0-9]+$ ]]
+          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/$release_id")"
           test "$(jq -r .tag_name <<<"$release_json")" = "$GITHUB_REF_NAME"
           test "$(jq -r .draft <<<"$release_json")" = "true"
           test "$(jq -r .prerelease <<<"$release_json")" = "false"
