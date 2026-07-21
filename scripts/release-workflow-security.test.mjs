@@ -240,6 +240,9 @@ describe("release workflow privilege separation", () => {
     const resolve = workflowJob(finalizeWorkflow, "resolve");
     const finalize = workflowJob(finalizeWorkflow, "finalize_macos");
     const packageJob = workflowJob(finalizeWorkflow, "package");
+    const sign = workflowJob(finalizeWorkflow, "sign");
+    const publish = workflowJob(finalizeWorkflow, "publish");
+    const completion = workflowJob(finalizeWorkflow, "verify_completion");
     expect(finalizeWorkflow).toContain("apple-notarization-complete");
     expect(finalizeWorkflow).toContain("workflow_dispatch");
     expect(resolve).toContain("scripts/verify-release-source.mjs");
@@ -269,6 +272,34 @@ describe("release workflow privilege separation", () => {
     expect(signatureRecovery).toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
     expect(signatureRecovery).not.toContain("tauri-action");
     expect(packageJob).not.toContain("secrets.TAURI_SIGNING_PRIVATE_KEY");
+    expect(sign).toContain("always()");
+    expect(sign).toContain("!cancelled()");
+    expect(sign).toContain("needs.package.result == 'success'");
+    expect(publish).toContain("always()");
+    expect(publish).toContain("!cancelled()");
+    expect(publish).toContain("needs.sign.result == 'success'");
+    expect(publish).toContain("Verify staged public draft release");
+    expect(publish).toContain("expected-release-assets");
+    expect(publish).toContain("staged-release-assets");
+    expect(completion).toContain("always() && !cancelled()");
+    expect(completion).toContain("needs.recover_updater_signatures.result");
+    expect(completion).toContain('test "$SIGN_RESULT" = "success"');
+    expect(completion).toContain('test "$PUBLISH_RESULT" = "success"');
+  });
+
+  it("fails closed when a release stage silently skips its required terminal job", () => {
+    const sign = workflowJob(releaseWorkflow, "sign");
+    const publish = workflowJob(releaseWorkflow, "publish");
+    const completion = workflowJob(releaseWorkflow, "verify_completion");
+    expect(sign).toContain("always() && !cancelled()");
+    expect(sign).toContain("needs.package.result == 'success'");
+    expect(publish).toContain("always() && !cancelled()");
+    expect(publish).toContain("needs.sign.result == 'success'");
+    expect(publish).toContain("Verify staged public draft release");
+    expect(completion).toContain("always() && !cancelled()");
+    expect(completion).toContain("USE_HOSTED_MACOS");
+    expect(completion).toContain('test "$PREVIEW_RESULT" = "success"');
+    expect(completion).toContain('test "$PUBLISH_RESULT" = "success"');
   });
 
   it("matches the updater manifest to Tauri v2 uncompressed updater artifacts", () => {

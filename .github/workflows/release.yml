@@ -618,6 +618,7 @@ jobs:
 
   sign:
     name: Sign release checksum manifest
+    if: ${{ always() && !cancelled() && needs.package.result == 'success' }}
     needs: package
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -657,6 +658,7 @@ jobs:
 
   publish:
     name: Stage public draft release
+    if: ${{ always() && !cancelled() && needs.sign.result == 'success' }}
     needs: sign
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -722,3 +724,71 @@ jobs:
           gh release edit "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
             --repo "$PUBLIC_RELEASE_REPOSITORY"
+
+      - name: Verify staged public draft release
+        shell: bash
+        run: |
+          release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$GITHUB_REF_NAME")"
+          test "$(jq -r .tag_name <<<"$release_json")" = "$GITHUB_REF_NAME"
+          test "$(jq -r .draft <<<"$release_json")" = "true"
+          test "$(jq -r .prerelease <<<"$release_json")" = "false"
+
+          find release-artifacts -maxdepth 1 -type f -exec basename {} \; \
+            | LC_ALL=C sort > "$RUNNER_TEMP/expected-release-assets"
+          jq -r '.assets[].name' <<<"$release_json" \
+            | LC_ALL=C sort > "$RUNNER_TEMP/staged-release-assets"
+          diff -u "$RUNNER_TEMP/expected-release-assets" "$RUNNER_TEMP/staged-release-assets"
+
+          release_url="$(jq -r .html_url <<<"$release_json")"
+          {
+            echo "### Public draft staged"
+            echo
+            echo "- Tag: \`$GITHUB_REF_NAME\`"
+            echo "- Draft: $release_url"
+            echo "- Assets: $(wc -l < "$RUNNER_TEMP/staged-release-assets" | tr -d ' ')"
+            echo "- Next gate: real-device smoke evidence, then Promote verified release"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify_completion:
+    name: Verify release stage completed
+    if: ${{ always() && !cancelled() }}
+    needs:
+      - verify
+      - build
+      - build_macos_github
+      - import_macos_local
+      - preview
+      - package
+      - sign
+      - publish
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      VERIFY_RESULT: ${{ needs.verify.result }}
+      BUILD_RESULT: ${{ needs.build.result }}
+      HOSTED_MACOS_RESULT: ${{ needs.build_macos_github.result }}
+      LOCAL_MACOS_RESULT: ${{ needs.import_macos_local.result }}
+      PREVIEW_RESULT: ${{ needs.preview.result }}
+      PACKAGE_RESULT: ${{ needs.package.result }}
+      SIGN_RESULT: ${{ needs.sign.result }}
+      PUBLISH_RESULT: ${{ needs.publish.result }}
+      USE_HOSTED_MACOS: ${{ github.event_name == 'push' || inputs.macos_builder == 'github' }}
+    steps:
+      - name: Fail closed unless the selected release stage completed
+        shell: bash
+        run: |
+          test "$VERIFY_RESULT" = "success"
+          test "$BUILD_RESULT" = "success"
+          if [[ "$USE_HOSTED_MACOS" == "true" ]]; then
+            test "$HOSTED_MACOS_RESULT" = "success"
+            test "$PREVIEW_RESULT" = "success"
+            echo "Hosted release reached the public Preview and asynchronous notarization stage." >> "$GITHUB_STEP_SUMMARY"
+          else
+            test "$LOCAL_MACOS_RESULT" = "success"
+            test "$PACKAGE_RESULT" = "success"
+            test "$SIGN_RESULT" = "success"
+            test "$PUBLISH_RESULT" = "success"
+            echo "Local-macOS release reached the finalized public draft stage." >> "$GITHUB_STEP_SUMMARY"
+          fi
