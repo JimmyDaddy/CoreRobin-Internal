@@ -99,6 +99,18 @@ const MAX_APPLICATION_INVENTORY_CACHE_BYTES: u64 = 8 * 1_024 * 1_024;
 #[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_VERSION: u8 = 1;
 #[cfg(target_os = "macos")]
+const FULL_DISK_ACCESS_PROBE_PATHS: [&str; 4] = [
+    "Library/Mail",
+    "Library/Messages",
+    "Library/Safari",
+    "Library/Application Support/MobileSync/Backup",
+];
+#[cfg(target_os = "macos")]
+const FULL_DISK_ACCESS_SETTINGS_URLS: [&str; 2] = [
+    "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles",
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+];
+#[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_RETENTION_MS: u64 = 7 * 24 * 60 * 60 * 1_000;
@@ -1283,17 +1295,9 @@ pub fn cleanup_scan_access() -> CleanupScanAccess {
     #[cfg(target_os = "macos")]
     {
         let application_bundle = current_application_bundle();
-        let full_disk_access =
-            match fs::File::open("/Library/Application Support/com.apple.TCC/TCC.db") {
-                Ok(_) => CleanupFullDiskAccessStatus::Granted,
-                Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-                    CleanupFullDiskAccessStatus::NotGranted
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                    CleanupFullDiskAccessStatus::Unknown
-                }
-                Err(_) => CleanupFullDiskAccessStatus::Unknown,
-            };
+        let full_disk_access = home_directory()
+            .map(|home| cleanup_full_disk_access_status(&home))
+            .unwrap_or(CleanupFullDiskAccessStatus::Unknown);
         CleanupScanAccess {
             full_disk_access,
             full_disk_access_recommended: true,
@@ -1309,6 +1313,63 @@ pub fn cleanup_scan_access() -> CleanupScanAccess {
         full_disk_access_recommended: false,
         application_bundle_available: false,
         application_bundle_path: None,
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ProtectedDirectoryAccess {
+    Accessible,
+    Denied,
+    Missing,
+    Indeterminate,
+}
+
+#[cfg(target_os = "macos")]
+fn cleanup_full_disk_access_status(home: &Path) -> CleanupFullDiskAccessStatus {
+    // macOS does not expose a supported API for querying Full Disk Access. Probe
+    // protected locations that the cleanup scan actually traverses instead of
+    // inferring permission from the private TCC database.
+    full_disk_access_status_from_probes(
+        FULL_DISK_ACCESS_PROBE_PATHS
+            .iter()
+            .map(|relative_path| protected_directory_access(&home.join(relative_path))),
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn protected_directory_access(path: &Path) -> ProtectedDirectoryAccess {
+    match fs::read_dir(path) {
+        Ok(_) => ProtectedDirectoryAccess::Accessible,
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            ProtectedDirectoryAccess::Denied
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            ProtectedDirectoryAccess::Missing
+        }
+        Err(_) => ProtectedDirectoryAccess::Indeterminate,
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn full_disk_access_status_from_probes(
+    probes: impl IntoIterator<Item = ProtectedDirectoryAccess>,
+) -> CleanupFullDiskAccessStatus {
+    let mut accessible = false;
+    let mut denied = false;
+    for probe in probes {
+        match probe {
+            ProtectedDirectoryAccess::Denied => denied = true,
+            ProtectedDirectoryAccess::Accessible => accessible = true,
+            ProtectedDirectoryAccess::Missing | ProtectedDirectoryAccess::Indeterminate => {}
+        }
+    }
+    if accessible {
+        CleanupFullDiskAccessStatus::Granted
+    } else if denied {
+        CleanupFullDiskAccessStatus::NotGranted
+    } else {
+        CleanupFullDiskAccessStatus::Unknown
     }
 }
 
@@ -1976,20 +2037,22 @@ pub fn prepare_application_uninstall(
 pub fn open_full_disk_access_settings() -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     {
-        let status = Command::new("/usr/bin/open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
-            .status()
-            .map_err(|error| {
-                CommandError::internal(format!(
-                    "CoreRobin could not open Full Disk Access settings: {error}"
-                ))
-            })?;
-        if status.success() {
-            return Ok(());
+        let mut last_error = None;
+        for settings_url in FULL_DISK_ACCESS_SETTINGS_URLS {
+            match Command::new("/usr/bin/open").arg(settings_url).status() {
+                Ok(status) if status.success() => return Ok(()),
+                Ok(status) => {
+                    last_error = Some(format!("open exited with status {status}"));
+                }
+                Err(error) => {
+                    last_error = Some(error.to_string());
+                }
+            }
         }
-        Err(CommandError::internal(
-            "macOS did not open Full Disk Access settings.",
-        ))
+        Err(CommandError::internal(format!(
+            "macOS did not open Full Disk Access settings: {}",
+            last_error.unwrap_or_else(|| "no settings URL was available".to_owned())
+        )))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -5633,6 +5696,41 @@ mod tests {
         assert_eq!(
             application_bundle_from_executable(Path::new("/tmp/core-robin")),
             None
+        );
+    }
+
+    #[test]
+    fn full_disk_access_probe_accepts_any_readable_protected_location() {
+        assert_eq!(
+            full_disk_access_status_from_probes([
+                ProtectedDirectoryAccess::Accessible,
+                ProtectedDirectoryAccess::Missing,
+                ProtectedDirectoryAccess::Denied,
+            ]),
+            CleanupFullDiskAccessStatus::Granted
+        );
+    }
+
+    #[test]
+    fn full_disk_access_probe_reports_denial_without_a_readable_location() {
+        assert_eq!(
+            full_disk_access_status_from_probes([
+                ProtectedDirectoryAccess::Missing,
+                ProtectedDirectoryAccess::Denied,
+                ProtectedDirectoryAccess::Indeterminate,
+            ]),
+            CleanupFullDiskAccessStatus::NotGranted
+        );
+    }
+
+    #[test]
+    fn full_disk_access_probe_stays_unknown_without_a_usable_location() {
+        assert_eq!(
+            full_disk_access_status_from_probes([
+                ProtectedDirectoryAccess::Missing,
+                ProtectedDirectoryAccess::Indeterminate,
+            ]),
+            CleanupFullDiskAccessStatus::Unknown
         );
     }
 

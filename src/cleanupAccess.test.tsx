@@ -50,6 +50,22 @@ describe("cleanup full disk access guide", () => {
     expect(onScan).toHaveBeenCalledOnce();
   });
 
+  it("starts scanning when macOS cannot determine access in advance", async () => {
+    cleanupApi.getCleanupScanAccess.mockResolvedValue({
+      fullDiskAccess: "unknown",
+      fullDiskAccessRecommended: true,
+      applicationBundleAvailable: true,
+      applicationBundlePath: "/Applications/CoreRobin.app",
+    });
+    const onScan = vi.fn();
+    renderAssistant(onScan);
+
+    fireEvent.click(screen.getByRole("button", { name: "开始只读扫描" }));
+
+    await waitFor(() => expect(onScan).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("heading", { name: "允许查看整个系统磁盘" })).toBeNull();
+  });
+
   it("rechecks access after returning from System Settings and starts automatically", async () => {
     cleanupApi.getCleanupScanAccess
       .mockResolvedValueOnce({

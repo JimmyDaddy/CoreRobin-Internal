@@ -134,8 +134,7 @@ export function CleanupAssistant({
       const access = await getCleanupScanAccess();
       setScanAccess(access);
       const ready = !access.fullDiskAccessRecommended ||
-        access.fullDiskAccess === "granted" ||
-        access.fullDiskAccess === "not_required";
+        access.fullDiskAccess !== "not_granted";
       if (ready) {
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
