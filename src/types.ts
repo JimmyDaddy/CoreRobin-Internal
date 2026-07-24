@@ -208,6 +208,8 @@ export interface CleanupScan {
   root: CleanupNode;
   /** Bounded deep-folder expansions captured during the full scan. */
   prefetchedSubtrees?: CleanupNode[];
+  /** Last successful scan time for each cached subtree ID. */
+  subtreeCacheSavedAtMs?: Record<string, number>;
   locations: CleanupLocation[];
   largestFiles: CleanupFile[];
   installedApplications: CleanupApplication[];

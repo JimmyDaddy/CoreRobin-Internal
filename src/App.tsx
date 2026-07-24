@@ -1284,6 +1284,7 @@ function App() {
                   onScan={() => void cleanupScan.scan()}
                   onCancel={() => void cleanupScan.cancel()}
                   onDeletionApplied={cleanupScan.applyDeletion}
+                  onSubtreeRetained={cleanupScan.retainSubtree}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
                 />
@@ -1469,6 +1470,7 @@ function App() {
                 onScan={() => void cleanupScan.scan()}
                 onCancel={() => void cleanupScan.cancel()}
                 onDeletionApplied={cleanupScan.applyDeletion}
+                onSubtreeRetained={cleanupScan.retainSubtree}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
               />

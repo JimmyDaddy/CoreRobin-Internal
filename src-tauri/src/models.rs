@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 pub const SNAPSHOT_SCHEMA_VERSION: u16 = 7;
@@ -303,6 +305,10 @@ pub struct CleanupScan {
     /// the same subtree from disk again.
     #[serde(default)]
     pub prefetched_subtrees: Vec<CleanupNode>,
+    /// Last successful scan time for each cached subtree ID. The frontend uses
+    /// this to show cached details immediately and only refresh changed roots.
+    #[serde(default)]
+    pub subtree_cache_saved_at_ms: HashMap<String, u64>,
     pub locations: Vec<CleanupLocation>,
     pub largest_files: Vec<CleanupFile>,
     pub installed_applications: Vec<CleanupApplication>,

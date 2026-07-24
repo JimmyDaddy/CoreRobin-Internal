@@ -393,6 +393,7 @@ export function getMockCleanupScan(): CleanupScan {
     durationMs: 1_840,
     root: cleanupNode("/", "/", systemSize, systemItems, "review", systemChildren),
     prefetchedSubtrees: [],
+    subtreeCacheSavedAtMs: {},
     locations,
     largestFiles: [
       {

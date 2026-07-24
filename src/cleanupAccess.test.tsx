@@ -125,6 +125,7 @@ function renderAssistant(onScan: () => void) {
       onScan={onScan}
       onCancel={() => undefined}
       onDeletionApplied={async () => undefined}
+      onSubtreeRetained={async () => undefined}
     />,
   );
 }

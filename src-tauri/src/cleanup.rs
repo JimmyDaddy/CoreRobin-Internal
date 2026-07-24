@@ -3010,11 +3010,17 @@ fn scan_filesystem(
 
     stats.report_progress(scan_root, home, on_progress, true);
 
+    let sampled_at_ms = now_millis();
+    let subtree_cache_saved_at_ms = prefetched_subtrees
+        .iter()
+        .map(|node| (node.id.clone(), sampled_at_ms))
+        .collect();
     Ok(CleanupScan {
-        sampled_at_ms: now_millis(),
+        sampled_at_ms,
         duration_ms: stats.elapsed_ms(),
         root,
         prefetched_subtrees,
+        subtree_cache_saved_at_ms,
         locations,
         largest_files,
         installed_applications,
@@ -4959,6 +4965,11 @@ mod tests {
             .iter()
             .find(|node| node.id == boundary.id)
             .expect("the full scan should retain the next level for navigation");
+        assert_eq!(
+            scan.subtree_cache_saved_at_ms.get(&boundary.id),
+            Some(&scan.sampled_at_ms),
+            "prefetched subtrees should carry the full-scan freshness timestamp"
+        );
         assert_eq!(prefetched.item_count, boundary.item_count);
         assert_eq!(prefetched.children.len(), 1);
         assert_eq!(

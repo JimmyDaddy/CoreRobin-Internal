@@ -59,6 +59,7 @@ interface CleanupSpaceMapProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
+  onSubtreeRetained?: (subtree: CleanupMapNode) => Promise<void>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -92,6 +93,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   snapshot,
   snapshotStatus,
   onDeletionApplied,
+  onSubtreeRetained,
   onUserActionStart,
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
@@ -184,6 +186,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const deleteRequestIdRef = useRef(0);
   const subtreeRequestIdRef = useRef(0);
   const activeSubtreeRequestRef = useRef<string | null>(null);
+  const revalidatingNodeIdsRef = useRef(new Set<string>());
+  const activeSnapshotSampledAtRef = useRef(snapshot.sampledAtMs);
 
   const cancelActiveSubtree = useCallback(() => {
     const requestId = activeSubtreeRequestRef.current;
@@ -193,6 +197,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, []);
 
   useEffect(() => {
+    if (activeSnapshotSampledAtRef.current === snapshot.sampledAtMs) return;
+    activeSnapshotSampledAtRef.current = snapshot.sampledAtMs;
     cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
     setLoadedSubtrees(prefetchedSubtreeMap(snapshot.prefetchedSubtrees));
@@ -353,9 +359,59 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setSelectedId(node.id);
   };
 
+  const retainLoadedSubtree = (subtree: CleanupMapNode) => {
+    setLoadedSubtrees((current) => {
+      const next = new Map(current);
+      next.set(subtree.id, subtree);
+      return next;
+    });
+    void onSubtreeRetained?.(subtree);
+  };
+
+  const revalidateCachedSubtree = async (node: CleanupMapNode) => {
+    if (!node.path || revalidatingNodeIdsRef.current.has(node.id)) return;
+    revalidatingNodeIdsRef.current.add(node.id);
+    let backendRequestId: string | null = null;
+    try {
+      const state = await getCleanupPathState(node.path);
+      const cachedAtMs = snapshot.subtreeCacheSavedAtMs?.[node.id] ?? snapshot.sampledAtMs;
+      if (!cleanupPathChanged(state, cachedAtMs)) return;
+      if (!state.exists) {
+        setChangedIds((current) => new Set(current).add(node.id));
+        return;
+      }
+      if (activeSubtreeRequestRef.current) return;
+      const requestId = subtreeRequestIdRef.current + 1;
+      subtreeRequestIdRef.current = requestId;
+      backendRequestId = `cleanup-subtree-refresh-${snapshot.sampledAtMs}-${requestId}`;
+      activeSubtreeRequestRef.current = backendRequestId;
+      const subtree = await getCleanupSubtree({
+        requestId: backendRequestId,
+        path: node.path,
+        safety: node.safety,
+        expandSmallerObjects: false,
+      });
+      if (subtreeRequestIdRef.current !== requestId) return;
+      retainLoadedSubtree(subtree as CleanupMapNode);
+      setChangedIds((current) => {
+        if (!current.has(node.id)) return current;
+        const next = new Set(current);
+        next.delete(node.id);
+        return next;
+      });
+    } catch {
+      // Cached details stay visible; a future visit or full scan can retry.
+    } finally {
+      if (backendRequestId && activeSubtreeRequestRef.current === backendRequestId) {
+        activeSubtreeRequestRef.current = null;
+      }
+      revalidatingNodeIdsRef.current.delete(node.id);
+    }
+  };
+
   const drillInto = async (node: CleanupMapNode) => {
     if (loadingNodeId === node.id) return;
-    if (loadingNodeId) {
+    if (activeSubtreeRequestRef.current) {
       cancelActiveSubtree();
       subtreeRequestIdRef.current += 1;
       setLoadingNodeId(null);
@@ -364,6 +420,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setSelectedId(node.id);
     if (node.kind !== "aggregate" && (node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
       navigateTo(node);
+      if (loadedSubtrees.has(node.id)) void revalidateCachedSubtree(node);
       return;
     }
     const expandingSmallerObjects = node.kind === "aggregate";
@@ -388,11 +445,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       });
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
-      setLoadedSubtrees((current) => {
-        const next = new Map(current);
-        next.set(subtreeRoot.id, loaded);
-        return next;
-      });
+      retainLoadedSubtree(loaded);
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {

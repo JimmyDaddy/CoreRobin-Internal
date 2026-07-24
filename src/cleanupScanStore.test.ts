@@ -9,6 +9,7 @@ import {
   parseStoredCleanupScan,
   reconcileCleanupNodeAfterDeletion,
   reconcileCleanupScanAfterDeletion,
+  retainCleanupSubtree,
 } from "./cleanupScanStore";
 import { LEGACY_STORAGE_KEYS } from "./storageMigration";
 
@@ -56,11 +57,13 @@ describe("cleanup scan persistence", () => {
       installedApplications: _applications,
       applicationInventoryAvailable: _available,
       prefetchedSubtrees: _prefetchedSubtrees,
+      subtreeCacheSavedAtMs: _subtreeCacheSavedAtMs,
       ...legacy
     } = snapshot;
     void _applications;
     void _available;
     void _prefetchedSubtrees;
+    void _subtreeCacheSavedAtMs;
     const parsed = parseStoredCleanupScan(JSON.stringify({
       version: 6,
       savedAtMs: 9_500,
@@ -70,6 +73,45 @@ describe("cleanup scan persistence", () => {
     expect(parsed?.snapshot.installedApplications).toEqual([]);
     expect(parsed?.snapshot.applicationInventoryAvailable).toBe(false);
     expect(parsed?.snapshot.prefetchedSubtrees).toEqual([]);
+    expect(parsed?.snapshot.subtreeCacheSavedAtMs).toEqual({});
+  });
+
+  it("retains recently loaded subtrees and bounds the persistent cache", () => {
+    let snapshot = getMockCleanupScan();
+    for (let index = 0; index < 300; index += 1) {
+      const id = `~/cached-${index}`;
+      snapshot = retainCleanupSubtree(snapshot, {
+        id,
+        name: `cached-${index}`,
+        path: id,
+        sizeBytes: 1,
+        logicalSizeBytes: 1,
+        allocatedSizeBytes: 1,
+        itemCount: 1,
+        safety: "review",
+        kind: "folder",
+        hasChildren: true,
+        children: [{
+          id: `${id}/file`,
+          name: "file",
+          path: `${id}/file`,
+          sizeBytes: 1,
+          logicalSizeBytes: 1,
+          allocatedSizeBytes: 1,
+          itemCount: 1,
+          safety: "review",
+          kind: "file",
+          hasChildren: false,
+          children: [],
+        }],
+      }, index);
+    }
+
+    expect(snapshot.prefetchedSubtrees).toHaveLength(256);
+    expect(snapshot.prefetchedSubtrees?.[0].id).toBe("~/cached-299");
+    expect(snapshot.prefetchedSubtrees?.[255]?.id).toBe("~/cached-44");
+    expect(Object.keys(snapshot.subtreeCacheSavedAtMs ?? {})).toHaveLength(256);
+    expect(snapshot.subtreeCacheSavedAtMs?.["~/cached-299"]).toBe(299);
   });
 
   it("drops invalid and retention-expired payloads", () => {
