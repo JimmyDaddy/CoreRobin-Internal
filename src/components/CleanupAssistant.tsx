@@ -63,6 +63,7 @@ interface CleanupAssistantProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
+  onSubtreeRetained: (subtree: CleanupScan["root"]) => Promise<void>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -85,6 +86,7 @@ export function CleanupAssistant({
   onScan,
   onCancel,
   onDeletionApplied,
+  onSubtreeRetained,
   onUserActionStart,
   onUserActionComplete,
 }: CleanupAssistantProps) {
@@ -462,6 +464,7 @@ export function CleanupAssistant({
             snapshot={snapshot}
             snapshotStatus={snapshotStatus}
             onDeletionApplied={onDeletionApplied}
+            onSubtreeRetained={onSubtreeRetained}
             onUserActionStart={onUserActionStart}
             onUserActionComplete={onUserActionComplete}
           />

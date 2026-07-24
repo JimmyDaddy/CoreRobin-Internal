@@ -225,7 +225,7 @@ export function ApplicationUninstallAssistant({
     sampledAtMs: number,
     mode: CleanupDeleteMode,
   ) => {
-    if (!plan?.application.bundleId) return;
+    if (!plan) return;
     const requestId = deleteRequestIdRef.current + 1;
     deleteRequestIdRef.current = requestId;
     const previousLease = deleteLeaseRef.current;
@@ -278,7 +278,7 @@ export function ApplicationUninstallAssistant({
   };
 
   const openDeleteDialog = async () => {
-    if (!plan?.application.bundleId) return;
+    if (!plan) return;
     const items = plan.artifacts
       .filter((artifact) => selectedArtifacts.has(artifact.path))
       .map((artifact) => artifactToCleanupNode(artifact, t(`applications:uninstall.artifacts.${artifact.kind}`)));
@@ -561,7 +561,12 @@ export function ApplicationUninstallAssistant({
                     <div><span className="eyebrow">{t("applications:uninstall.planKicker")}</span><h3>{plan.application.name}</h3><code>{plan.application.path}</code></div>
                     <button className="icon-button" type="button" title={t("applications:uninstall.reveal")} aria-label={t("applications:uninstall.reveal")} onClick={() => void revealPath(plan.application.path)}><FolderOpen size={16} /></button>
                   </header>
-                  <p className="application-uninstall__plan-note"><ShieldCheck size={15} />{t("applications:uninstall.planBoundary")}</p>
+                  <p className="application-uninstall__plan-note">
+                    <ShieldCheck size={15} />
+                    {t(plan.application.bundleId
+                      ? "applications:uninstall.planBoundary"
+                      : "applications:uninstall.bundleOnlyBoundary")}
+                  </p>
                   <fieldset className="application-uninstall__artifacts">
                     <legend>{t("applications:uninstall.foundItems")}</legend>
                     {plan.artifacts.map((artifact) => {

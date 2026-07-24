@@ -81,6 +81,7 @@ describe("file insights workspace", () => {
         onScan={() => undefined}
         onCancel={() => undefined}
         onDeletionApplied={async () => undefined}
+        onSubtreeRetained={async () => undefined}
       />,
     );
 

@@ -10,9 +10,11 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v5";
+export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v6";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
+const MAX_CACHED_SUBTREES = 256;
+const MAX_CACHED_SUBTREE_NODES = 12_500;
 
 export type CleanupSnapshotStatus = "current" | "cached" | "expired";
 
@@ -42,10 +44,21 @@ export function reconcileCleanupScanAfterDeletion(
     );
     if (locationIndex >= 0) targetsByLocation[locationIndex].push(target);
   }
+  const prefetchedSubtrees = snapshot.prefetchedSubtrees?.flatMap((node) => {
+    const reconciled = reconcileCleanupNodeAfterDeletion(node, uniqueTargets);
+    return reconciled ? [reconciled] : [];
+  });
+  const retainedSubtreeIds = new Set(prefetchedSubtrees?.map((node) => node.id) ?? []);
 
   return {
     ...snapshot,
     root: reconcileCleanupNodeAfterDeletion(snapshot.root, uniqueTargets) ?? snapshot.root,
+    prefetchedSubtrees,
+    subtreeCacheSavedAtMs: Object.fromEntries(
+      Object.entries(snapshot.subtreeCacheSavedAtMs ?? {}).filter(([id]) =>
+        retainedSubtreeIds.has(id)
+      ),
+    ),
     locations: snapshot.locations.map((location, index) => {
       const locationTargets = targetsByLocation[index];
       if (locationTargets.length === 0) return location;
@@ -64,6 +77,39 @@ export function reconcileCleanupScanAfterDeletion(
     largestFiles: snapshot.largestFiles.filter((file) =>
       !uniqueTargets.some((target) => isSameOrDescendantPath(file.path, target.path))
     ),
+  };
+}
+
+export function retainCleanupSubtree(
+  snapshot: CleanupScan,
+  subtree: CleanupNode,
+  savedAtMs = Date.now(),
+): CleanupScan {
+  const retained = [
+    subtree,
+    ...(snapshot.prefetchedSubtrees ?? []).filter((node) => node.id !== subtree.id),
+  ];
+  let retainedNodeCount = retained.reduce(
+    (total, node) => total + countCleanupNodes(node),
+    0,
+  );
+  while (
+    retained.length > 1 &&
+    (retained.length > MAX_CACHED_SUBTREES || retainedNodeCount > MAX_CACHED_SUBTREE_NODES)
+  ) {
+    const removed = retained.pop();
+    if (removed) retainedNodeCount -= countCleanupNodes(removed);
+  }
+  const retainedIds = new Set(retained.map((node) => node.id));
+  return {
+    ...snapshot,
+    prefetchedSubtrees: retained,
+    subtreeCacheSavedAtMs: {
+      ...Object.fromEntries(
+        Object.entries(snapshot.subtreeCacheSavedAtMs ?? {}).filter(([id]) => retainedIds.has(id)),
+      ),
+      [subtree.id]: savedAtMs,
+    },
   };
 }
 
@@ -115,7 +161,7 @@ export function parseStoredCleanupScan(
     );
     if (
       !isRecord(value) ||
-      value.version !== 5 ||
+      value.version !== 6 ||
       !isFiniteNonNegativeNumber(value.savedAtMs) ||
       !isCleanupScan(snapshot)
     ) {
@@ -134,8 +180,22 @@ export function parseStoredCleanupScan(
 
 function normalizeCleanupScan(value: unknown): unknown {
   if (!isRecord(value)) return value;
+  const prefetchedSubtrees = Array.isArray(value.prefetchedSubtrees)
+    ? value.prefetchedSubtrees
+    : [];
+  const fallbackSavedAtMs = isFiniteNonNegativeNumber(value.sampledAtMs)
+    ? value.sampledAtMs
+    : 0;
   return {
     ...value,
+    prefetchedSubtrees,
+    subtreeCacheSavedAtMs: isTimestampRecord(value.subtreeCacheSavedAtMs)
+      ? value.subtreeCacheSavedAtMs
+      : Object.fromEntries(
+          prefetchedSubtrees
+            .filter(isCleanupNode)
+            .map((node) => [node.id, fallbackSavedAtMs]),
+        ),
     installedApplications: Array.isArray(value.installedApplications)
       ? value.installedApplications
       : [],
@@ -163,6 +223,9 @@ function isCleanupScan(value: unknown): value is CleanupScan {
     isFiniteNonNegativeNumber(value.sampledAtMs) &&
     isFiniteNonNegativeNumber(value.durationMs) &&
     isCleanupNode(value.root) &&
+    Array.isArray(value.prefetchedSubtrees) &&
+    value.prefetchedSubtrees.every(isCleanupNode) &&
+    isTimestampRecord(value.subtreeCacheSavedAtMs) &&
     Array.isArray(value.locations) &&
     value.locations.every(isCleanupLocation) &&
     Array.isArray(value.largestFiles) &&
@@ -176,6 +239,17 @@ function isCleanupScan(value: unknown): value is CleanupScan {
     value.unreadablePaths.every((path) => typeof path === "string") &&
     typeof value.deletionAvailable === "boolean"
   );
+}
+
+function countCleanupNodes(node: CleanupNode): number {
+  return 1 + node.children.reduce(
+    (total, child) => total + countCleanupNodes(child),
+    0,
+  );
+}
+
+function isTimestampRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isFiniteNonNegativeNumber);
 }
 
 function isCleanupApplication(value: unknown): value is CleanupApplication {

@@ -84,6 +84,7 @@ const MAX_VISUAL_TREE_DEPTH: usize = 7;
 const MAX_VISUAL_NODES_PER_SCAN: usize = 2_500;
 const MAX_VISUAL_NODES_PER_LOCATION: usize = 2_500;
 const MAX_VISUAL_NODES_PER_SUBTREE: usize = 2_500;
+const MAX_PREFETCHED_SUBTREES: usize = 128;
 const MAX_EXPANDED_ROOT_CANDIDATES: usize =
     MAX_VISUAL_NODES_PER_SUBTREE - MAX_RESTRICTED_CHILDREN - 3;
 // 0.5 degree of a full circle. Smaller siblings are still fully scanned, but
@@ -98,7 +99,7 @@ const CLEANUP_SCAN_CACHE_VERSION: u8 = 6;
 #[cfg(target_os = "macos")]
 const MAX_APPLICATION_INVENTORY_CACHE_BYTES: u64 = 8 * 1_024 * 1_024;
 #[cfg(target_os = "macos")]
-const APPLICATION_INVENTORY_CACHE_VERSION: u8 = 1;
+const APPLICATION_INVENTORY_CACHE_VERSION: u8 = 2;
 #[cfg(target_os = "macos")]
 const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
@@ -1310,6 +1311,7 @@ fn scan_cleanup_subtree_at(
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
     let mut application_sizes = HashMap::new();
+    let mut prefetched_subtrees = PrefetchedSubtreeAccumulator::default();
     let definitions = Vec::new();
     let mut location_summaries = Vec::new();
     let mut ignore_progress = |_progress: CleanupScanProgress| {};
@@ -1322,6 +1324,7 @@ fn scan_cleanup_subtree_at(
         definitions: &definitions,
         location_summaries: &mut location_summaries,
         application_sizes: &mut application_sizes,
+        prefetched_subtrees: &mut prefetched_subtrees,
         cancelled,
         on_progress: &mut ignore_progress,
     };
@@ -1412,7 +1415,7 @@ struct ValidatedApplicationBundle {
     root: PathBuf,
     relative_path: PathBuf,
     name: String,
-    bundle_id: String,
+    bundle_id: Option<String>,
     modified_at_ms: Option<u64>,
 }
 
@@ -1540,13 +1543,7 @@ fn validate_application_bundle(
         .get("CFBundleIdentifier")
         .and_then(plist::Value::as_string)
         .filter(|value| is_safe_bundle_identifier(value))
-        .ok_or_else(|| {
-            CommandError::new(
-                "application_bundle_identifier_missing",
-                "This application does not provide a safe bundle identifier, so CoreRobin cannot prove which support files belong to it.",
-            )
-        })?
-        .to_owned();
+        .map(str::to_owned);
     let name = bundle_display_name(&canonical_path, dictionary, preferred_language);
     let relative_path = canonical_path
         .strip_prefix(&canonical_root)
@@ -1597,13 +1594,15 @@ fn application_uninstall_candidates(
     bundle: &ValidatedApplicationBundle,
 ) -> Vec<(ApplicationArtifactKind, PathBuf, bool)> {
     let library = home.join("Library");
-    let bundle_id = &bundle.bundle_id;
-    vec![
-        (
-            ApplicationArtifactKind::Application,
-            bundle.path.clone(),
-            true,
-        ),
+    let mut candidates = vec![(
+        ApplicationArtifactKind::Application,
+        bundle.path.clone(),
+        true,
+    )];
+    let Some(bundle_id) = bundle.bundle_id.as_deref() else {
+        return candidates;
+    };
+    candidates.extend([
         (
             ApplicationArtifactKind::ApplicationSupport,
             library.join("Application Support").join(bundle_id),
@@ -1669,7 +1668,8 @@ fn application_uninstall_candidates(
                 .join(format!("{bundle_id}.plist")),
             false,
         ),
-    ]
+    ]);
+    candidates
 }
 
 pub fn load_or_scan_application_inventory(
@@ -1884,7 +1884,7 @@ pub fn scan_application_inventory(
                         InstalledApplication {
                             name: bundle.name,
                             path,
-                            bundle_id: Some(bundle.bundle_id),
+                            bundle_id: bundle.bundle_id,
                             size_bytes: application.size_bytes,
                             last_used_at_ms: application.last_used_at_ms,
                             modified_at_ms: bundle.modified_at_ms,
@@ -2026,7 +2026,7 @@ pub fn prepare_application_uninstall(
             application: InstalledApplication {
                 name: bundle.name,
                 path: application_path,
-                bundle_id: Some(bundle.bundle_id),
+                bundle_id: bundle.bundle_id,
                 size_bytes: application_size,
                 last_used_at_ms: None,
                 modified_at_ms: bundle.modified_at_ms,
@@ -2329,7 +2329,7 @@ fn validate_application_uninstall_targets(
     if bundle.bundle_id != scope.bundle_id {
         return Err(CommandError::new(
             "application_identity_changed",
-            "The selected application's bundle identifier changed. Refresh the application list before continuing.",
+            "The selected application's identity changed. Refresh the application list before continuing.",
         ));
     }
     if !request
@@ -2650,6 +2650,82 @@ struct LocationSummary {
 }
 
 #[derive(Default)]
+struct PrefetchedSubtreeAccumulator {
+    nodes: Vec<CleanupNode>,
+}
+
+impl PrefetchedSubtreeAccumulator {
+    fn push(&mut self, node: CleanupNode) {
+        if node.children.is_empty() {
+            return;
+        }
+        if let Some(existing) = self.nodes.iter_mut().find(|item| item.id == node.id) {
+            *existing = node;
+            return;
+        }
+        if self.nodes.len() < MAX_PREFETCHED_SUBTREES {
+            self.nodes.push(node);
+            return;
+        }
+        let Some((smallest_index, smallest)) = self
+            .nodes
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, item)| (item.allocated_size_bytes, item.logical_size_bytes))
+        else {
+            return;
+        };
+        if (node.allocated_size_bytes, node.logical_size_bytes)
+            > (smallest.allocated_size_bytes, smallest.logical_size_bytes)
+        {
+            self.nodes[smallest_index] = node;
+        }
+    }
+
+    fn finish(mut self) -> Vec<CleanupNode> {
+        self.nodes.sort_by(|left, right| {
+            right
+                .allocated_size_bytes
+                .cmp(&left.allocated_size_bytes)
+                .then_with(|| left.name.cmp(&right.name))
+        });
+        self.nodes
+    }
+}
+
+#[derive(Debug)]
+struct SummaryDirectChild {
+    path: PathBuf,
+    logical_size_bytes: u64,
+    allocated_size_bytes: u64,
+    item_count: usize,
+    is_directory: bool,
+    has_children: bool,
+    restricted: bool,
+}
+
+impl SummaryDirectChild {
+    fn file(path: PathBuf) -> Self {
+        Self {
+            path,
+            logical_size_bytes: 0,
+            allocated_size_bytes: 0,
+            item_count: 0,
+            is_directory: false,
+            has_children: false,
+            restricted: false,
+        }
+    }
+
+    fn directory(path: PathBuf) -> Self {
+        Self {
+            is_directory: true,
+            ..Self::file(path)
+        }
+    }
+}
+
+#[derive(Default)]
 struct ChildAccumulator {
     max_candidates: usize,
     consolidate_small_candidates: bool,
@@ -2691,6 +2767,7 @@ struct ScanContext<'a> {
     definitions: &'a [LocationDefinition],
     location_summaries: &'a mut [LocationSummary],
     application_sizes: &'a mut HashMap<PathBuf, u64>,
+    prefetched_subtrees: &'a mut PrefetchedSubtreeAccumulator,
     cancelled: &'a AtomicBool,
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
 }
@@ -2848,6 +2925,7 @@ fn scan_filesystem(
     let mut stats = ScanStats::new();
     let mut largest_files = Vec::new();
     let mut application_sizes = HashMap::new();
+    let mut prefetched_subtrees = PrefetchedSubtreeAccumulator::default();
     let mut location_summaries = definitions
         .iter()
         .map(|definition| LocationSummary {
@@ -2868,6 +2946,7 @@ fn scan_filesystem(
             definitions: &definitions,
             location_summaries: &mut location_summaries,
             application_sizes: &mut application_sizes,
+            prefetched_subtrees: &mut prefetched_subtrees,
             cancelled,
             on_progress,
         };
@@ -2883,6 +2962,7 @@ fn scan_filesystem(
     };
     let mut remaining = MAX_VISUAL_NODES_PER_SCAN;
     prune_cleanup_node(&mut root, &mut remaining);
+    let prefetched_subtrees = prefetched_subtrees.finish();
 
     let locations = definitions
         .into_iter()
@@ -2930,10 +3010,17 @@ fn scan_filesystem(
 
     stats.report_progress(scan_root, home, on_progress, true);
 
+    let sampled_at_ms = now_millis();
+    let subtree_cache_saved_at_ms = prefetched_subtrees
+        .iter()
+        .map(|node| (node.id.clone(), sampled_at_ms))
+        .collect();
     Ok(CleanupScan {
-        sampled_at_ms: now_millis(),
+        sampled_at_ms,
         duration_ms: stats.elapsed_ms(),
         root,
+        prefetched_subtrees,
+        subtree_cache_saved_at_ms,
         locations,
         largest_files,
         installed_applications,
@@ -3478,10 +3565,11 @@ fn scan_directory_summary(
     let mut allocated_size_bytes = 0_u64;
     let mut item_count = 0_usize;
     let mut has_children = false;
-    let mut stack = vec![root.to_path_buf()];
+    let mut direct_children = HashMap::<PathBuf, SummaryDirectChild>::new();
+    let mut stack = vec![(root.to_path_buf(), None::<PathBuf>)];
     let mut root_readable = false;
 
-    while let Some(directory) = stack.pop() {
+    while let Some((directory, direct_child_path)) = stack.pop() {
         ensure_scan_active(context.cancelled)?;
         context
             .stats
@@ -3495,6 +3583,14 @@ fn scan_directory_summary(
             }
             Err(_) => {
                 context.stats.record_unreadable(&directory);
+                if let Some(direct_child_path) = direct_child_path.as_ref()
+                    && &directory == direct_child_path
+                {
+                    direct_children
+                        .entry(direct_child_path.clone())
+                        .or_insert_with(|| SummaryDirectChild::directory(direct_child_path.clone()))
+                        .restricted = true;
+                }
                 continue;
             }
         };
@@ -3513,6 +3609,12 @@ fn scan_directory_summary(
                 Ok(file_type) => file_type,
                 Err(_) => {
                     context.stats.record_unreadable(&entry_path);
+                    if direct_child_path.is_none() {
+                        direct_children
+                            .entry(entry_path.clone())
+                            .or_insert_with(|| SummaryDirectChild::file(entry_path.clone()))
+                            .restricted = true;
+                    }
                     continue;
                 }
             };
@@ -3527,6 +3629,14 @@ fn scan_directory_summary(
                     Ok(metadata) => metadata,
                     Err(_) => {
                         context.stats.record_unreadable(&entry_path);
+                        if direct_child_path.is_none() {
+                            direct_children
+                                .entry(entry_path.clone())
+                                .or_insert_with(|| {
+                                    SummaryDirectChild::directory(entry_path.clone())
+                                })
+                                .restricted = true;
+                        }
                         continue;
                     }
                 };
@@ -3534,7 +3644,17 @@ fn scan_directory_summary(
                     continue;
                 }
                 has_children = true;
-                stack.push(entry_path);
+                let top_level_path = direct_child_path
+                    .clone()
+                    .unwrap_or_else(|| entry_path.clone());
+                let summary = direct_children
+                    .entry(top_level_path.clone())
+                    .or_insert_with(|| SummaryDirectChild::directory(top_level_path.clone()));
+                summary.is_directory = true;
+                if entry_path != top_level_path {
+                    summary.has_children = true;
+                }
+                stack.push((entry_path, Some(top_level_path)));
                 continue;
             }
             if !file_type.is_file() {
@@ -3545,6 +3665,12 @@ fn scan_directory_summary(
                 Ok(metadata) => metadata,
                 Err(_) => {
                     context.stats.record_unreadable(&entry_path);
+                    if direct_child_path.is_none() {
+                        direct_children
+                            .entry(entry_path.clone())
+                            .or_insert_with(|| SummaryDirectChild::file(entry_path.clone()))
+                            .restricted = true;
+                    }
                     continue;
                 }
             };
@@ -3553,6 +3679,28 @@ fn scan_directory_summary(
             }
             let file_logical_size = metadata.len();
             let file_allocated_size = allocated_file_size(&entry_path, &metadata);
+            let top_level_path = direct_child_path
+                .clone()
+                .unwrap_or_else(|| entry_path.clone());
+            let summary = direct_children
+                .entry(top_level_path.clone())
+                .or_insert_with(|| {
+                    if direct_child_path.is_some() {
+                        SummaryDirectChild::directory(top_level_path)
+                    } else {
+                        SummaryDirectChild::file(top_level_path)
+                    }
+                });
+            if direct_child_path.is_some() {
+                summary.is_directory = true;
+                summary.has_children = true;
+            }
+            summary.logical_size_bytes =
+                summary.logical_size_bytes.saturating_add(file_logical_size);
+            summary.allocated_size_bytes = summary
+                .allocated_size_bytes
+                .saturating_add(file_allocated_size);
+            summary.item_count = summary.item_count.saturating_add(1);
             context.record_file(&entry_path, file_allocated_size);
             logical_size_bytes = logical_size_bytes.saturating_add(file_logical_size);
             allocated_size_bytes = allocated_size_bytes.saturating_add(file_allocated_size);
@@ -3599,6 +3747,42 @@ fn scan_directory_summary(
         has_children,
         children: Vec::new(),
     };
+    if has_children {
+        let mut prefetched_children = ChildAccumulator::new(MAX_CHART_CHILDREN, true);
+        for summary in direct_children.into_values() {
+            let child_safety = context.safety_for_path(&summary.path, root_safety);
+            let path = display_path(&summary.path, context.home);
+            let protection_reason = if summary.restricted {
+                Some(CleanupProtectionReason::Restricted)
+            } else {
+                cleanup_protection_for_path(&summary.path, context.home)
+            };
+            prefetched_children.push(CleanupNode {
+                id: path.clone(),
+                name: cleanup_node_name(&summary.path),
+                path: Some(path),
+                size_bytes: summary.allocated_size_bytes,
+                logical_size_bytes: summary.logical_size_bytes,
+                allocated_size_bytes: summary.allocated_size_bytes,
+                item_count: summary.item_count,
+                safety: child_safety,
+                kind: if summary.restricted {
+                    CleanupNodeKind::Restricted
+                } else if summary.is_directory {
+                    CleanupNodeKind::Folder
+                } else {
+                    CleanupNodeKind::File
+                },
+                deletion_protected: protection_reason.is_some(),
+                protection_reason,
+                has_children: summary.is_directory && summary.has_children,
+                children: Vec::new(),
+            });
+        }
+        let mut prefetched = node.clone();
+        prefetched.children = prefetched_children.finish(root, context.home, root_safety);
+        context.prefetched_subtrees.push(prefetched);
+    }
     context.capture_location_root(root, &node);
     Ok(node)
 }
@@ -4776,6 +4960,22 @@ mod tests {
             boundary.allocated_size_bytes,
             scanned_root.allocated_size_bytes
         );
+        let prefetched = scan
+            .prefetched_subtrees
+            .iter()
+            .find(|node| node.id == boundary.id)
+            .expect("the full scan should retain the next level for navigation");
+        assert_eq!(
+            scan.subtree_cache_saved_at_ms.get(&boundary.id),
+            Some(&scan.sampled_at_ms),
+            "prefetched subtrees should carry the full-scan freshness timestamp"
+        );
+        assert_eq!(prefetched.item_count, boundary.item_count);
+        assert_eq!(prefetched.children.len(), 1);
+        assert_eq!(
+            prefetched.children[0].name,
+            format!("level-{}", MAX_VISUAL_TREE_DEPTH - 1)
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -5134,7 +5334,7 @@ mod tests {
         let mut request = cleanup_delete_request(&root, paths, now_millis());
         request.application_uninstall = Some(crate::models::ApplicationUninstallScope {
             application_path: application_path.to_string_lossy().into_owned(),
-            bundle_id: "com.example.safe".to_owned(),
+            bundle_id: Some("com.example.safe".to_owned()),
         });
         let targets = validate_application_uninstall_targets(
             &request,
@@ -5151,6 +5351,70 @@ mod tests {
 
         request.paths.push(
             root.join("Library/Caches/com.example.safe.backup")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        let error = validate_application_uninstall_targets(
+            &request,
+            request.application_uninstall.as_ref().unwrap(),
+            &root,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "application_artifact_not_allowed");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn application_without_bundle_identifier_can_only_uninstall_its_bundle() {
+        let root = test_root("application-uninstall-without-bundle-id");
+        let application = root.join("Applications/Legacy.app");
+        let executable_root = application.join("Contents/MacOS");
+        fs::create_dir_all(&executable_root).unwrap();
+        fs::write(executable_root.join("Legacy"), b"binary").unwrap();
+        fs::write(
+            application.join("Contents/Info.plist"),
+            br#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>CFBundleName</key><string>Legacy</string>
+</dict></plist>"#,
+        )
+        .unwrap();
+
+        let application_path = application.canonicalize().unwrap();
+        let bundle =
+            validate_application_bundle(application_path.to_string_lossy().as_ref(), &root, None)
+                .unwrap();
+        assert_eq!(bundle.bundle_id, None);
+        assert_eq!(
+            application_uninstall_candidates(&root, &bundle),
+            vec![(
+                ApplicationArtifactKind::Application,
+                application_path.clone(),
+                true,
+            )],
+        );
+
+        let display = application_path.to_string_lossy().into_owned();
+        let mut request = cleanup_delete_request(&root, vec![display.clone()], now_millis());
+        request.application_uninstall = Some(crate::models::ApplicationUninstallScope {
+            application_path: display,
+            bundle_id: None,
+        });
+        let targets = validate_application_uninstall_targets(
+            &request,
+            request.application_uninstall.as_ref().unwrap(),
+            &root,
+        )
+        .unwrap();
+        assert_eq!(targets.len(), 1);
+        assert_eq!(
+            targets[0].inspection_policy,
+            CleanupTargetInspectionPolicy::ApplicationBundle,
+        );
+
+        request.paths.push(
+            root.join("Library/Caches/Legacy")
                 .to_string_lossy()
                 .into_owned(),
         );

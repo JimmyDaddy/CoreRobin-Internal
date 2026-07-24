@@ -144,6 +144,7 @@ export default interface Resources {
         "saved_state": "窗口恢复状态",
         "web_data": "网页数据"
       },
+      "bundleOnlyBoundary": "此应用没有可验证的 Bundle ID，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。",
       "cachedInventory": "显示 {{time}} 的本机缓存，可随时刷新",
       "cannotPrepare": "无法为这个应用生成安全计划",
       "description": "识别应用本体和可由 Bundle ID 明确归属的残留文件；每个路径都由你确认后才会处理。",

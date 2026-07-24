@@ -206,6 +206,10 @@ export interface CleanupScan {
   durationMs: number;
   /** The actual directory hierarchy rooted at the scanned system disk. */
   root: CleanupNode;
+  /** Bounded deep-folder expansions captured during the full scan. */
+  prefetchedSubtrees?: CleanupNode[];
+  /** Last successful scan time for each cached subtree ID. */
+  subtreeCacheSavedAtMs?: Record<string, number>;
   locations: CleanupLocation[];
   largestFiles: CleanupFile[];
   installedApplications: CleanupApplication[];
@@ -274,7 +278,7 @@ export interface ApplicationUninstallPlan {
 
 export interface ApplicationUninstallScope {
   applicationPath: string;
-  bundleId: string;
+  bundleId: string | null;
 }
 
 export interface CleanupLocation {

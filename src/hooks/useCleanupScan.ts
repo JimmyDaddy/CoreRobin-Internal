@@ -11,10 +11,11 @@ import {
   clearStoredCleanupScan,
   parseStoredCleanupScan,
   reconcileCleanupScanAfterDeletion,
+  retainCleanupSubtree,
   type CleanupDeletionTargetSnapshot,
   type CleanupSnapshotStatus,
 } from "../cleanupScanStore";
-import type { CleanupScan, CleanupScanProgress, CommandError } from "../types";
+import type { CleanupNode, CleanupScan, CleanupScanProgress, CommandError } from "../types";
 import { normalizeCommandError } from "../utils";
 
 export function useCleanupScan() {
@@ -27,6 +28,15 @@ export function useCleanupScan() {
   const inFlight = useRef(false);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
+  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueuePersistence = useCallback((operation: () => Promise<void>) => {
+    const queued = persistenceQueueRef.current
+      .catch(() => undefined)
+      .then(operation);
+    persistenceQueueRef.current = queued.catch(() => undefined);
+    return queued;
+  }, []);
 
   useEffect(() => {
     snapshotRef.current = snapshot;
@@ -57,7 +67,7 @@ export function useCleanupScan() {
     stateTouched.current = true;
     clearStoredCleanupScan();
     try {
-      await clearPersistedCleanupScan();
+      await enqueuePersistence(clearPersistedCleanupScan);
     } catch {
       // A stale cache must not prevent a new scan.
     }
@@ -87,7 +97,7 @@ export function useCleanupScan() {
       setCancelling(false);
       setProgress(null);
     }
-  }, []);
+  }, [enqueuePersistence]);
 
   const cancel = useCallback(async () => {
     if (!inFlight.current || cancelling) return;
@@ -115,23 +125,36 @@ export function useCleanupScan() {
       setSnapshotStatus("expired");
       clearStoredCleanupScan();
       try {
-        await clearPersistedCleanupScan();
+        await enqueuePersistence(clearPersistedCleanupScan);
       } catch {
         // The in-memory map is visibly marked as stale even if disk cleanup fails.
       }
       return;
     }
     try {
-      await savePersistedCleanupScan(updated);
+      await enqueuePersistence(() => savePersistedCleanupScan(updated));
     } catch {
       // Never retain a pre-deletion map if the corrected snapshot cannot be saved.
       try {
-        await clearPersistedCleanupScan();
+        await enqueuePersistence(clearPersistedCleanupScan);
       } catch {
         // The in-memory result is still authoritative for this app session.
       }
     }
-  }, []);
+  }, [enqueuePersistence]);
+
+  const retainSubtree = useCallback(async (subtree: CleanupNode) => {
+    const current = snapshotRef.current;
+    if (!current) return;
+    const updated = retainCleanupSubtree(current, subtree);
+    snapshotRef.current = updated;
+    setSnapshot(updated);
+    try {
+      await enqueuePersistence(() => savePersistedCleanupScan(updated));
+    } catch {
+      // The in-memory subtree remains useful for this session if disk caching fails.
+    }
+  }, [enqueuePersistence]);
 
   const clear = useCallback(async () => {
     stateTouched.current = true;
@@ -150,8 +173,8 @@ export function useCleanupScan() {
     setLoading(false);
     setCancelling(false);
     setProgress(null);
-    await clearPersistedCleanupScan();
-  }, []);
+    await enqueuePersistence(clearPersistedCleanupScan);
+  }, [enqueuePersistence]);
 
   return {
     snapshot,
@@ -164,5 +187,6 @@ export function useCleanupScan() {
     cancel,
     clear,
     applyDeletion,
+    retainSubtree,
   };
 }

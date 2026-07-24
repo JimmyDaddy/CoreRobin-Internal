@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { retainCleanupSubtree } from "./cleanupScanStore";
 import { CleanupSpaceMap } from "./components/CleanupSpaceMap";
 import i18n from "./i18n";
 import type { CleanupNode, CleanupScan } from "./types";
@@ -41,6 +43,101 @@ beforeEach(async () => {
 });
 
 describe("cleanup subtree cancellation", () => {
+  it("uses deep-folder details captured by the full scan without another disk request", async () => {
+    const currentSnapshot = snapshot();
+    const first = currentSnapshot.root.children[0];
+    currentSnapshot.prefetchedSubtrees = [{
+      ...first,
+      children: [file("cached", "/fixture/first/cached.bin")],
+    }];
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
+    expect(cleanupApi.getCleanupSubtree).not.toHaveBeenCalled();
+  });
+
+  it("shows a cached subtree immediately and refreshes it in the background when changed", async () => {
+    const currentSnapshot = snapshot();
+    const first = currentSnapshot.root.children[0];
+    currentSnapshot.prefetchedSubtrees = [{
+      ...first,
+      children: [file("cached", "/fixture/first/cached.bin")],
+    }];
+    currentSnapshot.subtreeCacheSavedAtMs = { [first.id]: 1_000 };
+    cleanupApi.getCleanupPathState.mockResolvedValue({
+      path: first.path,
+      exists: true,
+      modifiedAtMs: 2_000,
+    });
+    const refreshedFile = {
+      ...file("refreshed", "/fixture/first/refreshed.bin"),
+      name: "Refreshed file",
+    };
+    const refreshed = { ...first, children: [refreshedFile] };
+    cleanupApi.getCleanupSubtree.mockResolvedValue(refreshed);
+    const onSubtreeRetained = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+        onSubtreeRetained={onSubtreeRetained}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    expect(screen.getByRole("button", { name: /Visible file/ })).toBeTruthy();
+    await waitFor(() => expect(cleanupApi.getCleanupSubtree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: first.path,
+        expandSmallerObjects: false,
+      }),
+    ));
+    expect(await screen.findByRole("button", { name: /Refreshed file/ })).toBeTruthy();
+    expect(onSubtreeRetained).toHaveBeenCalledWith(refreshed);
+  });
+
+  it("keeps the expanded folder open when the loaded subtree is persisted", async () => {
+    const initialSnapshot = snapshot();
+    const first = initialSnapshot.root.children[0];
+    const loaded = {
+      ...first,
+      children: [file("loaded", "/fixture/first/loaded.bin")],
+    };
+    cleanupApi.getCleanupSubtree.mockResolvedValue(loaded);
+
+    function PersistentMap() {
+      const [currentSnapshot, setCurrentSnapshot] = useState(initialSnapshot);
+      return (
+        <CleanupSpaceMap
+          snapshot={currentSnapshot}
+          snapshotStatus="current"
+          onDeletionApplied={vi.fn()}
+          onSubtreeRetained={async (subtree) => {
+            setCurrentSnapshot((current) => retainCleanupSubtree(current, subtree, 2_000));
+          }}
+        />
+      );
+    }
+
+    render(<PersistentMap />);
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
+    await waitFor(() => expect(
+      screen.queryByRole("button", { name: /Second folder/ }),
+    ).toBeNull());
+  });
+
   it("sends the abandoned request ID to the backend before starting the next subtree", async () => {
     cleanupApi.getCleanupSubtree
       .mockImplementationOnce(() => new Promise(() => undefined))
