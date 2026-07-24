@@ -49,6 +49,7 @@
     "allow-get-application-uninstall-plan",
     "allow-create-cleanup-delete-lease",
     "allow-release-cleanup-delete-lease",
+    "allow-set-cleanup-delete-lease-mode",
     "allow-execute-cleanup-delete",
     "allow-cancel-cleanup-delete",
     "allow-complete-startup",

@@ -252,7 +252,6 @@ export default interface Resources {
       "deleting": "正在永久删除…",
       "description": "选择移到废纸篓，或确认后直接从磁盘永久删除。",
       "errors": {
-        "cleanup_confirmation_expired": "确认已超时，请取消后重新检查当前文件。",
         "cleanup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开检查窗口。",
         "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
         "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
@@ -467,13 +466,14 @@ export default interface Resources {
       },
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
-      "protectedSelectionHint": "系统目录、汇总节点和个人目录根节点仅供查看；只有个人目录内的具体内容可加入清理篮",
+      "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
       "refreshCleanup": "刷新所选内容后检查",
       "restrictedHint": "系统未授予读取权限，此项不会加入清理篮",
       "restrictedObjects": "无法读取的对象",
       "reviewCleanup": "检查清理选项",
       "selected": "当前选择",
       "smallerObjects": "较小的对象",
+      "smallerObjectsHint": "打开后会按需列出因空间图数量限制而合并的真实文件和文件夹，具体项目都可以加入清理篮。",
       "title": "空间都去了哪里",
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {

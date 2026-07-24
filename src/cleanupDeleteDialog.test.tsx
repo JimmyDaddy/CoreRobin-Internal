@@ -59,6 +59,14 @@ describe("cleanup deletion dialog freshness", () => {
     fireEvent.click(screen.getByRole("radio", { name: /直接删除/ }));
     expect(onModeChange).toHaveBeenCalledWith("permanent");
   });
+
+  it("briefly locks mode controls without presenting another path validation", () => {
+    renderDialog(lease(true, "trash"), { mode: "permanent", modeSwitching: true });
+
+    expect((screen.getByRole("radio", { name: /移到废纸篓/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("radio", { name: /直接删除/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText("正在重新核对路径与文件状态…")).toBeNull();
+  });
 });
 
 function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanent"): CleanupDeleteLease {
@@ -75,7 +83,6 @@ function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanen
     }],
     executable,
     refreshedAtMs: 200,
-    expiresAtMs: 300,
   };
 }
 
@@ -87,6 +94,7 @@ function renderDialog(
     items: [item],
     lease: currentLease,
     preparing: false,
+    modeSwitching: false,
     submitting: false,
     cancelling: false,
     progress: null,

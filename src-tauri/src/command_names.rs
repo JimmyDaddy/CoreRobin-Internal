@@ -38,6 +38,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "get_application_uninstall_plan",
     "create_cleanup_delete_lease",
     "release_cleanup_delete_lease",
+    "set_cleanup_delete_lease_mode",
     "execute_cleanup_delete",
     "cancel_cleanup_delete",
     "complete_startup",

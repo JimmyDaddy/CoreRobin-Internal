@@ -16,6 +16,7 @@ const uninstallApi = vi.hoisted(() => ({
   getInstalledApplications: vi.fn(),
   releaseCleanupDeleteLease: vi.fn(),
   revealPath: vi.fn(),
+  setCleanupDeleteLeaseMode: vi.fn(),
 }));
 
 vi.mock("./api", () => uninstallApi);
@@ -157,7 +158,6 @@ describe("application uninstall assistant", () => {
       }],
       executable: true,
       refreshedAtMs: 1_100,
-      expiresAtMs: Date.now() + 60_000,
     });
     uninstallApi.executeCleanupDelete.mockResolvedValue({
       deleted: [{ path: application.path, deletedBytes: application.sizeBytes }],

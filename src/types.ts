@@ -309,6 +309,7 @@ export interface CleanupSubtreeRequest {
   requestId: string;
   path: string;
   safety: CleanupSafety;
+  expandSmallerObjects?: boolean;
 }
 
 export interface CleanupScanProgress {
@@ -362,7 +363,11 @@ export interface CleanupDeleteLease {
   refreshedTargets: CleanupDeleteTargetEvidence[];
   executable: boolean;
   refreshedAtMs: number;
-  expiresAtMs: number;
+}
+
+export interface CleanupDeleteLeaseModeRequest {
+  leaseId: string;
+  mode: CleanupDeleteMode;
 }
 
 export interface CleanupDeleteExecutionRequest {

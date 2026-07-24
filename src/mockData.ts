@@ -4,6 +4,7 @@ import {
   type CleanupScan,
   type CleanupDeleteExecutionRequest,
   type CleanupDeleteLease,
+  type CleanupDeleteLeaseModeRequest,
   type CleanupDeleteLeaseReleaseRequest,
   type CleanupDeleteLeaseRequest,
   type CleanupDeleteResult,
@@ -455,7 +456,6 @@ export function createMockCleanupDeleteLease(
     refreshedTargets: request.expectedTargets.map((target) => ({ ...target })),
     executable: true,
     refreshedAtMs: Date.now(),
-    expiresAtMs: Date.now() + 60_000,
   };
   mockCleanupLeases.set(lease.id, lease);
   return lease;
@@ -467,12 +467,27 @@ export function releaseMockCleanupDeleteLease(
   mockCleanupLeases.delete(request.leaseId);
 }
 
+export function setMockCleanupDeleteLeaseMode(
+  request: CleanupDeleteLeaseModeRequest,
+): CleanupDeleteLease {
+  const lease = mockCleanupLeases.get(request.leaseId);
+  if (!lease) {
+    throw {
+      code: "cleanup_confirmation_unavailable",
+      message: "本次清理确认已经失效，请重新检查所选内容。",
+    };
+  }
+  const updated = { ...lease, mode: request.mode };
+  mockCleanupLeases.set(updated.id, updated);
+  return updated;
+}
+
 export function executeMockCleanupDelete(
   request: CleanupDeleteExecutionRequest,
 ): CleanupDeleteResult {
   const lease = mockCleanupLeases.get(request.leaseId);
   mockCleanupLeases.delete(request.leaseId);
-  if (!lease || lease.expiresAtMs <= Date.now()) {
+  if (!lease) {
     throw {
       code: "cleanup_confirmation_unavailable",
       message: "本次清理确认已经失效，请重新检查所选内容。",

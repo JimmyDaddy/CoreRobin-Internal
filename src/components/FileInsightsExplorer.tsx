@@ -27,6 +27,7 @@ import {
   createCleanupDeleteLease,
   executeCleanupDelete,
   releaseCleanupDeleteLease,
+  setCleanupDeleteLeaseMode,
 } from "../api";
 import {
   applyRefreshedCleanupTargets,
@@ -155,6 +156,7 @@ export function FileInsightsExplorer({
   const [deleteDialogItems, setDeleteDialogItems] = useState<CleanupMapNode[]>([]);
   const [deleteLease, setDeleteLease] = useState<CleanupDeleteLease | null>(null);
   const [deletePreparing, setDeletePreparing] = useState(false);
+  const [deleteModeSwitching, setDeleteModeSwitching] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteCancelling, setDeleteCancelling] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState<CleanupDeleteProgress | null>(null);
@@ -209,6 +211,7 @@ export function FileInsightsExplorer({
     setDeleteDialogItems([]);
     setDeleteLease(null);
     setDeletePreparing(false);
+    setDeleteModeSwitching(false);
     setDeleteSubmitting(false);
     setDeleteCancelling(false);
     setDeleteProgress(null);
@@ -228,6 +231,7 @@ export function FileInsightsExplorer({
     if (previousLease) void releaseCleanupDeleteLease({ leaseId: previousLease.id });
     setDeleteLease(null);
     setDeletePreparing(true);
+    setDeleteModeSwitching(false);
     setDeleteError(null);
     setDeleteAcknowledged(false);
     try {
@@ -258,6 +262,33 @@ export function FileInsightsExplorer({
     }
   };
 
+  const changeDeleteMode = async (mode: CleanupDeleteMode) => {
+    if (mode === deleteMode || deleteSubmitting || deleteModeSwitching) return;
+    const previousMode = deleteMode;
+    const lease = deleteLeaseRef.current;
+    setDeleteMode(mode);
+    setDeleteAcknowledged(false);
+    setDeleteError(null);
+    if (!lease || !cleanupLeaseCanExecute(lease)) return;
+
+    const requestId = deleteRequestIdRef.current + 1;
+    deleteRequestIdRef.current = requestId;
+    setDeleteModeSwitching(true);
+    try {
+      const updatedLease = await setCleanupDeleteLeaseMode({ leaseId: lease.id, mode });
+      if (deleteRequestIdRef.current !== requestId) return;
+      deleteLeaseRef.current = updatedLease;
+      setDeleteLease(updatedLease);
+    } catch (caughtError) {
+      if (deleteRequestIdRef.current === requestId) {
+        setDeleteMode(previousMode);
+        setDeleteError(normalizeCommandError(caughtError));
+      }
+    } finally {
+      if (deleteRequestIdRef.current === requestId) setDeleteModeSwitching(false);
+    }
+  };
+
   const openProcessingDialog = async () => {
     if (!scan || selectedDuplicateFiles.length === 0) return;
     const items = selectedDuplicateFiles.map(fileInsightToCleanupNode);
@@ -267,6 +298,7 @@ export function FileInsightsExplorer({
     setDeleteLease(null);
     deleteLeaseRef.current = null;
     setDeletePreparing(false);
+    setDeleteModeSwitching(false);
     setDeleteSubmitting(false);
     setDeleteCancelling(false);
     setDeleteProgress(null);
@@ -278,7 +310,7 @@ export function FileInsightsExplorer({
 
   const confirmProcessing = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting) return;
+    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching) return;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
       targetName: t("cleanup:fileInsights.processing.actionName"),
@@ -474,18 +506,14 @@ export function FileInsightsExplorer({
           items={deleteDialogItems}
           lease={deleteLease}
           preparing={deletePreparing}
+          modeSwitching={deleteModeSwitching}
           submitting={deleteSubmitting}
           cancelling={deleteCancelling}
           progress={deleteProgress}
           error={deleteError}
           mode={deleteMode}
           deleteAcknowledged={deleteAcknowledged}
-          onModeChange={(mode) => {
-            if (mode === deleteMode || deleteSubmitting || !scan) return;
-            setDeleteMode(mode);
-            const sampledAtMs = deleteLease?.refreshedAtMs ?? scan.sampledAtMs;
-            void prepareDeleteLease(deleteDialogItems, sampledAtMs, mode);
-          }}
+          onModeChange={(mode) => void changeDeleteMode(mode)}
           onDeleteAcknowledgedChange={setDeleteAcknowledged}
           onCancel={closeDeleteDialog}
           onCancelExecution={() => void cancelProcessing()}

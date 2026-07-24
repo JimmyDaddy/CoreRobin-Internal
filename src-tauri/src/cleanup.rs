@@ -48,8 +48,8 @@ use crate::models::{ApplicationArtifactKind, ApplicationUninstallArtifact, Insta
 use crate::models::{
     ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupApplication,
     CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
-    CleanupDeleteLeaseRequest, CleanupDeleteMode, CleanupDeleteProgress,
-    CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
+    CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseRequest, CleanupDeleteMode,
+    CleanupDeleteProgress, CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
     CleanupDeleteTargetEvidence, CleanupFile, CleanupFullDiskAccessStatus, CleanupLocation,
     CleanupNode, CleanupNodeKind, CleanupPathState, CleanupProtectionReason, CleanupSafety,
     CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
@@ -84,12 +84,13 @@ const MAX_VISUAL_TREE_DEPTH: usize = 7;
 const MAX_VISUAL_NODES_PER_SCAN: usize = 2_500;
 const MAX_VISUAL_NODES_PER_LOCATION: usize = 2_500;
 const MAX_VISUAL_NODES_PER_SUBTREE: usize = 2_500;
+const MAX_EXPANDED_ROOT_CANDIDATES: usize =
+    MAX_VISUAL_NODES_PER_SUBTREE - MAX_RESTRICTED_CHILDREN - 3;
 // 0.5 degree of a full circle. Smaller siblings are still fully scanned, but
 // are consolidated so the WebView receives a useful hierarchy instead of
 // hundreds of thousands of unclickable slivers.
 const MIN_CHART_FRACTION_DENOMINATOR: u128 = 720;
 const PROGRESS_INTERVAL_ENTRIES: usize = 512;
-const CLEANUP_LEASE_TTL: Duration = Duration::from_secs(60);
 const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
@@ -368,7 +369,7 @@ impl CleanupTargetInspectionPolicy {
 #[derive(Debug)]
 struct CleanupDeleteLeaseEntry {
     id: String,
-    expires_at: Instant,
+    refreshed_at_ms: u64,
     mode: CleanupDeleteMode,
     trash_destination: Option<CleanupTrashDestination>,
     targets: Vec<CleanupDeleteTarget>,
@@ -425,6 +426,19 @@ impl CleanupDeleteController {
         if let Some(position) = self.leases.iter().position(|lease| lease.id == lease_id) {
             self.leases.remove(position);
         }
+    }
+
+    pub fn set_lease_mode(
+        &mut self,
+        request: CleanupDeleteLeaseModeRequest,
+    ) -> Result<CleanupDeleteLease, CommandError> {
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        self.set_lease_mode_for_home(request, &home)
     }
 
     #[cfg(test)]
@@ -559,14 +573,6 @@ impl CleanupDeleteController {
         request: CleanupDeleteLeaseRequest,
         home: &Path,
     ) -> Result<CleanupDeleteLease, CommandError> {
-        let now = Instant::now();
-        self.leases.retain(|lease| lease.expires_at > now);
-        if self.leases.len() >= MAX_CLEANUP_LEASES {
-            return Err(CommandError::new(
-                "cleanup_confirmation_limit",
-                "Too many cleanup confirmations are open. Close one and try again.",
-            ));
-        }
         let targets = validate_cleanup_targets(&request, home)?;
         if request.expected_targets.len() != targets.len() {
             return Err(CommandError::new(
@@ -599,18 +605,20 @@ impl CleanupDeleteController {
             .map(|(target, _)| target.display_path.clone())
             .collect::<Vec<_>>();
         let id = next_cleanup_lease_id();
-        let expires_at = now + CLEANUP_LEASE_TTL;
+        let refreshed_at_ms = now_millis();
         let executable = changed_paths.is_empty();
         if executable {
+            if self.leases.len() >= MAX_CLEANUP_LEASES {
+                self.leases.remove(0);
+            }
             self.leases.push(CleanupDeleteLeaseEntry {
                 id: id.clone(),
-                expires_at,
+                refreshed_at_ms,
                 mode: request.mode,
                 trash_destination,
                 targets: targets.clone(),
             });
         }
-        let refreshed_at_ms = now_millis();
         Ok(CleanupDeleteLease {
             id,
             mode: request.mode,
@@ -622,8 +630,56 @@ impl CleanupDeleteController {
             refreshed_targets,
             executable,
             refreshed_at_ms,
-            expires_at_ms: now_millis().saturating_add(CLEANUP_LEASE_TTL.as_millis() as u64),
         })
+    }
+
+    fn set_lease_mode_for_home(
+        &mut self,
+        request: CleanupDeleteLeaseModeRequest,
+        home: &Path,
+    ) -> Result<CleanupDeleteLease, CommandError> {
+        let position = self
+            .leases
+            .iter()
+            .position(|lease| lease.id == request.lease_id)
+            .ok_or_else(|| {
+                CommandError::new(
+                    "cleanup_confirmation_unavailable",
+                    "This cleanup confirmation was already used, cancelled, or closed.",
+                )
+            })?;
+        if self.leases[position].mode == request.mode {
+            return Ok(cleanup_delete_lease_snapshot(&self.leases[position]));
+        }
+
+        let trash_destination = if request.mode == CleanupDeleteMode::Trash {
+            let canonical_home = home.canonicalize().map_err(|error| {
+                CommandError::new(
+                    "home_directory_unavailable",
+                    format!("CoreRobin could not verify the home directory: {error}"),
+                )
+            })?;
+            let trash_roots = trash_paths(&canonical_home);
+            if self.leases[position].targets.iter().any(|target| {
+                trash_roots.iter().any(|trash_root| {
+                    target.canonical_path.starts_with(trash_root)
+                        || trash_root.starts_with(&target.canonical_path)
+                })
+            }) {
+                return Err(CommandError::new(
+                    "cleanup_target_conflicts_with_trash",
+                    "Items that contain or are already inside the system Trash can only be deleted permanently.",
+                ));
+            }
+            Some(prepare_cleanup_trash_destination(&canonical_home)?)
+        } else {
+            None
+        };
+
+        let lease = &mut self.leases[position];
+        lease.mode = request.mode;
+        lease.trash_destination = trash_destination;
+        Ok(cleanup_delete_lease_snapshot(lease))
     }
 
     #[cfg(test)]
@@ -674,17 +730,11 @@ impl CleanupDeleteController {
             .ok_or_else(|| {
                 CommandError::new(
                     "cleanup_confirmation_unavailable",
-                    "This cleanup confirmation was already used, cancelled, or expired.",
+                    "This cleanup confirmation was already used, cancelled, or closed.",
                 )
             })?;
         // Consume first so every execution attempt is single-use, including failures.
         let lease = self.leases.remove(position);
-        if lease.expires_at <= Instant::now() {
-            return Err(CommandError::new(
-                "cleanup_confirmation_expired",
-                "This cleanup confirmation expired. Review the current files and confirm again.",
-            ));
-        }
         for target in &lease.targets {
             revalidate_cleanup_target(target)?;
         }
@@ -693,6 +743,22 @@ impl CleanupDeleteController {
             trash_destination: lease.trash_destination,
             targets: lease.targets,
         })
+    }
+}
+
+fn cleanup_delete_lease_snapshot(lease: &CleanupDeleteLeaseEntry) -> CleanupDeleteLease {
+    CleanupDeleteLease {
+        id: lease.id.clone(),
+        mode: lease.mode,
+        paths: lease
+            .targets
+            .iter()
+            .map(|target| target.display_path.clone())
+            .collect(),
+        changed_paths: Vec::new(),
+        refreshed_targets: lease.targets.iter().map(cleanup_target_evidence).collect(),
+        executable: true,
+        refreshed_at_ms: lease.refreshed_at_ms,
     }
 }
 
@@ -1265,6 +1331,15 @@ fn scan_cleanup_subtree_at(
     } else {
         CleanupSafety::Review
     };
+    let layout = if request.expand_smaller_objects {
+        CleanupNodeLayout {
+            remaining_depth: 1,
+            max_children: MAX_EXPANDED_ROOT_CANDIDATES,
+            consolidate_small_children: false,
+        }
+    } else {
+        CleanupNodeLayout::standard(MAX_VISUAL_TREE_DEPTH)
+    };
     let mut node = scan_path(
         &path,
         false,
@@ -1272,7 +1347,7 @@ fn scan_cleanup_subtree_at(
         subtree_safety,
         &mut context,
         &mut seen_files,
-        MAX_VISUAL_TREE_DEPTH,
+        layout,
     )?;
     let mut remaining = MAX_VISUAL_NODES_PER_SUBTREE;
     prune_cleanup_node(&mut node, &mut remaining);
@@ -2576,6 +2651,8 @@ struct LocationSummary {
 
 #[derive(Default)]
 struct ChildAccumulator {
+    max_candidates: usize,
+    consolidate_small_candidates: bool,
     candidates: Vec<CleanupNode>,
     restricted: Vec<CleanupNode>,
     total_logical_size_bytes: u64,
@@ -2586,6 +2663,23 @@ struct ChildAccumulator {
     omitted_item_count: usize,
     omitted_restricted_count: usize,
     has_children: bool,
+}
+
+#[derive(Clone, Copy)]
+struct CleanupNodeLayout {
+    remaining_depth: usize,
+    max_children: usize,
+    consolidate_small_children: bool,
+}
+
+impl CleanupNodeLayout {
+    fn standard(remaining_depth: usize) -> Self {
+        Self {
+            remaining_depth,
+            max_children: MAX_CHART_CHILDREN,
+            consolidate_small_children: true,
+        }
+    }
 }
 
 struct ScanContext<'a> {
@@ -2784,7 +2878,7 @@ fn scan_filesystem(
             CleanupSafety::Review,
             &mut context,
             &mut seen_files,
-            MAX_VISUAL_TREE_DEPTH,
+            CleanupNodeLayout::standard(MAX_VISUAL_TREE_DEPTH),
         )?
     };
     let mut remaining = MAX_VISUAL_NODES_PER_SCAN;
@@ -3153,7 +3247,7 @@ fn scan_path(
     safety: CleanupSafety,
     context: &mut ScanContext<'_>,
     seen_files: &mut HashSet<FileIdentity>,
-    max_depth: usize,
+    layout: CleanupNodeLayout,
 ) -> Result<CleanupNode, CommandError> {
     scan_directory(
         root,
@@ -3162,7 +3256,7 @@ fn scan_path(
         safety,
         context,
         seen_files,
-        max_depth,
+        layout,
     )
 }
 
@@ -3180,7 +3274,7 @@ fn scan_directory(
     safety: CleanupSafety,
     context: &mut ScanContext<'_>,
     seen_files: &mut HashSet<FileIdentity>,
-    remaining_depth: usize,
+    layout: CleanupNodeLayout,
 ) -> Result<CleanupNode, CommandError> {
     let directory_safety = context.safety_for_path(directory, safety);
     if is_cloud_backed_cleanup_root(directory, context.home) {
@@ -3193,7 +3287,7 @@ fn scan_directory(
         context.capture_location_root(directory, &node);
         return Ok(node);
     }
-    if remaining_depth == 0 {
+    if layout.remaining_depth == 0 {
         return scan_directory_summary(
             directory,
             collect_large_files,
@@ -3216,7 +3310,8 @@ fn scan_directory(
             return Ok(node);
         }
     };
-    let mut children = ChildAccumulator::default();
+    let mut children =
+        ChildAccumulator::new(layout.max_children, layout.consolidate_small_children);
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count += 1;
@@ -3270,7 +3365,7 @@ fn scan_directory(
                 directory_safety,
                 context,
                 seen_files,
-                remaining_depth - 1,
+                CleanupNodeLayout::standard(layout.remaining_depth - 1),
             )?);
             continue;
         }
@@ -3573,6 +3668,14 @@ fn ensure_scan_active(cancelled: &AtomicBool) -> Result<(), CommandError> {
 }
 
 impl ChildAccumulator {
+    fn new(max_candidates: usize, consolidate_small_candidates: bool) -> Self {
+        Self {
+            max_candidates,
+            consolidate_small_candidates,
+            ..Self::default()
+        }
+    }
+
     fn push(&mut self, node: CleanupNode) {
         self.has_children = true;
         self.total_logical_size_bytes = self
@@ -3593,7 +3696,7 @@ impl ChildAccumulator {
             }
             return;
         }
-        if self.candidates.len() < MAX_CHART_CHILDREN {
+        if self.candidates.len() < self.max_candidates {
             self.candidates.push(node);
             return;
         }
@@ -3637,7 +3740,8 @@ impl ChildAccumulator {
         });
         let mut visible = Vec::with_capacity(self.candidates.len() + self.restricted.len() + 2);
         for (index, node) in std::mem::take(&mut self.candidates).into_iter().enumerate() {
-            let too_small = self.total_allocated_size_bytes > 0
+            let too_small = self.consolidate_small_candidates
+                && self.total_allocated_size_bytes > 0
                 && u128::from(node.allocated_size_bytes)
                     .saturating_mul(MIN_CHART_FRACTION_DENOMINATOR)
                     < u128::from(self.total_allocated_size_bytes);
@@ -3662,9 +3766,9 @@ impl ChildAccumulator {
                 item_count: self.omitted_item_count,
                 safety,
                 kind: CleanupNodeKind::Aggregate,
-                deletion_protected: true,
-                protection_reason: Some(CleanupProtectionReason::Aggregate),
-                has_children: false,
+                deletion_protected: false,
+                protection_reason: None,
+                has_children: true,
                 children: Vec::new(),
             });
         }
@@ -4509,6 +4613,7 @@ mod tests {
                 request_id: "system-subtree".to_owned(),
                 path: shared.to_string_lossy().into_owned(),
                 safety: CleanupSafety::Reclaimable,
+                expand_smaller_objects: false,
             },
             &home,
             &disk_root,
@@ -4585,7 +4690,7 @@ mod tests {
             &root,
             vec![LocationDefinition {
                 kind: CleanupLocationKind::Downloads,
-                paths: vec![downloads],
+                paths: vec![downloads.clone()],
                 safety: CleanupSafety::Review,
             }],
         );
@@ -4599,6 +4704,14 @@ mod tests {
                 .iter()
                 .any(|node| node.kind == CleanupNodeKind::Aggregate),
         );
+        let grouped = scanned_root
+            .children
+            .iter()
+            .find(|node| node.kind == CleanupNodeKind::Aggregate)
+            .unwrap();
+        assert!(!grouped.deletion_protected);
+        assert_eq!(grouped.protection_reason, None);
+        assert!(grouped.has_children);
         assert_eq!(
             scanned_root
                 .children
@@ -4606,6 +4719,26 @@ mod tests {
                 .map(|node| node.allocated_size_bytes)
                 .sum::<u64>(),
             scanned_root.allocated_size_bytes,
+        );
+
+        let expanded = scan_cleanup_subtree_at(
+            CleanupSubtreeRequest {
+                request_id: "expand-smaller-objects".to_owned(),
+                path: downloads.to_string_lossy().into_owned(),
+                safety: CleanupSafety::Review,
+                expand_smaller_objects: true,
+            },
+            &root,
+            &root,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        assert_eq!(expanded.children.len(), MAX_CHART_CHILDREN + 12);
+        assert!(
+            expanded
+                .children
+                .iter()
+                .all(|node| node.kind != CleanupNodeKind::Aggregate && node.path.is_some()),
         );
         fs::remove_dir_all(root).unwrap();
     }
@@ -4841,6 +4974,130 @@ mod tests {
             })
             .unwrap_err();
         assert_eq!(error.code, "cleanup_confirmation_unavailable");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_confirmation_capacity_evicts_the_oldest_stale_lease() {
+        let root = test_root("cleanup-lease-capacity");
+        let target = root.join("Downloads/archive.zip");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, b"archive").unwrap();
+        let display = target.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+        let mut lease_ids = Vec::new();
+
+        for _ in 0..=MAX_CLEANUP_LEASES {
+            let lease = controller
+                .create_lease_for_home(
+                    cleanup_delete_request(&root, vec![display.clone()], u64::MAX),
+                    &root,
+                )
+                .unwrap();
+            lease_ids.push(lease.id);
+        }
+
+        assert_eq!(controller.leases.len(), MAX_CLEANUP_LEASES);
+        let oldest = controller
+            .execute(CleanupDeleteExecutionRequest {
+                lease_id: lease_ids.remove(0),
+            })
+            .unwrap_err();
+        assert_eq!(oldest.code, "cleanup_confirmation_unavailable");
+        assert!(
+            controller
+                .set_lease_mode_for_home(
+                    CleanupDeleteLeaseModeRequest {
+                        lease_id: lease_ids.pop().unwrap(),
+                        mode: CleanupDeleteMode::Trash,
+                    },
+                    &root,
+                )
+                .is_ok(),
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_mode_switch_reuses_the_validated_targets() {
+        let root = test_root("switch-delete-mode");
+        let target = root.join("Downloads/archive.zip");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, b"archive").unwrap();
+        let display = target.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(&root, vec![display], u64::MAX),
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+
+        fs::write(&target, b"changed after validation").unwrap();
+        let switched = controller
+            .set_lease_mode_for_home(
+                CleanupDeleteLeaseModeRequest {
+                    lease_id: lease.id.clone(),
+                    mode: CleanupDeleteMode::Trash,
+                },
+                &root,
+            )
+            .unwrap();
+
+        assert_eq!(switched.id, lease.id);
+        assert_eq!(switched.mode, CleanupDeleteMode::Trash);
+        assert_eq!(switched.refreshed_at_ms, lease.refreshed_at_ms);
+        assert_eq!(switched.refreshed_targets, lease.refreshed_targets);
+
+        let error = controller
+            .execute(CleanupDeleteExecutionRequest {
+                lease_id: switched.id,
+            })
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_target_changed");
+        assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn cleanup_delete_mode_switch_keeps_trash_targets_permanent_only() {
+        let root = test_root("switch-trash-target-mode");
+        let trash = trash_paths(&root)
+            .into_iter()
+            .next()
+            .expect("Unix platforms expose a cleanup Trash root");
+        let target = trash.join("old.txt");
+        fs::create_dir_all(&trash).unwrap();
+        fs::write(&target, b"old").unwrap();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![target.to_string_lossy().into_owned()],
+                    u64::MAX,
+                ),
+                &root,
+            )
+            .unwrap();
+        assert_eq!(lease.mode, CleanupDeleteMode::Permanent);
+
+        let error = controller
+            .set_lease_mode_for_home(
+                CleanupDeleteLeaseModeRequest {
+                    lease_id: lease.id,
+                    mode: CleanupDeleteMode::Trash,
+                },
+                &root,
+            )
+            .unwrap_err();
+
+        assert_eq!(error.code, "cleanup_target_conflicts_with_trash");
+        assert!(target.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
