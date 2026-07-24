@@ -11,6 +11,7 @@ const cleanupApi = vi.hoisted(() => ({
   loadPersistedFileInsightsScan: vi.fn().mockResolvedValue(null),
   openCleanupFullDiskAccessSettings: vi.fn(),
   revealCleanupApplicationBundle: vi.fn(),
+  setCleanupDeleteLeaseMode: vi.fn(),
 }));
 
 vi.mock("./api", () => cleanupApi);

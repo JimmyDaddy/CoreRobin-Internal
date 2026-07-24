@@ -65,7 +65,6 @@ describe("cleanup deletion freshness", () => {
       refreshedTargets: [],
       executable: false,
       refreshedAtMs: 200,
-      expiresAtMs: 300,
     })).toBe(false);
   });
 });

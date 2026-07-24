@@ -444,6 +444,8 @@ pub struct CleanupSubtreeRequest {
     pub request_id: String,
     pub path: String,
     pub safety: CleanupSafety,
+    #[serde(default)]
+    pub expand_smaller_objects: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -527,7 +529,13 @@ pub struct CleanupDeleteLease {
     pub refreshed_targets: Vec<CleanupDeleteTargetEvidence>,
     pub executable: bool,
     pub refreshed_at_ms: u64,
-    pub expires_at_ms: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDeleteLeaseModeRequest {
+    pub lease_id: String,
+    pub mode: CleanupDeleteMode,
 }
 
 #[derive(Clone, Debug, Deserialize)]

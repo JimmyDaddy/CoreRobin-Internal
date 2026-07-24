@@ -25,6 +25,7 @@ import {
   getInstalledApplications,
   releaseCleanupDeleteLease,
   revealPath,
+  setCleanupDeleteLeaseMode,
 } from "../api";
 import type { CleanupMapNode } from "../cleanupMap";
 import {
@@ -99,6 +100,7 @@ export function ApplicationUninstallAssistant({
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const [deleteMode, setDeleteMode] = useState<CleanupDeleteMode>("trash");
   const [deletePreparing, setDeletePreparing] = useState(false);
+  const [deleteModeSwitching, setDeleteModeSwitching] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteCancelling, setDeleteCancelling] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState<CleanupDeleteProgress | null>(null);
@@ -210,6 +212,7 @@ export function ApplicationUninstallAssistant({
     setDialogItems([]);
     setDeleteLease(null);
     setDeletePreparing(false);
+    setDeleteModeSwitching(false);
     setDeleteSubmitting(false);
     setDeleteCancelling(false);
     setDeleteProgress(null);
@@ -230,6 +233,7 @@ export function ApplicationUninstallAssistant({
     if (previousLease) void releaseCleanupDeleteLease({ leaseId: previousLease.id });
     setDeleteLease(null);
     setDeletePreparing(true);
+    setDeleteModeSwitching(false);
     setDeleteError(null);
     setDeleteAcknowledged(false);
     try {
@@ -284,6 +288,7 @@ export function ApplicationUninstallAssistant({
     setDialogOpen(true);
     setDeleteLease(null);
     deleteLeaseRef.current = null;
+    setDeleteModeSwitching(false);
     setDeleteProgress(null);
     setDeleteError(null);
     setDeleteAcknowledged(false);
@@ -292,7 +297,7 @@ export function ApplicationUninstallAssistant({
 
   const confirmUninstall = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || !cleanupLeaseCanExecute(lease) || lease.mode !== deleteMode || !deleteAcknowledged || deleteSubmitting || !plan) return;
+    if (!lease || !cleanupLeaseCanExecute(lease) || lease.mode !== deleteMode || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching || !plan) return;
     const applicationName = plan.application.name;
     const applicationPath = plan.application.path;
     const completedMode = deleteMode;
@@ -378,9 +383,31 @@ export function ApplicationUninstallAssistant({
     }
   };
 
-  const changeDeleteMode = (mode: CleanupDeleteMode) => {
+  const changeDeleteMode = async (mode: CleanupDeleteMode) => {
+    if (mode === deleteMode || deleteSubmitting || deleteModeSwitching) return;
+    const previousMode = deleteMode;
+    const lease = deleteLeaseRef.current;
     setDeleteMode(mode);
-    void prepareDeleteLease(dialogItems, latestEvidenceAtRef.current, mode);
+    setDeleteAcknowledged(false);
+    setDeleteError(null);
+    if (!lease || !cleanupLeaseCanExecute(lease)) return;
+
+    const requestId = deleteRequestIdRef.current + 1;
+    deleteRequestIdRef.current = requestId;
+    setDeleteModeSwitching(true);
+    try {
+      const updatedLease = await setCleanupDeleteLeaseMode({ leaseId: lease.id, mode });
+      if (deleteRequestIdRef.current !== requestId) return;
+      deleteLeaseRef.current = updatedLease;
+      setDeleteLease(updatedLease);
+    } catch (caughtError) {
+      if (deleteRequestIdRef.current === requestId) {
+        setDeleteMode(previousMode);
+        setDeleteError(normalizeCommandError(caughtError));
+      }
+    } finally {
+      if (deleteRequestIdRef.current === requestId) setDeleteModeSwitching(false);
+    }
   };
 
   const selectedApplication = inventory?.applications.find((application) => application.path === selectedPath) ?? null;
@@ -610,13 +637,14 @@ export function ApplicationUninstallAssistant({
           items={dialogItems}
           lease={deleteLease}
           preparing={deletePreparing}
+          modeSwitching={deleteModeSwitching}
           submitting={deleteSubmitting}
           cancelling={deleteCancelling}
           progress={deleteProgress}
           error={deleteError}
           mode={deleteMode}
           deleteAcknowledged={deleteAcknowledged}
-          onModeChange={changeDeleteMode}
+          onModeChange={(mode) => void changeDeleteMode(mode)}
           onDeleteAcknowledgedChange={setDeleteAcknowledged}
           onCancel={closeDeleteDialog}
           onCancelExecution={() => void cancelUninstall()}

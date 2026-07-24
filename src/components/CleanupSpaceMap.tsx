@@ -10,6 +10,7 @@ import {
   getCleanupPathState,
   getCleanupSubtree,
   releaseCleanupDeleteLease,
+  setCleanupDeleteLeaseMode,
 } from "../api";
 import { cleanupPathChanged } from "../cleanupFreshness";
 import {
@@ -161,6 +162,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [deleteDialogItems, setDeleteDialogItems] = useState<CleanupMapNode[]>([]);
   const [deleteLease, setDeleteLease] = useState<CleanupDeleteLease | null>(null);
   const [deletePreparing, setDeletePreparing] = useState(false);
+  const [deleteModeSwitching, setDeleteModeSwitching] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteCancelling, setDeleteCancelling] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState<CleanupDeleteProgress | null>(null);
@@ -358,11 +360,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     }
     setSubtreeError(null);
     setSelectedId(node.id);
-    if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
+    if (node.kind !== "aggregate" && (node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
       navigateTo(node);
       return;
     }
-    if (node.kind !== "folder" || !node.hasChildren || !node.path) return;
+    const expandingSmallerObjects = node.kind === "aggregate";
+    const subtreeRoot = expandingSmallerObjects ? focus : node;
+    if (
+      !subtreeRoot.path ||
+      (!expandingSmallerObjects && (node.kind !== "folder" || !node.hasChildren))
+    ) return;
 
     const requestId = subtreeRequestIdRef.current + 1;
     subtreeRequestIdRef.current = requestId;
@@ -373,14 +380,15 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     try {
       const subtree = await getCleanupSubtree({
         requestId: backendRequestId,
-        path: node.path,
-        safety: node.safety,
+        path: subtreeRoot.path,
+        safety: subtreeRoot.safety,
+        expandSmallerObjects: expandingSmallerObjects,
       });
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
       setLoadedSubtrees((current) => {
         const next = new Map(current);
-        next.set(node.id, loaded);
+        next.set(subtreeRoot.id, loaded);
         return next;
       });
       navigateTo(loaded);
@@ -433,6 +441,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const beginDrag = (event: ReactPointerEvent<HTMLElement>, node: CleanupMapNode) => {
     if (
       event.button !== 0 ||
+      node.kind === "aggregate" ||
       isCleanupNodeCoveredByPlan(plannedIds, node.id, parents)
     ) return;
     const protectionReason = cleanupNodeProtection(node);
@@ -534,6 +543,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setDeleteDialogItems([]);
     setDeleteLease(null);
     setDeletePreparing(false);
+    setDeleteModeSwitching(false);
     setDeleteSubmitting(false);
     setDeleteCancelling(false);
     setDeleteProgress(null);
@@ -553,6 +563,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     if (previousLease) void releaseCleanupDeleteLease({ leaseId: previousLease.id });
     setDeleteLease(null);
     setDeletePreparing(true);
+    setDeleteModeSwitching(false);
     setDeleteError(null);
     setDeleteAcknowledged(false);
     try {
@@ -583,6 +594,33 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     }
   };
 
+  const changeDeleteMode = async (mode: CleanupDeleteMode) => {
+    if (mode === deleteMode || deleteSubmitting || deleteModeSwitching) return;
+    const previousMode = deleteMode;
+    const lease = deleteLeaseRef.current;
+    setDeleteMode(mode);
+    setDeleteAcknowledged(false);
+    setDeleteError(null);
+    if (!lease || !cleanupLeaseCanExecute(lease)) return;
+
+    const requestId = deleteRequestIdRef.current + 1;
+    deleteRequestIdRef.current = requestId;
+    setDeleteModeSwitching(true);
+    try {
+      const updatedLease = await setCleanupDeleteLeaseMode({ leaseId: lease.id, mode });
+      if (deleteRequestIdRef.current !== requestId) return;
+      deleteLeaseRef.current = updatedLease;
+      setDeleteLease(updatedLease);
+    } catch (caughtError) {
+      if (deleteRequestIdRef.current === requestId) {
+        setDeleteMode(previousMode);
+        setDeleteError(normalizeCommandError(caughtError));
+      }
+    } finally {
+      if (deleteRequestIdRef.current === requestId) setDeleteModeSwitching(false);
+    }
+  };
+
   const openDeleteDialog = async () => {
     if (planned.length === 0 || !snapshot.deletionAvailable) return;
     const items = [...planned];
@@ -595,6 +633,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setDeleteLease(null);
     deleteLeaseRef.current = null;
     setDeletePreparing(false);
+    setDeleteModeSwitching(false);
     setDeleteSubmitting(false);
     setDeleteCancelling(false);
     setDeleteProgress(null);
@@ -606,7 +645,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
   const confirmCleanup = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting) return;
+    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching) return;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
       targetCount: deleteDialogItems.length,
@@ -911,7 +950,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               {directChildren.map((child) => {
                 const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
                 const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
-                const protectionReason = cleanupNodeProtection(child);
+                const expandableAggregate = child.kind === "aggregate" && focus.path !== null;
+                const protectionReason = expandableAggregate ? null : cleanupNodeProtection(child);
                 const protectedNode = protectionReason !== null;
                 const protectedDragSource = dragState?.dragging && dragState.nodeId === child.id && dragState.blocked;
                 return (
@@ -923,8 +963,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       aria-current={selected.id === child.id ? "true" : undefined}
                       onMouseEnter={() => setSelectedId(child.id)}
                       onFocus={() => setSelectedId(child.id)}
-                      data-draggable={!collected ? "true" : undefined}
-                      data-drag-policy={protectedNode ? "protected" : "collect"}
+                      data-draggable={!collected && child.kind !== "aggregate" ? "true" : undefined}
+                      data-drag-policy={expandableAggregate ? "expand" : protectedNode ? "protected" : "collect"}
                       data-protection-reason={protectionReason ?? undefined}
                       onPointerDown={(event) => beginDrag(event, child)}
                       onPointerCancel={(event) => cancelDragAt(event.pointerId)}
@@ -971,6 +1011,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               ? t("cleanup:map.basket.collectedHint")
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
+                : selected.kind === "aggregate" && focus.path
+                  ? t("cleanup:map.smallerObjectsHint")
                 : isTrashRootPath(selected.path)
                   ? t("cleanup:map.trashRootProtected")
                   : canCollectCleanupNode(selected)
@@ -998,18 +1040,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           items={deleteDialogItems}
           lease={deleteLease}
           preparing={deletePreparing}
+          modeSwitching={deleteModeSwitching}
           submitting={deleteSubmitting}
           cancelling={deleteCancelling}
           progress={deleteProgress}
           error={deleteError}
           mode={deleteMode}
           deleteAcknowledged={deleteAcknowledged}
-          onModeChange={(mode) => {
-            if (mode === deleteMode || deleteSubmitting) return;
-            setDeleteMode(mode);
-            const sampledAtMs = deleteLease?.refreshedAtMs ?? snapshot.sampledAtMs;
-            void prepareDeleteLease(deleteDialogItems, sampledAtMs, mode);
-          }}
+          onModeChange={(mode) => void changeDeleteMode(mode)}
           onDeleteAcknowledgedChange={setDeleteAcknowledged}
           onCancel={closeDeleteDialog}
           onCancelExecution={() => void cancelCleanup()}

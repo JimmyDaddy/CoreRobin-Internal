@@ -48,11 +48,11 @@ use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, He
 use models::{
     ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
-    CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest, CleanupDeleteProgress,
-    CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess, CleanupScanProgress,
-    CleanupSubtreeRequest, FileInsightsProgress, FileInsightsScan, GpuEnergySnapshot,
-    NetworkConnectionsSnapshot, NetworkHostLookup, NetworkHostLookupRequest, NetworkQualityResult,
-    ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest,
+    CleanupDeleteProgress, CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess,
+    CleanupScanProgress, CleanupSubtreeRequest, FileInsightsProgress, FileInsightsScan,
+    GpuEnergySnapshot, NetworkConnectionsSnapshot, NetworkHostLookup, NetworkHostLookupRequest,
+    NetworkQualityResult, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
     ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
     ProcessDetailRequest, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
     StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
@@ -803,6 +803,20 @@ async fn release_cleanup_delete_lease(
             controller.release_lease(&request.lease_id);
             Ok(())
         },
+    )
+    .await
+}
+
+#[tauri::command]
+async fn set_cleanup_delete_lease_mode(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: CleanupDeleteLeaseModeRequest,
+) -> Result<CleanupDeleteLease, CommandError> {
+    require_main_window(&window)?;
+    with_cleanup_delete_controller(
+        Arc::clone(&state.cleanup_delete_controller),
+        move |controller| controller.set_lease_mode(request),
     )
     .await
 }
@@ -1637,6 +1651,7 @@ pub fn run() {
             get_application_uninstall_plan,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
+            set_cleanup_delete_lease_mode,
             execute_cleanup_delete,
             cancel_cleanup_delete,
             complete_startup,
@@ -1788,6 +1803,7 @@ mod security_boundary_tests {
         "get_application_uninstall_plan",
         "create_cleanup_delete_lease",
         "release_cleanup_delete_lease",
+        "set_cleanup_delete_lease_mode",
         "execute_cleanup_delete",
         "cancel_cleanup_delete",
         "publish_health_state",

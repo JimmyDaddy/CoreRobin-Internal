@@ -21,6 +21,7 @@ const cleanupApi = vi.hoisted(() => ({
   revealCleanupApplicationBundle: vi.fn(),
   savePersistedFileInsightsScan: vi.fn().mockResolvedValue(undefined),
   scanFileInsights: vi.fn(),
+  setCleanupDeleteLeaseMode: vi.fn(),
 }));
 
 vi.mock("./api", () => cleanupApi);
@@ -42,7 +43,20 @@ beforeEach(async () => {
     refreshedTargets: request.expectedTargets,
     executable: true,
     refreshedAtMs: RESULT.sampledAtMs + 1,
-    expiresAtMs: RESULT.sampledAtMs + 30_000,
+  }));
+  cleanupApi.setCleanupDeleteLeaseMode.mockImplementation(async ({ leaseId, mode }) => ({
+    id: leaseId,
+    mode,
+    paths: ["/Users/demo/Downloads/archive.zip"],
+    changedPaths: [],
+    refreshedTargets: [{
+      path: "/Users/demo/Downloads/archive.zip",
+      logicalSizeBytes: 284_000_000,
+      allocatedSizeBytes: 284_000_000,
+      itemCount: 1,
+    }],
+    executable: true,
+    refreshedAtMs: RESULT.sampledAtMs + 1,
   }));
   cleanupApi.executeCleanupDelete.mockResolvedValue({
     deleted: [{ path: "/Users/demo/Downloads/archive.zip", deletedBytes: 284_000_000 }],
@@ -246,6 +260,40 @@ describe("file insights workspace", () => {
     expect(onDeletionApplied).toHaveBeenCalledWith([
       expect.objectContaining({ path: "/Users/demo/Downloads/archive.zip" }),
     ], false);
+  });
+
+  it("switches deletion modes without rebuilding or revalidating the lease", async () => {
+    render(
+      <FileInsightsExplorer
+        scan={RESULT}
+        progress={null}
+        loading={false}
+        error={null}
+        onRun={() => undefined}
+        onCancel={() => undefined}
+        onBack={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "处理本组副本" }));
+    fireEvent.click(screen.getByRole("radio", { name: "将 archive copy.zip 设为保留项" }));
+    fireEvent.click(screen.getByRole("button", { name: "检查处理方式" }));
+    await waitFor(() => expect(cleanupApi.createCleanupDeleteLease).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("radio", { name: /直接删除/ }));
+    await waitFor(() => expect(cleanupApi.setCleanupDeleteLeaseMode).toHaveBeenLastCalledWith({
+      leaseId: "duplicate-lease",
+      mode: "permanent",
+    }));
+    fireEvent.click(screen.getByRole("radio", { name: /移到废纸篓/ }));
+    await waitFor(() => expect(cleanupApi.setCleanupDeleteLeaseMode).toHaveBeenLastCalledWith({
+      leaseId: "duplicate-lease",
+      mode: "trash",
+    }));
+
+    expect(cleanupApi.createCleanupDeleteLease).toHaveBeenCalledOnce();
+    expect(cleanupApi.releaseCleanupDeleteLease).not.toHaveBeenCalled();
+    expect(screen.queryByText("正在重新核对路径与文件状态…")).toBeNull();
   });
 });
 

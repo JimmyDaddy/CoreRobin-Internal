@@ -16,6 +16,7 @@ import {
   getMockSnapshot,
   releaseMockProcessControlLease,
   releaseMockCleanupDeleteLease,
+  setMockCleanupDeleteLeaseMode,
   releaseMockStartupManagementLease,
 } from "./mockData";
 import type {
@@ -31,6 +32,7 @@ import type {
   CleanupSubtreeRequest,
   CleanupDeleteExecutionRequest,
   CleanupDeleteLease,
+  CleanupDeleteLeaseModeRequest,
   CleanupDeleteLeaseReleaseRequest,
   CleanupDeleteLeaseRequest,
   CleanupDeleteProgress,
@@ -547,6 +549,17 @@ export async function releaseCleanupDeleteLease(
     return;
   }
   return invoke<void>("release_cleanup_delete_lease", { request });
+}
+
+export async function setCleanupDeleteLeaseMode(
+  request: CleanupDeleteLeaseModeRequest,
+): Promise<CleanupDeleteLease> {
+  if (canUseDevelopmentMock()) {
+    const lease = setMockCleanupDeleteLeaseMode(request);
+    mockCleanupDeleteModes.set(lease.id, lease.mode);
+    return lease;
+  }
+  return invoke<CleanupDeleteLease>("set_cleanup_delete_lease_mode", { request });
 }
 
 export async function executeCleanupDelete(

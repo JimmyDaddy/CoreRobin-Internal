@@ -15,6 +15,7 @@ const cleanupApi = vi.hoisted(() => ({
   getCleanupPathState: vi.fn(),
   getCleanupSubtree: vi.fn(),
   releaseCleanupDeleteLease: vi.fn(),
+  setCleanupDeleteLeaseMode: vi.fn(),
 }));
 
 vi.mock("./api", () => cleanupApi);
@@ -163,6 +164,40 @@ describe("cleanup subtree cancellation", () => {
     expect(slot?.className).not.toContain("is-empty");
     expect(slot?.querySelector(".cleanup-map__path-actions")).not.toBeNull();
   });
+
+  it("expands grouped smaller objects into concrete cleanable entries", async () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.root.path = "~/Downloads";
+    currentSnapshot.root.children = [aggregate("smaller")];
+    cleanupApi.getCleanupSubtree.mockResolvedValue({
+      ...currentSnapshot.root,
+      children: [file("expanded", "~/Downloads/expanded.bin")],
+    });
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    const grouped = screen.getByRole("button", { name: /Smaller objects/ });
+    expect(grouped.dataset.dragPolicy).toBe("expand");
+    expect(grouped.textContent).not.toContain("Protected");
+    expect(grouped.querySelector(".lucide-lock-keyhole")).toBeNull();
+
+    fireEvent.click(grouped);
+
+    await waitFor(() => expect(cleanupApi.getCleanupSubtree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "~/Downloads",
+        safety: "review",
+        expandSmallerObjects: true,
+      }),
+    ));
+    const concrete = await screen.findByRole("button", { name: /Visible file/ });
+    expect(concrete.dataset.dragPolicy).toBe("collect");
+  });
 });
 
 function folder(id: string, path: string, hasChildren = true): CleanupNode {
@@ -183,12 +218,12 @@ function folder(id: string, path: string, hasChildren = true): CleanupNode {
 
 function aggregate(id: string): CleanupNode {
   return {
-    ...folder(id, "", false),
+    ...folder(id, "", true),
     name: "Smaller objects",
     path: null,
     kind: "aggregate",
-    deletionProtected: true,
-    protectionReason: "aggregate",
+    deletionProtected: false,
+    protectionReason: null,
   };
 }
 

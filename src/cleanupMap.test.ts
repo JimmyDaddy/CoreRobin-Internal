@@ -111,6 +111,8 @@ describe("cleanup map", () => {
 
     expect(arcs).toHaveLength(50);
     expect(arcs[arcs.length - 1]?.node.kind).toBe("aggregate");
+    expect(arcs[arcs.length - 1]?.node.deletionProtected).toBe(false);
+    expect(arcs[arcs.length - 1]?.node.hasChildren).toBe(true);
     expect(arcs.reduce((total, arc) => total + arc.node.allocatedSizeBytes, 0)).toBe(1_000);
   });
 

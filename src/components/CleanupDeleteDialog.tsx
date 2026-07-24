@@ -13,6 +13,7 @@ interface CleanupDeleteDialogProps {
   items: readonly CleanupMapNode[];
   lease: CleanupDeleteLease | null;
   preparing: boolean;
+  modeSwitching: boolean;
   submitting: boolean;
   cancelling: boolean;
   progress: CleanupDeleteProgress | null;
@@ -34,6 +35,7 @@ export function CleanupDeleteDialog({
   items,
   lease,
   preparing,
+  modeSwitching,
   submitting,
   cancelling,
   progress,
@@ -52,7 +54,7 @@ export function CleanupDeleteDialog({
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
-  const canConfirm = cleanupLeaseCanExecute(lease) && lease?.mode === mode && !preparing && !submitting && deleteAcknowledged;
+  const canConfirm = cleanupLeaseCanExecute(lease) && lease?.mode === mode && !preparing && !modeSwitching && !submitting && deleteAcknowledged;
   const currentItem = progress?.currentPath
     ? items.find((item) => item.path === progress.currentPath)
     : null;
@@ -80,6 +82,7 @@ export function CleanupDeleteDialog({
         className={`cleanup-delete-dialog is-${mode}`}
         role="alertdialog"
         aria-modal="true"
+        aria-busy={preparing || modeSwitching || submitting}
         aria-labelledby="cleanup-delete-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -104,7 +107,7 @@ export function CleanupDeleteDialog({
               type="button"
               role="radio"
               aria-checked={mode === "trash"}
-              disabled={preparing}
+              disabled={preparing || modeSwitching}
               onClick={() => onModeChange("trash")}
             >
               <span><ArchiveRestore size={17} /></span>
@@ -116,7 +119,7 @@ export function CleanupDeleteDialog({
               type="button"
               role="radio"
               aria-checked={mode === "permanent"}
-              disabled={preparing}
+              disabled={preparing || modeSwitching}
               onClick={() => onModeChange("permanent")}
             >
               <span><Trash2 size={17} /></span>
@@ -224,7 +227,7 @@ export function CleanupDeleteDialog({
           <input
             type="checkbox"
             checked={deleteAcknowledged}
-            disabled={submitting || preparing || lease?.executable !== true || lease.changedPaths.length > 0}
+            disabled={submitting || preparing || modeSwitching || lease?.mode !== mode || lease?.executable !== true || lease.changedPaths.length > 0}
             onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
           />
           <span>
