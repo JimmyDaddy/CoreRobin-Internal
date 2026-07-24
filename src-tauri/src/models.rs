@@ -298,6 +298,11 @@ pub struct CleanupScan {
     /// Category summaries are kept separately in `locations` and must not be
     /// used to fabricate the filesystem tree shown by the path map.
     pub root: CleanupNode,
+    /// One-level expansions captured while the full scan is already walking
+    /// deep directories. The UI can materialize these nodes without reading
+    /// the same subtree from disk again.
+    #[serde(default)]
+    pub prefetched_subtrees: Vec<CleanupNode>,
     pub locations: Vec<CleanupLocation>,
     pub largest_files: Vec<CleanupFile>,
     pub installed_applications: Vec<CleanupApplication>,
@@ -500,7 +505,7 @@ pub struct CleanupDeleteLeaseRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationUninstallScope {
     pub application_path: String,
-    pub bundle_id: String,
+    pub bundle_id: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]

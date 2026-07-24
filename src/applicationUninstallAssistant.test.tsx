@@ -114,6 +114,68 @@ describe("application uninstall assistant", () => {
     expect(uninstallApi.getInstalledApplications).toHaveBeenNthCalledWith(2, "zh-CN", true);
   });
 
+  it("offers bundle-only uninstall when the app has no bundle identifier", async () => {
+    const application = {
+      name: "Legacy App",
+      path: "/Applications/Legacy App.app",
+      bundleId: null,
+      sizeBytes: 8_192,
+      lastUsedAtMs: null,
+      modifiedAtMs: 900,
+      uninstallable: true,
+      unavailableReason: null,
+    };
+    uninstallApi.getInstalledApplications.mockResolvedValue({
+      sampledAtMs: 1_000,
+      platformSupported: true,
+      cached: false,
+      refreshRecommended: false,
+      applications: [application],
+    });
+    uninstallApi.getApplicationUninstallPlan.mockResolvedValue({
+      sampledAtMs: 1_000,
+      application,
+      artifacts: [{
+        kind: "application",
+        path: application.path,
+        logicalSizeBytes: application.sizeBytes,
+        allocatedSizeBytes: application.sizeBytes,
+        itemCount: 2,
+        required: true,
+      }],
+      skippedPaths: [],
+    });
+    uninstallApi.createCleanupDeleteLease.mockResolvedValue({
+      id: "lease-bundle-only",
+      mode: "trash",
+      paths: [application.path],
+      changedPaths: [],
+      refreshedTargets: [{
+        path: application.path,
+        logicalSizeBytes: application.sizeBytes,
+        allocatedSizeBytes: application.sizeBytes,
+        itemCount: 2,
+      }],
+      executable: true,
+      refreshedAtMs: 1_100,
+    });
+
+    render(<ApplicationUninstallAssistant />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Legacy App/ }));
+    expect(await screen.findByText(/只卸载经过路径与结构验证的应用本体/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /检查并卸载 Legacy App/ }));
+
+    await waitFor(() => expect(uninstallApi.createCleanupDeleteLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        applicationUninstall: {
+          applicationPath: application.path,
+          bundleId: null,
+        },
+      }),
+    ));
+  });
+
   it("keeps a removed app in place with its Trash status instead of rescanning the inventory", async () => {
     const application = {
       name: "Example",

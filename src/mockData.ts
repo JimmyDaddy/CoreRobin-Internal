@@ -78,7 +78,7 @@ export function getMockInstalledApplications(): ApplicationInventorySnapshot {
 
 export function getMockApplicationUninstallPlan(applicationPath: string): ApplicationUninstallPlan {
   const application = MOCK_INSTALLED_APPLICATIONS.applications.find((item) => item.path === applicationPath);
-  if (!application || !application.bundleId) {
+  if (!application) {
     throw { code: "application_bundle_unavailable", message: "The application is unavailable." };
   }
   const identifier = application.bundleId;
@@ -94,7 +94,7 @@ export function getMockApplicationUninstallPlan(applicationPath: string): Applic
         itemCount: 1_482,
         required: true,
       },
-      {
+      ...(identifier ? [{
         kind: "application_support",
         path: `/Users/demo/Library/Application Support/${identifier}`,
         logicalSizeBytes: 186_000_000,
@@ -117,7 +117,7 @@ export function getMockApplicationUninstallPlan(applicationPath: string): Applic
         allocatedSizeBytes: 16_384,
         itemCount: 1,
         required: false,
-      },
+      }] satisfies ApplicationUninstallPlan["artifacts"] : []),
     ],
     skippedPaths: [],
   };
@@ -392,6 +392,7 @@ export function getMockCleanupScan(): CleanupScan {
     sampledAtMs: Date.now(),
     durationMs: 1_840,
     root: cleanupNode("/", "/", systemSize, systemItems, "review", systemChildren),
+    prefetchedSubtrees: [],
     locations,
     largestFiles: [
       {

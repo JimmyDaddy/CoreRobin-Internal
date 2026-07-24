@@ -41,6 +41,27 @@ beforeEach(async () => {
 });
 
 describe("cleanup subtree cancellation", () => {
+  it("uses deep-folder details captured by the full scan without another disk request", async () => {
+    const currentSnapshot = snapshot();
+    const first = currentSnapshot.root.children[0];
+    currentSnapshot.prefetchedSubtrees = [{
+      ...first,
+      children: [file("cached", "/fixture/first/cached.bin")],
+    }];
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
+    expect(cleanupApi.getCleanupSubtree).not.toHaveBeenCalled();
+  });
+
   it("sends the abandoned request ID to the backend before starting the next subtree", async () => {
     cleanupApi.getCleanupSubtree
       .mockImplementationOnce(() => new Promise(() => undefined))

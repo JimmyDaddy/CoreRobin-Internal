@@ -96,7 +96,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
   const { t } = useAppTranslation();
-  const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(() => new Map());
+  const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(
+    () => prefetchedSubtreeMap(snapshot.prefetchedSubtrees),
+  );
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
   const pathRoot = useMemo<CleanupMapNode>(
     () => materializeCleanupNode(snapshot.root, loadedSubtrees),
@@ -193,7 +195,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   useEffect(() => {
     cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
-    setLoadedSubtrees(new Map());
+    setLoadedSubtrees(prefetchedSubtreeMap(snapshot.prefetchedSubtrees));
     setFocusId(root.id);
     setSelectedId(root.id);
     setPlannedIds(new Set());
@@ -207,7 +209,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setBlockedDropNodeId(null);
     setLoadingNodeId(null);
     setSubtreeError(null);
-  }, [cancelActiveSubtree, snapshot.sampledAtMs]);
+  }, [cancelActiveSubtree, snapshot.prefetchedSubtrees, snapshot.sampledAtMs]);
 
   useEffect(() => {
     cancelActiveSubtree();
@@ -1070,6 +1072,12 @@ function materializeCleanupNode(
     ...materialized,
     children: materialized.children.map((child) => materializeCleanupNode(child, loadedSubtrees)),
   };
+}
+
+function prefetchedSubtreeMap(
+  subtrees: readonly CleanupMapNode[] | undefined,
+): Map<string, CleanupMapNode> {
+  return new Map((subtrees ?? []).map((node) => [node.id, node]));
 }
 
 function readCleanupMapMode(): CleanupMapMode {

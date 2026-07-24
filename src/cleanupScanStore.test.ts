@@ -21,7 +21,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = 10_000;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: now - 500,
       snapshot,
     }), now);
@@ -33,7 +33,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = CLEANUP_SCAN_STALE_AFTER_MS + 2_000;
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: 1_000,
       snapshot,
     }), now)?.status).toBe("expired");
@@ -42,7 +42,7 @@ describe("cleanup scan persistence", () => {
   it("does not invent cleanup capability for an older retained scan", () => {
     const snapshot = { ...getMockCleanupScan(), deletionAvailable: false };
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000);
@@ -50,19 +50,26 @@ describe("cleanup scan persistence", () => {
     expect(parsed?.snapshot.deletionAvailable).toBe(false);
   });
 
-  it("keeps retained v5 maps usable without inventing application activity", () => {
+  it("keeps retained v6 maps usable without inventing application activity", () => {
     const snapshot = getMockCleanupScan();
-    const { installedApplications: _applications, applicationInventoryAvailable: _available, ...legacy } = snapshot;
+    const {
+      installedApplications: _applications,
+      applicationInventoryAvailable: _available,
+      prefetchedSubtrees: _prefetchedSubtrees,
+      ...legacy
+    } = snapshot;
     void _applications;
     void _available;
+    void _prefetchedSubtrees;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: 9_500,
       snapshot: legacy,
     }), 10_000);
 
     expect(parsed?.snapshot.installedApplications).toEqual([]);
     expect(parsed?.snapshot.applicationInventoryAvailable).toBe(false);
+    expect(parsed?.snapshot.prefetchedSubtrees).toEqual([]);
   });
 
   it("drops invalid and retention-expired payloads", () => {
@@ -70,7 +77,7 @@ describe("cleanup scan persistence", () => {
     const now = CLEANUP_SCAN_RETENTION_MS + 2_000;
     expect(parseStoredCleanupScan("not-json", now)).toBeNull();
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: 1_000,
       snapshot,
     }), now)).toBeNull();
@@ -100,12 +107,12 @@ describe("cleanup scan persistence", () => {
     }), 10_000)).toBeNull();
   });
 
-  it("rejects v5 maps that cannot advertise lazily loadable folders", () => {
+  it("rejects v6 maps that cannot advertise lazily loadable folders", () => {
     const snapshot = getMockCleanupScan();
     delete (snapshot.locations[0].nodes[0] as { hasChildren?: boolean }).hasChildren;
 
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 5,
+      version: 6,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000)).toBeNull();

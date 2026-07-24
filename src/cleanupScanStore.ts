@@ -10,7 +10,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v5";
+export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v6";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -46,6 +46,10 @@ export function reconcileCleanupScanAfterDeletion(
   return {
     ...snapshot,
     root: reconcileCleanupNodeAfterDeletion(snapshot.root, uniqueTargets) ?? snapshot.root,
+    prefetchedSubtrees: snapshot.prefetchedSubtrees?.flatMap((node) => {
+      const reconciled = reconcileCleanupNodeAfterDeletion(node, uniqueTargets);
+      return reconciled ? [reconciled] : [];
+    }),
     locations: snapshot.locations.map((location, index) => {
       const locationTargets = targetsByLocation[index];
       if (locationTargets.length === 0) return location;
@@ -115,7 +119,7 @@ export function parseStoredCleanupScan(
     );
     if (
       !isRecord(value) ||
-      value.version !== 5 ||
+      value.version !== 6 ||
       !isFiniteNonNegativeNumber(value.savedAtMs) ||
       !isCleanupScan(snapshot)
     ) {
@@ -136,6 +140,9 @@ function normalizeCleanupScan(value: unknown): unknown {
   if (!isRecord(value)) return value;
   return {
     ...value,
+    prefetchedSubtrees: Array.isArray(value.prefetchedSubtrees)
+      ? value.prefetchedSubtrees
+      : [],
     installedApplications: Array.isArray(value.installedApplications)
       ? value.installedApplications
       : [],
@@ -163,6 +170,8 @@ function isCleanupScan(value: unknown): value is CleanupScan {
     isFiniteNonNegativeNumber(value.sampledAtMs) &&
     isFiniteNonNegativeNumber(value.durationMs) &&
     isCleanupNode(value.root) &&
+    Array.isArray(value.prefetchedSubtrees) &&
+    value.prefetchedSubtrees.every(isCleanupNode) &&
     Array.isArray(value.locations) &&
     value.locations.every(isCleanupLocation) &&
     Array.isArray(value.largestFiles) &&
