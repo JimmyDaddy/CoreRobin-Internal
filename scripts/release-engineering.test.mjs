@@ -28,6 +28,8 @@ describe("release engineering boundaries", () => {
     expect(packageJson.scripts["public:sync"]).toBe("node scripts/sync-public-content.mjs");
     expect(existsSync("scripts/sync-public-content.mjs")).toBe(true);
     expect(existsSync("scripts/update-public-release-manifest.mjs")).toBe(true);
+    expect(existsSync("scripts/public-release-notes.mjs")).toBe(true);
+    expect(existsSync(`release-notes/v${packageJson.version}.json`)).toBe(true);
     expect(existsSync("scripts/generate-updater-manifest.mjs")).toBe(true);
     expect(existsSync("scripts/flatten-release-artifacts.mjs")).toBe(true);
     expect(existsSync("scripts/release-macos-local.sh")).toBe(true);

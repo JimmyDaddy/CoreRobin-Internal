@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const VERSION_FILES = {
@@ -31,7 +32,26 @@ export async function prepareReleaseVersion(version, repositoryRoot = process.cw
   const prepared = prepareReleaseFiles(Object.fromEntries(entries), version);
   await Promise.all(Object.entries(VERSION_FILES).map(([key, path]) =>
     writeFile(new URL(path, pathToFileURL(`${repositoryRoot}/`)), prepared[key])));
+  const notesRoot = resolve(repositoryRoot, "release-notes");
+  await mkdir(notesRoot, { recursive: true });
+  await writeFile(
+    resolve(notesRoot, `v${version}.json`),
+    `${JSON.stringify(publicReleaseNoteTemplate(version), null, 2)}\n`,
+    { encoding: "utf8", flag: "wx" },
+  ).catch((error) => {
+    if (error?.code !== "EEXIST") throw error;
+  });
   return version;
+}
+
+export function publicReleaseNoteTemplate(version) {
+  assertVersion(version);
+  return {
+    schemaVersion: 1,
+    tagName: `v${version}`,
+    title: { "zh-CN": "", en: "" },
+    items: [],
+  };
 }
 
 function replaceTomlPackageVersion(source, heading, packageName, version) {
@@ -67,7 +87,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     try {
       await prepareReleaseVersion(version);
       console.log(`Prepared CoreRobin ${version} in all four version sources.`);
-      console.log("Update CHANGELOG.md, then run pnpm release:preflight before creating a tag.");
+      console.log(`Complete CHANGELOG.md and release-notes/v${version}.json, then run pnpm release:preflight before creating a tag.`);
     } catch (error) {
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;

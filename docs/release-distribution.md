@@ -27,7 +27,7 @@ Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前
 6. Finalize 先验证源 run 确实是该 tag/commit 的成功 `Release` workflow，且对应 Preview 已公开；随后用一个短时 GitHub-hosted macOS runner 下载两个原始 macOS artifact，重新调用 `notarytool info`。只有两个 submission 都为 `Accepted` 才会对原始 DMG 执行 staple，并通过签名、Hardened Runtime、架构、票据和 Gatekeeper 检查。`In Progress` 或 `Invalid` 都不会进入正式打包。
 7. Finalize package job 从原始 run 取回 Linux/Windows 安装包与显式保留的 Tauri 分离签名，并与已装订的 macOS 资产汇总。`createUpdaterArtifacts: true` 使用当前 Tauri v2 的未压缩 updater 格式：Linux 为 `.AppImage` + `.sig`，Windows 为 NSIS `.exe` + `.sig`。对于尚未显式保留签名的旧源 run，隔离恢复 job 只下载并重新签署原始 updater 文件，不重建应用。Finalize 随后生成 `latest.json`、`SHA256SUMS` 和 SPDX SBOM。受信 `main` 提供可修复的最终打包工具，发行说明仍从受验证的 tag 源码读取。sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
 8. 受保护的 `release` environment 批准 staging job 后，Finalize 使用 `PUBLIC_RELEASE_TOKEN` 创建或更新独立的正式 `vMAJOR.MINOR.PATCH` draft。staging 会先解析 draft 的 release ID，再按 ID 重新读取公开 Release，核对 draft 状态和完整资产清单；不能依赖尚未公开 tag 的 REST tag 查询。终态 job 还会要求解析、公证、打包、签名与发布全部达到预期结果。任何必需 job 被意外跳过都会让 workflow 明确失败，不能以绿色状态结束。此时仍不会改变 latest 或官网 manifest，也不会覆盖已经公开的 Preview 资产。
-9. 默认由 Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与发布授权，才公开正式 Release、设置 latest，并更新 `site/release-manifest.json`。当四平台设备不可得、维护者已经完成部分平台验收并明确接受其余平台风险时，可以选择 `maintainer-attestation`：必须列出已测平台、逐项列出未验证平台、填写原因，并再次通过受保护 `release` environment 审批。该放行记录会保存在 Actions artifact 和 Job Summary 中，不能伪装成四平台 smoke。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
+9. 默认由 Apple Silicon Mac、Intel Mac、Windows x64 和 Linux x64 分别安装正式 draft 候选产物，并通过交互脚本生成带 artifact SHA-256 的真实设备 smoke JSON。最后手动运行 `Promote verified release`；它重新验证 tag/commit、Sigstore、全部 staged asset 与发布授权，并在公开 Release 前检查 `release-notes/vMAJOR.MINOR.PATCH.json` 中的中英文官网更新日志。验证通过后才公开正式 Release、设置 latest，并以一次 `site/release-manifest.json` 更新同时同步下载数据和官网版本历史。网站从这份结构化历史构建时间线，其他语言在翻译尚未补齐时回退英文，不再依赖发布后手工修改 HTML。当四平台设备不可得、维护者已经完成部分平台验收并明确接受其余平台风险时，可以选择 `maintainer-attestation`：必须列出已测平台、逐项列出未验证平台、填写原因，并再次通过受保护 `release` environment 审批。该放行记录会保存在 Actions artifact 和 Job Summary 中，不能伪装成四平台 smoke。应用随后从公开 Release 的 `latest.json` 检查更新，并强制验证嵌入应用的更新公钥。
 
 发布者的 Mac 仍可作为显式备用 builder。`pnpm release:macos:local -- vMAJOR.MINOR.PATCH` 保持原有的同步公证、装订、验证和 `macos-local.json` 交接逻辑，但它不会消耗 GitHub macOS runner 时间；该路径不会发布 Preview，也不经过异步 Finalize。
 
@@ -44,10 +44,11 @@ Tauri 更新签名用于防止应用内更新包被替换，Developer ID 与 App
 ```bash
 pnpm release:prepare MAJOR.MINOR.PATCH
 # 补充 CHANGELOG.md 的 MAJOR.MINOR.PATCH 小节
+# 补充 release-notes/vMAJOR.MINOR.PATCH.json 的中英文标题与条目
 pnpm release:preflight
 ```
 
-该门禁也在普通 PR/main CI 中运行，会在 tag 创建前检查 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json` 与 CHANGELOG。发布 commit 合并到 `main` 并推送后，不再手工创建稳定 tag；先启动无 tag 的四平台候选门禁：
+`release:prepare` 会创建对应官网更新日志模板；如果文件已经存在则保持原内容。该门禁也在普通 PR/main CI 中运行，会在 tag 创建前检查 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock`、`src-tauri/tauri.conf.json`、CHANGELOG 与中英文官网更新日志。发布 commit 合并到 `main` 并推送后，不再手工创建稳定 tag；先启动无 tag 的四平台候选门禁：
 
 ```bash
 gh workflow run release-candidate.yml \

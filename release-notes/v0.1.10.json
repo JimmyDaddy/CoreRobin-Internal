@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.10",
+  "title": {
+    "zh-CN": "更快的清理与更清楚的应用卸载",
+    "en": "Faster cleanup and clearer app removal"
+  },
+  "items": [
+    {
+      "zh-CN": "清理确认不再在 60 秒后失效；在废纸篓与永久删除之间切换会复用已核对的信息，同时仍在执行前再次检查每个路径。",
+      "en": "Cleanup confirmations no longer expire after 60 seconds. Switching between Trash and permanent deletion reuses verified file details while every path is still checked again before execution."
+    },
+    {
+      "zh-CN": "“较小对象”现在可以展开并逐项检查；完整扫描和后续展开得到的大目录明细会被缓存，再次进入时立即显示，仅在路径变化后后台刷新。前后端缓存版本也已对齐，保存的扫描结果可以正常恢复。",
+      "en": "Smaller objects can now be expanded and reviewed. Large-folder details captured during the full scan and later folder expansions are cached, shown immediately on return, and refreshed in the background only when the path changes. Saved cleanup scans now restore correctly across the frontend and backend cache."
+    },
+    {
+      "zh-CN": "没有可验证 Bundle ID 的 macOS 应用也可以只卸载经过验证的应用本体；已移除应用会保留在列表中并显示废纸篓或永久删除状态，不再强制重扫完整应用清单。",
+      "en": "macOS apps without a verifiable Bundle ID can still be removed safely as an exact app-bundle-only operation. Removed apps stay visible with clear Trash or permanent-deletion status instead of forcing another full inventory scan."
+    },
+    {
+      "zh-CN": "关闭主窗口后，点击 macOS Dock 图标现在会重新打开主窗口。",
+      "en": "Clicking the macOS Dock icon now reopens the main window after it has been closed."
+    }
+  ]
+}

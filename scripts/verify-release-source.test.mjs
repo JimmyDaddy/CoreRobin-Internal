@@ -8,7 +8,7 @@ import {
   verifyReleaseReadiness,
   versionFromReleaseTag,
 } from "./verify-release-source.mjs";
-import { prepareReleaseFiles } from "./prepare-release.mjs";
+import { prepareReleaseFiles, publicReleaseNoteTemplate } from "./prepare-release.mjs";
 
 describe("release source verification", () => {
   it("accepts only exact stable semantic version tags", () => {
@@ -50,6 +50,15 @@ describe("release source verification", () => {
     expect(prepared.cargoManifest).toContain('version = "1.2.3"');
     expect(prepared.cargoLock).toContain('name = "dependency"\nversion = "9.9.9"');
     expect(prepared.cargoLock).toContain('name = "core-robin"\nversion = "1.2.3"');
+  });
+
+  it("prepares a bilingual public release-note template", () => {
+    expect(publicReleaseNoteTemplate("1.2.3")).toEqual({
+      schemaVersion: 1,
+      tagName: "v1.2.3",
+      title: { "zh-CN": "", en: "" },
+      items: [],
+    });
   });
 
   it("passes release readiness for the checked-in project", () => {

@@ -172,7 +172,9 @@ describe("release workflow privilege separation", () => {
     expect(promote).toContain("SHA256SUMS.sigstore.json");
     expect(promote).toContain("--draft=false");
     expect(promote).toContain("--latest");
-    expect(promote).toContain("Update public download manifest");
+    expect(promote).toContain("Validate public website release data");
+    expect(promote).toContain("Publish public website release data");
+    expect(promote).toContain("--check");
     expect(promote).toContain("finalize-release.yml@refs/heads/main");
     expect(promote).not.toContain("id-token: write");
   });
