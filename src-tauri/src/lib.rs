@@ -1670,8 +1670,16 @@ pub fn run() {
             release_process_control_lease,
             execute_process_action
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running CoreRobin");
+        .build(tauri::generate_context!())
+        .expect("error while building CoreRobin")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if matches!(event, tauri::RunEvent::Reopen { .. }) {
+                show_main(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]
@@ -1914,6 +1922,21 @@ mod security_boundary_tests {
         }
         assert!(!tray_permissions.contains("core:default"));
         assert!(!companion_permissions.contains("core:default"));
+    }
+
+    #[test]
+    fn application_run_loop_handles_macos_dock_reopen_events() {
+        let source = include_str!("lib.rs");
+        let run_loop = source
+            .split_once(".build(tauri::generate_context!())")
+            .expect("the application must be built before its run loop")
+            .1
+            .split_once("#[cfg(test)]")
+            .expect("the run loop must end before the test modules")
+            .0;
+
+        assert!(run_loop.contains("tauri::RunEvent::Reopen"));
+        assert!(run_loop.contains("show_main(app)"));
     }
 
     #[test]
