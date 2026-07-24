@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { readPublicReleaseNote } from "./public-release-notes.mjs";
+
 export function versionFromReleaseTag(tag) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
     throw new Error(`Release tag must use the exact vMAJOR.MINOR.PATCH format: ${tag}`);
@@ -59,7 +61,8 @@ export function verifyReleaseReadiness(expectedVersion, repositoryRoot = process
   assertMatchingVersions(expectedVersion, versions);
   const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
   assertReleaseChangelog(expectedVersion, changelog);
-  return { expectedVersion, versions };
+  const releaseNote = readPublicReleaseNote(`v${expectedVersion}`, repositoryRoot);
+  return { expectedVersion, versions, releaseNote };
 }
 
 export function commitBelongsToTrustedRef(commit, trustedRef, git = runGit) {

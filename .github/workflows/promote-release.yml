@@ -184,6 +184,11 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Validate public website release data
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/update-public-release-manifest.mjs "$RELEASE_TAG" "$PUBLIC_RELEASE_REPOSITORY" --check
+
       - name: Publish verified release as latest
         if: steps.release.outputs.is_draft == 'true'
         shell: bash
@@ -195,7 +200,7 @@ jobs:
             --latest \
             --repo "$PUBLIC_RELEASE_REPOSITORY"
 
-      - name: Update public download manifest
+      - name: Publish public website release data
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: node scripts/update-public-release-manifest.mjs "$RELEASE_TAG" "$PUBLIC_RELEASE_REPOSITORY"
