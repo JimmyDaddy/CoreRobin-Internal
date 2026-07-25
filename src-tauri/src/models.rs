@@ -536,6 +536,8 @@ pub struct CleanupDeleteLease {
     pub id: String,
     pub mode: CleanupDeleteMode,
     pub paths: Vec<String>,
+    pub missing_paths: Vec<String>,
+    pub unavailable_paths: Vec<String>,
     pub changed_paths: Vec<String>,
     pub refreshed_targets: Vec<CleanupDeleteTargetEvidence>,
     pub executable: bool,

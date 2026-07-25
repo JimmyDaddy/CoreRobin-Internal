@@ -363,6 +363,8 @@ export interface CleanupDeleteLease {
   id: string;
   mode: CleanupDeleteMode;
   paths: string[];
+  missingPaths: string[];
+  unavailablePaths: string[];
   changedPaths: string[];
   refreshedTargets: CleanupDeleteTargetEvidence[];
   executable: boolean;

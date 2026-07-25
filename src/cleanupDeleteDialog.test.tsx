@@ -74,6 +74,8 @@ function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanen
     id: executable ? "executable" : "refresh-only",
     mode,
     paths: [item.path!],
+    missingPaths: [],
+    unavailablePaths: [],
     changedPaths: executable ? [] : [item.path!],
     refreshedTargets: [{
       path: item.path!,

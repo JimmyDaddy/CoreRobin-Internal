@@ -335,6 +335,13 @@ struct CleanupDeleteTarget {
     bound: BoundDeleteTarget,
 }
 
+#[derive(Debug)]
+struct CleanupTargetValidation {
+    targets: Vec<CleanupDeleteTarget>,
+    missing_paths: Vec<String>,
+    unavailable_failures: Vec<CleanupDeleteFailure>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CleanupTargetInspectionPolicy {
     Strict,
@@ -373,6 +380,9 @@ struct CleanupDeleteLeaseEntry {
     refreshed_at_ms: u64,
     mode: CleanupDeleteMode,
     trash_destination: Option<CleanupTrashDestination>,
+    paths: Vec<String>,
+    missing_paths: Vec<String>,
+    unavailable_failures: Vec<CleanupDeleteFailure>,
     targets: Vec<CleanupDeleteTarget>,
 }
 
@@ -380,7 +390,15 @@ struct CleanupDeleteLeaseEntry {
 struct CleanupDeleteExecution {
     mode: CleanupDeleteMode,
     trash_destination: Option<CleanupTrashDestination>,
+    deleted: Vec<CleanupDeleteSuccess>,
+    failed: Vec<CleanupDeleteFailure>,
     targets: Vec<CleanupDeleteTarget>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CleanupTargetRevalidation {
+    Present,
+    Missing,
 }
 
 #[derive(Debug)]
@@ -461,14 +479,18 @@ impl CleanupDeleteController {
         let mode = execution.mode;
         let trash_destination = execution.trash_destination;
         let targets = execution.targets;
-        let total_target_count = targets.len();
+        let already_completed_target_count = execution
+            .deleted
+            .len()
+            .saturating_add(execution.failed.len());
+        let total_target_count = targets.len().saturating_add(already_completed_target_count);
         // Deletion deliberately uses indeterminate progress. A complete pre-scan
         // doubles metadata I/O and widens the race window between validation and
         // removal without making the operation atomic.
         let total_entry_count = 0;
-        let mut deleted = Vec::new();
+        let mut deleted = execution.deleted;
         let mut deleted_bytes = 0_u64;
-        let mut failed = Vec::new();
+        let mut failed = execution.failed;
         let mut processed_entry_count = 0_usize;
         let mut last_emitted_entry_count = 0_usize;
         let mut last_emitted_at = Instant::now();
@@ -487,7 +509,7 @@ impl CleanupDeleteController {
                 phase: cleanup_progress_phase(mode),
                 processed_entry_count,
                 total_entry_count,
-                completed_target_count: target_index,
+                completed_target_count: already_completed_target_count.saturating_add(target_index),
                 total_target_count,
                 current_path: current_path.clone(),
                 deleted_bytes,
@@ -519,7 +541,8 @@ impl CleanupDeleteController {
                                 phase: cleanup_progress_phase(mode),
                                 processed_entry_count,
                                 total_entry_count,
-                                completed_target_count: target_index,
+                                completed_target_count: already_completed_target_count
+                                    .saturating_add(target_index),
                                 total_target_count,
                                 current_path: current_path.clone(),
                                 deleted_bytes,
@@ -554,7 +577,9 @@ impl CleanupDeleteController {
                 phase: cleanup_progress_phase(mode),
                 processed_entry_count,
                 total_entry_count,
-                completed_target_count: target_index + 1,
+                completed_target_count: already_completed_target_count
+                    .saturating_add(target_index)
+                    .saturating_add(1),
                 total_target_count,
                 current_path,
                 deleted_bytes,
@@ -574,14 +599,17 @@ impl CleanupDeleteController {
         request: CleanupDeleteLeaseRequest,
         home: &Path,
     ) -> Result<CleanupDeleteLease, CommandError> {
-        let targets = validate_cleanup_targets(&request, home)?;
-        if request.expected_targets.len() != targets.len() {
+        if request.expected_targets.len() != request.paths.len() {
             return Err(CommandError::new(
                 "invalid_cleanup_selection",
                 "Every cleanup path must include the size and item count currently shown for confirmation.",
             ));
         }
-        let trash_destination = if request.mode == CleanupDeleteMode::Trash {
+        let validation = validate_cleanup_targets(&request, home)?;
+        let targets = validation.targets;
+        let missing_paths = validation.missing_paths;
+        let unavailable_failures = validation.unavailable_failures;
+        let trash_destination = if request.mode == CleanupDeleteMode::Trash && !targets.is_empty() {
             Some(prepare_cleanup_trash_destination(home)?)
         } else {
             None
@@ -617,15 +645,20 @@ impl CleanupDeleteController {
                 refreshed_at_ms,
                 mode: request.mode,
                 trash_destination,
+                paths: request.paths.clone(),
+                missing_paths: missing_paths.clone(),
+                unavailable_failures: unavailable_failures.clone(),
                 targets: targets.clone(),
             });
         }
         Ok(CleanupDeleteLease {
             id,
             mode: request.mode,
-            paths: targets
+            paths: request.paths,
+            missing_paths,
+            unavailable_paths: unavailable_failures
                 .iter()
-                .map(|target| target.display_path.clone())
+                .map(|failure| failure.path.clone())
                 .collect(),
             changed_paths,
             refreshed_targets,
@@ -653,7 +686,9 @@ impl CleanupDeleteController {
             return Ok(cleanup_delete_lease_snapshot(&self.leases[position]));
         }
 
-        let trash_destination = if request.mode == CleanupDeleteMode::Trash {
+        let trash_destination = if request.mode == CleanupDeleteMode::Trash
+            && !self.leases[position].targets.is_empty()
+        {
             let canonical_home = home.canonicalize().map_err(|error| {
                 CommandError::new(
                     "home_directory_unavailable",
@@ -693,9 +728,9 @@ impl CleanupDeleteController {
         F: FnMut(&Path) -> Result<u64, String>,
     {
         let execution = self.take_validated_targets(request)?;
-        let mut deleted = Vec::new();
+        let mut deleted = execution.deleted;
         let mut deleted_bytes = 0_u64;
-        let mut failed = Vec::new();
+        let mut failed = execution.failed;
         for target in execution.targets {
             match delete_target(&target.canonical_path) {
                 Ok(bytes) => {
@@ -736,13 +771,35 @@ impl CleanupDeleteController {
             })?;
         // Consume first so every execution attempt is single-use, including failures.
         let lease = self.leases.remove(position);
-        for target in &lease.targets {
-            revalidate_cleanup_target(target)?;
+        let mut targets = Vec::with_capacity(lease.targets.len());
+        let mut deleted = lease
+            .missing_paths
+            .into_iter()
+            .map(|path| CleanupDeleteSuccess {
+                path,
+                deleted_bytes: 0,
+            })
+            .collect::<Vec<_>>();
+        let mut failed = lease.unavailable_failures;
+        for target in lease.targets {
+            match revalidate_cleanup_target(&target) {
+                Ok(CleanupTargetRevalidation::Present) => targets.push(target),
+                Ok(CleanupTargetRevalidation::Missing) => deleted.push(CleanupDeleteSuccess {
+                    path: target.display_path,
+                    deleted_bytes: 0,
+                }),
+                Err(error) => failed.push(CleanupDeleteFailure {
+                    path: target.display_path,
+                    message: error.message,
+                }),
+            }
         }
         Ok(CleanupDeleteExecution {
             mode: lease.mode,
             trash_destination: lease.trash_destination,
-            targets: lease.targets,
+            deleted,
+            failed,
+            targets,
         })
     }
 }
@@ -751,10 +808,12 @@ fn cleanup_delete_lease_snapshot(lease: &CleanupDeleteLeaseEntry) -> CleanupDele
     CleanupDeleteLease {
         id: lease.id.clone(),
         mode: lease.mode,
-        paths: lease
-            .targets
+        paths: lease.paths.clone(),
+        missing_paths: lease.missing_paths.clone(),
+        unavailable_paths: lease
+            .unavailable_failures
             .iter()
-            .map(|target| target.display_path.clone())
+            .map(|failure| failure.path.clone())
             .collect(),
         changed_paths: Vec::new(),
         refreshed_targets: lease.targets.iter().map(cleanup_target_evidence).collect(),
@@ -2204,7 +2263,7 @@ pub fn remove_cleanup_scan_cache(path: &Path) -> Result<(), CommandError> {
 fn validate_cleanup_targets(
     request: &CleanupDeleteLeaseRequest,
     home: &Path,
-) -> Result<Vec<CleanupDeleteTarget>, CommandError> {
+) -> Result<CleanupTargetValidation, CommandError> {
     if request.paths.is_empty() || request.paths.len() > MAX_CLEANUP_TARGETS {
         return Err(CommandError::new(
             "invalid_cleanup_selection",
@@ -2212,7 +2271,13 @@ fn validate_cleanup_targets(
         ));
     }
     if let Some(scope) = request.application_uninstall.as_ref() {
-        return validate_application_uninstall_targets(request, scope, home);
+        return validate_application_uninstall_targets(request, scope, home).map(|targets| {
+            CleanupTargetValidation {
+                targets,
+                missing_paths: Vec::new(),
+                unavailable_failures: Vec::new(),
+            }
+        });
     }
     let canonical_home = home.canonicalize().map_err(|error| {
         CommandError::new(
@@ -2228,7 +2293,10 @@ fn validate_cleanup_targets(
     })?;
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
+    let mut selected_paths = Vec::with_capacity(request.paths.len());
     let mut targets = Vec::with_capacity(request.paths.len());
+    let mut missing_paths = Vec::new();
+    let mut unavailable_failures = Vec::new();
     for display in &request.paths {
         let path = expand_cleanup_path(display, &canonical_home)?;
         let relative_path = path
@@ -2257,20 +2325,6 @@ fn validate_cleanup_targets(
                 "Items that contain or are already inside the system Trash can only be deleted permanently.",
             ));
         }
-        let bound = delete_root.bind(relative_path).map_err(|error| {
-            let message = error.to_string();
-            let code = if message.contains("volume") {
-                "cleanup_cross_filesystem"
-            } else if message.contains("symbolic") || message.contains("special") {
-                "unsupported_cleanup_target"
-            } else {
-                "cleanup_target_unavailable"
-            };
-            CommandError::new(
-                code,
-                format!("CoreRobin could not safely bind {display}: {error}"),
-            )
-        })?;
         if !canonical_path.starts_with(&canonical_home) {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
@@ -2283,12 +2337,68 @@ fn validate_cleanup_targets(
                 format!("The cleanup selection contains the same item more than once: {display}"),
             ));
         }
-        let inspection = bound.inspect().map_err(|message| {
-            CommandError::new(
-                "cleanup_target_unavailable",
-                format!("CoreRobin could not refresh {display} before confirmation: {message}"),
-            )
-        })?;
+        selected_paths.push(canonical_path.clone());
+        let bound = match delete_root.bind(relative_path) {
+            Ok(bound) => bound,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                missing_paths.push(display.clone());
+                continue;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                unavailable_failures.push(CleanupDeleteFailure {
+                    path: display.clone(),
+                    message: format!(
+                        "CoreRobin could not safely access this item and left it unchanged: {error}"
+                    ),
+                });
+                continue;
+            }
+            Err(error) => {
+                let message = error.to_string();
+                let code = if message.contains("volume") {
+                    "cleanup_cross_filesystem"
+                } else if message.contains("symbolic") || message.contains("special") {
+                    "unsupported_cleanup_target"
+                } else {
+                    "cleanup_target_unavailable"
+                };
+                return Err(CommandError::new(
+                    code,
+                    format!("CoreRobin could not safely bind {display}: {error}"),
+                ));
+            }
+        };
+        let inspection = match bound.inspect() {
+            Ok(inspection) => inspection,
+            Err(_)
+                if matches!(
+                    bound.current_modified_at(),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound
+                ) =>
+            {
+                missing_paths.push(display.clone());
+                continue;
+            }
+            Err(_)
+                if matches!(
+                    bound.current_modified_at(),
+                    Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied
+                ) =>
+            {
+                unavailable_failures.push(CleanupDeleteFailure {
+                    path: display.clone(),
+                    message: "CoreRobin could not safely access this item and left it unchanged."
+                        .to_owned(),
+                });
+                continue;
+            }
+            Err(message) => {
+                return Err(CommandError::new(
+                    "cleanup_target_unavailable",
+                    format!("CoreRobin could not refresh {display} before confirmation: {message}"),
+                ));
+            }
+        };
         targets.push(CleanupDeleteTarget {
             display_path: display.clone(),
             canonical_path,
@@ -2298,10 +2408,10 @@ fn validate_cleanup_targets(
             bound,
         });
     }
-    for left in 0..targets.len() {
-        for right in (left + 1)..targets.len() {
-            let left_path = &targets[left].canonical_path;
-            let right_path = &targets[right].canonical_path;
+    for left in 0..selected_paths.len() {
+        for right in (left + 1)..selected_paths.len() {
+            let left_path = &selected_paths[left];
+            let right_path = &selected_paths[right];
             if left_path.starts_with(right_path) || right_path.starts_with(left_path) {
                 return Err(CommandError::new(
                     "overlapping_cleanup_targets",
@@ -2310,7 +2420,11 @@ fn validate_cleanup_targets(
             }
         }
     }
-    Ok(targets)
+    Ok(CleanupTargetValidation {
+        targets,
+        missing_paths,
+        unavailable_failures,
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -2568,25 +2682,29 @@ fn expand_cleanup_path(display_path: &str, home: &Path) -> Result<PathBuf, Comma
     Ok(path)
 }
 
-fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), CommandError> {
-    let modified_at_ms = target
-        .bound
-        .current_modified_at()
-        .map_err(|error| {
-            CommandError::new(
+fn revalidate_cleanup_target(
+    target: &CleanupDeleteTarget,
+) -> Result<CleanupTargetRevalidation, CommandError> {
+    let modified_at_ms = match target.bound.current_modified_at() {
+        Ok(modified_at) => modified_at.and_then(system_time_millis),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(CleanupTargetRevalidation::Missing);
+        }
+        Err(error) => {
+            return Err(CommandError::new(
                 "cleanup_target_changed",
                 format!(
-                    "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again: {error}",
+                    "{} changed after confirmation and was left unchanged: {error}",
                     target.display_path
                 ),
-            )
-        })?
-        .and_then(system_time_millis);
+            ));
+        }
+    };
     if modified_at_ms != target.modified_at_ms {
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; CoreRobin deleted nothing. Review the selection again.",
+                "{} changed after confirmation and was left unchanged.",
                 target.display_path
             ),
         ));
@@ -2598,7 +2716,7 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
             CommandError::new(
                 "cleanup_target_changed",
                 format!(
-                    "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again: {message}",
+                    "{} changed after confirmation and was left unchanged: {message}",
                     target.display_path
                 ),
             )
@@ -2607,12 +2725,12 @@ fn revalidate_cleanup_target(target: &CleanupDeleteTarget) -> Result<(), Command
         return Err(CommandError::new(
             "cleanup_target_changed",
             format!(
-                "{} changed after confirmation; CoreRobin deleted nothing. Review the refreshed selection again.",
+                "{} changed after confirmation and was left unchanged.",
                 target.display_path
             ),
         ));
     }
-    Ok(())
+    Ok(CleanupTargetRevalidation::Present)
 }
 
 fn cleanup_target_evidence(target: &CleanupDeleteTarget) -> CleanupDeleteTargetEvidence {
@@ -5251,12 +5369,15 @@ mod tests {
         assert_eq!(switched.refreshed_at_ms, lease.refreshed_at_ms);
         assert_eq!(switched.refreshed_targets, lease.refreshed_targets);
 
-        let error = controller
+        let result = controller
             .execute(CleanupDeleteExecutionRequest {
                 lease_id: switched.id,
             })
-            .unwrap_err();
-        assert_eq!(error.code, "cleanup_target_changed");
+            .unwrap();
+        assert!(result.deleted.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert_eq!(result.failed[0].path, target.to_string_lossy());
+        assert!(result.failed[0].message.contains("left unchanged"));
         assert!(target.exists());
         fs::remove_dir_all(root).unwrap();
     }
@@ -5682,7 +5803,10 @@ mod tests {
             vec![target_path.to_string_lossy().into_owned()],
             now_millis(),
         );
-        let target = validate_cleanup_targets(&request, &root).unwrap().remove(0);
+        let target = validate_cleanup_targets(&request, &root)
+            .unwrap()
+            .targets
+            .remove(0);
         let home_root = DeleteRoot::open(&root.canonicalize().unwrap()).unwrap();
         let parent_relative = Path::new("Library/Application Support/CoreRobin/Pending Trash");
         let parent = home_root
@@ -5727,7 +5851,10 @@ mod tests {
             vec![target_path.to_string_lossy().into_owned()],
             now_millis(),
         );
-        let target = validate_cleanup_targets(&request, &root).unwrap().remove(0);
+        let target = validate_cleanup_targets(&request, &root)
+            .unwrap()
+            .targets
+            .remove(0);
         let home_root = DeleteRoot::open(&root.canonicalize().unwrap()).unwrap();
         let parent_relative = Path::new("Library/Application Support/CoreRobin/Pending Trash");
         let parent = home_root
@@ -5943,16 +6070,227 @@ mod tests {
         std::thread::sleep(Duration::from_millis(5));
         fs::write(target.join("after.txt"), b"after").unwrap();
         let mut attempted = false;
-        let error = controller
+        let result = controller
             .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
                 attempted = true;
                 Ok(0)
             })
-            .unwrap_err();
+            .unwrap();
 
-        assert_eq!(error.code, "cleanup_target_changed");
+        assert!(result.deleted.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert_eq!(result.failed[0].path, target.to_string_lossy());
         assert!(!attempted);
         assert!(target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_treats_missing_selection_as_already_removed() {
+        let root = test_root("trash-missing-before-lease");
+        let existing = root.join("Downloads/existing.txt");
+        let missing = root.join("Downloads/missing.txt");
+        fs::create_dir_all(existing.parent().unwrap()).unwrap();
+        fs::write(&existing, b"existing").unwrap();
+        let existing_display = existing.to_string_lossy().into_owned();
+        let missing_display = missing.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![missing_display.clone(), existing_display.clone()],
+                    u64::MAX,
+                ),
+                &root,
+            )
+            .unwrap();
+
+        assert!(lease.executable);
+        assert_eq!(
+            lease.paths,
+            vec![missing_display.clone(), existing_display.clone()]
+        );
+        assert_eq!(lease.missing_paths, vec![missing_display.clone()]);
+        assert!(lease.unavailable_paths.is_empty());
+        assert_eq!(lease.refreshed_targets.len(), 1);
+
+        let mut attempted = Vec::new();
+        let result = controller
+            .execute_with(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                |path| {
+                    attempted.push(path.to_path_buf());
+                    Ok(8)
+                },
+            )
+            .unwrap();
+
+        assert_eq!(attempted, vec![existing.canonicalize().unwrap()]);
+        assert_eq!(result.deleted.len(), 2);
+        assert!(
+            result
+                .deleted
+                .iter()
+                .any(|success| success.path == missing_display && success.deleted_bytes == 0)
+        );
+        assert!(
+            result
+                .deleted
+                .iter()
+                .any(|success| success.path == existing_display && success.deleted_bytes == 8)
+        );
+        assert_eq!(result.deleted_bytes, 8);
+        assert!(result.failed.is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_continues_when_a_confirmed_target_disappears() {
+        let root = test_root("trash-missing-after-lease");
+        let missing = root.join("Downloads/missing.txt");
+        let existing = root.join("Downloads/existing.txt");
+        fs::create_dir_all(missing.parent().unwrap()).unwrap();
+        fs::write(&missing, b"remove me first").unwrap();
+        fs::write(&existing, b"existing").unwrap();
+        let missing_display = missing.to_string_lossy().into_owned();
+        let existing_display = existing.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![missing_display.clone(), existing_display.clone()],
+                    u64::MAX,
+                ),
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+        fs::remove_file(&missing).unwrap();
+
+        let mut attempted = Vec::new();
+        let result = controller
+            .execute_with(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                |path| {
+                    attempted.push(path.to_path_buf());
+                    Ok(8)
+                },
+            )
+            .unwrap();
+
+        assert_eq!(attempted, vec![existing.canonicalize().unwrap()]);
+        assert_eq!(result.deleted.len(), 2);
+        assert!(
+            result
+                .deleted
+                .iter()
+                .any(|success| success.path == missing_display && success.deleted_bytes == 0)
+        );
+        assert!(
+            result
+                .deleted
+                .iter()
+                .any(|success| success.path == existing_display && success.deleted_bytes == 8)
+        );
+        assert!(result.failed.is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cleanup_delete_only_skips_the_target_that_changed_after_confirmation() {
+        let root = test_root("trash-partial-revalidation");
+        let changed = root.join("Downloads/changed.txt");
+        let existing = root.join("Downloads/existing.txt");
+        fs::create_dir_all(changed.parent().unwrap()).unwrap();
+        fs::write(&changed, b"before").unwrap();
+        fs::write(&existing, b"existing").unwrap();
+        let changed_display = changed.to_string_lossy().into_owned();
+        let existing_display = existing.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(
+                    &root,
+                    vec![changed_display.clone(), existing_display.clone()],
+                    u64::MAX,
+                ),
+                &root,
+            )
+            .unwrap();
+        assert!(lease.executable);
+        std::thread::sleep(Duration::from_millis(5));
+        fs::write(&changed, b"changed after confirmation").unwrap();
+
+        let mut attempted = Vec::new();
+        let result = controller
+            .execute_with(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                |path| {
+                    attempted.push(path.to_path_buf());
+                    Ok(8)
+                },
+            )
+            .unwrap();
+
+        assert_eq!(attempted, vec![existing.canonicalize().unwrap()]);
+        assert_eq!(result.deleted.len(), 1);
+        assert_eq!(result.deleted[0].path, existing_display);
+        assert_eq!(result.failed.len(), 1);
+        assert_eq!(result.failed[0].path, changed_display);
+        assert!(result.failed[0].message.contains("left unchanged"));
+        assert!(changed.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_delete_continues_when_one_selected_target_is_inaccessible() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = test_root("trash-partial-permission");
+        let locked_parent = root.join("Downloads/locked");
+        let inaccessible = locked_parent.join("inaccessible.txt");
+        let existing = root.join("Downloads/existing.txt");
+        fs::create_dir_all(&locked_parent).unwrap();
+        fs::write(&inaccessible, b"inaccessible").unwrap();
+        fs::write(&existing, b"existing").unwrap();
+        let inaccessible_display = inaccessible.to_string_lossy().into_owned();
+        let existing_display = existing.to_string_lossy().into_owned();
+        let request = cleanup_delete_request(
+            &root,
+            vec![inaccessible_display.clone(), existing_display.clone()],
+            u64::MAX,
+        );
+        fs::set_permissions(&locked_parent, fs::Permissions::from_mode(0o000)).unwrap();
+        let mut controller = CleanupDeleteController::default();
+        let lease_result = controller.create_lease_for_home(request, &root);
+        fs::set_permissions(&locked_parent, fs::Permissions::from_mode(0o700)).unwrap();
+        let lease = lease_result.unwrap();
+
+        assert!(lease.executable);
+        assert!(lease.missing_paths.is_empty());
+        assert_eq!(lease.unavailable_paths, vec![inaccessible_display.clone()]);
+
+        let mut attempted = Vec::new();
+        let result = controller
+            .execute_with(
+                CleanupDeleteExecutionRequest { lease_id: lease.id },
+                |path| {
+                    attempted.push(path.to_path_buf());
+                    Ok(8)
+                },
+            )
+            .unwrap();
+
+        assert_eq!(attempted, vec![existing.canonicalize().unwrap()]);
+        assert_eq!(result.deleted.len(), 1);
+        assert_eq!(result.deleted[0].path, existing_display);
+        assert_eq!(result.failed.len(), 1);
+        assert_eq!(result.failed[0].path, inaccessible_display);
+        assert!(inaccessible.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -5978,14 +6316,16 @@ mod tests {
 
         fs::write(deep.join("after.txt"), b"after").unwrap();
         let mut attempted = false;
-        let error = controller
+        let result = controller
             .execute_with(CleanupDeleteExecutionRequest { lease_id: lease.id }, |_| {
                 attempted = true;
                 Ok(0)
             })
-            .unwrap_err();
+            .unwrap();
 
-        assert_eq!(error.code, "cleanup_target_changed");
+        assert!(result.deleted.is_empty());
+        assert_eq!(result.failed.len(), 1);
+        assert_eq!(result.failed[0].path, target.to_string_lossy());
         assert!(!attempted);
         assert!(target.exists());
         fs::remove_dir_all(root).unwrap();

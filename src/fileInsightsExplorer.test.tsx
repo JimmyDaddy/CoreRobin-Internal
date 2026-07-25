@@ -39,6 +39,8 @@ beforeEach(async () => {
     id: "duplicate-lease",
     mode: request.mode,
     paths: request.paths,
+    missingPaths: [],
+    unavailablePaths: [],
     changedPaths: [],
     refreshedTargets: request.expectedTargets,
     executable: true,
@@ -48,6 +50,8 @@ beforeEach(async () => {
     id: leaseId,
     mode,
     paths: ["/Users/demo/Downloads/archive.zip"],
+    missingPaths: [],
+    unavailablePaths: [],
     changedPaths: [],
     refreshedTargets: [{
       path: "/Users/demo/Downloads/archive.zip",
