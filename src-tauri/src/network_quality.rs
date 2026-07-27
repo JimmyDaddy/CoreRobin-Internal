@@ -39,15 +39,18 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
     let mut ipv4_successes = 0usize;
     let mut ipv6_successes = 0usize;
     for probe_index in 0..PROBE_COUNT {
-        if let Some(address) = unique_addresses.get(probe_index % unique_addresses.len().max(1)) {
-            if let Some(latency) = probe_address(*address) {
-                successful_latencies.push(latency);
-                if address.is_ipv4() {
-                    ipv4_successes += 1;
-                } else {
-                    ipv6_successes += 1;
-                }
-            }
+        let Some(address) = unique_addresses.get(probe_index % unique_addresses.len().max(1))
+        else {
+            continue;
+        };
+        let Some(latency) = probe_address(*address) else {
+            continue;
+        };
+        successful_latencies.push(latency);
+        if address.is_ipv4() {
+            ipv4_successes += 1;
+        } else {
+            ipv6_successes += 1;
         }
     }
 
