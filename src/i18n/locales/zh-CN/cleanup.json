@@ -184,8 +184,8 @@
     "cancelling": "正在停止…",
     "cancelHint": "已完成的项目不会自动还原；CoreRobin 会在当前文件操作结束后停止。",
     "errors": {
-      "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、主目录或废纸篓目录本身。",
-      "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录内的内容。",
+      "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、临时目录根、主目录或废纸篓目录本身。",
+      "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录或获准临时位置内的内容。",
       "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
       "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
       "cleanup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开检查窗口。",

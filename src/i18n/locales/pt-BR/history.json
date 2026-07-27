@@ -137,10 +137,11 @@
     "cleanupResult": "{{count}} itens processados e {{size}} liberados",
     "cleanupFailed": "{{count}} itens não concluídos"
   },
+  "watchRules": { "title": "Histórico de acompanhamento de apps", "description": "Eventos locais de acionamento e recuperação das suas regras.", "savedEvents": "{{count}} eventos de acompanhamento", "savedEvents_one": "{{count}} evento de acompanhamento", "savedEvents_other": "{{count}} eventos de acompanhamento", "privateApplication": "Nome do app não salvo", "triggered": "{{metric}} atingiu {{value}}{{unit}}", "recovered": "{{metric}} voltou para {{value}}{{unit}}" },
   "privacyEyebrow": "Limites de dados",
   "privacyTitle": "Política de privacidade",
   "privacyLocal": "O histórico permanece armazenado na área de armazenamento do CoreRobin WebView deste dispositivo e nunca é carregado ou sincronizado.",
   "privacyCollected": "O histórico armazena dados agregados de recursos, eventos de pressão e recuperação, além do tipo, resultado, quantidade e espaço liberado das ações confirmadas. Nomes de aplicativos ou itens de inicialização só são salvos com permissão separada.",
-  "privacyExcluded": "Os comandos, usuários, caminhos e endereços de conexão locais ou remotos não são armazenados.",
+  "privacyExcluded": "O histórico de recursos e ações não salva comandos, usuários, caminhos, nomes de arquivos nem endereços de conexão. Se o histórico de conexões for ativado separadamente, agregados de cinco minutos poderão incluir IPs remotos, domínios, portas e nomes de apps.",
   "privacyControl": "Desativar impede novas gravações; os registros existentes permanecem até expirarem ou serem apagados manualmente."
 }

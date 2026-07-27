@@ -28,11 +28,18 @@
     "reveal": "在 Finder 中顯示",
     "preview": "快速預覽",
     "copy": "複製路徑",
-    "copied": "路徑已複製"
+    "copied": "已複製絕對路徑",
+    "errors": {
+      "unavailable": "此項目已不存在或目前無法存取。",
+      "homeUnavailable": "CoreRobin 無法確定目前使用者的個人資料夾。",
+      "unresolved": "CoreRobin 無法將此顯示路徑解析為絕對路徑。",
+      "openFailed": "無法開啟此項目，請確認它仍可存取。"
+    }
   },
   "systemSettings": {
     "login_items": "開啟登入項目設定",
     "battery": "開啟電池設定",
-    "network": "開啟網路設定"
+    "network": "開啟網路設定",
+    "notifications": "開啟通知設定"
   }
 }

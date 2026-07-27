@@ -5,12 +5,16 @@ import {
   ArrowUpFromLine,
   ChevronRight,
   HardDrive,
+  LoaderCircle,
   Sparkles,
+  Unplug,
   Usb,
+  X,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { processApplicationIconSource } from "../applicationIcon";
+import { ejectRemovableVolume } from "../api";
 
 import {
   sortVolumesByUsage,
@@ -28,6 +32,7 @@ import type {
 import {
   formatBytes,
   formatRate,
+  normalizeCommandError,
   processIdentity,
   resourceUsageLevel,
 } from "../utils";
@@ -41,6 +46,7 @@ interface StorageExplorerProps {
   onSelectProcess: (process: ProcessRow) => void;
   usageThresholds: UsageThresholds;
   onOpenCleanup: () => void;
+  onVolumeEjected?: () => void | Promise<void>;
 }
 
 const CHART_WIDTH = 720;
@@ -56,8 +62,13 @@ export function StorageExplorer({
   onSelectProcess,
   usageThresholds,
   onOpenCleanup,
+  onVolumeEjected,
 }: StorageExplorerProps) {
   const { t } = useAppTranslation();
+  const [confirmingMountPoint, setConfirmingMountPoint] = useState<string | null>(null);
+  const [ejectingMountPoint, setEjectingMountPoint] = useState<string | null>(null);
+  const [ejectNotice, setEjectNotice] = useState<string | null>(null);
+  const [ejectError, setEjectError] = useState<string | null>(null);
   const volumes = useMemo(
     () => sortVolumesByUsage(disk.volumes),
     [disk.volumes],
@@ -67,6 +78,26 @@ export function StorageExplorer({
     [processes],
   );
   const highestUsage = volumes[0];
+  const ejectVolume = async (mountPoint: string, name: string) => {
+    setEjectingMountPoint(mountPoint);
+    setEjectError(null);
+    setEjectNotice(null);
+    try {
+      await ejectRemovableVolume(mountPoint);
+      setConfirmingMountPoint(null);
+      setEjectNotice(t("storage:eject.success", { name: name || mountPoint }));
+      await onVolumeEjected?.();
+    } catch (caughtError) {
+      const error = normalizeCommandError(caughtError);
+      setEjectError(t(
+        error.code === "volume_not_removable"
+          ? "storage:eject.noLongerRemovable"
+          : "storage:eject.failed",
+      ));
+    } finally {
+      setEjectingMountPoint(null);
+    }
+  };
 
   return (
     <section className="storage-explorer" aria-labelledby="storage-title">
@@ -125,6 +156,9 @@ export function StorageExplorer({
           <span>{t("storage:sortedByUsage")}</span>
         </header>
 
+        {ejectNotice ? <div className="volume-eject-notice" role="status">{ejectNotice}</div> : null}
+        {ejectError ? <div className="volume-eject-error" role="alert"><AlertTriangle size={14} />{ejectError}</div> : null}
+
         {volumes.length > 0 ? (
           <div className="volume-grid">
             {volumes.map(({ volume, usedBytes, usagePercent, lowSpace }) => (
@@ -162,6 +196,50 @@ export function StorageExplorer({
                   {lowSpace ? (
                     <span className="volume-warning">
                       <AlertTriangle size={12} />{t("storage:lowSpace")}
+                    </span>
+                  ) : null}
+                  {volume.removable ? (
+                    <span className="volume-eject-actions">
+                      {confirmingMountPoint === volume.mountPoint ? (
+                        <>
+                          <button
+                            className="button button--secondary volume-eject-confirm"
+                            type="button"
+                            disabled={ejectingMountPoint !== null}
+                            onClick={() => void ejectVolume(volume.mountPoint, volume.name)}
+                          >
+                            {ejectingMountPoint === volume.mountPoint
+                              ? <LoaderCircle className="is-spinning" size={13} />
+                              : <Unplug size={13} />}
+                            {ejectingMountPoint === volume.mountPoint
+                              ? t("storage:eject.ejecting")
+                              : t("storage:eject.confirm")}
+                          </button>
+                          <button
+                            className="icon-button volume-eject-cancel"
+                            type="button"
+                            disabled={ejectingMountPoint !== null}
+                            aria-label={t("common:cancel")}
+                            title={t("common:cancel")}
+                            onClick={() => setConfirmingMountPoint(null)}
+                          >
+                            <X size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="button button--secondary volume-eject"
+                          type="button"
+                          disabled={ejectingMountPoint !== null}
+                          onClick={() => {
+                            setEjectError(null);
+                            setEjectNotice(null);
+                            setConfirmingMountPoint(volume.mountPoint);
+                          }}
+                        >
+                          <Unplug size={13} />{t("storage:eject.action")}
+                        </button>
+                      )}
                     </span>
                   ) : null}
                 </footer>

@@ -14,6 +14,7 @@
   "sortedByUsage": "Sortiert nach Nutzung",
   "unnamedVolume": "Unbenanntes Volume",
   "removable": "Entfernbare Medien",
+  "eject": { "action": "Auswerfen", "confirm": "Auswerfen bestätigen", "ejecting": "Wird ausgeworfen…", "success": "{{name}} wurde sicher ausgeworfen.", "failed": "Dieses Volume konnte nicht ausgeworfen werden. Schließe verwendete Dateien und versuche es erneut.", "noLongerRemovable": "Dieses Volume ist nicht mehr als Wechselmedium verfügbar." },
   "usedSpace": "Verwendeter Speicherplatz auf {{name}}",
   "available": "{{value}} verfügbar",
   "lowSpace": "Geringer freier Speicher",

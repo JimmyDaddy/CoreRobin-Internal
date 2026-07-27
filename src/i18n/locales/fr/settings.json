@@ -1,11 +1,11 @@
 {
   "watchRules": {
-    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
-    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
-    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
-    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "title": "Suivi d’applications et règles de rappel", "description": "Surveillez une application et recevez une alerte si une mesure reste au-dessus du seuil. Après rétablissement, une nouvelle alerte est possible.",
+    "application": "Application", "applicationPlaceholder": "Choisir ou saisir une application", "metric": "Mesure", "threshold": "Seuil", "duration": "Durée",
+    "metrics": { "cpu": "CPU", "memory": "Mémoire", "disk": "Activité disque" },
+    "seconds": "{{count}} secondes", "add": "Ajouter la règle", "notificationHint": "Activez et autorisez les notifications pour que les règles puissent envoyer des alertes système.", "backgroundSampling": "Avec des règles actives, les applications sont vérifiées toutes les {{seconds}} secondes environ, même fenêtre fermée.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} pendant {{seconds}} secondes", "active": "Condition atteinte", "remove": "Supprimer la règle de rappel de {{name}}",
+    "empty": "Aucune règle de suivi d’application."
   },
   "localPreferences": "Préférences locales",
   "title": "Paramètres",
@@ -60,10 +60,12 @@
     "retention": "Période de conservation",
     "days": "{{count}} jours"
   },
+  "dataPrivacy": { "title": "Données et confidentialité", "description": "Consultez et contrôlez chaque jeu de données local au même endroit. CoreRobin ne les téléverse ni ne les synchronise.", "status": { "on": "Enregistré", "off": "Désactivé" }, "resourceHistory": { "title": "Historique des ressources et alertes", "description": "Santé globale, actions et événements de suivi agrégés, sans chemins, commandes ni adresses réseau." }, "connectionHistory": { "title": "Historique des connexions", "description": "Les agrégats facultatifs de cinq minutes peuvent inclure IP distantes, domaines, ports et noms d’applications." }, "caches": { "title": "Caches locaux du produit", "description": "Inventaire des applications, analyse d’espace et résultats de fichiers restent sur cet appareil." }, "clear": "Effacer toutes les données locales" },
   "notifications": {
     "title": "Notifications sur le bureau",
     "description": "Seules les charges lourdes, la forte pression mémoire et l'espace disque insuffisant vous alertent. CoreRobin suit la situation une fois que le problème est durablement résolu.",
     "enable": "Activer les alertes limitées",
+    "openSettings": "Ouvrir les réglages des notifications",
     "categories": "Catégories d'alertes autorisées",
     "resources": {
       "cpu": "Charge élevée persistante",
@@ -89,7 +91,7 @@
   },
   "about": {
     "title": "À propos et assistance", "description": "Vérifiez la version, obtenez de l’aide et gérez les données conservées par CoreRobin sur cet ordinateur.",
-    "versionTitle": "Version et mises à jour", "versionDescription": "Rechercher la dernière version stable sur la page publique des versions.", "version": "Version actuelle", "platform": "Système", "architecture": "Architecture",
+    "versionTitle": "Version et mises à jour", "versionDescription": "Rechercher, télécharger et installer la dernière version stable directement dans CoreRobin.", "version": "Version actuelle", "platform": "Système", "architecture": "Architecture",
     "checking": "Vérification…", "checkUpdate": "Rechercher des mises à jour", "releaseNotes": "Notes de version", "updateError": "Impossible de vérifier les mises à jour pour le moment. Réessayez plus tard.", "updateAvailable": "CoreRobin v{{version}} est disponible", "openRelease": "Télécharger", "upToDate": "La version v{{version}} est à jour", "installUpdate": "Télécharger et installer", "installingUpdate": "Mise à jour…", "downloadingUpdate": "Téléchargement et vérification", "applyingUpdate": "Installation de la mise à jour", "updateReady": "La mise à jour est installée. Redémarrez CoreRobin pour terminer.", "restartUpdate": "Redémarrer", "updateInstallError": "La mise à jour n’a pas pu être installée. La version actuelle reste inchangée ; réessayez plus tard.",
     "helpTitle": "Aide et avis", "helpDescription": "Ouvrez le guide public ou vérifiez les informations incluses avant de signaler un problème.", "guide": "Guide utilisateur", "privacy": "Confidentialité", "reportIssue": "Signaler un problème", "reopenGuide": "Revoir le guide de démarrage",
     "diagnosticsTitle": "Résumé de diagnostic", "diagnosticsDescription": "Copiez les informations d’exécution utiles au dépannage.", "diagnosticsPrivacy": "Les noms d’hôte et de processus, chemins de fichiers, adresses réseau et valeurs historiques sont exclus par défaut.", "diagnosticsPreview": "Aperçu avant copie", "diagnostics": { "idle": "Copier le résumé expurgé", "copied": "Copié", "error": "Échec de la copie" },
@@ -97,6 +99,7 @@
   },
   "onboarding": {
     "kicker": "Premier démarrage · {{current}} / {{total}}", "skip": "Ignorer pour l’instant", "back": "Retour", "next": "Suivant", "finish": "Commencer",
+    "controls": { "mode": "Choisir un mode d’utilisation", "everyday": "Conclusions claires et actions guidées", "professional": "Toutes les métriques et preuves de diagnostic", "diskAccess": "Accès complet au disque", "openDiskAccess": "Ouvrir les réglages d’accès complet", "diskAccessStatus": { "granted": "Prêt", "not_granted": "Facultatif · non accordé", "not_required": "Non requis sur ce système", "unknown": "État indisponible" } },
     "steps": {
       "one": { "title": "Choisissez l’affichage qui vous convient", "description": "Le mode Quotidien fournit des conclusions stables et une prochaine étape. Le mode Professionnel conserve toutes les métriques et preuves de processus et de réseau. Changez à tout moment.", "note": "Les deux modes partagent le même état local et les mêmes conclusions." },
       "two": { "title": "Reste discrètement disponible après fermeture", "description": "CoreRobin reste dans la barre de menus avec un échantillonnage basse fréquence. Le panneau et Robin partagent le même état stable.", "note": "Mettez en pause, ouvrez les réglages ou quittez complètement depuis la barre de menus." },

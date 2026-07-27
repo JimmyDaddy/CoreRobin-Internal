@@ -28,11 +28,18 @@
     "reveal": "Finderに表示",
     "preview": "クイックルック",
     "copy": "パスをコピー",
-    "copied": "パスをコピーしました"
+    "copied": "絶対パスをコピーしました",
+    "errors": {
+      "unavailable": "この項目は存在しないか、現在アクセスできません。",
+      "homeUnavailable": "CoreRobin は現在のユーザーのホームフォルダを確認できません。",
+      "unresolved": "CoreRobin は表示パスを絶対パスに解決できません。",
+      "openFailed": "項目を開けません。現在もアクセス可能か確認してください。"
+    }
   },
   "systemSettings": {
     "login_items": "ログイン項目設定を開く",
     "battery": "バッテリー設定を開く",
-    "network": "ネットワーク設定を開く"
+    "network": "ネットワーク設定を開く",
+    "notifications": "通知設定を開く"
   }
 }

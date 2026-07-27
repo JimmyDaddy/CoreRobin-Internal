@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { isDesktopRuntime, openProductPage } from "../api";
 import {
@@ -57,6 +57,7 @@ export function AboutSupport({
   const [updateAction, setUpdateAction] = useState<"idle" | "installing" | "ready" | "error">("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [confirmClear, setConfirmClear] = useState(false);
+  const backgroundUpdateHydrationRef = useRef<string | null>(null);
   const diagnostic = useMemo(
     () => buildRedactedDiagnosticSummary({
       snapshot,
@@ -77,6 +78,33 @@ export function AboutSupport({
       latestVersion: backgroundUpdateVersion,
     });
   }, [backgroundUpdateVersion, updateResult]);
+
+  useEffect(() => {
+    if (
+      !backgroundUpdateVersion ||
+      !isDesktopRuntime() ||
+      installableUpdate ||
+      backgroundUpdateHydrationRef.current === backgroundUpdateVersion
+    ) return;
+    backgroundUpdateHydrationRef.current = backgroundUpdateVersion;
+    let disposed = false;
+    void checkForInstallableAppUpdate()
+      .then(async (update) => {
+        if (disposed) {
+          await update?.close().catch(() => undefined);
+          return;
+        }
+        if (update?.version === backgroundUpdateVersion) {
+          setInstallableUpdate(update);
+          return;
+        }
+        await update?.close().catch(() => undefined);
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+    };
+  }, [backgroundUpdateVersion, installableUpdate]);
 
   const checkForUpdate = async () => {
     if (checking || updateAction === "installing") return;

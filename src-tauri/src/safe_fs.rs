@@ -52,9 +52,8 @@ impl DeleteRoot {
     }
 
     /// Opens a root whose location has already been restricted by the caller.
-    /// This exists for the macOS `/Applications` directory, which is normally
-    /// owned by root even when the user may remove an application inside it.
-    #[cfg(target_os = "macos")]
+    /// This exists for root-owned, explicitly allowlisted locations such as the
+    /// macOS `/Applications` directory and shared temporary-directory roots.
     pub(crate) fn open_trusted_system_root(path: &Path) -> io::Result<Self> {
         Self::open_with_owner_check(path, false)
     }

@@ -137,10 +137,18 @@
     "cleanupResult": "处理 {{count}} 项，释放 {{size}}",
     "cleanupFailed": "{{count}} 项未完成"
   },
+  "watchRules": {
+    "title": "应用关注记录",
+    "description": "记录你创建的提醒规则在本机触发和恢复的时间。",
+    "savedEvents": "{{count}} 条关注事件",
+    "privateApplication": "未保存应用名称",
+    "triggered": "{{metric}} 达到 {{value}}{{unit}}",
+    "recovered": "{{metric}} 恢复至 {{value}}{{unit}}"
+  },
   "privacyEyebrow": "数据边界",
   "privacyTitle": "隐私说明",
   "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
   "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
-  "privacyExcluded": "不记录进程命令、用户、路径、文件名、本地或远端连接地址。",
+  "privacyExcluded": "资源与操作历史不记录进程命令、用户、路径、文件名或连接地址；如果你单独开启“连接历史”，五分钟聚合数据可能在本机保存远端 IP、域名、端口和应用名。",
   "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。"
 }

@@ -26,5 +26,20 @@
       "title": "磁碟空間狀態已經恢復",
       "body": "磁碟佔用已穩定回到安全範圍，目前不需要繼續清理。"
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} 達到關注條件",
+      "body": "{{metric}} 已持續超過規則 {{seconds}} 秒。"
+    },
+    "recovered": {
+      "title": "{{application}} 已恢復",
+      "body": "{{metric}} 已回到設定閾值以下。"
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "記憶體 {{value}} MiB",
+      "disk": "磁碟活動 {{value}} MiB/s"
+    }
   }
 }

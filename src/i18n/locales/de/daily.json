@@ -63,6 +63,7 @@
     "checkingSummary": "Aktuelle Informationen werden direkt hier angezeigt. Wenn etwas eine genauere Überprüfung erfordert, wird Robin dies deutlich anzeigen.",
     "haveProblem": "Etwas ist nicht in Ordnung",
     "checkedAt": "Letzte Aktualisierung {{time}}",
+    "storage": { "kicker": "Festplattenspeicher", "summary": "{{used}} von {{total}} belegt", "available": "verfügbar", "open": "Speicherdetails öffnen" },
     "localOnly": "Status und Verlauf bleiben auf diesem Gerät",
     "professional": "Detaillierte Daten ansehen"
   },
@@ -426,7 +427,7 @@
     "reduceMotion": "Bewegung reduzieren",
     "reduceMotionDescription": "Unterbrechen Sie kontinuierliche Robin-, Atem- und Bewegungsanimationen",
     "showDockIcon": "App im Dock anzeigen",
-    "showDockIconDescription": "Standardmäßig deaktiviert; öffnen Sie das Hauptfenster über die Menüleiste",
+    "showDockIconDescription": "CoreRobin im Dock und App-Umschalter anzeigen; für ausschließlichen Menüleistenzugriff deaktivieren",
     "launchAtLogin": "Beim Anmelden starten",
     "launchAtLoginDescription": "Nach der Anmeldung im Hintergrund starten, ohne das Hauptfenster zu öffnen",
     "companionAlwaysOnTop": "Robin immer auf oberster Ebene halten",

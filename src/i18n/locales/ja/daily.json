@@ -63,6 +63,7 @@
     "checkingSummary": "最新の状況情報がすぐに表示されます。何か詳細な確認が必要な場合は、Robinが分かりやすくお知らせします。",
     "haveProblem": "何かがおかしいようです",
     "checkedAt": "最後に更新されました：{{time}}",
+    "storage": { "kicker": "ディスクストレージ", "summary": "{{total}} 中 {{used}} を使用", "available": "空き", "open": "ストレージの詳細を開く" },
     "localOnly": "このデバイスでのみ状況と履歴を確認できます",
     "professional": "詳細なデータをご覧ください"
   },
@@ -426,7 +427,7 @@
     "reduceMotion": "アニメーションを減らす",
     "reduceMotionDescription": "Robin、呼吸、およびその他の動きのアニメーションを停止します",
     "showDockIcon": "アプリを Dock に表示",
-    "showDockIconDescription": "デフォルトではオフです。メニューバーからメインウィンドウを開きます",
+    "showDockIconDescription": "CoreRobin を Dock とアプリ切り替えに表示します。メニューバーだけで使う場合はオフにできます",
     "launchAtLogin": "ログイン時に起動",
     "launchAtLoginDescription": "ログイン後、メインウィンドウを開かずにバックグラウンドで起動します",
     "companionAlwaysOnTop": "Robin を常に前面に表示",

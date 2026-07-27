@@ -38,6 +38,7 @@ import {
 
 import {
   canRelaunchApplication,
+  clearPersistedProductData,
   createProcessControlLease,
   executeProcessAction,
   getSystemSnapshot,
@@ -58,6 +59,7 @@ import { ProcessTable } from "./components/ProcessTable";
 import { RobinIcon } from "./components/RobinIcon";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
+import { applicationWatchSamplingIntervalMs } from "./applicationWatchRules";
 import {
   type DailyIntent,
   type DailyRecheck,
@@ -75,7 +77,10 @@ import { usePersistentHistory } from "./hooks/usePersistentHistory";
 import { useMainVisibility } from "./hooks/useMainVisibility";
 import { useResourceAlerts } from "./hooks/useResourceAlerts";
 import { useSelectedProcessHistory } from "./hooks/useSelectedProcessHistory";
-import { useSystemMonitor } from "./hooks/useSystemMonitor";
+import {
+  HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS,
+  useSystemMonitor,
+} from "./hooks/useSystemMonitor";
 import { useStartupItems } from "./hooks/useStartupItems";
 import { useStartupImpactMeasurement } from "./hooks/useStartupImpactMeasurement";
 import { useApplicationWatchRules } from "./hooks/useApplicationWatchRules";
@@ -107,12 +112,14 @@ import {
 import {
   beginProductDataReset,
   checkForProductUpdate,
-  compareStableVersions,
   clearCoreRobinWebData,
   completeOnboarding,
-  CURRENT_APP_VERSION,
   hasCompletedOnboarding,
 } from "./productSupport";
+import {
+  loadAvailableUpdateVersion,
+  saveAvailableUpdateVersion,
+} from "./updateAvailability";
 import type {
   CommandError,
   ProcessAction,
@@ -181,8 +188,6 @@ type SettingsOperationFailure =
 
 const UPDATE_CHECKED_AT_STORAGE_KEY =
   "core-robin.update-check.checked-at.v1";
-const AVAILABLE_UPDATE_VERSION_STORAGE_KEY =
-  "core-robin.update-check.available-version.v1";
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 
 function App() {
@@ -208,19 +213,7 @@ function App() {
   const [settingsOperationRetryRevision, setSettingsOperationRetryRevision] =
     useState(0);
   const [availableUpdateVersion, setAvailableUpdateVersion] =
-    useState<string | null>(() => {
-      try {
-        const cachedVersion = window.localStorage.getItem(
-          AVAILABLE_UPDATE_VERSION_STORAGE_KEY,
-        );
-        return cachedVersion &&
-          compareStableVersions(cachedVersion, CURRENT_APP_VERSION) > 0
-          ? cachedVersion
-          : null;
-      } catch {
-        return null;
-      }
-    });
+    useState<string | null>(loadAvailableUpdateVersion);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
@@ -249,16 +242,9 @@ function App() {
               UPDATE_CHECKED_AT_STORAGE_KEY,
               String(Date.now()),
             );
-            if (result.status === "available") {
-              window.localStorage.setItem(
-                AVAILABLE_UPDATE_VERSION_STORAGE_KEY,
-                result.latestVersion,
-              );
-            } else {
-              window.localStorage.removeItem(
-                AVAILABLE_UPDATE_VERSION_STORAGE_KEY,
-              );
-            }
+            saveAvailableUpdateVersion(
+              result.status === "available" ? result.latestVersion : null,
+            );
           } catch {
             // The check result remains usable for this session.
           }
@@ -270,6 +256,13 @@ function App() {
       window.clearTimeout(timeout);
     };
   }, []);
+  const hiddenApplicationSamplingIntervalMs =
+    applicationWatchSamplingIntervalMs(settings.applicationWatchRules);
+  const hiddenFullSnapshotIntervalMs =
+    hiddenApplicationSamplingIntervalMs ??
+    (settings.networkConnectionHistoryEnabled
+      ? HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS
+      : null);
   const {
     snapshot,
     healthSnapshot,
@@ -279,7 +272,11 @@ function App() {
     setPaused,
     loading,
     refreshNow,
-  } = useSystemMonitor(settings.systemSampleIntervalMs, mainVisible);
+  } = useSystemMonitor(
+    settings.systemSampleIntervalMs,
+    mainVisible,
+    hiddenFullSnapshotIntervalMs,
+  );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
   const startupImpactMeasurements = useStartupImpactMeasurement();
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
@@ -295,6 +292,17 @@ function App() {
     }
     setActiveView("overview");
     setDiagnosisExpanded(true);
+  }, []);
+  const handleOpenApplicationWatchEvidence = useCallback(() => {
+    setActiveView("applications");
+    if (isDesktopRuntime()) {
+      void invoke("show_main_window").catch(() => undefined);
+    }
+  }, []);
+  const openNotificationSettings = useCallback(() => {
+    void openSystemSettings("notifications").catch((caughtError) => {
+      setNotice(normalizeCommandError(caughtError).message);
+    });
   }, []);
   const persistentHistory = usePersistentHistory(
     history,
@@ -326,6 +334,10 @@ function App() {
     settings.desktopNotificationsEnabled,
     desktopNotifications.status,
     settings.language,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+    settings.historyApplicationNamesEnabled,
+    handleOpenApplicationWatchEvidence,
   );
   const cleanupScan = useCleanupScan();
   const fileInsights = useFileInsightsScan();
@@ -571,9 +583,11 @@ function App() {
   const clearAllProductData = useCallback(async () => {
     persistentHistory.clear();
     resourceAlerts.clearSaved();
+    applicationWatchRules.clearSaved();
     userActions.clearSaved();
     try {
       await cleanupScan.clear();
+      await clearPersistedProductData();
     } catch {
       // WebView data should still be reset if the private scan cache is unavailable.
     }
@@ -583,7 +597,13 @@ function App() {
       clearCoreRobinWebData();
       window.location.reload();
     }, 120);
-  }, [cleanupScan, persistentHistory, resourceAlerts, userActions]);
+  }, [
+    applicationWatchRules,
+    cleanupScan,
+    persistentHistory,
+    resourceAlerts,
+    userActions,
+  ]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -1110,10 +1130,15 @@ function App() {
     snapshot.memory.usedBytes,
     snapshot.memory.totalBytes,
   );
-  const diskRate =
-    snapshot.disk.readBytesPerSecond === null || snapshot.disk.writeBytesPerSecond === null
-      ? null
-      : snapshot.disk.readBytesPerSecond + snapshot.disk.writeBytesPerSecond;
+  const primaryVolume = snapshot.disk.volumes.find(({ mountPoint }) => mountPoint === "/") ??
+    [...snapshot.disk.volumes].sort((left, right) => right.totalBytes - left.totalBytes)[0] ??
+    null;
+  const primaryVolumeUsedBytes = primaryVolume
+    ? Math.max(0, primaryVolume.totalBytes - primaryVolume.availableBytes)
+    : null;
+  const primaryVolumeUsagePercent = primaryVolume && primaryVolume.totalBytes > 0
+    ? (primaryVolumeUsedBytes! / primaryVolume.totalBytes) * 100
+    : null;
   const networkRate =
     snapshot.network.receivedBytesPerSecond === null ||
     snapshot.network.transmittedBytesPerSecond === null
@@ -1245,13 +1270,42 @@ function App() {
               <span className="nav-label">{t("app:diagnostics")}</span>
               <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app:startup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
-              <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}><Settings2 size={17} />{t("app:settings")}</button>
+              <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}>
+                <Settings2 size={17} />{t("app:settings")}
+                {availableUpdateVersion ? <small className="nav-update-badge">v{availableUpdateVersion}</small> : null}
+              </button>
             </div>
             <div className="sidebar-footer">
               <span className="live-indicator"><i />{t("app:localSampling")}</span>
             </div>
           </>
         )}
+        <div className="sidebar-mode-switch" role="group" aria-label={t("app:mode.label")}>
+          <span
+            className={`sidebar-mode-switch__indicator is-${dailyMode ? "simple" : "professional"}`}
+            aria-hidden="true"
+          />
+          <button
+            className={dailyMode ? "is-active" : ""}
+            type="button"
+            aria-pressed={dailyMode}
+            aria-label={t("app:mode.switchTo.simple")}
+            disabled={modeTransition !== null}
+            onClick={() => switchExperienceMode("simple")}
+          >
+            <Sparkles size={15} /><span>{t("app:mode.short.simple")}</span>
+          </button>
+          <button
+            className={!dailyMode ? "is-active" : ""}
+            type="button"
+            aria-pressed={!dailyMode}
+            aria-label={t("app:mode.switchTo.professional")}
+            disabled={modeTransition !== null}
+            onClick={() => openProfessional("overview")}
+          >
+            <SlidersHorizontal size={15} /><span>{t("app:mode.short.professional")}</span>
+          </button>
+        </div>
       </nav>
 
       <div className="workspace">
@@ -1308,18 +1362,19 @@ function App() {
                   onChange={(language) => updateSettings({ language })}
                 />
                 <button
-                  className="button mode-switch mode-switch--to-professional"
+                  className={`icon-button update-aware-button${activeView === "settings" ? " is-active" : ""}${availableUpdateVersion ? " has-update" : ""}`}
                   type="button"
-                  title={t("app:mode.switchTo.professional")}
-                  aria-label={t("app:mode.switchTo.professional")}
-                  aria-busy={modeTransition !== null}
-                  disabled={modeTransition !== null}
-                  onClick={() => openProfessional("overview")}
+                  title={availableUpdateVersion
+                    ? t("settings:about.updateAvailable", { version: availableUpdateVersion })
+                    : t("daily:nav.settings")}
+                  aria-label={availableUpdateVersion
+                    ? t("settings:about.updateAvailable", { version: availableUpdateVersion })
+                    : t("daily:nav.settings")}
+                  onClick={() => navigateDaily("settings")}
                 >
-                  <span className="mode-switch__icon" aria-hidden="true"><SlidersHorizontal size={15} /></span>
-                  <span>{t("app:mode.short.professional")}</span>
+                  <Settings2 size={16} />
+                  {availableUpdateVersion ? <i aria-hidden="true" /> : null}
                 </button>
-                <button className={`icon-button${activeView === "settings" ? " is-active" : ""}`} type="button" title={t("daily:nav.settings")} aria-label={t("daily:nav.settings")} onClick={() => navigateDaily("settings")}><Settings2 size={16} /></button>
               </div>
             </>
           ) : (
@@ -1362,18 +1417,6 @@ function App() {
               label={t("app:switchLanguage")}
               onChange={(language) => updateSettings({ language })}
             />
-            <button
-              className="button mode-switch mode-switch--to-simple"
-              type="button"
-              title={t("app:mode.switchTo.simple")}
-              aria-label={t("app:mode.switchTo.simple")}
-              aria-busy={modeTransition !== null}
-              disabled={modeTransition !== null}
-              onClick={() => switchExperienceMode("simple")}
-            >
-              <span className="mode-switch__icon" aria-hidden="true"><Sparkles size={15} /></span>
-              <span>{t("app:mode.short.simple")}</span>
-            </button>
             {activeView === "overview" || activeView === "processes" || activeView === "storage" ? (
               <button className="icon-button" type="button" title={t("app:refreshNow")} aria-label={t("app:refreshNow")} onClick={() => void refreshActiveView()}>
                 <RefreshCw size={16} />
@@ -1527,6 +1570,7 @@ function App() {
               ) : activeView === "history" ? (
                 <DailyRecords
                   alertEvents={resourceAlerts.events}
+                  applicationWatchEvents={applicationWatchRules.events}
                   actionRecords={userActions.records}
                   storedActionCount={userActions.storedRecords.length}
                   onOpenAction={openUserActionDestination}
@@ -1537,7 +1581,9 @@ function App() {
                   settings={settings}
                   notificationStatus={desktopNotifications.status}
                   snapshot={snapshot}
+                  availableUpdateVersion={availableUpdateVersion}
                   onChange={updateSettings}
+                  onOpenNotificationSettings={openNotificationSettings}
                   onOpenOnboarding={() => setOnboardingOpen(true)}
                   onClearAllData={() => void clearAllProductData()}
                 />
@@ -1606,12 +1652,21 @@ function App() {
                       <MetricCard
                         icon={Database}
                         label={t("app:metrics.disk")}
-                        value={formatRate(diskRate)}
-                        context={t("app:metrics.diskContext", {
+                        value={primaryVolumeUsagePercent === null
+                          ? t("common:unavailable")
+                          : formatBytes(primaryVolumeUsedBytes ?? 0)}
+                        context={primaryVolume
+                          ? t("app:metrics.diskCapacityContext", {
+                            total: formatBytes(primaryVolume.totalBytes),
+                            available: formatBytes(primaryVolume.availableBytes),
+                          })
+                          : t("app:metrics.diskContext", {
                           read: formatRate(snapshot.disk.readBytesPerSecond),
                           write: formatRate(snapshot.disk.writeBytesPerSecond),
-                        })}
+                          })}
                         tone="amber"
+                        progress={primaryVolumeUsagePercent ?? 0}
+                        usageLevel={resourceUsageLevel(primaryVolumeUsagePercent, settings.usageThresholds)}
                       />
                       <MetricCard
                         icon={Network}
@@ -1683,6 +1738,9 @@ function App() {
                 }}
                 usageThresholds={settings.usageThresholds}
                 onOpenCleanup={() => setActiveView("cleanup")}
+                onVolumeEjected={async () => {
+                  await refreshNow();
+                }}
               />
             ) : activeView === "applications" ? (
               <ApplicationUninstallAssistant
@@ -1746,6 +1804,8 @@ function App() {
                 storedPointCount={persistentHistory.storedPoints.length}
                 alertEvents={resourceAlerts.events}
                 storedAlertEventCount={resourceAlerts.storedEvents.length}
+                applicationWatchEvents={applicationWatchRules.events}
+                storedApplicationWatchEventCount={applicationWatchRules.storedEvents.length}
                 actionRecords={userActions.records}
                 storedUserActionCount={userActions.storedRecords.length}
                 activeAlertCount={resourceAlerts.activeAlerts.length}
@@ -1761,6 +1821,7 @@ function App() {
                 onClear={() => {
                   persistentHistory.clear();
                   resourceAlerts.clearSaved();
+                  applicationWatchRules.clearSaved();
                   userActions.clearSaved();
                 }}
                 onOpenUserAction={openUserActionDestination}
@@ -1773,6 +1834,7 @@ function App() {
                 snapshot={snapshot}
                 availableUpdateVersion={availableUpdateVersion}
                 onChange={updateSettings}
+                onOpenNotificationSettings={openNotificationSettings}
                 onOpenOnboarding={() => setOnboardingOpen(true)}
                 onClearAllData={() => void clearAllProductData()}
               />
@@ -1851,7 +1913,13 @@ function App() {
             </section>
           </div>
         )}>
-          <FirstRunGuide onComplete={closeOnboarding} />
+          <FirstRunGuide
+            settings={settings}
+            notificationStatus={desktopNotifications.status}
+            onChange={updateSettings}
+            onOpenNotificationSettings={openNotificationSettings}
+            onComplete={closeOnboarding}
+          />
         </Suspense>
       ) : null}
     </div>

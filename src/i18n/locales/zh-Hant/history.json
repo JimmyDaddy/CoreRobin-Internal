@@ -137,10 +137,11 @@
     "cleanupResult": "已處理 {{count}} 項，釋放 {{size}}",
     "cleanupFailed": "{{count}} 項未完成"
   },
+  "watchRules": { "title": "應用程式關注記錄", "description": "記錄你建立的提醒規則在本機觸發與恢復的時間。", "savedEvents": "{{count}} 筆關注事件", "savedEvents_other": "{{count}} 筆關注事件", "privateApplication": "未儲存應用程式名稱", "triggered": "{{metric}} 達到 {{value}}{{unit}}", "recovered": "{{metric}} 恢復至 {{value}}{{unit}}" },
   "privacyEyebrow": "資料邊界",
   "privacyTitle": "隱私說明",
   "privacyLocal": "歷史只儲存在當前裝置的 CoreRobin WebView 儲存中，不會上傳或同步。",
   "privacyCollected": "記錄整機資源快照、超限與恢復事件，以及你確認執行的操作類型、結果、數量和釋放空間；應用程式或啟動項目名稱只有在設定中單獨允許後才會儲存。",
-  "privacyExcluded": "不記錄程序命令、使用者、路徑、檔名、本地或遠端連線地址。",
+  "privacyExcluded": "資源與操作歷史不記錄程序命令、使用者、路徑、檔名或連線地址；若另行啟用「連線歷史」，五分鐘彙總資料可能在本機保存遠端 IP、網域、連接埠與應用程式名稱。",
   "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
 }

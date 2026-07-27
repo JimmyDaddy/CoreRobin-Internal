@@ -137,10 +137,18 @@
     "cleanupResult": "Processed {{count}} items and reclaimed {{size}}",
     "cleanupFailed": "{{count}} items not completed"
   },
+  "watchRules": {
+    "title": "Application watch history",
+    "description": "Local trigger and recovery events from the reminder rules you created.",
+    "savedEvents": "{{count}} watch events",
+    "privateApplication": "Application name not saved",
+    "triggered": "{{metric}} reached {{value}}{{unit}}",
+    "recovered": "{{metric}} recovered to {{value}}{{unit}}"
+  },
   "privacyEyebrow": "Data boundaries",
   "privacyTitle": "Privacy policy",
   "privacyLocal": "History stays in this device's CoreRobin WebView storage and is never uploaded or synchronized.",
   "privacyCollected": "History stores aggregate resource snapshots, pressure and recovery events, plus the type, result, item count, and reclaimed space of actions you confirm. App or startup item names are saved only after you allow them separately in Settings.",
-  "privacyExcluded": "Process commands, users, paths, file names, and local or remote connection addresses are not stored.",
+  "privacyExcluded": "Resource and action history does not store process commands, users, paths, file names, or connection addresses. If you separately enable Connection History, five-minute local aggregates can include remote IPs, domains, ports, and app names.",
   "privacyControl": "Disabling stops new writes; existing records remain until they expire or you clear them manually."
 }

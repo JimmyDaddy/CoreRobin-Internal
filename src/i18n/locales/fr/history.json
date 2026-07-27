@@ -137,10 +137,11 @@
     "cleanupResult": "{{count}} éléments traités, {{size}} libérés",
     "cleanupFailed": "{{count}} éléments non terminés"
   },
+  "watchRules": { "title": "Historique de suivi des applications", "description": "Événements locaux de déclenchement et de rétablissement de vos règles.", "savedEvents": "{{count}} événements de suivi", "savedEvents_one": "{{count}} événement de suivi", "savedEvents_other": "{{count}} événements de suivi", "privateApplication": "Nom d’application non enregistré", "triggered": "{{metric}} a atteint {{value}}{{unit}}", "recovered": "{{metric}} est revenu à {{value}}{{unit}}" },
   "privacyEyebrow": "Limites de données",
   "privacyTitle": "Politique de confidentialité",
   "privacyLocal": "L'historique reste dans le stockage CoreRobin WebView de cet appareil et n'est jamais téléchargé ou synchronisé.",
   "privacyCollected": "L’historique conserve les données de ressources agrégées, les événements de pression et de récupération, ainsi que le type, le résultat, le nombre d’éléments et l’espace libéré des actions confirmées. Les noms d’applications ou d’éléments de démarrage nécessitent une autorisation séparée.",
-  "privacyExcluded": "Les commandes, les utilisateurs, les chemins et les adresses de connexion (locales ou distantes) ne sont pas enregistrés.",
+  "privacyExcluded": "L’historique des ressources et actions ne stocke ni commandes, utilisateurs, chemins, noms de fichiers, ni adresses réseau. Si l’historique des connexions est activé séparément, ses agrégats de cinq minutes peuvent inclure IP distantes, domaines, ports et noms d’applications.",
   "privacyControl": "La désactivation arrête l'enregistrement de nouvelles données ; les données existantes restent jusqu'à leur expiration ou jusqu'à ce que vous les effaciez manuellement."
 }

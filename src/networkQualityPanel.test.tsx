@@ -88,5 +88,13 @@ function qualityResult(sampledAtMs: number): NetworkQualityResult {
     maximumLatencyMs: 31,
     jitterMs: 3,
     packetLossPercent: 0,
+    diagnostics: [
+      { kind: "local_link", status: "passed", latencyMs: null },
+      { kind: "dns", status: "passed", latencyMs: 2 },
+      { kind: "ipv4", status: "passed", latencyMs: null },
+      { kind: "ipv6", status: "unavailable", latencyMs: null },
+      { kind: "internet", status: "passed", latencyMs: 18 },
+      { kind: "independent_service", status: "passed", latencyMs: 24 },
+    ],
   };
 }

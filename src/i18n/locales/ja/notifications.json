@@ -26,5 +26,20 @@
       "title": "ディスク容量が正常な範囲に戻りました",
       "body": "ディスクの使用量が安全な範囲に維持されていますので、現在は追加での整理は不要です。"
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} が監視条件に達しました",
+      "body": "{{metric}} がルールを {{seconds}} 秒間上回りました。"
+    },
+    "recovered": {
+      "title": "{{application}} が監視条件から回復しました",
+      "body": "{{metric}} が設定したしきい値を下回りました。"
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "メモリ {{value}} MiB",
+      "disk": "ディスク動作 {{value}} MiB/s"
+    }
   }
 }

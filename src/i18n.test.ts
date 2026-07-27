@@ -75,6 +75,26 @@ const PROTECTED_TRANSLATION_TOKENS = [
   "SIGTERM",
   "TerminateProcess",
 ] as const;
+const CRITICAL_LOCALIZED_COPY = {
+  applications: [
+    "uninstall.bundleOnlyBoundary",
+    "uninstall.dialogDescription",
+    "uninstall.outcomeDeletedPermanently",
+    "uninstall.removed.permanentDescription",
+    "uninstall.unavailable.generic",
+    "uninstall.errors.application_bundle_unavailable",
+  ],
+  cleanup: [
+    "fileInsights.boundary",
+    "fileInsights.processing.dialogTitle",
+    "fileInsights.processing.dialogDescription",
+  ],
+  settings: [
+    "watchRules.title",
+    "watchRules.description",
+    "watchRules.notificationHint",
+  ],
+} as const;
 
 function pluralStem(key: string): string {
   return key.replace(PLURAL_SUFFIX, "");
@@ -240,6 +260,28 @@ describe("internationalization", () => {
               ).toContain(token);
             }
           }
+        }
+      }
+    }
+  });
+
+  it("does not fall back to English for destructive or permission-sensitive copy", async () => {
+    for (const namespace of Object.keys(
+      CRITICAL_LOCALIZED_COPY,
+    ) as Array<keyof typeof CRITICAL_LOCALIZED_COPY>) {
+      const keys = CRITICAL_LOCALIZED_COPY[namespace];
+      const english = resourceStrings(await loadCatalog("en", namespace));
+      for (const language of SUPPORTED_LANGUAGES.filter(
+        (candidate) => candidate !== "en",
+      )) {
+        const translated = resourceStrings(
+          await loadCatalog(language, namespace),
+        );
+        for (const key of keys) {
+          expect(
+            translated[key],
+            `${language}:${namespace}:${key} must be localized`,
+          ).not.toBe(english[key]);
         }
       }
     }

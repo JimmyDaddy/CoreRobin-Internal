@@ -137,10 +137,11 @@
     "cleanupResult": "{{count}}개 항목을 처리하고 {{size}} 확보",
     "cleanupFailed": "{{count}}개 항목 미완료"
   },
+  "watchRules": { "title": "앱 관찰 기록", "description": "만든 알림 규칙의 로컬 발생 및 회복 이벤트입니다.", "savedEvents": "관찰 이벤트 {{count}}개", "savedEvents_other": "관찰 이벤트 {{count}}개", "privateApplication": "앱 이름을 저장하지 않음", "triggered": "{{metric}}이(가) {{value}}{{unit}}에 도달", "recovered": "{{metric}}이(가) {{value}}{{unit}}로 회복" },
   "privacyEyebrow": "데이터 범위 설정",
   "privacyTitle": "개인 정보 보호 정책",
   "privacyLocal": "사용 기록은 이 장치의 CoreRobin WebView 저장소에 남아있으며, 업로드되거나 동기화되지 않습니다.",
   "privacyCollected": "집계된 자원 정보, 압력 및 복구 이벤트와 함께 사용자가 확인한 작업의 유형, 결과, 항목 수, 확보 공간을 저장합니다. 앱 또는 시작 항목 이름은 설정에서 별도로 허용한 경우에만 저장됩니다.",
-  "privacyExcluded": "프로세스, 사용자, 경로, 파일 이름 및 로컬 또는 원격 연결 주소에 대한 정보는 저장되지 않습니다.",
+  "privacyExcluded": "리소스 및 작업 기록에는 명령, 사용자, 경로, 파일 이름, 연결 주소를 저장하지 않습니다. 연결 기록을 별도로 켜면 5분 집계에 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다.",
   "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다."
 }

@@ -26,7 +26,12 @@ const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 export const HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS = 30_000;
 
-export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
+export function useSystemMonitor(
+  refreshIntervalMs = 1_000,
+  visible = true,
+  hiddenFullSnapshotIntervalMs: number | null =
+    HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS,
+) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
   const [summary, setSummary] = useState<SystemSummary | null>(null);
   const [healthSnapshot, setHealthSnapshot] =
@@ -146,8 +151,9 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
       } else {
         await refreshSummaryNow();
         if (
+          hiddenFullSnapshotIntervalMs !== null &&
           Date.now() - lastFullSnapshotAtRef.current >=
-          HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS
+            hiddenFullSnapshotIntervalMs
         ) {
           await refreshBackgroundSnapshotNow();
         }
@@ -169,6 +175,7 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     };
   }, [
     paused,
+    hiddenFullSnapshotIntervalMs,
     refreshBackgroundSnapshotNow,
     refreshIntervalMs,
     refreshNow,

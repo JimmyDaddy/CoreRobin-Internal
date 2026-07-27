@@ -1,11 +1,11 @@
 {
   "watchRules": {
-    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
-    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
-    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
-    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "title": "App-Beobachtung und Erinnerungsregeln", "description": "Eine App beobachten und einmal benachrichtigen, wenn ein Wert dauerhaft über der Bedingung liegt. Nach Erholung kann erneut erinnert werden.",
+    "application": "Anwendung", "applicationPlaceholder": "Anwendung wählen oder eingeben", "metric": "Messwert", "threshold": "Schwelle", "duration": "Dauer",
+    "metrics": { "cpu": "CPU", "memory": "Arbeitsspeicher", "disk": "Festplattenaktivität" },
+    "seconds": "{{count}} Sekunden", "add": "Regel hinzufügen", "notificationHint": "Desktop-Mitteilungen aktivieren und erlauben, damit Regeln Systemhinweise senden können.", "backgroundSampling": "Bei aktiven Regeln werden Apps auch bei geschlossenem Fenster etwa alle {{seconds}} Sekunden geprüft.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} für {{seconds}} Sekunden", "active": "Bedingung erreicht", "remove": "Erinnerungsregel für {{name}} entfernen",
+    "empty": "Noch keine App-Beobachtungsregeln."
   },
   "localPreferences": "Lokale Einstellungen",
   "title": "Einstellungen",
@@ -60,10 +60,12 @@
     "retention": "Aufbewahrungsdauer",
     "days": "{{count}} Tage"
   },
+  "dataPrivacy": { "title": "Daten- und Datenschutzcenter", "description": "Alle lokalen Datensätze an einer Stelle einsehen und steuern. CoreRobin lädt diese Daten nicht hoch und synchronisiert sie nicht.", "status": { "on": "Wird gespeichert", "off": "Aus" }, "resourceHistory": { "title": "Ressourcen- und Erinnerungsverlauf", "description": "Aggregierte Systemgesundheit, Aktionen und Beobachtungsereignisse ohne Pfade, Befehle oder Netzwerkadressen." }, "connectionHistory": { "title": "Verbindungsverlauf", "description": "Optionale Fünf-Minuten-Aggregate können externe IPs, Domains, Ports und App-Namen enthalten." }, "caches": { "title": "Lokale Produkt-Caches", "description": "App-Inventar, Speicheranalyse und Dateiergebnisse bleiben auf diesem Gerät." }, "clear": "Alle lokalen Daten löschen" },
   "notifications": {
     "title": "Desktop-Benachrichtigungen",
     "description": "Nur anhaltende hohe Last, tatsächlicher Speicherbedarf und geringer Festplattenspeicher stören Sie. CoreRobin informiert Sie nach der stabilen Wiederherstellung einmal.",
     "enable": "Eingeschränkte Benachrichtigungen zulassen",
+    "openSettings": "Mitteilungseinstellungen öffnen",
     "categories": "Erlaubte Benachrichtigungskategorien",
     "resources": {
       "cpu": "Anhaltende hohe Last",
@@ -89,7 +91,7 @@
   },
   "about": {
     "title": "Über CoreRobin & Support", "description": "Version prüfen, Hilfe erhalten und die auf diesem Computer gespeicherten CoreRobin-Daten verwalten.",
-    "versionTitle": "Version & Updates", "versionDescription": "Auf der öffentlichen Release-Seite nach der neuesten stabilen Version suchen.", "version": "Aktuelle Version", "platform": "System", "architecture": "Architektur",
+    "versionTitle": "Version & Updates", "versionDescription": "Die neueste stabile Version direkt in CoreRobin prüfen, laden und installieren.", "version": "Aktuelle Version", "platform": "System", "architecture": "Architektur",
     "checking": "Wird geprüft…", "checkUpdate": "Nach Updates suchen", "releaseNotes": "Versionshinweise", "updateError": "Updates können derzeit nicht geprüft werden. Bitte später erneut versuchen.", "updateAvailable": "CoreRobin v{{version}} ist verfügbar", "openRelease": "Herunterladen", "upToDate": "v{{version}} ist aktuell", "installUpdate": "Herunterladen und installieren", "installingUpdate": "Aktualisierung läuft…", "downloadingUpdate": "Update wird geladen und geprüft", "applyingUpdate": "Update wird installiert", "updateReady": "Das Update ist installiert. Starten Sie CoreRobin neu, um den Vorgang abzuschließen.", "restartUpdate": "Neu starten", "updateInstallError": "Das Update konnte nicht installiert werden. Die aktuelle Version bleibt unverändert; versuchen Sie es später erneut.",
     "helpTitle": "Hilfe & Feedback", "helpDescription": "Öffentlichen Leitfaden öffnen oder vor einem Bericht prüfen, welche Angaben enthalten sind.", "guide": "Benutzerhandbuch", "privacy": "Datenschutz", "reportIssue": "Problem melden", "reopenGuide": "Einführung erneut anzeigen",
     "diagnosticsTitle": "Diagnoseübersicht", "diagnosticsDescription": "Grundlegende Laufzeitdaten zur Fehlersuche kopieren.", "diagnosticsPrivacy": "Hostname, Prozessnamen, Dateipfade, Netzwerkadressen und Verlaufswerte sind standardmäßig ausgeschlossen.", "diagnosticsPreview": "Vorschau vor dem Kopieren", "diagnostics": { "idle": "Bereinigte Übersicht kopieren", "copied": "Kopiert", "error": "Kopieren fehlgeschlagen" },
@@ -97,6 +99,7 @@
   },
   "onboarding": {
     "kicker": "Erster Start · {{current}} / {{total}}", "skip": "Vorerst überspringen", "back": "Zurück", "next": "Weiter", "finish": "Loslegen",
+    "controls": { "mode": "Erlebnismodus wählen", "everyday": "Klare Ergebnisse und geführte Aktionen", "professional": "Vollständige Messwerte und Diagnosebelege", "diskAccess": "Festplattenvollzugriff", "openDiskAccess": "Einstellungen für Vollzugriff öffnen", "diskAccessStatus": { "granted": "Bereit", "not_granted": "Optional · nicht gewährt", "not_required": "Auf diesem System nicht erforderlich", "unknown": "Status nicht verfügbar" } },
     "steps": {
       "one": { "title": "Wählen Sie die passende Ansicht", "description": "Der Alltagsmodus liefert stabile Ergebnisse und den nächsten Schritt. Der Profimodus zeigt vollständige Metriken, Prozesse und Netzwerkbelege. Ein Wechsel ist jederzeit möglich.", "note": "Beide Modi verwenden denselben lokalen Zustand und kommen zu denselben Ergebnissen." },
       "two": { "title": "Bleibt nach dem Schließen leise verfügbar", "description": "CoreRobin bleibt in der Menüleiste und misst mit niedriger Frequenz weiter. Menüfenster und Robin teilen denselben stabilen Zustand.", "note": "Über die Menüleiste pausieren, Einstellungen öffnen oder die App vollständig beenden." },

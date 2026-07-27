@@ -54,5 +54,6 @@
     "attention": "有 {{count}} 項情況值得留意",
     "urgent": "有 {{count}} 項情況建議儘快檢視"
   },
-  "recovering": "指標已回落，正在確認是否恢復。"
+  "recovering": "指標已回落，正在確認是否恢復。",
+  "updateAvailable": "CoreRobin v{{version}} 可更新"
 }

@@ -15,11 +15,14 @@ import {
   type HistoryStory,
 } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
+import type { ApplicationWatchHistoryEvent } from "../applicationWatchHistory";
 import type { UserActionKind, UserActionRecord } from "../userActionHistory";
 import { UserActionTimeline } from "./UserActionTimeline";
+import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
 
 interface DailyRecordsProps {
   alertEvents: readonly ResourceAlertEvent[];
+  applicationWatchEvents?: readonly ApplicationWatchHistoryEvent[];
   actionRecords: readonly UserActionRecord[];
   storedActionCount: number;
   onOpenAction: (kind: UserActionKind) => void;
@@ -28,6 +31,7 @@ interface DailyRecordsProps {
 
 export function DailyRecords({
   alertEvents,
+  applicationWatchEvents = [],
   actionRecords,
   storedActionCount,
   onOpenAction,
@@ -58,6 +62,11 @@ export function DailyRecords({
         />
       ) : null}
 
+      <ApplicationWatchTimeline
+        events={applicationWatchEvents}
+        compact
+      />
+
       {stories.length > 0 ? (
         <div className="daily-records__groups">
           {groups.map((group) => (
@@ -69,7 +78,7 @@ export function DailyRecords({
             </section>
           ))}
         </div>
-      ) : actionRecords.length === 0 ? (
+      ) : actionRecords.length === 0 && applicationWatchEvents.length === 0 ? (
         <div className="daily-records__empty">
           <CheckCircle2 size={24} />
           <div><strong>{t("daily:records.emptyTitle")}</strong><span>{t("daily:records.emptyDescription")}</span></div>

@@ -26,5 +26,20 @@
       "title": "Espaço em disco está dentro de uma faixa saudável",
       "body": "O uso do disco permanece em um nível seguro, portanto, nenhuma limpeza adicional é necessária no momento."
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} atingiu a condição monitorada",
+      "body": "{{metric}} ficou acima da regra por {{seconds}} segundos."
+    },
+    "recovered": {
+      "title": "{{application}} voltou abaixo da condição monitorada",
+      "body": "{{metric}} voltou a ficar abaixo do limite configurado."
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "Memória {{value}} MiB",
+      "disk": "Atividade de disco {{value}} MiB/s"
+    }
   }
 }

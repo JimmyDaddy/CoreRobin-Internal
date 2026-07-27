@@ -14,6 +14,14 @@
   "sortedByUsage": "Sorted by usage",
   "unnamedVolume": "Unnamed volume",
   "removable": "Removable",
+  "eject": {
+    "action": "Eject",
+    "confirm": "Confirm eject",
+    "ejecting": "Ejecting…",
+    "success": "{{name}} was safely ejected.",
+    "failed": "This volume could not be ejected. Close files that are using it and try again.",
+    "noLongerRemovable": "This volume is no longer available as a removable volume."
+  },
   "usedSpace": "Used space on {{name}}",
   "available": "{{value}} available",
   "lowSpace": "Low space",

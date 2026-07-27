@@ -14,6 +14,7 @@
   "sortedByUsage": "Ordenado por uso",
   "unnamedVolume": "Volume sem nome",
   "removable": "Removível",
+  "eject": { "action": "Ejetar", "confirm": "Confirmar ejeção", "ejecting": "Ejetando…", "success": "{{name}} foi ejetado com segurança.", "failed": "Não foi possível ejetar este volume. Feche os arquivos que o utilizam e tente novamente.", "noLongerRemovable": "Este volume não está mais disponível como removível." },
   "usedSpace": "Espaço utilizado em {{name}}",
   "available": "{{value}} espaço disponível",
   "lowSpace": "Espaço insuficiente",

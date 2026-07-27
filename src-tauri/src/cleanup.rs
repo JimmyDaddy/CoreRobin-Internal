@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 #[cfg(all(target_os = "macos", not(test)))]
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[cfg(target_os = "macos")]
@@ -341,6 +341,13 @@ struct CleanupTargetValidation {
     targets: Vec<CleanupDeleteTarget>,
     missing_paths: Vec<String>,
     unavailable_failures: Vec<CleanupDeleteFailure>,
+}
+
+#[derive(Clone, Debug)]
+struct CleanupDeleteBoundary {
+    aliases: Vec<PathBuf>,
+    canonical_root: PathBuf,
+    trusted_system_root: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2294,12 +2301,13 @@ fn validate_cleanup_targets(
             format!("CoreRobin could not verify the home directory: {error}"),
         )
     })?;
-    let delete_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+    let home_delete_root = DeleteRoot::open(&canonical_home).map_err(|error| {
         CommandError::new(
             "home_directory_unavailable",
             format!("CoreRobin could not open a stable home directory handle: {error}"),
         )
     })?;
+    let mut delete_roots = HashMap::from([(canonical_home.clone(), home_delete_root)]);
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
     let mut selected_paths = Vec::with_capacity(request.paths.len());
@@ -2308,20 +2316,34 @@ fn validate_cleanup_targets(
     let mut unavailable_failures = Vec::new();
     for display in &request.paths {
         let path = expand_cleanup_path(display, &canonical_home)?;
-        let relative_path = path
+        let home_relative = path
             .strip_prefix(home)
             .or_else(|_| path.strip_prefix(&canonical_home))
-            .map_err(|_| {
-                CommandError::new(
-                    "cleanup_target_outside_home",
-                    format!("CoreRobin only deletes items inside your home folder: {display}"),
-                )
-            })?;
-        let canonical_path = canonical_home.join(relative_path);
+            .ok()
+            .map(Path::to_path_buf);
+        let (boundary_root, relative_path, trusted_system_root) = if let Some(relative) =
+            home_relative
+        {
+            (canonical_home.clone(), relative, false)
+        } else if let Some((boundary, relative)) = temporary_cleanup_boundary_for_path(&path) {
+            (
+                boundary.canonical_root.clone(),
+                relative,
+                boundary.trusted_system_root,
+            )
+        } else {
+            return Err(CommandError::new(
+                "cleanup_target_outside_home",
+                format!(
+                    "CoreRobin only deletes items inside your home folder or approved temporary locations: {display}"
+                ),
+            ));
+        };
+        let canonical_path = boundary_root.join(&relative_path);
         if cleanup_protection_for_path(&canonical_path, &canonical_home).is_some() {
             return Err(CommandError::new(
                 "protected_cleanup_path",
-                "CoreRobin will not delete system-managed locations, sensitive user data, the home directory, or the system Trash folder itself.",
+                "CoreRobin will not delete system-managed locations, sensitive user data, temporary-directory roots, the home directory, or the system Trash folder itself.",
             ));
         }
         if request.mode == CleanupDeleteMode::Trash
@@ -2334,12 +2356,6 @@ fn validate_cleanup_targets(
                 "Items that contain or are already inside the system Trash can only be deleted permanently.",
             ));
         }
-        if !canonical_path.starts_with(&canonical_home) {
-            return Err(CommandError::new(
-                "cleanup_target_outside_home",
-                format!("CoreRobin only deletes items inside your home folder: {display}"),
-            ));
-        }
         if !seen.insert(canonical_path.clone()) {
             return Err(CommandError::new(
                 "duplicate_cleanup_target",
@@ -2347,7 +2363,27 @@ fn validate_cleanup_targets(
             ));
         }
         selected_paths.push(canonical_path.clone());
-        let bound = match delete_root.bind(relative_path) {
+        if !delete_roots.contains_key(&boundary_root) {
+            let root = if trusted_system_root {
+                DeleteRoot::open_trusted_system_root(&boundary_root)
+            } else {
+                DeleteRoot::open(&boundary_root)
+            }
+            .map_err(|error| {
+                CommandError::new(
+                    "cleanup_target_unavailable",
+                    format!(
+                        "CoreRobin could not open the approved cleanup location {}: {error}",
+                        boundary_root.display()
+                    ),
+                )
+            })?;
+            delete_roots.insert(boundary_root.clone(), root);
+        }
+        let delete_root = delete_roots
+            .get(&boundary_root)
+            .expect("cleanup boundary root was opened");
+        let bound = match delete_root.bind(&relative_path) {
             Ok(bound) => bound,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 missing_paths.push(display.clone());
@@ -2559,27 +2595,39 @@ fn validate_application_uninstall_targets(
 }
 
 fn cleanup_protection_for_path(path: &Path, home: &Path) -> Option<CleanupProtectionReason> {
-    if !path.starts_with(home) {
+    if path.starts_with(home) {
+        if path == home {
+            return Some(CleanupProtectionReason::HomeRoot);
+        }
+
+        let trash_roots = trash_paths(home);
+        if trash_roots.iter().any(|trash_root| path == trash_root) {
+            return Some(CleanupProtectionReason::TrashRoot);
+        }
+        if trash_roots
+            .iter()
+            .any(|trash_root| path.starts_with(trash_root))
+        {
+            return None;
+        }
+
+        let relative = path.strip_prefix(home).ok()?;
+        return is_sensitive_cleanup_relative_path(relative)
+            .then_some(CleanupProtectionReason::SensitiveUserData);
+    }
+
+    let Some((boundary, relative)) = temporary_cleanup_boundary_for_path(path) else {
+        return Some(CleanupProtectionReason::SystemLocation);
+    };
+    if relative.as_os_str().is_empty() {
         return Some(CleanupProtectionReason::SystemLocation);
     }
-    if path == home {
-        return Some(CleanupProtectionReason::HomeRoot);
+    let canonical_path = boundary.canonical_root.join(relative);
+    if cleanup_path_owned_by_current_user(&canonical_path) {
+        None
+    } else {
+        Some(CleanupProtectionReason::SystemLocation)
     }
-
-    let trash_roots = trash_paths(home);
-    if trash_roots.iter().any(|trash_root| path == trash_root) {
-        return Some(CleanupProtectionReason::TrashRoot);
-    }
-    if trash_roots
-        .iter()
-        .any(|trash_root| path.starts_with(trash_root))
-    {
-        return None;
-    }
-
-    let relative = path.strip_prefix(home).ok()?;
-    is_sensitive_cleanup_relative_path(relative)
-        .then_some(CleanupProtectionReason::SensitiveUserData)
 }
 
 fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
@@ -2614,6 +2662,7 @@ fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
         &[".rustup", "tmp"],
         &[".local", "share", "pnpm", "store"],
         &["Library", "Caches"],
+        &["Library", "Logs"],
         &["Library", "Developer", "Xcode", "DerivedData"],
         &["Library", "pnpm", "store"],
         &["AppData", "Local", "Temp"],
@@ -2623,6 +2672,9 @@ fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
         .iter()
         .any(|prefix| cleanup_components_start_with(&parts, prefix))
     {
+        return false;
+    }
+    if is_regeneratable_sandbox_path(&parts) {
         return false;
     }
 
@@ -2638,6 +2690,114 @@ fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
         ]
         .iter()
         .any(|candidate| cleanup_component_matches(first, candidate))
+}
+
+fn is_regeneratable_sandbox_path(parts: &[&str]) -> bool {
+    if parts.len() >= 5
+        && cleanup_component_matches(parts[0], "Library")
+        && cleanup_component_matches(parts[1], "Containers")
+        && cleanup_component_matches(parts[3], "Data")
+    {
+        return cleanup_component_matches(parts[4], "tmp")
+            || (parts.len() >= 6
+                && cleanup_component_matches(parts[4], "Library")
+                && cleanup_component_matches(parts[5], "Caches"));
+    }
+    parts.len() >= 5
+        && cleanup_component_matches(parts[0], "Library")
+        && cleanup_component_matches(parts[1], "Group Containers")
+        && cleanup_component_matches(parts[3], "Library")
+        && cleanup_component_matches(parts[4], "Caches")
+}
+
+fn temporary_cleanup_boundaries() -> &'static [CleanupDeleteBoundary] {
+    static BOUNDARIES: OnceLock<Vec<CleanupDeleteBoundary>> = OnceLock::new();
+    BOUNDARIES.get_or_init(|| {
+        let mut boundaries = Vec::new();
+        #[cfg(unix)]
+        for root in [PathBuf::from("/tmp"), PathBuf::from("/var/tmp")] {
+            add_temporary_cleanup_boundary(&mut boundaries, root, true);
+        }
+        add_temporary_cleanup_boundary(&mut boundaries, env::temp_dir(), false);
+        #[cfg(target_os = "macos")]
+        if let Some(cache) = darwin_user_directory(libc::_CS_DARWIN_USER_CACHE_DIR) {
+            add_temporary_cleanup_boundary(&mut boundaries, cache, false);
+        }
+        boundaries
+    })
+}
+
+fn add_temporary_cleanup_boundary(
+    boundaries: &mut Vec<CleanupDeleteBoundary>,
+    alias: PathBuf,
+    trusted_system_root: bool,
+) {
+    let Ok(canonical_root) = alias.canonicalize() else {
+        return;
+    };
+    if let Some(existing) = boundaries
+        .iter_mut()
+        .find(|boundary| boundary.canonical_root == canonical_root)
+    {
+        if !existing.aliases.contains(&alias) {
+            existing.aliases.push(alias);
+        }
+        existing.trusted_system_root |= trusted_system_root;
+        return;
+    }
+    let mut aliases = vec![alias];
+    if !aliases.contains(&canonical_root) {
+        aliases.push(canonical_root.clone());
+    }
+    boundaries.push(CleanupDeleteBoundary {
+        aliases,
+        canonical_root,
+        trusted_system_root,
+    });
+}
+
+fn temporary_cleanup_boundary_for_path(
+    path: &Path,
+) -> Option<(&'static CleanupDeleteBoundary, PathBuf)> {
+    temporary_cleanup_boundaries()
+        .iter()
+        .flat_map(|boundary| {
+            boundary.aliases.iter().filter_map(move |alias| {
+                path.strip_prefix(alias)
+                    .ok()
+                    .map(|relative| (alias.components().count(), boundary, relative.to_path_buf()))
+            })
+        })
+        .max_by_key(|(depth, _, _)| *depth)
+        .map(|(_, boundary, relative)| (boundary, relative))
+}
+
+#[cfg(unix)]
+fn cleanup_path_owned_by_current_user(path: &Path) -> bool {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata.uid() == unsafe { libc::geteuid() },
+        Err(error) => error.kind() == std::io::ErrorKind::NotFound,
+    }
+}
+
+#[cfg(not(unix))]
+fn cleanup_path_owned_by_current_user(_path: &Path) -> bool {
+    true
+}
+
+#[cfg(target_os = "macos")]
+fn darwin_user_directory(name: libc::c_int) -> Option<PathBuf> {
+    let length = unsafe { libc::confstr(name, std::ptr::null_mut(), 0) };
+    if length <= 1 {
+        return None;
+    }
+    let mut buffer = vec![0_i8; length];
+    let written = unsafe { libc::confstr(name, buffer.as_mut_ptr(), buffer.len()) };
+    if written == 0 {
+        return None;
+    }
+    let value = unsafe { std::ffi::CStr::from_ptr(buffer.as_ptr()) };
+    Some(PathBuf::from(value.to_string_lossy().as_ref()))
 }
 
 fn cleanup_components_start_with(parts: &[&str], prefix: &[&str]) -> bool {
@@ -4837,7 +4997,7 @@ mod tests {
     }
 
     #[test]
-    fn scans_the_system_disk_root_while_preserving_home_display_paths() {
+    fn scans_a_configured_disk_root_while_preserving_home_display_paths() {
         let disk_root = test_root("system-disk");
         let home = disk_root.join("Users/demo");
         let downloads = home.join("Downloads");
@@ -4865,21 +5025,17 @@ mod tests {
             scan.root.path.as_deref(),
             Some(disk_root.to_string_lossy().as_ref())
         );
-        assert_eq!(
-            scan.root.protection_reason,
-            Some(CleanupProtectionReason::SystemLocation)
-        );
+        // The fixture lives under the current user's approved temporary root,
+        // so it remains cleanable even though it models a full disk tree.
+        assert_eq!(scan.root.protection_reason, None);
         let library = scan
             .root
             .children
             .iter()
             .find(|node| node.name == "Library")
             .unwrap();
-        assert!(library.deletion_protected);
-        assert_eq!(
-            library.protection_reason,
-            Some(CleanupProtectionReason::SystemLocation)
-        );
+        assert!(!library.deletion_protected);
+        assert_eq!(library.protection_reason, None);
         let users = scan
             .root
             .children
@@ -5608,8 +5764,20 @@ mod tests {
         let ssh_key = root.join(".ssh/id_ed25519");
         let preferences = root.join("Library/Preferences/com.example.settings.plist");
         let app_cache = root.join("Library/Caches/example/cache.bin");
+        let app_log = root.join("Library/Logs/example.log");
+        let sandbox_cache =
+            root.join("Library/Containers/com.example.App/Data/Library/Caches/cache.bin");
+        let sandbox_temp = root.join("Library/Containers/com.example.App/Data/tmp/session.bin");
         let cargo_cache = root.join(".cargo/registry/cache.bin");
-        for file in [&ssh_key, &preferences, &app_cache, &cargo_cache] {
+        for file in [
+            &ssh_key,
+            &preferences,
+            &app_cache,
+            &app_log,
+            &sandbox_cache,
+            &sandbox_temp,
+            &cargo_cache,
+        ] {
             fs::create_dir_all(file.parent().unwrap()).unwrap();
             fs::write(file, b"fixture").unwrap();
         }
@@ -5629,7 +5797,13 @@ mod tests {
             assert_eq!(error.code, "protected_cleanup_path");
         }
 
-        for cache in [&app_cache, &cargo_cache] {
+        for cache in [
+            &app_cache,
+            &app_log,
+            &sandbox_cache,
+            &sandbox_temp,
+            &cargo_cache,
+        ] {
             let display = cache.to_string_lossy().into_owned();
             let lease = controller
                 .create_lease_for_home(
@@ -5651,6 +5825,60 @@ mod tests {
         );
         assert_eq!(cleanup_protection_for_path(&app_cache, &root), None);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_delete_allows_owned_items_in_approved_temporary_locations() {
+        let base = test_root("approved-temporary-location");
+        let home = base.join("home");
+        let temporary_file = base.join("temporary-item.bin");
+        fs::create_dir_all(&home).unwrap();
+        fs::write(&temporary_file, b"temporary").unwrap();
+        let display = temporary_file.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+
+        assert_eq!(cleanup_protection_for_path(&temporary_file, &home), None);
+        assert_eq!(
+            cleanup_protection_for_path(&env::temp_dir().canonicalize().unwrap(), &home),
+            Some(CleanupProtectionReason::SystemLocation)
+        );
+
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(&home, vec![display], now_millis()),
+                &home,
+            )
+            .unwrap();
+        let result = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+            .unwrap();
+
+        assert_eq!(result.deleted.len(), 1);
+        assert!(!temporary_file.exists());
+        fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn cleanup_protection_keeps_unapproved_system_locations_outside_the_allowlist() {
+        let home = test_root("cleanup-protection-home");
+        fs::create_dir_all(&home).unwrap();
+
+        for path in [
+            "/Applications",
+            "/Library/Caches",
+            "/Users/Shared",
+            "/private/var/log",
+            "/private/var/folders/not-the-current-user/cache.bin",
+        ] {
+            assert_eq!(
+                cleanup_protection_for_path(Path::new(path), &home),
+                Some(CleanupProtectionReason::SystemLocation),
+                "{path} must remain protected"
+            );
+        }
+
+        fs::remove_dir_all(home).unwrap();
     }
 
     #[test]

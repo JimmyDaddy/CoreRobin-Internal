@@ -638,6 +638,67 @@ async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError
     .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
 }
 
+fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), CommandError> {
+    let cleanup_path = directory.join("cleanup-scan-v3.json");
+    let legacy_cleanup_path = directory.join("cleanup-scan-v2.json");
+    let file_insights_path = directory.join("file-insights-v1.json");
+    remove_cleanup_scan_cache(&cleanup_path)?;
+    remove_cleanup_scan_cache(&legacy_cleanup_path)?;
+    remove_file_insights_cache(&file_insights_path)?;
+
+    let entries = match std::fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(CommandError::internal(format!(
+                "Product data folder could not be read: {error}"
+            )));
+        }
+    };
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            CommandError::internal(format!("Product data entry could not be read: {error}"))
+        })?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with("application-inventory-v1-") || !name.ends_with(".json") {
+            continue;
+        }
+        let file_type = entry.file_type().map_err(|error| {
+            CommandError::internal(format!(
+                "Product data entry type could not be checked: {error}"
+            ))
+        })?;
+        if !file_type.is_file() {
+            continue;
+        }
+        match std::fs::remove_file(entry.path()) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(CommandError::internal(format!(
+                    "Application inventory cache could not be removed: {error}"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn clear_persisted_product_data(app: AppHandle) -> Result<(), CommandError> {
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    tauri::async_runtime::spawn_blocking(move || clear_persisted_product_data_at(&directory))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Product data removal task failed: {error}"))
+        })?
+}
+
 #[tauri::command]
 fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError> {
     state.cleanup_scan.cancel_full_scan()
@@ -678,6 +739,40 @@ fn reveal_path(window: WebviewWindow, path: String) -> Result<(), CommandError> 
 fn preview_path(window: WebviewWindow, path: String) -> Result<(), CommandError> {
     require_main_window(&window)?;
     user_actions::preview_path(&path)
+}
+
+#[tauri::command]
+fn resolve_user_path(window: WebviewWindow, path: String) -> Result<String, CommandError> {
+    require_main_window(&window)?;
+    user_actions::resolve_user_path(&path).map(|resolved| resolved.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+async fn eject_removable_volume(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    mount_point: String,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    let verified_mount_point = mount_point.clone();
+    let removable = with_monitor(Arc::clone(&state.monitor), move |monitor| {
+        Ok(monitor
+            .sample()
+            .disk
+            .volumes
+            .into_iter()
+            .any(|volume| volume.removable && volume.mount_point == verified_mount_point))
+    })
+    .await?;
+    if !removable {
+        return Err(CommandError::new(
+            "volume_not_removable",
+            "This volume is no longer available as a removable volume.",
+        ));
+    }
+    tauri::async_runtime::spawn_blocking(move || user_actions::eject_removable_volume(&mount_point))
+        .await
+        .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))?
 }
 
 #[tauri::command]
@@ -1636,6 +1731,7 @@ pub fn run() {
             load_persisted_cleanup_scan,
             save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
+            clear_persisted_product_data,
             cancel_cleanup_scan,
             cancel_cleanup_subtree,
             get_cleanup_scan_access,
@@ -1643,6 +1739,8 @@ pub fn run() {
             reveal_cleanup_app_bundle,
             reveal_path,
             preview_path,
+            resolve_user_path,
+            eject_removable_volume,
             open_system_settings,
             open_product_page,
             relaunch_application,
@@ -1786,6 +1884,56 @@ mod tray_panel_position_tests {
 }
 
 #[cfg(test)]
+mod product_data_tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use super::clear_persisted_product_data_at;
+
+    #[test]
+    fn clear_product_data_removes_known_caches_only() {
+        let root = tempdir().unwrap();
+        for name in [
+            "cleanup-scan-v3.json",
+            "cleanup-scan-v2.json",
+            "file-insights-v1.json",
+            "application-inventory-v1-en.json",
+            "application-inventory-v1-zh-cn.json",
+        ] {
+            fs::write(root.path().join(name), b"cached").unwrap();
+        }
+        let unrelated = root.path().join("keep-me.json");
+        fs::write(&unrelated, b"private").unwrap();
+        fs::create_dir(root.path().join("application-inventory-v1-directory.json")).unwrap();
+
+        clear_persisted_product_data_at(root.path()).unwrap();
+
+        assert!(unrelated.exists());
+        assert!(
+            root.path()
+                .join("application-inventory-v1-directory.json")
+                .is_dir()
+        );
+        assert!(!root.path().join("cleanup-scan-v3.json").exists());
+        assert!(!root.path().join("cleanup-scan-v2.json").exists());
+        assert!(!root.path().join("file-insights-v1.json").exists());
+        assert!(
+            !root
+                .path()
+                .join("application-inventory-v1-en.json")
+                .exists()
+        );
+        assert!(
+            !root
+                .path()
+                .join("application-inventory-v1-zh-cn.json")
+                .exists()
+        );
+    }
+}
+
+#[cfg(test)]
 mod security_boundary_tests {
     use std::collections::BTreeSet;
 
@@ -1803,6 +1951,8 @@ mod security_boundary_tests {
         "reveal_cleanup_app_bundle",
         "reveal_path",
         "preview_path",
+        "resolve_user_path",
+        "eject_removable_volume",
         "open_system_settings",
         "open_product_page",
         "relaunch_application",
@@ -1826,6 +1976,7 @@ mod security_boundary_tests {
         "get_gpu_energy_snapshot",
         "scan_file_insights",
         "cancel_file_insights_scan",
+        "clear_persisted_product_data",
     ];
 
     fn capability(source: &str) -> Value {

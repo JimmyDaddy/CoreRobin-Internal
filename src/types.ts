@@ -512,6 +512,24 @@ export interface NetworkConnectionsSnapshot {
 }
 
 export type NetworkQualityStatus = "online" | "limited" | "offline";
+export type NetworkQualityDiagnosticKind =
+  | "local_link"
+  | "dns"
+  | "ipv4"
+  | "ipv6"
+  | "internet"
+  | "independent_service";
+export type NetworkQualityDiagnosticStatus =
+  | "passed"
+  | "degraded"
+  | "failed"
+  | "unavailable";
+
+export interface NetworkQualityDiagnostic {
+  kind: NetworkQualityDiagnosticKind;
+  status: NetworkQualityDiagnosticStatus;
+  latencyMs: number | null;
+}
 
 export interface NetworkQualityResult {
   sampledAtMs: number;
@@ -528,6 +546,7 @@ export interface NetworkQualityResult {
   maximumLatencyMs: number | null;
   jitterMs: number | null;
   packetLossPercent: number;
+  diagnostics: NetworkQualityDiagnostic[];
 }
 
 export interface NetworkHostLookup {
@@ -720,7 +739,11 @@ export interface CommandError {
   message: string;
 }
 
-export type SystemSettingsDestination = "login_items" | "battery" | "network";
+export type SystemSettingsDestination =
+  | "login_items"
+  | "battery"
+  | "network"
+  | "notifications";
 
 export interface HistoryPoint {
   timestamp: number;

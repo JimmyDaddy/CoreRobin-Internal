@@ -1,11 +1,11 @@
 {
   "watchRules": {
-    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
-    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
-    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
-    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "title": "Наблюдение за приложениями и правила уведомлений", "description": "Следите за приложением и получите уведомление, если показатель долго выше условия. После восстановления правило может сработать снова.",
+    "application": "Приложение", "applicationPlaceholder": "Выберите или введите приложение", "metric": "Показатель", "threshold": "Порог", "duration": "Длительность",
+    "metrics": { "cpu": "CPU", "memory": "Память", "disk": "Активность диска" },
+    "seconds": "{{count}} секунд", "add": "Добавить правило", "notificationHint": "Включите и разрешите уведомления, чтобы правила могли отправлять системные оповещения.", "backgroundSampling": "При активных правилах приложения проверяются примерно каждые {{seconds}} секунд даже при закрытом окне.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} в течение {{seconds}} секунд", "active": "Условие достигнуто", "remove": "Удалить правило уведомления для {{name}}",
+    "empty": "Правил наблюдения пока нет."
   },
   "localPreferences": "Локальные настройки",
   "title": "Настройки",
@@ -60,10 +60,12 @@
     "retention": "Срок хранения",
     "days": "{{count}} дней"
   },
+  "dataPrivacy": { "title": "Центр данных и конфиденциальности", "description": "Просматривайте и управляйте локальными данными в одном месте. CoreRobin не загружает и не синхронизирует их.", "status": { "on": "Сохраняется", "off": "Выключено" }, "resourceHistory": { "title": "История ресурсов и уведомлений", "description": "Сводные данные о состоянии, действиях и событиях наблюдения без путей, команд и сетевых адресов." }, "connectionHistory": { "title": "История соединений", "description": "Необязательные пятиминутные агрегаты могут содержать удалённые IP, домены, порты и имена приложений." }, "caches": { "title": "Локальные кэши продукта", "description": "Инвентарь приложений, сканирование места и анализ файлов остаются на этом устройстве." }, "clear": "Очистить все локальные данные" },
   "notifications": {
     "title": "Уведомления на рабочем столе",
     "description": "Уведомления появляются только при длительной высокой нагрузке, реальном давлении памяти и нехватке места на диске. CoreRobin сообщит ещё раз после устойчивого устранения проблемы.",
     "enable": "Включить уведомления с ограниченной информацией",
+    "openSettings": "Открыть системные настройки уведомлений",
     "categories": "Список категорий для уведомлений",
     "resources": {
       "cpu": "Высокая нагрузка на процессор",
@@ -89,7 +91,7 @@
   },
   "about": {
     "title": "О приложении и поддержка", "description": "Проверьте версию, получите помощь и управляйте данными CoreRobin на этом компьютере.",
-    "versionTitle": "Версия и обновления", "versionDescription": "Проверить последнюю стабильную версию на публичной странице релизов.", "version": "Текущая версия", "platform": "Система", "architecture": "Архитектура",
+    "versionTitle": "Версия и обновления", "versionDescription": "Проверяйте, загружайте и устанавливайте последнюю стабильную версию прямо в CoreRobin.", "version": "Текущая версия", "platform": "Система", "architecture": "Архитектура",
     "checking": "Проверка…", "checkUpdate": "Проверить обновления", "releaseNotes": "Описание релиза", "updateError": "Сейчас не удалось проверить обновления. Повторите позже.", "updateAvailable": "Доступна CoreRobin v{{version}}", "openRelease": "Скачать", "upToDate": "Установлена актуальная v{{version}}", "installUpdate": "Скачать и установить", "installingUpdate": "Обновление…", "downloadingUpdate": "Загрузка и проверка обновления", "applyingUpdate": "Установка обновления", "updateReady": "Обновление установлено. Перезапустите CoreRobin для завершения.", "restartUpdate": "Перезапустить", "updateInstallError": "Не удалось установить обновление. Текущая версия не изменилась; повторите попытку позже.",
     "helpTitle": "Помощь и обратная связь", "helpDescription": "Откройте публичное руководство или проверьте состав данных перед отчётом о проблеме.", "guide": "Руководство", "privacy": "Конфиденциальность", "reportIssue": "Сообщить о проблеме", "reopenGuide": "Повторить вводное руководство",
     "diagnosticsTitle": "Диагностическая сводка", "diagnosticsDescription": "Скопировать базовые сведения о работе для поиска проблемы.", "diagnosticsPrivacy": "Имена компьютера и процессов, пути, сетевые адреса и исторические значения по умолчанию исключены.", "diagnosticsPreview": "Просмотр перед копированием", "diagnostics": { "idle": "Скопировать обезличенную сводку", "copied": "Скопировано", "error": "Ошибка копирования" },
@@ -97,6 +99,7 @@
   },
   "onboarding": {
     "kicker": "Первый запуск · {{current}} / {{total}}", "skip": "Пока пропустить", "back": "Назад", "next": "Далее", "finish": "Начать",
+    "controls": { "mode": "Выберите режим интерфейса", "everyday": "Понятные выводы и пошаговые действия", "professional": "Все показатели и диагностические данные", "diskAccess": "Полный доступ к диску", "openDiskAccess": "Открыть настройки полного доступа", "diskAccessStatus": { "granted": "Готово", "not_granted": "Необязательно · не разрешено", "not_required": "Не требуется в этой системе", "unknown": "Статус недоступен" } },
     "steps": {
       "one": { "title": "Выберите подходящий вид", "description": "Повседневный режим даёт устойчивый вывод и следующий шаг. Профессиональный показывает полные метрики и сведения о процессах и сети. Переключайтесь в любое время.", "note": "Оба режима используют одно локальное состояние и дают одинаковые выводы." },
       "two": { "title": "Остаётся доступным после закрытия окна", "description": "CoreRobin остаётся в строке меню и выполняет редкие замеры. Панель и Robin используют одно стабильное состояние.", "note": "В строке меню можно приостановить работу, открыть настройки или полностью выйти." },

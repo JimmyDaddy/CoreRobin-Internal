@@ -33,6 +33,8 @@
     "attention": {
       "short": "Something is worth a look",
       "title": "{{count}} things are worth a look",
+      "title_one": "{{count}} thing is worth a look",
+      "title_other": "{{count}} things are worth a look",
       "summary": "CoreRobin has organized the reasons and next steps, so you do not need to interpret technical metrics."
     },
     "urgent": {
@@ -63,6 +65,12 @@
     "checkingSummary": "Fresh status flows straight into this view. If something needs longer observation, Robin will say so clearly.",
     "haveProblem": "Something feels wrong",
     "checkedAt": "Updated {{time}}",
+    "storage": {
+      "kicker": "Disk storage",
+      "summary": "{{used}} used of {{total}}",
+      "available": "available",
+      "open": "Open storage details"
+    },
     "localOnly": "Status and history stay on this device",
     "professional": "View detailed data"
   },
@@ -236,6 +244,8 @@
     "refresh": "Update list",
     "refreshing": "Updating…",
     "snapshotFound": "{{count}} apps are worth a look",
+    "snapshotFound_one": "{{count}} app is worth a look",
+    "snapshotFound_other": "{{count}} apps are worth a look",
     "snapshotClear": "No app is continuously affecting this computer",
     "snapshotTime": "Updated {{time}}",
     "calmTitle": "No app needs attention now",
@@ -426,7 +436,7 @@
     "reduceMotion": "Reduce motion",
     "reduceMotionDescription": "Stop continuous ambient, breathing, and movement effects",
     "showDockIcon": "Show the app in the Dock",
-    "showDockIconDescription": "Off by default; reopen the main window from the menu bar",
+    "showDockIconDescription": "Keep CoreRobin in the Dock and app switcher; turn it off if you prefer menu-bar-only access",
     "launchAtLogin": "Launch at login",
     "launchAtLoginDescription": "Start quietly after you sign in without opening the main window",
     "companionAlwaysOnTop": "Keep Robin above other windows",

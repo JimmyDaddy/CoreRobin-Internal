@@ -26,5 +26,20 @@
       "title": "Disk space is back in a healthy range",
       "body": "Disk usage has stayed back in a safe range, so no further cleanup is needed right now."
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} reached its watch condition",
+      "body": "{{metric}} stayed above the rule for {{seconds}} seconds."
+    },
+    "recovered": {
+      "title": "{{application}} returned below its watch condition",
+      "body": "{{metric}} is back below the configured threshold."
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "Memory {{value}} MiB",
+      "disk": "Disk activity {{value}} MiB/s"
+    }
   }
 }

@@ -1,5 +1,6 @@
 {
   "localMonitor": "本机资源监控",
+  "updateAvailable": "CoreRobin v{{version}} 可以安装",
   "available": "可用空间",
   "open": "打开概览",
   "companion": "Robin 伙伴",

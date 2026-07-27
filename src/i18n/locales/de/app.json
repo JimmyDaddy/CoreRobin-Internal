@@ -39,6 +39,7 @@
   "staleTarget": "Die Prozess-ID hat sich geändert. Die Aktion wurde abgebrochen; wählen Sie sie erneut, um fortzufahren.",
   "metricsLabel": "Zusammenfassung der Systemressourcen",
   "mode": {
+    "label": "Erlebnismodus",
     "simple": "Alltagsmodus",
     "professional": "Professioneller Modus",
     "short": {
@@ -65,6 +66,7 @@
     "cpuContext": "{{count}} logische Kerne · Ein einzelner Prozess kann 100% auslasten",
     "memoryContext": "{{total}} Gesamt · {{swap}} Swap-Speicher",
     "diskContext": "Lesen {{read}} · Schreiben {{write}}",
+    "diskCapacityContext": "{{total}} gesamt · {{available}} verfügbar",
     "networkContext": "Download {{receive}} · Upload {{send}}"
   },
   "status": {

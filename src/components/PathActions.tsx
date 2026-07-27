@@ -1,7 +1,11 @@
 import { Check, Copy, Eye, FolderOpen, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { previewPath, revealPath } from "../api";
+import {
+  previewPath,
+  resolveUserPath,
+  revealPath,
+} from "../api";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { normalizeCommandError } from "../utils";
 import { Button } from "./Button";
@@ -34,11 +38,21 @@ export function PathActions({ path, compact = false, className }: PathActionsPro
       } else if (action === "preview") {
         await previewPath(path);
       } else {
-        await navigator.clipboard.writeText(path);
+        const resolvedPath = await resolveUserPath(path);
+        await navigator.clipboard.writeText(resolvedPath);
         setMessage(t("common:pathActions.copied"));
       }
     } catch (error) {
-      setMessage(normalizeCommandError(error).message);
+      const normalized = normalizeCommandError(error);
+      setMessage(
+        normalized.code === "path_unavailable"
+          ? t("common:pathActions.errors.unavailable")
+          : normalized.code === "home_directory_unavailable"
+            ? t("common:pathActions.errors.homeUnavailable")
+            : normalized.code === "path_not_absolute"
+              ? t("common:pathActions.errors.unresolved")
+              : t("common:pathActions.errors.openFailed"),
+      );
     } finally {
       setRunning(null);
     }

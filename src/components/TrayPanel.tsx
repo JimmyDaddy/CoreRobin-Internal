@@ -13,11 +13,12 @@ import {
   MemoryStick,
   Pause,
   Play,
+  RefreshCw,
   Settings2,
   Sparkles,
   Thermometer,
 } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import brandMark from "../assets/brand-mark.png";
 import { createAsyncListenerRegistry } from "../asyncListener";
@@ -31,6 +32,7 @@ import {
 import { getAuxiliaryLanguage } from "../i18nAuxiliary";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
 import { formatBytes, formatPercent } from "../utils";
+import { loadAvailableUpdateVersion } from "../updateAvailability";
 
 const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
@@ -40,6 +42,9 @@ export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
   const language = getAuxiliaryLanguage();
+  const [availableUpdateVersion, setAvailableUpdateVersion] = useState(
+    loadAvailableUpdateVersion,
+  );
   const sensorReadiness = useSensorReadiness({
     sampledAtMs: summary?.sampledAtMs ?? Date.now(),
     warmingUp: summary == null,
@@ -55,7 +60,9 @@ export function TrayPanel() {
     const listeners = createAsyncListenerRegistry();
     listeners.register(
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-        if (!listeners.disposed && !focused) void getCurrentWindow().hide();
+        if (listeners.disposed) return;
+        if (focused) setAvailableUpdateVersion(loadAvailableUpdateVersion());
+        else void getCurrentWindow().hide();
       }),
     );
     return () => listeners.dispose();
@@ -190,6 +197,20 @@ export function TrayPanel() {
           <span><Clock3 size={13} />{lastUpdated ? t("tray:updatedAt", { time: lastUpdated }) : t("tray:health.loading")}</span>
           <span><Activity size={13} />{summary?.paused ? t("app:paused") : t(`tray:dataMode.${summary?.dataMode ?? "background"}`)}</span>
         </div>
+
+        {availableUpdateVersion ? (
+          <button
+            className="tray-update"
+            type="button"
+            onClick={() => void openView("settings")}
+          >
+            <RefreshCw size={14} />
+            <span>{t("tray:updateAvailable", {
+              version: availableUpdateVersion,
+            })}</span>
+            <ArrowRight size={14} />
+          </button>
+        ) : null}
 
         <div className="tray-actions">
           <div className="tray-actions__primary">

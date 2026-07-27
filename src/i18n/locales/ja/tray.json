@@ -54,5 +54,6 @@
     "attention": "注意すべき項目：{{count}}",
     "urgent": "早めに確認が必要な項目：{{count}}"
   },
-  "recovering": "状況が改善しています。正常にスリープ状態を維持していることを確認します。"
+  "recovering": "状況が改善しています。正常にスリープ状態を維持していることを確認します。",
+  "updateAvailable": "CoreRobin v{{version}} を利用できます"
 }

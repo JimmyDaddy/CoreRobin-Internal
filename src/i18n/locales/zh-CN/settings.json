@@ -58,10 +58,32 @@
     "retention": "保留时间",
     "days": "{{count}} 天"
   },
+  "dataPrivacy": {
+    "title": "数据与隐私中心",
+    "description": "集中查看每类本机数据包含什么并进行控制。CoreRobin 不会上传或同步这些记录。",
+    "status": {
+      "on": "正在保存",
+      "off": "已关闭"
+    },
+    "resourceHistory": {
+      "title": "资源与提醒历史",
+      "description": "整机健康、操作和关注事件的聚合记录，不含路径、命令或网络地址。"
+    },
+    "connectionHistory": {
+      "title": "连接历史",
+      "description": "可选的五分钟聚合数据可能包含远端 IP、域名、端口和应用名。"
+    },
+    "caches": {
+      "title": "本机产品缓存",
+      "description": "应用清单、空间扫描和文件分析结果只保存在这台设备上。"
+    },
+    "clear": "清空全部本机数据"
+  },
   "notifications": {
     "title": "桌面提醒",
     "description": "只提醒持续高负荷、真实内存压力和磁盘空间不足；问题稳定恢复后会再告知一次。",
     "enable": "允许克制提醒",
+    "openSettings": "打开系统通知设置",
     "categories": "允许提醒的类别",
     "resources": {
       "cpu": "持续高负荷",
@@ -91,13 +113,14 @@
     "metrics": { "cpu": "CPU", "memory": "内存", "disk": "磁盘活动" },
     "seconds": "{{count}} 秒", "add": "添加规则", "notificationHint": "打开桌面通知并授予权限后，规则才能发送系统提醒。",
     "summary": "{{metric}} ≥ {{threshold}}{{unit}}，持续 {{seconds}} 秒", "active": "条件已达到", "remove": "移除 {{name}} 的提醒规则",
-    "empty": "尚未添加应用关注规则。"
+    "empty": "尚未添加应用关注规则。",
+    "backgroundSampling": "启用规则期间，后台每 {{seconds}} 秒检查一次应用进程。"
   },
   "about": {
     "title": "关于与支持",
     "description": "查看版本、获取帮助，并管理 CoreRobin 保存在这台电脑上的数据。",
     "versionTitle": "版本与更新",
-    "versionDescription": "检查公开发布页上的最新稳定版本。",
+    "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
     "version": "当前版本",
     "platform": "系统",
     "architecture": "架构",
@@ -142,6 +165,19 @@
     "back": "上一步",
     "next": "下一步",
     "finish": "开始使用",
+    "controls": {
+      "mode": "选择体验模式",
+      "everyday": "清晰结论和引导操作",
+      "professional": "完整指标和诊断证据",
+      "diskAccess": "完整磁盘访问",
+      "openDiskAccess": "打开完整磁盘访问设置",
+      "diskAccessStatus": {
+        "granted": "已就绪",
+        "not_granted": "可选 · 尚未授权",
+        "not_required": "此系统无需授权",
+        "unknown": "暂时无法确认状态"
+      }
+    },
     "steps": {
       "one": {
         "title": "先选择适合你的查看方式",

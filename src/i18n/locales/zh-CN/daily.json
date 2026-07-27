@@ -63,6 +63,12 @@
     "checkingSummary": "最新状态会直接汇入这里；如果还需要持续观察，Robin 会明确告诉你。",
     "haveProblem": "我遇到了问题",
     "checkedAt": "{{time}} 更新",
+    "storage": {
+      "kicker": "磁盘存储",
+      "summary": "已用 {{used}}，共 {{total}}",
+      "available": "可用",
+      "open": "打开存储详情"
+    },
     "localOnly": "状态和历史都保存在本机",
     "professional": "查看详细数据"
   },
@@ -426,7 +432,7 @@
     "reduceMotion": "减少动态效果",
     "reduceMotionDescription": "停用持续旋转、呼吸和位移动画",
     "showDockIcon": "在 Dock 中显示应用",
-    "showDockIconDescription": "默认关闭；主窗口仍可从顶部状态栏打开",
+    "showDockIconDescription": "让 CoreRobin 显示在 Dock 和应用切换器；如只想从状态栏访问可关闭",
     "launchAtLogin": "登录时启动",
     "launchAtLoginDescription": "登录系统后在后台启动，不主动弹出主窗口",
     "companionAlwaysOnTop": "始终显示在其他窗口上方",

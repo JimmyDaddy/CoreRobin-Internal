@@ -28,11 +28,18 @@
     "reveal": "Mostrar no Finder",
     "preview": "Visualização Rápida",
     "copy": "Copiar caminho",
-    "copied": "Caminho copiado"
+    "copied": "Caminho absoluto copiado",
+    "errors": {
+      "unavailable": "Este item não existe mais ou não está acessível agora.",
+      "homeUnavailable": "O CoreRobin não conseguiu determinar a pasta pessoal do usuário.",
+      "unresolved": "O CoreRobin não conseguiu resolver o caminho exibido como um caminho absoluto.",
+      "openFailed": "Não foi possível abrir o item. Verifique se ele ainda está acessível."
+    }
   },
   "systemSettings": {
     "login_items": "Abrir ajustes de itens de início",
     "battery": "Abrir ajustes de bateria",
-    "network": "Abrir ajustes de rede"
+    "network": "Abrir ajustes de rede",
+    "notifications": "Abrir ajustes de notificações"
   }
 }

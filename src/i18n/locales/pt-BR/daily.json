@@ -63,6 +63,7 @@
     "checkingSummary": "Informações de status atualizadas aparecem aqui. Se algo precisar de mais atenção, o Robin avisará claramente.",
     "haveProblem": "Algo parece estar errado",
     "checkedAt": "Última atualização {{time}}",
+    "storage": { "kicker": "Armazenamento em disco", "summary": "{{used}} usados de {{total}}", "available": "disponíveis", "open": "Abrir detalhes do armazenamento" },
     "localOnly": "As informações e histórico ficam neste dispositivo",
     "professional": "Visualize dados detalhados"
   },
@@ -426,7 +427,7 @@
     "reduceMotion": "Reduzir animações",
     "reduceMotionDescription": "Desativa animações contínuas, como respiração e movimentos",
     "showDockIcon": "Mostrar o aplicativo no Dock",
-    "showDockIconDescription": "Desativado por padrão; reabra a janela principal do menu",
+    "showDockIconDescription": "Mostrar o CoreRobin no Dock e no seletor de apps; desative se preferir acesso somente pela barra de menus",
     "launchAtLogin": "Iniciar no login",
     "launchAtLoginDescription": "Iniciar em segundo plano após o login, sem abrir a janela principal",
     "companionAlwaysOnTop": "Manter Robin acima de outras janelas",

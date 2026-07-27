@@ -1,12 +1,13 @@
 {
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
-    "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Six TCP connection probes run every 30 seconds while this page is open; sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
-    "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
-    "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
-    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+    "eyebrow": "자동 네트워크 샘플링", "title": "네트워크 품질", "description": "페이지를 열면 자동 확인하고 머무는 동안 30초마다 샘플링합니다.",
+    "run": "지금 확인", "checking": "확인 중…", "empty": "첫 네트워크 품질 확인을 실행 중…",
+    "method": "가벼운 TCP 확인으로 로컬 경로, DNS, IPv4/IPv6, 인터넷 직접 연결, 독립 서비스를 구분합니다. 페이지를 나가면 중지됩니다.",
+    "dns": "DNS", "latency": "평균 지연", "jitter": "지터", "loss": "연결 실패", "probes": "TCP 확인", "probeSuccess": "{{successful}}/{{total}}회 성공",
+    "trendTitle": "네트워크 품질 추세", "trendWindow": "최근 15분 · 30초마다 업데이트", "trendCollecting": "추세 데이터 수집 중", "legend": "네트워크 품질 범례", "chartLabel": "최근 15분 네트워크 품질 추세, {{count}}개 샘플", "now": "현재",
+    "windowAverage": "평균 지연", "windowPeak": "최대 지연", "anomalies": "이상", "anomalyCount": "{{count}}회",
+    "diagnostics": { "title": "계층별 네트워크 진단", "stages": { "local_link": "로컬 경로", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "인터넷", "independent_service": "독립 서비스" }, "status": { "passed": "사용 가능", "degraded": "저하", "failed": "실패", "unavailable": "미설정" } },
+    "status": { "online": "온라인", "limited": "연결 제한", "offline": "오프라인" }
   },
   "history": {
     "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",

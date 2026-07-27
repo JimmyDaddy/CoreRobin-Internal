@@ -1,6 +1,7 @@
-import { AppWindow, BellRing, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, Plus, Rocket, Search, Timer, Trash2 } from "lucide-react";
+import { AppWindow, BellRing, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, Plus, Rocket, Search, Settings2, ShieldCheck, Timer, Trash2 } from "lucide-react";
 import { useMemo, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { applicationWatchSamplingIntervalMs } from "../applicationWatchRules";
 
 import {
   CONNECTION_REFRESH_INTERVAL_OPTIONS,
@@ -35,6 +36,7 @@ interface SettingsExplorerProps {
   notificationStatus: DesktopNotificationStatus;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  onOpenNotificationSettings?: () => void;
   onOpenOnboarding: () => void;
   onClearAllData: () => void;
   activeApplicationWatchRuleIds?: readonly string[];
@@ -58,6 +60,7 @@ export function SettingsExplorer({
   notificationStatus,
   snapshot,
   onChange,
+  onOpenNotificationSettings = () => undefined,
   onOpenOnboarding,
   onClearAllData,
   activeApplicationWatchRuleIds = [],
@@ -102,7 +105,7 @@ export function SettingsExplorer({
                       : section === "alerts"
                         ? "settings:notifications.title"
                         : section === "privacy"
-                          ? "settings:history.title"
+                          ? "settings:dataPrivacy.title"
                           : "settings:about.title",
               )}
               {section === "about" && availableUpdateVersion ? (
@@ -134,6 +137,52 @@ export function SettingsExplorer({
                 {t(`settings:experience.${experienceMode}`)}
               </button>
             ))}
+          </div>
+        </SettingsCard>
+
+        <SettingsCard
+          section="privacy"
+          className="settings-card--privacy-center"
+          icon={ShieldCheck}
+          title={t("settings:dataPrivacy.title")}
+          description={t("settings:dataPrivacy.description")}
+        >
+          <div className="settings-data-boundaries">
+            <div>
+              <span><History size={16} /></span>
+              <p>
+                <strong>{t("settings:dataPrivacy.resourceHistory.title")}</strong>
+                <small>{t("settings:dataPrivacy.resourceHistory.description")}</small>
+              </p>
+              <em className={settings.historyPersistenceEnabled ? "is-on" : ""}>
+                {t(`settings:dataPrivacy.status.${settings.historyPersistenceEnabled ? "on" : "off"}`)}
+              </em>
+            </div>
+            <label>
+              <span><Network size={16} /></span>
+              <p>
+                <strong>{t("settings:dataPrivacy.connectionHistory.title")}</strong>
+                <small>{t("settings:dataPrivacy.connectionHistory.description")}</small>
+              </p>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={settings.networkConnectionHistoryEnabled}
+                onChange={(event) => onChange({
+                  networkConnectionHistoryEnabled: event.target.checked,
+                })}
+              />
+            </label>
+            <div>
+              <span><HardDrive size={16} /></span>
+              <p>
+                <strong>{t("settings:dataPrivacy.caches.title")}</strong>
+                <small>{t("settings:dataPrivacy.caches.description")}</small>
+              </p>
+              <button className="button button--danger-ghost" type="button" onClick={onClearAllData}>
+                <Trash2 size={14} />{t("settings:dataPrivacy.clear")}
+              </button>
+            </div>
           </div>
         </SettingsCard>
 
@@ -352,6 +401,16 @@ export function SettingsExplorer({
             <small className={`is-${notificationStatus}`}>
               <i />{t(`settings:notifications.status.${notificationStatus}`)}
             </small>
+            {notificationStatus === "denied" ? (
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={onOpenNotificationSettings}
+              >
+                <Settings2 size={14} />
+                {t("settings:notifications.openSettings")}
+              </button>
+            ) : null}
           </div>
           <fieldset className="settings-notification-categories" disabled={!settings.desktopNotificationsEnabled}>
             <legend>{t("settings:notifications.categories")}</legend>
@@ -479,6 +538,8 @@ function ApplicationWatchRulesEditor({
       rule.durationSeconds === durationSeconds,
   );
   const canAddRule = Boolean(effectiveApplicationName) && !duplicateRule;
+  const backgroundSamplingIntervalMs =
+    applicationWatchSamplingIntervalMs(rules);
 
   const thresholdMaximum = metric === "cpu" ? 100 : 1_000_000;
   const thresholdStep = metric === "disk" ? 0.5 : 1;
@@ -614,6 +675,16 @@ function ApplicationWatchRulesEditor({
         <div className="watch-rules__notice">
           <BellRing size={14} aria-hidden="true" />
           <small>{t("settings:watchRules.notificationHint")}</small>
+        </div>
+      ) : null}
+      {backgroundSamplingIntervalMs !== null ? (
+        <div className="watch-rules__notice">
+          <Timer size={14} aria-hidden="true" />
+          <small>
+            {t("settings:watchRules.backgroundSampling", {
+              seconds: backgroundSamplingIntervalMs / 1_000,
+            })}
+          </small>
         </div>
       ) : null}
       {rules.length > 0 ? <ul className="watch-rules__list">{rules.map((rule) => (

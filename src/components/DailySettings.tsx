@@ -22,6 +22,8 @@ interface DailySettingsProps {
   notificationStatus: DesktopNotificationStatus;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  availableUpdateVersion?: string | null;
+  onOpenNotificationSettings?: () => void;
   onOpenOnboarding: () => void;
   onClearAllData: () => void;
 }
@@ -30,7 +32,9 @@ export function DailySettings({
   settings,
   notificationStatus,
   snapshot,
+  availableUpdateVersion = null,
   onChange,
+  onOpenNotificationSettings = () => undefined,
   onOpenOnboarding,
   onClearAllData,
 }: DailySettingsProps) {
@@ -61,6 +65,16 @@ export function DailySettings({
             <input type="checkbox" role="switch" aria-label={t("daily:settings.notifications")} checked={settings.desktopNotificationsEnabled} onChange={(event) => onChange({ desktopNotificationsEnabled: event.target.checked })} />
             <i />
           </label>
+          {notificationStatus === "denied" ? (
+            <button
+              className="button button--plain"
+              type="button"
+              onClick={onOpenNotificationSettings}
+            >
+              <Settings2 size={15} />
+              {t("settings:notifications.openSettings")}
+            </button>
+          ) : null}
         </section>
 
         <section>
@@ -132,6 +146,7 @@ export function DailySettings({
       <AboutSupport
         settings={settings}
         snapshot={snapshot}
+        backgroundUpdateVersion={availableUpdateVersion}
         onOpenOnboarding={onOpenOnboarding}
         onClearAllData={onClearAllData}
       />

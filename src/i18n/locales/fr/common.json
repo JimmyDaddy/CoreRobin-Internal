@@ -28,11 +28,18 @@
     "reveal": "Afficher dans le Finder",
     "preview": "Aperçu Coup d’œil",
     "copy": "Copier le chemin",
-    "copied": "Chemin copié"
+    "copied": "Chemin absolu copié",
+    "errors": {
+      "unavailable": "Cet élément n’existe plus ou n’est pas accessible actuellement.",
+      "homeUnavailable": "CoreRobin n’a pas pu déterminer le dossier personnel de l’utilisateur.",
+      "unresolved": "CoreRobin n’a pas pu convertir ce chemin affiché en chemin absolu.",
+      "openFailed": "Impossible d’ouvrir cet élément. Vérifiez qu’il est toujours accessible."
+    }
   },
   "systemSettings": {
     "login_items": "Ouvrir les réglages des éléments d’ouverture",
     "battery": "Ouvrir les réglages de batterie",
-    "network": "Ouvrir les réglages réseau"
+    "network": "Ouvrir les réglages réseau",
+    "notifications": "Ouvrir les réglages des notifications"
   }
 }

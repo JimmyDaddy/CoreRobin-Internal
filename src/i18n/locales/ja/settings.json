@@ -1,11 +1,11 @@
 {
   "watchRules": {
-    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
-    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
-    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
-    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "title": "アプリの監視と通知ルール", "description": "指定したアプリを監視し、条件を継続して超えたときに一度通知します。回復後は再び通知できます。",
+    "application": "アプリ", "applicationPlaceholder": "アプリを選択または入力", "metric": "指標", "threshold": "しきい値", "duration": "継続時間",
+    "metrics": { "cpu": "CPU", "memory": "メモリ", "disk": "ディスク活動" },
+    "seconds": "{{count}} 秒", "add": "ルールを追加", "notificationHint": "システム通知を送るにはデスクトップ通知を有効にして権限を許可してください。", "backgroundSampling": "ルール有効時は、ウインドウを閉じても約 {{seconds}} 秒ごとにアプリを確認します。",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} が {{seconds}} 秒継続", "active": "条件に到達", "remove": "{{name}} の通知ルールを削除",
+    "empty": "アプリ監視ルールはまだありません。"
   },
   "localPreferences": "ローカル設定",
   "title": "設定",
@@ -60,10 +60,12 @@
     "retention": "保持期間",
     "days": "{{count}}日間"
   },
+  "dataPrivacy": { "title": "データとプライバシー", "description": "端末内のデータの内容と設定をまとめて確認できます。CoreRobin がアップロードや同期を行うことはありません。", "status": { "on": "保存中", "off": "オフ" }, "resourceHistory": { "title": "リソースと通知の履歴", "description": "端末全体の状態、操作、監視イベントの集計。パス、コマンド、ネットワークアドレスは含みません。" }, "connectionHistory": { "title": "接続履歴", "description": "任意の 5 分集計にはリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。" }, "caches": { "title": "ローカル製品キャッシュ", "description": "アプリ一覧、ストレージスキャン、ファイル分析結果はこの端末だけに保存されます。" }, "clear": "すべてのローカルデータを消去" },
   "notifications": {
     "title": "デスクトップ通知",
     "description": "主に、高い負荷、実際のメモリ圧、および低いディスク容量が問題を引き起こした場合にのみ通知します。 CoreRobinは、問題が安定して回復した後、一度フォローアップします。",
     "enable": "控えめな通知を許可する",
+    "openSettings": "システムの通知設定を開く",
     "categories": "許可する通知の種類",
     "resources": {
       "cpu": "高い負荷状態",
@@ -89,7 +91,7 @@
   },
   "about": {
     "title": "情報とサポート", "description": "バージョンの確認、ヘルプ、CoreRobin がこのコンピュータに保存するデータの管理を行います。",
-    "versionTitle": "バージョンと更新", "versionDescription": "公開リリースページで最新の安定版を確認します。", "version": "現在のバージョン", "platform": "システム", "architecture": "アーキテクチャ",
+    "versionTitle": "バージョンと更新", "versionDescription": "CoreRobin 内で最新の安定版を確認、ダウンロード、インストールします。", "version": "現在のバージョン", "platform": "システム", "architecture": "アーキテクチャ",
     "checking": "確認中…", "checkUpdate": "更新を確認", "releaseNotes": "更新内容を見る", "updateError": "現在更新を確認できません。後でもう一度お試しください。", "updateAvailable": "CoreRobin v{{version}} が利用できます", "openRelease": "ダウンロード", "upToDate": "v{{version}} は最新版です", "installUpdate": "ダウンロードしてインストール", "installingUpdate": "更新中…", "downloadingUpdate": "更新をダウンロードして検証中", "applyingUpdate": "更新をインストール中", "updateReady": "更新をインストールしました。CoreRobin を再起動して完了してください。", "restartUpdate": "再起動", "updateInstallError": "更新をインストールできませんでした。現在のバージョンは変更されていません。後でもう一度お試しください。",
     "helpTitle": "ヘルプとフィードバック", "helpDescription": "公開ガイドを開くか、問題報告に含まれる内容を確認します。", "guide": "ユーザーガイド", "privacy": "プライバシー", "reportIssue": "問題を報告", "reopenGuide": "初回ガイドを再表示",
     "diagnosticsTitle": "診断サマリー", "diagnosticsDescription": "トラブルシューティングに役立つ基本的な実行情報をコピーします。", "diagnosticsPrivacy": "ホスト名、プロセス名、ファイルパス、ネットワークアドレス、履歴値は既定で除外されます。", "diagnosticsPreview": "コピー前にプレビュー", "diagnostics": { "idle": "匿名化サマリーをコピー", "copied": "コピーしました", "error": "コピーに失敗" },
@@ -97,6 +99,7 @@
   },
   "onboarding": {
     "kicker": "初回ガイド · {{current}} / {{total}}", "skip": "今はスキップ", "back": "戻る", "next": "次へ", "finish": "使い始める",
+    "controls": { "mode": "表示モードを選択", "everyday": "分かりやすい結論と操作ガイド", "professional": "すべての指標と診断根拠", "diskAccess": "フルディスクアクセス", "openDiskAccess": "フルディスクアクセス設定を開く", "diskAccessStatus": { "granted": "準備完了", "not_granted": "任意 · 未許可", "not_required": "このシステムでは不要", "unknown": "状態を確認できません" } },
     "steps": {
       "one": { "title": "自分に合う表示を選びましょう", "description": "日常モードは安定した結論と次の手順を示し、プロモードは完全な指標、プロセス、ネットワークの根拠を表示します。いつでも切り替えられます。", "note": "どちらのモードも同じ端末内状態を共有し、結論は同じです。" },
       "two": { "title": "ウィンドウを閉じても静かに待機", "description": "CoreRobin はメニューバーに残り、低頻度でサンプリングします。メニューパネルと Robin は同じ安定状態を共有します。", "note": "メニューバーから一時停止、設定、完全終了ができます。" },

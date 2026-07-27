@@ -137,10 +137,11 @@
     "cleanupResult": "{{count}} 件を処理し、{{size}} を解放",
     "cleanupFailed": "{{count}} 件は未完了"
   },
+  "watchRules": { "title": "アプリ監視履歴", "description": "作成した通知ルールの発生と回復をこのデバイスに記録します。", "savedEvents": "{{count}} 件の監視イベント", "savedEvents_other": "{{count}} 件の監視イベント", "privateApplication": "アプリ名は保存されていません", "triggered": "{{metric}} が {{value}}{{unit}} に到達", "recovered": "{{metric}} が {{value}}{{unit}} に回復" },
   "privacyEyebrow": "データに関する情報",
   "privacyTitle": "プライバシーポリシー",
   "privacyLocal": "このデバイスのCoreRobin WebViewに保存され、アップロードまたは同期されません。",
   "privacyCollected": "集約されたリソース情報、負荷と回復イベントに加え、確認した操作の種類、結果、項目数、解放容量を記録します。アプリ名や起動項目名は、設定で個別に許可した場合のみ保存されます。",
-  "privacyExcluded": "プロセス、ユーザー、パス、ファイル名、およびローカルまたはリモート接続アドレスに関する情報は記録されません。",
+  "privacyExcluded": "リソースと操作の履歴にはコマンド、ユーザー、パス、ファイル名、接続先を保存しません。接続履歴を別途有効にすると、5 分単位の集計にリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。",
   "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。"
 }

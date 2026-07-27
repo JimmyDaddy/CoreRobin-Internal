@@ -20,7 +20,7 @@ describe("SettingsExplorer", () => {
 
     expect(screen.getByRole("heading", { name: "界面语言" }).closest("section")?.classList)
       .toContain("settings-card--language");
-    fireEvent.click(screen.getByRole("button", { name: "历史记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "数据与隐私中心" }));
     expect(screen.getByRole("heading", { name: "历史记录" }).closest("section")?.classList)
       .toContain("settings-card--half");
     fireEvent.click(screen.getByRole("button", { name: "桌面提醒" }));

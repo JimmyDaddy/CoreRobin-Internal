@@ -129,6 +129,23 @@ describe("visibility-aware system monitoring", () => {
     await flushEffects();
     expect(getSystemSummary).toHaveBeenCalledTimes(1);
   });
+
+  it("does not collect hidden process snapshots without a background consumer", async () => {
+    const { rerender } = renderHook(
+      ({ visible }) => useSystemMonitor(500, visible, null),
+      { initialProps: { visible: true } },
+    );
+    await flushEffects();
+    expect(getSystemSnapshot).toHaveBeenCalledTimes(1);
+
+    rerender({ visible: false });
+    await flushEffects();
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS * 2),
+    );
+    expect(getSystemSummary).toHaveBeenCalled();
+    expect(getSystemSnapshot).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("visibility-aware network monitoring", () => {

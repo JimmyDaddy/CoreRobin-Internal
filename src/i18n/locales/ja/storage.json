@@ -14,6 +14,7 @@
   "sortedByUsage": "使用状況でソート",
   "unnamedVolume": "名前のないボリューム",
   "removable": "取り外し可能なストレージ",
+  "eject": { "action": "取り出す", "confirm": "取り出しを確認", "ejecting": "取り出し中…", "success": "{{name}} を安全に取り出しました。", "failed": "このボリュームを取り出せません。使用中のファイルを閉じて再試行してください。", "noLongerRemovable": "このボリュームは取り外し可能なボリュームとして利用できません。" },
   "usedSpace": "{{name}}上の使用済みストレージ",
   "available": "{{value}} 利用可能なディスク容量",
   "lowSpace": "ディスク容量が不足しています",

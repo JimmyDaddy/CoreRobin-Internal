@@ -1,16 +1,20 @@
 use std::collections::HashSet;
-use std::net::{IpAddr, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
 use crate::models::{
-    NetworkHostLookup, NetworkHostLookupRequest, NetworkQualityResult, NetworkQualityStatus,
+    NetworkHostLookup, NetworkHostLookupRequest, NetworkQualityDiagnostic,
+    NetworkQualityDiagnosticKind, NetworkQualityDiagnosticStatus, NetworkQualityResult,
+    NetworkQualityStatus,
 };
 
 const QUALITY_TARGET_HOST: &str = "example.com";
 const QUALITY_TARGET_PORT: u16 = 443;
 const PROBE_COUNT: usize = 6;
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(900);
+const ROUTE_PROBE_V4: &str = "1.1.1.1:443";
+const ROUTE_PROBE_V6: &str = "[2606:4700:4700::1111]:443";
 const MAX_LOOKUP_ADDRESSES: usize = 32;
 
 pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError> {
@@ -32,16 +36,47 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
     }
 
     let mut successful_latencies = Vec::new();
+    let mut ipv4_successes = 0usize;
+    let mut ipv6_successes = 0usize;
     for probe_index in 0..PROBE_COUNT {
-        if let Some(address) = unique_addresses.get(probe_index % unique_addresses.len().max(1)) {
-            let started = Instant::now();
-            if TcpStream::connect_timeout(address, CONNECT_TIMEOUT).is_ok() {
-                successful_latencies.push(started.elapsed().as_secs_f64() * 1_000.0);
-            }
+        let Some(address) = unique_addresses.get(probe_index % unique_addresses.len().max(1))
+        else {
+            continue;
+        };
+        let Some(latency) = probe_address(*address) else {
+            continue;
+        };
+        successful_latencies.push(latency);
+        if address.is_ipv4() {
+            ipv4_successes += 1;
+        } else {
+            ipv6_successes += 1;
         }
     }
 
     let successful_probe_count = successful_latencies.len();
+    let resolved_ipv4 = unique_addresses
+        .iter()
+        .filter(|address| address.is_ipv4())
+        .count();
+    let resolved_ipv6 = unique_addresses
+        .iter()
+        .filter(|address| address.is_ipv6())
+        .count();
+    let route_v4 = local_route_available(false);
+    let route_v6 = local_route_available(true);
+    let direct_v4_latency = ROUTE_PROBE_V4
+        .parse::<SocketAddr>()
+        .ok()
+        .and_then(probe_address);
+    let direct_v6_latency = route_v6
+        .then(|| {
+            ROUTE_PROBE_V6
+                .parse::<SocketAddr>()
+                .ok()
+                .and_then(probe_address)
+        })
+        .flatten();
     let average_latency_ms = mean(&successful_latencies);
     let minimum_latency_ms = successful_latencies.iter().copied().reduce(f64::min);
     let maximum_latency_ms = successful_latencies.iter().copied().reduce(f64::max);
@@ -59,6 +94,62 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
     } else {
         NetworkQualityStatus::Offline
     };
+    let internet_latency = [direct_v4_latency, direct_v6_latency]
+        .into_iter()
+        .flatten()
+        .reduce(f64::min);
+    let diagnostics = vec![
+        diagnostic(
+            NetworkQualityDiagnosticKind::LocalLink,
+            if route_v4 || route_v6 {
+                NetworkQualityDiagnosticStatus::Passed
+            } else {
+                NetworkQualityDiagnosticStatus::Failed
+            },
+            None,
+        ),
+        diagnostic(
+            NetworkQualityDiagnosticKind::Dns,
+            if dns_available {
+                NetworkQualityDiagnosticStatus::Passed
+            } else {
+                NetworkQualityDiagnosticStatus::Failed
+            },
+            dns_available.then_some(dns_lookup_ms as f64),
+        ),
+        diagnostic(
+            NetworkQualityDiagnosticKind::Ipv4,
+            address_family_status(resolved_ipv4, ipv4_successes),
+            None,
+        ),
+        diagnostic(
+            NetworkQualityDiagnosticKind::Ipv6,
+            address_family_status(resolved_ipv6, ipv6_successes),
+            None,
+        ),
+        diagnostic(
+            NetworkQualityDiagnosticKind::Internet,
+            if internet_latency.is_some() {
+                NetworkQualityDiagnosticStatus::Passed
+            } else if successful_probe_count > 0 {
+                NetworkQualityDiagnosticStatus::Degraded
+            } else {
+                NetworkQualityDiagnosticStatus::Failed
+            },
+            internet_latency,
+        ),
+        diagnostic(
+            NetworkQualityDiagnosticKind::IndependentService,
+            if successful_probe_count >= PROBE_COUNT.div_ceil(2) {
+                NetworkQualityDiagnosticStatus::Passed
+            } else if successful_probe_count > 0 {
+                NetworkQualityDiagnosticStatus::Degraded
+            } else {
+                NetworkQualityDiagnosticStatus::Failed
+            },
+            average_latency_ms,
+        ),
+    ];
 
     Ok(NetworkQualityResult {
         sampled_at_ms,
@@ -75,6 +166,7 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         maximum_latency_ms,
         jitter_ms,
         packet_loss_percent,
+        diagnostics,
     })
 }
 
@@ -100,6 +192,49 @@ fn mean(values: &[f64]) -> Option<f64> {
     (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)
 }
 
+fn probe_address(address: SocketAddr) -> Option<f64> {
+    let started = Instant::now();
+    TcpStream::connect_timeout(&address, CONNECT_TIMEOUT)
+        .is_ok()
+        .then(|| started.elapsed().as_secs_f64() * 1_000.0)
+}
+
+fn local_route_available(ipv6: bool) -> bool {
+    let bind_address = if ipv6 { "[::]:0" } else { "0.0.0.0:0" };
+    let target = if ipv6 { ROUTE_PROBE_V6 } else { ROUTE_PROBE_V4 };
+    UdpSocket::bind(bind_address)
+        .and_then(|socket| {
+            socket.connect(target)?;
+            socket.local_addr()
+        })
+        .is_ok_and(|address| !address.ip().is_unspecified())
+}
+
+fn address_family_status(
+    resolved_address_count: usize,
+    successful_probe_count: usize,
+) -> NetworkQualityDiagnosticStatus {
+    if resolved_address_count == 0 {
+        NetworkQualityDiagnosticStatus::Unavailable
+    } else if successful_probe_count > 0 {
+        NetworkQualityDiagnosticStatus::Passed
+    } else {
+        NetworkQualityDiagnosticStatus::Failed
+    }
+}
+
+fn diagnostic(
+    kind: NetworkQualityDiagnosticKind,
+    status: NetworkQualityDiagnosticStatus,
+    latency_ms: Option<f64>,
+) -> NetworkQualityDiagnostic {
+    NetworkQualityDiagnostic {
+        kind,
+        status,
+        latency_ms,
+    }
+}
+
 fn now_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -110,11 +245,28 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::mean;
+    use super::{address_family_status, mean};
+    use crate::models::NetworkQualityDiagnosticStatus;
 
     #[test]
     fn mean_handles_empty_and_non_empty_samples() {
         assert_eq!(mean(&[]), None);
         assert_eq!(mean(&[10.0, 20.0, 30.0]), Some(20.0));
+    }
+
+    #[test]
+    fn address_family_status_distinguishes_missing_and_failed_routes() {
+        assert_eq!(
+            address_family_status(0, 0),
+            NetworkQualityDiagnosticStatus::Unavailable
+        );
+        assert_eq!(
+            address_family_status(2, 0),
+            NetworkQualityDiagnosticStatus::Failed
+        );
+        assert_eq!(
+            address_family_status(2, 1),
+            NetworkQualityDiagnosticStatus::Passed
+        );
     }
 }

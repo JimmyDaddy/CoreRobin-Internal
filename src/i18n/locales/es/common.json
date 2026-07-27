@@ -28,11 +28,18 @@
     "reveal": "Mostrar en Finder",
     "preview": "Vista rápida",
     "copy": "Copiar ruta",
-    "copied": "Ruta copiada"
+    "copied": "Ruta absoluta copiada",
+    "errors": {
+      "unavailable": "Este elemento ya no existe o no está accesible ahora.",
+      "homeUnavailable": "CoreRobin no pudo determinar la carpeta personal del usuario.",
+      "unresolved": "CoreRobin no pudo convertir esta ruta mostrada en una ruta absoluta.",
+      "openFailed": "No se pudo abrir el elemento. Comprueba que siga siendo accesible."
+    }
   },
   "systemSettings": {
     "login_items": "Abrir ajustes de ítems de inicio",
     "battery": "Abrir ajustes de batería",
-    "network": "Abrir ajustes de red"
+    "network": "Abrir ajustes de red",
+    "notifications": "Abrir ajustes de notificaciones"
   }
 }

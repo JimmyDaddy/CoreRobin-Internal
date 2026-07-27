@@ -54,5 +54,6 @@
     "attention": "Wichtige Punkte: {{count}}",
     "urgent": "Punkte zur Überprüfung: {{count}}"
   },
-  "recovering": "Der Wert hat sich verbessert; bestätigt, dass er stabil bleibt."
+  "recovering": "Der Wert hat sich verbessert; bestätigt, dass er stabil bleibt.",
+  "updateAvailable": "CoreRobin v{{version}} ist verfügbar"
 }

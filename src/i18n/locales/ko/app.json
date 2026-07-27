@@ -39,6 +39,7 @@
   "staleTarget": "프로세스 정보가 변경되었습니다. 작업이 취소되었으며, 다시 선택하여 진행하세요.",
   "metricsLabel": "시스템 자원 요약",
   "mode": {
+    "label": "사용 모드",
     "simple": "일상 모드",
     "professional": "전문 모드",
     "short": {
@@ -65,6 +66,7 @@
     "cpuContext": "{{count}} 하나의 프로세스가 최대 100개의 논리 코어를 사용할 수 있습니다.",
     "memoryContext": "{{total}} 총 메모리 사용량 {{swap}} 스왑 공간 사용량",
     "diskContext": "읽기 속도 {{read}} 쓰기 속도 {{write}}",
+    "diskCapacityContext": "전체 {{total}} · 사용 가능 {{available}}",
     "networkContext": "다운로드 속도 {{receive}} 업로드 속도 {{send}}"
   },
   "status": {
