@@ -22,6 +22,13 @@ import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 
 type SettingsIcon = ComponentType<{ size?: number | string }>;
+type SettingsSection =
+  | "general"
+  | "background"
+  | "monitoring"
+  | "alerts"
+  | "privacy"
+  | "about";
 
 interface SettingsExplorerProps {
   settings: AppSettings;
@@ -31,6 +38,7 @@ interface SettingsExplorerProps {
   onOpenOnboarding: () => void;
   onClearAllData: () => void;
   activeApplicationWatchRuleIds?: readonly string[];
+  availableUpdateVersion?: string | null;
 }
 
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
@@ -53,9 +61,12 @@ export function SettingsExplorer({
   onOpenOnboarding,
   onClearAllData,
   activeApplicationWatchRuleIds = [],
+  availableUpdateVersion = null,
 }: SettingsExplorerProps) {
   const { t } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("general");
 
   const updateThreshold = (index: number, value: number) => {
     const next = [...settings.usageThresholds] as [number, number, number];
@@ -71,8 +82,41 @@ export function SettingsExplorer({
         <p>{t("settings:description")}</p>
       </header>
 
-      <div className="settings-grid">
+      <nav className="settings-section-tabs" aria-label={t("settings:title")}>
+        {(["general", "background", "monitoring", "alerts", "privacy", "about"] as const).map(
+          (section) => (
+            <button
+              type="button"
+              key={section}
+              className={activeSection === section ? "is-active" : undefined}
+              aria-current={activeSection === section ? "page" : undefined}
+              onClick={() => setActiveSection(section)}
+            >
+              {t(
+                section === "general"
+                  ? "settings:experience.title"
+                  : section === "background"
+                    ? "settings:background.title"
+                    : section === "monitoring"
+                      ? "settings:sampling.title"
+                      : section === "alerts"
+                        ? "settings:notifications.title"
+                        : section === "privacy"
+                          ? "settings:history.title"
+                          : "settings:about.title",
+              )}
+              {section === "about" && availableUpdateVersion ? (
+                <em>v{availableUpdateVersion}</em>
+              ) : null}
+            </button>
+          ),
+        )}
+      </nav>
+
+      {activeSection !== "about" ? (
+      <div className="settings-grid" data-active-section={activeSection}>
         <SettingsCard
+          section="general"
           className="settings-card--mode"
           icon={LayoutDashboard}
           title={t("settings:experience.title")}
@@ -94,6 +138,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="general"
           className="settings-card--language"
           icon={Languages}
           title={t("settings:language.title")}
@@ -107,6 +152,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="background"
           className="settings-card--background"
           icon={AppWindow}
           title={t("settings:background.title")}
@@ -145,6 +191,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="monitoring"
           icon={Timer}
           title={t("settings:sampling.title")}
           description={t("settings:sampling.description")}
@@ -184,6 +231,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="monitoring"
           icon={Network}
           title={t("settings:connections.title")}
           description={t("settings:connections.description")}
@@ -206,6 +254,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="monitoring"
           icon={ListTree}
           title={t("settings:processView.title")}
           description={t("settings:processView.description")}
@@ -226,6 +275,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="privacy"
           className="settings-card--half"
           icon={History}
           title={t("settings:history.title")}
@@ -281,6 +331,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="alerts"
           className="settings-card--half"
           icon={BellRing}
           title={t("settings:notifications.title")}
@@ -325,6 +376,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="alerts"
           className="settings-card--thresholds"
           icon={BellRing}
           title={t("settings:thresholds.title")}
@@ -359,6 +411,7 @@ export function SettingsExplorer({
         </SettingsCard>
 
         <SettingsCard
+          section="alerts"
           className="settings-card--watch-rules"
           icon={BellRing}
           title={t("settings:watchRules.title")}
@@ -373,12 +426,16 @@ export function SettingsExplorer({
           />
         </SettingsCard>
       </div>
+      ) : null}
+      {activeSection === "about" ? (
       <AboutSupport
         settings={settings}
         snapshot={snapshot}
+        backgroundUpdateVersion={availableUpdateVersion}
         onOpenOnboarding={onOpenOnboarding}
         onClearAllData={onClearAllData}
       />
+      ) : null}
     </section>
   );
 }
@@ -408,6 +465,20 @@ function ApplicationWatchRulesEditor({
   const [metric, setMetric] = useState<ApplicationWatchMetric>("cpu");
   const [threshold, setThreshold] = useState(80);
   const [durationSeconds, setDurationSeconds] = useState(30);
+  const normalizedApplicationName = applicationName.trim().toLocaleLowerCase();
+  const selectedApplication =
+    applicationByName.get(normalizedApplicationName) ?? null;
+  const effectiveApplicationName =
+    selectedApplication?.name ?? applicationName.trim();
+  const duplicateRule = Boolean(effectiveApplicationName) && rules.some(
+    (rule) =>
+      rule.applicationName.toLocaleLowerCase() ===
+        effectiveApplicationName.toLocaleLowerCase() &&
+      rule.metric === metric &&
+      rule.threshold === threshold &&
+      rule.durationSeconds === durationSeconds,
+  );
+  const canAddRule = Boolean(effectiveApplicationName) && !duplicateRule;
 
   const thresholdMaximum = metric === "cpu" ? 100 : 1_000_000;
   const thresholdStep = metric === "disk" ? 0.5 : 1;
@@ -423,11 +494,10 @@ function ApplicationWatchRulesEditor({
     setThreshold(nextMetric === "cpu" ? 80 : nextMetric === "memory" ? 1_024 : 50);
   };
   const addRule = () => {
-    const name = applicationName.trim();
-    if (!name) return;
+    if (!effectiveApplicationName || duplicateRule) return;
     onChange([...rules, {
       id: globalThis.crypto?.randomUUID?.() ?? `watch-${Date.now()}-${Math.random()}`,
-      applicationName: name,
+      applicationName: effectiveApplicationName,
       metric,
       threshold,
       durationSeconds,
@@ -449,13 +519,20 @@ function ApplicationWatchRulesEditor({
                 value={applicationName}
                 onChange={(event) => setApplicationName(event.target.value)}
                 placeholder={t("settings:watchRules.applicationPlaceholder")}
+                aria-invalid={Boolean(applicationName.trim()) && !selectedApplication}
               />
             </span>
           </label>
           <datalist id="watch-rule-applications">
             {applications.map(({ name }) => <option key={name} value={name} />)}
           </datalist>
-          <button className="button button--primary watch-rules__add" type="button" disabled={!applicationName.trim()} onClick={addRule}>
+          <button
+            className="button button--primary watch-rules__add"
+            type="button"
+            disabled={!canAddRule}
+            title={duplicateRule ? t("common:unavailable") : undefined}
+            onClick={addRule}
+          >
             <Plus size={15} />{t("settings:watchRules.add")}
           </button>
         </div>
@@ -550,7 +627,11 @@ function ApplicationWatchRulesEditor({
             className="watch-rule-avatar"
           />
           <div><strong>{rule.applicationName}</strong><small>{t("settings:watchRules.summary", { metric: t(`settings:watchRules.metrics.${rule.metric}`), threshold: rule.threshold, unit: rule.metric === "cpu" ? "%" : rule.metric === "memory" ? "MiB" : "MiB/s", seconds: rule.durationSeconds })}</small></div>
-          {activeRuleIds.includes(rule.id) ? <em>{t("settings:watchRules.active")}</em> : null}
+          {activeRuleIds.includes(rule.id) ? (
+            <em>{t("settings:watchRules.active")}</em>
+          ) : !applicationByName.has(rule.applicationName.toLocaleLowerCase()) ? (
+            <em>{t("common:unavailable")}</em>
+          ) : null}
           <button type="button" aria-label={t("settings:watchRules.remove", { name: rule.applicationName })} onClick={() => onChange(rules.filter((candidate) => candidate.id !== rule.id))}><Trash2 size={14} /></button>
         </li>
       ))}</ul> : <p className="watch-rules__empty">{t("settings:watchRules.empty")}</p>}
@@ -582,19 +663,24 @@ function BackgroundSwitch({
 
 function SettingsCard({
   className = "",
+  section,
   icon: Icon,
   title,
   description,
   children,
 }: {
   className?: string;
+  section: Exclude<SettingsSection, "about">;
   icon: SettingsIcon;
   title: string;
   description: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`panel settings-card ${className}`.trim()}>
+    <section
+      className={`panel settings-card ${className}`.trim()}
+      data-settings-section={section}
+    >
       <header>
         <span aria-hidden="true"><Icon size={17} /></span>
         <div>

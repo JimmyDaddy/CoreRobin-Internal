@@ -96,7 +96,7 @@ export function defaultAppSettings(
     mutedNotificationResources: [],
     interfaceScale: "comfortable",
     reduceMotion: false,
-    showDockIcon: false,
+    showDockIcon: true,
     launchAtLogin: false,
     companionAlwaysOnTop: false,
     companionShowOnStartup: false,

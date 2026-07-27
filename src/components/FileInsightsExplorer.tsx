@@ -13,6 +13,7 @@ import {
   FolderSearch,
   Hash,
   Radio,
+  RefreshCw,
   ScanSearch,
   ShieldCheck,
   Sparkles,
@@ -315,7 +316,14 @@ export function FileInsightsExplorer({
 
   const confirmProcessing = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching) return;
+    if (
+      !lease ||
+      lease.mode !== deleteMode ||
+      !cleanupLeaseCanExecute(lease) ||
+      (deleteMode === "permanent" && !deleteAcknowledged) ||
+      deleteSubmitting ||
+      deleteModeSwitching
+    ) return;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
       targetName: t("cleanup:fileInsights.processing.actionName"),
@@ -449,6 +457,9 @@ export function FileInsightsExplorer({
       {error ? (
         <div className="file-insights-page__notice is-error" role="alert">
           <AlertTriangle size={16} /><span>{error}</span>
+          <button className="button button--secondary" type="button" onClick={onRun}>
+            <RefreshCw size={14} />{t("common:retry")}
+          </button>
         </div>
       ) : null}
 

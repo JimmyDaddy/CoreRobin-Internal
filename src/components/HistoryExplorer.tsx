@@ -172,6 +172,7 @@ export function HistoryExplorer({
         </>
       )}
 
+      {stories.length > 0 ? (
       <section className="panel history-stories" aria-labelledby="history-stories-title">
         <header className="history-stories__header">
           <div>
@@ -181,18 +182,13 @@ export function HistoryExplorer({
           </div>
           <span>{t("history:stories.count", { count: stories.length })}</span>
         </header>
-        {stories.length > 0 ? (
-          <div className="history-story-list">
-            {stories.map((story) => <HistoryStoryCard key={story.id} story={story} />)}
-          </div>
-        ) : (
-          <div className="history-stories__empty">
-            <CheckCircle2 size={20} />
-            <div><strong>{t("history:stories.emptyTitle")}</strong><span>{t("history:stories.emptyDescription")}</span></div>
-          </div>
-        )}
+        <div className="history-story-list">
+          {stories.map((story) => <HistoryStoryCard key={story.id} story={story} />)}
+        </div>
       </section>
+      ) : null}
 
+      {actionRecords.length > 0 ? (
       <div className="panel history-user-actions">
         <UserActionTimeline
           records={actionRecords}
@@ -200,7 +196,9 @@ export function HistoryExplorer({
           onOpenAction={onOpenUserAction}
         />
       </div>
+      ) : null}
 
+      {alertEvents.length > 0 ? (
       <section className="panel history-alerts" aria-labelledby="history-alerts-title">
         <header className="history-alerts__header">
           <div>
@@ -246,6 +244,7 @@ export function HistoryExplorer({
           </div>
         )}
       </section>
+      ) : null}
 
       <section className="panel history-privacy" aria-labelledby="history-privacy-title">
         <span className="history-privacy__icon" aria-hidden="true"><ShieldCheck size={19} /></span>

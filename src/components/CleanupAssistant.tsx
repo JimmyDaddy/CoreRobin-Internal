@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArchiveRestore,
+  ArrowRight,
   Boxes,
   Code2,
   Download,
@@ -9,6 +10,7 @@ import {
   FolderSearch,
   HardDrive,
   LockKeyhole,
+  Plus,
   RefreshCw,
   ScanSearch,
   Settings2,
@@ -29,7 +31,7 @@ import {
   openCleanupFullDiskAccessSettings,
   revealCleanupApplicationBundle,
 } from "../api";
-import { useFileInsightsScan } from "../hooks/useFileInsightsScan";
+import type { FileInsightsScanController } from "../hooks/useFileInsightsScan";
 import type {
   CleanupLocationKind,
   CleanupScan,
@@ -46,9 +48,22 @@ import type {
 import { formatBytes, normalizeCommandError } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
 import { Button } from "./Button";
-import { CleanupSpaceMap } from "./CleanupSpaceMap";
+import {
+  CleanupSpaceMap,
+  type CleanupSpaceMapCommand,
+} from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
+import { PathActions } from "./PathActions";
 import "./CleanupAssistant.css";
+
+const LIMITED_SCAN_PREFERENCE_KEY =
+  "core-robin.cleanup.prefer-accessible-scan.v1";
+type CleanupSpaceMapCommandInput =
+  CleanupSpaceMapCommand extends infer Command
+    ? Command extends { id: number }
+      ? Omit<Command, "id">
+      : never
+    : never;
 
 interface CleanupAssistantProps {
   snapshot: CleanupScan | null;
@@ -66,6 +81,8 @@ interface CleanupAssistantProps {
   onSubtreeRetained: (subtree: CleanupScan["root"]) => Promise<void>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
+  fileInsights: FileInsightsScanController;
+  onOpenApplications: () => void;
 }
 
 const LOCATION_ICONS = {
@@ -89,6 +106,8 @@ export function CleanupAssistant({
   onSubtreeRetained,
   onUserActionStart,
   onUserActionComplete,
+  fileInsights,
+  onOpenApplications,
 }: CleanupAssistantProps) {
   const { t, i18n } = useAppTranslation();
   const [accessGuideOpen, setAccessGuideOpen] = useState(false);
@@ -98,8 +117,13 @@ export function CleanupAssistant({
   const [revealingApplication, setRevealingApplication] = useState(false);
   const [waitingForAccess, setWaitingForAccess] = useState(false);
   const [accessError, setAccessError] = useState<CommandError | null>(null);
+  const [preferAccessibleScan, setPreferAccessibleScan] = useState(
+    readAccessibleScanPreference,
+  );
   const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files">("space");
-  const fileInsights = useFileInsightsScan();
+  const [mapCommand, setMapCommand] =
+    useState<CleanupSpaceMapCommand | null>(null);
+  const mapCommandIdRef = useRef(0);
   const accessCheckInFlight = useRef(false);
   const reclaimableBytes = useMemo(
     () => snapshot?.locations.reduce(
@@ -139,6 +163,8 @@ export function CleanupAssistant({
         access.fullDiskAccess === "granted" ||
         access.fullDiskAccess === "not_required";
       if (ready) {
+        setPreferAccessibleScan(false);
+        writeAccessibleScanPreference(false);
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
         if (startWhenReady) onScan();
@@ -173,6 +199,10 @@ export function CleanupAssistant({
       onCancel();
       return;
     }
+    if (preferAccessibleScan) {
+      onScan();
+      return;
+    }
     void checkScanAccess(true);
   };
 
@@ -204,10 +234,26 @@ export function CleanupAssistant({
   };
 
   const scanAccessibleAreas = () => {
+    setPreferAccessibleScan(true);
+    writeAccessibleScanPreference(true);
     setAccessGuideOpen(false);
     setWaitingForAccess(false);
     setAccessError(null);
     onScan();
+  };
+
+  const sendMapCommand = (
+    command: CleanupSpaceMapCommandInput,
+  ) => {
+    const id = mapCommandIdRef.current + 1;
+    mapCommandIdRef.current = id;
+    setMapCommand({ ...command, id } as CleanupSpaceMapCommand);
+    window.requestAnimationFrame(() => {
+      document.getElementById("cleanup-space-map")?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
   if (activeWorkspace === "files") {
@@ -445,6 +491,22 @@ export function CleanupAssistant({
         />
       ) : null}
 
+      {snapshot && preferAccessibleScan ? (
+        <div className="cleanup-assistant__limited-notice" role="status">
+          <ShieldCheck size={15} />
+          <span>{t("cleanup:access.privacy")}</span>
+          <button
+            className="button button--plain"
+            type="button"
+            disabled={openingAccessSettings}
+            onClick={() => void openAccessSettings()}
+          >
+            <Settings2 size={14} />
+            {t("cleanup:access.openSettings")}
+          </button>
+        </div>
+      ) : null}
+
       {snapshot ? (
         <>
           <div className="cleanup-assistant__summary">
@@ -463,6 +525,10 @@ export function CleanupAssistant({
           <CleanupSpaceMap
             snapshot={snapshot}
             snapshotStatus={snapshotStatus}
+            command={mapCommand}
+            onCommandHandled={(id) => {
+              setMapCommand((current) => current?.id === id ? null : current);
+            }}
             onDeletionApplied={onDeletionApplied}
             onSubtreeRetained={onSubtreeRetained}
             onUserActionStart={onUserActionStart}
@@ -500,6 +566,22 @@ export function CleanupAssistant({
                     {location.paths[0] ?? t("cleanup:pathUnavailable")}
                     {location.paths.length > 1 ? t("cleanup:morePaths", { count: location.paths.length - 1 }) : ""}
                   </code>
+                  {location.available && location.paths[0] ? (
+                    <div className="cleanup-location__actions">
+                      <PathActions path={location.paths[0]} compact />
+                      <button
+                        className="button button--plain"
+                        type="button"
+                        onClick={() => sendMapCommand({
+                          type: "focusLocation",
+                          locationKind: location.kind,
+                        })}
+                      >
+                        <ArrowRight size={13} />
+                        {t("cleanup:map.mode.category")}
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
@@ -534,6 +616,13 @@ export function CleanupAssistant({
                         })}</small>
                       </div>
                       <strong>{formatBytes(application.sizeBytes)}</strong>
+                      <button
+                        className="button button--plain cleanup-applications__open"
+                        type="button"
+                        onClick={onOpenApplications}
+                      >
+                        {t("app:applications")}<ArrowRight size={13} />
+                      </button>
                     </li>
                   );
                 })}
@@ -562,6 +651,20 @@ export function CleanupAssistant({
                     <div><strong>{file.name}</strong><code title={file.path}>{file.path}</code></div>
                     <small>{file.modifiedAtMs === null ? t("common:unknown") : new Date(file.modifiedAtMs).toLocaleDateString(i18n.resolvedLanguage)}</small>
                     <strong>{formatBytes(file.sizeBytes)}</strong>
+                    <PathActions path={file.path} compact />
+                    <button
+                      className="button button--plain cleanup-largest__collect"
+                      type="button"
+                      onClick={() => sendMapCommand({
+                        type: "addPath",
+                        name: file.name,
+                        path: file.path,
+                        sizeBytes: file.sizeBytes,
+                      })}
+                    >
+                      <Plus size={13} />
+                      {t("cleanup:map.basket.title")}
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -586,6 +689,26 @@ export function CleanupAssistant({
       ) : null}
     </section>
   );
+}
+
+function readAccessibleScanPreference(): boolean {
+  try {
+    return window.localStorage.getItem(LIMITED_SCAN_PREFERENCE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeAccessibleScanPreference(enabled: boolean): void {
+  try {
+    if (enabled) {
+      window.localStorage.setItem(LIMITED_SCAN_PREFERENCE_KEY, "true");
+    } else {
+      window.localStorage.removeItem(LIMITED_SCAN_PREFERENCE_KEY);
+    }
+  } catch {
+    // The preference is a convenience only; scanning remains available.
+  }
 }
 
 function cleanupProgressLocation(

@@ -111,3 +111,5 @@ export function useFileInsightsScan() {
     removePaths,
   };
 }
+
+export type FileInsightsScanController = ReturnType<typeof useFileInsightsScan>;

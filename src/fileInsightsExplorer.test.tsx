@@ -5,9 +5,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CleanupAssistant } from "./components/CleanupAssistant";
 import { FileInsightsExplorer } from "./components/FileInsightsExplorer";
+import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
 import { getMockCleanupScan } from "./mockData";
 import type { FileInsightsScan } from "./types";
+
+const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
+  snapshot: null,
+  snapshotStatus: "current",
+  progress: null,
+  loading: false,
+  error: null,
+  scan: async () => undefined,
+  cancel: async () => undefined,
+  removePaths: () => undefined,
+};
 
 const cleanupApi = vi.hoisted(() => ({
   cancelCleanupDelete: vi.fn(),
@@ -86,6 +98,8 @@ describe("file insights workspace", () => {
         onCancel={() => undefined}
         onDeletionApplied={async () => undefined}
         onSubtreeRetained={async () => undefined}
+        fileInsights={EMPTY_FILE_INSIGHTS}
+        onOpenApplications={() => undefined}
       />,
     );
 
@@ -256,7 +270,6 @@ describe("file insights workspace", () => {
       }),
     ));
     expect(screen.getByRole("heading", { name: "处理重复文件" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: /移到废纸篓/ }));
 
     await waitFor(() => expect(onFilesRemoved).toHaveBeenCalledWith([

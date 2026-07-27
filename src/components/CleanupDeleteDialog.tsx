@@ -54,7 +54,13 @@ export function CleanupDeleteDialog({
   const cancelButton = useRef<HTMLButtonElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
-  const canConfirm = cleanupLeaseCanExecute(lease) && lease?.mode === mode && !preparing && !modeSwitching && !submitting && deleteAcknowledged;
+  const canConfirm =
+    cleanupLeaseCanExecute(lease) &&
+    lease?.mode === mode &&
+    !preparing &&
+    !modeSwitching &&
+    !submitting &&
+    (mode === "trash" || deleteAcknowledged);
   const currentItem = progress?.currentPath
     ? items.find((item) => item.path === progress.currentPath)
     : null;
@@ -223,7 +229,7 @@ export function CleanupDeleteDialog({
           </p>
         ) : null}
 
-        {!submitting ? <label className="cleanup-delete-dialog__acknowledgement">
+        {!submitting && mode === "permanent" ? <label className="cleanup-delete-dialog__acknowledgement">
           <input
             type="checkbox"
             checked={deleteAcknowledged}
@@ -231,8 +237,8 @@ export function CleanupDeleteDialog({
             onChange={(event) => onDeleteAcknowledgedChange(event.target.checked)}
           />
           <span>
-            <strong>{t(mode === "trash" ? "cleanup:deleteDialog.trashConfirmTitle" : "cleanup:deleteDialog.deleteConfirmTitle")}</strong>
-            <small>{t(mode === "trash" ? "cleanup:deleteDialog.trashConfirmDescription" : "cleanup:deleteDialog.deleteConfirmDescription")}</small>
+            <strong>{t("cleanup:deleteDialog.deleteConfirmTitle")}</strong>
+            <small>{t("cleanup:deleteDialog.deleteConfirmDescription")}</small>
           </span>
         </label> : null}
 

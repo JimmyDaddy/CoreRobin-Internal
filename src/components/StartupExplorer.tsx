@@ -207,7 +207,13 @@ export function StartupExplorer({
       )}
 
       {error ? (
-        <div className="panel startup-error" role="alert"><AlertTriangle size={17} /><span>{error.message}</span></div>
+        <div className="panel startup-error" role="alert">
+          <AlertTriangle size={17} />
+          <span>{error.message}</span>
+          <button className="button button--secondary" type="button" onClick={onRefresh}>
+            <RefreshCw size={14} />{t("common:retry")}
+          </button>
+        </div>
       ) : null}
 
       {outcome ? (

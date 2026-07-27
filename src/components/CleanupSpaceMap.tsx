@@ -55,6 +55,8 @@ import "./CleanupSpaceMapProtection.css";
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
   snapshotStatus: CleanupSnapshotStatus;
+  command?: CleanupSpaceMapCommand | null;
+  onCommandHandled?: (id: number) => void;
   onDeletionApplied: (
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
@@ -63,6 +65,20 @@ interface CleanupSpaceMapProps {
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
+
+export type CleanupSpaceMapCommand =
+  | {
+      id: number;
+      type: "focusLocation";
+      locationKind: string;
+    }
+  | {
+      id: number;
+      type: "addPath";
+      name: string;
+      path: string;
+      sizeBytes: number;
+    };
 
 interface CleanupDragState {
   nodeId: string;
@@ -92,6 +108,8 @@ const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
 export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   snapshot,
   snapshotStatus,
+  command = null,
+  onCommandHandled,
   onDeletionApplied,
   onSubtreeRetained,
   onUserActionStart,
@@ -147,13 +165,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       })
       .sort((left, right) => right.sizeBytes - left.sizeBytes),
   }), [loadedSubtrees, snapshot.locations, t]);
+  const [externalPlanNodes, setExternalPlanNodes] =
+    useState<Map<string, CleanupMapNode>>(() => new Map());
   const root = mapMode === "path" ? pathRoot : categoryRoot;
   const { nodes, parents, depths } = useMemo(() => indexTree(root), [root]);
   const planNodes = useMemo(() => {
     const pathNodes = indexTree(pathRoot).nodes;
     for (const [id, node] of indexTree(categoryRoot).nodes) pathNodes.set(id, node);
+    for (const [id, node] of externalPlanNodes) pathNodes.set(id, node);
     return pathNodes;
-  }, [categoryRoot, pathRoot]);
+  }, [categoryRoot, externalPlanNodes, pathRoot]);
   const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
@@ -188,6 +209,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const activeSubtreeRequestRef = useRef<string | null>(null);
   const revalidatingNodeIdsRef = useRef(new Set<string>());
   const activeSnapshotSampledAtRef = useRef(snapshot.sampledAtMs);
+  const requestedFocusIdRef = useRef<string | null>(null);
 
   const cancelActiveSubtree = useCallback(() => {
     const requestId = activeSubtreeRequestRef.current;
@@ -205,6 +227,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setFocusId(root.id);
     setSelectedId(root.id);
     setPlannedIds(new Set());
+    setExternalPlanNodes(new Map());
+    requestedFocusIdRef.current = null;
     setChangedIds(new Set());
     setDeleteOutcome(null);
     setDeleteProgress(null);
@@ -218,10 +242,44 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [cancelActiveSubtree, snapshot.prefetchedSubtrees, snapshot.sampledAtMs]);
 
   useEffect(() => {
+    if (!command) return;
+    if (command.type === "focusLocation") {
+      const locationId = `location:${command.locationKind}`;
+      requestedFocusIdRef.current = locationId;
+      setMapMode("category");
+      setFocusId(locationId);
+      setSelectedId(locationId);
+    } else {
+      const nodeId = `quick-path:${command.path}`;
+      const node: CleanupMapNode = {
+        id: nodeId,
+        name: command.name,
+        path: command.path,
+        sizeBytes: command.sizeBytes,
+        logicalSizeBytes: command.sizeBytes,
+        allocatedSizeBytes: command.sizeBytes,
+        itemCount: 1,
+        safety: "review",
+        kind: "file",
+        deletionProtected: false,
+        protectionReason: null,
+        hasChildren: false,
+        children: [],
+      };
+      setExternalPlanNodes((current) => new Map(current).set(nodeId, node));
+      setDeleteOutcome(null);
+      setPlannedIds((current) => new Set(current).add(nodeId));
+    }
+    onCommandHandled?.(command.id);
+  }, [command, onCommandHandled]);
+
+  useEffect(() => {
     cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
-    setFocusId(root.id);
-    setSelectedId(root.id);
+    const requestedFocusId = requestedFocusIdRef.current;
+    requestedFocusIdRef.current = null;
+    setFocusId(requestedFocusId ?? root.id);
+    setSelectedId(requestedFocusId ?? root.id);
     setLoadingNodeId(null);
     setSubtreeError(null);
     try {
@@ -705,7 +763,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
   const confirmCleanup = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || lease.mode !== deleteMode || !cleanupLeaseCanExecute(lease) || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching) return;
+    if (
+      !lease ||
+      lease.mode !== deleteMode ||
+      !cleanupLeaseCanExecute(lease) ||
+      (deleteMode === "permanent" && !deleteAcknowledged) ||
+      deleteSubmitting ||
+      deleteModeSwitching
+    ) return;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
       targetCount: deleteDialogItems.length,
@@ -740,7 +805,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       }));
       setPlannedIds((current) => new Set(
         [...current].filter((id) => {
-          const path = nodes.get(id)?.path;
+          const path = planNodes.get(id)?.path;
           return path === null || path === undefined || !deletedPaths.has(path);
         }),
       ));
@@ -827,7 +892,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   };
 
   return (
-    <section className="cleanup-map" aria-labelledby="cleanup-map-title">
+    <section
+      className="cleanup-map"
+      id="cleanup-space-map"
+      aria-labelledby="cleanup-map-title"
+    >
       <header className="cleanup-map__heading">
         <div>
           <h3 id="cleanup-map-title">{t("cleanup:map.title")}</h3>
