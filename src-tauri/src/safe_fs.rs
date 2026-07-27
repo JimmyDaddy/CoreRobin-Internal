@@ -644,6 +644,7 @@ impl BoundDeleteTarget {
             .map(|time| time.into_std()))
     }
 
+    #[cfg(any(target_os = "macos", test))]
     pub fn inspect(&self) -> Result<TreeInspection, String> {
         self.inspect_with_internal_symlinks(false)
     }
@@ -712,6 +713,7 @@ impl BoundDeleteTarget {
         sync_directory(&destination.directory)
     }
 
+    #[cfg(any(target_os = "macos", test))]
     pub fn delete_cancellable(
         self,
         cancelled: &AtomicBool,
