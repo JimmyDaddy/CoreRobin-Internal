@@ -148,6 +148,7 @@ impl DeleteRoot {
             identity,
             volume: self.volume,
             kind,
+            #[cfg(target_os = "macos")]
             modified_at: handle_metadata.modified().ok().map(|time| time.into_std()),
             handle: Some(handle),
         })
@@ -562,6 +563,7 @@ pub struct BoundDeleteTarget {
     identity: FileIdentity,
     volume: u64,
     kind: BoundTargetKind,
+    #[cfg(target_os = "macos")]
     modified_at: Option<SystemTime>,
     handle: Option<BoundHandle>,
 }
@@ -629,6 +631,7 @@ impl BoundDeleteTarget {
         sync_directory(&self.parent)
     }
 
+    #[cfg(target_os = "macos")]
     pub fn modified_at(&self) -> Option<SystemTime> {
         self.modified_at
     }

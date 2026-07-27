@@ -346,6 +346,7 @@ struct CleanupTargetValidation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CleanupTargetInspectionPolicy {
     CleanupBasket,
+    #[cfg(target_os = "macos")]
     Strict,
     #[cfg(target_os = "macos")]
     ApplicationBundle,
@@ -355,6 +356,7 @@ impl CleanupTargetInspectionPolicy {
     fn inspect(self, target: &BoundDeleteTarget) -> Result<TreeInspection, String> {
         match self {
             Self::CleanupBasket => target.inspect_allowing_internal_symlinks(),
+            #[cfg(target_os = "macos")]
             Self::Strict => target.inspect(),
             #[cfg(target_os = "macos")]
             Self::ApplicationBundle => target.inspect_allowing_internal_symlinks(),
@@ -371,6 +373,7 @@ impl CleanupTargetInspectionPolicy {
             Self::CleanupBasket => {
                 target.delete_cancellable_allowing_internal_symlinks(cancelled, on_entry_deleted)
             }
+            #[cfg(target_os = "macos")]
             Self::Strict => target.delete_cancellable(cancelled, on_entry_deleted),
             #[cfg(target_os = "macos")]
             Self::ApplicationBundle => {
