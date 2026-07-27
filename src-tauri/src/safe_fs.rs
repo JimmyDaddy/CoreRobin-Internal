@@ -718,8 +718,8 @@ impl BoundDeleteTarget {
     }
 
     /// Deletes symlinks contained below a verified directory as link entries,
-    /// never by traversing their targets. Intended for validated application
-    /// bundles; generic cleanup keeps the stricter fail-closed behavior.
+    /// never by traversing their targets. Used for cleanup baskets and validated
+    /// application bundles where internal links are ordinary removable entries.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn delete_cancellable_allowing_internal_symlinks(
         self,
