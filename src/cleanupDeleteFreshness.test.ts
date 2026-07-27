@@ -37,12 +37,17 @@ describe("cleanup deletion freshness", () => {
   });
 
   it("rebuilds dialog items by stable path with refreshed evidence", () => {
-    const refreshed = applyRefreshedCleanupTargets([target], [{
-      path: "~/Downloads/archive",
-      logicalSizeBytes: 2_000,
-      allocatedSizeBytes: 8_192,
-      itemCount: 2,
-    }]);
+    const refreshed = applyRefreshedCleanupTargets(
+      [target],
+      [{
+        path: "~/Downloads/archive",
+        logicalSizeBytes: 2_000,
+        allocatedSizeBytes: 8_192,
+        itemCount: 2,
+      }],
+      [],
+      [],
+    );
     expect(refreshed).toEqual([expect.objectContaining({
       id: target.id,
       path: target.path,
@@ -54,13 +59,29 @@ describe("cleanup deletion freshness", () => {
     expect(refreshed?.[0]).not.toBe(target);
   });
 
-  it("rejects incomplete refreshes and non-executable leases", () => {
-    expect(applyRefreshedCleanupTargets([target], [])).toBeNull();
+  it("keeps missing and inaccessible paths in a partial best-effort confirmation", () => {
+    expect(applyRefreshedCleanupTargets([target], [], [target.path!], [])).toEqual([
+      expect.objectContaining({
+        path: target.path,
+        sizeBytes: 0,
+        logicalSizeBytes: 0,
+        allocatedSizeBytes: 0,
+        itemCount: 0,
+        hasChildren: false,
+      }),
+    ]);
+    expect(applyRefreshedCleanupTargets([target], [], [], [target.path!])).toEqual([target]);
+  });
+
+  it("rejects unexplained incomplete refreshes and non-executable leases", () => {
+    expect(applyRefreshedCleanupTargets([target], [], [], [])).toBeNull();
     expect(cleanupLeaseCanExecute(null)).toBe(false);
     expect(cleanupLeaseCanExecute({
       id: "refresh-only",
       mode: "permanent",
       paths: [target.path!],
+      missingPaths: [],
+      unavailablePaths: [],
       changedPaths: [target.path!],
       refreshedTargets: [],
       executable: false,

@@ -148,6 +148,7 @@ impl DeleteRoot {
             identity,
             volume: self.volume,
             kind,
+            #[cfg(target_os = "macos")]
             modified_at: handle_metadata.modified().ok().map(|time| time.into_std()),
             handle: Some(handle),
         })
@@ -562,6 +563,7 @@ pub struct BoundDeleteTarget {
     identity: FileIdentity,
     volume: u64,
     kind: BoundTargetKind,
+    #[cfg(target_os = "macos")]
     modified_at: Option<SystemTime>,
     handle: Option<BoundHandle>,
 }
@@ -629,6 +631,7 @@ impl BoundDeleteTarget {
         sync_directory(&self.parent)
     }
 
+    #[cfg(target_os = "macos")]
     pub fn modified_at(&self) -> Option<SystemTime> {
         self.modified_at
     }
@@ -641,6 +644,7 @@ impl BoundDeleteTarget {
             .map(|time| time.into_std()))
     }
 
+    #[cfg(any(target_os = "macos", test))]
     pub fn inspect(&self) -> Result<TreeInspection, String> {
         self.inspect_with_internal_symlinks(false)
     }
@@ -709,6 +713,7 @@ impl BoundDeleteTarget {
         sync_directory(&destination.directory)
     }
 
+    #[cfg(any(target_os = "macos", test))]
     pub fn delete_cancellable(
         self,
         cancelled: &AtomicBool,
@@ -718,8 +723,8 @@ impl BoundDeleteTarget {
     }
 
     /// Deletes symlinks contained below a verified directory as link entries,
-    /// never by traversing their targets. Intended for validated application
-    /// bundles; generic cleanup keeps the stricter fail-closed behavior.
+    /// never by traversing their targets. Used for cleanup baskets and validated
+    /// application bundles where internal links are ordinary removable entries.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn delete_cancellable_allowing_internal_symlinks(
         self,

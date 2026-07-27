@@ -629,7 +629,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
         return;
       }
-      const refreshedItems = applyRefreshedCleanupTargets(items, lease.refreshedTargets);
+      const refreshedItems = applyRefreshedCleanupTargets(
+        items,
+        lease.refreshedTargets,
+        lease.missingPaths,
+        lease.unavailablePaths,
+      );
       if (!refreshedItems) {
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
         throw {

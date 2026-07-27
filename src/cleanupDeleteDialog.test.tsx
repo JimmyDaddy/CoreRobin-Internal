@@ -31,6 +31,8 @@ describe("cleanup deletion dialog freshness", () => {
     renderDialog(null, { preparing: true });
     expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /永久删除 1 项/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("正在准备清理…")).toBeTruthy();
+    expect(screen.queryByText("正在重新核对路径与文件状态…")).toBeNull();
   });
 
   it("requires another refresh when the backend reports changed paths", () => {
@@ -74,6 +76,8 @@ function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanen
     id: executable ? "executable" : "refresh-only",
     mode,
     paths: [item.path!],
+    missingPaths: [],
+    unavailablePaths: [],
     changedPaths: executable ? [] : [item.path!],
     refreshedTargets: [{
       path: item.path!,

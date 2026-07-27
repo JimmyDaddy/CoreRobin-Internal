@@ -149,6 +149,8 @@ describe("application uninstall assistant", () => {
       id: "lease-bundle-only",
       mode: "trash",
       paths: [application.path],
+      missingPaths: [],
+      unavailablePaths: [],
       changedPaths: [],
       refreshedTargets: [{
         path: application.path,
@@ -211,6 +213,8 @@ describe("application uninstall assistant", () => {
       id: "lease-1",
       mode: "trash",
       paths: [application.path],
+      missingPaths: [],
+      unavailablePaths: [],
       changedPaths: [],
       refreshedTargets: [{
         path: application.path,
