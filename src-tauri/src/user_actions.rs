@@ -299,7 +299,7 @@ fn user_home_directory() -> Result<PathBuf, CommandError> {
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn application_bundle_from_path(path: &Path) -> Option<PathBuf> {
+fn application_bundle_from_path(path: &std::path::Path) -> Option<PathBuf> {
     path.ancestors()
         .filter(|ancestor| {
             ancestor
@@ -308,7 +308,7 @@ fn application_bundle_from_path(path: &Path) -> Option<PathBuf> {
                 .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
         })
         .last()
-        .map(Path::to_path_buf)
+        .map(std::path::Path::to_path_buf)
 }
 
 #[cfg(target_os = "macos")]
