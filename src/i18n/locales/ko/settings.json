@@ -1,11 +1,11 @@
 {
   "watchRules": {
-    "title": "Application watch and reminder rules", "description": "Watch a chosen app and notify once when a metric stays above its condition; a recovered rule can notify again later.",
-    "application": "Application", "applicationPlaceholder": "Choose or enter an application", "metric": "Metric", "threshold": "Threshold", "duration": "Duration",
-    "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
-    "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "title": "앱 관찰 및 알림 규칙", "description": "선택한 앱의 지표가 조건을 계속 넘으면 한 번 알리고, 회복된 뒤에는 다시 알릴 수 있습니다.",
+    "application": "앱", "applicationPlaceholder": "앱 선택 또는 입력", "metric": "지표", "threshold": "임계값", "duration": "지속 시간",
+    "metrics": { "cpu": "CPU", "memory": "메모리", "disk": "디스크 활동" },
+    "seconds": "{{count}}초", "add": "규칙 추가", "notificationHint": "규칙이 시스템 알림을 보내려면 데스크톱 알림을 켜고 권한을 허용하세요.", "backgroundSampling": "활성 규칙이 있으면 창을 닫아도 약 {{seconds}}초마다 앱을 확인합니다.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}}, {{seconds}}초 지속", "active": "조건 도달", "remove": "{{name}} 알림 규칙 삭제",
+    "empty": "아직 앱 관찰 규칙이 없습니다."
   },
   "localPreferences": "로컬 설정",
   "title": "설정",
@@ -60,10 +60,12 @@
     "retention": "보관 기간",
     "days": "{{count}}일"
   },
+  "dataPrivacy": { "title": "데이터 및 개인정보 보호 센터", "description": "모든 로컬 데이터의 내용과 설정을 한곳에서 확인하세요. CoreRobin은 이를 업로드하거나 동기화하지 않습니다.", "status": { "on": "저장 중", "off": "꺼짐" }, "resourceHistory": { "title": "리소스 및 알림 기록", "description": "전체 시스템 상태, 작업, 관찰 이벤트의 집계이며 경로, 명령, 네트워크 주소는 포함하지 않습니다." }, "connectionHistory": { "title": "연결 기록", "description": "선택적 5분 집계에는 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다." }, "caches": { "title": "로컬 제품 캐시", "description": "앱 목록, 공간 스캔 및 파일 분석 결과는 이 기기에만 저장됩니다." }, "clear": "모든 로컬 데이터 지우기" },
   "notifications": {
     "title": "데스크톱 알림",
     "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. CoreRobin는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
     "enable": "제한적인 알림 활성화",
+    "openSettings": "시스템 알림 설정 열기",
     "categories": "알림 설정 가능한 카테고리",
     "resources": {
       "cpu": "높은 CPU 사용량 감지",
@@ -89,7 +91,7 @@
   },
   "about": {
     "title": "정보 및 지원", "description": "버전을 확인하고 도움을 받으며 CoreRobin이 이 컴퓨터에 저장한 데이터를 관리합니다.",
-    "versionTitle": "버전 및 업데이트", "versionDescription": "공개 릴리스 페이지에서 최신 안정 버전을 확인합니다.", "version": "현재 버전", "platform": "시스템", "architecture": "아키텍처",
+    "versionTitle": "버전 및 업데이트", "versionDescription": "CoreRobin에서 최신 안정 버전을 확인하고 다운로드하여 설치합니다.", "version": "현재 버전", "platform": "시스템", "architecture": "아키텍처",
     "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다", "installUpdate": "다운로드 및 설치", "installingUpdate": "업데이트 중…", "downloadingUpdate": "업데이트 다운로드 및 확인 중", "applyingUpdate": "업데이트 설치 중", "updateReady": "업데이트가 설치되었습니다. CoreRobin을 다시 시작하여 완료하세요.", "restartUpdate": "다시 시작", "updateInstallError": "업데이트를 설치하지 못했습니다. 현재 버전은 변경되지 않았습니다. 나중에 다시 시도하세요.",
     "helpTitle": "도움말 및 피드백", "helpDescription": "공개 가이드를 열거나 문제를 보고하기 전에 포함될 정보를 확인합니다.", "guide": "사용자 가이드", "privacy": "개인정보 보호", "reportIssue": "문제 보고", "reopenGuide": "첫 사용 가이드 다시 보기",
     "diagnosticsTitle": "진단 요약", "diagnosticsDescription": "문제 해결에 도움이 되는 기본 실행 정보를 복사합니다.", "diagnosticsPrivacy": "호스트 이름, 프로세스 이름, 파일 경로, 네트워크 주소 및 기록 값은 기본적으로 제외됩니다.", "diagnosticsPreview": "복사 전 미리보기", "diagnostics": { "idle": "익명화된 요약 복사", "copied": "복사됨", "error": "복사 실패" },
@@ -97,6 +99,7 @@
   },
   "onboarding": {
     "kicker": "첫 사용 · {{current}} / {{total}}", "skip": "지금은 건너뛰기", "back": "뒤로", "next": "다음", "finish": "시작하기",
+    "controls": { "mode": "사용 모드 선택", "everyday": "명확한 결론과 안내된 작업", "professional": "전체 지표와 진단 근거", "diskAccess": "전체 디스크 접근", "openDiskAccess": "전체 디스크 접근 설정 열기", "diskAccessStatus": { "granted": "준비됨", "not_granted": "선택 사항 · 허용 안 됨", "not_required": "이 시스템에서는 필요 없음", "unknown": "상태를 확인할 수 없음" } },
     "steps": {
       "one": { "title": "나에게 맞는 화면을 선택하세요", "description": "일상 모드는 안정적인 결론과 다음 단계를 제공합니다. 전문가 모드는 전체 지표, 프로세스 및 네트워크 근거를 유지합니다. 언제든 전환할 수 있습니다.", "note": "두 모드는 같은 기기 상태를 공유하며 같은 결론에 도달합니다." },
       "two": { "title": "창을 닫아도 조용히 대기합니다", "description": "CoreRobin은 메뉴 막대에 남아 낮은 빈도로 샘플링합니다. 메뉴 패널과 Robin은 하나의 안정적인 상태를 공유합니다.", "note": "메뉴 막대에서 일시 중지하거나 설정을 열고 완전히 종료할 수 있습니다." },

@@ -39,6 +39,7 @@
   "staleTarget": "The process identity changed. The action was cancelled; select it again to continue.",
   "metricsLabel": "System resource summary",
   "mode": {
+    "label": "Experience mode",
     "simple": "Everyday mode",
     "professional": "Professional mode",
     "short": {
@@ -65,6 +66,7 @@
     "cpuContext": "{{count}} logical cores · one process may exceed 100%",
     "memoryContext": "{{total}} total · {{swap}} swap",
     "diskContext": "Read {{read}} · Write {{write}}",
+    "diskCapacityContext": "{{total}} total · {{available}} available",
     "networkContext": "Down {{receive}} · Up {{send}}"
   },
   "status": {

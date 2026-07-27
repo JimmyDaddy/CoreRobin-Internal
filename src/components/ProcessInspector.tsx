@@ -1,10 +1,13 @@
 import {
   Activity,
   AlertTriangle,
+  CircleHelp,
+  CircleStop,
   Clock3,
   FileTerminal,
   GitFork,
   LoaderCircle,
+  OctagonX,
   RotateCw,
   ShieldCheck,
   UserRound,
@@ -94,6 +97,20 @@ export function ProcessInspector({
     canTerminate && control.requestClose.enabled;
   const forceKillEnabled =
     canTerminate && control.forceKill.enabled;
+  const actionGuidance = protectedReason
+    ? protectedReason
+    : control.targeting === "stable_handle"
+      ? t("process:inspector.stableHandle")
+      : control.targeting === "unavailable"
+        ? control.forceKill.disabledReason ??
+          control.requestClose.disabledReason ??
+          t("process:inspector.unavailableControl")
+        : t("process:inspector.bestEffort");
+  const ActionGuidanceIcon = protectedReason || control.targeting === "stable_handle"
+    ? ShieldCheck
+    : control.targeting === "unavailable" || control.targeting === "best_effort_pid"
+      ? AlertTriangle
+      : CircleHelp;
 
   return (
     <aside className="inspector panel">
@@ -178,41 +195,50 @@ export function ProcessInspector({
       ) : null}
 
       <div className="inspector-actions">
-        {protectedReason ? (
-          <p className="action-guard"><ShieldCheck size={14} />{protectedReason}</p>
-        ) : control.targeting === "stable_handle" ? (
-          <p className="action-guard"><ShieldCheck size={14} />{t("process:inspector.stableHandle")}</p>
-        ) : control.targeting === "unavailable" ? (
-          <p className="action-guard"><AlertTriangle size={14} />{control.forceKill.disabledReason ?? control.requestClose.disabledReason ?? t("process:inspector.unavailableControl")}</p>
-        ) : (
-          <p className="action-guard">
-            <AlertTriangle size={14} />{t("process:inspector.bestEffort")}
-          </p>
-        )}
+        <button
+          className="process-action-guidance"
+          type="button"
+          aria-label={actionGuidance}
+          data-tooltip={actionGuidance}
+        >
+          <ActionGuidanceIcon size={15} />
+        </button>
         <Button
           variant="secondary"
+          className="process-action-button"
           disabled={!requestCloseEnabled || preparingAction || !detail?.executable}
+          aria-label={t("process:inspector.restart")}
+          title={t("process:inspector.restart")}
+          data-tooltip={t("process:inspector.restart")}
           onClick={onRestart}
         >
-          <RotateCw size={14} />{t("process:inspector.restart")}
+          {preparingAction
+            ? <LoaderCircle className="is-spinning" size={16} />
+            : <RotateCw size={16} />}
         </Button>
         <button
           type="button"
-          className="button button--secondary"
+          className="button button--secondary process-action-button"
           disabled={!requestCloseEnabled || preparingAction}
-          title={control.requestClose.disabledReason ?? undefined}
+          aria-label={t("process:inspector.requestClose")}
+          title={control.requestClose.disabledReason ?? t("process:inspector.requestClose")}
+          data-tooltip={control.requestClose.disabledReason ?? t("process:inspector.requestClose")}
           onClick={() => onAction("request_close")}
         >
-          {preparingAction ? t("process:inspector.binding") : t("process:inspector.requestClose")}
+          {preparingAction
+            ? <LoaderCircle className="is-spinning" size={16} />
+            : <CircleStop size={16} />}
         </button>
         <button
           type="button"
-          className="button button--danger-ghost"
+          className="button button--danger-ghost process-action-button"
           disabled={!forceKillEnabled || preparingAction}
-          title={control.forceKill.disabledReason ?? undefined}
+          aria-label={t("process:inspector.forceKill")}
+          title={control.forceKill.disabledReason ?? t("process:inspector.forceKill")}
+          data-tooltip={control.forceKill.disabledReason ?? t("process:inspector.forceKill")}
           onClick={() => onAction("force_kill")}
         >
-          {t("process:inspector.forceKill")}
+          <OctagonX size={16} />
         </button>
       </div>
     </aside>

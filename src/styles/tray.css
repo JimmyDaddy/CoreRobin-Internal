@@ -138,6 +138,23 @@
 .tray-context span { display: inline-flex; min-width: 0; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tray-context svg { flex: 0 0 auto; color: var(--text-soft); }
 
+.tray-update {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  color: var(--green);
+  border: 1px solid rgba(86, 207, 147, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(86, 207, 147, 0.13), rgba(86, 207, 147, 0.04));
+  cursor: pointer;
+}
+.tray-update span { flex: 1; color: var(--text); font-size: 10px; text-align: left; }
+.tray-update:hover { border-color: rgba(86, 207, 147, 0.42); background: rgba(86, 207, 147, 0.14); }
+
 .tray-actions {
   display: grid;
   gap: 7px;

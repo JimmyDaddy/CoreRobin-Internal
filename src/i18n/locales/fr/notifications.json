@@ -26,5 +26,20 @@
       "title": "L'espace disque est de nouveau dans une plage saine",
       "body": "L'utilisation du disque reste dans une plage sécurisée, aucune intervention supplémentaire n'est nécessaire pour le moment."
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} a atteint la condition surveillée",
+      "body": "{{metric}} a dépassé la règle pendant {{seconds}} secondes."
+    },
+    "recovered": {
+      "title": "{{application}} est revenu sous la condition surveillée",
+      "body": "{{metric}} est revenu sous le seuil configuré."
+    },
+    "metric": {
+      "cpu": "CPU {{value}} %",
+      "memory": "Mémoire {{value}} Mio",
+      "disk": "Activité disque {{value}} Mio/s"
+    }
   }
 }

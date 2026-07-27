@@ -1,12 +1,13 @@
 {
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
-    "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Six TCP connection probes run every 30 seconds while this page is open; sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
-    "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
-    "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
-    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+    "eyebrow": "ネットワーク自動サンプリング", "title": "ネットワーク品質", "description": "ページを開くと自動で検査し、表示中は 30 秒ごとにサンプリングします。",
+    "run": "今すぐ再検査", "checking": "検査中…", "empty": "最初のネットワーク品質検査を実行中…",
+    "method": "軽量 TCP 検査でローカルルート、DNS、IPv4/IPv6、インターネット直結、独立サービスを切り分けます。ページを離れると停止します。",
+    "dns": "DNS", "latency": "平均遅延", "jitter": "ジッター", "loss": "接続失敗", "probes": "TCP プローブ", "probeSuccess": "{{successful}}/{{total}} 回成功",
+    "trendTitle": "ネットワーク品質の推移", "trendWindow": "直近 15 分 · 30 秒ごとに更新", "trendCollecting": "推移データを収集中", "legend": "ネットワーク品質の凡例", "chartLabel": "直近 15 分のネットワーク品質、{{count}} サンプル", "now": "現在",
+    "windowAverage": "平均遅延", "windowPeak": "最大遅延", "anomalies": "異常", "anomalyCount": "{{count}} 件",
+    "diagnostics": { "title": "階層別ネットワーク診断", "stages": { "local_link": "ローカルルート", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "インターネット", "independent_service": "独立サービス" }, "status": { "passed": "利用可能", "degraded": "低下", "failed": "失敗", "unavailable": "未設定" } },
+    "status": { "online": "オンライン", "limited": "接続が制限されています", "offline": "オフライン" }
   },
   "history": {
     "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",

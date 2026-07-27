@@ -54,5 +54,6 @@
     "attention": "Éléments à surveiller : {{count}}",
     "urgent": "Éléments à examiner rapidement : {{count}}"
   },
-  "recovering": "La métrique s'est améliorée ; confirmation qu'elle reste dans un état de récupération."
+  "recovering": "La métrique s'est améliorée ; confirmation qu'elle reste dans un état de récupération.",
+  "updateAvailable": "CoreRobin v{{version}} est disponible"
 }

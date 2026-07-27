@@ -1,7 +1,26 @@
-import { ArrowLeft, ArrowRight, Check, LayoutDashboard, ShieldCheck, Sparkles, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  Check,
+  HardDrive,
+  LayoutDashboard,
+  MonitorDot,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
+import {
+  getCleanupScanAccess,
+  openCleanupFullDiskAccessSettings,
+} from "../api";
+import type { DesktopNotificationStatus } from "../desktopNotifications";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import type { AppSettings } from "../settings";
+import type { CleanupScanAccess } from "../types";
 import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
 
@@ -10,11 +29,20 @@ const STEP_KEYS = ["one", "two", "three"] as const;
 
 export function FirstRunGuide({
   onComplete,
+  settings,
+  notificationStatus,
+  onChange,
+  onOpenNotificationSettings,
 }: {
   onComplete: () => void;
+  settings: AppSettings;
+  notificationStatus: DesktopNotificationStatus;
+  onChange: (patch: Partial<AppSettings>) => void;
+  onOpenNotificationSettings: () => void;
 }) {
   const { t } = useAppTranslation();
   const [step, setStep] = useState(0);
+  const [cleanupAccess, setCleanupAccess] = useState<CleanupScanAccess | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -31,6 +59,21 @@ export function FirstRunGuide({
 
   useEffect(() => {
     headingRef.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 2) return;
+    let disposed = false;
+    void getCleanupScanAccess()
+      .then((access) => {
+        if (!disposed) setCleanupAccess(access);
+      })
+      .catch(() => {
+        if (!disposed) setCleanupAccess(null);
+      });
+    return () => {
+      disposed = true;
+    };
   }, [step]);
 
   useEffect(() => {
@@ -71,6 +114,81 @@ export function FirstRunGuide({
           <span className="eyebrow">{t("settings:onboarding.kicker", { current: step + 1, total: STEP_ICONS.length })}</span>
           <h1 id="first-run-title" ref={headingRef} tabIndex={-1}>{t(`settings:onboarding.steps.${stepKey}.title`)}</h1>
           <p>{t(`settings:onboarding.steps.${stepKey}.description`)}</p>
+          {step === 0 ? (
+            <div className="first-run-guide__choices" role="radiogroup" aria-label={t("settings:onboarding.controls.mode")}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={settings.experienceMode === "simple"}
+                className={settings.experienceMode === "simple" ? "is-active" : ""}
+                onClick={() => onChange({ experienceMode: "simple" })}
+              >
+                <Sparkles size={17} />
+                <span><strong>{t("app:mode.simple")}</strong><small>{t("settings:onboarding.controls.everyday")}</small></span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={settings.experienceMode === "professional"}
+                className={settings.experienceMode === "professional" ? "is-active" : ""}
+                onClick={() => onChange({ experienceMode: "professional" })}
+              >
+                <LayoutDashboard size={17} />
+                <span><strong>{t("app:mode.professional")}</strong><small>{t("settings:onboarding.controls.professional")}</small></span>
+              </button>
+            </div>
+          ) : null}
+          {step === 1 ? (
+            <div className="first-run-guide__toggles">
+              <OnboardingToggle
+                icon={MonitorDot}
+                label={t("settings:background.showDockIcon")}
+                checked={settings.showDockIcon}
+                onChange={(showDockIcon) => onChange({ showDockIcon })}
+              />
+              <OnboardingToggle
+                icon={Rocket}
+                label={t("settings:background.launchAtLogin")}
+                checked={settings.launchAtLogin}
+                onChange={(launchAtLogin) => onChange({ launchAtLogin })}
+              />
+              <OnboardingToggle
+                icon={Sparkles}
+                label={t("settings:background.companionShowOnStartup")}
+                checked={settings.companionShowOnStartup}
+                onChange={(companionShowOnStartup) => onChange({ companionShowOnStartup })}
+              />
+            </div>
+          ) : null}
+          {step === 2 ? (
+            <div className="first-run-guide__permissions">
+              <label>
+                <span><Bell size={16} /><strong>{t("settings:notifications.enable")}</strong></span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={settings.desktopNotificationsEnabled}
+                  onChange={(event) => onChange({ desktopNotificationsEnabled: event.target.checked })}
+                />
+              </label>
+              {notificationStatus === "denied" ? (
+                <button type="button" onClick={onOpenNotificationSettings}>
+                  {t("settings:notifications.openSettings")}
+                </button>
+              ) : null}
+              <div>
+                <span><HardDrive size={16} /><strong>{t("settings:onboarding.controls.diskAccess")}</strong></span>
+                <em className={cleanupAccess?.fullDiskAccess === "granted" ? "is-ready" : ""}>
+                  {t(`settings:onboarding.controls.diskAccessStatus.${cleanupAccess?.fullDiskAccess ?? "unknown"}`)}
+                </em>
+              </div>
+              {cleanupAccess?.fullDiskAccessRecommended && cleanupAccess.fullDiskAccess !== "granted" ? (
+                <button type="button" onClick={() => void openCleanupFullDiskAccessSettings()}>
+                  {t("settings:onboarding.controls.openDiskAccess")}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="first-run-guide__note"><ShieldCheck size={15} />{t(`settings:onboarding.steps.${stepKey}.note`)}</div>
           <div className="first-run-guide__dots" aria-hidden="true">
             {STEP_ICONS.map((_, index) => <i key={index} className={index === step ? "is-active" : ""} />)}
@@ -87,5 +205,29 @@ export function FirstRunGuide({
         </div>
       </section>
     </div>
+  );
+}
+
+function OnboardingToggle({
+  icon: Icon,
+  label,
+  checked,
+  onChange,
+}: {
+  icon: typeof Sparkles;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label>
+      <span><Icon size={16} />{label}</span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </label>
   );
 }

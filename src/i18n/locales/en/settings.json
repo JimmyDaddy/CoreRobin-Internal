@@ -56,12 +56,36 @@
     "applicationNames": "Allow app display names in history",
     "applicationNamesHint": "Only saves a name when one app clearly explains the pressure. Turning this off removes app names from saved events.",
     "retention": "Retention",
-    "days": "{{count}} days"
+    "days": "{{count}} days",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
+  },
+  "dataPrivacy": {
+    "title": "Data & privacy center",
+    "description": "See what each local dataset contains and control it from one place. CoreRobin does not upload or synchronize these records.",
+    "status": {
+      "on": "Saving",
+      "off": "Off"
+    },
+    "resourceHistory": {
+      "title": "Resource and reminder history",
+      "description": "Aggregate health, actions, and watch events. No paths, commands, or network addresses."
+    },
+    "connectionHistory": {
+      "title": "Connection history",
+      "description": "Optional five-minute aggregates can include remote IPs, domains, ports, and app names."
+    },
+    "caches": {
+      "title": "Local product caches",
+      "description": "Application inventory, cleanup scan, and file-insight results stay on this device."
+    },
+    "clear": "Clear all local data"
   },
   "notifications": {
     "title": "Desktop notifications",
     "description": "Only sustained heavy load, real memory pressure, and low disk space interrupt you. CoreRobin follows up once after the problem has stably recovered.",
     "enable": "Allow restrained alerts",
+    "openSettings": "Open notification settings",
     "categories": "Allowed alert categories",
     "resources": {
       "cpu": "Sustained heavy load",
@@ -91,13 +115,14 @@
     "metrics": { "cpu": "CPU", "memory": "Memory", "disk": "Disk activity" },
     "seconds": "{{count}} seconds", "add": "Add rule", "notificationHint": "Enable desktop notifications and grant permission before rules can send system reminders.",
     "summary": "{{metric}} ≥ {{threshold}}{{unit}} for {{seconds}} seconds", "active": "Condition reached", "remove": "Remove reminder rule for {{name}}",
-    "empty": "No application watch rules yet."
+    "empty": "No application watch rules yet.",
+    "backgroundSampling": "Background process checks run every {{seconds}} seconds while an enabled rule needs them."
   },
   "about": {
     "title": "About & support",
     "description": "Check the version, get help, and manage the data CoreRobin keeps on this computer.",
     "versionTitle": "Version & updates",
-    "versionDescription": "Check the public release page for the latest stable version.",
+    "versionDescription": "Check, download, and install the latest stable version directly in CoreRobin.",
     "version": "Current version",
     "platform": "System",
     "architecture": "Architecture",
@@ -142,6 +167,19 @@
     "back": "Back",
     "next": "Next",
     "finish": "Get started",
+    "controls": {
+      "mode": "Choose an experience mode",
+      "everyday": "Clear conclusions and guided actions",
+      "professional": "Full metrics and diagnostic evidence",
+      "diskAccess": "Full Disk Access",
+      "openDiskAccess": "Open Full Disk Access settings",
+      "diskAccessStatus": {
+        "granted": "Ready",
+        "not_granted": "Optional · not granted",
+        "not_required": "Not required on this system",
+        "unknown": "Status unavailable"
+      }
+    },
     "steps": {
       "one": {
         "title": "Choose the view that suits you",

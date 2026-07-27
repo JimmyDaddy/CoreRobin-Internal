@@ -17,6 +17,7 @@ export default interface Resources {
     "metrics": {
       "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
       "disk": "磁盘 I/O",
+      "diskCapacityContext": "共 {{total}} · 可用 {{available}}",
       "diskContext": "读 {{read}} · 写 {{write}}",
       "memory": "内存使用",
       "memoryContext": "共 {{total}} · 交换 {{swap}}",
@@ -25,6 +26,7 @@ export default interface Resources {
     },
     "metricsLabel": "系统资源摘要",
     "mode": {
+      "label": "体验模式",
       "professional": "专业模式",
       "short": {
         "professional": "专业",
@@ -257,12 +259,12 @@ export default interface Resources {
         "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
         "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
         "cleanup_target_conflicts_with_trash": "所选内容包含废纸篓或已经在废纸篓中，只能选择直接删除。",
-        "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录内的内容。",
+        "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录或获准临时位置内的内容。",
         "cleanup_target_unavailable": "部分内容已经不存在或暂时无法访问，请重新扫描后再试。",
         "cleanup_trash_unavailable": "CoreRobin 当前无法安全使用系统废纸篓。所选内容尚未处理，请稍后重试。",
         "invalid_cleanup_selection": "清理篮中的选择无效，请重新选择后再试。",
         "overlapping_cleanup_targets": "同时选择了文件夹和它的子内容，请只保留其中一层。",
-        "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、主目录或废纸篓目录本身。"
+        "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、临时目录根、主目录或废纸篓目录本身。"
       },
       "estimatedSize": "预估大小",
       "irreversible": "无法撤销",
@@ -551,8 +553,14 @@ export default interface Resources {
     "none": "无",
     "now": "现在",
     "pathActions": {
-      "copied": "路径已复制",
+      "copied": "已复制绝对路径",
       "copy": "复制路径",
+      "errors": {
+        "homeUnavailable": "CoreRobin 无法定位你的用户目录。",
+        "openFailed": "系统暂时无法打开这项内容。",
+        "unavailable": "这项内容已经不存在或暂时无法访问。",
+        "unresolved": "CoreRobin 无法解析这个文件路径。"
+      },
       "preview": "快速预览",
       "reveal": "在 Finder 中显示"
     },
@@ -564,7 +572,8 @@ export default interface Resources {
     "systemSettings": {
       "battery": "打开电池设置",
       "login_items": "打开登录项设置",
-      "network": "打开网络设置"
+      "network": "打开网络设置",
+      "notifications": "打开通知设置"
     },
     "total": "合计",
     "unavailable": "不可用",
@@ -795,6 +804,12 @@ export default interface Resources {
       "kicker": "电脑状态伙伴",
       "localOnly": "状态和历史都保存在本机",
       "professional": "查看详细数据",
+      "storage": {
+        "available": "可用",
+        "kicker": "磁盘存储",
+        "open": "打开存储详情",
+        "summary": "已用 {{used}}，共 {{total}}"
+      },
       "viewDiagnosis": "查看检查结果",
       "viewPriority": "看看这件事"
     },
@@ -1005,7 +1020,7 @@ export default interface Resources {
       "reduceMotion": "减少动态效果",
       "reduceMotionDescription": "停用持续旋转、呼吸和位移动画",
       "showDockIcon": "在 Dock 中显示应用",
-      "showDockIconDescription": "默认关闭；主窗口仍可从顶部状态栏打开",
+      "showDockIconDescription": "让 CoreRobin 显示在 Dock 和应用切换器；如只想从状态栏访问可关闭",
       "textSize": "文字大小",
       "textSizeDescription": "放大日常页面和列表文字",
       "textSizeOptions": {
@@ -1364,7 +1379,7 @@ export default interface Resources {
     "peakNetwork": "网络峰值",
     "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
     "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
-    "privacyExcluded": "不记录进程命令、用户、路径、文件名、本地或远端连接地址。",
+    "privacyExcluded": "资源与操作历史不记录进程命令、用户、路径、文件名或连接地址；如果你单独开启“连接历史”，五分钟聚合数据可能在本机保存远端 IP、域名、端口和应用名。",
     "privacyEyebrow": "数据边界",
     "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
     "privacyTitle": "隐私说明",
@@ -1428,7 +1443,15 @@ export default interface Resources {
     "throughputChart": "磁盘与网络吞吐",
     "throughputChartLabel": "历史磁盘与网络吞吐趋势",
     "title": "资源趋势",
-    "warmup": "预热"
+    "warmup": "预热",
+    "watchRules": {
+      "description": "记录你创建的提醒规则在本机触发和恢复的时间。",
+      "privateApplication": "未保存应用名称",
+      "recovered": "{{metric}} 恢复至 {{value}}{{unit}}",
+      "savedEvents": "{{count}} 条关注事件",
+      "title": "应用关注记录",
+      "triggered": "{{metric}} 达到 {{value}}{{unit}}"
+    }
   },
   "network": {
     "accumulated": "累计 {{value}}",
@@ -1538,6 +1561,23 @@ export default interface Resources {
       "chartLabel": "最近 15 分钟网络质量趋势，共 {{count}} 个样本",
       "checking": "正在检查…",
       "description": "打开页面后自动检查；停留期间每 30 秒采样一次，观察偶发延迟和连接波动。",
+      "diagnostics": {
+        "stages": {
+          "dns": "DNS",
+          "independent_service": "独立服务",
+          "internet": "公网",
+          "ipv4": "IPv4",
+          "ipv6": "IPv6",
+          "local_link": "本地路由"
+        },
+        "status": {
+          "degraded": "受限",
+          "failed": "失败",
+          "passed": "可用",
+          "unavailable": "未配置"
+        },
+        "title": "分层网络诊断"
+      },
       "dns": "DNS",
       "empty": "正在进行首次网络质量检查…",
       "eyebrow": "自动网络采样",
@@ -1545,7 +1585,7 @@ export default interface Resources {
       "latency": "平均延迟",
       "legend": "网络质量图例",
       "loss": "连接失败",
-      "method": "页面停留期间每 30 秒执行 6 次 TCP 建连探测；离开页面后停止，不使用需要提权的原始数据包。",
+      "method": "轻量 TCP 检查会区分本地路由、DNS、IPv4/IPv6、公网直连和独立服务；离开页面后停止，不使用需要提权的原始数据包。",
       "now": "现在",
       "probeSuccess": "{{successful}}/{{total}} 次成功",
       "probes": "TCP 探测",
@@ -1605,6 +1645,21 @@ export default interface Resources {
       "volume": {
         "body": "磁盘占用持续超过 85%。可以先打开清理页查看空间地图，文件处理仍需你确认。",
         "title": "磁盘剩余空间偏少"
+      }
+    },
+    "watch": {
+      "metric": {
+        "cpu": "CPU {{value}}%",
+        "disk": "磁盘活动 {{value}} MiB/s",
+        "memory": "内存 {{value}} MiB"
+      },
+      "recovered": {
+        "body": "{{metric}} 已回到设定阈值以下。",
+        "title": "{{application}} 已恢复"
+      },
+      "triggered": {
+        "body": "{{metric}} 已持续超过规则 {{seconds}} 秒。",
+        "title": "{{application}} 达到关注条件"
       }
     }
   },
@@ -1740,7 +1795,7 @@ export default interface Resources {
       "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
       "updateReady": "更新已安装，重新启动 CoreRobin 即可完成更新。",
       "version": "当前版本",
-      "versionDescription": "检查公开发布页上的最新稳定版本。",
+      "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
       "versionTitle": "版本与更新"
     },
     "background": {
@@ -1759,6 +1814,27 @@ export default interface Resources {
       "description": "活动连接使用独立的低频扫描，不影响系统主采样。",
       "refresh": "活动连接",
       "title": "连接刷新"
+    },
+    "dataPrivacy": {
+      "caches": {
+        "description": "应用清单、空间扫描和文件分析结果只保存在这台设备上。",
+        "title": "本机产品缓存"
+      },
+      "clear": "清空全部本机数据",
+      "connectionHistory": {
+        "description": "可选的五分钟聚合数据可能包含远端 IP、域名、端口和应用名。",
+        "title": "连接历史"
+      },
+      "description": "集中查看每类本机数据包含什么并进行控制。CoreRobin 不会上传或同步这些记录。",
+      "resourceHistory": {
+        "description": "整机健康、操作和关注事件的聚合记录，不含路径、命令或网络地址。",
+        "title": "资源与提醒历史"
+      },
+      "status": {
+        "off": "已关闭",
+        "on": "正在保存"
+      },
+      "title": "数据与隐私中心"
     },
     "description": "这些偏好只保存在当前设备上，并会立即应用到采样与界面。",
     "experience": {
@@ -1789,6 +1865,7 @@ export default interface Resources {
       "categories": "允许提醒的类别",
       "description": "只提醒持续高负荷、真实内存压力和磁盘空间不足；问题稳定恢复后会再告知一次。",
       "enable": "允许克制提醒",
+      "openSettings": "打开系统通知设置",
       "resources": {
         "cpu": "持续高负荷",
         "memory": "内存压力",
@@ -1805,6 +1882,19 @@ export default interface Resources {
     },
     "onboarding": {
       "back": "上一步",
+      "controls": {
+        "diskAccess": "完整磁盘访问",
+        "diskAccessStatus": {
+          "granted": "已就绪",
+          "not_granted": "可选 · 尚未授权",
+          "not_required": "此系统无需授权",
+          "unknown": "暂时无法确认状态"
+        },
+        "everyday": "清晰结论和引导操作",
+        "mode": "选择体验模式",
+        "openDiskAccess": "打开完整磁盘访问设置",
+        "professional": "完整指标和诊断证据"
+      },
       "finish": "开始使用",
       "kicker": "首次使用 · {{current}} / {{total}}",
       "next": "下一步",
@@ -1867,6 +1957,7 @@ export default interface Resources {
       "add": "添加规则",
       "application": "应用",
       "applicationPlaceholder": "选择或输入应用名称",
+      "backgroundSampling": "启用规则期间，后台每 {{seconds}} 秒检查一次应用进程。",
       "description": "关注指定应用；指标持续达到条件时发送一次通知，并在恢复后允许再次提醒。",
       "duration": "持续时间",
       "empty": "尚未添加应用关注规则。",
@@ -2030,6 +2121,14 @@ export default interface Resources {
     "currentRead": "当前读取",
     "currentWrite": "当前写入",
     "description": "卷容量来自当前系统快照；吞吐按真实采样间隔换算。",
+    "eject": {
+      "action": "推出",
+      "confirm": "确认推出",
+      "ejecting": "正在推出…",
+      "failed": "无法推出这个卷。请关闭正在使用它的文件后重试。",
+      "noLongerRemovable": "这个卷已不再作为可移除卷提供。",
+      "success": "已安全推出 {{name}}。"
+    },
     "establishingBaseline": "正在建立磁盘吞吐基线…",
     "filesystemCapacity": "文件系统容量",
     "highestUsage": "最高占用",
@@ -2111,6 +2210,7 @@ export default interface Resources {
         "title": "有一项资源压力较高"
       }
     },
+    "updateAvailable": "CoreRobin v{{version}} 可以安装",
     "updatedAt": "{{time}} 更新"
   },
   "wellbeing": {

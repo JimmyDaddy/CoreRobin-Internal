@@ -151,7 +151,10 @@ export function CleanupAssistant({
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const pristine = !snapshot && !loading && !error && !accessGuideOpen;
 
-  const checkScanAccess = useCallback(async (startWhenReady: boolean) => {
+  const checkScanAccess = useCallback(async (
+    startWhenReady: boolean,
+    allowAccessibleFallback = false,
+  ) => {
     if (accessCheckInFlight.current || loading) return;
     accessCheckInFlight.current = true;
     setCheckingAccess(true);
@@ -168,13 +171,23 @@ export function CleanupAssistant({
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
         if (startWhenReady) onScan();
+      } else if (startWhenReady && allowAccessibleFallback) {
+        setAccessGuideOpen(false);
+        setWaitingForAccess(false);
+        onScan();
       } else {
         setAccessGuideOpen(true);
       }
     } catch (caughtError) {
       setScanAccess(null);
-      setAccessError(normalizeCommandError(caughtError));
-      setAccessGuideOpen(true);
+      if (startWhenReady && allowAccessibleFallback) {
+        setAccessGuideOpen(false);
+        setWaitingForAccess(false);
+        onScan();
+      } else {
+        setAccessError(normalizeCommandError(caughtError));
+        setAccessGuideOpen(true);
+      }
     } finally {
       accessCheckInFlight.current = false;
       setCheckingAccess(false);
@@ -199,11 +212,7 @@ export function CleanupAssistant({
       onCancel();
       return;
     }
-    if (preferAccessibleScan) {
-      onScan();
-      return;
-    }
-    void checkScanAccess(true);
+    void checkScanAccess(true, preferAccessibleScan);
   };
 
   const openAccessSettings = async () => {

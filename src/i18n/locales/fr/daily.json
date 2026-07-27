@@ -63,6 +63,7 @@
     "checkingSummary": "Les informations d'état sont mises à jour ici. Si un problème nécessite une attention particulière, Robin vous en informera clairement.",
     "haveProblem": "Il semble y avoir un problème",
     "checkedAt": "Dernière mise à jour {{time}}",
+    "storage": { "kicker": "Stockage disque", "summary": "{{used}} utilisés sur {{total}}", "available": "disponibles", "open": "Ouvrir les détails du stockage" },
     "localOnly": "Les informations et l'historique sont stockés sur cet appareil",
     "professional": "Afficher des données détaillées"
   },
@@ -426,7 +427,7 @@
     "reduceMotion": "Réduire les effets de mouvement",
     "reduceMotionDescription": "Arrête les animations continues, les effets respiratoires et les mouvements",
     "showDockIcon": "Afficher l'application dans le Dock",
-    "showDockIconDescription": "Désactivé par défaut ; rouvrir la fenêtre principale via le menu",
+    "showDockIconDescription": "Afficher CoreRobin dans le Dock et le sélecteur d’apps ; désactivez pour un accès uniquement par la barre des menus",
     "launchAtLogin": "Lancer au démarrage de macOS",
     "launchAtLoginDescription": "Démarrer discrètement après la connexion, sans ouvrir la fenêtre principale",
     "companionAlwaysOnTop": "Maintenir Robin au-dessus des autres fenêtres",

@@ -32,12 +32,16 @@ import type {
 } from "../resourceAlerts";
 import type { UserActionKind, UserActionRecord } from "../userActionHistory";
 import { UserActionTimeline } from "./UserActionTimeline";
+import type { ApplicationWatchHistoryEvent } from "../applicationWatchHistory";
+import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
   storedPointCount: number;
   alertEvents: ResourceAlertEvent[];
   storedAlertEventCount: number;
+  applicationWatchEvents?: ApplicationWatchHistoryEvent[];
+  storedApplicationWatchEventCount?: number;
   actionRecords: UserActionRecord[];
   storedUserActionCount: number;
   activeAlertCount: number;
@@ -60,6 +64,8 @@ export function HistoryExplorer({
   storedPointCount,
   alertEvents,
   storedAlertEventCount,
+  applicationWatchEvents = [],
+  storedApplicationWatchEventCount = 0,
   actionRecords,
   storedUserActionCount,
   activeAlertCount,
@@ -132,12 +138,20 @@ export function HistoryExplorer({
         <span className="history-controls__range">
           {range ?? t("history:noRange")} · {t("history:savedPoints", { count: storedPointCount })}
           {" · "}{t("history:alerts.savedEvents", { count: storedAlertEventCount })}
+          {" · "}{t("history:watchRules.savedEvents", {
+            count: storedApplicationWatchEventCount,
+          })}
           {" · "}{t("history:actions.saved", { count: storedUserActionCount })}
         </span>
         <button
           className="button button--danger-ghost"
           type="button"
-          disabled={storedPointCount === 0 && storedAlertEventCount === 0 && storedUserActionCount === 0}
+          disabled={
+            storedPointCount === 0 &&
+            storedAlertEventCount === 0 &&
+            storedApplicationWatchEventCount === 0 &&
+            storedUserActionCount === 0
+          }
           onClick={onClear}
         >
           <Trash2 size={14} />{t("history:clearSaved")}
@@ -196,6 +210,12 @@ export function HistoryExplorer({
           onOpenAction={onOpenUserAction}
         />
       </div>
+      ) : null}
+
+      {applicationWatchEvents.length > 0 ? (
+        <div className="panel history-application-watch">
+          <ApplicationWatchTimeline events={applicationWatchEvents} />
+        </div>
       ) : null}
 
       {alertEvents.length > 0 ? (

@@ -651,6 +651,34 @@ pub enum NetworkQualityStatus {
     Offline,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkQualityDiagnosticKind {
+    LocalLink,
+    Dns,
+    Ipv4,
+    Ipv6,
+    Internet,
+    IndependentService,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkQualityDiagnosticStatus {
+    Passed,
+    Degraded,
+    Failed,
+    Unavailable,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkQualityDiagnostic {
+    pub kind: NetworkQualityDiagnosticKind,
+    pub status: NetworkQualityDiagnosticStatus,
+    pub latency_ms: Option<f64>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkQualityResult {
@@ -668,6 +696,7 @@ pub struct NetworkQualityResult {
     pub maximum_latency_ms: Option<f64>,
     pub jitter_ms: Option<f64>,
     pub packet_loss_percent: f64,
+    pub diagnostics: Vec<NetworkQualityDiagnostic>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

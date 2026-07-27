@@ -54,5 +54,6 @@
     "attention": "Elementos a observar: {{count}}",
     "urgent": "Elementos para revisar pronto: {{count}}"
   },
-  "recovering": "El indicador ha mejorado; confirmando que permanece en estado normal"
+  "recovering": "El indicador ha mejorado; confirmando que permanece en estado normal",
+  "updateAvailable": "CoreRobin v{{version}} está disponible"
 }

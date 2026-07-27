@@ -51,6 +51,24 @@ export function useDesktopNotifications(
   useEffect(() => {
     if (!enabled || !isDesktopRuntime()) return;
     let disposed = false;
+    const refreshPermission = () => {
+      if (document.visibilityState !== "visible") return;
+      void isNotificationPermissionGranted().then((granted) => {
+        if (!disposed) setStatus(granted ? "ready" : "denied");
+      });
+    };
+    window.addEventListener("focus", refreshPermission);
+    document.addEventListener("visibilitychange", refreshPermission);
+    return () => {
+      disposed = true;
+      window.removeEventListener("focus", refreshPermission);
+      document.removeEventListener("visibilitychange", refreshPermission);
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled || !isDesktopRuntime()) return;
+    let disposed = false;
     let unlisten: (() => void) | undefined;
     void import("@tauri-apps/plugin-notification")
       .then(({ onAction }) => onAction((notification) => {
@@ -98,6 +116,17 @@ async function ensureNotificationPermission() {
     );
     if (await isPermissionGranted()) return true;
     return await requestPermission() === "granted";
+  } catch {
+    return false;
+  }
+}
+
+async function isNotificationPermissionGranted() {
+  try {
+    const { isPermissionGranted } = await import(
+      "@tauri-apps/plugin-notification"
+    );
+    return await isPermissionGranted();
   } catch {
     return false;
   }

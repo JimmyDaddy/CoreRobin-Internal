@@ -26,5 +26,20 @@
       "title": "디스크 공간이 정상 범위 내에 유지됨",
       "body": "디스크 사용량이 안전한 범위 내에 유지되므로, 현재 추가 정리 작업은 필요하지 않습니다."
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}}이(가) 관찰 조건에 도달했습니다",
+      "body": "{{metric}}이(가) {{seconds}}초 동안 규칙을 초과했습니다."
+    },
+    "recovered": {
+      "title": "{{application}}이(가) 관찰 조건에서 회복되었습니다",
+      "body": "{{metric}}이(가) 설정된 임계값 아래로 돌아왔습니다."
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "메모리 {{value}} MiB",
+      "disk": "디스크 활동 {{value}} MiB/s"
+    }
   }
 }

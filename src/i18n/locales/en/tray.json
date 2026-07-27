@@ -1,5 +1,6 @@
 {
   "localMonitor": "Local system monitor",
+  "updateAvailable": "CoreRobin v{{version}} is ready to install",
   "available": "Available space",
   "open": "Open overview",
   "companion": "Robin companion",

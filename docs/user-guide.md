@@ -11,7 +11,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 1. Give the app a few seconds to collect its first readings. Disk and network speeds may show a warm-up message until the next refresh.
 2. Everyday mode first tells you how the computer is doing and offers one useful next step. You do not need to inspect a row of status cards.
 3. If you already notice slowness, heat, battery drain, low space, slow startup, or a network problem, open Help me solve and choose the closest description.
-4. Use the upper-right Settings menu for language, notifications, history, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. Language and Everyday/Professional mode use consistent top-bar controls; switch to Professional mode when you need a process tree, connection details, or command lines.
+4. Use Settings for language, notifications, history, privacy, and background launch behavior. The interface supports Simplified Chinese, Traditional Chinese, English, Japanese, German, French, Spanish, Brazilian Portuguese, Korean, and Russian. The Everyday/Professional switch stays at the bottom of the shared sidebar, so it remains in the same place in both modes; switch to Professional mode when you need a process tree, connection details, or command lines.
 
 ## Main pages
 
@@ -45,6 +45,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 ### Storage
 
 - See how much space is left on each disk, recent read and write activity, and which apps are using the disk heavily.
+- Removable volumes show an **Eject** action. CoreRobin asks once, then requests a safe operating-system eject and refreshes the volume list without restarting the app.
 - When space is running low, open Cleanup directly from this page.
 
 ### Cleanup
@@ -58,9 +59,9 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
 3. **Add items to the basket:** Hold a sector or an item in the directory list and start dragging. While scan results exist, the basket stays fixed at the bottom of the window. Adding an item does not move or delete it.
-4. **Refresh and choose a cleanup mode:** CoreRobin rescans only the basket targets and shows their latest size and item count. After reviewing them, choose **Move to Trash** (recommended and recoverable until Trash is emptied) or **Delete directly** (irreversible).
+4. **Review and choose a cleanup mode:** Review the name, path, and scanned size, then choose **Move to Trash** (recommended and recoverable until Trash is emptied) or **Delete directly** (irreversible). Switching modes does not repeat a deep scan.
 
-Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cached or expired results cannot directly authorize cleanup: opening the cleanup review performs an authoritative rescan of only the basket targets and binds that confirmation to the selected cleanup mode. If size, item count, or tree contents changed, the old confirmation expires; review the updated result, refresh it until stable, and acknowledge it again. Choose Rescan when many files elsewhere have changed.
+Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cleanup uses the selected scan evidence to open each target through a stable filesystem boundary. At execution time, existing regular files and folders are removed, missing items are treated as already gone, and inaccessible or unsupported objects are skipped and reported. The app does not force a recursive rescan every time you open the review or switch cleanup modes. Choose **Rescan** when you want an up-to-date space map.
 
 **Duplicate and long-unmodified files** is a separate explicit check. It scans only Desktop, Documents, Downloads, Movies, Music, and Pictures without following symbolic links. It filters by size before reading likely duplicate candidates and calculating SHA-256 locally. “Long-unused” is approximated as over 100 MB and unchanged for 180 days because reliable last-access data is unavailable on many systems. Results provide preview, copy, and reveal actions only; nothing is deleted automatically.
 
@@ -69,16 +70,16 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - **Move to Trash** items can normally be restored until system Trash is emptied. **Delete directly** bypasses Trash and cannot be restored by CoreRobin.
 - If CoreRobin cannot open the system Trash safely, it explains the failure and lets you retry. It enters the irreversible path only after you explicitly choose direct deletion and confirm again.
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
-- CoreRobin removes only regular files and folders inside your home folder.
-- Your home folder, Trash itself, links, special files, and other disks are protected.
-- The app rechecks each complete target tree right before cleanup. A deep new file or any other mismatch stops the action and requires another refresh and confirmation.
+- CoreRobin removes regular files and folders inside your home folder. It also permits current-user-owned children of approved temporary locations such as `/tmp`, `/var/tmp`, and the current macOS user’s private `T`/`C` directories.
+- Your home folder, temporary-directory roots, Trash itself, links, special files, system-managed locations, other users’ items, and other disks are protected.
+- The app binds every target without following symbolic links. If one item is missing or inaccessible, it skips or reports that item and continues with the remaining confirmed targets.
 - Cleaned items disappear from the map and basket. Items that could not be cleaned remain visible with an explanation.
 
 ### Network
 
 - Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
-- Opening Network automatically checks DNS, TCP connection latency, jitter, estimated loss, and connectivity. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute trend with average, peak, and anomaly counts. Sampling stops when you leave the page, and **Retest now** remains available.
+- Opening Network automatically separates local routing, DNS, IPv4, IPv6, direct internet reachability, and an independent service check. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute latency, jitter, and connection-failure trend with average, peak, and anomaly counts. Sampling stops when you leave the page, and **Check now** remains available.
 - Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
@@ -102,13 +103,15 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - CoreRobin follows up once after the problem has stably recovered. The main window, menu bar panel, and Robin companion share the same health state.
 - CPU, memory, and storage notifications can be turned off separately.
 - App and startup item names persist across restarts only after you allow names to be saved. Command lines, file locations, filenames, and connection addresses are not stored.
+- App watch-rule trigger and recovery events appear in the local timeline, so a notification remains explainable after it disappears from the desktop.
 
 ### Settings
 
-- Settings groups interface, background and desktop, sampling and views, history, and notifications into consistent card grids and controls. Everyday Settings keeps language, text size, motion, desktop notifications, local history, and Robin companion preferences together.
+- Settings groups interface, background and desktop, sampling and views, notifications, and **Data & privacy** into consistent card grids and controls. The privacy center shows resource history, optional connection history, local product caches, and one clear-all action.
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
 - App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.
+- About & Support checks the signed public updater manifest, downloads an available stable release, and installs it directly after you confirm.
 - The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel

@@ -175,6 +175,14 @@ export async function runNetworkQualityCheck(): Promise<NetworkQualityResult> {
       maximumLatencyMs: 38.2,
       jitterMs: 3.7,
       packetLossPercent: 0,
+      diagnostics: [
+        { kind: "local_link", status: "passed", latencyMs: null },
+        { kind: "dns", status: "passed", latencyMs: 18 },
+        { kind: "ipv4", status: "passed", latencyMs: null },
+        { kind: "ipv6", status: "unavailable", latencyMs: null },
+        { kind: "internet", status: "passed", latencyMs: 24.1 },
+        { kind: "independent_service", status: "passed", latencyMs: 31.4 },
+      ],
     };
   }
   return invoke<NetworkQualityResult>("run_network_quality_check");
@@ -374,6 +382,16 @@ export async function previewPath(path: string): Promise<void> {
   return invoke<void>("preview_path", { path });
 }
 
+export async function resolveUserPath(path: string): Promise<string> {
+  if (canUseDevelopmentMock()) return path;
+  return invoke<string>("resolve_user_path", { path });
+}
+
+export async function ejectRemovableVolume(mountPoint: string): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("eject_removable_volume", { mountPoint });
+}
+
 export async function openSystemSettings(
   destination: SystemSettingsDestination,
 ): Promise<void> {
@@ -510,6 +528,12 @@ export async function savePersistedCleanupScan(snapshot: CleanupScan): Promise<v
 export async function clearPersistedCleanupScan(): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("clear_persisted_cleanup_scan");
+}
+
+export async function clearPersistedProductData(): Promise<void> {
+  applicationInventoryMemory.clear();
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("clear_persisted_product_data");
 }
 
 export async function cancelCleanupScan(): Promise<boolean> {

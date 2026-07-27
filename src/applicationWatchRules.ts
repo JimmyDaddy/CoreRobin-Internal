@@ -8,13 +8,38 @@ export interface ApplicationWatchRuleState {
 }
 
 export interface ApplicationWatchRuleEvent {
+  kind: "triggered" | "recovered";
   rule: ApplicationWatchRule;
-  application: ApplicationImpact;
+  application: ApplicationImpact | null;
   value: number;
   triggeredAtMs: number;
 }
 
 export const APPLICATION_WATCH_COOLDOWN_MS = 10 * 60 * 1_000;
+export const MINIMUM_APPLICATION_WATCH_SAMPLE_INTERVAL_MS = 5_000;
+export const MAXIMUM_APPLICATION_WATCH_SAMPLE_INTERVAL_MS = 10_000;
+
+export function applicationWatchSamplingIntervalMs(
+  rules: readonly ApplicationWatchRule[],
+): number | null {
+  const shortestDurationSeconds = rules
+    .filter((rule) => rule.enabled)
+    .reduce<number | null>(
+      (shortest, rule) =>
+        shortest === null
+          ? rule.durationSeconds
+          : Math.min(shortest, rule.durationSeconds),
+      null,
+    );
+  if (shortestDurationSeconds === null) return null;
+  return Math.max(
+    MINIMUM_APPLICATION_WATCH_SAMPLE_INTERVAL_MS,
+    Math.min(
+      MAXIMUM_APPLICATION_WATCH_SAMPLE_INTERVAL_MS,
+      shortestDurationSeconds * 500,
+    ),
+  );
+}
 
 export function evaluateApplicationWatchRules(
   states: Map<string, ApplicationWatchRuleState>,
@@ -43,6 +68,15 @@ export function evaluateApplicationWatchRules(
     const application = applicationByName.get(rule.applicationName.toLocaleLowerCase());
     const value = application ? applicationMetricValue(application, rule.metric) : 0;
     if (!application || value < rule.threshold) {
+      if (previous.active) {
+        events.push({
+          kind: "recovered",
+          rule,
+          application: application ?? null,
+          value,
+          triggeredAtMs: sampledAtMs,
+        });
+      }
       next.set(rule.id, { ...previous, startedAtMs: null, active: false });
       continue;
     }
@@ -52,12 +86,19 @@ export function evaluateApplicationWatchRules(
     const cooldownReady = previous.lastNotifiedAtMs === null ||
       sampledAtMs - previous.lastNotifiedAtMs >= APPLICATION_WATCH_COOLDOWN_MS;
     if (sustained && !previous.active && cooldownReady) {
-      events.push({ rule, application, value, triggeredAtMs: sampledAtMs });
+      events.push({
+        kind: "triggered",
+        rule,
+        application,
+        value,
+        triggeredAtMs: sampledAtMs,
+      });
     }
     next.set(rule.id, {
       startedAtMs,
       active: sustained,
-      lastNotifiedAtMs: events[events.length - 1]?.rule.id === rule.id
+      lastNotifiedAtMs: events[events.length - 1]?.rule.id === rule.id &&
+          events[events.length - 1]?.kind === "triggered"
         ? sampledAtMs
         : previous.lastNotifiedAtMs,
     });

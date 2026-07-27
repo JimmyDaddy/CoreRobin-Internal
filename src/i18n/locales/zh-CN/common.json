@@ -28,11 +28,18 @@
     "reveal": "在 Finder 中显示",
     "preview": "快速预览",
     "copy": "复制路径",
-    "copied": "路径已复制"
+    "copied": "已复制绝对路径",
+    "errors": {
+      "unavailable": "这项内容已经不存在或暂时无法访问。",
+      "homeUnavailable": "CoreRobin 无法定位你的用户目录。",
+      "unresolved": "CoreRobin 无法解析这个文件路径。",
+      "openFailed": "系统暂时无法打开这项内容。"
+    }
   },
   "systemSettings": {
     "login_items": "打开登录项设置",
     "battery": "打开电池设置",
-    "network": "打开网络设置"
+    "network": "打开网络设置",
+    "notifications": "打开通知设置"
   }
 }

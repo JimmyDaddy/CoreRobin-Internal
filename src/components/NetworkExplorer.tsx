@@ -3,11 +3,14 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Globe2,
+  MinusCircle,
   Network,
   RefreshCw,
+  XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -346,23 +349,43 @@ export function NetworkQualityPanel() {
       </header>
       {error ? <div className="network-connections__notice is-error" role="alert">{error}</div> : null}
       {result ? (
-        <div className="network-quality__results" aria-live="polite">
-          <div className={`network-quality__status is-${result.status}`}>
-            <Globe2 size={20} />
-            <span>{t(`network:quality.status.${result.status}`)}</span>
-            <small>{new Date(result.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour12: false })}</small>
+        <>
+          <div className="network-quality__results" aria-live="polite">
+            <div className={`network-quality__status is-${result.status}`}>
+              <Globe2 size={20} />
+              <span>{t(`network:quality.status.${result.status}`)}</span>
+              <small>{new Date(result.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour12: false })}</small>
+            </div>
+            <QualityMetric label={t("network:quality.dns")} value={result.dnsLookupMs === null ? t("common:unavailable") : `${result.dnsLookupMs} ms`} />
+            <QualityMetric label={t("network:quality.latency")} value={formatMilliseconds(result.averageLatencyMs)} />
+            <QualityMetric label={t("network:quality.jitter")} value={formatMilliseconds(result.jitterMs)} />
+            <QualityMetric
+              label={t("network:quality.probes")}
+              value={t("network:quality.probeSuccess", {
+                successful: result.successfulProbeCount,
+                total: result.probeCount,
+              })}
+            />
           </div>
-          <QualityMetric label={t("network:quality.dns")} value={result.dnsLookupMs === null ? t("common:unavailable") : `${result.dnsLookupMs} ms`} />
-          <QualityMetric label={t("network:quality.latency")} value={formatMilliseconds(result.averageLatencyMs)} />
-          <QualityMetric label={t("network:quality.jitter")} value={formatMilliseconds(result.jitterMs)} />
-          <QualityMetric
-            label={t("network:quality.probes")}
-            value={t("network:quality.probeSuccess", {
-              successful: result.successfulProbeCount,
-              total: result.probeCount,
+          <div className="network-quality__diagnostics" aria-label={t("network:quality.diagnostics.title")}>
+            {result.diagnostics.map((diagnostic) => {
+              const StatusIcon = diagnostic.status === "passed"
+                ? CheckCircle2
+                : diagnostic.status === "failed"
+                  ? XCircle
+                  : MinusCircle;
+              return (
+                <div className={`is-${diagnostic.status}`} key={diagnostic.kind}>
+                  <StatusIcon size={14} />
+                  <span>{t(`network:quality.diagnostics.stages.${diagnostic.kind}`)}</span>
+                  <small>{diagnostic.latencyMs === null
+                    ? t(`network:quality.diagnostics.status.${diagnostic.status}`)
+                    : formatMilliseconds(diagnostic.latencyMs)}</small>
+                </div>
+              );
             })}
-          />
-        </div>
+          </div>
+        </>
       ) : (
         <div className="network-quality__starting" role="status">
           <span className="network-quality__starting-pulse" />

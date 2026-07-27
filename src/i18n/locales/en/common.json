@@ -28,11 +28,18 @@
     "reveal": "Show in Finder",
     "preview": "Quick Look",
     "copy": "Copy path",
-    "copied": "Path copied"
+    "copied": "Absolute path copied",
+    "errors": {
+      "unavailable": "This item is no longer available.",
+      "homeUnavailable": "CoreRobin could not locate your home folder.",
+      "unresolved": "CoreRobin could not resolve this file path.",
+      "openFailed": "The system could not open this item."
+    }
   },
   "systemSettings": {
     "login_items": "Open Login Items settings",
     "battery": "Open Battery settings",
-    "network": "Open Network settings"
+    "network": "Open Network settings",
+    "notifications": "Open Notification settings"
   }
 }

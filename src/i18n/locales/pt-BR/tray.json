@@ -54,5 +54,6 @@
     "attention": "Itens para monitorar: {{count}}",
     "urgent": "Itens para revisar em breve: {{count}}"
   },
-  "recovering": "A métrica está normalizada; confirmando que permanece normalizada."
+  "recovering": "A métrica está normalizada; confirmando que permanece normalizada.",
+  "updateAvailable": "CoreRobin v{{version}} está disponível"
 }

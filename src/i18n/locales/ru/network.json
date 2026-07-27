@@ -1,12 +1,13 @@
 {
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
-    "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Six TCP connection probes run every 30 seconds while this page is open; sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
-    "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
-    "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
-    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+    "eyebrow": "Автоматическая проверка сети", "title": "Качество сети", "description": "Автоматическая проверка при открытии и каждые 30 секунд, пока страница открыта.",
+    "run": "Проверить сейчас", "checking": "Проверка…", "empty": "Выполняется первая проверка сети…",
+    "method": "Лёгкие TCP-проверки разделяют локальный маршрут, DNS, IPv4/IPv6, прямой доступ в Интернет и независимый сервис. При уходе со страницы проверка останавливается.",
+    "dns": "DNS", "latency": "Средняя задержка", "jitter": "Джиттер", "loss": "Ошибки соединения", "probes": "TCP-проверки", "probeSuccess": "{{successful}} из {{total}} успешно",
+    "trendTitle": "Динамика качества сети", "trendWindow": "Последние 15 минут · каждые 30 секунд", "trendCollecting": "Собираются данные", "legend": "Обозначения качества сети", "chartLabel": "Качество сети за последние 15 минут, {{count}} замеров", "now": "Сейчас",
+    "windowAverage": "Средняя задержка", "windowPeak": "Пиковая задержка", "anomalies": "Аномалии", "anomalyCount": "{{count}}",
+    "diagnostics": { "title": "Многоуровневая диагностика сети", "stages": { "local_link": "Локальный маршрут", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Интернет", "independent_service": "Независимый сервис" }, "status": { "passed": "Доступно", "degraded": "Ограничено", "failed": "Ошибка", "unavailable": "Не настроено" } },
+    "status": { "online": "В сети", "limited": "Ограниченное соединение", "offline": "Нет сети" }
   },
   "history": {
     "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",

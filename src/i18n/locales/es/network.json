@@ -1,12 +1,13 @@
 {
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
-    "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Six TCP connection probes run every 30 seconds while this page is open; sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
-    "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
-    "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
-    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+    "eyebrow": "Muestreo automático de red", "title": "Calidad de red", "description": "Comprueba al abrir y toma una muestra cada 30 segundos mientras la página está visible.",
+    "run": "Comprobar ahora", "checking": "Comprobando…", "empty": "Realizando la primera comprobación de red…",
+    "method": "Las comprobaciones TCP ligeras separan ruta local, DNS, IPv4/IPv6, acceso directo a Internet y un servicio independiente. Se detienen al salir.",
+    "dns": "DNS", "latency": "Latencia media", "jitter": "Variación", "loss": "Fallos de conexión", "probes": "Sondas TCP", "probeSuccess": "{{successful}}/{{total}} correctas",
+    "trendTitle": "Tendencia de calidad de red", "trendWindow": "Últimos 15 minutos · cada 30 segundos", "trendCollecting": "Recopilando tendencia", "legend": "Leyenda de calidad de red", "chartLabel": "Calidad de red de los últimos 15 minutos con {{count}} muestras", "now": "Ahora",
+    "windowAverage": "Latencia media", "windowPeak": "Latencia máxima", "anomalies": "Anomalías", "anomalyCount": "{{count}}",
+    "diagnostics": { "title": "Diagnóstico de red por capas", "stages": { "local_link": "Ruta local", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Internet", "independent_service": "Servicio independiente" }, "status": { "passed": "Disponible", "degraded": "Degradado", "failed": "Falló", "unavailable": "Sin configurar" } },
+    "status": { "online": "En línea", "limited": "Conexión limitada", "offline": "Sin conexión" }
   },
   "history": {
     "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",

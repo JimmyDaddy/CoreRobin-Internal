@@ -63,6 +63,7 @@
     "checkingSummary": "最新狀態會直接匯入這裡；如果還需要持續觀察，Robin 會明確告訴你。",
     "haveProblem": "我遇到了問題",
     "checkedAt": "{{time}} 更新",
+    "storage": { "kicker": "磁碟儲存空間", "summary": "已用 {{used}}，共 {{total}}", "available": "可用", "open": "開啟儲存空間詳情" },
     "localOnly": "狀態和歷史都儲存在本機",
     "professional": "檢視詳細資料"
   },
@@ -426,7 +427,7 @@
     "reduceMotion": "減少動態效果",
     "reduceMotionDescription": "停用持續旋轉、呼吸和位移動畫",
     "showDockIcon": "在 Dock 中顯示應用",
-    "showDockIconDescription": "預設關閉；主視窗仍可從頂部狀態列開啟",
+    "showDockIconDescription": "讓 CoreRobin 顯示於 Dock 與應用程式切換器；若只想從狀態列存取可關閉",
     "launchAtLogin": "登入時啟動",
     "launchAtLoginDescription": "登入系統後在背景啟動，不主動顯示主視窗",
     "companionAlwaysOnTop": "讓 Robin 始終顯示在其他視窗上方",

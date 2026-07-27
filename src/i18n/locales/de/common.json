@@ -28,11 +28,18 @@
     "reveal": "Im Finder anzeigen",
     "preview": "Schnellansicht",
     "copy": "Pfad kopieren",
-    "copied": "Pfad kopiert"
+    "copied": "Absoluten Pfad kopiert",
+    "errors": {
+      "unavailable": "Dieses Objekt ist nicht mehr vorhanden oder derzeit nicht zugänglich.",
+      "homeUnavailable": "CoreRobin konnte den Benutzerordner nicht ermitteln.",
+      "unresolved": "CoreRobin konnte den angezeigten Pfad nicht in einen absoluten Pfad auflösen.",
+      "openFailed": "Das Objekt konnte nicht geöffnet werden. Prüfe, ob es noch zugänglich ist."
+    }
   },
   "systemSettings": {
     "login_items": "Einstellungen für Anmeldeobjekte öffnen",
     "battery": "Batterieeinstellungen öffnen",
-    "network": "Netzwerkeinstellungen öffnen"
+    "network": "Netzwerkeinstellungen öffnen",
+    "notifications": "Mitteilungseinstellungen öffnen"
   }
 }

@@ -78,10 +78,15 @@
   "quality": {
     "eyebrow": "自动网络采样", "title": "网络质量", "description": "打开页面后自动检查；停留期间每 30 秒采样一次，观察偶发延迟和连接波动。",
     "run": "立即复测", "checking": "正在检查…", "empty": "正在进行首次网络质量检查…",
-    "method": "页面停留期间每 30 秒执行 6 次 TCP 建连探测；离开页面后停止，不使用需要提权的原始数据包。",
+    "method": "轻量 TCP 检查会区分本地路由、DNS、IPv4/IPv6、公网直连和独立服务；离开页面后停止，不使用需要提权的原始数据包。",
     "dns": "DNS", "latency": "平均延迟", "jitter": "抖动", "loss": "连接失败", "probes": "TCP 探测", "probeSuccess": "{{successful}}/{{total}} 次成功",
     "trendTitle": "网络质量趋势", "trendWindow": "最近 15 分钟 · 每 30 秒自动更新", "trendCollecting": "正在积累趋势数据", "legend": "网络质量图例", "chartLabel": "最近 15 分钟网络质量趋势，共 {{count}} 个样本", "now": "现在",
     "windowAverage": "平均延迟", "windowPeak": "峰值延迟", "anomalies": "异常次数", "anomalyCount": "{{count}} 次",
+    "diagnostics": {
+      "title": "分层网络诊断",
+      "stages": { "local_link": "本地路由", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "公网", "independent_service": "独立服务" },
+      "status": { "passed": "可用", "degraded": "受限", "failed": "失败", "unavailable": "未配置" }
+    },
     "status": { "online": "联网正常", "limited": "连接受限", "offline": "无法联网" }
   },
   "history": {

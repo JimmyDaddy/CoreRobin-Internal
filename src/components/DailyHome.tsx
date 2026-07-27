@@ -37,6 +37,7 @@ import type { SmartDiagnosisResult } from "../diagnosis";
 import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import type { SystemSnapshot } from "../types";
+import { formatBytes } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
 import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
@@ -91,6 +92,18 @@ export function DailyHome({
     () => buildHistoryStories(alertEvents)[0] ?? null,
     [alertEvents],
   );
+  const primaryVolume = useMemo(() => {
+    const volumes = snapshot.disk.volumes.filter(({ totalBytes }) => totalBytes > 0);
+    return volumes.find(({ mountPoint }) => mountPoint === "/") ??
+      [...volumes].sort((left, right) => right.totalBytes - left.totalBytes)[0] ??
+      null;
+  }, [snapshot.disk.volumes]);
+  const primaryVolumeUsed = primaryVolume
+    ? Math.max(0, primaryVolume.totalBytes - primaryVolume.availableBytes)
+    : 0;
+  const primaryVolumeUsage = primaryVolume
+    ? Math.min(100, Math.max(0, (primaryVolumeUsed / primaryVolume.totalBytes) * 100))
+    : 0;
 
   useEffect(() => {
     if (!primaryId && suggestedPrimary) {
@@ -207,6 +220,32 @@ export function DailyHome({
           })}</span>
         </div>
       </section>
+
+      {primaryVolume ? (
+        <button
+          className="daily-storage-glance"
+          type="button"
+          aria-label={t("daily:home.storage.open")}
+          onClick={() => onOpenCheck("space")}
+        >
+          <span className="daily-storage-glance__icon"><HardDrive size={18} /></span>
+          <span className="daily-storage-glance__copy">
+            <small>{t("daily:home.storage.kicker")}</small>
+            <strong>{t("daily:home.storage.summary", {
+              used: formatBytes(primaryVolumeUsed),
+              total: formatBytes(primaryVolume.totalBytes),
+            })}</strong>
+          </span>
+          <span className="daily-storage-glance__meter">
+            <i style={{ width: `${primaryVolumeUsage}%` }} />
+          </span>
+          <span className="daily-storage-glance__available">
+            <strong>{formatBytes(primaryVolume.availableBytes)}</strong>
+            <small>{t("daily:home.storage.available")}</small>
+          </span>
+          <ArrowRight size={15} aria-hidden="true" />
+        </button>
+      ) : null}
 
       {primary ? (
         <section className={`daily-priority is-${dailyIncidentDisplayLevel(primary)}`} aria-labelledby="daily-priority-title">

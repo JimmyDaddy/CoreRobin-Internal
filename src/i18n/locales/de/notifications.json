@@ -26,5 +26,20 @@
       "title": "Festplattenspeicher ist wieder im sicheren Bereich",
       "body": "Die Festplattenauslastung liegt wieder in einem sicheren Bereich, daher sind derzeit keine weiteren Bereinigungen erforderlich."
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} hat die Beobachtungsbedingung erreicht",
+      "body": "{{metric}} lag {{seconds}} Sekunden lang über der Regel."
+    },
+    "recovered": {
+      "title": "{{application}} liegt wieder unter der Beobachtungsbedingung",
+      "body": "{{metric}} liegt wieder unter dem festgelegten Schwellenwert."
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "Arbeitsspeicher {{value}} MiB",
+      "disk": "Festplattenaktivität {{value}} MiB/s"
+    }
   }
 }

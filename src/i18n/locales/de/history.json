@@ -137,10 +137,11 @@
     "cleanupResult": "{{count}} Elemente verarbeitet und {{size}} freigegeben",
     "cleanupFailed": "{{count}} Elemente nicht abgeschlossen"
   },
+  "watchRules": { "title": "Verlauf der App-Beobachtung", "description": "Lokale Auslöse- und Erholungsereignisse deiner Erinnerungsregeln.", "savedEvents": "{{count}} Beobachtungsereignisse", "savedEvents_one": "{{count}} Beobachtungsereignis", "savedEvents_other": "{{count}} Beobachtungsereignisse", "privateApplication": "App-Name nicht gespeichert", "triggered": "{{metric}} erreichte {{value}}{{unit}}", "recovered": "{{metric}} erholte sich auf {{value}}{{unit}}" },
   "privacyEyebrow": "Datengrenzen",
   "privacyTitle": "Datenschutzrichtlinie",
   "privacyLocal": "Die Historie bleibt im CoreRobin WebView-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
   "privacyCollected": "Gespeichert werden zusammengefasste Ressourcendaten, Belastungs- und Erholungsereignisse sowie Art, Ergebnis, Anzahl und freigegebener Speicher bestätigter Aktionen. App- oder Autostart-Namen werden nur mit separater Erlaubnis gespeichert.",
-  "privacyExcluded": "Prozessbefehle, Benutzer, Pfade, Dateinamen und Adressen lokaler oder externer Verbindungen werden nicht gespeichert.",
+  "privacyExcluded": "Ressourcen- und Aktionsverlauf speichert keine Befehle, Benutzer, Pfade, Dateinamen oder Verbindungsadressen. Wenn der Verbindungsverlauf separat aktiviert ist, können Fünf-Minuten-Aggregate externe IPs, Domains, Ports und App-Namen enthalten.",
   "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden."
 }

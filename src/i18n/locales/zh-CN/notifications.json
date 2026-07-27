@@ -26,5 +26,20 @@
       "title": "磁盘空间状态已经恢复",
       "body": "磁盘占用已稳定回到安全范围，目前不需要继续清理。"
     }
+  },
+  "watch": {
+    "triggered": {
+      "title": "{{application}} 达到关注条件",
+      "body": "{{metric}} 已持续超过规则 {{seconds}} 秒。"
+    },
+    "recovered": {
+      "title": "{{application}} 已恢复",
+      "body": "{{metric}} 已回到设定阈值以下。"
+    },
+    "metric": {
+      "cpu": "CPU {{value}}%",
+      "memory": "内存 {{value}} MiB",
+      "disk": "磁盘活动 {{value}} MiB/s"
+    }
   }
 }

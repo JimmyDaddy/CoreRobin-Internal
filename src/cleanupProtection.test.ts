@@ -9,6 +9,8 @@ import type { CleanupNode } from "./types";
 describe("cleanup deletion protection", () => {
   it.each([
     ["/System/Library", "system_location"],
+    ["/tmp", "system_location"],
+    ["/private/var/tmp", "system_location"],
     ["~", "home_root"],
     ["~/.Trash", "trash_root"],
     ["~/Library/Preferences/example.plist", "sensitive_user_data"],
@@ -23,6 +25,10 @@ describe("cleanup deletion protection", () => {
   it.each([
     "~/Downloads/archive.zip",
     "~/Library/Caches/example/cache.bin",
+    "~/Library/Logs/example.log",
+    "~/Library/Containers/com.example.App/Data/tmp/session.bin",
+    "~/Library/Containers/com.example.App/Data/Library/Caches/cache.bin",
+    "~/Library/Group Containers/group.example/Library/Caches/cache.bin",
     "~/.cargo/registry/cache.bin",
     "~/.Trash/old.txt",
   ])("keeps explicitly cleanable content available: %s", (path) => {
@@ -37,6 +43,27 @@ describe("cleanup deletion protection", () => {
     node.protectionReason = "sensitive_user_data";
     expect(cleanupNodeProtection(node)).toBe("sensitive_user_data");
     expect(canCollectCleanupNode(node)).toBe(false);
+  });
+
+  it("trusts the backend allowlist for the current user's Darwin cache directory", () => {
+    const node = cleanupNode("/private/var/folders/aa/user/C/cache.bin");
+    node.deletionProtected = false;
+    node.protectionReason = null;
+    expect(cleanupNodeProtection(node)).toBeNull();
+    expect(canCollectCleanupNode(node)).toBe(true);
+  });
+
+  it.each([
+    "/tmp/core-robin-owned/cache.bin",
+    "/private/var/tmp/core-robin-owned/cache.bin",
+  ])("requires the backend ownership check for temporary content: %s", (path) => {
+    const node = cleanupNode(path);
+    expect(cleanupNodeProtection(node)).toBe("system_location");
+
+    node.deletionProtected = false;
+    node.protectionReason = null;
+    expect(cleanupNodeProtection(node)).toBeNull();
+    expect(canCollectCleanupNode(node)).toBe(true);
   });
 });
 

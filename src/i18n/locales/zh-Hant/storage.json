@@ -14,6 +14,7 @@
   "sortedByUsage": "按佔用率排序",
   "unnamedVolume": "未命名卷",
   "removable": "可移除",
+  "eject": { "action": "退出", "confirm": "確認退出", "ejecting": "正在退出…", "success": "已安全退出 {{name}}。", "failed": "無法退出此卷宗。請關閉正在使用它的檔案後重試。", "noLongerRemovable": "此卷宗已不再作為可移除卷宗提供。" },
   "usedSpace": "{{name}} 已用空間",
   "available": "可用 {{value}}",
   "lowSpace": "空間偏緊",

@@ -1,12 +1,13 @@
 {
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
-    "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Six TCP connection probes run every 30 seconds while this page is open; sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
-    "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
-    "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
-    "status": { "online": "Online", "limited": "Limited connection", "offline": "Offline" }
+    "eyebrow": "自動網路取樣", "title": "網路品質", "description": "開啟頁面後自動檢查，停留期間每 30 秒取樣一次。",
+    "run": "立即重測", "checking": "正在檢查…", "empty": "正在執行第一次網路品質檢查…",
+    "method": "輕量 TCP 檢查會區分本機路由、DNS、IPv4/IPv6、公網直連與獨立服務；離開頁面後即停止。",
+    "dns": "DNS", "latency": "平均延遲", "jitter": "抖動", "loss": "連線失敗", "probes": "TCP 探測", "probeSuccess": "{{successful}}/{{total}} 次成功",
+    "trendTitle": "網路品質趨勢", "trendWindow": "最近 15 分鐘 · 每 30 秒更新", "trendCollecting": "正在累積趨勢資料", "legend": "網路品質圖例", "chartLabel": "最近 15 分鐘網路品質趨勢，共 {{count}} 個樣本", "now": "現在",
+    "windowAverage": "平均延遲", "windowPeak": "延遲峰值", "anomalies": "異常", "anomalyCount": "{{count}} 次",
+    "diagnostics": { "title": "分層網路診斷", "stages": { "local_link": "本機路由", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "公網", "independent_service": "獨立服務" }, "status": { "passed": "可用", "degraded": "受限", "failed": "失敗", "unavailable": "未設定" } },
+    "status": { "online": "連線正常", "limited": "連線受限", "offline": "無法連線" }
   },
   "history": {
     "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",

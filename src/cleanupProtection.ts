@@ -14,6 +14,7 @@ const REGENERATABLE_ROOTS = [
   ".rustup/tmp",
   ".local/share/pnpm/store",
   "library/caches",
+  "library/logs",
   "library/developer/xcode/deriveddata",
   "library/pnpm/store",
   "appdata/local/temp",
@@ -36,9 +37,11 @@ export function cleanupNodeProtection(node: CleanupNode): CleanupProtectionReaso
   if (node.kind === "restricted") return "restricted";
   if (node.kind === "aggregate" || node.path === null) return "aggregate";
   if (node.deletionProtected) return "sensitive_user_data";
+  if (Object.prototype.hasOwnProperty.call(node, "protectionReason")) return null;
 
   const path = normalizeCleanupPath(node.path);
   if (path === "~") return "home_root";
+  if (isTemporaryRootPath(path)) return "system_location";
   if (!path.startsWith("~/")) return "system_location";
   if (isTrashRootPath(path)) return "trash_root";
   if (isInsideTrashPath(path)) return null;
@@ -72,8 +75,19 @@ function isSensitiveUserPath(path: string): boolean {
   if (REGENERATABLE_ROOTS.some((root) => relative === root || relative.startsWith(`${root}/`))) {
     return false;
   }
+  if (
+    /^library\/containers\/[^/]+\/data\/(?:tmp|library\/caches)(?:\/|$)/u.test(relative) ||
+    /^library\/group containers\/[^/]+\/library\/caches(?:\/|$)/u.test(relative)
+  ) {
+    return false;
+  }
   const first = relative.split("/", 1)[0];
   return first.startsWith(".") || SENSITIVE_PROFILE_ROOTS.has(first);
+}
+
+function isTemporaryRootPath(path: string): boolean {
+  return path === "/tmp" || path === "/private/tmp" ||
+    path === "/var/tmp" || path === "/private/var/tmp";
 }
 
 function normalizeCleanupPath(path: string): string {
