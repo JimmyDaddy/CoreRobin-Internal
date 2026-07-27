@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.11",
+  "title": {
+    "zh-CN": "更顺畅的清理与可靠的后台监控",
+    "en": "Smoother cleanup and reliable background monitoring"
+  },
+  "items": [
+    {
+      "zh-CN": "清理篮不再重复核对整批路径：存在的内容会继续处理，已经不存在或暂时不可访问的内容会跳过并在结果中说明，不会阻止其他项目。",
+      "en": "Cleanup no longer revalidates the entire basket. Available items continue to be processed, while missing or temporarily unavailable items are skipped and reported without blocking the rest."
+    },
+    {
+      "zh-CN": "关闭主窗口后，系统资源采样、提醒规则、历史快照与网络连接历史会继续运行；重新打开窗口时可以看到连续数据。",
+      "en": "System sampling, alert rules, history snapshots, and network connection history now keep running after the main window is closed, preserving continuity when it is reopened."
+    },
+    {
+      "zh-CN": "文件洞察扫描会跨页面继续执行并保留进度；空间清理结果可直接进入对应路径、查看大文件或加入清理篮，减少重复扫描和绕路操作。",
+      "en": "File insight scans now continue across navigation and preserve progress. Cleanup results can open the matching path, show large files, or add items to the basket directly."
+    },
+    {
+      "zh-CN": "精简废纸篓、永久删除、进程和启动项操作的确认流程；永久删除仍保留不可恢复确认，其他可恢复操作不再重复确认。",
+      "en": "Confirmation flows for Trash, permanent deletion, processes, and startup items are shorter. Irreversible deletion keeps its explicit safeguard, while recoverable actions avoid duplicate prompts."
+    },
+    {
+      "zh-CN": "设置、网络质量和日常模式经过重新整理，并加入每日缓存的更新检查、跨页面会话数据以及更明确的失败恢复入口。",
+      "en": "Settings, network quality, and Daily mode are reorganized with a daily cached update check, session data that survives navigation, and clearer recovery actions."
+    }
+  ]
+}
