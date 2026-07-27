@@ -40,8 +40,6 @@ export function DailySolve({
     const rightIntent = "intent" in right ? right.intent : right.id;
     return Number(rightIntent === recommendedIntent) - Number(leftIntent === recommendedIntent);
   });
-  const primaryProblems = orderedProblems.slice(0, 3);
-  const otherProblems = orderedProblems.slice(3);
   const renderProblem = ({ id, icon: Icon, ...problem }: (typeof PROBLEMS)[number]) => {
     const intent = ("intent" in problem ? problem.intent : id) as DailyIntent;
     return (
@@ -71,18 +69,13 @@ export function DailySolve({
       </header>
 
       <div className="daily-problem-list">
-        {primaryProblems.map(renderProblem)}
+        {orderedProblems.map(renderProblem)}
         <button type="button" onClick={onOpenApplications}>
           <span><AppWindow size={20} /></span>
           <div><strong>{t("daily:solve.applications.title")}</strong><small>{t("daily:solve.applications.description")}</small></div>
           <ArrowRight size={15} />
         </button>
       </div>
-
-      <details className="daily-solve__other">
-        <summary>{t("daily:solve.otherProblems")}</summary>
-        <div className="daily-problem-list">{otherProblems.map(renderProblem)}</div>
-      </details>
     </section>
   );
 }

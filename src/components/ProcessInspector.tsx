@@ -40,9 +40,7 @@ interface ProcessInspectorProps {
   detailLoading: boolean;
   history: SelectedProcessHistory | null;
   capabilities: Capabilities;
-  bestEffortOptIn: boolean;
   preparingAction: boolean;
-  onBestEffortOptInChange: (enabled: boolean) => void;
   onAction: (action: ProcessAction) => void;
   onRestart: () => void;
 }
@@ -55,9 +53,7 @@ export function ProcessInspector({
   detailLoading,
   history,
   capabilities,
-  bestEffortOptIn,
   preparingAction,
-  onBestEffortOptInChange,
   onAction,
   onRestart,
 }: ProcessInspectorProps) {
@@ -94,12 +90,10 @@ export function ProcessInspector({
   const displayName = detail?.name ?? selected.name;
   const displayUser = detail?.user ?? selected.user;
   const control = capabilities.processControl;
-  const bestEffort = control.targeting === "best_effort_pid";
-  const targetingAllowed = !bestEffort || bestEffortOptIn;
   const requestCloseEnabled =
-    canTerminate && targetingAllowed && control.requestClose.enabled;
+    canTerminate && control.requestClose.enabled;
   const forceKillEnabled =
-    canTerminate && targetingAllowed && control.forceKill.enabled;
+    canTerminate && control.forceKill.enabled;
 
   return (
     <aside className="inspector panel">
@@ -191,17 +185,9 @@ export function ProcessInspector({
         ) : control.targeting === "unavailable" ? (
           <p className="action-guard"><AlertTriangle size={14} />{control.forceKill.disabledReason ?? control.requestClose.disabledReason ?? t("process:inspector.unavailableControl")}</p>
         ) : (
-          <div className="best-effort-guard">
-            <p><AlertTriangle size={14} /><span>{t("process:inspector.bestEffort")}</span></p>
-            <label>
-              <input
-                type="checkbox"
-                checked={bestEffortOptIn}
-                onChange={(event) => onBestEffortOptInChange(event.target.checked)}
-              />
-              {t("process:inspector.allowBestEffort")}
-            </label>
-          </div>
+          <p className="action-guard">
+            <AlertTriangle size={14} />{t("process:inspector.bestEffort")}
+          </p>
         )}
         <Button
           variant="secondary"

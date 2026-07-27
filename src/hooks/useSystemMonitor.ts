@@ -24,6 +24,7 @@ import {
 const MAX_HISTORY_POINTS = 300;
 const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
+export const HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS = 30_000;
 
 export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
@@ -37,13 +38,14 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
   const lastSequence = useRef(0);
   const requestInFlight = useRef<Promise<SystemSnapshot | null> | null>(null);
   const summaryRequestInFlight = useRef<Promise<SystemSummary | null> | null>(null);
+  const lastFullSnapshotAtRef = useRef(0);
   const visibleRef = useRef(visible);
   const pausedRef = useRef(paused);
   visibleRef.current = visible;
   pausedRef.current = paused;
 
-  const refreshNow = useCallback(() => {
-    if (pausedRef.current || !visibleRef.current) {
+  const refreshSnapshot = useCallback((allowHidden = false) => {
+    if (pausedRef.current || (!visibleRef.current && !allowHidden)) {
       return Promise.resolve(null);
     }
     if (requestInFlight.current) {
@@ -56,13 +58,14 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
         assertSupportedSnapshotSchema(nextSnapshot);
         if (
           pausedRef.current ||
-          !visibleRef.current ||
+          (!visibleRef.current && !allowHidden) ||
           nextSnapshot.sequence <= lastSequence.current
         ) {
           return null;
         }
 
         lastSequence.current = nextSnapshot.sequence;
+        lastFullSnapshotAtRef.current = Date.now();
         setSnapshot(nextSnapshot);
         setHealthSnapshot(nextSnapshot);
         setError(null);
@@ -81,6 +84,14 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     });
     return request;
   }, []);
+  const refreshNow = useCallback(
+    () => refreshSnapshot(false),
+    [refreshSnapshot],
+  );
+  const refreshBackgroundSnapshotNow = useCallback(
+    () => refreshSnapshot(true),
+    [refreshSnapshot],
+  );
 
   const refreshSummaryNow = useCallback(() => {
     if (pausedRef.current || visibleRef.current) {
@@ -130,8 +141,17 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
-      if (visible) await refreshNow();
-      else await refreshSummaryNow();
+      if (visible) {
+        await refreshNow();
+      } else {
+        await refreshSummaryNow();
+        if (
+          Date.now() - lastFullSnapshotAtRef.current >=
+          HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS
+        ) {
+          await refreshBackgroundSnapshotNow();
+        }
+      }
       if (!cancelled) {
         timeout = setTimeout(
           tick,
@@ -147,7 +167,14 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
         clearTimeout(timeout);
       }
     };
-  }, [paused, refreshIntervalMs, refreshNow, refreshSummaryNow, visible]);
+  }, [
+    paused,
+    refreshBackgroundSnapshotNow,
+    refreshIntervalMs,
+    refreshNow,
+    refreshSummaryNow,
+    visible,
+  ]);
 
   return {
     snapshot,
@@ -159,6 +186,7 @@ export function useSystemMonitor(refreshIntervalMs = 1_000, visible = true) {
     setPaused,
     loading,
     refreshNow,
+    refreshBackgroundSnapshotNow,
     refreshSummaryNow,
   };
 }

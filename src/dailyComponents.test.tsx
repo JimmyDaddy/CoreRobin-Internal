@@ -37,7 +37,7 @@ describe("everyday component interactions", () => {
     fireEvent.click(screen.getByRole("switch", { name: "在 Dock 中显示应用" }));
     fireEvent.click(screen.getByRole("switch", { name: "登录时启动" }));
 
-    expect(onChange).toHaveBeenNthCalledWith(1, { showDockIcon: true });
+    expect(onChange).toHaveBeenNthCalledWith(1, { showDockIcon: false });
     expect(onChange).toHaveBeenNthCalledWith(2, { launchAtLogin: true });
   });
 
@@ -228,6 +228,7 @@ describe("everyday component interactions", () => {
         onOpenCleanup={() => undefined}
         onOpenSpace={() => undefined}
         onOpenApplications={() => undefined}
+        onOpenNetworkDetails={() => undefined}
         onOpenIntent={() => undefined}
         onOpenIncident={() => undefined}
         onRefreshStartup={() => undefined}
@@ -294,6 +295,7 @@ describe("everyday component interactions", () => {
         onOpenCleanup={() => undefined}
         onOpenSpace={() => undefined}
         onOpenApplications={() => undefined}
+        onOpenNetworkDetails={() => undefined}
         onOpenIntent={() => undefined}
         onOpenIncident={() => undefined}
         onRefreshStartup={() => undefined}

@@ -41,11 +41,13 @@ export function AboutSupport({
   snapshot,
   onOpenOnboarding,
   onClearAllData,
+  backgroundUpdateVersion,
 }: {
   settings: AppSettings;
   snapshot: SystemSnapshot;
   onOpenOnboarding: () => void;
   onClearAllData: () => void;
+  backgroundUpdateVersion?: string | null;
 }) {
   const { t, i18n } = useAppTranslation();
   const [checking, setChecking] = useState(false);
@@ -67,6 +69,14 @@ export function AboutSupport({
   useEffect(() => () => {
     void installableUpdate?.close().catch(() => undefined);
   }, [installableUpdate]);
+
+  useEffect(() => {
+    if (!backgroundUpdateVersion || updateResult) return;
+    setUpdateResult({
+      status: "available",
+      latestVersion: backgroundUpdateVersion,
+    });
+  }, [backgroundUpdateVersion, updateResult]);
 
   const checkForUpdate = async () => {
     if (checking || updateAction === "installing") return;

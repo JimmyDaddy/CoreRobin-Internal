@@ -10,9 +10,13 @@ import {
 } from "../api";
 import { getMockNetworkConnections, getMockSnapshot } from "../mockData";
 import type { SystemSummary } from "../types";
-import { useNetworkConnections } from "./useNetworkConnections";
+import {
+  BACKGROUND_NETWORK_CONNECTION_REFRESH_INTERVAL_MS,
+  useNetworkConnections,
+} from "./useNetworkConnections";
 import {
   HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS,
+  HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS,
   useSystemMonitor,
 } from "./useSystemMonitor";
 
@@ -91,9 +95,18 @@ describe("visibility-aware system monitoring", () => {
     expect(result.current.healthSnapshot).toBe(result.current.summary);
     expect(result.current.history.length).toBeGreaterThan(foregroundHistoryLength + 1);
 
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(
+        HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS -
+          HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS,
+      ),
+    );
+    expect(getSystemSnapshot).toHaveBeenCalledTimes(3);
+    expect(result.current.snapshot).not.toBe(foregroundSnapshot);
+
     rerender({ visible: true });
     await flushEffects();
-    expect(getSystemSnapshot).toHaveBeenCalledTimes(3);
+    expect(getSystemSnapshot).toHaveBeenCalledTimes(4);
   });
 
   it("gives pause priority over foreground and hidden sampling", async () => {
@@ -134,5 +147,26 @@ describe("visibility-aware network monitoring", () => {
     rerender({ visible: true });
     await flushEffects();
     expect(getNetworkConnections).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues low-frequency polling while hidden when history is enabled", async () => {
+    const { rerender } = renderHook(
+      ({ visible }) =>
+        useNetworkConnections(true, false, 500, visible, true),
+      { initialProps: { visible: true } },
+    );
+    await flushEffects();
+    expect(getNetworkConnections).toHaveBeenCalledTimes(1);
+
+    rerender({ visible: false });
+    await flushEffects();
+    expect(getNetworkConnections).toHaveBeenCalledTimes(2);
+
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(
+        BACKGROUND_NETWORK_CONNECTION_REFRESH_INTERVAL_MS,
+      ),
+    );
+    expect(getNetworkConnections).toHaveBeenCalledTimes(3);
   });
 });

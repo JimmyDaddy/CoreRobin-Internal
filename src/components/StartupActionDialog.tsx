@@ -1,4 +1,4 @@
-import { Clock3, LoaderCircle, ShieldCheck, X } from "lucide-react";
+import { LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { startupApplicationIconSource } from "../applicationIcon";
@@ -71,11 +71,16 @@ export function StartupActionDialog({
           </button>
         </header>
 
-        <div className="startup-action-summary">
-          <p><ShieldCheck size={15} /><span><strong>{t("startup:actionDialog.reversibleTitle")}</strong>{t("startup:actionDialog.reversibleDescription")}</span></p>
-          <p><Clock3 size={15} /><span><strong>{t("startup:actionDialog.whenTitle")}</strong>{t(`startup:actionDialog.${action}.whenDescription`)}</span></p>
-          {disabling ? <p className="is-warning"><Clock3 size={15} /><span><strong>{t("startup:actionDialog.runningTitle")}</strong>{t("startup:actionDialog.runningDescription")}</span></p> : null}
-        </div>
+        <p className="startup-action-summary">
+          <ShieldCheck size={15} />
+          <span>
+            {t(
+              disabling
+                ? "startup:actionDialog.runningDescription"
+                : "startup:actionDialog.enable.whenDescription",
+            )}
+          </span>
+        </p>
 
         {preparing ? (
           <p className="startup-action-dialog__status" role="status"><LoaderCircle className="is-spinning" size={14} />{t("startup:actionDialog.preparing")}</p>

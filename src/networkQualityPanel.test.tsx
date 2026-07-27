@@ -8,6 +8,7 @@ import {
   NETWORK_QUALITY_WINDOW_MS,
   NetworkQualityPanel,
   appendNetworkQualitySample,
+  resetNetworkQualitySessionForTest,
 } from "./components/NetworkExplorer";
 import i18n from "./i18n";
 import type { NetworkQualityResult } from "./types";
@@ -25,6 +26,7 @@ afterEach(() => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  resetNetworkQualitySessionForTest();
   runNetworkQualityCheck.mockImplementation(async () => qualityResult(Date.now()));
   await i18n.changeLanguage("zh-CN");
 });

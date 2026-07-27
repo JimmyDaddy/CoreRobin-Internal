@@ -27,8 +27,11 @@ import {
   type NetworkSeriesPoint,
 } from "../networkExplorer";
 import { runNetworkQualityCheck } from "../api";
-import { aggregateConnectionHistory, type ConnectionHistoryGroupBy } from "../connectionHistory";
-import { useConnectionHistory } from "../hooks/useConnectionHistory";
+import {
+  aggregateConnectionHistory,
+  type ConnectionHistoryEntry,
+  type ConnectionHistoryGroupBy,
+} from "../connectionHistory";
 import type {
   CommandError,
   HistoryPoint,
@@ -56,6 +59,9 @@ interface NetworkExplorerProps {
   connectionHistoryRetentionDays: 1 | 7 | 30;
   onConnectionHistoryChange: (enabled: boolean) => void;
   onConnectionHistoryRetentionChange: (days: 1 | 7 | 30) => void;
+  connectionHistoryEntries: ConnectionHistoryEntry[];
+  connectionHistoryError: string | null;
+  onClearConnectionHistory: () => void;
 }
 
 const CHART_WIDTH = 720;
@@ -81,6 +87,15 @@ const CONNECTION_FILTERS: NetworkConnectionFilter[] = [
   "udp",
 ];
 
+type NetworkSection = "quality" | "connections" | "history" | "interfaces";
+let qualitySessionResult: NetworkQualityResult | null = null;
+let qualitySessionSamples: NetworkQualityResult[] = [];
+
+export function resetNetworkQualitySessionForTest(): void {
+  qualitySessionResult = null;
+  qualitySessionSamples = [];
+}
+
 export function NetworkExplorer({
   network,
   history,
@@ -95,9 +110,14 @@ export function NetworkExplorer({
   connectionHistoryRetentionDays,
   onConnectionHistoryChange,
   onConnectionHistoryRetentionChange,
+  connectionHistoryEntries,
+  connectionHistoryError,
+  onClearConnectionHistory,
 }: NetworkExplorerProps) {
   const { t } = useAppTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
+  const [activeSection, setActiveSection] =
+    useState<NetworkSection>("quality");
   const visible = useMemo(
     () => visibleNetworkInterfaces(network.interfaces, showAllInterfaces),
     [network.interfaces, showAllInterfaces],
@@ -149,30 +169,63 @@ export function NetworkExplorer({
         </div>
       </section>
 
-      <NetworkQualityPanel />
+      <nav className="network-section-tabs" aria-label={t("network:title")}>
+        {(["quality", "connections", "history", "interfaces"] as const).map(
+          (section) => (
+            <button
+              className={activeSection === section ? "is-active" : undefined}
+              type="button"
+              key={section}
+              aria-current={activeSection === section ? "page" : undefined}
+              onClick={() => setActiveSection(section)}
+            >
+              {t(
+                section === "quality"
+                  ? "network:quality.title"
+                  : section === "connections"
+                    ? "network:connections.title"
+                    : section === "history"
+                      ? "network:history.title"
+                      : "network:interfaces",
+              )}
+            </button>
+          ),
+        )}
+      </nav>
 
-      <NetworkThroughput history={history} network={network} />
+      {activeSection === "quality" ? (
+        <>
+          <NetworkQualityPanel />
+          <NetworkThroughput history={history} network={network} />
+        </>
+      ) : null}
 
-      <NetworkConnectionsPanel
-        snapshot={connections}
-        error={connectionsError}
-        loading={connectionsLoading}
-        onRefresh={onRefreshConnections}
-        refreshIntervalMs={connectionRefreshIntervalMs}
-        processes={processes}
-        onSelectProcess={onSelectProcess}
-      />
+      {activeSection === "connections" ? (
+        <NetworkConnectionsPanel
+          snapshot={connections}
+          error={connectionsError}
+          loading={connectionsLoading}
+          onRefresh={onRefreshConnections}
+          refreshIntervalMs={connectionRefreshIntervalMs}
+          processes={processes}
+          onSelectProcess={onSelectProcess}
+        />
+      ) : null}
 
-      <ConnectionHistoryPanel
-        snapshot={connections}
-        processes={processes}
-        enabled={connectionHistoryEnabled}
-        retentionDays={connectionHistoryRetentionDays}
-        onEnabledChange={onConnectionHistoryChange}
-        onRetentionChange={onConnectionHistoryRetentionChange}
-      />
+      {activeSection === "history" ? (
+        <ConnectionHistoryPanel
+          entries={connectionHistoryEntries}
+          error={connectionHistoryError}
+          enabled={connectionHistoryEnabled}
+          retentionDays={connectionHistoryRetentionDays}
+          onEnabledChange={onConnectionHistoryChange}
+          onRetentionChange={onConnectionHistoryRetentionChange}
+          onClear={onClearConnectionHistory}
+        />
+      ) : null}
 
-      <section className="panel network-interface-panel" aria-labelledby="interface-title">
+      {activeSection === "interfaces" ? (
+        <section className="panel network-interface-panel" aria-labelledby="interface-title">
         <header className="network-section-heading">
           <div>
             <span className="eyebrow">{t("network:interfaces")}</span>
@@ -210,7 +263,8 @@ export function NetworkExplorer({
             <Network size={20} />{t("network:noInterfaces")}
           </div>
         )}
-      </section>
+        </section>
+      ) : null}
     </section>
   );
 }
@@ -229,8 +283,16 @@ export function appendNetworkQualitySample(
 
 export function NetworkQualityPanel() {
   const { t, i18n } = useAppTranslation();
-  const [result, setResult] = useState<NetworkQualityResult | null>(null);
-  const [samples, setSamples] = useState<NetworkQualityResult[]>([]);
+  const [result, setResult] = useState<NetworkQualityResult | null>(
+    () => qualitySessionResult,
+  );
+  const [samples, setSamples] = useState<NetworkQualityResult[]>(() => {
+    const cutoff = Date.now() - NETWORK_QUALITY_WINDOW_MS;
+    qualitySessionSamples = qualitySessionSamples.filter(
+      (sample) => sample.sampledAtMs >= cutoff,
+    );
+    return qualitySessionSamples;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const checkingRef = useRef(false);
@@ -244,8 +306,13 @@ export function NetworkQualityPanel() {
     try {
       const nextResult = await runNetworkQualityCheck();
       if (!mountedRef.current) return;
+      qualitySessionResult = nextResult;
       setResult(nextResult);
-      setSamples((current) => appendNetworkQualitySample(current, nextResult));
+      setSamples((current) => {
+        const next = appendNetworkQualitySample(current, nextResult);
+        qualitySessionSamples = next;
+        return next;
+      });
     } catch (reason) {
       if (mountedRef.current) setError(normalizeCommandError(reason).message);
     } finally {
@@ -428,23 +495,24 @@ function formatMilliseconds(value: number | null): string {
 }
 
 function ConnectionHistoryPanel({
-  snapshot,
-  processes,
+  entries,
+  error,
   enabled,
   retentionDays,
   onEnabledChange,
   onRetentionChange,
+  onClear,
 }: {
-  snapshot: NetworkConnectionsSnapshot | null;
-  processes: ProcessRow[];
+  entries: ConnectionHistoryEntry[];
+  error: string | null;
   enabled: boolean;
   retentionDays: 1 | 7 | 30;
   onEnabledChange: (enabled: boolean) => void;
   onRetentionChange: (days: 1 | 7 | 30) => void;
+  onClear: () => void;
 }) {
   const { t, i18n } = useAppTranslation();
   const [groupBy, setGroupBy] = useState<ConnectionHistoryGroupBy>("application");
-  const { entries, error, clear } = useConnectionHistory(snapshot, processes, enabled, retentionDays);
   const groups = useMemo(() => aggregateConnectionHistory(entries, groupBy).slice(0, 20), [entries, groupBy]);
 
   return (
@@ -481,7 +549,7 @@ function ConnectionHistoryPanel({
                 {[1, 7, 30].map((days) => <option value={days} key={days}>{t("network:history.days", { count: days })}</option>)}
               </select>
             </label>
-            <button className="button button--plain" type="button" onClick={clear}>{t("network:history.clear")}</button>
+            <button className="button button--plain" type="button" onClick={onClear}>{t("network:history.clear")}</button>
           </div>
           {error ? <p className="network-connections__notice">{t("network:history.lookupFallback")}</p> : null}
           {groups.length > 0 ? (
@@ -594,7 +662,10 @@ function NetworkConnectionsPanel({
       {error ? (
         <div className="network-connections__notice is-error" role="alert">
           <AlertTriangle size={13} aria-hidden="true" />
-          {t("network:connections.failure", { message: error.message })}
+          <span>{t("network:connections.failure", { message: error.message })}</span>
+          <button className="button button--secondary" type="button" onClick={onRefresh}>
+            <RefreshCw size={13} />{t("common:retry")}
+          </button>
         </div>
       ) : null}
 

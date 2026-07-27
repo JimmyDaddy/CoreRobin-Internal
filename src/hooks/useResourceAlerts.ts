@@ -20,10 +20,10 @@ import {
 } from "../resourceAlerts";
 import type { UsageThresholds } from "../settings";
 import { volumeUsage } from "../storageExplorer";
-import type { SystemSnapshot } from "../types";
+import type { SystemHealthSnapshot } from "../types";
 
 export function useResourceAlerts(
-  snapshot: SystemSnapshot | null,
+  snapshot: SystemHealthSnapshot | null,
   thresholds: UsageThresholds,
   persistenceEnabled: boolean,
   retentionDays: HistoryRetentionDays,
@@ -74,7 +74,7 @@ export function useResourceAlerts(
     setActiveAlerts(activeResourceAlerts(result.state));
 
     if (result.events.length === 0) return;
-    const applications = aggregateApplications(snapshot.processes);
+    const applications = aggregateApplications(snapshot.processes ?? []);
     const events = result.events.map((event) => {
       const culpritName = event.kind === "triggered"
         ? alertCulpritName(

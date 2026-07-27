@@ -302,7 +302,15 @@ export function ApplicationUninstallAssistant({
 
   const confirmUninstall = async () => {
     const lease = deleteLeaseRef.current;
-    if (!lease || !cleanupLeaseCanExecute(lease) || lease.mode !== deleteMode || !deleteAcknowledged || deleteSubmitting || deleteModeSwitching || !plan) return;
+    if (
+      !lease ||
+      !cleanupLeaseCanExecute(lease) ||
+      lease.mode !== deleteMode ||
+      (deleteMode === "permanent" && !deleteAcknowledged) ||
+      deleteSubmitting ||
+      deleteModeSwitching ||
+      !plan
+    ) return;
     const applicationName = plan.application.name;
     const applicationPath = plan.application.path;
     const completedMode = deleteMode;

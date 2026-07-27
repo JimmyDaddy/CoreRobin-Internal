@@ -81,6 +81,7 @@ interface DailyGuideProps {
   onOpenCleanup: () => void;
   onOpenSpace: () => void;
   onOpenApplications: () => void;
+  onOpenNetworkDetails: () => void;
   onOpenIntent: (intent: DailyIntent) => void;
   onOpenIncident: (incident: DailyIncident) => void;
   onRefreshStartup: () => void | Promise<void>;
@@ -488,6 +489,7 @@ function NetworkGuide({
   connectionsError,
   connectionsLoading,
   onOpenSystemSettings,
+  onOpenNetworkDetails,
 }: DailyGuideProps) {
   const { t } = useAppTranslation();
   const received = snapshot.network.receivedBytesPerSecond;
@@ -521,6 +523,9 @@ function NetworkGuide({
         </details>
       </div>
       <div className="daily-guide-result__actions">
+        <Button variant="primary" onClick={onOpenNetworkDetails}>
+          <Network size={14} />{t("daily:incident.viewCurrentNetwork")}
+        </Button>
         <Button variant="secondary" onClick={() => onOpenSystemSettings("network")}><ExternalLink size={14} />{t("common:systemSettings.network")}</Button>
       </div>
     </section>

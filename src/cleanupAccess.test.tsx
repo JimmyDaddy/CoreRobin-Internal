@@ -4,7 +4,20 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CleanupAssistant } from "./components/CleanupAssistant";
+import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
+import { getMockCleanupScan } from "./mockData";
+
+const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
+  snapshot: null,
+  snapshotStatus: "current",
+  progress: null,
+  loading: false,
+  error: null,
+  scan: async () => undefined,
+  cancel: async () => undefined,
+  removePaths: () => undefined,
+};
 
 const cleanupApi = vi.hoisted(() => ({
   getCleanupScanAccess: vi.fn(),
@@ -15,9 +28,13 @@ const cleanupApi = vi.hoisted(() => ({
 }));
 
 vi.mock("./api", () => cleanupApi);
+vi.mock("./components/CleanupSunburstCanvas", () => ({
+  CleanupSunburstCanvas: () => <div data-testid="cleanup-map-canvas" />,
+}));
 
 afterEach(() => cleanup());
 beforeEach(async () => {
+  window.localStorage.clear();
   cleanupApi.getCleanupScanAccess.mockReset();
   cleanupApi.openCleanupFullDiskAccessSettings.mockReset();
   cleanupApi.revealCleanupApplicationBundle.mockReset();
@@ -111,12 +128,31 @@ describe("cleanup full disk access guide", () => {
     expect((screen.getByRole("button", { name: "需先从 CoreRobin.app 启动" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "在访达中显示应用" })).toBeNull();
   });
+
+  it("turns scan findings into direct map and cleanup-basket actions", async () => {
+    renderAssistant(vi.fn(), getMockCleanupScan());
+
+    const categoryButtons = screen.getAllByRole("button", { name: "用途分类" });
+    fireEvent.click(categoryButtons[1]);
+    await waitFor(() =>
+      expect(screen.getByRole("button", {
+        name: "用途分类",
+        pressed: true,
+      })).toBeTruthy(),
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "清理篮" })[0]);
+    expect(await screen.findByText(/已选择 1 项/)).toBeTruthy();
+  });
 });
 
-function renderAssistant(onScan: () => void) {
+function renderAssistant(
+  onScan: () => void,
+  snapshot: ReturnType<typeof getMockCleanupScan> | null = null,
+) {
   return render(
     <CleanupAssistant
-      snapshot={null}
+      snapshot={snapshot}
       error={null}
       loading={false}
       cancelling={false}
@@ -126,6 +162,8 @@ function renderAssistant(onScan: () => void) {
       onCancel={() => undefined}
       onDeletionApplied={async () => undefined}
       onSubtreeRetained={async () => undefined}
+      fileInsights={EMPTY_FILE_INSIGHTS}
+      onOpenApplications={() => undefined}
     />,
   );
 }
