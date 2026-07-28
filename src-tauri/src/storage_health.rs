@@ -74,14 +74,7 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
         .get("SMARTStatus")
         .and_then(Value::as_string)
         .map(str::to_owned);
-    let smart_status = match smart_label.as_deref().map(str::to_ascii_lowercase) {
-        Some(value) if value.contains("verified") => StorageSmartStatus::Verified,
-        Some(value) if value.contains("fail") => StorageSmartStatus::Failing,
-        Some(value) if value.contains("warn") => StorageSmartStatus::Warning,
-        Some(value) if value.contains("not supported") => StorageSmartStatus::Unsupported,
-        Some(_) => StorageSmartStatus::Unknown,
-        None => StorageSmartStatus::Unsupported,
-    };
+    let smart_status = classify_smart_status(smart_label.as_deref());
     StorageDeviceHealth {
         mount_point: mount_point.to_owned(),
         filesystem: dictionary
@@ -143,7 +136,7 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
         mount_point: mount_point.to_owned(),
         filesystem,
         source,
-        smart_status: StorageSmartStatus::Unsupported,
+        smart_status: classify_smart_status(None),
         smart_label: None,
         read_only: options.map(|value| value.split(',').any(|option| option == "ro")),
         internal: None,
@@ -179,12 +172,7 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
         .get("HealthStatus")
         .and_then(serde_json::Value::as_str)
         .map(str::to_owned);
-    let smart_status = match smart_label.as_deref().map(str::to_ascii_lowercase) {
-        Some(value) if value == "healthy" => StorageSmartStatus::Verified,
-        Some(value) if value == "warning" => StorageSmartStatus::Warning,
-        Some(value) if value == "unhealthy" => StorageSmartStatus::Failing,
-        _ => StorageSmartStatus::Unknown,
-    };
+    let smart_status = classify_smart_status(smart_label.as_deref());
     StorageDeviceHealth {
         mount_point: mount_point.to_owned(),
         filesystem: value
@@ -232,6 +220,23 @@ fn unavailable_device(mount_point: &str, error: &str) -> StorageDeviceHealth {
     }
 }
 
+fn classify_smart_status(label: Option<&str>) -> StorageSmartStatus {
+    match label.map(str::to_ascii_lowercase) {
+        Some(value) if value.contains("fail") || value.contains("unhealthy") => {
+            StorageSmartStatus::Failing
+        }
+        Some(value) if value.contains("warn") => StorageSmartStatus::Warning,
+        Some(value) if value.contains("verified") || value == "healthy" => {
+            StorageSmartStatus::Verified
+        }
+        Some(value) if value.contains("not supported") || value.contains("unsupported") => {
+            StorageSmartStatus::Unsupported
+        }
+        Some(_) => StorageSmartStatus::Unknown,
+        None => StorageSmartStatus::Unsupported,
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn plist_unsigned(value: &plist::Value) -> Option<u64> {
     value.as_unsigned_integer().or_else(|| {
@@ -268,7 +273,31 @@ pub fn validate_mount_points(
 
 #[cfg(test)]
 mod tests {
-    use super::validate_mount_points;
+    use super::{StorageSmartStatus, classify_smart_status, validate_mount_points};
+
+    #[test]
+    fn classifies_platform_health_labels_without_treating_unhealthy_as_healthy() {
+        assert!(matches!(
+            classify_smart_status(Some("Verified")),
+            StorageSmartStatus::Verified
+        ));
+        assert!(matches!(
+            classify_smart_status(Some("Healthy")),
+            StorageSmartStatus::Verified
+        ));
+        assert!(matches!(
+            classify_smart_status(Some("Warning")),
+            StorageSmartStatus::Warning
+        ));
+        assert!(matches!(
+            classify_smart_status(Some("Unhealthy")),
+            StorageSmartStatus::Failing
+        ));
+        assert!(matches!(
+            classify_smart_status(None),
+            StorageSmartStatus::Unsupported
+        ));
+    }
 
     #[test]
     fn validates_only_current_mount_points_and_deduplicates() {

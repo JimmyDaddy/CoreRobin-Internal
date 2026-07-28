@@ -270,13 +270,13 @@ pub fn open_disk_utility() -> Result<(), CommandError> {
 
     #[cfg(target_os = "linux")]
     {
-        return spawn_and_reap(
+        spawn_and_reap(
             Command::new("gnome-disks")
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null()),
             "The system disk utility could not be opened.",
-        );
+        )
     }
 }
 
