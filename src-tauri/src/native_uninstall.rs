@@ -5,12 +5,18 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::process::ExitStatus;
 use std::sync::{Mutex, OnceLock};
+#[cfg(any(windows, target_os = "linux"))]
+use std::time::Duration;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(windows, target_os = "linux"))]
 use std::fs;
 #[cfg(target_os = "linux")]
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
 
+#[cfg(any(windows, target_os = "linux"))]
+use crate::bounded_command;
 use crate::error::CommandError;
 use crate::models::{
     ApplicationInstallationSource, ApplicationInventorySnapshot, ApplicationUninstallPlan,
@@ -20,22 +26,72 @@ use crate::models::{
 };
 
 const PLAN_TTL_MS: u64 = 10 * 60 * 1_000;
+const INVENTORY_CACHE_TTL_MS: u64 = 5 * 60 * 1_000;
+#[cfg(any(windows, target_os = "linux"))]
+const INVENTORY_COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
+#[cfg(any(windows, target_os = "linux"))]
+const INVENTORY_COMMAND_OUTPUT_LIMIT: usize = 8 * 1_024 * 1_024;
 
 #[derive(Clone)]
 struct StoredPlan {
     created_at_ms: u64,
-    application_path: String,
     source: ApplicationInstallationSource,
     identifier: String,
 }
 
 static NATIVE_UNINSTALL_PLANS: OnceLock<Mutex<HashMap<String, StoredPlan>>> = OnceLock::new();
 
+#[derive(Clone)]
+struct NativeInventoryCache {
+    language: String,
+    fingerprint: Option<String>,
+    stored_at_ms: u64,
+    snapshot: ApplicationInventorySnapshot,
+}
+
+static NATIVE_INVENTORY_CACHE: OnceLock<Mutex<Option<NativeInventoryCache>>> = OnceLock::new();
+
+pub fn load_or_scan_native_application_inventory(
+    preferred_language: Option<&str>,
+    force_refresh: bool,
+) -> Result<ApplicationInventorySnapshot, CommandError> {
+    let language = preferred_language.unwrap_or("en").to_ascii_lowercase();
+    let fingerprint = native_inventory_fingerprint();
+    let now = now_millis();
+    let cache = NATIVE_INVENTORY_CACHE.get_or_init(|| Mutex::new(None));
+    if !force_refresh
+        && let Ok(cache) = cache.lock()
+        && let Some(cached) = cache.as_ref()
+        && cached.language == language
+        && cached.fingerprint == fingerprint
+        && now.saturating_sub(cached.stored_at_ms) <= INVENTORY_CACHE_TTL_MS
+    {
+        let mut snapshot = cached.snapshot.clone();
+        snapshot.cached = true;
+        snapshot.refresh_recommended =
+            now.saturating_sub(cached.stored_at_ms) > INVENTORY_CACHE_TTL_MS / 2;
+        return Ok(snapshot);
+    }
+    let snapshot = scan_native_application_inventory(preferred_language)?;
+    if let Ok(mut cache) = cache.lock() {
+        *cache = Some(NativeInventoryCache {
+            language,
+            fingerprint,
+            stored_at_ms: now,
+            snapshot: snapshot.clone(),
+        });
+    }
+    Ok(snapshot)
+}
+
 pub fn scan_native_application_inventory(
     preferred_language: Option<&str>,
 ) -> Result<ApplicationInventorySnapshot, CommandError> {
     #[cfg(windows)]
-    return scan_windows_inventory();
+    {
+        let _ = preferred_language;
+        return scan_windows_inventory();
+    }
 
     #[cfg(target_os = "linux")]
     return scan_linux_inventory(preferred_language);
@@ -57,7 +113,7 @@ pub fn prepare_native_application_uninstall(
     application_path: &str,
     preferred_language: Option<&str>,
 ) -> Result<ApplicationUninstallPlan, CommandError> {
-    let inventory = scan_native_application_inventory(preferred_language)?;
+    let inventory = load_or_scan_native_application_inventory(preferred_language, false)?;
     let application = inventory
         .applications
         .into_iter()
@@ -92,7 +148,6 @@ pub fn prepare_native_application_uninstall(
     let id = random_plan_id()?;
     let plan = StoredPlan {
         created_at_ms: now_millis(),
-        application_path: application.path.clone(),
         source: application.installation_source,
         identifier: identifier.clone(),
     };
@@ -119,46 +174,52 @@ pub fn prepare_native_application_uninstall(
 pub fn execute_native_application_uninstall(
     request: NativeApplicationUninstallExecutionRequest,
 ) -> Result<NativeApplicationUninstallResult, CommandError> {
-    let stored = plan_store()
+    let mut plans = plan_store()
         .lock()
-        .map_err(|_| CommandError::internal("The native uninstall plan store is unavailable."))?
-        .remove(&request.plan_id)
-        .ok_or_else(|| {
-            CommandError::new(
-                "native_uninstall_plan_expired",
-                "The native uninstall plan is unavailable. Prepare the application again.",
-            )
-        })?;
-    if now_millis().saturating_sub(stored.created_at_ms) > PLAN_TTL_MS {
-        return Err(CommandError::new(
-            "native_uninstall_plan_expired",
-            "The native uninstall plan expired. Prepare the application again.",
-        ));
-    }
-    let current = scan_native_application_inventory(None)?
-        .applications
-        .into_iter()
-        .find(|application| application.path == stored.application_path)
-        .ok_or_else(|| {
-            CommandError::new(
-                "application_unavailable",
-                "The application is no longer present in the package catalog.",
-            )
-        })?;
-    if current.installation_source != stored.source
-        || current.native_uninstall_identifier.as_deref() != Some(stored.identifier.as_str())
-    {
+        .map_err(|_| CommandError::internal("The native uninstall plan store is unavailable."))?;
+    let stored = take_plan(&mut plans, &request.plan_id, now_millis())?;
+    drop(plans);
+    if !native_identity_is_current(stored.source, &stored.identifier)? {
         return Err(CommandError::new(
             "application_identity_changed",
             "The operating system uninstall identity changed. Prepare a new plan.",
         ));
     }
     let status = execute_fixed_native_uninstaller(stored.source, &stored.identifier)?;
+    invalidate_native_inventory_cache();
     Ok(result_from_status(status))
+}
+
+fn invalidate_native_inventory_cache() {
+    if let Some(cache) = NATIVE_INVENTORY_CACHE.get()
+        && let Ok(mut cache) = cache.lock()
+    {
+        *cache = None;
+    }
 }
 
 fn plan_store() -> &'static Mutex<HashMap<String, StoredPlan>> {
     NATIVE_UNINSTALL_PLANS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn take_plan(
+    plans: &mut HashMap<String, StoredPlan>,
+    plan_id: &str,
+    now: u64,
+) -> Result<StoredPlan, CommandError> {
+    let plan = plans.remove(plan_id).ok_or_else(|| {
+        CommandError::new(
+            "native_uninstall_plan_expired",
+            "The native uninstall plan is unavailable. Prepare the application again.",
+        )
+    })?;
+    if now.saturating_sub(plan.created_at_ms) > PLAN_TTL_MS {
+        return Err(CommandError::new(
+            "native_uninstall_plan_expired",
+            "The native uninstall plan expired. Prepare the application again.",
+        ));
+    }
+    Ok(plan)
 }
 
 fn random_plan_id() -> Result<String, CommandError> {
@@ -230,15 +291,7 @@ fn validate_native_identifier(
 
 fn result_from_status(status: ExitStatus) -> NativeApplicationUninstallResult {
     let exit_code = status.code();
-    let outcome = if status.success() {
-        NativeApplicationUninstallOutcome::Succeeded
-    } else if matches!(exit_code, Some(126 | 1602)) {
-        NativeApplicationUninstallOutcome::Cancelled
-    } else if matches!(exit_code, Some(1641 | 3010)) {
-        NativeApplicationUninstallOutcome::RestartRequired
-    } else {
-        NativeApplicationUninstallOutcome::Failed
-    };
+    let outcome = outcome_from_exit(status.success(), exit_code);
     NativeApplicationUninstallResult {
         outcome,
         exit_code,
@@ -263,6 +316,168 @@ fn result_from_status(status: ExitStatus) -> NativeApplicationUninstallResult {
     }
 }
 
+fn outcome_from_exit(success: bool, exit_code: Option<i32>) -> NativeApplicationUninstallOutcome {
+    if success {
+        NativeApplicationUninstallOutcome::Succeeded
+    } else if matches!(exit_code, Some(126 | 1602)) {
+        NativeApplicationUninstallOutcome::Cancelled
+    } else if matches!(exit_code, Some(1641 | 3010)) {
+        NativeApplicationUninstallOutcome::RestartRequired
+    } else {
+        NativeApplicationUninstallOutcome::Failed
+    }
+}
+
+#[cfg(windows)]
+fn native_inventory_fingerprint() -> Option<String> {
+    // Registry providers do not expose a cheap stable catalog generation.
+    // The short cache TTL remains the Windows invalidation boundary.
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn native_inventory_fingerprint() -> Option<String> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    for path in [
+        "/usr/share/applications",
+        "/usr/local/share/applications",
+        "/var/lib/flatpak/exports/share/applications",
+        "/var/lib/snapd/desktop/applications",
+        "/var/lib/dpkg/status",
+        "/var/lib/rpm",
+        "/usr/lib/sysimage/rpm",
+    ] {
+        path.hash(&mut hasher);
+        if let Ok(metadata) = fs::metadata(path) {
+            metadata.len().hash(&mut hasher);
+            metadata
+                .modified()
+                .ok()
+                .and_then(system_time_millis)
+                .hash(&mut hasher);
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        for path in [
+            home.join(".local/share/applications"),
+            home.join(".local/share/flatpak/exports/share/applications"),
+        ] {
+            path.hash(&mut hasher);
+            if let Ok(metadata) = fs::metadata(&path) {
+                metadata.len().hash(&mut hasher);
+                metadata
+                    .modified()
+                    .ok()
+                    .and_then(system_time_millis)
+                    .hash(&mut hasher);
+            }
+        }
+    }
+    Some(format!("{:016x}", hasher.finish()))
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn native_inventory_fingerprint() -> Option<String> {
+    None
+}
+
+#[cfg(windows)]
+fn native_identity_is_current(
+    source: ApplicationInstallationSource,
+    identifier: &str,
+) -> Result<bool, CommandError> {
+    validate_native_identifier(source, identifier)?;
+    let mut command = Command::new("powershell.exe");
+    command.args(["-NoProfile", "-NonInteractive", "-Command"]);
+    match source {
+        ApplicationInstallationSource::WindowsMsi => {
+            command.arg(
+                "$id=$env:CORE_ROBIN_PACKAGE_ID; $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall'); if ($roots | Where-Object { Test-Path (Join-Path $_ $id) }) { exit 0 } else { exit 1 }",
+            );
+        }
+        ApplicationInstallationSource::WindowsMsix => {
+            command.arg(
+                "if (Get-AppxPackage -Package $env:CORE_ROBIN_PACKAGE_ID -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }",
+            );
+        }
+        _ => return Ok(false),
+    }
+    command.env("CORE_ROBIN_PACKAGE_ID", identifier);
+    command_success(&mut command, "Windows package identity")
+}
+
+#[cfg(target_os = "linux")]
+fn native_identity_is_current(
+    source: ApplicationInstallationSource,
+    identifier: &str,
+) -> Result<bool, CommandError> {
+    validate_native_identifier(source, identifier)?;
+    let mut command = match source {
+        ApplicationInstallationSource::LinuxFlatpak => {
+            let (scope, package) = identifier.split_once(':').ok_or_else(|| {
+                CommandError::new(
+                    "application_identity_invalid",
+                    "The Flatpak identity did not include an installation scope.",
+                )
+            })?;
+            let mut command = Command::new("flatpak");
+            command.arg("info");
+            command.arg(if scope == "user" {
+                "--user"
+            } else {
+                "--system"
+            });
+            command.args(["--", package]);
+            command
+        }
+        ApplicationInstallationSource::LinuxDeb => {
+            let mut command = Command::new("dpkg-query");
+            command.args(["-W", "-f=${db:Status-Status}", "--", identifier]);
+            command
+        }
+        ApplicationInstallationSource::LinuxRpm => {
+            let mut command = Command::new("rpm");
+            command.args(["-q", "--", identifier]);
+            command
+        }
+        ApplicationInstallationSource::LinuxSnap => {
+            let mut command = Command::new("snap");
+            command.args(["info", "--", identifier]);
+            command
+        }
+        _ => return Ok(false),
+    };
+    command_success(&mut command, "Linux package identity")
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn native_identity_is_current(
+    source: ApplicationInstallationSource,
+    identifier: &str,
+) -> Result<bool, CommandError> {
+    let _ = (source, identifier);
+    Ok(false)
+}
+
+#[cfg(any(windows, target_os = "linux"))]
+fn command_success(command: &mut Command, context: &str) -> Result<bool, CommandError> {
+    bounded_command::output(
+        command,
+        INVENTORY_COMMAND_TIMEOUT,
+        INVENTORY_COMMAND_OUTPUT_LIMIT,
+    )
+    .map(|output| output.status.success())
+    .map_err(|error| {
+        CommandError::new(
+            "application_inventory_unavailable",
+            format!("{context} could not be checked: {error}"),
+        )
+    })
+}
+
 #[cfg(windows)]
 fn scan_windows_inventory() -> Result<ApplicationInventorySnapshot, CommandError> {
     let script = r#"
@@ -284,28 +499,37 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { -not $_.NonRemovable -a
 }
 $items | Sort-Object name,id -Unique | ConvertTo-Json -Compress
 "#;
-    let output = Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .output()
-        .map_err(|error| {
-            CommandError::internal(format!(
-                "Could not read the Windows package catalog: {error}"
-            ))
-        })?;
+    let output = bounded_command::output(
+        Command::new("powershell.exe").args(["-NoProfile", "-NonInteractive", "-Command", script]),
+        INVENTORY_COMMAND_TIMEOUT,
+        INVENTORY_COMMAND_OUTPUT_LIMIT,
+    )
+    .map_err(|error| {
+        CommandError::internal(format!(
+            "Could not read the Windows package catalog: {error}"
+        ))
+    })?;
     if !output.status.success() {
         return Err(CommandError::new(
             "application_inventory_unavailable",
             "Windows could not provide its installed application catalog.",
         ));
     }
+    let mut applications = parse_windows_inventory(&output.stdout);
+    sort_native_applications(&mut applications);
+    Ok(native_inventory(applications))
+}
+
+#[cfg(any(windows, test))]
+fn parse_windows_inventory(bytes: &[u8]) -> Vec<InstalledApplication> {
     let value: serde_json::Value =
-        serde_json::from_slice(&output.stdout).unwrap_or_else(|_| serde_json::json!([]));
+        serde_json::from_slice(bytes).unwrap_or_else(|_| serde_json::json!([]));
     let entries = match value {
         serde_json::Value::Array(entries) => entries,
         serde_json::Value::Object(_) => vec![value],
         _ => Vec::new(),
     };
-    let mut applications = entries
+    entries
         .into_iter()
         .filter_map(|entry| {
             let name = entry.get("name")?.as_str()?.trim().to_owned();
@@ -335,9 +559,7 @@ $items | Sort-Object name,id -Unique | ConvertTo-Json -Compress
                 source == ApplicationInstallationSource::WindowsMsi,
             ))
         })
-        .collect::<Vec<_>>();
-    sort_native_applications(&mut applications);
-    Ok(native_inventory(applications))
+        .collect()
 }
 
 #[cfg(windows)]
@@ -386,85 +608,85 @@ fn scan_linux_inventory(
         roots.push(home.join(".local/share/applications"));
         roots.push(home.join(".local/share/flatpak/exports/share/applications"));
     }
+    let desktop_paths = roots
+        .iter()
+        .filter_map(|root| fs::read_dir(root).ok())
+        .flat_map(|entries| entries.flatten().map(|entry| entry.path()))
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("desktop"))
+        .collect::<Vec<_>>();
     let deb_owners = deb_desktop_owners();
+    let rpm_owners = rpm_desktop_owners(&desktop_paths);
     let mut applications = Vec::new();
     let mut seen = std::collections::HashSet::new();
-    for root in roots {
-        let entries = match fs::read_dir(&root) {
-            Ok(entries) => entries,
-            Err(_) => continue,
+    for path in desktop_paths {
+        let Some(desktop) = parse_desktop_entry(&path, preferred_language) else {
+            continue;
         };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|value| value.to_str()) != Some("desktop") {
-                continue;
-            }
-            let Some(desktop) = parse_desktop_entry(&path, preferred_language) else {
-                continue;
-            };
-            if desktop.no_display {
-                continue;
-            }
-            let (source, identifier, requires_elevation) =
-                if let Some(identifier) = desktop.flatpak_id {
-                    let scope = if home
-                        .as_ref()
-                        .is_some_and(|home| path.starts_with(home.join(".local/share/flatpak")))
-                    {
-                        "user"
-                    } else {
-                        "system"
-                    };
-                    (
-                        ApplicationInstallationSource::LinuxFlatpak,
-                        format!("{scope}:{identifier}"),
-                        scope == "system",
-                    )
-                } else if let Some(identifier) = desktop.snap_id {
-                    (ApplicationInstallationSource::LinuxSnap, identifier, true)
-                } else if let Some(identifier) = deb_owners.get(&path) {
-                    (
-                        ApplicationInstallationSource::LinuxDeb,
-                        identifier.clone(),
-                        true,
-                    )
-                } else if let Some(identifier) = rpm_owner(&path) {
-                    (ApplicationInstallationSource::LinuxRpm, identifier, true)
-                } else {
-                    (
-                        ApplicationInstallationSource::Portable,
-                        path.to_string_lossy().into_owned(),
-                        false,
-                    )
-                };
-            let identity = format!("{source:?}:{identifier}");
-            if !seen.insert(identity) {
-                continue;
-            }
-            let uninstallable = !matches!(source, ApplicationInstallationSource::Portable)
-                && validate_native_identifier(source, &identifier).is_ok();
-            let protected = desktop.name.eq_ignore_ascii_case("CoreRobin");
-            let modified_at_ms = entry
-                .metadata()
-                .ok()
-                .and_then(|metadata| metadata.modified().ok())
-                .and_then(system_time_millis);
-            let mut application = native_application(
-                desktop.name,
-                source,
-                identifier,
-                0,
-                desktop.icon_path,
-                protected,
-                requires_elevation,
-            );
-            application.modified_at_ms = modified_at_ms;
-            if !uninstallable && !protected {
-                application.uninstallable = false;
-                application.unavailable_reason = Some("portable_application".to_owned());
-            }
-            applications.push(application);
+        if desktop.no_display {
+            continue;
         }
+        let (source, identifier, requires_elevation) = if let Some(identifier) = desktop.flatpak_id
+        {
+            let scope = if home
+                .as_ref()
+                .is_some_and(|home| path.starts_with(home.join(".local/share/flatpak")))
+            {
+                "user"
+            } else {
+                "system"
+            };
+            (
+                ApplicationInstallationSource::LinuxFlatpak,
+                format!("{scope}:{identifier}"),
+                scope == "system",
+            )
+        } else if let Some(identifier) = desktop.snap_id {
+            (ApplicationInstallationSource::LinuxSnap, identifier, true)
+        } else if let Some(identifier) = deb_owners.get(&path) {
+            (
+                ApplicationInstallationSource::LinuxDeb,
+                identifier.clone(),
+                true,
+            )
+        } else if let Some(identifier) = rpm_owners.get(&path) {
+            (
+                ApplicationInstallationSource::LinuxRpm,
+                identifier.clone(),
+                true,
+            )
+        } else {
+            (
+                ApplicationInstallationSource::Portable,
+                path.to_string_lossy().into_owned(),
+                false,
+            )
+        };
+        let identity = format!("{source:?}:{identifier}");
+        if !seen.insert(identity) {
+            continue;
+        }
+        let uninstallable = !matches!(source, ApplicationInstallationSource::Portable)
+            && validate_native_identifier(source, &identifier).is_ok();
+        let protected = desktop.name.eq_ignore_ascii_case("CoreRobin");
+        let modified_at_ms = fs::metadata(&path)
+            .ok()
+            .and_then(|metadata| metadata.modified().ok())
+            .and_then(system_time_millis);
+        let mut application = native_application(
+            desktop.name,
+            source,
+            identifier,
+            0,
+            desktop.icon_path,
+            protected,
+            requires_elevation,
+        );
+        application.modified_at_ms = modified_at_ms;
+        if !uninstallable && !protected {
+            application.uninstallable = false;
+            application.unavailable_reason = Some("portable_application".to_owned());
+        }
+        applications.push(application);
     }
     sort_native_applications(&mut applications);
     Ok(native_inventory(applications))
@@ -481,7 +703,15 @@ struct DesktopEntry {
 
 #[cfg(target_os = "linux")]
 fn parse_desktop_entry(path: &Path, preferred_language: Option<&str>) -> Option<DesktopEntry> {
-    let text = fs::read_to_string(path).ok()?;
+    parse_desktop_entry_text(&fs::read_to_string(path).ok()?, path, preferred_language)
+}
+
+#[cfg(target_os = "linux")]
+fn parse_desktop_entry_text(
+    text: &str,
+    path: &Path,
+    preferred_language: Option<&str>,
+) -> Option<DesktopEntry> {
     let language = preferred_language
         .and_then(|language| language.split(['-', '_']).next())
         .unwrap_or("");
@@ -534,9 +764,11 @@ fn parse_desktop_entry(path: &Path, preferred_language: Option<&str>) -> Option<
 
 #[cfg(target_os = "linux")]
 fn deb_desktop_owners() -> HashMap<PathBuf, String> {
-    let output = Command::new("dpkg-query")
-        .args(["-S", "/usr/share/applications/*.desktop"])
-        .output();
+    let output = bounded_command::output(
+        Command::new("dpkg-query").args(["-S", "/usr/share/applications/*.desktop"]),
+        INVENTORY_COMMAND_TIMEOUT,
+        INVENTORY_COMMAND_OUTPUT_LIMIT,
+    );
     let Ok(output) = output else {
         return HashMap::new();
     };
@@ -554,17 +786,29 @@ fn deb_desktop_owners() -> HashMap<PathBuf, String> {
 }
 
 #[cfg(target_os = "linux")]
-fn rpm_owner(path: &Path) -> Option<String> {
-    let output = Command::new("rpm")
-        .args(["-qf", "--qf", "%{NAME}", "--"])
-        .arg(path)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-        .filter(|value| !value.is_empty())
+fn rpm_desktop_owners(paths: &[PathBuf]) -> HashMap<PathBuf, String> {
+    let mut owners = HashMap::new();
+    for chunk in paths.chunks(128) {
+        let mut command = Command::new("rpm");
+        command.args(["-qf", "--qf", "[%{NAME}\\t%{FILENAMES}\\n]", "--"]);
+        command.args(chunk);
+        let Ok(output) = bounded_command::output(
+            &mut command,
+            INVENTORY_COMMAND_TIMEOUT,
+            INVENTORY_COMMAND_OUTPUT_LIMIT,
+        ) else {
+            continue;
+        };
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            let Some((package, path)) = line.split_once('\t') else {
+                continue;
+            };
+            if path.ends_with(".desktop") && !package.trim().is_empty() {
+                owners.insert(PathBuf::from(path.trim()), package.trim().to_owned());
+            }
+        }
+    }
+    owners
 }
 
 #[cfg(target_os = "linux")]
@@ -701,8 +945,17 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::validate_native_identifier;
-    use crate::models::ApplicationInstallationSource;
+    use std::collections::HashMap;
+    #[cfg(target_os = "linux")]
+    use std::path::Path;
+
+    #[cfg(target_os = "linux")]
+    use super::parse_desktop_entry_text;
+    use super::{
+        PLAN_TTL_MS, StoredPlan, outcome_from_exit, parse_windows_inventory, take_plan,
+        validate_native_identifier,
+    };
+    use crate::models::{ApplicationInstallationSource, NativeApplicationUninstallOutcome};
 
     #[test]
     fn accepts_package_manager_ids_and_rejects_shell_data() {
@@ -738,5 +991,75 @@ mod tests {
             )
             .is_ok(),
         );
+    }
+
+    #[test]
+    fn parses_windows_catalog_fixtures_and_rejects_untrusted_sources() {
+        let applications = parse_windows_inventory(
+            br#"[
+              {"name":"Editor","id":"{12345678-1234-1234-1234-1234567890AB}","source":"windows_msi","size":4096,"icon":"C:\\Editor.exe"},
+              {"name":"Store App","id":"Contoso.App_1.0_x64__abc","source":"windows_msix","size":0,"icon":null},
+              {"name":"Ignored","id":"cmd.exe /c bad","source":"windows_uninstaller","size":0}
+            ]"#,
+        );
+
+        assert_eq!(applications.len(), 2);
+        assert_eq!(
+            applications[0].installation_source,
+            ApplicationInstallationSource::WindowsMsi,
+        );
+        assert_eq!(applications[0].size_bytes, 4096);
+        assert!(applications[1].uninstallable);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn parses_localized_desktop_entry_fixtures() {
+        let entry = parse_desktop_entry_text(
+            "[Desktop Entry]\nName=Editor\nName[zh]=编辑器\nX-Flatpak=com.example.Editor\nIcon=/tmp/editor.png\n",
+            Path::new("/usr/share/applications/editor.desktop"),
+            Some("zh-CN"),
+        )
+        .unwrap();
+
+        assert_eq!(entry.name, "编辑器");
+        assert_eq!(entry.flatpak_id.as_deref(), Some("com.example.Editor"));
+        assert_eq!(entry.icon_path.as_deref(), Some("/tmp/editor.png"));
+    }
+
+    #[test]
+    fn maps_native_exit_codes_without_platform_processes() {
+        assert_eq!(
+            outcome_from_exit(true, Some(0)),
+            NativeApplicationUninstallOutcome::Succeeded,
+        );
+        assert_eq!(
+            outcome_from_exit(false, Some(1602)),
+            NativeApplicationUninstallOutcome::Cancelled,
+        );
+        assert_eq!(
+            outcome_from_exit(false, Some(3010)),
+            NativeApplicationUninstallOutcome::RestartRequired,
+        );
+        assert_eq!(
+            outcome_from_exit(false, Some(1)),
+            NativeApplicationUninstallOutcome::Failed,
+        );
+    }
+
+    #[test]
+    fn uninstall_plans_are_short_lived_and_single_use() {
+        let plan = StoredPlan {
+            created_at_ms: 100,
+            source: ApplicationInstallationSource::LinuxDeb,
+            identifier: "editor".to_owned(),
+        };
+        let mut plans = HashMap::from([("valid".to_owned(), plan.clone())]);
+        assert!(take_plan(&mut plans, "valid", 101).is_ok());
+        assert!(take_plan(&mut plans, "valid", 102).is_err());
+
+        plans.insert("expired".to_owned(), plan);
+        assert!(take_plan(&mut plans, "expired", 100 + PLAN_TTL_MS + 1).is_err(),);
+        assert!(!plans.contains_key("expired"));
     }
 }

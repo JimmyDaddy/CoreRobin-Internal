@@ -44,7 +44,7 @@
   },
   "uninstall": {
     "scanKicker": "本機應用程式索引", "scanningHint": "檢查應用程式包、磁碟使用情況和套件 ID。較大的應用程式可能需要更長的時間。",
-    "kicker": "應用程式管理", "title": "完整卸載助手", "description": "尋找由確切的捆綁包 ID 歸屬的應用程式捆綁包和剩餘內容。在您確認每條路徑之前，不會處理任何內容。", "refresh": "刷新應用程式", "unsupportedTitle": "該平台尚不支援完全卸載", "unsupportedDescription": "第一個版本支援 macOS 應用程式包。當等效安全檢查可用時，Windows 和 Linux 將遵循。",
+    "kicker": "應用程式管理", "title": "完整卸載助手", "description": "尋找由確切的捆綁包 ID 歸屬的應用程式捆綁包和剩餘內容。在您確認每條路徑之前，不會處理任何內容。", "refresh": "刷新應用程式", "unsupportedTitle": "無法使用系統應用程式目錄", "unsupportedDescription": "無法讀取可信的作業系統應用程式資訊。請在支援的 macOS、Windows 或 Linux 上重試。",
     "applicationUnit": "應用程式", "installedSize": "在應用程式包中", "localOnly": "本地閱讀；庫存從未上傳", "cachedInventory": "顯示來自{{time}}的本機快取；隨時刷新", "search": "搜尋已安裝的應用程式", "searchPlaceholder": "搜尋名稱、套件 ID 或路徑", "scanning": "閱讀應用程式清單...", "empty": "沒有匹配的應用程式", "preparingPlan": "驗證應用程式身份和支援文件...", "planKicker": "解除安裝計劃", "planBoundary": "首先退出這個應用程式。僅列出由確切的捆綁 ID 證明的路徑；應用程式名稱猜測被排除。", "bundleOnlyBoundary": "此應用程式沒有可驗證的 Bundle ID，因此 CoreRobin 只會移除已由路徑與結構驗證的應用程式套件，不會猜測支援檔案。", "foundItems": "已驗證項目", "required": "必需的",
     "selectedSize": "{{count}} 已選項目", "review": "檢查並卸載 {{name}}", "reveal": "顯示Finder中的應用", "skipped": "{{count}} 計劃中排除的項目", "skippedDescription": "這些路徑沒有通過安全文件句柄檢查，因此助手不會觸及它們。", "selectTitle": "選擇一個應用程式", "selectDescription": "助理在最終確認之前創建逐條路徑的計劃。", "cannotPrepare": "無法為此應用程式建立安全性計劃", "dialogTitle": "卸載{{name}}", "dialogDescription": "逐項檢視應用程式套件與相關資料。移到垃圾桶是可復原的預設選項。", "outcomeComplete": "為 {{name}} 處理了 {{count}} 物品，回收了 {{size}}。", "outcomeMovedToTrash": "將 {{name}} 移至垃圾箱；處理了 {{count}} 物品和 {{size}} 物品。在清空垃圾箱之前，它仍然可以恢復。", "outcomeDeletedPermanently": "已永久刪除 {{name}}；處理 {{count}} 項並釋放 {{size}}。", "outcomePartial": "{{name}}的卸載未完全完成；處理了 {{count}} 物品和 {{size}} 物品。",
     "removed": { "trash": "已移至垃圾箱", "permanent": "永久刪除", "trashDescription": "該應用程式已離開其原始位置，可以恢復，直到清空垃圾箱。刷新庫存以刪除該記錄。", "permanentDescription": "應用程式已直接從磁碟刪除，無法從垃圾桶復原。重新整理清單即可移除此記錄。", "partial": "應用程式包已刪除，但某些相關項目無法處理。" },
@@ -56,43 +56,43 @@
   "safety": "點選應用只會開啟資源證據；任何結束操作仍需單獨確認。"
 ,
   "nativeUninstall": {
-    "boundary": "The operating system package catalog owns this app. CoreRobin will pass only a verified, short-lived package identity to the native uninstaller.",
-    "sourceLabel": "Install source",
-    "methodLabel": "System method",
-    "elevationLabel": "Authorization",
-    "elevationRequired": "The operating system may request administrator approval",
-    "elevationNotRequired": "No administrator approval is expected",
-    "relatedData": "Associated data is not guessed or deleted automatically. The package manager decides which installed files belong to this app.",
-    "systemManaged": "System-managed uninstall",
-    "revalidate": "Package identity is checked again immediately before execution.",
-    "review": "Review system uninstall for {{name}}",
-    "dialogTitle": "Uninstall {{name}} with the operating system",
-    "dialogDescription": "CoreRobin will start the verified package-manager method. Any authorization prompt belongs to the operating system.",
-    "dialogBoundary": "The frontend never supplies an executable path or command line.",
-    "elevationPrompt": "A Windows UAC or Linux PolicyKit prompt may appear. Cancelling it is reported separately from failure.",
-    "confirm": "Start system uninstall",
-    "submitting": "Waiting for the system uninstaller…",
+    "boundary": "此應用程式由作業系統套件目錄管理。CoreRobin 只會把經驗證的短期套件識別傳給原生卸載程式。",
+    "sourceLabel": "安裝來源",
+    "methodLabel": "系統方式",
+    "elevationLabel": "授權",
+    "elevationRequired": "作業系統可能要求管理員核准",
+    "elevationNotRequired": "預計不需要管理員核准",
+    "relatedData": "不會猜測或自動刪除相關資料。由套件管理程式判斷哪些已安裝檔案屬於此應用程式。",
+    "systemManaged": "由系統管理的卸載",
+    "revalidate": "執行前會立即再次核對套件識別。",
+    "review": "檢查 {{name}} 的系統卸載",
+    "dialogTitle": "使用作業系統卸載 {{name}}",
+    "dialogDescription": "CoreRobin 會啟動經驗證的套件管理方式；任何授權提示均由作業系統提供。",
+    "dialogBoundary": "前端不會提供執行檔路徑或命令列。",
+    "elevationPrompt": "可能出現 Windows UAC 或 Linux PolicyKit 提示；取消會與失敗分開顯示。",
+    "confirm": "開始系統卸載",
+    "submitting": "正在等待系統卸載程式…",
     "source": {
-      "macos_bundle": "macOS application bundle",
+      "macos_bundle": "macOS 應用程式套件",
       "windows_msi": "Windows Installer (MSI)",
-      "windows_msix": "Windows package (MSIX)",
-      "windows_uninstaller": "Registered Windows uninstaller",
+      "windows_msix": "Windows 套件 (MSIX)",
+      "windows_uninstaller": "已註冊的 Windows 卸載程式",
       "linux_flatpak": "Flatpak",
-      "linux_deb": "Debian package",
-      "linux_rpm": "RPM package",
+      "linux_deb": "Debian 套件",
+      "linux_rpm": "RPM 套件",
       "linux_snap": "Snap",
-      "portable": "Portable or manually installed",
-      "unknown": "Unknown source"
+      "portable": "可攜式或手動安裝",
+      "unknown": "未知來源"
     },
     "outcome": {
-      "succeeded": "{{name}} was removed by the operating system.",
-      "cancelled": "The system uninstall for {{name}} was cancelled.",
-      "failed": "The system uninstaller could not remove {{name}}.",
-      "restart_required": "{{name}} was removed; the operating system requested a restart."
+      "succeeded": "作業系統已移除 {{name}}。",
+      "cancelled": "{{name}} 的系統卸載已取消。",
+      "failed": "系統卸載程式無法移除 {{name}}。",
+      "restart_required": "{{name}} 已移除；作業系統要求重新啟動。"
     },
     "unavailable": {
-      "protected": "CoreRobin or a protected system component cannot be removed from this screen.",
-      "portable": "No trusted package-manager identity was found. The item remains read-only."
+      "protected": "無法從此畫面移除 CoreRobin 或受保護的系統元件。",
+      "portable": "找不到可信的套件管理識別；此項目保持唯讀。"
     }
   }
 }

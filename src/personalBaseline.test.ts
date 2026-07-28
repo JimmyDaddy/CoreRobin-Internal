@@ -6,9 +6,12 @@ import type { HistoryPoint } from "./types";
 describe("personal baseline", () => {
   it("compares recent activity with the same time of day without a health score", () => {
     const now = new Date("2026-07-28T12:00:00Z").getTime();
+    const comparableDays = [1, 4, 5];
     const baseline = Array.from({ length: 12 }, (_, index) =>
       historyPoint(
-        now - (index % 6 + 1) * 24 * 60 * 60 * 1_000 - Math.floor(index / 6) * 60_000,
+        now
+          - comparableDays[index % comparableDays.length]! * 24 * 60 * 60 * 1_000
+          - Math.floor(index / comparableDays.length) * 60_000,
         20,
         50,
       )
@@ -26,6 +29,8 @@ describe("personal baseline", () => {
       baseline: 20,
       changePercent: 200,
       sampleCount: 12,
+      distinctDayCount: 3,
+      confidence: "limited",
     });
     expect(comparisons.find(({ metric }) => metric === "memory")?.status)
       .toBe("typical");

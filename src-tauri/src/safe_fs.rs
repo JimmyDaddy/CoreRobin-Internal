@@ -749,7 +749,7 @@ impl BoundDeleteTarget {
         self.delete_cancellable_with_policy(cancelled, on_entry_deleted, true, || {})
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     fn delete_cancellable_with_hook(
         self,
         cancelled: &AtomicBool,

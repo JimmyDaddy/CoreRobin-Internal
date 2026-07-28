@@ -34,6 +34,7 @@
     "title": "История о компьютере",
     "description": "Объединяет предупреждения и восстановление в одно событие, затем объясняет его влияние и результат простым языком.",
     "cause": "Основная причина: {{name}} оказала наибольшее влияние в это время",
+    "inspectApplications": "Посмотреть приложения в момент пика",
     "timeline": "Хронология события",
     "startedAt": "Началось с {{time}}",
     "peakedAt": "Достигло пика {{value}}% · {{time}}",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "История наблюдения за приложениями", "description": "Локальные события срабатывания и восстановления ваших правил.", "savedEvents": "{{count}} событий", "savedEvents_one": "{{count}} событие", "savedEvents_few": "{{count}} события", "savedEvents_many": "{{count}} событий", "savedEvents_other": "{{count}} события", "privateApplication": "Имя приложения не сохранено", "triggered": "{{metric}} достиг {{value}}{{unit}}", "recovered": "{{metric}} восстановился до {{value}}{{unit}}" },
   "privacyEyebrow": "Границы данных",
   "privacyTitle": "Политика конфиденциальности",
-  "privacyLocal": "История сохраняется в локальном хранилище CoreRobin WebView и не передается или синхронизируется.",
+  "privacyLocal": "История хранится только в закрытом хранилище CoreRobin на этом устройстве и не отправляется и не синхронизируется.",
   "privacyCollected": "История хранит сводные данные о ресурсах, события нагрузки и восстановления, а также тип, результат, количество объектов и освобождённое место подтверждённых действий. Имена приложений и элементов автозапуска сохраняются только с отдельного разрешения.",
   "privacyExcluded": "История ресурсов и действий не хранит команды, пользователей, пути, имена файлов и адреса соединений. Если отдельно включить историю соединений, пятиминутные агрегаты могут содержать удалённые IP, домены, порты и имена приложений.",
   "privacyControl": "Отключение прекращает запись новых данных; существующие записи остаются до истечения срока действия или при ручном их удалении."
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "Вклад приложений",
+    "title": "Какие приложения влияли на этот компьютер",
+    "description": "Необязательные пятиминутные сводки показывают, какие приложения регулярно использовали CPU, память или диск.",
+    "enable": "Хранить историю влияния приложений",
+    "range": "Диапазон истории приложений",
+    "hours1": "1 час",
+    "hours24": "24 часа",
+    "hours168": "7 дней",
+    "disabledTitle": "Учёт вклада приложений отключён",
+    "disabledDescription": "Включите, чтобы сохранять стабильные идентификаторы приложений и сводные значения на этом устройстве.",
+    "learningTitle": "Создаётся история приложений",
+    "learningDescription": "Рейтинг появится после накопления достаточного количества пятиминутных выборок.",
+    "timeline": "Влияние по времени",
+    "timelineHint": "Выберите столбец, чтобы увидеть рейтинг приложений в этот момент.",
+    "explanation": "Около {{time}} приложение {{name}} лидировало со средним CPU {{cpu}} и памятью {{memory}}.",
+    "peakCpu": "Пик CPU {{value}}",
+    "storageLoading": "Чтение закрытого хранилища истории…",
+    "storageReady": "Последнее сохранение {{time}} · {{size}}",
+    "storagePending": "Новые выборки сохраняются в закрытом хранилище.",
+    "storageFailed": "Историю можно просматривать, но новые выборки сохранить не удалось. CoreRobin повторит попытку.",
+    "boundary": "Команды и пути не сохраняются; имена приложений подчиняются отдельной настройке конфиденциальности."
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "Базовый уровень этого компьютера",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "Изучаем обычное состояние",
+      "description": "CoreRobin нужно больше выборок за одинаковое время суток, чтобы сравнить компьютер с его обычным состоянием."
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "Близко к обычному режиму этого компьютера",
+      "description": "По доступным базовым показателям значимых отклонений не обнаружено."
+    },
+    "partial": {
+      "title": "Часть базового уровня ещё изучается",
+      "description": "С обычным режимом сравнены только показатели с достаточным числом отдельных дней."
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "Отличается от обычного режима этого компьютера",
+      "description": "{{count}} показателей заметно выше семидневного базового уровня за это же время."
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "Собирается базовый уровень",
+    "coverage": "{{days}} сопоставимых дней · {{count}} выборок",
+    "change": "На {{value}}% {{direction}} обычного",
+    "higher": "выше",
+    "lower": "ниже",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "Память",
+      "disk": "Пропускная способность диска",
+      "network": "Пропускная способность сети",
+      "temperature": "Температура",
+      "battery": "Расход батареи"
     }
   }
 }

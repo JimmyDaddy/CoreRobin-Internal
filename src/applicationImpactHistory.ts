@@ -27,24 +27,48 @@ export interface ApplicationImpactHistoryPoint {
   applications: ApplicationImpactHistoryEntry[];
 }
 
-interface StoredApplicationImpactHistory {
+interface LegacyStoredApplicationImpactHistory {
   version: 1;
   points: ApplicationImpactHistoryPoint[];
+}
+
+type CompactApplicationEntry = [
+  applicationIndex: number,
+  sampleCount: number,
+  averageCpuPercent: number,
+  peakCpuPercent: number,
+  averageMemoryBytes: number,
+  peakMemoryBytes: number,
+  averageDiskBytesPerSecond: number,
+  peakDiskBytesPerSecond: number,
+];
+
+type CompactApplicationPoint = [
+  bucketStartMs: number,
+  sampledAtMs: number,
+  sampleCount: number,
+  applications: CompactApplicationEntry[],
+];
+
+interface StoredApplicationImpactHistory {
+  version: 2;
+  applications: [applicationId: string, name: string][];
+  points: CompactApplicationPoint[];
+}
+
+export interface ApplicationImpactHistorySaveResult {
+  succeeded: boolean;
+  byteSize: number;
+  error: string | null;
 }
 
 export function loadApplicationImpactHistory(
   storage: Storage = window.localStorage,
 ): ApplicationImpactHistoryPoint[] {
   try {
-    const value = JSON.parse(
-      storage.getItem(APPLICATION_IMPACT_HISTORY_STORAGE_KEY) ?? "null",
-    ) as unknown;
-    if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.points)) {
-      return [];
-    }
-    return value.points
-      .filter(isApplicationImpactHistoryPoint)
-      .sort((left, right) => left.bucketStartMs - right.bucketStartMs);
+    return parseApplicationImpactHistory(
+      storage.getItem(APPLICATION_IMPACT_HISTORY_STORAGE_KEY),
+    );
   } catch {
     return [];
   }
@@ -53,18 +77,86 @@ export function loadApplicationImpactHistory(
 export function saveApplicationImpactHistory(
   points: readonly ApplicationImpactHistoryPoint[],
   storage: Storage = window.localStorage,
-): void {
+): ApplicationImpactHistorySaveResult {
+  const payload = serializeApplicationImpactHistory(points);
+  const byteSize = new TextEncoder().encode(payload).byteLength;
   try {
-    const payload: StoredApplicationImpactHistory = {
-      version: 1,
-      points: [...points],
+    storage.setItem(APPLICATION_IMPACT_HISTORY_STORAGE_KEY, payload);
+    return { succeeded: true, byteSize, error: null };
+  } catch (reason) {
+    return {
+      succeeded: false,
+      byteSize,
+      error:
+        typeof reason === "object" &&
+        reason !== null &&
+        "message" in reason &&
+        typeof reason.message === "string"
+          ? reason.message
+          : String(reason),
     };
-    storage.setItem(
-      APPLICATION_IMPACT_HISTORY_STORAGE_KEY,
-      JSON.stringify(payload),
-    );
+  }
+}
+
+export function serializeApplicationImpactHistory(
+  points: readonly ApplicationImpactHistoryPoint[],
+): string {
+  const applications: StoredApplicationImpactHistory["applications"] = [];
+  const indexes = new Map<string, number>();
+  const compactPoints: CompactApplicationPoint[] = points.map((point) => [
+    point.bucketStartMs,
+    point.sampledAtMs,
+    point.sampleCount,
+    point.applications.map((application) => {
+      const identity = `${application.applicationId}\u0000${application.name}`;
+      let applicationIndex = indexes.get(identity);
+      if (applicationIndex === undefined) {
+        applicationIndex = applications.length;
+        indexes.set(identity, applicationIndex);
+        applications.push([application.applicationId, application.name]);
+      }
+      return [
+        applicationIndex,
+        application.sampleCount,
+        application.averageCpuPercent,
+        application.peakCpuPercent,
+        application.averageMemoryBytes,
+        application.peakMemoryBytes,
+        application.averageDiskBytesPerSecond,
+        application.peakDiskBytesPerSecond,
+      ];
+    }),
+  ]);
+  return JSON.stringify({ version: 2, applications, points: compactPoints });
+}
+
+export function parseApplicationImpactHistory(
+  payload: string | null,
+): ApplicationImpactHistoryPoint[] {
+  if (!payload) return [];
+  try {
+    const value = JSON.parse(payload) as unknown;
+    if (!isRecord(value) || !Array.isArray(value.points)) return [];
+    if (value.version === 1) {
+      return (value as unknown as LegacyStoredApplicationImpactHistory).points
+        .filter(isApplicationImpactHistoryPoint)
+        .sort((left, right) => left.bucketStartMs - right.bucketStartMs);
+    }
+    if (value.version !== 2 || !Array.isArray(value.applications)) return [];
+    const applicationDictionary = value.applications
+      .map((application) =>
+        Array.isArray(application)
+          && typeof application[0] === "string"
+          && typeof application[1] === "string"
+          ? [application[0], application[1]] as const
+          : null
+      );
+    return value.points
+      .map((point) => compactPoint(point, applicationDictionary))
+      .filter((point): point is ApplicationImpactHistoryPoint => point !== null)
+      .sort((left, right) => left.bucketStartMs - right.bucketStartMs);
   } catch {
-    // The live application snapshot remains available when storage is blocked.
+    return [];
   }
 }
 
@@ -137,6 +229,41 @@ export function summarizeApplicationImpactHistory(
   return rankEntries([...entries.values()]);
 }
 
+export function applicationImpactHistoryForDisplay(
+  points: readonly ApplicationImpactHistoryPoint[],
+  hours: ApplicationImpactHistoryRangeHours,
+): ApplicationImpactHistoryPoint[] {
+  const displayBucketMs = hours === 1
+    ? APPLICATION_IMPACT_HISTORY_BUCKET_MS
+    : hours === 24
+      ? 15 * 60 * 1_000
+      : 2 * 60 * 60 * 1_000;
+  const buckets = new Map<number, ApplicationImpactHistoryPoint>();
+  for (const point of points) {
+    const bucketStartMs =
+      Math.floor(point.sampledAtMs / displayBucketMs) * displayBucketMs;
+    const previous = buckets.get(bucketStartMs);
+    buckets.set(
+      bucketStartMs,
+      previous
+        ? mergeDisplayPoints(previous, point, bucketStartMs)
+        : { ...point, bucketStartMs },
+    );
+  }
+  return [...buckets.values()].sort(
+    (left, right) => left.bucketStartMs - right.bucketStartMs,
+  );
+}
+
+export function applicationImpactPointScore(
+  point: ApplicationImpactHistoryPoint,
+): number {
+  return point.applications.reduce(
+    (total, application) => total + impactScore(application),
+    0,
+  );
+}
+
 export function applicationImpactDelta(
   current: ApplicationImpactHistoryEntry,
   previous: ApplicationImpactHistoryEntry | undefined,
@@ -167,6 +294,32 @@ function mergePoint(
     ...point,
     sampledAtMs: Math.max(point.sampledAtMs, sampledAtMs),
     sampleCount: point.sampleCount + 1,
+    applications: rankEntries([...applications.values()]),
+  };
+}
+
+function mergeDisplayPoints(
+  left: ApplicationImpactHistoryPoint,
+  right: ApplicationImpactHistoryPoint,
+  bucketStartMs: number,
+): ApplicationImpactHistoryPoint {
+  const applications = new Map(
+    left.applications.map((application) => [
+      application.applicationId,
+      application,
+    ]),
+  );
+  for (const application of right.applications) {
+    const previous = applications.get(application.applicationId);
+    applications.set(
+      application.applicationId,
+      previous ? mergeEntries(previous, application) : application,
+    );
+  }
+  return {
+    bucketStartMs,
+    sampledAtMs: Math.max(left.sampledAtMs, right.sampledAtMs),
+    sampleCount: left.sampleCount + right.sampleCount,
     applications: rankEntries([...applications.values()]),
   };
 }
@@ -224,12 +377,21 @@ function entryFromApplication(
 }
 
 function stableApplicationId(value: string): string {
-  let hash = 2_166_136_261;
+  return `app-${[
+    2_166_136_261,
+    2_166_136_261 ^ 0x9e37_79b9,
+    2_166_136_261 ^ 0x85eb_ca6b,
+    2_166_136_261 ^ 0xc2b2_ae35,
+  ].map((seed) => fnv32(value, seed)).join("")}`;
+}
+
+function fnv32(value: string, seed: number): string {
+  let hash = seed;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16_777_619);
   }
-  return `app-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function rankEntries(
@@ -283,6 +445,47 @@ function isApplicationImpactHistoryEntry(
     && finite(value.peakMemoryBytes)
     && finite(value.averageDiskBytesPerSecond)
     && finite(value.peakDiskBytesPerSecond);
+}
+
+function compactPoint(
+  value: unknown,
+  applications: readonly (readonly [string, string] | null)[],
+): ApplicationImpactHistoryPoint | null {
+  if (
+    !Array.isArray(value)
+    || !finite(value[0])
+    || !finite(value[1])
+    || !finite(value[2])
+    || !Array.isArray(value[3])
+  ) return null;
+  const entries = value[3].map((entry): ApplicationImpactHistoryEntry | null => {
+    if (
+      !Array.isArray(entry)
+      || entry.length !== 8
+      || !Number.isInteger(entry[0])
+      || entry.slice(1).some((item) => !finite(item))
+    ) return null;
+    const application = applications[entry[0] as number];
+    if (!application) return null;
+    return {
+      applicationId: application[0],
+      name: application[1],
+      sampleCount: entry[1] as number,
+      averageCpuPercent: entry[2] as number,
+      peakCpuPercent: entry[3] as number,
+      averageMemoryBytes: entry[4] as number,
+      peakMemoryBytes: entry[5] as number,
+      averageDiskBytesPerSecond: entry[6] as number,
+      peakDiskBytesPerSecond: entry[7] as number,
+    };
+  });
+  if (entries.some((entry) => entry === null)) return null;
+  return {
+    bucketStartMs: value[0],
+    sampledAtMs: value[1],
+    sampleCount: value[2],
+    applications: entries as ApplicationImpactHistoryEntry[],
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

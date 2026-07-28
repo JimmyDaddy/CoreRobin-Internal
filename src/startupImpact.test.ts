@@ -5,7 +5,11 @@ import {
   completeStartupImpactMeasurement,
   createStartupImpactAccumulator,
 } from "./startupImpact";
-import { compareStartupImpact } from "./components/StartupExplorer";
+import {
+  compareStartupImpact,
+  startupActionsBeforeMeasurement,
+} from "./components/StartupExplorer";
+import type { UserActionRecord } from "./userActionHistory";
 
 describe("startup impact measurement", () => {
   it("settles after three consecutive quiet samples", () => {
@@ -30,7 +34,37 @@ describe("startup impact measurement", () => {
       risingApplication: { name: "Editor", cpuDelta: 30 },
     });
   });
+
+  it("keeps every startup change between measurements instead of implying one cause", () => {
+    const previous = measurement(1_000, 1_000, 20);
+    const latest = measurement(10_000, 1_000, 20);
+    const records = [
+      startupAction("one", 4_000),
+      startupAction("two", 6_000),
+      startupAction("old", 500),
+    ];
+
+    expect(
+      startupActionsBeforeMeasurement(records, latest, previous)
+        .map((record) => record.targetName),
+    ).toEqual(["one", "two"]);
+  });
 });
+
+function startupAction(name: string, startedAtMs: number): UserActionRecord {
+  return {
+    id: name,
+    kind: "startup_disable",
+    status: "succeeded",
+    startedAtMs,
+    completedAtMs: startedAtMs + 1,
+    targetName: name,
+    targetCount: 1,
+    affectedBytes: 0,
+    failedCount: 0,
+    verification: "verified",
+  };
+}
 
 function measurement(
   launchedAtMs: number,

@@ -1919,6 +1919,9 @@ function App() {
                   && settings.historyApplicationNamesEnabled
                   && settings.applicationImpactHistoryEnabled
                 }
+                applicationImpactStorageStatus={
+                  applicationImpactHistory.storageStatus
+                }
                 alertEvents={resourceAlerts.events}
                 storedAlertEventCount={resourceAlerts.storedEvents.length}
                 applicationWatchEvents={applicationWatchRules.events}

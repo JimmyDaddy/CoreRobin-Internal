@@ -12,7 +12,7 @@ use crate::models::GpuEnergySnapshot;
 use crate::models::ProcessEnergySample;
 
 pub fn sample_gpu_energy() -> GpuEnergySnapshot {
-    let mut snapshot = GpuEnergySnapshot {
+    let snapshot = GpuEnergySnapshot {
         sampled_at_ms: now_millis(),
         gpu_available: false,
         process_energy_available: false,
@@ -20,12 +20,20 @@ pub fn sample_gpu_energy() -> GpuEnergySnapshot {
         process_energy: Vec::new(),
     };
 
-    #[cfg(target_os = "macos")]
-    sample_macos(&mut snapshot);
-    #[cfg(target_os = "linux")]
-    sample_linux(&mut snapshot);
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let mut snapshot = snapshot;
+        #[cfg(target_os = "macos")]
+        sample_macos(&mut snapshot);
+        #[cfg(target_os = "linux")]
+        sample_linux(&mut snapshot);
+        snapshot
+    }
 
-    snapshot
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        snapshot
+    }
 }
 
 #[cfg(target_os = "macos")]

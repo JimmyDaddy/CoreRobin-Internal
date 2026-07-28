@@ -1861,8 +1861,11 @@ pub fn load_or_scan_application_inventory(
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (cache_path, force_refresh);
-        scan_application_inventory(preferred_language)
+        let _ = cache_path;
+        crate::native_uninstall::load_or_scan_native_application_inventory(
+            preferred_language,
+            force_refresh,
+        )
     }
 }
 
@@ -1985,96 +1988,88 @@ fn application_inventory_fingerprint(
     Ok(fingerprint)
 }
 
+#[cfg(target_os = "macos")]
 pub fn scan_application_inventory(
     preferred_language: Option<&str>,
 ) -> Result<ApplicationInventorySnapshot, CommandError> {
-    #[cfg(target_os = "macos")]
-    {
-        let home = home_directory().ok_or_else(|| {
-            CommandError::new(
-                "home_directory_unavailable",
-                "CoreRobin could not locate the current user's home directory.",
-            )
-        })?;
-        let canonical_home = home.canonicalize().map_err(|error| {
-            CommandError::new(
-                "home_directory_unavailable",
-                format!("CoreRobin could not verify the home directory: {error}"),
-            )
-        })?;
-        let cancelled = AtomicBool::new(false);
-        let mut stats = ScanStats::new();
-        let mut ignore_progress = |_progress: CleanupScanProgress| {};
-        let (scanned, _) = scan_installed_applications(
-            &canonical_home,
-            &cancelled,
-            &mut stats,
-            &mut ignore_progress,
-            &HashMap::new(),
-        )?;
-        let mut applications = scanned
-            .into_iter()
-            .map(|application| {
-                match validate_application_bundle(
-                    &application.path,
-                    &canonical_home,
-                    preferred_language,
-                ) {
-                    Ok(bundle) => {
-                        let path = bundle.path_string();
-                        InstalledApplication {
-                            name: bundle.name,
-                            path,
-                            bundle_id: bundle.bundle_id,
-                            size_bytes: application.size_bytes,
-                            last_used_at_ms: application.last_used_at_ms,
-                            modified_at_ms: bundle.modified_at_ms,
-                            uninstallable: true,
-                            unavailable_reason: None,
-                            installation_source:
-                                crate::models::ApplicationInstallationSource::MacosBundle,
-                            native_uninstall_identifier: None,
-                            native_uninstall_requires_elevation: false,
-                            icon_path: None,
-                        }
-                    }
-                    Err(error) => InstalledApplication {
-                        name: application.name,
-                        path: application.path,
-                        bundle_id: None,
+    let home = home_directory().ok_or_else(|| {
+        CommandError::new(
+            "home_directory_unavailable",
+            "CoreRobin could not locate the current user's home directory.",
+        )
+    })?;
+    let canonical_home = home.canonicalize().map_err(|error| {
+        CommandError::new(
+            "home_directory_unavailable",
+            format!("CoreRobin could not verify the home directory: {error}"),
+        )
+    })?;
+    let cancelled = AtomicBool::new(false);
+    let mut stats = ScanStats::new();
+    let mut ignore_progress = |_progress: CleanupScanProgress| {};
+    let (scanned, _) = scan_installed_applications(
+        &canonical_home,
+        &cancelled,
+        &mut stats,
+        &mut ignore_progress,
+        &HashMap::new(),
+    )?;
+    let mut applications = scanned
+        .into_iter()
+        .map(|application| {
+            match validate_application_bundle(
+                &application.path,
+                &canonical_home,
+                preferred_language,
+            ) {
+                Ok(bundle) => {
+                    let path = bundle.path_string();
+                    InstalledApplication {
+                        name: bundle.name,
+                        path,
+                        bundle_id: bundle.bundle_id,
                         size_bytes: application.size_bytes,
                         last_used_at_ms: application.last_used_at_ms,
-                        modified_at_ms: application.modified_at_ms,
-                        uninstallable: false,
-                        unavailable_reason: Some(error.code),
+                        modified_at_ms: bundle.modified_at_ms,
+                        uninstallable: true,
+                        unavailable_reason: None,
                         installation_source:
                             crate::models::ApplicationInstallationSource::MacosBundle,
                         native_uninstall_identifier: None,
                         native_uninstall_requires_elevation: false,
                         icon_path: None,
-                    },
+                    }
                 }
-            })
-            .collect::<Vec<_>>();
-        applications.sort_by(|left, right| {
-            left.name
-                .to_lowercase()
-                .cmp(&right.name.to_lowercase())
-                .then_with(|| left.path.cmp(&right.path))
-        });
-        Ok(ApplicationInventorySnapshot {
-            sampled_at_ms: now_millis(),
-            platform_supported: true,
-            cached: false,
-            refresh_recommended: false,
-            applications,
+                Err(error) => InstalledApplication {
+                    name: application.name,
+                    path: application.path,
+                    bundle_id: None,
+                    size_bytes: application.size_bytes,
+                    last_used_at_ms: application.last_used_at_ms,
+                    modified_at_ms: application.modified_at_ms,
+                    uninstallable: false,
+                    unavailable_reason: Some(error.code),
+                    installation_source: crate::models::ApplicationInstallationSource::MacosBundle,
+                    native_uninstall_identifier: None,
+                    native_uninstall_requires_elevation: false,
+                    icon_path: None,
+                },
+            }
         })
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        crate::native_uninstall::scan_native_application_inventory(preferred_language)
-    }
+        .collect::<Vec<_>>();
+    applications.sort_by(|left, right| {
+        left.name
+            .to_lowercase()
+            .cmp(&right.name.to_lowercase())
+            .then_with(|| left.path.cmp(&right.path))
+    });
+    Ok(ApplicationInventorySnapshot {
+        sampled_at_ms: now_millis(),
+        platform_supported: true,
+        cached: false,
+        refresh_recommended: false,
+        applications,
+    })
 }
 
 pub fn prepare_application_uninstall(
@@ -2585,7 +2580,9 @@ fn is_external_cleanup_root(root: &Path, canonical_home: &Path) -> bool {
     }
     #[cfg(windows)]
     {
-        !root.starts_with(&system_root)
+        root.canonicalize()
+            .map(|canonical_root| !canonical_root.starts_with(&system_root))
+            .unwrap_or(false)
     }
     #[cfg(not(any(unix, windows)))]
     {
@@ -2736,7 +2733,8 @@ fn validate_application_uninstall_targets(
 
 fn cleanup_protection_for_path(path: &Path, home: &Path) -> Option<CleanupProtectionReason> {
     if path.starts_with(home) {
-        if path == home {
+        let relative = path.strip_prefix(home).ok()?;
+        if relative.as_os_str().is_empty() {
             return Some(CleanupProtectionReason::HomeRoot);
         }
 
@@ -2751,7 +2749,6 @@ fn cleanup_protection_for_path(path: &Path, home: &Path) -> Option<CleanupProtec
             return None;
         }
 
-        let relative = path.strip_prefix(home).ok()?;
         return is_sensitive_cleanup_relative_path(relative)
             .then_some(CleanupProtectionReason::SensitiveUserData);
     }

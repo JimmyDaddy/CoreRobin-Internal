@@ -859,7 +859,7 @@ fn system_time_millis(value: SystemTime) -> Option<u64> {
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
 }
 
-#[cfg(any(target_os = "macos", windows, test))]
+#[cfg(any(target_os = "macos", test))]
 fn friendly_label(label: &str) -> String {
     label
         .split(['.', '-', '_'])

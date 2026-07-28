@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "Сравнение с недавними запусками",
+    "description": "Используется медиана {{count}} предыдущих измерений.",
+    "improved": "Стабилизация на {{value}}% быстрее",
+    "similar": "Близко к недавней медиане",
+    "slower": "Стабилизация на {{value}}% медленнее",
+    "risingApplication": "{{name}} выросло сильнее всего: на {{value}} пунктов CPU"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Наблюдение после изменения автозапуска",
+    "single": {
+      "improved": "После изменения {{name}} следующий запуск стабилизировался быстрее.",
+      "similar": "После изменения {{name}} следующий запуск был близок к обычному.",
+      "slower": "После изменения {{name}} следующий запуск всё ещё был медленнее; этот элемент может быть не главной причиной."
+    },
+    "multiple": {
+      "improved": "После {{count}} изменений следующий запуск стабилизировался быстрее; результат нельзя приписать одному приложению.",
+      "similar": "После {{count}} изменений следующий запуск был близок к обычному.",
+      "slower": "После {{count}} изменений следующий запуск всё ещё был медленнее; отдельное изменение нельзя считать причиной."
+    }
   }
 }

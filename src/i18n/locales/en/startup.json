@@ -141,9 +141,16 @@
     "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Observation after startup-item changes",
+    "single": {
+      "improved": "After changing {{name}}, the next start was observed to settle faster. One observation does not prove that this item caused the improvement.",
+      "similar": "After changing {{name}}, the next start stayed close to the recent pattern.",
+      "slower": "After changing {{name}}, the next start was still slower; this item may not be the main cause."
+    },
+    "multiple": {
+      "improved": "After {{count}} startup-item changes, the next start was observed to settle faster; no single change can be credited.",
+      "similar": "After {{count}} startup-item changes, the next start stayed close to the recent pattern.",
+      "slower": "After {{count}} startup-item changes, the next start was still slower; no single change can be identified as the cause."
+    }
   }
 }

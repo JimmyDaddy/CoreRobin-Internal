@@ -34,6 +34,7 @@
     "title": "电脑状态故事",
     "description": "把成对的告警与恢复合并成一件事，用普通语言说明影响和结果。",
     "cause": "主要原因：{{name}} 当时占用最高",
+    "inspectApplications": "查看峰值时的应用",
     "timeline": "事件时间线",
     "startedAt": "{{time}} 开始",
     "peakedAt": "{{time}} 达到峰值 {{value}}%",
@@ -147,7 +148,7 @@
   },
   "privacyEyebrow": "数据边界",
   "privacyTitle": "隐私说明",
-  "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
+  "privacyLocal": "历史只保存在当前设备的 CoreRobin 私有存储中，不会上传或同步。",
   "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
   "privacyExcluded": "资源与操作历史不记录进程命令、用户、路径、文件名或连接地址；如果你单独开启“连接历史”，五分钟聚合数据可能在本机保存远端 IP、域名、端口和应用名。",
   "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
@@ -164,7 +165,14 @@
     "disabledDescription": "开启后只在本机保存稳定应用身份和聚合指标。",
     "learningTitle": "正在建立应用历史",
     "learningDescription": "收集到足够的五分钟采样后会显示排名。",
+    "timeline": "应用影响趋势",
+    "timelineHint": "点击柱形查看对应时段",
+    "explanation": "{{time}} 左右，{{name}} 在该时段影响最高，平均 CPU {{cpu}}、内存 {{memory}}。",
     "peakCpu": "CPU 峰值 {{value}}",
+    "storageLoading": "正在打开私有历史存储…",
+    "storageReady": "已保存到本机 · {{size}} · 最近写入 {{time}}",
+    "storagePending": "等待首次写入",
+    "storageFailed": "历史仍可查看，但新采样暂时无法保存；CoreRobin 会自动重试。",
     "boundary": "不保存命令或文件路径；应用名称仍受单独的隐私开关控制。"
   },
   "baseline": {
@@ -177,11 +185,16 @@
       "title": "接近这台电脑平时的状态",
       "description": "当前可用指标没有出现明显偏离。"
     },
+    "partial": {
+      "title": "这台电脑的部分基线已经可用",
+      "description": "部分指标已有足够的可比日期，其余指标会继续明确显示为学习中。"
+    },
     "elevated": {
       "title": "和这台电脑平时不太一样",
       "description": "有 {{count}} 项指标明显高于过去七天相同时段。"
     },
     "collecting": "正在积累基线",
+    "coverage": "{{days}} 个可比日期 · {{count}} 个采样",
     "change": "比平时{{direction}} {{value}}%",
     "higher": "高",
     "lower": "低",

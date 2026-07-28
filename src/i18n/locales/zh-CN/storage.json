@@ -53,6 +53,9 @@
     "unknownMedia": "未知",
     "purgeable": "可清理空间",
     "inspectUnavailable": "操作系统未能提供这个卷的全部详情。",
+    "retry": "重试这个卷",
+    "cached": "最近缓存结果",
+    "updatedNow": "刚刚检查",
     "scope": "S.M.A.R.T. 是操作系统可提供时的总体设备状态；不支持并不代表磁盘不健康。",
     "status": {
       "verified": "已验证",

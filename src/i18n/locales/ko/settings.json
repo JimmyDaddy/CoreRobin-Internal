@@ -110,28 +110,28 @@
   }
 ,
   "applicationImpactHistory": {
-    "label": "Keep application impact aggregates",
-    "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+    "label": "앱 영향 집계 보관",
+    "hint": "장치 내 기록과 앱 표시 이름 저장 권한이 필요하며 명령과 파일 경로는 저장하지 않습니다."
   },
   "supportFlow": {
-    "action": "Prepare issue report",
-    "title": "Prepare a privacy-redacted issue report",
-    "description": "Review exactly what will be copied before CoreRobin opens a prefilled public GitHub issue.",
-    "reviewTitle": "Review",
-    "reviewDescription": "Confirm that the summary contains no information you do not want to share.",
-    "copyTitle": "Copy",
-    "copyDescription": "Copy the same redacted summary to your clipboard for easy reuse.",
-    "openTitle": "Open issue",
-    "openDescription": "Open a form prefilled with version, system, architecture, and reproduction prompts.",
-    "preview": "Content that will be copied and included",
-    "confirm": "Copy and open issue",
-    "opening": "Preparing issue…",
-    "error": "The summary could not be copied or the issue form could not be opened. Please try again.",
-    "issueTitle": "[v{{version}}] Issue report",
-    "problemHeading": "What happened",
-    "problemPlaceholder": "<!-- Describe the problem and what you expected. -->",
-    "stepsHeading": "Steps to reproduce",
-    "stepsPlaceholder": "<!-- List the shortest steps that reproduce the issue. -->",
-    "diagnosticHeading": "Privacy-redacted environment"
+    "action": "문제 보고서 준비",
+    "title": "개인정보를 제거한 문제 보고서 준비",
+    "description": "CoreRobin이 미리 작성된 공개 GitHub 이슈를 열기 전에 복사될 내용을 정확히 확인하세요.",
+    "reviewTitle": "검토",
+    "reviewDescription": "공유하고 싶지 않은 정보가 요약에 없는지 확인하세요.",
+    "copyTitle": "복사",
+    "copyDescription": "같은 익명화된 요약을 클립보드에 복사합니다.",
+    "openTitle": "이슈 열기",
+    "openDescription": "버전, 시스템, 아키텍처와 재현 항목이 채워진 양식을 엽니다.",
+    "preview": "복사되어 포함될 내용",
+    "confirm": "복사하고 이슈 열기",
+    "opening": "이슈 준비 중…",
+    "error": "요약을 복사하거나 이슈 양식을 열지 못했습니다. 다시 시도하세요.",
+    "issueTitle": "[v{{version}}] 문제 보고",
+    "problemHeading": "무슨 일이 있었나요?",
+    "problemPlaceholder": "<!-- 문제와 예상한 동작을 설명하세요. -->",
+    "stepsHeading": "재현 단계",
+    "stepsPlaceholder": "<!-- 문제를 재현하는 가장 짧은 단계를 적으세요. -->",
+    "diagnosticHeading": "개인정보가 제거된 환경 정보"
   }
 }

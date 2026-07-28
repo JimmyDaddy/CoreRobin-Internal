@@ -44,7 +44,7 @@
   },
   "uninstall": {
     "scanKicker": "로컬 앱 색인", "scanningHint": "App Bundle, 디스크 사용량, 번들 ID를 확인합니다. 더 큰 앱은 조금 더 오래 걸릴 수 있습니다.",
-    "kicker": "애플리케이션 관리", "title": "완전한 제거 도우미", "description": "정확한 번들 ID에 따른 앱 번들 및 남은 항목을 찾습니다. 각 경로를 확인할 때까지는 아무 것도 처리되지 않습니다.", "refresh": "앱 새로 고침", "unsupportedTitle": "이 플랫폼에서는 아직 완전한 제거가 지원되지 않습니다.", "unsupportedDescription": "첫 번째 릴리스는 macOS 앱 번들을 지원합니다. 동등한 안전 점검이 가능하면 Windows 및 Linux가 뒤따릅니다.",
+    "kicker": "애플리케이션 관리", "title": "완전한 제거 도우미", "description": "정확한 번들 ID에 따른 앱 번들 및 남은 항목을 찾습니다. 각 경로를 확인할 때까지는 아무 것도 처리되지 않습니다.", "refresh": "앱 새로 고침", "unsupportedTitle": "시스템 앱 카탈로그를 사용할 수 없습니다", "unsupportedDescription": "신뢰할 수 있는 운영 체제 앱 정보를 읽지 못했습니다. 지원되는 macOS, Windows 또는 Linux에서 다시 시도하세요.",
     "applicationUnit": "앱", "installedSize": "앱 번들에서", "localOnly": "로컬에서 읽습니다. 인벤토리가 업로드되지 않습니다", "cachedInventory": "{{time}}의 로컬 캐시 표시; 언제든지 새로고침", "search": "설치된 애플리케이션 검색", "searchPlaceholder": "이름, 번들 ID 또는 경로 검색", "scanning": "애플리케이션 인벤토리를 읽는 중…", "empty": "일치하는 애플리케이션이 없습니다.", "preparingPlan": "앱 ID 및 지원 파일을 확인하는 중…", "planKicker": "제거 계획", "planBoundary": "먼저 이 앱을 종료하세요. 정확한 번들 ID로 입증된 경로만 나열됩니다. 앱 이름 추측은 제외됩니다.", "bundleOnlyBoundary": "이 앱에는 검증 가능한 Bundle ID가 없어 CoreRobin은 경로와 구조가 확인된 앱 번들만 제거하며 지원 파일을 추측하지 않습니다.", "foundItems": "검증된 항목", "required": "필수의",
     "selectedSize": "{{count}} 항목 선택됨", "review": "{{name}} 검토 및 제거", "reveal": "Finder에서 애플리케이션 공개", "skipped": "계획에서 제외된 {{count}} 품목", "skippedDescription": "이러한 경로는 안전한 파일 핸들 검사를 통과하지 못했으므로 보조자가 해당 경로를 건드리지 않습니다.", "selectTitle": "애플리케이션 선택", "selectDescription": "보조자는 최종 확인 전에 경로별 계획을 생성합니다.", "cannotPrepare": "이 애플리케이션에 대한 안전한 계획을 만들 수 없습니다.", "dialogTitle": "{{name}} 제거", "dialogDescription": "앱 번들과 관련 데이터를 하나씩 검토하세요. 복구 가능한 휴지통 이동이 기본값입니다.", "outcomeComplete": "{{name}}에 대한 {{count}} 항목을 처리하여 {{size}}를 회수했습니다.", "outcomeMovedToTrash": "{{name}}를 휴지통으로 이동했습니다. {{count}} 항목과 {{size}}를 처리했습니다. 휴지통을 비울 때까지 복구 가능한 상태로 유지됩니다.", "outcomeDeletedPermanently": "{{name}}을(를) 영구 삭제했습니다. {{count}}개 항목을 처리하고 {{size}}을(를) 확보했습니다.", "outcomePartial": "{{name}} 제거가 완전히 완료되지 않았습니다. {{count}} 항목과 {{size}}를 처리했습니다.",
     "removed": { "trash": "휴지통으로 이동됨", "permanent": "영구적으로 삭제됨", "trashDescription": "앱은 원래 위치를 떠났으며 휴지통을 비울 때까지 복원할 수 있습니다. 이 기록을 제거하려면 인벤토리를 새로 고치세요.", "permanentDescription": "앱이 디스크에서 직접 삭제되어 휴지통에서 복원할 수 없습니다. 목록을 새로 고치면 이 기록이 사라집니다.", "partial": "애플리케이션 번들이 제거되었지만 일부 관련 항목을 처리할 수 없습니다." },
@@ -56,43 +56,43 @@
   "safety": "앱을 선택하면 해당 앱의 자원 사용 정보를 확인할 수 있습니다. 모든 종료 작업은 별도로 확인해야 합니다."
 ,
   "nativeUninstall": {
-    "boundary": "The operating system package catalog owns this app. CoreRobin will pass only a verified, short-lived package identity to the native uninstaller.",
-    "sourceLabel": "Install source",
-    "methodLabel": "System method",
-    "elevationLabel": "Authorization",
-    "elevationRequired": "The operating system may request administrator approval",
-    "elevationNotRequired": "No administrator approval is expected",
-    "relatedData": "Associated data is not guessed or deleted automatically. The package manager decides which installed files belong to this app.",
-    "systemManaged": "System-managed uninstall",
-    "revalidate": "Package identity is checked again immediately before execution.",
-    "review": "Review system uninstall for {{name}}",
-    "dialogTitle": "Uninstall {{name}} with the operating system",
-    "dialogDescription": "CoreRobin will start the verified package-manager method. Any authorization prompt belongs to the operating system.",
-    "dialogBoundary": "The frontend never supplies an executable path or command line.",
-    "elevationPrompt": "A Windows UAC or Linux PolicyKit prompt may appear. Cancelling it is reported separately from failure.",
-    "confirm": "Start system uninstall",
-    "submitting": "Waiting for the system uninstaller…",
+    "boundary": "이 앱은 운영 체제 패키지 카탈로그가 관리합니다. CoreRobin은 검증된 단기 패키지 식별자만 기본 제거 도구에 전달합니다.",
+    "sourceLabel": "설치 출처",
+    "methodLabel": "시스템 방식",
+    "elevationLabel": "권한",
+    "elevationRequired": "운영 체제가 관리자 승인을 요청할 수 있습니다",
+    "elevationNotRequired": "관리자 승인이 필요하지 않을 것으로 예상됩니다",
+    "relatedData": "관련 데이터를 추측하거나 자동 삭제하지 않습니다. 설치된 파일의 소유권은 패키지 관리자가 판단합니다.",
+    "systemManaged": "시스템 관리 제거",
+    "revalidate": "실행 직전에 패키지 식별자를 다시 확인합니다.",
+    "review": "{{name}} 시스템 제거 검토",
+    "dialogTitle": "운영 체제로 {{name}} 제거",
+    "dialogDescription": "CoreRobin이 검증된 패키지 관리자 방식을 시작합니다. 권한 요청은 운영 체제가 표시합니다.",
+    "dialogBoundary": "프런트엔드는 실행 파일 경로나 명령줄을 전달하지 않습니다.",
+    "elevationPrompt": "Windows UAC 또는 Linux PolicyKit 요청이 표시될 수 있습니다. 취소는 실패와 별도로 보고됩니다.",
+    "confirm": "시스템 제거 시작",
+    "submitting": "시스템 제거 도구를 기다리는 중…",
     "source": {
-      "macos_bundle": "macOS application bundle",
+      "macos_bundle": "macOS 애플리케이션 번들",
       "windows_msi": "Windows Installer (MSI)",
-      "windows_msix": "Windows package (MSIX)",
-      "windows_uninstaller": "Registered Windows uninstaller",
+      "windows_msix": "Windows 패키지(MSIX)",
+      "windows_uninstaller": "등록된 Windows 제거 도구",
       "linux_flatpak": "Flatpak",
-      "linux_deb": "Debian package",
-      "linux_rpm": "RPM package",
+      "linux_deb": "Debian 패키지",
+      "linux_rpm": "RPM 패키지",
       "linux_snap": "Snap",
-      "portable": "Portable or manually installed",
-      "unknown": "Unknown source"
+      "portable": "포터블 또는 수동 설치",
+      "unknown": "알 수 없는 출처"
     },
     "outcome": {
-      "succeeded": "{{name}} was removed by the operating system.",
-      "cancelled": "The system uninstall for {{name}} was cancelled.",
-      "failed": "The system uninstaller could not remove {{name}}.",
-      "restart_required": "{{name}} was removed; the operating system requested a restart."
+      "succeeded": "운영 체제가 {{name}}을(를) 제거했습니다.",
+      "cancelled": "{{name}}의 시스템 제거가 취소되었습니다.",
+      "failed": "시스템 제거 도구가 {{name}}을(를) 제거하지 못했습니다.",
+      "restart_required": "{{name}}이(가) 제거되었으며 운영 체제가 재시작을 요청했습니다."
     },
     "unavailable": {
-      "protected": "CoreRobin or a protected system component cannot be removed from this screen.",
-      "portable": "No trusted package-manager identity was found. The item remains read-only."
+      "protected": "CoreRobin 또는 보호된 시스템 구성 요소는 이 화면에서 제거할 수 없습니다.",
+      "portable": "신뢰할 수 있는 패키지 관리자 식별자를 찾지 못했습니다. 이 항목은 읽기 전용입니다."
     }
   }
 }

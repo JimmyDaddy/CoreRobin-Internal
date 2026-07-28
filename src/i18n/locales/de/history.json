@@ -33,7 +33,8 @@
     "eyebrow": "Was ist passiert?",
     "title": "Computer-Ereignisse",
     "description": "Verknüpft Alarme und Wiederherstellungen zu einem Ereignis und erklärt dessen Auswirkungen und Ergebnis in einfacher Sprache.",
-    "cause": "Hauptursache: {{name}} hatte den größten Einfluss zum Zeitpunkt",
+    "cause": "Hauptursache: {{name}} hatte zu diesem Zeitpunkt den größten Einfluss",
+    "inspectApplications": "Apps zum Spitzenzeitpunkt prüfen",
     "timeline": "Zeitlicher Ablauf des Ereignisses",
     "startedAt": "Startet {{time}}",
     "peakedAt": "Erreichte ihren Höhepunkt bei {{value}}% · {{time}}",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "Verlauf der App-Beobachtung", "description": "Lokale Auslöse- und Erholungsereignisse deiner Erinnerungsregeln.", "savedEvents": "{{count}} Beobachtungsereignisse", "savedEvents_one": "{{count}} Beobachtungsereignis", "savedEvents_other": "{{count}} Beobachtungsereignisse", "privateApplication": "App-Name nicht gespeichert", "triggered": "{{metric}} erreichte {{value}}{{unit}}", "recovered": "{{metric}} erholte sich auf {{value}}{{unit}}" },
   "privacyEyebrow": "Datengrenzen",
   "privacyTitle": "Datenschutzrichtlinie",
-  "privacyLocal": "Die Historie bleibt im CoreRobin WebView-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
+  "privacyLocal": "Die Historie bleibt im privaten CoreRobin-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
   "privacyCollected": "Gespeichert werden zusammengefasste Ressourcendaten, Belastungs- und Erholungsereignisse sowie Art, Ergebnis, Anzahl und freigegebener Speicher bestätigter Aktionen. App- oder Autostart-Namen werden nur mit separater Erlaubnis gespeichert.",
   "privacyExcluded": "Ressourcen- und Aktionsverlauf speichert keine Befehle, Benutzer, Pfade, Dateinamen oder Verbindungsadressen. Wenn der Verbindungsverlauf separat aktiviert ist, können Fünf-Minuten-Aggregate externe IPs, Domains, Ports und App-Namen enthalten.",
   "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden."
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "App-Zuordnung",
+    "title": "Welche Apps diesen Computer beeinflusst haben",
+    "description": "Optionale Fünf-Minuten-Aggregate zeigen, welche Apps wiederholt CPU, Arbeitsspeicher oder Datenträger beansprucht haben.",
+    "enable": "App-Einflussverlauf speichern",
+    "range": "Zeitraum des App-Verlaufs",
+    "hours1": "1 Stunde",
+    "hours24": "24 Stunden",
+    "hours168": "7 Tage",
+    "disabledTitle": "App-Zuordnung ist deaktiviert",
+    "disabledDescription": "Aktivieren, um stabile App-Identitäten und Aggregate auf diesem Gerät zu speichern.",
+    "learningTitle": "App-Verlauf wird aufgebaut",
+    "learningDescription": "Ranglisten erscheinen, sobald genügend Fünf-Minuten-Stichproben vorliegen.",
+    "timeline": "Einfluss im Zeitverlauf",
+    "timelineHint": "Balken auswählen, um diesen Zeitraum zu prüfen",
+    "explanation": "Gegen {{time}} führte {{name}} diesen Zeitraum mit durchschnittlich {{cpu}} CPU und {{memory}} Arbeitsspeicher an.",
+    "peakCpu": "CPU-Spitze {{value}}",
+    "storageLoading": "Privater Verlaufsspeicher wird geöffnet…",
+    "storageReady": "Lokal gespeichert · {{size}} · zuletzt {{time}}",
+    "storagePending": "wartet auf die erste Speicherung",
+    "storageFailed": "Der Verlauf bleibt sichtbar, neue Stichproben konnten jedoch nicht gespeichert werden. CoreRobin versucht es erneut.",
+    "boundary": "Speichert keine Befehle oder Dateipfade; App-Namen folgen der separaten Datenschutzeinstellung."
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "Basislinie dieses Computers",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "Normalzustand wird erlernt",
+      "description": "CoreRobin benötigt mehr Stichproben aus vergleichbaren Zeiträumen."
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "Nahe am üblichen Muster dieses Computers",
+      "description": "Bei den verfügbaren Basiswerten wurde keine bedeutsame Abweichung gefunden."
+    },
+    "partial": {
+      "title": "Ein Teil der Basislinie ist verfügbar",
+      "description": "Einige Werte haben genügend Vergleichstage; die übrigen bleiben als Lernphase markiert."
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "Anders als das übliche Muster dieses Computers",
+      "description": "{{count}} Werte liegen deutlich über ihrer Sieben-Tage-Basislinie für vergleichbare Zeiten."
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "Basislinie wird gesammelt",
+    "coverage": "{{days}} Vergleichstage · {{count}} Stichproben",
+    "change": "{{value}} % {{direction}} als üblich",
+    "higher": "höher",
+    "lower": "niedriger",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "Arbeitsspeicher",
+      "disk": "Datenträgerdurchsatz",
+      "network": "Netzwerkdurchsatz",
+      "temperature": "Temperatur",
+      "battery": "Akkuverbrauch"
     }
   }
 }

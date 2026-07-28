@@ -110,28 +110,28 @@
   }
 ,
   "applicationImpactHistory": {
-    "label": "Keep application impact aggregates",
-    "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+    "label": "保留應用程式影響彙總",
+    "hint": "需要啟用本機歷史及允許儲存應用程式顯示名稱；不會儲存命令或檔案路徑。"
   },
   "supportFlow": {
-    "action": "Prepare issue report",
-    "title": "Prepare a privacy-redacted issue report",
-    "description": "Review exactly what will be copied before CoreRobin opens a prefilled public GitHub issue.",
-    "reviewTitle": "Review",
-    "reviewDescription": "Confirm that the summary contains no information you do not want to share.",
-    "copyTitle": "Copy",
-    "copyDescription": "Copy the same redacted summary to your clipboard for easy reuse.",
-    "openTitle": "Open issue",
-    "openDescription": "Open a form prefilled with version, system, architecture, and reproduction prompts.",
-    "preview": "Content that will be copied and included",
-    "confirm": "Copy and open issue",
-    "opening": "Preparing issue…",
-    "error": "The summary could not be copied or the issue form could not be opened. Please try again.",
-    "issueTitle": "[v{{version}}] Issue report",
-    "problemHeading": "What happened",
-    "problemPlaceholder": "<!-- Describe the problem and what you expected. -->",
-    "stepsHeading": "Steps to reproduce",
-    "stepsPlaceholder": "<!-- List the shortest steps that reproduce the issue. -->",
-    "diagnosticHeading": "Privacy-redacted environment"
+    "action": "準備問題報告",
+    "title": "準備已移除隱私資料的問題報告",
+    "description": "CoreRobin 開啟預填的公開 GitHub Issue 前，請檢查即將複製的完整內容。",
+    "reviewTitle": "檢查",
+    "reviewDescription": "確認摘要中沒有你不想分享的資訊。",
+    "copyTitle": "複製",
+    "copyDescription": "將相同的隱私摘要複製到剪貼簿。",
+    "openTitle": "開啟 Issue",
+    "openDescription": "開啟已填入版本、系統、架構與重現提示的表單。",
+    "preview": "將複製並附上的內容",
+    "confirm": "複製並開啟 Issue",
+    "opening": "正在準備 Issue…",
+    "error": "無法複製摘要或開啟表單，請重試。",
+    "issueTitle": "[v{{version}}] 問題報告",
+    "problemHeading": "發生了什麼",
+    "problemPlaceholder": "<!-- 描述問題與預期結果。 -->",
+    "stepsHeading": "重現步驟",
+    "stepsPlaceholder": "<!-- 列出可重現問題的最短步驟。 -->",
+    "diagnosticHeading": "已移除隱私資料的環境"
   }
 }

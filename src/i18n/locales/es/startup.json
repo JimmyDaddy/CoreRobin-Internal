@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "Comparado con inicios recientes",
+    "description": "Usa la mediana de {{count}} mediciones anteriores.",
+    "improved": "{{value}} % más rápido en estabilizarse",
+    "similar": "Cerca de la mediana reciente",
+    "slower": "{{value}} % más lento en estabilizarse",
+    "risingApplication": "{{name}} aumentó más: {{value}} puntos de CPU"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Observación tras cambios de inicio",
+    "single": {
+      "improved": "Tras cambiar {{name}}, el siguiente inicio se estabilizó más rápido. Una observación no demuestra la causa.",
+      "similar": "Tras cambiar {{name}}, el siguiente inicio se mantuvo cerca del patrón reciente.",
+      "slower": "Tras cambiar {{name}}, el siguiente inicio siguió siendo más lento; quizá no sea la causa principal."
+    },
+    "multiple": {
+      "improved": "Tras {{count}} cambios de inicio, el siguiente arranque se estabilizó más rápido; no se puede atribuir a un único cambio.",
+      "similar": "Tras {{count}} cambios de inicio, el siguiente arranque se mantuvo cerca del patrón reciente.",
+      "slower": "Tras {{count}} cambios de inicio, el siguiente arranque siguió siendo más lento; no puede identificarse una sola causa."
+    }
   }
 }

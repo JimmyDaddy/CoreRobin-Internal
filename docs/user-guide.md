@@ -46,7 +46,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 - See how much space is left on each disk, recent read and write activity, and which apps are using the disk heavily.
 - Removable volumes show an **Eject** action. CoreRobin asks once, then requests a safe operating-system eject and refreshes the volume list without restarting the app.
-- Storage details show read-only filesystem, mount-mode, internal/external, solid-state, and operating-system S.M.A.R.T. status where available. A warning can open the system disk utility; CoreRobin neither repairs a disk nor invents a health percentage.
+- Storage details show read-only filesystem, mount-mode, internal/external, solid-state, and operating-system S.M.A.R.T. status where available. Each volume check has a watchdog, up to four volumes are inspected concurrently, successful results are cached for ten minutes, and an individual volume can be retried without blocking the others. A warning can open the system disk utility; CoreRobin neither repairs a disk nor invents a health percentage.
 - When space is running low, open Cleanup directly from this page.
 
 ### Cleanup
@@ -105,13 +105,13 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - CoreRobin follows up once after the problem has stably recovered. The main window, menu bar panel, and Robin companion share the same health state.
 - CPU, memory, and storage notifications can be turned off separately.
 - App and startup item names persist across restarts only after you allow names to be saved. Command lines, file locations, filenames, and connection addresses are not stored.
-- Optional application-impact history uses five-minute aggregates for one-hour, 24-hour, and seven-day attribution of CPU, memory, and disk usage. It stores only a stable app identity, aggregate values, and app names when name storage is allowed; it never stores PIDs, command lines, or file paths.
-- Once enough resource history exists, the local baseline compares the latest 15 minutes with the median of similar hours during the past seven days while retaining absolute safety thresholds. It does not produce a combined health score.
+- Optional application-impact history uses five-minute aggregates for one-hour, 24-hour, and seven-day attribution of CPU, memory, and disk usage. Select a timeline interval to see the ranking from that period; an incident's peak can open the same historical ranking directly. The panel also reports its last successful save, private-storage size, and any persistence failure. It stores only a stable app identity, aggregate values, and app names when name storage is allowed; it never stores PIDs, command lines, or file paths.
+- Once enough resource history exists, the local baseline compares the latest 15 minutes with robust same-hour samples from the past seven days while retaining absolute safety thresholds. A metric needs coverage across at least three distinct comparable days before CoreRobin describes it as established; otherwise the interface says that part of the baseline is still learning and shows its coverage. It does not produce a combined health score.
 - App watch-rule trigger and recovery events appear in the local timeline, so a notification remains explainable after it disappears from the desktop.
 
 ### Settings
 
-- Settings groups interface, background and desktop, sampling and views, notifications, and **Data & privacy** into consistent card grids and controls. The privacy center shows item count, size, update time, and retention for resource history, connection/network-quality history, application inventory, and scan caches. Categories can be cleared separately with success/failure receipts; clear-all uses the same confirmation and retryable partial-failure flow.
+- Settings groups interface, background and desktop, sampling and views, notifications, and **Data & privacy** into consistent card grids and controls. The privacy center shows item count, size, update time, and retention for resource and application-impact history, connection/network-quality history, application inventory, and scan caches. Categories can be cleared separately with success/failure receipts; clear-all uses the same confirmation and retryable partial-failure flow.
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
 - App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.

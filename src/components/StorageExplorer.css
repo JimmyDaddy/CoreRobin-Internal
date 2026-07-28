@@ -95,4 +95,13 @@
 .storage-health__grid dt { color: var(--text-dim); font-size: 9px; }
 .storage-health__grid dd { margin: 0; color: var(--text); font-size: 10px; }
 .storage-health__grid article > p { margin: 0; color: var(--amber); font-size: 9px; }
+.storage-health__device-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 25px;
+}
+.storage-health__device-footer > small { margin-right: auto; color: var(--text-dim); font-size: 8px; }
+.storage-health__device-footer > p { margin: 0; color: var(--amber); font-size: 9px; }
+.storage-health__device-footer .button { min-height: 24px; padding: 3px 7px; font-size: 8px; }
 .storage-health__scope { color: var(--text-dim); font-size: 9px; }

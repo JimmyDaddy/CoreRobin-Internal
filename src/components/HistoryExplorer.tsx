@@ -1,4 +1,5 @@
 import {
+  Activity,
   BellRing,
   BookOpen,
   CheckCircle2,
@@ -36,6 +37,7 @@ import { UserActionTimeline } from "./UserActionTimeline";
 import type { ApplicationWatchHistoryEvent } from "../applicationWatchHistory";
 import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
 import type { ApplicationImpactHistoryPoint } from "../applicationImpactHistory";
+import type { ApplicationImpactHistoryStorageStatus } from "../hooks/useApplicationImpactHistory";
 import { ApplicationImpactHistoryPanel } from "./ApplicationImpactHistoryPanel";
 import { PersonalBaselinePanel } from "./PersonalBaselinePanel";
 
@@ -44,6 +46,7 @@ interface HistoryExplorerProps {
   storedPointCount: number;
   applicationImpactPoints: ApplicationImpactHistoryPoint[];
   applicationImpactHistoryEnabled: boolean;
+  applicationImpactStorageStatus: ApplicationImpactHistoryStorageStatus;
   alertEvents: ResourceAlertEvent[];
   storedAlertEventCount: number;
   applicationWatchEvents?: ApplicationWatchHistoryEvent[];
@@ -71,6 +74,7 @@ export function HistoryExplorer({
   storedPointCount,
   applicationImpactPoints,
   applicationImpactHistoryEnabled,
+  applicationImpactStorageStatus,
   alertEvents,
   storedAlertEventCount,
   applicationWatchEvents = [],
@@ -89,6 +93,8 @@ export function HistoryExplorer({
 }: HistoryExplorerProps) {
   const { t, i18n } = useAppTranslation();
   const [alertFilter, setAlertFilter] = useState<"all" | ResourceAlertResource>("all");
+  const [applicationImpactFocusAtMs, setApplicationImpactFocusAtMs] =
+    useState<number | null>(null);
   const summary = useMemo(() => summarizeHistory(points), [points]);
   const visibleAlertEvents = useMemo(
     () =>
@@ -200,6 +206,8 @@ export function HistoryExplorer({
       <ApplicationImpactHistoryPanel
         points={applicationImpactPoints}
         enabled={applicationImpactHistoryEnabled}
+        focusAtMs={applicationImpactFocusAtMs}
+        storageStatus={applicationImpactStorageStatus}
         onEnabledChange={onApplicationImpactHistoryEnabledChange}
       />
 
@@ -214,7 +222,19 @@ export function HistoryExplorer({
           <span>{t("history:stories.count", { count: stories.length })}</span>
         </header>
         <div className="history-story-list">
-          {stories.map((story) => <HistoryStoryCard key={story.id} story={story} />)}
+          {stories.map((story) => (
+            <HistoryStoryCard
+              key={story.id}
+              story={story}
+              onInspectApplications={() => {
+                setApplicationImpactFocusAtMs(story.peakAtMs);
+                window.requestAnimationFrame(() => {
+                  document.getElementById("application-impact-history")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+            />
+          ))}
         </div>
       </section>
       ) : null}
@@ -300,7 +320,13 @@ export function HistoryExplorer({
   );
 }
 
-function HistoryStoryCard({ story }: { story: HistoryStory }) {
+function HistoryStoryCard({
+  story,
+  onInspectApplications,
+}: {
+  story: HistoryStory;
+  onInspectApplications: () => void;
+}) {
   const { t, i18n } = useAppTranslation();
   const Icon = story.status === "active" ? TriangleAlert : CheckCircle2;
   const duration = formatAlertDuration(story.durationMs, t);
@@ -333,6 +359,13 @@ function HistoryStoryCard({ story }: { story: HistoryStory }) {
           {endedAt ? <span>{t("history:stories.endedAt", { time: endedAt })}</span> : null}
         </div>
         <small>{t(`history:stories.${story.resource}.guidance`)}</small>
+        <button
+          className="history-story__application-link"
+          type="button"
+          onClick={onInspectApplications}
+        >
+          <Activity size={13} />{t("history:stories.inspectApplications")}
+        </button>
       </div>
       <time dateTime={new Date(story.startedAtMs).toISOString()}>
         {startedAt}

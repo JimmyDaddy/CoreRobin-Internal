@@ -110,28 +110,28 @@
   }
 ,
   "applicationImpactHistory": {
-    "label": "Keep application impact aggregates",
-    "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+    "label": "アプリ影響の集計を保存",
+    "hint": "端末内履歴とアプリ表示名の保存許可が必要です。コマンドやファイルパスは保存しません。"
   },
   "supportFlow": {
-    "action": "Prepare issue report",
-    "title": "Prepare a privacy-redacted issue report",
-    "description": "Review exactly what will be copied before CoreRobin opens a prefilled public GitHub issue.",
-    "reviewTitle": "Review",
-    "reviewDescription": "Confirm that the summary contains no information you do not want to share.",
-    "copyTitle": "Copy",
-    "copyDescription": "Copy the same redacted summary to your clipboard for easy reuse.",
-    "openTitle": "Open issue",
-    "openDescription": "Open a form prefilled with version, system, architecture, and reproduction prompts.",
-    "preview": "Content that will be copied and included",
-    "confirm": "Copy and open issue",
-    "opening": "Preparing issue…",
-    "error": "The summary could not be copied or the issue form could not be opened. Please try again.",
-    "issueTitle": "[v{{version}}] Issue report",
-    "problemHeading": "What happened",
-    "problemPlaceholder": "<!-- Describe the problem and what you expected. -->",
-    "stepsHeading": "Steps to reproduce",
-    "stepsPlaceholder": "<!-- List the shortest steps that reproduce the issue. -->",
-    "diagnosticHeading": "Privacy-redacted environment"
+    "action": "問題報告を準備",
+    "title": "個人情報を除いた問題報告を準備",
+    "description": "CoreRobin が入力済みの公開 GitHub Issue を開く前に、コピーされる内容を確認します。",
+    "reviewTitle": "確認",
+    "reviewDescription": "共有したくない情報が要約に含まれていないことを確認してください。",
+    "copyTitle": "コピー",
+    "copyDescription": "同じ匿名化済み要約をクリップボードにコピーします。",
+    "openTitle": "Issueを開く",
+    "openDescription": "バージョン、システム、アーキテクチャ、再現手順を入力済みのフォームを開きます。",
+    "preview": "コピーして含める内容",
+    "confirm": "コピーしてIssueを開く",
+    "opening": "Issueを準備中…",
+    "error": "要約をコピーできないか、Issueフォームを開けませんでした。再試行してください。",
+    "issueTitle": "[v{{version}}] 問題報告",
+    "problemHeading": "発生したこと",
+    "problemPlaceholder": "<!-- 問題と期待した動作を記載してください。 -->",
+    "stepsHeading": "再現手順",
+    "stepsPlaceholder": "<!-- 最短の再現手順を記載してください。 -->",
+    "diagnosticHeading": "個人情報を除いた環境情報"
   }
 }

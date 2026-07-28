@@ -203,6 +203,8 @@ export interface StorageDeviceHealth {
   solidState: boolean | null;
   purgeableBytes: number | null;
   inspectionError: string | null;
+  inspectedAtMs: number;
+  cached: boolean;
 }
 
 export interface StorageHealthSnapshot {

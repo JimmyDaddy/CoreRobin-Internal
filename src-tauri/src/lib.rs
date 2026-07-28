@@ -1,5 +1,7 @@
+mod application_history;
 mod application_icon;
 mod application_metadata;
+mod bounded_command;
 mod cleanup;
 #[cfg(test)]
 mod command_names;
@@ -31,6 +33,10 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use application_history::{
+    APPLICATION_HISTORY_FILE_NAME, ApplicationHistoryStorage, load as load_application_history,
+    remove as remove_application_history, save as save_application_history,
+};
 use application_icon::{load_application_bundle_icon, load_application_icon};
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
@@ -146,6 +152,7 @@ struct ProductDataCacheSummary {
     cleanup_scan: ProductDataCacheItemSummary,
     file_insights: ProductDataCacheItemSummary,
     application_inventory: ProductDataCacheItemSummary,
+    application_history: ProductDataCacheItemSummary,
 }
 
 pub fn benchmark_monitor_sampling(
@@ -680,6 +687,70 @@ async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError
     .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
 }
 
+fn application_history_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join(APPLICATION_HISTORY_FILE_NAME))
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Could not resolve the application data folder: {error}"
+            ))
+        })
+}
+
+#[tauri::command]
+async fn load_persisted_application_history(
+    app: AppHandle,
+) -> Result<ApplicationHistoryStorage, CommandError> {
+    let path = application_history_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || load_application_history(&path))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Application history read task failed: {error}"))
+        })?
+        .map_err(|error| {
+            CommandError::new(
+                "application_history_read_failed",
+                format!("Application history could not be read: {error}"),
+            )
+        })
+}
+
+#[tauri::command]
+async fn save_persisted_application_history(
+    app: AppHandle,
+    payload: String,
+) -> Result<ApplicationHistoryStorage, CommandError> {
+    let path = application_history_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || save_application_history(&path, &payload))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Application history write task failed: {error}"))
+        })?
+        .map_err(|error| {
+            CommandError::new(
+                "application_history_write_failed",
+                format!("Application history could not be saved: {error}"),
+            )
+        })
+}
+
+#[tauri::command]
+async fn clear_persisted_application_history(app: AppHandle) -> Result<(), CommandError> {
+    let path = application_history_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || remove_application_history(&path))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Application history removal task failed: {error}"))
+        })?
+        .map_err(|error| {
+            CommandError::new(
+                "application_history_clear_failed",
+                format!("Application history could not be cleared: {error}"),
+            )
+        })
+}
+
 fn cache_item_summary(
     paths: impl IntoIterator<Item = std::path::PathBuf>,
 ) -> ProductDataCacheItemSummary {
@@ -744,6 +815,7 @@ fn product_data_cache_summary_at(
         ]),
         file_insights: cache_item_summary([directory.join("file-insights-v1.json")]),
         application_inventory: cache_item_summary(application_inventory_cache_paths(directory)?),
+        application_history: cache_item_summary([directory.join(APPLICATION_HISTORY_FILE_NAME)]),
     })
 }
 
@@ -778,9 +850,13 @@ fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), Co
     let cleanup_path = directory.join("cleanup-scan-v3.json");
     let legacy_cleanup_path = directory.join("cleanup-scan-v2.json");
     let file_insights_path = directory.join("file-insights-v1.json");
+    let application_history_path = directory.join(APPLICATION_HISTORY_FILE_NAME);
     remove_cleanup_scan_cache(&cleanup_path)?;
     remove_cleanup_scan_cache(&legacy_cleanup_path)?;
     remove_file_insights_cache(&file_insights_path)?;
+    remove_application_history(&application_history_path).map_err(|error| {
+        CommandError::internal(format!("Application history could not be removed: {error}"))
+    })?;
     clear_application_inventory_cache_at(directory)
 }
 
@@ -911,6 +987,7 @@ async fn get_storage_health(
     window: WebviewWindow,
     state: State<'_, AppState>,
     mount_points: Vec<String>,
+    force_refresh: Option<bool>,
 ) -> Result<StorageHealthSnapshot, CommandError> {
     require_main_window(&window)?;
     let available = with_monitor(Arc::clone(&state.monitor), |monitor| {
@@ -925,7 +1002,11 @@ async fn get_storage_health(
     .await?;
     let verified = validate_mount_points(&mount_points, &available)?;
     tauri::async_runtime::spawn_blocking(move || {
-        Ok(inspect_storage_health(&verified, now_millis()))
+        Ok(inspect_storage_health(
+            &verified,
+            now_millis(),
+            force_refresh.unwrap_or(false),
+        ))
     })
     .await
     .map_err(|error| CommandError::internal(format!("Storage inspection task failed: {error}")))?
@@ -1933,6 +2014,9 @@ pub fn run() {
             load_persisted_cleanup_scan,
             save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
+            load_persisted_application_history,
+            save_persisted_application_history,
+            clear_persisted_application_history,
             get_product_data_cache_summary,
             clear_application_inventory_cache,
             clear_persisted_product_data,
@@ -2098,8 +2182,8 @@ mod product_data_tests {
     use tempfile::tempdir;
 
     use super::{
-        clear_application_inventory_cache_at, clear_persisted_product_data_at,
-        product_data_cache_summary_at,
+        APPLICATION_HISTORY_FILE_NAME, clear_application_inventory_cache_at,
+        clear_persisted_product_data_at, product_data_cache_summary_at,
     };
 
     #[test]
@@ -2109,6 +2193,7 @@ mod product_data_tests {
             "cleanup-scan-v3.json",
             "cleanup-scan-v2.json",
             "file-insights-v1.json",
+            APPLICATION_HISTORY_FILE_NAME,
             "application-inventory-v1-en.json",
             "application-inventory-v1-zh-cn.json",
         ] {
@@ -2129,6 +2214,7 @@ mod product_data_tests {
         assert!(!root.path().join("cleanup-scan-v3.json").exists());
         assert!(!root.path().join("cleanup-scan-v2.json").exists());
         assert!(!root.path().join("file-insights-v1.json").exists());
+        assert!(!root.path().join(APPLICATION_HISTORY_FILE_NAME).exists());
         assert!(
             !root
                 .path()
@@ -2148,6 +2234,7 @@ mod product_data_tests {
         let root = tempdir().unwrap();
         fs::write(root.path().join("cleanup-scan-v3.json"), b"cleanup").unwrap();
         fs::write(root.path().join("file-insights-v1.json"), b"insights").unwrap();
+        fs::write(root.path().join(APPLICATION_HISTORY_FILE_NAME), b"history").unwrap();
         fs::write(
             root.path().join("application-inventory-v1-en.json"),
             b"apps",
@@ -2163,6 +2250,8 @@ mod product_data_tests {
         assert_eq!(summary.file_insights.byte_size, 8);
         assert_eq!(summary.application_inventory.file_count, 1);
         assert_eq!(summary.application_inventory.byte_size, 4);
+        assert_eq!(summary.application_history.file_count, 1);
+        assert_eq!(summary.application_history.byte_size, 7);
     }
 
     #[test]
@@ -2229,6 +2318,8 @@ mod security_boundary_tests {
         "cancel_file_insights_scan",
         "revalidate_file_insights_scan",
         "clear_application_inventory_cache",
+        "save_persisted_application_history",
+        "clear_persisted_application_history",
         "clear_persisted_product_data",
     ];
 

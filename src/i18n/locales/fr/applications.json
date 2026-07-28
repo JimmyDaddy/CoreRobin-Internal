@@ -44,7 +44,7 @@
   },
   "uninstall": {
     "scanKicker": "Index des applications locales", "scanningHint": "Vérification des bundles d'applications, de l'utilisation du disque et des ID de bundle. Les applications plus volumineuses peuvent prendre un peu plus de temps.",
-    "kicker": "Gestion des applications", "title": "Assistant de désinstallation complet", "description": "Recherche le bundle d'applications et les restes attribués par l'ID exact du bundle. Rien n'est géré jusqu'à ce que vous confirmiez chaque chemin.", "refresh": "Actualiser les applications", "unsupportedTitle": "La désinstallation complète n'est pas encore prise en charge sur cette plateforme", "unsupportedDescription": "La première version prend en charge les bundles d'applications macOS. Windows et Linux suivront lorsque des contrôles de sécurité équivalents seront disponibles.",
+    "kicker": "Gestion des applications", "title": "Assistant de désinstallation complet", "description": "Recherche le bundle d'applications et les restes attribués par l'ID exact du bundle. Rien n'est géré jusqu'à ce que vous confirmiez chaque chemin.", "refresh": "Actualiser les applications", "unsupportedTitle": "Le catalogue d’applications du système est indisponible", "unsupportedDescription": "CoreRobin n’a pas pu lire une source fiable du système. Réessayez sur un système macOS, Windows ou Linux pris en charge.",
     "applicationUnit": "applications", "installedSize": "dans les packs d'applications", "localOnly": "Lire localement ; l'inventaire n'est jamais téléchargé", "cachedInventory": "Affichage du cache local de {{time}} ; actualiser à tout moment", "search": "Rechercher les applications installées", "searchPlaceholder": "Rechercher le nom, l'ID du bundle ou le chemin", "scanning": "Lecture de l’inventaire des candidatures…", "empty": "Aucune candidature correspondante", "preparingPlan": "Vérification de l'identité de l'application et des fichiers de support…", "planKicker": "Plan de désinstallation", "planBoundary": "Quittez d'abord cette application. Seuls les chemins prouvés par l'ID exact du bundle sont répertoriés ; les suppositions sur le nom de l'application sont exclues.", "bundleOnlyBoundary": "Cette application n’a pas de Bundle ID vérifiable. CoreRobin supprimera uniquement le paquet validé par son chemin et sa structure, sans deviner les fichiers associés.", "foundItems": "Articles vérifiés", "required": "Requis",
     "selectedSize": "Articles {{count}} sélectionnés", "review": "Vérifier et désinstaller {{name}}", "reveal": "Révéler l'application dans Finder", "skipped": "Articles {{count}} exclus du plan", "skippedDescription": "Ces chemins n’ont pas passé avec succès l’inspection sécurisée des descripteurs de fichiers, l’assistant ne les touchera donc pas.", "selectTitle": "Sélectionnez une application", "selectDescription": "L'assistant crée un plan chemin par chemin avant confirmation finale.", "cannotPrepare": "Un plan sécurisé ne peut pas être créé pour cette application", "dialogTitle": "Désinstaller {{name}}", "dialogDescription": "Vérifiez séparément le paquet et les données associées. Le déplacement vers la corbeille est l’option récupérable par défaut.", "outcomeComplete": "Gestion des éléments {{count}} pour {{name}}, récupération de {{size}}.", "outcomeMovedToTrash": "{{name}} déplacé vers la corbeille ; traité les articles {{count}} et {{size}}. Il reste récupérable jusqu'à ce que la corbeille soit vidée.", "outcomeDeletedPermanently": "{{name}} a été supprimé définitivement ; {{count}} éléments traités et {{size}} libérés.", "outcomePartial": "La désinstallation de {{name}} n'est pas complètement terminée ; traité les articles {{count}} et {{size}}.",
     "removed": { "trash": "Déplacé vers la corbeille", "permanent": "Supprimé définitivement", "trashDescription": "L'application a quitté son emplacement d'origine et peut être restaurée jusqu'à ce que la corbeille soit vidée. Actualisez l'inventaire pour supprimer cet enregistrement.", "permanentDescription": "L’application a été supprimée directement du disque et ne peut pas être restaurée depuis la corbeille. Actualisez la liste pour retirer cette entrée.", "partial": "Le bundle d'applications a été supprimé, mais certains éléments associés n'ont pas pu être traités." },
@@ -56,43 +56,43 @@
   "safety": "Sélectionner une application n'ouvre que ses informations sur les ressources ; chaque action de fermeture nécessite toujours une confirmation séparée."
 ,
   "nativeUninstall": {
-    "boundary": "The operating system package catalog owns this app. CoreRobin will pass only a verified, short-lived package identity to the native uninstaller.",
-    "sourceLabel": "Install source",
-    "methodLabel": "System method",
-    "elevationLabel": "Authorization",
-    "elevationRequired": "The operating system may request administrator approval",
-    "elevationNotRequired": "No administrator approval is expected",
-    "relatedData": "Associated data is not guessed or deleted automatically. The package manager decides which installed files belong to this app.",
-    "systemManaged": "System-managed uninstall",
-    "revalidate": "Package identity is checked again immediately before execution.",
-    "review": "Review system uninstall for {{name}}",
-    "dialogTitle": "Uninstall {{name}} with the operating system",
-    "dialogDescription": "CoreRobin will start the verified package-manager method. Any authorization prompt belongs to the operating system.",
-    "dialogBoundary": "The frontend never supplies an executable path or command line.",
-    "elevationPrompt": "A Windows UAC or Linux PolicyKit prompt may appear. Cancelling it is reported separately from failure.",
-    "confirm": "Start system uninstall",
-    "submitting": "Waiting for the system uninstaller…",
+    "boundary": "Le catalogue de paquets du système gère cette application. CoreRobin ne transmet qu’une identité vérifiée et temporaire.",
+    "sourceLabel": "Source d’installation",
+    "methodLabel": "Méthode système",
+    "elevationLabel": "Autorisation",
+    "elevationRequired": "Le système peut demander une autorisation administrateur",
+    "elevationNotRequired": "Aucune autorisation administrateur n’est attendue",
+    "relatedData": "Les données associées ne sont ni devinées ni supprimées automatiquement. Le gestionnaire de paquets décide des fichiers installés.",
+    "systemManaged": "Désinstallation gérée par le système",
+    "revalidate": "L’identité du paquet est revérifiée juste avant l’exécution.",
+    "review": "Vérifier la désinstallation système de {{name}}",
+    "dialogTitle": "Désinstaller {{name}} avec le système",
+    "dialogDescription": "CoreRobin lance la méthode vérifiée du gestionnaire de paquets. Les demandes d’autorisation appartiennent au système.",
+    "dialogBoundary": "L’interface ne fournit jamais de chemin exécutable ni de ligne de commande.",
+    "elevationPrompt": "Une invite UAC Windows ou PolicyKit Linux peut apparaître. L’annulation est distinguée d’un échec.",
+    "confirm": "Lancer la désinstallation système",
+    "submitting": "Attente du programme de désinstallation…",
     "source": {
-      "macos_bundle": "macOS application bundle",
+      "macos_bundle": "Bundle d’application macOS",
       "windows_msi": "Windows Installer (MSI)",
-      "windows_msix": "Windows package (MSIX)",
-      "windows_uninstaller": "Registered Windows uninstaller",
+      "windows_msix": "Paquet Windows (MSIX)",
+      "windows_uninstaller": "Programme de désinstallation Windows enregistré",
       "linux_flatpak": "Flatpak",
-      "linux_deb": "Debian package",
-      "linux_rpm": "RPM package",
+      "linux_deb": "Paquet Debian",
+      "linux_rpm": "Paquet RPM",
       "linux_snap": "Snap",
-      "portable": "Portable or manually installed",
-      "unknown": "Unknown source"
+      "portable": "Portable ou installée manuellement",
+      "unknown": "Source inconnue"
     },
     "outcome": {
-      "succeeded": "{{name}} was removed by the operating system.",
-      "cancelled": "The system uninstall for {{name}} was cancelled.",
-      "failed": "The system uninstaller could not remove {{name}}.",
-      "restart_required": "{{name}} was removed; the operating system requested a restart."
+      "succeeded": "{{name}} a été supprimée par le système.",
+      "cancelled": "La désinstallation système de {{name}} a été annulée.",
+      "failed": "Le programme système n’a pas pu supprimer {{name}}.",
+      "restart_required": "{{name}} a été supprimée ; le système demande un redémarrage."
     },
     "unavailable": {
-      "protected": "CoreRobin or a protected system component cannot be removed from this screen.",
-      "portable": "No trusted package-manager identity was found. The item remains read-only."
+      "protected": "CoreRobin ou un composant protégé ne peut pas être supprimé ici.",
+      "portable": "Aucune identité fiable de gestionnaire de paquets n’a été trouvée. L’élément reste en lecture seule."
     }
   }
 }

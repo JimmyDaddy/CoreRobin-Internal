@@ -399,6 +399,11 @@
   color: var(--amber);
   background: var(--amber-soft);
 }
+.personal-baseline__status.is-partial,
+.personal-baseline__status.is-learning {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
 
 .personal-baseline h3 {
   display: flex;
@@ -446,6 +451,14 @@
 .personal-baseline__metrics small { color: var(--text-dim); font-size: 9px; }
 .personal-baseline__metrics strong { color: var(--text); font-size: 12px; }
 .personal-baseline__metrics em { grid-column: 1 / -1; color: var(--text-dim); font-size: 9px; font-style: normal; }
+.personal-baseline__metrics .personal-baseline__evidence {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+.personal-baseline__metrics .personal-baseline__evidence em { grid-column: auto; }
 
 .connection-history__switch {
   align-items: center;
