@@ -8,6 +8,10 @@ import {
 
 import { isDesktopRuntime } from "../api";
 import {
+  deliverDesktopNotification,
+  type DesktopNotificationDelivery,
+} from "../desktopNotifications";
+import {
   type ApplicationWatchRuleEvent,
   type ApplicationWatchRuleState,
 } from "../applicationWatchRules";
@@ -45,6 +49,8 @@ export function useApplicationWatchRules(
   const [storedEvents, setStoredEvents] = useState(
     loadApplicationWatchHistory,
   );
+  const [notificationDelivery, setNotificationDelivery] =
+    useState<DesktopNotificationDelivery | null>(null);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -103,7 +109,14 @@ export function useApplicationWatchRules(
         }
         if (!notificationsEnabled || notificationStatus !== "ready") return;
         for (const event of result.events) {
-          void sendWatchRuleNotification(event, language);
+          void sendWatchRuleNotification(event, language).then((sent) => {
+            if (cancelled) return;
+            setNotificationDelivery({
+              kind: "watch",
+              status: sent ? "sent" : "failed",
+              attemptedAtMs: Date.now(),
+            });
+          });
         }
       },
     );
@@ -186,17 +199,20 @@ export function useApplicationWatchRules(
     setStoredEvents([]);
   }, []);
 
-  return { activeRuleIds, events, storedEvents, clearSaved };
+  return {
+    activeRuleIds,
+    events,
+    storedEvents,
+    clearSaved,
+    notificationDelivery,
+  };
 }
 
 async function sendWatchRuleNotification(
   event: ApplicationWatchRuleEvent,
   language: SupportedLanguage,
-) {
+): Promise<boolean> {
   try {
-    const { sendNotification } = await import(
-      "@tauri-apps/plugin-notification"
-    );
     const applicationName =
       event.application?.name ?? event.rule.applicationName;
     const value = event.rule.metric === "disk"
@@ -207,7 +223,7 @@ async function sendWatchRuleNotification(
       `watch.metric.${event.rule.metric}`,
       { value },
     );
-    sendNotification({
+    return await deliverDesktopNotification({
       title: await translateNotification(
         language,
         `watch.${event.kind}.title`,
@@ -221,13 +237,12 @@ async function sendWatchRuleNotification(
           seconds: event.rule.durationSeconds,
         },
       ),
-      autoCancel: true,
       extra: {
         coreRobinWatchRuleId: event.rule.id,
         coreRobinApplicationName: applicationName,
       },
     });
   } catch {
-    // The rule stays active in settings even when the OS rejects a toast.
+    return false;
   }
 }

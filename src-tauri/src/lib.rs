@@ -41,7 +41,8 @@ use cleanup::{
 use error::CommandError;
 use file_insights::{
     FileInsightsCoordinator, load_file_insights_cache, remove_file_insights_cache,
-    save_file_insights_snapshot_cache, scan_file_insights as perform_file_insights_scan,
+    revalidate_file_insights_snapshot, save_file_insights_snapshot_cache,
+    scan_file_insights as perform_file_insights_scan,
 };
 use gpu_energy::sample_gpu_energy;
 use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
@@ -118,6 +119,22 @@ pub struct MonitorTimingStats {
     pub median_microseconds: u64,
     pub p95_microseconds: u64,
     pub maximum_microseconds: u64,
+}
+
+#[derive(Clone, Debug, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductDataCacheItemSummary {
+    byte_size: u64,
+    file_count: u64,
+    updated_at_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductDataCacheSummary {
+    cleanup_scan: ProductDataCacheItemSummary,
+    file_insights: ProductDataCacheItemSummary,
+    application_inventory: ProductDataCacheItemSummary,
 }
 
 pub fn benchmark_monitor_sampling(
@@ -481,6 +498,17 @@ async fn clear_persisted_file_insights_scan(app: AppHandle) -> Result<(), Comman
 }
 
 #[tauri::command]
+async fn revalidate_file_insights_scan(
+    snapshot: FileInsightsScan,
+) -> Result<FileInsightsScan, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || revalidate_file_insights_snapshot(snapshot))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("File insights revalidation task failed: {error}"))
+        })?
+}
+
+#[tauri::command]
 fn cancel_file_insights_scan(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -628,51 +656,96 @@ async fn save_persisted_cleanup_scan(
 async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError> {
     let path = cleanup_scan_cache_path(&app)?;
     let legacy_path = path.with_file_name("cleanup-scan-v2.json");
-    let file_insights_path = file_insights_cache_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
         remove_cleanup_scan_cache(&path)?;
-        remove_cleanup_scan_cache(&legacy_path)?;
-        remove_file_insights_cache(&file_insights_path)
+        remove_cleanup_scan_cache(&legacy_path)
     })
     .await
     .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
 }
 
-fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), CommandError> {
-    let cleanup_path = directory.join("cleanup-scan-v3.json");
-    let legacy_cleanup_path = directory.join("cleanup-scan-v2.json");
-    let file_insights_path = directory.join("file-insights-v1.json");
-    remove_cleanup_scan_cache(&cleanup_path)?;
-    remove_cleanup_scan_cache(&legacy_cleanup_path)?;
-    remove_file_insights_cache(&file_insights_path)?;
+fn cache_item_summary(
+    paths: impl IntoIterator<Item = std::path::PathBuf>,
+) -> ProductDataCacheItemSummary {
+    let mut summary = ProductDataCacheItemSummary::default();
+    for path in paths {
+        let metadata = match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_file() => metadata,
+            Ok(_) => continue,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => continue,
+        };
+        summary.byte_size = summary.byte_size.saturating_add(metadata.len());
+        summary.file_count = summary.file_count.saturating_add(1);
+        let updated_at_ms = metadata.modified().ok().and_then(|updated_at| {
+            updated_at
+                .duration_since(UNIX_EPOCH)
+                .ok()
+                .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+        });
+        summary.updated_at_ms = match (summary.updated_at_ms, updated_at_ms) {
+            (Some(current), Some(next)) => Some(current.max(next)),
+            (None, next) => next,
+            (current, None) => current,
+        };
+    }
+    summary
+}
 
+fn application_inventory_cache_paths(
+    directory: &std::path::Path,
+) -> Result<Vec<std::path::PathBuf>, CommandError> {
     let entries = match std::fs::read_dir(directory) {
         Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(error) => {
             return Err(CommandError::internal(format!(
                 "Product data folder could not be read: {error}"
             )));
         }
     };
+    let mut paths = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|error| {
             CommandError::internal(format!("Product data entry could not be read: {error}"))
         })?;
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if !name.starts_with("application-inventory-v1-") || !name.ends_with(".json") {
+        if name.starts_with("application-inventory-v1-") && name.ends_with(".json") {
+            paths.push(entry.path());
+        }
+    }
+    Ok(paths)
+}
+
+fn product_data_cache_summary_at(
+    directory: &std::path::Path,
+) -> Result<ProductDataCacheSummary, CommandError> {
+    Ok(ProductDataCacheSummary {
+        cleanup_scan: cache_item_summary([
+            directory.join("cleanup-scan-v3.json"),
+            directory.join("cleanup-scan-v2.json"),
+        ]),
+        file_insights: cache_item_summary([directory.join("file-insights-v1.json")]),
+        application_inventory: cache_item_summary(application_inventory_cache_paths(directory)?),
+    })
+}
+
+fn clear_application_inventory_cache_at(directory: &std::path::Path) -> Result<(), CommandError> {
+    for path in application_inventory_cache_paths(directory)? {
+        let metadata = match std::fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(CommandError::internal(format!(
+                    "Application inventory cache could not be checked: {error}"
+                )));
+            }
+        };
+        if !metadata.file_type().is_file() {
             continue;
         }
-        let file_type = entry.file_type().map_err(|error| {
-            CommandError::internal(format!(
-                "Product data entry type could not be checked: {error}"
-            ))
-        })?;
-        if !file_type.is_file() {
-            continue;
-        }
-        match std::fs::remove_file(entry.path()) {
+        match std::fs::remove_file(&path) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => {
@@ -683,6 +756,48 @@ fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), Co
         }
     }
     Ok(())
+}
+
+fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), CommandError> {
+    let cleanup_path = directory.join("cleanup-scan-v3.json");
+    let legacy_cleanup_path = directory.join("cleanup-scan-v2.json");
+    let file_insights_path = directory.join("file-insights-v1.json");
+    remove_cleanup_scan_cache(&cleanup_path)?;
+    remove_cleanup_scan_cache(&legacy_cleanup_path)?;
+    remove_file_insights_cache(&file_insights_path)?;
+    clear_application_inventory_cache_at(directory)
+}
+
+#[tauri::command]
+async fn get_product_data_cache_summary(
+    app: AppHandle,
+) -> Result<ProductDataCacheSummary, CommandError> {
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    tauri::async_runtime::spawn_blocking(move || product_data_cache_summary_at(&directory))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Product data inspection task failed: {error}"))
+        })?
+}
+
+#[tauri::command]
+async fn clear_application_inventory_cache(app: AppHandle) -> Result<(), CommandError> {
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    tauri::async_runtime::spawn_blocking(move || clear_application_inventory_cache_at(&directory))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Application inventory cache removal task failed: {error}"
+            ))
+        })?
 }
 
 #[tauri::command]
@@ -1721,6 +1836,7 @@ pub fn run() {
             load_persisted_file_insights_scan,
             save_persisted_file_insights_scan,
             clear_persisted_file_insights_scan,
+            revalidate_file_insights_scan,
             get_startup_items,
             create_startup_management_lease,
             release_startup_management_lease,
@@ -1731,6 +1847,8 @@ pub fn run() {
             load_persisted_cleanup_scan,
             save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
+            get_product_data_cache_summary,
+            clear_application_inventory_cache,
             clear_persisted_product_data,
             cancel_cleanup_scan,
             cancel_cleanup_subtree,
@@ -1889,7 +2007,10 @@ mod product_data_tests {
 
     use tempfile::tempdir;
 
-    use super::clear_persisted_product_data_at;
+    use super::{
+        clear_application_inventory_cache_at, clear_persisted_product_data_at,
+        product_data_cache_summary_at,
+    };
 
     #[test]
     fn clear_product_data_removes_known_caches_only() {
@@ -1930,6 +2051,42 @@ mod product_data_tests {
                 .join("application-inventory-v1-zh-cn.json")
                 .exists()
         );
+    }
+
+    #[test]
+    fn summarizes_known_cache_categories_without_following_directories() {
+        let root = tempdir().unwrap();
+        fs::write(root.path().join("cleanup-scan-v3.json"), b"cleanup").unwrap();
+        fs::write(root.path().join("file-insights-v1.json"), b"insights").unwrap();
+        fs::write(
+            root.path().join("application-inventory-v1-en.json"),
+            b"apps",
+        )
+        .unwrap();
+        fs::create_dir(root.path().join("application-inventory-v1-directory.json")).unwrap();
+
+        let summary = product_data_cache_summary_at(root.path()).unwrap();
+
+        assert_eq!(summary.cleanup_scan.file_count, 1);
+        assert_eq!(summary.cleanup_scan.byte_size, 7);
+        assert_eq!(summary.file_insights.file_count, 1);
+        assert_eq!(summary.file_insights.byte_size, 8);
+        assert_eq!(summary.application_inventory.file_count, 1);
+        assert_eq!(summary.application_inventory.byte_size, 4);
+    }
+
+    #[test]
+    fn clears_only_application_inventory_cache_files() {
+        let root = tempdir().unwrap();
+        let inventory = root.path().join("application-inventory-v1-en.json");
+        let cleanup = root.path().join("cleanup-scan-v3.json");
+        fs::write(&inventory, b"apps").unwrap();
+        fs::write(&cleanup, b"cleanup").unwrap();
+
+        clear_application_inventory_cache_at(root.path()).unwrap();
+
+        assert!(!inventory.exists());
+        assert!(cleanup.exists());
     }
 }
 
@@ -1976,6 +2133,8 @@ mod security_boundary_tests {
         "get_gpu_energy_snapshot",
         "scan_file_insights",
         "cancel_file_insights_scan",
+        "revalidate_file_insights_scan",
+        "clear_application_inventory_cache",
         "clear_persisted_product_data",
     ];
 

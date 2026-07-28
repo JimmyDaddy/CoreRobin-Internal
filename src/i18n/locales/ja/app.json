@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "メモリ使用量",
-    "disk": "ディスクI/O",
+    "disk": "ストレージ使用量",
     "network": "ネットワーク帯域幅",
     "cpuContext": "{{count}} 論理的なコア数 · 1つのプロセスで100%を超える可能性があります",
     "memoryContext": "{{total}} 合計 {{swap}} スワップ領域",

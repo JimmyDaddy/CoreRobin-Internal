@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "메모리 사용량",
-    "disk": "디스크 I/O",
+    "disk": "저장 공간 사용량",
     "network": "네트워크 대역폭",
     "cpuContext": "{{count}} 하나의 프로세스가 최대 100개의 논리 코어를 사용할 수 있습니다.",
     "memoryContext": "{{total}} 총 메모리 사용량 {{swap}} 스왑 공간 사용량",

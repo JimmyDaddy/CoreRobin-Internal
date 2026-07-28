@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   cancelFileInsightsScan,
+  revalidateFileInsightsScan,
   scanFileInsights,
 } from "../api";
 import {
@@ -37,10 +38,18 @@ export function useFileInsightsScan() {
         }
         return persisted;
       })
-      .then((persisted) => {
+      .then(async (persisted) => {
         if (disposed || stateTouched.current || !persisted) return;
-        snapshotRef.current = persisted.snapshot;
-        setSnapshot(persisted.snapshot);
+        let verified = persisted.snapshot;
+        try {
+          verified = await revalidateFileInsightsScan(persisted.snapshot);
+          await savePersistedFileInsightsScan(verified);
+        } catch {
+          // The bounded cached result remains available if revalidation is unavailable.
+        }
+        if (disposed || stateTouched.current) return;
+        snapshotRef.current = verified;
+        setSnapshot(verified);
         setSnapshotStatus(persisted.status);
       })
       .catch(() => {
@@ -100,6 +109,20 @@ export function useFileInsightsScan() {
     });
   }, []);
 
+  const clear = useCallback(async () => {
+    stateTouched.current = true;
+    if (inFlight.current) {
+      await cancelFileInsightsScan();
+    }
+    snapshotRef.current = null;
+    setSnapshot(null);
+    setSnapshotStatus("current");
+    setProgress(null);
+    setLoading(false);
+    setError(null);
+    await clearPersistedFileInsightsScan();
+  }, []);
+
   return {
     snapshot,
     snapshotStatus,
@@ -108,6 +131,7 @@ export function useFileInsightsScan() {
     error,
     scan,
     cancel,
+    clear,
     removePaths,
   };
 }

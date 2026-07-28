@@ -60,7 +60,7 @@
     "retention": "보관 기간",
     "days": "{{count}}일"
   },
-  "dataPrivacy": { "title": "데이터 및 개인정보 보호 센터", "description": "모든 로컬 데이터의 내용과 설정을 한곳에서 확인하세요. CoreRobin은 이를 업로드하거나 동기화하지 않습니다.", "status": { "on": "저장 중", "off": "꺼짐" }, "resourceHistory": { "title": "리소스 및 알림 기록", "description": "전체 시스템 상태, 작업, 관찰 이벤트의 집계이며 경로, 명령, 네트워크 주소는 포함하지 않습니다." }, "connectionHistory": { "title": "연결 기록", "description": "선택적 5분 집계에는 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다." }, "caches": { "title": "로컬 제품 캐시", "description": "앱 목록, 공간 스캔 및 파일 분석 결과는 이 기기에만 저장됩니다." }, "clear": "모든 로컬 데이터 지우기" },
+  "dataPrivacy": { "title": "데이터 및 개인정보 보호 센터", "description": "모든 로컬 데이터의 내용과 설정을 한곳에서 확인하세요. CoreRobin은 이를 업로드하거나 동기화하지 않습니다.", "status": { "on": "저장 중", "off": "꺼짐" }, "resourceHistory": { "title": "리소스 및 알림 기록", "description": "전체 시스템 상태, 작업, 관찰 이벤트의 집계이며 경로, 명령, 네트워크 주소는 포함하지 않습니다." }, "connectionHistory": { "title": "연결 기록", "description": "선택적 5분 집계에는 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다." }, "caches": { "title": "로컬 제품 캐시", "description": "앱 목록, 공간 스캔 및 파일 분석 결과는 이 기기에만 저장됩니다." }, "categories": { "resourceHistory": { "title": "리소스 및 작업 기록", "description": "기기 리소스, 알림, 앱 감시 및 로컬 작업 기록입니다." }, "connectionHistory": { "title": "연결 기록", "description": "원격 주소, 포트 및 앱 이름을 포함할 수 있는 선택적 5분 집계입니다." }, "applicationInventory": { "title": "앱 목록 캐시", "description": "인터페이스 언어별 설치 앱 메타데이터이며 앱 내용은 저장하지 않습니다." }, "scanCaches": { "title": "검사 결과 캐시", "description": "경로, 크기 및 수정 시간이 포함된 정리와 파일 분석 결과입니다." } }, "metrics": { "items": "{{count}}개 항목", "updated": "{{time}} 업데이트", "never": "로컬 데이터 없음", "retention": "{{count}}일 보관", "session": "현재 세션만" }, "result": { "clear": "이 범주 지우기", "retry": "다시 시도", "succeeded": "지움", "failed": "지우기 실패", "skipped": "다른 항목 실패로 건너뜀" }, "clearAll": { "title": "모든 제품 데이터 지우기", "description": "한 번 확인한 후 위 데이터, 환경설정 및 로컬 인터페이스 상태를 지웁니다." }, "diskAccess": { "title": "전체 디스크 접근", "description": "이 선택적 권한은 macOS가 관리합니다. CoreRobin으로 돌아오면 상태가 자동으로 갱신됩니다.", "open": "시스템 설정 열기" }, "clear": "모든 로컬 데이터 지우기" },
   "notifications": {
     "title": "데스크톱 알림",
     "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. CoreRobin는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
@@ -78,7 +78,9 @@
       "ready": "알림 허용",
       "denied": "시스템에서 알림 차단됨",
       "unavailable": "데스크톱 앱 전용"
-    }
+    },
+    "test": "테스트 알림 보내기",
+    "delivery": { "sent": "마지막 알림이 {{time}}에 시스템으로 전달됨", "failed": "마지막 알림이 {{time}}에 실패했습니다. 테스트하거나 시스템 설정을 확인하세요" }
   },
   "thresholds": {
     "title": "리소스 경고 임계값",
@@ -92,10 +94,10 @@
   "about": {
     "title": "정보 및 지원", "description": "버전을 확인하고 도움을 받으며 CoreRobin이 이 컴퓨터에 저장한 데이터를 관리합니다.",
     "versionTitle": "버전 및 업데이트", "versionDescription": "CoreRobin에서 최신 안정 버전을 확인하고 다운로드하여 설치합니다.", "version": "현재 버전", "platform": "시스템", "architecture": "아키텍처",
-    "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다", "installUpdate": "다운로드 및 설치", "installingUpdate": "업데이트 중…", "downloadingUpdate": "업데이트 다운로드 및 확인 중", "applyingUpdate": "업데이트 설치 중", "updateReady": "업데이트가 설치되었습니다. CoreRobin을 다시 시작하여 완료하세요.", "restartUpdate": "다시 시작", "updateInstallError": "업데이트를 설치하지 못했습니다. 현재 버전은 변경되지 않았습니다. 나중에 다시 시도하세요.",
+    "checking": "확인 중…", "checkUpdate": "업데이트 확인", "releaseNotes": "릴리스 정보", "updateError": "지금은 업데이트를 확인할 수 없습니다. 나중에 다시 시도하세요.", "updateAvailable": "CoreRobin v{{version}} 사용 가능", "openRelease": "다운로드", "upToDate": "v{{version}} 최신 상태입니다", "installUpdate": "다운로드 및 설치", "installingUpdate": "업데이트 중…", "downloadingUpdate": "업데이트 다운로드 및 확인 중", "applyingUpdate": "업데이트 설치 중", "updateReady": "업데이트가 설치되었습니다. CoreRobin을 다시 시작하여 완료하세요.", "restartUpdate": "다시 시작", "updateInstallError": "업데이트를 설치하지 못했습니다. 현재 버전은 변경되지 않았습니다. 나중에 다시 시도하세요.", "lastChecked": "마지막 확인: {{time}}", "lastCheckFailed": "{{time}}의 백그라운드 확인에 실패했습니다. 업데이트 확인을 다시 실행하세요.", "whatsNew": "이 버전의 새로운 기능",
     "helpTitle": "도움말 및 피드백", "helpDescription": "공개 가이드를 열거나 문제를 보고하기 전에 포함될 정보를 확인합니다.", "guide": "사용자 가이드", "privacy": "개인정보 보호", "reportIssue": "문제 보고", "reopenGuide": "첫 사용 가이드 다시 보기",
     "diagnosticsTitle": "진단 요약", "diagnosticsDescription": "문제 해결에 도움이 되는 기본 실행 정보를 복사합니다.", "diagnosticsPrivacy": "호스트 이름, 프로세스 이름, 파일 경로, 네트워크 주소 및 기록 값은 기본적으로 제외됩니다.", "diagnosticsPreview": "복사 전 미리보기", "diagnostics": { "idle": "익명화된 요약 복사", "copied": "복사됨", "error": "복사 실패" },
-    "clearTitle": "모든 로컬 데이터 지우기", "clearDescription": "환경 설정, 기록, 경고, 작업 기록 및 공간 스캔 캐시를 지웁니다.", "clearConfirm": "이 작업은 되돌릴 수 없습니다. CoreRobin은 기기 데이터를 지우고 다시 시작합니다. 로그인 시 실행과 같은 시스템 권한은 자동으로 제거되지 않습니다.", "clearNow": "지우고 다시 시작", "clearAction": "모든 데이터 지우기"
+    "clearTitle": "모든 로컬 데이터 지우기", "clearDescription": "환경 설정, 기록, 경고, 작업 기록 및 공간 스캔 캐시를 지웁니다.", "clearConfirm": "이 작업은 되돌릴 수 없습니다. CoreRobin은 기기 데이터를 지우고 다시 시작합니다. 로그인 시 실행과 같은 시스템 권한은 자동으로 제거되지 않습니다.", "clearNow": "지우고 다시 시작", "clearAction": "모든 데이터 지우기", "clearing": "로컬 데이터를 지우는 중…", "clearError": "일부 로컬 데이터를 지우지 못했습니다. CoreRobin은 작업을 완료된 것으로 표시하지 않습니다. 실행 중인 스캔을 닫고 다시 시도하세요.", "clearScope": { "history": "리소스 기록, 알림 기록 및 확인된 작업 기록", "scans": "앱 목록, 공간 지도 캐시 및 파일 분석 결과", "preferences": "인터페이스 환경 설정 및 기능별 로컬 설정" }
   },
   "onboarding": {
     "kicker": "첫 사용 · {{current}} / {{total}}", "skip": "지금은 건너뛰기", "back": "뒤로", "next": "다음", "finish": "시작하기",

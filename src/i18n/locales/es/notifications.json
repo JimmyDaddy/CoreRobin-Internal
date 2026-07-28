@@ -41,5 +41,9 @@
       "memory": "Memoria {{value}} MiB",
       "disk": "Actividad de disco {{value}} MiB/s"
     }
+  },
+  "test": {
+    "title": "Las notificaciones de CoreRobin están listas",
+    "body": "Esta es una prueba local. Las futuras alertas seguirán siendo moderadas y se pueden cambiar en Ajustes."
   }
 }

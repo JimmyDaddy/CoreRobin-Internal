@@ -9,6 +9,7 @@ import {
 import type { HistoryRetentionDays } from "./historyStore";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { ProcessViewMode } from "./types";
+import type { NetworkQualityHistoryHours } from "./networkQualityHistory";
 import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
@@ -64,6 +65,8 @@ export interface AppSettings {
   historyRetentionDays: HistoryRetentionDays;
   networkConnectionHistoryEnabled: boolean;
   networkConnectionHistoryRetentionDays: HistoryRetentionDays;
+  networkQualityHistoryEnabled: boolean;
+  networkQualityHistoryHours: NetworkQualityHistoryHours;
   applicationWatchRules: ApplicationWatchRule[];
   desktopNotificationsEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
@@ -91,6 +94,8 @@ export function defaultAppSettings(
     historyRetentionDays: 7,
     networkConnectionHistoryEnabled: false,
     networkConnectionHistoryRetentionDays: 30,
+    networkQualityHistoryEnabled: false,
+    networkQualityHistoryHours: 1,
     applicationWatchRules: [],
     desktopNotificationsEnabled: false,
     mutedNotificationResources: [],
@@ -160,6 +165,15 @@ export function parseAppSettings(
       )
         ? value.networkConnectionHistoryRetentionDays
         : fallback.networkConnectionHistoryRetentionDays,
+      networkQualityHistoryEnabled:
+        typeof value.networkQualityHistoryEnabled === "boolean"
+          ? value.networkQualityHistoryEnabled
+          : fallback.networkQualityHistoryEnabled,
+      networkQualityHistoryHours:
+        value.networkQualityHistoryHours === 1
+        || value.networkQualityHistoryHours === 24
+          ? value.networkQualityHistoryHours
+          : fallback.networkQualityHistoryHours,
       applicationWatchRules: isApplicationWatchRuleArray(value.applicationWatchRules)
         ? value.applicationWatchRules.slice(0, 50)
         : fallback.applicationWatchRules,

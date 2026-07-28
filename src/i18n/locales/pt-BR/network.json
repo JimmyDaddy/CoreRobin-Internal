@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "Amostragem automática de rede", "title": "Qualidade da rede", "description": "Verifica ao abrir e coleta uma amostra a cada 30 segundos enquanto a página estiver aberta.",
+    "eyebrow": "Amostragem automática de rede", "title": "Qualidade da rede", "description": "Verifica a cada 30 segundos enquanto a página está aberta. Opcionalmente mantém agregados de cinco minutos por 1 ou 24 horas em segundo plano.",
     "run": "Verificar agora", "checking": "Verificando…", "empty": "Executando a primeira verificação da rede…",
-    "method": "Verificações TCP leves separam rota local, DNS, IPv4/IPv6, acesso direto à Internet e serviço independente. A amostragem para ao sair.",
-    "dns": "DNS", "latency": "Latência média", "jitter": "Jitter", "loss": "Falhas de conexão", "probes": "Sondas TCP", "probeSuccess": "{{successful}}/{{total}} bem-sucedidas",
+    "method": "Sondagens TCP para example.com e one.one.one.one separam rota local, DNS, IPv4/IPv6 e acesso à Internet sem pacotes brutos privilegiados.",
+    "dns": "DNS", "latency": "Latência média", "jitter": "Jitter", "loss": "Falhas de sondagem TCP", "probes": "Sondas TCP", "probeSuccess": "{{successful}}/{{total}} bem-sucedidas", "probeAndTargets": "{{successful}}/{{total}} sondagens · {{targetSuccessful}}/{{targetTotal}} destinos acessíveis",
     "trendTitle": "Tendência da qualidade da rede", "trendWindow": "Últimos 15 minutos · a cada 30 segundos", "trendCollecting": "Coletando tendência", "legend": "Legenda da qualidade da rede", "chartLabel": "Qualidade da rede nos últimos 15 minutos com {{count}} amostras", "now": "Agora",
     "windowAverage": "Latência média", "windowPeak": "Pico de latência", "anomalies": "Anomalias", "anomalyCount": "{{count}}",
+    "history": {"title":"Histórico contínuo de qualidade","description":"Em segundo plano, coleta uma amostra leve a cada cinco minutos e mantém apenas agregados neste dispositivo.","range":"Intervalo","minutes15":"15 minutos","hours1":"1 hora","hours24":"24 horas","window":"Últimas {{count}} horas · agregados de cinco minutos","clear":"Limpar histórico de qualidade","axisMinutes":"−{{count}} min","axisHours":"−{{count}} h"},
     "diagnostics": { "title": "Diagnóstico de rede em camadas", "stages": { "local_link": "Rota local", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Internet", "independent_service": "Serviço independente" }, "status": { "passed": "Disponível", "degraded": "Degradado", "failed": "Falhou", "unavailable": "Não configurado" } },
     "status": { "online": "Online", "limited": "Conexão limitada", "offline": "Offline" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "Registro local opcional", "title": "Histórico de conexão e agregação", "description": "Revise a atividade de conexão de longo prazo por aplicativo ou domínio.",
+    "optIn": "O histórico de conexão pode incluir nomes de aplicativos, domínios e IPs remotos, por isso está desativado por padrão. Quando ativado, ele permanece neste dispositivo.", "enable": "Habilitar histórico de conexão",
+    "groupBy": "Agrupar por", "application": "Aplicativo", "domain": "Domínio", "retention": "Manter", "days": "Dias {{count}}", "clear": "Limpar histórico",
+    "lookupFallback": "Alguns nomes não puderam ser resolvidos; Em vez disso, os endereços IP foram registrados.", "observations": "Observações {{count}}", "empty": "Aguardando a próxima verificação de conexão ativa.",
+    "privacy": "Armazena apenas agregados de cinco minutos, com limite de 5.000 entradas; desativar ou limpar a qualquer momento."
   },
   "local": "Rede local",
   "title": "Interfaces ativas e tráfego de sessão",

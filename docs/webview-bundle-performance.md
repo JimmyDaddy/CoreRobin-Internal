@@ -51,6 +51,11 @@
 Tauri 窗口到 HTML 的映射。预算保存在 `scripts/web-bundle-budgets.json`，CI 和 Release
 都会执行；动态 chunks 的原始字节总量也有独立上限。
 
+2026-07-28 的数据可信度迭代加入隐私中心分类回执、文件洞察增量复核和网络质量
+1/24 小时聚合历史后，全部 production JS chunks 为 1,902,019 bytes。总量预算从
+1,900,000 调整为 1,920,000 bytes；20 KB 增量覆盖这些可按需加载的行为与多语言文案，
+四个入口各自的初始加载预算没有放宽。
+
 这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
 [发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI
 wall-clock 数字替代。

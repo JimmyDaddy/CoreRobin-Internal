@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Speicherauslastung",
-    "disk": "Festplatten-I/O",
+    "disk": "Speicherbelegung",
     "network": "Netzwerkdurchsatz",
     "cpuContext": "{{count}} logische Kerne · Ein einzelner Prozess kann 100% auslasten",
     "memoryContext": "{{total}} Gesamt · {{swap}} Swap-Speicher",

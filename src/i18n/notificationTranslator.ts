@@ -8,7 +8,8 @@ import { loadCatalog, type TranslationTree } from "./catalogs";
 export type NotificationTranslationKey =
   | `${ResourceAlertKind}.${ResourceAlertResource}.${"title" | "body"}`
   | `watch.${"triggered" | "recovered"}.${"title" | "body"}`
-  | `watch.metric.${"cpu" | "memory" | "disk"}`;
+  | `watch.metric.${"cpu" | "memory" | "disk"}`
+  | `test.${"title" | "body"}`;
 
 function lookup(tree: TranslationTree, key: string): string | undefined {
   let value: string | TranslationTree = tree;

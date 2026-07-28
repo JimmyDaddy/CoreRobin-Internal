@@ -76,12 +76,13 @@
     }
   },
   "quality": {
-    "eyebrow": "自动网络采样", "title": "网络质量", "description": "打开页面后自动检查；停留期间每 30 秒采样一次，观察偶发延迟和连接波动。",
+    "eyebrow": "自动网络采样", "title": "网络质量", "description": "打开页面后每 30 秒检查；可选择在后台保留 1 小时或 24 小时的五分钟聚合趋势。",
     "run": "立即复测", "checking": "正在检查…", "empty": "正在进行首次网络质量检查…",
-    "method": "轻量 TCP 检查会区分本地路由、DNS、IPv4/IPv6、公网直连和独立服务；离开页面后停止，不使用需要提权的原始数据包。",
-    "dns": "DNS", "latency": "平均延迟", "jitter": "抖动", "loss": "连接失败", "probes": "TCP 探测", "probeSuccess": "{{successful}}/{{total}} 次成功",
+    "method": "使用 TCP 分别探测 example.com 与 one.one.one.one，并区分本地路由、DNS、IPv4/IPv6 和公网连通性；不发送需要提权的原始数据包。",
+    "dns": "DNS", "latency": "平均延迟", "jitter": "抖动", "loss": "TCP 探测失败", "probes": "TCP 探测", "probeSuccess": "{{successful}}/{{total}} 次成功", "probeAndTargets": "{{successful}}/{{total}} 探测成功 · {{targetSuccessful}}/{{targetTotal}} 目标可达",
     "trendTitle": "网络质量趋势", "trendWindow": "最近 15 分钟 · 每 30 秒自动更新", "trendCollecting": "正在积累趋势数据", "legend": "网络质量图例", "chartLabel": "最近 15 分钟网络质量趋势，共 {{count}} 个样本", "now": "现在",
     "windowAverage": "平均延迟", "windowPeak": "峰值延迟", "anomalies": "异常次数", "anomalyCount": "{{count}} 次",
+    "history": {"title":"持续质量记录","description":"关闭页面后每五分钟轻量采样一次，只在本机保存聚合数值。","range":"趋势范围","minutes15":"15 分钟","hours1":"1 小时","hours24":"24 小时","window":"最近 {{count}} 小时 · 五分钟聚合","clear":"清空质量历史","axisMinutes":"−{{count}} 分钟","axisHours":"−{{count}} 小时"},
     "diagnostics": {
       "title": "分层网络诊断",
       "stages": { "local_link": "本地路由", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "公网", "independent_service": "独立服务" },

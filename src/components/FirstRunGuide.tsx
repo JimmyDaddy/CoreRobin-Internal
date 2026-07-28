@@ -13,14 +13,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
-import {
-  getCleanupScanAccess,
-  openCleanupFullDiskAccessSettings,
-} from "../api";
+import { openCleanupFullDiskAccessSettings } from "../api";
 import type { DesktopNotificationStatus } from "../desktopNotifications";
+import { useCleanupScanAccess } from "../hooks/useCleanupScanAccess";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import type { AppSettings } from "../settings";
-import type { CleanupScanAccess } from "../types";
 import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
 
@@ -42,7 +39,7 @@ export function FirstRunGuide({
 }) {
   const { t } = useAppTranslation();
   const [step, setStep] = useState(0);
-  const [cleanupAccess, setCleanupAccess] = useState<CleanupScanAccess | null>(null);
+  const { access: cleanupAccess } = useCleanupScanAccess(step === 2);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -59,21 +56,6 @@ export function FirstRunGuide({
 
   useEffect(() => {
     headingRef.current?.focus();
-  }, [step]);
-
-  useEffect(() => {
-    if (step !== 2) return;
-    let disposed = false;
-    void getCleanupScanAccess()
-      .then((access) => {
-        if (!disposed) setCleanupAccess(access);
-      })
-      .catch(() => {
-        if (!disposed) setCleanupAccess(null);
-      });
-    return () => {
-      disposed = true;
-    };
   }, [step]);
 
   useEffect(() => {

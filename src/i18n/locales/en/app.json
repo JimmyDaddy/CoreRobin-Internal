@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Memory usage",
-    "disk": "Disk I/O",
+    "disk": "Storage used",
     "network": "Network throughput",
     "cpuContext": "{{count}} logical cores · one process may exceed 100%",
     "memoryContext": "{{total}} total · {{swap}} swap",

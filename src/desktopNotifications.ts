@@ -18,6 +18,12 @@ export interface DesktopNotificationCopy {
   body: string;
 }
 
+export interface DesktopNotificationDelivery {
+  kind: "resource" | "watch" | "test";
+  status: "sent" | "failed";
+  attemptedAtMs: number;
+}
+
 export const DESKTOP_NOTIFICATION_LOG_KEY = "core-robin.desktop-notification-log.v1";
 export const MAX_DESKTOP_NOTIFICATIONS_PER_DAY = 4;
 
@@ -82,4 +88,32 @@ export async function desktopNotificationCopy(
       `${event.kind}.${event.resource}.body`,
     ),
   };
+}
+
+export async function desktopNotificationTestCopy(
+  language: SupportedLanguage,
+): Promise<DesktopNotificationCopy> {
+  return {
+    title: await translateNotification(language, "test.title"),
+    body: await translateNotification(language, "test.body"),
+  };
+}
+
+export async function deliverDesktopNotification(
+  notification: DesktopNotificationCopy & {
+    extra?: Record<string, string>;
+  },
+): Promise<boolean> {
+  try {
+    const { sendNotification } = await import(
+      "@tauri-apps/plugin-notification"
+    );
+    sendNotification({
+      ...notification,
+      autoCancel: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

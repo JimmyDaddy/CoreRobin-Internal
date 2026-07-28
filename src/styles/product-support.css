@@ -72,6 +72,11 @@
 .about-support__links button:hover { color: var(--text); border-color: rgba(99, 168, 255, 0.28); }
 .about-support__privacy-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 .about-support__privacy-note svg { flex: 0 0 auto; color: var(--green); }
+.about-support__last-check { margin: 8px 0 0; color: var(--text-muted); font-size: 10px; }
+.about-support__last-check.is-error { color: var(--danger); }
+.about-support__release-notes { margin-top: 9px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-soft); }
+.about-support__release-notes summary { color: var(--text-soft); font-size: 11px; cursor: pointer; }
+.about-support__release-notes p { max-height: 150px; margin: 8px 0 0; overflow: auto; color: var(--text-muted); font-size: 10px; line-height: 1.55; white-space: pre-wrap; }
 .about-support__diagnostic-preview { color: var(--text-muted); font-size: 11px; }
 .about-support__diagnostic-preview summary { width: max-content; color: var(--blue); cursor: pointer; }
 .about-support__diagnostic-preview pre { max-height: 180px; overflow: auto; margin: 9px 0 0; padding: 10px; color: var(--text-soft); border: 1px solid var(--border); border-radius: 9px; background: var(--background); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; line-height: 1.55; white-space: pre-wrap; }

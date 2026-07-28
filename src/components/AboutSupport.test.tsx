@@ -68,7 +68,7 @@ describe("AboutSupport", () => {
   });
 
   it("requires a second confirmation before clearing local data", () => {
-    const onClearAllData = vi.fn();
+    const onClearAllData = vi.fn(async () => undefined);
     renderSupport({ onClearAllData });
 
     fireEvent.click(screen.getByRole("button", { name: "清空全部数据" }));
@@ -77,6 +77,19 @@ describe("AboutSupport", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "清空并重新启动" }));
     expect(onClearAllData).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the clear dialog open and reports a partial native failure", async () => {
+    const onClearAllData = vi.fn(async () => {
+      throw new Error("product_data_clear_incomplete");
+    });
+    renderSupport({ onClearAllData });
+
+    fireEvent.click(screen.getByRole("button", { name: "清空全部数据" }));
+    fireEvent.click(screen.getByRole("button", { name: "清空并重新启动" }));
+
+    expect(await screen.findByText(/部分本机数据未能清除/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "重试" })).toBeTruthy();
   });
 
   it("keeps browser demos on the public download path", async () => {
@@ -98,9 +111,9 @@ describe("AboutSupport", () => {
 });
 
 function renderSupport({
-  onClearAllData = vi.fn(),
+  onClearAllData = vi.fn(async () => undefined),
 }: {
-  onClearAllData?: () => void;
+  onClearAllData?: () => Promise<void>;
 } = {}) {
   return render(
     <AboutSupport

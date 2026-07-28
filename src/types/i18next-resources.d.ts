@@ -16,7 +16,7 @@ export default interface Resources {
     "mainNavigation": "主导航",
     "metrics": {
       "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
-      "disk": "磁盘 I/O",
+      "disk": "存储使用",
       "diskCapacityContext": "共 {{total}} · 可用 {{available}}",
       "diskContext": "读 {{read}} · 写 {{write}}",
       "memory": "内存使用",
@@ -1560,7 +1560,7 @@ export default interface Resources {
       "anomalyCount": "{{count}} 次",
       "chartLabel": "最近 15 分钟网络质量趋势，共 {{count}} 个样本",
       "checking": "正在检查…",
-      "description": "打开页面后自动检查；停留期间每 30 秒采样一次，观察偶发延迟和连接波动。",
+      "description": "打开页面后每 30 秒检查；可选择在后台保留 1 小时或 24 小时的五分钟聚合趋势。",
       "diagnostics": {
         "stages": {
           "dns": "DNS",
@@ -1581,12 +1581,25 @@ export default interface Resources {
       "dns": "DNS",
       "empty": "正在进行首次网络质量检查…",
       "eyebrow": "自动网络采样",
+      "history": {
+        "axisHours": "−{{count}} 小时",
+        "axisMinutes": "−{{count}} 分钟",
+        "clear": "清空质量历史",
+        "description": "关闭页面后每五分钟轻量采样一次，只在本机保存聚合数值。",
+        "hours1": "1 小时",
+        "hours24": "24 小时",
+        "minutes15": "15 分钟",
+        "range": "趋势范围",
+        "title": "持续质量记录",
+        "window": "最近 {{count}} 小时 · 五分钟聚合"
+      },
       "jitter": "抖动",
       "latency": "平均延迟",
       "legend": "网络质量图例",
-      "loss": "连接失败",
-      "method": "轻量 TCP 检查会区分本地路由、DNS、IPv4/IPv6、公网直连和独立服务；离开页面后停止，不使用需要提权的原始数据包。",
+      "loss": "TCP 探测失败",
+      "method": "使用 TCP 分别探测 example.com 与 one.one.one.one，并区分本地路由、DNS、IPv4/IPv6 和公网连通性；不发送需要提权的原始数据包。",
       "now": "现在",
+      "probeAndTargets": "{{successful}}/{{total}} 探测成功 · {{targetSuccessful}}/{{targetTotal}} 目标可达",
       "probeSuccess": "{{successful}}/{{total}} 次成功",
       "probes": "TCP 探测",
       "run": "立即复测",
@@ -1632,6 +1645,10 @@ export default interface Resources {
         "body": "磁盘占用已稳定回到安全范围，目前不需要继续清理。",
         "title": "磁盘空间状态已经恢复"
       }
+    },
+    "test": {
+      "body": "这是一条本机测试提醒。后续提醒仍会保持克制，可随时在设置中调整。",
+      "title": "CoreRobin 提醒已就绪"
     },
     "triggered": {
       "cpu": {
@@ -1763,8 +1780,15 @@ export default interface Resources {
       "clearAction": "清空全部数据",
       "clearConfirm": "此操作无法撤销。CoreRobin 将清除本机数据并重新启动；登录启动等系统授权不会被静默移除。",
       "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描缓存。",
+      "clearError": "部分本机数据未能清除，CoreRobin 不会把它显示成已完成。请关闭正在运行的扫描后重试。",
       "clearNow": "清空并重新启动",
+      "clearScope": {
+        "history": "资源历史、提醒历史和已确认的操作记录",
+        "preferences": "界面偏好和各项功能的本机设置",
+        "scans": "应用清单、空间地图缓存和文件分析结果"
+      },
       "clearTitle": "清空全部本地数据",
+      "clearing": "正在清空本机数据…",
       "description": "查看版本、获取帮助，并管理 CoreRobin 保存在这台电脑上的数据。",
       "diagnostics": {
         "copied": "已复制",
@@ -1781,6 +1805,8 @@ export default interface Resources {
       "helpTitle": "帮助与反馈",
       "installUpdate": "下载并安装",
       "installingUpdate": "正在更新…",
+      "lastCheckFailed": "{{time}} 的后台检查失败，可点击“检查更新”重试。",
+      "lastChecked": "上次检查：{{time}}",
       "openRelease": "前往下载",
       "platform": "系统",
       "privacy": "隐私说明",
@@ -1796,7 +1822,8 @@ export default interface Resources {
       "updateReady": "更新已安装，重新启动 CoreRobin 即可完成更新。",
       "version": "当前版本",
       "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
-      "versionTitle": "版本与更新"
+      "versionTitle": "版本与更新",
+      "whatsNew": "这个版本的新内容"
     },
     "background": {
       "companionAlwaysOnTop": "Robin 始终置顶",
@@ -1820,15 +1847,56 @@ export default interface Resources {
         "description": "应用清单、空间扫描和文件分析结果只保存在这台设备上。",
         "title": "本机产品缓存"
       },
+      "categories": {
+        "applicationInventory": {
+          "description": "按界面语言保存的已安装应用元数据，不包含应用内容。",
+          "title": "应用清单缓存"
+        },
+        "connectionHistory": {
+          "description": "可选的五分钟聚合记录，可能包含远端地址、端口和应用名。",
+          "title": "连接历史"
+        },
+        "resourceHistory": {
+          "description": "整机资源、提醒、应用关注和本机操作记录。",
+          "title": "资源与操作历史"
+        },
+        "scanCaches": {
+          "description": "空间清理与文件洞察结果，包含路径、大小和修改时间。",
+          "title": "扫描结果缓存"
+        }
+      },
       "clear": "清空全部本机数据",
+      "clearAll": {
+        "description": "统一确认后清除以上数据、偏好设置和本机界面状态。",
+        "title": "清除全部产品数据"
+      },
       "connectionHistory": {
         "description": "可选的五分钟聚合数据可能包含远端 IP、域名、端口和应用名。",
         "title": "连接历史"
       },
       "description": "集中查看每类本机数据包含什么并进行控制。CoreRobin 不会上传或同步这些记录。",
+      "diskAccess": {
+        "description": "这项可选权限由 macOS 管理；返回 CoreRobin 后会自动刷新状态。",
+        "open": "打开系统设置",
+        "title": "完全磁盘访问权限"
+      },
+      "metrics": {
+        "items": "{{count}} 项",
+        "never": "尚无本机数据",
+        "retention": "保留 {{count}} 天",
+        "session": "仅当前会话",
+        "updated": "更新于 {{time}}"
+      },
       "resourceHistory": {
         "description": "整机健康、操作和关注事件的聚合记录，不含路径、命令或网络地址。",
         "title": "资源与提醒历史"
+      },
+      "result": {
+        "clear": "清除此类",
+        "failed": "清除失败",
+        "retry": "重试",
+        "skipped": "因其他项目失败而跳过",
+        "succeeded": "已清除"
       },
       "status": {
         "off": "已关闭",
@@ -1863,6 +1931,10 @@ export default interface Resources {
     "localPreferences": "本机偏好",
     "notifications": {
       "categories": "允许提醒的类别",
+      "delivery": {
+        "failed": "上次提醒在 {{time}} 发送失败，请测试或检查系统设置",
+        "sent": "上次提醒已于 {{time}} 交给系统"
+      },
       "description": "只提醒持续高负荷、真实内存压力和磁盘空间不足；问题稳定恢复后会再告知一次。",
       "enable": "允许克制提醒",
       "openSettings": "打开系统通知设置",
@@ -1878,6 +1950,7 @@ export default interface Resources {
         "requesting": "等待系统授权",
         "unavailable": "仅桌面应用可用"
       },
+      "test": "发送测试提醒",
       "title": "桌面提醒"
     },
     "onboarding": {

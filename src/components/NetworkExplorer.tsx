@@ -12,7 +12,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import "./NetworkExplorer.css";
 import { processApplicationIconSource } from "../applicationIcon";
@@ -29,7 +29,6 @@ import {
   type NetworkProcessIndex,
   type NetworkSeriesPoint,
 } from "../networkExplorer";
-import { runNetworkQualityCheck } from "../api";
 import {
   aggregateConnectionHistory,
   type ConnectionHistoryEntry,
@@ -45,8 +44,25 @@ import type {
   NetworkQualityResult,
   ProcessRow,
 } from "../types";
-import { formatBytes, formatRate, normalizeCommandError } from "../utils";
+import { formatBytes, formatRate } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import {
+  NETWORK_QUALITY_REFRESH_MS,
+  NETWORK_QUALITY_WINDOW_MS,
+  appendNetworkQualitySample,
+  type NetworkQualityMonitorController,
+} from "../hooks/useNetworkQualityMonitor";
+import {
+  networkQualityFailurePercent,
+  type NetworkQualityHistoryHours,
+  type NetworkQualityHistoryPoint,
+} from "../networkQualityHistory";
+
+export {
+  NETWORK_QUALITY_REFRESH_MS,
+  NETWORK_QUALITY_WINDOW_MS,
+  appendNetworkQualitySample,
+};
 
 interface NetworkExplorerProps {
   network: NetworkSnapshot;
@@ -65,6 +81,11 @@ interface NetworkExplorerProps {
   connectionHistoryEntries: ConnectionHistoryEntry[];
   connectionHistoryError: string | null;
   onClearConnectionHistory: () => void;
+  qualityMonitor: NetworkQualityMonitorController;
+  qualityHistoryEnabled: boolean;
+  qualityHistoryHours: NetworkQualityHistoryHours;
+  onQualityHistoryEnabledChange: (enabled: boolean) => void;
+  onQualityHistoryHoursChange: (hours: NetworkQualityHistoryHours) => void;
 }
 
 const CHART_WIDTH = 720;
@@ -72,9 +93,6 @@ const CHART_HEIGHT = 176;
 const CHART_TOP = 12;
 const CHART_BOTTOM = 148;
 const CONNECTION_PAGE_SIZE = 100;
-export const NETWORK_QUALITY_REFRESH_MS = 30 * 1_000;
-export const NETWORK_QUALITY_WINDOW_MS = 15 * 60 * 1_000;
-const NETWORK_QUALITY_MAX_POINTS = NETWORK_QUALITY_WINDOW_MS / NETWORK_QUALITY_REFRESH_MS + 1;
 const QUALITY_CHART_WIDTH = 720;
 const QUALITY_CHART_HEIGHT = 148;
 const QUALITY_CHART_LEFT = 16;
@@ -91,14 +109,6 @@ const CONNECTION_FILTERS: NetworkConnectionFilter[] = [
 ];
 
 type NetworkSection = "quality" | "connections" | "history" | "interfaces";
-let qualitySessionResult: NetworkQualityResult | null = null;
-let qualitySessionSamples: NetworkQualityResult[] = [];
-
-export function resetNetworkQualitySessionForTest(): void {
-  qualitySessionResult = null;
-  qualitySessionSamples = [];
-}
-
 export function NetworkExplorer({
   network,
   history,
@@ -116,6 +126,11 @@ export function NetworkExplorer({
   connectionHistoryEntries,
   connectionHistoryError,
   onClearConnectionHistory,
+  qualityMonitor,
+  qualityHistoryEnabled,
+  qualityHistoryHours,
+  onQualityHistoryEnabledChange,
+  onQualityHistoryHoursChange,
 }: NetworkExplorerProps) {
   const { t } = useAppTranslation();
   const [showAllInterfaces, setShowAllInterfaces] = useState(false);
@@ -198,7 +213,13 @@ export function NetworkExplorer({
 
       {activeSection === "quality" ? (
         <>
-          <NetworkQualityPanel />
+          <NetworkQualityPanel
+            monitor={qualityMonitor}
+            historyEnabled={qualityHistoryEnabled}
+            historyHours={qualityHistoryHours}
+            onHistoryEnabledChange={onQualityHistoryEnabledChange}
+            onHistoryHoursChange={onQualityHistoryHoursChange}
+          />
           <NetworkThroughput history={history} network={network} />
         </>
       ) : null}
@@ -272,67 +293,34 @@ export function NetworkExplorer({
   );
 }
 
-export function appendNetworkQualitySample(
-  samples: readonly NetworkQualityResult[],
-  sample: NetworkQualityResult,
-): NetworkQualityResult[] {
-  const cutoff = sample.sampledAtMs - NETWORK_QUALITY_WINDOW_MS;
-  return samples
-    .filter((candidate) => candidate.sampledAtMs >= cutoff && candidate.sampledAtMs !== sample.sampledAtMs)
-    .concat(sample)
-    .sort((left, right) => left.sampledAtMs - right.sampledAtMs)
-    .slice(-NETWORK_QUALITY_MAX_POINTS);
-}
-
-export function NetworkQualityPanel() {
+export function NetworkQualityPanel({
+  monitor,
+  historyEnabled,
+  historyHours,
+  onHistoryEnabledChange,
+  onHistoryHoursChange,
+}: {
+  monitor: NetworkQualityMonitorController;
+  historyEnabled: boolean;
+  historyHours: NetworkQualityHistoryHours;
+  onHistoryEnabledChange: (enabled: boolean) => void;
+  onHistoryHoursChange: (hours: NetworkQualityHistoryHours) => void;
+}) {
   const { t, i18n } = useAppTranslation();
-  const [result, setResult] = useState<NetworkQualityResult | null>(
-    () => qualitySessionResult,
-  );
-  const [samples, setSamples] = useState<NetworkQualityResult[]>(() => {
-    const cutoff = Date.now() - NETWORK_QUALITY_WINDOW_MS;
-    qualitySessionSamples = qualitySessionSamples.filter(
-      (sample) => sample.sampledAtMs >= cutoff,
+  const [selectedWindow, setSelectedWindow] =
+    useState<"15m" | NetworkQualityHistoryHours>(
+      historyEnabled ? historyHours : "15m",
     );
-    return qualitySessionSamples;
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const checkingRef = useRef(false);
-  const mountedRef = useRef(false);
-
-  const runCheck = useCallback(async () => {
-    if (checkingRef.current) return;
-    checkingRef.current = true;
-    setLoading(true);
-    setError(null);
-    try {
-      const nextResult = await runNetworkQualityCheck();
-      if (!mountedRef.current) return;
-      qualitySessionResult = nextResult;
-      setResult(nextResult);
-      setSamples((current) => {
-        const next = appendNetworkQualitySample(current, nextResult);
-        qualitySessionSamples = next;
-        return next;
-      });
-    } catch (reason) {
-      if (mountedRef.current) setError(normalizeCommandError(reason).message);
-    } finally {
-      checkingRef.current = false;
-      if (mountedRef.current) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    void runCheck();
-    const interval = window.setInterval(() => void runCheck(), NETWORK_QUALITY_REFRESH_MS);
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(interval);
-    };
-  }, [runCheck]);
+  const result = monitor.result;
+  const samples = selectedWindow === "15m"
+    ? monitor.sessionSamples.map(trendPointFromResult)
+    : monitor.history
+        .filter((point) =>
+          point.sampledAtMs >= Date.now() - selectedWindow * 60 * 60 * 1_000)
+        .map(trendPointFromHistory);
+  const trendWindowMs = selectedWindow === "15m"
+    ? NETWORK_QUALITY_WINDOW_MS
+    : selectedWindow * 60 * 60 * 1_000;
 
   return (
     <section className="panel network-quality" aria-labelledby="network-quality-title">
@@ -342,12 +330,12 @@ export function NetworkQualityPanel() {
           <h2 id="network-quality-title">{t("network:quality.title")}</h2>
           <p>{t("network:quality.description")}</p>
         </div>
-        <button className="button button--secondary" type="button" disabled={loading} onClick={() => void runCheck()}>
-          <RefreshCw size={14} className={loading ? "is-spinning" : ""} />
-          {loading ? t("network:quality.checking") : t("network:quality.run")}
+        <button className="button button--secondary" type="button" disabled={monitor.loading} onClick={() => void monitor.runCheck()}>
+          <RefreshCw size={14} className={monitor.loading ? "is-spinning" : ""} />
+          {monitor.loading ? t("network:quality.checking") : t("network:quality.run")}
         </button>
       </header>
-      {error ? <div className="network-connections__notice is-error" role="alert">{error}</div> : null}
+      {monitor.error ? <div className="network-connections__notice is-error" role="alert">{monitor.error}</div> : null}
       {result ? (
         <>
           <div className="network-quality__results" aria-live="polite">
@@ -361,9 +349,11 @@ export function NetworkQualityPanel() {
             <QualityMetric label={t("network:quality.jitter")} value={formatMilliseconds(result.jitterMs)} />
             <QualityMetric
               label={t("network:quality.probes")}
-              value={t("network:quality.probeSuccess", {
+              value={t("network:quality.probeAndTargets", {
                 successful: result.successfulProbeCount,
                 total: result.probeCount,
+                targetSuccessful: result.successfulTargetCount,
+                targetTotal: result.targetCount,
               })}
             />
           </div>
@@ -392,7 +382,61 @@ export function NetworkQualityPanel() {
           {t("network:quality.empty")}
         </div>
       )}
-      {samples.length > 0 ? <NetworkQualityTrend samples={samples} /> : null}
+      <div className="network-quality__history-controls">
+        <label>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={historyEnabled}
+            onChange={(event) => onHistoryEnabledChange(event.target.checked)}
+          />
+          <span>
+            <strong>{t("network:quality.history.title")}</strong>
+            <small>{t("network:quality.history.description")}</small>
+          </span>
+        </label>
+        <div role="group" aria-label={t("network:quality.history.range")}>
+          <button
+            type="button"
+            className={selectedWindow === "15m" ? "is-active" : undefined}
+            onClick={() => setSelectedWindow("15m")}
+          >
+            {t("network:quality.history.minutes15")}
+          </button>
+          {([1, 24] as const).map((hours) => (
+            <button
+              type="button"
+              key={hours}
+              className={selectedWindow === hours ? "is-active" : undefined}
+              onClick={() => {
+                if (!historyEnabled) onHistoryEnabledChange(true);
+                onHistoryHoursChange(hours);
+                setSelectedWindow(hours);
+              }}
+            >
+              {t(`network:quality.history.hours${hours}`)}
+            </button>
+          ))}
+        </div>
+        {historyEnabled && monitor.history.length > 0 ? (
+          <button
+            className="button button--plain"
+            type="button"
+            onClick={monitor.clearHistory}
+          >
+            {t("network:quality.history.clear")}
+          </button>
+        ) : null}
+      </div>
+      {samples.length > 0 ? (
+        <NetworkQualityTrend
+          samples={samples}
+          windowMs={trendWindowMs}
+          windowLabel={selectedWindow === "15m"
+            ? t("network:quality.trendWindow")
+            : t("network:quality.history.window", { count: selectedWindow })}
+        />
+      ) : null}
       <small className="network-quality__method">{t("network:quality.method")}</small>
     </section>
   );
@@ -402,15 +446,55 @@ function QualityMetric({ label, value }: { label: string; value: string }) {
   return <div className="network-quality__metric"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResult[] }) {
+interface NetworkQualityTrendPoint {
+  sampledAtMs: number;
+  status: NetworkQualityResult["status"];
+  averageLatencyMs: number | null;
+  jitterMs: number | null;
+  tcpProbeFailurePercent: number;
+}
+
+function trendPointFromResult(
+  result: NetworkQualityResult,
+): NetworkQualityTrendPoint {
+  return {
+    sampledAtMs: result.sampledAtMs,
+    status: result.status,
+    averageLatencyMs: result.averageLatencyMs,
+    jitterMs: result.jitterMs,
+    tcpProbeFailurePercent: networkQualityFailurePercent(result),
+  };
+}
+
+function trendPointFromHistory(
+  point: NetworkQualityHistoryPoint,
+): NetworkQualityTrendPoint {
+  return {
+    sampledAtMs: point.sampledAtMs,
+    status: point.status,
+    averageLatencyMs: point.averageLatencyMs,
+    jitterMs: point.jitterMs,
+    tcpProbeFailurePercent: networkQualityFailurePercent(point),
+  };
+}
+
+function NetworkQualityTrend({
+  samples,
+  windowMs,
+  windowLabel,
+}: {
+  samples: readonly NetworkQualityTrendPoint[];
+  windowMs: number;
+  windowLabel: string;
+}) {
   const { t } = useAppTranslation();
   const latest = samples[samples.length - 1]!;
-  const windowStart = latest.sampledAtMs - NETWORK_QUALITY_WINDOW_MS;
+  const windowStart = latest.sampledAtMs - windowMs;
   const values = samples.flatMap((sample) => [sample.averageLatencyMs, sample.jitterMs])
     .filter((value): value is number => value !== null);
   const maximum = Math.max(20, ...values);
   const xFor = (sampledAtMs: number) => QUALITY_CHART_LEFT +
-    ((sampledAtMs - windowStart) / NETWORK_QUALITY_WINDOW_MS) *
+    ((sampledAtMs - windowStart) / windowMs) *
       (QUALITY_CHART_RIGHT - QUALITY_CHART_LEFT);
   const yFor = (value: number) => QUALITY_CHART_BOTTOM -
     (value / maximum) * (QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP);
@@ -432,7 +516,7 @@ function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResu
       <header>
         <div>
           <h3 id="network-quality-trend-title">{t("network:quality.trendTitle")}</h3>
-          <span>{t("network:quality.trendWindow")}</span>
+          <span>{windowLabel}</span>
         </div>
         <div className="network-quality__legend" aria-label={t("network:quality.legend")}>
           <span className="is-latency">{t("network:quality.latency")}</span>
@@ -453,8 +537,8 @@ function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResu
             return <line className="network-quality__grid" key={index} x1={QUALITY_CHART_LEFT} x2={QUALITY_CHART_RIGHT} y1={y} y2={y} />;
           })}
           {samples.map((sample) => {
-            if (sample.packetLossPercent <= 0) return null;
-            const height = Math.max(4, (sample.packetLossPercent / 100) * (QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP));
+            if (sample.tcpProbeFailurePercent <= 0) return null;
+            const height = Math.max(4, (sample.tcpProbeFailurePercent / 100) * (QUALITY_CHART_BOTTOM - QUALITY_CHART_TOP));
             return (
               <rect
                 className="network-quality__loss-bar"
@@ -473,7 +557,15 @@ function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResu
           {newestJitter !== null ? <circle className="network-quality__point is-jitter" cx={xFor(latest.sampledAtMs)} cy={yFor(newestJitter)} r={3.5} /> : null}
         </svg>
         {samples.length < 2 ? <span className="network-quality__collecting">{t("network:quality.trendCollecting")}</span> : null}
-        <span className="network-quality__axis is-start">−15 min</span>
+        <span className="network-quality__axis is-start">
+          {windowMs < 60 * 60 * 1_000
+            ? t("network:quality.history.axisMinutes", {
+                count: Math.round(windowMs / 60_000),
+              })
+            : t("network:quality.history.axisHours", {
+                count: Math.round(windowMs / (60 * 60 * 1_000)),
+              })}
+        </span>
         <span className="network-quality__axis is-end">{t("network:quality.now")}</span>
       </div>
       <dl className="network-quality__trend-summary">
@@ -486,7 +578,7 @@ function NetworkQualityTrend({ samples }: { samples: readonly NetworkQualityResu
 }
 
 function buildQualityLineSegments(
-  samples: readonly NetworkQualityResult[],
+  samples: readonly NetworkQualityTrendPoint[],
   metric: "averageLatencyMs" | "jitterMs",
   xFor: (sampledAtMs: number) => number,
   yFor: (value: number) => number,
@@ -506,9 +598,9 @@ function buildQualityLineSegments(
   return segments;
 }
 
-function isNetworkQualityAnomaly(sample: NetworkQualityResult): boolean {
+function isNetworkQualityAnomaly(sample: NetworkQualityTrendPoint): boolean {
   return sample.status !== "online" ||
-    sample.packetLossPercent > 0 ||
+    sample.tcpProbeFailurePercent > 0 ||
     (sample.averageLatencyMs ?? 0) >= 150 ||
     (sample.jitterMs ?? 0) >= 50;
 }

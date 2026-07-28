@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "内存使用",
-    "disk": "磁盘 I/O",
+    "disk": "存储使用",
     "network": "网络吞吐",
     "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
     "memoryContext": "共 {{total}} · 交换 {{swap}}",

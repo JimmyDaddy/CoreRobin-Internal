@@ -8,8 +8,8 @@ import {
   NETWORK_QUALITY_WINDOW_MS,
   NetworkQualityPanel,
   appendNetworkQualitySample,
-  resetNetworkQualitySessionForTest,
 } from "./components/NetworkExplorer";
+import { useNetworkQualityMonitor } from "./hooks/useNetworkQualityMonitor";
 import i18n from "./i18n";
 import type { NetworkQualityResult } from "./types";
 
@@ -26,16 +26,15 @@ afterEach(() => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  resetNetworkQualitySessionForTest();
   runNetworkQualityCheck.mockImplementation(async () => qualityResult(Date.now()));
   await i18n.changeLanguage("zh-CN");
 });
 
 describe("network quality monitoring", () => {
   it("checks automatically, reports probe counts, and keeps a manual recheck", async () => {
-    render(<NetworkQualityPanel />);
+    render(<NetworkQualityHarness />);
 
-    expect(await screen.findByText("6/6 次成功")).toBeTruthy();
+    expect(await screen.findByText("6/6 探测成功 · 2/2 目标可达")).toBeTruthy();
     expect(runNetworkQualityCheck).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("img", { name: /共 1 个样本/ })).toBeTruthy();
 
@@ -46,7 +45,7 @@ describe("network quality monitoring", () => {
   it("samples every 30 seconds while mounted and stops after leaving", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-20T15:00:00Z"));
-    const view = render(<NetworkQualityPanel />);
+    const view = render(<NetworkQualityHarness />);
     await act(async () => undefined);
     expect(runNetworkQualityCheck).toHaveBeenCalledTimes(1);
 
@@ -72,11 +71,30 @@ describe("network quality monitoring", () => {
   });
 });
 
+function NetworkQualityHarness() {
+  const monitor = useNetworkQualityMonitor({
+    active: true,
+    historyEnabled: false,
+    historyHours: 1,
+  });
+  return (
+    <NetworkQualityPanel
+      monitor={monitor}
+      historyEnabled={false}
+      historyHours={1}
+      onHistoryEnabledChange={() => undefined}
+      onHistoryHoursChange={() => undefined}
+    />
+  );
+}
+
 function qualityResult(sampledAtMs: number): NetworkQualityResult {
   return {
     sampledAtMs,
     targetHost: "example.com",
     targetPort: 443,
+    targetCount: 2,
+    successfulTargetCount: 2,
     status: "online",
     dnsAvailable: true,
     dnsLookupMs: 2,
@@ -87,7 +105,7 @@ function qualityResult(sampledAtMs: number): NetworkQualityResult {
     minimumLatencyMs: 20,
     maximumLatencyMs: 31,
     jitterMs: 3,
-    packetLossPercent: 0,
+    tcpProbeFailurePercent: 0,
     diagnostics: [
       { kind: "local_link", status: "passed", latencyMs: null },
       { kind: "dns", status: "passed", latencyMs: 2 },

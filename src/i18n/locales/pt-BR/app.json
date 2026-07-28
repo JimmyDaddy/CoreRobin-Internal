@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Uso da memória",
-    "disk": "Desempenho do disco",
+    "disk": "Uso do armazenamento",
     "network": "Taxa de transferência de dados",
     "cpuContext": "{{count}} número de núcleos lógicos · um processo pode ultrapassar o limite de 100%",
     "memoryContext": "{{total}} total {{swap}} uso da memória virtual (swap)",

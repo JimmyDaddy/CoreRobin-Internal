@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  deliverDesktopNotification,
   desktopNotificationCopy,
+  desktopNotificationTestCopy,
   loadDesktopNotificationLog,
   saveDesktopNotificationLog,
   selectNotificationsWithinDailyBudget,
   type DesktopNotificationStatus,
+  type DesktopNotificationDelivery,
 } from "../desktopNotifications";
 import type { SupportedLanguage } from "../i18n";
 import type { ResourceAlertEvent } from "../resourceAlerts";
@@ -28,6 +31,8 @@ export function useDesktopNotifications(
   const [status, setStatus] = useState<DesktopNotificationStatus>(
     enabled ? "requesting" : "disabled",
   );
+  const [delivery, setDelivery] =
+    useState<DesktopNotificationDelivery | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,16 +102,50 @@ export function useDesktopNotifications(
       sentAtMs.current,
       now,
     );
-    selected.forEach((event) => {
-      void sendResourceNotification(event, language);
+    if (selected.length === 0) return;
+    let disposed = false;
+    void Promise.all(selected.map((event) =>
+      sendResourceNotification(event, language)
+    )).then((results) => {
+      if (disposed) return;
+      const successfulCount = results.filter(Boolean).length;
+      if (successfulCount > 0) {
+        sentAtMs.current = [
+          ...sentAtMs.current,
+          ...Array.from({ length: successfulCount }, () => now),
+        ];
+        saveDesktopNotificationLog(sentAtMs.current);
+      }
+      setDelivery({
+        kind: "resource",
+        status: successfulCount === results.length ? "sent" : "failed",
+        attemptedAtMs: Date.now(),
+      });
     });
-    if (selected.length > 0) {
-      sentAtMs.current = [...sentAtMs.current, ...selected.map(() => now)];
-      saveDesktopNotificationLog(sentAtMs.current);
-    }
+    return () => {
+      disposed = true;
+    };
   }, [enabled, events, language, mutedResources, status]);
 
-  return { status };
+  const sendTest = async () => {
+    if (!enabled || status !== "ready") return false;
+    let sent: boolean;
+    try {
+      sent = await deliverDesktopNotification(
+        await desktopNotificationTestCopy(language),
+      );
+    } catch {
+      sent = false;
+    }
+    setDelivery({
+      kind: "test",
+      status: sent ? "sent" : "failed",
+      attemptedAtMs: Date.now(),
+    });
+    return sent;
+  };
+
+  return { status, delivery, sendTest };
 }
 
 async function ensureNotificationPermission() {
@@ -135,15 +174,13 @@ async function isNotificationPermissionGranted() {
 async function sendResourceNotification(
   event: ResourceAlertEvent,
   language: SupportedLanguage,
-) {
+): Promise<boolean> {
   try {
-    const { sendNotification } = await import("@tauri-apps/plugin-notification");
-    sendNotification({
+    return await deliverDesktopNotification({
       ...(await desktopNotificationCopy(event, language)),
-      autoCancel: true,
       extra: { coreRobinResource: event.resource },
     });
   } catch {
-    // The event remains available in History even if the OS rejects a toast.
+    return false;
   }
 }

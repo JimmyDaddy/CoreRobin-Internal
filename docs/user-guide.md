@@ -63,7 +63,7 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 
 Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cleanup uses the selected scan evidence to open each target through a stable filesystem boundary. At execution time, existing regular files and folders are removed, missing items are treated as already gone, and inaccessible or unsupported objects are skipped and reported. The app does not force a recursive rescan every time you open the review or switch cleanup modes. Choose **Rescan** when you want an up-to-date space map.
 
-**Duplicate and long-unmodified files** is a separate explicit check. It scans only Desktop, Documents, Downloads, Movies, Music, and Pictures without following symbolic links. It filters by size before reading likely duplicate candidates and calculating SHA-256 locally. “Long-unused” is approximated as over 100 MB and unchanged for 180 days because reliable last-access data is unavailable on many systems. Results provide preview, copy, and reveal actions only; nothing is deleted automatically.
+**Duplicate and long-unmodified files** is a separate explicit check. It scans only Desktop, Documents, Downloads, Movies, Music, and Pictures without following symbolic links. It filters by size before reading likely duplicate candidates and calculating SHA-256 locally. “Long-unused” is approximated as over 100 MB and unchanged for 180 days because reliable last-access data is unavailable on many systems. Results are retained for up to seven days. Reopening incrementally checks known path, size, mtime, device ID, and inode values and only rehashes changed duplicate candidates instead of repeating the full scan. Results provide preview, copy, and reveal actions only; nothing is deleted automatically.
 
 #### Before cleanup
 
@@ -79,7 +79,7 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 
 - Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
-- Opening Network automatically separates local routing, DNS, IPv4, IPv6, direct internet reachability, and an independent service check. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute latency, jitter, and connection-failure trend with average, peak, and anomaly counts. Sampling stops when you leave the page, and **Check now** remains available.
+- Opening Network automatically separates local routing, DNS, IPv4, IPv6, and direct internet reachability, then alternates probes across two independent targets. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute latency, jitter, and TCP-probe-failure trend with average, peak, and anomaly counts. Sampling stops by default when you leave, and **Check now** remains available. If you explicitly enable long-term network-quality history, the closed page uses five-minute sampling and aggregate buckets for a one-hour or 24-hour view that can be cleared separately.
 - Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
@@ -107,11 +107,11 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 
 ### Settings
 
-- Settings groups interface, background and desktop, sampling and views, notifications, and **Data & privacy** into consistent card grids and controls. The privacy center shows resource history, optional connection history, local product caches, and one clear-all action.
+- Settings groups interface, background and desktop, sampling and views, notifications, and **Data & privacy** into consistent card grids and controls. The privacy center shows item count, size, update time, and retention for resource history, connection/network-quality history, application inventory, and scan caches. Categories can be cleared separately with success/failure receipts; clear-all uses the same confirmation and retryable partial-failure flow.
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
 - App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.
-- About & Support checks the signed public updater manifest, downloads an available stable release, and installs it directly after you confirm.
+- About & Support checks the signed public updater manifest and shows release notes, the last check time, and any failure reason. It downloads an available stable release and installs it directly after you confirm.
 - The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel

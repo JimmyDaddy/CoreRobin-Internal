@@ -685,6 +685,8 @@ pub struct NetworkQualityResult {
     pub sampled_at_ms: u64,
     pub target_host: String,
     pub target_port: u16,
+    pub target_count: usize,
+    pub successful_target_count: usize,
     pub status: NetworkQualityStatus,
     pub dns_available: bool,
     pub dns_lookup_ms: Option<u64>,
@@ -695,7 +697,7 @@ pub struct NetworkQualityResult {
     pub minimum_latency_ms: Option<f64>,
     pub maximum_latency_ms: Option<f64>,
     pub jitter_ms: Option<f64>,
-    pub packet_loss_percent: f64,
+    pub tcp_probe_failure_percent: f64,
     pub diagnostics: Vec<NetworkQualityDiagnostic>,
 }
 
@@ -768,6 +770,12 @@ pub struct FileInsightFile {
     pub logical_size_bytes: u64,
     pub allocated_size_bytes: u64,
     pub modified_at_ms: Option<u64>,
+    #[serde(default)]
+    pub modified_at_us: Option<u64>,
+    #[serde(default)]
+    pub device_id: Option<u64>,
+    #[serde(default)]
+    pub inode: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize)]

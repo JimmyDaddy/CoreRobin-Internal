@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Utilisation de la mémoire",
-    "disk": "E/S disque",
+    "disk": "Utilisation du stockage",
     "network": "Débit réseau",
     "cpuContext": "{{count}} cœurs logiques · Une seule application peut dépasser 100%",
     "memoryContext": "{{total}} total · {{swap}} espace d'échange",
