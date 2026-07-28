@@ -34,6 +34,7 @@
     "title": "컴퓨터 관련 정보",
     "description": "경고와 복구 상황을 하나의 사건으로 묶어, 그 영향과 결과를 쉽게 설명합니다.",
     "cause": "주요 원인: {{name}}가 가장 큰 영향을 미쳤습니다.",
+    "inspectApplications": "피크 시점의 앱 확인",
     "timeline": "사건 발생 시간",
     "startedAt": "{{time}}에서 시작됨",
     "peakedAt": "{{value}}% · {{time}}에서 최고치 기록",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "앱 관찰 기록", "description": "만든 알림 규칙의 로컬 발생 및 회복 이벤트입니다.", "savedEvents": "관찰 이벤트 {{count}}개", "savedEvents_other": "관찰 이벤트 {{count}}개", "privateApplication": "앱 이름을 저장하지 않음", "triggered": "{{metric}}이(가) {{value}}{{unit}}에 도달", "recovered": "{{metric}}이(가) {{value}}{{unit}}로 회복" },
   "privacyEyebrow": "데이터 범위 설정",
   "privacyTitle": "개인 정보 보호 정책",
-  "privacyLocal": "사용 기록은 이 장치의 CoreRobin WebView 저장소에 남아있으며, 업로드되거나 동기화되지 않습니다.",
+  "privacyLocal": "사용 기록은 이 장치의 CoreRobin 전용 저장소에만 남으며 업로드되거나 동기화되지 않습니다.",
   "privacyCollected": "집계된 자원 정보, 압력 및 복구 이벤트와 함께 사용자가 확인한 작업의 유형, 결과, 항목 수, 확보 공간을 저장합니다. 앱 또는 시작 항목 이름은 설정에서 별도로 허용한 경우에만 저장됩니다.",
   "privacyExcluded": "리소스 및 작업 기록에는 명령, 사용자, 경로, 파일 이름, 연결 주소를 저장하지 않습니다. 연결 기록을 별도로 켜면 5분 집계에 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다.",
   "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다."
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "애플리케이션 기여도",
+    "title": "어떤 앱이 이 컴퓨터에 영향을 주었나요?",
+    "description": "선택형 5분 집계로 CPU, 메모리 또는 디스크를 반복적으로 사용한 앱을 시간대별로 확인합니다.",
+    "enable": "앱 영향 기록 보관",
+    "range": "앱 기록 범위",
+    "hours1": "1시간",
+    "hours24": "24시간",
+    "hours168": "7일",
+    "disabledTitle": "앱 기여도 기록이 꺼져 있습니다",
+    "disabledDescription": "이 장치에 안정적인 앱 식별자와 집계 값을 저장하려면 켜세요.",
+    "learningTitle": "앱 기록을 만드는 중",
+    "learningDescription": "5분 샘플이 충분히 모이면 순위가 표시됩니다.",
+    "timeline": "시간대별 영향",
+    "timelineHint": "막대를 선택하면 해당 시점의 앱 순위를 볼 수 있습니다.",
+    "explanation": "{{time}} 무렵에는 {{name}}의 영향이 가장 컸으며 평균 CPU {{cpu}}, 메모리 {{memory}}였습니다.",
+    "peakCpu": "최고 CPU {{value}}",
+    "storageLoading": "전용 기록 저장소를 읽는 중…",
+    "storageReady": "마지막 저장 {{time}} · {{size}}",
+    "storagePending": "새 샘플을 전용 기록 저장소에 저장하는 중입니다.",
+    "storageFailed": "기록은 볼 수 있지만 새 샘플을 저장하지 못했습니다. CoreRobin이 다시 시도합니다.",
+    "boundary": "명령이나 파일 경로는 저장하지 않으며 앱 이름은 별도의 개인정보 설정을 따릅니다."
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "이 컴퓨터의 기준선",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "평소 상태를 학습하는 중",
+      "description": "CoreRobin이 이 컴퓨터의 평소 상태와 비교하려면 같은 시간대의 샘플이 더 필요합니다."
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "이 컴퓨터의 평소 패턴과 비슷합니다",
+      "description": "사용 가능한 기준선 지표에서 의미 있는 편차가 발견되지 않았습니다."
+    },
+    "partial": {
+      "title": "일부 기준선은 아직 학습 중입니다",
+      "description": "충분한 날짜가 모인 지표만 평소 패턴과 비교했습니다."
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "이 컴퓨터의 평소 패턴과 다릅니다",
+      "description": "{{count}}개 지표가 7일 같은 시간대 기준선보다 의미 있게 높습니다."
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "기준선 수집 중",
+    "coverage": "비교 가능한 {{days}}일 · {{count}}개 샘플",
+    "change": "평소보다 {{value}}% {{direction}}",
+    "higher": "높음",
+    "lower": "낮음",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "메모리",
+      "disk": "디스크 처리량",
+      "network": "네트워크 처리량",
+      "temperature": "온도",
+      "battery": "배터리 소모"
     }
   }
 }

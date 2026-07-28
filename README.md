@@ -39,7 +39,7 @@
 - 最近 5 分钟的资源趋势与影响最大的应用
 - 进程树、应用详情、活动连接和启动项
 - 多目标分层网络质量、15 分钟实时趋势、可选 1/24 小时或 7 天事件历史、连接聚合、GPU 与应用能耗影响
-- 应用级 1 小时/24 小时/7 天影响归因、个性化本机基线与真实登录启动对比
+- 应用级 1 小时/24 小时/7 天影响归因、可点选时间轴与峰值时段解释、个性化本机基线与真实登录启动对比
 - 系统磁盘、外置卷或指定文件夹扫描，重复文件和长期未修改大文件统一进入安全清理篮
 - 应用关注规则、历史事件、桌面提醒与恢复通知
 - 主窗口、状态栏面板和 Robin 小窗口共享的后台状态
@@ -49,6 +49,12 @@
 </p>
 
 <p align="center"><sub>网络诊断 · 实时吞吐、五分钟趋势和活动连接</sub></p>
+
+<p align="center">
+  <img src="docs/assets/corerobin-application-history.jpg" width="100%" alt="CoreRobin English application impact timeline and ranked application history" />
+</p>
+
+<p align="center"><sub>Application history · 英文界面按时段回看主要 CPU、内存与磁盘影响</sub></p>
 
 ## 看清空间去了哪里
 

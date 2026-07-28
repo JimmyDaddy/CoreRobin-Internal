@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "最近の起動との比較",
+    "description": "過去{{count}}回の測定の中央値を使用します。",
+    "improved": "安定まで{{value}}%高速",
+    "similar": "最近の中央値に近い",
+    "slower": "安定まで{{value}}%低速",
+    "risingApplication": "{{name}} が最大で、CPUが{{value}}ポイント増加"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "起動項目変更後の観察",
+    "single": {
+      "improved": "{{name}} の変更後、次回の起動はより早く安定しました。1回の観察だけでは原因を証明できません。",
+      "similar": "{{name}} の変更後、次回の起動は最近の傾向に近い状態でした。",
+      "slower": "{{name}} の変更後も次回の起動は遅く、この項目が主因ではない可能性があります。"
+    },
+    "multiple": {
+      "improved": "{{count}}件の変更後、次回の起動はより早く安定しましたが、単一の変更には帰属できません。",
+      "similar": "{{count}}件の変更後、次回の起動は最近の傾向に近い状態でした。",
+      "slower": "{{count}}件の変更後も次回の起動は遅く、単一の原因は特定できません。"
+    }
   }
 }

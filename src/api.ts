@@ -100,6 +100,13 @@ export interface ProductDataCacheSummary {
   cleanupScan: ProductDataCacheItemSummary;
   fileInsights: ProductDataCacheItemSummary;
   applicationInventory: ProductDataCacheItemSummary;
+  applicationHistory: ProductDataCacheItemSummary;
+}
+
+export interface ApplicationHistoryStorage {
+  payload: string | null;
+  byteSize: number;
+  updatedAtMs: number | null;
 }
 
 const EMPTY_PRODUCT_DATA_CACHE_ITEM: ProductDataCacheItemSummary = {
@@ -433,6 +440,7 @@ export async function ejectRemovableVolume(mountPoint: string): Promise<void> {
 
 export async function getStorageHealth(
   mountPoints: readonly string[],
+  forceRefresh = false,
 ): Promise<StorageHealthSnapshot> {
   if (canUseDevelopmentMock()) {
     return {
@@ -448,11 +456,14 @@ export async function getStorageHealth(
         solidState: null,
         purgeableBytes: null,
         inspectionError: null,
+        inspectedAtMs: Date.now(),
+        cached: false,
       })),
     };
   }
   return invoke<StorageHealthSnapshot>("get_storage_health", {
     mountPoints,
+    forceRefresh,
   });
 }
 
@@ -635,12 +646,40 @@ export async function clearPersistedProductData(): Promise<void> {
   return invoke<void>("clear_persisted_product_data");
 }
 
+export async function loadPersistedApplicationHistory(): Promise<ApplicationHistoryStorage> {
+  if (canUseDevelopmentMock()) {
+    return { payload: null, byteSize: 0, updatedAtMs: null };
+  }
+  return invoke<ApplicationHistoryStorage>("load_persisted_application_history");
+}
+
+export async function savePersistedApplicationHistory(
+  payload: string,
+): Promise<ApplicationHistoryStorage> {
+  if (canUseDevelopmentMock()) {
+    return {
+      payload: null,
+      byteSize: new TextEncoder().encode(payload).byteLength,
+      updatedAtMs: Date.now(),
+    };
+  }
+  return invoke<ApplicationHistoryStorage>("save_persisted_application_history", {
+    payload,
+  });
+}
+
+export async function clearPersistedApplicationHistory(): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("clear_persisted_application_history");
+}
+
 export async function getProductDataCacheSummary(): Promise<ProductDataCacheSummary> {
   if (canUseDevelopmentMock()) {
     return {
       cleanupScan: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
       fileInsights: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
       applicationInventory: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
+      applicationHistory: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
     };
   }
   return invoke<ProductDataCacheSummary>("get_product_data_cache_summary");

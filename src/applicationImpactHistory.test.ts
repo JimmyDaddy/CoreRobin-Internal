@@ -7,6 +7,9 @@ import {
   APPLICATION_IMPACT_HISTORY_MAX_APPS,
   applicationImpactHistoryInRange,
   mergeApplicationImpactHistory,
+  parseApplicationImpactHistory,
+  saveApplicationImpactHistory,
+  serializeApplicationImpactHistory,
   summarizeApplicationImpactHistory,
 } from "./applicationImpactHistory";
 import type { ApplicationImpact } from "./diagnosis";
@@ -32,7 +35,7 @@ describe("application impact history", () => {
       averageMemoryBytes: 2_000,
       peakDiskBytesPerSecond: 4_000,
     });
-    expect(points[0]?.applications[0]?.applicationId).toMatch(/^app-[0-9a-f]{8}$/);
+    expect(points[0]?.applications[0]?.applicationId).toMatch(/^app-[0-9a-f]{32}$/);
     expect(points[0]?.applications[0]?.applicationId).not.toContain("alice");
   });
 
@@ -54,6 +57,39 @@ describe("application impact history", () => {
     expect(applicationImpactHistoryInRange([...points, oldPoint], 1, now))
       .toEqual(points);
     expect(summarizeApplicationImpactHistory(points)[0]?.name).toBe("App 19");
+  });
+
+  it("uses a compact dictionary payload and round trips without repeating names", () => {
+    const sampledAtMs = 20 * APPLICATION_IMPACT_HISTORY_BUCKET_MS;
+    const points = [
+      ...mergeApplicationImpactHistory(
+        [],
+        [application("alice:editor", "Editor", 20, 1_000, 2_000)],
+        sampledAtMs,
+      ),
+      ...mergeApplicationImpactHistory(
+        [],
+        [application("alice:editor", "Editor", 30, 2_000, 3_000)],
+        sampledAtMs + APPLICATION_IMPACT_HISTORY_BUCKET_MS,
+      ),
+    ];
+    const payload = serializeApplicationImpactHistory(points);
+
+    expect(payload.match(/Editor/g)).toHaveLength(1);
+    expect(parseApplicationImpactHistory(payload)).toEqual(points);
+  });
+
+  it("reports storage failures instead of silently claiming persistence", () => {
+    const storage = {
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+    } as unknown as Storage;
+
+    expect(saveApplicationImpactHistory([], storage)).toMatchObject({
+      succeeded: false,
+      error: "quota",
+    });
   });
 });
 

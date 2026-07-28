@@ -2073,7 +2073,11 @@ pub fn scan_application_inventory(
 
     #[cfg(not(target_os = "macos"))]
     {
-        crate::native_uninstall::scan_native_application_inventory(preferred_language)
+        let _ = cache_path;
+        crate::native_uninstall::load_or_scan_native_application_inventory(
+            preferred_language,
+            force_refresh,
+        )
     }
 }
 

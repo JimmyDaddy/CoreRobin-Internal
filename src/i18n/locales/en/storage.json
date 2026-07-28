@@ -53,6 +53,9 @@
     "unknownMedia": "Unknown",
     "purgeable": "Purgeable space",
     "inspectUnavailable": "The operating system could not provide all details for this volume.",
+    "retry": "Retry this volume",
+    "cached": "Recent cached result",
+    "updatedNow": "Checked now",
     "scope": "S.M.A.R.T. is an overall device status when the operating system exposes it; unsupported does not mean unhealthy.",
     "status": {
       "verified": "Verified",

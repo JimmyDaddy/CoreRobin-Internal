@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.13",
+  "title": {
+    "zh-CN": "更可信的历史归因与跨平台系统操作",
+    "en": "More trustworthy history and platform operations"
+  },
+  "items": [
+    {
+      "zh-CN": "应用影响历史迁移到原生私有存储，采用紧凑格式与原子写入，并显示最后成功保存时间、空间占用和失败原因。",
+      "en": "Application-impact history moves to compact, atomic native private storage and reports its last successful save, storage use, and persistence failures."
+    },
+    {
+      "zh-CN": "新增可点选的应用影响时间轴、峰值时段排名和自然语言解释；历史异常可以直接定位到当时主要占用资源的应用。",
+      "en": "A selectable application-impact timeline, peak-period ranking, and plain-language explanation connect historical incidents to the apps active at that time."
+    },
+    {
+      "zh-CN": "个性化基线要求多个独立日期并展示覆盖度；启动项变更回执采用观察性表达，多项变更不再错误归因给单个应用。",
+      "en": "Personal baselines now require multiple distinct days and show coverage, while startup-change receipts avoid causal claims and single-app attribution after multiple changes."
+    },
+    {
+      "zh-CN": "磁盘健康检查加入超时、有限并发、卷级缓存和单卷重试；Windows/Linux 卸载使用清单指纹缓存、定向包核对和批量 RPM 归属查询。",
+      "en": "Disk-health checks gain watchdogs, bounded concurrency, per-volume caching, and isolated retry. Windows and Linux uninstall use inventory fingerprints, targeted package validation, and batched RPM ownership queries."
+    },
+    {
+      "zh-CN": "更新跨平台真实设备验收清单、10 种界面语言及中英文公开文档，并新增高可见功能区的翻译质量门禁。",
+      "en": "Cross-platform device acceptance, all 10 interface languages, and English/Chinese public documentation are updated with a new translation-quality gate for high-visibility features."
+    }
+  ]
+}

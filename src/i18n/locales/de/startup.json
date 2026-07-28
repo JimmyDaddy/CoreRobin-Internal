@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "Vergleich mit den letzten Starts",
+    "description": "Verwendet den Median von {{count}} früheren Messungen.",
+    "improved": "{{value}} % schneller stabil",
+    "similar": "Nahe am letzten Median",
+    "slower": "{{value}} % langsamer stabil",
+    "risingApplication": "{{name}} stieg am stärksten, um {{value}} CPU-Punkte"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Beobachtung nach Autostart-Änderungen",
+    "single": {
+      "improved": "Nach der Änderung von {{name}} stabilisierte sich der nächste Start schneller. Eine Beobachtung beweist keine Ursache.",
+      "similar": "Nach der Änderung von {{name}} entsprach der nächste Start dem bisherigen Muster.",
+      "slower": "Nach der Änderung von {{name}} war der nächste Start weiterhin langsamer; dieser Eintrag ist möglicherweise nicht die Hauptursache."
+    },
+    "multiple": {
+      "improved": "Nach {{count}} Autostart-Änderungen stabilisierte sich der nächste Start schneller; keine einzelne Änderung kann dafür verantwortlich gemacht werden.",
+      "similar": "Nach {{count}} Autostart-Änderungen entsprach der nächste Start dem bisherigen Muster.",
+      "slower": "Nach {{count}} Autostart-Änderungen war der nächste Start weiterhin langsamer; eine einzelne Ursache ist nicht bestimmbar."
+    }
   }
 }

@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "Comparado às inicializações recentes",
+    "description": "Usa a mediana de {{count}} medições anteriores.",
+    "improved": "{{value}}% mais rápido para estabilizar",
+    "similar": "Próximo da mediana recente",
+    "slower": "{{value}}% mais lento para estabilizar",
+    "risingApplication": "{{name}} aumentou mais: {{value}} pontos de CPU"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Observação após alterar itens de inicialização",
+    "single": {
+      "improved": "Após alterar {{name}}, a próxima inicialização estabilizou mais rápido.",
+      "similar": "Após alterar {{name}}, a próxima inicialização ficou próxima do normal.",
+      "slower": "Após alterar {{name}}, a próxima inicialização continuou mais lenta; este item pode não ser a causa principal."
+    },
+    "multiple": {
+      "improved": "Após {{count}} alterações, a próxima inicialização estabilizou mais rápido; o resultado não pode ser atribuído a um único app.",
+      "similar": "Após {{count}} alterações, a próxima inicialização ficou próxima do normal.",
+      "slower": "Após {{count}} alterações, a próxima inicialização continuou mais lenta; nenhuma alteração isolada pode ser considerada a causa."
+    }
   }
 }

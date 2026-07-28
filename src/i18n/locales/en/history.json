@@ -34,6 +34,7 @@
     "title": "Computer stories",
     "description": "Pairs alerts and recoveries into one incident, then explains its impact and outcome in plain language.",
     "cause": "Main cause: {{name}} had the highest impact at the time",
+    "inspectApplications": "Inspect apps at the peak",
     "timeline": "Incident timeline",
     "startedAt": "Started {{time}}",
     "peakedAt": "Peaked at {{value}}% · {{time}}",
@@ -147,7 +148,7 @@
   },
   "privacyEyebrow": "Data boundaries",
   "privacyTitle": "Privacy policy",
-  "privacyLocal": "History stays in this device's CoreRobin WebView storage and is never uploaded or synchronized.",
+  "privacyLocal": "History stays in CoreRobin's private storage on this device and is never uploaded or synchronized.",
   "privacyCollected": "History stores aggregate resource snapshots, pressure and recovery events, plus the type, result, item count, and reclaimed space of actions you confirm. App or startup item names are saved only after you allow them separately in Settings.",
   "privacyExcluded": "Resource and action history does not store process commands, users, paths, file names, or connection addresses. If you separately enable Connection History, five-minute local aggregates can include remote IPs, domains, ports, and app names.",
   "privacyControl": "Disabling stops new writes; existing records remain until they expire or you clear them manually.",
@@ -164,7 +165,14 @@
     "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
     "learningTitle": "Building application history",
     "learningDescription": "Rankings appear after enough five-minute samples are collected.",
+    "timeline": "Impact over time",
+    "timelineHint": "Select a bar to inspect that period",
+    "explanation": "Around {{time}}, {{name}} led this period with average CPU {{cpu}} and memory {{memory}}.",
     "peakCpu": "Peak CPU {{value}}",
+    "storageLoading": "Opening private history storage…",
+    "storageReady": "Saved locally · {{size}} · last write {{time}}",
+    "storagePending": "waiting for the first write",
+    "storageFailed": "History is still visible, but new samples could not be saved. CoreRobin will retry automatically.",
     "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
   },
   "baseline": {
@@ -177,11 +185,16 @@
       "title": "Close to this computer's usual pattern",
       "description": "No meaningful deviation was found across the available baseline metrics."
     },
+    "partial": {
+      "title": "Part of this computer's baseline is ready",
+      "description": "Some metrics have enough comparable days; the rest remain clearly marked as learning."
+    },
     "elevated": {
       "title": "Different from this computer's usual pattern",
       "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
     },
     "collecting": "Collecting baseline",
+    "coverage": "{{days}} comparable days · {{count}} samples",
     "change": "{{value}}% {{direction}} than usual",
     "higher": "higher",
     "lower": "lower",

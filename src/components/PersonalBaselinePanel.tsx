@@ -29,19 +29,28 @@ export function PersonalBaselinePanel({
   const comparisons = useMemo(() => buildPersonalBaseline(points), [points]);
   const elevated = comparisons.filter((comparison) => comparison.status === "elevated");
   const learning = comparisons.every((comparison) => comparison.status === "learning");
+  const partial = !learning
+    && comparisons.some((comparison) => comparison.status === "learning");
+  const overall = elevated.length > 0
+    ? "elevated"
+    : learning
+      ? "learning"
+      : partial
+        ? "partial"
+        : "typical";
 
   return (
     <section className={`panel personal-baseline${compact ? " is-compact" : ""}`} aria-labelledby="personal-baseline-title">
       <header>
-        <span className={`personal-baseline__status is-${elevated.length > 0 ? "elevated" : learning ? "learning" : "typical"}`}>
+        <span className={`personal-baseline__status is-${overall}`}>
           {elevated.length > 0 ? <Activity size={18} /> : <Sparkles size={18} />}
         </span>
         <div>
           <span className="eyebrow">{t("history:baseline.eyebrow")}</span>
           <h3 id="personal-baseline-title">
-            {t(`history:baseline.${elevated.length > 0 ? "elevated" : learning ? "learning" : "typical"}.title`)}
+            {t(`history:baseline.${overall}.title`)}
           </h3>
-          <p>{t(`history:baseline.${elevated.length > 0 ? "elevated" : learning ? "learning" : "typical"}.description`, {
+          <p>{t(`history:baseline.${overall}.description`, {
             count: elevated.length,
           })}</p>
         </div>
@@ -96,7 +105,15 @@ function BaselineMetric({
         <small>{t(`history:baseline.metric.${comparison.metric}`)}</small>
         <strong>{value}</strong>
       </span>
-      <em>{delta}</em>
+      <span className="personal-baseline__evidence">
+        <em>{delta}</em>
+        <small>
+          {t("history:baseline.coverage", {
+            days: comparison.distinctDayCount,
+            count: comparison.sampleCount,
+          })}
+        </small>
+      </span>
     </div>
   );
 }

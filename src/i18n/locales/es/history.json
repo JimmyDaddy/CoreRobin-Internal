@@ -34,6 +34,7 @@
     "title": "Informes del sistema",
     "description": "Agrupa alertas y recuperaciones en un solo incidente, explicando su impacto y resultado en lenguaje claro.",
     "cause": "Causa principal: {{name}} tuvo el mayor impacto en ese momento",
+    "inspectApplications": "Revisar aplicaciones en el pico",
     "timeline": "Cronología del incidente",
     "startedAt": "Comenzó {{time}}",
     "peakedAt": "Alcanzó su máximo nivel en {{value}}% · {{time}}",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "Historial de seguimiento de aplicaciones", "description": "Eventos locales de activación y recuperación de tus reglas.", "savedEvents": "{{count}} eventos de seguimiento", "savedEvents_one": "{{count}} evento de seguimiento", "savedEvents_other": "{{count}} eventos de seguimiento", "privateApplication": "Nombre de aplicación no guardado", "triggered": "{{metric}} alcanzó {{value}}{{unit}}", "recovered": "{{metric}} se recuperó a {{value}}{{unit}}" },
   "privacyEyebrow": "Límites de datos",
   "privacyTitle": "Política de privacidad",
-  "privacyLocal": "El historial permanece almacenado en el almacenamiento CoreRobin WebView de este dispositivo y nunca se sube ni sincroniza.",
+  "privacyLocal": "El historial permanece en el almacenamiento privado de CoreRobin de este dispositivo y nunca se sube ni sincroniza.",
   "privacyCollected": "El historial guarda datos agregados de recursos, eventos de presión y recuperación, y el tipo, resultado, cantidad y espacio liberado de las acciones confirmadas. Los nombres de aplicaciones o elementos de inicio solo se guardan con permiso independiente.",
   "privacyExcluded": "El historial de recursos y acciones no guarda comandos, usuarios, rutas, nombres de archivo ni direcciones de conexión. Si activas por separado el historial de conexiones, sus agregados de cinco minutos pueden incluir IP remotas, dominios, puertos y nombres de aplicaciones.",
   "privacyControl": "Desactivar detiene nuevas escrituras; los registros existentes permanecen hasta que caduquen o los elimine manualmente."
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "Atribución por aplicación",
+    "title": "Qué aplicaciones afectaron a este equipo",
+    "description": "Los agregados opcionales de cinco minutos muestran qué aplicaciones usaron repetidamente CPU, memoria o disco.",
+    "enable": "Guardar historial de impacto",
+    "range": "Intervalo del historial",
+    "hours1": "1 hora",
+    "hours24": "24 horas",
+    "hours168": "7 días",
+    "disabledTitle": "La atribución está desactivada",
+    "disabledDescription": "Actívala para guardar identidades estables y agregados en este dispositivo.",
+    "learningTitle": "Creando el historial de aplicaciones",
+    "learningDescription": "La clasificación aparecerá cuando haya suficientes muestras de cinco minutos.",
+    "timeline": "Impacto a lo largo del tiempo",
+    "timelineHint": "Selecciona una barra para revisar ese periodo",
+    "explanation": "Alrededor de las {{time}}, {{name}} lideró el periodo con CPU media de {{cpu}} y memoria de {{memory}}.",
+    "peakCpu": "Pico de CPU {{value}}",
+    "storageLoading": "Abriendo el historial privado…",
+    "storageReady": "Guardado localmente · {{size}} · última escritura {{time}}",
+    "storagePending": "esperando la primera escritura",
+    "storageFailed": "El historial sigue visible, pero no se pudieron guardar nuevas muestras. CoreRobin volverá a intentarlo.",
+    "boundary": "No guarda comandos ni rutas; los nombres siguen el ajuste de privacidad independiente."
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "Referencia de este equipo",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "Aprendiendo qué es normal aquí",
+      "description": "CoreRobin necesita más muestras de periodos comparables."
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "Cerca del patrón habitual de este equipo",
+      "description": "No se encontraron desviaciones relevantes en las métricas disponibles."
+    },
+    "partial": {
+      "title": "Parte de la referencia ya está disponible",
+      "description": "Algunas métricas tienen suficientes días comparables; las demás siguen marcadas como aprendizaje."
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "Distinto del patrón habitual de este equipo",
+      "description": "{{count}} métricas superan claramente su referencia comparable de siete días."
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "Recopilando referencia",
+    "coverage": "{{days}} días comparables · {{count}} muestras",
+    "change": "{{value}} % {{direction}} de lo habitual",
+    "higher": "más alto",
+    "lower": "más bajo",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "Memoria",
+      "disk": "Rendimiento de disco",
+      "network": "Rendimiento de red",
+      "temperature": "Temperatura",
+      "battery": "Consumo de batería"
     }
   }
 }

@@ -1,8 +1,26 @@
+use std::collections::HashMap;
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 use serde::Serialize;
 
+use crate::bounded_command;
 use crate::error::CommandError;
+
+const STORAGE_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
+const STORAGE_COMMAND_OUTPUT_LIMIT: usize = 512 * 1_024;
+const STORAGE_HEALTH_CACHE_TTL_MS: u64 = 10 * 60 * 1_000;
+const STORAGE_HEALTH_MAX_CONCURRENCY: usize = 4;
+
+#[derive(Clone)]
+struct StorageHealthCacheEntry {
+    inspected_at_ms: u64,
+    device: StorageDeviceHealth,
+}
+
+static STORAGE_HEALTH_CACHE: OnceLock<Mutex<HashMap<String, StorageHealthCacheEntry>>> =
+    OnceLock::new();
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +42,8 @@ pub struct StorageDeviceHealth {
     pub solid_state: Option<bool>,
     pub purgeable_bytes: Option<u64>,
     pub inspection_error: Option<String>,
+    pub inspected_at_ms: u64,
+    pub cached: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -39,36 +59,105 @@ pub enum StorageSmartStatus {
 pub fn inspect_storage_health(
     mount_points: &[String],
     sampled_at_ms: u64,
+    force_refresh: bool,
 ) -> StorageHealthSnapshot {
+    let mut devices = Vec::with_capacity(mount_points.len());
+    for chunk in mount_points.chunks(STORAGE_HEALTH_MAX_CONCURRENCY) {
+        let inspected = std::thread::scope(|scope| {
+            chunk
+                .iter()
+                .map(|mount_point| {
+                    (
+                        mount_point,
+                        scope.spawn(move || {
+                            inspect_mount_point_cached(mount_point, sampled_at_ms, force_refresh)
+                        }),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|(mount_point, worker)| {
+                    worker.join().unwrap_or_else(|_| {
+                        unavailable_device(
+                            mount_point,
+                            "Storage inspection worker stopped unexpectedly.",
+                            sampled_at_ms,
+                        )
+                    })
+                })
+                .collect::<Vec<_>>()
+        });
+        devices.extend(inspected);
+    }
     StorageHealthSnapshot {
         sampled_at_ms,
-        devices: mount_points
-            .iter()
-            .map(|mount_point| inspect_mount_point(mount_point))
-            .collect(),
+        devices,
     }
+}
+
+fn inspect_mount_point_cached(
+    mount_point: &str,
+    sampled_at_ms: u64,
+    force_refresh: bool,
+) -> StorageDeviceHealth {
+    let cache = STORAGE_HEALTH_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if !force_refresh
+        && let Ok(cache) = cache.lock()
+        && let Some(entry) = cache.get(mount_point)
+        && sampled_at_ms.saturating_sub(entry.inspected_at_ms) <= STORAGE_HEALTH_CACHE_TTL_MS
+    {
+        let mut device = entry.device.clone();
+        device.cached = true;
+        return device;
+    }
+    let mut device = inspect_mount_point(mount_point);
+    device.inspected_at_ms = sampled_at_ms;
+    device.cached = false;
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(
+            mount_point.to_owned(),
+            StorageHealthCacheEntry {
+                inspected_at_ms: sampled_at_ms,
+                device: device.clone(),
+            },
+        );
+        cache.retain(|_, entry| {
+            sampled_at_ms.saturating_sub(entry.inspected_at_ms) <= STORAGE_HEALTH_CACHE_TTL_MS
+        });
+    }
+    device
 }
 
 #[cfg(target_os = "macos")]
 fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
     use plist::Value;
 
-    let output = Command::new("/usr/sbin/diskutil")
-        .args(["info", "-plist", mount_point])
-        .output();
+    let output = bounded_command::output(
+        Command::new("/usr/sbin/diskutil").args(["info", "-plist", mount_point]),
+        STORAGE_COMMAND_TIMEOUT,
+        STORAGE_COMMAND_OUTPUT_LIMIT,
+    );
     let output = match output {
         Ok(output) if output.status.success() => output,
         Ok(output) => {
-            return unavailable_device(mount_point, String::from_utf8_lossy(&output.stderr).trim());
+            return unavailable_device(
+                mount_point,
+                String::from_utf8_lossy(&output.stderr).trim(),
+                0,
+            );
         }
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let value = match Value::from_reader_xml(output.stdout.as_slice()) {
         Ok(value) => value,
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let Some(dictionary) = value.as_dictionary() else {
-        return unavailable_device(mount_point, "diskutil returned an invalid property list.");
+        return unavailable_device(
+            mount_point,
+            "diskutil returned an invalid property list.",
+            0,
+        );
     };
     let smart_label = dictionary
         .get("SMARTStatus")
@@ -96,30 +185,38 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
             .or_else(|| dictionary.get("PurgeableSpace"))
             .and_then(plist_unsigned),
         inspection_error: None,
+        inspected_at_ms: 0,
+        cached: false,
     }
 }
 
 #[cfg(target_os = "linux")]
 fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
-    let output = Command::new("findmnt")
-        .args([
+    let output = bounded_command::output(
+        Command::new("findmnt").args([
             "--json",
             "--output",
             "FSTYPE,OPTIONS,SOURCE",
             "--target",
             mount_point,
-        ])
-        .output();
+        ]),
+        STORAGE_COMMAND_TIMEOUT,
+        STORAGE_COMMAND_OUTPUT_LIMIT,
+    );
     let output = match output {
         Ok(output) if output.status.success() => output,
         Ok(output) => {
-            return unavailable_device(mount_point, String::from_utf8_lossy(&output.stderr).trim());
+            return unavailable_device(
+                mount_point,
+                String::from_utf8_lossy(&output.stderr).trim(),
+                0,
+            );
         }
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let value: serde_json::Value = match serde_json::from_slice(&output.stdout) {
         Ok(value) => value,
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let filesystem = value
         .pointer("/filesystems/0/fstype")
@@ -143,30 +240,39 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
         solid_state: None,
         purgeable_bytes: None,
         inspection_error: None,
+        inspected_at_ms: 0,
+        cached: false,
     }
 }
 
 #[cfg(windows)]
 fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
-    let output = Command::new("powershell.exe")
+    let output = bounded_command::output(
+        Command::new("powershell.exe")
         .args([
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             "$drive=(Split-Path -Qualifier $env:CORE_ROBIN_VOLUME_PATH).TrimEnd(':'); Get-Volume -DriveLetter $drive | Select-Object FileSystemType,Path,HealthStatus,DriveType,SizeRemaining | ConvertTo-Json -Compress",
         ])
-        .env("CORE_ROBIN_VOLUME_PATH", mount_point)
-        .output();
+        .env("CORE_ROBIN_VOLUME_PATH", mount_point),
+        STORAGE_COMMAND_TIMEOUT,
+        STORAGE_COMMAND_OUTPUT_LIMIT,
+    );
     let output = match output {
         Ok(output) if output.status.success() => output,
         Ok(output) => {
-            return unavailable_device(mount_point, String::from_utf8_lossy(&output.stderr).trim());
+            return unavailable_device(
+                mount_point,
+                String::from_utf8_lossy(&output.stderr).trim(),
+                0,
+            );
         }
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let value: serde_json::Value = match serde_json::from_slice(&output.stdout) {
         Ok(value) => value,
-        Err(error) => return unavailable_device(mount_point, &error.to_string()),
+        Err(error) => return unavailable_device(mount_point, &error.to_string(), 0),
     };
     let smart_label = value
         .get("HealthStatus")
@@ -190,6 +296,8 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
         solid_state: None,
         purgeable_bytes: None,
         inspection_error: None,
+        inspected_at_ms: 0,
+        cached: false,
     }
 }
 
@@ -198,10 +306,11 @@ fn inspect_mount_point(mount_point: &str) -> StorageDeviceHealth {
     unavailable_device(
         mount_point,
         "Storage health inspection is unavailable on this platform.",
+        0,
     )
 }
 
-fn unavailable_device(mount_point: &str, error: &str) -> StorageDeviceHealth {
+fn unavailable_device(mount_point: &str, error: &str, inspected_at_ms: u64) -> StorageDeviceHealth {
     StorageDeviceHealth {
         mount_point: mount_point.to_owned(),
         filesystem: None,
@@ -217,6 +326,8 @@ fn unavailable_device(mount_point: &str, error: &str) -> StorageDeviceHealth {
         } else {
             error.to_owned()
         }),
+        inspected_at_ms,
+        cached: false,
     }
 }
 

@@ -14,7 +14,7 @@
     "i18n:status": "i18next-cli status",
     "i18n:extract": "i18next-cli extract",
     "i18n:types": "i18next-cli types",
-    "i18n:check": "i18next-cli status && i18next-cli types --ci && NODE_OPTIONS=--no-experimental-webstorage vitest run src/i18n.test.ts src/desktopNotifications.test.ts src/robinCompanion.test.tsx",
+    "i18n:check": "i18next-cli status && i18next-cli types --ci && NODE_OPTIONS=--no-experimental-webstorage vitest run src/i18n.test.ts scripts/i18n-translation-quality.test.mjs src/desktopNotifications.test.ts src/robinCompanion.test.tsx",
     "test:surface-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run scripts/surface-contracts.test.mjs src/healthStatePublisher.test.ts src/hooks/healthStateSync.test.tsx src/trayPanel.test.tsx src/robinCompanion.test.tsx",
     "test:performance-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run src/hooks/monitorVisibility.test.tsx src/cleanupCanvasPatterns.test.ts",
     "verify:web-bundle": "node scripts/verify-web-bundle.mjs",

@@ -28,6 +28,7 @@ beforeEach(() => {
     cleanupScan: { byteSize: 200, fileCount: 1, updatedAtMs: 200 },
     fileInsights: { byteSize: 300, fileCount: 1, updatedAtMs: 300 },
     applicationInventory: { byteSize: 400, fileCount: 2, updatedAtMs: 400 },
+    applicationHistory: { byteSize: 500, fileCount: 1, updatedAtMs: 500 },
   });
   nativeData.clearInventory.mockResolvedValue(undefined);
 });
@@ -62,7 +63,9 @@ describe("useProductDataPrivacy", () => {
       expect(result.current.categories.applicationInventory.byteSize).toBe(400)
     );
     expect(result.current.categories.resourceHistory).toMatchObject({
+      byteSize: 507,
       itemCount: 3,
+      updatedAtMs: 500,
       retentionDays: 7,
     });
     expect(result.current.categories.connectionHistory).toMatchObject({

@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "Comparaison avec les démarrages récents",
+    "description": "Utilise la médiane de {{count}} mesures antérieures.",
+    "improved": "Stabilisation {{value}} % plus rapide",
+    "similar": "Proche de la médiane récente",
+    "slower": "Stabilisation {{value}} % plus lente",
+    "risingApplication": "{{name}} a le plus augmenté : {{value}} points CPU"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "Observation après modification du démarrage",
+    "single": {
+      "improved": "Après la modification de {{name}}, le démarrage suivant s’est stabilisé plus vite. Une observation ne prouve pas la cause.",
+      "similar": "Après la modification de {{name}}, le démarrage suivant est resté proche du comportement récent.",
+      "slower": "Après la modification de {{name}}, le démarrage suivant est resté plus lent ; cet élément n’est peut-être pas la cause principale."
+    },
+    "multiple": {
+      "improved": "Après {{count}} modifications, le démarrage suivant s’est stabilisé plus vite ; aucune modification ne peut être créditée seule.",
+      "similar": "Après {{count}} modifications, le démarrage suivant est resté proche du comportement récent.",
+      "slower": "Après {{count}} modifications, le démarrage suivant est resté plus lent ; aucune cause unique ne peut être identifiée."
+    }
   }
 }

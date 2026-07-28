@@ -319,9 +319,9 @@ function StartupImpactPanel({
   const comparison = latest
     ? compareStartupImpact(latest, previous)
     : null;
-  const relatedAction = latest
-    ? latestStartupActionBeforeMeasurement(actionRecords, latest, measurements[1])
-    : null;
+  const relatedActions = latest
+    ? startupActionsBeforeMeasurement(actionRecords, latest, measurements[1])
+    : [];
   const runtimeApplications = new Map(
     applications.map((application) => [application.name.toLocaleLowerCase(), application]),
   );
@@ -360,12 +360,19 @@ function StartupImpactPanel({
               ) : null}
             </div>
           ) : null}
-          {relatedAction && comparison ? (
+          {relatedActions.length > 0 && comparison ? (
             <div className={`startup-impact__receipt is-${comparison.direction}`} role="status">
               <strong>{t("startup:impactReceipt.title")}</strong>
-              <span>{t(`startup:impactReceipt.${comparison.direction}`, {
-                name: relatedAction.targetName ?? t("history:actions.target.startup"),
-              })}</span>
+              <span>
+                {relatedActions.length === 1
+                  ? t(`startup:impactReceipt.single.${comparison.direction}`, {
+                    name: relatedActions[0]?.targetName
+                      ?? t("history:actions.target.startup"),
+                  })
+                  : t(`startup:impactReceipt.multiple.${comparison.direction}`, {
+                    count: relatedActions.length,
+                  })}
+              </span>
             </div>
           ) : null}
           {latest.applications.length > 0 ? <ol className="startup-impact__apps">{latest.applications.map((application) => {
@@ -441,11 +448,11 @@ export function compareStartupImpact(
   };
 }
 
-function latestStartupActionBeforeMeasurement(
+export function startupActionsBeforeMeasurement(
   records: readonly UserActionRecord[],
   latest: StartupImpactMeasurement,
   previous: StartupImpactMeasurement | undefined,
-): UserActionRecord | null {
+): UserActionRecord[] {
   return [...records]
     .filter((record) =>
       (record.kind === "startup_disable" || record.kind === "startup_enable")
@@ -453,7 +460,7 @@ function latestStartupActionBeforeMeasurement(
       && record.startedAtMs < latest.launchedAtMs
       && (!previous || record.startedAtMs > previous.launchedAtMs)
     )
-    .sort((left, right) => right.startedAtMs - left.startedAtMs)[0] ?? null;
+    .sort((left, right) => left.startedAtMs - right.startedAtMs);
 }
 
 function median(values: readonly number[]): number | null {

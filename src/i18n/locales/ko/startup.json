@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "최근 시작과 비교",
+    "description": "이전 {{count}}회 측정의 중앙값을 사용합니다.",
+    "improved": "안정화 시간이 {{value}}% 빨라짐",
+    "similar": "최근 중앙값과 비슷함",
+    "slower": "안정화 시간이 {{value}}% 느려짐",
+    "risingApplication": "{{name}}의 CPU가 가장 많이 증가함: {{value}}포인트"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "시작 항목 변경 후 관찰 결과",
+    "single": {
+      "improved": "{{name}}을(를) 변경한 뒤 다음 시작에서 안정화 시간이 줄었습니다.",
+      "similar": "{{name}}을(를) 변경한 뒤 다음 시작은 평소와 비슷했습니다.",
+      "slower": "{{name}}을(를) 변경한 뒤에도 다음 시작이 느렸습니다. 이 항목이 주된 원인이 아닐 수 있습니다."
+    },
+    "multiple": {
+      "improved": "{{count}}개 시작 항목을 변경한 뒤 다음 시작에서 안정화 시간이 줄었습니다. 특정 앱의 영향으로 단정할 수는 없습니다.",
+      "similar": "{{count}}개 시작 항목을 변경한 뒤 다음 시작은 평소와 비슷했습니다.",
+      "slower": "{{count}}개 시작 항목을 변경한 뒤에도 다음 시작이 느렸습니다. 단일 변경을 원인으로 볼 수 없습니다."
+    }
   }
 }

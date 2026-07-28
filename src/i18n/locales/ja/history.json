@@ -34,6 +34,7 @@
     "title": "コンピューターに関する情報",
     "description": "アラートと復旧を1つのインシデントにまとめ、その影響と結果を分かりやすく説明します。",
     "cause": "主な原因：{{name}} が最も影響を与えた時間帯です",
+    "inspectApplications": "ピーク時のアプリを確認",
     "timeline": "インシデントのタイムライン",
     "startedAt": "{{time}} で開始",
     "peakedAt": "{{value}}% · {{time}} でピーク",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "アプリ監視履歴", "description": "作成した通知ルールの発生と回復をこのデバイスに記録します。", "savedEvents": "{{count}} 件の監視イベント", "savedEvents_other": "{{count}} 件の監視イベント", "privateApplication": "アプリ名は保存されていません", "triggered": "{{metric}} が {{value}}{{unit}} に到達", "recovered": "{{metric}} が {{value}}{{unit}} に回復" },
   "privacyEyebrow": "データに関する情報",
   "privacyTitle": "プライバシーポリシー",
-  "privacyLocal": "このデバイスのCoreRobin WebViewに保存され、アップロードまたは同期されません。",
+  "privacyLocal": "履歴はこのデバイスのCoreRobin専用ストレージに保存され、アップロードや同期はされません。",
   "privacyCollected": "集約されたリソース情報、負荷と回復イベントに加え、確認した操作の種類、結果、項目数、解放容量を記録します。アプリ名や起動項目名は、設定で個別に許可した場合のみ保存されます。",
   "privacyExcluded": "リソースと操作の履歴にはコマンド、ユーザー、パス、ファイル名、接続先を保存しません。接続履歴を別途有効にすると、5 分単位の集計にリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。",
   "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。"
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "アプリ別の影響",
+    "title": "このコンピュータに影響したアプリ",
+    "description": "任意の5分集計から、CPU・メモリ・ディスクを繰り返し使用したアプリを確認できます。",
+    "enable": "アプリ影響履歴を保存",
+    "range": "アプリ履歴の範囲",
+    "hours1": "1時間",
+    "hours24": "24時間",
+    "hours168": "7日間",
+    "disabledTitle": "アプリ別の記録はオフです",
+    "disabledDescription": "有効にすると、この端末に安定したアプリ識別子と集計値を保存します。",
+    "learningTitle": "アプリ履歴を作成中",
+    "learningDescription": "十分な5分サンプルが集まるとランキングを表示します。",
+    "timeline": "時間ごとの影響",
+    "timelineHint": "バーを選択してその時間帯を確認",
+    "explanation": "{{time}} 頃は {{name}} の影響が最も大きく、平均CPU {{cpu}}、メモリ {{memory}} でした。",
+    "peakCpu": "CPUピーク {{value}}",
+    "storageLoading": "プライベート履歴を開いています…",
+    "storageReady": "端末に保存済み · {{size}} · 最終書き込み {{time}}",
+    "storagePending": "最初の書き込み待ち",
+    "storageFailed": "履歴は表示できますが、新しいサンプルを保存できませんでした。CoreRobinが再試行します。",
+    "boundary": "コマンドやファイルパスは保存しません。アプリ名は別のプライバシー設定に従います。"
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "このコンピュータの基準",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "通常の状態を学習中",
+      "description": "CoreRobin で比較するには、同じ時間帯のサンプルがさらに必要です。"
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "このコンピュータの通常パターンに近い状態",
+      "description": "利用可能な指標に有意なずれは見つかりませんでした。"
+    },
+    "partial": {
+      "title": "基準の一部を利用できます",
+      "description": "一部の指標には十分な比較日があり、残りは学習中として明示されます。"
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "通常パターンと異なる状態",
+      "description": "{{count}} 個の指標が、比較可能な7日間の基準を明確に上回っています。"
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "基準を収集中",
+    "coverage": "比較可能な{{days}}日 · {{count}}サンプル",
+    "change": "通常より{{direction}} {{value}}%",
+    "higher": "高い",
+    "lower": "低い",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "メモリ",
+      "disk": "ディスクスループット",
+      "network": "ネットワークスループット",
+      "temperature": "温度",
+      "battery": "バッテリー消費"
     }
   }
 }

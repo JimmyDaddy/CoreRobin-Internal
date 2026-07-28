@@ -19,12 +19,27 @@ const checks = [
   { id: "background", title: "关闭主窗口后后台采样继续，状态栏仍可恢复主窗口" },
   {
     id: "application-uninstall-capability",
-    title: "应用页能稳定展示当前平台的卸载能力：macOS 可读取清单并生成安全计划；Windows/Linux 在能力交付前明确说明不支持且不展示虚假清单",
+    title: "应用页能读取当前平台的真实清单；读取失败与“没有安装应用”明确区分，名称、图标和安装来源符合系统信息",
   },
   {
     id: "application-uninstall-review",
     title: "选择一个非 CoreRobin 应用后可看到本体与关联数据，打开卸载复核并安全取消，应用与文件保持不变",
     platforms: ["darwin"],
+  },
+  {
+    id: "native-application-uninstall-review",
+    title: "选择一个专门用于验收的可移除应用，能看到系统包身份、卸载方式和提权说明；取消 CoreRobin 复核后不会启动卸载",
+    platforms: ["win32", "linux"],
+  },
+  {
+    id: "native-application-uninstall-cancel",
+    title: "对验收应用启动系统卸载后，在 UAC/PolicyKit 或系统安装器中取消；CoreRobin 明确显示已取消而不是失败",
+    platforms: ["win32", "linux"],
+  },
+  {
+    id: "native-application-uninstall-complete",
+    title: "重新安装验收应用并完成系统卸载；返回 CoreRobin 后该应用重新枚举为已移除，其他应用清单不受影响",
+    platforms: ["win32", "linux"],
   },
   { id: "cleanup-limited", title: "暂不授权完整磁盘访问时，仍可扫描可访问区域并清楚说明范围", platforms: ["darwin"] },
   { id: "cleanup-authorized", title: "授予完整磁盘访问并重新启动后，可执行全磁盘扫描且进度持续更新", platforms: ["darwin"] },

@@ -33,7 +33,7 @@ pnpm release:smoke:device -- \
   --app /Applications/CoreRobin.app
 ```
 
-脚本会启动已安装应用，并要求人工逐项确认主窗口、状态栏面板、Robin、健康状态同步、主题/语言同步、后台行为、应用卸载能力边界、权限两条路径以及退出/重启。macOS 还会复核卸载计划的取消路径；Windows/Linux 在能力交付前必须明确显示不支持，不能用空清单冒充“没有安装应用”。证据默认写入 `.local-dev/release-smoke/`，包含 commit、系统、架构、候选安装包 SHA-256 和每一步结果。任何 `failed` 或 `not-verified` 都不能标记为发布通过。跨平台卸载的分阶段实现与实机矩阵见[跨平台应用卸载设计](cross-platform-application-uninstall.md)。
+脚本会启动已安装应用，并要求人工逐项确认主窗口、状态栏面板、Robin、健康状态同步、主题/语言同步、后台行为、应用卸载能力边界、权限两条路径以及退出/重启。macOS 会复核 Bundle 与关联数据计划的取消路径；Windows/Linux 必须使用专门的验收应用检查系统清单、本地化名称与图标、计划取消、提权取消、完成卸载和重新枚举。任何平台都不能用读取失败或空清单冒充“没有安装应用”。证据默认写入 `.local-dev/release-smoke/`，包含 commit、系统、架构、候选安装包 SHA-256 和每一步结果。任何 `failed` 或 `not-verified` 都不能标记为发布通过。跨平台卸载的实现边界与实机矩阵见[跨平台应用卸载设计](cross-platform-application-uninstall.md)。
 
 CI 只运行 `pnpm release:smoke:device -- --dry-run` 验证清单可解析；这不是实际设备验证。
 

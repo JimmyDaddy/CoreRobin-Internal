@@ -34,6 +34,7 @@
     "title": "電腦狀態故事",
     "description": "把成對的告警與恢復合併成一件事，用普通語言說明影響和結果。",
     "cause": "主要原因：{{name}} 當時佔用最高",
+    "inspectApplications": "查看峰值時的應用程式",
     "timeline": "事件時間線",
     "startedAt": "{{time}} 開始",
     "peakedAt": "{{time}} 達到峰值 {{value}}%",
@@ -140,52 +141,64 @@
   "watchRules": { "title": "應用程式關注記錄", "description": "記錄你建立的提醒規則在本機觸發與恢復的時間。", "savedEvents": "{{count}} 筆關注事件", "savedEvents_other": "{{count}} 筆關注事件", "privateApplication": "未儲存應用程式名稱", "triggered": "{{metric}} 達到 {{value}}{{unit}}", "recovered": "{{metric}} 恢復至 {{value}}{{unit}}" },
   "privacyEyebrow": "資料邊界",
   "privacyTitle": "隱私說明",
-  "privacyLocal": "歷史只儲存在當前裝置的 CoreRobin WebView 儲存中，不會上傳或同步。",
+  "privacyLocal": "歷史只儲存在目前裝置的 CoreRobin 私有儲存空間，不會上傳或同步。",
   "privacyCollected": "記錄整機資源快照、超限與恢復事件，以及你確認執行的操作類型、結果、數量和釋放空間；應用程式或啟動項目名稱只有在設定中單獨允許後才會儲存。",
   "privacyExcluded": "資源與操作歷史不記錄程序命令、使用者、路徑、檔名或連線地址；若另行啟用「連線歷史」，五分鐘彙總資料可能在本機保存遠端 IP、網域、連接埠與應用程式名稱。",
   "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
 ,
   "applicationImpact": {
-    "eyebrow": "Application attribution",
-    "title": "Which apps affected this computer",
-    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
-    "enable": "Keep app impact history",
-    "range": "Application history range",
-    "hours1": "1 hour",
-    "hours24": "24 hours",
-    "hours168": "7 days",
-    "disabledTitle": "Application attribution is off",
-    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
-    "learningTitle": "Building application history",
-    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
-    "peakCpu": "Peak CPU {{value}}",
-    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+    "eyebrow": "應用程式歸因",
+    "title": "哪些應用程式影響了這部電腦",
+    "description": "選用的五分鐘彙總可找出長時間重複使用 CPU、記憶體或磁碟的應用程式。",
+    "enable": "保留應用程式影響記錄",
+    "range": "應用程式記錄範圍",
+    "hours1": "1 小時",
+    "hours24": "24 小時",
+    "hours168": "7 天",
+    "disabledTitle": "應用程式歸因已停用",
+    "disabledDescription": "啟用後會在此裝置儲存穩定的應用程式識別與彙總資料。",
+    "learningTitle": "正在建立應用程式記錄",
+    "learningDescription": "收集足夠的五分鐘樣本後會顯示排名。",
+    "timeline": "各時段影響",
+    "timelineHint": "選取柱狀項目即可查看該時刻的應用程式排名。",
+    "explanation": "{{time}} 左右，{{name}} 在該時段影響最高，平均 CPU {{cpu}}、記憶體 {{memory}}。",
+    "peakCpu": "CPU 峰值 {{value}}",
+    "storageLoading": "正在讀取私有歷史儲存空間…",
+    "storageReady": "上次儲存 {{time}} · {{size}}",
+    "storagePending": "正在將新樣本儲存至私有歷史空間。",
+    "storageFailed": "仍可查看記錄，但無法儲存新樣本。CoreRobin 會重試。",
+    "boundary": "不儲存命令或檔案路徑；應用程式名稱遵循獨立的隱私設定。"
   },
   "baseline": {
-    "eyebrow": "This computer's baseline",
+    "eyebrow": "這部電腦的基準",
     "learning": {
-      "title": "Learning what is normal here",
-      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+      "title": "正在學習平常狀態",
+      "description": "CoreRobin 需要更多相同時段的樣本，才能與這部電腦的日常狀態比較。"
     },
     "typical": {
-      "title": "Close to this computer's usual pattern",
-      "description": "No meaningful deviation was found across the available baseline metrics."
+      "title": "接近這部電腦的日常模式",
+      "description": "現有基準指標沒有發現明顯偏差。"
+    },
+    "partial": {
+      "title": "部分基準仍在學習",
+      "description": "只有涵蓋足夠獨立日期的指標會與日常模式比較。"
     },
     "elevated": {
-      "title": "Different from this computer's usual pattern",
-      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+      "title": "與這部電腦的日常模式不同",
+      "description": "{{count}} 項指標明顯高於過去七天相同時段的基準。"
     },
-    "collecting": "Collecting baseline",
-    "change": "{{value}}% {{direction}} than usual",
-    "higher": "higher",
-    "lower": "lower",
+    "collecting": "正在收集基準",
+    "coverage": "{{days}} 個可比較日期 · {{count}} 個樣本",
+    "change": "比平常{{direction}} {{value}}%",
+    "higher": "高",
+    "lower": "低",
     "metric": {
       "cpu": "CPU",
-      "memory": "Memory",
-      "disk": "Disk throughput",
-      "network": "Network throughput",
-      "temperature": "Temperature",
-      "battery": "Battery drain"
+      "memory": "記憶體",
+      "disk": "磁碟輸送量",
+      "network": "網路輸送量",
+      "temperature": "溫度",
+      "battery": "電池消耗"
     }
   }
 }

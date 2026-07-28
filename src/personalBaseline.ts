@@ -8,6 +8,7 @@ export type PersonalBaselineMetric =
   | "temperature"
   | "battery";
 export type PersonalBaselineStatus = "learning" | "typical" | "elevated";
+export type PersonalBaselineConfidence = "learning" | "limited" | "established";
 
 export interface PersonalBaselineComparison {
   metric: PersonalBaselineMetric;
@@ -16,9 +17,12 @@ export interface PersonalBaselineComparison {
   baseline: number | null;
   changePercent: number | null;
   sampleCount: number;
+  distinctDayCount: number;
+  confidence: PersonalBaselineConfidence;
 }
 
 const MINIMUM_BASELINE_POINTS = 12;
+const MINIMUM_BASELINE_DAYS = 3;
 const RECENT_WINDOW_MS = 15 * 60 * 1_000;
 const BASELINE_MIN_AGE_MS = 60 * 60 * 1_000;
 const BASELINE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
@@ -31,6 +35,7 @@ export function buildPersonalBaseline(
     point.timestamp >= now - RECENT_WINDOW_MS && point.timestamp <= now
   );
   const currentHour = new Date(now).getHours();
+  const currentDayType = dayType(now);
   const baseline = points.filter((point) => {
     const age = now - point.timestamp;
     if (age < BASELINE_MIN_AGE_MS || age > BASELINE_MAX_AGE_MS) return false;
@@ -39,7 +44,7 @@ export function buildPersonalBaseline(
       Math.abs(hour - currentHour),
       24 - Math.abs(hour - currentHour),
     );
-    return distance <= 1;
+    return distance <= 1 && dayType(point.timestamp) === currentDayType;
   });
   return ([
     "cpu",
@@ -66,10 +71,23 @@ function compareMetric(
     .filter((value): value is number => value !== null);
   const current = average(currentValues);
   const typical = median(baselineValues);
+  const distinctDayCount = new Set(
+    baseline
+      .filter((point) => metricValue(point, metric) !== null)
+      .map((point) => localDayKey(point.timestamp)),
+  ).size;
+  const confidence: PersonalBaselineConfidence =
+    baselineValues.length >= 36 && distinctDayCount >= 5
+      ? "established"
+      : baselineValues.length >= MINIMUM_BASELINE_POINTS
+        && distinctDayCount >= MINIMUM_BASELINE_DAYS
+        ? "limited"
+        : "learning";
   if (
     current === null
     || typical === null
     || baselineValues.length < MINIMUM_BASELINE_POINTS
+    || distinctDayCount < MINIMUM_BASELINE_DAYS
   ) {
     return {
       metric,
@@ -78,6 +96,8 @@ function compareMetric(
       baseline: typical,
       changePercent: null,
       sampleCount: baselineValues.length,
+      distinctDayCount,
+      confidence,
     };
   }
   const changePercent = typical <= 0
@@ -85,13 +105,21 @@ function compareMetric(
     : ((current - typical) / typical) * 100;
   return {
     metric,
-    status: isElevated(metric, current, typical, changePercent)
+    status: isElevated(
+      metric,
+      current,
+      typical,
+      medianAbsoluteDeviation(baselineValues, typical),
+      changePercent,
+    )
       ? "elevated"
       : "typical",
     current,
     baseline: typical,
     changePercent,
     sampleCount: baselineValues.length,
+    distinctDayCount,
+    confidence,
   };
 }
 
@@ -122,6 +150,7 @@ function isElevated(
   metric: PersonalBaselineMetric,
   current: number,
   baseline: number,
+  baselineDeviation: number,
   changePercent: number | null,
 ): boolean {
   const relativeThreshold = metric === "temperature" ? 15 : 50;
@@ -134,7 +163,7 @@ function isElevated(
         : metric === "battery"
           ? 2
           : 2 * 1_024 * 1_024;
-  return current - baseline >= meaningfulDelta;
+  return current - baseline >= Math.max(meaningfulDelta, baselineDeviation * 3);
 }
 
 function average(values: readonly number[]): number | null {
@@ -149,4 +178,25 @@ function median(values: readonly number[]): number | null {
   return ordered.length % 2 === 0
     ? (ordered[middle - 1]! + ordered[middle]!) / 2
     : ordered[middle]!;
+}
+
+function medianAbsoluteDeviation(
+  values: readonly number[],
+  center: number,
+): number {
+  return median(values.map((value) => Math.abs(value - center))) ?? 0;
+}
+
+function dayType(timestamp: number): "weekday" | "weekend" {
+  const day = new Date(timestamp).getDay();
+  return day === 0 || day === 6 ? "weekend" : "weekday";
+}
+
+function localDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }

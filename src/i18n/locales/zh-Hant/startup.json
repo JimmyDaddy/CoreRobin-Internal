@@ -131,17 +131,24 @@
   }
 ,
   "impactComparison": {
-    "title": "Compared with recent starts",
-    "description": "Uses the median of {{count}} earlier measurements.",
-    "improved": "{{value}}% faster to settle",
-    "similar": "Close to the recent median",
-    "slower": "{{value}}% slower to settle",
-    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+    "title": "與近期啟動比較",
+    "description": "採用之前 {{count}} 次測量的中位數。",
+    "improved": "穩定速度加快 {{value}}%",
+    "similar": "接近近期中位數",
+    "slower": "穩定速度減慢 {{value}}%",
+    "risingApplication": "{{name}} 增幅最大，增加 {{value}} 個 CPU 百分點"
   },
   "impactReceipt": {
-    "title": "Result after your startup-item change",
-    "improved": "The next start improved after changing {{name}}.",
-    "similar": "The next start stayed close to normal after changing {{name}}.",
-    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+    "title": "變更啟動項目後的觀察結果",
+    "single": {
+      "improved": "變更 {{name}} 後，下一次啟動較快穩定。",
+      "similar": "變更 {{name}} 後，下一次啟動仍接近平常。",
+      "slower": "變更 {{name}} 後，下一次啟動仍較慢；此項目可能不是主要原因。"
+    },
+    "multiple": {
+      "improved": "變更 {{count}} 個啟動項目後，下一次啟動較快穩定；無法歸因於單一應用程式。",
+      "similar": "變更 {{count}} 個啟動項目後，下一次啟動仍接近平常。",
+      "slower": "變更 {{count}} 個啟動項目後，下一次啟動仍較慢；不能把原因歸於單一變更。"
+    }
   }
 }

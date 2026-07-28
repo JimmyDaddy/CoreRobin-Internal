@@ -81,6 +81,8 @@ export function StorageExplorer({
     useState<StorageHealthSnapshot | null>(null);
   const [storageHealthLoading, setStorageHealthLoading] = useState(false);
   const [storageHealthError, setStorageHealthError] = useState<string | null>(null);
+  const [retryingHealthMountPoint, setRetryingHealthMountPoint] =
+    useState<string | null>(null);
   const [openingDiskUtility, setOpeningDiskUtility] = useState(false);
   const volumes = useMemo(
     () => sortVolumesByUsage(disk.volumes),
@@ -132,6 +134,28 @@ export function StorageExplorer({
       setStorageHealthError(normalizeCommandError(caughtError).message);
     } finally {
       setOpeningDiskUtility(false);
+    }
+  };
+  const retryStorageDevice = async (mountPoint: string) => {
+    if (retryingHealthMountPoint) return;
+    setRetryingHealthMountPoint(mountPoint);
+    setStorageHealthError(null);
+    try {
+      const refreshed = await getStorageHealth([mountPoint], true);
+      setStorageHealth((current) => {
+        if (!current || refreshed.devices.length === 0) return refreshed;
+        const replacement = refreshed.devices[0]!;
+        return {
+          sampledAtMs: refreshed.sampledAtMs,
+          devices: current.devices.map((device) =>
+            device.mountPoint === mountPoint ? replacement : device
+          ),
+        };
+      });
+    } catch (caughtError) {
+      setStorageHealthError(normalizeCommandError(caughtError).message);
+    } finally {
+      setRetryingHealthMountPoint(null);
     }
   };
   const ejectVolume = async (mountPoint: string, name: string) => {
@@ -315,7 +339,9 @@ export function StorageExplorer({
         loading={storageHealthLoading}
         error={storageHealthError}
         openingUtility={openingDiskUtility}
+        retryingMountPoint={retryingHealthMountPoint}
         onOpenUtility={() => void launchDiskUtility()}
+        onRetry={(mountPoint) => void retryStorageDevice(mountPoint)}
       />
 
       <section
@@ -386,14 +412,18 @@ function StorageHealthPanel({
   loading,
   error,
   openingUtility,
+  retryingMountPoint,
   onOpenUtility,
+  onRetry,
 }: {
   snapshot: StorageHealthSnapshot | null;
   volumes: DiskSnapshot["volumes"];
   loading: boolean;
   error: string | null;
   openingUtility: boolean;
+  retryingMountPoint: string | null;
   onOpenUtility: () => void;
+  onRetry: (mountPoint: string) => void;
 }) {
   const { t } = useAppTranslation();
   const risky = snapshot?.devices.some((device) =>
@@ -441,7 +471,29 @@ function StorageHealthPanel({
                   <div><dt>{t("storage:health.media")}</dt><dd>{device.solidState === null ? t(device.internal === false ? "storage:health.external" : "storage:health.unknownMedia") : t(device.solidState ? "storage:health.ssd" : "storage:health.hdd")}</dd></div>
                   <div><dt>{t("storage:health.purgeable")}</dt><dd>{device.purgeableBytes === null ? "—" : formatBytes(device.purgeableBytes)}</dd></div>
                 </dl>
-                {device.inspectionError ? <p>{t("storage:health.inspectUnavailable")}</p> : null}
+                <footer className="storage-health__device-footer">
+                  <small>
+                    {device.cached
+                      ? t("storage:health.cached")
+                      : t("storage:health.updatedNow")}
+                  </small>
+                  {device.inspectionError ? (
+                    <>
+                      <p>{t("storage:health.inspectUnavailable")}</p>
+                      <button
+                        className="button button--secondary"
+                        type="button"
+                        disabled={retryingMountPoint !== null}
+                        onClick={() => onRetry(device.mountPoint)}
+                      >
+                        {retryingMountPoint === device.mountPoint
+                          ? <LoaderCircle className="is-spinning" size={12} />
+                          : <RefreshCw size={12} />}
+                        {t("storage:health.retry")}
+                      </button>
+                    </>
+                  ) : null}
+                </footer>
               </article>
             );
           })}

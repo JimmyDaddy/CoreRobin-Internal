@@ -63,6 +63,7 @@ const EMPTY_CACHE_SUMMARY: ProductDataCacheSummary = {
   cleanupScan: { byteSize: 0, fileCount: 0, updatedAtMs: null },
   fileInsights: { byteSize: 0, fileCount: 0, updatedAtMs: null },
   applicationInventory: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+  applicationHistory: { byteSize: 0, fileCount: 0, updatedAtMs: null },
 };
 
 const EMPTY_RECEIPT: ProductDataClearReceipt = {
@@ -178,14 +179,18 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
   const categories = useMemo<Record<ProductDataCategory, ProductDataCategorySummary>>(
     () => ({
       resourceHistory: {
-        byteSize: storageByteSize([
-          PERSISTENT_HISTORY_STORAGE_KEY,
-          RESOURCE_ALERT_STORAGE_KEY,
-          APPLICATION_WATCH_HISTORY_STORAGE_KEY,
-          USER_ACTION_HISTORY_STORAGE_KEY,
-        ]),
+        byteSize:
+          storageByteSize([
+            PERSISTENT_HISTORY_STORAGE_KEY,
+            RESOURCE_ALERT_STORAGE_KEY,
+            APPLICATION_WATCH_HISTORY_STORAGE_KEY,
+            USER_ACTION_HISTORY_STORAGE_KEY,
+          ]) + cacheSummary.applicationHistory.byteSize,
         itemCount: input.resourceItemCount,
-        updatedAtMs: input.resourceUpdatedAtMs,
+        updatedAtMs: Math.max(
+          input.resourceUpdatedAtMs ?? 0,
+          cacheSummary.applicationHistory.updatedAtMs ?? 0,
+        ) || null,
         retentionDays: input.resourceRetentionDays,
       },
       connectionHistory: {

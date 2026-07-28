@@ -1433,6 +1433,7 @@ export default interface Resources {
       "disabledDescription": "开启后只在本机保存稳定应用身份和聚合指标。",
       "disabledTitle": "应用归因尚未开启",
       "enable": "保留应用影响历史",
+      "explanation": "{{time}} 左右，{{name}} 在该时段影响最高，平均 CPU {{cpu}}、内存 {{memory}}。",
       "eyebrow": "应用归因",
       "hours1": "1 小时",
       "hours168": "7 天",
@@ -1441,6 +1442,12 @@ export default interface Resources {
       "learningTitle": "正在建立应用历史",
       "peakCpu": "CPU 峰值 {{value}}",
       "range": "应用历史范围",
+      "storageFailed": "历史仍可查看，但新采样暂时无法保存；CoreRobin 会自动重试。",
+      "storageLoading": "正在打开私有历史存储…",
+      "storagePending": "等待首次写入",
+      "storageReady": "已保存到本机 · {{size}} · 最近写入 {{time}}",
+      "timeline": "应用影响趋势",
+      "timelineHint": "点击柱形查看对应时段",
       "title": "哪些应用影响过这台电脑"
     },
     "archiveDescription": "跨重启查看资源长期变化，以及持续超限与恢复事件。",
@@ -1450,6 +1457,7 @@ export default interface Resources {
     "baseline": {
       "change": "比平时{{direction}} {{value}}%",
       "collecting": "正在积累基线",
+      "coverage": "{{days}} 个可比日期 · {{count}} 个采样",
       "elevated": {
         "description": "有 {{count}} 项指标明显高于过去七天相同时段。",
         "title": "和这台电脑平时不太一样"
@@ -1468,6 +1476,10 @@ export default interface Resources {
         "memory": "内存",
         "network": "网络吞吐",
         "temperature": "温度"
+      },
+      "partial": {
+        "description": "部分指标已有足够的可比日期，其余指标会继续明确显示为学习中。",
+        "title": "这台电脑的部分基线已经可用"
       },
       "typical": {
         "description": "当前可用指标没有出现明显偏离。",
@@ -1491,7 +1503,7 @@ export default interface Resources {
     "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
     "privacyExcluded": "资源与操作历史不记录进程命令、用户、路径、文件名或连接地址；如果你单独开启“连接历史”，五分钟聚合数据可能在本机保存远端 IP、域名、端口和应用名。",
     "privacyEyebrow": "数据边界",
-    "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
+    "privacyLocal": "历史只保存在当前设备的 CoreRobin 私有存储中，不会上传或同步。",
     "privacyTitle": "隐私说明",
     "resourceChart": "CPU 与内存",
     "resourceChartLabel": "历史 CPU 与内存趋势",
@@ -1521,6 +1533,7 @@ export default interface Resources {
       "endedAt": "{{time}} 恢复",
       "eyebrow": "发生过什么",
       "happeningNow": "仍在发生",
+      "inspectApplications": "查看峰值时的应用",
       "memory": {
         "active": {
           "description": "低可用内存和交换活动已持续 {{duration}}；切换应用时可能变慢。",
@@ -2311,10 +2324,17 @@ export default interface Resources {
       "title": "与最近几次启动对比"
     },
     "impactReceipt": {
-      "improved": "调整 {{name}} 后，下次启动确实变快了。",
-      "similar": "调整 {{name}} 后，下次启动与平时接近。",
-      "slower": "调整 {{name}} 后，下次启动仍然偏慢；它可能不是主要原因。",
-      "title": "启动项变更后的结果"
+      "multiple": {
+        "improved": "进行了 {{count}} 项启动项变更后，观察到下次启动趋稳更快；无法归因给其中某一项。",
+        "similar": "进行了 {{count}} 项启动项变更后，下次启动与近期状态接近。",
+        "slower": "进行了 {{count}} 项启动项变更后，下次启动仍然偏慢；无法判断由其中哪一项造成。"
+      },
+      "single": {
+        "improved": "调整 {{name}} 后，观察到下次启动趋稳更快；单次观察不能证明改善由这个条目造成。",
+        "similar": "调整 {{name}} 后，下次启动与近期状态接近。",
+        "slower": "调整 {{name}} 后，下次启动仍然偏慢；它可能不是主要原因。"
+      },
+      "title": "启动项变更后的观察"
     },
     "inventory": "启动项清单",
     "listTitle": "哪些内容会自动启动",
@@ -2369,6 +2389,7 @@ export default interface Resources {
     "establishingBaseline": "正在建立磁盘吞吐基线…",
     "filesystemCapacity": "文件系统容量",
     "health": {
+      "cached": "最近缓存结果",
       "description": "只展示操作系统提供的状态；CoreRobin 不修复磁盘，也不虚构健康百分比。",
       "external": "外置介质",
       "eyebrow": "只读设备信息",
@@ -2382,6 +2403,7 @@ export default interface Resources {
       "purgeable": "可清理空间",
       "readOnly": "只读",
       "readWrite": "可读写",
+      "retry": "重试这个卷",
       "scope": "S.M.A.R.T. 是操作系统可提供时的总体设备状态；不支持并不代表磁盘不健康。",
       "ssd": "固态硬盘",
       "status": {
@@ -2392,7 +2414,8 @@ export default interface Resources {
         "warning": "需要留意"
       },
       "title": "磁盘健康与挂载详情",
-      "unknownMedia": "未知"
+      "unknownMedia": "未知",
+      "updatedNow": "刚刚检查"
     },
     "highestUsage": "最高占用",
     "inspectHint": "点击后在右侧核验详情",
