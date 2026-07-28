@@ -5464,7 +5464,7 @@ mod tests {
                 .set_lease_mode_for_home(
                     CleanupDeleteLeaseModeRequest {
                         lease_id: lease_ids.pop().unwrap(),
-                        mode: CleanupDeleteMode::Trash,
+                        mode: CleanupDeleteMode::Permanent,
                     },
                     &root,
                 )
@@ -5473,6 +5473,7 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn cleanup_delete_mode_switch_reuses_the_validated_targets() {
         let root = test_root("switch-delete-mode");
@@ -5510,6 +5511,43 @@ mod tests {
             .execute(CleanupDeleteExecutionRequest {
                 lease_id: switched.id,
             })
+            .unwrap();
+        assert_eq!(result.deleted.len(), 1);
+        assert!(result.failed.is_empty());
+        assert!(!target.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn cleanup_delete_mode_switch_rejects_unavailable_trash_without_losing_lease() {
+        let root = test_root("switch-delete-mode-unavailable");
+        let target = root.join("Downloads/archive.zip");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, b"archive").unwrap();
+        let display = target.to_string_lossy().into_owned();
+        let mut controller = CleanupDeleteController::default();
+
+        let lease = controller
+            .create_lease_for_home(
+                cleanup_delete_request(&root, vec![display], u64::MAX),
+                &root,
+            )
+            .unwrap();
+
+        let error = controller
+            .set_lease_mode_for_home(
+                CleanupDeleteLeaseModeRequest {
+                    lease_id: lease.id.clone(),
+                    mode: CleanupDeleteMode::Trash,
+                },
+                &root,
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "cleanup_trash_unavailable");
+
+        let result = controller
+            .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
             .unwrap();
         assert_eq!(result.deleted.len(), 1);
         assert!(result.failed.is_empty());
