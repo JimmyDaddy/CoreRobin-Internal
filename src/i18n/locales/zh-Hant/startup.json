@@ -49,12 +49,12 @@
     "unsupported": "此來源暫不支援管理"
   },
   "impact": {
-    "eyebrow": "Measured sign-in launch",
-    "title": "Real sign-in impact",
-    "description": "Samples only when the operating system launches CoreRobin silently as a login item, until the system settles.",
-    "settleTime": "Settle time", "peakCpu": "Peak CPU", "peakDisk": "Peak disk", "samples": "Samples",
-    "boundary": "This measures post-sign-in impact, not firmware boot time. Measurements stop after three minutes and the latest five are kept.",
-    "empty": "No real sign-in measurement yet. Enable Launch at login to measure the next sign-in automatically.",
+    "eyebrow": "測量登入啟動",
+    "title": "真實的登入影響",
+    "description": "僅當作業系統以靜默方式啟動 CoreRobin 作為登入項目時才進行取樣，直到系統穩定下來。",
+    "settleTime": "穩定時間", "peakCpu": "峰值CPU", "peakDisk": "尖峰磁碟", "samples": "樣品",
+    "boundary": "這衡量登入後的影響，而不是韌體啟動時間。三分鐘後測量停止，並保留最近的五次測量。",
+    "empty": "還沒有真正的登入測量。啟用登入時啟動以自動測量下次登入。",
     "none": {
       "title": "當前無啟動影響"
     },

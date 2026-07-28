@@ -17,6 +17,15 @@ const checks = [
   { id: "health-sync", title: "主窗口、状态栏面板与 Robin 显示同一稳定状态、原因和更新时间" },
   { id: "appearance-sync", title: "切换语言、文字大小和减少动画后，三个前端在重新打开时保持一致" },
   { id: "background", title: "关闭主窗口后后台采样继续，状态栏仍可恢复主窗口" },
+  {
+    id: "application-uninstall-capability",
+    title: "应用页能稳定展示当前平台的卸载能力：macOS 可读取清单并生成安全计划；Windows/Linux 在能力交付前明确说明不支持且不展示虚假清单",
+  },
+  {
+    id: "application-uninstall-review",
+    title: "选择一个非 CoreRobin 应用后可看到本体与关联数据，打开卸载复核并安全取消，应用与文件保持不变",
+    platforms: ["darwin"],
+  },
   { id: "cleanup-limited", title: "暂不授权完整磁盘访问时，仍可扫描可访问区域并清楚说明范围", platforms: ["darwin"] },
   { id: "cleanup-authorized", title: "授予完整磁盘访问并重新启动后，可执行全磁盘扫描且进度持续更新", platforms: ["darwin"] },
   { id: "quit-relaunch", title: "退出应用会关闭所有前端；重新启动后偏好与非敏感历史按设置恢复" },

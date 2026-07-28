@@ -535,6 +535,8 @@ export interface NetworkQualityResult {
   sampledAtMs: number;
   targetHost: string;
   targetPort: number;
+  targetCount: number;
+  successfulTargetCount: number;
   status: NetworkQualityStatus;
   dnsAvailable: boolean;
   dnsLookupMs: number | null;
@@ -545,7 +547,7 @@ export interface NetworkQualityResult {
   minimumLatencyMs: number | null;
   maximumLatencyMs: number | null;
   jitterMs: number | null;
-  packetLossPercent: number;
+  tcpProbeFailurePercent: number;
   diagnostics: NetworkQualityDiagnostic[];
 }
 
@@ -595,6 +597,9 @@ export interface FileInsightFile {
   logicalSizeBytes: number;
   allocatedSizeBytes: number;
   modifiedAtMs: number | null;
+  modifiedAtUs?: number | null;
+  deviceId?: number | null;
+  inode?: number | null;
 }
 
 export interface GpuEnergySnapshot {

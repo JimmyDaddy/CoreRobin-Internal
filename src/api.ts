@@ -87,6 +87,24 @@ const applicationInventoryInFlight = new Map<
   }
 >();
 
+export interface ProductDataCacheItemSummary {
+  byteSize: number;
+  fileCount: number;
+  updatedAtMs: number | null;
+}
+
+export interface ProductDataCacheSummary {
+  cleanupScan: ProductDataCacheItemSummary;
+  fileInsights: ProductDataCacheItemSummary;
+  applicationInventory: ProductDataCacheItemSummary;
+}
+
+const EMPTY_PRODUCT_DATA_CACHE_ITEM: ProductDataCacheItemSummary = {
+  byteSize: 0,
+  fileCount: 0,
+  updatedAtMs: null,
+};
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
@@ -164,6 +182,8 @@ export async function runNetworkQualityCheck(): Promise<NetworkQualityResult> {
       sampledAtMs: Date.now(),
       targetHost: "example.com",
       targetPort: 443,
+      targetCount: 2,
+      successfulTargetCount: 2,
       status: "online",
       dnsAvailable: true,
       dnsLookupMs: 18,
@@ -174,7 +194,7 @@ export async function runNetworkQualityCheck(): Promise<NetworkQualityResult> {
       minimumLatencyMs: 27.8,
       maximumLatencyMs: 38.2,
       jitterMs: 3.7,
-      packetLossPercent: 0,
+      tcpProbeFailurePercent: 0,
       diagnostics: [
         { kind: "local_link", status: "passed", latencyMs: null },
         { kind: "dns", status: "passed", latencyMs: 18 },
@@ -286,6 +306,13 @@ export async function scanFileInsights(
 export async function cancelFileInsightsScan(): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("cancel_file_insights_scan");
+}
+
+export async function revalidateFileInsightsScan(
+  snapshot: FileInsightsScan,
+): Promise<FileInsightsScan> {
+  if (canUseDevelopmentMock()) return snapshot;
+  return invoke<FileInsightsScan>("revalidate_file_insights_scan", { snapshot });
 }
 
 export async function getStartupItems(): Promise<StartupItemsSnapshot> {
@@ -534,6 +561,23 @@ export async function clearPersistedProductData(): Promise<void> {
   applicationInventoryMemory.clear();
   if (canUseDevelopmentMock()) return;
   return invoke<void>("clear_persisted_product_data");
+}
+
+export async function getProductDataCacheSummary(): Promise<ProductDataCacheSummary> {
+  if (canUseDevelopmentMock()) {
+    return {
+      cleanupScan: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
+      fileInsights: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
+      applicationInventory: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
+    };
+  }
+  return invoke<ProductDataCacheSummary>("get_product_data_cache_summary");
+}
+
+export async function clearApplicationInventoryCache(): Promise<void> {
+  applicationInventoryMemory.clear();
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("clear_application_inventory_cache");
 }
 
 export async function cancelCleanupScan(): Promise<boolean> {

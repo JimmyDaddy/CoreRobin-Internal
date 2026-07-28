@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "喚起 Robin 小夥伴",
-    "hide": "隱藏 Robin 小夥伴"
+    "show": "喚起 Robin",
+    "hide": "隱藏 Robin"
   },
   "technicalOverview": {
     "title": "檢視實時資源詳情",
@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "記憶體使用",
-    "disk": "磁碟 I/O",
+    "disk": "儲存空間使用量",
     "network": "網路吞吐",
     "cpuContext": "{{count}} 個邏輯核心 · 單程序可超過 100%",
     "memoryContext": "共 {{total}} · 交換 {{swap}}",

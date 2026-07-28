@@ -1,10 +1,10 @@
 {
-  "kicker": "Assistant Robin",
-  "dragHint": "Faites glisser l'Assistant Robin pour le déplacer ; maintenez le curseur sur l'Assistant pour afficher des informations ; cliquez avec la bonne main pour ouvrir le menu",
-  "expand": "Ouvrir l'assistant Robin",
-  "collapse": "Réduire l'assistant Robin",
-  "menu": "Menu de l'assistant Robin",
-  "hide": "Masquer l'assistant",
+  "kicker": "Robin",
+  "dragHint": "Faites glisser Robin pour le déplacer ; survolez-le pour afficher son état ; faites un clic droit pour ouvrir le menu",
+  "expand": "Ouvrir Robin",
+  "collapse": "Réduire Robin",
+  "menu": "Menu de Robin",
+  "hide": "Masquer Robin",
   "reason": "{{resource}} a suivi de près. Ouvrez la fenêtre principale pour en savoir plus.",
   "action": {
     "loading": "Ouvrir l'aide quotidienne",

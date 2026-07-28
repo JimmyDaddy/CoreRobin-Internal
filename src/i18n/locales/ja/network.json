@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "ネットワーク自動サンプリング", "title": "ネットワーク品質", "description": "ページを開くと自動で検査し、表示中は 30 秒ごとにサンプリングします。",
+    "eyebrow": "ネットワーク自動サンプリング", "title": "ネットワーク品質", "description": "表示中は 30 秒ごとに検査し、任意で 1 時間または 24 時間の 5 分集計をバックグラウンド保存します。",
     "run": "今すぐ再検査", "checking": "検査中…", "empty": "最初のネットワーク品質検査を実行中…",
-    "method": "軽量 TCP 検査でローカルルート、DNS、IPv4/IPv6、インターネット直結、独立サービスを切り分けます。ページを離れると停止します。",
-    "dns": "DNS", "latency": "平均遅延", "jitter": "ジッター", "loss": "接続失敗", "probes": "TCP プローブ", "probeSuccess": "{{successful}}/{{total}} 回成功",
+    "method": "example.com と one.one.one.one を TCP で探測し、ローカルルート、DNS、IPv4/IPv6、インターネット到達性を特権付き生パケットなしで確認します。",
+    "dns": "DNS", "latency": "平均遅延", "jitter": "ジッター", "loss": "TCP プローブ失敗", "probes": "TCP プローブ", "probeSuccess": "{{successful}}/{{total}} 回成功", "probeAndTargets": "{{successful}}/{{total}} プローブ成功 · {{targetSuccessful}}/{{targetTotal}} 接続先に到達",
     "trendTitle": "ネットワーク品質の推移", "trendWindow": "直近 15 分 · 30 秒ごとに更新", "trendCollecting": "推移データを収集中", "legend": "ネットワーク品質の凡例", "chartLabel": "直近 15 分のネットワーク品質、{{count}} サンプル", "now": "現在",
     "windowAverage": "平均遅延", "windowPeak": "最大遅延", "anomalies": "異常", "anomalyCount": "{{count}} 件",
+    "history": {"title":"継続的な品質履歴","description":"有効時はバックグラウンドで 5 分ごとに軽量サンプルを取得し、集計値だけを端末に保存します。","range":"表示範囲","minutes15":"15 分","hours1":"1 時間","hours24":"24 時間","window":"直近 {{count}} 時間 · 5 分集計","clear":"品質履歴を消去","axisMinutes":"−{{count}} 分","axisHours":"−{{count}} 時間"},
     "diagnostics": { "title": "階層別ネットワーク診断", "stages": { "local_link": "ローカルルート", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "インターネット", "independent_service": "独立サービス" }, "status": { "passed": "利用可能", "degraded": "低下", "failed": "失敗", "unavailable": "未設定" } },
     "status": { "online": "オンライン", "limited": "接続が制限されています", "offline": "オフライン" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "オプションのローカルレコード", "title": "接続履歴と集計", "description": "アプリケーションまたはドメインごとに長期的な接続アクティビティを確認します。",
+    "optIn": "接続履歴にはアプリケーション名、ドメイン、リモート IP が含まれる可能性があるため、デフォルトではオフになっています。有効にすると、このデバイス上に残ります。", "enable": "接続履歴を有効にする",
+    "groupBy": "グループ化", "application": "応用", "domain": "ドメイン", "retention": "保つ", "days": "{{count}} 日", "clear": "履歴をクリアする",
+    "lookupFallback": "一部の名前は解決できませんでした。代わりに IP アドレスが記録されました。", "observations": "{{count}}の観測", "empty": "次のアクティブな接続スキャンを待機しています。",
+    "privacy": "5 分間の集計のみを保存し、エントリの上限は 5,000 です。いつでも無効化またはクリアできます。"
   },
   "local": "ローカルネットワーク",
   "title": "ライブインターフェースとセッショントラフィック",

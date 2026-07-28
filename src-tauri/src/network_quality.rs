@@ -9,8 +9,7 @@ use crate::models::{
     NetworkQualityStatus,
 };
 
-const QUALITY_TARGET_HOST: &str = "example.com";
-const QUALITY_TARGET_PORT: u16 = 443;
+const QUALITY_TARGETS: [(&str, u16); 2] = [("example.com", 443), ("one.one.one.one", 443)];
 const PROBE_COUNT: usize = 6;
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(900);
 const ROUTE_PROBE_V4: &str = "1.1.1.1:443";
@@ -20,32 +19,49 @@ const MAX_LOOKUP_ADDRESSES: usize = 32;
 pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError> {
     let sampled_at_ms = now_millis();
     let dns_started = Instant::now();
-    let resolved = (QUALITY_TARGET_HOST, QUALITY_TARGET_PORT)
-        .to_socket_addrs()
-        .map(|addresses| addresses.collect::<Vec<_>>());
+    let target_addresses = QUALITY_TARGETS
+        .iter()
+        .map(|(host, port)| {
+            (*host, *port)
+                .to_socket_addrs()
+                .map(|addresses| {
+                    let mut seen = HashSet::new();
+                    addresses
+                        .filter(|address| seen.insert(address.ip()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
     let dns_lookup_ms = dns_started.elapsed().as_millis().min(u64::MAX as u128) as u64;
 
-    let addresses = resolved.unwrap_or_default();
-    let dns_available = !addresses.is_empty();
-    let mut unique_addresses = Vec::new();
-    let mut seen = HashSet::new();
-    for address in addresses {
-        if seen.insert(address.ip()) {
-            unique_addresses.push(address);
-        }
-    }
+    let resolved_target_count = target_addresses
+        .iter()
+        .filter(|addresses| !addresses.is_empty())
+        .count();
+    let dns_available = resolved_target_count > 0;
+    let unique_addresses = target_addresses
+        .iter()
+        .flatten()
+        .copied()
+        .collect::<Vec<_>>();
 
     let mut successful_latencies = Vec::new();
     let mut ipv4_successes = 0usize;
     let mut ipv6_successes = 0usize;
+    let mut target_successes = vec![false; QUALITY_TARGETS.len()];
     for probe_index in 0..PROBE_COUNT {
-        let Some(address) = unique_addresses.get(probe_index % unique_addresses.len().max(1))
+        let target_index = probe_index % QUALITY_TARGETS.len();
+        let addresses = &target_addresses[target_index];
+        let Some(address) =
+            addresses.get((probe_index / QUALITY_TARGETS.len()) % addresses.len().max(1))
         else {
             continue;
         };
         let Some(latency) = probe_address(*address) else {
             continue;
         };
+        target_successes[target_index] = true;
         successful_latencies.push(latency);
         if address.is_ipv4() {
             ipv4_successes += 1;
@@ -55,6 +71,10 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
     }
 
     let successful_probe_count = successful_latencies.len();
+    let successful_target_count = target_successes
+        .iter()
+        .filter(|succeeded| **succeeded)
+        .count();
     let resolved_ipv4 = unique_addresses
         .iter()
         .filter(|address| address.is_ipv4())
@@ -85,7 +105,7 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         .map(|pair| (pair[1] - pair[0]).abs())
         .collect::<Vec<_>>();
     let jitter_ms = mean(&jitter_samples);
-    let packet_loss_percent =
+    let tcp_probe_failure_percent =
         ((PROBE_COUNT - successful_probe_count) as f64 / PROBE_COUNT as f64) * 100.0;
     let status = if successful_probe_count >= PROBE_COUNT.div_ceil(2) {
         NetworkQualityStatus::Online
@@ -110,8 +130,10 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         ),
         diagnostic(
             NetworkQualityDiagnosticKind::Dns,
-            if dns_available {
+            if resolved_target_count == QUALITY_TARGETS.len() {
                 NetworkQualityDiagnosticStatus::Passed
+            } else if dns_available {
+                NetworkQualityDiagnosticStatus::Degraded
             } else {
                 NetworkQualityDiagnosticStatus::Failed
             },
@@ -140,9 +162,9 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         ),
         diagnostic(
             NetworkQualityDiagnosticKind::IndependentService,
-            if successful_probe_count >= PROBE_COUNT.div_ceil(2) {
+            if successful_target_count == QUALITY_TARGETS.len() {
                 NetworkQualityDiagnosticStatus::Passed
-            } else if successful_probe_count > 0 {
+            } else if successful_target_count > 0 {
                 NetworkQualityDiagnosticStatus::Degraded
             } else {
                 NetworkQualityDiagnosticStatus::Failed
@@ -153,8 +175,14 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
 
     Ok(NetworkQualityResult {
         sampled_at_ms,
-        target_host: QUALITY_TARGET_HOST.to_owned(),
-        target_port: QUALITY_TARGET_PORT,
+        target_host: QUALITY_TARGETS
+            .iter()
+            .map(|(host, _)| *host)
+            .collect::<Vec<_>>()
+            .join(", "),
+        target_port: 443,
+        target_count: QUALITY_TARGETS.len(),
+        successful_target_count,
         status,
         dns_available,
         dns_lookup_ms: dns_available.then_some(dns_lookup_ms),
@@ -165,7 +193,7 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         minimum_latency_ms,
         maximum_latency_ms,
         jitter_ms,
-        packet_loss_percent,
+        tcp_probe_failure_percent,
         diagnostics,
     })
 }

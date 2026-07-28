@@ -2,7 +2,7 @@
   "localMonitor": "ローカルシステムの状態",
   "available": "空き容量",
   "open": "概要表示",
-  "companion": "Robin ユーティリティ",
+  "companion": "Robin",
   "cleanup": "ディスクの整理",
   "quit": "アプリを終了",
   "updatedAt": "{{time}} 更新",

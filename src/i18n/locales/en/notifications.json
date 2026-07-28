@@ -41,5 +41,9 @@
       "memory": "Memory {{value}} MiB",
       "disk": "Disk activity {{value}} MiB/s"
     }
+  },
+  "test": {
+    "title": "CoreRobin notifications are ready",
+    "body": "This is a local test. Future alerts remain restrained and can be changed in Settings."
   }
 }

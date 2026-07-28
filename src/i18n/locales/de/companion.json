@@ -1,10 +1,10 @@
 {
-  "kicker": "Robin-Assistent",
+  "kicker": "Robin",
   "dragHint": "Ziehen Sie Robin, um ihn zu verschieben; halten Sie die Maustaste gedrückt, um den Status anzuzeigen; klicken Sie mit der rechten Maustaste, um das Menü aufzurufen",
-  "expand": "Öffnen Sie den Robin-Assistenten",
-  "collapse": "Schließen Sie den Robin-Assistenten",
-  "menu": "Robin-Assistenten-Menü",
-  "hide": "Verstecken Sie den Assistenten",
+  "expand": "Robin öffnen",
+  "collapse": "Robin einklappen",
+  "menu": "Robin-Menü",
+  "hide": "Robin ausblenden",
   "reason": "{{resource}} ist in letzter Zeit interessant. Öffnen Sie das Hauptfenster, um mehr zu erfahren.",
   "action": {
     "loading": "Öffnen Sie den täglichen Helfer",

@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Robin-Assistent anzeigen",
-    "hide": "Robin-Assistent ausblenden"
+    "show": "Robin anzeigen",
+    "hide": "Robin ausblenden"
   },
   "technicalOverview": {
     "title": "Live-Ressourcenübersicht anzeigen",
@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Speicherauslastung",
-    "disk": "Festplatten-I/O",
+    "disk": "Speicherbelegung",
     "network": "Netzwerkdurchsatz",
     "cpuContext": "{{count}} logische Kerne · Ein einzelner Prozess kann 100% auslasten",
     "memoryContext": "{{total}} Gesamt · {{swap}} Swap-Speicher",

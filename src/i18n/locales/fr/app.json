@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Afficher l'assistant Robin",
-    "hide": "Masquer l'assistant Robin"
+    "show": "Afficher Robin",
+    "hide": "Masquer Robin"
   },
   "technicalOverview": {
     "title": "Afficher les détails des ressources en temps réel",
@@ -61,7 +61,7 @@
   },
   "metrics": {
     "memory": "Utilisation de la mémoire",
-    "disk": "E/S disque",
+    "disk": "Utilisation du stockage",
     "network": "Débit réseau",
     "cpuContext": "{{count}} cœurs logiques · Une seule application peut dépasser 100%",
     "memoryContext": "{{total}} total · {{swap}} espace d'échange",

@@ -95,6 +95,12 @@ const CRITICAL_LOCALIZED_COPY = {
     "watchRules.notificationHint",
   ],
 } as const;
+const COMPLETE_LOCALIZATION_SCOPES = {
+  applications: ["energy", "uninstall"],
+  cleanup: ["fileInsights"],
+  network: ["history"],
+  startup: ["impact"],
+} as const;
 
 function pluralStem(key: string): string {
   return key.replace(PLURAL_SUFFIX, "");
@@ -282,6 +288,39 @@ describe("internationalization", () => {
             translated[key],
             `${language}:${namespace}:${key} must be localized`,
           ).not.toBe(english[key]);
+        }
+      }
+    }
+  });
+
+  it("keeps complete feature surfaces localized instead of shipping English blocks", async () => {
+    for (const [namespace, prefixes] of Object.entries(
+      COMPLETE_LOCALIZATION_SCOPES,
+    ) as Array<
+      [
+        keyof typeof COMPLETE_LOCALIZATION_SCOPES,
+        readonly string[],
+      ]
+    >) {
+      const english = resourceStrings(await loadCatalog("en", namespace));
+      for (const language of SUPPORTED_LANGUAGES.filter(
+        (candidate) => candidate !== "en" && candidate !== "zh-CN",
+      )) {
+        const translated = resourceStrings(
+          await loadCatalog(language, namespace),
+        );
+        for (const [key, source] of Object.entries(english)) {
+          if (
+            !prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}.`))
+            || source.length < 16
+            || !/[A-Za-z]{3}/.test(source)
+          ) {
+            continue;
+          }
+          expect(
+            translated[key],
+            `${language}:${namespace}:${key} must not reuse the English source`,
+          ).not.toBe(source);
         }
       }
     }

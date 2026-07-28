@@ -30,7 +30,7 @@ describe("everyday component interactions", () => {
         snapshot={getMockSnapshot()}
         onChange={onChange}
         onOpenOnboarding={() => undefined}
-        onClearAllData={() => undefined}
+        onClearAllData={async () => undefined}
       />,
     );
 

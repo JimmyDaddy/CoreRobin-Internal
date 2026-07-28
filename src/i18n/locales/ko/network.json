@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "자동 네트워크 샘플링", "title": "네트워크 품질", "description": "페이지를 열면 자동 확인하고 머무는 동안 30초마다 샘플링합니다.",
+    "eyebrow": "자동 네트워크 샘플링", "title": "네트워크 품질", "description": "페이지가 열려 있으면 30초마다 검사하며, 선택 시 백그라운드에서 1시간 또는 24시간의 5분 집계를 보관합니다.",
     "run": "지금 확인", "checking": "확인 중…", "empty": "첫 네트워크 품질 확인을 실행 중…",
-    "method": "가벼운 TCP 확인으로 로컬 경로, DNS, IPv4/IPv6, 인터넷 직접 연결, 독립 서비스를 구분합니다. 페이지를 나가면 중지됩니다.",
-    "dns": "DNS", "latency": "평균 지연", "jitter": "지터", "loss": "연결 실패", "probes": "TCP 확인", "probeSuccess": "{{successful}}/{{total}}회 성공",
+    "method": "example.com과 one.one.one.one을 TCP로 탐지해 권한이 필요한 원시 패킷 없이 로컬 경로, DNS, IPv4/IPv6 및 인터넷 연결을 구분합니다.",
+    "dns": "DNS", "latency": "평균 지연", "jitter": "지터", "loss": "TCP 탐지 실패", "probes": "TCP 확인", "probeSuccess": "{{successful}}/{{total}}회 성공", "probeAndTargets": "{{successful}}/{{total}} 탐지 성공 · {{targetSuccessful}}/{{targetTotal}} 대상 연결",
     "trendTitle": "네트워크 품질 추세", "trendWindow": "최근 15분 · 30초마다 업데이트", "trendCollecting": "추세 데이터 수집 중", "legend": "네트워크 품질 범례", "chartLabel": "최근 15분 네트워크 품질 추세, {{count}}개 샘플", "now": "현재",
     "windowAverage": "평균 지연", "windowPeak": "최대 지연", "anomalies": "이상", "anomalyCount": "{{count}}회",
+    "history": {"title":"지속적인 품질 기록","description":"백그라운드에서 5분마다 가볍게 샘플링하고 집계 수치만 이 기기에 저장합니다.","range":"추세 범위","minutes15":"15분","hours1":"1시간","hours24":"24시간","window":"최근 {{count}}시간 · 5분 집계","clear":"품질 기록 지우기","axisMinutes":"−{{count}}분","axisHours":"−{{count}}시간"},
     "diagnostics": { "title": "계층별 네트워크 진단", "stages": { "local_link": "로컬 경로", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "인터넷", "independent_service": "독립 서비스" }, "status": { "passed": "사용 가능", "degraded": "저하", "failed": "실패", "unavailable": "미설정" } },
     "status": { "online": "온라인", "limited": "연결 제한", "offline": "오프라인" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "선택적 로컬 기록", "title": "연결 기록 및 집계", "description": "애플리케이션 또는 도메인별로 장기적인 연결 활동을 검토합니다.",
+    "optIn": "연결 기록에는 애플리케이션 이름, 도메인, 원격 IP가 포함될 수 있으므로 기본적으로 꺼져 있습니다. 활성화되면 이 장치에 유지됩니다.", "enable": "연결 기록 활성화",
+    "groupBy": "그룹화 기준", "application": "애플리케이션", "domain": "도메인", "retention": "유지하다", "days": "{{count}}일", "clear": "기록 지우기",
+    "lookupFallback": "일부 이름을 확인할 수 없습니다. 대신 IP 주소가 기록되었습니다.", "observations": "{{count}} 관측", "empty": "다음 활성 연결 검색을 기다리는 중입니다.",
+    "privacy": "5분 단위 집계만 저장하며 최대 5,000개 항목으로 제한됩니다. 언제든지 비활성화하거나 지울 수 있습니다."
   },
   "local": "로컬 네트워크",
   "title": "실시간 인터페이스 및 세션 트래픽",

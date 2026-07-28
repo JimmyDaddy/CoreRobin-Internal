@@ -24,7 +24,7 @@
     "launchAtLogin": "Launch at login",
     "launchAtLoginDescription": "Start the menu bar service quietly without opening the main window",
     "companionShowOnStartup": "Keep Robin on the desktop",
-    "companionShowOnStartupDescription": "Show the Robin companion whenever the app starts",
+    "companionShowOnStartupDescription": "Show Robin whenever the app starts",
     "companionAlwaysOnTop": "Keep Robin above windows",
     "companionAlwaysOnTopDescription": "Stay above other windows; when off, Robin may be covered"
   },
@@ -79,6 +79,29 @@
       "title": "Local product caches",
       "description": "Application inventory, cleanup scan, and file-insight results stay on this device."
     },
+    "categories": {
+      "resourceHistory": { "title": "Resource and action history", "description": "Device resources, alerts, app watches, and local action records." },
+      "connectionHistory": { "title": "Connection history", "description": "Optional five-minute aggregates that can include remote addresses, ports, and app names." },
+      "applicationInventory": { "title": "Application inventory cache", "description": "Installed-app metadata cached per interface language. App contents are never stored." },
+      "scanCaches": { "title": "Scan result caches", "description": "Cleanup and file-insight results containing paths, sizes, and modification times." }
+    },
+    "metrics": {
+      "items": "{{count}} items",
+      "updated": "Updated {{time}}",
+      "never": "No local data yet",
+      "retention": "Kept for {{count}} days",
+      "session": "Current session only"
+    },
+    "result": { "clear": "Clear category", "retry": "Retry", "succeeded": "Cleared", "failed": "Clear failed", "skipped": "Skipped after another failure" },
+    "clearAll": {
+      "title": "Clear all product data",
+      "description": "After one confirmation, clear these datasets, preferences, and local interface state."
+    },
+    "diskAccess": {
+      "title": "Full Disk Access",
+      "description": "macOS controls this optional permission. CoreRobin refreshes the status when you return.",
+      "open": "Open settings"
+    },
     "clear": "Clear all local data"
   },
   "notifications": {
@@ -98,6 +121,11 @@
       "ready": "Allowed",
       "denied": "Not allowed by system",
       "unavailable": "Desktop app only"
+    },
+    "test": "Send test notification",
+    "delivery": {
+      "sent": "Last notification accepted at {{time}}",
+      "failed": "Last notification failed at {{time}} — try a test or review system settings"
     }
   },
   "thresholds": {
@@ -140,6 +168,9 @@
     "updateReady": "The update is installed. Restart CoreRobin to finish.",
     "restartUpdate": "Restart",
     "updateInstallError": "The update could not be installed. Your current version is unchanged; try again later or view the release notes.",
+    "lastChecked": "Last checked {{time}}",
+    "lastCheckFailed": "The background check at {{time}} failed; use Check for updates to retry.",
+    "whatsNew": "What’s new in this version",
     "helpTitle": "Help & feedback",
     "helpDescription": "Open the public guide, or review what is included before reporting a problem.",
     "guide": "User guide",
@@ -159,7 +190,14 @@
     "clearDescription": "Clear preferences, history, alerts, action records, and the space-scan cache.",
     "clearConfirm": "This cannot be undone. CoreRobin will clear on-device data and restart; system permissions such as login startup are not silently removed.",
     "clearNow": "Clear and restart",
-    "clearAction": "Clear all data"
+    "clearAction": "Clear all data",
+    "clearing": "Clearing local data…",
+    "clearError": "Some local data could not be cleared. Nothing is being reported as complete; retry after closing active scans.",
+    "clearScope": {
+      "history": "Resource history, alert history, and confirmed action records",
+      "scans": "Application inventory, space-map cache, and file-insight results",
+      "preferences": "Interface preferences and locally stored feature settings"
+    }
   },
   "onboarding": {
     "kicker": "First use · {{current}} / {{total}}",
@@ -188,12 +226,12 @@
       },
       "two": {
         "title": "Quietly stays available after the window closes",
-        "description": "CoreRobin remains in the menu bar with low-frequency sampling. The menu panel and Robin companion share one stable state.",
+        "description": "CoreRobin remains in the menu bar with low-frequency sampling. The menu panel and Robin share one stable state.",
         "note": "Pause, open settings, or quit completely from the menu bar."
       },
       "three": {
         "title": "Permissions are optional and purposeful",
-        "description": "Notifications, Robin companion, and launch at login are optional. Full Disk Access only makes a space-cleanup scan more complete.",
+        "description": "Notifications, Robin, and launch at login are optional. Full Disk Access only makes a space-cleanup scan more complete.",
         "note": "Without it, accessible areas can still be scanned. CoreRobin does not request it during this guide."
       }
     }

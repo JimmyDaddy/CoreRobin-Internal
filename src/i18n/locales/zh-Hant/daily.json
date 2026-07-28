@@ -432,7 +432,7 @@
     "launchAtLoginDescription": "登入系統後在背景啟動，不主動顯示主視窗",
     "companionAlwaysOnTop": "讓 Robin 始終顯示在其他視窗上方",
     "companionAlwaysOnTopDescription": "關閉後 Robin 仍會留在桌面，但可能被其他視窗遮住",
-    "companionShowOnStartup": "讓 Robin 夥伴常駐桌面",
+    "companionShowOnStartup": "讓 Robin 常駐桌面",
     "companionShowOnStartupDescription": "開啟後立即顯示 Robin，並在下次啟動 CoreRobin 時繼續出現",
     "professional": "專業模式",
     "professionalDescription": "檢視完整指標、程序樹、網路連線和高階設定",

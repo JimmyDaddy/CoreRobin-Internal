@@ -346,6 +346,100 @@ pub fn remove_file_insights_cache(path: &Path) -> Result<(), CommandError> {
     })
 }
 
+pub fn revalidate_file_insights_snapshot(
+    mut snapshot: FileInsightsScan,
+) -> Result<FileInsightsScan, CommandError> {
+    let started_at = Instant::now();
+    let mut duplicate_groups = std::mem::take(&mut snapshot.duplicate_groups)
+        .into_iter()
+        .filter_map(|group| {
+            let mut files = group
+                .files
+                .into_iter()
+                .filter_map(|cached| {
+                    revalidate_duplicate_file(&cached, &group.digest, group.size_bytes)
+                })
+                .collect::<Vec<_>>();
+            if files.len() < 2 {
+                return None;
+            }
+            files.sort_by(|left, right| left.path.cmp(&right.path));
+            Some(DuplicateFileGroup {
+                digest: group.digest,
+                size_bytes: group.size_bytes,
+                reclaimable_bytes: group
+                    .size_bytes
+                    .saturating_mul(files.len().saturating_sub(1) as u64),
+                files,
+            })
+        })
+        .collect::<Vec<_>>();
+    duplicate_groups.sort_by_key(|group| std::cmp::Reverse(group.reclaimable_bytes));
+
+    let old_before = SystemTime::now()
+        .checked_sub(LONG_UNMODIFIED_AGE)
+        .unwrap_or(UNIX_EPOCH);
+    let mut long_unmodified_files = std::mem::take(&mut snapshot.long_unmodified_files)
+        .into_iter()
+        .filter_map(|cached| {
+            let metadata = safe_regular_file_metadata(Path::new(&cached.path))?;
+            let modified_at = metadata.modified().ok()?;
+            if metadata.len() < MIN_LONG_UNMODIFIED_SIZE_BYTES || modified_at > old_before {
+                return None;
+            }
+            Some(to_file_insight(Path::new(&cached.path), &metadata))
+        })
+        .collect::<Vec<_>>();
+    long_unmodified_files.sort_by_key(|file| std::cmp::Reverse(file.size_bytes));
+
+    snapshot.sampled_at_ms = now_millis();
+    snapshot.duration_ms = started_at.elapsed().as_millis().min(u64::MAX as u128) as u64;
+    snapshot.duplicate_groups = duplicate_groups;
+    snapshot.long_unmodified_files = long_unmodified_files;
+    Ok(snapshot)
+}
+
+fn revalidate_duplicate_file(
+    cached: &FileInsightFile,
+    expected_digest: &str,
+    expected_size: u64,
+) -> Option<FileInsightFile> {
+    let path = Path::new(&cached.path);
+    let metadata = safe_regular_file_metadata(path)?;
+    if metadata.len() != expected_size {
+        return None;
+    }
+    let current = to_file_insight(path, &metadata);
+    if file_fingerprint_matches(cached, &current) {
+        return Some(current);
+    }
+    let candidate = CandidateFile {
+        path: path.to_path_buf(),
+        size_bytes: metadata.len(),
+        modified_at: metadata.modified().ok(),
+    };
+    (hash_candidate(&candidate).ok()?.as_str() == expected_digest).then_some(current)
+}
+
+fn safe_regular_file_metadata(path: &Path) -> Option<Metadata> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    (metadata.is_file() && !metadata.file_type().is_symlink()).then_some(metadata)
+}
+
+fn file_fingerprint_matches(cached: &FileInsightFile, current: &FileInsightFile) -> bool {
+    cached.logical_size_bytes == current.logical_size_bytes
+        && cached.modified_at_ms == current.modified_at_ms
+        && cached
+            .modified_at_us
+            .is_some_and(|modified_at_us| Some(modified_at_us) == current.modified_at_us)
+        && cached
+            .device_id
+            .is_none_or(|device_id| Some(device_id) == current.device_id)
+        && cached
+            .inode
+            .is_none_or(|inode| Some(inode) == current.inode)
+}
+
 fn hash_candidate(candidate: &CandidateFile) -> io::Result<String> {
     let before = fs::symlink_metadata(&candidate.path)?;
     if !before.is_file()
@@ -412,7 +506,32 @@ fn to_file_insight(path: &Path, metadata: &Metadata) -> FileInsightFile {
         logical_size_bytes,
         allocated_size_bytes: file_allocated_size(metadata),
         modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+        modified_at_us: metadata.modified().ok().and_then(system_time_micros),
+        device_id: file_device_id(metadata),
+        inode: file_inode(metadata),
     }
+}
+
+#[cfg(unix)]
+fn file_device_id(metadata: &Metadata) -> Option<u64> {
+    use std::os::unix::fs::MetadataExt;
+    Some(metadata.dev())
+}
+
+#[cfg(not(unix))]
+fn file_device_id(_metadata: &Metadata) -> Option<u64> {
+    None
+}
+
+#[cfg(unix)]
+fn file_inode(metadata: &Metadata) -> Option<u64> {
+    use std::os::unix::fs::MetadataExt;
+    Some(metadata.ino())
+}
+
+#[cfg(not(unix))]
+fn file_inode(_metadata: &Metadata) -> Option<u64> {
+    None
 }
 
 #[cfg(unix)]
@@ -446,6 +565,12 @@ fn system_time_millis(time: SystemTime) -> Option<u64> {
         .map(|duration| duration.as_millis().min(u64::MAX as u128) as u64)
 }
 
+fn system_time_micros(time: SystemTime) -> Option<u64> {
+    time.duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_micros()).ok())
+}
+
 fn now_millis() -> u64 {
     system_time_millis(SystemTime::now()).unwrap_or_default()
 }
@@ -456,9 +581,10 @@ mod tests {
 
     use super::{
         CandidateFile, FILE_INSIGHTS_CACHE_VERSION, hash_candidate, load_file_insights_cache,
-        remove_file_insights_cache, save_file_insights_snapshot_cache_at, to_file_insight,
+        remove_file_insights_cache, revalidate_file_insights_snapshot,
+        save_file_insights_snapshot_cache_at, to_file_insight,
     };
-    use crate::models::FileInsightsScan;
+    use crate::models::{DuplicateFileGroup, FileInsightsScan};
 
     #[test]
     fn hashes_stable_regular_file() {
@@ -520,5 +646,51 @@ mod tests {
 
         remove_file_insights_cache(&cache_path).unwrap();
         assert_eq!(load_file_insights_cache(&cache_path).unwrap(), None);
+    }
+
+    #[test]
+    fn cached_duplicates_are_rehashed_only_when_their_fingerprint_changes() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let left_path = directory.path().join("left.bin");
+        let right_path = directory.path().join("right.bin");
+        fs::write(&left_path, b"same duplicate bytes").expect("write left fixture");
+        fs::write(&right_path, b"same duplicate bytes").expect("write right fixture");
+        let left_metadata = fs::symlink_metadata(&left_path).expect("left metadata");
+        let right_metadata = fs::symlink_metadata(&right_path).expect("right metadata");
+        let digest = hash_candidate(&CandidateFile {
+            path: left_path.clone(),
+            size_bytes: left_metadata.len(),
+            modified_at: left_metadata.modified().ok(),
+        })
+        .expect("hash duplicate fixture");
+        let scan = FileInsightsScan {
+            sampled_at_ms: 100,
+            duration_ms: 20,
+            scanned_entry_count: 2,
+            candidate_file_count: 2,
+            hashed_file_count: 2,
+            duplicate_groups: vec![DuplicateFileGroup {
+                digest,
+                size_bytes: left_metadata.len(),
+                reclaimable_bytes: left_metadata.len(),
+                files: vec![
+                    to_file_insight(&left_path, &left_metadata),
+                    to_file_insight(&right_path, &right_metadata),
+                ],
+            }],
+            long_unmodified_files: Vec::new(),
+            unreadable_entry_count: 0,
+            truncated: false,
+        };
+
+        let unchanged =
+            revalidate_file_insights_snapshot(scan.clone()).expect("revalidate unchanged cache");
+        assert_eq!(unchanged.duplicate_groups.len(), 1);
+        assert_eq!(unchanged.duplicate_groups[0].files.len(), 2);
+
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        fs::write(&right_path, b"changed file content").expect("replace right fixture");
+        let changed = revalidate_file_insights_snapshot(scan).expect("revalidate changed cache");
+        assert!(changed.duplicate_groups.is_empty());
     }
 }

@@ -38,7 +38,6 @@ import {
 
 import {
   canRelaunchApplication,
-  clearPersistedProductData,
   createProcessControlLease,
   executeProcessAction,
   getSystemSnapshot,
@@ -87,6 +86,8 @@ import { useApplicationWatchRules } from "./hooks/useApplicationWatchRules";
 import { useConnectionHistory } from "./hooks/useConnectionHistory";
 import { useFileInsightsScan } from "./hooks/useFileInsightsScan";
 import { useUserActionHistory } from "./hooks/useUserActionHistory";
+import { useProductDataPrivacy } from "./hooks/useProductDataPrivacy";
+import { useNetworkQualityMonitor } from "./hooks/useNetworkQualityMonitor";
 import { normalizeLanguage } from "./i18n";
 import brandMark from "./assets/brand-mark.png";
 import {
@@ -103,6 +104,7 @@ import {
 } from "./processRestart";
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { UserActionKind } from "./userActionHistory";
+import type { ProductDataClearResult } from "./productDataClear";
 import {
   applyAppAppearance,
   loadAppSettings,
@@ -214,6 +216,18 @@ function App() {
     useState(0);
   const [availableUpdateVersion, setAvailableUpdateVersion] =
     useState<string | null>(loadAvailableUpdateVersion);
+  const [lastUpdateCheckAt, setLastUpdateCheckAt] = useState<number | null>(() => {
+    try {
+      const saved = Number(
+        window.localStorage.getItem(UPDATE_CHECKED_AT_STORAGE_KEY) ?? 0,
+      );
+      return Number.isFinite(saved) && saved > 0 ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  const [backgroundUpdateCheckFailed, setBackgroundUpdateCheckFailed] =
+    useState(false);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
@@ -234,13 +248,16 @@ function App() {
       void checkForProductUpdate()
         .then((result) => {
           if (disposed) return;
+          const checkedAt = Date.now();
+          setLastUpdateCheckAt(checkedAt);
+          setBackgroundUpdateCheckFailed(false);
           setAvailableUpdateVersion(
             result.status === "available" ? result.latestVersion : null,
           );
           try {
             window.localStorage.setItem(
               UPDATE_CHECKED_AT_STORAGE_KEY,
-              String(Date.now()),
+              String(checkedAt),
             );
             saveAvailableUpdateVersion(
               result.status === "available" ? result.latestVersion : null,
@@ -249,7 +266,11 @@ function App() {
             // The check result remains usable for this session.
           }
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (disposed) return;
+          setLastUpdateCheckAt(Date.now());
+          setBackgroundUpdateCheckFailed(true);
+        });
     }, 5_000);
     return () => {
       disposed = true;
@@ -339,6 +360,11 @@ function App() {
     settings.historyApplicationNamesEnabled,
     handleOpenApplicationWatchEvidence,
   );
+  const notificationDelivery = [
+    desktopNotifications.delivery,
+    applicationWatchRules.notificationDelivery,
+  ].filter((delivery): delivery is NonNullable<typeof delivery> => delivery !== null)
+    .sort((left, right) => right.attemptedAtMs - left.attemptedAtMs)[0] ?? null;
   const cleanupScan = useCleanupScan();
   const fileInsights = useFileInsightsScan();
   const startupItems = useStartupItems(
@@ -366,6 +392,52 @@ function App() {
     settings.networkConnectionHistoryEnabled,
     settings.networkConnectionHistoryRetentionDays,
   );
+  const networkQuality = useNetworkQualityMonitor({
+    active: activeView === "network" && mainVisible,
+    historyEnabled: settings.networkQualityHistoryEnabled,
+    historyHours: settings.networkQualityHistoryHours,
+  });
+  const productDataPrivacy = useProductDataPrivacy({
+    resourceItemCount:
+      persistentHistory.storedPoints.length
+      + resourceAlerts.storedEvents.length
+      + applicationWatchRules.storedEvents.length
+      + userActions.storedRecords.length,
+    resourceUpdatedAtMs: latestNonZeroTimestamp([
+      ...persistentHistory.storedPoints.map((point) => point.timestamp),
+      ...resourceAlerts.storedEvents.map((event) => event.timestamp),
+      ...applicationWatchRules.storedEvents.map((event) => event.timestamp),
+      ...userActions.storedRecords.map(
+        (record) => record.completedAtMs ?? record.startedAtMs,
+      ),
+    ]),
+    resourceRetentionDays: settings.historyRetentionDays,
+    connectionItemCount: connectionHistory.entries.length,
+    connectionUpdatedAtMs: latestNonZeroTimestamp(
+      connectionHistory.entries.map((entry) => entry.lastSeenAtMs),
+    ),
+    connectionRetentionDays: settings.networkConnectionHistoryRetentionDays,
+    networkQualityItemCount: networkQuality.history.length,
+    networkQualityUpdatedAtMs: latestNonZeroTimestamp(
+      networkQuality.history.map((point) => point.sampledAtMs),
+    ),
+    cleanupItemCount: cleanupScan.snapshot?.scannedEntryCount ?? 0,
+    cleanupUpdatedAtMs: cleanupScan.snapshot?.sampledAtMs ?? null,
+    fileInsightsItemCount: fileInsights.snapshot?.scannedEntryCount ?? 0,
+    fileInsightsUpdatedAtMs: fileInsights.snapshot?.sampledAtMs ?? null,
+    onClearResourceHistory: () => {
+      persistentHistory.clear();
+      resourceAlerts.clearSaved();
+      applicationWatchRules.clearSaved();
+      userActions.clearSaved();
+    },
+    onClearConnectionHistory: () => {
+      connectionHistory.clear();
+      networkQuality.clearHistory();
+    },
+    onClearCleanupScan: cleanupScan.clear,
+    onClearFileInsights: fileInsights.clear,
+  });
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<ProcessRow | null>(null);
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
@@ -581,28 +653,35 @@ function App() {
   }, []);
 
   const clearAllProductData = useCallback(async () => {
-    persistentHistory.clear();
-    resourceAlerts.clearSaved();
-    applicationWatchRules.clearSaved();
-    userActions.clearSaved();
-    try {
-      await cleanupScan.clear();
-      await clearPersistedProductData();
-    } catch {
-      // WebView data should still be reset if the private scan cache is unavailable.
+    const categories = [
+        "resourceHistory",
+        "connectionHistory",
+        "applicationInventory",
+        "scanCaches",
+      ] as const;
+    const outcomes = await Promise.all(
+      categories.map((category) => productDataPrivacy.clearCategory(category)),
+    );
+    const results: ProductDataClearResult[] = categories.map((scope, index) => ({
+      scope,
+      status: outcomes[index] ? "succeeded" : "failed",
+    }));
+    if (outcomes.some((succeeded) => !succeeded)) {
+      return [
+        ...results,
+        { scope: "preferences", status: "skipped" },
+      ] satisfies ProductDataClearResult[];
     }
     beginProductDataReset();
     clearCoreRobinWebData();
+    results.push({ scope: "preferences", status: "succeeded" });
     window.setTimeout(() => {
       clearCoreRobinWebData();
       window.location.reload();
     }, 120);
+    return results;
   }, [
-    applicationWatchRules,
-    cleanupScan,
-    persistentHistory,
-    resourceAlerts,
-    userActions,
+    productDataPrivacy,
   ]);
 
   useEffect(() => {
@@ -1582,10 +1661,12 @@ function App() {
                   notificationStatus={desktopNotifications.status}
                   snapshot={snapshot}
                   availableUpdateVersion={availableUpdateVersion}
+                  lastUpdateCheckAt={lastUpdateCheckAt}
+                  backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
                   onChange={updateSettings}
                   onOpenNotificationSettings={openNotificationSettings}
                   onOpenOnboarding={() => setOnboardingOpen(true)}
-                  onClearAllData={() => void clearAllProductData()}
+                  onClearAllData={clearAllProductData}
                 />
               ) : (
                 <DailySolve
@@ -1780,6 +1861,15 @@ function App() {
                 connectionHistoryEntries={connectionHistory.entries}
                 connectionHistoryError={connectionHistory.error}
                 onClearConnectionHistory={connectionHistory.clear}
+                qualityMonitor={networkQuality}
+                qualityHistoryEnabled={settings.networkQualityHistoryEnabled}
+                qualityHistoryHours={settings.networkQualityHistoryHours}
+                onQualityHistoryEnabledChange={(networkQualityHistoryEnabled) =>
+                  updateSettings({ networkQualityHistoryEnabled })
+                }
+                onQualityHistoryHoursChange={(networkQualityHistoryHours) =>
+                  updateSettings({ networkQualityHistoryHours })
+                }
                 processes={snapshot.processes}
                 onSelectProcess={(process) => {
                   selectProcess(process);
@@ -1830,13 +1920,18 @@ function App() {
               <SettingsExplorer
                 settings={settings}
                 notificationStatus={desktopNotifications.status}
+                notificationDelivery={notificationDelivery}
+                dataPrivacy={productDataPrivacy}
                 activeApplicationWatchRuleIds={applicationWatchRules.activeRuleIds}
                 snapshot={snapshot}
                 availableUpdateVersion={availableUpdateVersion}
+                lastUpdateCheckAt={lastUpdateCheckAt}
+                backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
                 onChange={updateSettings}
                 onOpenNotificationSettings={openNotificationSettings}
+                onSendTestNotification={desktopNotifications.sendTest}
                 onOpenOnboarding={() => setOnboardingOpen(true)}
-                onClearAllData={() => void clearAllProductData()}
+                onClearAllData={clearAllProductData}
               />
             )}
             </Suspense>
@@ -1924,6 +2019,10 @@ function App() {
       ) : null}
     </div>
   );
+}
+
+function latestNonZeroTimestamp(values: readonly number[]): number | null {
+  return values.reduce((latest, value) => Math.max(latest, value), 0) || null;
 }
 
 export default App;

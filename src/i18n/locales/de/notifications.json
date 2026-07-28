@@ -41,5 +41,9 @@
       "memory": "Arbeitsspeicher {{value}} MiB",
       "disk": "Festplattenaktivität {{value}} MiB/s"
     }
+  },
+  "test": {
+    "title": "CoreRobin-Mitteilungen sind bereit",
+    "body": "Dies ist ein lokaler Test. Künftige Hinweise bleiben zurückhaltend und lassen sich in den Einstellungen ändern."
   }
 }

@@ -41,5 +41,9 @@
       "memory": "記憶體 {{value}} MiB",
       "disk": "磁碟活動 {{value}} MiB/s"
     }
+  },
+  "test": {
+    "title": "CoreRobin 提醒已就緒",
+    "body": "這是一則本機測試提醒。後續提醒仍會保持克制，可隨時在設定中調整。"
   }
 }

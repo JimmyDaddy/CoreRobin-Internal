@@ -1,7 +1,17 @@
-import { AppWindow, BellRing, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, Plus, Rocket, Search, Settings2, ShieldCheck, Timer, Trash2 } from "lucide-react";
+import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, LoaderCircle, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2 } from "lucide-react";
 import { useMemo, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { applicationWatchSamplingIntervalMs } from "../applicationWatchRules";
+import {
+  openCleanupFullDiskAccessSettings,
+} from "../api";
+import { useCleanupScanAccess } from "../hooks/useCleanupScanAccess";
+import type {
+  ProductDataCategory,
+  ProductDataCategorySummary,
+  ProductDataClearReceipt,
+  ProductDataPrivacyController,
+} from "../hooks/useProductDataPrivacy";
 
 import {
   CONNECTION_REFRESH_INTERVAL_OPTIONS,
@@ -14,13 +24,19 @@ import {
   type UsageThresholds,
 } from "../settings";
 import { HISTORY_RETENTION_OPTIONS } from "../historyStore";
-import type { DesktopNotificationStatus } from "../desktopNotifications";
+import type {
+  DesktopNotificationDelivery,
+  DesktopNotificationStatus,
+} from "../desktopNotifications";
 import type { SystemSnapshot } from "../types";
+import type { ProductDataClearResult } from "../productDataClear";
 import { aggregateApplications } from "../diagnosis";
+import { formatBytes } from "../utils";
 import { AboutSupport } from "./AboutSupport";
 import { ApplicationAvatar } from "./ApplicationAvatar";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
+import { ClearProductDataAction } from "./ClearProductDataAction";
 
 type SettingsIcon = ComponentType<{ size?: number | string }>;
 type SettingsSection =
@@ -34,13 +50,18 @@ type SettingsSection =
 interface SettingsExplorerProps {
   settings: AppSettings;
   notificationStatus: DesktopNotificationStatus;
+  notificationDelivery?: DesktopNotificationDelivery | null;
+  dataPrivacy?: ProductDataPrivacyController | null;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
   onOpenNotificationSettings?: () => void;
+  onSendTestNotification?: () => Promise<boolean>;
   onOpenOnboarding: () => void;
-  onClearAllData: () => void;
+  onClearAllData: () => Promise<void | ProductDataClearResult[]>;
   activeApplicationWatchRuleIds?: readonly string[];
   availableUpdateVersion?: string | null;
+  lastUpdateCheckAt?: number | null;
+  backgroundUpdateCheckFailed?: boolean;
 }
 
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
@@ -58,18 +79,24 @@ const WATCH_DURATIONS = [10, 30, 60, 300] as const;
 export function SettingsExplorer({
   settings,
   notificationStatus,
+  notificationDelivery = null,
+  dataPrivacy = null,
   snapshot,
   onChange,
   onOpenNotificationSettings = () => undefined,
+  onSendTestNotification = async () => false,
   onOpenOnboarding,
   onClearAllData,
   activeApplicationWatchRuleIds = [],
   availableUpdateVersion = null,
+  lastUpdateCheckAt = null,
+  backgroundUpdateCheckFailed = false,
 }: SettingsExplorerProps) {
-  const { t } = useAppTranslation();
+  const { t, i18n } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("general");
+  const cleanupAccess = useCleanupScanAccess(activeSection === "privacy");
 
   const updateThreshold = (index: number, value: number) => {
     const next = [...settings.usageThresholds] as [number, number, number];
@@ -148,40 +175,78 @@ export function SettingsExplorer({
           description={t("settings:dataPrivacy.description")}
         >
           <div className="settings-data-boundaries">
+            {dataPrivacy ? (
+              <>
+                <ProductDataCategoryRow
+                  category="resourceHistory"
+                  icon={History}
+                  enabled={settings.historyPersistenceEnabled}
+                  summary={dataPrivacy.categories.resourceHistory}
+                  receipt={dataPrivacy.receipts.resourceHistory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="connectionHistory"
+                  icon={Network}
+                  enabled={settings.networkConnectionHistoryEnabled}
+                  summary={dataPrivacy.categories.connectionHistory}
+                  receipt={dataPrivacy.receipts.connectionHistory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="applicationInventory"
+                  icon={PackageOpen}
+                  summary={dataPrivacy.categories.applicationInventory}
+                  receipt={dataPrivacy.receipts.applicationInventory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="scanCaches"
+                  icon={ScanSearch}
+                  summary={dataPrivacy.categories.scanCaches}
+                  receipt={dataPrivacy.receipts.scanCaches}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+              </>
+            ) : null}
             <div>
-              <span><History size={16} /></span>
+              <span><ShieldCheck size={16} /></span>
               <p>
-                <strong>{t("settings:dataPrivacy.resourceHistory.title")}</strong>
-                <small>{t("settings:dataPrivacy.resourceHistory.description")}</small>
+                <strong>{t("settings:dataPrivacy.diskAccess.title")}</strong>
+                <small>{t("settings:dataPrivacy.diskAccess.description")}</small>
               </p>
-              <em className={settings.historyPersistenceEnabled ? "is-on" : ""}>
-                {t(`settings:dataPrivacy.status.${settings.historyPersistenceEnabled ? "on" : "off"}`)}
-              </em>
+              <div className="settings-data-access-control">
+                <em className={cleanupAccess.access?.fullDiskAccess === "granted" ? "is-on" : ""}>
+                  {t(`settings:onboarding.controls.diskAccessStatus.${cleanupAccess.access?.fullDiskAccess ?? "unknown"}`)}
+                </em>
+                {cleanupAccess.access?.fullDiskAccessRecommended
+                  && cleanupAccess.access.fullDiskAccess !== "granted" ? (
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={cleanupAccess.checking}
+                      onClick={() => void openCleanupFullDiskAccessSettings()}
+                    >
+                      <Settings2 size={14} />
+                      {t("settings:dataPrivacy.diskAccess.open")}
+                    </button>
+                  ) : null}
+              </div>
             </div>
-            <label>
-              <span><Network size={16} /></span>
+            <div className="settings-data-clear-all">
+              <span><Trash2 size={16} /></span>
               <p>
-                <strong>{t("settings:dataPrivacy.connectionHistory.title")}</strong>
-                <small>{t("settings:dataPrivacy.connectionHistory.description")}</small>
+                <strong>{t("settings:dataPrivacy.clearAll.title")}</strong>
+                <small>{t("settings:dataPrivacy.clearAll.description")}</small>
               </p>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={settings.networkConnectionHistoryEnabled}
-                onChange={(event) => onChange({
-                  networkConnectionHistoryEnabled: event.target.checked,
-                })}
+              <ClearProductDataAction
+                label={t("settings:dataPrivacy.clear")}
+                onClearAllData={onClearAllData}
               />
-            </label>
-            <div>
-              <span><HardDrive size={16} /></span>
-              <p>
-                <strong>{t("settings:dataPrivacy.caches.title")}</strong>
-                <small>{t("settings:dataPrivacy.caches.description")}</small>
-              </p>
-              <button className="button button--danger-ghost" type="button" onClick={onClearAllData}>
-                <Trash2 size={14} />{t("settings:dataPrivacy.clear")}
-              </button>
             </div>
           </div>
         </SettingsCard>
@@ -411,6 +476,28 @@ export function SettingsExplorer({
                 {t("settings:notifications.openSettings")}
               </button>
             ) : null}
+            {notificationStatus === "ready" ? (
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => void onSendTestNotification()}
+              >
+                <BellRing size={14} />
+                {t("settings:notifications.test")}
+              </button>
+            ) : null}
+            {notificationDelivery ? (
+              <small
+                className={`settings-notification-delivery is-${notificationDelivery.status}`}
+                role={notificationDelivery.status === "failed" ? "alert" : "status"}
+              >
+                <i />
+                {t(`settings:notifications.delivery.${notificationDelivery.status}`, {
+                  time: new Date(notificationDelivery.attemptedAtMs)
+                    .toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+                })}
+              </small>
+            ) : null}
           </div>
           <fieldset className="settings-notification-categories" disabled={!settings.desktopNotificationsEnabled}>
             <legend>{t("settings:notifications.categories")}</legend>
@@ -491,6 +578,8 @@ export function SettingsExplorer({
         settings={settings}
         snapshot={snapshot}
         backgroundUpdateVersion={availableUpdateVersion}
+        backgroundUpdateCheckedAt={lastUpdateCheckAt}
+        backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
         onOpenOnboarding={onOpenOnboarding}
         onClearAllData={onClearAllData}
       />
@@ -706,6 +795,97 @@ function ApplicationWatchRulesEditor({
           <button type="button" aria-label={t("settings:watchRules.remove", { name: rule.applicationName })} onClick={() => onChange(rules.filter((candidate) => candidate.id !== rule.id))}><Trash2 size={14} /></button>
         </li>
       ))}</ul> : <p className="watch-rules__empty">{t("settings:watchRules.empty")}</p>}
+    </div>
+  );
+}
+
+function ProductDataCategoryRow({
+  category,
+  icon: Icon,
+  enabled,
+  summary,
+  receipt,
+  language,
+  onClear,
+}: {
+  category: ProductDataCategory;
+  icon: SettingsIcon;
+  enabled?: boolean;
+  summary: ProductDataCategorySummary;
+  receipt: ProductDataClearReceipt;
+  language?: string;
+  onClear: (category: ProductDataCategory) => Promise<boolean>;
+}) {
+  const { t } = useAppTranslation();
+  const empty = summary.itemCount === 0 && summary.byteSize === 0;
+  const status = receipt.status === "succeeded"
+    ? (
+        <em className="settings-data-category__receipt is-on" role="status">
+          <Check size={13} />{t("settings:dataPrivacy.result.succeeded")}
+        </em>
+      )
+    : receipt.status === "failed"
+      ? (
+          <em className="settings-data-category__receipt is-failed" role="alert">
+            <AlertTriangle size={13} />{t("settings:dataPrivacy.result.failed")}
+          </em>
+        )
+      : typeof enabled === "boolean"
+        ? (
+            <em className={enabled ? "is-on" : ""}>
+              {t(`settings:dataPrivacy.status.${enabled ? "on" : "off"}`)}
+            </em>
+          )
+        : null;
+
+  return (
+    <div className="settings-data-category">
+      <span><Icon size={16} /></span>
+      <p>
+        <strong>{t(`settings:dataPrivacy.categories.${category}.title`)}</strong>
+        <small>{t(`settings:dataPrivacy.categories.${category}.description`)}</small>
+        <span className="settings-data-category__metrics">
+          <span>
+            {t("settings:dataPrivacy.metrics.items", {
+              count: summary.itemCount,
+            })}
+          </span>
+          <span>{formatBytes(summary.byteSize)}</span>
+          <span>
+            {summary.updatedAtMs
+              ? t("settings:dataPrivacy.metrics.updated", {
+                  time: new Date(summary.updatedAtMs).toLocaleString(language),
+                })
+              : t("settings:dataPrivacy.metrics.never")}
+          </span>
+          <span>
+            {summary.retentionDays
+              ? t("settings:dataPrivacy.metrics.retention", {
+                  count: summary.retentionDays,
+                })
+              : t("settings:dataPrivacy.metrics.session")}
+          </span>
+        </span>
+      </p>
+      <div className="settings-data-category__actions">
+        {status}
+        <button
+          className="button button--plain"
+          type="button"
+          disabled={empty || receipt.status === "clearing"}
+          title={receipt.error ?? undefined}
+          onClick={() => void onClear(category)}
+        >
+          {receipt.status === "clearing"
+            ? <LoaderCircle className="is-spinning" size={14} />
+            : <Trash2 size={14} />}
+          {t(
+            receipt.status === "failed"
+              ? "settings:dataPrivacy.result.retry"
+              : "settings:dataPrivacy.result.clear",
+          )}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "Échantillonnage réseau automatique", "title": "Qualité du réseau", "description": "Vérification automatique à l’ouverture, puis toutes les 30 secondes tant que la page reste affichée.",
+    "eyebrow": "Échantillonnage réseau automatique", "title": "Qualité du réseau", "description": "Vérifie toutes les 30 secondes lorsque la page est ouverte. En option, conserve des agrégats de cinq minutes pendant 1 ou 24 heures en arrière-plan.",
     "run": "Vérifier maintenant", "checking": "Vérification…", "empty": "Première vérification de la qualité du réseau…",
-    "method": "Des contrôles TCP légers distinguent route locale, DNS, IPv4/IPv6, accès Internet direct et service indépendant. Ils s’arrêtent en quittant la page.",
-    "dns": "DNS", "latency": "Latence moyenne", "jitter": "Gigue", "loss": "Échecs de connexion", "probes": "Sondes TCP", "probeSuccess": "{{successful}}/{{total}} réussies",
+    "method": "Des sondes TCP vers example.com et one.one.one.one distinguent route locale, DNS, IPv4/IPv6 et accès Internet sans paquets bruts privilégiés.",
+    "dns": "DNS", "latency": "Latence moyenne", "jitter": "Gigue", "loss": "Échecs des sondes TCP", "probes": "Sondes TCP", "probeSuccess": "{{successful}}/{{total}} réussies", "probeAndTargets": "{{successful}}/{{total}} sondes · {{targetSuccessful}}/{{targetTotal}} cibles joignables",
     "trendTitle": "Tendance de qualité réseau", "trendWindow": "15 dernières minutes · toutes les 30 secondes", "trendCollecting": "Collecte de la tendance", "legend": "Légende de qualité réseau", "chartLabel": "Qualité réseau des 15 dernières minutes avec {{count}} échantillons", "now": "Maintenant",
     "windowAverage": "Latence moyenne", "windowPeak": "Pic de latence", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
+    "history": {"title":"Historique continu de qualité","description":"En arrière-plan, effectue un échantillon léger toutes les cinq minutes et ne conserve que les agrégats sur cet appareil.","range":"Période","minutes15":"15 minutes","hours1":"1 heure","hours24":"24 heures","window":"Dernières {{count}} heures · agrégats de cinq minutes","clear":"Effacer l’historique de qualité","axisMinutes":"−{{count}} min","axisHours":"−{{count}} h"},
     "diagnostics": { "title": "Diagnostic réseau par couches", "stages": { "local_link": "Route locale", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Internet", "independent_service": "Service indépendant" }, "status": { "passed": "Disponible", "degraded": "Dégradé", "failed": "Échec", "unavailable": "Non configuré" } },
     "status": { "online": "En ligne", "limited": "Connexion limitée", "offline": "Hors ligne" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "Enregistrement local facultatif", "title": "Historique et agrégation des connexions", "description": "Examinez l’activité de connexion à plus long terme par application ou domaine.",
+    "optIn": "L'historique des connexions peut inclure des noms d'applications, des domaines et des adresses IP distantes. Il est donc désactivé par défaut. Lorsqu'il est activé, il reste sur cet appareil.", "enable": "Activer l'historique des connexions",
+    "groupBy": "Regrouper par", "application": "Application", "domain": "Domaine", "retention": "Garder", "days": "Jours {{count}}", "clear": "Effacer l'historique",
+    "lookupFallback": "Certains noms n'ont pas pu être résolus ; Les adresses IP ont été enregistrées à la place.", "observations": "Observations {{count}}", "empty": "En attente de la prochaine analyse de connexion active.",
+    "privacy": "Stocke uniquement les agrégats de cinq minutes, plafonnés à 5 000 entrées ; désactiver ou effacer à tout moment."
   },
   "local": "Réseau local",
   "title": "Interfaces et trafic réseau en temps réel",

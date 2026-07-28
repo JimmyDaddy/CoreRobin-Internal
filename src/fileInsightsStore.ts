@@ -103,6 +103,15 @@ function isFileInsightFile(value: unknown): value is FileInsightFile {
     && isFiniteNonNegativeNumber(value.logicalSizeBytes)
     && isFiniteNonNegativeNumber(value.allocatedSizeBytes)
     && (value.modifiedAtMs === null || isFiniteNonNegativeNumber(value.modifiedAtMs))
+    && (value.modifiedAtUs === undefined
+      || value.modifiedAtUs === null
+      || isFiniteNonNegativeNumber(value.modifiedAtUs))
+    && (value.deviceId === undefined
+      || value.deviceId === null
+      || isFiniteNonNegativeNumber(value.deviceId))
+    && (value.inode === undefined
+      || value.inode === null
+      || isFiniteNonNegativeNumber(value.inode))
   );
 }
 

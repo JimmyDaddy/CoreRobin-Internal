@@ -3,7 +3,7 @@
   "updateAvailable": "CoreRobin v{{version}} is ready to install",
   "available": "Available space",
   "open": "Open overview",
-  "companion": "Robin companion",
+  "companion": "Robin",
   "cleanup": "Space cleanup",
   "quit": "Quit app",
   "updatedAt": "Updated {{time}}",

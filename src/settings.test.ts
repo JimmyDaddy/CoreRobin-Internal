@@ -71,6 +71,8 @@ describe("application settings", () => {
       historyRetentionDays: 30,
       networkConnectionHistoryEnabled: true,
       networkConnectionHistoryRetentionDays: 7,
+      networkQualityHistoryEnabled: false,
+      networkQualityHistoryHours: 1,
       applicationWatchRules: [{
         id: "browser-cpu",
         applicationName: "Browser",

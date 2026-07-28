@@ -1,10 +1,10 @@
 {
-  "kicker": "Robin 小夥伴",
+  "kicker": "Robin",
   "dragHint": "拖動 Robin 移動；懸停檢視狀態；右鍵開啟選單",
-  "expand": "開啟 Robin 小夥伴",
-  "collapse": "收起 Robin 小夥伴",
-  "menu": "Robin 小夥伴選單",
-  "hide": "隱藏小夥伴",
+  "expand": "開啟 Robin",
+  "collapse": "收起 Robin",
+  "menu": "Robin 選單",
+  "hide": "隱藏 Robin",
   "reason": "{{resource}}最近值得留意，可以開啟主視窗看看原因。",
   "action": {
     "loading": "開啟日常助手",

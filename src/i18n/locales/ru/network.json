@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "Автоматическая проверка сети", "title": "Качество сети", "description": "Автоматическая проверка при открытии и каждые 30 секунд, пока страница открыта.",
+    "eyebrow": "Автоматическая проверка сети", "title": "Качество сети", "description": "Проверяет каждые 30 секунд при открытой странице. При желании сохраняет пятиминутные агрегаты за 1 или 24 часа в фоне.",
     "run": "Проверить сейчас", "checking": "Проверка…", "empty": "Выполняется первая проверка сети…",
-    "method": "Лёгкие TCP-проверки разделяют локальный маршрут, DNS, IPv4/IPv6, прямой доступ в Интернет и независимый сервис. При уходе со страницы проверка останавливается.",
-    "dns": "DNS", "latency": "Средняя задержка", "jitter": "Джиттер", "loss": "Ошибки соединения", "probes": "TCP-проверки", "probeSuccess": "{{successful}} из {{total}} успешно",
+    "method": "TCP-проверки example.com и one.one.one.one разделяют локальный маршрут, DNS, IPv4/IPv6 и доступ в Интернет без привилегированных сырых пакетов.",
+    "dns": "DNS", "latency": "Средняя задержка", "jitter": "Джиттер", "loss": "Сбои TCP-проверок", "probes": "TCP-проверки", "probeSuccess": "{{successful}} из {{total}} успешно", "probeAndTargets": "{{successful}}/{{total}} проверок · доступно целей: {{targetSuccessful}}/{{targetTotal}}",
     "trendTitle": "Динамика качества сети", "trendWindow": "Последние 15 минут · каждые 30 секунд", "trendCollecting": "Собираются данные", "legend": "Обозначения качества сети", "chartLabel": "Качество сети за последние 15 минут, {{count}} замеров", "now": "Сейчас",
     "windowAverage": "Средняя задержка", "windowPeak": "Пиковая задержка", "anomalies": "Аномалии", "anomalyCount": "{{count}}",
+    "history": {"title":"Непрерывная история качества","description":"В фоне выполняет лёгкую проверку каждые пять минут и хранит на устройстве только агрегаты.","range":"Диапазон","minutes15":"15 минут","hours1":"1 час","hours24":"24 часа","window":"Последние {{count}} ч · пятиминутные агрегаты","clear":"Очистить историю качества","axisMinutes":"−{{count}} мин","axisHours":"−{{count}} ч"},
     "diagnostics": { "title": "Многоуровневая диагностика сети", "stages": { "local_link": "Локальный маршрут", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Интернет", "independent_service": "Независимый сервис" }, "status": { "passed": "Доступно", "degraded": "Ограничено", "failed": "Ошибка", "unavailable": "Не настроено" } },
     "status": { "online": "В сети", "limited": "Ограниченное соединение", "offline": "Нет сети" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "Дополнительная локальная запись", "title": "История подключений и агрегация", "description": "Просмотрите долгосрочную активность подключений по приложению или домену.",
+    "optIn": "История подключений может включать имена приложений, домены и удаленные IP-адреса, поэтому по умолчанию она отключена. При включении он остается на этом устройстве.", "enable": "Включить историю подключений",
+    "groupBy": "Группировать по", "application": "Приложение", "domain": "Домен", "retention": "Держать", "days": "{{count}} дней", "clear": "Очистить историю",
+    "lookupFallback": "Некоторые имена не удалось разрешить; Вместо этого были записаны IP-адреса.", "observations": "{{count}} наблюдения", "empty": "Ожидание следующего сканирования активного соединения.",
+    "privacy": "Хранит только пятиминутные агрегаты с ограничением в 5000 записей; отключить или очистить в любое время."
   },
   "local": "Локальная сеть",
   "title": "Активные интерфейсы и сетевой трафик",

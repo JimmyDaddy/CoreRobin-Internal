@@ -70,9 +70,24 @@ describe("SettingsExplorer", () => {
       })],
     });
   });
+
+  it("uses the same confirmation flow before clearing data from the privacy center", () => {
+    const onClearAllData = vi.fn(async () => undefined);
+    renderSettings(vi.fn(), onClearAllData);
+    fireEvent.click(screen.getByRole("button", { name: "数据与隐私中心" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "清空全部本机数据" }));
+    expect(onClearAllData).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "清空并重新启动" }));
+
+    expect(onClearAllData).toHaveBeenCalledOnce();
+  });
 });
 
-function renderSettings(onChange = vi.fn()) {
+function renderSettings(
+  onChange = vi.fn(),
+  onClearAllData = vi.fn(async () => undefined),
+) {
   return render(
     <SettingsExplorer
       settings={defaultAppSettings("zh-CN")}
@@ -80,7 +95,7 @@ function renderSettings(onChange = vi.fn()) {
       snapshot={getMockSnapshot()}
       onChange={onChange}
       onOpenOnboarding={() => undefined}
-      onClearAllData={() => undefined}
+      onClearAllData={onClearAllData}
     />,
   );
 }

@@ -433,7 +433,7 @@
     "companionAlwaysOnTop": "Robin를 다른 창 위에 표시",
     "companionAlwaysOnTopDescription": "끄면 Robin는 데스크탑에 남아있지만 다른 창에 가려질 수 있음",
     "companionShowOnStartup": "Robin를 데스크톱에 계속 표시",
-    "companionShowOnStartupDescription": "오빗을 즉시 표시하고, CoreRobin가 다시 시작될 때 자동으로 복원합니다",
+    "companionShowOnStartupDescription": "Robin을 즉시 표시하고, CoreRobin이 다시 시작될 때 자동으로 복원합니다",
     "professional": "전문 모드",
     "professionalDescription": "모든 지표, 프로세스 트리, 네트워크 연결 및 고급 설정을 확인합니다",
     "openProfessional": "전문 모드를 엽니다"

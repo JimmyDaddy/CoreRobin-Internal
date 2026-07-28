@@ -26,13 +26,13 @@
   },
   "background": {
     "title": "後臺與桌面",
-    "description": "控制 CoreRobin 如何常駐、登入啟動，以及 Robin 小夥伴的桌面行為。",
+    "description": "控制 CoreRobin 如何常駐、登入啟動，以及 Robin 的桌面行為。",
     "showDockIcon": "在 Dock 中顯示",
     "showDockIconDescription": "關閉後不佔用 Dock 和應用切換器，仍可從頂部狀態列喚起",
     "launchAtLogin": "登入時啟動",
     "launchAtLoginDescription": "登入後靜默啟動狀態列服務，不自動開啟主視窗",
     "companionShowOnStartup": "讓 Robin 常駐桌面",
-    "companionShowOnStartupDescription": "應用啟動後自動顯示 Robin 小夥伴",
+    "companionShowOnStartupDescription": "應用啟動後自動顯示 Robin",
     "companionAlwaysOnTop": "Robin 始終置頂",
     "companionAlwaysOnTopDescription": "讓 Robin 保持在其他視窗上方，關閉後可能被遮擋"
   },
@@ -60,7 +60,7 @@
     "retention": "保留時間",
     "days": "{{count}} 天"
   },
-  "dataPrivacy": { "title": "資料與隱私中心", "description": "集中查看並控制各類本機資料。CoreRobin 不會上傳或同步這些記錄。", "status": { "on": "正在儲存", "off": "已關閉" }, "resourceHistory": { "title": "資源與提醒歷史", "description": "整機健康、操作與關注事件的彙總，不含路徑、命令或網路地址。" }, "connectionHistory": { "title": "連線歷史", "description": "可選的五分鐘彙總可能包含遠端 IP、網域、連接埠與應用程式名稱。" }, "caches": { "title": "本機產品快取", "description": "應用程式清單、空間掃描與檔案分析結果只留在此裝置。" }, "clear": "清除所有本機資料" },
+  "dataPrivacy": { "title": "資料與隱私中心", "description": "集中查看並控制各類本機資料。CoreRobin 不會上傳或同步這些記錄。", "status": { "on": "正在儲存", "off": "已關閉" }, "resourceHistory": { "title": "資源與提醒歷史", "description": "整機健康、操作與關注事件的彙總，不含路徑、命令或網路地址。" }, "connectionHistory": { "title": "連線歷史", "description": "可選的五分鐘彙總可能包含遠端 IP、網域、連接埠與應用程式名稱。" }, "caches": { "title": "本機產品快取", "description": "應用程式清單、空間掃描與檔案分析結果只留在此裝置。" }, "categories": { "resourceHistory": { "title": "資源與操作記錄", "description": "整機資源、提醒、應用程式關注與本機操作記錄。" }, "connectionHistory": { "title": "連線記錄", "description": "選用的五分鐘彙總記錄，可能包含遠端位址、連接埠與應用程式名稱。" }, "applicationInventory": { "title": "應用程式清單快取", "description": "依介面語言儲存已安裝應用程式的中繼資料，不包含應用程式內容。" }, "scanCaches": { "title": "掃描結果快取", "description": "空間清理與檔案分析結果，包含路徑、大小與修改時間。" } }, "metrics": { "items": "{{count}} 項", "updated": "更新於 {{time}}", "never": "尚無本機資料", "retention": "保留 {{count}} 天", "session": "僅限目前工作階段" }, "result": { "clear": "清除此類", "retry": "重試", "succeeded": "已清除", "failed": "清除失敗", "skipped": "因其他項目失敗而略過" }, "clearAll": { "title": "清除所有產品資料", "description": "統一確認後清除以上資料、偏好設定與本機介面狀態。" }, "diskAccess": { "title": "完整磁碟存取權", "description": "這項可選權限由 macOS 管理；返回 CoreRobin 後會自動重新整理狀態。", "open": "開啟系統設定" }, "clear": "清除所有本機資料" },
   "notifications": {
     "title": "桌面提醒",
     "description": "只提醒持續高負荷、真實記憶體壓力和磁碟空間不足；問題穩定恢復後 CoreRobin 會再告知一次。",
@@ -78,7 +78,9 @@
       "ready": "已允許",
       "denied": "系統未授權",
       "unavailable": "僅桌面應用可用"
-    }
+    },
+    "test": "傳送測試提醒",
+    "delivery": { "sent": "上次提醒已於 {{time}} 交給系統", "failed": "上次提醒在 {{time}} 傳送失敗，請測試或檢查系統設定" }
   },
   "thresholds": {
     "title": "資源告警閾值",
@@ -92,18 +94,18 @@
   "about": {
     "title": "關於與支援", "description": "查看版本、取得協助，並管理 CoreRobin 儲存在這台電腦上的資料。",
     "versionTitle": "版本與更新", "versionDescription": "直接在 CoreRobin 中檢查、下載並安裝最新穩定版本。", "version": "目前版本", "platform": "系統", "architecture": "架構",
-    "checking": "正在檢查…", "checkUpdate": "檢查更新", "releaseNotes": "查看更新內容", "updateError": "暫時無法檢查更新，請稍後再試。", "updateAvailable": "CoreRobin v{{version}} 已發布", "openRelease": "前往下載", "upToDate": "已是最新版本 v{{version}}", "installUpdate": "下載並安裝", "installingUpdate": "正在更新…", "downloadingUpdate": "正在下載並驗證更新", "applyingUpdate": "正在安裝更新", "updateReady": "更新已安裝，重新啟動 CoreRobin 即可完成更新。", "restartUpdate": "重新啟動", "updateInstallError": "更新未能安裝。目前版本沒有變更，請稍後再試或查看更新內容。",
+    "checking": "正在檢查…", "checkUpdate": "檢查更新", "releaseNotes": "查看更新內容", "updateError": "暫時無法檢查更新，請稍後再試。", "updateAvailable": "CoreRobin v{{version}} 已發布", "openRelease": "前往下載", "upToDate": "已是最新版本 v{{version}}", "installUpdate": "下載並安裝", "installingUpdate": "正在更新…", "downloadingUpdate": "正在下載並驗證更新", "applyingUpdate": "正在安裝更新", "updateReady": "更新已安裝，重新啟動 CoreRobin 即可完成更新。", "restartUpdate": "重新啟動", "updateInstallError": "更新未能安裝。目前版本沒有變更，請稍後再試或查看更新內容。", "lastChecked": "上次檢查：{{time}}", "lastCheckFailed": "{{time}} 的背景檢查失敗，可點擊「檢查更新」重試。", "whatsNew": "這個版本的新內容",
     "helpTitle": "協助與意見回饋", "helpDescription": "開啟公開指南，或在回報前查看會包含哪些資訊。", "guide": "使用者指南", "privacy": "隱私說明", "reportIssue": "回報問題", "reopenGuide": "重新查看首次引導",
     "diagnosticsTitle": "診斷摘要", "diagnosticsDescription": "複製有助於排查問題的基本執行資訊。", "diagnosticsPrivacy": "預設不包含主機名稱、程序名稱、檔案路徑、網路位址或歷史數值。", "diagnosticsPreview": "複製前預覽", "diagnostics": { "idle": "複製脫敏摘要", "copied": "已複製", "error": "複製失敗" },
-    "clearTitle": "清除全部本機資料", "clearDescription": "清除偏好、歷史、提醒、操作記錄和空間掃描快取。", "clearConfirm": "此操作無法復原。CoreRobin 將清除本機資料並重新啟動；登入啟動等系統授權不會被靜默移除。", "clearNow": "清除並重新啟動", "clearAction": "清除全部資料"
+    "clearTitle": "清除全部本機資料", "clearDescription": "清除偏好、歷史、提醒、操作記錄和空間掃描快取。", "clearConfirm": "此操作無法復原。CoreRobin 將清除本機資料並重新啟動；登入啟動等系統授權不會被靜默移除。", "clearNow": "清除並重新啟動", "clearAction": "清除全部資料", "clearing": "正在清除本機資料…", "clearError": "部分本機資料未能清除，CoreRobin 不會將其顯示為已完成。請關閉執行中的掃描後重試。", "clearScope": { "history": "資源歷史、提醒歷史和已確認的操作記錄", "scans": "應用程式清單、空間地圖快取和檔案分析結果", "preferences": "介面偏好和各項功能的本機設定" }
   },
   "onboarding": {
     "kicker": "首次使用 · {{current}} / {{total}}", "skip": "暫時略過", "back": "上一步", "next": "下一步", "finish": "開始使用",
     "controls": { "mode": "選擇體驗模式", "everyday": "清晰結論與引導操作", "professional": "完整指標與診斷證據", "diskAccess": "完整磁碟存取權", "openDiskAccess": "開啟完整磁碟存取設定", "diskAccessStatus": { "granted": "已就緒", "not_granted": "可選 · 尚未授權", "not_required": "此系統不需要", "unknown": "暫時無法確認" } },
     "steps": {
       "one": { "title": "先選擇適合你的查看方式", "description": "日常模式提供穩定結論和下一步；專業模式保留完整指標、程序與網路證據。你可隨時切換。", "note": "兩種模式共用同一份本機狀態，不會產生不同結論。" },
-      "two": { "title": "關閉視窗後仍會安靜守候", "description": "CoreRobin 會留在選單列繼續低頻取樣。選單面板與 Robin 夥伴共用同一份穩定狀態。", "note": "可從選單列暫停、開啟設定或完全結束應用程式。" },
-      "three": { "title": "權限按需要使用，由你決定", "description": "通知、Robin 夥伴和登入啟動皆為選用。只有進行空間清理時，完整磁碟存取才可能讓掃描更完整。", "note": "不授權仍可掃描系統允許的區域；CoreRobin 不會在此主動要求權限。" }
+      "two": { "title": "關閉視窗後仍會安靜守候", "description": "CoreRobin 會留在選單列繼續低頻取樣。選單面板與 Robin 共用同一份穩定狀態。", "note": "可從選單列暫停、開啟設定或完全結束應用程式。" },
+      "three": { "title": "權限按需要使用，由你決定", "description": "通知、Robin 和登入啟動皆為選用。只有進行空間清理時，完整磁碟存取才可能讓掃描更完整。", "note": "不授權仍可掃描系統允許的區域；CoreRobin 不會在此主動要求權限。" }
     }
   }
 }

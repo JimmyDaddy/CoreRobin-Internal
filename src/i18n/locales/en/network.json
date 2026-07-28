@@ -76,12 +76,13 @@
     }
   },
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks automatically when the page opens and samples every 30 seconds while it remains open.",
+    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks every 30 seconds while open. Optionally retain five-minute aggregates for 1 or 24 hours in the background.",
     "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "Lightweight TCP checks separate local routing, DNS, IPv4/IPv6, direct internet reachability, and an independent service. Sampling stops when you leave and uses no privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded",
+    "method": "TCP probes target example.com and one.one.one.one and separate local routing, DNS, IPv4/IPv6, and internet reachability without privileged raw packets.",
+    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "TCP probe failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded", "probeAndTargets": "{{successful}}/{{total}} probes · {{targetSuccessful}}/{{targetTotal}} targets reachable",
     "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
     "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
+    "history": {"title":"Continuous quality history","description":"When enabled, take one lightweight sample every five minutes in the background and keep only aggregates on this device.","range":"Trend range","minutes15":"15 minutes","hours1":"1 hour","hours24":"24 hours","window":"Last {{count}} hours · five-minute aggregates","clear":"Clear quality history","axisMinutes":"−{{count}} min","axisHours":"−{{count}} h"},
     "diagnostics": {
       "title": "Layered network diagnostics",
       "stages": { "local_link": "Local route", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Internet", "independent_service": "Service" },

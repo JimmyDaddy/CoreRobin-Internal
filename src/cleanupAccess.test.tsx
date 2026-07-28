@@ -16,6 +16,7 @@ const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
   error: null,
   scan: async () => undefined,
   cancel: async () => undefined,
+  clear: async () => undefined,
   removePaths: () => undefined,
 };
 

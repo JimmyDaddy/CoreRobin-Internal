@@ -1,12 +1,12 @@
 {
   "energy": {
-    "eyebrow": "Optional extended metric", "title": "GPU and relative energy", "description": "Shows GPU activity and relative energy clues for active processes when the operating system provides them.",
-    "collapsedDescription": "Inspect graphics load on demand; it is not continuously sampled or used for health decisions.",
-    "onDemand": "Sample on demand", "activity": "GPU activity {{value}}",
-    "gpu": "GPU", "cores": "{{count}} cores", "gpuUnavailable": "This platform or hardware does not expose a supported GPU metric.",
-    "applicationImpact": "Active process relative energy", "processUnavailable": "This platform does not expose per-process energy impact.",
-    "noProcessActivity": "This sample found no distinguishable process energy activity.",
-    "boundary": "These values are relative scores reported by the operating system, not watts or energy. Zero values are omitted; refreshes every 15 seconds while expanded."
+    "eyebrow": "可選的擴展指標", "title": "GPU與相對能量", "description": "當作業系統提供活動進程時，顯示 GPU 活動和相對能量線索。",
+    "collapsedDescription": "按需檢查圖形負載；它不會被連續採樣或用於健康決策。",
+    "onDemand": "按需提供樣品", "activity": "GPU 活動 {{value}}",
+    "gpu": "GPU", "cores": "{{count}}核心", "gpuUnavailable": "此平台或硬體不公開支援的 GPU 指標。",
+    "applicationImpact": "活性過程相對能量", "processUnavailable": "該平台不會暴露每個進程的能源影響。",
+    "noProcessActivity": "該樣本沒有發現明顯的過程能量活動。",
+    "boundary": "這些值是作業系統報告的相對分數，而不是瓦特或能量。零值被省略；展開時每 15 秒刷新一次。"
   },
   "kicker": "應用級彙總",
   "overviewTitle": "現在誰影響最大",
@@ -43,14 +43,14 @@
     "professionalDetails": "用專業模式檢視程序"
   },
   "uninstall": {
-    "scanKicker": "Local app index", "scanningHint": "Checking app bundles, disk usage, and bundle IDs. Larger apps may take a little longer.",
-    "kicker": "Application management", "title": "Complete Uninstall Assistant", "description": "Finds the app bundle and leftovers attributed by exact bundle ID. Nothing is handled until you confirm each path.", "refresh": "Refresh apps", "unsupportedTitle": "Complete uninstall is not supported on this platform yet", "unsupportedDescription": "The first release supports macOS app bundles. Windows and Linux will follow when equivalent safety checks are available.",
-    "applicationUnit": "apps", "installedSize": "in app bundles", "localOnly": "Read locally; the inventory is never uploaded", "cachedInventory": "Showing the local cache from {{time}}; refresh anytime", "search": "Search installed applications", "searchPlaceholder": "Search name, bundle ID, or path", "scanning": "Reading the application inventory…", "empty": "No matching applications", "preparingPlan": "Verifying app identity and support files…", "planKicker": "Uninstall plan", "planBoundary": "Quit this app first. Only paths proven by the exact bundle ID are listed; app-name guesses are excluded.", "bundleOnlyBoundary": "此應用程式沒有可驗證的 Bundle ID，因此 CoreRobin 只會移除已由路徑與結構驗證的應用程式套件，不會猜測支援檔案。", "foundItems": "Verified items", "required": "Required",
-    "selectedSize": "{{count}} items selected", "review": "Review and uninstall {{name}}", "reveal": "Reveal application in Finder", "skipped": "{{count}} items excluded from the plan", "skippedDescription": "These paths did not pass safe file-handle inspection, so the assistant will not touch them.", "selectTitle": "Select an application", "selectDescription": "The assistant creates a path-by-path plan before final confirmation.", "cannotPrepare": "A safe plan cannot be created for this application", "dialogTitle": "Uninstall {{name}}", "dialogDescription": "逐項檢視應用程式套件與相關資料。移到垃圾桶是可復原的預設選項。", "outcomeComplete": "Handled {{count}} items for {{name}}, reclaiming {{size}}.", "outcomeMovedToTrash": "Moved {{name}} to Trash; handled {{count}} items and {{size}}. It remains recoverable until Trash is emptied.", "outcomeDeletedPermanently": "已永久刪除 {{name}}；處理 {{count}} 項並釋放 {{size}}。", "outcomePartial": "The uninstall for {{name}} did not fully finish; handled {{count}} items and {{size}}.",
-    "removed": { "trash": "Moved to Trash", "permanent": "Permanently deleted", "trashDescription": "The app has left its original location and can be restored until Trash is emptied. Refresh the inventory to remove this record.", "permanentDescription": "應用程式已直接從磁碟刪除，無法從垃圾桶復原。重新整理清單即可移除此記錄。", "partial": "The application bundle was removed, but some related items could not be handled." },
-    "artifacts": { "application": "Application bundle", "application_support": "Application support data", "cache": "Caches", "preferences": "Preferences", "saved_state": "Saved window state", "container": "Sandbox container", "web_data": "Web data", "http_storage": "HTTP storage", "cookies": "Cookie data", "logs": "Logs", "launch_agent": "User launch agent" },
-    "unavailable": { "generic": "依目前的安全規則，無法解除安裝此應用程式。", "current_application_protected": "CoreRobin cannot uninstall itself while it is running.", "application_bundle_identifier_missing": "The application does not provide a safely verifiable bundle ID.", "application_bundle_invalid": "The application bundle is incomplete or unsupported.", "application_bundle_not_allowed": "Only top-level apps in an Applications folder are supported." },
-    "errors": { "application_identity_changed": "The application identity changed. Refresh the inventory and try again.", "application_bundle_unavailable": "應用程式目前無法存取，請確認它仍位於原處。", "application_artifact_unavailable": "An item changed before confirmation. Refresh the uninstall plan.", "application_bundle_identifier_missing": "The application's bundle ID could not be verified." }
+    "scanKicker": "本機應用程式索引", "scanningHint": "檢查應用程式包、磁碟使用情況和套件 ID。較大的應用程式可能需要更長的時間。",
+    "kicker": "應用程式管理", "title": "完整卸載助手", "description": "尋找由確切的捆綁包 ID 歸屬的應用程式捆綁包和剩餘內容。在您確認每條路徑之前，不會處理任何內容。", "refresh": "刷新應用程式", "unsupportedTitle": "該平台尚不支援完全卸載", "unsupportedDescription": "第一個版本支援 macOS 應用程式包。當等效安全檢查可用時，Windows 和 Linux 將遵循。",
+    "applicationUnit": "應用程式", "installedSize": "在應用程式包中", "localOnly": "本地閱讀；庫存從未上傳", "cachedInventory": "顯示來自{{time}}的本機快取；隨時刷新", "search": "搜尋已安裝的應用程式", "searchPlaceholder": "搜尋名稱、套件 ID 或路徑", "scanning": "閱讀應用程式清單...", "empty": "沒有匹配的應用程式", "preparingPlan": "驗證應用程式身份和支援文件...", "planKicker": "解除安裝計劃", "planBoundary": "首先退出這個應用程式。僅列出由確切的捆綁 ID 證明的路徑；應用程式名稱猜測被排除。", "bundleOnlyBoundary": "此應用程式沒有可驗證的 Bundle ID，因此 CoreRobin 只會移除已由路徑與結構驗證的應用程式套件，不會猜測支援檔案。", "foundItems": "已驗證項目", "required": "必需的",
+    "selectedSize": "{{count}} 已選項目", "review": "檢查並卸載 {{name}}", "reveal": "顯示Finder中的應用", "skipped": "{{count}} 計劃中排除的項目", "skippedDescription": "這些路徑沒有通過安全文件句柄檢查，因此助手不會觸及它們。", "selectTitle": "選擇一個應用程式", "selectDescription": "助理在最終確認之前創建逐條路徑的計劃。", "cannotPrepare": "無法為此應用程式建立安全性計劃", "dialogTitle": "卸載{{name}}", "dialogDescription": "逐項檢視應用程式套件與相關資料。移到垃圾桶是可復原的預設選項。", "outcomeComplete": "為 {{name}} 處理了 {{count}} 物品，回收了 {{size}}。", "outcomeMovedToTrash": "將 {{name}} 移至垃圾箱；處理了 {{count}} 物品和 {{size}} 物品。在清空垃圾箱之前，它仍然可以恢復。", "outcomeDeletedPermanently": "已永久刪除 {{name}}；處理 {{count}} 項並釋放 {{size}}。", "outcomePartial": "{{name}}的卸載未完全完成；處理了 {{count}} 物品和 {{size}} 物品。",
+    "removed": { "trash": "已移至垃圾箱", "permanent": "永久刪除", "trashDescription": "該應用程式已離開其原始位置，可以恢復，直到清空垃圾箱。刷新庫存以刪除該記錄。", "permanentDescription": "應用程式已直接從磁碟刪除，無法從垃圾桶復原。重新整理清單即可移除此記錄。", "partial": "應用程式包已刪除，但某些相關項目無法處理。" },
+    "artifacts": { "application": "應用程式包", "application_support": "應用支援數據", "cache": "快取", "preferences": "偏好設定", "saved_state": "儲存的視窗狀態", "container": "沙箱容器", "web_data": "網路數據", "http_storage": "HTTP儲存", "cookies": "Cookie 數據", "logs": "紀錄", "launch_agent": "使用者啟動代理" },
+    "unavailable": { "generic": "依目前的安全規則，無法解除安裝此應用程式。", "current_application_protected": "CoreRobin 運作時無法自行卸載。", "application_bundle_identifier_missing": "該應用程式不提供可安全驗證的套件 ID。", "application_bundle_invalid": "應用程式包不完整或不受支援。", "application_bundle_not_allowed": "僅支援“應用程式”資料夾中的頂級應用程式。" },
+    "errors": { "application_identity_changed": "應用程式標識已更改。刷新庫存並重試。", "application_bundle_unavailable": "應用程式目前無法存取，請確認它仍位於原處。", "application_artifact_unavailable": "確認前項目已更改。刷新卸載計劃。", "application_bundle_identifier_missing": "無法驗證應用程式的捆綁包 ID。" }
   },
   "empty": "沒有匹配的應用",
   "safety": "點選應用只會開啟資源證據；任何結束操作仍需單獨確認。"

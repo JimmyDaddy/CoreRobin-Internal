@@ -1,20 +1,21 @@
 {
   "quality": {
-    "eyebrow": "Automatische Netzwerkmessung", "title": "Netzwerkqualität", "description": "Prüft beim Öffnen automatisch und misst alle 30 Sekunden, solange die Seite geöffnet ist.",
+    "eyebrow": "Automatische Netzwerkmessung", "title": "Netzwerkqualität", "description": "Prüft bei geöffneter Ansicht alle 30 Sekunden. Optional werden Fünf-Minuten-Aggregate für 1 oder 24 Stunden im Hintergrund gespeichert.",
     "run": "Jetzt prüfen", "checking": "Prüfung läuft…", "empty": "Erste Netzwerkprüfung läuft…",
-    "method": "Leichte TCP-Prüfungen trennen lokale Route, DNS, IPv4/IPv6, direkten Internetzugang und einen unabhängigen Dienst. Beim Verlassen der Seite stoppt die Messung.",
-    "dns": "DNS", "latency": "Mittlere Latenz", "jitter": "Jitter", "loss": "Verbindungsfehler", "probes": "TCP-Prüfungen", "probeSuccess": "{{successful}}/{{total}} erfolgreich",
+    "method": "TCP-Prüfungen für example.com und one.one.one.one trennen lokale Route, DNS, IPv4/IPv6 und Internet-Erreichbarkeit ohne privilegierte Rohpakete.",
+    "dns": "DNS", "latency": "Mittlere Latenz", "jitter": "Jitter", "loss": "Fehlgeschlagene TCP-Prüfungen", "probes": "TCP-Prüfungen", "probeSuccess": "{{successful}}/{{total}} erfolgreich", "probeAndTargets": "{{successful}}/{{total}} Prüfungen · {{targetSuccessful}}/{{targetTotal}} Ziele erreichbar",
     "trendTitle": "Verlauf der Netzwerkqualität", "trendWindow": "Letzte 15 Minuten · alle 30 Sekunden", "trendCollecting": "Verlaufsdaten werden gesammelt", "legend": "Legende der Netzwerkqualität", "chartLabel": "Netzwerkqualität der letzten 15 Minuten mit {{count}} Messpunkten", "now": "Jetzt",
     "windowAverage": "Mittlere Latenz", "windowPeak": "Spitzenlatenz", "anomalies": "Auffälligkeiten", "anomalyCount": "{{count}}",
+    "history": {"title":"Fortlaufender Qualitätsverlauf","description":"Im Hintergrund alle fünf Minuten leichtgewichtig prüfen und nur Aggregate auf diesem Gerät speichern.","range":"Zeitraum","minutes15":"15 Minuten","hours1":"1 Stunde","hours24":"24 Stunden","window":"Letzte {{count}} Stunden · Fünf-Minuten-Aggregate","clear":"Qualitätsverlauf löschen","axisMinutes":"−{{count}} Min.","axisHours":"−{{count}} Std."},
     "diagnostics": { "title": "Stufenweise Netzwerkdiagnose", "stages": { "local_link": "Lokale Route", "dns": "DNS", "ipv4": "IPv4", "ipv6": "IPv6", "internet": "Internet", "independent_service": "Unabhängiger Dienst" }, "status": { "passed": "Verfügbar", "degraded": "Beeinträchtigt", "failed": "Fehlgeschlagen", "unavailable": "Nicht eingerichtet" } },
     "status": { "online": "Online", "limited": "Eingeschränkte Verbindung", "offline": "Offline" }
   },
   "history": {
-    "eyebrow": "Optional local record", "title": "Connection history and aggregation", "description": "Review longer-term connection activity by application or domain.",
-    "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
-    "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
-    "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
-    "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
+    "eyebrow": "Optionaler lokaler Datensatz", "title": "Verbindungsverlauf und Aggregation", "description": "Überprüfen Sie die längerfristige Verbindungsaktivität nach Anwendung oder Domäne.",
+    "optIn": "Der Verbindungsverlauf kann Anwendungsnamen, Domänen und Remote-IPs umfassen und ist daher standardmäßig deaktiviert. Wenn es aktiviert ist, bleibt es auf diesem Gerät.", "enable": "Verbindungsverlauf aktivieren",
+    "groupBy": "Gruppieren nach", "application": "Anwendung", "domain": "Domain", "retention": "Halten", "days": "{{count}} Tage", "clear": "Klare Geschichte",
+    "lookupFallback": "Einige Namen konnten nicht aufgelöst werden; Stattdessen wurden IP-Adressen erfasst.", "observations": "{{count}} Beobachtungen", "empty": "Warten auf den nächsten aktiven Verbindungsscan.",
+    "privacy": "Speichert nur Fünf-Minuten-Aggregate, begrenzt auf 5.000 Einträge; jederzeit deaktivieren oder löschen."
   },
   "local": "Lokales Netzwerk",
   "title": "Aktive Schnittstellen und Sitzungstrafik",

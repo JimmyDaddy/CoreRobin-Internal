@@ -21,6 +21,7 @@ import {
   type InstallableAppUpdate,
 } from "../appUpdater";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import type { ProductDataClearResult } from "../productDataClear";
 import {
   buildRedactedDiagnosticSummary,
   checkForProductUpdate,
@@ -33,6 +34,7 @@ import {
 import type { AppSettings } from "../settings";
 import type { SystemSnapshot } from "../types";
 import { Button } from "./Button";
+import { ClearProductDataAction } from "./ClearProductDataAction";
 
 type UpdateDisplayResult = Pick<UpdateCheckResult, "status" | "latestVersion">;
 
@@ -42,12 +44,16 @@ export function AboutSupport({
   onOpenOnboarding,
   onClearAllData,
   backgroundUpdateVersion,
+  backgroundUpdateCheckedAt = null,
+  backgroundUpdateCheckFailed = false,
 }: {
   settings: AppSettings;
   snapshot: SystemSnapshot;
   onOpenOnboarding: () => void;
-  onClearAllData: () => void;
+  onClearAllData: () => Promise<void | ProductDataClearResult[]>;
   backgroundUpdateVersion?: string | null;
+  backgroundUpdateCheckedAt?: number | null;
+  backgroundUpdateCheckFailed?: boolean;
 }) {
   const { t, i18n } = useAppTranslation();
   const [checking, setChecking] = useState(false);
@@ -56,7 +62,10 @@ export function AboutSupport({
   const [updateProgress, setUpdateProgress] = useState<AppUpdateProgress | null>(null);
   const [updateAction, setUpdateAction] = useState<"idle" | "installing" | "ready" | "error">("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [lastCheckedAt, setLastCheckedAt] =
+    useState<number | null>(backgroundUpdateCheckedAt);
+  const [lastCheckFailed, setLastCheckFailed] =
+    useState(backgroundUpdateCheckFailed);
   const backgroundUpdateHydrationRef = useRef<string | null>(null);
   const diagnostic = useMemo(
     () => buildRedactedDiagnosticSummary({
@@ -78,6 +87,11 @@ export function AboutSupport({
       latestVersion: backgroundUpdateVersion,
     });
   }, [backgroundUpdateVersion, updateResult]);
+
+  useEffect(() => {
+    setLastCheckedAt(backgroundUpdateCheckedAt);
+    setLastCheckFailed(backgroundUpdateCheckFailed);
+  }, [backgroundUpdateCheckFailed, backgroundUpdateCheckedAt]);
 
   useEffect(() => {
     if (
@@ -124,9 +138,13 @@ export function AboutSupport({
         const result = await checkForProductUpdate();
         setUpdateResult({ status: result.status, latestVersion: result.latestVersion });
       }
+      setLastCheckedAt(Date.now());
+      setLastCheckFailed(false);
     } catch {
       setInstallableUpdate(null);
       setUpdateResult("error");
+      setLastCheckedAt(Date.now());
+      setLastCheckFailed(true);
     } finally {
       setChecking(false);
     }
@@ -218,6 +236,21 @@ export function AboutSupport({
                   : <><Check size={14} />{t("settings:about.upToDate", { version: updateResult.latestVersion })}</>}
             </p>
           ) : null}
+          {lastCheckedAt ? (
+            <p className={`about-support__last-check${lastCheckFailed ? " is-error" : ""}`}>
+              {t(lastCheckFailed
+                ? "settings:about.lastCheckFailed"
+                : "settings:about.lastChecked", {
+                time: new Date(lastCheckedAt).toLocaleString(i18n.resolvedLanguage),
+              })}
+            </p>
+          ) : null}
+          {installableUpdate?.notes ? (
+            <details className="about-support__release-notes">
+              <summary>{t("settings:about.whatsNew")}</summary>
+              <p>{installableUpdate.notes}</p>
+            </details>
+          ) : null}
           {updateAction === "installing" && updateProgress ? (
             <div className="about-support__progress" role="status" aria-live="polite">
               <div>
@@ -265,17 +298,10 @@ export function AboutSupport({
             <span><Trash2 size={17} /></span>
             <div><strong>{t("settings:about.clearTitle")}</strong><small>{t("settings:about.clearDescription")}</small></div>
           </div>
-          {confirmClear ? (
-            <div className="about-support__confirm" role="alert">
-              <p>{t("settings:about.clearConfirm")}</p>
-              <div>
-                <Button variant="danger" onClick={onClearAllData}><Trash2 size={15} />{t("settings:about.clearNow")}</Button>
-                <Button variant="secondary" onClick={() => setConfirmClear(false)}>{t("common:cancel")}</Button>
-              </div>
-            </div>
-          ) : (
-            <Button variant="dangerGhost" onClick={() => setConfirmClear(true)}><Trash2 size={15} />{t("settings:about.clearAction")}</Button>
-          )}
+          <ClearProductDataAction
+            label={t("settings:about.clearAction")}
+            onClearAllData={onClearAllData}
+          />
         </section>
       </div>
     </section>

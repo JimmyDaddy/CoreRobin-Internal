@@ -33,7 +33,7 @@ pnpm release:smoke:device -- \
   --app /Applications/CoreRobin.app
 ```
 
-脚本会启动已安装应用，并要求人工逐项确认主窗口、状态栏面板、Robin、健康状态同步、主题/语言同步、后台行为、权限两条路径以及退出/重启。证据默认写入 `.local-dev/release-smoke/`，包含 commit、系统、架构、候选安装包 SHA-256 和每一步结果。任何 `failed` 或 `not-verified` 都不能标记为发布通过。
+脚本会启动已安装应用，并要求人工逐项确认主窗口、状态栏面板、Robin、健康状态同步、主题/语言同步、后台行为、应用卸载能力边界、权限两条路径以及退出/重启。macOS 还会复核卸载计划的取消路径；Windows/Linux 在能力交付前必须明确显示不支持，不能用空清单冒充“没有安装应用”。证据默认写入 `.local-dev/release-smoke/`，包含 commit、系统、架构、候选安装包 SHA-256 和每一步结果。任何 `failed` 或 `not-verified` 都不能标记为发布通过。跨平台卸载的分阶段实现与实机矩阵见[跨平台应用卸载设计](cross-platform-application-uninstall.md)。
 
 CI 只运行 `pnpm release:smoke:device -- --dry-run` 验证清单可解析；这不是实际设备验证。
 
@@ -110,3 +110,12 @@ pnpm performance:baseline -- --runs 3 --iterations 20 --spacing 250
 - 与同机上一版本相比是否出现可解释的明显回归。
 
 冷启动只记录同机候选与上一版本的三次观测以及启动阶段截图/日志，不在共享 runner 上设置毫秒阈值。整机能耗或冷启动证据缺失时，发布检查表必须明确标记为“未验证”，不能由微基准替代。
+
+仓库提供三场景的可复现采样工具。先启动候选版本并找到 CoreRobin 主进程 PID，再预先授权系统 `powermetrics`：
+
+```bash
+sudo -v
+pnpm performance:energy -- --pid CORE_ROBIN_PID
+```
+
+脚本依次采集前台 5 分钟、隐藏窗口 10 分钟和状态栏面板 2 分钟，保存每秒 CPU、interrupt/package-idle wakeups、常驻内存与 Energy Impact 的统计摘要，并保留原始 NUL 分隔 plist。管理员密码只由 `sudo` 处理，脚本使用 `sudo -n`，CoreRobin 不接收或保存密码。短时验证脚本本身时可以用 `--durations 2,2,2`，但短时结果不能作为发布基线。
