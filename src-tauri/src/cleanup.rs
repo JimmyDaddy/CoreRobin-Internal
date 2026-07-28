@@ -5470,6 +5470,7 @@ mod tests {
                 )
                 .is_ok(),
         );
+        drop(controller);
         fs::remove_dir_all(root).unwrap();
     }
 
