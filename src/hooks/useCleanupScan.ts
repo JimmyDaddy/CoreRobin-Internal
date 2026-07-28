@@ -15,7 +15,13 @@ import {
   type CleanupDeletionTargetSnapshot,
   type CleanupSnapshotStatus,
 } from "../cleanupScanStore";
-import type { CleanupNode, CleanupScan, CleanupScanProgress, CommandError } from "../types";
+import type {
+  CleanupNode,
+  CleanupScan,
+  CleanupScanProgress,
+  CleanupScanTarget,
+  CommandError,
+} from "../types";
 import { normalizeCommandError } from "../utils";
 
 export function useCleanupScan() {
@@ -61,7 +67,9 @@ export function useCleanupScan() {
     };
   }, []);
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (
+    target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
+  ) => {
     if (inFlight.current) return;
     inFlight.current = true;
     stateTouched.current = true;
@@ -84,7 +92,7 @@ export function useCleanupScan() {
     });
     setError(null);
     try {
-      const completed = await getCleanupScan(setProgress);
+      const completed = await getCleanupScan(setProgress, target);
       snapshotRef.current = completed;
       setSnapshot(completed);
       setSnapshotStatus("current");

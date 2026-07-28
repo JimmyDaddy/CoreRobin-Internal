@@ -72,6 +72,10 @@ describe("application uninstall assistant", () => {
         modifiedAtMs: 900,
         uninstallable: true,
         unavailableReason: null,
+        installationSource: "macos_bundle",
+        nativeUninstallIdentifier: null,
+        nativeUninstallRequiresElevation: false,
+        iconPath: null,
       }],
     });
 
@@ -95,6 +99,10 @@ describe("application uninstall assistant", () => {
         modifiedAtMs: 900,
         uninstallable: true,
         unavailableReason: null,
+        installationSource: "macos_bundle",
+        nativeUninstallIdentifier: null,
+        nativeUninstallRequiresElevation: false,
+        iconPath: null,
       }],
     };
     uninstallApi.getInstalledApplications

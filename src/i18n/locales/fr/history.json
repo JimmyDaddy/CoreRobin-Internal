@@ -144,4 +144,48 @@
   "privacyCollected": "L’historique conserve les données de ressources agrégées, les événements de pression et de récupération, ainsi que le type, le résultat, le nombre d’éléments et l’espace libéré des actions confirmées. Les noms d’applications ou d’éléments de démarrage nécessitent une autorisation séparée.",
   "privacyExcluded": "L’historique des ressources et actions ne stocke ni commandes, utilisateurs, chemins, noms de fichiers, ni adresses réseau. Si l’historique des connexions est activé séparément, ses agrégats de cinq minutes peuvent inclure IP distantes, domaines, ports et noms d’applications.",
   "privacyControl": "La désactivation arrête l'enregistrement de nouvelles données ; les données existantes restent jusqu'à leur expiration ou jusqu'à ce que vous les effaciez manuellement."
+,
+  "applicationImpact": {
+    "eyebrow": "Application attribution",
+    "title": "Which apps affected this computer",
+    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
+    "enable": "Keep app impact history",
+    "range": "Application history range",
+    "hours1": "1 hour",
+    "hours24": "24 hours",
+    "hours168": "7 days",
+    "disabledTitle": "Application attribution is off",
+    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
+    "learningTitle": "Building application history",
+    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
+    "peakCpu": "Peak CPU {{value}}",
+    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+  },
+  "baseline": {
+    "eyebrow": "This computer's baseline",
+    "learning": {
+      "title": "Learning what is normal here",
+      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+    },
+    "typical": {
+      "title": "Close to this computer's usual pattern",
+      "description": "No meaningful deviation was found across the available baseline metrics."
+    },
+    "elevated": {
+      "title": "Different from this computer's usual pattern",
+      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+    },
+    "collecting": "Collecting baseline",
+    "change": "{{value}}% {{direction}} than usual",
+    "higher": "higher",
+    "lower": "lower",
+    "metric": {
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk throughput",
+      "network": "Network throughput",
+      "temperature": "Temperature",
+      "battery": "Battery drain"
+    }
+  }
 }

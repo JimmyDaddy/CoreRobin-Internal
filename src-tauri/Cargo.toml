@@ -31,6 +31,7 @@ plist = "1.8"
 sysinfo = { version = "=0.39.6", default-features = false, features = ["component", "disk", "network", "system", "user"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-dialog = "2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

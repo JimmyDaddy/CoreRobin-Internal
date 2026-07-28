@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "Muestreo automático de red", "title": "Calidad de red", "description": "Comprueba cada 30 segundos mientras está abierta. Opcionalmente conserva agregados de cinco minutos durante 1 o 24 horas en segundo plano.",
+    "eyebrow": "Muestreo automático de red", "title": "Calidad de red", "description": "Comprueba cada 30 segundos mientras está abierta. Opcionalmente conserva agregados de cinco minutos durante un máximo de 7 días en segundo plano.",
     "run": "Comprobar ahora", "checking": "Comprobando…", "empty": "Realizando la primera comprobación de red…",
     "method": "Las sondas TCP a example.com y one.one.one.one separan ruta local, DNS, IPv4/IPv6 y acceso a Internet sin paquetes sin procesar privilegiados.",
     "dns": "DNS", "latency": "Latencia media", "jitter": "Variación", "loss": "Fallos de sondeo TCP", "probes": "Sondas TCP", "probeSuccess": "{{successful}}/{{total}} correctas", "probeAndTargets": "{{successful}}/{{total}} sondas · {{targetSuccessful}}/{{targetTotal}} destinos accesibles",
@@ -116,4 +116,20 @@
   "packets": "{{count}} paquetes",
   "unknownMtu": "Desconocido",
   "noMac": "Sin dirección MAC"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

@@ -20,7 +20,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  loadRecentCleanupTargets,
+  saveRecentCleanupTarget,
+} from "../cleanupScanTargets";
 import {
   useAppTranslation,
   type AppTFunction,
@@ -37,7 +42,9 @@ import type {
   CleanupScan,
   CleanupScanAccess,
   CleanupScanProgress,
+  CleanupScanTarget,
   CommandError,
+  VolumeSnapshot,
 } from "../types";
 import type { CleanupDeletionTargetSnapshot, CleanupSnapshotStatus } from "../cleanupScanStore";
 import { findUnusedApplications, unusedApplicationDays } from "../cleanupApplications";
@@ -72,7 +79,8 @@ interface CleanupAssistantProps {
   cancelling: boolean;
   progress: CleanupScanProgress | null;
   snapshotStatus: CleanupSnapshotStatus;
-  onScan: () => void;
+  volumes?: readonly VolumeSnapshot[];
+  onScan: (target?: CleanupScanTarget) => void;
   onCancel: () => void;
   onDeletionApplied: (
     targets: readonly CleanupDeletionTargetSnapshot[],
@@ -100,6 +108,7 @@ export function CleanupAssistant({
   cancelling,
   progress,
   snapshotStatus,
+  volumes = [],
   onScan,
   onCancel,
   onDeletionApplied,
@@ -121,6 +130,13 @@ export function CleanupAssistant({
     readAccessibleScanPreference,
   );
   const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files">("space");
+  const [selectedTarget, setSelectedTarget] = useState<CleanupScanTarget>(
+    () => snapshot
+      ? { targetKind: snapshot.targetKind, targetPath: snapshot.targetPath }
+      : { targetKind: "system_disk", targetPath: null },
+  );
+  const [recentTargets, setRecentTargets] = useState(loadRecentCleanupTargets);
+  const [selectingFolder, setSelectingFolder] = useState(false);
   const [mapCommand, setMapCommand] =
     useState<CleanupSpaceMapCommand | null>(null);
   const mapCommandIdRef = useRef(0);
@@ -150,6 +166,25 @@ export function CleanupAssistant({
   );
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const pristine = !snapshot && !loading && !error && !accessGuideOpen;
+  const selectableVolumes = useMemo(
+    () => volumes.filter((volume) => volume.mountPoint !== "/"),
+    [volumes],
+  );
+
+  useEffect(() => {
+    if (!snapshot) return;
+    setSelectedTarget({
+      targetKind: snapshot.targetKind,
+      targetPath: snapshot.targetPath,
+    });
+  }, [snapshot]);
+
+  const startSelectedScan = useCallback(() => {
+    if (selectedTarget.targetKind !== "system_disk") {
+      setRecentTargets(saveRecentCleanupTarget(selectedTarget));
+    }
+    onScan(selectedTarget);
+  }, [onScan, selectedTarget]);
 
   const checkScanAccess = useCallback(async (
     startWhenReady: boolean,
@@ -170,11 +205,11 @@ export function CleanupAssistant({
         writeAccessibleScanPreference(false);
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
-        if (startWhenReady) onScan();
+        if (startWhenReady) startSelectedScan();
       } else if (startWhenReady && allowAccessibleFallback) {
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
-        onScan();
+        startSelectedScan();
       } else {
         setAccessGuideOpen(true);
       }
@@ -183,7 +218,7 @@ export function CleanupAssistant({
       if (startWhenReady && allowAccessibleFallback) {
         setAccessGuideOpen(false);
         setWaitingForAccess(false);
-        onScan();
+        startSelectedScan();
       } else {
         setAccessError(normalizeCommandError(caughtError));
         setAccessGuideOpen(true);
@@ -192,7 +227,7 @@ export function CleanupAssistant({
       accessCheckInFlight.current = false;
       setCheckingAccess(false);
     }
-  }, [loading, onScan]);
+  }, [loading, startSelectedScan]);
 
   useEffect(() => {
     if (!waitingForAccess) return;
@@ -212,7 +247,11 @@ export function CleanupAssistant({
       onCancel();
       return;
     }
-    void checkScanAccess(true, preferAccessibleScan);
+    if (selectedTarget.targetKind === "system_disk") {
+      void checkScanAccess(true, preferAccessibleScan);
+      return;
+    }
+    startSelectedScan();
   };
 
   const openAccessSettings = async () => {
@@ -248,7 +287,36 @@ export function CleanupAssistant({
     setAccessGuideOpen(false);
     setWaitingForAccess(false);
     setAccessError(null);
-    onScan();
+    startSelectedScan();
+  };
+
+  const chooseFolder = async () => {
+    if (selectingFolder || loading) return;
+    setSelectingFolder(true);
+    setAccessError(null);
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: t("cleanup:targets.chooseFolderTitle"),
+      });
+      if (typeof selected !== "string" || selected.length === 0) return;
+      const target: CleanupScanTarget = {
+        targetKind: "folder",
+        targetPath: selected,
+      };
+      setSelectedTarget(target);
+      setRecentTargets(saveRecentCleanupTarget(target));
+    } catch (caughtError) {
+      setAccessError(normalizeCommandError(caughtError));
+    } finally {
+      setSelectingFolder(false);
+    }
+  };
+
+  const selectTarget = (target: CleanupScanTarget) => {
+    if (loading) return;
+    setSelectedTarget(target);
   };
 
   const sendMapCommand = (
@@ -315,6 +383,75 @@ export function CleanupAssistant({
           </button>
         ) : null}
       </header>
+
+      <section className="cleanup-targets" aria-labelledby="cleanup-targets-title">
+        <div className="cleanup-targets__heading">
+          <div>
+            <span className="eyebrow">{t("cleanup:targets.kicker")}</span>
+            <h3 id="cleanup-targets-title">{t("cleanup:targets.title")}</h3>
+          </div>
+          <span className="cleanup-targets__current" title={selectedTarget.targetPath ?? undefined}>
+            {targetLabel(selectedTarget, volumes, t)}
+          </span>
+        </div>
+        <div className="cleanup-targets__choices">
+          <button
+            className={selectedTarget.targetKind === "system_disk" ? "is-selected" : undefined}
+            type="button"
+            disabled={loading}
+            onClick={() => selectTarget({ targetKind: "system_disk", targetPath: null })}
+          >
+            <HardDrive size={15} />
+            <span>{t("cleanup:targets.systemDisk")}</span>
+          </button>
+          {selectableVolumes.map((volume) => (
+            <button
+              className={selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint ? "is-selected" : undefined}
+              key={volume.mountPoint}
+              type="button"
+              disabled={loading}
+              title={volume.mountPoint}
+              onClick={() => selectTarget({ targetKind: "volume", targetPath: volume.mountPoint })}
+            >
+              <ArchiveRestore size={15} />
+              <span>{volume.name || volume.mountPoint}</span>
+              {volume.removable ? <small>{t("cleanup:targets.removable")}</small> : null}
+            </button>
+          ))}
+          <button
+            className={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath) ? "is-selected" : undefined}
+            type="button"
+            disabled={loading || selectingFolder}
+            onClick={() => void chooseFolder()}
+          >
+            {selectingFolder ? <RefreshCw className="is-spinning" size={15} /> : <FolderOpen size={15} />}
+            <span>{t("cleanup:targets.chooseFolder")}</span>
+          </button>
+        </div>
+        {recentTargets.length > 0 ? (
+          <div className="cleanup-targets__recent">
+            <span>{t("cleanup:targets.recent")}</span>
+            {recentTargets.map((target) => (
+              <button
+                className={selectedTarget.targetKind === target.targetKind && selectedTarget.targetPath === target.targetPath ? "is-selected" : undefined}
+                key={`${target.targetKind}:${target.targetPath}`}
+                type="button"
+                disabled={loading}
+                title={target.targetPath ?? undefined}
+                onClick={() => selectTarget(target)}
+              >
+                {targetBasename(target.targetPath)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {selectedTarget.targetKind !== "system_disk" ? (
+          <p className="cleanup-targets__notice">
+            <ShieldCheck size={13} />
+            {t("cleanup:targets.readOnlyNotice")}
+          </p>
+        ) : null}
+      </section>
 
       {accessGuideOpen && !loading ? (
         <section className="cleanup-access-guide" aria-labelledby="cleanup-access-title">
@@ -698,6 +835,23 @@ export function CleanupAssistant({
       ) : null}
     </section>
   );
+}
+
+function targetLabel(
+  target: CleanupScanTarget,
+  volumes: readonly VolumeSnapshot[],
+  t: AppTFunction,
+): string {
+  if (target.targetKind === "system_disk") return t("cleanup:targets.systemDisk");
+  const volume = volumes.find((candidate) => candidate.mountPoint === target.targetPath);
+  if (volume) return volume.name || volume.mountPoint;
+  return target.targetPath ?? t("cleanup:targets.systemDisk");
+}
+
+function targetBasename(path: string | null): string {
+  if (!path) return "";
+  const segments = path.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? path;
 }
 
 function readAccessibleScanPreference(): boolean {

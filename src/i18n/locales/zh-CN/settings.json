@@ -233,5 +233,30 @@
         "note": "不授权仍可扫描系统允许访问的区域；CoreRobin 不会在这里主动请求权限。"
       }
     }
+  },
+  "applicationImpactHistory": {
+    "label": "保留应用影响聚合",
+    "hint": "需要先开启本机历史并允许保存应用显示名；不会保存命令或文件路径。"
+  },
+  "supportFlow": {
+    "action": "准备问题反馈",
+    "title": "准备一份脱敏的问题反馈",
+    "description": "先核对即将复制的内容，再打开已经预填的公开 GitHub Issue。",
+    "reviewTitle": "预览",
+    "reviewDescription": "确认摘要中没有你不希望分享的信息。",
+    "copyTitle": "复制",
+    "copyDescription": "把同一份脱敏摘要复制到剪贴板，方便补充或复用。",
+    "openTitle": "打开 Issue",
+    "openDescription": "预填版本、系统、架构和复现步骤提示，由你填写问题描述。",
+    "preview": "即将复制并写入 Issue 的内容",
+    "confirm": "复制并打开 Issue",
+    "opening": "正在准备反馈…",
+    "error": "无法复制摘要或打开 Issue 表单，请重试。",
+    "issueTitle": "[v{{version}}] 问题反馈",
+    "problemHeading": "发生了什么",
+    "problemPlaceholder": "<!-- 请描述问题和预期结果。 -->",
+    "stepsHeading": "复现步骤",
+    "stepsPlaceholder": "<!-- 请列出最短的复现步骤。 -->",
+    "diagnosticHeading": "隐私脱敏环境摘要"
   }
 }

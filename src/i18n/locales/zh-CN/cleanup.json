@@ -267,6 +267,7 @@
       "keepFile": "将 {{name}} 设为保留项",
       "dialogTitle": "处理重复文件",
       "dialogDescription": "每个重复组至少保留一份；可移动到废纸篓，或确认后直接删除。执行前会再次核对文件状态和受保护路径。",
+      "refreshIncomplete": "CoreRobin 无法按路径匹配全部重新核对后的重复文件。",
       "actionName": "重复文件处理",
       "completed": "已处理 {{count}} 个重复副本，释放 {{size}}",
       "partial": "已处理 {{deletedCount}} 个，{{failedCount}} 个未能处理",
@@ -280,5 +281,31 @@
   "noLargeFiles": "可访问的系统磁盘位置中没有发现超过 500 MB 的文件。",
   "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。",
   "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 CoreRobin 后重新扫描。",
-  "safetyBoundary": "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮、核对路径并明确确认的内容才会移到废纸篓或永久删除。"
+  "safetyBoundary": "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮、核对路径并明确确认的内容才会移到废纸篓或永久删除。",
+  "targets": {
+    "kicker": "扫描范围",
+    "title": "选择要扫描的位置",
+    "systemDisk": "系统磁盘",
+    "chooseFolder": "选择文件夹",
+    "chooseFolderTitle": "选择一个要扫描的文件夹",
+    "recent": "最近扫描",
+    "removable": "可移除",
+    "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。"
+  },
+  "oldFileProcessing": {
+    "selectFile": "选择 {{name}} 进入清理复核",
+    "selected": "已选择",
+    "select": "选择",
+    "selectionHint": "只有你明确选择的文件才会加入清理篮复核。",
+    "emptySelection": "请选择已经确认不再需要的长期未修改文件。",
+    "summary": "已选择 {{count}} 个长期未修改文件，共 {{size}}",
+    "review": "检查清理方式",
+    "dialogTitle": "处理长期未修改文件",
+    "dialogDescription": "复核选中的文件后，可将其移到废纸篓，或确认后直接删除；已不存在的文件会自动跳过。",
+    "refreshIncomplete": "CoreRobin 无法按路径匹配全部重新核对后的长期未修改文件。",
+    "actionName": "长期未修改文件清理",
+    "completed": "已处理 {{count}} 个长期未修改文件，释放 {{size}}",
+    "partial": "已处理 {{deletedCount}} 个，{{failedCount}} 个未能处理",
+    "cancelled": "处理已停止，已完成 {{count}} 个"
+  }
 }

@@ -187,6 +187,8 @@ describe("daily experience model", () => {
       unreadableEntryCount: 0,
       unreadablePaths: [],
       deletionAvailable: true,
+      targetKind: "system_disk",
+      targetPath: "/",
     })).toBe(8);
   });
 

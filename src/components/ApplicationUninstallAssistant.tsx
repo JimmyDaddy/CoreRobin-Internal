@@ -12,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
@@ -21,6 +22,7 @@ import {
   cancelCleanupDelete,
   createCleanupDeleteLease,
   executeCleanupDelete,
+  executeNativeApplicationUninstall,
   getApplicationUninstallPlan,
   getInstalledApplications,
   releaseCleanupDeleteLease,
@@ -36,6 +38,7 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 import { normalizeLanguage } from "../language";
 import type {
   ApplicationArtifactKind,
+  ApplicationIconRequest,
   ApplicationInventorySnapshot,
   ApplicationUninstallArtifact,
   ApplicationUninstallPlan,
@@ -90,6 +93,13 @@ export function ApplicationUninstallAssistant({
   const [planning, setPlanning] = useState(false);
   const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
   const [outcome, setOutcome] = useState<UninstallOutcome | null>(null);
+  const [nativeOutcome, setNativeOutcome] = useState<{
+    applicationName: string;
+    outcome: "succeeded" | "cancelled" | "failed" | "restart_required";
+  } | null>(null);
+  const [nativeDialogOpen, setNativeDialogOpen] = useState(false);
+  const [nativeSubmitting, setNativeSubmitting] = useState(false);
+  const [nativeError, setNativeError] = useState<CommandError | null>(null);
   const [removedApplications, setRemovedApplications] = useState<Map<string, RemovedApplicationState>>(
     () => new Map(removedApplicationsForSession),
   );
@@ -188,6 +198,7 @@ export function ApplicationUninstallAssistant({
     setSelectedPath(application.path);
     setPlan(null);
     setOutcome(null);
+    setNativeOutcome(null);
     if (!application.uninstallable) return;
     setPlanning(true);
     setError(null);
@@ -426,6 +437,63 @@ export function ApplicationUninstallAssistant({
   const selectedApplication = inventory?.applications.find((application) => application.path === selectedPath) ?? null;
   const selectedRemoval = selectedPath ? removedApplications.get(selectedPath) ?? null : null;
 
+  const confirmNativeUninstall = async () => {
+    const nativePlan = plan?.nativeUninstall;
+    if (!plan || !nativePlan || nativeSubmitting) return;
+    const application = plan.application;
+    const actionRecordId = onUserActionStart?.({
+      kind: "cleanup_delete",
+      targetName: application.name,
+      targetCount: 1,
+    }) ?? null;
+    setNativeSubmitting(true);
+    setNativeError(null);
+    try {
+      const result = await executeNativeApplicationUninstall(nativePlan.id);
+      setNativeOutcome({
+        applicationName: application.name,
+        outcome: result.outcome,
+      });
+      const removed = result.outcome === "succeeded"
+        || result.outcome === "restart_required";
+      if (removed) {
+        const state = { mode: "permanent" as const, failedCount: 0 };
+        removedApplicationsForSession.set(application.path, state);
+        setRemovedApplications(new Map(removedApplicationsForSession));
+        setPlan(null);
+      } else if (result.outcome === "failed") {
+        setNativeError({
+          code: "native_uninstall_failed",
+          message: result.message,
+        });
+      }
+      if (actionRecordId) {
+        onUserActionComplete?.(actionRecordId, {
+          status: removed
+            ? "succeeded"
+            : result.outcome === "cancelled"
+              ? "cancelled"
+              : "failed",
+          verification: removed ? "verified" : "not_confirmed",
+          targetCount: 1,
+        });
+      }
+      if (result.outcome !== "failed") setNativeDialogOpen(false);
+    } catch (caughtError) {
+      const normalized = normalizeCommandError(caughtError);
+      setNativeError(normalized);
+      if (actionRecordId) {
+        onUserActionComplete?.(actionRecordId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: 1,
+        });
+      }
+    } finally {
+      setNativeSubmitting(false);
+    }
+  };
+
   return (
     <section className="application-uninstall" aria-labelledby="application-uninstall-title" aria-busy={loading}>
       <header className="application-uninstall__hero">
@@ -507,6 +575,16 @@ export function ApplicationUninstallAssistant({
               })}</span>
             </div>
           ) : null}
+          {nativeOutcome ? (
+            <div className={`application-uninstall__outcome${nativeOutcome.outcome === "failed" ? " is-warning" : ""}`} role="status">
+              {nativeOutcome.outcome === "succeeded" || nativeOutcome.outcome === "restart_required"
+                ? <Check size={17} />
+                : <AlertTriangle size={17} />}
+              <span>{t(`applications:nativeUninstall.outcome.${nativeOutcome.outcome}`, {
+                name: nativeOutcome.applicationName,
+              })}</span>
+            </div>
+          ) : null}
 
           {error ? <p className="application-uninstall__error" role="alert">{t(`applications:uninstall.errors.${error.code}`, { defaultValue: error.message })}</p> : null}
 
@@ -537,20 +615,26 @@ export function ApplicationUninstallAssistant({
                       >
                         <ApplicationAvatar
                           name={application.name}
-                          source={{ applicationPath: application.path }}
+                          source={installedApplicationIconSource(application)}
                           className="application-uninstall__avatar"
                         />
-                        <div><strong>{application.name}</strong><small>{application.bundleId ?? application.path}</small></div>
+                        <div><strong>{application.name}</strong><small>{application.bundleId ?? application.nativeUninstallIdentifier ?? application.path}</small></div>
                         {removed ? (
                           <b className={`application-uninstall__removed-badge is-${removed.mode}`}>
                             {removed.mode === "trash" ? <ArchiveRestore size={11} /> : <Trash2 size={11} />}
                             {removedLabel}
                           </b>
-                        ) : <b>{formatBytes(application.sizeBytes)}</b>}
+                        ) : application.sizeBytes > 0
+                          ? <b>{formatBytes(application.sizeBytes)}</b>
+                          : <b>{t(`applications:nativeUninstall.source.${application.installationSource}`)}</b>}
                         {removed ? (
                           <em className="is-removed">{t(`applications:uninstall.removed.${removed.mode}Description`)}</em>
                         ) : !application.uninstallable ? (
-                          <em>{t(`applications:uninstall.unavailable.${application.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</em>
+                          <em>{application.unavailableReason === "protected_application"
+                            ? t("applications:nativeUninstall.unavailable.protected")
+                            : application.unavailableReason === "portable_application"
+                              ? t("applications:nativeUninstall.unavailable.portable")
+                              : t(`applications:uninstall.unavailable.${application.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</em>
                         ) : null}
                       </button>
                     </li>
@@ -568,55 +652,81 @@ export function ApplicationUninstallAssistant({
                   <header>
                     <ApplicationAvatar
                       name={plan.application.name}
-                      source={{ applicationPath: plan.application.path }}
+                      source={installedApplicationIconSource(plan.application)}
                       className="application-uninstall__avatar is-large"
                     />
-                    <div><span className="eyebrow">{t("applications:uninstall.planKicker")}</span><h3>{plan.application.name}</h3><code>{plan.application.path}</code></div>
-                    <button className="icon-button" type="button" title={t("applications:uninstall.reveal")} aria-label={t("applications:uninstall.reveal")} onClick={() => void revealPath(plan.application.path)}><FolderOpen size={16} /></button>
+                    <div><span className="eyebrow">{t("applications:uninstall.planKicker")}</span><h3>{plan.application.name}</h3><code>{plan.application.nativeUninstallIdentifier ?? plan.application.path}</code></div>
+                    {!plan.nativeUninstall ? <button className="icon-button" type="button" title={t("applications:uninstall.reveal")} aria-label={t("applications:uninstall.reveal")} onClick={() => void revealPath(plan.application.path)}><FolderOpen size={16} /></button> : null}
                   </header>
-                  <p className="application-uninstall__plan-note">
-                    <ShieldCheck size={15} />
-                    {t(plan.application.bundleId
-                      ? "applications:uninstall.planBoundary"
-                      : "applications:uninstall.bundleOnlyBoundary")}
-                  </p>
-                  <fieldset className="application-uninstall__artifacts">
-                    <legend>{t("applications:uninstall.foundItems")}</legend>
-                    {plan.artifacts.map((artifact) => {
-                      const checked = selectedArtifacts.has(artifact.path);
-                      return (
-                        <label key={artifact.path}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={artifact.required}
-                            onChange={() => setSelectedArtifacts((current) => {
-                              const next = new Set(current);
-                              if (checked) next.delete(artifact.path);
-                              else next.add(artifact.path);
-                              return next;
-                            })}
-                          />
-                          <span><strong>{t(`applications:uninstall.artifacts.${artifact.kind}`)}</strong><code>{artifact.path}</code></span>
-                          <b>{formatBytes(artifact.allocatedSizeBytes)}</b>
-                          {artifact.required ? <em>{t("applications:uninstall.required")}</em> : null}
-                        </label>
-                      );
-                    })}
-                  </fieldset>
-                  {plan.skippedPaths.length > 0 ? (
-                    <details className="application-uninstall__skipped">
-                      <summary><AlertTriangle size={14} />{t("applications:uninstall.skipped", { count: plan.skippedPaths.length })}</summary>
-                      <p>{t("applications:uninstall.skippedDescription")}</p>
-                      {plan.skippedPaths.map((path) => <code key={path}>{path}</code>)}
-                    </details>
-                  ) : null}
-                  <footer>
-                    <div><strong>{formatBytes(selectedSize)}</strong><small>{t("applications:uninstall.selectedSize", { count: selectedArtifacts.size })}</small></div>
-                    <button className="button button--danger" type="button" onClick={() => void openDeleteDialog()}>
-                      <PackageX size={15} />{t("applications:uninstall.review", { name: plan.application.name })}
-                    </button>
-                  </footer>
+                  {plan.nativeUninstall ? (
+                    <>
+                      <p className="application-uninstall__plan-note">
+                        <ShieldCheck size={15} />
+                        {t("applications:nativeUninstall.boundary")}
+                      </p>
+                      <dl className="application-uninstall__native-facts">
+                        <div><dt>{t("applications:nativeUninstall.sourceLabel")}</dt><dd>{t(`applications:nativeUninstall.source.${plan.nativeUninstall.source}`)}</dd></div>
+                        <div><dt>{t("applications:nativeUninstall.methodLabel")}</dt><dd>{plan.nativeUninstall.method}</dd></div>
+                        <div><dt>{t("applications:nativeUninstall.elevationLabel")}</dt><dd>{t(plan.nativeUninstall.requiresElevation ? "applications:nativeUninstall.elevationRequired" : "applications:nativeUninstall.elevationNotRequired")}</dd></div>
+                      </dl>
+                      <p className="application-uninstall__native-note"><AlertTriangle size={14} />{t("applications:nativeUninstall.relatedData")}</p>
+                      <footer>
+                        <div><strong>{t("applications:nativeUninstall.systemManaged")}</strong><small>{t("applications:nativeUninstall.revalidate")}</small></div>
+                        <button className="button button--danger" type="button" onClick={() => {
+                          setNativeError(null);
+                          setNativeDialogOpen(true);
+                        }}>
+                          <PackageX size={15} />{t("applications:nativeUninstall.review", { name: plan.application.name })}
+                        </button>
+                      </footer>
+                    </>
+                  ) : (
+                    <>
+                      <p className="application-uninstall__plan-note">
+                        <ShieldCheck size={15} />
+                        {t(plan.application.bundleId
+                          ? "applications:uninstall.planBoundary"
+                          : "applications:uninstall.bundleOnlyBoundary")}
+                      </p>
+                      <fieldset className="application-uninstall__artifacts">
+                        <legend>{t("applications:uninstall.foundItems")}</legend>
+                        {plan.artifacts.map((artifact) => {
+                          const checked = selectedArtifacts.has(artifact.path);
+                          return (
+                            <label key={artifact.path}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={artifact.required}
+                                onChange={() => setSelectedArtifacts((current) => {
+                                  const next = new Set(current);
+                                  if (checked) next.delete(artifact.path);
+                                  else next.add(artifact.path);
+                                  return next;
+                                })}
+                              />
+                              <span><strong>{t(`applications:uninstall.artifacts.${artifact.kind}`)}</strong><code>{artifact.path}</code></span>
+                              <b>{formatBytes(artifact.allocatedSizeBytes)}</b>
+                              {artifact.required ? <em>{t("applications:uninstall.required")}</em> : null}
+                            </label>
+                          );
+                        })}
+                      </fieldset>
+                      {plan.skippedPaths.length > 0 ? (
+                        <details className="application-uninstall__skipped">
+                          <summary><AlertTriangle size={14} />{t("applications:uninstall.skipped", { count: plan.skippedPaths.length })}</summary>
+                          <p>{t("applications:uninstall.skippedDescription")}</p>
+                          {plan.skippedPaths.map((path) => <code key={path}>{path}</code>)}
+                        </details>
+                      ) : null}
+                      <footer>
+                        <div><strong>{formatBytes(selectedSize)}</strong><small>{t("applications:uninstall.selectedSize", { count: selectedArtifacts.size })}</small></div>
+                        <button className="button button--danger" type="button" onClick={() => void openDeleteDialog()}>
+                          <PackageX size={15} />{t("applications:uninstall.review", { name: plan.application.name })}
+                        </button>
+                      </footer>
+                    </>
+                  )}
                 </>
               ) : selectedApplication && selectedRemoval ? (
                 <div className={`application-uninstall__removed-panel is-${selectedRemoval.mode}`} role="status">
@@ -624,7 +734,7 @@ export function ApplicationUninstallAssistant({
                     <i /><i /><i />
                     <ApplicationAvatar
                       name={selectedApplication.name}
-                      source={{ applicationPath: selectedApplication.path }}
+                      source={installedApplicationIconSource(selectedApplication)}
                       className="application-uninstall__avatar is-large"
                     />
                     <span>{selectedRemoval.mode === "trash" ? <ArchiveRestore size={22} /> : <Trash2 size={22} />}</span>
@@ -639,7 +749,11 @@ export function ApplicationUninstallAssistant({
                   </button>
                 </div>
               ) : selectedApplication && !selectedApplication.uninstallable ? (
-                <div className="application-uninstall__selection-empty"><AlertTriangle size={22} /><strong>{t("applications:uninstall.cannotPrepare")}</strong><p>{t(`applications:uninstall.unavailable.${selectedApplication.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</p></div>
+                <div className="application-uninstall__selection-empty"><AlertTriangle size={22} /><strong>{t("applications:uninstall.cannotPrepare")}</strong><p>{selectedApplication.unavailableReason === "protected_application"
+                  ? t("applications:nativeUninstall.unavailable.protected")
+                  : selectedApplication.unavailableReason === "portable_application"
+                    ? t("applications:nativeUninstall.unavailable.portable")
+                    : t(`applications:uninstall.unavailable.${selectedApplication.unavailableReason}`, { defaultValue: t("applications:uninstall.unavailable.generic") })}</p></div>
               ) : (
                 <div className="application-uninstall__selection-empty"><PackageX size={24} /><strong>{t("applications:uninstall.selectTitle")}</strong><p>{t("applications:uninstall.selectDescription")}</p></div>
               )}
@@ -671,8 +785,44 @@ export function ApplicationUninstallAssistant({
           progressVariant="application"
         />
       ) : null}
+      {nativeDialogOpen && plan?.nativeUninstall ? (
+        <div className="dialog-backdrop" role="presentation" onMouseDown={nativeSubmitting ? undefined : () => setNativeDialogOpen(false)}>
+          <section className="native-uninstall-dialog" role="alertdialog" aria-modal="true" aria-labelledby="native-uninstall-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header>
+              <span><PackageX size={20} /></span>
+              <div>
+                <h2 id="native-uninstall-title">{t("applications:nativeUninstall.dialogTitle", { name: plan.application.name })}</h2>
+                <p>{t("applications:nativeUninstall.dialogDescription")}</p>
+              </div>
+              <button className="icon-button" type="button" disabled={nativeSubmitting} aria-label={t("common:close")} onClick={() => setNativeDialogOpen(false)}><X size={16} /></button>
+            </header>
+            <div className="application-uninstall__native-dialog-summary">
+              <ShieldCheck size={15} />
+              <span><strong>{plan.nativeUninstall.method}</strong>{t("applications:nativeUninstall.dialogBoundary")}</span>
+            </div>
+            {plan.nativeUninstall.requiresElevation ? <p className="application-uninstall__native-note"><AlertTriangle size={14} />{t("applications:nativeUninstall.elevationPrompt")}</p> : null}
+            {nativeError ? <p className="application-uninstall__error" role="alert">{t(`applications:uninstall.errors.${nativeError.code}`, { defaultValue: nativeError.message })}</p> : null}
+            <footer>
+              <button className="button button--secondary" type="button" disabled={nativeSubmitting} onClick={() => setNativeDialogOpen(false)}>{t("common:cancel")}</button>
+              <button className="button button--danger" type="button" disabled={nativeSubmitting} onClick={() => void confirmNativeUninstall()}>
+                {nativeSubmitting ? <LoaderCircle className="is-spinning" size={15} /> : <PackageX size={15} />}
+                {t(nativeSubmitting ? "applications:nativeUninstall.submitting" : "applications:nativeUninstall.confirm")}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function installedApplicationIconSource(
+  application: InstalledApplication,
+): ApplicationIconRequest | null {
+  if (application.installationSource === "macos_bundle") {
+    return { applicationPath: application.path };
+  }
+  return application.iconPath ? { executablePath: application.iconPath } : null;
 }
 
 function artifactToCleanupNode(artifact: ApplicationUninstallArtifact, name: string): CleanupMapNode {

@@ -62,6 +62,7 @@ export interface AppSettings {
   defaultProcessView: ProcessViewMode;
   historyPersistenceEnabled: boolean;
   historyApplicationNamesEnabled: boolean;
+  applicationImpactHistoryEnabled: boolean;
   historyRetentionDays: HistoryRetentionDays;
   networkConnectionHistoryEnabled: boolean;
   networkConnectionHistoryRetentionDays: HistoryRetentionDays;
@@ -91,6 +92,7 @@ export function defaultAppSettings(
     defaultProcessView: "flat",
     historyPersistenceEnabled: true,
     historyApplicationNamesEnabled: false,
+    applicationImpactHistoryEnabled: false,
     historyRetentionDays: 7,
     networkConnectionHistoryEnabled: false,
     networkConnectionHistoryRetentionDays: 30,
@@ -153,6 +155,10 @@ export function parseAppSettings(
         typeof value.historyApplicationNamesEnabled === "boolean"
           ? value.historyApplicationNamesEnabled
           : fallback.historyApplicationNamesEnabled,
+      applicationImpactHistoryEnabled:
+        typeof value.applicationImpactHistoryEnabled === "boolean"
+          ? value.applicationImpactHistoryEnabled
+          : fallback.applicationImpactHistoryEnabled,
       historyRetentionDays: isHistoryRetentionDays(value.historyRetentionDays)
         ? value.historyRetentionDays
         : fallback.historyRetentionDays,
@@ -172,6 +178,7 @@ export function parseAppSettings(
       networkQualityHistoryHours:
         value.networkQualityHistoryHours === 1
         || value.networkQualityHistoryHours === 24
+        || value.networkQualityHistoryHours === 168
           ? value.networkQualityHistoryHours
           : fallback.networkQualityHistoryHours,
       applicationWatchRules: isApplicationWatchRuleArray(value.applicationWatchRules)

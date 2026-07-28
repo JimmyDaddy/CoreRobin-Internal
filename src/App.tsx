@@ -55,6 +55,7 @@ import { MetricCard } from "./components/MetricCard";
 import { LocaleSelect } from "./components/LocaleSelect";
 import { ProcessInspector } from "./components/ProcessInspector";
 import { ProcessTable } from "./components/ProcessTable";
+import { PersonalBaselinePanel } from "./components/PersonalBaselinePanel";
 import { RobinIcon } from "./components/RobinIcon";
 import { ResourceHistory } from "./components/ResourceHistory";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
@@ -83,6 +84,7 @@ import {
 import { useStartupItems } from "./hooks/useStartupItems";
 import { useStartupImpactMeasurement } from "./hooks/useStartupImpactMeasurement";
 import { useApplicationWatchRules } from "./hooks/useApplicationWatchRules";
+import { useApplicationImpactHistory } from "./hooks/useApplicationImpactHistory";
 import { useConnectionHistory } from "./hooks/useConnectionHistory";
 import { useFileInsightsScan } from "./hooks/useFileInsightsScan";
 import { useUserActionHistory } from "./hooks/useUserActionHistory";
@@ -330,6 +332,13 @@ function App() {
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
   );
+  const applicationImpactHistory = useApplicationImpactHistory(
+    snapshot,
+    settings.historyPersistenceEnabled
+      && settings.historyApplicationNamesEnabled
+      && settings.applicationImpactHistoryEnabled,
+    settings.historyApplicationNamesEnabled,
+  );
   const resourceAlerts = useResourceAlerts(
     healthSnapshot,
     settings.usageThresholds,
@@ -396,13 +405,19 @@ function App() {
     active: activeView === "network" && mainVisible,
     historyEnabled: settings.networkQualityHistoryEnabled,
     historyHours: settings.networkQualityHistoryHours,
+    networkSignature: snapshot?.network.interfaces
+      .filter((networkInterface) => networkInterface.operationalState === "up")
+      .map((networkInterface) => networkInterface.name)
+      .sort()
+      .join("|") ?? "",
   });
   const productDataPrivacy = useProductDataPrivacy({
     resourceItemCount:
       persistentHistory.storedPoints.length
       + resourceAlerts.storedEvents.length
       + applicationWatchRules.storedEvents.length
-      + userActions.storedRecords.length,
+      + userActions.storedRecords.length
+      + applicationImpactHistory.storedPointCount,
     resourceUpdatedAtMs: latestNonZeroTimestamp([
       ...persistentHistory.storedPoints.map((point) => point.timestamp),
       ...resourceAlerts.storedEvents.map((event) => event.timestamp),
@@ -410,6 +425,7 @@ function App() {
       ...userActions.storedRecords.map(
         (record) => record.completedAtMs ?? record.startedAtMs,
       ),
+      ...applicationImpactHistory.points.map((point) => point.sampledAtMs),
     ]),
     resourceRetentionDays: settings.historyRetentionDays,
     connectionItemCount: connectionHistory.entries.length,
@@ -430,6 +446,7 @@ function App() {
       resourceAlerts.clearSaved();
       applicationWatchRules.clearSaved();
       userActions.clearSaved();
+      applicationImpactHistory.clear();
     },
     onClearConnectionHistory: () => {
       connectionHistory.clear();
@@ -1631,7 +1648,8 @@ function App() {
                   cancelling={cleanupScan.cancelling}
                   progress={cleanupScan.progress}
                   snapshotStatus={cleanupScan.snapshotStatus}
-                  onScan={() => void cleanupScan.scan()}
+                  volumes={snapshot.disk.volumes}
+                  onScan={(target) => void cleanupScan.scan(target)}
                   onCancel={() => void cleanupScan.cancel()}
                   onDeletionApplied={cleanupScan.applyDeletion}
                   onSubtreeRetained={cleanupScan.retainSubtree}
@@ -1702,6 +1720,7 @@ function App() {
                     }}
                   />
                 ) : null}
+                <PersonalBaselinePanel points={persistentHistory.points} compact />
                 <DeviceWellbeing
                   sensors={snapshot.sensors}
                   warmingUp={snapshot.warmingUp}
@@ -1836,7 +1855,8 @@ function App() {
                 cancelling={cleanupScan.cancelling}
                 progress={cleanupScan.progress}
                 snapshotStatus={cleanupScan.snapshotStatus}
-                onScan={() => void cleanupScan.scan()}
+                volumes={snapshot.disk.volumes}
+                onScan={(target) => void cleanupScan.scan(target)}
                 onCancel={() => void cleanupScan.cancel()}
                 onDeletionApplied={cleanupScan.applyDeletion}
                 onSubtreeRetained={cleanupScan.retainSubtree}
@@ -1884,6 +1904,7 @@ function App() {
                 applications={diagnosis?.applications ?? []}
                 totalMemoryBytes={snapshot.memory.totalBytes}
                 impactMeasurements={startupImpactMeasurements}
+                actionRecords={userActions.records}
                 onRefresh={startupItems.refresh}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
@@ -1892,6 +1913,12 @@ function App() {
               <HistoryExplorer
                 points={persistentHistory.points}
                 storedPointCount={persistentHistory.storedPoints.length}
+                applicationImpactPoints={applicationImpactHistory.points}
+                applicationImpactHistoryEnabled={
+                  settings.historyPersistenceEnabled
+                  && settings.historyApplicationNamesEnabled
+                  && settings.applicationImpactHistoryEnabled
+                }
                 alertEvents={resourceAlerts.events}
                 storedAlertEventCount={resourceAlerts.storedEvents.length}
                 applicationWatchEvents={applicationWatchRules.events}
@@ -1908,11 +1935,23 @@ function App() {
                 onRetentionDaysChange={(historyRetentionDays) =>
                   updateSettings({ historyRetentionDays })
                 }
+                onApplicationImpactHistoryEnabledChange={(enabled) =>
+                  updateSettings({
+                    historyPersistenceEnabled: enabled
+                      ? true
+                      : settings.historyPersistenceEnabled,
+                    historyApplicationNamesEnabled: enabled
+                      ? true
+                      : settings.historyApplicationNamesEnabled,
+                    applicationImpactHistoryEnabled: enabled,
+                  })
+                }
                 onClear={() => {
                   persistentHistory.clear();
                   resourceAlerts.clearSaved();
                   applicationWatchRules.clearSaved();
                   userActions.clearSaved();
+                  applicationImpactHistory.clear();
                 }}
                 onOpenUserAction={openUserActionDestination}
               />

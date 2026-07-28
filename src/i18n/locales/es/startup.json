@@ -129,4 +129,19 @@
       "description": "La configuración permanece, pero el sistema no la iniciará automáticamente a partir de esta entrada."
     }
   }
+,
+  "impactComparison": {
+    "title": "Compared with recent starts",
+    "description": "Uses the median of {{count}} earlier measurements.",
+    "improved": "{{value}}% faster to settle",
+    "similar": "Close to the recent median",
+    "slower": "{{value}}% slower to settle",
+    "risingApplication": "{{name}} increased the most, by {{value}} CPU points"
+  },
+  "impactReceipt": {
+    "title": "Result after your startup-item change",
+    "improved": "The next start improved after changing {{name}}.",
+    "similar": "The next start stayed close to normal after changing {{name}}.",
+    "slower": "The next start was still slower after changing {{name}}; this item may not be the main cause."
+  }
 }

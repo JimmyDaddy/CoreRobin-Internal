@@ -281,6 +281,38 @@ describe("file insights workspace", () => {
     ], false);
   });
 
+  it("uses long-unmodified file guidance when adding old files to the cleanup basket", async () => {
+    render(
+      <FileInsightsExplorer
+        scan={RESULT}
+        progress={null}
+        loading={false}
+        error={null}
+        onRun={() => undefined}
+        onCancel={() => undefined}
+        onBack={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", {
+      name: /180 天未修改且超过 100 MB/,
+    }));
+    fireEvent.click(screen.getByRole("checkbox", {
+      name: "选择 old-video.mov 进入清理复核",
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "检查清理方式" }));
+
+    await waitFor(() => expect(cleanupApi.createCleanupDeleteLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paths: ["/Users/demo/Movies/old-video.mov"],
+        mode: "trash",
+      }),
+    ));
+    expect(screen.getByRole("heading", { name: "处理长期未修改文件" })).toBeTruthy();
+    expect(screen.getByText(/已不存在的文件会自动跳过/)).toBeTruthy();
+    expect(screen.queryByText(/每个重复组至少保留一份/)).toBeNull();
+  });
+
   it("switches deletion modes without rebuilding or revalidating the lease", async () => {
     render(
       <FileInsightsExplorer

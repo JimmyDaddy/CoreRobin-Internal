@@ -419,6 +419,25 @@ export function SettingsExplorer({
               />
               <span>{t("settings:history.applicationNames")}</span>
             </label>
+            <label className="settings-switch" title={t("settings:applicationImpactHistory.hint")}>
+              <input
+                type="checkbox"
+                role="switch"
+                disabled={
+                  !settings.historyPersistenceEnabled
+                  || !settings.historyApplicationNamesEnabled
+                }
+                checked={
+                  settings.historyPersistenceEnabled
+                  && settings.historyApplicationNamesEnabled
+                  && settings.applicationImpactHistoryEnabled
+                }
+                onChange={(event) =>
+                  onChange({ applicationImpactHistoryEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings:applicationImpactHistory.label")}</span>
+            </label>
             <label className="settings-field">
               <span>{t("settings:history.retention")}</span>
               <SettingsSelect

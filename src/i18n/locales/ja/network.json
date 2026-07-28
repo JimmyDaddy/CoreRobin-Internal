@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "ネットワーク自動サンプリング", "title": "ネットワーク品質", "description": "表示中は 30 秒ごとに検査し、任意で 1 時間または 24 時間の 5 分集計をバックグラウンド保存します。",
+    "eyebrow": "ネットワーク自動サンプリング", "title": "ネットワーク品質", "description": "表示中は 30 秒ごとに検査し、任意で最長 7 日間の 5 分集計をバックグラウンド保存します。",
     "run": "今すぐ再検査", "checking": "検査中…", "empty": "最初のネットワーク品質検査を実行中…",
     "method": "example.com と one.one.one.one を TCP で探測し、ローカルルート、DNS、IPv4/IPv6、インターネット到達性を特権付き生パケットなしで確認します。",
     "dns": "DNS", "latency": "平均遅延", "jitter": "ジッター", "loss": "TCP プローブ失敗", "probes": "TCP プローブ", "probeSuccess": "{{successful}}/{{total}} 回成功", "probeAndTargets": "{{successful}}/{{total}} プローブ成功 · {{targetSuccessful}}/{{targetTotal}} 接続先に到達",
@@ -116,4 +116,20 @@
   "packets": "{{count}}パケット",
   "unknownMtu": "MTUサイズが不明",
   "noMac": "MACアドレスなし"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

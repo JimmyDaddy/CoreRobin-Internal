@@ -317,6 +317,26 @@ pub struct CleanupScan {
     pub unreadable_entry_count: usize,
     pub unreadable_paths: Vec<String>,
     pub deletion_available: bool,
+    #[serde(default)]
+    pub target_kind: CleanupScanTargetKind,
+    #[serde(default)]
+    pub target_path: String,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupScanTargetKind {
+    #[default]
+    SystemDisk,
+    Volume,
+    Folder,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScanRequest {
+    pub target_kind: CleanupScanTargetKind,
+    pub target_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -340,6 +360,30 @@ pub struct InstalledApplication {
     pub modified_at_ms: Option<u64>,
     pub uninstallable: bool,
     pub unavailable_reason: Option<String>,
+    #[serde(default)]
+    pub installation_source: ApplicationInstallationSource,
+    #[serde(default)]
+    pub native_uninstall_identifier: Option<String>,
+    #[serde(default)]
+    pub native_uninstall_requires_elevation: bool,
+    #[serde(default)]
+    pub icon_path: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ApplicationInstallationSource {
+    MacosBundle,
+    WindowsMsi,
+    WindowsMsix,
+    WindowsUninstaller,
+    LinuxFlatpak,
+    LinuxDeb,
+    LinuxRpm,
+    LinuxSnap,
+    Portable,
+    #[default]
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -387,6 +431,40 @@ pub struct ApplicationUninstallPlan {
     pub application: InstalledApplication,
     pub artifacts: Vec<ApplicationUninstallArtifact>,
     pub skipped_paths: Vec<String>,
+    pub native_uninstall: Option<NativeApplicationUninstallPlan>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeApplicationUninstallPlan {
+    pub id: String,
+    pub source: ApplicationInstallationSource,
+    pub identifier: String,
+    pub method: String,
+    pub requires_elevation: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeApplicationUninstallExecutionRequest {
+    pub plan_id: String,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeApplicationUninstallOutcome {
+    Succeeded,
+    Cancelled,
+    Failed,
+    RestartRequired,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeApplicationUninstallResult {
+    pub outcome: NativeApplicationUninstallOutcome,
+    pub exit_code: Option<i32>,
+    pub message: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -454,6 +532,8 @@ pub struct CleanupNode {
 pub struct CleanupSubtreeRequest {
     pub request_id: String,
     pub path: String,
+    #[serde(default)]
+    pub scan_root: Option<String>,
     pub safety: CleanupSafety,
     #[serde(default)]
     pub expand_smaller_objects: bool,
@@ -500,6 +580,8 @@ pub struct CleanupPathState {
 pub struct CleanupDeleteLeaseRequest {
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
+    #[serde(default)]
+    pub scan_root: Option<String>,
     pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
     pub mode: CleanupDeleteMode,
     #[serde(default)]
@@ -683,6 +765,9 @@ pub struct NetworkQualityDiagnostic {
 #[serde(rename_all = "camelCase")]
 pub struct NetworkQualityResult {
     pub sampled_at_ms: u64,
+    /// A one-way fingerprint of the operating system's selected default route.
+    /// Raw interface, gateway, and address values never leave the backend.
+    pub route_signature: Option<String>,
     pub target_host: String,
     pub target_port: u16,
     pub target_count: usize,

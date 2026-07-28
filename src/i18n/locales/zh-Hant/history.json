@@ -144,4 +144,48 @@
   "privacyCollected": "記錄整機資源快照、超限與恢復事件，以及你確認執行的操作類型、結果、數量和釋放空間；應用程式或啟動項目名稱只有在設定中單獨允許後才會儲存。",
   "privacyExcluded": "資源與操作歷史不記錄程序命令、使用者、路徑、檔名或連線地址；若另行啟用「連線歷史」，五分鐘彙總資料可能在本機保存遠端 IP、網域、連接埠與應用程式名稱。",
   "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
+,
+  "applicationImpact": {
+    "eyebrow": "Application attribution",
+    "title": "Which apps affected this computer",
+    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
+    "enable": "Keep app impact history",
+    "range": "Application history range",
+    "hours1": "1 hour",
+    "hours24": "24 hours",
+    "hours168": "7 days",
+    "disabledTitle": "Application attribution is off",
+    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
+    "learningTitle": "Building application history",
+    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
+    "peakCpu": "Peak CPU {{value}}",
+    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+  },
+  "baseline": {
+    "eyebrow": "This computer's baseline",
+    "learning": {
+      "title": "Learning what is normal here",
+      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+    },
+    "typical": {
+      "title": "Close to this computer's usual pattern",
+      "description": "No meaningful deviation was found across the available baseline metrics."
+    },
+    "elevated": {
+      "title": "Different from this computer's usual pattern",
+      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+    },
+    "collecting": "Collecting baseline",
+    "change": "{{value}}% {{direction}} than usual",
+    "higher": "higher",
+    "lower": "lower",
+    "metric": {
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk throughput",
+      "network": "Network throughput",
+      "temperature": "Temperature",
+      "battery": "Battery drain"
+    }
+  }
 }

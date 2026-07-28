@@ -10,11 +10,13 @@ export function buildCleanupDeleteLeaseRequest(
   items: readonly CleanupMapNode[],
   scanSampledAtMs: number,
   mode: CleanupDeleteMode,
+  scanRoot?: string,
 ): CleanupDeleteLeaseRequest {
   const expectedTargets = items.flatMap(cleanupNodeEvidence);
   return {
     paths: expectedTargets.map((target) => target.path),
     scanSampledAtMs,
+    ...(scanRoot ? { scanRoot } : {}),
     expectedTargets,
     mode,
   };

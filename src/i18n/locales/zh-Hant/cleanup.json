@@ -31,6 +31,7 @@
       "keepFile": "保留 {{name}} 在此組中",
       "dialogTitle": "處理重複檔案",
       "dialogDescription": "每組至少保留一個檔案。多餘副本可移到垃圾桶，或在確認後永久刪除；執行前會再次檢查檔案狀態與受保護路徑。",
+      "refreshIncomplete": "CoreRobin 無法依路徑比對全部重新檢查後的重複檔案。",
       "actionName": "重複文件處理",
       "completed": "處理了 {{count}} 重複副本並釋放了 {{size}}",
       "partial": "已處理 {{deletedCount}}；{{failedCount}} 無法處理",
@@ -281,4 +282,31 @@
   "unreadable": "有 {{count}} 個位置受許可權保護或暫時無法讀取，只有這些位置未計入結果。",
   "fullDiskAccessHint": "macOS 上可在“系統設定 → 隱私與安全性 → 完全磁碟訪問許可權”中授權 CoreRobin 後重新掃描。",
   "safetyBoundary": "掃描沒有時間或數量上限，也不會跟隨符號連結；只有放入清理籃、核對路徑並明確確認的內容才會永久刪除，且無法恢復。"
+,
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "選擇 {{name}} 進入清理檢查",
+    "selected": "已選擇",
+    "select": "選擇",
+    "selectionHint": "只有你明確選擇的檔案才會加入清理籃檢查。",
+    "emptySelection": "請選擇已確認不再需要的長期未修改檔案。",
+    "summary": "已選擇 {{count}} 個長期未修改檔案，共 {{size}}",
+    "review": "檢查清理方式",
+    "dialogTitle": "處理長期未修改檔案",
+    "dialogDescription": "檢查選取的檔案後，可將其移到垃圾桶，或確認後永久刪除；已不存在的檔案會自動略過。",
+    "refreshIncomplete": "CoreRobin 無法依路徑比對全部重新檢查後的長期未修改檔案。",
+    "actionName": "長期未修改檔案清理",
+    "completed": "已處理 {{count}} 個長期未修改檔案，釋放 {{size}}",
+    "partial": "已處理 {{deletedCount}} 個，{{failedCount}} 個無法處理",
+    "cancelled": "處理已停止，已完成 {{count}} 個"
+  }
 }

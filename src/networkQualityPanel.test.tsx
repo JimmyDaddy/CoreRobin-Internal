@@ -91,6 +91,7 @@ function NetworkQualityHarness() {
 function qualityResult(sampledAtMs: number): NetworkQualityResult {
   return {
     sampledAtMs,
+    routeSignature: "route-a",
     targetHost: "example.com",
     targetPort: 443,
     targetCount: 2,

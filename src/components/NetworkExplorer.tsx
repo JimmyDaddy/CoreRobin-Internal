@@ -54,6 +54,8 @@ import {
 } from "../hooks/useNetworkQualityMonitor";
 import {
   networkQualityFailurePercent,
+  networkQualityHistoryForDisplay,
+  type NetworkQualityHistoryEvent,
   type NetworkQualityHistoryHours,
   type NetworkQualityHistoryPoint,
 } from "../networkQualityHistory";
@@ -314,10 +316,12 @@ export function NetworkQualityPanel({
   const result = monitor.result;
   const samples = selectedWindow === "15m"
     ? monitor.sessionSamples.map(trendPointFromResult)
-    : monitor.history
-        .filter((point) =>
+    : networkQualityHistoryForDisplay(
+        monitor.history.filter((point) =>
           point.sampledAtMs >= Date.now() - selectedWindow * 60 * 60 * 1_000)
-        .map(trendPointFromHistory);
+        ,
+        selectedWindow,
+      ).map(trendPointFromHistory);
   const trendWindowMs = selectedWindow === "15m"
     ? NETWORK_QUALITY_WINDOW_MS
     : selectedWindow * 60 * 60 * 1_000;
@@ -403,7 +407,7 @@ export function NetworkQualityPanel({
           >
             {t("network:quality.history.minutes15")}
           </button>
-          {([1, 24] as const).map((hours) => (
+          {([1, 24, 168] as const).map((hours) => (
             <button
               type="button"
               key={hours}
@@ -414,7 +418,9 @@ export function NetworkQualityPanel({
                 setSelectedWindow(hours);
               }}
             >
-              {t(`network:quality.history.hours${hours}`)}
+              {hours === 168
+                ? t("network:qualityHistoryHours168")
+                : t(`network:quality.history.hours${hours}`)}
             </button>
           ))}
         </div>
@@ -437,6 +443,15 @@ export function NetworkQualityPanel({
             : t("network:quality.history.window", { count: selectedWindow })}
         />
       ) : null}
+      {selectedWindow !== "15m" ? (
+        <NetworkQualityEventSummary
+          events={monitor.history
+            .filter((point) =>
+              point.sampledAtMs >= Date.now() - selectedWindow * 60 * 60 * 1_000)
+            .flatMap((point) => point.events)}
+          windowHours={selectedWindow}
+        />
+      ) : null}
       <small className="network-quality__method">{t("network:quality.method")}</small>
     </section>
   );
@@ -452,6 +467,7 @@ interface NetworkQualityTrendPoint {
   averageLatencyMs: number | null;
   jitterMs: number | null;
   tcpProbeFailurePercent: number;
+  events: readonly NetworkQualityHistoryEvent[];
 }
 
 function trendPointFromResult(
@@ -463,6 +479,7 @@ function trendPointFromResult(
     averageLatencyMs: result.averageLatencyMs,
     jitterMs: result.jitterMs,
     tcpProbeFailurePercent: networkQualityFailurePercent(result),
+    events: [],
   };
 }
 
@@ -475,6 +492,7 @@ function trendPointFromHistory(
     averageLatencyMs: point.averageLatencyMs,
     jitterMs: point.jitterMs,
     tcpProbeFailurePercent: networkQualityFailurePercent(point),
+    events: point.events,
   };
 }
 
@@ -551,6 +569,19 @@ function NetworkQualityTrend({
               />
             );
           })}
+          {samples.flatMap((sample) =>
+            sample.events
+              .filter((event) => event.kind === "sleep_gap")
+              .map((event) => (
+                <line
+                  className="network-quality__gap-marker"
+                  key={`gap-${event.atMs}`}
+                  x1={xFor(sample.sampledAtMs)}
+                  x2={xFor(sample.sampledAtMs)}
+                  y1={QUALITY_CHART_TOP}
+                  y2={QUALITY_CHART_BOTTOM}
+                />
+              )))}
           {latencySegments.map((points, index) => <polyline className="network-quality__line is-latency" key={`latency-${index}`} points={points} />)}
           {jitterSegments.map((points, index) => <polyline className="network-quality__line is-jitter" key={`jitter-${index}`} points={points} />)}
           {newestLatency !== null ? <circle className="network-quality__point is-latency" cx={xFor(latest.sampledAtMs)} cy={yFor(newestLatency)} r={4} /> : null}
@@ -573,6 +604,71 @@ function NetworkQualityTrend({
         <div><dt>{t("network:quality.windowPeak")}</dt><dd>{formatMilliseconds(peakLatency)}</dd></div>
         <div><dt>{t("network:quality.anomalies")}</dt><dd>{t("network:quality.anomalyCount", { count: anomalies })}</dd></div>
       </dl>
+    </section>
+  );
+}
+
+function NetworkQualityEventSummary({
+  events,
+  windowHours,
+}: {
+  events: readonly NetworkQualityHistoryEvent[];
+  windowHours: NetworkQualityHistoryHours;
+}) {
+  const { t, i18n } = useAppTranslation();
+  const counts = {
+    outage: events.filter((event) =>
+      event.kind === "status_change" && event.status !== "online").length,
+    gap: events.filter((event) => event.kind === "sleep_gap").length,
+    interface: events.filter((event) => event.kind === "interface_change").length,
+    dns: events.filter((event) => event.kind === "dns_failure").length,
+    direct: events.filter((event) => event.kind === "direct_failure").length,
+  };
+  const latest = [...events]
+    .sort((left, right) => right.atMs - left.atMs)
+    .slice(0, 5);
+
+  return (
+    <section className="network-quality__events" aria-labelledby="network-quality-events-title">
+      <header>
+        <div>
+          <span className="eyebrow">{t("network:qualityEvents.eyebrow")}</span>
+          <h3 id="network-quality-events-title">{t("network:qualityEvents.title")}</h3>
+        </div>
+        <p>{t("network:qualityEvents.summary", {
+          hours: windowHours,
+          outage: counts.outage,
+          gap: counts.gap,
+          dns: counts.dns,
+          direct: counts.direct,
+          interface: counts.interface,
+        })}</p>
+      </header>
+      {latest.length > 0 ? (
+        <ol>
+          {latest.map((event) => (
+            <li key={`${event.kind}:${event.atMs}`}>
+              <span className={`is-${event.kind}`}><Activity size={13} /></span>
+              <div>
+                <strong>{t(`network:qualityEvents.kind.${event.kind}`)}</strong>
+                <small>{new Date(event.atMs).toLocaleString(i18n.resolvedLanguage, {
+                  hour12: false,
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}</small>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="network-quality__events-empty">
+          <CheckCircle2 size={15} />
+          {t("network:qualityEvents.none")}
+        </div>
+      )}
+      <small>{t("network:qualityEvents.privacy")}</small>
     </section>
   );
 }

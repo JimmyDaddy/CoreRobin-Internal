@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { startupApplicationIconSource } from "../applicationIcon";
+import "./StartupExplorer.css";
 
 import {
   createStartupManagementLease,
@@ -17,6 +18,7 @@ import {
 } from "../api";
 import type { ApplicationImpact } from "../diagnosis";
 import type { StartupImpactMeasurement } from "../startupImpact";
+import type { UserActionRecord } from "../userActionHistory";
 import {
   filterStartupItems,
   startupAdvice,
@@ -46,6 +48,7 @@ interface StartupExplorerProps {
   applications: readonly ApplicationImpact[];
   totalMemoryBytes: number;
   impactMeasurements?: readonly StartupImpactMeasurement[];
+  actionRecords?: readonly UserActionRecord[];
   onRefresh: () => void | Promise<void>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
@@ -59,6 +62,7 @@ export function StartupExplorer({
   applications,
   totalMemoryBytes,
   impactMeasurements = [],
+  actionRecords = [],
   onRefresh,
   onUserActionStart,
   onUserActionComplete,
@@ -225,7 +229,11 @@ export function StartupExplorer({
       ) : null}
 
       {variant === "professional" ? (
-        <StartupImpactPanel measurements={impactMeasurements} applications={applications} />
+        <StartupImpactPanel
+          measurements={impactMeasurements}
+          applications={applications}
+          actionRecords={actionRecords}
+        />
       ) : null}
 
       {!snapshot && loading ? (
@@ -299,12 +307,21 @@ export function StartupExplorer({
 function StartupImpactPanel({
   measurements,
   applications,
+  actionRecords,
 }: {
   measurements: readonly StartupImpactMeasurement[];
   applications: readonly ApplicationImpact[];
+  actionRecords: readonly UserActionRecord[];
 }) {
   const { t, i18n } = useAppTranslation();
   const latest = measurements[0];
+  const previous = measurements.slice(1);
+  const comparison = latest
+    ? compareStartupImpact(latest, previous)
+    : null;
+  const relatedAction = latest
+    ? latestStartupActionBeforeMeasurement(actionRecords, latest, measurements[1])
+    : null;
   const runtimeApplications = new Map(
     applications.map((application) => [application.name.toLocaleLowerCase(), application]),
   );
@@ -322,6 +339,35 @@ function StartupImpactPanel({
             <span><strong>{formatBytes(latest.peakDiskBytesPerSecond)}/s</strong>{t("startup:impact.peakDisk")}</span>
             <span><strong>{latest.sampleCount}</strong>{t("startup:impact.samples")}</span>
           </div>
+          {comparison ? (
+            <div className={`startup-impact__comparison is-${comparison.direction}`}>
+              <span>
+                <strong>{t("startup:impactComparison.title")}</strong>
+                <small>{t("startup:impactComparison.description", {
+                  count: previous.length,
+                })}</small>
+              </span>
+              <b>{comparison.settleDeltaPercent === null
+                ? t("common:unavailable")
+                : t(`startup:impactComparison.${comparison.direction}`, {
+                    value: Math.abs(comparison.settleDeltaPercent).toFixed(0),
+                  })}</b>
+              {comparison.risingApplication ? (
+                <em>{t("startup:impactComparison.risingApplication", {
+                  name: comparison.risingApplication.name,
+                  value: comparison.risingApplication.cpuDelta.toFixed(0),
+                })}</em>
+              ) : null}
+            </div>
+          ) : null}
+          {relatedAction && comparison ? (
+            <div className={`startup-impact__receipt is-${comparison.direction}`} role="status">
+              <strong>{t("startup:impactReceipt.title")}</strong>
+              <span>{t(`startup:impactReceipt.${comparison.direction}`, {
+                name: relatedAction.targetName ?? t("history:actions.target.startup"),
+              })}</span>
+            </div>
+          ) : null}
           {latest.applications.length > 0 ? <ol className="startup-impact__apps">{latest.applications.map((application) => {
             const runtimeApplication = runtimeApplications.get(application.name.toLocaleLowerCase());
             return (
@@ -342,6 +388,81 @@ function StartupImpactPanel({
       ) : <div className="startup-impact__empty"><Rocket size={20} /><p>{t("startup:impact.empty")}</p></div>}
     </section>
   );
+}
+
+export interface StartupImpactComparison {
+  direction: "improved" | "similar" | "slower";
+  settleDeltaPercent: number | null;
+  risingApplication: { name: string; cpuDelta: number } | null;
+}
+
+export function compareStartupImpact(
+  latest: StartupImpactMeasurement,
+  previous: readonly StartupImpactMeasurement[],
+): StartupImpactComparison | null {
+  if (previous.length === 0) return null;
+  const previousSettle = previous
+    .map((measurement) => measurement.settledAfterMs)
+    .filter((value): value is number => value !== null);
+  const baselineSettle = median(previousSettle);
+  const settleDeltaPercent =
+    latest.settledAfterMs === null || baselineSettle === null || baselineSettle <= 0
+      ? null
+      : ((latest.settledAfterMs - baselineSettle) / baselineSettle) * 100;
+  const previousApps = new Map<string, number[]>();
+  for (const measurement of previous) {
+    for (const application of measurement.applications) {
+      const key = application.name.toLocaleLowerCase();
+      const values = previousApps.get(key) ?? [];
+      values.push(application.peakCpuPercent);
+      previousApps.set(key, values);
+    }
+  }
+  const risingApplication = latest.applications
+    .map((application) => {
+      const baseline = median(
+        previousApps.get(application.name.toLocaleLowerCase()) ?? [],
+      ) ?? 0;
+      return {
+        name: application.name,
+        cpuDelta: application.peakCpuPercent - baseline,
+      };
+    })
+    .filter(({ cpuDelta }) => cpuDelta >= 10)
+    .sort((left, right) => right.cpuDelta - left.cpuDelta)[0] ?? null;
+  return {
+    direction: settleDeltaPercent === null || Math.abs(settleDeltaPercent) < 10
+      ? "similar"
+      : settleDeltaPercent < 0
+        ? "improved"
+        : "slower",
+    settleDeltaPercent,
+    risingApplication,
+  };
+}
+
+function latestStartupActionBeforeMeasurement(
+  records: readonly UserActionRecord[],
+  latest: StartupImpactMeasurement,
+  previous: StartupImpactMeasurement | undefined,
+): UserActionRecord | null {
+  return [...records]
+    .filter((record) =>
+      (record.kind === "startup_disable" || record.kind === "startup_enable")
+      && record.status === "succeeded"
+      && record.startedAtMs < latest.launchedAtMs
+      && (!previous || record.startedAtMs > previous.launchedAtMs)
+    )
+    .sort((left, right) => right.startedAtMs - left.startedAtMs)[0] ?? null;
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const ordered = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 === 0
+    ? (ordered[middle - 1]! + ordered[middle]!) / 2
+    : ordered[middle]!;
 }
 
 function StartupItemRow({

@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "Échantillonnage réseau automatique", "title": "Qualité du réseau", "description": "Vérifie toutes les 30 secondes lorsque la page est ouverte. En option, conserve des agrégats de cinq minutes pendant 1 ou 24 heures en arrière-plan.",
+    "eyebrow": "Échantillonnage réseau automatique", "title": "Qualité du réseau", "description": "Vérifie toutes les 30 secondes lorsque la page est ouverte. En option, conserve des agrégats de cinq minutes jusqu’à 7 jours en arrière-plan.",
     "run": "Vérifier maintenant", "checking": "Vérification…", "empty": "Première vérification de la qualité du réseau…",
     "method": "Des sondes TCP vers example.com et one.one.one.one distinguent route locale, DNS, IPv4/IPv6 et accès Internet sans paquets bruts privilégiés.",
     "dns": "DNS", "latency": "Latence moyenne", "jitter": "Gigue", "loss": "Échecs des sondes TCP", "probes": "Sondes TCP", "probeSuccess": "{{successful}}/{{total}} réussies", "probeAndTargets": "{{successful}}/{{total}} sondes · {{targetSuccessful}}/{{targetTotal}} cibles joignables",
@@ -116,4 +116,20 @@
   "packets": "{{count}} paquets",
   "unknownMtu": "Inconnu",
   "noMac": "Aucune adresse MAC"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

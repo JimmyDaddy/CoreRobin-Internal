@@ -202,6 +202,15 @@ function normalizeCleanupScan(value: unknown): unknown {
     applicationInventoryAvailable: typeof value.applicationInventoryAvailable === "boolean"
       ? value.applicationInventoryAvailable
       : false,
+    targetKind:
+      value.targetKind === "volume" || value.targetKind === "folder"
+        ? value.targetKind
+        : "system_disk",
+    targetPath: typeof value.targetPath === "string"
+      ? value.targetPath
+      : typeof (value.root as Record<string, unknown> | undefined)?.path === "string"
+        ? (value.root as Record<string, unknown>).path
+        : "",
   };
 }
 
@@ -237,7 +246,11 @@ function isCleanupScan(value: unknown): value is CleanupScan {
     isFiniteNonNegativeNumber(value.unreadableEntryCount) &&
     Array.isArray(value.unreadablePaths) &&
     value.unreadablePaths.every((path) => typeof path === "string") &&
-    typeof value.deletionAvailable === "boolean"
+    typeof value.deletionAvailable === "boolean" &&
+    (value.targetKind === "system_disk"
+      || value.targetKind === "volume"
+      || value.targetKind === "folder") &&
+    typeof value.targetPath === "string"
   );
 }
 

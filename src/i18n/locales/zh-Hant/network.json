@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "自動網路取樣", "title": "網路品質", "description": "頁面開啟時每 30 秒檢查；可選擇在背景保留 1 小時或 24 小時的五分鐘彙總趨勢。",
+    "eyebrow": "自動網路取樣", "title": "網路品質", "description": "頁面開啟時每 30 秒檢查；可選擇在背景保留最長 7 天的五分鐘彙總趨勢。",
     "run": "立即重測", "checking": "正在檢查…", "empty": "正在執行第一次網路品質檢查…",
     "method": "使用 TCP 分別探測 example.com 與 one.one.one.one，並區分本機路由、DNS、IPv4/IPv6 與公網連線；不傳送需提權的原始封包。",
     "dns": "DNS", "latency": "平均延遲", "jitter": "抖動", "loss": "TCP 探測失敗", "probes": "TCP 探測", "probeSuccess": "{{successful}}/{{total}} 次成功", "probeAndTargets": "{{successful}}/{{total}} 探測成功 · {{targetSuccessful}}/{{targetTotal}} 目標可達",
@@ -116,4 +116,20 @@
   "packets": "{{count}} 個資料包",
   "unknownMtu": "未知",
   "noMac": "無 MAC 地址"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

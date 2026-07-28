@@ -1,0 +1,38 @@
+.startup-impact__comparison,
+.startup-impact__receipt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.startup-impact__comparison > span {
+  display: grid;
+  gap: 3px;
+}
+
+.startup-impact__comparison strong,
+.startup-impact__receipt strong { font-size: 10px; }
+.startup-impact__comparison small { color: var(--text-dim); font-size: 9px; }
+.startup-impact__comparison b { color: var(--blue); font-size: 11px; }
+.startup-impact__comparison em { grid-column: 1 / -1; color: var(--amber); font-size: 9px; font-style: normal; }
+
+.startup-impact__comparison.is-improved,
+.startup-impact__receipt.is-improved {
+  border-color: rgba(86, 207, 147, 0.2);
+  background: var(--green-soft);
+}
+
+.startup-impact__comparison.is-improved b { color: var(--green); }
+.startup-impact__comparison.is-slower,
+.startup-impact__receipt.is-slower {
+  border-color: rgba(239, 182, 94, 0.2);
+  background: var(--amber-soft);
+}
+
+.startup-impact__comparison.is-slower b { color: var(--amber); }
+.startup-impact__receipt { grid-template-columns: auto minmax(0, 1fr); color: var(--text-soft); font-size: 9px; }

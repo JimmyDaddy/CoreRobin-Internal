@@ -108,4 +108,30 @@
       "three": { "title": "권한은 필요할 때만 사용합니다", "description": "알림, Robin 및 로그인 시 실행은 선택 사항입니다. 전체 디스크 접근은 공간 정리 스캔을 더 완전하게 할 때만 사용합니다.", "note": "허용하지 않아도 접근 가능한 영역은 스캔됩니다. CoreRobin은 이 가이드에서 권한을 요청하지 않습니다." }
     }
   }
+,
+  "applicationImpactHistory": {
+    "label": "Keep application impact aggregates",
+    "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+  },
+  "supportFlow": {
+    "action": "Prepare issue report",
+    "title": "Prepare a privacy-redacted issue report",
+    "description": "Review exactly what will be copied before CoreRobin opens a prefilled public GitHub issue.",
+    "reviewTitle": "Review",
+    "reviewDescription": "Confirm that the summary contains no information you do not want to share.",
+    "copyTitle": "Copy",
+    "copyDescription": "Copy the same redacted summary to your clipboard for easy reuse.",
+    "openTitle": "Open issue",
+    "openDescription": "Open a form prefilled with version, system, architecture, and reproduction prompts.",
+    "preview": "Content that will be copied and included",
+    "confirm": "Copy and open issue",
+    "opening": "Preparing issue…",
+    "error": "The summary could not be copied or the issue form could not be opened. Please try again.",
+    "issueTitle": "[v{{version}}] Issue report",
+    "problemHeading": "What happened",
+    "problemPlaceholder": "<!-- Describe the problem and what you expected. -->",
+    "stepsHeading": "Steps to reproduce",
+    "stepsPlaceholder": "<!-- List the shortest steps that reproduce the issue. -->",
+    "diagnosticHeading": "Privacy-redacted environment"
+  }
 }

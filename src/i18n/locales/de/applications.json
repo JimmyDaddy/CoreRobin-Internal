@@ -54,4 +54,45 @@
   },
   "empty": "Keine passende Anwendung gefunden",
   "safety": "Die Auswahl einer App zeigt nur ihre Ressourcendaten; jede Schließaktion erfordert weiterhin eine separate Bestätigung."
+,
+  "nativeUninstall": {
+    "boundary": "The operating system package catalog owns this app. CoreRobin will pass only a verified, short-lived package identity to the native uninstaller.",
+    "sourceLabel": "Install source",
+    "methodLabel": "System method",
+    "elevationLabel": "Authorization",
+    "elevationRequired": "The operating system may request administrator approval",
+    "elevationNotRequired": "No administrator approval is expected",
+    "relatedData": "Associated data is not guessed or deleted automatically. The package manager decides which installed files belong to this app.",
+    "systemManaged": "System-managed uninstall",
+    "revalidate": "Package identity is checked again immediately before execution.",
+    "review": "Review system uninstall for {{name}}",
+    "dialogTitle": "Uninstall {{name}} with the operating system",
+    "dialogDescription": "CoreRobin will start the verified package-manager method. Any authorization prompt belongs to the operating system.",
+    "dialogBoundary": "The frontend never supplies an executable path or command line.",
+    "elevationPrompt": "A Windows UAC or Linux PolicyKit prompt may appear. Cancelling it is reported separately from failure.",
+    "confirm": "Start system uninstall",
+    "submitting": "Waiting for the system uninstaller…",
+    "source": {
+      "macos_bundle": "macOS application bundle",
+      "windows_msi": "Windows Installer (MSI)",
+      "windows_msix": "Windows package (MSIX)",
+      "windows_uninstaller": "Registered Windows uninstaller",
+      "linux_flatpak": "Flatpak",
+      "linux_deb": "Debian package",
+      "linux_rpm": "RPM package",
+      "linux_snap": "Snap",
+      "portable": "Portable or manually installed",
+      "unknown": "Unknown source"
+    },
+    "outcome": {
+      "succeeded": "{{name}} was removed by the operating system.",
+      "cancelled": "The system uninstall for {{name}} was cancelled.",
+      "failed": "The system uninstaller could not remove {{name}}.",
+      "restart_required": "{{name}} was removed; the operating system requested a restart."
+    },
+    "unavailable": {
+      "protected": "CoreRobin or a protected system component cannot be removed from this screen.",
+      "portable": "No trusted package-manager identity was found. The item remains read-only."
+    }
+  }
 }

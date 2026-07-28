@@ -150,5 +150,48 @@
   "privacyLocal": "历史只保存在当前设备的 CoreRobin WebView 存储中，不会上传或同步。",
   "privacyCollected": "记录整机资源快照、超限与恢复事件，以及你确认执行的操作类型、结果、数量和释放空间；应用或启动项名称只有在设置中单独允许后才会保存。",
   "privacyExcluded": "资源与操作历史不记录进程命令、用户、路径、文件名或连接地址；如果你单独开启“连接历史”，五分钟聚合数据可能在本机保存远端 IP、域名、端口和应用名。",
-  "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。"
+  "privacyControl": "停用后不再写入新数据；已有记录会保留到过期或由你手动清除。",
+  "applicationImpact": {
+    "eyebrow": "应用归因",
+    "title": "哪些应用影响过这台电脑",
+    "description": "可选保存五分钟应用聚合，帮助判断是谁反复占用 CPU、内存或磁盘。",
+    "enable": "保留应用影响历史",
+    "range": "应用历史范围",
+    "hours1": "1 小时",
+    "hours24": "24 小时",
+    "hours168": "7 天",
+    "disabledTitle": "应用归因尚未开启",
+    "disabledDescription": "开启后只在本机保存稳定应用身份和聚合指标。",
+    "learningTitle": "正在建立应用历史",
+    "learningDescription": "收集到足够的五分钟采样后会显示排名。",
+    "peakCpu": "CPU 峰值 {{value}}",
+    "boundary": "不保存命令或文件路径；应用名称仍受单独的隐私开关控制。"
+  },
+  "baseline": {
+    "eyebrow": "这台电脑的基线",
+    "learning": {
+      "title": "正在学习这台电脑的日常状态",
+      "description": "需要更多相同时段采样，才能和这台电脑自己做比较。"
+    },
+    "typical": {
+      "title": "接近这台电脑平时的状态",
+      "description": "当前可用指标没有出现明显偏离。"
+    },
+    "elevated": {
+      "title": "和这台电脑平时不太一样",
+      "description": "有 {{count}} 项指标明显高于过去七天相同时段。"
+    },
+    "collecting": "正在积累基线",
+    "change": "比平时{{direction}} {{value}}%",
+    "higher": "高",
+    "lower": "低",
+    "metric": {
+      "cpu": "CPU",
+      "memory": "内存",
+      "disk": "磁盘吞吐",
+      "network": "网络吞吐",
+      "temperature": "温度",
+      "battery": "电池消耗"
+    }
+  }
 }

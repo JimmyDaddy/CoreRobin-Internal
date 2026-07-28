@@ -107,6 +107,46 @@ export default interface Resources {
       "moderate": "有些影响"
     },
     "memory": "内存",
+    "nativeUninstall": {
+      "boundary": "这个应用由操作系统安装目录管理；CoreRobin 只会把已验证的短期包身份交给原生卸载器。",
+      "confirm": "开始系统卸载",
+      "dialogBoundary": "前端不会提交卸载器路径或命令行。",
+      "dialogDescription": "CoreRobin 将启动已验证的包管理器方式；任何授权弹窗都由操作系统提供。",
+      "dialogTitle": "使用操作系统卸载 {{name}}",
+      "elevationLabel": "授权",
+      "elevationNotRequired": "预计无需管理员批准",
+      "elevationPrompt": "可能出现 Windows UAC 或 Linux PolicyKit 授权；取消授权会与执行失败分别展示。",
+      "elevationRequired": "操作系统可能会请求管理员批准",
+      "methodLabel": "系统方式",
+      "outcome": {
+        "cancelled": "已取消 {{name}} 的系统卸载。",
+        "failed": "系统卸载器未能移除 {{name}}。",
+        "restart_required": "{{name}} 已移除；操作系统要求重新启动。",
+        "succeeded": "操作系统已卸载 {{name}}。"
+      },
+      "relatedData": "不会猜测或自动删除关联数据；由包管理器判断哪些已安装文件属于这个应用。",
+      "revalidate": "执行前会立即重新核对包身份。",
+      "review": "复核 {{name}} 的系统卸载",
+      "source": {
+        "linux_deb": "Debian 软件包",
+        "linux_flatpak": "Flatpak",
+        "linux_rpm": "RPM 软件包",
+        "linux_snap": "Snap",
+        "macos_bundle": "macOS 应用包",
+        "portable": "便携或手动安装",
+        "unknown": "未知来源",
+        "windows_msi": "Windows Installer（MSI）",
+        "windows_msix": "Windows 应用包（MSIX）",
+        "windows_uninstaller": "Windows 注册卸载器"
+      },
+      "sourceLabel": "安装来源",
+      "submitting": "正在等待系统卸载器…",
+      "systemManaged": "系统托管卸载",
+      "unavailable": {
+        "portable": "没有找到可信的包管理器身份；该项目保持只读。",
+        "protected": "不能从这里卸载 CoreRobin 自身或受保护的系统组件。"
+      }
+    },
     "overviewTitle": "现在谁影响最大",
     "processCount": "{{count}} 个相关进程",
     "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。",
@@ -352,6 +392,7 @@ export default interface Resources {
         "kept": "保留",
         "partial": "已处理 {{deletedCount}} 个，{{failedCount}} 个未能处理",
         "planned": "待处理",
+        "refreshIncomplete": "CoreRobin 无法按路径匹配全部重新核对后的重复文件。",
         "review": "检查处理方式",
         "selectGroup": "处理本组副本",
         "selectedGroup": "已选择本组",
@@ -489,6 +530,22 @@ export default interface Resources {
     },
     "morePaths": " 等 {{count}} 个位置",
     "noLargeFiles": "可访问的系统磁盘位置中没有发现超过 500 MB 的文件。",
+    "oldFileProcessing": {
+      "actionName": "长期未修改文件清理",
+      "cancelled": "处理已停止，已完成 {{count}} 个",
+      "completed": "已处理 {{count}} 个长期未修改文件，释放 {{size}}",
+      "dialogDescription": "复核选中的文件后，可将其移到废纸篓，或确认后直接删除；已不存在的文件会自动跳过。",
+      "dialogTitle": "处理长期未修改文件",
+      "emptySelection": "请选择已经确认不再需要的长期未修改文件。",
+      "partial": "已处理 {{deletedCount}} 个，{{failedCount}} 个未能处理",
+      "refreshIncomplete": "CoreRobin 无法按路径匹配全部重新核对后的长期未修改文件。",
+      "review": "检查清理方式",
+      "select": "选择",
+      "selectFile": "选择 {{name}} 进入清理复核",
+      "selected": "已选择",
+      "selectionHint": "只有你明确选择的文件才会加入清理篮复核。",
+      "summary": "已选择 {{count}} 个长期未修改文件，共 {{size}}"
+    },
     "pathUnavailable": "没有可扫描路径",
     "progress": {
       "discovered": "已发现",
@@ -534,6 +591,16 @@ export default interface Resources {
       "retained": "结果已留存在本机；浏览目录时按需核对变化"
     },
     "startScan": "开始只读扫描",
+    "targets": {
+      "chooseFolder": "选择文件夹",
+      "chooseFolderTitle": "选择一个要扫描的文件夹",
+      "kicker": "扫描范围",
+      "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。",
+      "recent": "最近扫描",
+      "removable": "可移除",
+      "systemDisk": "系统磁盘",
+      "title": "选择要扫描的位置"
+    },
     "title": "空间清理助手",
     "unavailable": "当前平台不可用",
     "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。"
@@ -1360,10 +1427,53 @@ export default interface Resources {
       "triggeredDetail": "{{value}}%，高于 {{threshold}}% 已持续 {{duration}}。",
       "volume": "卷占用"
     },
+    "applicationImpact": {
+      "boundary": "不保存命令或文件路径；应用名称仍受单独的隐私开关控制。",
+      "description": "可选保存五分钟应用聚合，帮助判断是谁反复占用 CPU、内存或磁盘。",
+      "disabledDescription": "开启后只在本机保存稳定应用身份和聚合指标。",
+      "disabledTitle": "应用归因尚未开启",
+      "enable": "保留应用影响历史",
+      "eyebrow": "应用归因",
+      "hours1": "1 小时",
+      "hours168": "7 天",
+      "hours24": "24 小时",
+      "learningDescription": "收集到足够的五分钟采样后会显示排名。",
+      "learningTitle": "正在建立应用历史",
+      "peakCpu": "CPU 峰值 {{value}}",
+      "range": "应用历史范围",
+      "title": "哪些应用影响过这台电脑"
+    },
     "archiveDescription": "跨重启查看资源长期变化，以及持续超限与恢复事件。",
     "archiveTitle": "历史",
     "averageCpu": "平均 CPU",
     "averageMemory": "平均内存",
+    "baseline": {
+      "change": "比平时{{direction}} {{value}}%",
+      "collecting": "正在积累基线",
+      "elevated": {
+        "description": "有 {{count}} 项指标明显高于过去七天相同时段。",
+        "title": "和这台电脑平时不太一样"
+      },
+      "eyebrow": "这台电脑的基线",
+      "higher": "高",
+      "learning": {
+        "description": "需要更多相同时段采样，才能和这台电脑自己做比较。",
+        "title": "正在学习这台电脑的日常状态"
+      },
+      "lower": "低",
+      "metric": {
+        "battery": "电池消耗",
+        "cpu": "CPU",
+        "disk": "磁盘吞吐",
+        "memory": "内存",
+        "network": "网络吞吐",
+        "temperature": "温度"
+      },
+      "typical": {
+        "description": "当前可用指标没有出现明显偏离。",
+        "title": "接近这台电脑平时的状态"
+      }
+    },
     "chartLabel": "CPU {{cpu}}%，内存 {{memory}}%",
     "clearSaved": "清除已保存数据",
     "controls": "历史记录设置",
@@ -1560,7 +1670,7 @@ export default interface Resources {
       "anomalyCount": "{{count}} 次",
       "chartLabel": "最近 15 分钟网络质量趋势，共 {{count}} 个样本",
       "checking": "正在检查…",
-      "description": "打开页面后每 30 秒检查；可选择在后台保留 1 小时或 24 小时的五分钟聚合趋势。",
+      "description": "打开页面后每 30 秒检查；可选择在后台保留最长 7 天的五分钟聚合趋势。",
       "diagnostics": {
         "stages": {
           "dns": "DNS",
@@ -1615,6 +1725,21 @@ export default interface Resources {
       "windowAverage": "平均延迟",
       "windowPeak": "峰值延迟"
     },
+    "qualityEvents": {
+      "eyebrow": "事件解释",
+      "kind": {
+        "direct_failure": "互联网直连路径出现异常",
+        "dns_failure": "DNS 解析出现异常",
+        "interface_change": "活动网络接口或默认路由发生切换",
+        "sleep_gap": "电脑睡眠期间暂停采样",
+        "status_change": "联网状态发生变化"
+      },
+      "none": "这个时间范围内没有值得注意的网络事件。",
+      "privacy": "只保存事件类型、时间、状态和聚合值；不会保留接口名称或网络地址。",
+      "summary": "最近 {{hours}} 小时：{{outage}} 次短暂中断、{{gap}} 个睡眠缺口、{{dns}} 次 DNS 异常、{{direct}} 次直连异常、{{interface}} 次接口切换。",
+      "title": "网络发生过什么变化"
+    },
+    "qualityHistoryHours168": "7 天",
     "receive": "接收",
     "receiveNow": "当前接收",
     "receivePeak": "接收峰值",
@@ -1825,6 +1950,10 @@ export default interface Resources {
       "versionTitle": "版本与更新",
       "whatsNew": "这个版本的新内容"
     },
+    "applicationImpactHistory": {
+      "hint": "需要先开启本机历史并允许保存应用显示名；不会保存命令或文件路径。",
+      "label": "保留应用影响聚合"
+    },
     "background": {
       "companionAlwaysOnTop": "Robin 始终置顶",
       "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡",
@@ -2015,6 +2144,27 @@ export default interface Resources {
       "system": "CPU、内存与进程",
       "title": "系统采样"
     },
+    "supportFlow": {
+      "action": "准备问题反馈",
+      "confirm": "复制并打开 Issue",
+      "copyDescription": "把同一份脱敏摘要复制到剪贴板，方便补充或复用。",
+      "copyTitle": "复制",
+      "description": "先核对即将复制的内容，再打开已经预填的公开 GitHub Issue。",
+      "diagnosticHeading": "隐私脱敏环境摘要",
+      "error": "无法复制摘要或打开 Issue 表单，请重试。",
+      "issueTitle": "[v{{version}}] 问题反馈",
+      "openDescription": "预填版本、系统、架构和复现步骤提示，由你填写问题描述。",
+      "openTitle": "打开 Issue",
+      "opening": "正在准备反馈…",
+      "preview": "即将复制并写入 Issue 的内容",
+      "problemHeading": "发生了什么",
+      "problemPlaceholder": "<!-- 请描述问题和预期结果。 -->",
+      "reviewDescription": "确认摘要中没有你不希望分享的信息。",
+      "reviewTitle": "预览",
+      "stepsHeading": "复现步骤",
+      "stepsPlaceholder": "<!-- 请列出最短的复现步骤。 -->",
+      "title": "准备一份脱敏的问题反馈"
+    },
     "thresholds": {
       "critical": "严重",
       "description": "用于 CPU、内存与卷占用的颜色分级；持续达到“偏高”时记录告警。",
@@ -2152,6 +2302,20 @@ export default interface Resources {
       "settleTime": "趋稳时间",
       "title": "真实登录启动影响"
     },
+    "impactComparison": {
+      "description": "使用前 {{count}} 次测量的中位数作为参照。",
+      "improved": "趋稳速度快了 {{value}}%",
+      "risingApplication": "{{name}} 上升最多，增加 {{value}} 个 CPU 百分点",
+      "similar": "接近最近的中位数",
+      "slower": "趋稳速度慢了 {{value}}%",
+      "title": "与最近几次启动对比"
+    },
+    "impactReceipt": {
+      "improved": "调整 {{name}} 后，下次启动确实变快了。",
+      "similar": "调整 {{name}} 后，下次启动与平时接近。",
+      "slower": "调整 {{name}} 后，下次启动仍然偏慢；它可能不是主要原因。",
+      "title": "启动项变更后的结果"
+    },
     "inventory": "启动项清单",
     "listTitle": "哪些内容会自动启动",
     "loadingDescription": "CoreRobin 只读取系统公开的启动配置，不会加载或运行其中的命令。",
@@ -2204,6 +2368,32 @@ export default interface Resources {
     },
     "establishingBaseline": "正在建立磁盘吞吐基线…",
     "filesystemCapacity": "文件系统容量",
+    "health": {
+      "description": "只展示操作系统提供的状态；CoreRobin 不修复磁盘，也不虚构健康百分比。",
+      "external": "外置介质",
+      "eyebrow": "只读设备信息",
+      "filesystem": "文件系统",
+      "hdd": "机械硬盘",
+      "inspectUnavailable": "操作系统未能提供这个卷的全部详情。",
+      "loading": "正在读取已挂载卷信息…",
+      "media": "介质",
+      "mountMode": "挂载模式",
+      "openUtility": "打开磁盘工具",
+      "purgeable": "可清理空间",
+      "readOnly": "只读",
+      "readWrite": "可读写",
+      "scope": "S.M.A.R.T. 是操作系统可提供时的总体设备状态；不支持并不代表磁盘不健康。",
+      "ssd": "固态硬盘",
+      "status": {
+        "failing": "可能故障",
+        "unknown": "未知",
+        "unsupported": "不支持",
+        "verified": "已验证",
+        "warning": "需要留意"
+      },
+      "title": "磁盘健康与挂载详情",
+      "unknownMedia": "未知"
+    },
     "highestUsage": "最高占用",
     "inspectHint": "点击后在右侧核验详情",
     "local": "本机存储",

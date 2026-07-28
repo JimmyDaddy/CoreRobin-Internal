@@ -84,7 +84,8 @@ interface FileInsightsExplorerProps {
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
 
-interface DuplicateProcessingOutcome {
+interface FileProcessingOutcome {
+  kind: ResultView;
   deletedCount: number;
   deletedBytes: number;
   failed: CleanupDeleteFailure[];
@@ -153,7 +154,10 @@ export function FileInsightsExplorer({
   const [resultView, setResultView] = useState<ResultView>("duplicates");
   const [selectedGroupDigests, setSelectedGroupDigests] = useState<Set<string>>(() => new Set());
   const [keptPathByDigest, setKeptPathByDigest] = useState<Map<string, string>>(() => new Map());
+  const [selectedOldPaths, setSelectedOldPaths] = useState<Set<string>>(() => new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogKind, setDeleteDialogKind] =
+    useState<ResultView>("duplicates");
   const [deleteDialogItems, setDeleteDialogItems] = useState<CleanupMapNode[]>([]);
   const [deleteLease, setDeleteLease] = useState<CleanupDeleteLease | null>(null);
   const [deletePreparing, setDeletePreparing] = useState(false);
@@ -164,7 +168,8 @@ export function FileInsightsExplorer({
   const [deleteError, setDeleteError] = useState<CommandError | null>(null);
   const [deleteMode, setDeleteMode] = useState<CleanupDeleteMode>("trash");
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
-  const [processingOutcome, setProcessingOutcome] = useState<DuplicateProcessingOutcome | null>(null);
+  const [processingOutcome, setProcessingOutcome] =
+    useState<FileProcessingOutcome | null>(null);
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const deleteRequestIdRef = useRef(0);
   const reclaimableBytes = scan?.duplicateGroups.reduce(
@@ -180,6 +185,14 @@ export function FileInsightsExplorer({
     (total, file) => total + file.allocatedSizeBytes,
     0,
   );
+  const selectedOldFiles = useMemo(
+    () => scan?.longUnmodifiedFiles.filter((file) => selectedOldPaths.has(file.path)) ?? [],
+    [scan, selectedOldPaths],
+  );
+  const selectedOldBytes = selectedOldFiles.reduce(
+    (total, file) => total + file.allocatedSizeBytes,
+    0,
+  );
 
   useEffect(() => {
     if (scan && scan.duplicateGroups.length === 0 && scan.longUnmodifiedFiles.length > 0) {
@@ -189,6 +202,7 @@ export function FileInsightsExplorer({
 
   useEffect(() => {
     setSelectedGroupDigests(new Set());
+    setSelectedOldPaths(new Set());
     setKeptPathByDigest(new Map(
       scan?.duplicateGroups.flatMap((group) => group.files[0]
         ? [[group.digest, group.files[0].path] as const]
@@ -224,6 +238,7 @@ export function FileInsightsExplorer({
     items: readonly CleanupMapNode[],
     sampledAtMs: number,
     mode: CleanupDeleteMode,
+    kind: ResultView = deleteDialogKind,
   ) => {
     const requestId = deleteRequestIdRef.current + 1;
     deleteRequestIdRef.current = requestId;
@@ -253,7 +268,11 @@ export function FileInsightsExplorer({
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
         throw {
           code: "cleanup_refresh_incomplete",
-          message: "CoreRobin could not match every refreshed duplicate file by path.",
+          message: t(
+            kind === "old"
+              ? "cleanup:oldFileProcessing.refreshIncomplete"
+              : "cleanup:fileInsights.processing.refreshIncomplete",
+          ),
         };
       }
       setDeleteDialogItems(refreshedItems);
@@ -295,9 +314,13 @@ export function FileInsightsExplorer({
     }
   };
 
-  const openProcessingDialog = async () => {
-    if (!scan || selectedDuplicateFiles.length === 0) return;
-    const items = selectedDuplicateFiles.map(fileInsightToCleanupNode);
+  const openProcessingDialog = async (
+    files: readonly FileInsightFile[] = selectedDuplicateFiles,
+    kind: ResultView = "duplicates",
+  ) => {
+    if (!scan || files.length === 0) return;
+    const items = files.map(fileInsightToCleanupNode);
+    setDeleteDialogKind(kind);
     setDeleteMode("trash");
     setDeleteDialogItems(items);
     setDeleteDialogOpen(true);
@@ -311,7 +334,7 @@ export function FileInsightsExplorer({
     setDeleteError(null);
     setDeleteAcknowledged(false);
     setProcessingOutcome(null);
-    await prepareDeleteLease(items, scan.sampledAtMs, "trash");
+    await prepareDeleteLease(items, scan.sampledAtMs, "trash", kind);
   };
 
   const confirmProcessing = async () => {
@@ -326,7 +349,11 @@ export function FileInsightsExplorer({
     ) return;
     const actionRecordId = onUserActionStart?.({
       kind: "cleanup_delete",
-      targetName: t("cleanup:fileInsights.processing.actionName"),
+      targetName: t(
+        deleteDialogKind === "old"
+          ? "cleanup:oldFileProcessing.actionName"
+          : "cleanup:fileInsights.processing.actionName",
+      ),
       targetCount: deleteDialogItems.length,
     }) ?? null;
     let actionRecorded = false;
@@ -362,6 +389,7 @@ export function FileInsightsExplorer({
         ...result.failed.map((failure) => failure.path),
       ]);
       setProcessingOutcome({
+        kind: deleteDialogKind,
         deletedCount: result.deleted.length,
         deletedBytes: result.deletedBytes,
         failed: result.failed,
@@ -428,6 +456,16 @@ export function FileInsightsExplorer({
     setKeptPathByDigest((current) => new Map(current).set(digest, path));
   };
 
+  const toggleOldFile = (path: string) => {
+    setProcessingOutcome(null);
+    setSelectedOldPaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
   return (
     <section className="panel file-insights-page" aria-labelledby="file-insights-page-title">
       <header className="file-insights-page__header">
@@ -476,10 +514,17 @@ export function FileInsightsExplorer({
           keptPathByDigest={keptPathByDigest}
           selectedDuplicateCount={selectedDuplicateFiles.length}
           selectedDuplicateBytes={selectedDuplicateBytes}
+          selectedOldPaths={selectedOldPaths}
+          selectedOldCount={selectedOldFiles.length}
+          selectedOldBytes={selectedOldBytes}
           processingOutcome={processingOutcome}
           onToggleGroup={toggleGroup}
           onKeepFile={keepFile}
-          onOpenProcessing={() => void openProcessingDialog()}
+          onToggleOldFile={toggleOldFile}
+          onOpenDuplicateProcessing={() =>
+            void openProcessingDialog(selectedDuplicateFiles, "duplicates")}
+          onOpenOldProcessing={() =>
+            void openProcessingDialog(selectedOldFiles, "old")}
         />
       ) : (
         <div className="file-insights-welcome">
@@ -517,8 +562,16 @@ export function FileInsightsExplorer({
       )}
       {deleteDialogOpen ? (
         <CleanupDeleteDialog
-          title={t("cleanup:fileInsights.processing.dialogTitle")}
-          description={t("cleanup:fileInsights.processing.dialogDescription")}
+          title={t(
+            deleteDialogKind === "old"
+              ? "cleanup:oldFileProcessing.dialogTitle"
+              : "cleanup:fileInsights.processing.dialogTitle",
+          )}
+          description={t(
+            deleteDialogKind === "old"
+              ? "cleanup:oldFileProcessing.dialogDescription"
+              : "cleanup:fileInsights.processing.dialogDescription",
+          )}
           items={deleteDialogItems}
           lease={deleteLease}
           preparing={deletePreparing}
@@ -597,10 +650,15 @@ interface FileInsightsResultsProps {
   keptPathByDigest: ReadonlyMap<string, string>;
   selectedDuplicateCount: number;
   selectedDuplicateBytes: number;
-  processingOutcome: DuplicateProcessingOutcome | null;
+  selectedOldPaths: ReadonlySet<string>;
+  selectedOldCount: number;
+  selectedOldBytes: number;
+  processingOutcome: FileProcessingOutcome | null;
   onToggleGroup: (digest: string) => void;
   onKeepFile: (digest: string, path: string) => void;
-  onOpenProcessing: () => void;
+  onToggleOldFile: (path: string) => void;
+  onOpenDuplicateProcessing: () => void;
+  onOpenOldProcessing: () => void;
 }
 
 function FileInsightsResults({
@@ -613,10 +671,15 @@ function FileInsightsResults({
   keptPathByDigest,
   selectedDuplicateCount,
   selectedDuplicateBytes,
+  selectedOldPaths,
+  selectedOldCount,
+  selectedOldBytes,
   processingOutcome,
   onToggleGroup,
   onKeepFile,
-  onOpenProcessing,
+  onToggleOldFile,
+  onOpenDuplicateProcessing,
+  onOpenOldProcessing,
 }: FileInsightsResultsProps) {
   const { t, i18n } = useAppTranslation();
 
@@ -678,10 +741,13 @@ function FileInsightsResults({
           scan.duplicateGroups.length > 0 ? (
             <div className="duplicate-groups">
               <DuplicateProcessingBar
+                kind="duplicates"
                 selectedCount={selectedDuplicateCount}
                 selectedBytes={selectedDuplicateBytes}
-                outcome={processingOutcome}
-                onOpenProcessing={onOpenProcessing}
+                outcome={processingOutcome?.kind === "duplicates"
+                  ? processingOutcome
+                  : null}
+                onOpenProcessing={onOpenDuplicateProcessing}
               />
               {scan.duplicateGroups.map((group, index) => (
                 <DuplicateGroupCard
@@ -698,8 +764,24 @@ function FileInsightsResults({
           ) : <FileInsightsEmpty icon={<Copy size={22} />} text={t("cleanup:fileInsights.noDuplicates")} />
         ) : scan.longUnmodifiedFiles.length > 0 ? (
           <div className="file-insights-old-files">
+            <DuplicateProcessingBar
+              kind="old"
+              selectedCount={selectedOldCount}
+              selectedBytes={selectedOldBytes}
+              outcome={processingOutcome?.kind === "old"
+                ? processingOutcome
+                : null}
+              onOpenProcessing={onOpenOldProcessing}
+            />
             {scan.longUnmodifiedFiles.map((file, index) => (
-              <FileInsightRow file={file} index={index} kind="old" key={file.path} />
+              <FileInsightRow
+                file={file}
+                index={index}
+                kind="old"
+                selectedForProcessing={selectedOldPaths.has(file.path)}
+                onToggleSelection={() => onToggleOldFile(file.path)}
+                key={file.path}
+              />
             ))}
           </div>
         ) : <FileInsightsEmpty icon={<CalendarClock size={22} />} text={t("cleanup:fileInsights.noOldFiles")} />}
@@ -710,17 +792,22 @@ function FileInsightsResults({
 }
 
 function DuplicateProcessingBar({
+  kind,
   selectedCount,
   selectedBytes,
   outcome,
   onOpenProcessing,
 }: {
+  kind: ResultView;
   selectedCount: number;
   selectedBytes: number;
-  outcome: DuplicateProcessingOutcome | null;
+  outcome: FileProcessingOutcome | null;
   onOpenProcessing: () => void;
 }) {
   const { t } = useAppTranslation();
+  const translationPrefix = kind === "old"
+    ? "cleanup:oldFileProcessing"
+    : "cleanup:fileInsights.processing";
   const outcomeKey = outcome?.cancelled
     ? "cancelled"
     : outcome && outcome.failed.length > 0
@@ -733,12 +820,15 @@ function DuplicateProcessingBar({
       </span>
       <div className="duplicate-processing__copy">
         <strong>{selectedCount > 0
-          ? t("cleanup:fileInsights.processing.summary", { count: selectedCount, size: formatBytes(selectedBytes) })
-          : t("cleanup:fileInsights.processing.emptySelection")}</strong>
-        <small>{t("cleanup:fileInsights.processing.selectionHint")}</small>
+          ? t(`${translationPrefix}.summary`, {
+              count: selectedCount,
+              size: formatBytes(selectedBytes),
+            })
+          : t(`${translationPrefix}.emptySelection`)}</strong>
+        <small>{t(`${translationPrefix}.selectionHint`)}</small>
         {outcome ? (
           <em className={`is-${outcomeKey}`} role="status">
-            {t(`cleanup:fileInsights.processing.${outcomeKey}`, {
+            {t(`${translationPrefix}.${outcomeKey}`, {
               count: outcome.deletedCount,
               deletedCount: outcome.deletedCount,
               failedCount: outcome.failed.length,
@@ -753,7 +843,7 @@ function DuplicateProcessingBar({
         disabled={selectedCount === 0}
         onClick={onOpenProcessing}
       >
-        <ShieldCheck size={14} />{t("cleanup:fileInsights.processing.review")}
+        <ShieldCheck size={14} />{t(`${translationPrefix}.review`)}
       </button>
     </aside>
   );
@@ -843,6 +933,7 @@ function FileInsightRow({
   selectedForProcessing = false,
   kept = false,
   onKeep,
+  onToggleSelection,
 }: {
   file: FileInsightFile;
   index: number;
@@ -850,9 +941,10 @@ function FileInsightRow({
   selectedForProcessing?: boolean;
   kept?: boolean;
   onKeep?: () => void;
+  onToggleSelection?: () => void;
 }) {
   const { t, i18n } = useAppTranslation();
-  const planned = kind === "duplicate" && selectedForProcessing && !kept;
+  const planned = selectedForProcessing && !kept;
   return (
     <article className={`file-insights-file${kept ? " is-kept" : planned ? " is-planned" : ""}`}>
       <span className={`file-insights-file__icon is-${kind}`} aria-hidden="true">
@@ -885,7 +977,21 @@ function FileInsightRow({
               ? "cleanup:fileInsights.processing.planned"
               : "cleanup:fileInsights.processing.keep")}</span>
         </button>
-      ) : null}
+      ) : (
+        <button
+          className="file-insights-file__keep"
+          type="button"
+          role="checkbox"
+          aria-checked={selectedForProcessing}
+          aria-label={t("cleanup:oldFileProcessing.selectFile", { name: file.name })}
+          onClick={onToggleSelection}
+        >
+          {selectedForProcessing ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+          <span>{t(selectedForProcessing
+            ? "cleanup:oldFileProcessing.selected"
+            : "cleanup:oldFileProcessing.select")}</span>
+        </button>
+      )}
       <PathActions path={file.path} compact />
     </article>
   );

@@ -9,6 +9,8 @@ import i18n from "./i18n";
 
 vi.mock("./api", () => ({
   ejectRemovableVolume: vi.fn(async () => undefined),
+  getStorageHealth: vi.fn(async () => ({ sampledAtMs: 1_000, devices: [] })),
+  openDiskUtility: vi.fn(async () => undefined),
 }));
 
 afterEach(() => cleanup());

@@ -446,6 +446,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       const subtree = await getCleanupSubtree({
         requestId: backendRequestId,
         path: node.path,
+        scanRoot: snapshot.targetPath,
         safety: node.safety,
         expandSmallerObjects: false,
       });
@@ -498,6 +499,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       const subtree = await getCleanupSubtree({
         requestId: backendRequestId,
         path: subtreeRoot.path,
+        scanRoot: snapshot.targetPath,
         safety: subtreeRoot.safety,
         expandSmallerObjects: expandingSmallerObjects,
       });
@@ -681,7 +683,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setDeleteAcknowledged(false);
     try {
       const lease = await createCleanupDeleteLease(
-        buildCleanupDeleteLeaseRequest(items, scanSampledAtMs, mode),
+        buildCleanupDeleteLeaseRequest(
+          items,
+          scanSampledAtMs,
+          mode,
+          snapshot.targetKind === "system_disk" ? undefined : snapshot.targetPath,
+        ),
       );
       if (deleteRequestIdRef.current !== requestId) {
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });

@@ -6,15 +6,22 @@ import {
   ChevronRight,
   HardDrive,
   LoaderCircle,
+  RefreshCw,
+  ShieldCheck,
   Sparkles,
   Unplug,
   Usb,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { processApplicationIconSource } from "../applicationIcon";
-import { ejectRemovableVolume } from "../api";
+import "./StorageExplorer.css";
+import {
+  ejectRemovableVolume,
+  getStorageHealth,
+  openDiskUtility,
+} from "../api";
 
 import {
   sortVolumesByUsage,
@@ -28,6 +35,7 @@ import type {
   DiskSnapshot,
   HistoryPoint,
   ProcessRow,
+  StorageHealthSnapshot,
 } from "../types";
 import {
   formatBytes,
@@ -69,6 +77,11 @@ export function StorageExplorer({
   const [ejectingMountPoint, setEjectingMountPoint] = useState<string | null>(null);
   const [ejectNotice, setEjectNotice] = useState<string | null>(null);
   const [ejectError, setEjectError] = useState<string | null>(null);
+  const [storageHealth, setStorageHealth] =
+    useState<StorageHealthSnapshot | null>(null);
+  const [storageHealthLoading, setStorageHealthLoading] = useState(false);
+  const [storageHealthError, setStorageHealthError] = useState<string | null>(null);
+  const [openingDiskUtility, setOpeningDiskUtility] = useState(false);
   const volumes = useMemo(
     () => sortVolumesByUsage(disk.volumes),
     [disk.volumes],
@@ -78,6 +91,49 @@ export function StorageExplorer({
     [processes],
   );
   const highestUsage = volumes[0];
+  const mountPointSignature = disk.volumes
+    .map((volume) => volume.mountPoint)
+    .sort()
+    .join("\u0000");
+
+  useEffect(() => {
+    let active = true;
+    const mountPoints = mountPointSignature
+      ? mountPointSignature.split("\u0000")
+      : [];
+    if (mountPoints.length === 0) {
+      setStorageHealth(null);
+      return;
+    }
+    setStorageHealthLoading(true);
+    setStorageHealthError(null);
+    void getStorageHealth(mountPoints)
+      .then((snapshot) => {
+        if (active) setStorageHealth(snapshot);
+      })
+      .catch((caughtError) => {
+        if (active) setStorageHealthError(normalizeCommandError(caughtError).message);
+      })
+      .finally(() => {
+        if (active) setStorageHealthLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mountPointSignature]);
+
+  const launchDiskUtility = async () => {
+    if (openingDiskUtility) return;
+    setOpeningDiskUtility(true);
+    setStorageHealthError(null);
+    try {
+      await openDiskUtility();
+    } catch (caughtError) {
+      setStorageHealthError(normalizeCommandError(caughtError).message);
+    } finally {
+      setOpeningDiskUtility(false);
+    }
+  };
   const ejectVolume = async (mountPoint: string, name: string) => {
     setEjectingMountPoint(mountPoint);
     setEjectError(null);
@@ -253,6 +309,15 @@ export function StorageExplorer({
         )}
       </section>
 
+      <StorageHealthPanel
+        snapshot={storageHealth}
+        volumes={disk.volumes}
+        loading={storageHealthLoading}
+        error={storageHealthError}
+        openingUtility={openingDiskUtility}
+        onOpenUtility={() => void launchDiskUtility()}
+      />
+
       <section
         className="panel storage-process-panel"
         aria-labelledby="storage-process-title"
@@ -311,6 +376,78 @@ export function StorageExplorer({
           </div>
         )}
       </section>
+    </section>
+  );
+}
+
+function StorageHealthPanel({
+  snapshot,
+  volumes,
+  loading,
+  error,
+  openingUtility,
+  onOpenUtility,
+}: {
+  snapshot: StorageHealthSnapshot | null;
+  volumes: DiskSnapshot["volumes"];
+  loading: boolean;
+  error: string | null;
+  openingUtility: boolean;
+  onOpenUtility: () => void;
+}) {
+  const { t } = useAppTranslation();
+  const risky = snapshot?.devices.some((device) =>
+    device.smartStatus === "warning"
+    || device.smartStatus === "failing"
+    || device.inspectionError !== null) ?? false;
+  return (
+    <section className="panel storage-health" aria-labelledby="storage-health-title">
+      <header className="storage-section-heading">
+        <div>
+          <span className="eyebrow">{t("storage:health.eyebrow")}</span>
+          <h2 id="storage-health-title">{t("storage:health.title")}</h2>
+          <p>{t("storage:health.description")}</p>
+        </div>
+        {risky ? (
+          <button className="button button--secondary" type="button" disabled={openingUtility} onClick={onOpenUtility}>
+            {openingUtility ? <LoaderCircle className="is-spinning" size={14} /> : <HardDrive size={14} />}
+            {t("storage:health.openUtility")}
+          </button>
+        ) : null}
+      </header>
+      {error ? <div className="volume-eject-error" role="alert"><AlertTriangle size={14} />{error}</div> : null}
+      {loading && !snapshot ? (
+        <div className="storage-health__loading" role="status">
+          <RefreshCw className="is-spinning" size={15} />
+          {t("storage:health.loading")}
+        </div>
+      ) : (
+        <div className="storage-health__grid">
+          {(snapshot?.devices ?? []).map((device) => {
+            const volume = volumes.find((candidate) => candidate.mountPoint === device.mountPoint);
+            return (
+              <article className={`is-${device.smartStatus}`} key={device.mountPoint}>
+                <header>
+                  <span>{device.smartStatus === "verified" ? <ShieldCheck size={15} /> : <AlertTriangle size={15} />}</span>
+                  <div>
+                    <strong>{volume?.name || device.mountPoint}</strong>
+                    <code>{device.source ?? device.mountPoint}</code>
+                  </div>
+                  <small>{t(`storage:health.status.${device.smartStatus}`)}</small>
+                </header>
+                <dl>
+                  <div><dt>{t("storage:health.filesystem")}</dt><dd>{device.filesystem ?? "—"}</dd></div>
+                  <div><dt>{t("storage:health.mountMode")}</dt><dd>{device.readOnly === null ? "—" : t(device.readOnly ? "storage:health.readOnly" : "storage:health.readWrite")}</dd></div>
+                  <div><dt>{t("storage:health.media")}</dt><dd>{device.solidState === null ? t(device.internal === false ? "storage:health.external" : "storage:health.unknownMedia") : t(device.solidState ? "storage:health.ssd" : "storage:health.hdd")}</dd></div>
+                  <div><dt>{t("storage:health.purgeable")}</dt><dd>{device.purgeableBytes === null ? "—" : formatBytes(device.purgeableBytes)}</dd></div>
+                </dl>
+                {device.inspectionError ? <p>{t("storage:health.inspectUnavailable")}</p> : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <small className="storage-health__scope">{t("storage:health.scope")}</small>
     </section>
   );
 }

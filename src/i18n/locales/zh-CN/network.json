@@ -76,7 +76,7 @@
     }
   },
   "quality": {
-    "eyebrow": "自动网络采样", "title": "网络质量", "description": "打开页面后每 30 秒检查；可选择在后台保留 1 小时或 24 小时的五分钟聚合趋势。",
+    "eyebrow": "自动网络采样", "title": "网络质量", "description": "打开页面后每 30 秒检查；可选择在后台保留最长 7 天的五分钟聚合趋势。",
     "run": "立即复测", "checking": "正在检查…", "empty": "正在进行首次网络质量检查…",
     "method": "使用 TCP 分别探测 example.com 与 one.one.one.one，并区分本地路由、DNS、IPv4/IPv6 和公网连通性；不发送需要提权的原始数据包。",
     "dns": "DNS", "latency": "平均延迟", "jitter": "抖动", "loss": "TCP 探测失败", "probes": "TCP 探测", "probeSuccess": "{{successful}}/{{total}} 次成功", "probeAndTargets": "{{successful}}/{{total}} 探测成功 · {{targetSuccessful}}/{{targetTotal}} 目标可达",
@@ -119,5 +119,20 @@
   "accumulated": "累计 {{value}}",
   "packets": "{{count}} 个数据包",
   "unknownMtu": "未知",
-  "noMac": "无 MAC 地址"
+  "noMac": "无 MAC 地址",
+  "qualityHistoryHours168": "7 天",
+  "qualityEvents": {
+    "eyebrow": "事件解释",
+    "title": "网络发生过什么变化",
+    "summary": "最近 {{hours}} 小时：{{outage}} 次短暂中断、{{gap}} 个睡眠缺口、{{dns}} 次 DNS 异常、{{direct}} 次直连异常、{{interface}} 次接口切换。",
+    "none": "这个时间范围内没有值得注意的网络事件。",
+    "privacy": "只保存事件类型、时间、状态和聚合值；不会保留接口名称或网络地址。",
+    "kind": {
+      "sleep_gap": "电脑睡眠期间暂停采样",
+      "interface_change": "活动网络接口或默认路由发生切换",
+      "status_change": "联网状态发生变化",
+      "dns_failure": "DNS 解析出现异常",
+      "direct_failure": "互联网直连路径出现异常"
+    }
+  }
 }

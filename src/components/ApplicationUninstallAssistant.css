@@ -483,12 +483,94 @@
 .application-uninstall__skipped p { margin: 7px 0; color: var(--text-muted); line-height: 1.45; }
 .application-uninstall__skipped code { display: block; overflow: hidden; margin-top: 3px; color: var(--text-soft); text-overflow: ellipsis; white-space: nowrap; }
 
+.application-uninstall__native-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 14px;
+}
+
+.application-uninstall__native-facts > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.application-uninstall__native-facts dt { color: var(--text-dim); font-size: 9px; }
+.application-uninstall__native-facts dd { margin: 0; color: var(--text); font-size: 10px; line-height: 1.45; }
+
+.application-uninstall__native-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0 14px 14px;
+  padding: 10px;
+  color: var(--amber);
+  border: 1px solid rgba(239, 182, 94, 0.16);
+  border-radius: 10px;
+  background: var(--amber-soft);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.native-uninstall-dialog {
+  display: grid;
+  width: min(560px, calc(100vw - 32px));
+  gap: 15px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+.native-uninstall-dialog > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: start;
+}
+
+.native-uninstall-dialog > header > span {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  border-radius: 11px;
+  background: var(--danger-soft);
+}
+
+.native-uninstall-dialog h2 { margin: 1px 0 4px; font-size: 16px; }
+.native-uninstall-dialog header p { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+
+.application-uninstall__native-dialog-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--panel-soft);
+}
+
+.application-uninstall__native-dialog-summary svg { flex: 0 0 auto; color: var(--green); }
+.application-uninstall__native-dialog-summary span { display: grid; gap: 3px; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.application-uninstall__native-dialog-summary strong { color: var(--text); font-size: 11px; }
+.native-uninstall-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; }
+
 @media (max-width: 980px) {
   .application-uninstall__scan-stage { grid-template-columns: 170px minmax(0, 1fr); }
   .application-uninstall__scan-skeleton { display: none; }
   .application-uninstall__workspace { height: auto; grid-template-columns: minmax(0, 1fr); }
   .application-uninstall__catalog { max-height: 360px; }
   .application-uninstall__plan { min-height: 480px; }
+  .application-uninstall__native-facts { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 680px) {

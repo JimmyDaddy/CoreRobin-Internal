@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "자동 네트워크 샘플링", "title": "네트워크 품질", "description": "페이지가 열려 있으면 30초마다 검사하며, 선택 시 백그라운드에서 1시간 또는 24시간의 5분 집계를 보관합니다.",
+    "eyebrow": "자동 네트워크 샘플링", "title": "네트워크 품질", "description": "페이지가 열려 있으면 30초마다 검사하며, 선택 시 백그라운드에서 최대 7일간의 5분 집계를 보관합니다.",
     "run": "지금 확인", "checking": "확인 중…", "empty": "첫 네트워크 품질 확인을 실행 중…",
     "method": "example.com과 one.one.one.one을 TCP로 탐지해 권한이 필요한 원시 패킷 없이 로컬 경로, DNS, IPv4/IPv6 및 인터넷 연결을 구분합니다.",
     "dns": "DNS", "latency": "평균 지연", "jitter": "지터", "loss": "TCP 탐지 실패", "probes": "TCP 확인", "probeSuccess": "{{successful}}/{{total}}회 성공", "probeAndTargets": "{{successful}}/{{total}} 탐지 성공 · {{targetSuccessful}}/{{targetTotal}} 대상 연결",
@@ -116,4 +116,20 @@
   "packets": "{{count}} 패킷 수",
   "unknownMtu": "MTU 값 알 수 없음",
   "noMac": "MAC 주소 없음"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

@@ -31,6 +31,7 @@
       "keepFile": "Gardez {{name}} dans ce groupe",
       "dialogTitle": "Traiter les fichiers en double",
       "dialogDescription": "Au moins un fichier est conservé dans chaque groupe. Les copies supplémentaires peuvent aller à la corbeille ou être supprimées définitivement après confirmation. L’état et les chemins protégés sont revérifiés avant l’action.",
+      "refreshIncomplete": "CoreRobin n’a pas pu associer par chemin tous les fichiers en double revérifiés.",
       "actionName": "Traitement des fichiers en double",
       "completed": "Traitement des copies en double de {{count}} et libération de {{size}}",
       "partial": "Traité {{deletedCount}} ; {{failedCount}} n'a pas pu être traité",
@@ -281,4 +282,31 @@
   "unreadable": "{{count}} Les emplacements étaient protégés ou temporairement inaccessibles. Seuls ces emplacements sont exclus des résultats.",
   "fullDiskAccessHint": "Sur macOS, accordez l'accès complet au disque à CoreRobin dans les Paramètres Système → Confidentialité & Sécurité, puis relancez la recherche.",
   "safetyBoundary": "La recherche n'a pas de limite de temps ou d'éléments et ne suit jamais les liens symboliques. Seuls les éléments placés dans le bac, vérifiés par le chemin et explicitement confirmés sont définitivement supprimés et ne peuvent être restaurés."
+,
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "Sélectionner {{name}} pour la révision du nettoyage",
+    "selected": "Sélectionné",
+    "select": "Sélectionner",
+    "selectionHint": "Seuls les fichiers sélectionnés sont ajoutés au panier de nettoyage à vérifier.",
+    "emptySelection": "Sélectionnez les fichiers inchangés depuis longtemps dont vous n’avez plus besoin.",
+    "summary": "{{count}} fichiers inchangés sélectionnés · {{size}}",
+    "review": "Vérifier le nettoyage",
+    "dialogTitle": "Traiter les fichiers inchangés depuis longtemps",
+    "dialogDescription": "Vérifiez les fichiers sélectionnés, puis placez-les dans la corbeille ou supprimez-les définitivement après confirmation. Les fichiers absents sont ignorés.",
+    "refreshIncomplete": "CoreRobin n’a pas pu associer par chemin tous les fichiers inchangés revérifiés.",
+    "actionName": "Nettoyage des fichiers inchangés",
+    "completed": "{{count}} fichiers traités et {{size}} libérés",
+    "partial": "{{deletedCount}} traités ; {{failedCount}} n’ont pas pu l’être",
+    "cancelled": "Traitement arrêté après {{count}} fichiers"
+  }
 }

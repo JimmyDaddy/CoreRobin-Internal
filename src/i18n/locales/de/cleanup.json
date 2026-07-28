@@ -31,6 +31,7 @@
       "keepFile": "Behalten Sie {{name}} in dieser Gruppe",
       "dialogTitle": "Doppelte Dateien verarbeiten",
       "dialogDescription": "In jeder Gruppe bleibt mindestens eine Datei erhalten. Zusätzliche Kopien können in den Papierkorb verschoben oder nach Bestätigung dauerhaft gelöscht werden. Dateistatus und geschützte Pfade werden vorher erneut geprüft.",
+      "refreshIncomplete": "CoreRobin konnte nicht jede erneut geprüfte doppelte Datei anhand ihres Pfads zuordnen.",
       "actionName": "Verarbeitung doppelter Dateien",
       "completed": "Verarbeitete {{count}}-Duplikatkopien und gab {{size}} frei",
       "partial": "Verarbeitet {{deletedCount}}; {{failedCount}} konnte nicht verarbeitet werden",
@@ -281,4 +282,31 @@
   "unreadable": "{{count}} Diese Speicherbereiche waren geschützt oder vorübergehend nicht zugänglich. Nur diese Bereiche werden von dem Ergebnis ausgeschlossen.",
   "fullDiskAccessHint": "Unter macOS: Erteilen Sie CoreRobin die Berechtigung für den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen → Datenschutz & Sicherheit, und führen Sie dann erneut einen Scan durch.",
   "safetyBoundary": "Der Scan hat keine zeitlichen oder itembezogenen Beschränkungen und folgt niemals symbolischen Links. Nur Elemente, die in den Papierkorb gelegt, anhand des Pfads überprüft und explizit bestätigt wurden, werden dauerhaft gelöscht und können nicht wiederhergestellt werden."
+,
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "{{name}} zur Bereinigungsprüfung auswählen",
+    "selected": "Ausgewählt",
+    "select": "Auswählen",
+    "selectionHint": "Nur ausdrücklich ausgewählte Dateien werden dem geprüften Bereinigungskorb hinzugefügt.",
+    "emptySelection": "Wähle lange unveränderte Dateien aus, die du nicht mehr benötigst.",
+    "summary": "{{count}} lange unveränderte Dateien ausgewählt · {{size}}",
+    "review": "Bereinigung prüfen",
+    "dialogTitle": "Lange unveränderte Dateien verarbeiten",
+    "dialogDescription": "Prüfe die ausgewählten Dateien und verschiebe sie dann in den Papierkorb oder lösche sie nach Bestätigung dauerhaft. Fehlende Dateien werden übersprungen.",
+    "refreshIncomplete": "CoreRobin konnte nicht jede erneut geprüfte, lange unveränderte Datei anhand ihres Pfads zuordnen.",
+    "actionName": "Bereinigung lange unveränderter Dateien",
+    "completed": "{{count}} lange unveränderte Dateien verarbeitet und {{size}} freigegeben",
+    "partial": "{{deletedCount}} verarbeitet; {{failedCount}} konnten nicht verarbeitet werden",
+    "cancelled": "Verarbeitung nach {{count}} Dateien gestoppt"
+  }
 }

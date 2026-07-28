@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "Amostragem automática de rede", "title": "Qualidade da rede", "description": "Verifica a cada 30 segundos enquanto a página está aberta. Opcionalmente mantém agregados de cinco minutos por 1 ou 24 horas em segundo plano.",
+    "eyebrow": "Amostragem automática de rede", "title": "Qualidade da rede", "description": "Verifica a cada 30 segundos enquanto a página está aberta. Opcionalmente mantém agregados de cinco minutos por até 7 dias em segundo plano.",
     "run": "Verificar agora", "checking": "Verificando…", "empty": "Executando a primeira verificação da rede…",
     "method": "Sondagens TCP para example.com e one.one.one.one separam rota local, DNS, IPv4/IPv6 e acesso à Internet sem pacotes brutos privilegiados.",
     "dns": "DNS", "latency": "Latência média", "jitter": "Jitter", "loss": "Falhas de sondagem TCP", "probes": "Sondas TCP", "probeSuccess": "{{successful}}/{{total}} bem-sucedidas", "probeAndTargets": "{{successful}}/{{total}} sondagens · {{targetSuccessful}}/{{targetTotal}} destinos acessíveis",
@@ -116,4 +116,20 @@
   "packets": "{{count}} pacotes",
   "unknownMtu": "MTU desconhecido",
   "noMac": "Sem endereço MAC"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

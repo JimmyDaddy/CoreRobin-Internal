@@ -267,6 +267,7 @@
       "keepFile": "Keep {{name}} in this group",
       "dialogTitle": "Process duplicate files",
       "dialogDescription": "At least one file is kept in every group. Move extras to Trash, or permanently delete them after confirmation. File state and protected paths are rechecked first.",
+      "refreshIncomplete": "CoreRobin could not match every refreshed duplicate file by path.",
       "actionName": "Duplicate file processing",
       "completed": "Processed {{count}} duplicate copies and freed {{size}}",
       "partial": "Processed {{deletedCount}}; {{failedCount}} could not be processed",
@@ -280,5 +281,31 @@
   "noLargeFiles": "No files over 500 MB were found in accessible system-disk locations.",
   "unreadable": "{{count}} locations were protected or temporarily unreadable. Only those locations are excluded from the result.",
   "fullDiskAccessHint": "On macOS, grant CoreRobin Full Disk Access in System Settings → Privacy & Security, then scan again.",
-  "safetyBoundary": "The scan has no time or item limit and never follows symbolic links. Only basket items that pass path checks and explicit confirmation are moved to Trash or deleted permanently."
+  "safetyBoundary": "The scan has no time or item limit and never follows symbolic links. Only basket items that pass path checks and explicit confirmation are moved to Trash or deleted permanently.",
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "Select {{name}} for cleanup review",
+    "selected": "Selected",
+    "select": "Select",
+    "selectionHint": "Only the files you select are added to the reviewed cleanup basket.",
+    "emptySelection": "Select long-unmodified files that you have confirmed are no longer needed.",
+    "summary": "{{count}} long-unmodified files selected · {{size}}",
+    "review": "Review cleanup",
+    "dialogTitle": "Process long-unmodified files",
+    "dialogDescription": "Review the selected files, then move them to Trash or permanently delete them after confirmation. Missing files are skipped.",
+    "refreshIncomplete": "CoreRobin could not match every refreshed long-unmodified file by path.",
+    "actionName": "Long-unmodified file cleanup",
+    "completed": "Processed {{count}} long-unmodified files and freed {{size}}",
+    "partial": "Processed {{deletedCount}}; {{failedCount}} could not be processed",
+    "cancelled": "Processing stopped after {{count}} files"
+  }
 }

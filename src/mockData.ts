@@ -44,6 +44,10 @@ const MOCK_INSTALLED_APPLICATIONS: ApplicationInventorySnapshot = {
       modifiedAtMs: Date.now() - 400 * 86_400_000,
       uninstallable: true,
       unavailableReason: null,
+      installationSource: "macos_bundle",
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
     },
     {
       name: "Sketchbook Classic",
@@ -54,6 +58,10 @@ const MOCK_INSTALLED_APPLICATIONS: ApplicationInventorySnapshot = {
       modifiedAtMs: Date.now() - 250 * 86_400_000,
       uninstallable: true,
       unavailableReason: null,
+      installationSource: "macos_bundle",
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
     },
     {
       name: "Daily Notes",
@@ -64,6 +72,10 @@ const MOCK_INSTALLED_APPLICATIONS: ApplicationInventorySnapshot = {
       modifiedAtMs: Date.now() - 20 * 86_400_000,
       uninstallable: true,
       unavailableReason: null,
+      installationSource: "macos_bundle",
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
     },
   ],
 };
@@ -120,6 +132,7 @@ export function getMockApplicationUninstallPlan(applicationPath: string): Applic
       }] satisfies ApplicationUninstallPlan["artifacts"] : []),
     ],
     skippedPaths: [],
+    nativeUninstall: null,
   };
 }
 
@@ -437,6 +450,8 @@ export function getMockCleanupScan(): CleanupScan {
     unreadableEntryCount: 0,
     unreadablePaths: [],
     deletionAvailable: true,
+    targetKind: "system_disk",
+    targetPath: "/",
   };
 }
 

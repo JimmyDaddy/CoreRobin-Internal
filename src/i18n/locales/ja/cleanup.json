@@ -31,6 +31,7 @@
       "keepFile": "{{name}} をこのグループに保持します",
       "dialogTitle": "重複ファイルを処理",
       "dialogDescription": "各グループで必ず 1 つ以上を残します。余分なコピーはゴミ箱へ移動するか、確認後に完全削除できます。実行前にファイル状態と保護パスを再確認します。",
+      "refreshIncomplete": "CoreRobin は再確認した重複ファイルをすべてパスで照合できませんでした。",
       "actionName": "重複ファイルの処理",
       "completed": "{{count}} の重複コピーを処理し、{{size}} を解放しました",
       "partial": "{{deletedCount}} を処理しました。 {{failedCount}} を処理できませんでした",
@@ -281,4 +282,31 @@
   "unreadable": "{{count}} の場所は保護されていたり、一時的に読み取り不可になっていたため、これらの場所は結果から除外されます。",
   "fullDiskAccessHint": "macOSでは、システム設定 → プライバシー & セキュリティでCoreRobinにフルディスクアクセスを許可してから、再度スキャンしてください。",
   "safetyBoundary": "スキャンには時間や対象の制限がなく、シンボリックリンクも参照しません。ゴミ箱に追加され、パスが確認され、明示的に確認された項目のみが永久に削除され、復元はできません。"
+,
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "{{name}} をクリーンアップ確認に選択",
+    "selected": "選択済み",
+    "select": "選択",
+    "selectionHint": "明示的に選択したファイルだけが、確認付きクリーンアップバスケットに追加されます。",
+    "emptySelection": "長期間変更されておらず、不要と確認できたファイルを選択してください。",
+    "summary": "長期間未変更のファイルを {{count}} 個選択 · {{size}}",
+    "review": "クリーンアップを確認",
+    "dialogTitle": "長期間未変更のファイルを処理",
+    "dialogDescription": "選択したファイルを確認し、ゴミ箱へ移動するか、確認後に完全削除します。存在しないファイルはスキップされます。",
+    "refreshIncomplete": "CoreRobin は再確認した長期間未変更のファイルをすべてパスで照合できませんでした。",
+    "actionName": "長期間未変更ファイルのクリーンアップ",
+    "completed": "{{count}} 個を処理し、{{size}} を解放しました",
+    "partial": "{{deletedCount}} 個を処理し、{{failedCount}} 個は処理できませんでした",
+    "cancelled": "{{count}} 個の処理後に停止しました"
+  }
 }
