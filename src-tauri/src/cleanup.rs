@@ -2580,7 +2580,9 @@ fn is_external_cleanup_root(root: &Path, canonical_home: &Path) -> bool {
     }
     #[cfg(windows)]
     {
-        !root.starts_with(&system_root)
+        root.canonicalize()
+            .map(|canonical_root| !canonical_root.starts_with(&system_root))
+            .unwrap_or(false)
     }
     #[cfg(not(any(unix, windows)))]
     {

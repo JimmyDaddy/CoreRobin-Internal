@@ -8,7 +8,9 @@ use std::sync::{Mutex, OnceLock};
 #[cfg(any(windows, target_os = "linux"))]
 use std::time::Duration;
 
+#[cfg(any(windows, target_os = "linux"))]
 use std::fs;
+#[cfg(target_os = "linux")]
 use std::path::Path;
 #[cfg(target_os = "linux")]
 use std::path::PathBuf;
@@ -690,6 +692,7 @@ fn scan_linux_inventory(
     Ok(native_inventory(applications))
 }
 
+#[cfg(target_os = "linux")]
 struct DesktopEntry {
     name: String,
     no_display: bool,
@@ -698,10 +701,12 @@ struct DesktopEntry {
     icon_path: Option<String>,
 }
 
+#[cfg(target_os = "linux")]
 fn parse_desktop_entry(path: &Path, preferred_language: Option<&str>) -> Option<DesktopEntry> {
     parse_desktop_entry_text(&fs::read_to_string(path).ok()?, path, preferred_language)
 }
 
+#[cfg(target_os = "linux")]
 fn parse_desktop_entry_text(
     text: &str,
     path: &Path,
@@ -941,11 +946,14 @@ fn now_millis() -> u64 {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    #[cfg(target_os = "linux")]
     use std::path::Path;
 
+    #[cfg(target_os = "linux")]
+    use super::parse_desktop_entry_text;
     use super::{
-        PLAN_TTL_MS, StoredPlan, outcome_from_exit, parse_desktop_entry_text,
-        parse_windows_inventory, take_plan, validate_native_identifier,
+        PLAN_TTL_MS, StoredPlan, outcome_from_exit, parse_windows_inventory, take_plan,
+        validate_native_identifier,
     };
     use crate::models::{ApplicationInstallationSource, NativeApplicationUninstallOutcome};
 
@@ -1004,6 +1012,7 @@ mod tests {
         assert!(applications[1].uninstallable);
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn parses_localized_desktop_entry_fixtures() {
         let entry = parse_desktop_entry_text(
