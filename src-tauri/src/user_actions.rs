@@ -264,7 +264,7 @@ pub fn open_disk_utility() -> Result<(), CommandError> {
 
     #[cfg(windows)]
     return run_command(
-        Command::new("diskmgmt.msc"),
+        &mut Command::new("diskmgmt.msc"),
         "Disk Management could not be opened.",
     );
 

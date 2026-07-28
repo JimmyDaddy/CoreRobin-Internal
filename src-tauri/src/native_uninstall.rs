@@ -86,7 +86,10 @@ pub fn scan_native_application_inventory(
     preferred_language: Option<&str>,
 ) -> Result<ApplicationInventorySnapshot, CommandError> {
     #[cfg(windows)]
-    return scan_windows_inventory();
+    {
+        let _ = preferred_language;
+        return scan_windows_inventory();
+    }
 
     #[cfg(target_os = "linux")]
     return scan_linux_inventory(preferred_language);
