@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Show Robin companion",
-    "hide": "Hide Robin companion"
+    "show": "Show Robin",
+    "hide": "Hide Robin"
   },
   "technicalOverview": {
     "title": "View live resource details",

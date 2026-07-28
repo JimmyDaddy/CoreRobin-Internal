@@ -1,10 +1,10 @@
 {
-  "kicker": "Robin companion",
+  "kicker": "Robin",
   "dragHint": "Drag Robin to move; hover for status; right-click for menu",
-  "expand": "Open Robin companion",
-  "collapse": "Collapse Robin companion",
-  "menu": "Robin companion menu",
-  "hide": "Hide companion",
+  "expand": "Open Robin",
+  "collapse": "Collapse Robin",
+  "menu": "Robin menu",
+  "hide": "Hide Robin",
   "reason": "{{resource}} has been worth watching recently. Open the main window to see why.",
   "action": {
     "loading": "Open everyday helper",

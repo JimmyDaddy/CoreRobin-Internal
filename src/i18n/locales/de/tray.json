@@ -2,7 +2,7 @@
   "localMonitor": "Lokaler Systemüberblick",
   "available": "Freier Speicherplatz",
   "open": "Übersicht anzeigen",
-  "companion": "Robin-Assistent",
+  "companion": "Robin",
   "cleanup": "Speicher freigeben",
   "quit": "App beenden",
   "updatedAt": "Aktualisiert um {{time}}",

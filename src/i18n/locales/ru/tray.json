@@ -2,7 +2,7 @@
   "localMonitor": "Локальный системный монитор",
   "available": "Свободное место",
   "open": "Обзор",
-  "companion": "Сопутствующее приложение Robin",
+  "companion": "Robin",
   "cleanup": "Очистка диска",
   "quit": "Выйти из приложения",
   "updatedAt": "Обновлено в {{time}}",

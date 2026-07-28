@@ -2,7 +2,7 @@
   "localMonitor": "Surveillance du système locale",
   "available": "Espace disponible",
   "open": "Vue d'ensemble",
-  "companion": "Assistant Robin",
+  "companion": "Robin",
   "cleanup": "Nettoyage de l'espace",
   "quit": "Quitter l’application",
   "updatedAt": "Mis à jour à {{time}}",

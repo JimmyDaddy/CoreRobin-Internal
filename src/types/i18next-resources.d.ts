@@ -5,8 +5,8 @@ export default interface Resources {
     "cleanup": "清理",
     "comingSoon": "即将推出",
     "companion": {
-      "hide": "隐藏 Robin 小伙伴",
-      "show": "唤起 Robin 小伙伴"
+      "hide": "隐藏 Robin",
+      "show": "唤起 Robin"
     },
     "demoData": "浏览器演示数据",
     "diagnostics": "诊断",
@@ -591,12 +591,12 @@ export default interface Resources {
       "observing": "查看当前状态",
       "urgent": "现在查看"
     },
-    "collapse": "收起 Robin 小伙伴",
+    "collapse": "收起 Robin",
     "dragHint": "拖动 Robin 移动；悬停查看状态；右键打开菜单",
-    "expand": "打开 Robin 小伙伴",
-    "hide": "隐藏小伙伴",
-    "kicker": "Robin 小伙伴",
-    "menu": "Robin 小伙伴菜单",
+    "expand": "打开 Robin",
+    "hide": "隐藏 Robin",
+    "kicker": "Robin",
+    "menu": "Robin 菜单",
     "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
     "recovering": "指标已回落，我再观察一会儿确认它是否恢复。"
   },
@@ -996,7 +996,7 @@ export default interface Resources {
     "settings": {
       "companionAlwaysOnTop": "始终显示在其他窗口上方",
       "companionAlwaysOnTopDescription": "关闭后 Robin 仍会留在桌面，但可能被其他窗口遮住",
-      "companionShowOnStartup": "让 Robin 伙伴常驻桌面",
+      "companionShowOnStartup": "让 Robin 常驻桌面",
       "companionShowOnStartupDescription": "开启后立即显示，并在下次启动时继续出现",
       "description": "这里只保留日常会用到的偏好；专业采样和阈值设置留在专业模式。",
       "history": "保留最近记录",
@@ -1829,8 +1829,8 @@ export default interface Resources {
       "companionAlwaysOnTop": "Robin 始终置顶",
       "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡",
       "companionShowOnStartup": "让 Robin 常驻桌面",
-      "companionShowOnStartupDescription": "应用启动后自动显示 Robin 小伙伴",
-      "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 小伙伴的桌面行为。",
+      "companionShowOnStartupDescription": "应用启动后自动显示 Robin",
+      "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 的桌面行为。",
       "launchAtLogin": "登录时启动",
       "launchAtLoginDescription": "登录后静默启动状态栏服务，不自动打开主窗口",
       "showDockIcon": "在 Dock 中显示",
@@ -1979,12 +1979,12 @@ export default interface Resources {
           "title": "先选择适合你的查看方式"
         },
         "three": {
-          "description": "通知、Robin 小伙伴和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
+          "description": "通知、Robin 和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
           "note": "不授权仍可扫描系统允许访问的区域；CoreRobin 不会在这里主动请求权限。",
           "title": "权限按需要使用，由你决定"
         },
         "two": {
-          "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 小伙伴共享同一份稳定状态。",
+          "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 共享同一份稳定状态。",
           "note": "可以从状态栏暂停、打开设置或彻底退出应用。",
           "title": "关闭窗口后仍会安静守候"
         }
@@ -2230,7 +2230,7 @@ export default interface Resources {
   "tray": {
     "available": "可用空间",
     "cleanup": "空间清理",
-    "companion": "Robin 伙伴",
+    "companion": "Robin",
     "dataMode": {
       "background": "后台采样",
       "foreground": "前台采样"

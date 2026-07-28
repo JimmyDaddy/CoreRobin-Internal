@@ -18,13 +18,13 @@
   },
   "background": {
     "title": "后台与桌面",
-    "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 小伙伴的桌面行为。",
+    "description": "控制 CoreRobin 如何常驻、登录启动，以及 Robin 的桌面行为。",
     "showDockIcon": "在 Dock 中显示",
     "showDockIconDescription": "关闭后不占用 Dock 和应用切换器，仍可从顶部状态栏唤起",
     "launchAtLogin": "登录时启动",
     "launchAtLoginDescription": "登录后静默启动状态栏服务，不自动打开主窗口",
     "companionShowOnStartup": "让 Robin 常驻桌面",
-    "companionShowOnStartupDescription": "应用启动后自动显示 Robin 小伙伴",
+    "companionShowOnStartupDescription": "应用启动后自动显示 Robin",
     "companionAlwaysOnTop": "Robin 始终置顶",
     "companionAlwaysOnTopDescription": "保持在其他窗口上方，关闭后可能被遮挡"
   },
@@ -224,12 +224,12 @@
       },
       "two": {
         "title": "关闭窗口后仍会安静守候",
-        "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 小伙伴共享同一份稳定状态。",
+        "description": "CoreRobin 会留在状态栏继续低频采样。状态栏面板和 Robin 共享同一份稳定状态。",
         "note": "可以从状态栏暂停、打开设置或彻底退出应用。"
       },
       "three": {
         "title": "权限按需要使用，由你决定",
-        "description": "通知、Robin 小伙伴和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
+        "description": "通知、Robin 和登录启动均可选。只有进行空间清理时，完整磁盘访问才可能让扫描更完整。",
         "note": "不授权仍可扫描系统允许访问的区域；CoreRobin 不会在这里主动请求权限。"
       }
     }

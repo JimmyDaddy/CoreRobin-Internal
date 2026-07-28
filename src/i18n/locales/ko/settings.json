@@ -32,7 +32,7 @@
     "launchAtLogin": "로그인 시 자동 시작",
     "launchAtLoginDescription": "메뉴 막 서비스가 자동으로 실행되지만, 메인 창을 열지 않습니다.",
     "companionShowOnStartup": "시작 시 Robin를 데스크톱에 표시",
-    "companionShowOnStartupDescription": "앱이 시작될 때 Robin 컴패니언을 표시합니다",
+    "companionShowOnStartupDescription": "앱이 시작될 때 Robin을 표시합니다",
     "companionAlwaysOnTop": "Robin를 다른 창 위에 표시합니다",
     "companionAlwaysOnTopDescription": "다른 창 위에 표시되도록 유지합니다. 끄면 Robin가 가려질 수 있습니다"
   },

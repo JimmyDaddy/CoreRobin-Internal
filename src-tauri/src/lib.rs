@@ -100,6 +100,12 @@ mod tray_panel_native {
                 can_become_main_window: false
             }
         })
+        panel!(CoreRobinCompanionPanel {
+            config: {
+                can_become_key_window: true,
+                can_become_main_window: false
+            }
+        })
     }
 }
 
@@ -1722,6 +1728,20 @@ pub fn run() {
                     panel.set_hides_on_deactivate(false);
                     panel.set_released_when_closed(false);
                 }
+                if let Some(companion_window) = app.get_webview_window("companion") {
+                    let panel = companion_window
+                        .to_panel::<tray_panel_native::CoreRobinCompanionPanel>()?;
+                    panel.set_collection_behavior(
+                        NSWindowCollectionBehavior::CanJoinAllSpaces
+                            | NSWindowCollectionBehavior::FullScreenAuxiliary
+                            | NSWindowCollectionBehavior::IgnoresCycle,
+                    );
+                    panel.set_style_mask(
+                        panel.as_panel().styleMask() | NSWindowStyleMask::NonactivatingPanel,
+                    );
+                    panel.set_hides_on_deactivate(false);
+                    panel.set_released_when_closed(false);
+                }
             }
             if app.state::<AppState>().background_launch
                 && let Some(splash) = app.get_webview_window("splashscreen")
@@ -1732,8 +1752,7 @@ pub fn run() {
             let settings =
                 MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?;
             let about = MenuItem::with_id(app, "about", "About CoreRobin", true, None::<&str>)?;
-            let companion =
-                MenuItem::with_id(app, "companion", "Robin Companion", true, None::<&str>)?;
+            let companion = MenuItem::with_id(app, "companion", "Robin", true, None::<&str>)?;
             let cleanup = MenuItem::with_id(app, "cleanup", "Space Cleanup", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit CoreRobin", true, None::<&str>)?;
             let menu = Menu::with_items(
@@ -2247,6 +2266,24 @@ mod security_boundary_tests {
 
         assert!(run_loop.contains("tauri::RunEvent::Reopen"));
         assert!(run_loop.contains("show_main(app)"));
+    }
+
+    #[test]
+    fn macos_companion_uses_an_all_spaces_panel() {
+        let source = include_str!("lib.rs");
+        let setup = source
+            .split_once("if let Some(companion_window)")
+            .expect("the companion window must be configured during setup")
+            .1
+            .split_once("let open = MenuItem")
+            .expect("the companion setup must finish before the application menu")
+            .0;
+
+        assert!(setup.contains("CoreRobinCompanionPanel"));
+        assert!(setup.contains("NSWindowCollectionBehavior::CanJoinAllSpaces"));
+        assert!(setup.contains("NSWindowCollectionBehavior::FullScreenAuxiliary"));
+        assert!(setup.contains("NSWindowStyleMask::NonactivatingPanel"));
+        assert!(setup.contains("set_hides_on_deactivate(false)"));
     }
 
     #[test]

@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Показать помощника Robin",
-    "hide": "Скрыть помощника Robin"
+    "show": "Показать Robin",
+    "hide": "Скрыть Robin"
   },
   "technicalOverview": {
     "title": "Просмотр текущих данных о ресурсах",

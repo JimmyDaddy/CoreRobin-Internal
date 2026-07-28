@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Mostrar asistente Robin",
-    "hide": "Ocultar asistente Robin"
+    "show": "Mostrar Robin",
+    "hide": "Ocultar Robin"
   },
   "technicalOverview": {
     "title": "Ver detalles de recursos en tiempo real",

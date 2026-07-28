@@ -432,8 +432,8 @@
     "launchAtLoginDescription": "ログイン後、メインウィンドウを開かずにバックグラウンドで起動します",
     "companionAlwaysOnTop": "Robin を常に前面に表示",
     "companionAlwaysOnTopDescription": "オフの場合、Robin はデスクトップ上に残りますが、他のウィンドウで隠される可能性があります",
-    "companionShowOnStartup": "CoreRobinを起動時にデスクトップに表示する",
-    "companionShowOnStartupDescription": "CoreRobinをすぐに表示し、再起動時に自動的に起動します",
+    "companionShowOnStartup": "Robin をデスクトップに表示する",
+    "companionShowOnStartupDescription": "Robin をすぐに表示し、CoreRobin の次回起動時にも復元します",
     "professional": "プロフェッショナルモード",
     "professionalDescription": "すべての指標、プロセスツリー、ネットワーク接続、および高度な設定を表示します",
     "openProfessional": "プロフェッショナルモードを開く"

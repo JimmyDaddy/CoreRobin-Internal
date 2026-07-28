@@ -24,7 +24,7 @@
     "launchAtLogin": "Launch at login",
     "launchAtLoginDescription": "Start the menu bar service quietly without opening the main window",
     "companionShowOnStartup": "Keep Robin on the desktop",
-    "companionShowOnStartupDescription": "Show the Robin companion whenever the app starts",
+    "companionShowOnStartupDescription": "Show Robin whenever the app starts",
     "companionAlwaysOnTop": "Keep Robin above windows",
     "companionAlwaysOnTopDescription": "Stay above other windows; when off, Robin may be covered"
   },
@@ -226,12 +226,12 @@
       },
       "two": {
         "title": "Quietly stays available after the window closes",
-        "description": "CoreRobin remains in the menu bar with low-frequency sampling. The menu panel and Robin companion share one stable state.",
+        "description": "CoreRobin remains in the menu bar with low-frequency sampling. The menu panel and Robin share one stable state.",
         "note": "Pause, open settings, or quit completely from the menu bar."
       },
       "three": {
         "title": "Permissions are optional and purposeful",
-        "description": "Notifications, Robin companion, and launch at login are optional. Full Disk Access only makes a space-cleanup scan more complete.",
+        "description": "Notifications, Robin, and launch at login are optional. Full Disk Access only makes a space-cleanup scan more complete.",
         "note": "Without it, accessible areas can still be scanned. CoreRobin does not request it during this guide."
       }
     }

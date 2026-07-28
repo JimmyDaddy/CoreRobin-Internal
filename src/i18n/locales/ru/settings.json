@@ -32,7 +32,7 @@
     "launchAtLogin": "Запускать при входе в систему",
     "launchAtLoginDescription": "Автоматически запускать службу меню без открытия основного окна",
     "companionShowOnStartup": "Отображать Robin на рабочем столе",
-    "companionShowOnStartupDescription": "Показывать приложение Robin Companion при запуске",
+    "companionShowOnStartupDescription": "Показывать Robin при запуске",
     "companionAlwaysOnTop": "Оставить Robin поверх других окон",
     "companionAlwaysOnTopDescription": "Оставаться поверх других окон; при отключении, Robin может быть скрыто"
   },

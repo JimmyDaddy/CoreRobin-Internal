@@ -1,10 +1,10 @@
 {
-  "kicker": "Robin デスクトップアシスタント",
+  "kicker": "Robin",
   "dragHint": "Robin をドラッグして移動できます。ホバーするとステータスが表示されます。右クリックでメニューを表示します",
-  "expand": "Robin デスクトップアシスタントを開く",
-  "collapse": "Robin デスクトップアシスタントを閉じる",
-  "menu": "Robin デスクトップアシスタントのメニュー",
-  "hide": "Robin デスクトップアシスタントを非表示にする",
+  "expand": "Robin を開く",
+  "collapse": "Robin を閉じる",
+  "menu": "Robin のメニュー",
+  "hide": "Robin を非表示にする",
   "reason": "{{resource}} 最近、注目すべき状況です。メインウィンドウを開いてご確認ください。",
   "action": {
     "loading": "日常的なヘルパーを開く",

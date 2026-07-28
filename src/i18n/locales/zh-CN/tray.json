@@ -3,7 +3,7 @@
   "updateAvailable": "CoreRobin v{{version}} 可以安装",
   "available": "可用空间",
   "open": "打开概览",
-  "companion": "Robin 伙伴",
+  "companion": "Robin",
   "cleanup": "空间清理",
   "quit": "退出应用",
   "updatedAt": "{{time}} 更新",

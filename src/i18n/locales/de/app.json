@@ -52,8 +52,8 @@
     }
   },
   "companion": {
-    "show": "Robin-Assistent anzeigen",
-    "hide": "Robin-Assistent ausblenden"
+    "show": "Robin anzeigen",
+    "hide": "Robin ausblenden"
   },
   "technicalOverview": {
     "title": "Live-Ressourcenübersicht anzeigen",

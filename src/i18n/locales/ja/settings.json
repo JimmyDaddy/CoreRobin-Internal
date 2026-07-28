@@ -32,7 +32,7 @@
     "launchAtLogin": "ログイン時に起動",
     "launchAtLoginDescription": "メインウィンドウを開かずに、静かにメニューバーサービスを開始します。",
     "companionShowOnStartup": "Robinをデスクトップに表示",
-    "companionShowOnStartupDescription": "アプリが起動したときにRobinコンパニオンを表示",
+    "companionShowOnStartupDescription": "アプリが起動したときに Robin を表示",
     "companionAlwaysOnTop": "Robinを常に最前面に表示する",
     "companionAlwaysOnTopDescription": "他のウィンドウの上に表示されます。オフになると、Robinが隠れる可能性があります"
   },

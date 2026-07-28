@@ -1,10 +1,10 @@
 {
-  "kicker": "Asistente de Robin",
-  "dragHint": "Arrastra el Asistente de Robin para moverlo; mantén el puntero sobre él para ver información; haz clic derecho para acceder al menú",
-  "expand": "Abrir el asistente de Robin",
-  "collapse": "Cerrar el asistente de Robin",
-  "menu": "Menú del asistente de Robin",
-  "hide": "Ocultar el asistente",
+  "kicker": "Robin",
+  "dragHint": "Arrastra a Robin para moverlo; mantén el puntero sobre él para ver información; haz clic derecho para acceder al menú",
+  "expand": "Abrir Robin",
+  "collapse": "Cerrar Robin",
+  "menu": "Menú de Robin",
+  "hide": "Ocultar Robin",
   "reason": "Ha sido útil monitorizar a {{resource}}. Abra la ventana principal para ver por qué.",
   "action": {
     "loading": "Abrir herramienta diaria",

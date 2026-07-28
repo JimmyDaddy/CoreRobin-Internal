@@ -41,7 +41,7 @@ describe("Robin companion interactions", () => {
     fireEvent.mouseEnter(shell!);
 
     expect(mascot.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Robin 小伙伴")).toBeTruthy();
+    expect(screen.getByText("Robin")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "关闭" })).toBeNull();
   });
 
@@ -101,11 +101,11 @@ describe("Robin companion interactions", () => {
     expect(shell).not.toBeNull();
 
     fireEvent.contextMenu(shell!);
-    expect(screen.getByRole("menu", { name: "Robin 小伙伴菜单" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("menuitem", { name: "隐藏小伙伴" }));
+    expect(screen.getByRole("menu", { name: "Robin 菜单" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: "隐藏 Robin" }));
 
     expect(mascot.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("menu", { name: "Robin 小伙伴菜单" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Robin 菜单" })).toBeNull();
   });
 
   it("ignores a transient mouse leave while the native window is expanding", () => {
@@ -121,6 +121,6 @@ describe("Robin companion interactions", () => {
     act(() => vi.advanceTimersByTime(300));
 
     expect(mascot.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Robin 小伙伴")).toBeTruthy();
+    expect(screen.getByText("Robin")).toBeTruthy();
   });
 });

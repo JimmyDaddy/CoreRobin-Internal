@@ -32,7 +32,7 @@
     "launchAtLogin": "Beim Anmelden starten",
     "launchAtLoginDescription": "Starten Sie den Menüdienst unauffällig, ohne das Hauptfenster zu öffnen",
     "companionShowOnStartup": "Robin auf dem Desktop anzeigen",
-    "companionShowOnStartupDescription": "Zeigen Sie den Robin-Begleiter an, sobald die App gestartet wird",
+    "companionShowOnStartupDescription": "Robin anzeigen, sobald die App gestartet wird",
     "companionAlwaysOnTop": "Robin über anderen Fenstern anzeigen",
     "companionAlwaysOnTopDescription": "Bleiben Sie über anderen Fenstern; wenn deaktiviert, kann Robin verdeckt sein"
   },

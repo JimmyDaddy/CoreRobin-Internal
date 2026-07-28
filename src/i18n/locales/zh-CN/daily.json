@@ -437,7 +437,7 @@
     "launchAtLoginDescription": "登录系统后在后台启动，不主动弹出主窗口",
     "companionAlwaysOnTop": "始终显示在其他窗口上方",
     "companionAlwaysOnTopDescription": "关闭后 Robin 仍会留在桌面，但可能被其他窗口遮住",
-    "companionShowOnStartup": "让 Robin 伙伴常驻桌面",
+    "companionShowOnStartup": "让 Robin 常驻桌面",
     "companionShowOnStartupDescription": "开启后立即显示，并在下次启动时继续出现",
     "professional": "专业模式",
     "professionalDescription": "查看完整指标、进程树、网络连接和高级设置",

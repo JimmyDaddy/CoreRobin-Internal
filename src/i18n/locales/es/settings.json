@@ -32,7 +32,7 @@
     "launchAtLogin": "Iniciar al iniciar sesión",
     "launchAtLoginDescription": "Inicie silenciosamente el servicio de la barra de menús sin abrir la ventana principal",
     "companionShowOnStartup": "Mantener Robin en el escritorio",
-    "companionShowOnStartupDescription": "Mostrar el compañero de Robin siempre que se inicie la aplicación",
+    "companionShowOnStartupDescription": "Mostrar Robin siempre que se inicie la aplicación",
     "companionAlwaysOnTop": "Mantener Robin encima de otras ventanas",
     "companionAlwaysOnTopDescription": "Permanecer por encima de otras ventanas; cuando está desactivado, Robin puede estar oculto"
   },
