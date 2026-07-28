@@ -518,6 +518,7 @@ $items | Sort-Object name,id -Unique | ConvertTo-Json -Compress
     Ok(native_inventory(applications))
 }
 
+#[cfg(any(windows, test))]
 fn parse_windows_inventory(bytes: &[u8]) -> Vec<InstalledApplication> {
     let value: serde_json::Value =
         serde_json::from_slice(bytes).unwrap_or_else(|_| serde_json::json!([]));
