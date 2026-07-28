@@ -7184,6 +7184,17 @@ code,
   transition: opacity 120ms ease, transform 140ms ease;
 }
 
+.process-action-guidance::after {
+  right: auto;
+  left: 0;
+  text-align: left;
+  transform-origin: bottom left;
+}
+
+.process-action-button::after {
+  transform-origin: bottom right;
+}
+
 .process-action-guidance:hover::after,
 .process-action-guidance:focus-visible::after,
 .process-action-button:hover::after,
