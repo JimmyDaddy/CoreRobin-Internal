@@ -26,6 +26,10 @@ function inventory(sampledAtMs: number): ApplicationInventorySnapshot {
       modifiedAtMs: sampledAtMs,
       uninstallable: true,
       unavailableReason: null,
+      installationSource: "macos_bundle",
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
     }],
   };
 }

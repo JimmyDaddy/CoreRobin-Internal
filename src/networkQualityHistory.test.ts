@@ -4,6 +4,7 @@ import {
   NETWORK_QUALITY_HISTORY_BUCKET_MS,
   mergeNetworkQualityHistory,
   networkQualityFailurePercent,
+  networkQualityHistoryForDisplay,
 } from "./networkQualityHistory";
 import type { NetworkQualityResult } from "./types";
 
@@ -47,6 +48,51 @@ describe("network quality history", () => {
 
     expect(history.map((point) => point.sampledAtMs)).toEqual([now]);
   });
+
+  it("records sleep gaps, interface changes, and layered failures", () => {
+    const first = qualityResult(1_000, 6, 6, 20);
+    const failed = {
+      ...qualityResult(14 * 60_000, 6, 0, 0),
+      status: "offline" as const,
+      dnsLookupMs: null,
+      averageLatencyMs: null,
+      jitterMs: null,
+      diagnostics: [
+        { kind: "dns" as const, status: "failed" as const, latencyMs: null },
+        { kind: "internet" as const, status: "failed" as const, latencyMs: null },
+      ],
+    };
+    const history = mergeNetworkQualityHistory(
+      mergeNetworkQualityHistory([], first, 24, first.sampledAtMs, "en0"),
+      failed,
+      24,
+      failed.sampledAtMs,
+      "en1",
+    );
+
+    expect(history[1]?.events.map(({ kind }) => kind)).toEqual([
+      "sleep_gap",
+      "interface_change",
+      "status_change",
+      "dns_failure",
+      "direct_failure",
+    ]);
+  });
+
+  it("downsamples seven-day display data to thirty-minute buckets", () => {
+    const points = [0, 5, 10, 35].reduce(
+      (history, minute) => mergeNetworkQualityHistory(
+        history,
+        qualityResult(60 * 60_000 + minute * 60_000, 6, 6, 20 + minute),
+        168,
+      ),
+      [] as ReturnType<typeof mergeNetworkQualityHistory>,
+    );
+
+    const display = networkQualityHistoryForDisplay(points, 168);
+    expect(display).toHaveLength(2);
+    expect(display[0]?.sampleCount).toBe(3);
+  });
 });
 
 function qualityResult(
@@ -57,6 +103,7 @@ function qualityResult(
 ): NetworkQualityResult {
   return {
     sampledAtMs,
+    routeSignature: "route-a",
     targetHost: "example.com, one.one.one.one",
     targetPort: 443,
     targetCount: 2,

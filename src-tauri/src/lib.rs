@@ -10,6 +10,7 @@ mod health_state;
 mod identity;
 mod models;
 mod monitor;
+mod native_uninstall;
 mod network_connections;
 mod network_quality;
 mod private_storage;
@@ -17,6 +18,7 @@ mod process_control;
 mod safe_fs;
 mod sensors;
 mod startup;
+mod storage_health;
 mod user_actions;
 
 pub use cleanup::{
@@ -51,13 +53,15 @@ use models::{
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest,
     CleanupDeleteProgress, CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess,
-    CleanupScanProgress, CleanupSubtreeRequest, FileInsightsProgress, FileInsightsScan,
-    GpuEnergySnapshot, NetworkConnectionsSnapshot, NetworkHostLookup, NetworkHostLookupRequest,
-    NetworkQualityResult, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
-    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
-    ProcessDetailRequest, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
-    StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
-    StartupManagementResult, SystemSnapshot, SystemSummary,
+    CleanupScanProgress, CleanupScanRequest, CleanupSubtreeRequest, FileInsightsProgress,
+    FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
+    NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
+    NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
+    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
+    ProcessDetail, ProcessDetailRequest, StartupContext, StartupItemsSnapshot,
+    StartupManagementExecutionRequest, StartupManagementLease,
+    StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
+    SystemSnapshot, SystemSummary,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -74,6 +78,7 @@ use objc2_app_kit::{
 };
 use process_control::ProcessController;
 use startup::{StartupController, scan_startup_items};
+use storage_health::{StorageHealthSnapshot, inspect_storage_health, validate_mount_points};
 #[cfg(target_os = "macos")]
 use tauri::ActivationPolicy;
 use tauri::{
@@ -575,6 +580,7 @@ async fn get_cleanup_scan(
     app: AppHandle,
     state: State<'_, AppState>,
     on_progress: Channel<CleanupScanProgress>,
+    request: Option<CleanupScanRequest>,
 ) -> Result<CleanupScan, CommandError> {
     let cache_path = cleanup_scan_cache_path(&app)?;
     let coordinator = Arc::clone(&state.cleanup_scan);
@@ -583,9 +589,13 @@ async fn get_cleanup_scan(
     let worker_coordinator = Arc::clone(&coordinator);
     let result = tauri::async_runtime::spawn_blocking(move || {
         worker_coordinator.run_exclusive(&worker_cancelled, || {
-            let scan = scan_cleanup(&worker_cancelled, &mut |progress| {
-                let _ = on_progress.send(progress);
-            })?;
+            let scan = scan_cleanup(
+                request.unwrap_or_default(),
+                &worker_cancelled,
+                &mut |progress| {
+                    let _ = on_progress.send(progress);
+                },
+            )?;
             let _ = save_cleanup_scan_snapshot_cache(&cache_path, &scan);
             Ok::<_, CommandError>(scan)
         })
@@ -897,6 +907,37 @@ async fn eject_removable_volume(
 }
 
 #[tauri::command]
+async fn get_storage_health(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    mount_points: Vec<String>,
+) -> Result<StorageHealthSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let available = with_monitor(Arc::clone(&state.monitor), |monitor| {
+        Ok(monitor
+            .sample()
+            .disk
+            .volumes
+            .into_iter()
+            .map(|volume| volume.mount_point)
+            .collect::<Vec<_>>())
+    })
+    .await?;
+    let verified = validate_mount_points(&mount_points, &available)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(inspect_storage_health(&verified, now_millis()))
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Storage inspection task failed: {error}")))?
+}
+
+#[tauri::command]
+fn open_disk_utility(window: WebviewWindow) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::open_disk_utility()
+}
+
+#[tauri::command]
 fn open_system_settings(
     window: WebviewWindow,
     destination: SystemSettingsDestination,
@@ -913,6 +954,16 @@ fn open_product_page(
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
     user_actions::open_product_page(page, language)
+}
+
+#[tauri::command]
+fn open_product_issue(
+    window: WebviewWindow,
+    title: String,
+    body: String,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    user_actions::open_product_issue(&title, &body)
 }
 
 #[tauri::command]
@@ -989,6 +1040,21 @@ async fn get_application_uninstall_plan(
     .await
     .map_err(|error| {
         CommandError::internal(format!("Application uninstall scan failed: {error}"))
+    })?
+}
+
+#[tauri::command]
+async fn execute_native_application_uninstall(
+    window: WebviewWindow,
+    request: NativeApplicationUninstallExecutionRequest,
+) -> Result<NativeApplicationUninstallResult, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        native_uninstall::execute_native_application_uninstall(request)
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("Native application uninstall task failed: {error}"))
     })?
 }
 
@@ -1698,7 +1764,8 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build());
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
@@ -1878,12 +1945,16 @@ pub fn run() {
             preview_path,
             resolve_user_path,
             eject_removable_volume,
+            get_storage_health,
+            open_disk_utility,
             open_system_settings,
             open_product_page,
+            open_product_issue,
             relaunch_application,
             can_relaunch_application,
             get_installed_applications,
             get_application_uninstall_plan,
+            execute_native_application_uninstall,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
             set_cleanup_delete_lease_mode,
@@ -2129,12 +2200,16 @@ mod security_boundary_tests {
         "preview_path",
         "resolve_user_path",
         "eject_removable_volume",
+        "get_storage_health",
+        "open_disk_utility",
         "open_system_settings",
         "open_product_page",
+        "open_product_issue",
         "relaunch_application",
         "can_relaunch_application",
         "get_installed_applications",
         "get_application_uninstall_plan",
+        "execute_native_application_uninstall",
         "create_cleanup_delete_lease",
         "release_cleanup_delete_lease",
         "set_cleanup_delete_lease_mode",

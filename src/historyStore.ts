@@ -117,7 +117,10 @@ function isHistoryPoint(value: unknown): value is HistoryPoint {
     isNullableNonNegativeNumber(value.diskReadBytesPerSecond) &&
     isNullableNonNegativeNumber(value.diskWriteBytesPerSecond) &&
     isNullableNonNegativeNumber(value.networkReceivedBytesPerSecond) &&
-    isNullableNonNegativeNumber(value.networkTransmittedBytesPerSecond)
+    isNullableNonNegativeNumber(value.networkTransmittedBytesPerSecond) &&
+    isOptionalNullableNonNegativeNumber(value.temperatureCelsius) &&
+    isOptionalNullableNonNegativeNumber(value.batteryChargePercent) &&
+    isOptionalNullableNonNegativeNumber(value.batteryDrainPercentPerHour)
   );
 }
 
@@ -135,4 +138,10 @@ function isPercentage(value: unknown): value is number {
 
 function isNullableNonNegativeNumber(value: unknown): value is number | null {
   return value === null || isNonNegativeNumber(value);
+}
+
+function isOptionalNullableNonNegativeNumber(
+  value: unknown,
+): value is number | null | undefined {
+  return value === undefined || isNullableNonNegativeNumber(value);
 }

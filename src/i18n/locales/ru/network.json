@@ -1,6 +1,6 @@
 {
   "quality": {
-    "eyebrow": "Автоматическая проверка сети", "title": "Качество сети", "description": "Проверяет каждые 30 секунд при открытой странице. При желании сохраняет пятиминутные агрегаты за 1 или 24 часа в фоне.",
+    "eyebrow": "Автоматическая проверка сети", "title": "Качество сети", "description": "Проверяет каждые 30 секунд при открытой странице. При желании сохраняет пятиминутные агрегаты до 7 дней в фоне.",
     "run": "Проверить сейчас", "checking": "Проверка…", "empty": "Выполняется первая проверка сети…",
     "method": "TCP-проверки example.com и one.one.one.one разделяют локальный маршрут, DNS, IPv4/IPv6 и доступ в Интернет без привилегированных сырых пакетов.",
     "dns": "DNS", "latency": "Средняя задержка", "jitter": "Джиттер", "loss": "Сбои TCP-проверок", "probes": "TCP-проверки", "probeSuccess": "{{successful}} из {{total}} успешно", "probeAndTargets": "{{successful}}/{{total}} проверок · доступно целей: {{targetSuccessful}}/{{targetTotal}}",
@@ -116,4 +116,20 @@
   "packets": "{{count}} пакетов",
   "unknownMtu": "Неизвестна",
   "noMac": "Отсутствует MAC-адрес"
+,
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

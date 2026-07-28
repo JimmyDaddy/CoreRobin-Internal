@@ -52,7 +52,8 @@ use crate::models::{
     CleanupDeleteProgress, CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
     CleanupDeleteTargetEvidence, CleanupFile, CleanupFullDiskAccessStatus, CleanupLocation,
     CleanupNode, CleanupNodeKind, CleanupPathState, CleanupProtectionReason, CleanupSafety,
-    CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupSubtreeRequest,
+    CleanupScan, CleanupScanAccess, CleanupScanProgress, CleanupScanRequest, CleanupScanTargetKind,
+    CleanupSubtreeRequest,
 };
 use crate::private_storage;
 #[cfg(all(target_os = "macos", not(test)))]
@@ -981,8 +982,18 @@ fn move_cleanup_target_to_macos_trash(
     target: &CleanupDeleteTarget,
     staging: &MacOSTrashStaging,
 ) -> Result<u64, String> {
+    if !target.bound.shares_volume_with(&staging.root) {
+        move_path_to_macos_trash(target, &target.canonical_path)?;
+        target.bound.verify_original_absent().map_err(|error| {
+            format!(
+                "CoreRobin could not verify that {} left its original volume: {error}",
+                target.display_path
+            )
+        })?;
+        return Ok(target.evidence.allocated_size_bytes);
+    }
     move_cleanup_target_via_macos_staging(target, staging, |staged_path| {
-        move_staged_path_to_macos_trash(target, staged_path)
+        move_path_to_macos_trash(target, staged_path)
     })
 }
 
@@ -1044,7 +1055,7 @@ fn move_cleanup_target_via_macos_staging(
 }
 
 #[cfg(all(target_os = "macos", not(test)))]
-fn move_staged_path_to_macos_trash(
+fn move_path_to_macos_trash(
     target: &CleanupDeleteTarget,
     staged_path: &Path,
 ) -> Result<(), String> {
@@ -1142,6 +1153,7 @@ fn cancelled_delete_result(
 }
 
 pub fn scan_cleanup(
+    request: CleanupScanRequest,
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<CleanupScan, CommandError> {
@@ -1151,20 +1163,61 @@ pub fn scan_cleanup(
             "CoreRobin could not locate the current user's home directory.",
         )
     })?;
-    let scan_root = system_disk_root(&home).ok_or_else(|| {
+    let system_root = system_disk_root(&home).ok_or_else(|| {
         CommandError::new(
             "cleanup_scan_root_unavailable",
             "CoreRobin could not locate the system disk root.",
         )
     })?;
-    scan_filesystem(
+    let (scan_root, target_kind) = match request.target_kind {
+        CleanupScanTargetKind::SystemDisk => {
+            (system_root.clone(), CleanupScanTargetKind::SystemDisk)
+        }
+        target_kind @ (CleanupScanTargetKind::Volume | CleanupScanTargetKind::Folder) => {
+            let raw_path = request.target_path.as_deref().ok_or_else(|| {
+                CommandError::new(
+                    "cleanup_scan_target_missing",
+                    "The selected scan target did not include a path.",
+                )
+            })?;
+            let candidate = Path::new(raw_path);
+            if !candidate.is_absolute() {
+                return Err(CommandError::new(
+                    "cleanup_scan_target_invalid",
+                    "The selected scan target must be an absolute directory path.",
+                ));
+            }
+            let canonical = candidate.canonicalize().map_err(|error| {
+                CommandError::new(
+                    "cleanup_scan_target_unavailable",
+                    format!("CoreRobin could not open the selected scan target: {error}"),
+                )
+            })?;
+            if !canonical.is_dir() {
+                return Err(CommandError::new(
+                    "cleanup_scan_target_invalid",
+                    "The selected scan target is not a directory.",
+                ));
+            }
+            (canonical, target_kind)
+        }
+    };
+    let system_scan = target_kind == CleanupScanTargetKind::SystemDisk;
+    let mut scan = scan_filesystem(
         &scan_root,
         &home,
-        platform_paths(&home),
-        true,
+        if system_scan {
+            platform_paths(&home)
+        } else {
+            Vec::new()
+        },
+        system_scan,
         cancelled,
         on_progress,
-    )
+    )?;
+    scan.target_kind = target_kind;
+    scan.target_path = scan_root.to_string_lossy().into_owned();
+    Ok(scan)
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1322,12 +1375,24 @@ pub fn scan_cleanup_subtree(
             "CoreRobin could not locate the current user's home directory.",
         )
     })?;
-    let scan_root = system_disk_root(&home).ok_or_else(|| {
-        CommandError::new(
-            "cleanup_scan_root_unavailable",
-            "CoreRobin could not locate the system disk root.",
-        )
-    })?;
+    let scan_root = match request.scan_root.as_deref() {
+        Some(path) => {
+            let candidate = Path::new(path);
+            if !candidate.is_absolute() {
+                return Err(CommandError::new(
+                    "cleanup_scan_root_invalid",
+                    "The cleanup subtree root must be an absolute path.",
+                ));
+            }
+            candidate.to_path_buf()
+        }
+        None => system_disk_root(&home).ok_or_else(|| {
+            CommandError::new(
+                "cleanup_scan_root_unavailable",
+                "CoreRobin could not locate the system disk root.",
+            )
+        })?,
+    };
     scan_cleanup_subtree_at(request, &home, &scan_root, cancelled)
 }
 
@@ -1395,6 +1460,7 @@ fn scan_cleanup_subtree_at(
         largest_files: &mut largest_files,
         home: &canonical_home,
         scan_root: &canonical_scan_root,
+        external_cleanup_root: is_external_cleanup_root(&canonical_scan_root, &canonical_home),
         boundary,
         definitions: &definitions,
         location_summaries: &mut location_summaries,
@@ -1965,6 +2031,11 @@ pub fn scan_application_inventory(
                             modified_at_ms: bundle.modified_at_ms,
                             uninstallable: true,
                             unavailable_reason: None,
+                            installation_source:
+                                crate::models::ApplicationInstallationSource::MacosBundle,
+                            native_uninstall_identifier: None,
+                            native_uninstall_requires_elevation: false,
+                            icon_path: None,
                         }
                     }
                     Err(error) => InstalledApplication {
@@ -1976,6 +2047,11 @@ pub fn scan_application_inventory(
                         modified_at_ms: application.modified_at_ms,
                         uninstallable: false,
                         unavailable_reason: Some(error.code),
+                        installation_source:
+                            crate::models::ApplicationInstallationSource::MacosBundle,
+                        native_uninstall_identifier: None,
+                        native_uninstall_requires_elevation: false,
+                        icon_path: None,
                     },
                 }
             })
@@ -1997,14 +2073,7 @@ pub fn scan_application_inventory(
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = preferred_language;
-        Ok(ApplicationInventorySnapshot {
-            sampled_at_ms: now_millis(),
-            platform_supported: false,
-            cached: false,
-            refresh_recommended: false,
-            applications: Vec::new(),
-        })
+        crate::native_uninstall::scan_native_application_inventory(preferred_language)
     }
 }
 
@@ -2107,19 +2176,23 @@ pub fn prepare_application_uninstall(
                 modified_at_ms: bundle.modified_at_ms,
                 uninstallable: true,
                 unavailable_reason: None,
+                installation_source: crate::models::ApplicationInstallationSource::MacosBundle,
+                native_uninstall_identifier: None,
+                native_uninstall_requires_elevation: false,
+                icon_path: None,
             },
             artifacts,
             skipped_paths,
+            native_uninstall: None,
         })
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (application_path, preferred_language);
-        Err(CommandError::new(
-            "application_uninstall_unsupported",
-            "Complete application uninstall is currently available on macOS only.",
-        ))
+        crate::native_uninstall::prepare_native_application_uninstall(
+            application_path,
+            preferred_language,
+        )
     }
 }
 
@@ -2308,6 +2381,10 @@ fn validate_cleanup_targets(
         )
     })?;
     let mut delete_roots = HashMap::from([(canonical_home.clone(), home_delete_root)]);
+    let external_scan_root = match request.scan_root.as_deref() {
+        Some(path) => validate_external_cleanup_root(path, &canonical_home)?,
+        None => None,
+    };
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
     let mut selected_paths = Vec::with_capacity(request.paths.len());
@@ -2331,6 +2408,11 @@ fn validate_cleanup_targets(
                 relative,
                 boundary.trusted_system_root,
             )
+        } else if let Some(root) = external_scan_root.as_ref()
+            && let Ok(relative) = path.strip_prefix(root)
+            && !relative.as_os_str().is_empty()
+        {
+            (root.clone(), relative.to_path_buf(), true)
         } else {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
@@ -2340,7 +2422,12 @@ fn validate_cleanup_targets(
             ));
         };
         let canonical_path = boundary_root.join(&relative_path);
-        if cleanup_protection_for_path(&canonical_path, &canonical_home).is_some() {
+        let inside_external_scan = external_scan_root
+            .as_ref()
+            .is_some_and(|root| canonical_path.starts_with(root) && canonical_path != *root);
+        if !inside_external_scan
+            && cleanup_protection_for_path(&canonical_path, &canonical_home).is_some()
+        {
             return Err(CommandError::new(
                 "protected_cleanup_path",
                 "CoreRobin will not delete system-managed locations, sensitive user data, temporary-directory roots, the home directory, or the system Trash folder itself.",
@@ -2451,6 +2538,59 @@ fn validate_cleanup_targets(
         missing_paths,
         unavailable_failures,
     })
+}
+
+fn validate_external_cleanup_root(
+    requested: &str,
+    canonical_home: &Path,
+) -> Result<Option<PathBuf>, CommandError> {
+    let requested = Path::new(requested);
+    if !requested.is_absolute() {
+        return Err(CommandError::new(
+            "cleanup_scan_root_invalid",
+            "A non-system cleanup boundary must be an absolute directory path.",
+        ));
+    }
+    let metadata = fs::symlink_metadata(requested).map_err(|error| {
+        CommandError::new(
+            "cleanup_scan_root_unavailable",
+            format!("CoreRobin could not verify the selected scan root: {error}"),
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(CommandError::new(
+            "cleanup_scan_root_invalid",
+            "A non-system cleanup boundary must be a real directory.",
+        ));
+    }
+    let root = requested.canonicalize().map_err(|error| {
+        CommandError::new(
+            "cleanup_scan_root_unavailable",
+            format!("CoreRobin could not open the selected scan root: {error}"),
+        )
+    })?;
+    Ok(is_external_cleanup_root(&root, canonical_home).then_some(root))
+}
+
+fn is_external_cleanup_root(root: &Path, canonical_home: &Path) -> bool {
+    let Some(system_root) =
+        system_disk_root(canonical_home).and_then(|path| path.canonicalize().ok())
+    else {
+        return false;
+    };
+    #[cfg(unix)]
+    {
+        fs::metadata(root).map(|value| value.dev()).ok()
+            != fs::metadata(&system_root).map(|value| value.dev()).ok()
+    }
+    #[cfg(windows)]
+    {
+        !root.starts_with(&system_root)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        false
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -3042,6 +3182,7 @@ struct ScanContext<'a> {
     largest_files: &'a mut Vec<CleanupFile>,
     home: &'a Path,
     scan_root: &'a Path,
+    external_cleanup_root: bool,
     boundary: ScanFilesystemBoundary,
     definitions: &'a [LocationDefinition],
     location_summaries: &'a mut [LocationSummary],
@@ -3049,6 +3190,30 @@ struct ScanContext<'a> {
     prefetched_subtrees: &'a mut PrefetchedSubtreeAccumulator,
     cancelled: &'a AtomicBool,
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
+}
+
+impl ScanContext<'_> {
+    fn protection_for_path(&self, path: &Path) -> Option<CleanupProtectionReason> {
+        cleanup_protection_for_scan_path(
+            path,
+            self.home,
+            self.scan_root,
+            self.external_cleanup_root,
+        )
+    }
+}
+
+fn cleanup_protection_for_scan_path(
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+    external_cleanup_root: bool,
+) -> Option<CleanupProtectionReason> {
+    if external_cleanup_root && path.starts_with(scan_root) && path != scan_root {
+        None
+    } else {
+        cleanup_protection_for_path(path, home)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -3221,6 +3386,7 @@ fn scan_filesystem(
             largest_files: &mut largest_files,
             home,
             scan_root,
+            external_cleanup_root: is_external_cleanup_root(scan_root, home),
             boundary,
             definitions: &definitions,
             location_summaries: &mut location_summaries,
@@ -3308,6 +3474,8 @@ fn scan_filesystem(
         unreadable_entry_count: stats.unreadable_entry_count,
         unreadable_paths,
         deletion_available: true,
+        target_kind: CleanupScanTargetKind::SystemDisk,
+        target_path: scan_root.to_string_lossy().into_owned(),
     })
 }
 
@@ -3770,7 +3938,7 @@ fn scan_directory(
                 modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
             });
         }
-        let protection_reason = cleanup_protection_for_path(&entry_path, context.home);
+        let protection_reason = context.protection_for_path(&entry_path);
         children.push(CleanupNode {
             id: display_path(&entry_path, context.home),
             name: cleanup_node_name(&entry_path),
@@ -3796,7 +3964,7 @@ fn scan_directory(
     let item_count = children.total_item_count;
     let has_children = children.has_children;
     let path = display_path(directory, context.home);
-    let protection_reason = cleanup_protection_for_path(directory, context.home);
+    let protection_reason = context.protection_for_path(directory);
     let node = CleanupNode {
         id: path.clone(),
         name: cleanup_node_name(directory),
@@ -4010,7 +4178,7 @@ fn scan_directory_summary(
         return Ok(node);
     }
     let path = display_path(root, context.home);
-    let protection_reason = cleanup_protection_for_path(root, context.home);
+    let protection_reason = context.protection_for_path(root);
     let node = CleanupNode {
         id: path.clone(),
         name: cleanup_node_name(root),
@@ -4034,7 +4202,7 @@ fn scan_directory_summary(
             let protection_reason = if summary.restricted {
                 Some(CleanupProtectionReason::Restricted)
             } else {
-                cleanup_protection_for_path(&summary.path, context.home)
+                context.protection_for_path(&summary.path)
             };
             prefetched_children.push(CleanupNode {
                 id: path.clone(),
@@ -4499,6 +4667,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn same_disk_folder_scan_does_not_expand_delete_authority() {
+        let root = test_root("same-disk-scan-root");
+        let home = root.join("home");
+        let selected = root.join("selected");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&selected).unwrap();
+
+        let boundary = validate_external_cleanup_root(
+            selected.to_string_lossy().as_ref(),
+            &home.canonicalize().unwrap(),
+        )
+        .unwrap();
+
+        assert!(boundary.is_none());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn subtree_requests_are_last_request_wins_and_never_scan_concurrently() {
         let coordinator = Arc::new(CleanupWorkCoordinator::default());
         let path = PathBuf::from("/fixture/shared");
@@ -4623,6 +4809,7 @@ mod tests {
         CleanupDeleteLeaseRequest {
             paths,
             scan_sampled_at_ms,
+            scan_root: None,
             expected_targets,
             mode: CleanupDeleteMode::Permanent,
             application_uninstall: None,
@@ -4704,6 +4891,10 @@ mod tests {
                 modified_at_ms: Some(900),
                 uninstallable: true,
                 unavailable_reason: None,
+                installation_source: crate::models::ApplicationInstallationSource::MacosBundle,
+                native_uninstall_identifier: None,
+                native_uninstall_requires_elevation: false,
+                icon_path: None,
             }],
         };
 
@@ -5071,6 +5262,7 @@ mod tests {
             CleanupSubtreeRequest {
                 request_id: "system-subtree".to_owned(),
                 path: shared.to_string_lossy().into_owned(),
+                scan_root: None,
                 safety: CleanupSafety::Reclaimable,
                 expand_smaller_objects: false,
             },
@@ -5184,6 +5376,7 @@ mod tests {
             CleanupSubtreeRequest {
                 request_id: "expand-smaller-objects".to_owned(),
                 path: downloads.to_string_lossy().into_owned(),
+                scan_root: None,
                 safety: CleanupSafety::Review,
                 expand_smaller_objects: true,
             },
@@ -5918,6 +6111,26 @@ mod tests {
         }
 
         fs::remove_dir_all(home).unwrap();
+    }
+
+    #[test]
+    fn external_scan_children_are_actionable_but_the_volume_root_stays_protected() {
+        let home = Path::new("/Users/example");
+        let scan_root = Path::new("/Volumes/Archive");
+        let child = scan_root.join("Downloads/old-image.dmg");
+
+        assert_eq!(
+            cleanup_protection_for_scan_path(scan_root, home, scan_root, true),
+            Some(CleanupProtectionReason::SystemLocation)
+        );
+        assert_eq!(
+            cleanup_protection_for_scan_path(&child, home, scan_root, true),
+            None
+        );
+        assert_eq!(
+            cleanup_protection_for_scan_path(&child, home, scan_root, false),
+            Some(CleanupProtectionReason::SystemLocation)
+        );
     }
 
     #[test]

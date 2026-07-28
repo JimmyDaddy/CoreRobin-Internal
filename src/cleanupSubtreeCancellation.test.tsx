@@ -357,5 +357,7 @@ function snapshot(): CleanupScan {
     unreadableEntryCount: 0,
     unreadablePaths: [],
     deletionAvailable: true,
+    targetKind: "folder",
+    targetPath: "/fixture",
   };
 }

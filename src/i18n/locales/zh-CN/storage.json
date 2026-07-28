@@ -35,5 +35,31 @@
   "establishingBaseline": "正在建立磁盘吞吐基线…",
   "chartLabel": "磁盘读取 {{read}}，写入 {{write}}",
   "readPeak": "读取峰值",
-  "writePeak": "写入峰值"
+  "writePeak": "写入峰值",
+  "health": {
+    "eyebrow": "只读设备信息",
+    "title": "磁盘健康与挂载详情",
+    "description": "只展示操作系统提供的状态；CoreRobin 不修复磁盘，也不虚构健康百分比。",
+    "openUtility": "打开磁盘工具",
+    "loading": "正在读取已挂载卷信息…",
+    "filesystem": "文件系统",
+    "mountMode": "挂载模式",
+    "readOnly": "只读",
+    "readWrite": "可读写",
+    "media": "介质",
+    "ssd": "固态硬盘",
+    "hdd": "机械硬盘",
+    "external": "外置介质",
+    "unknownMedia": "未知",
+    "purgeable": "可清理空间",
+    "inspectUnavailable": "操作系统未能提供这个卷的全部详情。",
+    "scope": "S.M.A.R.T. 是操作系统可提供时的总体设备状态；不支持并不代表磁盘不健康。",
+    "status": {
+      "verified": "已验证",
+      "warning": "需要留意",
+      "failing": "可能故障",
+      "unsupported": "不支持",
+      "unknown": "未知"
+    }
+  }
 }

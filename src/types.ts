@@ -185,6 +185,31 @@ export interface VolumeSnapshot {
   removable: boolean;
 }
 
+export type StorageSmartStatus =
+  | "verified"
+  | "warning"
+  | "failing"
+  | "unsupported"
+  | "unknown";
+
+export interface StorageDeviceHealth {
+  mountPoint: string;
+  filesystem: string | null;
+  source: string | null;
+  smartStatus: StorageSmartStatus;
+  smartLabel: string | null;
+  readOnly: boolean | null;
+  internal: boolean | null;
+  solidState: boolean | null;
+  purgeableBytes: number | null;
+  inspectionError: string | null;
+}
+
+export interface StorageHealthSnapshot {
+  sampledAtMs: number;
+  devices: StorageDeviceHealth[];
+}
+
 export type CleanupLocationKind =
   | "downloads"
   | "trash"
@@ -218,6 +243,8 @@ export interface CleanupScan {
   unreadableEntryCount: number;
   unreadablePaths: string[];
   deletionAvailable: boolean;
+  targetKind: CleanupScanTargetKind;
+  targetPath: string;
 }
 
 export interface CleanupApplication {
@@ -237,7 +264,23 @@ export interface InstalledApplication {
   modifiedAtMs: number | null;
   uninstallable: boolean;
   unavailableReason: string | null;
+  installationSource: ApplicationInstallationSource;
+  nativeUninstallIdentifier: string | null;
+  nativeUninstallRequiresElevation: boolean;
+  iconPath: string | null;
 }
+
+export type ApplicationInstallationSource =
+  | "macos_bundle"
+  | "windows_msi"
+  | "windows_msix"
+  | "windows_uninstaller"
+  | "linux_flatpak"
+  | "linux_deb"
+  | "linux_rpm"
+  | "linux_snap"
+  | "portable"
+  | "unknown";
 
 export interface ApplicationInventorySnapshot {
   sampledAtMs: number;
@@ -274,6 +317,27 @@ export interface ApplicationUninstallPlan {
   application: InstalledApplication;
   artifacts: ApplicationUninstallArtifact[];
   skippedPaths: string[];
+  nativeUninstall: NativeApplicationUninstallPlan | null;
+}
+
+export interface NativeApplicationUninstallPlan {
+  id: string;
+  source: ApplicationInstallationSource;
+  identifier: string;
+  method: string;
+  requiresElevation: boolean;
+}
+
+export type NativeApplicationUninstallOutcome =
+  | "succeeded"
+  | "cancelled"
+  | "failed"
+  | "restart_required";
+
+export interface NativeApplicationUninstallResult {
+  outcome: NativeApplicationUninstallOutcome;
+  exitCode: number | null;
+  message: string;
 }
 
 export interface ApplicationUninstallScope {
@@ -312,6 +376,8 @@ export interface CleanupNode {
 export interface CleanupSubtreeRequest {
   requestId: string;
   path: string;
+  /** Root selected for the full scan that produced this path. */
+  scanRoot?: string;
   safety: CleanupSafety;
   expandSmallerObjects?: boolean;
 }
@@ -321,6 +387,13 @@ export interface CleanupScanProgress {
   discoveredBytes: number;
   currentPath: string;
   elapsedMs: number;
+}
+
+export type CleanupScanTargetKind = "system_disk" | "volume" | "folder";
+
+export interface CleanupScanTarget {
+  targetKind: CleanupScanTargetKind;
+  targetPath: string | null;
 }
 
 export type CleanupFullDiskAccessStatus =
@@ -345,6 +418,8 @@ export interface CleanupPathState {
 export interface CleanupDeleteLeaseRequest {
   paths: string[];
   scanSampledAtMs: number;
+  /** Optional non-system scan root that bounds every selected target. */
+  scanRoot?: string;
   expectedTargets: CleanupDeleteTargetEvidence[];
   mode: CleanupDeleteMode;
   applicationUninstall?: ApplicationUninstallScope;
@@ -533,6 +608,7 @@ export interface NetworkQualityDiagnostic {
 
 export interface NetworkQualityResult {
   sampledAtMs: number;
+  routeSignature: string | null;
   targetHost: string;
   targetPort: number;
   targetCount: number;
@@ -758,6 +834,9 @@ export interface HistoryPoint {
   diskWriteBytesPerSecond: number | null;
   networkReceivedBytesPerSecond: number | null;
   networkTransmittedBytesPerSecond: number | null;
+  temperatureCelsius?: number | null;
+  batteryChargePercent?: number | null;
+  batteryDrainPercentPerHour?: number | null;
 }
 
 export interface ProcessHistoryPoint {

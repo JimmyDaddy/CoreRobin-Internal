@@ -76,7 +76,7 @@
     }
   },
   "quality": {
-    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks every 30 seconds while open. Optionally retain five-minute aggregates for 1 or 24 hours in the background.",
+    "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks every 30 seconds while open. Optionally retain five-minute aggregates for up to 7 days in the background.",
     "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
     "method": "TCP probes target example.com and one.one.one.one and separate local routing, DNS, IPv4/IPv6, and internet reachability without privileged raw packets.",
     "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "TCP probe failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded", "probeAndTargets": "{{successful}}/{{total}} probes · {{targetSuccessful}}/{{targetTotal}} targets reachable",
@@ -119,5 +119,20 @@
   "accumulated": "Total {{value}}",
   "packets": "{{count}} packets",
   "unknownMtu": "Unknown",
-  "noMac": "No MAC address"
+  "noMac": "No MAC address",
+  "qualityHistoryHours168": "7 days",
+  "qualityEvents": {
+    "eyebrow": "Event explanation",
+    "title": "What changed on the network",
+    "summary": "In the last {{hours}} hours: {{outage}} interruptions, {{gap}} sleep gaps, {{dns}} DNS incidents, {{direct}} direct-connect incidents, and {{interface}} interface changes.",
+    "none": "No notable network events in this range.",
+    "privacy": "Stores only event types, timestamps, status, and aggregates; interface names and addresses are not retained.",
+    "kind": {
+      "sleep_gap": "Sampling paused while the computer slept",
+      "interface_change": "Active interface or default route changed",
+      "status_change": "Internet reachability changed",
+      "dns_failure": "DNS resolution degraded",
+      "direct_failure": "Direct internet path degraded"
+    }
+  }
 }

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
+use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
@@ -175,6 +176,7 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
 
     Ok(NetworkQualityResult {
         sampled_at_ms,
+        route_signature: default_route_signature(),
         target_host: QUALITY_TARGETS
             .iter()
             .map(|(host, _)| *host)
@@ -196,6 +198,74 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         tcp_probe_failure_percent,
         diagnostics,
     })
+}
+
+fn default_route_signature() -> Option<String> {
+    let route = platform_default_route().or_else(fallback_route_identity)?;
+    Some(stable_signature(&route))
+}
+
+#[cfg(target_os = "macos")]
+fn platform_default_route() -> Option<Vec<u8>> {
+    let output = Command::new("/sbin/route")
+        .args(["-n", "get", "default"])
+        .output()
+        .ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+#[cfg(target_os = "linux")]
+fn platform_default_route() -> Option<Vec<u8>> {
+    let output = Command::new("ip")
+        .args(["-json", "route", "show", "default"])
+        .output()
+        .ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+#[cfg(windows)]
+fn platform_default_route() -> Option<Vec<u8>> {
+    let output = Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric,InterfaceMetric | Select-Object -First 1 ifIndex,NextHop,RouteMetric,InterfaceMetric | ConvertTo-Json -Compress",
+        ])
+        .output()
+        .ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+fn platform_default_route() -> Option<Vec<u8>> {
+    None
+}
+
+fn fallback_route_identity() -> Option<Vec<u8>> {
+    let mut identity = Vec::new();
+    for (bind_address, target) in [("0.0.0.0:0", ROUTE_PROBE_V4), ("[::]:0", ROUTE_PROBE_V6)] {
+        let local = UdpSocket::bind(bind_address)
+            .and_then(|socket| {
+                socket.connect(target)?;
+                socket.local_addr()
+            })
+            .ok();
+        if let Some(local) = local {
+            identity.extend_from_slice(local.ip().to_string().as_bytes());
+            identity.push(0);
+        }
+    }
+    (!identity.is_empty()).then_some(identity)
+}
+
+fn stable_signature(value: &[u8]) -> String {
+    let mut hash = 2_166_136_261_u32;
+    for byte in value {
+        hash ^= u32::from(*byte);
+        hash = hash.wrapping_mul(16_777_619);
+    }
+    format!("{hash:08x}")
 }
 
 pub fn resolve_network_hosts(request: NetworkHostLookupRequest) -> Vec<NetworkHostLookup> {
@@ -273,13 +343,20 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{address_family_status, mean};
+    use super::{address_family_status, mean, stable_signature};
     use crate::models::NetworkQualityDiagnosticStatus;
 
     #[test]
     fn mean_handles_empty_and_non_empty_samples() {
         assert_eq!(mean(&[]), None);
         assert_eq!(mean(&[10.0, 20.0, 30.0]), Some(20.0));
+    }
+
+    #[test]
+    fn route_signature_is_stable_without_exposing_route_data() {
+        let route = b"interface: en0\ngateway: 192.0.2.1";
+        assert_eq!(stable_signature(route), stable_signature(route));
+        assert!(!stable_signature(route).contains("192.0.2.1"));
     }
 
     #[test]

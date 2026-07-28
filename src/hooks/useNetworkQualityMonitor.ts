@@ -35,10 +35,12 @@ export function useNetworkQualityMonitor({
   active,
   historyEnabled,
   historyHours,
+  networkSignature = "",
 }: {
   active: boolean;
   historyEnabled: boolean;
   historyHours: NetworkQualityHistoryHours;
+  networkSignature?: string;
 }) {
   const [result, setResult] = useState<NetworkQualityResult | null>(null);
   const [sessionSamples, setSessionSamples] =
@@ -52,9 +54,11 @@ export function useNetworkQualityMonitor({
   const mountedRef = useRef(true);
   const historyEnabledRef = useRef(historyEnabled);
   const historyHoursRef = useRef(historyHours);
+  const networkSignatureRef = useRef(networkSignature);
 
   historyEnabledRef.current = historyEnabled;
   historyHoursRef.current = historyHours;
+  networkSignatureRef.current = networkSignature;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -93,6 +97,8 @@ export function useNetworkQualityMonitor({
             current,
             nextResult,
             historyHoursRef.current,
+            nextResult.sampledAtMs,
+            networkSignatureRef.current,
           );
           saveNetworkQualityHistory(next);
           return next;

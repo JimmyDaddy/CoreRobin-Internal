@@ -29,6 +29,7 @@ import type {
   CleanupScan,
   CleanupScanAccess,
   CleanupScanProgress,
+  CleanupScanTarget,
   CleanupSubtreeRequest,
   CleanupDeleteExecutionRequest,
   CleanupDeleteLease,
@@ -47,12 +48,14 @@ import type {
   NetworkConnectionsSnapshot,
   NetworkHostLookup,
   NetworkQualityResult,
+  NativeApplicationUninstallResult,
   StartupContext,
   FileInsightsProgress,
   FileInsightsScan,
   GpuEnergySnapshot,
   SystemSnapshot,
   SystemSummary,
+  StorageHealthSnapshot,
   StartupItemsSnapshot,
   StartupManagementExecutionRequest,
   StartupManagementLease,
@@ -180,6 +183,7 @@ export async function runNetworkQualityCheck(): Promise<NetworkQualityResult> {
     await new Promise((resolve) => window.setTimeout(resolve, 500));
     return {
       sampledAtMs: Date.now(),
+      routeSignature: "mock-default-route",
       targetHost: "example.com",
       targetPort: 443,
       targetCount: 2,
@@ -346,6 +350,7 @@ export async function executeStartupManagement(
 
 export async function getCleanupScan(
   onProgress: (progress: CleanupScanProgress) => void,
+  target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
 ): Promise<CleanupScan> {
   if (canUseDevelopmentMock()) {
     mockCleanupCancelled = false;
@@ -362,10 +367,17 @@ export async function getCleanupScan(
       }
       onProgress(step);
     }
-    return getMockCleanupScan();
+    return {
+      ...getMockCleanupScan(),
+      targetKind: target.targetKind,
+      targetPath: target.targetPath ?? getMockCleanupScan().targetPath,
+    };
   }
   const progressChannel = new Channel<CleanupScanProgress>(onProgress);
-  return invoke<CleanupScan>("get_cleanup_scan", { onProgress: progressChannel });
+  return invoke<CleanupScan>("get_cleanup_scan", {
+    onProgress: progressChannel,
+    request: target,
+  });
 }
 
 export async function getCleanupScanAccess(): Promise<CleanupScanAccess> {
@@ -419,6 +431,36 @@ export async function ejectRemovableVolume(mountPoint: string): Promise<void> {
   return invoke<void>("eject_removable_volume", { mountPoint });
 }
 
+export async function getStorageHealth(
+  mountPoints: readonly string[],
+): Promise<StorageHealthSnapshot> {
+  if (canUseDevelopmentMock()) {
+    return {
+      sampledAtMs: Date.now(),
+      devices: mountPoints.map((mountPoint) => ({
+        mountPoint,
+        filesystem: null,
+        source: null,
+        smartStatus: "unknown",
+        smartLabel: null,
+        readOnly: null,
+        internal: null,
+        solidState: null,
+        purgeableBytes: null,
+        inspectionError: null,
+      })),
+    };
+  }
+  return invoke<StorageHealthSnapshot>("get_storage_health", {
+    mountPoints,
+  });
+}
+
+export async function openDiskUtility(): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  return invoke<void>("open_disk_utility");
+}
+
 export async function openSystemSettings(
   destination: SystemSettingsDestination,
 ): Promise<void> {
@@ -436,6 +478,20 @@ export async function openProductPage(
     return;
   }
   return invoke<void>("open_product_page", { page, language: normalizedLanguage });
+}
+
+export async function openProductIssue(
+  title: string,
+  body: string,
+): Promise<void> {
+  if (!isDesktopRuntime()) {
+    const url = new URL("https://github.com/JimmyDaddy/corerobin-monitor/issues/new");
+    url.searchParams.set("title", title);
+    url.searchParams.set("body", body);
+    window.open(url, "_blank", "noopener,noreferrer");
+    return;
+  }
+  return invoke<void>("open_product_issue", { title, body });
 }
 
 export async function canRelaunchApplication(executablePath: string): Promise<boolean> {
@@ -509,6 +565,22 @@ export async function getApplicationUninstallPlan(
     applicationPath,
     language: normalizeLanguage(language),
   });
+}
+
+export async function executeNativeApplicationUninstall(
+  planId: string,
+): Promise<NativeApplicationUninstallResult> {
+  if (canUseDevelopmentMock()) {
+    return {
+      outcome: "succeeded",
+      exitCode: 0,
+      message: "The operating system completed the uninstall request.",
+    };
+  }
+  return invoke<NativeApplicationUninstallResult>(
+    "execute_native_application_uninstall",
+    { request: { planId } },
+  );
 }
 
 export async function relaunchApplication(executablePath: string): Promise<void> {

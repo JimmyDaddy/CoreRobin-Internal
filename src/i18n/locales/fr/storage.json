@@ -29,4 +29,31 @@
   "chartLabel": "Lecture {{read}}, écriture {{write}}",
   "readPeak": "Pic de lecture",
   "writePeak": "Pic d'écriture"
+,
+  "health": {
+    "eyebrow": "Read-only device information",
+    "title": "Disk health and mount details",
+    "description": "Shows operating-system status only. CoreRobin does not repair disks or invent a health percentage.",
+    "openUtility": "Open disk utility",
+    "loading": "Reading mounted-volume details…",
+    "filesystem": "File system",
+    "mountMode": "Mount mode",
+    "readOnly": "Read only",
+    "readWrite": "Read and write",
+    "media": "Media",
+    "ssd": "Solid-state drive",
+    "hdd": "Hard disk",
+    "external": "External media",
+    "unknownMedia": "Unknown",
+    "purgeable": "Purgeable space",
+    "inspectUnavailable": "The operating system could not provide all details for this volume.",
+    "scope": "S.M.A.R.T. is an overall device status when the operating system exposes it; unsupported does not mean unhealthy.",
+    "status": {
+      "verified": "Verified",
+      "warning": "Warning",
+      "failing": "Failing",
+      "unsupported": "Not supported",
+      "unknown": "Unknown"
+    }
+  }
 }

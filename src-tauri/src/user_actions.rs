@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::process::Stdio;
 
 use serde::Deserialize;
@@ -49,26 +49,56 @@ pub enum ProductLanguage {
 
 pub fn open_product_page(page: ProductPage, language: ProductLanguage) -> Result<(), CommandError> {
     let url = product_page_url(page, language);
+    open_external_url(&url)
+}
 
+pub fn open_product_issue(title: &str, body: &str) -> Result<(), CommandError> {
+    if title.chars().count() > 200 || body.chars().count() > 12_000 {
+        return Err(CommandError::new(
+            "issue_prefill_too_large",
+            "The issue prefill is too large to open safely.",
+        ));
+    }
+    let url = format!(
+        "https://github.com/JimmyDaddy/corerobin-monitor/issues/new?title={}&body={}",
+        percent_encode_query(title),
+        percent_encode_query(body),
+    );
+    open_external_url(&url)
+}
+
+fn open_external_url(url: &str) -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     return run_command(
-        Command::new("/usr/bin/open").arg(&url),
+        Command::new("/usr/bin/open").arg(url),
         "The product page could not be opened.",
     );
 
     #[cfg(windows)]
     return run_command(
-        Command::new("explorer.exe").arg(&url),
+        Command::new("explorer.exe").arg(url),
         "The product page could not be opened.",
     );
 
     #[cfg(target_os = "linux")]
     {
         run_command(
-            Command::new("xdg-open").arg(&url),
+            Command::new("xdg-open").arg(url),
             "The product page could not be opened.",
         )
     }
+}
+
+fn percent_encode_query(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(*byte));
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
 }
 
 fn product_page_url(page: ProductPage, language: ProductLanguage) -> String {
@@ -225,6 +255,31 @@ pub fn open_system_settings(destination: SystemSettingsDestination) -> Result<()
     }
 }
 
+pub fn open_disk_utility() -> Result<(), CommandError> {
+    #[cfg(target_os = "macos")]
+    return run_command(
+        Command::new("/usr/bin/open").args(["-a", "Disk Utility"]),
+        "Disk Utility could not be opened.",
+    );
+
+    #[cfg(windows)]
+    return run_command(
+        Command::new("diskmgmt.msc"),
+        "Disk Management could not be opened.",
+    );
+
+    #[cfg(target_os = "linux")]
+    {
+        return spawn_and_reap(
+            Command::new("gnome-disks")
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+            "The system disk utility could not be opened.",
+        );
+    }
+}
+
 pub fn relaunch_application(executable_path: &str) -> Result<(), CommandError> {
     let executable_path = canonical_existing_path(executable_path)?;
 
@@ -331,7 +386,7 @@ fn run_command(command: &mut Command, failure_message: &str) -> Result<(), Comma
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn spawn_and_reap(command: &mut Command, failure_message: &str) -> Result<(), CommandError> {
     let mut child = command
         .spawn()
@@ -378,8 +433,8 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        ProductLanguage, ProductPage, application_bundle_from_path, product_page_url,
-        resolve_user_path,
+        ProductLanguage, ProductPage, application_bundle_from_path, percent_encode_query,
+        product_page_url, resolve_user_path,
     };
 
     #[test]
@@ -406,6 +461,14 @@ mod tests {
         assert_eq!(
             application_bundle_from_path(path),
             Some(Path::new("/Applications/Browser.app").to_path_buf())
+        );
+    }
+
+    #[test]
+    fn issue_prefill_is_encoded_as_query_data() {
+        assert_eq!(
+            percent_encode_query("CoreRobin issue\n版本"),
+            "CoreRobin%20issue%0A%E7%89%88%E6%9C%AC",
         );
     }
 

@@ -601,6 +601,22 @@ impl BoundDeleteTarget {
         }
     }
 
+    #[cfg(all(target_os = "macos", not(test)))]
+    pub fn shares_volume_with(&self, directory: &DeleteRoot) -> bool {
+        self.volume == directory.volume
+    }
+
+    #[cfg(all(target_os = "macos", not(test)))]
+    pub fn verify_original_absent(&self) -> io::Result<()> {
+        match self.parent.symlink_metadata(&self.name) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            Ok(_) => Err(invalid_data(
+                "a cleanup entry still exists at the original path",
+            )),
+            Err(error) => Err(error),
+        }
+    }
+
     #[cfg(target_os = "macos")]
     pub fn restore_from_directory_noreplace(
         &self,

@@ -31,6 +31,7 @@
       "keepFile": "Mantener {{name}} en este grupo",
       "dialogTitle": "Procesar archivos duplicados",
       "dialogDescription": "Se conserva al menos un archivo por grupo. Las copias extra pueden moverse a la papelera o eliminarse de forma permanente tras confirmarlo. Antes se revisan de nuevo el estado y las rutas protegidas.",
+      "refreshIncomplete": "CoreRobin no pudo relacionar por ruta todos los archivos duplicados que se volvieron a comprobar.",
       "actionName": "Procesamiento de archivos duplicados",
       "completed": "Se procesaron copias duplicadas de {{count}} y se liberó {{size}}.",
       "partial": "Procesado {{deletedCount}}; {{failedCount}} no se pudo procesar",
@@ -281,4 +282,31 @@
   "unreadable": "{{count}} Las ubicaciones estaban protegidas o temporalmente inaccesibles. Solo estas ubicaciones se excluyen del resultado.",
   "fullDiskAccessHint": "En macOS, otorgue el acceso completo al disco a CoreRobin en la configuración del Sistema → Privacidad y seguridad, luego vuelva a escanear.",
   "safetyBoundary": "El escaneo no tiene límite de tiempo ni de elementos y nunca sigue enlaces simbólicos. Solo los elementos colocados en la cesta, verificados por ruta y confirmados explícitamente se eliminan permanentemente y no pueden ser restaurados."
+,
+  "targets": {
+    "kicker": "Scan scope",
+    "title": "Choose what to scan",
+    "systemDisk": "System disk",
+    "chooseFolder": "Choose folder",
+    "chooseFolderTitle": "Choose a folder to scan",
+    "recent": "Recent",
+    "removable": "Removable",
+    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "oldFileProcessing": {
+    "selectFile": "Seleccionar {{name}} para revisar la limpieza",
+    "selected": "Seleccionado",
+    "select": "Seleccionar",
+    "selectionHint": "Solo los archivos que selecciones se añaden a la cesta de limpieza revisada.",
+    "emptySelection": "Selecciona archivos sin modificar desde hace tiempo que ya no necesites.",
+    "summary": "{{count}} archivos sin modificar seleccionados · {{size}}",
+    "review": "Revisar limpieza",
+    "dialogTitle": "Procesar archivos sin modificar desde hace tiempo",
+    "dialogDescription": "Revisa los archivos seleccionados y muévelos a la papelera o elimínalos permanentemente tras confirmar. Los archivos que ya no existan se omiten.",
+    "refreshIncomplete": "CoreRobin no pudo relacionar por ruta todos los archivos sin modificar que se volvieron a comprobar.",
+    "actionName": "Limpieza de archivos sin modificar",
+    "completed": "Se procesaron {{count}} archivos y se liberaron {{size}}",
+    "partial": "Se procesaron {{deletedCount}}; {{failedCount}} no pudieron procesarse",
+    "cancelled": "El procesamiento se detuvo tras {{count}} archivos"
+  }
 }

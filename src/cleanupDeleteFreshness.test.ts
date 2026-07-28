@@ -36,6 +36,21 @@ describe("cleanup deletion freshness", () => {
     });
   });
 
+  it("carries a selected external scan root into the delete boundary", () => {
+    expect(
+      buildCleanupDeleteLeaseRequest(
+        [{ ...target, path: "/Volumes/Archive/old.bin" }],
+        123,
+        "permanent",
+        "/Volumes/Archive",
+      ),
+    ).toMatchObject({
+      paths: ["/Volumes/Archive/old.bin"],
+      scanRoot: "/Volumes/Archive",
+      mode: "permanent",
+    });
+  });
+
   it("rebuilds dialog items by stable path with refreshed evidence", () => {
     const refreshed = applyRefreshedCleanupTargets(
       [target],

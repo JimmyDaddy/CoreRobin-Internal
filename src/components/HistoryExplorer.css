@@ -1,0 +1,93 @@
+.application-impact-history {
+  display: grid;
+  gap: 13px;
+}
+
+.application-impact-history > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.application-impact-history h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0 0;
+  font-size: 14px;
+}
+
+.application-impact-history header p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.application-impact-history__ranges {
+  display: flex;
+  gap: 5px;
+}
+
+.application-impact-history__ranges button {
+  min-height: 28px;
+  padding: 4px 9px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  font: inherit;
+  font-size: 10px;
+}
+
+.application-impact-history__ranges button.is-active {
+  color: var(--blue);
+  border-color: rgba(99, 168, 255, 0.35);
+  background: var(--blue-soft);
+}
+
+.application-impact-history__empty {
+  display: grid;
+  min-height: 110px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.application-impact-history__empty strong { color: var(--text-soft); font-size: 11px; }
+.application-impact-history__empty span { max-width: 520px; font-size: 9px; line-height: 1.5; }
+
+.application-impact-history__list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.application-impact-history__list li {
+  display: grid;
+  grid-template-columns: 24px minmax(150px, 1fr) repeat(3, minmax(80px, auto)) minmax(90px, auto);
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.application-impact-history__rank {
+  color: var(--text-dim);
+  text-align: center;
+  font-size: 10px;
+}
+
+.application-impact-history__list strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.application-impact-history__list li > span:not(.application-impact-history__rank) { display: flex; align-items: center; gap: 4px; color: var(--text-soft); font-size: 9px; }
+.application-impact-history__list li > small { color: var(--text-dim); font-size: 9px; text-align: right; }
+.application-impact-history__boundary { display: flex; align-items: center; gap: 5px; color: var(--text-dim); font-size: 9px; }

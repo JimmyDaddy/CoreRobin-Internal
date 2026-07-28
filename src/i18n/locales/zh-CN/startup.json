@@ -131,5 +131,19 @@
       "title": "当前未启用",
       "description": "配置仍然存在，但系统不会按该条目自动启动。"
     }
+  },
+  "impactComparison": {
+    "title": "与最近几次启动对比",
+    "description": "使用前 {{count}} 次测量的中位数作为参照。",
+    "improved": "趋稳速度快了 {{value}}%",
+    "similar": "接近最近的中位数",
+    "slower": "趋稳速度慢了 {{value}}%",
+    "risingApplication": "{{name}} 上升最多，增加 {{value}} 个 CPU 百分点"
+  },
+  "impactReceipt": {
+    "title": "启动项变更后的结果",
+    "improved": "调整 {{name}} 后，下次启动确实变快了。",
+    "similar": "调整 {{name}} 后，下次启动与平时接近。",
+    "slower": "调整 {{name}} 后，下次启动仍然偏慢；它可能不是主要原因。"
   }
 }

@@ -57,5 +57,45 @@
     "errors": { "application_identity_changed": "应用身份已经变化，请刷新清单后重试。", "application_bundle_unavailable": "应用当前不可访问，请确认它仍在原位置。", "application_artifact_unavailable": "某个项目在确认前发生变化，请刷新卸载计划。", "application_bundle_identifier_missing": "无法验证此应用的 Bundle ID。" }
   },
   "empty": "没有匹配的应用",
-  "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。"
+  "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。",
+  "nativeUninstall": {
+    "boundary": "这个应用由操作系统安装目录管理；CoreRobin 只会把已验证的短期包身份交给原生卸载器。",
+    "sourceLabel": "安装来源",
+    "methodLabel": "系统方式",
+    "elevationLabel": "授权",
+    "elevationRequired": "操作系统可能会请求管理员批准",
+    "elevationNotRequired": "预计无需管理员批准",
+    "relatedData": "不会猜测或自动删除关联数据；由包管理器判断哪些已安装文件属于这个应用。",
+    "systemManaged": "系统托管卸载",
+    "revalidate": "执行前会立即重新核对包身份。",
+    "review": "复核 {{name}} 的系统卸载",
+    "dialogTitle": "使用操作系统卸载 {{name}}",
+    "dialogDescription": "CoreRobin 将启动已验证的包管理器方式；任何授权弹窗都由操作系统提供。",
+    "dialogBoundary": "前端不会提交卸载器路径或命令行。",
+    "elevationPrompt": "可能出现 Windows UAC 或 Linux PolicyKit 授权；取消授权会与执行失败分别展示。",
+    "confirm": "开始系统卸载",
+    "submitting": "正在等待系统卸载器…",
+    "source": {
+      "macos_bundle": "macOS 应用包",
+      "windows_msi": "Windows Installer（MSI）",
+      "windows_msix": "Windows 应用包（MSIX）",
+      "windows_uninstaller": "Windows 注册卸载器",
+      "linux_flatpak": "Flatpak",
+      "linux_deb": "Debian 软件包",
+      "linux_rpm": "RPM 软件包",
+      "linux_snap": "Snap",
+      "portable": "便携或手动安装",
+      "unknown": "未知来源"
+    },
+    "outcome": {
+      "succeeded": "操作系统已卸载 {{name}}。",
+      "cancelled": "已取消 {{name}} 的系统卸载。",
+      "failed": "系统卸载器未能移除 {{name}}。",
+      "restart_required": "{{name}} 已移除；操作系统要求重新启动。"
+    },
+    "unavailable": {
+      "protected": "不能从这里卸载 CoreRobin 自身或受保护的系统组件。",
+      "portable": "没有找到可信的包管理器身份；该项目保持只读。"
+    }
+  }
 }

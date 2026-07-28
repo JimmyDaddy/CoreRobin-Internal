@@ -1,0 +1,98 @@
+.storage-health {
+  display: grid;
+  gap: 13px;
+}
+
+.storage-health__loading {
+  display: flex;
+  min-height: 82px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.storage-health__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 9px;
+}
+
+.storage-health__grid article {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.storage-health__grid article.is-warning,
+.storage-health__grid article.is-failing {
+  border-color: rgba(255, 117, 117, 0.28);
+  background: rgba(255, 117, 117, 0.045);
+}
+
+.storage-health__grid article > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.storage-health__grid article > header > span {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+  border-radius: 10px;
+  background: rgba(86, 207, 147, 0.09);
+}
+
+.storage-health__grid article.is-warning > header > span,
+.storage-health__grid article.is-failing > header > span {
+  color: var(--red);
+  background: rgba(255, 117, 117, 0.1);
+}
+
+.storage-health__grid article > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.storage-health__grid article > header strong,
+.storage-health__grid article > header code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storage-health__grid article > header strong { font-size: 11px; }
+.storage-health__grid article > header code { color: var(--text-dim); font-size: 9px; }
+.storage-health__grid article > header small { color: var(--text-soft); font-size: 9px; }
+
+.storage-health__grid dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.storage-health__grid dl > div {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.storage-health__grid dt { color: var(--text-dim); font-size: 9px; }
+.storage-health__grid dd { margin: 0; color: var(--text); font-size: 10px; }
+.storage-health__grid article > p { margin: 0; color: var(--amber); font-size: 9px; }
+.storage-health__scope { color: var(--text-dim); font-size: 9px; }

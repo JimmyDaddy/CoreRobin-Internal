@@ -144,4 +144,48 @@
   "privacyCollected": "집계된 자원 정보, 압력 및 복구 이벤트와 함께 사용자가 확인한 작업의 유형, 결과, 항목 수, 확보 공간을 저장합니다. 앱 또는 시작 항목 이름은 설정에서 별도로 허용한 경우에만 저장됩니다.",
   "privacyExcluded": "리소스 및 작업 기록에는 명령, 사용자, 경로, 파일 이름, 연결 주소를 저장하지 않습니다. 연결 기록을 별도로 켜면 5분 집계에 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다.",
   "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다."
+,
+  "applicationImpact": {
+    "eyebrow": "Application attribution",
+    "title": "Which apps affected this computer",
+    "description": "Optional five-minute application aggregates answer who repeatedly used CPU, memory, or disk over time.",
+    "enable": "Keep app impact history",
+    "range": "Application history range",
+    "hours1": "1 hour",
+    "hours24": "24 hours",
+    "hours168": "7 days",
+    "disabledTitle": "Application attribution is off",
+    "disabledDescription": "Enable it to save stable app identities and aggregates on this device.",
+    "learningTitle": "Building application history",
+    "learningDescription": "Rankings appear after enough five-minute samples are collected.",
+    "peakCpu": "Peak CPU {{value}}",
+    "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+  },
+  "baseline": {
+    "eyebrow": "This computer's baseline",
+    "learning": {
+      "title": "Learning what is normal here",
+      "description": "CoreRobin needs more same-time samples before comparing this computer with itself."
+    },
+    "typical": {
+      "title": "Close to this computer's usual pattern",
+      "description": "No meaningful deviation was found across the available baseline metrics."
+    },
+    "elevated": {
+      "title": "Different from this computer's usual pattern",
+      "description": "{{count}} metrics are meaningfully above their seven-day same-time baseline."
+    },
+    "collecting": "Collecting baseline",
+    "change": "{{value}}% {{direction}} than usual",
+    "higher": "higher",
+    "lower": "lower",
+    "metric": {
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk throughput",
+      "network": "Network throughput",
+      "temperature": "Temperature",
+      "battery": "Battery drain"
+    }
+  }
 }

@@ -10,10 +10,15 @@ import {
   RotateCcw,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { isDesktopRuntime, openProductPage } from "../api";
+import {
+  isDesktopRuntime,
+  openProductIssue,
+  openProductPage,
+} from "../api";
 import {
   checkForInstallableAppUpdate,
   restartAfterAppUpdate,
@@ -62,6 +67,9 @@ export function AboutSupport({
   const [updateProgress, setUpdateProgress] = useState<AppUpdateProgress | null>(null);
   const [updateAction, setUpdateAction] = useState<"idle" | "installing" | "ready" | "error">("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [supportFlowOpen, setSupportFlowOpen] = useState(false);
+  const [supportFlowState, setSupportFlowState] =
+    useState<"idle" | "opening" | "error">("idle");
   const [lastCheckedAt, setLastCheckedAt] =
     useState<number | null>(backgroundUpdateCheckedAt);
   const [lastCheckFailed, setLastCheckFailed] =
@@ -182,6 +190,34 @@ export function AboutSupport({
   const openPage = (page: ProductPage) => void openProductPage(page, i18n.resolvedLanguage);
   const openLocalizedPage = (page: LocalizedProductPage) =>
     openPage(page);
+  const openGuidedIssue = async () => {
+    if (supportFlowState === "opening") return;
+    setSupportFlowState("opening");
+    try {
+      await copyText(diagnostic);
+      const title = t("settings:supportFlow.issueTitle", {
+        version: CURRENT_APP_VERSION,
+      });
+      const body = [
+        `## ${t("settings:supportFlow.problemHeading")}`,
+        t("settings:supportFlow.problemPlaceholder"),
+        "",
+        `## ${t("settings:supportFlow.stepsHeading")}`,
+        t("settings:supportFlow.stepsPlaceholder"),
+        "",
+        `## ${t("settings:supportFlow.diagnosticHeading")}`,
+        "```text",
+        diagnostic,
+        "```",
+      ].join("\n");
+      await openProductIssue(title, body);
+      setCopyState("copied");
+      setSupportFlowOpen(false);
+      setSupportFlowState("idle");
+    } catch {
+      setSupportFlowState("error");
+    }
+  };
 
   return (
     <section className="about-support" aria-labelledby="about-support-title">
@@ -272,7 +308,10 @@ export function AboutSupport({
           <nav className="about-support__links" aria-label={t("settings:about.helpTitle") }>
             <button type="button" onClick={() => openLocalizedPage("guide")}><BookOpen size={15} />{t("settings:about.guide")}<ArrowUpRight size={13} /></button>
             <button type="button" onClick={() => openLocalizedPage("privacy")}><ShieldCheck size={15} />{t("settings:about.privacy")}<ArrowUpRight size={13} /></button>
-            <button type="button" onClick={() => openPage("issues")}><Bug size={15} />{t("settings:about.reportIssue")}<ArrowUpRight size={13} /></button>
+            <button type="button" onClick={() => {
+              setSupportFlowState("idle");
+              setSupportFlowOpen(true);
+            }}><Bug size={15} />{t("settings:about.reportIssue")}<ArrowUpRight size={13} /></button>
             <button type="button" onClick={onOpenOnboarding}><RotateCcw size={15} />{t("settings:about.reopenGuide")}</button>
           </nav>
         </section>
@@ -287,10 +326,18 @@ export function AboutSupport({
             <summary>{t("settings:about.diagnosticsPreview")}</summary>
             <pre>{diagnostic}</pre>
           </details>
-          <Button variant="secondary" onClick={() => void copyDiagnostic()}>
-            {copyState === "copied" ? <Check size={15} /> : <Clipboard size={15} />}
-            {t(`settings:about.diagnostics.${copyState}`)}
-          </Button>
+          <div className="about-support__actions">
+            <Button variant="secondary" onClick={() => void copyDiagnostic()}>
+              {copyState === "copied" ? <Check size={15} /> : <Clipboard size={15} />}
+              {t(`settings:about.diagnostics.${copyState}`)}
+            </Button>
+            <Button variant="primary" onClick={() => {
+              setSupportFlowState("idle");
+              setSupportFlowOpen(true);
+            }}>
+              <Bug size={15} />{t("settings:supportFlow.action")}
+            </Button>
+          </div>
         </section>
 
         <section className="about-support__card about-support__card--danger">
@@ -304,6 +351,49 @@ export function AboutSupport({
           />
         </section>
       </div>
+      {supportFlowOpen ? (
+        <div className="dialog-backdrop" role="presentation" onMouseDown={() => {
+          if (supportFlowState !== "opening") setSupportFlowOpen(false);
+        }}>
+          <section
+            className="support-flow-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="support-flow-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <span><Bug size={20} /></span>
+              <div>
+                <h2 id="support-flow-title">{t("settings:supportFlow.title")}</h2>
+                <p>{t("settings:supportFlow.description")}</p>
+              </div>
+              <button className="icon-button" type="button" disabled={supportFlowState === "opening"} aria-label={t("common:close")} onClick={() => setSupportFlowOpen(false)}>
+                <X size={16} />
+              </button>
+            </header>
+            <ol>
+              <li><b>1</b><span><strong>{t("settings:supportFlow.reviewTitle")}</strong>{t("settings:supportFlow.reviewDescription")}</span></li>
+              <li><b>2</b><span><strong>{t("settings:supportFlow.copyTitle")}</strong>{t("settings:supportFlow.copyDescription")}</span></li>
+              <li><b>3</b><span><strong>{t("settings:supportFlow.openTitle")}</strong>{t("settings:supportFlow.openDescription")}</span></li>
+            </ol>
+            <div className="support-flow-dialog__preview">
+              <span><ShieldCheck size={14} />{t("settings:supportFlow.preview")}</span>
+              <pre>{diagnostic}</pre>
+            </div>
+            {supportFlowState === "error" ? <p className="about-support__result is-error" role="alert">{t("settings:supportFlow.error")}</p> : null}
+            <footer>
+              <button className="button button--secondary" type="button" disabled={supportFlowState === "opening"} onClick={() => setSupportFlowOpen(false)}>{t("common:cancel")}</button>
+              <Button variant="primary" disabled={supportFlowState === "opening"} onClick={() => void openGuidedIssue()}>
+                {supportFlowState === "opening" ? <LoaderCircle className="is-spinning" size={15} /> : <Bug size={15} />}
+                {t(supportFlowState === "opening"
+                  ? "settings:supportFlow.opening"
+                  : "settings:supportFlow.confirm")}
+              </Button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

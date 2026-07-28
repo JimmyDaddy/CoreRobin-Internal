@@ -23,6 +23,7 @@ import {
 
 const MAX_HISTORY_POINTS = 300;
 const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
+const BATTERY_DRAIN_MIN_WINDOW_MS = 2 * 60 * 1_000;
 export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 export const HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS = 30_000;
 
@@ -204,6 +205,33 @@ function appendHistorySample(
 ): void {
   if (snapshot.cpu.usagePercent === null) return;
   setHistory((current) => {
+    const batteryChargePercent = snapshot.sensors.battery.chargePercent;
+    const batteryReference = current.find(
+      (point) =>
+        point.batteryChargePercent !== null
+        && point.batteryChargePercent !== undefined
+        && snapshot.sampledAtMs - point.timestamp
+          >= BATTERY_DRAIN_MIN_WINDOW_MS,
+    );
+    const elapsedHours = batteryReference
+      ? (snapshot.sampledAtMs - batteryReference.timestamp)
+        / (60 * 60 * 1_000)
+      : 0;
+    const batteryDrainPercentPerHour =
+      snapshot.sensors.battery.powerSource === "battery"
+      && batteryChargePercent !== null
+      && batteryReference?.batteryChargePercent !== null
+      && batteryReference?.batteryChargePercent !== undefined
+      && elapsedHours > 0
+        ? Math.max(
+            0,
+            Math.min(
+              100,
+              (batteryReference.batteryChargePercent - batteryChargePercent)
+                / elapsedHours,
+            ),
+          )
+        : null;
     const point: HistoryPoint = {
       timestamp: snapshot.sampledAtMs,
       cpuPercent: snapshot.cpu.usagePercent ?? 0,
@@ -217,6 +245,9 @@ function appendHistorySample(
         snapshot.network.receivedBytesPerSecond,
       networkTransmittedBytesPerSecond:
         snapshot.network.transmittedBytesPerSecond,
+      temperatureCelsius: snapshot.sensors.temperature.celsius,
+      batteryChargePercent,
+      batteryDrainPercentPerHour,
     };
     const cutoff = snapshot.sampledAtMs - HISTORY_WINDOW_MS;
     return [...current, point]

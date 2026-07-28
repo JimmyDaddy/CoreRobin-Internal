@@ -108,4 +108,30 @@
       "three": { "title": "Berechtigungen nur bei Bedarf", "description": "Mitteilungen, Robin und Autostart sind optional. Vollzugriff auf die Festplatte dient nur einer vollständigeren Speicherbereinigung.", "note": "Ohne Freigabe werden zugängliche Bereiche weiter gescannt. CoreRobin fordert in diesem Leitfaden keine Berechtigung an." }
     }
   }
+,
+  "applicationImpactHistory": {
+    "label": "Keep application impact aggregates",
+    "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+  },
+  "supportFlow": {
+    "action": "Prepare issue report",
+    "title": "Prepare a privacy-redacted issue report",
+    "description": "Review exactly what will be copied before CoreRobin opens a prefilled public GitHub issue.",
+    "reviewTitle": "Review",
+    "reviewDescription": "Confirm that the summary contains no information you do not want to share.",
+    "copyTitle": "Copy",
+    "copyDescription": "Copy the same redacted summary to your clipboard for easy reuse.",
+    "openTitle": "Open issue",
+    "openDescription": "Open a form prefilled with version, system, architecture, and reproduction prompts.",
+    "preview": "Content that will be copied and included",
+    "confirm": "Copy and open issue",
+    "opening": "Preparing issue…",
+    "error": "The summary could not be copied or the issue form could not be opened. Please try again.",
+    "issueTitle": "[v{{version}}] Issue report",
+    "problemHeading": "What happened",
+    "problemPlaceholder": "<!-- Describe the problem and what you expected. -->",
+    "stepsHeading": "Steps to reproduce",
+    "stepsPlaceholder": "<!-- List the shortest steps that reproduce the issue. -->",
+    "diagnosticHeading": "Privacy-redacted environment"
+  }
 }

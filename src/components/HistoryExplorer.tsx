@@ -26,6 +26,7 @@ import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { UsageThresholds } from "../settings";
 import type { HistoryPoint } from "../types";
 import { formatRate, resourceUsageLevel } from "../utils";
+import "./HistoryExplorer.css";
 import type {
   ResourceAlertEvent,
   ResourceAlertResource,
@@ -34,10 +35,15 @@ import type { UserActionKind, UserActionRecord } from "../userActionHistory";
 import { UserActionTimeline } from "./UserActionTimeline";
 import type { ApplicationWatchHistoryEvent } from "../applicationWatchHistory";
 import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
+import type { ApplicationImpactHistoryPoint } from "../applicationImpactHistory";
+import { ApplicationImpactHistoryPanel } from "./ApplicationImpactHistoryPanel";
+import { PersonalBaselinePanel } from "./PersonalBaselinePanel";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
   storedPointCount: number;
+  applicationImpactPoints: ApplicationImpactHistoryPoint[];
+  applicationImpactHistoryEnabled: boolean;
   alertEvents: ResourceAlertEvent[];
   storedAlertEventCount: number;
   applicationWatchEvents?: ApplicationWatchHistoryEvent[];
@@ -50,6 +56,7 @@ interface HistoryExplorerProps {
   usageThresholds: UsageThresholds;
   onPersistenceEnabledChange: (enabled: boolean) => void;
   onRetentionDaysChange: (days: HistoryRetentionDays) => void;
+  onApplicationImpactHistoryEnabledChange: (enabled: boolean) => void;
   onClear: () => void;
   onOpenUserAction: (kind: UserActionKind) => void;
 }
@@ -62,6 +69,8 @@ const CHART_BOTTOM = 178;
 export function HistoryExplorer({
   points,
   storedPointCount,
+  applicationImpactPoints,
+  applicationImpactHistoryEnabled,
   alertEvents,
   storedAlertEventCount,
   applicationWatchEvents = [],
@@ -74,6 +83,7 @@ export function HistoryExplorer({
   usageThresholds,
   onPersistenceEnabledChange,
   onRetentionDaysChange,
+  onApplicationImpactHistoryEnabledChange,
   onClear,
   onOpenUserAction,
 }: HistoryExplorerProps) {
@@ -183,8 +193,15 @@ export function HistoryExplorer({
 
           <ResourceArchiveChart points={points} />
           <ThroughputArchiveChart points={points} />
+          <PersonalBaselinePanel points={points} />
         </>
       )}
+
+      <ApplicationImpactHistoryPanel
+        points={applicationImpactPoints}
+        enabled={applicationImpactHistoryEnabled}
+        onEnabledChange={onApplicationImpactHistoryEnabledChange}
+      />
 
       {stories.length > 0 ? (
       <section className="panel history-stories" aria-labelledby="history-stories-title">
