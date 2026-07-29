@@ -33,7 +33,7 @@
     "attention": {
       "short": "Algo merece sua atenção",
       "title": "{{count}} coisas merecem sua atenção",
-      "summary": "O CoreRobin organizou as razões e os próximos passos, para que você não precise interpretar métricas técnicas."
+      "summary": "O CoreRobin organizou as causas e os próximos passos para que você possa agir diretamente."
     },
     "urgent": {
       "short": "Verifique em breve",
@@ -385,7 +385,7 @@
     },
     "language": "Idioma da interface",
     "professional": "Modo profissional",
-    "professionalDescription": "Visualize todas as métricas, árvore de processos e detalhes técnicos"
+    "professionalDescription": "Ver todas as métricas, a árvore de processos e mais detalhes"
   },
   "review": {
     "kicker": "Neste dispositivo · Hoje",
@@ -467,7 +467,7 @@
     "result": "Resultado da verificação",
     "viewEvidence": "Por que o CoreRobin está mostrando isso",
     "safety": "O CoreRobin sugere apenas ações baseadas em evidências. Qualquer ação do sistema ainda requer sua confirmação.",
-    "professional": "Visualizar todas as informações técnicas",
+    "professional": "Ver todas as métricas e processos",
     "slow": {
       "kicker": "Verificação de desempenho",
       "title": "Descubra por que seu computador está lento",

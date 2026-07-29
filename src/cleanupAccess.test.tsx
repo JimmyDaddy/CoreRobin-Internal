@@ -7,6 +7,7 @@ import { CleanupAssistant } from "./components/CleanupAssistant";
 import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
 import { getMockCleanupScan } from "./mockData";
+import type { CleanupScanProgress } from "./types";
 
 const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
   snapshot: null,
@@ -145,19 +146,34 @@ describe("cleanup full disk access guide", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "清理篮" })[0]);
     expect(await screen.findByText(/已选择 1 项/)).toBeTruthy();
   });
+
+  it("shows a friendly scan location without exposing an internal path prompt", () => {
+    renderAssistant(vi.fn(), null, true, {
+      scannedEntryCount: 42,
+      discoveredBytes: 1_024,
+      currentPath: "~/.cargo/registry",
+      elapsedMs: 500,
+    });
+
+    expect(screen.getByText("正在分析开发工具缓存")).toBeTruthy();
+    expect(screen.queryByText("~/.cargo/registry")).toBeNull();
+    expect(screen.queryByText("查看当前技术路径")).toBeNull();
+  });
 });
 
 function renderAssistant(
   onScan: () => void,
   snapshot: ReturnType<typeof getMockCleanupScan> | null = null,
+  loading = false,
+  progress: CleanupScanProgress | null = null,
 ) {
   return render(
     <CleanupAssistant
       snapshot={snapshot}
       error={null}
-      loading={false}
+      loading={loading}
       cancelling={false}
-      progress={null}
+      progress={progress}
       snapshotStatus="current"
       onScan={onScan}
       onCancel={() => undefined}

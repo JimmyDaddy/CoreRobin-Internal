@@ -33,7 +33,7 @@
     "attention": {
       "short": "확인해 볼 가치가 있는 내용이 있습니다",
       "title": "{{count}} 내용을 확인해 보세요",
-      "summary": "CoreRobin가 문제 원인과 해결 방법을 정리하여, 기술적인 정보를 직접 해석할 필요가 없습니다."
+      "summary": "CoreRobin이 원인과 다음 단계를 정리했으므로 바로 조치할 수 있습니다."
     },
     "urgent": {
       "short": "곧 확인해 주세요",
@@ -385,7 +385,7 @@
     },
     "language": "사용자 인터페이스 언어 선택",
     "professional": "전문가 모드 활성화",
-    "professionalDescription": "모든 지표, 프로세스 트리 및 기술 세부 정보를 확인"
+    "professionalDescription": "모든 지표, 프로세스 트리 및 추가 세부 정보 보기"
   },
   "review": {
     "kicker": "이 기기 · 오늘",
@@ -467,7 +467,7 @@
     "result": "확인 결과",
     "viewEvidence": "CoreRobin가 이 결과를 표시하는 이유",
     "safety": "CoreRobin는 과학적으로 검증된 조치만 권장합니다. 시스템 관련 모든 조치는 사용자 확인이 필요합니다.",
-    "professional": "모든 기술적 증거 보기",
+    "professional": "모든 지표 및 프로세스 보기",
     "slow": {
       "kicker": "응답 속도 점검",
       "title": "컴퓨터가 느리게 느껴지는 이유를 파악",

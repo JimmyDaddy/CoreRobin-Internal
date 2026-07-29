@@ -174,7 +174,7 @@
     "unknown": "不明",
     "dormant": "休止状態",
     "notpresent": "存在しません",
-    "lowerlayerdown": "下位レイヤーがダウンしています"
+    "lowerlayerdown": "ネットワークインターフェースが未接続です"
   },
   "noIp": "IPアドレスが報告されていません",
   "accumulated": "合計{{value}}",

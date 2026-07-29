@@ -588,10 +588,6 @@ export function CleanupAssistant({
             <span><RefreshCw className="is-spinning" size={15} /></span>
             <div>
               <strong>{t("cleanup:progress.scanningLocation", { location: progressLocation })}</strong>
-              <details>
-                <summary>{t("cleanup:progress.showPath")}</summary>
-                <code title={progress.currentPath}>{progress.currentPath}</code>
-              </details>
             </div>
           </div>
           <dl>

@@ -33,7 +33,7 @@
     "attention": {
       "short": "有些情况值得留意",
       "title": "有 {{count}} 项情况值得留意",
-      "summary": "CoreRobin 已经整理好原因和下一步，你不需要自己判断技术指标。"
+      "summary": "CoreRobin 已经整理好原因和下一步，你可以直接按建议处理。"
     },
     "urgent": {
       "short": "建议尽快看看",
@@ -390,7 +390,7 @@
     },
     "language": "界面语言",
     "professional": "专业模式",
-    "professionalDescription": "查看完整指标、进程树和技术详情"
+    "professionalDescription": "查看完整指标、进程树和更多详情"
   },
   "review": {
     "kicker": "本机 · 今天",
@@ -472,7 +472,7 @@
     "result": "检查结果",
     "viewEvidence": "为什么这样判断",
     "safety": "CoreRobin 只提出有依据的建议，任何系统操作仍需要你确认。",
-    "professional": "查看全部技术依据",
+    "professional": "查看完整指标和进程",
     "slow": {
       "kicker": "流畅度检查",
       "title": "找出电脑变慢的原因",

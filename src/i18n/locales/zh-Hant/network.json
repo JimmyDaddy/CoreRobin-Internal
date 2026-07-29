@@ -174,7 +174,7 @@
     "unknown": "未知",
     "dormant": "待機",
     "notpresent": "不存在",
-    "lowerlayerdown": "底層未連線"
+    "lowerlayerdown": "網路介面未連線"
   },
   "noIp": "未報告 IP 地址",
   "accumulated": "累計 {{value}}",

@@ -114,7 +114,7 @@
     "unknown": "Unknown",
     "dormant": "Dormant",
     "notpresent": "Not present",
-    "lowerlayerdown": "Lower layer down"
+    "lowerlayerdown": "Network interface disconnected"
   },
   "noIp": "No IP address reported",
   "accumulated": "Total {{value}}",

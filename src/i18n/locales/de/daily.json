@@ -33,7 +33,7 @@
     "attention": {
       "short": "Es gibt etwas, das Aufmerksamkeit erfordert",
       "title": "{{count}} Dinge sollten überprüft werden",
-      "summary": "CoreRobin hat die Gründe und nächsten Schritte organisiert, sodass Sie keine technischen Metriken interpretieren müssen."
+      "summary": "CoreRobin hat die Gründe und nächsten Schritte für Sie zusammengestellt, sodass Sie direkt handeln können."
     },
     "urgent": {
       "short": "Überprüfen Sie es bald",
@@ -385,7 +385,7 @@
     },
     "language": "Benutzeroberflächessprache",
     "professional": "Professioneller Modus",
-    "professionalDescription": "Alle Metriken, den Prozessbaum und technische Details anzeigen"
+    "professionalDescription": "Alle Messwerte, den Prozessbaum und weitere Details anzeigen"
   },
   "review": {
     "kicker": "Dieses Gerät · Heute",
@@ -467,7 +467,7 @@
     "result": "Ergebnis anzeigen",
     "viewEvidence": "Warum CoreRobin dies empfiehlt",
     "safety": "CoreRobin schlägt nur Maßnahmen vor, die auf Beweisen basieren. Jede Systemaktion erfordert Ihre Bestätigung.",
-    "professional": "Alle technischen Details anzeigen",
+    "professional": "Alle Messwerte und Prozesse anzeigen",
     "slow": {
       "kicker": "Reaktionsfähigkeit prüfen",
       "title": "Finden Sie heraus, warum Ihr Computer langsam ist",

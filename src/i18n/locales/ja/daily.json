@@ -33,7 +33,7 @@
     "attention": {
       "short": "確認が必要です",
       "title": "{{count}} 確認する価値があります",
-      "summary": "CoreRobinが原因と今後の対策を整理しているので、専門的な情報を解釈する必要はありません。"
+      "summary": "CoreRobinが原因と次の手順を整理したので、そのまま対応できます。"
     },
     "urgent": {
       "short": "すぐに確認してください",
@@ -385,7 +385,7 @@
     },
     "language": "インターフェースの言語",
     "professional": "プロフェッショナルモード",
-    "professionalDescription": "すべての指標、プロセスツリー、および技術的な詳細を表示"
+    "professionalDescription": "すべての指標、プロセスツリー、その他の詳細を表示"
   },
   "review": {
     "kicker": "このデバイス · 今日",
@@ -467,7 +467,7 @@
     "result": "確認結果",
     "viewEvidence": "CoreRobinがこの理由を説明します",
     "safety": "CoreRobinは、信頼できる情報に基づいた操作のみを推奨します。システム上のすべての操作には、お客様の確認が必要です。",
-    "professional": "関連する技術情報を表示",
+    "professional": "すべての指標とプロセスを表示",
     "slow": {
       "kicker": "システムの応答性を確認",
       "title": "コンピュータが遅いと感じた場合の対処法",

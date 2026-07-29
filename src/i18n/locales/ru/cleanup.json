@@ -141,7 +141,6 @@
   },
   "progress": {
     "scanningLocation": "Проверка {{location}}",
-    "showPath": "Показать текущий путь",
     "entries": "Проверено",
     "discovered": "Обнаружено",
     "elapsed": "Время выполнения",
