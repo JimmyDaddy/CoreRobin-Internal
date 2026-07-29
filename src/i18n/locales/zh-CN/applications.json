@@ -45,7 +45,7 @@
   "uninstall": {
     "scanKicker": "本机应用索引", "scanningHint": "正在核对应用包、占用空间和 Bundle ID；大型应用可能需要多一点时间。",
     "kicker": "应用管理", "title": "彻底卸载助手", "description": "识别应用本体和可由 Bundle ID 明确归属的残留文件；每个路径都由你确认后才会处理。", "refresh": "刷新应用",
-    "unsupportedTitle": "当前平台暂不支持完整卸载", "unsupportedDescription": "首版支持 macOS 应用包；Windows 和 Linux 会在具备同等安全校验后开放。",
+    "unsupportedTitle": "系统应用清单暂不可用", "unsupportedDescription": "未能读取受支持的 macOS、Windows 或 Linux 应用清单。请等待系统完成应用或软件包数据库更新后重试。",
     "applicationUnit": "个应用", "installedSize": "应用本体", "localOnly": "仅在本机读取，不上传清单", "cachedInventory": "显示 {{time}} 的本机缓存，可随时刷新", "search": "搜索已安装应用", "searchPlaceholder": "搜索名称、Bundle ID 或路径", "scanning": "正在读取应用清单…", "empty": "没有匹配的应用",
     "preparingPlan": "正在核对应用身份和残留文件…", "planKicker": "卸载计划", "planBoundary": "请先退出这个应用。这里只列出 Bundle ID 能够精确证明归属的路径，不按名称猜测。", "bundleOnlyBoundary": "此应用没有可验证的 Bundle ID，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。", "foundItems": "已确认归属的项目", "required": "必选",
     "selectedSize": "已选 {{count}} 项", "review": "检查并卸载 {{name}}", "reveal": "在访达中显示应用", "skipped": "{{count}} 个项目未纳入计划", "skippedDescription": "这些路径无法通过安全文件句柄检查，助手不会处理它们。",

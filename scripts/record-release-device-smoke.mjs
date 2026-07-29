@@ -18,8 +18,20 @@ const checks = [
   { id: "appearance-sync", title: "切换语言、文字大小和减少动画后，三个前端在重新打开时保持一致" },
   { id: "background", title: "关闭主窗口后后台采样继续，状态栏仍可恢复主窗口" },
   {
+    id: "updater-discovery",
+    title: "关于与支持能完成更新检查，准确显示当前版本、可用版本或已是最新版，不出现原始系统错误",
+  },
+  {
+    id: "updater-install-restart",
+    title: "另行安装上一稳定版并通过正式更新通道下载更新；安装完成后点击重启，新版本自动打开且语言、主题和本机历史仍保留",
+  },
+  {
     id: "application-uninstall-capability",
     title: "应用页能读取当前平台的真实清单；读取失败与“没有安装应用”明确区分，名称、图标和安装来源符合系统信息",
+  },
+  {
+    id: "removable-volume-eject",
+    title: "连接专门用于验收的可移除卷后，在存储页确认推出；卷从 CoreRobin 与系统中消失，重新连接后可再次显示",
   },
   {
     id: "application-uninstall-review",

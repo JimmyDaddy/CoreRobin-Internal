@@ -58,11 +58,36 @@ describe("release smoke evidence promotion gate", () => {
 
 function evidence({ artifact, sha256, platform, architecture }) {
   const checks = [
-    "launch", "main", "tray", "companion", "health-sync", "appearance-sync", "background", "quit-relaunch",
+    "launch",
+    "main",
+    "tray",
+    "companion",
+    "health-sync",
+    "appearance-sync",
+    "background",
+    "updater-discovery",
+    "updater-install-restart",
+    "application-uninstall-capability",
+    "removable-volume-eject",
+    "quit-relaunch",
   ].map((id) => ({ id, status: "passed", note: "" }));
   checks.push(...["cleanup-limited", "cleanup-authorized"].map((id) => ({
     id,
     status: platform === "darwin" ? "passed" : "not-applicable",
+    note: "",
+  })));
+  checks.push({
+    id: "application-uninstall-review",
+    status: platform === "darwin" ? "passed" : "not-applicable",
+    note: "",
+  });
+  checks.push(...[
+    "native-application-uninstall-review",
+    "native-application-uninstall-cancel",
+    "native-application-uninstall-complete",
+  ].map((id) => ({
+    id,
+    status: platform === "darwin" ? "not-applicable" : "passed",
     note: "",
   })));
   return {

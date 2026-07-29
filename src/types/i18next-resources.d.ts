@@ -239,8 +239,8 @@ export default interface Resources {
         "current_application_protected": "CoreRobin 运行期间不能卸载自身。",
         "generic": "此应用无法通过当前安全规则卸载。"
       },
-      "unsupportedDescription": "首版支持 macOS 应用包；Windows 和 Linux 会在具备同等安全校验后开放。",
-      "unsupportedTitle": "当前平台暂不支持完整卸载"
+      "unsupportedDescription": "未能读取受支持的 macOS、Windows 或 Linux 应用清单。请等待系统完成应用或软件包数据库更新后重试。",
+      "unsupportedTitle": "系统应用清单暂不可用"
     },
     "viewAll": "查看全部应用"
   },

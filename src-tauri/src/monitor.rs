@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{
@@ -15,6 +16,8 @@ use crate::models::{
     SystemSummary, VolumeSnapshot,
 };
 use crate::sensors::SensorSampler;
+
+const EJECTED_VOLUME_RECONCILIATION_GRACE: Duration = Duration::from_secs(2);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct NetworkSessionCounters {
@@ -58,6 +61,7 @@ pub struct SystemMonitor {
     process_control_capabilities: ProcessControlCapabilities,
     sensors: SensorSampler,
     birth_tokens: BirthTokenCache,
+    ejected_mount_points: HashMap<String, Instant>,
 }
 
 impl SystemMonitor {
@@ -94,7 +98,13 @@ impl SystemMonitor {
             process_control_capabilities,
             sensors: SensorSampler::new(),
             birth_tokens: BirthTokenCache::default(),
+            ejected_mount_points: HashMap::new(),
         }
+    }
+
+    pub fn record_volume_ejected(&mut self, mount_point: &str) {
+        self.ejected_mount_points
+            .insert(mount_point.to_owned(), Instant::now());
     }
 
     pub fn sample(&mut self) -> SystemSnapshot {
@@ -116,6 +126,7 @@ impl SystemMonitor {
         for disk in self.disks.list_mut() {
             disk.refresh_specifics(DiskRefreshKind::nothing().with_io_usage());
         }
+        self.reconcile_ejected_mount_points();
 
         self.sequence = self.sequence.saturating_add(1);
         self.last_sample = Instant::now();
@@ -239,20 +250,7 @@ impl SystemMonitor {
                 .then_with(|| right.memory_bytes.cmp(&left.memory_bytes))
         });
 
-        let volumes = collapse_macos_system_volume_group(
-            self.disks
-                .list()
-                .iter()
-                .filter(|disk| disk.total_space() > 0)
-                .map(|disk| VolumeSnapshot {
-                    name: disk.name().to_string_lossy().into_owned(),
-                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
-                    total_bytes: disk.total_space(),
-                    available_bytes: disk.available_space(),
-                    removable: disk.is_removable(),
-                })
-                .collect(),
-        );
+        let volumes = self.volume_snapshots();
 
         SystemSnapshot {
             schema_version: SNAPSHOT_SCHEMA_VERSION,
@@ -310,6 +308,7 @@ impl SystemMonitor {
         for disk in self.disks.list_mut() {
             disk.refresh_specifics(DiskRefreshKind::nothing().with_io_usage());
         }
+        self.reconcile_ejected_mount_points();
         self.networks.refresh(true);
 
         self.sequence = self.sequence.saturating_add(1);
@@ -352,20 +351,7 @@ impl SystemMonitor {
                     transmitted.saturating_add(counters.transmitted_bytes),
                 )
             });
-        let volumes = collapse_macos_system_volume_group(
-            self.disks
-                .list()
-                .iter()
-                .filter(|disk| disk.total_space() > 0)
-                .map(|disk| VolumeSnapshot {
-                    name: disk.name().to_string_lossy().into_owned(),
-                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
-                    total_bytes: disk.total_space(),
-                    available_bytes: disk.available_space(),
-                    removable: disk.is_removable(),
-                })
-                .collect(),
-        );
+        let volumes = self.volume_snapshots();
 
         SystemSummary {
             sequence: self.sequence,
@@ -407,6 +393,33 @@ impl SystemMonitor {
             },
             sensors: self.sensors.sample(),
         }
+    }
+
+    fn reconcile_ejected_mount_points(&mut self) {
+        self.ejected_mount_points.retain(|mount_point, ejected_at| {
+            should_suppress_ejected_volume(ejected_at.elapsed(), mount_point_is_active(mount_point))
+        });
+    }
+
+    fn volume_snapshots(&self) -> Vec<VolumeSnapshot> {
+        collapse_macos_system_volume_group(
+            self.disks
+                .list()
+                .iter()
+                .filter(|disk| disk.total_space() > 0)
+                .filter(|disk| {
+                    let mount_point = disk.mount_point().to_string_lossy();
+                    !self.ejected_mount_points.contains_key(mount_point.as_ref())
+                })
+                .map(|disk| VolumeSnapshot {
+                    name: disk.name().to_string_lossy().into_owned(),
+                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
+                    total_bytes: disk.total_space(),
+                    available_bytes: disk.available_space(),
+                    removable: disk.is_removable(),
+                })
+                .collect(),
+        )
     }
 
     pub fn process_detail(
@@ -503,6 +516,32 @@ impl SystemMonitor {
     }
 }
 
+#[cfg(any(target_os = "macos", windows))]
+fn mount_point_is_active(mount_point: &str) -> bool {
+    Path::new(mount_point).exists()
+}
+
+#[cfg(target_os = "linux")]
+fn mount_point_is_active(mount_point: &str) -> bool {
+    let Ok(mount_info) = std::fs::read_to_string("/proc/self/mountinfo") else {
+        return Path::new(mount_point).exists();
+    };
+    mount_info.lines().any(|line| {
+        line.split_whitespace()
+            .nth(4)
+            .is_some_and(|field| decode_linux_mount_field(field) == mount_point)
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn decode_linux_mount_field(field: &str) -> String {
+    field
+        .replace("\\040", " ")
+        .replace("\\011", "\t")
+        .replace("\\012", "\n")
+        .replace("\\134", "\\")
+}
+
 fn process_refresh_kind() -> ProcessRefreshKind {
     ProcessRefreshKind::nothing()
         .with_cpu()
@@ -520,6 +559,10 @@ fn collapse_macos_system_volume_group(mut volumes: Vec<VolumeSnapshot>) -> Vec<V
         volumes.retain(|volume| volume.mount_point != "/System/Volumes/Data");
     }
     volumes
+}
+
+fn should_suppress_ejected_volume(elapsed: Duration, mount_point_is_active: bool) -> bool {
+    elapsed < EJECTED_VOLUME_RECONCILIATION_GRACE || !mount_point_is_active
 }
 
 pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
@@ -543,9 +586,10 @@ fn bytes_per_second(bytes: u64, elapsed_ms: u64) -> u64 {
 mod tests {
     use super::{
         NetworkSessionCounters, bytes_per_second, collapse_macos_system_volume_group,
-        protected_reason,
+        protected_reason, should_suppress_ejected_volume,
     };
     use crate::models::VolumeSnapshot;
+    use std::time::Duration;
 
     fn volume(name: &str, mount_point: &str) -> VolumeSnapshot {
         VolumeSnapshot {
@@ -614,5 +658,21 @@ mod tests {
 
         assert_eq!(volumes.len(), 1);
         assert_eq!(volumes[0].mount_point, "/System/Volumes/Data");
+    }
+
+    #[test]
+    fn keeps_an_ejected_volume_hidden_until_it_is_mounted_again() {
+        assert!(should_suppress_ejected_volume(
+            Duration::from_millis(100),
+            true,
+        ));
+        assert!(should_suppress_ejected_volume(
+            Duration::from_secs(3),
+            false,
+        ));
+        assert!(!should_suppress_ejected_volume(
+            Duration::from_secs(3),
+            true,
+        ));
     }
 }

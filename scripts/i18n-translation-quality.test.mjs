@@ -94,4 +94,26 @@ describe("translation quality", () => {
 
     expect(findings).toEqual([]);
   });
+
+  it("does not reintroduce obsolete macOS-only uninstall claims", () => {
+    const obsoleteClaims = [
+      /first release supports macOS app bundles/i,
+      /windows and linux will follow/i,
+      /首版支持 macOS 应用包/i,
+      /Windows 和 Linux 会.*开放/i,
+    ];
+    const findings = [];
+
+    for (const locale of readdirSync(localeRoot).sort()) {
+      const content = readFileSync(
+        join(localeRoot, locale, "applications.json"),
+        "utf8",
+      );
+      for (const claim of obsoleteClaims) {
+        if (claim.test(content)) findings.push(`${locale}:${claim.source}`);
+      }
+    }
+
+    expect(findings).toEqual([]);
+  });
 });
