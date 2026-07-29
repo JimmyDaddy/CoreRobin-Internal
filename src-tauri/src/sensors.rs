@@ -4,6 +4,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::Components;
 
+#[cfg(target_os = "macos")]
 use crate::bounded_command;
 use crate::models::{
     BatterySnapshot, BatteryState, PowerSource, SensorsSnapshot, SleepSnapshot, TemperatureSnapshot,
@@ -14,7 +15,9 @@ use crate::models::{SleepBlocker, SleepBlockerKind};
 const SENSOR_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const SLEEP_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 const BATTERY_DETAILS_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
+#[cfg(target_os = "macos")]
 const SENSOR_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(target_os = "macos")]
 const SENSOR_COMMAND_OUTPUT_LIMIT: usize = 2 * 1_024 * 1_024;
 
 #[derive(Clone, Copy, Debug, Default)]

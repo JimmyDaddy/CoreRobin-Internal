@@ -1208,7 +1208,11 @@ pub fn available_bytes_for_path(path: &Path) -> Option<u64> {
         }
         // SAFETY: the successful call above initialized the structure.
         let statistics = unsafe { statistics.assume_init() };
-        Some((statistics.f_bavail as u64).saturating_mul(statistics.f_frsize))
+        #[cfg(target_os = "macos")]
+        let available_blocks = u64::from(statistics.f_bavail);
+        #[cfg(not(target_os = "macos"))]
+        let available_blocks = statistics.f_bavail;
+        Some(available_blocks.saturating_mul(statistics.f_frsize))
     }
 
     #[cfg(windows)]
