@@ -977,9 +977,17 @@ async fn eject_removable_volume(
             "This volume is no longer available as a removable volume.",
         ));
     }
-    tauri::async_runtime::spawn_blocking(move || user_actions::eject_removable_volume(&mount_point))
-        .await
-        .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))?
+    tauri::async_runtime::spawn_blocking({
+        let mount_point = mount_point.clone();
+        move || user_actions::eject_removable_volume(&mount_point)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))??;
+    with_monitor(Arc::clone(&state.monitor), move |monitor| {
+        monitor.record_volume_ejected(&mount_point);
+        Ok(())
+    })
+    .await
 }
 
 #[tauri::command]

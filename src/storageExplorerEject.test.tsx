@@ -56,6 +56,40 @@ describe("removable volume actions", () => {
     expect(await screen.findByText("已安全推出 Backup。")).toBeTruthy();
   });
 
+  it("keeps the successful result when the follow-up monitor refresh fails", async () => {
+    const onVolumeEjected = vi.fn(async () => {
+      throw new Error("refresh failed");
+    });
+    render(
+      <StorageExplorer
+        disk={{
+          readBytesPerSecond: 0,
+          writeBytesPerSecond: 0,
+          volumes: [{
+            name: "Backup",
+            mountPoint: "/Volumes/Backup",
+            totalBytes: 1_000,
+            availableBytes: 400,
+            removable: true,
+          }],
+        }}
+        history={[]}
+        processes={[]}
+        selectedIdentity={null}
+        onSelectProcess={vi.fn()}
+        usageThresholds={[35, 65, 85]}
+        onOpenCleanup={vi.fn()}
+        onVolumeEjected={onVolumeEjected}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "推出" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认推出" }));
+
+    expect(await screen.findByText("已安全推出 Backup。")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("retries only the failed volume and replaces its cached result", async () => {
     vi.mocked(getStorageHealth)
       .mockResolvedValueOnce({

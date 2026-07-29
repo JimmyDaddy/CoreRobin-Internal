@@ -11,9 +11,27 @@ updates:
     schedule:
       interval: weekly
     groups:
-      frontend-dependencies:
+      frontend-runtime:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
         patterns:
           - "*"
+      frontend-tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - "*"
+    ignore:
+      # TypeScript 7 is not supported by typescript-eslint 8.x yet. Keeping
+      # this as an explicit toolchain gate prevents one incompatible major
+      # from blocking every otherwise safe frontend update in a group.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: cargo
     directory: "/src-tauri"

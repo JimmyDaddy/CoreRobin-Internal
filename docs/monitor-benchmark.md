@@ -52,3 +52,20 @@ cargo run --locked --manifest-path src-tauri/Cargo.toml --release \
 三轮可比原始结果可以通过 `pnpm performance:baseline` 统一写入带 commit 与机器信息的
 JSON；发布前整机 profile、冷启动和自动门禁边界见
 [发布冒烟与性能门禁](release-smoke-and-performance.md)。
+
+## 2026-07-29 当前 Apple Silicon 基线
+
+环境仍为 Apple M3 Pro、18 GiB RAM、macOS 26.3，命令为
+`pnpm performance:baseline -- --runs 3 --iterations 20 --spacing 250`。记录基于
+`e8d7c44` 的功能工作树，每轮约有 861–878 个进程：
+
+| 轮次 | 完整快照 median / p95 / max | 健康摘要 median / p95 / max |
+| --- | --- | --- |
+| 1 | 18,253 / 30,687 / 34,250 µs | 7,941 / 15,375 / 132,550 µs |
+| 2 | 17,617 / 41,732 / 55,678 µs | 2,328 / 4,685 / 58,770 µs |
+| 3 | 13,837 / 34,133 / 44,845 µs | 2,223 / 2,561 / 51,855 µs |
+
+三轮 median 的中位数为完整快照 17,617 µs、健康摘要 2,328 µs，摘要同步工作时间约为
+完整快照的 13%。第一轮摘要包含一次 132 ms 的低频慢路径，但第二、三轮恢复到 2.2–2.3 ms
+中位数；因此仍以三轮分布而不是单次最大值判断回归。采集脚本现在对每轮设置 120 秒 watchdog，
+避免异常挂载卷让发布前基线无限等待，并在证据中记录工作区是否有未提交修改。

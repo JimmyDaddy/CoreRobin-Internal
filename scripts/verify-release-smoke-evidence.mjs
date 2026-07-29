@@ -31,9 +31,26 @@ const roles = {
   },
 };
 const commonChecks = [
-  "launch", "main", "tray", "companion", "health-sync", "appearance-sync", "background", "quit-relaunch",
+  "launch",
+  "main",
+  "tray",
+  "companion",
+  "health-sync",
+  "appearance-sync",
+  "background",
+  "updater-discovery",
+  "updater-install-restart",
+  "application-uninstall-capability",
+  "removable-volume-eject",
+  "quit-relaunch",
 ];
 const macOSChecks = ["cleanup-limited", "cleanup-authorized"];
+const macOSUninstallChecks = ["application-uninstall-review"];
+const nativeUninstallChecks = [
+  "native-application-uninstall-review",
+  "native-application-uninstall-cancel",
+  "native-application-uninstall-complete",
+];
 
 export async function verifyReleaseSmokeEvidence({ tag, commit, assetsDirectory, evidenceByRole }) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`Invalid release tag: ${tag}`);
@@ -69,6 +86,14 @@ export async function verifyReleaseSmokeEvidence({ tag, commit, assetsDirectory,
     for (const check of commonChecks) assert(results.get(check) === "passed", `${role}: ${check} was not passed.`);
     for (const check of macOSChecks) {
       const expected = definition.platform === "darwin" ? "passed" : "not-applicable";
+      assert(results.get(check) === expected, `${role}: ${check} must be ${expected}.`);
+    }
+    for (const check of macOSUninstallChecks) {
+      const expected = definition.platform === "darwin" ? "passed" : "not-applicable";
+      assert(results.get(check) === expected, `${role}: ${check} must be ${expected}.`);
+    }
+    for (const check of nativeUninstallChecks) {
+      const expected = definition.platform === "darwin" ? "not-applicable" : "passed";
       assert(results.get(check) === expected, `${role}: ${check} must be ${expected}.`);
     }
     report[role] = { artifact: artifactName, sha256: expectedSha };

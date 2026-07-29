@@ -166,7 +166,6 @@ export function StorageExplorer({
       await ejectRemovableVolume(mountPoint);
       setConfirmingMountPoint(null);
       setEjectNotice(t("storage:eject.success", { name: name || mountPoint }));
-      await onVolumeEjected?.();
     } catch (caughtError) {
       const error = normalizeCommandError(caughtError);
       setEjectError(t(
@@ -174,8 +173,16 @@ export function StorageExplorer({
           ? "storage:eject.noLongerRemovable"
           : "storage:eject.failed",
       ));
+      return;
     } finally {
       setEjectingMountPoint(null);
+    }
+    // The operating-system action has already completed. A transient monitor
+    // refresh failure must not turn a successful eject into a false failure.
+    try {
+      await onVolumeEjected?.();
+    } catch {
+      // The next scheduled monitor sample will reconcile the visible list.
     }
   };
 
