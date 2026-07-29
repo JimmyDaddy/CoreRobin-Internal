@@ -43,8 +43,8 @@
     "simple": "Режим",
     "professional": "Профессиональный режим",
     "short": {
-      "simple": "Ежедневный",
-      "professional": "Профессиональный режим"
+      "simple": "Обыч.",
+      "professional": "Про"
     },
     "switchTo": {
       "simple": "Переключиться в повседневный режим",

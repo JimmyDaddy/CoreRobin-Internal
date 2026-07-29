@@ -43,8 +43,8 @@
     "simple": "Mode quotidien",
     "professional": "Mode professionnel",
     "short": {
-      "simple": "Quotidien",
-      "professional": "Professionnel"
+      "simple": "Simple",
+      "professional": "Pro"
     },
     "switchTo": {
       "simple": "Basculer vers le mode quotidien",

@@ -43,7 +43,7 @@
     "simple": "Everyday mode",
     "professional": "Professional mode",
     "short": {
-      "simple": "Everyday",
+      "simple": "Daily",
       "professional": "Pro"
     },
     "switchTo": {
