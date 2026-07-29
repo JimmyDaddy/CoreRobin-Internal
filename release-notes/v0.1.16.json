@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.16",
+  "title": {
+    "zh-CN": "主动更新、今日回顾与更可靠的发布收尾",
+    "en": "Proactive updates, daily review, and resilient release finalization"
+  },
+  "items": [
+    {
+      "zh-CN": "新版本会通过非阻塞卡片提示，可立即更新、24 小时后提醒或仅跳过当前版本，并在安装后直接重启。",
+      "en": "New releases now appear in a non-blocking card with options to update now, remind in 24 hours, or skip only that version, followed by an in-app restart."
+    },
+    {
+      "zh-CN": "日常模式新增“今日回顾”，汇总当天事件、恢复、网络异常与操作结果，并只在证据充分时描述观察到的变化。",
+      "en": "Everyday mode gains a Today review that summarizes incidents, recoveries, network events, and action results while reporting observed changes only when evidence is sufficient."
+    },
+    {
+      "zh-CN": "Robin 现在可以双击或通过菜单打开主窗口，自动休眠建议中的阻止应用也可直接点击查看对应进程。",
+      "en": "Robin can now open the main window by double-click or menu, and apps blocking automatic sleep can be opened directly in the process view."
+    },
+    {
+      "zh-CN": "专业模式品牌和技术信息文案更加清晰，并完成全部 10 种界面语言、用户指南和发布验收内容同步。",
+      "en": "Professional-mode branding and technical labels are clearer, with all 10 interface languages, user guides, and release checks updated together."
+    },
+    {
+      "zh-CN": "修复 Linux glib 中危安全告警，并为 Apple 公证 webhook 增加持久重试和定时状态核对，降低人工 Finalize 依赖。",
+      "en": "The Linux glib medium-severity advisory is patched, while persistent webhook retries and scheduled notarization reconciliation reduce reliance on manual Finalize runs."
+    }
+  ]
+}
