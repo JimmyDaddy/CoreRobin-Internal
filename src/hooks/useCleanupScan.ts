@@ -81,6 +81,17 @@ export function useCleanupScan() {
     };
   }, []);
 
+  useEffect(() => {
+    const cancelAbandonedScan = () => {
+      if (inFlight.current) void cancelCleanupScan();
+    };
+    window.addEventListener("pagehide", cancelAbandonedScan);
+    return () => {
+      window.removeEventListener("pagehide", cancelAbandonedScan);
+      cancelAbandonedScan();
+    };
+  }, []);
+
   const scan = useCallback(async (
     target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
   ) => {

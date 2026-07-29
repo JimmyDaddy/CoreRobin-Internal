@@ -60,6 +60,12 @@ use crate::private_storage;
 use crate::safe_fs::BoundTargetKind;
 use crate::safe_fs::{BoundDeleteTarget, DeleteRoot, TreeInspection};
 
+#[cfg(target_os = "macos")]
+use objc2::rc::Retained;
+#[cfg(target_os = "macos")]
+use objc2::runtime::ProtocolObject;
+#[cfg(target_os = "macos")]
+use objc2_foundation::{NSActivityOptions, NSObjectProtocol, NSProcessInfo, NSString};
 #[cfg(all(target_os = "macos", not(test)))]
 use objc2_foundation::{NSFileManager, NSURL};
 
@@ -162,16 +168,41 @@ pub struct CleanupWorkCoordinator {
     execution: Mutex<()>,
 }
 
+#[derive(Clone, Copy)]
+enum CleanupWorkKind {
+    FullScan,
+    Subtree,
+}
+
+struct CleanupWorkLease<'a> {
+    coordinator: &'a CleanupWorkCoordinator,
+    cancelled: &'a Arc<AtomicBool>,
+    kind: CleanupWorkKind,
+}
+
+impl Drop for CleanupWorkLease<'_> {
+    fn drop(&mut self) {
+        match self.kind {
+            CleanupWorkKind::FullScan => {
+                self.coordinator.finish_full_scan(self.cancelled);
+            }
+            CleanupWorkKind::Subtree => {
+                self.coordinator.finish_subtree(self.cancelled);
+            }
+        }
+    }
+}
+
 impl CleanupWorkCoordinator {
     pub fn begin_full_scan(&self) -> Result<Arc<AtomicBool>, CommandError> {
         let mut active_full_scan = self.active_full_scan.lock().map_err(|_| {
             CommandError::internal("The cleanup work coordinator lock was poisoned.")
         })?;
-        if active_full_scan.is_some() {
-            return Err(CommandError::new(
-                "cleanup_scan_in_progress",
-                "A cleanup scan is already in progress.",
-            ));
+        if let Some(cancelled) = active_full_scan.as_ref() {
+            // A reload can abandon the IPC future while its blocking worker is
+            // still unwinding. Treat a new explicit scan as last-request-wins
+            // instead of trapping the user behind stale backend state.
+            cancelled.store(true, Ordering::Relaxed);
         }
         let active_subtree = self.active_subtree.lock().map_err(|_| {
             CommandError::internal("The cleanup work coordinator lock was poisoned.")
@@ -182,6 +213,32 @@ impl CleanupWorkCoordinator {
         let cancelled = Arc::new(AtomicBool::new(false));
         *active_full_scan = Some(Arc::clone(&cancelled));
         Ok(cancelled)
+    }
+
+    pub fn run_full_scan<T>(
+        &self,
+        cancelled: &Arc<AtomicBool>,
+        operation: impl FnOnce() -> Result<T, CommandError>,
+    ) -> Result<T, CommandError> {
+        let _lease = CleanupWorkLease {
+            coordinator: self,
+            cancelled,
+            kind: CleanupWorkKind::FullScan,
+        };
+        self.run_exclusive(cancelled, operation)
+    }
+
+    pub fn run_subtree<T>(
+        &self,
+        cancelled: &Arc<AtomicBool>,
+        operation: impl FnOnce() -> Result<T, CommandError>,
+    ) -> Result<T, CommandError> {
+        let _lease = CleanupWorkLease {
+            coordinator: self,
+            cancelled,
+            kind: CleanupWorkKind::Subtree,
+        };
+        self.run_exclusive(cancelled, operation)
     }
 
     pub fn begin_subtree(
@@ -279,6 +336,39 @@ impl CleanupWorkCoordinator {
                 .is_some_and(|current| Arc::ptr_eq(&current.cancelled, cancelled))
         {
             *active_subtree = None;
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+struct CleanupScanActivity {
+    process_info: Retained<NSProcessInfo>,
+    activity: Retained<ProtocolObject<dyn NSObjectProtocol>>,
+}
+
+#[cfg(target_os = "macos")]
+impl CleanupScanActivity {
+    fn begin() -> Self {
+        let process_info = NSProcessInfo::processInfo();
+        let reason = NSString::from_str("CoreRobin space cleanup scan");
+        let activity = process_info.beginActivityWithOptions_reason(
+            NSActivityOptions::UserInitiatedAllowingIdleSystemSleep,
+            &reason,
+        );
+        Self {
+            process_info,
+            activity,
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for CleanupScanActivity {
+    fn drop(&mut self) {
+        // SAFETY: `activity` is the exact retained token returned by this
+        // `NSProcessInfo` instance and is ended once when the guard is dropped.
+        unsafe {
+            self.process_info.endActivity(&self.activity);
         }
     }
 }
@@ -1248,6 +1338,10 @@ pub fn scan_cleanup(
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<CleanupScan, CommandError> {
+    // A user-started disk scan must keep making progress when the main window
+    // is hidden, while still allowing normal idle system sleep.
+    #[cfg(target_os = "macos")]
+    let _activity = CleanupScanActivity::begin();
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
             "home_directory_unavailable",
@@ -4699,7 +4793,8 @@ fn system_disk_root(home: &Path) -> Option<PathBuf> {
 
 #[cfg(target_os = "macos")]
 fn is_excluded_scan_namespace(path: &Path, scan_root: &Path) -> bool {
-    scan_root == Path::new("/") && path == Path::new("/System/Volumes")
+    scan_root == Path::new("/")
+        && (path == Path::new("/System/Volumes") || path == Path::new("/Volumes"))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -4817,7 +4912,7 @@ mod tests {
             let active_workers = Arc::clone(&active_workers);
             let maximum_workers = Arc::clone(&maximum_workers);
             thread::spawn(move || {
-                coordinator.run_exclusive(&cancelled, || {
+                coordinator.run_subtree(&cancelled, || {
                     let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
                     maximum_workers.fetch_max(active, Ordering::SeqCst);
                     first_started.wait();
@@ -4840,7 +4935,7 @@ mod tests {
             let active_workers = Arc::clone(&active_workers);
             let maximum_workers = Arc::clone(&maximum_workers);
             thread::spawn(move || {
-                coordinator.run_exclusive(&cancelled, || {
+                coordinator.run_subtree(&cancelled, || {
                     let active = active_workers.fetch_add(1, Ordering::SeqCst) + 1;
                     maximum_workers.fetch_max(active, Ordering::SeqCst);
                     active_workers.fetch_sub(1, Ordering::SeqCst);
@@ -4855,8 +4950,34 @@ mod tests {
         );
         second_worker.join().unwrap().unwrap();
         assert_eq!(maximum_workers.load(Ordering::SeqCst), 1);
-        coordinator.finish_subtree(&first_cancelled);
-        coordinator.finish_subtree(&second_cancelled);
+    }
+
+    #[test]
+    fn full_scan_requests_are_last_request_wins_and_release_worker_state() {
+        let coordinator = CleanupWorkCoordinator::default();
+        let first = coordinator.begin_full_scan().unwrap();
+        let second = coordinator.begin_full_scan().unwrap();
+
+        assert!(first.load(Ordering::Relaxed));
+        assert!(!second.load(Ordering::Relaxed));
+        assert_eq!(
+            coordinator
+                .run_full_scan(&first, || Ok(()))
+                .unwrap_err()
+                .code,
+            "cleanup_scan_cancelled"
+        );
+
+        assert!(coordinator.cancel_full_scan().unwrap());
+        assert!(second.load(Ordering::Relaxed));
+        assert_eq!(
+            coordinator
+                .run_full_scan(&second, || Ok(()))
+                .unwrap_err()
+                .code,
+            "cleanup_scan_cancelled"
+        );
+        assert!(!coordinator.cancel_full_scan().unwrap());
     }
 
     #[test]
@@ -4875,6 +4996,23 @@ mod tests {
 
         coordinator.finish_subtree(&subtree);
         coordinator.finish_full_scan(&full_scan);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn system_scan_skips_mounted_volume_namespaces_without_blocking_folder_scans() {
+        assert!(is_excluded_scan_namespace(
+            Path::new("/Volumes"),
+            Path::new("/")
+        ));
+        assert!(is_excluded_scan_namespace(
+            Path::new("/System/Volumes"),
+            Path::new("/")
+        ));
+        assert!(!is_excluded_scan_namespace(
+            Path::new("/Volumes/Archive/folder"),
+            Path::new("/Volumes/Archive")
+        ));
     }
 
     #[test]
