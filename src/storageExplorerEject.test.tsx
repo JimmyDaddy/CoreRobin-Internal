@@ -161,3 +161,47 @@ describe("removable volume actions", () => {
     expect(screen.queryByText("操作系统未能提供这个卷的全部详情。")).toBeNull();
   });
 });
+
+describe("storage throughput chart", () => {
+  it("uses the collected span across the chart while the five-minute window warms up", () => {
+    const { container } = render(
+      <StorageExplorer
+        disk={{
+          readBytesPerSecond: 300,
+          writeBytesPerSecond: 150,
+          volumes: [],
+        }}
+        history={[
+          {
+            timestamp: 1_000,
+            cpuPercent: 0,
+            memoryPercent: 0,
+            diskReadBytesPerSecond: 100,
+            diskWriteBytesPerSecond: 50,
+            networkReceivedBytesPerSecond: 0,
+            networkTransmittedBytesPerSecond: 0,
+          },
+          {
+            timestamp: 2_000,
+            cpuPercent: 0,
+            memoryPercent: 0,
+            diskReadBytesPerSecond: 300,
+            diskWriteBytesPerSecond: 150,
+            networkReceivedBytesPerSecond: 0,
+            networkTransmittedBytesPerSecond: 0,
+          },
+        ]}
+        processes={[]}
+        selectedIdentity={null}
+        onSelectProcess={vi.fn()}
+        usageThresholds={[35, 65, 85]}
+        onOpenCleanup={vi.fn()}
+      />,
+    );
+
+    const readLine = container.querySelector(".storage-history__line--read");
+    expect(readLine?.getAttribute("d")).toMatch(/^M0\.0 .+ L720\.0 /);
+    expect(screen.getByText("较早")).toBeTruthy();
+    expect(screen.getByText("正在建立磁盘吞吐基线…")).toBeTruthy();
+  });
+});

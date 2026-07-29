@@ -21,6 +21,12 @@ export interface StorageSeriesPoint {
   value: number;
 }
 
+export interface StorageHistoryDomain {
+  start: number;
+  end: number;
+  complete: boolean;
+}
+
 export type StorageMetric = "read" | "write";
 
 export function volumeUsage(volume: VolumeSnapshot): VolumeUsage {
@@ -114,4 +120,18 @@ export function storageHistorySegments(
   }
   if (current.length > 0) segments.push(current);
   return segments;
+}
+
+export function storageHistoryDomain(
+  history: readonly HistoryPoint[],
+): StorageHistoryDomain {
+  const points = storageHistoryWindow(history);
+  const first = points[0]?.timestamp ?? 0;
+  const end = points[points.length - 1]?.timestamp ?? first;
+  const complete = end - first >= STORAGE_HISTORY_WINDOW_MS * 0.95;
+  return {
+    start: complete ? end - STORAGE_HISTORY_WINDOW_MS : first,
+    end: Math.max(first + 1, end),
+    complete,
+  };
 }

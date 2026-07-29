@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   STORAGE_HISTORY_WINDOW_MS,
   sortVolumesByUsage,
+  storageHistoryDomain,
   storageHistorySegments,
   storageHistoryWindow,
   topDiskProcesses,
@@ -152,5 +153,28 @@ describe("storage history", () => {
         segment.map((point) => point.value),
       ),
     ).toEqual([[10], [30], [40]]);
+  });
+
+  it("uses the collected span while the five-minute chart is warming up", () => {
+    expect(storageHistoryDomain([
+      historyPoint(10_000, 10, 10),
+      historyPoint(14_000, 20, 20),
+    ])).toEqual({
+      start: 10_000,
+      end: 14_000,
+      complete: false,
+    });
+  });
+
+  it("locks to the latest five minutes after enough samples are collected", () => {
+    const end = STORAGE_HISTORY_WINDOW_MS + 20_000;
+    expect(storageHistoryDomain([
+      historyPoint(end - STORAGE_HISTORY_WINDOW_MS, 10, 10),
+      historyPoint(end, 20, 20),
+    ])).toEqual({
+      start: end - STORAGE_HISTORY_WINDOW_MS,
+      end,
+      complete: true,
+    });
   });
 });
