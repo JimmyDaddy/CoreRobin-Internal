@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.15",
+  "title": {
+    "zh-CN": "持续历史、事件回放与更完整的操作闭环",
+    "en": "Continuous history, event replay, and complete action loops"
+  },
+  "items": [
+    {
+      "zh-CN": "原生后台采样器在主窗口关闭后仍会保持状态栏、提醒和已启用历史的连续性，并用有界的私有分段存储可靠保存数据。",
+      "en": "The native background sampler keeps menu-bar status, alerts, and enabled histories continuous after the main window closes, with bounded private segments for reliable storage."
+    },
+    {
+      "zh-CN": "新增系统事件回放、电池使用会话、连接详情和应用影响归因，可在同一时间轴中解释资源峰值、网络异常和操作后的变化。",
+      "en": "System event replay, battery sessions, connection details, and application attribution now explain resource peaks, network incidents, and post-action changes on a shared timeline."
+    },
+    {
+      "zh-CN": "空间扫描增加最近三次增长快照，清理回执区分逻辑大小、物理占用和实际可用空间变化，并支持失败项重试。",
+      "en": "Space scans now retain three growth snapshots, while cleanup receipts distinguish logical size, physical usage, and actual free-space changes with retries for failed items."
+    },
+    {
+      "zh-CN": "启动项增加责任应用与签名归属，应用卸载加入筛选和废纸篓残留检查，设置与关注规则支持安全预览、导入和导出。",
+      "en": "Startup items gain responsible-app and signature ownership, uninstall gains filters and optional Trash leftover checks, and settings plus watch rules can be safely previewed, imported, and exported."
+    },
+    {
+      "zh-CN": "应用更新成为全局任务，并优化存储页、磁盘吞吐图和日常/专业模式切换的布局、响应式样式与多语言短标签。",
+      "en": "App updates now run as a global task, with improved storage layouts, disk-throughput charts, and responsive multilingual Daily/Pro mode controls."
+    }
+  ]
+}
