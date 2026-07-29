@@ -4445,12 +4445,14 @@ mod tests {
 
         assert_eq!(boundary, Some(selected.canonicalize().unwrap()));
 
-        let selected_root = DeleteRoot::open(&selected.canonicalize().unwrap()).unwrap();
-        let inspection = selected_root
-            .bind(Path::new("app-data/history.db"))
-            .unwrap()
-            .inspect()
-            .unwrap();
+        let inspection = {
+            let selected_root = DeleteRoot::open(&selected.canonicalize().unwrap()).unwrap();
+            selected_root
+                .bind(Path::new("app-data/history.db"))
+                .unwrap()
+                .inspect()
+                .unwrap()
+        };
         let display = selected_file.to_string_lossy().into_owned();
         let request = CleanupDeleteLeaseRequest {
             paths: vec![display.clone()],
