@@ -11,12 +11,14 @@ export function buildCleanupDeleteLeaseRequest(
   scanSampledAtMs: number,
   mode: CleanupDeleteMode,
   scanRoot?: string,
+  scanTargetKind: CleanupDeleteLeaseRequest["scanTargetKind"] = "system_disk",
 ): CleanupDeleteLeaseRequest {
   const expectedTargets = items.flatMap(cleanupNodeEvidence);
   return {
     paths: expectedTargets.map((target) => target.path),
     scanSampledAtMs,
     ...(scanRoot ? { scanRoot } : {}),
+    ...(scanTargetKind !== "system_disk" ? { scanTargetKind } : {}),
     expectedTargets,
     mode,
   };

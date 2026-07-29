@@ -262,7 +262,7 @@ export function CleanupDeleteDialog({
               {lease && !lease.executable ? (
                 <button className="button button--primary" type="button" disabled={preparing} onClick={onRefresh}>
                   <RefreshCw className={preparing ? "is-spinning" : undefined} size={14} />
-                  {t("cleanup:deleteDialog.refreshSelection")}
+                  {t("cleanup:deleteDialog.recheckSelection")}
                 </button>
               ) : (
                 <button className={`button ${mode === "trash" ? "button--primary" : "button--danger"}`} type="button" disabled={!canConfirm} onClick={onConfirm}>

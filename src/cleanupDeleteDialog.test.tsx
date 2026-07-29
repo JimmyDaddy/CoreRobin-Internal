@@ -39,7 +39,7 @@ describe("cleanup deletion dialog freshness", () => {
     const onRefresh = vi.fn();
     renderDialog(lease(false), { onRefresh });
     expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "再次刷新所选内容" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新检查并继续" }));
     expect(onRefresh).toHaveBeenCalledOnce();
   });
 

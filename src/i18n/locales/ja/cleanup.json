@@ -151,8 +151,7 @@
     "protectedSelectionHint": "システムパスとホームルートは閲覧のみです。ホームフォルダ内の具体的な項目はバケットに追加できます",
     "trashRootProtected": "ゴミ箱フォルダ自体は保護されています。開いて、削除したい特定のファイルを選択してください",
     "planSummary": "{{count}} 選択された項目 · {{size}}",
-    "reviewCleanup": "クリーンアップ方法を確認",
-    "refreshCleanup": "削除前に選択内容を再度確認する",
+    "chooseDeleteMethod": "削除方法を選択",
     "deletionUnavailable": "クリーンアップできません",
     "basket": {
       "title": "クリーンアップバケツ",
@@ -182,7 +181,9 @@
       "cached": "以前のスキャン結果を表示",
       "expired": "このスキャンは古いものです。再度のスキャンをお勧めします",
       "changed": "このフォルダが変更されました。サイズの情報が正確でない可能性があります",
-      "changedShort": "内容が変更されました"
+      "changedShort": "内容が変更されました",
+      "refreshFolder": "{{name}}を更新",
+      "refreshingFolder": "{{name}}を更新中…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "取り消しできません",
     "recoverable": "ゴミ箱から復元可能",
     "changed": "スキャン時以降に変更されました",
-    "changedWarning": "{{count}} の項目が、以前の表示と異なります。サイズや個数などが更新されています。削除を確認する前に、再度内容をご確認ください。",
+    "changedWarning": "追加後に {{count}} 件の内容が変更されました。サイズと件数は更新済みです。続行する前に再確認してください。",
     "preparing": "クリーンアップを準備しています…",
-    "refreshSelection": "選択内容を再度更新",
+    "recheckSelection": "再確認して続行",
     "deleteConfirmTitle": "これらのファイルは完全に削除されますことを理解しました",
     "deleteConfirmDescription": "削除されたファイルはゴミ箱に入りません。ダウンロード、設定、および個人データが復元できない場合があります。",
     "trashConfirmTitle": "これらの項目をゴミ箱へ移動することを確認します",
@@ -224,7 +225,7 @@
     "cancelling": "停止中…",
     "cancelHint": "処理済みの項目は自動では元に戻りません。CoreRobin は現在のファイル操作後に停止します。",
     "errors": {
-      "protected_cleanup_path": "CoreRobin はシステム領域、重要な設定、一時フォルダのルート、ホームディレクトリ、ゴミ箱自体を削除しません。",
+      "protected_cleanup_path": "CoreRobin は OS 領域、認証情報、保護されたデータライブラリのルート、一時フォルダのルート、ホームディレクトリ、ゴミ箱自体を削除しません。",
       "cleanup_target_outside_home": "安全のため、CoreRobin は個人フォルダまたは許可された一時保存先のコンテンツのみを処理します。",
       "cleanup_cross_filesystem": "選択されたディレクトリが別のディスクまたはマウントポイントにあるため、CoreRobinは再帰的な削除を拒否しました。",
       "cleanup_target_changed": "確認後にファイルが変更されたため、CoreRobinは何も削除しませんでした。キャンセルして再度確認してください。",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "隠されたユーザーフォルダ",
-      "description": "ドットで始まるアプリケーションのデータと設定です。測定のみを行い、直接削除は推奨されません。"
+      "description": "ドットで始まるアプリのデータと設定です。内容を確認してからクリーンアップバスケットに追加できます。"
     }
   },
   "safety": {

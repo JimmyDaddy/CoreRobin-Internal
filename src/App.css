@@ -5074,8 +5074,50 @@ code,
   backdrop-filter: blur(10px);
 }
 
+.cleanup-map__freshness > span {
+  overflow: hidden;
+  max-width: min(34vw, 300px);
+  text-overflow: ellipsis;
+}
+
 .cleanup-map__freshness.is-changed,
 .cleanup-map__freshness.is-expired { color: var(--amber); }
+
+.cleanup-map__freshness-action {
+  display: inline-flex;
+  min-height: 25px;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.cleanup-map__freshness-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--amber) 58%, transparent);
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.cleanup-map__freshness-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--amber) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.cleanup-map__freshness-action:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.cleanup-map__freshness-action .lucide-loader-circle {
+  animation: spin 0.8s linear infinite;
+}
 
 .cleanup-map__subtree-loading {
   position: absolute;

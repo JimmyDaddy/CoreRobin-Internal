@@ -10,7 +10,7 @@ import {
   removeStorageItems,
 } from "./storageMigration";
 
-export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v6";
+export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v7";
 export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
 export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 const MAX_CACHED_SUBTREES = 256;
@@ -161,7 +161,7 @@ export function parseStoredCleanupScan(
     );
     if (
       !isRecord(value) ||
-      value.version !== 6 ||
+      value.version !== 7 ||
       !isFiniteNonNegativeNumber(value.savedAtMs) ||
       !isCleanupScan(snapshot)
     ) {

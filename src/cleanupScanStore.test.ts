@@ -22,7 +22,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = 10_000;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: now - 500,
       snapshot,
     }), now);
@@ -34,7 +34,7 @@ describe("cleanup scan persistence", () => {
     const snapshot = getMockCleanupScan();
     const now = CLEANUP_SCAN_STALE_AFTER_MS + 2_000;
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: 1_000,
       snapshot,
     }), now)?.status).toBe("expired");
@@ -43,7 +43,7 @@ describe("cleanup scan persistence", () => {
   it("does not invent cleanup capability for an older retained scan", () => {
     const snapshot = { ...getMockCleanupScan(), deletionAvailable: false };
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000);
@@ -51,7 +51,7 @@ describe("cleanup scan persistence", () => {
     expect(parsed?.snapshot.deletionAvailable).toBe(false);
   });
 
-  it("keeps retained v6 maps usable without inventing application activity", () => {
+  it("keeps retained v7 maps usable without inventing application activity", () => {
     const snapshot = getMockCleanupScan();
     const {
       installedApplications: _applications,
@@ -65,7 +65,7 @@ describe("cleanup scan persistence", () => {
     void _prefetchedSubtrees;
     void _subtreeCacheSavedAtMs;
     const parsed = parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: 9_500,
       snapshot: legacy,
     }), 10_000);
@@ -119,7 +119,7 @@ describe("cleanup scan persistence", () => {
     const now = CLEANUP_SCAN_RETENTION_MS + 2_000;
     expect(parseStoredCleanupScan("not-json", now)).toBeNull();
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: 1_000,
       snapshot,
     }), now)).toBeNull();
@@ -149,12 +149,20 @@ describe("cleanup scan persistence", () => {
     }), 10_000)).toBeNull();
   });
 
-  it("rejects v6 maps that cannot advertise lazily loadable folders", () => {
+  it("rejects v6 maps whose saved protection decisions predate the current policy", () => {
+    expect(parseStoredCleanupScan(JSON.stringify({
+      version: 6,
+      savedAtMs: 9_500,
+      snapshot: getMockCleanupScan(),
+    }), 10_000)).toBeNull();
+  });
+
+  it("rejects maps that cannot advertise lazily loadable folders", () => {
     const snapshot = getMockCleanupScan();
     delete (snapshot.locations[0].nodes[0] as { hasChildren?: boolean }).hasChildren;
 
     expect(parseStoredCleanupScan(JSON.stringify({
-      version: 6,
+      version: 7,
       savedAtMs: 9_500,
       snapshot,
     }), 10_000)).toBeNull();

@@ -96,7 +96,7 @@ const PROGRESS_INTERVAL_ENTRIES: usize = 512;
 const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
 const MAX_CLEANUP_SCAN_CACHE_BYTES: u64 = 64 * 1_024 * 1_024;
-const CLEANUP_SCAN_CACHE_VERSION: u8 = 6;
+const CLEANUP_SCAN_CACHE_VERSION: u8 = 7;
 #[cfg(target_os = "macos")]
 const MAX_APPLICATION_INVENTORY_CACHE_BYTES: u64 = 8 * 1_024 * 1_024;
 #[cfg(target_os = "macos")]
@@ -1211,6 +1211,7 @@ pub fn scan_cleanup(
         } else {
             Vec::new()
         },
+        !system_scan,
         system_scan,
         cancelled,
         on_progress,
@@ -1266,6 +1267,7 @@ pub fn benchmark_cleanup_root_with_cancel(
         &canonical_root,
         &canonical_root,
         Vec::new(),
+        false,
         false,
         cancelled,
         &mut |progress| latest_progress = progress,
@@ -1460,7 +1462,7 @@ fn scan_cleanup_subtree_at(
         largest_files: &mut largest_files,
         home: &canonical_home,
         scan_root: &canonical_scan_root,
-        external_cleanup_root: is_external_cleanup_root(&canonical_scan_root, &canonical_home),
+        selected_cleanup_root: request.scan_target_kind != CleanupScanTargetKind::SystemDisk,
         boundary,
         definitions: &definitions,
         location_summaries: &mut location_summaries,
@@ -2376,9 +2378,9 @@ fn validate_cleanup_targets(
         )
     })?;
     let mut delete_roots = HashMap::from([(canonical_home.clone(), home_delete_root)]);
-    let external_scan_root = match request.scan_root.as_deref() {
-        Some(path) => validate_external_cleanup_root(path, &canonical_home)?,
-        None => None,
+    let selected_scan_root = match (request.scan_target_kind, request.scan_root.as_deref()) {
+        (CleanupScanTargetKind::SystemDisk, _) | (_, None) => None,
+        (_, Some(path)) => validate_selected_cleanup_root(path, &canonical_home)?,
     };
     let trash_roots = trash_paths(&canonical_home);
     let mut seen = HashSet::new();
@@ -2403,7 +2405,7 @@ fn validate_cleanup_targets(
                 relative,
                 boundary.trusted_system_root,
             )
-        } else if let Some(root) = external_scan_root.as_ref()
+        } else if let Some(root) = selected_scan_root.as_ref()
             && let Ok(relative) = path.strip_prefix(root)
             && !relative.as_os_str().is_empty()
         {
@@ -2417,15 +2419,16 @@ fn validate_cleanup_targets(
             ));
         };
         let canonical_path = boundary_root.join(&relative_path);
-        let inside_external_scan = external_scan_root
-            .as_ref()
-            .is_some_and(|root| canonical_path.starts_with(root) && canonical_path != *root);
-        if !inside_external_scan
-            && cleanup_protection_for_path(&canonical_path, &canonical_home).is_some()
-        {
+        let protection_reason = selected_scan_root.as_ref().map_or_else(
+            || cleanup_protection_for_path(&canonical_path, &canonical_home),
+            |root| {
+                cleanup_protection_for_selected_scan_path(&canonical_path, &canonical_home, root)
+            },
+        );
+        if protection_reason.is_some() {
             return Err(CommandError::new(
                 "protected_cleanup_path",
-                "CoreRobin will not delete system-managed locations, sensitive user data, temporary-directory roots, the home directory, or the system Trash folder itself.",
+                "CoreRobin will not delete operating-system locations, credential stores, protected data-library roots, temporary-directory roots, the home directory, or the system Trash folder itself.",
             ));
         }
         if request.mode == CleanupDeleteMode::Trash
@@ -2535,7 +2538,7 @@ fn validate_cleanup_targets(
     })
 }
 
-fn validate_external_cleanup_root(
+fn validate_selected_cleanup_root(
     requested: &str,
     canonical_home: &Path,
 ) -> Result<Option<PathBuf>, CommandError> {
@@ -2543,7 +2546,7 @@ fn validate_external_cleanup_root(
     if !requested.is_absolute() {
         return Err(CommandError::new(
             "cleanup_scan_root_invalid",
-            "A non-system cleanup boundary must be an absolute directory path.",
+            "A selected cleanup boundary must be an absolute directory path.",
         ));
     }
     let metadata = fs::symlink_metadata(requested).map_err(|error| {
@@ -2555,7 +2558,7 @@ fn validate_external_cleanup_root(
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
         return Err(CommandError::new(
             "cleanup_scan_root_invalid",
-            "A non-system cleanup boundary must be a real directory.",
+            "A selected cleanup boundary must be a real directory.",
         ));
     }
     let root = requested.canonicalize().map_err(|error| {
@@ -2564,30 +2567,13 @@ fn validate_external_cleanup_root(
             format!("CoreRobin could not open the selected scan root: {error}"),
         )
     })?;
-    Ok(is_external_cleanup_root(&root, canonical_home).then_some(root))
-}
-
-fn is_external_cleanup_root(root: &Path, canonical_home: &Path) -> bool {
-    let Some(system_root) =
-        system_disk_root(canonical_home).and_then(|path| path.canonicalize().ok())
-    else {
-        return false;
-    };
-    #[cfg(unix)]
+    let system_root = system_disk_root(canonical_home).and_then(|path| path.canonicalize().ok());
+    if root.starts_with(canonical_home)
+        || system_root.as_ref().is_some_and(|system| root == *system)
     {
-        fs::metadata(root).map(|value| value.dev()).ok()
-            != fs::metadata(&system_root).map(|value| value.dev()).ok()
+        return Ok(None);
     }
-    #[cfg(windows)]
-    {
-        root.canonicalize()
-            .map(|canonical_root| !canonical_root.starts_with(&system_root))
-            .unwrap_or(false)
-    }
-    #[cfg(not(any(unix, windows)))]
-    {
-        false
-    }
+    Ok(Some(root))
 }
 
 #[cfg(target_os = "macos")]
@@ -2785,66 +2771,163 @@ fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
         return true;
     };
 
-    const REGENERATABLE_ROOTS: &[&[&str]] = &[
-        &[".cache"],
-        &[".pnpm-store"],
-        &[".cargo", "registry"],
-        &[".cargo", "git"],
-        &[".npm", "_cacache"],
-        &[".yarn", "berry", "cache"],
-        &[".gradle", "caches"],
-        &[".m2", "repository"],
-        &[".bun", "install", "cache"],
-        &[".rustup", "downloads"],
-        &[".rustup", "tmp"],
-        &[".local", "share", "pnpm", "store"],
-        &["Library", "Caches"],
-        &["Library", "Logs"],
-        &["Library", "Developer", "Xcode", "DerivedData"],
-        &["Library", "pnpm", "store"],
-        &["AppData", "Local", "Temp"],
-        &["AppData", "Local", "pnpm", "store"],
+    // Hidden names are an interface convention, not a security boundary.
+    // Protect only credential stores and app-managed personal libraries whose
+    // raw recursive removal would bypass the owning application's semantics.
+    const PROTECTED_USER_SUBTREES: &[&[&str]] = &[
+        &[".ssh"],
+        &[".gnupg"],
+        &[".aws"],
+        &[".azure"],
+        &[".kube"],
+        &[".password-store"],
+        &[".config", "gcloud"],
+        &[".config", "gh"],
+        &[".config", "rclone"],
+        &[".local", "share", "keyrings"],
+        &["Library", "Accounts"],
+        &["Library", "Calendars"],
+        &["Library", "CloudStorage"],
+        &["Library", "HomeKit"],
+        &["Library", "IdentityServices"],
+        &["Library", "Keychains"],
+        &["Library", "Mail"],
+        &["Library", "Messages"],
+        &["Library", "Mobile Documents"],
+        &["Library", "PersonalizationPortrait"],
+        &["Library", "Safari"],
+        &["Library", "Application Support", "AddressBook"],
+        &["Library", "Application Support", "CallHistoryDB"],
+        &["Library", "Application Support", "CallHistoryTransactions"],
+        &["Library", "Application Support", "Knowledge"],
+        &["Library", "Application Support", "MobileSync"],
+        &["Library", "Application Support", "com.apple.TCC"],
+        &["Library", "Containers", "com.apple.Home"],
+        &["Library", "Containers", "com.apple.MobileSMS"],
+        &["Library", "Containers", "com.apple.Safari"],
+        &["Library", "Containers", "com.apple.mail"],
+        &["Library", "Group Containers", "group.com.apple.mail"],
+        &["AppData", "Roaming", "Microsoft", "Credentials"],
+        &["AppData", "Roaming", "Microsoft", "Crypto"],
+        &["AppData", "Roaming", "Microsoft", "Protect"],
+        &["AppData", "Roaming", "Microsoft", "Vault"],
     ];
-    if REGENERATABLE_ROOTS
+    if PROTECTED_USER_SUBTREES
         .iter()
         .any(|prefix| cleanup_components_start_with(&parts, prefix))
     {
-        return false;
-    }
-    if is_regeneratable_sandbox_path(&parts) {
-        return false;
+        return true;
     }
 
-    first.starts_with('.')
-        || ["Library", "AppData", "Applications", "System"]
+    const PROTECTED_PROFILE_FILES: &[&str] = &[
+        ".git-credentials",
+        ".netrc",
+        ".npmrc",
+        ".pypirc",
+        "NTUSER.DAT",
+        "NTUSER.DAT.LOG1",
+        "NTUSER.DAT.LOG2",
+        "ntuser.ini",
+    ];
+    if parts.len() == 1
+        && PROTECTED_PROFILE_FILES
             .iter()
             .any(|candidate| cleanup_component_matches(first, candidate))
-        || [
-            "NTUSER.DAT",
-            "NTUSER.DAT.LOG1",
-            "NTUSER.DAT.LOG2",
-            "ntuser.ini",
-        ]
-        .iter()
-        .any(|candidate| cleanup_component_matches(first, candidate))
+    {
+        return true;
+    }
+
+    if parts.iter().any(|part| {
+        let lower = part.to_ascii_lowercase();
+        lower.ends_with(".photoslibrary") || lower.ends_with(".photolibrary")
+    }) {
+        return true;
+    }
+
+    if cleanup_component_matches(first, "System") {
+        return true;
+    }
+
+    // Keep broad profile/category roots view-only, while allowing the user to
+    // drill down to a concrete app-owned child. Cache and log roots remain
+    // directly actionable because they are explicitly regeneratable.
+    if cleanup_component_matches(first, "Library") && parts.len() <= 2 {
+        return parts.len() == 1
+            || !["Caches", "Logs"]
+                .iter()
+                .any(|candidate| cleanup_component_matches(parts[1], candidate));
+    }
+    if cleanup_component_matches(first, "AppData") && parts.len() <= 2 {
+        return true;
+    }
+    parts.len() == 1
+        && ["Applications"]
+            .iter()
+            .any(|candidate| cleanup_component_matches(first, candidate))
 }
 
-fn is_regeneratable_sandbox_path(parts: &[&str]) -> bool {
-    if parts.len() >= 5
-        && cleanup_component_matches(parts[0], "Library")
-        && cleanup_component_matches(parts[1], "Containers")
-        && cleanup_component_matches(parts[3], "Data")
-    {
-        return cleanup_component_matches(parts[4], "tmp")
-            || (parts.len() >= 6
-                && cleanup_component_matches(parts[4], "Library")
-                && cleanup_component_matches(parts[5], "Caches"));
+fn cleanup_protection_for_selected_scan_path(
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+) -> Option<CleanupProtectionReason> {
+    if path == scan_root || !path.starts_with(scan_root) {
+        return Some(CleanupProtectionReason::SystemLocation);
     }
-    parts.len() >= 5
-        && cleanup_component_matches(parts[0], "Library")
-        && cleanup_component_matches(parts[1], "Group Containers")
-        && cleanup_component_matches(parts[3], "Library")
-        && cleanup_component_matches(parts[4], "Caches")
+    if path.starts_with(home) || temporary_cleanup_boundary_for_path(path).is_some() {
+        return cleanup_protection_for_path(path, home);
+    }
+    if is_system_managed_cleanup_path(path) || !cleanup_path_owned_by_current_user(path) {
+        Some(CleanupProtectionReason::SystemLocation)
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn is_system_managed_cleanup_path(path: &Path) -> bool {
+    if path.starts_with("/usr/local") {
+        return false;
+    }
+    ["/System", "/usr", "/bin", "/sbin", "/var", "/private/var"]
+        .iter()
+        .any(|root| path.starts_with(root))
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn is_system_managed_cleanup_path(path: &Path) -> bool {
+    if path.starts_with("/usr/local") {
+        return false;
+    }
+    [
+        "/boot", "/dev", "/etc", "/proc", "/run", "/sys", "/usr", "/var", "/bin", "/sbin", "/lib",
+        "/lib64",
+    ]
+    .iter()
+    .any(|root| path.starts_with(root))
+}
+
+#[cfg(windows)]
+fn is_system_managed_cleanup_path(path: &Path) -> bool {
+    let normalized = path.to_string_lossy().replace('\\', "/").to_lowercase();
+    [
+        "SystemRoot",
+        "WINDIR",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "ProgramData",
+        "ALLUSERSPROFILE",
+    ]
+    .iter()
+    .filter_map(env::var_os)
+    .map(PathBuf::from)
+    .map(|root| root.to_string_lossy().replace('\\', "/").to_lowercase())
+    .any(|root| normalized == root || normalized.starts_with(&format!("{root}/")))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn is_system_managed_cleanup_path(_path: &Path) -> bool {
+    false
 }
 
 fn temporary_cleanup_boundaries() -> &'static [CleanupDeleteBoundary] {
@@ -3179,7 +3262,7 @@ struct ScanContext<'a> {
     largest_files: &'a mut Vec<CleanupFile>,
     home: &'a Path,
     scan_root: &'a Path,
-    external_cleanup_root: bool,
+    selected_cleanup_root: bool,
     boundary: ScanFilesystemBoundary,
     definitions: &'a [LocationDefinition],
     location_summaries: &'a mut [LocationSummary],
@@ -3195,7 +3278,7 @@ impl ScanContext<'_> {
             path,
             self.home,
             self.scan_root,
-            self.external_cleanup_root,
+            self.selected_cleanup_root,
         )
     }
 }
@@ -3204,10 +3287,10 @@ fn cleanup_protection_for_scan_path(
     path: &Path,
     home: &Path,
     scan_root: &Path,
-    external_cleanup_root: bool,
+    selected_cleanup_root: bool,
 ) -> Option<CleanupProtectionReason> {
-    if external_cleanup_root && path.starts_with(scan_root) && path != scan_root {
-        None
+    if selected_cleanup_root && path.starts_with(scan_root) {
+        cleanup_protection_for_selected_scan_path(path, home, scan_root)
     } else {
         cleanup_protection_for_path(path, home)
     }
@@ -3348,6 +3431,7 @@ fn scan_home(
         home,
         home,
         definitions,
+        false,
         include_application_inventory,
         cancelled,
         on_progress,
@@ -3358,6 +3442,7 @@ fn scan_filesystem(
     scan_root: &Path,
     home: &Path,
     definitions: Vec<LocationDefinition>,
+    selected_cleanup_root: bool,
     include_application_inventory: bool,
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
@@ -3383,7 +3468,7 @@ fn scan_filesystem(
             largest_files: &mut largest_files,
             home,
             scan_root,
-            external_cleanup_root: is_external_cleanup_root(scan_root, home),
+            selected_cleanup_root,
             boundary,
             definitions: &definitions,
             location_summaries: &mut location_summaries,
@@ -4664,20 +4749,51 @@ mod tests {
     use super::*;
 
     #[test]
-    fn same_disk_folder_scan_does_not_expand_delete_authority() {
+    fn same_disk_folder_scan_creates_an_explicit_bounded_delete_authority() {
         let root = test_root("same-disk-scan-root");
         let home = root.join("home");
         let selected = root.join("selected");
+        let selected_file = selected.join("app-data/history.db");
         fs::create_dir_all(&home).unwrap();
-        fs::create_dir_all(&selected).unwrap();
+        fs::create_dir_all(selected_file.parent().unwrap()).unwrap();
+        fs::write(&selected_file, b"history").unwrap();
 
-        let boundary = validate_external_cleanup_root(
+        let boundary = validate_selected_cleanup_root(
             selected.to_string_lossy().as_ref(),
             &home.canonicalize().unwrap(),
         )
         .unwrap();
 
-        assert!(boundary.is_none());
+        assert_eq!(boundary, Some(selected.canonicalize().unwrap()));
+
+        let selected_root = DeleteRoot::open(&selected.canonicalize().unwrap()).unwrap();
+        let inspection = selected_root
+            .bind(Path::new("app-data/history.db"))
+            .unwrap()
+            .inspect()
+            .unwrap();
+        let display = selected_file.to_string_lossy().into_owned();
+        let request = CleanupDeleteLeaseRequest {
+            paths: vec![display.clone()],
+            scan_sampled_at_ms: now_millis(),
+            scan_root: Some(selected.to_string_lossy().into_owned()),
+            scan_target_kind: CleanupScanTargetKind::Folder,
+            expected_targets: vec![CleanupDeleteTargetEvidence {
+                path: display,
+                logical_size_bytes: inspection.logical_size_bytes,
+                allocated_size_bytes: inspection.allocated_size_bytes,
+                item_count: inspection.item_count,
+            }],
+            mode: CleanupDeleteMode::Permanent,
+            application_uninstall: None,
+        };
+        assert_eq!(
+            validate_cleanup_targets(&request, &home)
+                .unwrap()
+                .targets
+                .len(),
+            1
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -4807,6 +4923,7 @@ mod tests {
             paths,
             scan_sampled_at_ms,
             scan_root: None,
+            scan_target_kind: CleanupScanTargetKind::SystemDisk,
             expected_targets,
             mode: CleanupDeleteMode::Permanent,
             application_uninstall: None,
@@ -5204,6 +5321,7 @@ mod tests {
                 safety: CleanupSafety::Review,
             }],
             false,
+            false,
             &AtomicBool::new(false),
             &mut |_| {},
         )
@@ -5260,6 +5378,7 @@ mod tests {
                 request_id: "system-subtree".to_owned(),
                 path: shared.to_string_lossy().into_owned(),
                 scan_root: None,
+                scan_target_kind: CleanupScanTargetKind::SystemDisk,
                 safety: CleanupSafety::Reclaimable,
                 expand_smaller_objects: false,
             },
@@ -5374,6 +5493,7 @@ mod tests {
                 request_id: "expand-smaller-objects".to_owned(),
                 path: downloads.to_string_lossy().into_owned(),
                 scan_root: None,
+                scan_target_kind: CleanupScanTargetKind::SystemDisk,
                 safety: CleanupSafety::Review,
                 expand_smaller_objects: true,
             },
@@ -5988,10 +6108,20 @@ mod tests {
     }
 
     #[test]
-    fn cleanup_delete_protects_sensitive_user_data_but_allows_known_caches() {
+    fn cleanup_delete_protects_credentials_and_personal_libraries_but_allows_app_data() {
         let root = test_root("sensitive-user-data");
         let ssh_key = root.join(".ssh/id_ed25519");
+        let keychain = root.join("Library/Keychains/login.keychain-db");
+        let mail = root.join("Library/Mail/V10/Envelope Index");
+        let photo_database =
+            root.join("Pictures/Photos Library.photoslibrary/database/Photos.sqlite");
+        let codex_session = root.join(".codex/sessions/session.jsonl");
+        let docker_data = root.join(".docker/desktop/data.raw");
         let preferences = root.join("Library/Preferences/com.example.settings.plist");
+        let application_support =
+            root.join("Library/Application Support/com.example.App/history.db");
+        let container_data =
+            root.join("Library/Containers/com.example.App/Data/Documents/history.db");
         let app_cache = root.join("Library/Caches/example/cache.bin");
         let app_log = root.join("Library/Logs/example.log");
         let sandbox_cache =
@@ -6000,7 +6130,14 @@ mod tests {
         let cargo_cache = root.join(".cargo/registry/cache.bin");
         for file in [
             &ssh_key,
+            &keychain,
+            &mail,
+            &photo_database,
+            &codex_session,
+            &docker_data,
             &preferences,
+            &application_support,
+            &container_data,
             &app_cache,
             &app_log,
             &sandbox_cache,
@@ -6012,7 +6149,7 @@ mod tests {
         }
         let mut controller = CleanupDeleteController::default();
 
-        for protected in [&ssh_key, &preferences] {
+        for protected in [&ssh_key, &keychain, &mail, &photo_database] {
             let error = controller
                 .create_lease_for_home(
                     cleanup_delete_request(
@@ -6027,6 +6164,11 @@ mod tests {
         }
 
         for cache in [
+            &codex_session,
+            &docker_data,
+            &preferences,
+            &application_support,
+            &container_data,
             &app_cache,
             &app_log,
             &sandbox_cache,
@@ -6052,6 +6194,16 @@ mod tests {
             cleanup_protection_for_path(&root.join(".ssh"), &root),
             Some(CleanupProtectionReason::SensitiveUserData)
         );
+        assert_eq!(
+            cleanup_protection_for_path(&root.join("Library"), &root),
+            Some(CleanupProtectionReason::SensitiveUserData)
+        );
+        assert_eq!(
+            cleanup_protection_for_path(&root.join("Library/Application Support"), &root),
+            Some(CleanupProtectionReason::SensitiveUserData)
+        );
+        assert_eq!(cleanup_protection_for_path(&codex_session, &root), None);
+        assert_eq!(cleanup_protection_for_path(&preferences, &root), None);
         assert_eq!(cleanup_protection_for_path(&app_cache, &root), None);
         fs::remove_dir_all(root).unwrap();
     }
@@ -6111,7 +6263,7 @@ mod tests {
     }
 
     #[test]
-    fn external_scan_children_are_actionable_but_the_volume_root_stays_protected() {
+    fn selected_scan_children_are_actionable_but_the_scan_root_stays_protected() {
         let home = Path::new("/Users/example");
         let scan_root = Path::new("/Volumes/Archive");
         let child = scan_root.join("Downloads/old-image.dmg");

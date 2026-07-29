@@ -43,10 +43,12 @@ describe("cleanup deletion freshness", () => {
         123,
         "permanent",
         "/Volumes/Archive",
+        "volume",
       ),
     ).toMatchObject({
       paths: ["/Volumes/Archive/old.bin"],
       scanRoot: "/Volumes/Archive",
+      scanTargetKind: "volume",
       mode: "permanent",
     });
   });

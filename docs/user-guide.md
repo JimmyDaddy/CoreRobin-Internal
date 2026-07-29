@@ -71,8 +71,10 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - **Move to Trash** items can normally be restored until system Trash is emptied. **Delete directly** bypasses Trash and cannot be restored by CoreRobin.
 - If CoreRobin cannot open the system Trash safely, it explains the failure and lets you retry. It enters the irreversible path only after you explicitly choose direct deletion and confirm again.
 - Start with caches that can be recreated. Do not delete downloads, project files, settings, or personal data unless you know you no longer need them.
-- CoreRobin removes regular files and folders inside your home folder. It also permits current-user-owned children of approved temporary locations such as `/tmp`, `/var/tmp`, and the current macOS user’s private `T`/`C` directories.
-- Your home folder, temporary-directory roots, Trash itself, links, special files, system-managed locations, other users’ items, and other disks are protected.
+- CoreRobin lets you collect concrete app-owned data, including dot-prefixed app folders, `Application Support/<app>`, individual preference files, and sandbox app directories. These remain **Review required** data and are never presented as safely regeneratable caches.
+- Broad category roots such as your home folder, `Library`, `Application Support`, `Containers`, and `AppData` stay view-only. Credential stores, Mail, Messages, Keychains, photo libraries, cloud-sync roots, and operating-system locations remain hard protected.
+- When you explicitly scan one folder or an external volume, CoreRobin can also process current-user-owned children inside that boundary. It still protects the scan root and will not follow links, handle special objects, cross into another filesystem, or delete another user’s data.
+- Current-user-owned children of approved temporary locations such as `/tmp`, `/var/tmp`, and the current macOS user’s private `T`/`C` directories are also allowed; the temporary roots themselves remain protected.
 - The app binds every target without following symbolic links. If one item is missing or inaccessible, it skips or reports that item and continues with the remaining confirmed targets.
 - Cleaned items disappear from the map and basket. Items that could not be cleaned remain visible with an explanation.
 

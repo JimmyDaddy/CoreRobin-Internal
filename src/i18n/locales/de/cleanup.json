@@ -151,8 +151,7 @@
     "protectedSelectionHint": "Systempfade und das Home-Verzeichnis sind nur zum Anzeigen; konkrete Elemente innerhalb Ihres Home-Verzeichnisses können in den Korb gelangen",
     "trashRootProtected": "Der Papierkorb-Ordner selbst ist geschützt; öffnen Sie ihn und wählen Sie die spezifischen Inhalte aus, die Sie entfernen möchten",
     "planSummary": "{{count}} ausgewählte Elemente · {{size}}",
-    "reviewCleanup": "Bereinigungsoptionen prüfen",
-    "refreshCleanup": "Auswahl vor der Überprüfung aktualisieren",
+    "chooseDeleteMethod": "Löschmethode auswählen",
     "deletionUnavailable": "Bereinigung nicht verfügbar",
     "basket": {
       "title": "Löschkorb",
@@ -182,7 +181,9 @@
       "cached": "Zeigt das Ergebnis des vorherigen Scans an",
       "expired": "Dieser Scan ist veraltet; ein erneuter Scan wird empfohlen",
       "changed": "Dieses Verzeichnis wurde geändert; Größenangaben können ungenau sein",
-      "changedShort": "Inhalt wurde geändert"
+      "changedShort": "Inhalt wurde geändert",
+      "refreshFolder": "{{name}} aktualisieren",
+      "refreshingFolder": "{{name}} wird aktualisiert…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "Kann nicht rückgängig gemacht werden",
     "recoverable": "Aus dem Papierkorb wiederherstellbar",
     "changed": "Seit dem Scan geändert",
-    "changedWarning": "{{count}} Dateien unterscheiden sich von der vorherigen Ansicht. Größenangaben und Anzahl wurden aktualisiert; bitte erneut überprüfen, bevor Sie bestätigen.",
+    "changedWarning": "{{count}} Elemente wurden nach der Auswahl geändert. Größe und Anzahl sind aktualisiert; bitte vor dem Fortfahren erneut prüfen.",
     "preparing": "Bereinigung wird vorbereitet…",
-    "refreshSelection": "Auswahl erneut aktualisieren",
+    "recheckSelection": "Erneut prüfen und fortfahren",
     "deleteConfirmTitle": "Ich verstehe, dass diese Dateien dauerhaft gelöscht werden",
     "deleteConfirmDescription": "Dateien gelangen nicht in den Papierkorb. Downloads, Einstellungen und persönliche Daten können möglicherweise nicht wiederhergestellt werden.",
     "trashConfirmTitle": "Ich bestätige das Verschieben in den Papierkorb",
@@ -224,7 +225,7 @@
     "cancelling": "Abbrechen…",
     "cancelHint": "Bereits verarbeitete Elemente werden nicht automatisch wiederhergestellt. CoreRobin stoppt nach der aktuellen Dateioperation.",
     "errors": {
-      "protected_cleanup_path": "CoreRobin löscht keine Systembereiche, wichtigen Einstellungen, Stammordner temporärer Verzeichnisse, das Home-Verzeichnis oder den Papierkorb selbst.",
+      "protected_cleanup_path": "CoreRobin löscht keine Betriebssystembereiche, Anmeldedaten, geschützten Datenbibliothekswurzeln, temporären Stammordner, das Home-Verzeichnis oder den Papierkorb selbst.",
       "cleanup_target_outside_home": "Aus Sicherheitsgründen verarbeitet CoreRobin nur Inhalte im persönlichen Ordner oder in freigegebenen temporären Verzeichnissen.",
       "cleanup_cross_filesystem": "Das ausgewählte Verzeichnis befindet sich auf einem anderen Datenträger oder Mount-Punkt, daher hat CoreRobin keine rekursive Löschung durchgeführt.",
       "cleanup_target_changed": "Eine Datei wurde nach der Bestätigung geändert, daher hat CoreRobin nichts gelöscht. Abbrechen und erneut überprüfen.",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "Versteckte Benutzerordner",
-      "description": "App-spezifische Daten und Konfigurationen mit einem Punkt als Präfix. Nur gemessen; direkte Löschung wird nicht empfohlen."
+      "description": "App-Daten und Konfigurationen mit Punkt-Präfix. Prüfe konkrete Einträge, bevor du sie in den Bereinigungskorb legst."
     }
   },
   "safety": {

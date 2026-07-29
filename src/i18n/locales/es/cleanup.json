@@ -151,8 +151,7 @@
     "protectedSelectionHint": "Las rutas del sistema y la raíz del directorio de inicio son solo de visualización; los elementos específicos dentro de su carpeta de inicio pueden entrar al cesto",
     "trashRootProtected": "El propio cesto está protegido; acceda a él y seleccione el contenido específico que desea eliminar",
     "planSummary": "{{count}} elementos seleccionados · {{size}}",
-    "reviewCleanup": "Revisar opciones de limpieza",
-    "refreshCleanup": "Actualizar la selección antes de revisar",
+    "chooseDeleteMethod": "Elegir método de eliminación",
     "deletionUnavailable": "La limpieza no está disponible",
     "basket": {
       "title": "Cesta de limpieza",
@@ -182,7 +181,9 @@
       "cached": "Mostrando el resultado del escaneo anterior",
       "expired": "Esta comprobación es antigua; se recomienda una nueva comprobación",
       "changed": "Esta carpeta ha cambiado; los tamaños pueden ser inexactos",
-      "changedShort": "Contenido modificado"
+      "changedShort": "Contenido modificado",
+      "refreshFolder": "Actualizar {{name}}",
+      "refreshingFolder": "Actualizando {{name}}…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "No se puede deshacer",
     "recoverable": "Recuperable desde la Papelera",
     "changed": "Modificado desde la última comprobación",
-    "changedWarning": "{{count}} Los elementos son diferentes a la vista anterior. Los tamaños y el número de elementos han sido actualizados; vuelva a comprobar antes de confirmar.",
+    "changedWarning": "{{count}} elementos cambiaron después de añadirlos. El tamaño y la cantidad están actualizados; vuelve a comprobar antes de continuar.",
     "preparing": "Preparando la limpieza…",
-    "refreshSelection": "Actualizar la selección nuevamente",
+    "recheckSelection": "Volver a comprobar y continuar",
     "deleteConfirmTitle": "Entiendo que estos elementos serán eliminados permanentemente",
     "deleteConfirmDescription": "Los archivos no se moverán a la Papelera. Los descargas, la configuración y los datos personales podrían no ser recuperables.",
     "trashConfirmTitle": "Confirmo mover estos elementos a la Papelera",
@@ -224,7 +225,7 @@
     "cancelling": "Eliminando…",
     "cancelHint": "Los elementos procesados no se restauran automáticamente. CoreRobin se detendrá después de la operación actual.",
     "errors": {
-      "protected_cleanup_path": "CoreRobin no eliminará ubicaciones del sistema, ajustes importantes, raíces de carpetas temporales, tu directorio personal ni la Papelera.",
+      "protected_cleanup_path": "CoreRobin no eliminará ubicaciones del sistema operativo, credenciales, raíces de bibliotecas de datos protegidas, raíces temporales, tu directorio personal ni la Papelera.",
       "cleanup_target_outside_home": "Por seguridad, CoreRobin solo procesa contenido de tu carpeta personal o de ubicaciones temporales aprobadas.",
       "cleanup_cross_filesystem": "La carpeta seleccionada se encuentra en un disco o punto de montaje diferente, por lo que CoreRobin no pudo realizar la eliminación recursiva.",
       "cleanup_target_changed": "Un archivo fue modificado después de la confirmación, por lo que CoreRobin no eliminó nada. Cancela y revísalo nuevamente.",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "Carpetas ocultas del usuario",
-      "description": "Datos de aplicaciones con prefijo de punto y configuración. Se mide solo; no se recomienda la eliminación directa."
+      "description": "Datos y configuración de aplicaciones con prefijo de punto. Revisa cada elemento antes de añadirlo a la cesta de limpieza."
     }
   },
   "safety": {

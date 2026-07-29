@@ -56,15 +56,37 @@ describe("AboutSupport", () => {
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
     expect(await screen.findByText("CoreRobin v9.0.0 已发布")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "下载并安装" }));
-    expect(await screen.findByText("更新已安装，重新启动 CoreRobin 即可完成更新。")).toBeTruthy();
+    expect(await screen.findByText("更新已安装并准备就绪。重新启动后将直接使用新版本。")).toBeTruthy();
     expect(install).toHaveBeenCalledOnce();
-    fireEvent.click(screen.getByRole("button", { name: "重新启动" }));
+    fireEvent.click(screen.getByRole("button", { name: "立即重启并完成更新" }));
+    const restarting = await screen.findByRole("button", { name: "正在重新启动…" });
+    expect((restarting as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "用户指南" }));
 
     await waitFor(() => {
       expect(mocks.restartAfterAppUpdate).toHaveBeenCalledOnce();
       expect(mocks.openProductPage).toHaveBeenCalledWith("guide", "zh-CN");
     });
+  });
+
+  it("keeps the restart action available when automatic relaunch fails", async () => {
+    mocks.checkForInstallableAppUpdate.mockResolvedValue({
+      version: "9.0.0",
+      notes: null,
+      install: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    });
+    mocks.restartAfterAppUpdate.mockRejectedValue(new Error("restart failed"));
+    renderSupport();
+
+    fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
+    fireEvent.click(await screen.findByRole("button", { name: "下载并安装" }));
+    fireEvent.click(await screen.findByRole("button", { name: "立即重启并完成更新" }));
+
+    expect(await screen.findByText(
+      "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",
+    )).toBeTruthy();
+    expect(screen.getByRole("button", { name: "立即重启并完成更新" })).toBeTruthy();
   });
 
   it("requires a second confirmation before clearing local data", () => {

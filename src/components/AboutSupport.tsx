@@ -65,7 +65,10 @@ export function AboutSupport({
   const [updateResult, setUpdateResult] = useState<UpdateDisplayResult | "error" | null>(null);
   const [installableUpdate, setInstallableUpdate] = useState<InstallableAppUpdate | null>(null);
   const [updateProgress, setUpdateProgress] = useState<AppUpdateProgress | null>(null);
-  const [updateAction, setUpdateAction] = useState<"idle" | "installing" | "ready" | "error">("idle");
+  const [updateAction, setUpdateAction] =
+    useState<
+      "idle" | "installing" | "ready" | "restarting" | "installError" | "restartError"
+    >("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [supportFlowOpen, setSupportFlowOpen] = useState(false);
   const [supportFlowState, setSupportFlowState] =
@@ -83,6 +86,12 @@ export function AboutSupport({
     }),
     [settings, snapshot],
   );
+  const updateOperationBusy =
+    updateAction === "installing" || updateAction === "restarting";
+  const updateReadyToRestart =
+    updateAction === "ready" ||
+    updateAction === "restarting" ||
+    updateAction === "restartError";
 
   useEffect(() => () => {
     void installableUpdate?.close().catch(() => undefined);
@@ -129,7 +138,7 @@ export function AboutSupport({
   }, [backgroundUpdateVersion, installableUpdate]);
 
   const checkForUpdate = async () => {
-    if (checking || updateAction === "installing") return;
+    if (checking || updateOperationBusy) return;
     setChecking(true);
     setUpdateResult(null);
     setUpdateAction("idle");
@@ -159,22 +168,27 @@ export function AboutSupport({
   };
 
   const installUpdate = async () => {
-    if (!installableUpdate || updateAction === "installing") return;
+    if (
+      !installableUpdate ||
+      updateOperationBusy
+    ) return;
     setUpdateAction("installing");
     setUpdateProgress({ phase: "downloading", downloadedBytes: 0, contentLength: null, percent: null });
     try {
       await installableUpdate.install(setUpdateProgress);
       setUpdateAction("ready");
     } catch {
-      setUpdateAction("error");
+      setUpdateAction("installError");
     }
   };
 
   const restartForUpdate = async () => {
+    if (updateAction !== "ready" && updateAction !== "restartError") return;
+    setUpdateAction("restarting");
     try {
       await restartAfterAppUpdate();
     } catch {
-      setUpdateAction("error");
+      setUpdateAction("restartError");
     }
   };
 
@@ -241,7 +255,7 @@ export function AboutSupport({
             <div><dt>{t("settings:about.architecture")}</dt><dd>{snapshot.host.architecture}</dd></div>
           </dl>
           <div className="about-support__actions">
-            <Button variant="secondary" disabled={checking || updateAction === "installing"} onClick={() => void checkForUpdate()}>
+            <Button variant="secondary" disabled={checking || updateOperationBusy} onClick={() => void checkForUpdate()}>
               {checking ? <LoaderCircle className="is-spinning" size={15} /> : <RefreshCw size={15} />}
               {t(checking ? "settings:about.checking" : "settings:about.checkUpdate")}
             </Button>
@@ -255,10 +269,31 @@ export function AboutSupport({
                 ? t("settings:about.updateError")
                 : updateResult.status === "available"
                   ? <>
-                      <span>{t("settings:about.updateAvailable", { version: updateResult.latestVersion })}</span>
+                      <span>
+                        {t(
+                          updateReadyToRestart
+                            ? "settings:about.updateReady"
+                            : "settings:about.updateAvailable",
+                          { version: updateResult.latestVersion },
+                        )}
+                      </span>
                       {installableUpdate ? (
-                        updateAction === "ready" ? (
-                          <Button variant="secondary" onClick={() => void restartForUpdate()}>{t("settings:about.restartUpdate")}</Button>
+                        updateReadyToRestart ? (
+                          <Button
+                            className="about-support__restart-update"
+                            variant="primary"
+                            disabled={updateAction === "restarting"}
+                            onClick={() => void restartForUpdate()}
+                          >
+                            {updateAction === "restarting"
+                              ? <LoaderCircle className="is-spinning" size={14} />
+                              : <RotateCcw size={14} />}
+                            {t(
+                              updateAction === "restarting"
+                                ? "settings:about.restartingUpdate"
+                                : "settings:about.restartUpdate",
+                            )}
+                          </Button>
                         ) : (
                           <Button variant="secondary" disabled={updateAction === "installing"} onClick={() => void installUpdate()}>
                             {updateAction === "installing" ? <LoaderCircle className="is-spinning" size={14} /> : null}
@@ -296,8 +331,16 @@ export function AboutSupport({
               <progress max="100" value={updateProgress.percent ?? undefined} />
             </div>
           ) : null}
-          {updateAction === "ready" ? <p className="about-support__update-note" role="status"><Check size={14} />{t("settings:about.updateReady")}</p> : null}
-          {updateAction === "error" ? <p className="about-support__result is-error" role="alert">{t("settings:about.updateInstallError")}</p> : null}
+          {updateAction === "installError" ? (
+            <p className="about-support__result is-error" role="alert">
+              {t("settings:about.updateInstallError")}
+            </p>
+          ) : null}
+          {updateAction === "restartError" ? (
+            <p className="about-support__result is-error" role="alert">
+              {t("settings:about.updateRestartError")}
+            </p>
+          ) : null}
         </section>
 
         <section className="about-support__card">
