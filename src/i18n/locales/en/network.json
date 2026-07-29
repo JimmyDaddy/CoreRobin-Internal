@@ -95,6 +95,7 @@
     "optIn": "Connection history can include application names, domains, and remote IPs, so it is off by default. When enabled, it stays on this device.", "enable": "Enable connection history",
     "groupBy": "Group by", "application": "Application", "domain": "Domain", "retention": "Keep", "days": "{{count}} days", "clear": "Clear history",
     "lookupFallback": "Some names could not be resolved; IP addresses were recorded instead.", "observations": "{{count}} observations", "empty": "Waiting for the next active connection scan.",
+    "details": "Connection details", "firstSeen": "First seen", "lastSeen": "Last seen", "domains": "Domains and addresses", "applications": "Applications", "portsAndProtocols": "Ports and protocols",
     "privacy": "Stores five-minute aggregates only, capped at 5,000 entries; disable or clear at any time."
   },
   "throughput": "Network throughput",

@@ -1,10 +1,16 @@
 {
   "energy": {
-    "eyebrow": "선택적 확장 측정항목", "title": "GPU 및 상대 에너지", "description": "운영 체제에서 제공하는 경우 활성 프로세스에 대한 GPU 활동 및 상대적 에너지 단서를 표시합니다.",
+    "eyebrow": "선택적 확장 측정항목",
+    "title": "GPU 및 상대 에너지",
+    "description": "운영 체제에서 제공하는 경우 활성 프로세스에 대한 GPU 활동 및 상대적 에너지 단서를 표시합니다.",
     "collapsedDescription": "요청 시 그래픽 로드를 검사합니다. 지속적으로 샘플링되거나 건강 결정에 사용되지 않습니다.",
-    "onDemand": "주문형 샘플", "activity": "GPU 활동 {{value}}",
-    "gpu": "GPU", "cores": "{{count}} 코어", "gpuUnavailable": "이 플랫폼 또는 하드웨어는 지원되는 GPU 측정항목을 노출하지 않습니다.",
-    "applicationImpact": "활성 프로세스 상대 에너지", "processUnavailable": "이 플랫폼은 프로세스별 에너지 영향을 노출하지 않습니다.",
+    "onDemand": "주문형 샘플",
+    "activity": "GPU 활동 {{value}}",
+    "gpu": "GPU",
+    "cores": "{{count}} 코어",
+    "gpuUnavailable": "이 플랫폼 또는 하드웨어는 지원되는 GPU 측정항목을 노출하지 않습니다.",
+    "applicationImpact": "활성 프로세스 상대 에너지",
+    "processUnavailable": "이 플랫폼은 프로세스별 에너지 영향을 노출하지 않습니다.",
     "noProcessActivity": "이 샘플에서는 구별 가능한 프로세스 에너지 활동이 발견되지 않았습니다.",
     "boundary": "이러한 값은 와트나 에너지가 아닌 운영 체제에서 보고한 상대 점수입니다. 0 값은 생략됩니다. 확장된 동안 15초마다 새로 고쳐집니다."
   },
@@ -43,18 +49,92 @@
     "professionalDetails": "전문 모드에서 프로세스 검사"
   },
   "uninstall": {
-    "scanKicker": "로컬 앱 색인", "scanningHint": "App Bundle, 디스크 사용량, 번들 ID를 확인합니다. 더 큰 앱은 조금 더 오래 걸릴 수 있습니다.",
-    "kicker": "애플리케이션 관리", "title": "완전한 제거 도우미", "description": "정확한 번들 ID에 따른 앱 번들 및 남은 항목을 찾습니다. 각 경로를 확인할 때까지는 아무 것도 처리되지 않습니다.", "refresh": "앱 새로 고침", "unsupportedTitle": "시스템 앱 카탈로그를 사용할 수 없습니다", "unsupportedDescription": "신뢰할 수 있는 운영 체제 앱 정보를 읽지 못했습니다. 지원되는 macOS, Windows 또는 Linux에서 다시 시도하세요.",
-    "applicationUnit": "앱", "installedSize": "앱 번들에서", "localOnly": "로컬에서 읽습니다. 인벤토리가 업로드되지 않습니다", "cachedInventory": "{{time}}의 로컬 캐시 표시; 언제든지 새로고침", "search": "설치된 애플리케이션 검색", "searchPlaceholder": "이름, 번들 ID 또는 경로 검색", "scanning": "애플리케이션 인벤토리를 읽는 중…", "empty": "일치하는 애플리케이션이 없습니다.", "preparingPlan": "앱 ID 및 지원 파일을 확인하는 중…", "planKicker": "제거 계획", "planBoundary": "먼저 이 앱을 종료하세요. 정확한 번들 ID로 입증된 경로만 나열됩니다. 앱 이름 추측은 제외됩니다.", "bundleOnlyBoundary": "이 앱에는 검증 가능한 Bundle ID가 없어 CoreRobin은 경로와 구조가 확인된 앱 번들만 제거하며 지원 파일을 추측하지 않습니다.", "foundItems": "검증된 항목", "required": "필수의",
-    "selectedSize": "{{count}} 항목 선택됨", "review": "{{name}} 검토 및 제거", "reveal": "Finder에서 애플리케이션 공개", "skipped": "계획에서 제외된 {{count}} 품목", "skippedDescription": "이러한 경로는 안전한 파일 핸들 검사를 통과하지 못했으므로 보조자가 해당 경로를 건드리지 않습니다.", "selectTitle": "애플리케이션 선택", "selectDescription": "보조자는 최종 확인 전에 경로별 계획을 생성합니다.", "cannotPrepare": "이 애플리케이션에 대한 안전한 계획을 만들 수 없습니다.", "dialogTitle": "{{name}} 제거", "dialogDescription": "앱 번들과 관련 데이터를 하나씩 검토하세요. 복구 가능한 휴지통 이동이 기본값입니다.", "outcomeComplete": "{{name}}에 대한 {{count}} 항목을 처리하여 {{size}}를 회수했습니다.", "outcomeMovedToTrash": "{{name}}를 휴지통으로 이동했습니다. {{count}} 항목과 {{size}}를 처리했습니다. 휴지통을 비울 때까지 복구 가능한 상태로 유지됩니다.", "outcomeDeletedPermanently": "{{name}}을(를) 영구 삭제했습니다. {{count}}개 항목을 처리하고 {{size}}을(를) 확보했습니다.", "outcomePartial": "{{name}} 제거가 완전히 완료되지 않았습니다. {{count}} 항목과 {{size}}를 처리했습니다.",
-    "removed": { "trash": "휴지통으로 이동됨", "permanent": "영구적으로 삭제됨", "trashDescription": "앱은 원래 위치를 떠났으며 휴지통을 비울 때까지 복원할 수 있습니다. 이 기록을 제거하려면 인벤토리를 새로 고치세요.", "permanentDescription": "앱이 디스크에서 직접 삭제되어 휴지통에서 복원할 수 없습니다. 목록을 새로 고치면 이 기록이 사라집니다.", "partial": "애플리케이션 번들이 제거되었지만 일부 관련 항목을 처리할 수 없습니다." },
-    "artifacts": { "application": "애플리케이션 번들", "application_support": "애플리케이션 지원 데이터", "cache": "캐시", "preferences": "환경설정", "saved_state": "저장된 창 상태", "container": "샌드박스 컨테이너", "web_data": "웹 데이터", "http_storage": "HTTP 저장소", "cookies": "쿠키 데이터", "logs": "로그", "launch_agent": "사용자 실행 에이전트" },
-    "unavailable": { "generic": "현재 안전 규칙으로는 이 앱을 제거할 수 없습니다.", "current_application_protected": "CoreRobin는 실행 중에는 자체적으로 제거할 수 없습니다.", "application_bundle_identifier_missing": "애플리케이션은 안전하게 검증 가능한 번들 ID를 제공하지 않습니다.", "application_bundle_invalid": "애플리케이션 번들이 불완전하거나 지원되지 않습니다.", "application_bundle_not_allowed": "애플리케이션 폴더에 있는 최상위 앱만 지원됩니다." },
-    "errors": { "application_identity_changed": "애플리케이션 ID가 변경되었습니다. 인벤토리를 새로 고치고 다시 시도하세요.", "application_bundle_unavailable": "앱에 접근할 수 없습니다. 원래 위치에 계속 있는지 확인하세요.", "application_artifact_unavailable": "확인 전 상품이 변경되었습니다. 제거 계획을 새로 고칩니다.", "application_bundle_identifier_missing": "애플리케이션의 번들 ID를 확인할 수 없습니다." }
+    "scanKicker": "로컬 앱 색인",
+    "scanningHint": "App Bundle, 디스크 사용량, 번들 ID를 확인합니다. 더 큰 앱은 조금 더 오래 걸릴 수 있습니다.",
+    "kicker": "애플리케이션 관리",
+    "title": "완전한 제거 도우미",
+    "description": "정확한 번들 ID에 따른 앱 번들 및 남은 항목을 찾습니다. 각 경로를 확인할 때까지는 아무 것도 처리되지 않습니다.",
+    "refresh": "앱 새로 고침",
+    "unsupportedTitle": "시스템 앱 카탈로그를 사용할 수 없습니다",
+    "unsupportedDescription": "신뢰할 수 있는 운영 체제 앱 정보를 읽지 못했습니다. 지원되는 macOS, Windows 또는 Linux에서 다시 시도하세요.",
+    "applicationUnit": "앱",
+    "installedSize": "앱 번들에서",
+    "localOnly": "로컬에서 읽습니다. 인벤토리가 업로드되지 않습니다",
+    "cachedInventory": "{{time}}의 로컬 캐시 표시; 언제든지 새로고침",
+    "search": "설치된 애플리케이션 검색",
+    "searchPlaceholder": "이름, 번들 ID 또는 경로 검색",
+    "scanning": "애플리케이션 인벤토리를 읽는 중…",
+    "empty": "일치하는 애플리케이션이 없습니다.",
+    "preparingPlan": "앱 ID 및 지원 파일을 확인하는 중…",
+    "planKicker": "제거 계획",
+    "planBoundary": "먼저 이 앱을 종료하세요. 정확한 번들 ID로 입증된 경로만 나열됩니다. 앱 이름 추측은 제외됩니다.",
+    "bundleOnlyBoundary": "이 앱에는 검증 가능한 Bundle ID가 없어 CoreRobin은 경로와 구조가 확인된 앱 번들만 제거하며 지원 파일을 추측하지 않습니다.",
+    "foundItems": "검증된 항목",
+    "required": "필수의",
+    "selectedSize": "{{count}} 항목 선택됨",
+    "review": "{{name}} 검토 및 제거",
+    "reveal": "Finder에서 애플리케이션 공개",
+    "skipped": "계획에서 제외된 {{count}} 품목",
+    "skippedDescription": "이러한 경로는 안전한 파일 핸들 검사를 통과하지 못했으므로 보조자가 해당 경로를 건드리지 않습니다.",
+    "selectTitle": "애플리케이션 선택",
+    "selectDescription": "보조자는 최종 확인 전에 경로별 계획을 생성합니다.",
+    "cannotPrepare": "이 애플리케이션에 대한 안전한 계획을 만들 수 없습니다.",
+    "dialogTitle": "{{name}} 제거",
+    "dialogDescription": "앱 번들과 관련 데이터를 하나씩 검토하세요. 복구 가능한 휴지통 이동이 기본값입니다.",
+    "outcomeComplete": "{{name}}에 대한 {{count}} 항목을 처리하여 {{size}}를 회수했습니다.",
+    "outcomeMovedToTrash": "{{name}}를 휴지통으로 이동했습니다. {{count}} 항목과 {{size}}를 처리했습니다. 휴지통을 비울 때까지 복구 가능한 상태로 유지됩니다.",
+    "outcomeDeletedPermanently": "{{name}}을(를) 영구 삭제했습니다. {{count}}개 항목을 처리하고 {{size}}을(를) 확보했습니다.",
+    "outcomePartial": "{{name}} 제거가 완전히 완료되지 않았습니다. {{count}} 항목과 {{size}}를 처리했습니다.",
+    "removed": {
+      "trash": "휴지통으로 이동됨",
+      "permanent": "영구적으로 삭제됨",
+      "trashDescription": "앱은 원래 위치를 떠났으며 휴지통을 비울 때까지 복원할 수 있습니다. 이 기록을 제거하려면 인벤토리를 새로 고치세요.",
+      "permanentDescription": "앱이 디스크에서 직접 삭제되어 휴지통에서 복원할 수 없습니다. 목록을 새로 고치면 이 기록이 사라집니다.",
+      "partial": "애플리케이션 번들이 제거되었지만 일부 관련 항목을 처리할 수 없습니다."
+    },
+    "artifacts": {
+      "application": "애플리케이션 번들",
+      "application_support": "애플리케이션 지원 데이터",
+      "cache": "캐시",
+      "preferences": "환경설정",
+      "saved_state": "저장된 창 상태",
+      "container": "샌드박스 컨테이너",
+      "web_data": "웹 데이터",
+      "http_storage": "HTTP 저장소",
+      "cookies": "쿠키 데이터",
+      "logs": "로그",
+      "launch_agent": "사용자 실행 에이전트"
+    },
+    "unavailable": {
+      "generic": "현재 안전 규칙으로는 이 앱을 제거할 수 없습니다.",
+      "current_application_protected": "CoreRobin는 실행 중에는 자체적으로 제거할 수 없습니다.",
+      "application_bundle_identifier_missing": "애플리케이션은 안전하게 검증 가능한 번들 ID를 제공하지 않습니다.",
+      "application_bundle_invalid": "애플리케이션 번들이 불완전하거나 지원되지 않습니다.",
+      "application_bundle_not_allowed": "애플리케이션 폴더에 있는 최상위 앱만 지원됩니다."
+    },
+    "errors": {
+      "application_identity_changed": "애플리케이션 ID가 변경되었습니다. 인벤토리를 새로 고치고 다시 시도하세요.",
+      "application_bundle_unavailable": "앱에 접근할 수 없습니다. 원래 위치에 계속 있는지 확인하세요.",
+      "application_artifact_unavailable": "확인 전 상품이 변경되었습니다. 제거 계획을 새로 고칩니다.",
+      "application_bundle_identifier_missing": "애플리케이션의 번들 ID를 확인할 수 없습니다."
+    },
+    "filters": {
+      "sort": "정렬",
+      "unused": "마지막 사용",
+      "source": "출처",
+      "all": "전체",
+      "days_other": "{{count}}일 동안 사용하지 않음",
+      "days": "{{count}}일 동안 사용하지 않음",
+      "sortBy": {
+        "size": "큰 항목 우선",
+        "last_used": "오래 사용하지 않은 순",
+        "source": "설치 출처",
+        "name": "이름"
+      }
+    }
   },
   "empty": "해당하는 앱이 없습니다",
-  "safety": "앱을 선택하면 해당 앱의 자원 사용 정보를 확인할 수 있습니다. 모든 종료 작업은 별도로 확인해야 합니다."
-,
+  "safety": "앱을 선택하면 해당 앱의 자원 사용 정보를 확인할 수 있습니다. 모든 종료 작업은 별도로 확인해야 합니다.",
   "nativeUninstall": {
     "boundary": "이 앱은 운영 체제 패키지 카탈로그가 관리합니다. CoreRobin은 검증된 단기 패키지 식별자만 기본 제거 도구에 전달합니다.",
     "sourceLabel": "설치 출처",
@@ -94,5 +174,13 @@
       "protected": "CoreRobin 또는 보호된 시스템 구성 요소는 이 화면에서 제거할 수 없습니다.",
       "portable": "신뢰할 수 있는 패키지 관리자 식별자를 찾지 못했습니다. 이 항목은 읽기 전용입니다."
     }
+  },
+  "trashWatcher": {
+    "title": "휴지통으로 이동한 앱 감시",
+    "description": "선택적인 로컬 검사를 30초마다 수행합니다. 정확한 Bundle ID의 잔여 데이터 계획만 제공하며 자동 삭제하지 않습니다.",
+    "found": "휴지통으로 이동됨 · 잔여 데이터 확인",
+    "error": "현재 휴지통을 확인할 수 없습니다.",
+    "empty": "이 사용자의 휴지통에 대기 중인 앱이 없습니다.",
+    "planBoundary": "앱 자체는 이미 휴지통에 있습니다. 이 계획에는 정확한 Bundle ID로 귀속된 기존 지원 데이터만 포함됩니다."
   }
 }

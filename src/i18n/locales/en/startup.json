@@ -110,9 +110,22 @@
   "source": {
     "launch_agent": "LaunchAgent",
     "launch_daemon": "LaunchDaemon",
+    "background_task": "Login & background item",
     "desktop_entry": "Autostart entry",
     "registry_run": "Registry Run",
     "startup_folder": "Startup folder"
+  },
+  "ownership": {
+    "itemCount": "{{count}} items",
+    "modern": "Modern background item",
+    "orphaned": "Executable missing",
+    "lastRun": "Last reported state: {{status}}",
+    "signature": {
+      "valid": "Valid signature",
+      "invalid": "Invalid signature",
+      "unknown": "Signature unknown",
+      "system_reported": "Reported by macOS"
+    }
   },
   "advice": {
     "review": {

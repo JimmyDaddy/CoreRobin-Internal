@@ -1,10 +1,16 @@
 {
   "energy": {
-    "eyebrow": "Métrica estendida opcional", "title": "GPU e energia relativa", "description": "Mostra a atividade GPU e dicas de energia relativa para processos ativos quando o sistema operacional os fornece.",
+    "eyebrow": "Métrica estendida opcional",
+    "title": "GPU e energia relativa",
+    "description": "Mostra a atividade GPU e dicas de energia relativa para processos ativos quando o sistema operacional os fornece.",
     "collapsedDescription": "Inspecione a carga gráfica sob demanda; não é continuamente amostrado ou usado para decisões de saúde.",
-    "onDemand": "Amostra sob demanda", "activity": "Atividade GPU {{value}}",
-    "gpu": "GPU", "cores": "Núcleos {{count}}", "gpuUnavailable": "Esta plataforma ou hardware não expõe uma métrica GPU suportada.",
-    "applicationImpact": "Energia relativa do processo ativo", "processUnavailable": "Esta plataforma não expõe o impacto energético por processo.",
+    "onDemand": "Amostra sob demanda",
+    "activity": "Atividade GPU {{value}}",
+    "gpu": "GPU",
+    "cores": "Núcleos {{count}}",
+    "gpuUnavailable": "Esta plataforma ou hardware não expõe uma métrica GPU suportada.",
+    "applicationImpact": "Energia relativa do processo ativo",
+    "processUnavailable": "Esta plataforma não expõe o impacto energético por processo.",
     "noProcessActivity": "Esta amostra não encontrou atividade de energia de processo distinguível.",
     "boundary": "Esses valores são pontuações relativas relatadas pelo sistema operacional, e não watts ou energia. Valores zero são omitidos; é atualizado a cada 15 segundos enquanto expandido."
   },
@@ -43,18 +49,93 @@
     "professionalDetails": "Inspecione processos no modo profissional"
   },
   "uninstall": {
-    "scanKicker": "Índice de aplicativos locais", "scanningHint": "Verificando pacotes de aplicativos, uso de disco e IDs de pacotes. Aplicativos maiores podem demorar um pouco mais.",
-    "kicker": "Gerenciamento de aplicativos", "title": "Assistente de desinstalação completo", "description": "Encontra o pacote de aplicativos e as sobras atribuídas pelo ID exato do pacote. Nada é tratado até que você confirme cada caminho.", "refresh": "Atualizar aplicativos", "unsupportedTitle": "O catálogo de apps do sistema não está disponível", "unsupportedDescription": "Não foi possível ler informações confiáveis dos apps. Tente novamente em uma versão compatível do macOS, Windows ou Linux.",
-    "applicationUnit": "aplicativos", "installedSize": "em pacotes de aplicativos", "localOnly": "Leia localmente; o inventário nunca é carregado", "cachedInventory": "Mostrando o cache local de {{time}}; atualizar a qualquer momento", "search": "Pesquise aplicativos instalados", "searchPlaceholder": "Nome de pesquisa, ID do pacote ou caminho", "scanning": "Lendo o inventário do aplicativo…", "empty": "Nenhum aplicativo correspondente", "preparingPlan": "Verificando a identidade do aplicativo e os arquivos de suporte…", "planKicker": "Desinstalar plano", "planBoundary": "Saia deste aplicativo primeiro. Somente caminhos comprovados pelo ID exato do pacote são listados; suposições de nomes de aplicativos são excluídas.", "bundleOnlyBoundary": "Este app não possui um Bundle ID verificável. O CoreRobin removerá apenas o pacote validado por caminho e estrutura, sem supor arquivos de suporte.", "foundItems": "Itens verificados", "required": "Obrigatório",
-    "selectedSize": "Itens {{count}} selecionados", "review": "Revise e desinstale {{name}}", "reveal": "Revelar aplicação em Finder", "skipped": "Itens {{count}} excluídos do plano", "skippedDescription": "Esses caminhos não passaram na inspeção segura do identificador de arquivo, portanto o assistente não os tocará.", "selectTitle": "Selecione um aplicativo", "selectDescription": "O assistente cria um plano caminho por caminho antes da confirmação final.", "cannotPrepare": "Não é possível criar um plano seguro para este aplicativo", "dialogTitle": "Desinstalar {{name}}", "dialogDescription": "Revise o pacote e os dados relacionados um a um. Mover para a Lixeira é a opção recuperável padrão.", "outcomeComplete": "Lidou com itens {{count}} para {{name}}, recuperando {{size}}.", "outcomeMovedToTrash": "{{name}} movido para a Lixeira; manipulou itens {{count}} e {{size}}. Ele permanece recuperável até que a Lixeira seja esvaziada.", "outcomeDeletedPermanently": "{{name}} foi excluído permanentemente; {{count}} itens processados e {{size}} liberados.", "outcomePartial": "A desinstalação do {{name}} não foi totalmente concluída; manipulou itens {{count}} e {{size}}.",
-    "removed": { "trash": "Movido para a Lixeira", "permanent": "Excluído permanentemente", "trashDescription": "O aplicativo saiu de seu local original e pode ser restaurado até que a Lixeira seja esvaziada. Atualize o inventário para remover este registro.", "permanentDescription": "O app foi excluído diretamente do disco e não pode ser restaurado pela Lixeira. Atualize a lista para remover este registro.", "partial": "O pacote de aplicativos foi removido, mas alguns itens relacionados não puderam ser tratados." },
-    "artifacts": { "application": "Pacote de aplicativos", "application_support": "Dados de suporte de aplicativo", "cache": "Caches", "preferences": "Preferências", "saved_state": "Estado da janela salva", "container": "Recipiente sandbox", "web_data": "Dados da web", "http_storage": "Armazenamento HTTP", "cookies": "Dados de cookies", "logs": "Registros", "launch_agent": "Agente de lançamento do usuário" },
-    "unavailable": { "generic": "Este app não pode ser desinstalado pelas regras de segurança atuais.", "current_application_protected": "CoreRobin não pode desinstalar-se enquanto está em execução.", "application_bundle_identifier_missing": "O aplicativo não fornece um ID de pacote verificável com segurança.", "application_bundle_invalid": "O pacote de aplicativos está incompleto ou não é compatível.", "application_bundle_not_allowed": "Somente aplicativos de nível superior em uma pasta Aplicativos são suportados." },
-    "errors": { "application_identity_changed": "A identidade do aplicativo foi alterada. Atualize o inventário e tente novamente.", "application_bundle_unavailable": "O app não está acessível. Confirme se ele ainda está no local original.", "application_artifact_unavailable": "Um item alterado antes da confirmação. Atualize o plano de desinstalação.", "application_bundle_identifier_missing": "Não foi possível verificar o ID do pacote do aplicativo." }
+    "scanKicker": "Índice de aplicativos locais",
+    "scanningHint": "Verificando pacotes de aplicativos, uso de disco e IDs de pacotes. Aplicativos maiores podem demorar um pouco mais.",
+    "kicker": "Gerenciamento de aplicativos",
+    "title": "Assistente de desinstalação completo",
+    "description": "Encontra o pacote de aplicativos e as sobras atribuídas pelo ID exato do pacote. Nada é tratado até que você confirme cada caminho.",
+    "refresh": "Atualizar aplicativos",
+    "unsupportedTitle": "O catálogo de apps do sistema não está disponível",
+    "unsupportedDescription": "Não foi possível ler informações confiáveis dos apps. Tente novamente em uma versão compatível do macOS, Windows ou Linux.",
+    "applicationUnit": "aplicativos",
+    "installedSize": "em pacotes de aplicativos",
+    "localOnly": "Leia localmente; o inventário nunca é carregado",
+    "cachedInventory": "Mostrando o cache local de {{time}}; atualizar a qualquer momento",
+    "search": "Pesquise aplicativos instalados",
+    "searchPlaceholder": "Nome de pesquisa, ID do pacote ou caminho",
+    "scanning": "Lendo o inventário do aplicativo…",
+    "empty": "Nenhum aplicativo correspondente",
+    "preparingPlan": "Verificando a identidade do aplicativo e os arquivos de suporte…",
+    "planKicker": "Desinstalar plano",
+    "planBoundary": "Saia deste aplicativo primeiro. Somente caminhos comprovados pelo ID exato do pacote são listados; suposições de nomes de aplicativos são excluídas.",
+    "bundleOnlyBoundary": "Este app não possui um Bundle ID verificável. O CoreRobin removerá apenas o pacote validado por caminho e estrutura, sem supor arquivos de suporte.",
+    "foundItems": "Itens verificados",
+    "required": "Obrigatório",
+    "selectedSize": "Itens {{count}} selecionados",
+    "review": "Revise e desinstale {{name}}",
+    "reveal": "Revelar aplicação em Finder",
+    "skipped": "Itens {{count}} excluídos do plano",
+    "skippedDescription": "Esses caminhos não passaram na inspeção segura do identificador de arquivo, portanto o assistente não os tocará.",
+    "selectTitle": "Selecione um aplicativo",
+    "selectDescription": "O assistente cria um plano caminho por caminho antes da confirmação final.",
+    "cannotPrepare": "Não é possível criar um plano seguro para este aplicativo",
+    "dialogTitle": "Desinstalar {{name}}",
+    "dialogDescription": "Revise o pacote e os dados relacionados um a um. Mover para a Lixeira é a opção recuperável padrão.",
+    "outcomeComplete": "Lidou com itens {{count}} para {{name}}, recuperando {{size}}.",
+    "outcomeMovedToTrash": "{{name}} movido para a Lixeira; manipulou itens {{count}} e {{size}}. Ele permanece recuperável até que a Lixeira seja esvaziada.",
+    "outcomeDeletedPermanently": "{{name}} foi excluído permanentemente; {{count}} itens processados e {{size}} liberados.",
+    "outcomePartial": "A desinstalação do {{name}} não foi totalmente concluída; manipulou itens {{count}} e {{size}}.",
+    "removed": {
+      "trash": "Movido para a Lixeira",
+      "permanent": "Excluído permanentemente",
+      "trashDescription": "O aplicativo saiu de seu local original e pode ser restaurado até que a Lixeira seja esvaziada. Atualize o inventário para remover este registro.",
+      "permanentDescription": "O app foi excluído diretamente do disco e não pode ser restaurado pela Lixeira. Atualize a lista para remover este registro.",
+      "partial": "O pacote de aplicativos foi removido, mas alguns itens relacionados não puderam ser tratados."
+    },
+    "artifacts": {
+      "application": "Pacote de aplicativos",
+      "application_support": "Dados de suporte de aplicativo",
+      "cache": "Caches",
+      "preferences": "Preferências",
+      "saved_state": "Estado da janela salva",
+      "container": "Recipiente sandbox",
+      "web_data": "Dados da web",
+      "http_storage": "Armazenamento HTTP",
+      "cookies": "Dados de cookies",
+      "logs": "Registros",
+      "launch_agent": "Agente de lançamento do usuário"
+    },
+    "unavailable": {
+      "generic": "Este app não pode ser desinstalado pelas regras de segurança atuais.",
+      "current_application_protected": "CoreRobin não pode desinstalar-se enquanto está em execução.",
+      "application_bundle_identifier_missing": "O aplicativo não fornece um ID de pacote verificável com segurança.",
+      "application_bundle_invalid": "O pacote de aplicativos está incompleto ou não é compatível.",
+      "application_bundle_not_allowed": "Somente aplicativos de nível superior em uma pasta Aplicativos são suportados."
+    },
+    "errors": {
+      "application_identity_changed": "A identidade do aplicativo foi alterada. Atualize o inventário e tente novamente.",
+      "application_bundle_unavailable": "O app não está acessível. Confirme se ele ainda está no local original.",
+      "application_artifact_unavailable": "Um item alterado antes da confirmação. Atualize o plano de desinstalação.",
+      "application_bundle_identifier_missing": "Não foi possível verificar o ID do pacote do aplicativo."
+    },
+    "filters": {
+      "sort": "Ordenar",
+      "unused": "Último uso",
+      "source": "Origem",
+      "all": "Todos",
+      "days_other": "Sem uso por {{count}} dia",
+      "days_one": "Sem uso por {{count}} dia",
+      "days": "Sem uso por {{count}} dia",
+      "sortBy": {
+        "size": "Maiores primeiro",
+        "last_used": "Menos usados recentemente",
+        "source": "Origem da instalação",
+        "name": "Nome"
+      }
+    }
   },
   "empty": "Nenhum aplicativo correspondente",
-  "safety": "Selecionar um aplicativo apenas abre suas evidências de recursos; todas as ações de encerramento ainda requerem confirmação separada."
-,
+  "safety": "Selecionar um aplicativo apenas abre suas evidências de recursos; todas as ações de encerramento ainda requerem confirmação separada.",
   "nativeUninstall": {
     "boundary": "Este app pertence ao catálogo de pacotes do sistema. O CoreRobin envia apenas uma identidade verificada e temporária ao desinstalador nativo.",
     "sourceLabel": "Origem da instalação",
@@ -94,5 +175,13 @@
       "protected": "O CoreRobin ou um componente protegido do sistema não pode ser removido nesta tela.",
       "portable": "Nenhuma identidade confiável do gerenciador de pacotes foi encontrada. O item permanece somente leitura."
     }
+  },
+  "trashWatcher": {
+    "title": "Observar apps movidos para o Lixo",
+    "description": "Verificação local opcional a cada 30 segundos. Oferece apenas um plano de resíduos pelo Bundle ID exato e nunca exclui nada automaticamente.",
+    "found": "Movido para o Lixo · inspecionar resíduos",
+    "error": "Não foi possível verificar o Lixo agora.",
+    "empty": "Nenhum app aguarda no Lixo deste usuário.",
+    "planBoundary": "O app já está no Lixo. Este plano contém apenas dados auxiliares existentes atribuídos pelo Bundle ID exato."
   }
 }

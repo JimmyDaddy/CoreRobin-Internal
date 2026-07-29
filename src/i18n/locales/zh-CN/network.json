@@ -95,6 +95,7 @@
     "optIn": "连接历史可能包含应用名称、域名和远端 IP，因此默认关闭。启用后只保存在本机。", "enable": "启用连接历史",
     "groupBy": "聚合方式", "application": "按应用", "domain": "按域名", "retention": "保留", "days": "{{count}} 天", "clear": "清空历史",
     "lookupFallback": "部分域名无法解析，已使用 IP 地址继续记录。", "observations": "{{count}} 次观察", "empty": "等待下一次活动连接采集。",
+    "details": "连接详情", "firstSeen": "首次出现", "lastSeen": "最后出现", "domains": "域名与地址", "applications": "相关应用", "portsAndProtocols": "端口与协议",
     "privacy": "只保存五分钟聚合记录；最多 5000 条，可随时关闭或清空。"
   },
   "throughput": "网络吞吐",

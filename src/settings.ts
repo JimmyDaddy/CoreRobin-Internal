@@ -37,6 +37,7 @@ export type ApplicationWatchMetric = "cpu" | "memory" | "disk";
 export interface ApplicationWatchRule {
   id: string;
   applicationName: string;
+  applicationId?: string | null;
   metric: ApplicationWatchMetric;
   threshold: number;
   durationSeconds: number;
@@ -69,6 +70,7 @@ export interface AppSettings {
   networkQualityHistoryEnabled: boolean;
   networkQualityHistoryHours: NetworkQualityHistoryHours;
   applicationWatchRules: ApplicationWatchRule[];
+  trashApplicationWatcherEnabled: boolean;
   desktopNotificationsEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
   interfaceScale: InterfaceScale;
@@ -99,6 +101,7 @@ export function defaultAppSettings(
     networkQualityHistoryEnabled: false,
     networkQualityHistoryHours: 1,
     applicationWatchRules: [],
+    trashApplicationWatcherEnabled: false,
     desktopNotificationsEnabled: false,
     mutedNotificationResources: [],
     interfaceScale: "comfortable",
@@ -184,6 +187,10 @@ export function parseAppSettings(
       applicationWatchRules: isApplicationWatchRuleArray(value.applicationWatchRules)
         ? value.applicationWatchRules.slice(0, 50)
         : fallback.applicationWatchRules,
+      trashApplicationWatcherEnabled:
+        typeof value.trashApplicationWatcherEnabled === "boolean"
+          ? value.trashApplicationWatcherEnabled
+          : fallback.trashApplicationWatcherEnabled,
       desktopNotificationsEnabled:
         typeof value.desktopNotificationsEnabled === "boolean"
           ? value.desktopNotificationsEnabled
@@ -280,6 +287,11 @@ function isApplicationWatchRuleArray(value: unknown): value is ApplicationWatchR
     typeof rule.id === "string" && rule.id.length > 0 && rule.id.length <= 100 &&
     typeof rule.applicationName === "string" &&
     rule.applicationName.trim().length > 0 && rule.applicationName.length <= 200 &&
+    (rule.applicationId === undefined || rule.applicationId === null || (
+      typeof rule.applicationId === "string" &&
+      rule.applicationId.length > 0 &&
+      rule.applicationId.length <= 300
+    )) &&
     (rule.metric === "cpu" || rule.metric === "memory" || rule.metric === "disk") &&
     typeof rule.threshold === "number" && Number.isFinite(rule.threshold) &&
     rule.threshold > 0 && rule.threshold <= 1_000_000 &&

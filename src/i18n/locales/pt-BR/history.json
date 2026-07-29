@@ -115,7 +115,10 @@
       "process_force_quit": "Forçar encerramento do aplicativo",
       "cleanup_delete": "Limpar arquivos",
       "startup_disable": "Desativar item de inicialização",
-      "startup_enable": "Restaurar item de inicialização"
+      "startup_enable": "Restaurar item de inicialização",
+      "application_uninstall": "Desinstalar aplicativo",
+      "volume_eject": "Ejetar volume removível",
+      "application_update": "Instalar atualização"
     },
     "status": {
       "running": "Em andamento",
@@ -136,16 +139,25 @@
       "startup": "Nome do item não salvo"
     },
     "cleanupResult": "{{count}} itens processados e {{size}} liberados",
-    "cleanupFailed": "{{count}} itens não concluídos"
+    "cleanupFailed": "{{count}} itens não concluídos",
+    "retry": "Tentar novamente"
   },
-  "watchRules": { "title": "Histórico de acompanhamento de apps", "description": "Eventos locais de acionamento e recuperação das suas regras.", "savedEvents": "{{count}} eventos de acompanhamento", "savedEvents_one": "{{count}} evento de acompanhamento", "savedEvents_other": "{{count}} eventos de acompanhamento", "privateApplication": "Nome do app não salvo", "triggered": "{{metric}} atingiu {{value}}{{unit}}", "recovered": "{{metric}} voltou para {{value}}{{unit}}" },
+  "watchRules": {
+    "title": "Histórico de acompanhamento de apps",
+    "description": "Eventos locais de acionamento e recuperação das suas regras.",
+    "savedEvents": "{{count}} eventos de acompanhamento",
+    "savedEvents_one": "{{count}} evento de acompanhamento",
+    "savedEvents_other": "{{count}} eventos de acompanhamento",
+    "privateApplication": "Nome do app não salvo",
+    "triggered": "{{metric}} atingiu {{value}}{{unit}}",
+    "recovered": "{{metric}} voltou para {{value}}{{unit}}"
+  },
   "privacyEyebrow": "Limites de dados",
   "privacyTitle": "Política de privacidade",
   "privacyLocal": "O histórico permanece no armazenamento privado do CoreRobin neste dispositivo e nunca é enviado nem sincronizado.",
   "privacyCollected": "O histórico armazena dados agregados de recursos, eventos de pressão e recuperação, além do tipo, resultado, quantidade e espaço liberado das ações confirmadas. Nomes de aplicativos ou itens de inicialização só são salvos com permissão separada.",
   "privacyExcluded": "O histórico de recursos e ações não salva comandos, usuários, caminhos, nomes de arquivos nem endereços de conexão. Se o histórico de conexões for ativado separadamente, agregados de cinco minutos poderão incluir IPs remotos, domínios, portas e nomes de apps.",
-  "privacyControl": "Desativar impede novas gravações; os registros existentes permanecem até expirarem ou serem apagados manualmente."
-,
+  "privacyControl": "Desativar impede novas gravações; os registros existentes permanecem até expirarem ou serem apagados manualmente.",
   "applicationImpact": {
     "eyebrow": "Atribuição por aplicativo",
     "title": "Quais apps afetaram este computador",
@@ -200,5 +212,63 @@
       "temperature": "Temperatura",
       "battery": "Consumo de bateria"
     }
+  },
+  "replay": {
+    "eyebrow": "Linha do tempo de evidências",
+    "title": "Reprodução de eventos do sistema",
+    "description": "Escolha um período para correlacionar recursos, rede, atribuição de apps e ações confirmadas.",
+    "range": "Intervalo de reprodução",
+    "from": "De",
+    "to": "Até",
+    "evidenceTitle": "Evidências deste período",
+    "applicationEvidence": "{{from}}–{{to}}: {{applications}} foram as principais fontes. Picos: CPU {{cpu}}, memória {{memory}}.",
+    "noApplicationEvidence": "Nenhuma atribuição de app foi salva. Picos: CPU {{cpu}}, memória {{memory}}.",
+    "leadingApplication": "{{application}} teve média de CPU {{cpu}} e memória {{memory}}.",
+    "empty": "Nenhum alerta, evento de rede, observação ou ação neste período.",
+    "actionImpact": {
+      "improved": "A pressão do sistema caiu nos 15 minutos seguintes",
+      "increased": "A pressão do sistema aumentou nos 15 minutos seguintes",
+      "stable": "A pressão do sistema permaneceu estável",
+      "insufficient": "Amostras posteriores insuficientes para comparar"
+    },
+    "hours1": "1 hora",
+    "hours24": "24 horas",
+    "hours168": "7 dias",
+    "alert": {
+      "triggered": "Pressão de recursos iniciada",
+      "recovered": "Pressão de recursos recuperada"
+    },
+    "watch": {
+      "triggered": "Regra de observação acionada",
+      "recovered": "Regra de observação recuperada"
+    },
+    "network": {
+      "sleep_gap": "Amostragem pausada durante o repouso",
+      "interface_change": "Interface de rede alterada",
+      "status_change": "Estado da rede alterado",
+      "dns_failure": "Qualidade do DNS degradada",
+      "direct_failure": "Conexão direta degradada"
+    }
+  },
+  "storage": {
+    "saved": "Histórico nativo salvo às {{time}} · {{size}}",
+    "waiting": "Iniciando armazenamento nativo",
+    "failed": "Gravação pausada; abra para ver o motivo"
+  },
+  "batterySessions": {
+    "eyebrow": "Linha do tempo da bateria",
+    "title": "Sessões de bateria",
+    "description": "Cada sessão começa ao usar a bateria e explica consumo, principais fontes e bloqueios de repouso com agregados locais.",
+    "count_other": "{{count}} sessão",
+    "ongoing": "Em andamento",
+    "duration": "{{minutes}} min",
+    "charge": "Carga",
+    "drainRate": "Consumo médio",
+    "evidence": "Fontes prováveis",
+    "noApplicationEvidence": "Nomes de apps não foram salvos",
+    "blockers": "Bloqueios de repouso: {{names}}",
+    "empty": "Ainda não há uma sessão completa de bateria.",
+    "count_one": "{{count}} sessão",
+    "count": "{{count}} sessão"
   }
 }

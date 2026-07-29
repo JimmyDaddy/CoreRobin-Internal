@@ -52,18 +52,24 @@ export function loadPersistentHistory(): HistoryPoint[] {
 export function savePersistentHistory(points: readonly HistoryPoint[]): void {
   if (isProductDataResetInProgress()) return;
   try {
-    const payload: PersistentHistoryPayload = {
-      version: 1,
-      points: points.filter(isHistoryPoint).slice(-MAX_PERSISTENT_HISTORY_POINTS),
-    };
     window.localStorage.setItem(
       PERSISTENT_HISTORY_STORAGE_KEY,
-      JSON.stringify(payload),
+      serializePersistentHistory(points),
     );
   } catch {
     // History remains available for the current session when storage is blocked
     // or the WebView quota has been exhausted.
   }
+}
+
+export function serializePersistentHistory(
+  points: readonly HistoryPoint[],
+): string {
+  const payload: PersistentHistoryPayload = {
+    version: 1,
+    points: points.filter(isHistoryPoint).slice(-MAX_PERSISTENT_HISTORY_POINTS),
+  };
+  return JSON.stringify(payload);
 }
 
 export function clearPersistentHistoryStorage(): void {
@@ -120,7 +126,25 @@ function isHistoryPoint(value: unknown): value is HistoryPoint {
     isNullableNonNegativeNumber(value.networkTransmittedBytesPerSecond) &&
     isOptionalNullableNonNegativeNumber(value.temperatureCelsius) &&
     isOptionalNullableNonNegativeNumber(value.batteryChargePercent) &&
-    isOptionalNullableNonNegativeNumber(value.batteryDrainPercentPerHour)
+    isOptionalNullableNonNegativeNumber(value.batteryDrainPercentPerHour) &&
+    (
+      value.batteryPowerSource === undefined
+      || value.batteryPowerSource === "ac"
+      || value.batteryPowerSource === "battery"
+      || value.batteryPowerSource === "unknown"
+    ) &&
+    (
+      value.sleepBlockerNames === undefined
+      || (
+        Array.isArray(value.sleepBlockerNames)
+        && value.sleepBlockerNames.every((name) => typeof name === "string")
+      )
+    ) &&
+    (
+      value.topApplicationName === undefined
+      || value.topApplicationName === null
+      || typeof value.topApplicationName === "string"
+    )
   );
 }
 

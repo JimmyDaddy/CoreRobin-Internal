@@ -1,23 +1,73 @@
 {
   "fileInsights": {
-    "eyebrow": "明示的な読み取り専用チェック", "title": "重複したファイルや長期間変更されていないファイル", "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
-    "scan": "ファイルをチェックする", "scanAgain": "もう一度確認してください", "cancel": "ストップチェック",
-    "phase": { "discovering": "候補者を見つける", "hashing": "重複コンテンツの検証" },
+    "eyebrow": "明示的な読み取り専用チェック",
+    "title": "重複したファイルや長期間変更されていないファイル",
+    "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
+    "scan": "ファイルをチェックする",
+    "scanAgain": "もう一度確認してください",
+    "cancel": "ストップチェック",
+    "phase": {
+      "discovering": "候補者を見つける",
+      "hashing": "重複コンテンツの検証"
+    },
     "progress": "レビューされた {{scanned}} エントリ · {{candidates}} 候補 · {{hashed}} ハッシュ化",
-    "duplicateGroups": "duplicate groups", "possibleSavings": "possible savings", "oldFiles": "large long-unmodified files",
-    "truncated": "このスキャンは安全限界に達しました。完了した結果が表示されます。", "duplicates": "同一の内容", "copies": "{{count}} コピー",
-    "noDuplicates": "チェックした候補の中に重複するコンテンツは見つかりませんでした。", "longUnmodified": "100 MB を超え、180 日間変化なし", "noOldFiles": "一致する大きなファイルが見つかりませんでした。",
+    "duplicateGroups": "duplicate groups",
+    "possibleSavings": "possible savings",
+    "oldFiles": "large long-unmodified files",
+    "truncated": "このスキャンは安全限界に達しました。完了した結果が表示されます。",
+    "duplicates": "同一の内容",
+    "copies": "{{count}} コピー",
+    "noDuplicates": "チェックした候補の中に重複するコンテンツは見つかりませんでした。",
+    "longUnmodified": "100 MB を超え、180 日間変化なし",
+    "noOldFiles": "一致する大きなファイルが見つかりませんでした。",
     "boundary": "根拠とパス操作のみを提示し、自動削除は行いません。長期未更新は最終アクセスではなく更新日時から推定します。",
     "empty": "候補の内容が読み取られ、SHA-256 がローカルでハッシュ化されるのは、チェックを開始した後のみです。何もアップロードされていません。",
-    "workspaceKicker": "ファイル証拠ワークスペース", "launcherDescription": "スキャンの進行状況、重複グループ、長期間変更されていない大きなファイルを表示するための専用のワークスペースを開きます。", "running": "ただいま確認中", "openWorkspace": "オープンなワークスペース", "back": "スペースクリーンアップに戻る",
-    "phaseDescription": { "discovering": "共通の個人フォルダーの名前、サイズ、変更日を検討し、コンテンツの候補を絞り込みます。", "hashing": "同じサイズの候補を読み取り、ローカルで SHA-256 を計算します。コンテンツがこのコンピュータから離れることはありません。" },
-    "phaseLabel": "フェーズの確認", "loadingKicker": "ローカルコンテンツレーダー", "loadingPrivacy": "ハッシュはローカルで計算されます。ファイル名、パス、コンテンツはアップロードされません。",
-    "metrics": { "scanned": "レビューされたエントリ", "candidates": "候補ファイル", "hashed": "内容確認済み" }, "duration": "チェック期間",
-    "localOnly": "完全にこのコンピュータ上で", "welcomeTitle": "ファイル名が一致するだけでなく、同一のコンテンツを表示します", "welcomeDescription": "CoreRobin は、コンテンツのフィンガープリントを検証する前に同じサイズのファイルをすばやくフィルタリングし、レビュー用に長期間変更されていない大きなファイルを個別に整理します。",
-    "scopeTitle": "範囲の確認", "scope": { "desktop": "デスクトップ", "documents": "書類", "downloads": "ダウンロード", "movies": "映画", "music": "音楽", "pictures": "写真" },
-    "steps": { "filterTitle": "高速フィルター", "filterDescription": "まずサイズとメタデータを比較します", "hashTitle": "コンテンツのフィンガープリント", "hashDescription": "SHA-256をローカルで計算する", "reviewTitle": "グループごとのレビュー", "reviewDescription": "経路と日付の証拠を保管する" },
-    "completeKicker": "チェック完了", "completeTitle": "ファイルの証拠が整理されている", "completeDescription": "可能な限り最大の節約を実現する重複グループから始めます。", "resultNavigation": "結果のカテゴリ",
-    "groupLabel": "同一コンテンツグループ", "groupSavings": "1つ保有後の節約", "copyIndex": "{{count}}をコピー", "oldFileLabel": "長い間変更されていないファイル",
+    "workspaceKicker": "ファイル証拠ワークスペース",
+    "launcherDescription": "スキャンの進行状況、重複グループ、長期間変更されていない大きなファイルを表示するための専用のワークスペースを開きます。",
+    "running": "ただいま確認中",
+    "openWorkspace": "オープンなワークスペース",
+    "back": "スペースクリーンアップに戻る",
+    "phaseDescription": {
+      "discovering": "共通の個人フォルダーの名前、サイズ、変更日を検討し、コンテンツの候補を絞り込みます。",
+      "hashing": "同じサイズの候補を読み取り、ローカルで SHA-256 を計算します。コンテンツがこのコンピュータから離れることはありません。"
+    },
+    "phaseLabel": "フェーズの確認",
+    "loadingKicker": "ローカルコンテンツレーダー",
+    "loadingPrivacy": "ハッシュはローカルで計算されます。ファイル名、パス、コンテンツはアップロードされません。",
+    "metrics": {
+      "scanned": "レビューされたエントリ",
+      "candidates": "候補ファイル",
+      "hashed": "内容確認済み"
+    },
+    "duration": "チェック期間",
+    "localOnly": "完全にこのコンピュータ上で",
+    "welcomeTitle": "ファイル名が一致するだけでなく、同一のコンテンツを表示します",
+    "welcomeDescription": "CoreRobin は、コンテンツのフィンガープリントを検証する前に同じサイズのファイルをすばやくフィルタリングし、レビュー用に長期間変更されていない大きなファイルを個別に整理します。",
+    "scopeTitle": "範囲の確認",
+    "scope": {
+      "desktop": "デスクトップ",
+      "documents": "書類",
+      "downloads": "ダウンロード",
+      "movies": "映画",
+      "music": "音楽",
+      "pictures": "写真"
+    },
+    "steps": {
+      "filterTitle": "高速フィルター",
+      "filterDescription": "まずサイズとメタデータを比較します",
+      "hashTitle": "コンテンツのフィンガープリント",
+      "hashDescription": "SHA-256をローカルで計算する",
+      "reviewTitle": "グループごとのレビュー",
+      "reviewDescription": "経路と日付の証拠を保管する"
+    },
+    "completeKicker": "チェック完了",
+    "completeTitle": "ファイルの証拠が整理されている",
+    "completeDescription": "可能な限り最大の節約を実現する重複グループから始めます。",
+    "resultNavigation": "結果のカテゴリ",
+    "groupLabel": "同一コンテンツグループ",
+    "groupSavings": "1つ保有後の節約",
+    "copyIndex": "{{count}}をコピー",
+    "oldFileLabel": "長い間変更されていないファイル",
     "processing": {
       "selectGroup": "余分なコピーを処理する",
       "selectedGroup": "選択されたグループ",
@@ -175,7 +225,11 @@
       "failed": "処理された項目はなく、{{failedCount}} 項目が失敗しました",
       "cancelled": "{{deletedCount}} 項目の後で処理を停止しました",
       "cancelledNoDeletion": "項目が完了する前に処理を停止しました",
-      "reclaimed": "処理前に確認した容量：約 {{size}}"
+      "reclaimed": "物理割り当て約 {{size}} を処理しました",
+      "selectedSizes": "選択した論理サイズ {{logical}}、物理割り当て {{allocated}}",
+      "released": "ファイルシステムの空き容量が約 {{size}} 増えました",
+      "pendingReclaim": "{{processed}} を処理し、空き容量は現在 {{size}} 増えています。差分は APFS スナップショット、消去可能領域、またはシステムの遅延回収に残っている可能性があります。",
+      "trashSpace": "項目はゴミ箱に移動しました。通常、対応する空き容量はゴミ箱を空にした後に解放されます"
     },
     "freshness": {
       "cached": "以前のスキャン結果を表示",
@@ -184,7 +238,10 @@
       "changedShort": "内容が変更されました",
       "refreshFolder": "{{name}}を更新",
       "refreshingFolder": "{{name}}を更新中…"
-    }
+    },
+    "removeFromBasket": "クリーンアップバスケットから外す",
+    "includedByParent": "親フォルダに含まれています",
+    "addToBasket": "クリーンアップバスケットに追加"
   },
   "deleteDialog": {
     "title": "クリーンアップバスケットを確認",
@@ -282,8 +339,7 @@
   "noLargeFiles": "500MBを超えるファイルが、アクセス可能なシステムディスクの場所には見つかりませんでした。",
   "unreadable": "{{count}} の場所は保護されていたり、一時的に読み取り不可になっていたため、これらの場所は結果から除外されます。",
   "fullDiskAccessHint": "macOSでは、システム設定 → プライバシー & セキュリティでCoreRobinにフルディスクアクセスを許可してから、再度スキャンしてください。",
-  "safetyBoundary": "スキャンには時間や対象の制限がなく、シンボリックリンクも参照しません。ゴミ箱に追加され、パスが確認され、明示的に確認された項目のみが永久に削除され、復元はできません。"
-,
+  "safetyBoundary": "スキャンには時間や対象の制限がなく、シンボリックリンクも参照しません。ゴミ箱に追加され、パスが確認され、明示的に確認された項目のみが永久に削除され、復元はできません。",
   "targets": {
     "kicker": "Scan scope",
     "title": "Choose what to scan",
@@ -309,5 +365,10 @@
     "completed": "{{count}} 個を処理し、{{size}} を解放しました",
     "partial": "{{deletedCount}} 個を処理し、{{failedCount}} 個は処理できませんでした",
     "cancelled": "{{count}} 個の処理後に停止しました"
+  },
+  "growth": {
+    "since": "{{time}} と比較",
+    "title": "前回スキャンからの容量変化",
+    "noGrowth": "簡易比較では増加したディレクトリが見つかりませんでした。"
   }
 }

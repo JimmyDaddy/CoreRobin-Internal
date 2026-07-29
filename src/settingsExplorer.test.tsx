@@ -5,8 +5,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "./i18n";
 import { getMockSnapshot } from "./mockData";
+import type { AppUpdaterController } from "./hooks/useAppUpdater";
 import { defaultAppSettings } from "./settings";
 import { SettingsExplorer } from "./components/SettingsExplorer";
+
+const updaterStub: AppUpdaterController = {
+  checking: false,
+  result: null,
+  installableUpdate: null,
+  progress: null,
+  action: "idle",
+  availableVersion: null,
+  lastCheckedAt: null,
+  lastCheckFailed: false,
+  updatedFromVersion: null,
+  check: vi.fn(async () => undefined),
+  install: vi.fn(async () => undefined),
+  restart: vi.fn(async () => undefined),
+  skipAvailableVersion: vi.fn(),
+  dismissUpdatedReceipt: vi.fn(),
+};
 
 beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
@@ -93,6 +111,7 @@ function renderSettings(
       settings={defaultAppSettings("zh-CN")}
       notificationStatus="disabled"
       snapshot={getMockSnapshot()}
+      updater={updaterStub}
       onChange={onChange}
       onOpenOnboarding={() => undefined}
       onClearAllData={onClearAllData}

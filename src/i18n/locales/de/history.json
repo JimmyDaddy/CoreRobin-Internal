@@ -115,7 +115,10 @@
       "process_force_quit": "App sofort beenden",
       "cleanup_delete": "Dateien bereinigen",
       "startup_disable": "Autostart deaktivieren",
-      "startup_enable": "Autostart wiederherstellen"
+      "startup_enable": "Autostart wiederherstellen",
+      "application_uninstall": "Anwendung deinstallieren",
+      "volume_eject": "Wechseldatenträger auswerfen",
+      "application_update": "Anwendungsupdate installieren"
     },
     "status": {
       "running": "Wird ausgeführt",
@@ -136,16 +139,25 @@
       "startup": "Name des Autostarts nicht gespeichert"
     },
     "cleanupResult": "{{count}} Elemente verarbeitet und {{size}} freigegeben",
-    "cleanupFailed": "{{count}} Elemente nicht abgeschlossen"
+    "cleanupFailed": "{{count}} Elemente nicht abgeschlossen",
+    "retry": "Erneut versuchen"
   },
-  "watchRules": { "title": "Verlauf der App-Beobachtung", "description": "Lokale Auslöse- und Erholungsereignisse deiner Erinnerungsregeln.", "savedEvents": "{{count}} Beobachtungsereignisse", "savedEvents_one": "{{count}} Beobachtungsereignis", "savedEvents_other": "{{count}} Beobachtungsereignisse", "privateApplication": "App-Name nicht gespeichert", "triggered": "{{metric}} erreichte {{value}}{{unit}}", "recovered": "{{metric}} erholte sich auf {{value}}{{unit}}" },
+  "watchRules": {
+    "title": "Verlauf der App-Beobachtung",
+    "description": "Lokale Auslöse- und Erholungsereignisse deiner Erinnerungsregeln.",
+    "savedEvents": "{{count}} Beobachtungsereignisse",
+    "savedEvents_one": "{{count}} Beobachtungsereignis",
+    "savedEvents_other": "{{count}} Beobachtungsereignisse",
+    "privateApplication": "App-Name nicht gespeichert",
+    "triggered": "{{metric}} erreichte {{value}}{{unit}}",
+    "recovered": "{{metric}} erholte sich auf {{value}}{{unit}}"
+  },
   "privacyEyebrow": "Datengrenzen",
   "privacyTitle": "Datenschutzrichtlinie",
   "privacyLocal": "Die Historie bleibt im privaten CoreRobin-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
   "privacyCollected": "Gespeichert werden zusammengefasste Ressourcendaten, Belastungs- und Erholungsereignisse sowie Art, Ergebnis, Anzahl und freigegebener Speicher bestätigter Aktionen. App- oder Autostart-Namen werden nur mit separater Erlaubnis gespeichert.",
   "privacyExcluded": "Ressourcen- und Aktionsverlauf speichert keine Befehle, Benutzer, Pfade, Dateinamen oder Verbindungsadressen. Wenn der Verbindungsverlauf separat aktiviert ist, können Fünf-Minuten-Aggregate externe IPs, Domains, Ports und App-Namen enthalten.",
-  "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden."
-,
+  "privacyControl": "Das Deaktivieren verhindert neue Schreibvorgänge; bestehende Einträge bleiben bestehen, bis sie ablaufen oder manuell gelöscht werden.",
   "applicationImpact": {
     "eyebrow": "App-Zuordnung",
     "title": "Welche Apps diesen Computer beeinflusst haben",
@@ -200,5 +212,63 @@
       "temperature": "Temperatur",
       "battery": "Akkuverbrauch"
     }
+  },
+  "replay": {
+    "eyebrow": "Beweis-Zeitleiste",
+    "title": "Systemereignisse wiedergeben",
+    "description": "Zeitraum wählen, um Ressourcenänderungen, Netzwerkereignisse, App-Zuordnung und bestätigte Aktionen zu verknüpfen.",
+    "range": "Wiedergabezeitraum",
+    "from": "Von",
+    "to": "Bis",
+    "evidenceTitle": "Belege aus diesem Zeitraum",
+    "applicationEvidence": "{{from}}–{{to}}: {{applications}} waren die wichtigsten Ressourcenquellen. Systemspitzen: CPU {{cpu}}, Arbeitsspeicher {{memory}}.",
+    "noApplicationEvidence": "Für diesen Zeitraum wurde keine App-Zuordnung gespeichert. Systemspitzen: CPU {{cpu}}, Arbeitsspeicher {{memory}}.",
+    "leadingApplication": "{{application}} nutzte im Mittel CPU {{cpu}} und Arbeitsspeicher {{memory}}.",
+    "empty": "Keine Warn-, Netzwerk-, Überwachungs- oder Aktionsereignisse in diesem Zeitraum.",
+    "actionImpact": {
+      "improved": "Systemlast sank in den folgenden 15 Minuten",
+      "increased": "Systemlast stieg in den folgenden 15 Minuten",
+      "stable": "Systemlast blieb ungefähr gleich",
+      "insufficient": "Zu wenige Folgemessungen für einen Vergleich"
+    },
+    "hours1": "1 Stunde",
+    "hours24": "24 Stunden",
+    "hours168": "7 Tage",
+    "alert": {
+      "triggered": "Ressourcenbelastung begann",
+      "recovered": "Ressourcenbelastung beendet"
+    },
+    "watch": {
+      "triggered": "App-Wächterregel ausgelöst",
+      "recovered": "App-Wächterregel erholt"
+    },
+    "network": {
+      "sleep_gap": "Messung im Ruhezustand pausiert",
+      "interface_change": "Netzwerkschnittstelle geändert",
+      "status_change": "Netzwerkstatus geändert",
+      "dns_failure": "DNS-Qualität verschlechtert",
+      "direct_failure": "Direktverbindung verschlechtert"
+    }
+  },
+  "storage": {
+    "saved": "Native Historie {{time}} gespeichert · {{size}}",
+    "waiting": "Nativer Historienspeicher wird gestartet",
+    "failed": "Speichern pausiert; öffnen, um den Grund anzuzeigen"
+  },
+  "batterySessions": {
+    "eyebrow": "Akkunutzungs-Zeitleiste",
+    "title": "Akkusitzungen",
+    "description": "Jede Sitzung beginnt beim Wechsel auf Akku und erklärt Verbrauch, aktive Ressourcenquellen und Schlafblocker aus lokalen Aggregaten.",
+    "count_other": "{{count}} Sitzung",
+    "ongoing": "Läuft",
+    "duration": "{{minutes}} Min.",
+    "charge": "Ladung",
+    "drainRate": "Mittlerer Verbrauch",
+    "evidence": "Wahrscheinliche Ressourcenquellen",
+    "noApplicationEvidence": "App-Namen wurden nicht gespeichert",
+    "blockers": "Schlafblocker: {{names}}",
+    "empty": "Noch keine vollständige Akkusitzung erfasst.",
+    "count_one": "{{count}} Sitzung",
+    "count": "{{count}} Sitzung"
   }
 }

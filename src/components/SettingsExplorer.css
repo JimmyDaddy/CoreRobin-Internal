@@ -1,0 +1,47 @@
+.settings-transfer {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-transfer > small {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.settings-transfer > p {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--danger);
+}
+
+.settings-transfer__preview {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-radius: 12px;
+  background: var(--surface-subtle);
+}
+
+.settings-transfer__preview code {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-transfer__preview > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}

@@ -42,15 +42,32 @@ export function loadNetworkQualityHistory(
   storage: Storage = window.localStorage,
 ): NetworkQualityHistoryPoint[] {
   try {
-    const value = JSON.parse(
-      storage.getItem(NETWORK_QUALITY_HISTORY_STORAGE_KEY) ?? "[]",
-    ) as unknown;
+    return parseNetworkQualityHistory(
+      storage.getItem(NETWORK_QUALITY_HISTORY_STORAGE_KEY),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function parseNetworkQualityHistory(
+  payload: string | null,
+): NetworkQualityHistoryPoint[] {
+  if (!payload) return [];
+  try {
+    const value = JSON.parse(payload) as unknown;
     return Array.isArray(value)
       ? value.filter(isNetworkQualityHistoryPoint).map(normalizeHistoryPoint)
       : [];
   } catch {
     return [];
   }
+}
+
+export function serializeNetworkQualityHistory(
+  points: readonly NetworkQualityHistoryPoint[],
+): string {
+  return JSON.stringify(points);
 }
 
 export function saveNetworkQualityHistory(
@@ -60,7 +77,7 @@ export function saveNetworkQualityHistory(
   try {
     storage.setItem(
       NETWORK_QUALITY_HISTORY_STORAGE_KEY,
-      JSON.stringify(points),
+      serializeNetworkQualityHistory(points),
     );
   } catch {
     // The live network-quality result remains usable without persistence.

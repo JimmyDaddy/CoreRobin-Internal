@@ -64,6 +64,7 @@ const EMPTY_CACHE_SUMMARY: ProductDataCacheSummary = {
   fileInsights: { byteSize: 0, fileCount: 0, updatedAtMs: null },
   applicationInventory: { byteSize: 0, fileCount: 0, updatedAtMs: null },
   applicationHistory: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+  historySegments: { byteSize: 0, fileCount: 0, updatedAtMs: null },
 };
 
 const EMPTY_RECEIPT: ProductDataClearReceipt = {
@@ -109,7 +110,12 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
   const refresh = useCallback(async () => {
     try {
       const summary = await getProductDataCacheSummary();
-      setCacheSummary(summary);
+      setCacheSummary({
+        ...EMPTY_CACHE_SUMMARY,
+        ...summary,
+        historySegments:
+          summary.historySegments ?? EMPTY_CACHE_SUMMARY.historySegments,
+      });
       setSummaryError(null);
     } catch (reason) {
       setSummaryError(errorMessage(reason));
@@ -185,11 +191,14 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
             RESOURCE_ALERT_STORAGE_KEY,
             APPLICATION_WATCH_HISTORY_STORAGE_KEY,
             USER_ACTION_HISTORY_STORAGE_KEY,
-          ]) + cacheSummary.applicationHistory.byteSize,
+          ])
+          + cacheSummary.applicationHistory.byteSize
+          + cacheSummary.historySegments.byteSize,
         itemCount: input.resourceItemCount,
         updatedAtMs: Math.max(
           input.resourceUpdatedAtMs ?? 0,
           cacheSummary.applicationHistory.updatedAtMs ?? 0,
+          cacheSummary.historySegments.updatedAtMs ?? 0,
         ) || null,
         retentionDays: input.resourceRetentionDays,
       },

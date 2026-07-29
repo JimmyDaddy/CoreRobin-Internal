@@ -79,6 +79,7 @@ const baseProps = {
   ariaLabel: "cleanup map",
   onSelect: vi.fn(),
   onActivate: vi.fn(),
+  onCollect: vi.fn(),
   onPointerDown: vi.fn(),
   onPointerCancel: vi.fn(),
 };

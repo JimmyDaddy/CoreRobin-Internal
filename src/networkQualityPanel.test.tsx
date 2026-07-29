@@ -17,7 +17,10 @@ const { runNetworkQualityCheck } = vi.hoisted(() => ({
   runNetworkQualityCheck: vi.fn(),
 }));
 
-vi.mock("./api", () => ({ runNetworkQualityCheck }));
+vi.mock("./api", () => ({
+  runNetworkQualityCheck,
+  isDesktopRuntime: () => false,
+}));
 
 afterEach(() => {
   cleanup();

@@ -1,7 +1,64 @@
+use std::collections::HashMap;
 use std::io::{self, Read};
 use std::process::{Command, Output, Stdio};
+use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
+
+const CIRCUIT_FAILURE_THRESHOLD: u32 = 3;
+const CIRCUIT_COOLDOWN: Duration = Duration::from_secs(60);
+
+#[derive(Clone, Copy, Debug, Default)]
+struct CircuitState {
+    consecutive_failures: u32,
+    open_until: Option<Instant>,
+}
+
+fn command_circuits() -> &'static Mutex<HashMap<&'static str, CircuitState>> {
+    static CIRCUITS: OnceLock<Mutex<HashMap<&'static str, CircuitState>>> = OnceLock::new();
+    CIRCUITS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn output_with_circuit(
+    circuit_key: &'static str,
+    command: &mut Command,
+    timeout: Duration,
+    maximum_output_bytes: usize,
+) -> io::Result<Output> {
+    {
+        let mut circuits = command_circuits()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(state) = circuits.get_mut(circuit_key)
+            && let Some(open_until) = state.open_until
+        {
+            if Instant::now() < open_until {
+                return Err(io::Error::new(
+                    io::ErrorKind::WouldBlock,
+                    "system command is cooling down after repeated failures",
+                ));
+            }
+            state.open_until = None;
+            state.consecutive_failures = 0;
+        }
+    }
+
+    let result = output(command, timeout, maximum_output_bytes);
+    let succeeded = result.as_ref().is_ok_and(|output| output.status.success());
+    let mut circuits = command_circuits()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if succeeded {
+        circuits.remove(circuit_key);
+    } else {
+        let state = circuits.entry(circuit_key).or_default();
+        state.consecutive_failures = state.consecutive_failures.saturating_add(1);
+        if state.consecutive_failures >= CIRCUIT_FAILURE_THRESHOLD {
+            state.open_until = Some(Instant::now() + CIRCUIT_COOLDOWN);
+        }
+    }
+    result
+}
 
 pub fn output(
     command: &mut Command,
@@ -103,7 +160,7 @@ mod tests {
     use std::process::Command;
     use std::time::{Duration, Instant};
 
-    use super::output;
+    use super::{command_circuits, output, output_with_circuit};
 
     #[test]
     fn captures_bounded_output() {
@@ -128,5 +185,30 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
         assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn circuit_breaker_stops_repeatedly_failing_system_commands() {
+        const KEY: &str = "bounded-command-test";
+        command_circuits().lock().unwrap().remove(KEY);
+        for _ in 0..3 {
+            let output = output_with_circuit(
+                KEY,
+                Command::new("/bin/sh").args(["-c", "exit 1"]),
+                Duration::from_secs(1),
+                64,
+            )
+            .unwrap();
+            assert!(!output.status.success());
+        }
+        let error = output_with_circuit(
+            KEY,
+            Command::new("/bin/sh").args(["-c", "exit 0"]),
+            Duration::from_secs(1),
+            64,
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::WouldBlock);
+        command_circuits().lock().unwrap().remove(KEY);
     }
 }

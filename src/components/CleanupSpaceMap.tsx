@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, Plus, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -97,8 +97,24 @@ interface CleanupDragState {
 interface CleanupDeleteOutcome {
   deletedCount: number;
   deletedBytes: number;
+  selectedLogicalBytes: number;
+  selectedAllocatedBytes: number;
+  availableBytesBefore: number | null;
+  availableBytesAfter: number | null;
+  mode: CleanupDeleteMode;
   failed: CleanupDeleteFailure[];
   cancelled: boolean;
+}
+
+function cleanupAvailableDelta(outcome: CleanupDeleteOutcome): number {
+  if (
+    outcome.availableBytesBefore === null
+    || outcome.availableBytesAfter === null
+  ) return 0;
+  return Math.max(
+    0,
+    outcome.availableBytesAfter - outcome.availableBytesBefore,
+  );
 }
 
 type CleanupMapMode = "path" | "category";
@@ -309,6 +325,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     [arcs],
   );
   const selected = nodes.get(selectedId) ?? visibleNodes.get(selectedId) ?? focus;
+  const selectedDirectlyPlanned = plannedIds.has(selected.id);
   const selectedCollected = collectedIds.has(selected.id) ||
     isCleanupNodeCoveredByPlan(plannedIds, selected.id, parents);
   const directChildren = useMemo(
@@ -910,6 +927,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       setDeleteOutcome({
         deletedCount: result.deleted.length,
         deletedBytes: result.deletedBytes,
+        selectedLogicalBytes: result.selectedLogicalBytes ?? result.deletedBytes,
+        selectedAllocatedBytes:
+          result.selectedAllocatedBytes ?? result.deletedBytes,
+        availableBytesBefore: result.availableBytesBefore ?? null,
+        availableBytesAfter: result.availableBytesAfter ?? null,
+        mode: deleteMode,
         failed: result.failed,
         cancelled: result.cancelled,
       });
@@ -1043,6 +1066,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   }
                   void drillInto(node);
                 }}
+                onCollect={addToPlan}
                 onPointerDown={beginDrag}
                 onPointerCancel={cancelDragAt}
               />
@@ -1135,7 +1159,35 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           </div>
           <div className={`cleanup-map__path-actions-slot${selected.path ? "" : " is-empty"}`}>
             {selected.path ? (
-              <PathActions className="cleanup-map__path-actions" path={selected.path} />
+              <>
+                <PathActions className="cleanup-map__path-actions" path={selected.path} />
+                {selectedDirectlyPlanned ? (
+                  <button
+                    className="button button--secondary cleanup-map__collect-action"
+                    type="button"
+                    onClick={() => removeFromPlan(selected.id)}
+                  >
+                    <X size={14} />{t("cleanup:map.removeFromBasket")}
+                  </button>
+                ) : selectedCollected ? (
+                  <button
+                    className="button button--secondary cleanup-map__collect-action"
+                    type="button"
+                    disabled
+                  >
+                    <CheckCircle2 size={14} />{t("cleanup:map.includedByParent")}
+                  </button>
+                ) : (
+                  <button
+                    className="button button--primary cleanup-map__collect-action"
+                    type="button"
+                    disabled={!canCollectCleanupNode(selected)}
+                    onClick={() => addToPlan(selected)}
+                  >
+                    <Plus size={14} />{t("cleanup:map.addToBasket")}
+                  </button>
+                )}
+              </>
             ) : null}
           </div>
 
@@ -1151,7 +1203,31 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     : "cleanup:map.deleteResult.success",
                   { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
                 )}</strong>
-                <small>{t("cleanup:map.deleteResult.reclaimed", { size: formatBytes(deleteOutcome.deletedBytes) })}</small>
+                <small>
+                  {t("cleanup:map.deleteResult.selectedSizes", {
+                    logical: formatBytes(deleteOutcome.selectedLogicalBytes),
+                    allocated: formatBytes(deleteOutcome.selectedAllocatedBytes),
+                  })}
+                </small>
+                <small>
+                  {deleteOutcome.availableBytesBefore !== null
+                    && deleteOutcome.availableBytesAfter !== null
+                    ? t(
+                      deleteOutcome.mode === "trash"
+                        ? "cleanup:map.deleteResult.trashSpace"
+                        : cleanupAvailableDelta(deleteOutcome) >=
+                            deleteOutcome.deletedBytes * 0.8
+                          ? "cleanup:map.deleteResult.released"
+                          : "cleanup:map.deleteResult.pendingReclaim",
+                      {
+                        size: formatBytes(cleanupAvailableDelta(deleteOutcome)),
+                        processed: formatBytes(deleteOutcome.deletedBytes),
+                      },
+                    )
+                    : t("cleanup:map.deleteResult.reclaimed", {
+                      size: formatBytes(deleteOutcome.deletedBytes),
+                    })}
+                </small>
                 {deleteOutcome.failed.slice(0, 3).map((failure) => (
                   <code key={failure.path} title={failure.message}>{failure.path}</code>
                 ))}

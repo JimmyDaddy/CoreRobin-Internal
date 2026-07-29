@@ -12,72 +12,55 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   isDesktopRuntime,
   openProductIssue,
   openProductPage,
 } from "../api";
-import {
-  checkForInstallableAppUpdate,
-  restartAfterAppUpdate,
-  type AppUpdateProgress,
-  type InstallableAppUpdate,
-} from "../appUpdater";
+import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import type { ProductDataClearResult } from "../productDataClear";
 import {
   buildRedactedDiagnosticSummary,
-  checkForProductUpdate,
   copyText,
   CURRENT_APP_VERSION,
   type LocalizedProductPage,
   type ProductPage,
-  type UpdateCheckResult,
 } from "../productSupport";
 import type { AppSettings } from "../settings";
 import type { SystemSnapshot } from "../types";
 import { Button } from "./Button";
 import { ClearProductDataAction } from "./ClearProductDataAction";
 
-type UpdateDisplayResult = Pick<UpdateCheckResult, "status" | "latestVersion">;
-
 export function AboutSupport({
   settings,
   snapshot,
   onOpenOnboarding,
   onClearAllData,
-  backgroundUpdateVersion,
-  backgroundUpdateCheckedAt = null,
-  backgroundUpdateCheckFailed = false,
+  updater,
 }: {
   settings: AppSettings;
   snapshot: SystemSnapshot;
   onOpenOnboarding: () => void;
   onClearAllData: () => Promise<void | ProductDataClearResult[]>;
-  backgroundUpdateVersion?: string | null;
-  backgroundUpdateCheckedAt?: number | null;
-  backgroundUpdateCheckFailed?: boolean;
+  updater: AppUpdaterController;
 }) {
   const { t, i18n } = useAppTranslation();
-  const [checking, setChecking] = useState(false);
-  const [updateResult, setUpdateResult] = useState<UpdateDisplayResult | "error" | null>(null);
-  const [installableUpdate, setInstallableUpdate] = useState<InstallableAppUpdate | null>(null);
-  const [updateProgress, setUpdateProgress] = useState<AppUpdateProgress | null>(null);
-  const [updateAction, setUpdateAction] =
-    useState<
-      "idle" | "installing" | "ready" | "restarting" | "installError" | "restartError"
-    >("idle");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [supportFlowOpen, setSupportFlowOpen] = useState(false);
   const [supportFlowState, setSupportFlowState] =
     useState<"idle" | "opening" | "error">("idle");
-  const [lastCheckedAt, setLastCheckedAt] =
-    useState<number | null>(backgroundUpdateCheckedAt);
-  const [lastCheckFailed, setLastCheckFailed] =
-    useState(backgroundUpdateCheckFailed);
-  const backgroundUpdateHydrationRef = useRef<string | null>(null);
+  const {
+    checking,
+    result: updateResult,
+    installableUpdate,
+    progress: updateProgress,
+    action: updateAction,
+    lastCheckedAt,
+    lastCheckFailed,
+  } = updater;
   const diagnostic = useMemo(
     () => buildRedactedDiagnosticSummary({
       snapshot,
@@ -92,105 +75,6 @@ export function AboutSupport({
     updateAction === "ready" ||
     updateAction === "restarting" ||
     updateAction === "restartError";
-
-  useEffect(() => () => {
-    void installableUpdate?.close().catch(() => undefined);
-  }, [installableUpdate]);
-
-  useEffect(() => {
-    if (!backgroundUpdateVersion || updateResult) return;
-    setUpdateResult({
-      status: "available",
-      latestVersion: backgroundUpdateVersion,
-    });
-  }, [backgroundUpdateVersion, updateResult]);
-
-  useEffect(() => {
-    setLastCheckedAt(backgroundUpdateCheckedAt);
-    setLastCheckFailed(backgroundUpdateCheckFailed);
-  }, [backgroundUpdateCheckFailed, backgroundUpdateCheckedAt]);
-
-  useEffect(() => {
-    if (
-      !backgroundUpdateVersion ||
-      !isDesktopRuntime() ||
-      installableUpdate ||
-      backgroundUpdateHydrationRef.current === backgroundUpdateVersion
-    ) return;
-    backgroundUpdateHydrationRef.current = backgroundUpdateVersion;
-    let disposed = false;
-    void checkForInstallableAppUpdate()
-      .then(async (update) => {
-        if (disposed) {
-          await update?.close().catch(() => undefined);
-          return;
-        }
-        if (update?.version === backgroundUpdateVersion) {
-          setInstallableUpdate(update);
-          return;
-        }
-        await update?.close().catch(() => undefined);
-      })
-      .catch(() => undefined);
-    return () => {
-      disposed = true;
-    };
-  }, [backgroundUpdateVersion, installableUpdate]);
-
-  const checkForUpdate = async () => {
-    if (checking || updateOperationBusy) return;
-    setChecking(true);
-    setUpdateResult(null);
-    setUpdateAction("idle");
-    setUpdateProgress(null);
-    try {
-      if (isDesktopRuntime()) {
-        const update = await checkForInstallableAppUpdate();
-        setInstallableUpdate(update);
-        setUpdateResult(update
-          ? { status: "available", latestVersion: update.version }
-          : { status: "current", latestVersion: CURRENT_APP_VERSION });
-      } else {
-        setInstallableUpdate(null);
-        const result = await checkForProductUpdate();
-        setUpdateResult({ status: result.status, latestVersion: result.latestVersion });
-      }
-      setLastCheckedAt(Date.now());
-      setLastCheckFailed(false);
-    } catch {
-      setInstallableUpdate(null);
-      setUpdateResult("error");
-      setLastCheckedAt(Date.now());
-      setLastCheckFailed(true);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const installUpdate = async () => {
-    if (
-      !installableUpdate ||
-      updateOperationBusy
-    ) return;
-    setUpdateAction("installing");
-    setUpdateProgress({ phase: "downloading", downloadedBytes: 0, contentLength: null, percent: null });
-    try {
-      await installableUpdate.install(setUpdateProgress);
-      setUpdateAction("ready");
-    } catch {
-      setUpdateAction("installError");
-    }
-  };
-
-  const restartForUpdate = async () => {
-    if (updateAction !== "ready" && updateAction !== "restartError") return;
-    setUpdateAction("restarting");
-    try {
-      await restartAfterAppUpdate();
-    } catch {
-      setUpdateAction("restartError");
-    }
-  };
 
   const copyDiagnostic = async () => {
     try {
@@ -255,7 +139,7 @@ export function AboutSupport({
             <div><dt>{t("settings:about.architecture")}</dt><dd>{snapshot.host.architecture}</dd></div>
           </dl>
           <div className="about-support__actions">
-            <Button variant="secondary" disabled={checking || updateOperationBusy} onClick={() => void checkForUpdate()}>
+            <Button variant="secondary" disabled={checking || updateOperationBusy} onClick={() => void updater.check(true)}>
               {checking ? <LoaderCircle className="is-spinning" size={15} /> : <RefreshCw size={15} />}
               {t(checking ? "settings:about.checking" : "settings:about.checkUpdate")}
             </Button>
@@ -283,7 +167,7 @@ export function AboutSupport({
                             className="about-support__restart-update"
                             variant="primary"
                             disabled={updateAction === "restarting"}
-                            onClick={() => void restartForUpdate()}
+                            onClick={() => void updater.restart()}
                           >
                             {updateAction === "restarting"
                               ? <LoaderCircle className="is-spinning" size={14} />
@@ -295,7 +179,7 @@ export function AboutSupport({
                             )}
                           </Button>
                         ) : (
-                          <Button variant="secondary" disabled={updateAction === "installing"} onClick={() => void installUpdate()}>
+                          <Button variant="secondary" disabled={updateAction === "installing"} onClick={() => void updater.install()}>
                             {updateAction === "installing" ? <LoaderCircle className="is-spinning" size={14} /> : null}
                             {t(updateAction === "installing" ? "settings:about.installingUpdate" : "settings:about.installUpdate")}
                           </Button>
@@ -306,6 +190,17 @@ export function AboutSupport({
                     </>
                   : <><Check size={14} />{t("settings:about.upToDate", { version: updateResult.latestVersion })}</>}
             </p>
+          ) : null}
+          {updater.availableVersion && updateAction === "idle" ? (
+            <button
+              className="about-support__link-button"
+              type="button"
+              onClick={updater.skipAvailableVersion}
+            >
+              {t("settings:about.skipVersion", {
+                version: updater.availableVersion,
+              })}
+            </button>
           ) : null}
           {lastCheckedAt ? (
             <p className={`about-support__last-check${lastCheckFailed ? " is-error" : ""}`}>

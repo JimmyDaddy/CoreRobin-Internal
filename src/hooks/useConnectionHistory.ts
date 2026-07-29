@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { resolveNetworkHosts } from "../api";
+import { isDesktopRuntime, resolveNetworkHosts } from "../api";
 import {
   clearConnectionHistory,
   loadConnectionHistory,
   mergeConnectionHistory,
+  parseConnectionHistory,
   saveConnectionHistory,
+  serializeConnectionHistory,
   type ConnectionHistoryEntry,
 } from "../connectionHistory";
 import type { NetworkConnectionsSnapshot, ProcessRow } from "../types";
 import { normalizeCommandError } from "../utils";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export function useConnectionHistory(
   snapshot: NetworkConnectionsSnapshot | null,
@@ -17,9 +20,18 @@ export function useConnectionHistory(
   enabled: boolean,
   retentionDays: number,
 ) {
-  const [entries, setEntries] = useState<ConnectionHistoryEntry[]>(() =>
-    enabled ? loadConnectionHistory(window.localStorage) : [],
-  );
+  const desktop = isDesktopRuntime();
+  const storage = useNativeHistoryStorage<ConnectionHistoryEntry[]>({
+    category: "connections",
+    enabled,
+    initialValue: () => loadConnectionHistory(window.localStorage),
+    parse: parseConnectionHistory,
+    serialize: serializeConnectionHistory,
+    clearLegacy: () => clearConnectionHistory(window.localStorage),
+  });
+  const storedEntries = storage.value;
+  const setEntries = storage.setValue;
+  const entries = enabled ? storedEntries : [];
   const [error, setError] = useState<string | null>(null);
   const lastSampledAtRef = useRef(0);
   const processesRef = useRef(processes);
@@ -27,11 +39,9 @@ export function useConnectionHistory(
 
   useEffect(() => {
     if (!enabled) {
-      setEntries([]);
       lastSampledAtRef.current = 0;
       return;
     }
-    setEntries(loadConnectionHistory(window.localStorage));
   }, [enabled]);
 
   useEffect(() => {
@@ -55,7 +65,7 @@ export function useConnectionHistory(
             lookups,
             retentionDays,
           );
-          saveConnectionHistory(window.localStorage, next);
+          if (!desktop) saveConnectionHistory(window.localStorage, next);
           return next;
         });
       })
@@ -70,7 +80,7 @@ export function useConnectionHistory(
             [],
             retentionDays,
           );
-          saveConnectionHistory(window.localStorage, next);
+          if (!desktop) saveConnectionHistory(window.localStorage, next);
           return next;
         });
       });
@@ -80,9 +90,13 @@ export function useConnectionHistory(
   }, [enabled, retentionDays, snapshot]);
 
   const clear = useCallback(() => {
-    clearConnectionHistory(window.localStorage);
-    setEntries([]);
-  }, []);
+    void storage.clear().catch(() => undefined);
+  }, [storage]);
 
-  return { entries, error, clear };
+  return {
+    entries,
+    error,
+    clear,
+    storageStatus: storage.storageStatus,
+  };
 }

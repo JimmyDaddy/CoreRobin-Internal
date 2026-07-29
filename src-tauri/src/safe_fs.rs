@@ -12,6 +12,8 @@ use cap_std::ambient_authority;
 use cap_std::fs::{Dir, File, Metadata, OpenOptions};
 use sha2::{Digest, Sha256};
 
+use crate::file_ownership::{FileOwnership, ownership};
+
 #[cfg(unix)]
 use std::ffi::CString;
 #[cfg(unix)]
@@ -59,8 +61,6 @@ impl DeleteRoot {
     }
 
     fn open_with_owner_check(path: &Path, require_current_owner: bool) -> io::Result<Self> {
-        #[cfg(not(unix))]
-        let _ = require_current_owner;
         let path_metadata = fs::symlink_metadata(path)?;
         if !path_metadata.is_dir() || path_metadata.file_type().is_symlink() {
             return Err(invalid_data("cleanup root is not a no-follow directory"));
@@ -69,15 +69,11 @@ impl DeleteRoot {
         if is_windows_reparse_point(&path_metadata) {
             return Err(invalid_data("cleanup root is a Windows reparse point"));
         }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::MetadataExt as _;
-            if require_current_owner && path_metadata.uid() != unsafe { libc::geteuid() } {
-                return Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "cleanup root is not owned by the current user",
-                ));
-            }
+        if require_current_owner && ownership(path) != FileOwnership::CurrentUser {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "cleanup root is not owned by the current user",
+            ));
         }
 
         let directory = Dir::open_ambient_dir(path, ambient_authority())?;

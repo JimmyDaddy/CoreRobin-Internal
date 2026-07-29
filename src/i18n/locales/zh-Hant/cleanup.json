@@ -1,23 +1,73 @@
 {
   "fileInsights": {
-    "eyebrow": "明確唯讀檢查", "title": "重複且長期未修改的文件", "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
-    "scan": "檢查文件", "scanAgain": "再次檢查", "cancel": "停止檢查",
-    "phase": { "discovering": "尋找候選人", "hashing": "驗證重複內容" },
+    "eyebrow": "明確唯讀檢查",
+    "title": "重複且長期未修改的文件",
+    "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
+    "scan": "檢查文件",
+    "scanAgain": "再次檢查",
+    "cancel": "停止檢查",
+    "phase": {
+      "discovering": "尋找候選人",
+      "hashing": "驗證重複內容"
+    },
     "progress": "已審核 {{scanned}} 條目 · {{candidates}} 候選者 · {{hashed}} 雜湊",
-    "duplicateGroups": "duplicate groups", "possibleSavings": "possible savings", "oldFiles": "large long-unmodified files",
-    "truncated": "本次掃描達到了安全極限；顯示完成的結果。", "duplicates": "內容相同", "copies": "{{count}} 副本",
-    "noDuplicates": "經檢查候選人中未發現重複內容。", "longUnmodified": "超過100個MB且180天不變", "noOldFiles": "未找到匹配的大文件。",
+    "duplicateGroups": "duplicate groups",
+    "possibleSavings": "possible savings",
+    "oldFiles": "large long-unmodified files",
+    "truncated": "本次掃描達到了安全極限；顯示完成的結果。",
+    "duplicates": "內容相同",
+    "copies": "{{count}} 副本",
+    "noDuplicates": "經檢查候選人中未發現重複內容。",
+    "longUnmodified": "超過100個MB且180天不變",
+    "noOldFiles": "未找到匹配的大文件。",
     "boundary": "僅提供依據與路徑操作，不會自動刪除任何內容；長期未修改以修改時間估算，而非最後存取時間。",
     "empty": "只有當您開始檢查後，才會讀取候選內容並在本機上進行 SHA-256 雜湊處理；沒有上傳任何內容。",
-    "workspaceKicker": "文件證據工作區", "launcherDescription": "開啟專用工作區以顯示掃描進度、重複群組和長期未修改的大型檔案。", "running": "立即檢查", "openWorkspace": "開放工作區", "back": "返回空間清理",
-    "phaseDescription": { "discovering": "檢查常用個人資料夾中的名稱、大小和修改日期，以縮小候選內容範圍。", "hashing": "讀取相同大小的候選並在本地計算SHA-256；內容永遠不會離開這台電腦。" },
-    "phaseLabel": "檢查階段", "loadingKicker": "本地內容雷達", "loadingPrivacy": "哈希值是在本地計算的。不上传文件名、路径和内容。",
-    "metrics": { "scanned": "已審核的紀錄", "candidates": "候選文件", "hashed": "內容已核實" }, "duration": "檢查持續時間",
-    "localOnly": "完全在這台電腦上", "welcomeTitle": "顯示相同的內容，而不僅僅是匹配文件名", "welcomeDescription": "CoreRobin 在驗證內容指紋之前快速過濾相同大小的文件，同時單獨組織長期未修改的大型文件供您審查。",
-    "scopeTitle": "檢查範圍", "scope": { "desktop": "桌面", "documents": "文件", "downloads": "下載", "movies": "電影", "music": "音樂", "pictures": "圖片" },
-    "steps": { "filterTitle": "快速過濾", "filterDescription": "首先比較大小和元數據", "hashTitle": "內容指紋", "hashDescription": "本地計算SHA-256", "reviewTitle": "小組評審", "reviewDescription": "保留路徑和日期證據" },
-    "completeKicker": "檢查完成", "completeTitle": "您的文件證據已整理好", "completeDescription": "從提供最大可能節省的重複組開始。", "resultNavigation": "結果類別",
-    "groupLabel": "相同內容組", "groupSavings": "保留一份後可節省", "copyIndex": "複製{{count}}", "oldFileLabel": "長期未修改的文件",
+    "workspaceKicker": "文件證據工作區",
+    "launcherDescription": "開啟專用工作區以顯示掃描進度、重複群組和長期未修改的大型檔案。",
+    "running": "立即檢查",
+    "openWorkspace": "開放工作區",
+    "back": "返回空間清理",
+    "phaseDescription": {
+      "discovering": "檢查常用個人資料夾中的名稱、大小和修改日期，以縮小候選內容範圍。",
+      "hashing": "讀取相同大小的候選並在本地計算SHA-256；內容永遠不會離開這台電腦。"
+    },
+    "phaseLabel": "檢查階段",
+    "loadingKicker": "本地內容雷達",
+    "loadingPrivacy": "哈希值是在本地計算的。不上传文件名、路径和内容。",
+    "metrics": {
+      "scanned": "已審核的紀錄",
+      "candidates": "候選文件",
+      "hashed": "內容已核實"
+    },
+    "duration": "檢查持續時間",
+    "localOnly": "完全在這台電腦上",
+    "welcomeTitle": "顯示相同的內容，而不僅僅是匹配文件名",
+    "welcomeDescription": "CoreRobin 在驗證內容指紋之前快速過濾相同大小的文件，同時單獨組織長期未修改的大型文件供您審查。",
+    "scopeTitle": "檢查範圍",
+    "scope": {
+      "desktop": "桌面",
+      "documents": "文件",
+      "downloads": "下載",
+      "movies": "電影",
+      "music": "音樂",
+      "pictures": "圖片"
+    },
+    "steps": {
+      "filterTitle": "快速過濾",
+      "filterDescription": "首先比較大小和元數據",
+      "hashTitle": "內容指紋",
+      "hashDescription": "本地計算SHA-256",
+      "reviewTitle": "小組評審",
+      "reviewDescription": "保留路徑和日期證據"
+    },
+    "completeKicker": "檢查完成",
+    "completeTitle": "您的文件證據已整理好",
+    "completeDescription": "從提供最大可能節省的重複組開始。",
+    "resultNavigation": "結果類別",
+    "groupLabel": "相同內容組",
+    "groupSavings": "保留一份後可節省",
+    "copyIndex": "複製{{count}}",
+    "oldFileLabel": "長期未修改的文件",
     "processing": {
       "selectGroup": "處理額外副本",
       "selectedGroup": "已選擇群組",
@@ -175,7 +225,11 @@
       "failed": "沒有處理任何內容，{{failedCount}} 項失敗",
       "cancelled": "已停止清理，完成了 {{deletedCount}} 項",
       "cancelledNoDeletion": "已停止清理，沒有內容被完整處理",
-      "reclaimed": "處理前核對的磁碟佔用約為 {{size}}"
+      "reclaimed": "本次已處理約 {{size}} 的實體佔用",
+      "selectedSizes": "所選邏輯大小 {{logical}}，實體佔用 {{allocated}}",
+      "released": "檔案系統可用空間已增加約 {{size}}",
+      "pendingReclaim": "已處理 {{processed}}，目前可用空間增加 {{size}}；差額可能仍由 APFS 快照、可清理空間或系統回收延遲佔用",
+      "trashSpace": "內容已移到垃圾桶；清空垃圾桶前通常不會釋放對應空間"
     },
     "freshness": {
       "cached": "正在顯示上次掃描結果",
@@ -184,7 +238,10 @@
       "changedShort": "內容已變化",
       "refreshFolder": "重新整理 {{name}}",
       "refreshingFolder": "正在重新整理 {{name}}…"
-    }
+    },
+    "removeFromBasket": "從清理籃移除",
+    "includedByParent": "已包含在父資料夾中",
+    "addToBasket": "加入清理籃"
   },
   "deleteDialog": {
     "title": "檢查清理籃中的內容",
@@ -282,8 +339,7 @@
   "noLargeFiles": "可訪問的系統磁碟位置中沒有發現超過 500 MB 的檔案。",
   "unreadable": "有 {{count}} 個位置受許可權保護或暫時無法讀取，只有這些位置未計入結果。",
   "fullDiskAccessHint": "macOS 上可在“系統設定 → 隱私與安全性 → 完全磁碟訪問許可權”中授權 CoreRobin 後重新掃描。",
-  "safetyBoundary": "掃描沒有時間或數量上限，也不會跟隨符號連結；只有放入清理籃、核對路徑並明確確認的內容才會永久刪除，且無法恢復。"
-,
+  "safetyBoundary": "掃描沒有時間或數量上限，也不會跟隨符號連結；只有放入清理籃、核對路徑並明確確認的內容才會永久刪除，且無法恢復。",
   "targets": {
     "kicker": "Scan scope",
     "title": "Choose what to scan",
@@ -309,5 +365,10 @@
     "completed": "已處理 {{count}} 個長期未修改檔案，釋放 {{size}}",
     "partial": "已處理 {{deletedCount}} 個，{{failedCount}} 個無法處理",
     "cancelled": "處理已停止，已完成 {{count}} 個"
+  },
+  "growth": {
+    "since": "與 {{time}} 相比",
+    "title": "自上次掃描以來的空間變化",
+    "noGrowth": "精簡比較中未發現增長的目錄。"
   }
 }

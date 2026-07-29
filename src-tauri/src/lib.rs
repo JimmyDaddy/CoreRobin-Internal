@@ -7,8 +7,10 @@ mod cleanup;
 mod command_names;
 mod error;
 mod file_insights;
+mod file_ownership;
 mod gpu_energy;
 mod health_state;
+mod history_storage;
 mod identity;
 mod models;
 mod monitor;
@@ -18,6 +20,7 @@ mod network_quality;
 mod private_storage;
 mod process_control;
 mod safe_fs;
+mod sampler_service;
 mod sensors;
 mod startup;
 mod storage_health;
@@ -40,11 +43,13 @@ use application_history::{
 use application_icon::{load_application_bundle_icon, load_application_icon};
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
-    canonical_cleanup_subtree_path, cleanup_scan_access, inspect_cleanup_path,
-    load_cleanup_scan_cache, load_or_scan_application_inventory, open_full_disk_access_settings,
-    prepare_application_uninstall, remove_cleanup_scan_cache, reveal_cleanup_application_bundle,
-    save_cleanup_scan_snapshot_cache, save_cleanup_scan_snapshot_cache_at, scan_cleanup,
-    scan_cleanup_subtree,
+    available_bytes_for_path, canonical_cleanup_subtree_path, cleanup_scan_access,
+    inspect_cleanup_path, load_cleanup_scan_cache, load_or_scan_application_inventory,
+    open_full_disk_access_settings, prepare_application_uninstall,
+    prepare_trashed_application_residual_plan, remove_cleanup_scan_cache,
+    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
+    save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
+    scan_trashed_applications,
 };
 use error::CommandError;
 use file_insights::{
@@ -54,6 +59,11 @@ use file_insights::{
 };
 use gpu_energy::sample_gpu_energy;
 use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
+use history_storage::{
+    HistoryCategory, HistorySegmentStorage, HistoryStorageSummary,
+    clear_all as clear_all_history_segments, load as load_history_segment,
+    save as save_history_segment, summary as history_storage_summary,
+};
 use models::{
     ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
@@ -67,7 +77,7 @@ use models::{
     ProcessDetail, ProcessDetailRequest, StartupContext, StartupItemsSnapshot,
     StartupManagementExecutionRequest, StartupManagementLease,
     StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
-    SystemSnapshot, SystemSummary,
+    SystemSnapshot, SystemSummary, TrashedApplication,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -83,6 +93,7 @@ use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 use process_control::ProcessController;
+use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
 use storage_health::{StorageHealthSnapshot, inspect_storage_health, validate_mount_points};
 #[cfg(target_os = "macos")]
@@ -153,6 +164,7 @@ struct ProductDataCacheSummary {
     file_insights: ProductDataCacheItemSummary,
     application_inventory: ProductDataCacheItemSummary,
     application_history: ProductDataCacheItemSummary,
+    history_segments: ProductDataCacheItemSummary,
 }
 
 pub fn benchmark_monitor_sampling(
@@ -242,6 +254,7 @@ struct AppState {
     background_launch: bool,
     launched_at_ms: u64,
     monitor: Arc<Mutex<SystemMonitor>>,
+    sampler: Arc<SamplerService>,
     health_state: Arc<HealthStateStore>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupWorkCoordinator>,
@@ -257,10 +270,13 @@ impl AppState {
         let process_control_capabilities = process_controller.capabilities();
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
+        let monitor = Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities)));
+        let sampler = Arc::new(SamplerService::new(Arc::clone(&monitor)));
         Self {
             background_launch,
             launched_at_ms: now_millis(),
-            monitor: Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities))),
+            monitor,
+            sampler,
             health_state: Arc::new(HealthStateStore::default()),
             process_controller,
             cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
@@ -372,15 +388,33 @@ where
 
 #[tauri::command]
 async fn get_system_snapshot(state: State<'_, AppState>) -> Result<SystemSnapshot, CommandError> {
-    with_monitor(Arc::clone(&state.monitor), |monitor| Ok(monitor.sample())).await
+    state
+        .sampler
+        .latest_or_sample()
+        .map_err(CommandError::internal)
 }
 
 #[tauri::command]
 async fn get_system_summary(state: State<'_, AppState>) -> Result<SystemSummary, CommandError> {
-    with_monitor(Arc::clone(&state.monitor), |monitor| {
-        Ok(monitor.sample_summary())
-    })
-    .await
+    state
+        .sampler
+        .latest_summary_or_sample()
+        .map_err(CommandError::internal)
+}
+
+#[tauri::command]
+fn get_sampler_status(state: State<'_, AppState>) -> SamplerStatus {
+    state.sampler.status()
+}
+
+#[tauri::command]
+fn set_sampler_control(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    control: SamplerControl,
+) -> Result<SamplerStatus, CommandError> {
+    require_main_window(&window)?;
+    Ok(state.sampler.configure(control))
 }
 
 #[tauri::command]
@@ -751,6 +785,88 @@ async fn clear_persisted_application_history(app: AppHandle) -> Result<(), Comma
         })
 }
 
+fn history_segment_path(
+    app: &AppHandle,
+    category: &str,
+) -> Result<std::path::PathBuf, CommandError> {
+    let category = HistoryCategory::parse(category)
+        .map_err(|error| CommandError::new("history_category_invalid", error.to_string()))?;
+    app.path()
+        .app_data_dir()
+        .map(|directory| category.path(&directory))
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "Could not resolve the application data folder: {error}"
+            ))
+        })
+}
+
+#[tauri::command]
+async fn load_history_storage(
+    app: AppHandle,
+    category: String,
+) -> Result<HistorySegmentStorage, CommandError> {
+    let path = history_segment_path(&app, &category)?;
+    tauri::async_runtime::spawn_blocking(move || load_history_segment(&path))
+        .await
+        .map_err(|error| CommandError::internal(format!("History read task failed: {error}")))?
+        .map_err(|error| {
+            CommandError::new(
+                "history_read_failed",
+                format!("History could not be read: {error}"),
+            )
+        })
+}
+
+#[tauri::command]
+async fn save_history_storage(
+    app: AppHandle,
+    category: String,
+    payload: String,
+) -> Result<HistorySegmentStorage, CommandError> {
+    let path = history_segment_path(&app, &category)?;
+    tauri::async_runtime::spawn_blocking(move || save_history_segment(&path, &payload))
+        .await
+        .map_err(|error| CommandError::internal(format!("History write task failed: {error}")))?
+        .map_err(|error| {
+            CommandError::new(
+                "history_write_failed",
+                format!("History could not be saved: {error}"),
+            )
+        })
+}
+
+#[tauri::command]
+async fn clear_history_storage(
+    app: AppHandle,
+    category: String,
+) -> Result<HistorySegmentStorage, CommandError> {
+    let path = history_segment_path(&app, &category)?;
+    tauri::async_runtime::spawn_blocking(move || history_storage::remove(&path))
+        .await
+        .map_err(|error| CommandError::internal(format!("History removal task failed: {error}")))?
+        .map_err(|error| {
+            CommandError::new(
+                "history_clear_failed",
+                format!("History could not be cleared: {error}"),
+            )
+        })
+}
+
+#[tauri::command]
+async fn get_history_storage_summary(
+    app: AppHandle,
+) -> Result<HistoryStorageSummary, CommandError> {
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    tauri::async_runtime::spawn_blocking(move || history_storage_summary(&directory))
+        .await
+        .map_err(|error| CommandError::internal(format!("History summary task failed: {error}")))
+}
+
 fn cache_item_summary(
     paths: impl IntoIterator<Item = std::path::PathBuf>,
 ) -> ProductDataCacheItemSummary {
@@ -808,6 +924,7 @@ fn application_inventory_cache_paths(
 fn product_data_cache_summary_at(
     directory: &std::path::Path,
 ) -> Result<ProductDataCacheSummary, CommandError> {
+    let history_summary = history_storage_summary(directory);
     Ok(ProductDataCacheSummary {
         cleanup_scan: cache_item_summary([
             directory.join("cleanup-scan-v3.json"),
@@ -816,6 +933,11 @@ fn product_data_cache_summary_at(
         file_insights: cache_item_summary([directory.join("file-insights-v1.json")]),
         application_inventory: cache_item_summary(application_inventory_cache_paths(directory)?),
         application_history: cache_item_summary([directory.join(APPLICATION_HISTORY_FILE_NAME)]),
+        history_segments: ProductDataCacheItemSummary {
+            byte_size: history_summary.byte_size,
+            file_count: history_summary.file_count,
+            updated_at_ms: history_summary.updated_at_ms,
+        },
     })
 }
 
@@ -857,6 +979,14 @@ fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), Co
     remove_application_history(&application_history_path).map_err(|error| {
         CommandError::internal(format!("Application history could not be removed: {error}"))
     })?;
+    let receipt = clear_all_history_segments(directory).map_err(|error| {
+        CommandError::internal(format!("History segments could not be removed: {error}"))
+    })?;
+    if receipt.file_count != 0 || receipt.byte_size != 0 {
+        return Err(CommandError::internal(
+            "History segments still exist after reset.",
+        ));
+    }
     clear_application_inventory_cache_at(directory)
 }
 
@@ -962,15 +1092,14 @@ async fn eject_removable_volume(
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
     let verified_mount_point = mount_point.clone();
-    let removable = with_monitor(Arc::clone(&state.monitor), move |monitor| {
-        Ok(monitor
-            .sample()
-            .disk
-            .volumes
-            .into_iter()
-            .any(|volume| volume.removable && volume.mount_point == verified_mount_point))
-    })
-    .await?;
+    let removable = state
+        .sampler
+        .latest_or_sample()
+        .map_err(CommandError::internal)?
+        .disk
+        .volumes
+        .into_iter()
+        .any(|volume| volume.removable && volume.mount_point == verified_mount_point);
     if !removable {
         return Err(CommandError::new(
             "volume_not_removable",
@@ -985,6 +1114,7 @@ async fn eject_removable_volume(
     .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))??;
     with_monitor(Arc::clone(&state.monitor), move |monitor| {
         monitor.record_volume_ejected(&mount_point);
+        monitor.request_volume_catalog_refresh();
         Ok(())
     })
     .await
@@ -998,16 +1128,15 @@ async fn get_storage_health(
     force_refresh: Option<bool>,
 ) -> Result<StorageHealthSnapshot, CommandError> {
     require_main_window(&window)?;
-    let available = with_monitor(Arc::clone(&state.monitor), |monitor| {
-        Ok(monitor
-            .sample()
-            .disk
-            .volumes
-            .into_iter()
-            .map(|volume| volume.mount_point)
-            .collect::<Vec<_>>())
-    })
-    .await?;
+    let available = state
+        .sampler
+        .latest_or_sample()
+        .map_err(CommandError::internal)?
+        .disk
+        .volumes
+        .into_iter()
+        .map(|volume| volume.mount_point)
+        .collect::<Vec<_>>();
     let verified = validate_mount_points(&mount_points, &available)?;
     tauri::async_runtime::spawn_blocking(move || {
         Ok(inspect_storage_health(
@@ -1133,6 +1262,35 @@ async fn get_application_uninstall_plan(
 }
 
 #[tauri::command]
+async fn get_trashed_applications(
+    window: WebviewWindow,
+    language: Option<String>,
+) -> Result<Vec<TrashedApplication>, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || scan_trashed_applications(language.as_deref()))
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Trash application scan failed: {error}"))
+        })?
+}
+
+#[tauri::command]
+async fn get_trashed_application_residual_plan(
+    window: WebviewWindow,
+    application_path: String,
+    language: Option<String>,
+) -> Result<ApplicationUninstallPlan, CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        prepare_trashed_application_residual_plan(&application_path, language.as_deref())
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("Trashed application residual scan failed: {error}"))
+    })?
+}
+
+#[tauri::command]
 async fn execute_native_application_uninstall(
     window: WebviewWindow,
     request: NativeApplicationUninstallExecutionRequest,
@@ -1208,13 +1366,30 @@ async fn execute_cleanup_delete(
         let mut controller = controller
             .lock()
             .map_err(|_| CommandError::internal("The cleanup controller lock was poisoned."))?;
-        controller.execute_cancellable(request, &worker_cancelled, &mut |progress| {
-            let _ = on_progress.send(progress);
-        })
+        let measurement_path = controller.lease_measurement_path(&request.lease_id);
+        let available_bytes_before = measurement_path
+            .as_deref()
+            .and_then(available_bytes_for_path);
+        let mut result =
+            controller.execute_cancellable(request, &worker_cancelled, &mut |progress| {
+                let _ = on_progress.send(progress);
+            })?;
+        result.available_bytes_before = available_bytes_before;
+        result.available_bytes_after = measurement_path
+            .as_deref()
+            .and_then(available_bytes_for_path);
+        Ok(result)
     })
     .await;
     coordinator.finish(&cancelled);
-    result.map_err(|error| CommandError::internal(format!("Cleanup task failed: {error}")))?
+    let result = result
+        .map_err(|error| CommandError::internal(format!("Cleanup task failed: {error}")))??;
+    with_monitor(Arc::clone(&state.monitor), |monitor| {
+        monitor.request_volume_catalog_refresh();
+        Ok(())
+    })
+    .await?;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -1865,6 +2040,7 @@ pub fn run() {
     builder
         .manage(AppState::new(background_launch))
         .setup(|app| {
+            app.state::<AppState>().sampler.start(app.handle().clone());
             #[cfg(target_os = "macos")]
             {
                 app.handle()
@@ -1999,6 +2175,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_system_snapshot,
             get_system_summary,
+            get_sampler_status,
+            set_sampler_control,
             publish_health_state,
             get_health_state,
             get_network_connections,
@@ -2025,6 +2203,10 @@ pub fn run() {
             load_persisted_application_history,
             save_persisted_application_history,
             clear_persisted_application_history,
+            load_history_storage,
+            save_history_storage,
+            clear_history_storage,
+            get_history_storage_summary,
             get_product_data_cache_summary,
             clear_application_inventory_cache,
             clear_persisted_product_data,
@@ -2046,6 +2228,8 @@ pub fn run() {
             can_relaunch_application,
             get_installed_applications,
             get_application_uninstall_plan,
+            get_trashed_applications,
+            get_trashed_application_residual_plan,
             execute_native_application_uninstall,
             create_cleanup_delete_lease,
             release_cleanup_delete_lease,
@@ -2306,6 +2490,8 @@ mod security_boundary_tests {
         "can_relaunch_application",
         "get_installed_applications",
         "get_application_uninstall_plan",
+        "get_trashed_applications",
+        "get_trashed_application_residual_plan",
         "execute_native_application_uninstall",
         "create_cleanup_delete_lease",
         "release_cleanup_delete_lease",

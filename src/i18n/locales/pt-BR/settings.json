@@ -1,10 +1,24 @@
 {
   "watchRules": {
-    "title": "Acompanhamento de apps e regras de alerta", "description": "Acompanhe um app e receba um alerta se uma métrica permanecer acima da condição. Depois da recuperação, um novo alerta pode ser enviado.",
-    "application": "Aplicativo", "applicationPlaceholder": "Escolha ou digite um aplicativo", "metric": "Métrica", "threshold": "Limite", "duration": "Duração",
-    "metrics": { "cpu": "CPU", "memory": "Memória", "disk": "Atividade do disco" },
-    "seconds": "{{count}} segundos", "add": "Adicionar regra", "notificationHint": "Ative e autorize as notificações para que as regras enviem alertas do sistema.", "backgroundSampling": "Com regras ativas, os apps são verificados aproximadamente a cada {{seconds}} segundos, mesmo com a janela fechada.",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} por {{seconds}} segundos", "active": "Condição atingida", "remove": "Remover regra de alerta de {{name}}",
+    "title": "Acompanhamento de apps e regras de alerta",
+    "description": "Acompanhe um app e receba um alerta se uma métrica permanecer acima da condição. Depois da recuperação, um novo alerta pode ser enviado.",
+    "application": "Aplicativo",
+    "applicationPlaceholder": "Escolha ou digite um aplicativo",
+    "metric": "Métrica",
+    "threshold": "Limite",
+    "duration": "Duração",
+    "metrics": {
+      "cpu": "CPU",
+      "memory": "Memória",
+      "disk": "Atividade do disco"
+    },
+    "seconds": "{{count}} segundos",
+    "add": "Adicionar regra",
+    "notificationHint": "Ative e autorize as notificações para que as regras enviem alertas do sistema.",
+    "backgroundSampling": "Com regras ativas, os apps são verificados aproximadamente a cada {{seconds}} segundos, mesmo com a janela fechada.",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} por {{seconds}} segundos",
+    "active": "Condição atingida",
+    "remove": "Remover regra de alerta de {{name}}",
     "empty": "Ainda não há regras de acompanhamento."
   },
   "localPreferences": "Preferências locais",
@@ -39,7 +53,22 @@
   "sampling": {
     "title": "Amostragem do sistema",
     "description": "Intervalos mais curtos reagem mais rapidamente e aumentam a sobrecarga de amostragem.",
-    "system": "CPU, memória e processos", "advanced": "Avançado: intervalo exato", "presets": { "lowPower": { "label": "Baixo consumo", "description": "A cada 5 segundos em segundo plano" }, "balanced": { "label": "Equilibrado", "description": "A cada segundo, recomendado" }, "realtime": { "label": "Tempo real", "description": "A cada 0,5 segundo, mais rápido" } }
+    "system": "CPU, memória e processos",
+    "advanced": "Avançado: intervalo exato",
+    "presets": {
+      "lowPower": {
+        "label": "Baixo consumo",
+        "description": "A cada 5 segundos em segundo plano"
+      },
+      "balanced": {
+        "label": "Equilibrado",
+        "description": "A cada segundo, recomendado"
+      },
+      "realtime": {
+        "label": "Tempo real",
+        "description": "A cada 0,5 segundo, mais rápido"
+      }
+    }
   },
   "connections": {
     "title": "Atualização de conexões",
@@ -60,7 +89,68 @@
     "retention": "Tempo de retenção",
     "days": "{{count}} dias"
   },
-  "dataPrivacy": { "title": "Central de dados e privacidade", "description": "Veja e controle todos os dados locais em um só lugar. O CoreRobin não envia nem sincroniza esses registros.", "status": { "on": "Salvando", "off": "Desativado" }, "resourceHistory": { "title": "Histórico de recursos e alertas", "description": "Saúde geral, ações e eventos de acompanhamento agregados, sem caminhos, comandos ou endereços de rede." }, "connectionHistory": { "title": "Histórico de conexões", "description": "Agregados opcionais de cinco minutos podem incluir IPs remotos, domínios, portas e nomes de apps." }, "caches": { "title": "Caches locais do produto", "description": "Inventário de apps, análise de espaço e resultados de arquivos permanecem neste dispositivo." }, "categories": { "resourceHistory": { "title": "Histórico de recursos e ações", "description": "Recursos do dispositivo, alertas, acompanhamento de apps e ações locais." }, "connectionHistory": { "title": "Histórico de conexões", "description": "Agregados opcionais de cinco minutos que podem incluir endereços remotos, portas e apps." }, "applicationInventory": { "title": "Cache do inventário de apps", "description": "Metadados de apps instalados por idioma da interface, sem armazenar conteúdo dos apps." }, "scanCaches": { "title": "Caches dos resultados de verificação", "description": "Resultados de limpeza e arquivos com caminhos, tamanhos e horários de modificação." } }, "metrics": { "items": "{{count}} itens", "updated": "Atualizado em {{time}}", "never": "Ainda não há dados locais", "retention": "Mantido por {{count}} dias", "session": "Somente a sessão atual" }, "result": { "clear": "Limpar categoria", "retry": "Tentar novamente", "succeeded": "Limpo", "failed": "Falha ao limpar", "skipped": "Ignorado após outra falha" }, "clearAll": { "title": "Limpar todos os dados do produto", "description": "Após uma confirmação, limpar estes dados, preferências e o estado local da interface." }, "diskAccess": { "title": "Acesso Total ao Disco", "description": "O macOS controla esta permissão opcional. O CoreRobin atualiza o estado quando você retorna.", "open": "Abrir ajustes do sistema" }, "clear": "Limpar todos os dados locais" },
+  "dataPrivacy": {
+    "title": "Central de dados e privacidade",
+    "description": "Veja e controle todos os dados locais em um só lugar. O CoreRobin não envia nem sincroniza esses registros.",
+    "status": {
+      "on": "Salvando",
+      "off": "Desativado"
+    },
+    "resourceHistory": {
+      "title": "Histórico de recursos e alertas",
+      "description": "Saúde geral, ações e eventos de acompanhamento agregados, sem caminhos, comandos ou endereços de rede."
+    },
+    "connectionHistory": {
+      "title": "Histórico de conexões",
+      "description": "Agregados opcionais de cinco minutos podem incluir IPs remotos, domínios, portas e nomes de apps."
+    },
+    "caches": {
+      "title": "Caches locais do produto",
+      "description": "Inventário de apps, análise de espaço e resultados de arquivos permanecem neste dispositivo."
+    },
+    "categories": {
+      "resourceHistory": {
+        "title": "Histórico de recursos e ações",
+        "description": "Recursos do dispositivo, alertas, acompanhamento de apps e ações locais."
+      },
+      "connectionHistory": {
+        "title": "Histórico de conexões",
+        "description": "Agregados opcionais de cinco minutos que podem incluir endereços remotos, portas e apps."
+      },
+      "applicationInventory": {
+        "title": "Cache do inventário de apps",
+        "description": "Metadados de apps instalados por idioma da interface, sem armazenar conteúdo dos apps."
+      },
+      "scanCaches": {
+        "title": "Caches dos resultados de verificação",
+        "description": "Resultados de limpeza e arquivos com caminhos, tamanhos e horários de modificação."
+      }
+    },
+    "metrics": {
+      "items": "{{count}} itens",
+      "updated": "Atualizado em {{time}}",
+      "never": "Ainda não há dados locais",
+      "retention": "Mantido por {{count}} dias",
+      "session": "Somente a sessão atual"
+    },
+    "result": {
+      "clear": "Limpar categoria",
+      "retry": "Tentar novamente",
+      "succeeded": "Limpo",
+      "failed": "Falha ao limpar",
+      "skipped": "Ignorado após outra falha"
+    },
+    "clearAll": {
+      "title": "Limpar todos os dados do produto",
+      "description": "Após uma confirmação, limpar estes dados, preferências e o estado local da interface."
+    },
+    "diskAccess": {
+      "title": "Acesso Total ao Disco",
+      "description": "O macOS controla esta permissão opcional. O CoreRobin atualiza o estado quando você retorna.",
+      "open": "Abrir ajustes do sistema"
+    },
+    "clear": "Limpar todos os dados locais"
+  },
   "notifications": {
     "title": "Notificações do desktop",
     "description": "Apenas cargas pesadas, pressão real de memória e baixo espaço em disco interrompem o status. O CoreRobin segue após a recuperação estável do problema.",
@@ -80,7 +170,10 @@
       "unavailable": "Somente para aplicativos da área de trabalho"
     },
     "test": "Enviar notificação de teste",
-    "delivery": { "sent": "Última notificação entregue ao sistema às {{time}}", "failed": "A última notificação falhou às {{time}}; faça um teste ou verifique os ajustes do sistema" }
+    "delivery": {
+      "sent": "Última notificação entregue ao sistema às {{time}}",
+      "failed": "A última notificação falhou às {{time}}; faça um teste ou verifique os ajustes do sistema"
+    }
   },
   "thresholds": {
     "title": "Limiares de alerta de recursos",
@@ -92,23 +185,99 @@
     "critical": "Crítico"
   },
   "about": {
-    "title": "Sobre e suporte", "description": "Confira a versão, obtenha ajuda e gerencie os dados que o CoreRobin mantém neste computador.",
-    "versionTitle": "Versão e atualizações", "versionDescription": "Verifique, baixe e instale a versão estável mais recente diretamente no CoreRobin.", "version": "Versão atual", "platform": "Sistema", "architecture": "Arquitetura",
-    "checking": "Verificando…", "checkUpdate": "Verificar atualizações", "releaseNotes": "Notas da versão", "updateError": "Não foi possível verificar atualizações agora. Tente novamente mais tarde.", "updateAvailable": "CoreRobin v{{version}} está disponível", "openRelease": "Baixar", "upToDate": "A versão v{{version}} está atualizada", "installUpdate": "Baixar e instalar", "installingUpdate": "Atualizando…", "downloadingUpdate": "Baixando e verificando a atualização", "applyingUpdate": "Instalando a atualização", "updateReady": "A atualização está instalada e pronta. Reinicie para abrir a nova versão.", "restartUpdate": "Reiniciar agora e concluir", "restartingUpdate": "Reiniciando…", "updateInstallError": "Não foi possível instalar a atualização. A versão atual não mudou; tente novamente mais tarde.", "updateRestartError": "A atualização foi instalada, mas o CoreRobin não conseguiu reiniciar automaticamente. Tente novamente ou feche e abra o app manualmente.", "lastChecked": "Última verificação: {{time}}", "lastCheckFailed": "A verificação em segundo plano de {{time}} falhou. Verifique novamente.", "whatsNew": "Novidades desta versão",
-    "helpTitle": "Ajuda e feedback", "helpDescription": "Abra o guia público ou confira os dados incluídos antes de relatar um problema.", "guide": "Guia do usuário", "privacy": "Privacidade", "reportIssue": "Relatar um problema", "reopenGuide": "Mostrar novamente o guia inicial",
-    "diagnosticsTitle": "Resumo de diagnóstico", "diagnosticsDescription": "Copie dados básicos de execução que ajudam a solucionar problemas.", "diagnosticsPrivacy": "Nome do computador e dos processos, caminhos, endereços de rede e valores históricos são excluídos por padrão.", "diagnosticsPreview": "Visualizar antes de copiar", "diagnostics": { "idle": "Copiar resumo anonimizado", "copied": "Copiado", "error": "Falha ao copiar" },
-    "clearTitle": "Limpar todos os dados locais", "clearDescription": "Limpe preferências, histórico, alertas, ações e cache da análise de espaço.", "clearConfirm": "Esta ação não pode ser desfeita. O CoreRobin limpará os dados locais e reiniciará; permissões do sistema, como iniciar no login, não são removidas silenciosamente.", "clearNow": "Limpar e reiniciar", "clearAction": "Limpar todos os dados", "clearing": "Limpando os dados locais…", "clearError": "Alguns dados locais não puderam ser apagados. O CoreRobin não mostrará a operação como concluída. Feche as análises em andamento e tente novamente.", "clearScope": { "history": "Histórico de recursos, alertas e ações confirmadas", "scans": "Inventário de aplicativos, cache do mapa de espaço e análise de arquivos", "preferences": "Preferências da interface e configurações locais dos recursos" }
+    "title": "Sobre e suporte",
+    "description": "Confira a versão, obtenha ajuda e gerencie os dados que o CoreRobin mantém neste computador.",
+    "versionTitle": "Versão e atualizações",
+    "versionDescription": "Verifique, baixe e instale a versão estável mais recente diretamente no CoreRobin.",
+    "version": "Versão atual",
+    "platform": "Sistema",
+    "architecture": "Arquitetura",
+    "checking": "Verificando…",
+    "checkUpdate": "Verificar atualizações",
+    "releaseNotes": "Notas da versão",
+    "updateError": "Não foi possível verificar atualizações agora. Tente novamente mais tarde.",
+    "updateAvailable": "CoreRobin v{{version}} está disponível",
+    "openRelease": "Baixar",
+    "upToDate": "A versão v{{version}} está atualizada",
+    "installUpdate": "Baixar e instalar",
+    "installingUpdate": "Atualizando…",
+    "downloadingUpdate": "Baixando e verificando a atualização",
+    "applyingUpdate": "Instalando a atualização",
+    "updateReady": "A atualização está instalada e pronta. Reinicie para abrir a nova versão.",
+    "restartUpdate": "Reiniciar agora e concluir",
+    "restartingUpdate": "Reiniciando…",
+    "updateInstallError": "Não foi possível instalar a atualização. A versão atual não mudou; tente novamente mais tarde.",
+    "updateRestartError": "A atualização foi instalada, mas o CoreRobin não conseguiu reiniciar automaticamente. Tente novamente ou feche e abra o app manualmente.",
+    "lastChecked": "Última verificação: {{time}}",
+    "lastCheckFailed": "A verificação em segundo plano de {{time}} falhou. Verifique novamente.",
+    "whatsNew": "Novidades desta versão",
+    "helpTitle": "Ajuda e feedback",
+    "helpDescription": "Abra o guia público ou confira os dados incluídos antes de relatar um problema.",
+    "guide": "Guia do usuário",
+    "privacy": "Privacidade",
+    "reportIssue": "Relatar um problema",
+    "reopenGuide": "Mostrar novamente o guia inicial",
+    "diagnosticsTitle": "Resumo de diagnóstico",
+    "diagnosticsDescription": "Copie dados básicos de execução que ajudam a solucionar problemas.",
+    "diagnosticsPrivacy": "Nome do computador e dos processos, caminhos, endereços de rede e valores históricos são excluídos por padrão.",
+    "diagnosticsPreview": "Visualizar antes de copiar",
+    "diagnostics": {
+      "idle": "Copiar resumo anonimizado",
+      "copied": "Copiado",
+      "error": "Falha ao copiar"
+    },
+    "clearTitle": "Limpar todos os dados locais",
+    "clearDescription": "Limpe preferências, histórico, alertas, ações e cache da análise de espaço.",
+    "clearConfirm": "Esta ação não pode ser desfeita. O CoreRobin limpará os dados locais e reiniciará; permissões do sistema, como iniciar no login, não são removidas silenciosamente.",
+    "clearNow": "Limpar e reiniciar",
+    "clearAction": "Limpar todos os dados",
+    "clearing": "Limpando os dados locais…",
+    "clearError": "Alguns dados locais não puderam ser apagados. O CoreRobin não mostrará a operação como concluída. Feche as análises em andamento e tente novamente.",
+    "clearScope": {
+      "history": "Histórico de recursos, alertas e ações confirmadas",
+      "scans": "Inventário de aplicativos, cache do mapa de espaço e análise de arquivos",
+      "preferences": "Preferências da interface e configurações locais dos recursos"
+    },
+    "updatedReceipt": "Atualizado com sucesso desde v{{version}}",
+    "skipVersion": "Ignorar v{{version}}"
   },
   "onboarding": {
-    "kicker": "Primeiro uso · {{current}} / {{total}}", "skip": "Pular por enquanto", "back": "Voltar", "next": "Avançar", "finish": "Começar",
-    "controls": { "mode": "Escolher modo de experiência", "everyday": "Conclusões claras e ações guiadas", "professional": "Métricas completas e evidências de diagnóstico", "diskAccess": "Acesso Total ao Disco", "openDiskAccess": "Abrir ajustes de acesso total", "diskAccessStatus": { "granted": "Pronto", "not_granted": "Opcional · não concedido", "not_required": "Não é necessário neste sistema", "unknown": "Status indisponível" } },
+    "kicker": "Primeiro uso · {{current}} / {{total}}",
+    "skip": "Pular por enquanto",
+    "back": "Voltar",
+    "next": "Avançar",
+    "finish": "Começar",
+    "controls": {
+      "mode": "Escolher modo de experiência",
+      "everyday": "Conclusões claras e ações guiadas",
+      "professional": "Métricas completas e evidências de diagnóstico",
+      "diskAccess": "Acesso Total ao Disco",
+      "openDiskAccess": "Abrir ajustes de acesso total",
+      "diskAccessStatus": {
+        "granted": "Pronto",
+        "not_granted": "Opcional · não concedido",
+        "not_required": "Não é necessário neste sistema",
+        "unknown": "Status indisponível"
+      }
+    },
     "steps": {
-      "one": { "title": "Escolha a visualização ideal", "description": "O modo Cotidiano oferece conclusões estáveis e uma próxima etapa. O modo Profissional mantém métricas completas e evidências de processos e rede. Alterne quando quiser.", "note": "Os dois modos compartilham o mesmo estado local e chegam às mesmas conclusões." },
-      "two": { "title": "Continua disponível após fechar a janela", "description": "O CoreRobin permanece na barra de menus com amostragem de baixa frequência. O painel e o Robin compartilham um único estado estável.", "note": "Pause, abra as configurações ou encerre completamente pela barra de menus." },
-      "three": { "title": "Permissões opcionais e objetivas", "description": "Notificações, Robin e iniciar no login são opcionais. O Acesso Total ao Disco serve apenas para tornar a análise de espaço mais completa.", "note": "Sem ele, as áreas acessíveis ainda podem ser analisadas. O CoreRobin não pede permissão neste guia." }
+      "one": {
+        "title": "Escolha a visualização ideal",
+        "description": "O modo Cotidiano oferece conclusões estáveis e uma próxima etapa. O modo Profissional mantém métricas completas e evidências de processos e rede. Alterne quando quiser.",
+        "note": "Os dois modos compartilham o mesmo estado local e chegam às mesmas conclusões."
+      },
+      "two": {
+        "title": "Continua disponível após fechar a janela",
+        "description": "O CoreRobin permanece na barra de menus com amostragem de baixa frequência. O painel e o Robin compartilham um único estado estável.",
+        "note": "Pause, abra as configurações ou encerre completamente pela barra de menus."
+      },
+      "three": {
+        "title": "Permissões opcionais e objetivas",
+        "description": "Notificações, Robin e iniciar no login são opcionais. O Acesso Total ao Disco serve apenas para tornar a análise de espaço mais completa.",
+        "note": "Sem ele, as áreas acessíveis ainda podem ser analisadas. O CoreRobin não pede permissão neste guia."
+      }
     }
-  }
-,
+  },
   "applicationImpactHistory": {
     "label": "Manter agregados de impacto dos apps",
     "hint": "Requer histórico no dispositivo e permissão para salvar nomes dos apps; comandos e caminhos nunca são salvos."
@@ -133,5 +302,19 @@
     "stepsHeading": "Etapas para reproduzir",
     "stepsPlaceholder": "<!-- Liste as etapas mais curtas que reproduzem o problema. -->",
     "diagnosticHeading": "Ambiente com dados pessoais removidos"
+  },
+  "transfer": {
+    "invalid": "Este arquivo não é um backup de preferências CoreRobin compatível.",
+    "title": "Backup de preferências e regras",
+    "description": "Transfira preferências do CoreRobin e regras de observação por um arquivo JSON local explícito.",
+    "export": "Exportar ajustes",
+    "import": "Importar ajustes",
+    "boundary": "Inclui apenas preferências e regras; não exporta histórico, caminhos, conexões ou resultados de varredura.",
+    "previewTitle": "Revisar alterações importadas",
+    "preview_other": "{{count}} ajuste diferente · {{rules}} regras de observação",
+    "noChanges": "Nenhum ajuste seria alterado",
+    "apply": "Aplicar ajustes importados",
+    "preview_one": "{{count}} ajuste diferente · {{rules}} regras de observação",
+    "preview": "{{count}} ajuste diferente · {{rules}} regras de observação"
   }
 }

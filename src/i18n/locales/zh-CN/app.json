@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} 个应用或系统组件",
     "savedHistory": "{{count}} 个已保存历史点",
     "processCount": "{{count}} 个进程",
-    "cleanupEntries": "已检查 {{count}} 个项目"
+    "cleanupEntries": "已检查 {{count}} 个项目",
+    "samplerSaved": "原生采样 {{time}} · 连续失败 {{failures}} 次",
+    "samplerWaiting": "原生采样正在启动"
   }
 }

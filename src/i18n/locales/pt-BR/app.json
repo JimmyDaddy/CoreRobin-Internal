@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} Aplicativos e componentes do sistema",
     "savedHistory": "{{count}} Histórico salvo",
     "processCount": "{{count}} Processos em execução",
-    "cleanupEntries": "{{count}} Itens verificados"
+    "cleanupEntries": "{{count}} Itens verificados",
+    "samplerSaved": "Amostrador nativo {{time}} · {{failures}} falhas consecutivas",
+    "samplerWaiting": "Iniciando o amostrador nativo"
   }
 }

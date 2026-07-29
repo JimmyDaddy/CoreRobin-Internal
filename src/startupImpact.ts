@@ -100,22 +100,56 @@ export function completeStartupImpactMeasurement(
 
 export function loadStartupImpactMeasurements(storage: Storage): StartupImpactMeasurement[] {
   try {
-    const parsed = JSON.parse(storage.getItem(STARTUP_IMPACT_STORAGE_KEY) ?? "[]") as unknown;
+    return parseStartupImpactMeasurements(
+      storage.getItem(STARTUP_IMPACT_STORAGE_KEY),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function parseStartupImpactMeasurements(
+  payload: string | null,
+): StartupImpactMeasurement[] {
+  if (!payload) return [];
+  try {
+    const parsed = JSON.parse(payload) as unknown;
     return Array.isArray(parsed) ? parsed.filter(isMeasurement).slice(0, 5) : [];
   } catch {
     return [];
   }
 }
 
+export function serializeStartupImpactMeasurements(
+  measurements: readonly StartupImpactMeasurement[],
+): string {
+  return JSON.stringify(measurements.filter(isMeasurement).slice(0, 5));
+}
+
+export function mergeStartupImpactMeasurement(
+  current: readonly StartupImpactMeasurement[],
+  measurement: StartupImpactMeasurement,
+): StartupImpactMeasurement[] {
+  return [
+    measurement,
+    ...current.filter((entry) =>
+      entry.launchedAtMs !== measurement.launchedAtMs),
+  ].slice(0, 5);
+}
+
 export function saveStartupImpactMeasurement(
   storage: Storage,
   measurement: StartupImpactMeasurement,
 ): StartupImpactMeasurement[] {
-  const current = loadStartupImpactMeasurements(storage)
-    .filter((entry) => entry.launchedAtMs !== measurement.launchedAtMs);
-  const next = [measurement, ...current].slice(0, 5);
+  const next = mergeStartupImpactMeasurement(
+    loadStartupImpactMeasurements(storage),
+    measurement,
+  );
   try {
-    storage.setItem(STARTUP_IMPACT_STORAGE_KEY, JSON.stringify(next));
+    storage.setItem(
+      STARTUP_IMPACT_STORAGE_KEY,
+      serializeStartupImpactMeasurements(next),
+    );
   } catch {
     // The completed measurement remains available in React state.
   }

@@ -24,6 +24,10 @@ describe("cleanup permanent deletion confirmation mock", () => {
     expect(executeMockCleanupDelete({ leaseId: lease.id })).toEqual({
       deleted: [{ path: "~/Downloads/archive.zip", deletedBytes: 0 }],
       deletedBytes: 0,
+      selectedLogicalBytes: 0,
+      selectedAllocatedBytes: 0,
+      availableBytesBefore: 120_000_000_000,
+      availableBytesAfter: 120_000_000_000,
       failed: [],
       cancelled: false,
       interruptedPath: null,

@@ -64,9 +64,20 @@ export function mergeApplicationWatchHistory(
 
 export function loadApplicationWatchHistory(): ApplicationWatchHistoryEvent[] {
   try {
-    const value = JSON.parse(
-      window.localStorage.getItem(APPLICATION_WATCH_HISTORY_STORAGE_KEY) ?? "[]",
-    ) as unknown;
+    return parseApplicationWatchHistory(
+      window.localStorage.getItem(APPLICATION_WATCH_HISTORY_STORAGE_KEY),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function parseApplicationWatchHistory(
+  payload: string | null,
+): ApplicationWatchHistoryEvent[] {
+  if (!payload) return [];
+  try {
+    const value = JSON.parse(payload) as unknown;
     return Array.isArray(value)
       ? value.filter(isApplicationWatchHistoryEvent)
           .slice(-MAX_APPLICATION_WATCH_HISTORY_EVENTS)
@@ -76,13 +87,19 @@ export function loadApplicationWatchHistory(): ApplicationWatchHistoryEvent[] {
   }
 }
 
+export function serializeApplicationWatchHistory(
+  events: readonly ApplicationWatchHistoryEvent[],
+): string {
+  return JSON.stringify(events.slice(-MAX_APPLICATION_WATCH_HISTORY_EVENTS));
+}
+
 export function saveApplicationWatchHistory(
   events: readonly ApplicationWatchHistoryEvent[],
 ): void {
   try {
     window.localStorage.setItem(
       APPLICATION_WATCH_HISTORY_STORAGE_KEY,
-      JSON.stringify(events.slice(-MAX_APPLICATION_WATCH_HISTORY_EVENTS)),
+      serializeApplicationWatchHistory(events),
     );
   } catch {
     // Session history remains available when WebView persistence is unavailable.

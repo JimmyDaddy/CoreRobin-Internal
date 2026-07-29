@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} aplicaciones o componentes del sistema",
     "savedHistory": "{{count}} puntos de historial guardados",
     "processCount": "{{count}} procesos",
-    "cleanupEntries": "{{count}} elementos revisados"
+    "cleanupEntries": "{{count}} elementos revisados",
+    "samplerSaved": "Muestreador nativo {{time}} · {{failures}} fallos consecutivos",
+    "samplerWaiting": "Iniciando el muestreador nativo"
   }
 }

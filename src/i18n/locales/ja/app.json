@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} アプリケーションまたはシステムコンポーネントの数",
     "savedHistory": "{{count}} 保存された履歴ポイント",
     "processCount": "{{count}} 実行中のプロセス数",
-    "cleanupEntries": "{{count}} 確認されたアイテム"
+    "cleanupEntries": "{{count}} 確認されたアイテム",
+    "samplerSaved": "ネイティブサンプラー {{time}} · 連続失敗 {{failures}} 回",
+    "samplerWaiting": "ネイティブサンプラーを起動中"
   }
 }

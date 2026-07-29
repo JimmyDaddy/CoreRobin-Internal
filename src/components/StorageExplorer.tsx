@@ -37,6 +37,10 @@ import type {
   ProcessRow,
   StorageHealthSnapshot,
 } from "../types";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import {
   formatBytes,
   formatRate,
@@ -55,6 +59,11 @@ interface StorageExplorerProps {
   usageThresholds: UsageThresholds;
   onOpenCleanup: () => void;
   onVolumeEjected?: () => void | Promise<void>;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (
+    id: string,
+    input: CompleteUserActionInput,
+  ) => void;
 }
 
 const CHART_WIDTH = 720;
@@ -71,6 +80,8 @@ export function StorageExplorer({
   usageThresholds,
   onOpenCleanup,
   onVolumeEjected,
+  onUserActionStart,
+  onUserActionComplete,
 }: StorageExplorerProps) {
   const { t } = useAppTranslation();
   const [confirmingMountPoint, setConfirmingMountPoint] = useState<string | null>(null);
@@ -159,14 +170,35 @@ export function StorageExplorer({
     }
   };
   const ejectVolume = async (mountPoint: string, name: string) => {
+    const actionId = onUserActionStart?.({
+      kind: "volume_eject",
+      targetName: name || mountPoint,
+      targetCount: 1,
+    });
     setEjectingMountPoint(mountPoint);
     setEjectError(null);
     setEjectNotice(null);
     try {
       await ejectRemovableVolume(mountPoint);
+      if (actionId) {
+        onUserActionComplete?.(actionId, {
+          status: "succeeded",
+          verification: "verified",
+          targetCount: 1,
+          failedCount: 0,
+        });
+      }
       setConfirmingMountPoint(null);
       setEjectNotice(t("storage:eject.success", { name: name || mountPoint }));
     } catch (caughtError) {
+      if (actionId) {
+        onUserActionComplete?.(actionId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: 0,
+          failedCount: 1,
+        });
+      }
       const error = normalizeCommandError(caughtError);
       setEjectError(t(
         error.code === "volume_not_removable"

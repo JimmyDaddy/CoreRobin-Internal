@@ -1,6 +1,6 @@
 # CoreRobin 隐私说明
 
-最后核对：2026-07-28
+最后核对：2026-07-29
 
 CoreRobin 是本机桌面应用。它读取这台电脑的资源状态、运行中的应用和你主动开始的空间扫描结果，用来在本机展示状态、诊断与清理复核。本文说明应用本身的数据边界；访问官网、GitHub Release 或提交 Issue 时，还会受到相应服务的隐私规则约束。
 
@@ -13,12 +13,14 @@ CoreRobin 是本机桌面应用。它读取这台电脑的资源状态、运行�
 
 ## 会在本机处理和保存什么
 
-- **实时状态**：CPU、内存、磁盘、网络、应用、进程、启动项和连接的本机快照，用于当前界面和诊断。
-- **本机历史与操作记录**：当你开启资源历史时，资源趋势、持续问题、应用关注规则的触发/恢复事件和你确认的操作结果会保存在设备上。应用和启动项名称只有在你允许保存名称后才会跨重启保留。应用影响历史还需要单独开启，最多保存 7 天的五分钟稳定应用身份和 CPU、内存、磁盘聚合值，不保存 PID、命令行或路径。它经过紧凑编码和原子写入，保存在 CoreRobin 的原生私有应用数据目录而不是 WebView localStorage；界面会显示最后成功保存时间、占用字节和写入失败。连接历史使用单独开关且默认关闭；启用后保存应用名称、反向解析得到的主机名或远端 IP、协议、端口和五分钟观察次数，最多 5000 条，可保留 1、7 或 30 天。
+- **实时状态**：CPU、内存、磁盘、网络、应用、进程、启动项和连接的本机快照，用于当前界面和诊断。关闭主窗口后，原生采样器仍按设置的间隔运行，让状态栏状态、提醒和历史保持连续；选择“退出应用”才会停止。
+- **本机历史与操作记录**：启用对应功能后，资源趋势、提醒、网络质量、连接、应用影响、应用关注事件、启动测量、清理扫描摘要和你确认的操作结果，会以有界的原子分段保存在 CoreRobin 的原生私有应用数据目录。界面会显示最后成功保存时间、占用字节和写入失败，并在清除后核验结果再宣称成功。应用和启动项名称只有在你允许保存名称后才会跨重启保留。应用影响历史还需要单独开启，最多保存 7 天的五分钟稳定应用身份和 CPU、内存、磁盘聚合值，不保存 PID、命令行或路径。连接历史使用单独开关且默认关闭；启用后保存应用名称、反向解析得到的主机名或远端 IP、协议、端口和五分钟观察次数，最多 5000 条，可保留 1、7 或 30 天。
 - **应用清单缓存**：macOS 上会按界面语言在应用数据目录中保存已安装应用的本地化名称、路径、Bundle ID、应用大小、时间信息和应用目录指纹，减少重复扫描。缓存超过 24 小时会建议刷新，最多使用 7 天；手动刷新会重新读取，清单不会上传。
-- **空间扫描结果**：常规扫描读取名称、大小、时间、位置和文件类型等元数据，结果最多保留 7 天。重复文件检查只在前台主动执行，读取候选内容计算哈希；结果同样最多保留 7 天，并保存路径、大小、修改时间、设备 ID、inode 和本机哈希，不保存文件内容。重新打开时只核对已知文件的元数据；指纹变化的重复候选会重新计算哈希，缺失或身份变化的条目会移除，不会为了恢复页面再次完整扫描。清理会用保存的扫描证据逐项绑定已确认目标且不跟随符号链接；不存在的目标会跳过，无法访问或不支持的目标会单独报告，不阻塞其他项目。
+- **空间扫描结果**：常规扫描读取名称、大小、时间、位置和文件类型等元数据，结果最多保留 7 天。每个扫描目标最多保存三份紧凑增长快照，包括目标身份、聚合大小和一级路径及大小摘要，不会复制文件内容。重复文件检查只在前台主动执行，读取候选内容计算哈希；结果同样最多保留 7 天，并保存路径、大小、修改时间、设备 ID、inode 和本机哈希，不保存文件内容。重新打开时只核对已知文件的元数据；指纹变化的重复候选会重新计算哈希，缺失或身份变化的条目会移除，不会为了恢复页面再次完整扫描。清理会用保存的扫描证据逐项绑定已确认目标且不跟随符号链接；不存在的目标会跳过，无法访问或不支持的目标会单独报告，不阻塞其他项目。
 - **登录启动影响**：只有系统以登录项后台启动 CoreRobin 时，才会保存最近 5 次测量的时间、CPU/磁盘峰值、趋稳时间和应用名称及资源峰值。
-- **偏好**：语言、动态效果、通知、历史保留、后台启动和 Robin 伙伴偏好保存在本机，用于下次启动时恢复你的选择。清理页还会保留最多五个由你选择的外置卷或文件夹绝对路径，便于再次扫描；可以通过清除本机数据移除。
+- **电池会话**：CoreRobin 会从电池快照在本机推导充电与放电会话，保存时间、电源来源、电量区间和聚合速率。只有开启名称历史权限时才会保留应用名称；不会保存命令行和文件路径。
+- **偏好**：语言、动态效果、通知、历史保留、后台启动和 Robin 伙伴偏好保存在本机，用于下次启动时恢复你的选择。清理页还会保留最多五个由你选择的外置卷或文件夹绝对路径，便于再次扫描；可以通过清除本机数据移除。设置导出只在你主动操作时生成，只包含偏好和关注规则，不包含历史、扫描结果、连接数据或诊断日志。
+- **可选的废纸篓应用侦测**：开启后，CoreRobin 运行期间约每 30 秒检查当前用户废纸篓顶层的 `.app` 应用包，读取应用名、路径、Bundle ID 和修改时间，以便提供需要复核的残留清理计划。它不会检查废纸篓内无关内容，也不会自动删除任何项目。
 
 ## 完全磁盘访问权限
 
@@ -33,7 +35,7 @@ macOS 会保护邮件、信息和其他应用数据等位置。开启“完全�
 - 打开网络质量页面会立即检查一次，并在页面保持打开时每 30 秒检查一次；离开页面后停止，也可以手动立即复测。每次检查会分别确认本地路由、系统 DNS、IPv4/IPv6 与直连公网，并轮流对 `example.com:443` 和 `one.one.one.one:443` 发起轻量 TCP 连接，估算延迟、抖动与 TCP 探测失败比例；不发送 HTTP 请求内容。
 - 网络质量长期历史默认关闭。开启后，页面关闭时每 5 分钟进行一次轻量检查，并在本机按 5 分钟桶保存聚合值；你可以选择最近 1 小时、24 小时或 7 天，并随时单独清空。保存内容只有时间、状态、DNS/延迟/抖动聚合值、TCP 探测成功/总次数、事件类型，以及活动接口与默认路由组合的不可逆指纹；不保存网关地址。
 - 启用连接历史后，CoreRobin 会通过系统配置的 DNS 解析器尝试对最多 32 个远端 IP 做反向解析，以便按主机名聚合。解析失败时保留 IP，不会把连接清单发送给 CoreRobin 服务器。
-- 打开“关于与支持”或每日后台检查运行时，签名更新器会从公开仓库 `JimmyDaddy/corerobin-monitor` 的 GitHub Release 请求 `latest.json`；下载更新时会从同一公开 Release 获取相应安装包。
+- 应用级签名更新器在 CoreRobin 运行期间最多每天检查一次，并在网络恢复后重试。它会从公开仓库 `JimmyDaddy/corerobin-monitor` 的 GitHub Release 请求 `latest.json`；下载更新时会从同一公开 Release 获取相应安装包。
 - 检查和反向解析会被你的网络运营商、DNS 提供方或目标主机按其各自策略处理。关闭连接历史会停止新的反向解析。
 
 ## 删除、清空与卸载
@@ -53,9 +55,9 @@ CoreRobin 的正式应用标识是 `com.corerobin.monitor`。正常情况下先�
 
 | 平台 | CoreRobin 数据与 WebView 存储 | 登录启动残留 |
 | --- | --- | --- |
-| macOS | `~/Library/Application Support/com.corerobin.monitor/`（其中 `cleanup-scan-v3.json` 是原生扫描缓存）；WebView 或系统偏好残留可能包括 `~/Library/WebKit/com.corerobin.monitor/`、`~/Library/Caches/com.corerobin.monitor/` 和 `~/Library/Preferences/com.corerobin.monitor.plist` | `~/Library/LaunchAgents/core-robin.plist` |
-| Windows | `%APPDATA%\com.corerobin.monitor\`（其中可能包含原生扫描缓存）；WebView2 与本机缓存可能包括 `%LOCALAPPDATA%\com.corerobin.monitor\` | 注册表 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 与 `…\Explorer\StartupApproved\Run` 中名为 `core-robin` 的值 |
-| Linux | `${XDG_DATA_HOME:-~/.local/share}/com.corerobin.monitor/`（其中可能包含原生扫描缓存与 WebView 数据）；如设置了 `XDG_CACHE_HOME`，还可能存在对应缓存目录 | `${XDG_CONFIG_HOME:-~/.config}/autostart/core-robin.desktop` |
+| macOS | `~/Library/Application Support/com.corerobin.monitor/`（包含有界的原生历史分段和 `cleanup-scan-v3.json` 扫描缓存）；WebView 或系统偏好残留可能包括 `~/Library/WebKit/com.corerobin.monitor/`、`~/Library/Caches/com.corerobin.monitor/` 和 `~/Library/Preferences/com.corerobin.monitor.plist` | `~/Library/LaunchAgents/core-robin.plist` |
+| Windows | `%APPDATA%\com.corerobin.monitor\`（其中可能包含原生历史分段和扫描数据）；WebView2 与本机缓存可能包括 `%LOCALAPPDATA%\com.corerobin.monitor\` | 注册表 `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` 与 `…\Explorer\StartupApproved\Run` 中名为 `core-robin` 的值 |
+| Linux | `${XDG_DATA_HOME:-~/.local/share}/com.corerobin.monitor/`（其中可能包含原生历史分段、扫描数据与 WebView 数据）；如设置了 `XDG_CACHE_HOME`，还可能存在对应缓存目录 | `${XDG_CONFIG_HOME:-~/.config}/autostart/core-robin.desktop` |
 
 不要删除名称相近但不在上述标识下的其他应用目录。手动删除前如有疑问，可以先在公开 Issue 中只提供系统版本、CoreRobin 版本和**经过隐藏处理**的目录列表，不要上传目录内容。
 

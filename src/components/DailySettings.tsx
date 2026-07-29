@@ -14,6 +14,7 @@ import type { DesktopNotificationStatus } from "../desktopNotifications";
 import type { AppSettings } from "../settings";
 import type { SystemSnapshot } from "../types";
 import type { ProductDataClearResult } from "../productDataClear";
+import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import { AboutSupport } from "./AboutSupport";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
@@ -23,9 +24,7 @@ interface DailySettingsProps {
   notificationStatus: DesktopNotificationStatus;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
-  availableUpdateVersion?: string | null;
-  lastUpdateCheckAt?: number | null;
-  backgroundUpdateCheckFailed?: boolean;
+  updater: AppUpdaterController;
   onOpenNotificationSettings?: () => void;
   onOpenOnboarding: () => void;
   onClearAllData: () => Promise<void | ProductDataClearResult[]>;
@@ -35,9 +34,7 @@ export function DailySettings({
   settings,
   notificationStatus,
   snapshot,
-  availableUpdateVersion = null,
-  lastUpdateCheckAt = null,
-  backgroundUpdateCheckFailed = false,
+  updater,
   onChange,
   onOpenNotificationSettings = () => undefined,
   onOpenOnboarding,
@@ -151,9 +148,7 @@ export function DailySettings({
       <AboutSupport
         settings={settings}
         snapshot={snapshot}
-        backgroundUpdateVersion={availableUpdateVersion}
-        backgroundUpdateCheckedAt={lastUpdateCheckAt}
-        backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
+        updater={updater}
         onOpenOnboarding={onOpenOnboarding}
         onClearAllData={onClearAllData}
       />

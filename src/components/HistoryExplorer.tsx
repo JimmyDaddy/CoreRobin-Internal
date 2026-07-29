@@ -1,6 +1,7 @@
 import {
   Activity,
   BellRing,
+  BatteryMedium,
   BookOpen,
   CheckCircle2,
   Cpu,
@@ -26,7 +27,7 @@ import {
 import { buildHistoryStories, type HistoryStory } from "../historyStories";
 import type { UsageThresholds } from "../settings";
 import type { HistoryPoint } from "../types";
-import { formatRate, resourceUsageLevel } from "../utils";
+import { formatBytes, formatRate, resourceUsageLevel } from "../utils";
 import "./HistoryExplorer.css";
 import type {
   ResourceAlertEvent,
@@ -40,6 +41,10 @@ import type { ApplicationImpactHistoryPoint } from "../applicationImpactHistory"
 import type { ApplicationImpactHistoryStorageStatus } from "../hooks/useApplicationImpactHistory";
 import { ApplicationImpactHistoryPanel } from "./ApplicationImpactHistoryPanel";
 import { PersonalBaselinePanel } from "./PersonalBaselinePanel";
+import type { NetworkQualityHistoryPoint } from "../networkQualityHistory";
+import { SystemEventReplay } from "./SystemEventReplay";
+import { buildBatteryUsageSessions } from "../batterySessions";
+import type { NativeHistoryStorageStatus } from "../hooks/useNativeHistoryStorage";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
@@ -47,11 +52,13 @@ interface HistoryExplorerProps {
   applicationImpactPoints: ApplicationImpactHistoryPoint[];
   applicationImpactHistoryEnabled: boolean;
   applicationImpactStorageStatus: ApplicationImpactHistoryStorageStatus;
+  historyStorageStatus: NativeHistoryStorageStatus;
   alertEvents: ResourceAlertEvent[];
   storedAlertEventCount: number;
   applicationWatchEvents?: ApplicationWatchHistoryEvent[];
   storedApplicationWatchEventCount?: number;
   actionRecords: UserActionRecord[];
+  networkQualityPoints: NetworkQualityHistoryPoint[];
   storedUserActionCount: number;
   activeAlertCount: number;
   persistenceEnabled: boolean;
@@ -75,11 +82,13 @@ export function HistoryExplorer({
   applicationImpactPoints,
   applicationImpactHistoryEnabled,
   applicationImpactStorageStatus,
+  historyStorageStatus,
   alertEvents,
   storedAlertEventCount,
   applicationWatchEvents = [],
   storedApplicationWatchEventCount = 0,
   actionRecords,
+  networkQualityPoints,
   storedUserActionCount,
   activeAlertCount,
   persistenceEnabled,
@@ -109,6 +118,10 @@ export function HistoryExplorer({
     [alertEvents],
   );
   const range = historyRangeLabel(points, i18n.resolvedLanguage);
+  const batterySessions = useMemo(
+    () => buildBatteryUsageSessions(points),
+    [points],
+  );
 
   return (
     <section className="history-explorer" aria-labelledby="persistent-history-title">
@@ -158,6 +171,21 @@ export function HistoryExplorer({
             count: storedApplicationWatchEventCount,
           })}
           {" · "}{t("history:actions.saved", { count: storedUserActionCount })}
+        </span>
+        <span
+          className={`history-controls__storage is-${historyStorageStatus.state}`}
+          title={historyStorageStatus.error ?? undefined}
+        >
+          <Database size={13} />
+          {historyStorageStatus.state === "failed"
+            ? t("history:storage.failed")
+            : historyStorageStatus.lastSavedAtMs
+              ? t("history:storage.saved", {
+                  size: formatBytes(historyStorageStatus.byteSize),
+                  time: new Date(historyStorageStatus.lastSavedAtMs)
+                    .toLocaleTimeString(i18n.resolvedLanguage),
+                })
+              : t("history:storage.waiting")}
         </span>
         <button
           className="button button--danger-ghost"
@@ -210,6 +238,65 @@ export function HistoryExplorer({
         storageStatus={applicationImpactStorageStatus}
         onEnabledChange={onApplicationImpactHistoryEnabledChange}
       />
+
+      <SystemEventReplay
+        points={points}
+        applicationImpactPoints={applicationImpactPoints}
+        alerts={alertEvents}
+        watchEvents={applicationWatchEvents}
+        networkQualityPoints={networkQualityPoints}
+        actions={actionRecords}
+      />
+
+      <section className="panel battery-sessions" aria-labelledby="battery-sessions-title">
+        <header>
+          <div>
+            <span className="eyebrow">{t("history:batterySessions.eyebrow")}</span>
+            <h3 id="battery-sessions-title"><BatteryMedium size={17} />{t("history:batterySessions.title")}</h3>
+            <p>{t("history:batterySessions.description")}</p>
+          </div>
+          <span>{t("history:batterySessions.count", { count: batterySessions.length })}</span>
+        </header>
+        {batterySessions.length > 0 ? (
+          <ol>
+            {batterySessions.slice(0, 10).map((session) => (
+              <li key={session.id}>
+                <div className="battery-sessions__time">
+                  <strong>{new Date(session.startedAtMs).toLocaleString(i18n.resolvedLanguage)}</strong>
+                  <small>{session.ongoing
+                    ? t("history:batterySessions.ongoing")
+                    : t("history:batterySessions.duration", {
+                        minutes: Math.max(1, Math.round(
+                          (session.endedAtMs - session.startedAtMs) / 60_000,
+                        )),
+                      })}</small>
+                </div>
+                <div><small>{t("history:batterySessions.charge")}</small><strong>
+                  {session.startChargePercent ?? "—"}% → {session.endChargePercent ?? "—"}%
+                </strong></div>
+                <div><small>{t("history:batterySessions.drainRate")}</small><strong>
+                  {session.drainPercentPerHour === null
+                    ? "—"
+                    : `${session.drainPercentPerHour.toFixed(1)}%/h`}
+                </strong></div>
+                <div className="battery-sessions__evidence">
+                  <small>{t("history:batterySessions.evidence")}</small>
+                  <span>{session.majorApplicationNames.length > 0
+                    ? session.majorApplicationNames.join(" · ")
+                    : t("history:batterySessions.noApplicationEvidence")}</span>
+                  {session.blockerNames.length > 0 ? (
+                    <em>{t("history:batterySessions.blockers", {
+                      names: session.blockerNames.join(" · "),
+                    })}</em>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="battery-sessions__empty">{t("history:batterySessions.empty")}</div>
+        )}
+      </section>
 
       {stories.length > 0 ? (
       <section className="panel history-stories" aria-labelledby="history-stories-title">

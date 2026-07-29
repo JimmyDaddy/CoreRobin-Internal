@@ -115,7 +115,10 @@
       "process_force_quit": "앱 강제 종료",
       "cleanup_delete": "파일 정리",
       "startup_disable": "시작 항목 비활성화",
-      "startup_enable": "시작 항목 복원"
+      "startup_enable": "시작 항목 복원",
+      "application_uninstall": "애플리케이션 제거",
+      "volume_eject": "이동식 볼륨 추출",
+      "application_update": "애플리케이션 업데이트 설치"
     },
     "status": {
       "running": "실행 중",
@@ -136,16 +139,24 @@
       "startup": "시작 항목 이름을 저장하지 않음"
     },
     "cleanupResult": "{{count}}개 항목을 처리하고 {{size}} 확보",
-    "cleanupFailed": "{{count}}개 항목 미완료"
+    "cleanupFailed": "{{count}}개 항목 미완료",
+    "retry": "다시 시도"
   },
-  "watchRules": { "title": "앱 관찰 기록", "description": "만든 알림 규칙의 로컬 발생 및 회복 이벤트입니다.", "savedEvents": "관찰 이벤트 {{count}}개", "savedEvents_other": "관찰 이벤트 {{count}}개", "privateApplication": "앱 이름을 저장하지 않음", "triggered": "{{metric}}이(가) {{value}}{{unit}}에 도달", "recovered": "{{metric}}이(가) {{value}}{{unit}}로 회복" },
+  "watchRules": {
+    "title": "앱 관찰 기록",
+    "description": "만든 알림 규칙의 로컬 발생 및 회복 이벤트입니다.",
+    "savedEvents": "관찰 이벤트 {{count}}개",
+    "savedEvents_other": "관찰 이벤트 {{count}}개",
+    "privateApplication": "앱 이름을 저장하지 않음",
+    "triggered": "{{metric}}이(가) {{value}}{{unit}}에 도달",
+    "recovered": "{{metric}}이(가) {{value}}{{unit}}로 회복"
+  },
   "privacyEyebrow": "데이터 범위 설정",
   "privacyTitle": "개인 정보 보호 정책",
   "privacyLocal": "사용 기록은 이 장치의 CoreRobin 전용 저장소에만 남으며 업로드되거나 동기화되지 않습니다.",
   "privacyCollected": "집계된 자원 정보, 압력 및 복구 이벤트와 함께 사용자가 확인한 작업의 유형, 결과, 항목 수, 확보 공간을 저장합니다. 앱 또는 시작 항목 이름은 설정에서 별도로 허용한 경우에만 저장됩니다.",
   "privacyExcluded": "리소스 및 작업 기록에는 명령, 사용자, 경로, 파일 이름, 연결 주소를 저장하지 않습니다. 연결 기록을 별도로 켜면 5분 집계에 원격 IP, 도메인, 포트 및 앱 이름이 포함될 수 있습니다.",
-  "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다."
-,
+  "privacyControl": "사용을 중지하면 새로운 기록이 생성되지 않으며, 기존 기록은 자동으로 삭제되거나 수동으로 삭제할 때까지 유지됩니다.",
   "applicationImpact": {
     "eyebrow": "애플리케이션 기여도",
     "title": "어떤 앱이 이 컴퓨터에 영향을 주었나요?",
@@ -200,5 +211,62 @@
       "temperature": "온도",
       "battery": "배터리 소모"
     }
+  },
+  "replay": {
+    "eyebrow": "근거 타임라인",
+    "title": "시스템 이벤트 재생",
+    "description": "기간을 선택해 리소스 변화, 네트워크 이벤트, 앱 귀속 및 확인한 작업 결과를 연결합니다.",
+    "range": "재생 범위",
+    "from": "시작",
+    "to": "종료",
+    "evidenceTitle": "이 기간의 근거",
+    "applicationEvidence": "{{from}}–{{to}}: {{applications}}가 주요 리소스 원인이었습니다. 시스템 최고치는 CPU {{cpu}}, 메모리 {{memory}}입니다.",
+    "noApplicationEvidence": "이 기간의 앱 귀속은 저장되지 않았습니다. 시스템 최고치는 CPU {{cpu}}, 메모리 {{memory}}입니다.",
+    "leadingApplication": "{{application}}의 평균은 CPU {{cpu}}, 메모리 {{memory}}였습니다.",
+    "empty": "이 기간에 경고, 네트워크, 감시 또는 작업 이벤트가 없습니다.",
+    "actionImpact": {
+      "improved": "작업 후 15분 동안 시스템 부하 감소",
+      "increased": "작업 후 15분 동안 시스템 부하 증가",
+      "stable": "작업 전후 시스템 부하가 비슷함",
+      "insufficient": "비교할 후속 샘플이 부족함"
+    },
+    "hours1": "1시간",
+    "hours24": "24시간",
+    "hours168": "7일",
+    "alert": {
+      "triggered": "리소스 압박 시작",
+      "recovered": "리소스 압박 회복"
+    },
+    "watch": {
+      "triggered": "앱 감시 규칙 작동",
+      "recovered": "앱 감시 규칙 회복"
+    },
+    "network": {
+      "sleep_gap": "잠자기 중 샘플링 일시 중지",
+      "interface_change": "네트워크 인터페이스 변경",
+      "status_change": "네트워크 상태 변경",
+      "dns_failure": "DNS 품질 저하",
+      "direct_failure": "직접 연결 저하"
+    }
+  },
+  "storage": {
+    "saved": "네이티브 기록 저장 {{time}} · {{size}}",
+    "waiting": "네이티브 기록 저장소 시작 중",
+    "failed": "기록 저장이 일시 중지되었습니다. 열어서 이유를 확인하세요"
+  },
+  "batterySessions": {
+    "eyebrow": "배터리 사용 타임라인",
+    "title": "배터리 사용 세션",
+    "description": "배터리 전원으로 전환할 때 시작되며 로컬 집계로 소모량, 주요 원인 및 절전 방해 앱을 설명합니다.",
+    "count_other": "{{count}}개 세션",
+    "ongoing": "진행 중",
+    "duration": "{{minutes}}분",
+    "charge": "충전량",
+    "drainRate": "평균 소모",
+    "evidence": "가능성 높은 주요 원인",
+    "noApplicationEvidence": "앱 이름이 저장되지 않음",
+    "blockers": "절전 방해: {{names}}",
+    "empty": "아직 완성된 배터리 세션이 없습니다.",
+    "count": "{{count}}개 세션"
   }
 }

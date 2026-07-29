@@ -52,7 +52,10 @@
     "eyebrow": "Lanzamiento de inicio de sesión medido",
     "title": "Impacto real del inicio de sesión",
     "description": "Muestras solo cuando el sistema operativo inicia CoreRobin silenciosamente como elemento de inicio de sesión, hasta que el sistema se estabilice.",
-    "settleTime": "tiempo de liquidación", "peakCpu": "Pico CPU", "peakDisk": "disco pico", "samples": "Muestras",
+    "settleTime": "tiempo de liquidación",
+    "peakCpu": "Pico CPU",
+    "peakDisk": "disco pico",
+    "samples": "Muestras",
     "boundary": "Esto mide el impacto posterior al inicio de sesión, no el tiempo de inicio del firmware. Las mediciones se detienen después de tres minutos y se conservan los últimos cinco.",
     "empty": "Aún no hay una medición real del inicio de sesión. Habilite Iniciar al iniciar sesión para medir el siguiente inicio de sesión automáticamente.",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "Daemon de inicio",
     "desktop_entry": "Entrada automática",
     "registry_run": "Ejecución desde el registro",
-    "startup_folder": "Carpeta de inicio"
+    "startup_folder": "Carpeta de inicio",
+    "background_task": "Tarea en segundo plano"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "Actualmente deshabilitado",
       "description": "La configuración permanece, pero el sistema no la iniciará automáticamente a partir de esta entrada."
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "Comparado con inicios recientes",
     "description": "Usa la mediana de {{count}} mediciones anteriores.",
@@ -149,6 +152,20 @@
       "improved": "Tras {{count}} cambios de inicio, el siguiente arranque se estabilizó más rápido; no se puede atribuir a un único cambio.",
       "similar": "Tras {{count}} cambios de inicio, el siguiente arranque se mantuvo cerca del patrón reciente.",
       "slower": "Tras {{count}} cambios de inicio, el siguiente arranque siguió siendo más lento; no puede identificarse una sola causa."
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} elemento",
+    "modern": "Elemento de fondo moderno",
+    "orphaned": "Falta el ejecutable",
+    "lastRun": "Último estado informado: {{status}}",
+    "itemCount_one": "{{count}} elemento",
+    "itemCount": "{{count}} elemento",
+    "signature": {
+      "valid": "Firma válida",
+      "invalid": "Firma no válida",
+      "unknown": "Firma desconocida",
+      "system_reported": "Informado por macOS"
     }
   }
 }

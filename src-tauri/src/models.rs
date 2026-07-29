@@ -116,6 +116,14 @@ pub struct StartupItem {
     pub system: bool,
     pub launch_kind: StartupLaunchKind,
     pub management_status: StartupManagementStatus,
+    pub bundle_id: Option<String>,
+    pub team_id: Option<String>,
+    pub signature_status: Option<String>,
+    pub executable_path: Option<String>,
+    pub responsible_application: Option<String>,
+    pub last_run_status: Option<String>,
+    pub orphaned: bool,
+    pub modern_background_item: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
@@ -177,6 +185,7 @@ pub struct StartupManagementResult {
 pub enum StartupItemSource {
     LaunchAgent,
     LaunchDaemon,
+    BackgroundTask,
     DesktopEntry,
     RegistryRun,
     StartupFolder,
@@ -394,6 +403,15 @@ pub struct ApplicationInventorySnapshot {
     pub cached: bool,
     pub refresh_recommended: bool,
     pub applications: Vec<InstalledApplication>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrashedApplication {
+    pub name: String,
+    pub path: String,
+    pub bundle_id: Option<String>,
+    pub modified_at_ms: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
@@ -653,7 +671,11 @@ pub struct CleanupDeleteLeaseReleaseRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteResult {
     pub deleted: Vec<CleanupDeleteSuccess>,
+    pub selected_logical_bytes: u64,
+    pub selected_allocated_bytes: u64,
     pub deleted_bytes: u64,
+    pub available_bytes_before: Option<u64>,
+    pub available_bytes_after: Option<u64>,
     pub failed: Vec<CleanupDeleteFailure>,
     pub cancelled: bool,
     pub interrupted_path: Option<String>,
@@ -975,6 +997,7 @@ pub struct ProcessRow {
     pub start_time: u64,
     pub run_time_seconds: u64,
     pub name: String,
+    pub application_id: Option<String>,
     pub user: Option<String>,
     pub status: String,
     pub cpu_percent: Option<f32>,

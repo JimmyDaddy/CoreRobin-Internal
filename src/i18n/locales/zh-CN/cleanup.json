@@ -108,6 +108,9 @@
     "loadingFolder": "正在读取这个目录…",
     "loadFailed": "无法读取目录",
     "directActionHint": "拖动扇区或右侧目录到底部清理篮",
+    "addToBasket": "加入清理篮",
+    "removeFromBasket": "移出清理篮",
+    "includedByParent": "已随上级文件夹加入",
     "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
     "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
     "planSummary": "已选择 {{count}} 项，共 {{size}}",
@@ -135,7 +138,11 @@
       "failed": "没有处理任何内容，{{failedCount}} 项失败",
       "cancelled": "已停止清理，完成了 {{deletedCount}} 项",
       "cancelledNoDeletion": "已停止清理，没有内容被完整处理",
-      "reclaimed": "处理前核对的磁盘占用约为 {{size}}"
+      "reclaimed": "本次已处理约 {{size}} 的物理占用",
+      "selectedSizes": "所选逻辑大小 {{logical}}，物理占用 {{allocated}}",
+      "released": "文件系统可用空间已增加约 {{size}}",
+      "pendingReclaim": "已处理 {{processed}}，目前可用空间增加 {{size}}；差额可能仍由 APFS 快照、可清理空间或系统回收延迟占用",
+      "trashSpace": "内容已移到废纸篓；清空废纸篓前通常不会释放对应空间"
     },
     "freshness": {
       "cached": "正在显示上次扫描结果",
@@ -292,6 +299,11 @@
     "recent": "最近扫描",
     "removable": "可移除",
     "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。"
+  },
+  "growth": {
+    "title": "较上次扫描的空间变化",
+    "since": "与 {{time}} 的结果对比",
+    "noGrowth": "紧凑快照中没有发现持续增长的目录。"
   },
   "oldFileProcessing": {
     "selectFile": "选择 {{name}} 进入清理复核",

@@ -103,11 +103,32 @@ export function aggregateConnectionHistory(
 
 export function loadConnectionHistory(storage: Storage): ConnectionHistoryEntry[] {
   try {
-    const parsed = JSON.parse(storage.getItem(CONNECTION_HISTORY_STORAGE_KEY) ?? "[]") as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isConnectionHistoryEntry).slice(0, MAX_ENTRIES) : [];
+    return parseConnectionHistory(
+      storage.getItem(CONNECTION_HISTORY_STORAGE_KEY),
+    );
   } catch {
     return [];
   }
+}
+
+export function parseConnectionHistory(
+  payload: string | null,
+): ConnectionHistoryEntry[] {
+  if (!payload) return [];
+  try {
+    const parsed = JSON.parse(payload) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter(isConnectionHistoryEntry).slice(0, MAX_ENTRIES)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function serializeConnectionHistory(
+  entries: readonly ConnectionHistoryEntry[],
+): string {
+  return JSON.stringify(entries.slice(0, MAX_ENTRIES));
 }
 
 export function saveConnectionHistory(
@@ -115,7 +136,10 @@ export function saveConnectionHistory(
   entries: ConnectionHistoryEntry[],
 ): void {
   try {
-    storage.setItem(CONNECTION_HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, MAX_ENTRIES)));
+    storage.setItem(
+      CONNECTION_HISTORY_STORAGE_KEY,
+      serializeConnectionHistory(entries),
+    );
   } catch {
     // History remains available for the current session when storage is unavailable.
   }

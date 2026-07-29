@@ -52,7 +52,10 @@
     "eyebrow": "Lançamento de login medido",
     "title": "Impacto real do login",
     "description": "Amostras apenas quando o sistema operacional inicia CoreRobin silenciosamente como um item de login, até que o sistema se estabeleça.",
-    "settleTime": "Hora de liquidação", "peakCpu": "Pico CPU", "peakDisk": "Disco de pico", "samples": "Amostras",
+    "settleTime": "Hora de liquidação",
+    "peakCpu": "Pico CPU",
+    "peakDisk": "Disco de pico",
+    "samples": "Amostras",
     "boundary": "Isso mede o impacto pós-login, não o tempo de inicialização do firmware. As medições param após três minutos e os últimos cinco são mantidos.",
     "empty": "Nenhuma medição real de login ainda. Habilite Iniciar no login para medir o próximo login automaticamente.",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "Demônio de inicialização",
     "desktop_entry": "Entrada automática",
     "registry_run": "Execução no Registro",
-    "startup_folder": "Pasta de inicialização"
+    "startup_folder": "Pasta de inicialização",
+    "background_task": "Tarefa em segundo plano"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "Atualmente desativado",
       "description": "A configuração permanece, mas o sistema não iniciará automaticamente a partir desta entrada."
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "Comparado às inicializações recentes",
     "description": "Usa a mediana de {{count}} medições anteriores.",
@@ -149,6 +152,20 @@
       "improved": "Após {{count}} alterações, a próxima inicialização estabilizou mais rápido; o resultado não pode ser atribuído a um único app.",
       "similar": "Após {{count}} alterações, a próxima inicialização ficou próxima do normal.",
       "slower": "Após {{count}} alterações, a próxima inicialização continuou mais lenta; nenhuma alteração isolada pode ser considerada a causa."
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} item",
+    "modern": "Item de segundo plano moderno",
+    "orphaned": "Executável ausente",
+    "lastRun": "Último estado informado: {{status}}",
+    "itemCount_one": "{{count}} item",
+    "itemCount": "{{count}} item",
+    "signature": {
+      "valid": "Assinatura válida",
+      "invalid": "Assinatura inválida",
+      "unknown": "Assinatura desconhecida",
+      "system_reported": "Informado pelo macOS"
     }
   }
 }

@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} 個應用或系統元件",
     "savedHistory": "{{count}} 個已儲存歷史點",
     "processCount": "{{count}} 個程序",
-    "cleanupEntries": "已檢查 {{count}} 個專案"
+    "cleanupEntries": "已檢查 {{count}} 個專案",
+    "samplerSaved": "原生取樣器 {{time}} · 連續失敗 {{failures}} 次",
+    "samplerWaiting": "原生取樣器正在啟動"
   }
 }

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../i18n";
 import { getMockSnapshot } from "../mockData";
 import { defaultAppSettings } from "../settings";
+import { useAppUpdater } from "../hooks/useAppUpdater";
 import { AboutSupport } from "./AboutSupport";
 
 const mocks = vi.hoisted(() => ({
@@ -137,12 +138,17 @@ function renderSupport({
 }: {
   onClearAllData?: () => Promise<void>;
 } = {}) {
-  return render(
-    <AboutSupport
-      settings={defaultAppSettings("zh-CN")}
-      snapshot={getMockSnapshot()}
-      onOpenOnboarding={() => undefined}
-      onClearAllData={onClearAllData}
-    />,
-  );
+  function Subject() {
+    const updater = useAppUpdater();
+    return (
+      <AboutSupport
+        settings={defaultAppSettings("zh-CN")}
+        snapshot={getMockSnapshot()}
+        onOpenOnboarding={() => undefined}
+        onClearAllData={onClearAllData}
+        updater={updater}
+      />
+    );
+  }
+  return render(<Subject />);
 }

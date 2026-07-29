@@ -115,7 +115,10 @@
       "process_force_quit": "強制結束應用程式",
       "cleanup_delete": "清理檔案",
       "startup_disable": "停用啟動項目",
-      "startup_enable": "恢復啟動項目"
+      "startup_enable": "恢復啟動項目",
+      "application_uninstall": "卸載應用程式",
+      "volume_eject": "推出可移除卷",
+      "application_update": "安裝應用程式更新"
     },
     "status": {
       "running": "正在執行",
@@ -136,16 +139,24 @@
       "startup": "未儲存啟動項目名稱"
     },
     "cleanupResult": "已處理 {{count}} 項，釋放 {{size}}",
-    "cleanupFailed": "{{count}} 項未完成"
+    "cleanupFailed": "{{count}} 項未完成",
+    "retry": "重試"
   },
-  "watchRules": { "title": "應用程式關注記錄", "description": "記錄你建立的提醒規則在本機觸發與恢復的時間。", "savedEvents": "{{count}} 筆關注事件", "savedEvents_other": "{{count}} 筆關注事件", "privateApplication": "未儲存應用程式名稱", "triggered": "{{metric}} 達到 {{value}}{{unit}}", "recovered": "{{metric}} 恢復至 {{value}}{{unit}}" },
+  "watchRules": {
+    "title": "應用程式關注記錄",
+    "description": "記錄你建立的提醒規則在本機觸發與恢復的時間。",
+    "savedEvents": "{{count}} 筆關注事件",
+    "savedEvents_other": "{{count}} 筆關注事件",
+    "privateApplication": "未儲存應用程式名稱",
+    "triggered": "{{metric}} 達到 {{value}}{{unit}}",
+    "recovered": "{{metric}} 恢復至 {{value}}{{unit}}"
+  },
   "privacyEyebrow": "資料邊界",
   "privacyTitle": "隱私說明",
   "privacyLocal": "歷史只儲存在目前裝置的 CoreRobin 私有儲存空間，不會上傳或同步。",
   "privacyCollected": "記錄整機資源快照、超限與恢復事件，以及你確認執行的操作類型、結果、數量和釋放空間；應用程式或啟動項目名稱只有在設定中單獨允許後才會儲存。",
   "privacyExcluded": "資源與操作歷史不記錄程序命令、使用者、路徑、檔名或連線地址；若另行啟用「連線歷史」，五分鐘彙總資料可能在本機保存遠端 IP、網域、連接埠與應用程式名稱。",
-  "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。"
-,
+  "privacyControl": "停用後不再寫入新資料；已有記錄會保留到過期或由你手動清除。",
   "applicationImpact": {
     "eyebrow": "應用程式歸因",
     "title": "哪些應用程式影響了這部電腦",
@@ -200,5 +211,62 @@
       "temperature": "溫度",
       "battery": "電池消耗"
     }
+  },
+  "replay": {
+    "eyebrow": "證據時間軸",
+    "title": "系統事件回放",
+    "description": "選擇時段，關聯資源變化、網路事件、應用歸因與已確認操作的結果。",
+    "range": "回放範圍",
+    "from": "開始",
+    "to": "結束",
+    "evidenceTitle": "此時段的證據",
+    "applicationEvidence": "{{from}}–{{to}}：{{applications}} 是主要資源來源。全系統峰值為 CPU {{cpu}}、記憶體 {{memory}}。",
+    "noApplicationEvidence": "此時段未儲存應用歸因。全系統峰值為 CPU {{cpu}}、記憶體 {{memory}}。",
+    "leadingApplication": "{{application}} 在所選彙總中的平均值為 CPU {{cpu}}、記憶體 {{memory}}。",
+    "empty": "此時段沒有警示、網路、監看或操作事件。",
+    "actionImpact": {
+      "improved": "操作後 15 分鐘內系統壓力下降",
+      "increased": "操作後 15 分鐘內系統壓力上升",
+      "stable": "操作前後系統壓力大致相同",
+      "insufficient": "後續樣本不足，暫時無法比較結果"
+    },
+    "hours1": "1 小時",
+    "hours24": "24 小時",
+    "hours168": "7 天",
+    "alert": {
+      "triggered": "資源壓力開始",
+      "recovered": "資源壓力已恢復"
+    },
+    "watch": {
+      "triggered": "應用監看規則已觸發",
+      "recovered": "應用監看規則已恢復"
+    },
+    "network": {
+      "sleep_gap": "睡眠期間暫停取樣",
+      "interface_change": "網路介面已變更",
+      "status_change": "網路狀態已變更",
+      "dns_failure": "DNS 品質下降",
+      "direct_failure": "直連品質下降"
+    }
+  },
+  "storage": {
+    "saved": "原生歷史已於 {{time}} 儲存 · {{size}}",
+    "waiting": "原生歷史儲存正在啟動",
+    "failed": "歷史儲存已暫停；開啟此項可查看原因"
+  },
+  "batterySessions": {
+    "eyebrow": "電池使用時間軸",
+    "title": "電池使用工作階段",
+    "description": "每次切換到電池供電即開始一段，依本機彙總說明耗電、主要資源來源與睡眠阻擋者。",
+    "count_other": "{{count}} 個工作階段",
+    "ongoing": "進行中",
+    "duration": "{{minutes}} 分鐘",
+    "charge": "電量",
+    "drainRate": "平均耗電",
+    "evidence": "可能的主要資源來源",
+    "noApplicationEvidence": "未儲存應用程式名稱",
+    "blockers": "睡眠阻擋者：{{names}}",
+    "empty": "尚未收集到完整的電池工作階段。",
+    "count": "{{count}} 個工作階段"
   }
 }
