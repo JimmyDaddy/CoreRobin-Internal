@@ -229,7 +229,8 @@
       "improved": "La presión del sistema bajó en los 15 minutos siguientes",
       "increased": "La presión del sistema subió en los 15 minutos siguientes",
       "stable": "La presión del sistema se mantuvo estable",
-      "insufficient": "No hay suficientes muestras posteriores para comparar"
+      "insufficient": "No hay suficientes muestras posteriores para comparar",
+      "not_applicable": "La presión del sistema no es un resultado relevante para esta acción"
     },
     "hours1": "1 hora",
     "hours24": "24 horas",

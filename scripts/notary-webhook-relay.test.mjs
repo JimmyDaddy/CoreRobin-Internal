@@ -126,7 +126,7 @@ describe("Cloudflare Apple notarization relay", () => {
     await expect(first).resolves.toHaveProperty("status", 200);
   });
 
-  it("does not mark a release dispatched when GitHub rejects the request", async () => {
+  it("keeps a failed GitHub dispatch pending and retries it from the alarm", async () => {
     const storage = new FakeStorage({
       release: {
         tag: "v1.2.3",
@@ -137,13 +137,61 @@ describe("Cloudflare Apple notarization relay", () => {
         dispatched: false,
       },
     });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("forbidden", { status: 403 })));
+    const githubFetch = vi.fn()
+      .mockResolvedValueOnce(new Response("forbidden", { status: 403 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", githubFetch);
     const coordinator = new ReleaseCoordinator({ storage }, {
       GITHUB_DISPATCH_TOKEN: "github-token",
     });
 
-    await expect(coordinator.fetch(callbackRequest("x64"))).rejects.toThrow("GitHub repository dispatch failed");
-    expect((await storage.get("release")).dispatched).toBe(false);
+    const response = await coordinator.fetch(callbackRequest("x64"));
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({
+      ready: true,
+      dispatched: false,
+      retrying: true,
+      retryCount: 1,
+    });
+    expect((await storage.get("release"))).toMatchObject({
+      dispatching: false,
+      dispatched: false,
+      retryCount: 1,
+    });
+    expect(storage.alarm).toBeGreaterThan(Date.now());
+
+    await coordinator.alarm();
+
+    expect(githubFetch).toHaveBeenCalledTimes(2);
+    expect((await storage.get("release"))).toMatchObject({
+      dispatched: true,
+      retryCount: 0,
+      lastDispatchError: null,
+    });
+  });
+
+  it("expires an abandoned release instead of retrying forever", async () => {
+    const storage = new FakeStorage({
+      release: {
+        tag: "v1.2.3",
+        runId: "123",
+        arches: { aarch64: true, x64: true },
+        previewReady: true,
+        dispatching: false,
+        dispatched: false,
+        expiresAt: Date.now() - 1,
+      },
+    });
+    const githubFetch = vi.fn();
+    vi.stubGlobal("fetch", githubFetch);
+    const coordinator = new ReleaseCoordinator({ storage }, {
+      GITHUB_DISPATCH_TOKEN: "github-token",
+    });
+
+    await coordinator.alarm();
+
+    expect(githubFetch).not.toHaveBeenCalled();
+    expect(await storage.get("release")).toBeUndefined();
   });
 });
 

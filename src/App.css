@@ -257,11 +257,19 @@ code,
   pointer-events: none;
 }
 
-.brand small {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+.brand .brand-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--blue);
+  font-size: 9px;
+}
+
+.brand .brand-context i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .brand-mark {
@@ -7384,14 +7392,6 @@ code,
 .app-shell--daily .brand strong {
   overflow: hidden;
   font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.app-shell--daily .brand small {
-  overflow: hidden;
-  color: var(--green);
-  font-size: 10px;
-  letter-spacing: 0.1em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

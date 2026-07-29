@@ -200,6 +200,7 @@
     "openRelease": "Baixar",
     "upToDate": "A versão v{{version}} está atualizada",
     "installUpdate": "Baixar e instalar",
+    "remindLater": "Lembrar amanhã",
     "installingUpdate": "Atualizando…",
     "downloadingUpdate": "Baixando e verificando a atualização",
     "applyingUpdate": "Instalando a atualização",

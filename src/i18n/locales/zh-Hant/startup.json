@@ -35,7 +35,7 @@
   "publisherUnknown": "釋出者未知",
   "enabled": "會自動啟動",
   "disabled": "已停用",
-  "technicalDetails": "檢視技術位置",
+  "technicalDetails": "檢視檔案與啟動指令",
   "managementBoundary": "只有可恢復的使用者級第三方啟動檔案可以停用；系統專案和不支援的來源保持只讀。",
   "readOnlyBoundary": "當前平臺沒有 CoreRobin 能安全恢復的啟動項來源，因此只讀展示。",
   "unreadable": "{{count}} 個啟動位置因許可權不足未能讀取",

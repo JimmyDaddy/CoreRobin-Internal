@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "Drag Robin to move; hover for status; right-click for menu",
+  "dragHint": "Drag Robin to move; double-click to open the main window; hover for status; right-click for menu",
   "expand": "Open Robin",
   "collapse": "Collapse Robin",
   "menu": "Robin menu",

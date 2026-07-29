@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "拖动 Robin 移动；悬停查看状态；右键打开菜单",
+  "dragHint": "拖动 Robin 移动；双击打开主窗口；悬停查看状态；右键打开菜单",
   "expand": "打开 Robin",
   "collapse": "收起 Robin",
   "menu": "Robin 菜单",

@@ -160,6 +160,7 @@
     "openRelease": "前往下载",
     "upToDate": "已是最新版本 v{{version}}",
     "installUpdate": "下载并安装",
+    "remindLater": "明天提醒我",
     "installingUpdate": "正在更新…",
     "downloadingUpdate": "正在下载并验证更新",
     "applyingUpdate": "正在安装更新",

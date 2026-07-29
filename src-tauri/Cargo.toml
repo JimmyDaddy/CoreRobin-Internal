@@ -17,6 +17,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+# gtk-rs 0.18.5 passes an immutable pointer where GLib writes a string pointer.
+# Use the audited upstream two-line backport until gtk-rs publishes the 0.18 patch release.
+[patch.crates-io]
+glib = { path = "vendor/glib" }
+
 [dependencies]
 cap-fs-ext = "4.0.2"
 cap-std = "4.0.2"

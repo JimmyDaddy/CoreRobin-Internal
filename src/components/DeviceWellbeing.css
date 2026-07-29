@@ -1,0 +1,39 @@
+.device-wellbeing__sleep-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.device-wellbeing__sleep-actions button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  color: var(--text);
+  border: 1px solid rgba(245, 185, 76, 0.16);
+  border-radius: 8px;
+  background: rgba(245, 185, 76, 0.055);
+  text-align: left;
+}
+
+.device-wellbeing__sleep-actions button:not(:disabled):hover {
+  border-color: rgba(245, 185, 76, 0.34);
+  background: rgba(245, 185, 76, 0.1);
+  transform: translateX(1px);
+}
+
+.device-wellbeing__sleep-actions button:disabled { cursor: default; opacity: 0.66; }
+.device-wellbeing__sleep-actions button > span { display: grid; min-width: 0; gap: 1px; }
+.device-wellbeing__sleep-actions button strong {
+  display: block;
+  grid-column: auto;
+  grid-row: auto;
+  max-width: none;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+.device-wellbeing__sleep-actions button small { font-size: 9px; }

@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   BatteryLow,
   CheckCircle2,
   MoonStar,
@@ -21,15 +22,18 @@ import type { ApplicationImpact } from "../diagnosis";
 import type { SensorsSnapshot } from "../types";
 import { useSensorReadiness, type SensorReadiness } from "../hooks/useSensorReadiness";
 import { formatPercent } from "../utils";
+import "./DeviceWellbeing.css";
 
 export function DeviceWellbeing({
   sensors,
   warmingUp = false,
   applications = [],
+  onInspectSleepBlocker,
 }: {
   sensors: SensorsSnapshot;
   warmingUp?: boolean;
   applications?: readonly ApplicationImpact[];
+  onInspectSleepBlocker?: (identity: string) => void;
 }) {
   const { t, i18n } = useAppTranslation();
   const temperatureLevel = temperatureWellbeingLevel(sensors.temperature);
@@ -114,6 +118,26 @@ export function DeviceWellbeing({
               sleepBlockers.length,
               t,
             )}</p>
+            {userSleepBlockers.length > 0 ? (
+              <div className="device-wellbeing__sleep-actions">
+                {userSleepBlockers.map((blocker) => (
+                  <button
+                    key={`${blocker.name}:${blocker.processIdentity ?? "unknown"}`}
+                    type="button"
+                    disabled={!blocker.processIdentity || !onInspectSleepBlocker}
+                    onClick={() => {
+                      if (blocker.processIdentity) onInspectSleepBlocker?.(blocker.processIdentity);
+                    }}
+                  >
+                    <span>
+                      <strong>{blocker.name}</strong>
+                      <small>{sleepDurationLabel(blocker.durationSeconds, t)}</small>
+                    </span>
+                    <ArrowRight size={14} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </article>
       </div>

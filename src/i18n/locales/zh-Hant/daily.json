@@ -12,7 +12,7 @@
     "today": "電腦狀態",
     "solve": "幫我解決",
     "cleanup": "清理空間",
-    "records": "記錄",
+    "records": "回顧",
     "settings": "設定"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "介面語言",
     "professional": "專業模式",
     "professionalDescription": "檢視完整指標、程序樹和技術詳情"
+  },
+  "review": {
+    "kicker": "本機 · 今天",
+    "title": "今日回顧",
+    "description": "把今天的異常、恢復和你執行過的操作整理成一份可核對的結果。",
+    "status": {
+      "active": "仍有 {{count}} 件事值得處理",
+      "settled": "今天曾出現波動，目前都已恢復",
+      "handled": "今天的操作已完成並留下結果",
+      "calm": "今天沒有持續異常"
+    },
+    "metrics": {
+      "events": "值得留意",
+      "resolved": "已經恢復",
+      "actions": "已執行操作",
+      "network": "網路變化"
+    },
+    "evidence": "今天記錄的主要資源來源是 {{name}}；整機峰值 CPU {{cpu}}、記憶體 {{memory}}。",
+    "resultsTitle": "處理效果",
+    "resultsDescription": "只比較操作前後的本機採樣，不把相關性說成因果。",
+    "noResults": "完成退出應用程式、清理或啟動項目調整後，核對結果會顯示在這裡。",
+    "open": "開啟對應功能"
   },
   "records": {
     "kicker": "最近發生的變化",

@@ -12,7 +12,7 @@
     "today": "État",
     "solve": "Aidez-moi à résoudre le problème",
     "cleanup": "Libérer de l'espace",
-    "records": "Enregistrements",
+    "records": "Bilan",
     "settings": "Paramètres"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "Langue de l'interface",
     "professional": "Mode professionnel",
     "professionalDescription": "Visualisez toutes les métriques, l'arborescence des processus et les détails techniques"
+  },
+  "review": {
+    "kicker": "Sur cet appareil · Aujourd’hui",
+    "title": "Bilan du jour",
+    "description": "Réunit les incidents, rétablissements et actions confirmées du jour dans un résultat vérifiable.",
+    "status": {
+      "active": "{{count}} éléments demandent encore votre attention",
+      "settled": "Les perturbations du jour sont revenues à la normale",
+      "handled": "Les actions du jour sont terminées avec leurs résultats",
+      "calm": "Aucun problème durable n’a été enregistré aujourd’hui"
+    },
+    "metrics": {
+      "events": "À surveiller",
+      "resolved": "Rétablis",
+      "actions": "Actions",
+      "network": "Variations réseau"
+    },
+    "evidence": "{{name}} a été la principale source de ressources enregistrée aujourd’hui ; les pics ont atteint CPU {{cpu}} et mémoire {{memory}}.",
+    "resultsTitle": "Résultats observés",
+    "resultsDescription": "Compare les mesures locales avant et après une action sans prétendre à un lien causal.",
+    "noResults": "Les résultats apparaîtront ici après avoir quitté une app, nettoyé des fichiers ou ajusté le démarrage.",
+    "open": "Ouvrir la fonction associée"
   },
   "records": {
     "kicker": "Changements récents",

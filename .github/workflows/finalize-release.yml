@@ -1,4 +1,5 @@
 name: Finalize macOS release
+run-name: Finalize ${{ github.event.client_payload.tag || inputs.tag }}
 
 on:
   repository_dispatch:

@@ -12,7 +12,7 @@
     "today": "Estado",
     "solve": "Ayúdame a solucionarlo",
     "cleanup": "Liberar espacio",
-    "records": "Registros",
+    "records": "Resumen",
     "settings": "Configuración"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "Idioma de la interfaz",
     "professional": "Modo profesional",
     "professionalDescription": "Visualizar todas las métricas, el árbol de procesos y los detalles técnicos"
+  },
+  "review": {
+    "kicker": "En este equipo · Hoy",
+    "title": "Resumen de hoy",
+    "description": "Reúne las incidencias, recuperaciones y acciones confirmadas de hoy en un resultado verificable.",
+    "status": {
+      "active": "Aún hay {{count}} elementos que requieren atención",
+      "settled": "Las alteraciones de hoy ya se han estabilizado",
+      "handled": "Las acciones de hoy terminaron con resultados",
+      "calm": "Hoy no se registraron problemas persistentes"
+    },
+    "metrics": {
+      "events": "Para revisar",
+      "resolved": "Recuperados",
+      "actions": "Acciones",
+      "network": "Cambios de red"
+    },
+    "evidence": "{{name}} fue la principal fuente de recursos registrada hoy; los picos fueron CPU {{cpu}} y memoria {{memory}}.",
+    "resultsTitle": "Resultados observados",
+    "resultsDescription": "Compara muestras locales antes y después sin afirmar una relación causal.",
+    "noResults": "Los resultados aparecerán aquí tras cerrar una app, limpiar archivos o ajustar elementos de inicio.",
+    "open": "Abrir función relacionada"
   },
   "records": {
     "kicker": "Cambios recientes",

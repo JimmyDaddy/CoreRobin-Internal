@@ -35,7 +35,7 @@
   "publisherUnknown": "Unknown publisher",
   "enabled": "Starts automatically",
   "disabled": "Disabled",
-  "technicalDetails": "Show technical location",
+  "technicalDetails": "Show file and launch command",
   "managementBoundary": "Only reversible user-level third-party startup files can be disabled. System items and unsupported sources stay read-only.",
   "readOnlyBoundary": "This platform exposes no startup source CoreRobin can safely restore, so the inventory remains read-only.",
   "unreadable": "{{count}} startup locations could not be read due to permissions",

@@ -162,6 +162,7 @@
     "openRelease": "Download",
     "upToDate": "You are up to date with v{{version}}",
     "installUpdate": "Download and install",
+    "remindLater": "Remind me tomorrow",
     "installingUpdate": "Updating…",
     "downloadingUpdate": "Downloading and verifying update",
     "applyingUpdate": "Installing update",

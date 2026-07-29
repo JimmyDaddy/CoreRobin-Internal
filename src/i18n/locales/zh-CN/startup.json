@@ -35,7 +35,7 @@
   "publisherUnknown": "发布者未知",
   "enabled": "会自动启动",
   "disabled": "已停用",
-  "technicalDetails": "查看技术位置",
+  "technicalDetails": "查看文件与启动命令",
   "managementBoundary": "只有可恢复的用户级第三方启动文件可以停用；系统项目和不支持的来源保持只读。",
   "readOnlyBoundary": "当前平台没有可安全恢复的启动项来源，因此只读展示。",
   "unreadable": "{{count}} 个启动位置因权限不足未能读取",

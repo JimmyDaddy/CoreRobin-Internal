@@ -35,7 +35,7 @@
   "publisherUnknown": "Editor desconhecido",
   "enabled": "Inicia automaticamente",
   "disabled": "Desativado",
-  "technicalDetails": "Mostrar detalhes técnicos",
+  "technicalDetails": "Mostrar arquivo e comando de inicialização",
   "managementBoundary": "Apenas arquivos de inicialização de terceiros reversíveis podem ser desativados. Itens do sistema e fontes não suportadas permanecem somente leitura.",
   "readOnlyBoundary": "Esta plataforma não expõe nenhum arquivo de inicialização do CoreRobin que possa ser restaurado com segurança, portanto, o inventário permanece somente leitura.",
   "unreadable": "{{count}} Não foi possível ler as localizações de inicialização devido a permissões",

@@ -1302,7 +1302,7 @@ function App() {
   };
   return (
     <div className={`app-shell${dailyMode ? " app-shell--daily" : " app-shell--professional"}${modeTransition ? ` is-mode-transitioning mode-transition--to-${modeTransition}` : ""}`}>
-      {updater.action === "installing" || updater.action === "ready"
+      {updater.promptVisible || updater.action === "installing" || updater.action === "ready"
       || updater.action === "restartError" || updater.updatedFromVersion ? (
         <Suspense fallback={null}>
           <GlobalUpdateTask updater={updater} />
@@ -1311,7 +1311,15 @@ function App() {
       <nav className="sidebar" aria-label={t("app:mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
-          <span><BrandWordmark /><small>{dailyMode ? t("daily:shell.label") : "LOCAL MONITOR"}</small></span>
+          <span>
+            <BrandWordmark />
+            <small className={`brand-context${dailyMode ? " is-daily" : " is-professional"}`}>
+              <i aria-hidden="true" />
+              {dailyMode
+                ? t("app:mode.short.simple")
+                : t("app:mode.short.professional")}
+            </small>
+          </span>
         </div>
 
         {dailyMode ? (
@@ -1666,6 +1674,9 @@ function App() {
               ) : activeView === "history" ? (
                 <DailyRecords
                   alertEvents={resourceAlerts.events}
+                  points={persistentHistory.points}
+                  applicationImpactPoints={applicationImpactHistory.points}
+                  networkQualityPoints={networkQuality.history}
                   applicationWatchEvents={applicationWatchRules.events}
                   actionRecords={userActions.records}
                   storedActionCount={userActions.storedRecords.length}
@@ -1722,6 +1733,13 @@ function App() {
                   sensors={snapshot.sensors}
                   warmingUp={snapshot.warmingUp}
                   applications={diagnosis?.applications ?? []}
+                  onInspectSleepBlocker={(identity) => {
+                    const process = snapshot.processes.find(
+                      (candidate) => processIdentity(candidate) === identity,
+                    );
+                    if (process) selectProcess(process);
+                    setActiveView("processes");
+                  }}
                 />
                 <>
                     <section className="metric-grid" aria-label={t("app:metricsLabel")}>

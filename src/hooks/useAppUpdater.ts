@@ -19,9 +19,12 @@ const UPDATE_CHECKED_AT_STORAGE_KEY =
   "core-robin.update-check.checked-at.v1";
 const UPDATE_SKIPPED_VERSION_STORAGE_KEY =
   "core-robin.update-check.skipped-version.v1";
+const UPDATE_REMINDER_STORAGE_KEY =
+  "core-robin.update-check.reminder.v1";
 const UPDATE_INSTALLED_VERSION_STORAGE_KEY =
   "core-robin.update.installed-version.v1";
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;
+export const UPDATE_REMIND_LATER_MS = 24 * 60 * 60 * 1_000;
 
 export type AppUpdateAction =
   | "idle"
@@ -43,12 +46,14 @@ export interface AppUpdaterController {
   progress: AppUpdateProgress | null;
   action: AppUpdateAction;
   availableVersion: string | null;
+  promptVisible: boolean;
   lastCheckedAt: number | null;
   lastCheckFailed: boolean;
   updatedFromVersion: string | null;
   check: (manual?: boolean) => Promise<void>;
   install: () => Promise<void>;
   restart: () => Promise<void>;
+  remindLater: () => void;
   skipAvailableVersion: () => void;
   dismissUpdatedReceipt: () => void;
 }
@@ -72,6 +77,11 @@ export function useAppUpdater({
   const [availableVersion, setAvailableVersion] = useState<string | null>(
     loadAvailableUpdateVersion,
   );
+  const [promptVisible, setPromptVisible] = useState(false);
+  const [remindAt, setRemindAt] = useState<number | null>(() => {
+    const available = loadAvailableUpdateVersion();
+    return available ? readReminder(available)?.remindAt ?? null : null;
+  });
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(
     () => readTimestamp(UPDATE_CHECKED_AT_STORAGE_KEY),
   );
@@ -102,7 +112,8 @@ export function useAppUpdater({
     if (action === "installError") setAction("idle");
     try {
       let nextResult: Exclude<AppUpdateDisplayResult, "error" | null>;
-      if (isDesktopRuntime()) {
+      const desktopRuntime = isDesktopRuntime();
+      if (desktopRuntime) {
         const { checkForInstallableAppUpdate } = await import("../appUpdater");
         const update = await checkForInstallableAppUpdate();
         await replaceInstallable(update);
@@ -124,8 +135,16 @@ export function useAppUpdater({
         && nextResult.latestVersion !== skipped
           ? nextResult.latestVersion
           : null;
+      const reminder = visibleVersion ? readReminder(visibleVersion) : null;
       setResult(nextResult);
       setAvailableVersion(visibleVersion);
+      setRemindAt(reminder?.remindAt ?? null);
+      setPromptVisible(
+        !manual
+        && desktopRuntime
+        && visibleVersion !== null
+        && (reminder === null || reminder.remindAt <= checkedAt),
+      );
       setLastCheckedAt(checkedAt);
       setLastCheckFailed(false);
       writeString(UPDATE_CHECKED_AT_STORAGE_KEY, String(checkedAt));
@@ -142,11 +161,25 @@ export function useAppUpdater({
   }, [action, checking, replaceInstallable]);
 
   useEffect(() => {
-    const due =
-      !lastCheckedAt || Date.now() - lastCheckedAt >= UPDATE_CHECK_INTERVAL_MS;
-    const timer = due
-      ? window.setTimeout(() => void check(false), 5_000)
+    const now = Date.now();
+    const due = !lastCheckedAt
+      || now - lastCheckedAt >= UPDATE_CHECK_INTERVAL_MS;
+    const cachedUpdateNeedsHandle =
+      isDesktopRuntime()
+      && availableVersion !== null
+      && installableUpdate === null;
+    const reminderDelay = availableVersion && remindAt
+      ? Math.max(0, remindAt - now)
       : null;
+    const timerDelay = due || cachedUpdateNeedsHandle
+      ? 5_000
+      : reminderDelay;
+    const timer = timerDelay === null
+      ? null
+      : window.setTimeout(
+          () => void check(false),
+          Math.min(timerDelay, UPDATE_CHECK_INTERVAL_MS),
+        );
     const retryWhenOnline = () => {
       if (lastCheckFailed) void check(false);
     };
@@ -155,7 +188,14 @@ export function useAppUpdater({
       if (timer !== null) window.clearTimeout(timer);
       window.removeEventListener("online", retryWhenOnline);
     };
-  }, [check, lastCheckFailed, lastCheckedAt]);
+  }, [
+    availableVersion,
+    check,
+    installableUpdate,
+    lastCheckFailed,
+    lastCheckedAt,
+    remindAt,
+  ]);
 
   useEffect(() => () => {
     void currentUpdateRef.current?.close().catch(() => undefined);
@@ -166,6 +206,7 @@ export function useAppUpdater({
       return;
     }
     setAction("installing");
+    setPromptVisible(false);
     setProgress({
       phase: "downloading",
       downloadedBytes: 0,
@@ -209,8 +250,22 @@ export function useAppUpdater({
   const skipAvailableVersion = useCallback(() => {
     if (!availableVersion) return;
     writeString(UPDATE_SKIPPED_VERSION_STORAGE_KEY, availableVersion);
+    removeString(UPDATE_REMINDER_STORAGE_KEY);
     saveAvailableUpdateVersion(null);
     setAvailableVersion(null);
+    setRemindAt(null);
+    setPromptVisible(false);
+  }, [availableVersion]);
+
+  const remindLater = useCallback(() => {
+    if (!availableVersion) return;
+    const nextRemindAt = Date.now() + UPDATE_REMIND_LATER_MS;
+    writeString(UPDATE_REMINDER_STORAGE_KEY, JSON.stringify({
+      version: availableVersion,
+      remindAt: nextRemindAt,
+    }));
+    setRemindAt(nextRemindAt);
+    setPromptVisible(false);
   }, [availableVersion]);
 
   const dismissUpdatedReceipt = useCallback(() => {
@@ -224,12 +279,14 @@ export function useAppUpdater({
     progress,
     action,
     availableVersion,
+    promptVisible,
     lastCheckedAt,
     lastCheckFailed,
     updatedFromVersion,
     check,
     install,
     restart,
+    remindLater,
     skipAvailableVersion,
     dismissUpdatedReceipt,
   };
@@ -259,5 +316,38 @@ function writeString(key: string, value: string): void {
     window.localStorage.setItem(key, value);
   } catch {
     // The current session still owns the update task state.
+  }
+}
+
+function removeString(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // The current session still owns the update task state.
+  }
+}
+
+function readReminder(
+  version: string,
+): { version: string; remindAt: number } | null {
+  try {
+    const value = JSON.parse(
+      window.localStorage.getItem(UPDATE_REMINDER_STORAGE_KEY) ?? "null",
+    ) as unknown;
+    if (
+      !value
+      || typeof value !== "object"
+      || !("version" in value)
+      || !("remindAt" in value)
+      || value.version !== version
+      || typeof value.remindAt !== "number"
+      || !Number.isFinite(value.remindAt)
+      || value.remindAt <= 0
+    ) {
+      return null;
+    }
+    return { version: value.version, remindAt: value.remindAt };
+  } catch {
+    return null;
   }
 }

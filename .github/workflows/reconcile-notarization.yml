@@ -1,0 +1,326 @@
+name: Reconcile Apple notarization
+run-name: Reconcile Apple notarization ${{ inputs.tag || 'pending release' }}
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag to recheck (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      source_run_id:
+        description: Successful Release workflow run that submitted the macOS builds
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reconcile-apple-notarization
+  cancel-in-progress: false
+
+env:
+  PUBLIC_RELEASE_REPOSITORY: JimmyDaddy/corerobin-monitor
+
+jobs:
+  discover:
+    name: Find a release awaiting Apple
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      pending: ${{ steps.candidate.outputs.pending }}
+      tag: ${{ steps.candidate.outputs.tag }}
+      commit: ${{ steps.candidate.outputs.commit }}
+      run_id: ${{ steps.candidate.outputs.run_id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PUBLIC_RELEASE_READ_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
+    steps:
+      - name: Resolve explicit or scheduled candidate
+        id: candidate
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+          REQUESTED_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          set -euo pipefail
+          test -n "$PUBLIC_RELEASE_READ_TOKEN"
+
+          validate_source_run() {
+            local tag=$1
+            local run_id=$2
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            [[ "$run_id" =~ ^[0-9]+$ ]]
+            local run_json
+            run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+            test "$(jq -r .path <<<"$run_json")" = ".github/workflows/release.yml"
+            test "$(jq -r .head_branch <<<"$run_json")" = "$tag"
+            test "$(jq -r .status <<<"$run_json")" = "completed"
+            test "$(jq -r .conclusion <<<"$run_json")" = "success"
+            jq -r .head_sha <<<"$run_json"
+          }
+
+          preview_exists() {
+            local tag=$1
+            local preview_json
+            preview_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
+              "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/${tag}-preview.1" 2>/dev/null)" \
+              || return 1
+            test "$(jq -r .draft <<<"$preview_json")" = "false"
+            test "$(jq -r .prerelease <<<"$preview_json")" = "true"
+          }
+
+          stable_release_exists() {
+            GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
+              "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$1" >/dev/null 2>&1
+          }
+
+          finalize_already_started() {
+            local tag=$1
+            local runs_json
+            if ! runs_json="$(gh run list \
+              --workflow finalize-release.yml \
+              --limit 50 \
+              --json displayTitle,status,conclusion)"; then
+              echo "Unable to query Finalize workflow runs for $tag." >&2
+              return 2
+            fi
+            if jq -e --arg title "Finalize $tag" '
+                  any(.[]; .displayTitle == $title and (
+                    .status != "completed" or .conclusion == "success"
+                  ))
+                ' >/dev/null <<<"$runs_json"; then
+              return 0
+            fi
+            local jq_status=$?
+            if [[ "$jq_status" -eq 1 ]]; then
+              return 1
+            fi
+            echo "Unable to parse Finalize workflow runs for $tag." >&2
+            return 2
+          }
+
+          selected_tag=""
+          selected_run_id=""
+          selected_commit=""
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            selected_tag="$REQUESTED_TAG"
+            selected_run_id="$REQUESTED_RUN_ID"
+            selected_commit="$(validate_source_run "$selected_tag" "$selected_run_id")"
+            if stable_release_exists "$selected_tag"; then
+              echo "Stable release $selected_tag already exists; reconciliation is complete."
+              echo "pending=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            preview_exists "$selected_tag"
+          else
+            runs_json="$(gh run list \
+              --workflow release.yml \
+              --status success \
+              --limit 30 \
+              --json databaseId,headBranch,headSha,createdAt)"
+            while IFS=$'\t' read -r tag run_id commit; do
+              [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+              stable_release_exists "$tag" && continue
+              preview_exists "$tag" || continue
+              if finalize_already_started "$tag"; then
+                continue
+              else
+                finalize_status=$?
+                if [[ "$finalize_status" -ne 1 ]]; then
+                  exit "$finalize_status"
+                fi
+              fi
+              selected_tag="$tag"
+              selected_run_id="$run_id"
+              selected_commit="$(validate_source_run "$tag" "$run_id")"
+              test "$selected_commit" = "$commit"
+              break
+            done < <(jq -r '.[] | [.headBranch, .databaseId, .headSha] | @tsv' <<<"$runs_json")
+          fi
+
+          if [[ -z "$selected_tag" ]]; then
+            echo "No successful release is waiting for Apple notarization finalization."
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "pending=true"
+            echo "tag=$selected_tag"
+            echo "run_id=$selected_run_id"
+            echo "commit=$selected_commit"
+          } >> "$GITHUB_OUTPUT"
+          echo "Will recheck $selected_tag from Release run $selected_run_id."
+
+  recheck:
+    name: Recheck both Apple submissions
+    needs: discover
+    if: needs.discover.outputs.pending == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 12
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      accepted: ${{ steps.status.outputs.accepted }}
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.discover.outputs.commit }}
+          persist-credentials: false
+
+      - name: Download Apple Silicon notarization state
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: corerobin-macos-aarch64
+          path: raw-macos/corerobin-macos-aarch64
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.discover.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Intel notarization state
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: corerobin-macos-x86_64
+          path: raw-macos/corerobin-macos-x86_64
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.discover.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Prepare Apple notarization credential
+        shell: bash
+        env:
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$APPLE_API_PRIVATE_KEY_BASE64"
+          test -n "$APPLE_API_KEY"
+          test -n "$APPLE_API_ISSUER"
+          test -n "$APPLE_TEAM_ID"
+          notary_key_dir="$RUNNER_TEMP/corerobin-notary"
+          notary_key_path="$notary_key_dir/AuthKey_${APPLE_API_KEY}.p8"
+          mkdir -m 700 "$notary_key_dir"
+          printf '%s' "$APPLE_API_PRIVATE_KEY_BASE64" | base64 -D > "$notary_key_path"
+          chmod 600 "$notary_key_path"
+          openssl pkey -in "$notary_key_path" -noout
+          printf 'COREROBIN_NOTARY_KEY_PATH=%s\n' "$notary_key_path" >> "$GITHUB_ENV"
+
+      - name: Verify trusted state and recheck Apple
+        id: status
+        shell: bash
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          RELEASE_TAG: ${{ needs.discover.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.discover.outputs.commit }}
+          SOURCE_RUN_ID: ${{ needs.discover.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          all_accepted=true
+
+          check_arch() {
+            local public_arch=$1
+            local artifact_name=$2
+            local raw_root="raw-macos/$artifact_name"
+            local state_path
+            state_path="$(find "$raw_root" -type f -name '*_notarization.json' -print)"
+            test "$(printf '%s\n' "$state_path" | sed '/^$/d' | wc -l | tr -d ' ')" = "1"
+            local state_root
+            state_root="$(dirname "$state_path")"
+            node scripts/macos-notarization-state.mjs verify \
+              "$state_path" \
+              "$RELEASE_TAG" \
+              "$RELEASE_COMMIT" \
+              "$SOURCE_RUN_ID" \
+              "$public_arch" \
+              "$APPLE_TEAM_ID" \
+              "$state_root"
+            local submission_id
+            submission_id="$(node scripts/macos-notarization-state.mjs get "$state_path" submissionId)"
+            local status
+            status="$(xcrun notarytool info "$submission_id" \
+              --key "$COREROBIN_NOTARY_KEY_PATH" \
+              --key-id "$APPLE_API_KEY" \
+              --issuer "$APPLE_API_ISSUER" \
+              --output-format json | jq -r .status)"
+            echo "Apple notarization status for $public_arch ($submission_id): $status"
+            if [[ "$status" == "Invalid" ]]; then
+              xcrun notarytool log "$submission_id" \
+                --key "$COREROBIN_NOTARY_KEY_PATH" \
+                --key-id "$APPLE_API_KEY" \
+                --issuer "$APPLE_API_ISSUER" || true
+              return 1
+            fi
+            if [[ "$status" != "Accepted" ]]; then
+              all_accepted=false
+            fi
+          }
+
+          check_arch aarch64 corerobin-macos-aarch64
+          check_arch x64 corerobin-macos-x86_64
+          echo "accepted=$all_accepted" >> "$GITHUB_OUTPUT"
+          if [[ "$all_accepted" != "true" ]]; then
+            echo "Apple is still processing at least one architecture; the next scheduled run will recheck it."
+          fi
+
+  dispatch:
+    name: Wake trusted finalization
+    needs:
+      - discover
+      - recheck
+    if: needs.recheck.outputs.accepted == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.discover.outputs.tag }}
+      SOURCE_RUN_ID: ${{ needs.discover.outputs.run_id }}
+      PUBLIC_RELEASE_READ_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
+    steps:
+      - name: Dispatch finalization if still needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
+            "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Stable release $RELEASE_TAG already exists; no dispatch is needed."
+            exit 0
+          fi
+          finalize_runs="$(gh run list \
+            --workflow finalize-release.yml \
+            --limit 50 \
+            --json displayTitle,status,conclusion)"
+          if jq -e --arg title "Finalize $RELEASE_TAG" '
+                any(.[]; .displayTitle == $title and (
+                  .status != "completed" or .conclusion == "success"
+                ))
+              ' >/dev/null <<<"$finalize_runs"; then
+            echo "Finalization for $RELEASE_TAG is already active or complete."
+            exit 0
+          fi
+          payload="$(jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg run_id "$SOURCE_RUN_ID" \
+            '{
+              event_type: "apple-notarization-complete",
+              client_payload: { tag: $tag, run_id: $run_id }
+            }')"
+          gh api \
+            --method POST \
+            "repos/$GITHUB_REPOSITORY/dispatches" \
+            --input - <<<"$payload"
+          echo "Dispatched trusted finalization for $RELEASE_TAG."

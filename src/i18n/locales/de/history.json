@@ -229,7 +229,8 @@
       "improved": "Systemlast sank in den folgenden 15 Minuten",
       "increased": "Systemlast stieg in den folgenden 15 Minuten",
       "stable": "Systemlast blieb ungefähr gleich",
-      "insufficient": "Zu wenige Folgemessungen für einen Vergleich"
+      "insufficient": "Zu wenige Folgemessungen für einen Vergleich",
+      "not_applicable": "Die Systemlast ist für diese Aktion kein aussagekräftiges Ergebnis"
     },
     "hours1": "1 Stunde",
     "hours24": "24 Stunden",

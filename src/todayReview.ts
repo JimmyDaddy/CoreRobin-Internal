@@ -1,0 +1,152 @@
+import {
+  summarizeApplicationImpactHistory,
+  type ApplicationImpactHistoryPoint,
+} from "./applicationImpactHistory";
+import { buildHistoryStories } from "./historyStories";
+import type { NetworkQualityHistoryPoint } from "./networkQualityHistory";
+import type { ResourceAlertEvent } from "./resourceAlerts";
+import type { HistoryPoint } from "./types";
+import type { UserActionRecord } from "./userActionHistory";
+
+export type ActionObservedEffect =
+  | "improved"
+  | "increased"
+  | "stable"
+  | "insufficient"
+  | "not_applicable";
+
+export type TodayReviewStatus = "active" | "settled" | "handled" | "calm";
+
+export interface TodayActionResult {
+  record: UserActionRecord;
+  effect: ActionObservedEffect;
+}
+
+export interface TodayReviewSummary {
+  status: TodayReviewStatus;
+  eventCount: number;
+  resolvedCount: number;
+  activeCount: number;
+  completedActionCount: number;
+  networkEventCount: number;
+  peakCpuPercent: number;
+  peakMemoryPercent: number;
+  leadingApplicationName: string | null;
+  actionResults: TodayActionResult[];
+}
+
+export function buildTodayReview({
+  points,
+  applicationImpactPoints,
+  alerts,
+  networkQualityPoints,
+  actions,
+  nowMs = Date.now(),
+}: {
+  points: readonly HistoryPoint[];
+  applicationImpactPoints: readonly ApplicationImpactHistoryPoint[];
+  alerts: readonly ResourceAlertEvent[];
+  networkQualityPoints: readonly NetworkQualityHistoryPoint[];
+  actions: readonly UserActionRecord[];
+  nowMs?: number;
+}): TodayReviewSummary {
+  const fromMs = startOfLocalDay(nowMs);
+  const todayPoints = points.filter(({ timestamp }) =>
+    timestamp >= fromMs && timestamp <= nowMs);
+  const stories = buildHistoryStories(alerts).filter((story) =>
+    story.startedAtMs >= fromMs
+    || (story.endedAtMs !== null && story.endedAtMs >= fromMs));
+  const activeCount = stories.filter(({ status }) => status === "active").length;
+  const resolvedCount = stories.filter(({ status }) => status === "recovered").length;
+  const completedActions = actions
+    .filter((action) =>
+      action.startedAtMs >= fromMs
+      && action.startedAtMs <= nowMs
+      && action.status !== "running")
+    .sort((left, right) => right.startedAtMs - left.startedAtMs);
+  const networkEventCount = networkQualityPoints.reduce(
+    (count, point) => count + point.events.filter((event) =>
+      event.atMs >= fromMs
+      && event.atMs <= nowMs
+      && event.kind !== "sleep_gap").length,
+    0,
+  );
+  const leadingApplication = summarizeApplicationImpactHistory(
+    applicationImpactPoints.filter(({ sampledAtMs }) =>
+      sampledAtMs >= fromMs && sampledAtMs <= nowMs),
+  )[0] ?? null;
+
+  return {
+    status: activeCount > 0
+      ? "active"
+      : stories.length > 0 || networkEventCount > 0
+        ? "settled"
+        : completedActions.length > 0
+          ? "handled"
+          : "calm",
+    eventCount: stories.length,
+    resolvedCount,
+    activeCount,
+    completedActionCount: completedActions.length,
+    networkEventCount,
+    peakCpuPercent: maximum(todayPoints.map(({ cpuPercent }) => cpuPercent)),
+    peakMemoryPercent: maximum(
+      todayPoints.map(({ memoryPercent }) => memoryPercent),
+    ),
+    leadingApplicationName: leadingApplication?.name ?? null,
+    actionResults: completedActions.slice(0, 4).map((record) => ({
+      record,
+      effect: observedActionEffect(points, record),
+    })),
+  };
+}
+
+export function observedActionEffect(
+  points: readonly HistoryPoint[],
+  action: UserActionRecord,
+): ActionObservedEffect {
+  if (
+    action.status !== "succeeded"
+    && action.status !== "partial"
+  ) {
+    return "not_applicable";
+  }
+  if (
+    action.kind !== "process_close"
+    && action.kind !== "process_restart"
+    && action.kind !== "process_force_quit"
+  ) {
+    return "not_applicable";
+  }
+  const completedAtMs = action.completedAtMs ?? action.startedAtMs;
+  const windowMs = 15 * 60 * 1_000;
+  const before = points.filter((point) =>
+    point.timestamp >= completedAtMs - windowMs
+    && point.timestamp < completedAtMs);
+  const after = points.filter((point) =>
+    point.timestamp > completedAtMs
+    && point.timestamp <= completedAtMs + windowMs);
+  if (before.length < 2 || after.length < 2) return "insufficient";
+
+  const delta = averagePressure(after) - averagePressure(before);
+  if (delta <= -5) return "improved";
+  if (delta >= 5) return "increased";
+  return "stable";
+}
+
+function averagePressure(samples: readonly HistoryPoint[]): number {
+  return samples.reduce(
+    (total, point) => total + point.cpuPercent + point.memoryPercent,
+    0,
+  ) / samples.length;
+}
+
+function maximum(values: readonly number[]): number {
+  return Math.max(0, ...values.filter(Number.isFinite));
+}
+
+function startOfLocalDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}

@@ -49,6 +49,7 @@ describe("device wellbeing", () => {
       systemComponent: false,
       durationSeconds: 1_800,
       kinds: ["idle_sleep", "display_sleep"],
+      processIdentity: "46100:code",
     }]);
     expect(sleepWellbeingLevel(sleep, [application])).toBe("attention");
   });
