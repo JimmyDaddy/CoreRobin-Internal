@@ -39,9 +39,11 @@ const commonChecks = [
   "appearance-sync",
   "background",
   "updater-discovery",
+  "updater-notification",
   "updater-install-restart",
   "application-uninstall-capability",
   "removable-volume-eject",
+  "today-review",
   "quit-relaunch",
 ];
 const macOSChecks = ["cleanup-limited", "cleanup-authorized"];

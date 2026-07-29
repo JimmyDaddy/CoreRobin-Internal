@@ -184,7 +184,8 @@
       "improved": "操作后 15 分钟内系统压力有所下降",
       "increased": "操作后 15 分钟内系统压力有所上升",
       "stable": "操作前后系统压力基本持平",
-      "insufficient": "后续样本不足，暂时无法比较效果"
+      "insufficient": "后续样本不足，暂时无法比较效果",
+      "not_applicable": "这项操作不适合用系统压力变化判断效果"
     }
   },
   "privacyEyebrow": "数据边界",

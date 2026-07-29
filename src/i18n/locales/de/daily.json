@@ -12,7 +12,7 @@
     "today": "Status",
     "solve": "Hilf mir, das Problem zu beheben",
     "cleanup": "Bereich aufräumen",
-    "records": "Aufzeichnungen",
+    "records": "Rückblick",
     "settings": "Einstellungen"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "Benutzeroberflächessprache",
     "professional": "Professioneller Modus",
     "professionalDescription": "Alle Metriken, den Prozessbaum und technische Details anzeigen"
+  },
+  "review": {
+    "kicker": "Dieses Gerät · Heute",
+    "title": "Heutiger Rückblick",
+    "description": "Fasst heutige Auffälligkeiten, Erholungen und bestätigte Aktionen nachvollziehbar zusammen.",
+    "status": {
+      "active": "{{count}} Punkte brauchen noch Aufmerksamkeit",
+      "settled": "Die heutigen Auffälligkeiten haben sich beruhigt",
+      "handled": "Die heutigen Aktionen sind abgeschlossen",
+      "calm": "Heute wurde keine anhaltende Auffälligkeit erfasst"
+    },
+    "metrics": {
+      "events": "Auffälligkeiten",
+      "resolved": "Erholt",
+      "actions": "Aktionen",
+      "network": "Netzwerkereignisse"
+    },
+    "evidence": "{{name}} war heute die wichtigste erfasste Ressourcenquelle; die Spitzen lagen bei CPU {{cpu}} und Arbeitsspeicher {{memory}}.",
+    "resultsTitle": "Beobachtete Wirkung",
+    "resultsDescription": "Vergleicht nur lokale Messwerte vor und nach der Aktion, ohne eine Ursache zu behaupten.",
+    "noResults": "Nach dem Beenden einer App, einer Bereinigung oder einer Startobjekt-Änderung erscheinen die Ergebnisse hier.",
+    "open": "Zugehörige Funktion öffnen"
   },
   "records": {
     "kicker": "Aktuelle Änderungen",

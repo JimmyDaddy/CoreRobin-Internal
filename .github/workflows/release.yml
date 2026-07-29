@@ -332,7 +332,7 @@ jobs:
             callback_url="${APPLE_NOTARY_WEBHOOK_URL}${separator}tag=${GITHUB_REF_NAME}&run_id=${GITHUB_RUN_ID}&arch=${{ matrix.public_arch }}"
             submit_args+=(--webhook "$callback_url")
           else
-            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; use Finalize macOS release manually."
+            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; scheduled notarization reconciliation will provide the fallback wake-up."
           fi
 
           submission_json=$(xcrun notarytool submit "${submit_args[@]}")

@@ -102,7 +102,7 @@ For each scan target, CoreRobin keeps up to three compact snapshots and shows to
 
 ### History
 
-- Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Professional mode keeps the full technical history and filters.
+- Everyday mode starts Review with a today summary of attention items, recoveries, confirmed actions, and network changes, followed by a simple timeline showing when the computer became busy and recovered. Process quit/restart effects are described only when enough before-and-after samples exist; other actions show their own verification result without claiming causation. Professional mode keeps the full technical history and filters.
 - A warning and its recovery are paired into one incident with its start time, duration, likely cause, and outcome.
 - A selectable system-event replay correlates resource peaks, network and sleep events, app attribution, and confirmed actions in the same time range. Completed actions show verified, partial, failed, interrupted, and retry states; when enough samples exist, CoreRobin compares the following 15 minutes with the preceding period without claiming causality.
 - Confirmed app quit or restart, cleanup, uninstall, volume eject, startup-item changes, and application updates record execution and verification results. Cleanup history stores only item counts and reclaimed space, never file paths.
@@ -124,14 +124,14 @@ For each scan target, CoreRobin keeps up to three compact snapshots and shows to
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
 - App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.
 - Preferences and application watch rules can be previewed, exported, and imported through a local JSON file. The backup excludes history, paths, connections, and scan results.
-- The updater is an app-level task: it checks periodically, retries after the network returns, keeps download/install progress visible outside About, supports skipping one version, and offers restart plus a post-restart update receipt. The report flow first previews a redacted diagnostic summary, then lets you copy it and open a GitHub Issue prefilled with version, system, and architecture. CoreRobin uploads no logs; you write the problem and reproduction steps.
+- The updater is an app-level task: it checks periodically and retries after the network returns. A new release appears as a non-blocking card at the top of the main window with **Update now**, **Remind me tomorrow**, and **Skip this version**; skipping one version does not hide a later release. Download/install progress stays visible outside About, followed by an in-app restart action and a post-restart receipt. The report flow first previews a redacted diagnostic summary, then lets you copy it and open a GitHub Issue prefilled with version, system, and architecture. CoreRobin uploads no logs; you write the problem and reproduction steps.
 - The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel
 
 Closing the main window leaves CoreRobin available in the menu bar. Click the menu bar icon to toggle a compact panel that shares the main window's current health conclusion; double-click it to open the main window directly. A quiet login launch does not show the splash screen or main window.
 
-Choose Robin companion to open a compact bottom-right window that shares the same conclusion as the main window and menu bar panel, with one next step. Press Escape, use the close button, or click another window to dismiss it. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
+Choose Robin companion to open a compact bottom-right window that shares the same conclusion as the main window and menu bar panel, with one next step. Double-click Robin or use its right-click menu to open the main window. Its dragged position is remembered, and Everyday Settings controls whether it stays on top or appears at startup.
 
 To stop monitoring completely, quit CoreRobin instead of only closing the window.
 

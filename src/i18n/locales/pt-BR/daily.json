@@ -12,7 +12,7 @@
     "today": "Estado",
     "solve": "Ajude-me a resolver o problema",
     "cleanup": "Limpar espaço",
-    "records": "Registros",
+    "records": "Retrospectiva",
     "settings": "Configurações"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "Idioma da interface",
     "professional": "Modo profissional",
     "professionalDescription": "Visualize todas as métricas, árvore de processos e detalhes técnicos"
+  },
+  "review": {
+    "kicker": "Neste dispositivo · Hoje",
+    "title": "Retrospectiva de hoje",
+    "description": "Reúne incidentes, recuperações e ações confirmadas de hoje em um resultado verificável.",
+    "status": {
+      "active": "{{count}} itens ainda precisam de atenção",
+      "settled": "As alterações de hoje já se estabilizaram",
+      "handled": "As ações de hoje foram concluídas com resultados",
+      "calm": "Nenhum problema persistente foi registrado hoje"
+    },
+    "metrics": {
+      "events": "Para observar",
+      "resolved": "Recuperados",
+      "actions": "Ações realizadas",
+      "network": "Mudanças de rede"
+    },
+    "evidence": "{{name}} foi a principal fonte de recursos registrada hoje; os picos chegaram a CPU {{cpu}} e memória {{memory}}.",
+    "resultsTitle": "Resultados observados",
+    "resultsDescription": "Compara amostras locais antes e depois da ação sem afirmar causalidade.",
+    "noResults": "Os resultados aparecerão aqui após encerrar um app, limpar arquivos ou ajustar itens de inicialização.",
+    "open": "Abrir recurso relacionado"
   },
   "records": {
     "kicker": "Alterações recentes",

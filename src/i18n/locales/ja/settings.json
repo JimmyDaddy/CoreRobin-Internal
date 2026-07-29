@@ -200,6 +200,7 @@
     "openRelease": "ダウンロード",
     "upToDate": "v{{version}} は最新版です",
     "installUpdate": "ダウンロードしてインストール",
+    "remindLater": "明日もう一度知らせる",
     "installingUpdate": "更新中…",
     "downloadingUpdate": "更新をダウンロードして検証中",
     "applyingUpdate": "更新をインストール中",

@@ -184,7 +184,8 @@
       "improved": "System pressure decreased in the following 15 minutes",
       "increased": "System pressure increased in the following 15 minutes",
       "stable": "System pressure stayed near its previous level",
-      "insufficient": "Not enough following samples to compare the result"
+      "insufficient": "Not enough following samples to compare the result",
+      "not_applicable": "System pressure is not a meaningful outcome for this action"
     }
   },
   "privacyEyebrow": "Data boundaries",

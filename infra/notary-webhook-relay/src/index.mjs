@@ -1,5 +1,7 @@
 const MAX_BODY_BYTES = 64 * 1024;
 const RELEASE_STATE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const DISPATCH_RETRY_BASE_MS = 60 * 1000;
+const DISPATCH_RETRY_MAX_MS = 60 * 60 * 1000;
 const GITHUB_API_VERSION = "2022-11-28";
 
 export default {
@@ -52,6 +54,7 @@ export class ReleaseCoordinator {
     const callback = await request.json();
     validateCallback(callback);
 
+    const now = Date.now();
     const state = await this.ctx.storage.get("release") ?? {
       tag: callback.tag,
       runId: callback.runId,
@@ -59,7 +62,13 @@ export class ReleaseCoordinator {
       previewReady: false,
       dispatching: false,
       dispatched: false,
+      retryCount: 0,
+      lastDispatchError: null,
+      expiresAt: now + RELEASE_STATE_TTL_MS,
     };
+    state.retryCount ??= 0;
+    state.lastDispatchError ??= null;
+    state.expiresAt = Math.max(state.expiresAt ?? 0, now + RELEASE_STATE_TTL_MS);
     if (state.tag !== callback.tag || state.runId !== callback.runId) {
       return new Response("Release coordinator identity mismatch", { status: 409 });
     }
@@ -70,11 +79,9 @@ export class ReleaseCoordinator {
       state.arches[callback.arch] = true;
     }
     await this.ctx.storage.put("release", state);
-    await this.ctx.storage.setAlarm(Date.now() + RELEASE_STATE_TTL_MS);
+    await this.ctx.storage.setAlarm(state.expiresAt);
 
-    const ready = state.arches.aarch64 === true
-      && state.arches.x64 === true
-      && state.previewReady === true;
+    const ready = releaseReady(state);
     if (!ready) {
       return json({ accepted: true, ready: false, dispatched: false }, 202);
     }
@@ -85,24 +92,78 @@ export class ReleaseCoordinator {
       return json({ accepted: true, ready: true, dispatching: true, dispatched: false }, 202);
     }
 
+    const dispatched = await this.dispatchWhenReady(state);
+    return dispatched
+      ? json({ accepted: true, ready: true, dispatched: true })
+      : json({
+          accepted: true,
+          ready: true,
+          dispatched: false,
+          retrying: true,
+          retryCount: state.retryCount,
+        }, 202);
+  }
+
+  async alarm() {
+    const state = await this.ctx.storage.get("release");
+    if (!state) return;
+    const now = Date.now();
+    if ((state.expiresAt ?? 0) <= now) {
+      await this.ctx.storage.deleteAll();
+      return;
+    }
+    if (state.dispatched || !releaseReady(state)) {
+      await this.ctx.storage.setAlarm(state.expiresAt);
+      return;
+    }
+
+    state.dispatching = false;
+    await this.ctx.storage.put("release", state);
+    await this.dispatchWhenReady(state);
+  }
+
+  async dispatchWhenReady(state) {
     state.dispatching = true;
     await this.ctx.storage.put("release", state);
     try {
       await dispatchGitHub(this.env, state);
     } catch (error) {
       state.dispatching = false;
+      state.retryCount = (state.retryCount ?? 0) + 1;
+      state.lastDispatchError = error instanceof Error
+        ? error.message.slice(0, 500)
+        : String(error).slice(0, 500);
       await this.ctx.storage.put("release", state);
-      throw error;
+      if ((state.expiresAt ?? 0) <= Date.now()) {
+        await this.ctx.storage.deleteAll();
+        return false;
+      }
+      await this.ctx.storage.setAlarm(
+        Date.now() + dispatchRetryDelay(state.retryCount),
+      );
+      return false;
     }
     state.dispatching = false;
     state.dispatched = true;
+    state.retryCount = 0;
+    state.lastDispatchError = null;
     await this.ctx.storage.put("release", state);
-    return json({ accepted: true, ready: true, dispatched: true });
+    await this.ctx.storage.setAlarm(state.expiresAt);
+    return true;
   }
+}
 
-  async alarm() {
-    await this.ctx.storage.deleteAll();
-  }
+function releaseReady(state) {
+  return state.arches.aarch64 === true
+    && state.arches.x64 === true
+    && state.previewReady === true;
+}
+
+function dispatchRetryDelay(retryCount) {
+  return Math.min(
+    DISPATCH_RETRY_MAX_MS,
+    DISPATCH_RETRY_BASE_MS * (2 ** Math.max(0, retryCount - 1)),
+  );
 }
 
 export async function dispatchGitHub(env, state) {

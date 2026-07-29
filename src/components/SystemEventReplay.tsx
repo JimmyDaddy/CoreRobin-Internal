@@ -17,6 +17,7 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 import type { NetworkQualityHistoryPoint } from "../networkQualityHistory";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import type { HistoryPoint } from "../types";
+import { observedActionEffect } from "../todayReview";
 import type { UserActionRecord } from "../userActionHistory";
 import { formatBytes, formatPercent } from "../utils";
 
@@ -248,7 +249,10 @@ function buildReplayEvents({
         detail: point.status,
       }))),
     ...actions.filter((action) => inRange(action.startedAtMs)).map((action) => {
-      const impact = describeActionImpact(points, action, t);
+      const effect = observedActionEffect(points, action);
+      const impact = effect === "not_applicable"
+        ? ""
+        : t(`history:replay.actionImpact.${effect}`);
       return {
         id: `action:${action.id}`,
         atMs: action.startedAtMs,
@@ -262,34 +266,6 @@ function buildReplayEvents({
       };
     }),
   ].sort((left, right) => right.atMs - left.atMs);
-}
-
-function describeActionImpact(
-  points: readonly HistoryPoint[],
-  action: UserActionRecord,
-  t: ReturnType<typeof useAppTranslation>["t"],
-): string {
-  if (action.status !== "succeeded" && action.status !== "partial") return "";
-  const completedAtMs = action.completedAtMs ?? action.startedAtMs;
-  const windowMs = 15 * 60 * 1_000;
-  const before = points.filter((point) =>
-    point.timestamp >= completedAtMs - windowMs
-    && point.timestamp < completedAtMs);
-  const after = points.filter((point) =>
-    point.timestamp > completedAtMs
-    && point.timestamp <= completedAtMs + windowMs);
-  if (before.length < 2 || after.length < 2) {
-    return t("history:replay.actionImpact.insufficient");
-  }
-  const averagePressure = (samples: readonly HistoryPoint[]) =>
-    samples.reduce(
-      (total, point) => total + point.cpuPercent + point.memoryPercent,
-      0,
-    ) / samples.length;
-  const delta = averagePressure(after) - averagePressure(before);
-  if (delta <= -5) return t("history:replay.actionImpact.improved");
-  if (delta >= 5) return t("history:replay.actionImpact.increased");
-  return t("history:replay.actionImpact.stable");
 }
 
 function dateTimeLocalValue(timestamp: number): string {

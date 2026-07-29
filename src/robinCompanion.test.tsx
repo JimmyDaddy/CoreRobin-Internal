@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   openDailyFromCompanion,
+  openMainFromCompanion,
   RobinCompanionWindow,
 } from "./components/RobinCompanionWindow";
 import i18n from "./i18nAuxiliary";
@@ -29,6 +30,14 @@ describe("Robin companion interactions", () => {
     );
 
     expect(calls).toEqual(["collapse", "show-main", "open-daily:overview"]);
+  });
+
+  it("opens the main window directly when Robin is double-clicked", async () => {
+    const showMainWindow = vi.fn().mockResolvedValue(undefined);
+
+    await openMainFromCompanion({ showMainWindow });
+
+    expect(showMainWindow).toHaveBeenCalledOnce();
   });
 
   it("opens the status bubble on hover without showing a close button", () => {
@@ -102,6 +111,7 @@ describe("Robin companion interactions", () => {
 
     fireEvent.contextMenu(shell!);
     expect(screen.getByRole("menu", { name: "Robin 菜单" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "打开概览" })).toBeTruthy();
     fireEvent.click(screen.getByRole("menuitem", { name: "隐藏 Robin" }));
 
     expect(mascot.getAttribute("aria-expanded")).toBe("false");

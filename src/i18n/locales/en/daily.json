@@ -12,7 +12,7 @@
     "today": "Status",
     "solve": "Help me fix it",
     "cleanup": "Clean up space",
-    "records": "Records",
+    "records": "Review",
     "settings": "Settings"
   },
   "topbar": {
@@ -395,6 +395,28 @@
     "language": "Interface language",
     "professional": "Professional mode",
     "professionalDescription": "View every metric, process tree, and technical detail"
+  },
+  "review": {
+    "kicker": "On this device · Today",
+    "title": "Today’s review",
+    "description": "Brings today’s incidents, recoveries, and confirmed actions into one checkable summary.",
+    "status": {
+      "active": "{{count}} items still need attention",
+      "settled": "Today’s disruptions have settled",
+      "handled": "Today’s actions are complete with results",
+      "calm": "No sustained issue was recorded today"
+    },
+    "metrics": {
+      "events": "Worth attention",
+      "resolved": "Recovered",
+      "actions": "Actions taken",
+      "network": "Network changes"
+    },
+    "evidence": "{{name}} was today’s leading recorded resource source; system peaks reached CPU {{cpu}} and memory {{memory}}.",
+    "resultsTitle": "Observed results",
+    "resultsDescription": "Compares local samples before and after an action without claiming causation.",
+    "noResults": "Results will appear here after quitting an app, cleaning files, or adjusting startup items.",
+    "open": "Open related feature"
   },
   "records": {
     "kicker": "Recent changes",

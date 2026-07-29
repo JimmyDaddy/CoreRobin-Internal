@@ -1,0 +1,52 @@
+.today-review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--blue) 25%, var(--border));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--blue) 12%, transparent), transparent 30%),
+    var(--panel);
+}
+
+.today-review.is-active { border-color: color-mix(in srgb, var(--amber) 42%, var(--border)); }
+.today-review__header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 13px; }
+.today-review__mark { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 30%, var(--border)); border-radius: 14px; background: var(--blue-soft); }
+.today-review__header > div { min-width: 0; }
+.today-review__header small { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.today-review__header h2 { margin: 2px 0 4px; font-size: 20px; letter-spacing: -0.03em; }
+.today-review__header p { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.today-review__status { max-width: 240px; padding: 8px 11px; color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 30%, var(--border)); border-radius: 999px; background: var(--green-soft); font-size: 11px; text-align: center; }
+.today-review.is-active .today-review__status { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 35%, var(--border)); background: var(--amber-soft); }
+.today-review__metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.today-review__metrics > span { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 8px; min-height: 64px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; background: color-mix(in srgb, var(--panel-soft) 78%, transparent); }
+.today-review__metrics svg { grid-row: 1 / 3; color: var(--blue); }
+.today-review__metrics strong { font-size: 16px; line-height: 1; }
+.today-review__metrics small { color: var(--text-muted); font-size: 10px; }
+.today-review__evidence { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; color: var(--text-soft); border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--violet) 7%, var(--panel-soft)); font-size: 11px; line-height: 1.5; }
+.today-review__evidence svg { flex: 0 0 auto; color: var(--violet); }
+.today-review__results { display: flex; flex-direction: column; gap: 9px; padding-top: 2px; }
+.today-review__results > header > div { display: flex; flex-direction: column; gap: 3px; }
+.today-review__results > header strong { font-size: 12px; }
+.today-review__results > header small { color: var(--text-muted); font-size: 10px; }
+.today-review__result-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.today-review__result-list article { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; min-width: 0; padding: 11px; border: 1px solid var(--border); border-radius: 13px; background: var(--panel-soft); }
+.today-review__result-list article > span { display: inline-flex; color: var(--green); }
+.today-review__result-list article.is-failed > span,
+.today-review__result-list article.is-partial > span { color: var(--amber); }
+.today-review__result-list article > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.today-review__result-list small,
+.today-review__result-list p { overflow: hidden; margin: 0; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.today-review__result-list strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.today-review__result-list .button { padding: 5px 6px; font-size: 10px; }
+.today-review__empty { display: flex; align-items: center; gap: 7px; margin: 0; padding: 11px 12px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px; font-size: 11px; }
+.today-review__empty svg { color: var(--green); }
+
+@media (max-width: 700px) {
+  .today-review__header { grid-template-columns: auto minmax(0, 1fr); }
+  .today-review__status { grid-column: 2; justify-self: start; }
+  .today-review__metrics,
+  .today-review__result-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

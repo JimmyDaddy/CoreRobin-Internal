@@ -35,7 +35,7 @@
   "publisherUnknown": "Editor desconocido",
   "enabled": "Inicia automáticamente",
   "disabled": "Deshabilitado",
-  "technicalDetails": "Mostrar detalles técnicos",
+  "technicalDetails": "Mostrar archivo y comando de inicio",
   "managementBoundary": "Solo se pueden deshabilitar los archivos de inicio de terceros del usuario, y no los elementos del sistema ni las fuentes no compatibles.",
   "readOnlyBoundary": "Esta plataforma no expone ninguna fuente de inicio que CoreRobin pueda restaurar de forma segura, por lo que el inventario permanece en modo de solo lectura.",
   "unreadable": "{{count}} No se pudieron leer las ubicaciones de inicio debido a permisos",

@@ -23,7 +23,7 @@ Internal 的普通 pull request 和 `main` push 默认只运行 Ubuntu 上的前
 2. tag push 默认在 GitHub-hosted runner 并行构建 Linux、Windows、Apple Silicon Mac 和 Intel Mac。macOS job 导入 Developer ID、App Store Connect API 与 Tauri 更新签名凭据，生成已签名的 DMG/updater；它只调用一次 `notarytool submit`，保存 submission ID 后立即结束，不在 runner 内轮询 Apple。
 3. 每个 macOS job 上传预装订 DMG、updater、签名和私有 `notarization-state.json`。状态文件绑定 tag、commit、源 workflow run ID、架构、Team ID、submission ID 与三份资产 SHA-256；Finalize 必须先复核该文件，不能只相信 webhook payload。
 4. Linux、Windows 与两个 macOS build 全部成功后，Preview job 只挑选可手动安装的文件，在公开仓库发布独立的 `vMAJOR.MINOR.PATCH-preview.1` prerelease。macOS 文件名带有 `unnotarized-preview`，Preview 不含 updater 压缩包、`.sig`、`latest.json`，不会更新 `site/release-manifest.json`，也不会被标记为 latest。
-5. Apple 分别完成两个 submission 后调用外部 webhook relay；Preview job 发布成功后也向 relay 发送 `preview_ready`。relay 使用 Durable Object 按 tag 与源 run ID 聚合 `aarch64`、`x64` 与 Preview 三个信号，只在三者都到达后向 Internal 发送一次 `apple-notarization-complete` repository dispatch，唤醒 `Finalize macOS release`。Finalize 会短暂等待源 Release workflow 完成，以覆盖 Preview 创建与 workflow 状态落盘之间的秒级窗口。如果 relay 回调丢失，可以用同一 tag 与源 run ID 手动 dispatch。
+5. Apple 分别完成两个 submission 后调用外部 webhook relay；Preview job 发布成功后也向 relay 发送 `preview_ready`。relay 使用 Durable Object 按 tag 与源 run ID 聚合 `aarch64`、`x64` 与 Preview 三个信号，只在三者都到达后向 Internal 发送一次 `apple-notarization-complete` repository dispatch，唤醒 `Finalize macOS release`。GitHub dispatch 暂时失败时，relay 会以 1 分钟起步、最长 1 小时的指数退避自动重试。Internal 的 `Reconcile Apple notarization` 还会每 30 分钟寻找已成功发布 Preview、尚未生成稳定 Release 且没有 Finalize 在途的版本；它在短时 macOS runner 中核对两个 Apple submission，全部 `Accepted` 后补发同一个幂等 dispatch。Finalize 会短暂等待源 Release workflow 完成，以覆盖 Preview 创建与 workflow 状态落盘之间的秒级窗口。
 6. Finalize 先验证源 run 确实是该 tag/commit 的成功 `Release` workflow，且对应 Preview 已公开；随后用一个短时 GitHub-hosted macOS runner 下载两个原始 macOS artifact，重新调用 `notarytool info`。只有两个 submission 都为 `Accepted` 才会对原始 DMG 执行 staple，并通过签名、Hardened Runtime、架构、票据和 Gatekeeper 检查。`In Progress` 或 `Invalid` 都不会进入正式打包。
 7. Finalize package job 从原始 run 取回 Linux/Windows 安装包与显式保留的 Tauri 分离签名，并与已装订的 macOS 资产汇总。`createUpdaterArtifacts: true` 使用当前 Tauri v2 的未压缩 updater 格式：Linux 为 `.AppImage` + `.sig`，Windows 为 NSIS `.exe` + `.sig`。对于尚未显式保留签名的旧源 run，隔离恢复 job 只下载并重新签署原始 updater 文件，不重建应用。Finalize 随后生成 `latest.json`、`SHA256SUMS` 和 SPDX SBOM。受信 `main` 提供可修复的最终打包工具，发行说明仍从受验证的 tag 源码读取。sign job 使用 GitHub Actions OIDC 与 Sigstore/Cosign 签署校验表。
 8. 受保护的 `release` environment 批准 staging job 后，Finalize 使用 `PUBLIC_RELEASE_TOKEN` 创建或更新独立的正式 `vMAJOR.MINOR.PATCH` draft。staging 会先解析 draft 的 release ID，再按 ID 重新读取公开 Release，核对 draft 状态和完整资产清单；不能依赖尚未公开 tag 的 REST tag 查询。终态 job 还会要求解析、公证、打包、签名与发布全部达到预期结果。任何必需 job 被意外跳过都会让 workflow 明确失败，不能以绿色状态结束。此时仍不会改变 latest 或官网 manifest，也不会覆盖已经公开的 Preview 资产。
@@ -79,7 +79,7 @@ Finalize 的 `--ref` 必须是受保护的 `main`，工作流内部会重新 che
 
 ## Apple webhook relay 契约
 
-`notarytool` 不能带 GitHub token 直接调用 repository dispatch，因此使用 `infra/notary-webhook-relay` 中的 Cloudflare Worker 与 SQLite Durable Object 作为极小的外部 HTTPS relay。部署、密钥配置和健康检查命令见该目录的 README。将带有随机 secret path 的完整回调基础 URL配置为 Internal repository Actions secret `APPLE_NOTARY_WEBHOOK_URL`；workflow 会追加以下 query 参数：
+`notarytool` 不能带 GitHub token 直接调用 repository dispatch，因此使用 `infra/notary-webhook-relay` 中的 Cloudflare Worker 与 SQLite Durable Object 作为极小的外部 HTTPS relay。部署、密钥配置和健康检查命令见该目录的 README。将带有随机 secret path 的完整回调基础 URL 配置为 Internal repository Actions secret `APPLE_NOTARY_WEBHOOK_URL`；workflow 会追加以下 query 参数：
 
 - `tag=vMAJOR.MINOR.PATCH`
 - `run_id=RELEASE_RUN_ID`
@@ -97,7 +97,7 @@ relay 收到 Apple 请求后，不负责判断是否 `Accepted`；它按 tag/run
 }
 ```
 
-目标 API 是 `POST /repos/JimmyDaddy/CoreRobin-Internal/dispatches`。relay 使用只选择 Internal 仓库、仅授予 `Contents: write` 的 fine-grained token；该 token 只保存在 Cloudflare Worker secret，不能写入 GitHub Actions secret、公开仓库或日志。随机 path secret 也只保存在 Cloudflare，完整 URL 仅存入 Internal Actions secret。relay 限制请求方法和 64 KiB 请求体，校验 tag/run ID/arch，并让聚合状态在 30 天后过期。即使 relay 被伪造调用，Finalize 仍会独立验证源 workflow、Preview、state SHA、Team ID 和 Apple 的实时状态，因此 webhook 本身不具备正式发布权限。
+目标 API 是 `POST /repos/JimmyDaddy/CoreRobin-Internal/dispatches`。relay 使用只选择 Internal 仓库、仅授予 `Contents: write` 的 fine-grained token；该 token 只保存在 Cloudflare Worker secret，不能写入 GitHub Actions secret、公开仓库或日志。随机 path secret 也只保存在 Cloudflare，完整 URL 仅存入 Internal Actions secret。relay 限制请求方法和 64 KiB 请求体，校验 tag/run ID/arch，失败 dispatch 保持待处理并由 alarm 重试，聚合状态在 30 天后过期。即使 relay 或定时核对流程被伪造调用，Finalize 仍会独立验证源 workflow、Preview、state SHA、Team ID 和 Apple 的实时状态，因此这些唤醒信号本身不具备正式发布权限。
 
 ## 一次性 GitHub 配置
 
@@ -140,7 +140,7 @@ relay 收到 Apple 请求后，不负责判断是否 `Accepted`；它按 tag/run
 - publish job 只允许覆盖尚未公开的 draft release 资产，避免重跑静默替换用户已下载的文件。
 - 若公开仓库暂时不可用，保留 workflow artifact，修复凭据或仓库状态后重跑 draft staging job。
 - Preview 已公开后不得覆盖同名 Preview 资产；候选内容变化时发布新的补丁版本，或显式扩展 workflow 使用新的 Preview 序号。
-- Apple webhook 先后触发两次是正常情况。relay 会在 Durable Object 中等待两个架构，不会因首个回调提前启动 Finalize；重复回调也不会重复 dispatch。若第二个回调在 30 天内始终未到达，或 GitHub dispatch 失败，在全部 `Accepted` 后手动运行 Finalize。
+- Apple webhook 先后触发两次是正常情况。relay 会在 Durable Object 中等待两个架构，不会因首个回调提前启动 Finalize；重复回调也不会重复 dispatch。Webhook 缺失和 GitHub dispatch 暂时失败通常会由 relay alarm 或定时核对自动恢复。只有补偿 workflow 本身持续失败时，才需要使用同一 tag 与源 run ID 手动运行 Finalize。
 - 若源 artifact 超过 30 天 retention 仍未完成公证，不得从 Preview 下载后直接当作可信输入；发布新的补丁版本并重新构建、提交。
 - 若本地 macOS 构建失败，先检查登录钥匙串授权、`CoreRobin-Notary` profile、更新私钥密码与 Apple 公证结果；不得跳过本地 manifest 校验或回退为 ad-hoc 包继续发布。若默认 GitHub 构建失败，再检查该 matrix job 的 `codesign`/`notarytool` 日志及对应 Secrets。
 - 若 Release 已公开但 manifest 更新失败，使用原来的四份证据或同一份维护者风险确认重跑 promotion；它会再次完整验证发布授权与资产，只补做 manifest 更新。

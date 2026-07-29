@@ -35,7 +35,7 @@
   "publisherUnknown": "Éditeur inconnu",
   "enabled": "Démarrage automatique",
   "disabled": "Désactivé",
-  "technicalDetails": "Afficher les détails techniques",
+  "technicalDetails": "Afficher le fichier et la commande de lancement",
   "managementBoundary": "Seuls les fichiers de démarrage tiers réversibles au niveau de l'utilisateur peuvent être désactivés. Les éléments système et les sources non prises en charge restent en lecture seule.",
   "readOnlyBoundary": "Cette plateforme ne permet pas à CoreRobin de restaurer un fichier de démarrage, ce qui maintient l'inventaire en lecture seule.",
   "unreadable": "{{count}} Impossible de lire les emplacements de démarrage en raison des permissions",

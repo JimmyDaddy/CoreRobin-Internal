@@ -13,6 +13,7 @@ export interface SleepBlockerSummary {
   systemComponent: boolean;
   durationSeconds: number | null;
   kinds: SleepBlockerKind[];
+  processIdentity: string | null;
 }
 
 export function temperatureWellbeingLevel(
@@ -54,8 +55,12 @@ export function summarizeSleepBlockers(
     if (!key) continue;
     const existing = grouped.get(key);
     const systemComponent = application?.systemComponent ?? isKnownSystemSleepBlocker(name);
+    const processIdentity = application?.actionIdentity
+      ?? application?.representativeIdentity
+      ?? null;
     if (existing) {
       existing.systemComponent = existing.systemComponent && systemComponent;
+      existing.processIdentity ??= processIdentity;
       existing.durationSeconds = maximumDuration(
         existing.durationSeconds,
         blocker.durationSeconds,
@@ -67,6 +72,7 @@ export function summarizeSleepBlockers(
         systemComponent,
         durationSeconds: blocker.durationSeconds,
         kinds: [blocker.kind],
+        processIdentity,
       });
     }
   }

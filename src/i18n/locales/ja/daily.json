@@ -12,7 +12,7 @@
     "today": "現在の状態",
     "solve": "問題を解決するのを手伝います",
     "cleanup": "不要なデータを削除します",
-    "records": "記録を表示",
+    "records": "振り返り",
     "settings": "設定を変更"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "インターフェースの言語",
     "professional": "プロフェッショナルモード",
     "professionalDescription": "すべての指標、プロセスツリー、および技術的な詳細を表示"
+  },
+  "review": {
+    "kicker": "このデバイス · 今日",
+    "title": "今日の振り返り",
+    "description": "今日の異常、回復、確認済みの操作を、確かめられる結果としてまとめます。",
+    "status": {
+      "active": "まだ {{count}} 件の確認が必要です",
+      "settled": "今日の変動は現在すべて落ち着いています",
+      "handled": "今日の操作は結果とともに完了しています",
+      "calm": "今日は継続的な問題が記録されていません"
+    },
+    "metrics": {
+      "events": "要確認",
+      "resolved": "回復済み",
+      "actions": "実行した操作",
+      "network": "ネットワーク変化"
+    },
+    "evidence": "今日記録された主なリソース要因は {{name}} です。システムのピークは CPU {{cpu}}、メモリ {{memory}} でした。",
+    "resultsTitle": "観察された結果",
+    "resultsDescription": "操作前後のローカル測定だけを比較し、因果関係とは断定しません。",
+    "noResults": "アプリの終了、ファイル整理、起動項目の調整後に結果がここへ表示されます。",
+    "open": "関連機能を開く"
   },
   "records": {
     "kicker": "最近の変更",

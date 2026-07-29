@@ -695,7 +695,7 @@ export default interface Resources {
       "urgent": "现在查看"
     },
     "collapse": "收起 Robin",
-    "dragHint": "拖动 Robin 移动；悬停查看状态；右键打开菜单",
+    "dragHint": "拖动 Robin 移动；双击打开主窗口；悬停查看状态；右键打开菜单",
     "expand": "打开 Robin",
     "hide": "隐藏 Robin",
     "kicker": "Robin",
@@ -988,7 +988,7 @@ export default interface Resources {
       "cleanup": "清理空间",
       "home": "电脑状态",
       "more": "更多",
-      "records": "记录",
+      "records": "回顾",
       "settings": "设置",
       "solve": "帮我解决",
       "space": "空间",
@@ -1095,6 +1095,28 @@ export default interface Resources {
       "showLess": "收起较早记录",
       "showMore": "查看全部 {{count}} 条记录",
       "title": "处理前后，都有记录"
+    },
+    "review": {
+      "description": "把今天的异常、恢复和你执行过的操作整理成一份可核对的结果。",
+      "evidence": "今天记录的主要资源来源是 {{name}}；整机峰值 CPU {{cpu}}、内存 {{memory}}。",
+      "kicker": "本机 · 今天",
+      "metrics": {
+        "actions": "已执行操作",
+        "events": "值得留意",
+        "network": "网络变化",
+        "resolved": "已经恢复"
+      },
+      "noResults": "完成退出应用、清理或启动项调整后，核对结果会显示在这里。",
+      "open": "打开对应功能",
+      "resultsDescription": "只比较操作前后的本机采样，不把相关性说成因果。",
+      "resultsTitle": "处理效果",
+      "status": {
+        "active": "仍有 {{count}} 件事值得处理",
+        "calm": "今天没有持续异常",
+        "handled": "今天的操作已完成并留下结果",
+        "settled": "今天出现过波动，目前都已恢复"
+      },
+      "title": "今日回顾"
     },
     "settings": {
       "companionAlwaysOnTop": "始终显示在其他窗口上方",
@@ -1564,6 +1586,7 @@ export default interface Resources {
         "improved": "操作后 15 分钟内系统压力有所下降",
         "increased": "操作后 15 分钟内系统压力有所上升",
         "insufficient": "后续样本不足，暂时无法比较效果",
+        "not_applicable": "这项操作不适合用系统压力变化判断效果",
         "stable": "操作前后系统压力基本持平"
       },
       "alert": {
@@ -2051,6 +2074,7 @@ export default interface Resources {
       "platform": "系统",
       "privacy": "隐私说明",
       "releaseNotes": "查看更新内容",
+      "remindLater": "明天提醒我",
       "reopenGuide": "重新查看首次引导",
       "reportIssue": "报告问题",
       "restartUpdate": "立即重启并完成更新",
@@ -2497,7 +2521,7 @@ export default interface Resources {
     "summary": "启动项摘要",
     "systemCount": "系统项目",
     "systemHint": "保持只读，不提供普通开关",
-    "technicalDetails": "查看技术位置",
+    "technicalDetails": "查看文件与启动命令",
     "thirdPartyCount": "第三方项目",
     "thirdPartyHint": "包含按条件启动的后台助手",
     "title": "启动项",

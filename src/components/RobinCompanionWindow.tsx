@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowRight, EyeOff } from "lucide-react";
+import { ArrowRight, EyeOff, Maximize2 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -32,6 +32,9 @@ interface CompanionDailyBridge {
     target: CompanionDailyTarget,
     occurrenceId?: string | null,
   ) => Promise<void>;
+}
+interface CompanionMainBridge {
+  showMainWindow: () => Promise<unknown>;
 }
 
 const nativeCompanionDailyBridge: CompanionDailyBridge = {
@@ -240,11 +243,19 @@ export function RobinCompanionWindow() {
   };
 
   const beginDragging = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!desktopRuntime || event.button !== 0) return;
+    if (!desktopRuntime || event.button !== 0 || event.detail > 1) return;
     event.preventDefault();
     contextMenuOpenRef.current = false;
     setContextMenuOpen(false);
     void getCurrentWindow().startDragging();
+  };
+
+  const openMainWindow = (event?: ReactMouseEvent<HTMLElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    contextMenuOpenRef.current = false;
+    setContextMenuOpen(false);
+    void openMainFromCompanion();
   };
 
   const handleMascotKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -285,6 +296,7 @@ export function RobinCompanionWindow() {
           aria-expanded={expanded}
           aria-label={t("companion:dragHint")}
           onMouseDown={beginDragging}
+          onDoubleClick={openMainWindow}
           onKeyDown={handleMascotKeyDown}
         >
           <AnimatedRobin
@@ -298,6 +310,10 @@ export function RobinCompanionWindow() {
         </div>
 
         {contextMenuOpen ? <div className="robin-buddy-menu" role="menu" aria-label={t("companion:menu")}>
+          <button type="button" role="menuitem" onClick={() => openMainWindow()}>
+            <Maximize2 size={14} />
+            <span>{t("tray:open")}</span>
+          </button>
           <button type="button" role="menuitem" onClick={hideFromContextMenu}>
             <EyeOff size={14} />
             <span>{t("companion:hide")}</span>
@@ -338,6 +354,12 @@ export async function openDailyFromCompanion(
     health === "normal" ? "more" : "overview",
     occurrenceId,
   );
+}
+
+export async function openMainFromCompanion(
+  bridge: CompanionMainBridge = nativeCompanionDailyBridge,
+) {
+  await bridge.showMainWindow();
 }
 
 async function hideCompanion() {

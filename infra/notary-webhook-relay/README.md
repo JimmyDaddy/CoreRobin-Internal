@@ -52,6 +52,7 @@ Release workflow 会为 Apple 自动追加 `tag`、`run_id` 和 `arch` query 参
 - `GITHUB_DISPATCH_TOKEN` 与 `WEBHOOK_PATH_SECRET` 只能存入 Cloudflare Secrets。
 - 回调只接受 `POST`，最大请求体为 64 KiB，并严格验证 tag、run ID 与架构。
 - Relay 以 tag/run ID 命名 Durable Object，串行聚合两个架构和 Preview 就绪信号，并用 `dispatching`/`dispatched` 状态抑制并发或重复回调。
+- GitHub dispatch 暂时失败时，状态保持待处理，Durable Object alarm 会按 1 分钟起步、最长 1 小时的指数退避重试。
 - Durable Object 状态在 30 天后由 alarm 删除。
 - `/healthz` 不读取或泄露任何 secret。
 - 不要在该 URL 前启用 Cloudflare Access；Apple 无法完成交互登录。

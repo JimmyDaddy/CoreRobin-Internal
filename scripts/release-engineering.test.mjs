@@ -39,6 +39,7 @@ describe("release engineering boundaries", () => {
     expect(existsSync("scripts/render-preview-release-notes.mjs")).toBe(true);
     expect(existsSync("scripts/create-maintainer-release-attestation.mjs")).toBe(true);
     expect(existsSync(".github/workflows/finalize-release.yml")).toBe(true);
+    expect(existsSync(".github/workflows/reconcile-notarization.yml")).toBe(true);
     expect(existsSync(".github/workflows/release-candidate.yml")).toBe(true);
     expect(existsSync("infra/notary-webhook-relay/src/index.mjs")).toBe(true);
     expect(existsSync("infra/notary-webhook-relay/wrangler.jsonc")).toBe(true);

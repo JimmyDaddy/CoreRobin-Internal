@@ -200,6 +200,7 @@
     "openRelease": "다운로드",
     "upToDate": "v{{version}} 최신 상태입니다",
     "installUpdate": "다운로드 및 설치",
+    "remindLater": "내일 다시 알림",
     "installingUpdate": "업데이트 중…",
     "downloadingUpdate": "업데이트 다운로드 및 확인 중",
     "applyingUpdate": "업데이트 설치 중",

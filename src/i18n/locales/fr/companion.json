@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "Faites glisser Robin pour le déplacer ; survolez-le pour afficher son état ; faites un clic droit pour ouvrir le menu",
+  "dragHint": "Faites glisser Robin pour le déplacer ; double-cliquez pour ouvrir la fenêtre principale ; survolez-le pour afficher son état ; faites un clic droit pour ouvrir le menu",
   "expand": "Ouvrir Robin",
   "collapse": "Réduire Robin",
   "menu": "Menu de Robin",

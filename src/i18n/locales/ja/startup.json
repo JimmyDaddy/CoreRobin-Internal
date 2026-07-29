@@ -35,7 +35,7 @@
   "publisherUnknown": "発行元不明",
   "enabled": "起動時に自動的に開始します",
   "disabled": "無効化されています",
-  "technicalDetails": "詳細情報を表示",
+  "technicalDetails": "ファイルと起動コマンドを表示",
   "managementBoundary": "特定のユーザーレベルのサードパーティ製の起動ファイルを無効化できます。システム関連のアイテムやサポートされていないソースは読み取り専用です。",
   "readOnlyBoundary": "CoreRobin が安全に復元できる起動ソースは存在しないため、一覧は読み取り専用になります。",
   "unreadable": "{{count}} 起動設定の読み込みに失敗しました。権限が不足している可能性があります。",

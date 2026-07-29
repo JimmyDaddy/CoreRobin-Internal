@@ -13,13 +13,17 @@ const checks = [
   { id: "launch", title: "安装后的应用能够启动；启动页关闭并显示主窗口" },
   { id: "main", title: "主窗口能在日常/专业模式间切换且无空白或脚本错误" },
   { id: "tray", title: "状态栏/托盘面板可打开、关闭并再次打开，内容没有截断" },
-  { id: "companion", title: "Robin 小伙伴可显示、展开、拖动、隐藏并打开主窗口" },
+  { id: "companion", title: "Robin 小伙伴可显示、展开、拖动、隐藏，并可通过双击或菜单打开主窗口" },
   { id: "health-sync", title: "主窗口、状态栏面板与 Robin 显示同一稳定状态、原因和更新时间" },
   { id: "appearance-sync", title: "切换语言、文字大小和减少动画后，三个前端在重新打开时保持一致" },
   { id: "background", title: "关闭主窗口后后台采样继续，状态栏仍可恢复主窗口" },
   {
     id: "updater-discovery",
     title: "关于与支持能完成更新检查，准确显示当前版本、可用版本或已是最新版，不出现原始系统错误",
+  },
+  {
+    id: "updater-notification",
+    title: "新版本提示不会阻塞主窗口；可选择立即更新、明天提醒或跳过当前版本，跳过后更高版本仍会提示",
   },
   {
     id: "updater-install-restart",
@@ -32,6 +36,10 @@ const checks = [
   {
     id: "removable-volume-eject",
     title: "连接专门用于验收的可移除卷后，在存储页确认推出；卷从 CoreRobin 与系统中消失，重新连接后可再次显示",
+  },
+  {
+    id: "today-review",
+    title: "日常模式的“回顾”能汇总当天事件、恢复与已确认操作；效果文案只描述观察结果，不虚构因果关系",
   },
   {
     id: "application-uninstall-review",

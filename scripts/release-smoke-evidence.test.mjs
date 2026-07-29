@@ -66,9 +66,11 @@ function evidence({ artifact, sha256, platform, architecture }) {
     "appearance-sync",
     "background",
     "updater-discovery",
+    "updater-notification",
     "updater-install-restart",
     "application-uninstall-capability",
     "removable-volume-eject",
+    "today-review",
     "quit-relaunch",
   ].map((id) => ({ id, status: "passed", note: "" }));
   checks.push(...["cleanup-limited", "cleanup-authorized"].map((id) => ({

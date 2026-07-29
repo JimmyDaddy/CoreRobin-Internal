@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "拖動 Robin 移動；懸停檢視狀態；右鍵開啟選單",
+  "dragHint": "拖動 Robin 移動；按兩下開啟主視窗；懸停檢視狀態；右鍵開啟選單",
   "expand": "開啟 Robin",
   "collapse": "收起 Robin",
   "menu": "Robin 選單",

@@ -16,6 +16,81 @@
   transform: translateX(-50%);
 }
 
+.global-update-task--available {
+  top: 22px;
+  align-items: flex-start;
+  min-width: min(680px, calc(100vw - 40px));
+  padding: 16px;
+  border-color: color-mix(in srgb, var(--blue) 58%, var(--border));
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--blue) 18%, transparent), transparent 42%),
+    color-mix(in srgb, var(--panel) 96%, transparent);
+}
+
+.global-update-task__release-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  color: var(--blue);
+  border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--border));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--blue) 13%, var(--panel));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--blue) 16%, transparent);
+}
+
+.global-update-task--available > div:nth-child(2) {
+  gap: 3px;
+}
+
+.global-update-task--available small {
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.global-update-task--available p {
+  display: -webkit-box;
+  max-width: 440px;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.global-update-task__actions {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center;
+  align-self: center;
+  gap: 7px !important;
+}
+
+.global-update-task__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.global-update-task__actions button.is-primary {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--blue) 72%, transparent);
+  background: color-mix(in srgb, var(--blue) 78%, #17345c);
+}
+
+.global-update-task__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .global-update-task > div {
   display: grid;
   flex: 1;
@@ -35,4 +110,15 @@
   color: var(--text);
   background: var(--panel);
   cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .global-update-task--available {
+    flex-wrap: wrap;
+  }
+
+  .global-update-task__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const releaseWorkflow = readFileSync(".github/workflows/release.yml", "utf8");
 const finalizeWorkflow = readFileSync(".github/workflows/finalize-release.yml", "utf8");
+const reconcileWorkflow = readFileSync(".github/workflows/reconcile-notarization.yml", "utf8");
 const promoteWorkflow = readFileSync(".github/workflows/promote-release.yml", "utf8");
 const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const macOSPackageVerifier = readFileSync("scripts/verify-packaged-macos.sh", "utf8");
@@ -228,6 +229,28 @@ describe("release workflow privilege separation", () => {
     expect(finalize).toContain("status != Accepted");
     expect(finalize).not.toContain("sleep 20");
     expect(finalize).not.toContain("--wait");
+  });
+
+  it("recovers lost notarization callbacks without granting Apple checks release write access", () => {
+    const discover = workflowJob(reconcileWorkflow, "discover");
+    const recheck = workflowJob(reconcileWorkflow, "recheck");
+    const dispatch = workflowJob(reconcileWorkflow, "dispatch");
+    expect(reconcileWorkflow).toContain("schedule:");
+    expect(reconcileWorkflow).toContain('"17,47 * * * *"');
+    expect(reconcileWorkflow).toContain("workflow_dispatch:");
+    expect(discover).toContain("actions: read");
+    expect(discover).toContain("stable_release_exists");
+    expect(discover).toContain("finalize_already_started");
+    expect(recheck).toContain("runs-on: macos-latest");
+    expect(recheck).toContain("scripts/macos-notarization-state.mjs verify");
+    expect(recheck).toContain("xcrun notarytool info");
+    expect(recheck).toContain("Accepted");
+    expect(recheck).not.toContain("contents: write");
+    expect(recheck).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(dispatch).toContain("contents: write");
+    expect(dispatch).toContain("apple-notarization-complete");
+    expect(dispatch).not.toContain("APPLE_API_PRIVATE_KEY_BASE64");
+    expect(finalizeWorkflow).toContain("run-name: Finalize");
   });
 
   it("publishes Preview as a separate manual-only prerelease", () => {

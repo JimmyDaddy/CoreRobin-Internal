@@ -35,7 +35,7 @@
   "publisherUnknown": "Unbekannter Publisher",
   "enabled": "Startet automatisch",
   "disabled": "Deaktiviert",
-  "technicalDetails": "Zeigt technische Details",
+  "technicalDetails": "Datei und Startbefehl anzeigen",
   "managementBoundary": "Nur umkehrbare Benutzer-Startup-Dateien können deaktiviert werden. System-Elemente und nicht unterstützte Quellen bleiben schreibgeschützt.",
   "readOnlyBoundary": "Diese Plattform stellt keine Startup-Quelle zur Verfügung, die CoreRobin sicher wiederherstellen kann, sodass das Inventar schreibgeschützt bleibt.",
   "unreadable": "{{count}} Startprogramme konnten aufgrund von Berechtigungen nicht gelesen werden",

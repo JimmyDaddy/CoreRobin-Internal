@@ -12,7 +12,7 @@
     "today": "현재 상태",
     "solve": "문제 해결을 도와주세요",
     "cleanup": "사용 공간 정리",
-    "records": "기록 확인",
+    "records": "오늘 돌아보기",
     "settings": "설정 관리"
   },
   "topbar": {
@@ -386,6 +386,28 @@
     "language": "사용자 인터페이스 언어 선택",
     "professional": "전문가 모드 활성화",
     "professionalDescription": "모든 지표, 프로세스 트리 및 기술 세부 정보를 확인"
+  },
+  "review": {
+    "kicker": "이 기기 · 오늘",
+    "title": "오늘 돌아보기",
+    "description": "오늘의 이상, 회복, 확인된 작업을 검토할 수 있는 결과로 정리합니다.",
+    "status": {
+      "active": "아직 {{count}}개 항목을 살펴봐야 합니다",
+      "settled": "오늘의 변동은 현재 모두 안정되었습니다",
+      "handled": "오늘의 작업이 결과와 함께 완료되었습니다",
+      "calm": "오늘 지속적인 문제는 기록되지 않았습니다"
+    },
+    "metrics": {
+      "events": "살펴볼 항목",
+      "resolved": "회복됨",
+      "actions": "실행한 작업",
+      "network": "네트워크 변화"
+    },
+    "evidence": "오늘 기록된 주요 리소스 원인은 {{name}}이며, 시스템 최고치는 CPU {{cpu}}, 메모리 {{memory}}였습니다.",
+    "resultsTitle": "관찰된 처리 효과",
+    "resultsDescription": "작업 전후의 로컬 샘플만 비교하며 인과 관계로 단정하지 않습니다.",
+    "noResults": "앱 종료, 파일 정리 또는 시작 항목 조정 후 결과가 여기에 표시됩니다.",
+    "open": "관련 기능 열기"
   },
   "records": {
     "kicker": "최근 변경 사항",

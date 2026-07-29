@@ -12,7 +12,7 @@
     "today": "电脑状态",
     "solve": "帮我解决",
     "cleanup": "清理空间",
-    "records": "记录",
+    "records": "回顾",
     "settings": "设置"
   },
   "topbar": {
@@ -391,6 +391,28 @@
     "language": "界面语言",
     "professional": "专业模式",
     "professionalDescription": "查看完整指标、进程树和技术详情"
+  },
+  "review": {
+    "kicker": "本机 · 今天",
+    "title": "今日回顾",
+    "description": "把今天的异常、恢复和你执行过的操作整理成一份可核对的结果。",
+    "status": {
+      "active": "仍有 {{count}} 件事值得处理",
+      "settled": "今天出现过波动，目前都已恢复",
+      "handled": "今天的操作已完成并留下结果",
+      "calm": "今天没有持续异常"
+    },
+    "metrics": {
+      "events": "值得留意",
+      "resolved": "已经恢复",
+      "actions": "已执行操作",
+      "network": "网络变化"
+    },
+    "evidence": "今天记录的主要资源来源是 {{name}}；整机峰值 CPU {{cpu}}、内存 {{memory}}。",
+    "resultsTitle": "处理效果",
+    "resultsDescription": "只比较操作前后的本机采样，不把相关性说成因果。",
+    "noResults": "完成退出应用、清理或启动项调整后，核对结果会显示在这里。",
+    "open": "打开对应功能"
   },
   "records": {
     "kicker": "最近发生的变化",

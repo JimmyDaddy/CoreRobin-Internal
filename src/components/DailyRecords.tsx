@@ -16,12 +16,19 @@ import {
 } from "../historyStories";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import type { ApplicationWatchHistoryEvent } from "../applicationWatchHistory";
+import type { ApplicationImpactHistoryPoint } from "../applicationImpactHistory";
+import type { NetworkQualityHistoryPoint } from "../networkQualityHistory";
+import type { HistoryPoint } from "../types";
 import type { UserActionKind, UserActionRecord } from "../userActionHistory";
 import { UserActionTimeline } from "./UserActionTimeline";
 import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
+import { TodayReview } from "./TodayReview";
 
 interface DailyRecordsProps {
   alertEvents: readonly ResourceAlertEvent[];
+  points?: readonly HistoryPoint[];
+  applicationImpactPoints?: readonly ApplicationImpactHistoryPoint[];
+  networkQualityPoints?: readonly NetworkQualityHistoryPoint[];
   applicationWatchEvents?: readonly ApplicationWatchHistoryEvent[];
   actionRecords: readonly UserActionRecord[];
   storedActionCount: number;
@@ -31,6 +38,9 @@ interface DailyRecordsProps {
 
 export function DailyRecords({
   alertEvents,
+  points = [],
+  applicationImpactPoints = [],
+  networkQualityPoints = [],
   applicationWatchEvents = [],
   actionRecords,
   storedActionCount,
@@ -51,6 +61,15 @@ export function DailyRecords({
         <span><History size={23} /></span>
         <div><small>{t("daily:records.kicker")}</small><h1 id="daily-records-title">{t("daily:records.title")}</h1><p>{t("daily:records.description")}</p></div>
       </header>
+
+      <TodayReview
+        points={points}
+        applicationImpactPoints={applicationImpactPoints}
+        alertEvents={alertEvents}
+        networkQualityPoints={networkQualityPoints}
+        actionRecords={actionRecords}
+        onOpenAction={onOpenAction}
+      />
 
       {actionRecords.length > 0 ? (
         <UserActionTimeline

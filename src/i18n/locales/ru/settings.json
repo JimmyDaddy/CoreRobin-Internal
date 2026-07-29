@@ -200,6 +200,7 @@
     "openRelease": "Скачать",
     "upToDate": "Установлена актуальная v{{version}}",
     "installUpdate": "Скачать и установить",
+    "remindLater": "Напомнить завтра",
     "installingUpdate": "Обновление…",
     "downloadingUpdate": "Загрузка и проверка обновления",
     "applyingUpdate": "Установка обновления",
