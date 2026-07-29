@@ -1,5 +1,10 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
+use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{
@@ -18,6 +23,7 @@ use crate::models::{
 use crate::sensors::SensorSampler;
 
 const EJECTED_VOLUME_RECONCILIATION_GRACE: Duration = Duration::from_secs(2);
+const VOLUME_CATALOG_REFRESH_INTERVAL: Duration = Duration::from_secs(15);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct NetworkSessionCounters {
@@ -62,6 +68,10 @@ pub struct SystemMonitor {
     sensors: SensorSampler,
     birth_tokens: BirthTokenCache,
     ejected_mount_points: HashMap<String, Instant>,
+    volume_catalog: Arc<Mutex<Vec<VolumeSnapshot>>>,
+    volume_refresh_in_flight: Arc<AtomicBool>,
+    last_volume_refresh: Instant,
+    application_identities: HashMap<PathBuf, Option<String>>,
 }
 
 impl SystemMonitor {
@@ -85,10 +95,12 @@ impl SystemMonitor {
                 .unwrap_or_default(),
         };
 
+        let disks = Disks::new_with_refreshed_list();
+        let volume_catalog = Arc::new(Mutex::new(volume_snapshots_from_disks(&disks)));
         Self {
             system,
             networks: Networks::new_with_refreshed_list(),
-            disks: Disks::new_with_refreshed_list(),
+            disks,
             users: Users::new_with_refreshed_list(),
             host,
             sequence: 0,
@@ -99,6 +111,10 @@ impl SystemMonitor {
             sensors: SensorSampler::new(),
             birth_tokens: BirthTokenCache::default(),
             ejected_mount_points: HashMap::new(),
+            volume_catalog,
+            volume_refresh_in_flight: Arc::new(AtomicBool::new(false)),
+            last_volume_refresh: Instant::now(),
+            application_identities: HashMap::new(),
         }
     }
 
@@ -117,6 +133,7 @@ impl SystemMonitor {
             process_refresh_kind(),
         );
         self.networks.refresh(true);
+        self.schedule_volume_catalog_refresh(false);
         // Refreshing the full disk list on macOS asks CoreFoundation for every
         // mounted volume's properties. A stale or busy APFS/network mount can
         // block that call indefinitely and prevent the first snapshot from
@@ -211,6 +228,19 @@ impl SystemMonitor {
             .iter()
             .map(|(&pid, &start_time)| (pid, self.birth_tokens.resolve(pid, start_time)))
             .collect::<HashMap<_, _>>();
+        let executable_paths = self
+            .system
+            .processes()
+            .values()
+            .filter_map(|process| process.exe().map(Path::to_path_buf))
+            .collect::<Vec<_>>();
+        for executable_path in &executable_paths {
+            self.application_identities
+                .entry(executable_path.clone())
+                .or_insert_with(|| application_identity_for_executable(executable_path));
+        }
+        self.application_identities
+            .retain(|path, _| executable_paths.contains(path));
 
         let mut processes = self
             .system
@@ -226,6 +256,11 @@ impl SystemMonitor {
                     start_time: process.start_time(),
                     run_time_seconds: process.run_time(),
                     name: process.name().to_string_lossy().into_owned(),
+                    application_id: process
+                        .exe()
+                        .and_then(|path| self.application_identities.get(path))
+                        .cloned()
+                        .flatten(),
                     user: process
                         .user_id()
                         .and_then(|user_id| self.users.get_user_by_id(user_id))
@@ -310,6 +345,7 @@ impl SystemMonitor {
         }
         self.reconcile_ejected_mount_points();
         self.networks.refresh(true);
+        self.schedule_volume_catalog_refresh(false);
 
         self.sequence = self.sequence.saturating_add(1);
         self.last_sample = Instant::now();
@@ -401,25 +437,45 @@ impl SystemMonitor {
         });
     }
 
+    pub fn request_volume_catalog_refresh(&mut self) {
+        self.schedule_volume_catalog_refresh(true);
+    }
+
+    fn schedule_volume_catalog_refresh(&mut self, force: bool) {
+        if !force && self.last_volume_refresh.elapsed() < VOLUME_CATALOG_REFRESH_INTERVAL {
+            return;
+        }
+        if self.volume_refresh_in_flight.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        self.last_volume_refresh = Instant::now();
+        let catalog = Arc::clone(&self.volume_catalog);
+        let in_flight = Arc::clone(&self.volume_refresh_in_flight);
+        let _ = thread::Builder::new()
+            .name("core-robin-volume-catalog".to_owned())
+            .spawn(move || {
+                let disks = Disks::new_with_refreshed_list();
+                let next = volume_snapshots_from_disks(&disks);
+                if !next.is_empty()
+                    && let Ok(mut current) = catalog.lock()
+                {
+                    *current = next;
+                }
+                in_flight.store(false, Ordering::Release);
+            });
+    }
+
     fn volume_snapshots(&self) -> Vec<VolumeSnapshot> {
-        collapse_macos_system_volume_group(
-            self.disks
-                .list()
-                .iter()
-                .filter(|disk| disk.total_space() > 0)
-                .filter(|disk| {
-                    let mount_point = disk.mount_point().to_string_lossy();
-                    !self.ejected_mount_points.contains_key(mount_point.as_ref())
-                })
-                .map(|disk| VolumeSnapshot {
-                    name: disk.name().to_string_lossy().into_owned(),
-                    mount_point: disk.mount_point().to_string_lossy().into_owned(),
-                    total_bytes: disk.total_space(),
-                    available_bytes: disk.available_space(),
-                    removable: disk.is_removable(),
-                })
-                .collect(),
-        )
+        self.volume_catalog
+            .lock()
+            .map(|volumes| {
+                volumes
+                    .iter()
+                    .filter(|volume| !self.ejected_mount_points.contains_key(&volume.mount_point))
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub fn process_detail(
@@ -516,6 +572,23 @@ impl SystemMonitor {
     }
 }
 
+fn volume_snapshots_from_disks(disks: &Disks) -> Vec<VolumeSnapshot> {
+    collapse_macos_system_volume_group(
+        disks
+            .list()
+            .iter()
+            .filter(|disk| disk.total_space() > 0)
+            .map(|disk| VolumeSnapshot {
+                name: disk.name().to_string_lossy().into_owned(),
+                mount_point: disk.mount_point().to_string_lossy().into_owned(),
+                total_bytes: disk.total_space(),
+                available_bytes: disk.available_space(),
+                removable: disk.is_removable(),
+            })
+            .collect(),
+    )
+}
+
 #[cfg(any(target_os = "macos", windows))]
 fn mount_point_is_active(mount_point: &str) -> bool {
     Path::new(mount_point).exists()
@@ -575,6 +648,41 @@ pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
     }
 }
 
+fn application_identity_for_executable(executable: &Path) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    if let Some(bundle) = executable.ancestors().find(|candidate| {
+        candidate
+            .extension()
+            .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("app"))
+    }) && let Ok(value) = plist::Value::from_file(bundle.join("Contents/Info.plist"))
+        && let Some(identifier) = value
+            .as_dictionary()
+            .and_then(|dictionary| dictionary.get("CFBundleIdentifier"))
+            .and_then(plist::Value::as_string)
+            .map(str::trim)
+            .filter(|identifier| !identifier.is_empty())
+    {
+        return Some(format!("bundle:{identifier}"));
+    }
+
+    let normalized = executable.to_string_lossy();
+    if normalized.is_empty() {
+        return None;
+    }
+    #[cfg(windows)]
+    let normalized = normalized.to_lowercase();
+    Some(format!(
+        "executable:{:016x}",
+        stable_identity_hash(normalized.as_bytes())
+    ))
+}
+
+fn stable_identity_hash(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+    })
+}
+
 fn bytes_per_second(bytes: u64, elapsed_ms: u64) -> u64 {
     if elapsed_ms == 0 {
         return 0;
@@ -585,8 +693,9 @@ fn bytes_per_second(bytes: u64, elapsed_ms: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        NetworkSessionCounters, bytes_per_second, collapse_macos_system_volume_group,
-        protected_reason, should_suppress_ejected_volume,
+        NetworkSessionCounters, application_identity_for_executable, bytes_per_second,
+        collapse_macos_system_volume_group, protected_reason, should_suppress_ejected_volume,
+        stable_identity_hash,
     };
     use crate::models::VolumeSnapshot;
     use std::time::Duration;
@@ -604,6 +713,20 @@ mod tests {
     #[test]
     fn converts_delta_bytes_using_the_real_interval() {
         assert_eq!(bytes_per_second(1_024, 500), 2_048);
+    }
+
+    #[test]
+    fn fallback_application_identity_is_stable_without_exposing_the_path() {
+        let identity = application_identity_for_executable(std::path::Path::new(
+            "/Users/example/Applications/Tool/bin/tool",
+        ))
+        .unwrap();
+        assert!(identity.starts_with("executable:"));
+        assert!(!identity.contains("Users"));
+        assert_eq!(
+            stable_identity_hash(b"same-path"),
+            stable_identity_hash(b"same-path")
+        );
     }
 
     #[test]

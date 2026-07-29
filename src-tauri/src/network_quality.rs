@@ -1,8 +1,11 @@
 use std::collections::HashSet;
 use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 use std::process::Command;
+use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::bounded_command;
 use crate::error::CommandError;
 use crate::models::{
     NetworkHostLookup, NetworkHostLookupRequest, NetworkQualityDiagnostic,
@@ -16,6 +19,9 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(900);
 const ROUTE_PROBE_V4: &str = "1.1.1.1:443";
 const ROUTE_PROBE_V6: &str = "[2606:4700:4700::1111]:443";
 const MAX_LOOKUP_ADDRESSES: usize = 32;
+const DNS_TIMEOUT: Duration = Duration::from_millis(1_500);
+const ROUTE_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
+const ROUTE_COMMAND_OUTPUT_LIMIT: usize = 128 * 1_024;
 
 pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError> {
     let sampled_at_ms = now_millis();
@@ -24,10 +30,11 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         .iter()
         .map(|(host, port)| {
             (*host, *port)
-                .to_socket_addrs()
+                .pipe(|target| resolve_socket_addresses(target, DNS_TIMEOUT))
                 .map(|addresses| {
                     let mut seen = HashSet::new();
                     addresses
+                        .into_iter()
                         .filter(|address| seen.insert(address.ip()))
                         .collect::<Vec<_>>()
                 })
@@ -207,32 +214,41 @@ fn default_route_signature() -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn platform_default_route() -> Option<Vec<u8>> {
-    let output = Command::new("/sbin/route")
-        .args(["-n", "get", "default"])
-        .output()
-        .ok()?;
+    let output = bounded_command::output_with_circuit(
+        "network.default-route.macos",
+        Command::new("/sbin/route").args(["-n", "get", "default"]),
+        ROUTE_COMMAND_TIMEOUT,
+        ROUTE_COMMAND_OUTPUT_LIMIT,
+    )
+    .ok()?;
     output.status.success().then_some(output.stdout)
 }
 
 #[cfg(target_os = "linux")]
 fn platform_default_route() -> Option<Vec<u8>> {
-    let output = Command::new("ip")
-        .args(["-json", "route", "show", "default"])
-        .output()
-        .ok()?;
+    let output = bounded_command::output_with_circuit(
+        "network.default-route.linux",
+        Command::new("ip").args(["-json", "route", "show", "default"]),
+        ROUTE_COMMAND_TIMEOUT,
+        ROUTE_COMMAND_OUTPUT_LIMIT,
+    )
+    .ok()?;
     output.status.success().then_some(output.stdout)
 }
 
 #[cfg(windows)]
 fn platform_default_route() -> Option<Vec<u8>> {
-    let output = Command::new("powershell.exe")
-        .args([
+    let output = bounded_command::output_with_circuit(
+        "network.default-route.windows",
+        Command::new("powershell.exe").args([
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             "Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric,InterfaceMetric | Select-Object -First 1 ifIndex,NextHop,RouteMetric,InterfaceMetric | ConvertTo-Json -Compress",
-        ])
-        .output()
+        ]),
+        ROUTE_COMMAND_TIMEOUT,
+        ROUTE_COMMAND_OUTPUT_LIMIT,
+    )
         .ok()?;
     output.status.success().then_some(output.stdout)
 }
@@ -279,12 +295,50 @@ pub fn resolve_network_hosts(request: NetworkHostLookupRequest) -> Vec<NetworkHo
             let hostname = address
                 .parse::<IpAddr>()
                 .ok()
-                .and_then(|ip| dns_lookup::lookup_addr(&ip).ok())
+                .and_then(|ip| reverse_lookup_with_timeout(ip, DNS_TIMEOUT))
                 .filter(|hostname| hostname != &address);
             NetworkHostLookup { address, hostname }
         })
         .collect()
 }
+
+fn resolve_socket_addresses(target: (&str, u16), timeout: Duration) -> Result<Vec<SocketAddr>, ()> {
+    let host = target.0.to_owned();
+    let port = target.1;
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let _ = thread::Builder::new()
+        .name("core-robin-dns-resolve".to_owned())
+        .spawn(move || {
+            let result = (host.as_str(), port)
+                .to_socket_addrs()
+                .map(|addresses| addresses.collect::<Vec<_>>())
+                .map_err(|_| ());
+            let _ = sender.send(result);
+        });
+    receiver
+        .recv_timeout(timeout)
+        .ok()
+        .and_then(Result::ok)
+        .ok_or(())
+}
+
+fn reverse_lookup_with_timeout(ip: IpAddr, timeout: Duration) -> Option<String> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let _ = thread::Builder::new()
+        .name("core-robin-reverse-dns".to_owned())
+        .spawn(move || {
+            let _ = sender.send(dns_lookup::lookup_addr(&ip).ok());
+        });
+    receiver.recv_timeout(timeout).ok().flatten()
+}
+
+trait Pipe: Sized {
+    fn pipe<T>(self, operation: impl FnOnce(Self) -> T) -> T {
+        operation(self)
+    }
+}
+
+impl<T> Pipe for T {}
 
 fn mean(values: &[f64]) -> Option<f64> {
     (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)

@@ -43,8 +43,8 @@
     "simple": "Режим",
     "professional": "Профессиональный режим",
     "short": {
-      "simple": "Ежедневный",
-      "professional": "Профессиональный режим"
+      "simple": "Обыч.",
+      "professional": "Про"
     },
     "switchTo": {
       "simple": "Переключиться в повседневный режим",
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} количество приложений или системных компонентов",
     "savedHistory": "{{count}} сохраненные точки истории",
     "processCount": "{{count}} количество процессов",
-    "cleanupEntries": "{{count}} просмотренные элементы"
+    "cleanupEntries": "{{count}} просмотренные элементы",
+    "samplerSaved": "Нативный сборщик {{time}} · ошибок подряд: {{failures}}",
+    "samplerWaiting": "Нативный сборщик запускается"
   }
 }

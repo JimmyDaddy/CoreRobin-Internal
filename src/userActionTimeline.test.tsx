@@ -48,6 +48,22 @@ describe("user action timeline", () => {
 
     expect(screen.getByText("应用名称未保存")).toBeTruthy();
   });
+
+  it("offers a retry for an operation that did not complete", () => {
+    const onOpenAction = vi.fn();
+    render(
+      <UserActionTimeline
+        records={[record({
+          status: "failed",
+          verification: "not_confirmed",
+        })]}
+        onOpenAction={onOpenAction}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /重试/ }));
+    expect(onOpenAction).toHaveBeenCalledWith("process_close");
+  });
 });
 
 function record(overrides: Partial<UserActionRecord>): UserActionRecord {

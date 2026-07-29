@@ -25,6 +25,7 @@ import {
   executeNativeApplicationUninstall,
   getApplicationUninstallPlan,
   getInstalledApplications,
+  getTrashedApplicationResidualPlan,
   releaseCleanupDeleteLease,
   revealPath,
   setCleanupDeleteLeaseMode,
@@ -47,6 +48,7 @@ import type {
   CleanupDeleteProgress,
   CommandError,
   InstalledApplication,
+  TrashedApplication,
 } from "../types";
 import type {
   CompleteUserActionInput,
@@ -59,6 +61,10 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 interface ApplicationUninstallAssistantProps {
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
+  trashWatcherEnabled?: boolean;
+  onTrashWatcherEnabledChange?: (enabled: boolean) => void;
+  trashedApplications?: readonly TrashedApplication[];
+  trashWatcherError?: CommandError | null;
 }
 
 interface UninstallOutcome {
@@ -81,6 +87,10 @@ const removedApplicationsForSession = new Map<string, RemovedApplicationState>()
 export function ApplicationUninstallAssistant({
   onUserActionStart,
   onUserActionComplete,
+  trashWatcherEnabled = false,
+  onTrashWatcherEnabledChange = () => undefined,
+  trashedApplications = [],
+  trashWatcherError = null,
 }: ApplicationUninstallAssistantProps) {
   const { t, i18n } = useAppTranslation();
   const language = normalizeLanguage(i18n.resolvedLanguage);
@@ -88,6 +98,12 @@ export function ApplicationUninstallAssistant({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<CommandError | null>(null);
   const [query, setQuery] = useState("");
+  const [trashResidualMode, setTrashResidualMode] = useState(false);
+  const [sortBy, setSortBy] =
+    useState<"name" | "size" | "last_used" | "source">("size");
+  const [unusedDays, setUnusedDays] = useState<0 | 90 | 180>(0);
+  const [sourceFilter, setSourceFilter] =
+    useState<InstalledApplication["installationSource"] | "all">("all");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [plan, setPlan] = useState<ApplicationUninstallPlan | null>(null);
   const [planning, setPlanning] = useState(false);
@@ -168,12 +184,46 @@ export function ApplicationUninstallAssistant({
 
   const applications = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) return inventory?.applications ?? [];
-    return (inventory?.applications ?? []).filter((application) =>
-      application.name.toLocaleLowerCase().includes(normalized)
-      || application.bundleId?.toLocaleLowerCase().includes(normalized)
-      || application.path.toLocaleLowerCase().includes(normalized));
-  }, [inventory, query]);
+    const cutoff = Date.now() - unusedDays * 86_400_000;
+    return (inventory?.applications ?? [])
+      .filter((application) =>
+        (!normalized
+          || application.name.toLocaleLowerCase().includes(normalized)
+          || application.bundleId?.toLocaleLowerCase().includes(normalized)
+          || application.path.toLocaleLowerCase().includes(normalized))
+        && (
+          sourceFilter === "all"
+          || application.installationSource === sourceFilter
+        )
+        && (
+          unusedDays === 0
+          || application.lastUsedAtMs === null
+          || application.lastUsedAtMs <= cutoff
+        ))
+      .sort((left, right) => {
+        if (sortBy === "size") {
+          return right.sizeBytes - left.sizeBytes
+            || left.name.localeCompare(right.name);
+        }
+        if (sortBy === "last_used") {
+          return (left.lastUsedAtMs ?? 0) - (right.lastUsedAtMs ?? 0)
+            || left.name.localeCompare(right.name);
+        }
+        if (sortBy === "source") {
+          return left.installationSource.localeCompare(right.installationSource)
+            || left.name.localeCompare(right.name);
+        }
+        return left.name.localeCompare(right.name);
+      });
+  }, [inventory, query, sortBy, sourceFilter, unusedDays]);
+
+  const installationSources = useMemo(
+    () => [...new Set(
+      (inventory?.applications ?? []).map((application) =>
+        application.installationSource),
+    )].sort(),
+    [inventory],
+  );
 
   const totalSize = useMemo(
     () => (inventory?.applications ?? []).reduce(
@@ -199,6 +249,7 @@ export function ApplicationUninstallAssistant({
     setPlan(null);
     setOutcome(null);
     setNativeOutcome(null);
+    setTrashResidualMode(false);
     if (!application.uninstallable) return;
     setPlanning(true);
     setError(null);
@@ -206,6 +257,33 @@ export function ApplicationUninstallAssistant({
       const next = await getApplicationUninstallPlan(application.path, language);
       setPlan(next);
       setSelectedArtifacts(new Set(next.artifacts.map((artifact) => artifact.path)));
+      latestEvidenceAtRef.current = next.sampledAtMs;
+    } catch (caughtError) {
+      setError(normalizeCommandError(caughtError));
+    } finally {
+      setPlanning(false);
+    }
+  };
+
+  const inspectTrashedApplication = async (
+    application: TrashedApplication,
+  ) => {
+    setSelectedPath(application.path);
+    setPlan(null);
+    setOutcome(null);
+    setNativeOutcome(null);
+    setTrashResidualMode(true);
+    setPlanning(true);
+    setError(null);
+    try {
+      const next = await getTrashedApplicationResidualPlan(
+        application.path,
+        language,
+      );
+      setPlan(next);
+      setSelectedArtifacts(new Set(
+        next.artifacts.map((artifact) => artifact.path),
+      ));
       latestEvidenceAtRef.current = next.sampledAtMs;
     } catch (caughtError) {
       setError(normalizeCommandError(caughtError));
@@ -258,10 +336,12 @@ export function ApplicationUninstallAssistant({
           itemCount: item.itemCount,
         }] : []),
         mode,
-        applicationUninstall: {
-          applicationPath: plan.application.path,
-          bundleId: plan.application.bundleId,
-        },
+        applicationUninstall: trashResidualMode
+          ? undefined
+          : {
+              applicationPath: plan.application.path,
+              bundleId: plan.application.bundleId,
+            },
       });
       if (deleteRequestIdRef.current !== requestId) {
         if (lease.executable) await releaseCleanupDeleteLease({ leaseId: lease.id });
@@ -326,7 +406,7 @@ export function ApplicationUninstallAssistant({
     const applicationPath = plan.application.path;
     const completedMode = deleteMode;
     const actionRecordId = onUserActionStart?.({
-      kind: "cleanup_delete",
+      kind: "application_uninstall",
       targetName: applicationName,
       targetCount: dialogItems.length,
     }) ?? null;
@@ -442,7 +522,7 @@ export function ApplicationUninstallAssistant({
     if (!plan || !nativePlan || nativeSubmitting) return;
     const application = plan.application;
     const actionRecordId = onUserActionStart?.({
-      kind: "cleanup_delete",
+      kind: "application_uninstall",
       targetName: application.name,
       targetCount: 1,
     }) ?? null;
@@ -588,6 +668,51 @@ export function ApplicationUninstallAssistant({
 
           {error ? <p className="application-uninstall__error" role="alert">{t(`applications:uninstall.errors.${error.code}`, { defaultValue: error.message })}</p> : null}
 
+          <section className={`application-trash-watcher${trashWatcherEnabled ? " is-enabled" : ""}`}>
+            <header>
+              <span><ArchiveRestore size={17} /></span>
+              <div>
+                <strong>{t("applications:trashWatcher.title")}</strong>
+                <small>{t("applications:trashWatcher.description")}</small>
+              </div>
+              <label className="settings-switch">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={trashWatcherEnabled}
+                  onChange={(event) =>
+                    onTrashWatcherEnabledChange(event.target.checked)}
+                />
+                <span>{trashWatcherEnabled ? t("common:enabled") : t("common:disabled")}</span>
+              </label>
+            </header>
+            {trashWatcherEnabled && trashedApplications.length > 0 ? (
+              <div className="application-trash-watcher__items">
+                {trashedApplications.map((application) => (
+                  <button
+                    type="button"
+                    key={application.path}
+                    onClick={() => void inspectTrashedApplication(application)}
+                  >
+                    <ApplicationAvatar
+                      name={application.name}
+                      source={{ applicationPath: application.path }}
+                      className="application-uninstall__avatar"
+                    />
+                    <span><strong>{application.name}</strong><small>{t("applications:trashWatcher.found")}</small></span>
+                    <ScanSearch size={14} />
+                  </button>
+                ))}
+              </div>
+            ) : trashWatcherEnabled ? (
+              <small className="application-trash-watcher__empty">
+                {trashWatcherError
+                  ? t("applications:trashWatcher.error")
+                  : t("applications:trashWatcher.empty")}
+              </small>
+            ) : null}
+          </section>
+
           <div className="application-uninstall__workspace">
             <div className="application-uninstall__catalog">
               <label className="application-uninstall__search">
@@ -595,6 +720,40 @@ export function ApplicationUninstallAssistant({
                 <span className="sr-only">{t("applications:uninstall.search")}</span>
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("applications:uninstall.searchPlaceholder")} />
               </label>
+              <div className="application-uninstall__filters">
+                <label>
+                  <span>{t("applications:uninstall.filters.sort")}</span>
+                  <select value={sortBy} onChange={(event) =>
+                    setSortBy(event.target.value as typeof sortBy)}>
+                    {(["size", "last_used", "source", "name"] as const).map((value) => (
+                      <option key={value} value={value}>
+                        {t(`applications:uninstall.filters.sortBy.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("applications:uninstall.filters.unused")}</span>
+                  <select value={unusedDays} onChange={(event) =>
+                    setUnusedDays(Number(event.target.value) as 0 | 90 | 180)}>
+                    <option value={0}>{t("applications:uninstall.filters.all")}</option>
+                    <option value={90}>{t("applications:uninstall.filters.days", { count: 90 })}</option>
+                    <option value={180}>{t("applications:uninstall.filters.days", { count: 180 })}</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t("applications:uninstall.filters.source")}</span>
+                  <select value={sourceFilter} onChange={(event) =>
+                    setSourceFilter(event.target.value as typeof sourceFilter)}>
+                    <option value="all">{t("applications:uninstall.filters.all")}</option>
+                    {installationSources.map((source) => (
+                      <option key={source} value={source}>
+                        {t(`applications:nativeUninstall.source.${source}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               {applications.length === 0 ? (
                 <p className="application-uninstall__empty">{t("applications:uninstall.empty")}</p>
               ) : (
@@ -684,9 +843,11 @@ export function ApplicationUninstallAssistant({
                     <>
                       <p className="application-uninstall__plan-note">
                         <ShieldCheck size={15} />
-                        {t(plan.application.bundleId
-                          ? "applications:uninstall.planBoundary"
-                          : "applications:uninstall.bundleOnlyBoundary")}
+                        {t(trashResidualMode
+                          ? "applications:trashWatcher.planBoundary"
+                          : plan.application.bundleId
+                            ? "applications:uninstall.planBoundary"
+                            : "applications:uninstall.bundleOnlyBoundary")}
                       </p>
                       <fieldset className="application-uninstall__artifacts">
                         <legend>{t("applications:uninstall.foundItems")}</legend>
@@ -721,7 +882,7 @@ export function ApplicationUninstallAssistant({
                       ) : null}
                       <footer>
                         <div><strong>{formatBytes(selectedSize)}</strong><small>{t("applications:uninstall.selectedSize", { count: selectedArtifacts.size })}</small></div>
-                        <button className="button button--danger" type="button" onClick={() => void openDeleteDialog()}>
+                        <button className="button button--danger" type="button" disabled={selectedArtifacts.size === 0} onClick={() => void openDeleteDialog()}>
                           <PackageX size={15} />{t("applications:uninstall.review", { name: plan.application.name })}
                         </button>
                       </footer>

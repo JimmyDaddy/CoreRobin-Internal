@@ -15,7 +15,25 @@ import {
   type DiagnosisFinding,
 } from "./diagnosis";
 import { getMockSnapshot } from "./mockData";
+import type { AppUpdaterController } from "./hooks/useAppUpdater";
 import { defaultAppSettings } from "./settings";
+
+const updaterStub: AppUpdaterController = {
+  checking: false,
+  result: null,
+  installableUpdate: null,
+  progress: null,
+  action: "idle",
+  availableVersion: null,
+  lastCheckedAt: null,
+  lastCheckFailed: false,
+  updatedFromVersion: null,
+  check: vi.fn(async () => undefined),
+  install: vi.fn(async () => undefined),
+  restart: vi.fn(async () => undefined),
+  skipAvailableVersion: vi.fn(),
+  dismissUpdatedReceipt: vi.fn(),
+};
 
 afterEach(() => cleanup());
 beforeEach(async () => { await i18n.changeLanguage("zh-CN"); });
@@ -28,6 +46,7 @@ describe("everyday component interactions", () => {
         settings={defaultAppSettings()}
         notificationStatus="disabled"
         snapshot={getMockSnapshot()}
+        updater={updaterStub}
         onChange={onChange}
         onOpenOnboarding={() => undefined}
         onClearAllData={async () => undefined}

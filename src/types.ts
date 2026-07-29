@@ -27,6 +27,23 @@ export interface SystemSummary {
   sensors: SensorsSnapshot;
 }
 
+export interface SamplerStatus {
+  running: boolean;
+  paused: boolean;
+  active: boolean;
+  intervalMs: number;
+  lastAttemptAtMs: number | null;
+  lastSuccessAtMs: number | null;
+  consecutiveFailures: number;
+  degradedReason: string | null;
+}
+
+export interface SamplerControl {
+  active: boolean;
+  paused: boolean;
+  intervalMs?: number | null;
+}
+
 export type SystemHealthSnapshot = Pick<
   SystemSnapshot,
   | "sequence"
@@ -89,6 +106,7 @@ export interface SleepBlocker {
 export type StartupItemSource =
   | "launch_agent"
   | "launch_daemon"
+  | "background_task"
   | "desktop_entry"
   | "registry_run"
   | "startup_folder";
@@ -120,6 +138,14 @@ export interface StartupItem {
   system: boolean;
   launchKind: StartupLaunchKind;
   managementStatus: StartupManagementStatus;
+  bundleId?: string | null;
+  teamId?: string | null;
+  signatureStatus?: string | null;
+  executablePath?: string | null;
+  responsibleApplication?: string | null;
+  lastRunStatus?: string | null;
+  orphaned?: boolean;
+  modernBackgroundItem?: boolean;
 }
 
 export interface StartupManagementLeaseRequest {
@@ -290,6 +316,13 @@ export interface ApplicationInventorySnapshot {
   cached: boolean;
   refreshRecommended: boolean;
   applications: InstalledApplication[];
+}
+
+export interface TrashedApplication {
+  name: string;
+  path: string;
+  bundleId: string | null;
+  modifiedAtMs: number | null;
 }
 
 export type ApplicationArtifactKind =
@@ -467,7 +500,11 @@ export interface CleanupDeleteLeaseReleaseRequest {
 
 export interface CleanupDeleteResult {
   deleted: CleanupDeleteSuccess[];
+  selectedLogicalBytes?: number;
+  selectedAllocatedBytes?: number;
   deletedBytes: number;
+  availableBytesBefore?: number | null;
+  availableBytesAfter?: number | null;
   failed: CleanupDeleteFailure[];
   cancelled: boolean;
   interruptedPath: string | null;
@@ -712,6 +749,7 @@ export interface ProcessRow {
   startTime: number;
   runTimeSeconds: number;
   name: string;
+  applicationId?: string | null;
   user: string | null;
   status: string;
   cpuPercent: number | null;
@@ -843,6 +881,9 @@ export interface HistoryPoint {
   temperatureCelsius?: number | null;
   batteryChargePercent?: number | null;
   batteryDrainPercentPerHour?: number | null;
+  batteryPowerSource?: PowerSource;
+  sleepBlockerNames?: string[];
+  topApplicationName?: string | null;
 }
 
 export interface ProcessHistoryPoint {

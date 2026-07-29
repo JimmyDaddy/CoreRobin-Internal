@@ -44,7 +44,7 @@
     "professional": "Professioneller Modus",
     "short": {
       "simple": "Alltag",
-      "professional": "Profi-Modus"
+      "professional": "Profi"
     },
     "switchTo": {
       "simple": "Auf den einfachen Modus umschalten",
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} Anwendungen oder Systemkomponenten",
     "savedHistory": "{{count}} gespeicherte Historie",
     "processCount": "{{count}} Prozesse",
-    "cleanupEntries": "{{count}} überprüfte Elemente"
+    "cleanupEntries": "{{count}} überprüfte Elemente",
+    "samplerSaved": "Nativer Sampler {{time}} · {{failures}} aufeinanderfolgende Fehler",
+    "samplerWaiting": "Nativer Sampler wird gestartet"
   }
 }

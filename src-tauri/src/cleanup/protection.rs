@@ -1,10 +1,8 @@
 use std::env;
-use std::fs;
-#[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 
+use crate::file_ownership::{FileOwnership, ownership};
 use crate::models::CleanupProtectionReason;
 
 use super::paths::trash_paths;
@@ -48,10 +46,11 @@ pub(super) fn cleanup_protection_for_path(
         return Some(CleanupProtectionReason::SystemLocation);
     }
     let canonical_path = boundary.canonical_root.join(relative);
-    if cleanup_path_owned_by_current_user(&canonical_path) {
-        None
-    } else {
-        Some(CleanupProtectionReason::SystemLocation)
+    match ownership(&canonical_path) {
+        FileOwnership::CurrentUser => None,
+        FileOwnership::OtherUser | FileOwnership::Unavailable => {
+            Some(CleanupProtectionReason::SystemLocation)
+        }
     }
 }
 
@@ -179,10 +178,16 @@ pub(super) fn cleanup_protection_for_selected_scan_path(
     if path.starts_with(home) || temporary_cleanup_boundary_for_path(path).is_some() {
         return cleanup_protection_for_path(path, home);
     }
-    if is_system_managed_cleanup_path(path) || !cleanup_path_owned_by_current_user(path) {
-        Some(CleanupProtectionReason::SystemLocation)
-    } else {
-        None
+    if is_system_managed_cleanup_path(path) {
+        return Some(CleanupProtectionReason::SystemLocation);
+    }
+    match ownership(path) {
+        FileOwnership::CurrentUser => None,
+        FileOwnership::OtherUser => Some(CleanupProtectionReason::SystemLocation),
+        #[cfg(windows)]
+        FileOwnership::Unavailable => None,
+        #[cfg(not(windows))]
+        FileOwnership::Unavailable => Some(CleanupProtectionReason::SystemLocation),
     }
 }
 
@@ -292,19 +297,6 @@ pub(super) fn temporary_cleanup_boundary_for_path(
         })
         .max_by_key(|(depth, _, _)| *depth)
         .map(|(_, boundary, relative)| (boundary, relative))
-}
-
-#[cfg(unix)]
-fn cleanup_path_owned_by_current_user(path: &Path) -> bool {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) => metadata.uid() == unsafe { libc::geteuid() },
-        Err(error) => error.kind() == std::io::ErrorKind::NotFound,
-    }
-}
-
-#[cfg(not(unix))]
-fn cleanup_path_owned_by_current_user(_path: &Path) -> bool {
-    true
 }
 
 #[cfg(target_os = "macos")]

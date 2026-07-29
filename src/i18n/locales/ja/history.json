@@ -115,7 +115,10 @@
       "process_force_quit": "アプリを強制終了",
       "cleanup_delete": "ファイルを整理",
       "startup_disable": "起動項目を無効化",
-      "startup_enable": "起動項目を復元"
+      "startup_enable": "起動項目を復元",
+      "application_uninstall": "アプリをアンインストール",
+      "volume_eject": "リムーバブルボリュームを取り出す",
+      "application_update": "アプリ更新をインストール"
     },
     "status": {
       "running": "実行中",
@@ -136,16 +139,24 @@
       "startup": "起動項目名は保存されていません"
     },
     "cleanupResult": "{{count}} 件を処理し、{{size}} を解放",
-    "cleanupFailed": "{{count}} 件は未完了"
+    "cleanupFailed": "{{count}} 件は未完了",
+    "retry": "再試行"
   },
-  "watchRules": { "title": "アプリ監視履歴", "description": "作成した通知ルールの発生と回復をこのデバイスに記録します。", "savedEvents": "{{count}} 件の監視イベント", "savedEvents_other": "{{count}} 件の監視イベント", "privateApplication": "アプリ名は保存されていません", "triggered": "{{metric}} が {{value}}{{unit}} に到達", "recovered": "{{metric}} が {{value}}{{unit}} に回復" },
+  "watchRules": {
+    "title": "アプリ監視履歴",
+    "description": "作成した通知ルールの発生と回復をこのデバイスに記録します。",
+    "savedEvents": "{{count}} 件の監視イベント",
+    "savedEvents_other": "{{count}} 件の監視イベント",
+    "privateApplication": "アプリ名は保存されていません",
+    "triggered": "{{metric}} が {{value}}{{unit}} に到達",
+    "recovered": "{{metric}} が {{value}}{{unit}} に回復"
+  },
   "privacyEyebrow": "データに関する情報",
   "privacyTitle": "プライバシーポリシー",
   "privacyLocal": "履歴はこのデバイスのCoreRobin専用ストレージに保存され、アップロードや同期はされません。",
   "privacyCollected": "集約されたリソース情報、負荷と回復イベントに加え、確認した操作の種類、結果、項目数、解放容量を記録します。アプリ名や起動項目名は、設定で個別に許可した場合のみ保存されます。",
   "privacyExcluded": "リソースと操作の履歴にはコマンド、ユーザー、パス、ファイル名、接続先を保存しません。接続履歴を別途有効にすると、5 分単位の集計にリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。",
-  "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。"
-,
+  "privacyControl": "停止すると、新しい書き込みは停止します。既存の記録は、期限が切れるまで、または手動で削除されるまで保持されます。",
   "applicationImpact": {
     "eyebrow": "アプリ別の影響",
     "title": "このコンピュータに影響したアプリ",
@@ -200,5 +211,62 @@
       "temperature": "温度",
       "battery": "バッテリー消費"
     }
+  },
+  "replay": {
+    "eyebrow": "証拠タイムライン",
+    "title": "システムイベント再生",
+    "description": "期間を選び、リソース変化、ネットワークイベント、アプリ帰属、確認した操作結果を関連付けます。",
+    "range": "再生範囲",
+    "from": "開始",
+    "to": "終了",
+    "evidenceTitle": "この期間の証拠",
+    "applicationEvidence": "{{from}}～{{to}}：{{applications}} が主なリソース源でした。システム全体のピークは CPU {{cpu}}、メモリ {{memory}} です。",
+    "noApplicationEvidence": "この期間のアプリ帰属は保存されていません。システム全体のピークは CPU {{cpu}}、メモリ {{memory}} です。",
+    "leadingApplication": "{{application}} の選択集計平均は CPU {{cpu}}、メモリ {{memory}} でした。",
+    "empty": "この期間にアラート、ネットワーク、監視、操作イベントはありません。",
+    "actionImpact": {
+      "improved": "操作後 15 分間でシステム負荷が低下",
+      "increased": "操作後 15 分間でシステム負荷が上昇",
+      "stable": "操作前後のシステム負荷はほぼ同じ",
+      "insufficient": "後続サンプルが不足しているため比較できません"
+    },
+    "hours1": "1 時間",
+    "hours24": "24 時間",
+    "hours168": "7 日",
+    "alert": {
+      "triggered": "リソース圧迫が開始",
+      "recovered": "リソース圧迫が回復"
+    },
+    "watch": {
+      "triggered": "アプリ監視ルールが作動",
+      "recovered": "アプリ監視ルールが回復"
+    },
+    "network": {
+      "sleep_gap": "スリープ中はサンプリングを停止",
+      "interface_change": "ネットワークインターフェイスが変更",
+      "status_change": "ネットワーク状態が変更",
+      "dns_failure": "DNS 品質が低下",
+      "direct_failure": "直接接続が低下"
+    }
+  },
+  "storage": {
+    "saved": "ネイティブ履歴を {{time}} に保存 · {{size}}",
+    "waiting": "ネイティブ履歴ストレージを起動中",
+    "failed": "履歴保存は一時停止中です。理由を表示するには開いてください"
+  },
+  "batterySessions": {
+    "eyebrow": "バッテリー使用タイムライン",
+    "title": "バッテリー使用セッション",
+    "description": "バッテリー駆動への切替ごとに開始し、ローカル集計から消費、主なリソース源、スリープ阻害要因を説明します。",
+    "count_other": "{{count}} セッション",
+    "ongoing": "進行中",
+    "duration": "{{minutes}} 分",
+    "charge": "充電量",
+    "drainRate": "平均消費",
+    "evidence": "主なリソース源の候補",
+    "noApplicationEvidence": "アプリ名は保存されていません",
+    "blockers": "スリープ阻害：{{names}}",
+    "empty": "完了したバッテリーセッションはまだありません。",
+    "count": "{{count}} セッション"
   }
 }

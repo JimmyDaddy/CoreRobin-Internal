@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { HistoryRetentionDays } from "../historyStore";
+import { isDesktopRuntime } from "../api";
 import {
   clearUserActionHistoryStorage,
   completeUserActionRecord,
@@ -10,10 +11,13 @@ import {
   recoverInterruptedUserActions,
   redactUserActionTargetNames,
   saveUserActionHistory,
+  serializeUserActionHistory,
+  parseUserActionHistory,
   type CompleteUserActionInput,
   type StartUserActionInput,
   type UserActionRecord,
 } from "../userActionHistory";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export function useUserActionHistory(
   persistenceEnabled: boolean,
@@ -23,14 +27,27 @@ export function useUserActionHistory(
   const persistenceEnabledRef = useRef(persistenceEnabled);
   const targetNamesEnabledRef = useRef(targetNamesEnabled);
   const [sessionRecords, setSessionRecords] = useState<UserActionRecord[]>([]);
-  const [storedRecords, setStoredRecords] = useState<UserActionRecord[]>(() => {
+  const desktop = isDesktopRuntime();
+  const loadRecovered = () => {
     const loaded = loadUserActionHistory();
     const recovered = recoverInterruptedUserActions(loaded);
-    if (recovered.some((record, index) => record !== loaded[index])) {
+    if (!desktop && recovered.some((record, index) => record !== loaded[index])) {
       saveUserActionHistory(recovered);
     }
     return recovered;
+  };
+  const storage = useNativeHistoryStorage<UserActionRecord[]>({
+    category: "user-actions",
+    enabled: persistenceEnabled,
+    initialValue: loadRecovered,
+    parse: (payload) => recoverInterruptedUserActions(
+      parseUserActionHistory(payload),
+    ),
+    serialize: serializeUserActionHistory,
+    clearLegacy: clearUserActionHistoryStorage,
   });
+  const storedRecords = storage.value;
+  const setStoredRecords = storage.setValue;
 
   persistenceEnabledRef.current = persistenceEnabled;
   targetNamesEnabledRef.current = targetNamesEnabled;
@@ -49,7 +66,7 @@ export function useUserActionHistory(
           Date.now(),
           retentionDays,
         );
-        saveUserActionHistory(next);
+        if (!desktop) saveUserActionHistory(next);
         return next;
       });
     }
@@ -73,7 +90,7 @@ export function useUserActionHistory(
         return completeUserActionRecord(record, input, completedAtMs);
       });
       if (!found) return current;
-      saveUserActionHistory(next);
+      if (!desktop) saveUserActionHistory(next);
       return next;
     });
   }, []);
@@ -83,7 +100,7 @@ export function useUserActionHistory(
     setStoredRecords((current) => {
       if (current.length === 0) return current;
       const next = redactUserActionTargetNames(current);
-      saveUserActionHistory(next);
+      if (!desktop) saveUserActionHistory(next);
       return next;
     });
   }, [targetNamesEnabled]);
@@ -92,7 +109,7 @@ export function useUserActionHistory(
     setStoredRecords((current) => {
       if (current.length === 0) return current;
       const next = mergeUserActionRecords(current, [], Date.now(), retentionDays);
-      saveUserActionHistory(next);
+      if (!desktop) saveUserActionHistory(next);
       return next;
     });
     setSessionRecords((current) =>
@@ -110,9 +127,15 @@ export function useUserActionHistory(
   );
 
   const clearSaved = useCallback(() => {
-    clearUserActionHistoryStorage();
-    setStoredRecords([]);
-  }, []);
+    void storage.clear().catch(() => undefined);
+  }, [storage]);
 
-  return { records, storedRecords, start, complete, clearSaved };
+  return {
+    records,
+    storedRecords,
+    start,
+    complete,
+    clearSaved,
+    storageStatus: storage.storageStatus,
+  };
 }

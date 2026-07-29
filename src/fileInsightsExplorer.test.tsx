@@ -271,7 +271,12 @@ describe("file insights workspace", () => {
       }),
     ));
     expect(screen.getByRole("heading", { name: "处理重复文件" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /移到废纸篓/ }));
+    const confirmTrash = await waitFor(() => {
+      const button = screen.getByRole("button", { name: "移到废纸篓（1 项）" });
+      expect(button.hasAttribute("disabled")).toBe(false);
+      return button;
+    });
+    fireEvent.click(confirmTrash);
 
     await waitFor(() => expect(onFilesRemoved).toHaveBeenCalledWith([
       "/Users/demo/Downloads/archive.zip",

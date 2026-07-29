@@ -108,6 +108,7 @@
     "emptyTitle": "还没有执行过操作",
     "emptyDescription": "关闭应用、清理文件或管理启动项后，结果会显示在这里。",
     "open": "查看",
+    "retry": "重试",
     "clear": "清除操作记录",
     "kind": {
       "process_close": "正常退出应用",
@@ -115,7 +116,10 @@
       "process_force_quit": "强制结束应用",
       "cleanup_delete": "清理文件",
       "startup_disable": "停用启动项",
-      "startup_enable": "恢复启动项"
+      "startup_enable": "恢复启动项",
+      "application_uninstall": "卸载应用",
+      "volume_eject": "推出可移除卷",
+      "application_update": "安装应用更新"
     },
     "status": {
       "running": "正在执行",
@@ -146,6 +150,43 @@
     "triggered": "{{metric}} 达到 {{value}}{{unit}}",
     "recovered": "{{metric}} 恢复至 {{value}}{{unit}}"
   },
+  "replay": {
+    "eyebrow": "证据时间轴",
+    "title": "系统事件回放",
+    "description": "选择一个时段，关联资源变化、网络事件、应用归因以及你确认过的操作结果。",
+    "range": "回放范围",
+    "hours1": "1 小时",
+    "hours24": "24 小时",
+    "hours168": "7 天",
+    "from": "开始",
+    "to": "结束",
+    "evidenceTitle": "这段时间的证据",
+    "applicationEvidence": "{{from}}–{{to}}，{{applications}} 是已记录的主要资源来源；整机峰值达到 CPU {{cpu}}、内存 {{memory}}。",
+    "noApplicationEvidence": "这段时间未保存应用归因；整机峰值达到 CPU {{cpu}}、内存 {{memory}}。",
+    "leadingApplication": "{{application}} 在所选聚合中的平均 CPU 为 {{cpu}}，平均内存为 {{memory}}。",
+    "empty": "这段时间没有告警、网络、应用关注或操作事件。",
+    "alert": {
+      "triggered": "资源压力开始",
+      "recovered": "资源压力恢复"
+    },
+    "watch": {
+      "triggered": "应用关注规则触发",
+      "recovered": "应用关注规则恢复"
+    },
+    "network": {
+      "sleep_gap": "睡眠期间暂停采样",
+      "interface_change": "网络接口发生变化",
+      "status_change": "网络状态发生变化",
+      "dns_failure": "DNS 质量下降",
+      "direct_failure": "直连质量下降"
+    },
+    "actionImpact": {
+      "improved": "操作后 15 分钟内系统压力有所下降",
+      "increased": "操作后 15 分钟内系统压力有所上升",
+      "stable": "操作前后系统压力基本持平",
+      "insufficient": "后续样本不足，暂时无法比较效果"
+    }
+  },
   "privacyEyebrow": "数据边界",
   "privacyTitle": "隐私说明",
   "privacyLocal": "历史只保存在当前设备的 CoreRobin 私有存储中，不会上传或同步。",
@@ -174,6 +215,25 @@
     "storagePending": "等待首次写入",
     "storageFailed": "历史仍可查看，但新采样暂时无法保存；CoreRobin 会自动重试。",
     "boundary": "不保存命令或文件路径；应用名称仍受单独的隐私开关控制。"
+  },
+  "batterySessions": {
+    "eyebrow": "电池使用时间轴",
+    "title": "电池使用会话",
+    "description": "从拔掉电源开始分段，使用本机聚合历史解释掉电速度、主要资源来源和阻止睡眠的应用。",
+    "count": "{{count}} 次会话",
+    "ongoing": "进行中",
+    "duration": "{{minutes}} 分钟",
+    "charge": "电量变化",
+    "drainRate": "平均掉电",
+    "evidence": "可能的主要资源来源",
+    "noApplicationEvidence": "未保存应用名称",
+    "blockers": "阻止睡眠：{{names}}",
+    "empty": "还没有积累出完整的电池使用会话。"
+  },
+  "storage": {
+    "saved": "原生历史已保存 {{time}} · {{size}}",
+    "waiting": "原生历史存储正在启动",
+    "failed": "历史保存已暂停；停留查看原因"
   },
   "baseline": {
     "eyebrow": "这台电脑的基线",

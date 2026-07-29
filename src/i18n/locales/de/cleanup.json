@@ -1,23 +1,73 @@
 {
   "fileInsights": {
-    "eyebrow": "Explizite schreibgeschützte Prüfung", "title": "Doppelte und seit langem unveränderte Dateien", "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
-    "scan": "Dateien prüfen", "scanAgain": "Überprüfen Sie es noch einmal", "cancel": "Stoppen Sie die Überprüfung",
-    "phase": { "discovering": "Kandidaten finden", "hashing": "Überprüfung doppelter Inhalte" },
+    "eyebrow": "Explizite schreibgeschützte Prüfung",
+    "title": "Doppelte und seit langem unveränderte Dateien",
+    "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
+    "scan": "Dateien prüfen",
+    "scanAgain": "Überprüfen Sie es noch einmal",
+    "cancel": "Stoppen Sie die Überprüfung",
+    "phase": {
+      "discovering": "Kandidaten finden",
+      "hashing": "Überprüfung doppelter Inhalte"
+    },
     "progress": "Überprüfte {{scanned}}-Einträge · {{candidates}}-Kandidaten · {{hashed}}-Hash",
-    "duplicateGroups": "duplicate groups", "possibleSavings": "possible savings", "oldFiles": "large long-unmodified files",
-    "truncated": "Dieser Scan hat seine Sicherheitsgrenze erreicht; abgeschlossene Ergebnisse werden angezeigt.", "duplicates": "Identischer Inhalt", "copies": "{{count}} Kopien",
-    "noDuplicates": "Unter den geprüften Kandidaten wurden keine doppelten Inhalte gefunden.", "longUnmodified": "Über 100 MB und seit 180 Tagen unverändert", "noOldFiles": "Es wurden keine passenden großen Dateien gefunden.",
+    "duplicateGroups": "duplicate groups",
+    "possibleSavings": "possible savings",
+    "oldFiles": "large long-unmodified files",
+    "truncated": "Dieser Scan hat seine Sicherheitsgrenze erreicht; abgeschlossene Ergebnisse werden angezeigt.",
+    "duplicates": "Identischer Inhalt",
+    "copies": "{{count}} Kopien",
+    "noDuplicates": "Unter den geprüften Kandidaten wurden keine doppelten Inhalte gefunden.",
+    "longUnmodified": "Über 100 MB und seit 180 Tagen unverändert",
+    "noOldFiles": "Es wurden keine passenden großen Dateien gefunden.",
     "boundary": "Nur Belege und Pfadaktionen; nichts wird automatisch gelöscht. Lange Nichtnutzung wird über das Änderungsdatum angenähert, nicht über den letzten Zugriff.",
     "empty": "Kandidateninhalte werden erst gelesen und SHA-256 lokal gehasht, nachdem Sie die Prüfung gestartet haben; Es wird nichts hochgeladen.",
-    "workspaceKicker": "Arbeitsbereich für Aktennachweise", "launcherDescription": "Öffnen Sie einen dedizierten Arbeitsbereich für den Scan-Fortschritt, doppelte Gruppen und große, lange Zeit unveränderte Dateien.", "running": "Jetzt prüfen", "openWorkspace": "Arbeitsbereich öffnen", "back": "Zurück zur Weltraumreinigung",
-    "phaseDescription": { "discovering": "Überprüfen von Namen, Größen und Änderungsdaten in allgemeinen persönlichen Ordnern, um die Inhaltskandidaten einzugrenzen.", "hashing": "Kandidaten gleicher Größe lesen und SHA-256 lokal berechnen; Der Inhalt verlässt niemals diesen Computer." },
-    "phaseLabel": "Phasen prüfen", "loadingKicker": "Radar für lokale Inhalte", "loadingPrivacy": "Hashes werden lokal berechnet. Dateinamen, Pfade und Inhalte werden nicht hochgeladen.",
-    "metrics": { "scanned": "Einträge überprüft", "candidates": "Kandidatendateien", "hashed": "Inhalt überprüft" }, "duration": "Überprüfen Sie die Dauer",
-    "localOnly": "Vollständig auf diesem Computer", "welcomeTitle": "Zeigen Sie identische Inhalte an, nicht nur übereinstimmende Dateinamen", "welcomeDescription": "CoreRobin filtert schnell Dateien gleicher Größe, bevor deren Inhaltsfingerabdrücke überprüft werden, und organisiert gleichzeitig große, lange Zeit unveränderte Dateien separat für Ihre Überprüfung.",
-    "scopeTitle": "Umfang prüfen", "scope": { "desktop": "Desktop", "documents": "Unterlagen", "downloads": "Downloads", "movies": "Filme", "music": "Musik", "pictures": "Bilder" },
-    "steps": { "filterTitle": "Schneller Filter", "filterDescription": "Vergleichen Sie zunächst Größe und Metadaten", "hashTitle": "Fingerabdruck des Inhalts", "hashDescription": "Berechnen Sie SHA-256 lokal", "reviewTitle": "Überprüfung nach Gruppe", "reviewDescription": "Bewahren Sie Pfad- und Datumsnachweise auf" },
-    "completeKicker": "Überprüfen Sie vollständig", "completeTitle": "Ihre Aktenbeweise sind geordnet", "completeDescription": "Beginnen Sie mit den Duplikatgruppen, die die größtmöglichen Einsparungen bieten.", "resultNavigation": "Ergebniskategorien",
-    "groupLabel": "Gruppe mit identischem Inhalt", "groupSavings": "Einsparungen, wenn Sie eines behalten", "copyIndex": "Kopieren Sie {{count}}", "oldFileLabel": "Lange Zeit unveränderte Datei",
+    "workspaceKicker": "Arbeitsbereich für Aktennachweise",
+    "launcherDescription": "Öffnen Sie einen dedizierten Arbeitsbereich für den Scan-Fortschritt, doppelte Gruppen und große, lange Zeit unveränderte Dateien.",
+    "running": "Jetzt prüfen",
+    "openWorkspace": "Arbeitsbereich öffnen",
+    "back": "Zurück zur Weltraumreinigung",
+    "phaseDescription": {
+      "discovering": "Überprüfen von Namen, Größen und Änderungsdaten in allgemeinen persönlichen Ordnern, um die Inhaltskandidaten einzugrenzen.",
+      "hashing": "Kandidaten gleicher Größe lesen und SHA-256 lokal berechnen; Der Inhalt verlässt niemals diesen Computer."
+    },
+    "phaseLabel": "Phasen prüfen",
+    "loadingKicker": "Radar für lokale Inhalte",
+    "loadingPrivacy": "Hashes werden lokal berechnet. Dateinamen, Pfade und Inhalte werden nicht hochgeladen.",
+    "metrics": {
+      "scanned": "Einträge überprüft",
+      "candidates": "Kandidatendateien",
+      "hashed": "Inhalt überprüft"
+    },
+    "duration": "Überprüfen Sie die Dauer",
+    "localOnly": "Vollständig auf diesem Computer",
+    "welcomeTitle": "Zeigen Sie identische Inhalte an, nicht nur übereinstimmende Dateinamen",
+    "welcomeDescription": "CoreRobin filtert schnell Dateien gleicher Größe, bevor deren Inhaltsfingerabdrücke überprüft werden, und organisiert gleichzeitig große, lange Zeit unveränderte Dateien separat für Ihre Überprüfung.",
+    "scopeTitle": "Umfang prüfen",
+    "scope": {
+      "desktop": "Desktop",
+      "documents": "Unterlagen",
+      "downloads": "Downloads",
+      "movies": "Filme",
+      "music": "Musik",
+      "pictures": "Bilder"
+    },
+    "steps": {
+      "filterTitle": "Schneller Filter",
+      "filterDescription": "Vergleichen Sie zunächst Größe und Metadaten",
+      "hashTitle": "Fingerabdruck des Inhalts",
+      "hashDescription": "Berechnen Sie SHA-256 lokal",
+      "reviewTitle": "Überprüfung nach Gruppe",
+      "reviewDescription": "Bewahren Sie Pfad- und Datumsnachweise auf"
+    },
+    "completeKicker": "Überprüfen Sie vollständig",
+    "completeTitle": "Ihre Aktenbeweise sind geordnet",
+    "completeDescription": "Beginnen Sie mit den Duplikatgruppen, die die größtmöglichen Einsparungen bieten.",
+    "resultNavigation": "Ergebniskategorien",
+    "groupLabel": "Gruppe mit identischem Inhalt",
+    "groupSavings": "Einsparungen, wenn Sie eines behalten",
+    "copyIndex": "Kopieren Sie {{count}}",
+    "oldFileLabel": "Lange Zeit unveränderte Datei",
     "processing": {
       "selectGroup": "Verarbeiten Sie zusätzliche Kopien",
       "selectedGroup": "Gruppe ausgewählt",
@@ -175,7 +225,11 @@
       "failed": "Nichts wurde verarbeitet; {{failedCount}} Elemente fehlgeschlagen",
       "cancelled": "Bereinigung nach {{deletedCount}} Elementen gestoppt",
       "cancelledNoDeletion": "Bereinigung wurde vor Abschluss eines Elements gestoppt",
-      "reclaimed": "Vor der Verarbeitung geprüfter Speicherplatz: ca. {{size}}"
+      "reclaimed": "Etwa {{size}} physisch belegter Speicher wurde verarbeitet",
+      "selectedSizes": "Ausgewählte logische Größe: {{logical}}; physische Belegung: {{allocated}}",
+      "released": "Der verfügbare Speicherplatz ist um etwa {{size}} gestiegen",
+      "pendingReclaim": "{{processed}} wurde verarbeitet; der verfügbare Speicher ist bisher um {{size}} gestiegen. Die Differenz kann noch in APFS-Snapshots, löschbarem Speicher oder einer verzögerten Systemfreigabe liegen.",
+      "trashSpace": "Die Elemente befinden sich im Papierkorb; der Speicher wird normalerweise erst nach dem Leeren des Papierkorbs freigegeben"
     },
     "freshness": {
       "cached": "Zeigt das Ergebnis des vorherigen Scans an",
@@ -184,7 +238,10 @@
       "changedShort": "Inhalt wurde geändert",
       "refreshFolder": "{{name}} aktualisieren",
       "refreshingFolder": "{{name}} wird aktualisiert…"
-    }
+    },
+    "removeFromBasket": "Aus dem Bereinigungskorb entfernen",
+    "includedByParent": "Im übergeordneten Ordner enthalten",
+    "addToBasket": "Zum Bereinigungskorb hinzufügen"
   },
   "deleteDialog": {
     "title": "Aufräumkorb prüfen",
@@ -282,8 +339,7 @@
   "noLargeFiles": "Keine Dateien über 500 MB wurden an den überprüften Speicherorten gefunden.",
   "unreadable": "{{count}} Diese Speicherbereiche waren geschützt oder vorübergehend nicht zugänglich. Nur diese Bereiche werden von dem Ergebnis ausgeschlossen.",
   "fullDiskAccessHint": "Unter macOS: Erteilen Sie CoreRobin die Berechtigung für den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen → Datenschutz & Sicherheit, und führen Sie dann erneut einen Scan durch.",
-  "safetyBoundary": "Der Scan hat keine zeitlichen oder itembezogenen Beschränkungen und folgt niemals symbolischen Links. Nur Elemente, die in den Papierkorb gelegt, anhand des Pfads überprüft und explizit bestätigt wurden, werden dauerhaft gelöscht und können nicht wiederhergestellt werden."
-,
+  "safetyBoundary": "Der Scan hat keine zeitlichen oder itembezogenen Beschränkungen und folgt niemals symbolischen Links. Nur Elemente, die in den Papierkorb gelegt, anhand des Pfads überprüft und explizit bestätigt wurden, werden dauerhaft gelöscht und können nicht wiederhergestellt werden.",
   "targets": {
     "kicker": "Scan scope",
     "title": "Choose what to scan",
@@ -309,5 +365,10 @@
     "completed": "{{count}} lange unveränderte Dateien verarbeitet und {{size}} freigegeben",
     "partial": "{{deletedCount}} verarbeitet; {{failedCount}} konnten nicht verarbeitet werden",
     "cancelled": "Verarbeitung nach {{count}} Dateien gestoppt"
+  },
+  "growth": {
+    "since": "Verglichen mit {{time}}",
+    "title": "Speicheränderung seit dem letzten Scan",
+    "noGrowth": "Im kompakten Vergleich wurde kein wachsendes Verzeichnis gefunden."
   }
 }

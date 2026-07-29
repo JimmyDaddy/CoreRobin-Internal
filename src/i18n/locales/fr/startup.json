@@ -52,7 +52,10 @@
     "eyebrow": "Lancement de connexion mesuré",
     "title": "Impact réel sur la connexion",
     "description": "Échantillons uniquement lorsque le système d'exploitation lance CoreRobin silencieusement en tant qu'élément de connexion, jusqu'à ce que le système se stabilise.",
-    "settleTime": "Temps de règlement", "peakCpu": "Pic CPU", "peakDisk": "Disque de pointe", "samples": "Échantillons",
+    "settleTime": "Temps de règlement",
+    "peakCpu": "Pic CPU",
+    "peakDisk": "Disque de pointe",
+    "samples": "Échantillons",
     "boundary": "Cela mesure l’impact après la connexion, et non le temps de démarrage du micrologiciel. Les mesures s'arrêtent au bout de trois minutes et les cinq dernières sont conservées.",
     "empty": "Aucune véritable mesure de connexion pour l’instant. Activez Lancer à la connexion pour mesurer automatiquement la prochaine connexion.",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "Daemon de lancement",
     "desktop_entry": "Entrée d'autostart",
     "registry_run": "Exécution via le registre",
-    "startup_folder": "Dossier de démarrage"
+    "startup_folder": "Dossier de démarrage",
+    "background_task": "Tâche d’arrière-plan"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "Actuellement désactivé",
       "description": "La configuration reste, mais le système ne la démarrera plus automatiquement à partir de cet élément."
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "Comparaison avec les démarrages récents",
     "description": "Utilise la médiane de {{count}} mesures antérieures.",
@@ -149,6 +152,20 @@
       "improved": "Après {{count}} modifications, le démarrage suivant s’est stabilisé plus vite ; aucune modification ne peut être créditée seule.",
       "similar": "Après {{count}} modifications, le démarrage suivant est resté proche du comportement récent.",
       "slower": "Après {{count}} modifications, le démarrage suivant est resté plus lent ; aucune cause unique ne peut être identifiée."
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} élément",
+    "modern": "Élément d’arrière-plan moderne",
+    "orphaned": "Exécutable manquant",
+    "lastRun": "Dernier état signalé : {{status}}",
+    "itemCount_one": "{{count}} élément",
+    "itemCount": "{{count}} élément",
+    "signature": {
+      "valid": "Signature valide",
+      "invalid": "Signature non valide",
+      "unknown": "Signature inconnue",
+      "system_reported": "Signalé par macOS"
     }
   }
 }

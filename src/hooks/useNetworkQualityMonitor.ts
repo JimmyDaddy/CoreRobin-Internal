@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { runNetworkQualityCheck } from "../api";
+import { isDesktopRuntime, runNetworkQualityCheck } from "../api";
 import {
   clearNetworkQualityHistory,
   loadNetworkQualityHistory,
   mergeNetworkQualityHistory,
+  parseNetworkQualityHistory,
   saveNetworkQualityHistory,
+  serializeNetworkQualityHistory,
   type NetworkQualityHistoryHours,
 } from "../networkQualityHistory";
 import type { NetworkQualityResult } from "../types";
 import { normalizeCommandError } from "../utils";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export const NETWORK_QUALITY_REFRESH_MS = 30 * 1_000;
 export const NETWORK_QUALITY_BACKGROUND_REFRESH_MS = 5 * 60 * 1_000;
@@ -45,8 +48,18 @@ export function useNetworkQualityMonitor({
   const [result, setResult] = useState<NetworkQualityResult | null>(null);
   const [sessionSamples, setSessionSamples] =
     useState<NetworkQualityResult[]>([]);
-  const [history, setHistory] = useState(() =>
-    historyEnabled ? loadNetworkQualityHistory() : []);
+  const desktop = isDesktopRuntime();
+  const historyStorage = useNativeHistoryStorage({
+    category: "network-quality",
+    enabled: historyEnabled,
+    initialValue: loadNetworkQualityHistory,
+    parse: parseNetworkQualityHistory,
+    serialize: serializeNetworkQualityHistory,
+    clearLegacy: clearNetworkQualityHistory,
+  });
+  const storedHistory = historyStorage.value;
+  const setHistory = historyStorage.setValue;
+  const history = historyEnabled ? storedHistory : [];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const checkingRef = useRef(false);
@@ -69,15 +82,14 @@ export function useNetworkQualityMonitor({
 
   useEffect(() => {
     if (!historyEnabled) {
-      setHistory([]);
       return;
     }
     const cutoff = Date.now() - historyHours * 60 * 60 * 1_000;
-    const loaded = loadNetworkQualityHistory()
+    const loaded = storedHistory
       .filter((point) => point.sampledAtMs >= cutoff);
-    saveNetworkQualityHistory(loaded);
+    if (!desktop) saveNetworkQualityHistory(loaded);
     setHistory(loaded);
-  }, [historyEnabled, historyHours]);
+  }, [desktop, historyEnabled, historyHours]);
 
   const runCheck = useCallback(async () => {
     if (checkingRef.current) return false;
@@ -100,7 +112,7 @@ export function useNetworkQualityMonitor({
             nextResult.sampledAtMs,
             networkSignatureRef.current,
           );
-          saveNetworkQualityHistory(next);
+          if (!desktop) saveNetworkQualityHistory(next);
           return next;
         });
       }
@@ -130,9 +142,8 @@ export function useNetworkQualityMonitor({
   }, [active, historyEnabled, runCheck]);
 
   const clearHistory = useCallback(() => {
-    clearNetworkQualityHistory();
-    setHistory([]);
-  }, []);
+    void historyStorage.clear().catch(() => undefined);
+  }, [historyStorage]);
 
   return {
     result,
@@ -142,6 +153,7 @@ export function useNetworkQualityMonitor({
     error,
     runCheck,
     clearHistory,
+    storageStatus: historyStorage.storageStatus,
   };
 }
 

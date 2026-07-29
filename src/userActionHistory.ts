@@ -16,6 +16,9 @@ export const USER_ACTION_KINDS = [
   "cleanup_delete",
   "startup_disable",
   "startup_enable",
+  "application_uninstall",
+  "volume_eject",
+  "application_update",
 ] as const;
 
 export const USER_ACTION_STATUSES = [
@@ -138,17 +141,23 @@ export function loadUserActionHistory(): UserActionRecord[] {
 export function saveUserActionHistory(records: readonly UserActionRecord[]): void {
   if (isProductDataResetInProgress()) return;
   try {
-    const payload: UserActionHistoryPayload = {
-      version: 1,
-      records: deduplicateUserActionRecords(records),
-    };
     window.localStorage.setItem(
       USER_ACTION_HISTORY_STORAGE_KEY,
-      JSON.stringify(payload),
+      serializeUserActionHistory(records),
     );
   } catch {
     // The current session still keeps the action result when storage is blocked.
   }
+}
+
+export function serializeUserActionHistory(
+  records: readonly UserActionRecord[],
+): string {
+  const payload: UserActionHistoryPayload = {
+    version: 1,
+    records: deduplicateUserActionRecords(records),
+  };
+  return JSON.stringify(payload);
 }
 
 export function clearUserActionHistoryStorage(): void {

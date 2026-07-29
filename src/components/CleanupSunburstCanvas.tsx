@@ -43,6 +43,7 @@ interface CleanupSunburstCanvasProps {
   ariaLabel: string;
   onSelect: (node: CleanupMapNode | null) => void;
   onActivate: (node: CleanupMapNode) => void;
+  onCollect: (node: CleanupMapNode) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLCanvasElement>, node: CleanupMapNode) => void;
   onPointerCancel: (pointerId: number) => void;
 }
@@ -57,6 +58,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   ariaLabel,
   onSelect,
   onActivate,
+  onCollect,
   onPointerDown,
   onPointerCancel,
 }: CleanupSunburstCanvasProps) {
@@ -174,6 +176,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
       ref={canvasRef}
       className="cleanup-map__sunburst"
       role="img"
+      tabIndex={0}
       aria-label={ariaLabel}
       onContextMenu={(event) => event.preventDefault()}
       onPointerMove={(event) => {
@@ -191,6 +194,18 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
       onClick={(event) => {
         const hit = arcAtPointer(event);
         if (hit) onActivate(hit.node);
+      }}
+      onKeyDown={(event) => {
+        const selected = arcs.find((arc) => arc.node.id === selectedId)?.node
+          ?? arcs[0]?.node;
+        if (!selected) return;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          onActivate(selected);
+        } else if (event.key === " ") {
+          event.preventDefault();
+          onCollect(selected);
+        }
       }}
       onPointerDown={(event) => {
         const hit = arcAtPointer(event);

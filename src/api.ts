@@ -49,6 +49,7 @@ import type {
   NetworkHostLookup,
   NetworkQualityResult,
   NativeApplicationUninstallResult,
+  TrashedApplication,
   StartupContext,
   FileInsightsProgress,
   FileInsightsScan,
@@ -56,6 +57,8 @@ import type {
   SystemSnapshot,
   SystemSummary,
   StorageHealthSnapshot,
+  SamplerControl,
+  SamplerStatus,
   StartupItemsSnapshot,
   StartupManagementExecutionRequest,
   StartupManagementLease,
@@ -101,11 +104,34 @@ export interface ProductDataCacheSummary {
   fileInsights: ProductDataCacheItemSummary;
   applicationInventory: ProductDataCacheItemSummary;
   applicationHistory: ProductDataCacheItemSummary;
+  historySegments: ProductDataCacheItemSummary;
 }
 
 export interface ApplicationHistoryStorage {
   payload: string | null;
   byteSize: number;
+  updatedAtMs: number | null;
+}
+
+export type HistoryStorageCategory =
+  | "resource"
+  | "resource-alerts"
+  | "network-quality"
+  | "connections"
+  | "user-actions"
+  | "application-watch"
+  | "startup-impact"
+  | "cleanup-scans";
+
+export interface HistorySegmentStorage {
+  payload: string | null;
+  byteSize: number;
+  updatedAtMs: number | null;
+}
+
+export interface HistoryStorageSummary {
+  byteSize: number;
+  fileCount: number;
   updatedAtMs: number | null;
 }
 
@@ -176,6 +202,40 @@ export async function getSystemSummary(): Promise<SystemSummary> {
     };
   }
   return invoke<SystemSummary>("get_system_summary");
+}
+
+export async function getSamplerStatus(): Promise<SamplerStatus> {
+  if (canUseDevelopmentMock()) {
+    return {
+      running: true,
+      paused: false,
+      active: true,
+      intervalMs: 1_000,
+      lastAttemptAtMs: Date.now(),
+      lastSuccessAtMs: Date.now(),
+      consecutiveFailures: 0,
+      degradedReason: null,
+    };
+  }
+  return invoke<SamplerStatus>("get_sampler_status");
+}
+
+export async function setSamplerControl(
+  control: SamplerControl,
+): Promise<SamplerStatus> {
+  if (canUseDevelopmentMock()) {
+    return {
+      running: true,
+      paused: control.paused,
+      active: control.active,
+      intervalMs: control.intervalMs ?? (control.active ? 1_000 : 5_000),
+      lastAttemptAtMs: Date.now(),
+      lastSuccessAtMs: Date.now(),
+      consecutiveFailures: 0,
+      degradedReason: null,
+    };
+  }
+  return invoke<SamplerStatus>("set_sampler_control", { control });
 }
 
 export async function getNetworkConnections(): Promise<NetworkConnectionsSnapshot> {
@@ -578,6 +638,31 @@ export async function getApplicationUninstallPlan(
   });
 }
 
+export async function getTrashedApplications(
+  language: string | undefined = DEFAULT_LANGUAGE,
+): Promise<TrashedApplication[]> {
+  if (canUseDevelopmentMock()) return [];
+  return invoke<TrashedApplication[]>("get_trashed_applications", {
+    language: normalizeLanguage(language),
+  });
+}
+
+export async function getTrashedApplicationResidualPlan(
+  applicationPath: string,
+  language: string | undefined = DEFAULT_LANGUAGE,
+): Promise<ApplicationUninstallPlan> {
+  if (canUseDevelopmentMock()) {
+    return getMockApplicationUninstallPlan(applicationPath);
+  }
+  return invoke<ApplicationUninstallPlan>(
+    "get_trashed_application_residual_plan",
+    {
+      applicationPath,
+      language: normalizeLanguage(language),
+    },
+  );
+}
+
 export async function executeNativeApplicationUninstall(
   planId: string,
 ): Promise<NativeApplicationUninstallResult> {
@@ -673,6 +758,48 @@ export async function clearPersistedApplicationHistory(): Promise<void> {
   return invoke<void>("clear_persisted_application_history");
 }
 
+export async function loadHistoryStorage(
+  category: HistoryStorageCategory,
+): Promise<HistorySegmentStorage> {
+  if (canUseDevelopmentMock()) {
+    return { payload: null, byteSize: 0, updatedAtMs: null };
+  }
+  return invoke<HistorySegmentStorage>("load_history_storage", { category });
+}
+
+export async function saveHistoryStorage(
+  category: HistoryStorageCategory,
+  payload: string,
+): Promise<HistorySegmentStorage> {
+  if (canUseDevelopmentMock()) {
+    return {
+      payload: null,
+      byteSize: new TextEncoder().encode(payload).byteLength,
+      updatedAtMs: Date.now(),
+    };
+  }
+  return invoke<HistorySegmentStorage>("save_history_storage", {
+    category,
+    payload,
+  });
+}
+
+export async function clearHistoryStorage(
+  category: HistoryStorageCategory,
+): Promise<HistorySegmentStorage> {
+  if (canUseDevelopmentMock()) {
+    return { payload: null, byteSize: 0, updatedAtMs: null };
+  }
+  return invoke<HistorySegmentStorage>("clear_history_storage", { category });
+}
+
+export async function getHistoryStorageSummary(): Promise<HistoryStorageSummary> {
+  if (canUseDevelopmentMock()) {
+    return { byteSize: 0, fileCount: 0, updatedAtMs: null };
+  }
+  return invoke<HistoryStorageSummary>("get_history_storage_summary");
+}
+
 export async function getProductDataCacheSummary(): Promise<ProductDataCacheSummary> {
   if (canUseDevelopmentMock()) {
     return {
@@ -680,6 +807,7 @@ export async function getProductDataCacheSummary(): Promise<ProductDataCacheSumm
       fileInsights: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
       applicationInventory: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
       applicationHistory: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
+      historySegments: { ...EMPTY_PRODUCT_DATA_CACHE_ITEM },
     };
   }
   return invoke<ProductDataCacheSummary>("get_product_data_cache_summary");

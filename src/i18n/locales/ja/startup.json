@@ -52,7 +52,10 @@
     "eyebrow": "測定されたサインインの起動",
     "title": "実際のサインインへの影響",
     "description": "システムが安定するまで、オペレーティング システムがログイン項目として CoreRobin をサイレントに起動する場合のみサンプルします。",
-    "settleTime": "整定時間", "peakCpu": "ピーク CPU", "peakDisk": "ピークディスク", "samples": "サンプル",
+    "settleTime": "整定時間",
+    "peakCpu": "ピーク CPU",
+    "peakDisk": "ピークディスク",
+    "samples": "サンプル",
     "boundary": "これは、ファームウェアの起動時間ではなく、サインイン後の影響を測定します。測定は 3 分後に停止し、最新の 5 分が保持されます。",
     "empty": "実際のサインインの測定はまだ行われていません。次回のサインインを自動的に測定するには、ログイン時に起動を有効にします。",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "起動デーモン",
     "desktop_entry": "自動起動エントリ",
     "registry_run": "レジストリからの起動",
-    "startup_folder": "スタートアップフォルダ"
+    "startup_folder": "スタートアップフォルダ",
+    "background_task": "バックグラウンドタスク"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "現在無効化されています",
       "description": "設定は残りますが、システムはこのエントリから自動的に起動しません。"
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "最近の起動との比較",
     "description": "過去{{count}}回の測定の中央値を使用します。",
@@ -149,6 +152,19 @@
       "improved": "{{count}}件の変更後、次回の起動はより早く安定しましたが、単一の変更には帰属できません。",
       "similar": "{{count}}件の変更後、次回の起動は最近の傾向に近い状態でした。",
       "slower": "{{count}}件の変更後も次回の起動は遅く、単一の原因は特定できません。"
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} 項目",
+    "modern": "最新のバックグラウンド項目",
+    "orphaned": "実行ファイルがありません",
+    "lastRun": "最終報告状態：{{status}}",
+    "itemCount": "{{count}} 項目",
+    "signature": {
+      "valid": "有効な署名",
+      "invalid": "無効な署名",
+      "unknown": "署名不明",
+      "system_reported": "macOS による報告"
     }
   }
 }

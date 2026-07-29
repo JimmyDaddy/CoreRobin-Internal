@@ -52,17 +52,23 @@ export function saveResourceAlertEvents(
 ): void {
   if (isProductDataResetInProgress()) return;
   try {
-    const payload: ResourceAlertPayload = {
-      version: 1,
-      events: deduplicateEvents(events.filter(isResourceAlertEvent)),
-    };
     window.localStorage.setItem(
       RESOURCE_ALERT_STORAGE_KEY,
-      JSON.stringify(payload),
+      serializeResourceAlertEvents(events),
     );
   } catch {
     // Alert events stay available for this session if WebView storage is blocked.
   }
+}
+
+export function serializeResourceAlertEvents(
+  events: readonly ResourceAlertEvent[],
+): string {
+  const payload: ResourceAlertPayload = {
+    version: 1,
+    events: deduplicateEvents(events.filter(isResourceAlertEvent)),
+  };
+  return JSON.stringify(payload);
 }
 
 export function clearResourceAlertStorage(): void {

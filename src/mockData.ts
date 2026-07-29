@@ -514,7 +514,11 @@ export function executeMockCleanupDelete(
   }
   return {
     deleted: lease.paths.map((path) => ({ path, deletedBytes: 0 })),
+    selectedLogicalBytes: 0,
+    selectedAllocatedBytes: 0,
     deletedBytes: 0,
+    availableBytesBefore: 120_000_000_000,
+    availableBytesAfter: 120_000_000_000,
     failed: [],
     cancelled: false,
     interruptedPath: null,

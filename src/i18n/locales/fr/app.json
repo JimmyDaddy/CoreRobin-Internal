@@ -43,8 +43,8 @@
     "simple": "Mode quotidien",
     "professional": "Mode professionnel",
     "short": {
-      "simple": "Quotidien",
-      "professional": "Professionnel"
+      "simple": "Simple",
+      "professional": "Pro"
     },
     "switchTo": {
       "simple": "Basculer vers le mode quotidien",
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} applications ou composants système",
     "savedHistory": "{{count}} points d'historique sauvegardés",
     "processCount": "{{count}} processus",
-    "cleanupEntries": "{{count}} éléments vérifiés"
+    "cleanupEntries": "{{count}} éléments vérifiés",
+    "samplerSaved": "Échantillonneur natif {{time}} · {{failures}} échecs consécutifs",
+    "samplerWaiting": "Démarrage de l’échantillonneur natif"
   }
 }

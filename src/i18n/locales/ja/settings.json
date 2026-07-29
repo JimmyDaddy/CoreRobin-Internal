@@ -1,10 +1,24 @@
 {
   "watchRules": {
-    "title": "アプリの監視と通知ルール", "description": "指定したアプリを監視し、条件を継続して超えたときに一度通知します。回復後は再び通知できます。",
-    "application": "アプリ", "applicationPlaceholder": "アプリを選択または入力", "metric": "指標", "threshold": "しきい値", "duration": "継続時間",
-    "metrics": { "cpu": "CPU", "memory": "メモリ", "disk": "ディスク活動" },
-    "seconds": "{{count}} 秒", "add": "ルールを追加", "notificationHint": "システム通知を送るにはデスクトップ通知を有効にして権限を許可してください。", "backgroundSampling": "ルール有効時は、ウインドウを閉じても約 {{seconds}} 秒ごとにアプリを確認します。",
-    "summary": "{{metric}} ≥ {{threshold}}{{unit}} が {{seconds}} 秒継続", "active": "条件に到達", "remove": "{{name}} の通知ルールを削除",
+    "title": "アプリの監視と通知ルール",
+    "description": "指定したアプリを監視し、条件を継続して超えたときに一度通知します。回復後は再び通知できます。",
+    "application": "アプリ",
+    "applicationPlaceholder": "アプリを選択または入力",
+    "metric": "指標",
+    "threshold": "しきい値",
+    "duration": "継続時間",
+    "metrics": {
+      "cpu": "CPU",
+      "memory": "メモリ",
+      "disk": "ディスク活動"
+    },
+    "seconds": "{{count}} 秒",
+    "add": "ルールを追加",
+    "notificationHint": "システム通知を送るにはデスクトップ通知を有効にして権限を許可してください。",
+    "backgroundSampling": "ルール有効時は、ウインドウを閉じても約 {{seconds}} 秒ごとにアプリを確認します。",
+    "summary": "{{metric}} ≥ {{threshold}}{{unit}} が {{seconds}} 秒継続",
+    "active": "条件に到達",
+    "remove": "{{name}} の通知ルールを削除",
     "empty": "アプリ監視ルールはまだありません。"
   },
   "localPreferences": "ローカル設定",
@@ -39,7 +53,22 @@
   "sampling": {
     "title": "システム監視の頻度設定",
     "description": "短い間隔で監視すると、より早く反応し、監視オーバーヘッドが増えます",
-    "system": "CPU、メモリ、および実行中のプロセスを監視します", "advanced": "詳細：正確な間隔", "presets": { "lowPower": { "label": "低電力", "description": "5 秒ごと、長時間のバックグラウンド利用向け" }, "balanced": { "label": "バランス", "description": "1 秒ごと、日常利用に推奨" }, "realtime": { "label": "リアルタイム", "description": "0.5 秒ごと、より高速な応答" } }
+    "system": "CPU、メモリ、および実行中のプロセスを監視します",
+    "advanced": "詳細：正確な間隔",
+    "presets": {
+      "lowPower": {
+        "label": "低電力",
+        "description": "5 秒ごと、長時間のバックグラウンド利用向け"
+      },
+      "balanced": {
+        "label": "バランス",
+        "description": "1 秒ごと、日常利用に推奨"
+      },
+      "realtime": {
+        "label": "リアルタイム",
+        "description": "0.5 秒ごと、より高速な応答"
+      }
+    }
   },
   "connections": {
     "title": "接続情報の更新",
@@ -60,7 +89,68 @@
     "retention": "保持期間",
     "days": "{{count}}日間"
   },
-  "dataPrivacy": { "title": "データとプライバシー", "description": "端末内のデータの内容と設定をまとめて確認できます。CoreRobin がアップロードや同期を行うことはありません。", "status": { "on": "保存中", "off": "オフ" }, "resourceHistory": { "title": "リソースと通知の履歴", "description": "端末全体の状態、操作、監視イベントの集計。パス、コマンド、ネットワークアドレスは含みません。" }, "connectionHistory": { "title": "接続履歴", "description": "任意の 5 分集計にはリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。" }, "caches": { "title": "ローカル製品キャッシュ", "description": "アプリ一覧、ストレージスキャン、ファイル分析結果はこの端末だけに保存されます。" }, "categories": { "resourceHistory": { "title": "リソースと操作の履歴", "description": "デバイスのリソース、通知、アプリ監視、ローカル操作の記録です。" }, "connectionHistory": { "title": "接続履歴", "description": "任意の5分間集計で、リモートアドレス、ポート、アプリ名を含む場合があります。" }, "applicationInventory": { "title": "アプリ一覧キャッシュ", "description": "表示言語ごとのインストール済みアプリ情報です。アプリの内容は保存しません。" }, "scanCaches": { "title": "スキャン結果キャッシュ", "description": "パス、サイズ、更新日時を含むクリーンアップとファイル分析の結果です。" } }, "metrics": { "items": "{{count}} 件", "updated": "{{time}} に更新", "never": "ローカルデータはありません", "retention": "{{count}} 日間保持", "session": "現在のセッションのみ" }, "result": { "clear": "この種類を消去", "retry": "再試行", "succeeded": "消去済み", "failed": "消去に失敗", "skipped": "別の項目が失敗したためスキップ" }, "clearAll": { "title": "すべての製品データを消去", "description": "一度確認して、上記データ、設定、ローカル画面状態を消去します。" }, "diskAccess": { "title": "フルディスクアクセス", "description": "この任意の権限は macOS が管理します。CoreRobin に戻ると状態が自動更新されます。", "open": "システム設定を開く" }, "clear": "すべてのローカルデータを消去" },
+  "dataPrivacy": {
+    "title": "データとプライバシー",
+    "description": "端末内のデータの内容と設定をまとめて確認できます。CoreRobin がアップロードや同期を行うことはありません。",
+    "status": {
+      "on": "保存中",
+      "off": "オフ"
+    },
+    "resourceHistory": {
+      "title": "リソースと通知の履歴",
+      "description": "端末全体の状態、操作、監視イベントの集計。パス、コマンド、ネットワークアドレスは含みません。"
+    },
+    "connectionHistory": {
+      "title": "接続履歴",
+      "description": "任意の 5 分集計にはリモート IP、ドメイン、ポート、アプリ名が含まれる場合があります。"
+    },
+    "caches": {
+      "title": "ローカル製品キャッシュ",
+      "description": "アプリ一覧、ストレージスキャン、ファイル分析結果はこの端末だけに保存されます。"
+    },
+    "categories": {
+      "resourceHistory": {
+        "title": "リソースと操作の履歴",
+        "description": "デバイスのリソース、通知、アプリ監視、ローカル操作の記録です。"
+      },
+      "connectionHistory": {
+        "title": "接続履歴",
+        "description": "任意の5分間集計で、リモートアドレス、ポート、アプリ名を含む場合があります。"
+      },
+      "applicationInventory": {
+        "title": "アプリ一覧キャッシュ",
+        "description": "表示言語ごとのインストール済みアプリ情報です。アプリの内容は保存しません。"
+      },
+      "scanCaches": {
+        "title": "スキャン結果キャッシュ",
+        "description": "パス、サイズ、更新日時を含むクリーンアップとファイル分析の結果です。"
+      }
+    },
+    "metrics": {
+      "items": "{{count}} 件",
+      "updated": "{{time}} に更新",
+      "never": "ローカルデータはありません",
+      "retention": "{{count}} 日間保持",
+      "session": "現在のセッションのみ"
+    },
+    "result": {
+      "clear": "この種類を消去",
+      "retry": "再試行",
+      "succeeded": "消去済み",
+      "failed": "消去に失敗",
+      "skipped": "別の項目が失敗したためスキップ"
+    },
+    "clearAll": {
+      "title": "すべての製品データを消去",
+      "description": "一度確認して、上記データ、設定、ローカル画面状態を消去します。"
+    },
+    "diskAccess": {
+      "title": "フルディスクアクセス",
+      "description": "この任意の権限は macOS が管理します。CoreRobin に戻ると状態が自動更新されます。",
+      "open": "システム設定を開く"
+    },
+    "clear": "すべてのローカルデータを消去"
+  },
   "notifications": {
     "title": "デスクトップ通知",
     "description": "主に、高い負荷、実際のメモリ圧、および低いディスク容量が問題を引き起こした場合にのみ通知します。 CoreRobinは、問題が安定して回復した後、一度フォローアップします。",
@@ -80,7 +170,10 @@
       "unavailable": "デスクトップアプリでのみ表示"
     },
     "test": "テスト通知を送信",
-    "delivery": { "sent": "前回の通知は {{time}} にシステムへ渡されました", "failed": "前回の通知は {{time}} に送信できませんでした。テストまたはシステム設定を確認してください" }
+    "delivery": {
+      "sent": "前回の通知は {{time}} にシステムへ渡されました",
+      "failed": "前回の通知は {{time}} に送信できませんでした。テストまたはシステム設定を確認してください"
+    }
   },
   "thresholds": {
     "title": "リソース使用状況の警告閾値",
@@ -92,23 +185,99 @@
     "critical": "重要"
   },
   "about": {
-    "title": "情報とサポート", "description": "バージョンの確認、ヘルプ、CoreRobin がこのコンピュータに保存するデータの管理を行います。",
-    "versionTitle": "バージョンと更新", "versionDescription": "CoreRobin 内で最新の安定版を確認、ダウンロード、インストールします。", "version": "現在のバージョン", "platform": "システム", "architecture": "アーキテクチャ",
-    "checking": "確認中…", "checkUpdate": "更新を確認", "releaseNotes": "更新内容を見る", "updateError": "現在更新を確認できません。後でもう一度お試しください。", "updateAvailable": "CoreRobin v{{version}} が利用できます", "openRelease": "ダウンロード", "upToDate": "v{{version}} は最新版です", "installUpdate": "ダウンロードしてインストール", "installingUpdate": "更新中…", "downloadingUpdate": "更新をダウンロードして検証中", "applyingUpdate": "更新をインストール中", "updateReady": "更新のインストールが完了しました。再起動すると新しいバージョンが開きます。", "restartUpdate": "今すぐ再起動して更新を完了", "restartingUpdate": "再起動中…", "updateInstallError": "更新をインストールできませんでした。現在のバージョンは変更されていません。後でもう一度お試しください。", "updateRestartError": "更新はインストール済みですが、CoreRobin を自動で再起動できませんでした。再試行するか、手動で終了して開き直してください。", "lastChecked": "最終確認：{{time}}", "lastCheckFailed": "{{time}} のバックグラウンド確認に失敗しました。「更新を確認」で再試行できます。", "whatsNew": "このバージョンの新機能",
-    "helpTitle": "ヘルプとフィードバック", "helpDescription": "公開ガイドを開くか、問題報告に含まれる内容を確認します。", "guide": "ユーザーガイド", "privacy": "プライバシー", "reportIssue": "問題を報告", "reopenGuide": "初回ガイドを再表示",
-    "diagnosticsTitle": "診断サマリー", "diagnosticsDescription": "トラブルシューティングに役立つ基本的な実行情報をコピーします。", "diagnosticsPrivacy": "ホスト名、プロセス名、ファイルパス、ネットワークアドレス、履歴値は既定で除外されます。", "diagnosticsPreview": "コピー前にプレビュー", "diagnostics": { "idle": "匿名化サマリーをコピー", "copied": "コピーしました", "error": "コピーに失敗" },
-    "clearTitle": "ローカルデータをすべて消去", "clearDescription": "設定、履歴、警告、操作記録、空間スキャンキャッシュを消去します。", "clearConfirm": "元に戻せません。CoreRobin は端末上のデータを消去して再起動します。ログイン時起動などのシステム権限は暗黙に削除されません。", "clearNow": "消去して再起動", "clearAction": "すべてのデータを消去", "clearing": "ローカルデータを消去中…", "clearError": "一部のローカルデータを消去できませんでした。完了とは表示しません。実行中のスキャンを閉じて再試行してください。", "clearScope": { "history": "リソース履歴、通知履歴、確認済みの操作記録", "scans": "アプリ一覧、空間マップのキャッシュ、ファイル分析結果", "preferences": "画面設定と各機能のローカル設定" }
+    "title": "情報とサポート",
+    "description": "バージョンの確認、ヘルプ、CoreRobin がこのコンピュータに保存するデータの管理を行います。",
+    "versionTitle": "バージョンと更新",
+    "versionDescription": "CoreRobin 内で最新の安定版を確認、ダウンロード、インストールします。",
+    "version": "現在のバージョン",
+    "platform": "システム",
+    "architecture": "アーキテクチャ",
+    "checking": "確認中…",
+    "checkUpdate": "更新を確認",
+    "releaseNotes": "更新内容を見る",
+    "updateError": "現在更新を確認できません。後でもう一度お試しください。",
+    "updateAvailable": "CoreRobin v{{version}} が利用できます",
+    "openRelease": "ダウンロード",
+    "upToDate": "v{{version}} は最新版です",
+    "installUpdate": "ダウンロードしてインストール",
+    "installingUpdate": "更新中…",
+    "downloadingUpdate": "更新をダウンロードして検証中",
+    "applyingUpdate": "更新をインストール中",
+    "updateReady": "更新のインストールが完了しました。再起動すると新しいバージョンが開きます。",
+    "restartUpdate": "今すぐ再起動して更新を完了",
+    "restartingUpdate": "再起動中…",
+    "updateInstallError": "更新をインストールできませんでした。現在のバージョンは変更されていません。後でもう一度お試しください。",
+    "updateRestartError": "更新はインストール済みですが、CoreRobin を自動で再起動できませんでした。再試行するか、手動で終了して開き直してください。",
+    "lastChecked": "最終確認：{{time}}",
+    "lastCheckFailed": "{{time}} のバックグラウンド確認に失敗しました。「更新を確認」で再試行できます。",
+    "whatsNew": "このバージョンの新機能",
+    "helpTitle": "ヘルプとフィードバック",
+    "helpDescription": "公開ガイドを開くか、問題報告に含まれる内容を確認します。",
+    "guide": "ユーザーガイド",
+    "privacy": "プライバシー",
+    "reportIssue": "問題を報告",
+    "reopenGuide": "初回ガイドを再表示",
+    "diagnosticsTitle": "診断サマリー",
+    "diagnosticsDescription": "トラブルシューティングに役立つ基本的な実行情報をコピーします。",
+    "diagnosticsPrivacy": "ホスト名、プロセス名、ファイルパス、ネットワークアドレス、履歴値は既定で除外されます。",
+    "diagnosticsPreview": "コピー前にプレビュー",
+    "diagnostics": {
+      "idle": "匿名化サマリーをコピー",
+      "copied": "コピーしました",
+      "error": "コピーに失敗"
+    },
+    "clearTitle": "ローカルデータをすべて消去",
+    "clearDescription": "設定、履歴、警告、操作記録、空間スキャンキャッシュを消去します。",
+    "clearConfirm": "元に戻せません。CoreRobin は端末上のデータを消去して再起動します。ログイン時起動などのシステム権限は暗黙に削除されません。",
+    "clearNow": "消去して再起動",
+    "clearAction": "すべてのデータを消去",
+    "clearing": "ローカルデータを消去中…",
+    "clearError": "一部のローカルデータを消去できませんでした。完了とは表示しません。実行中のスキャンを閉じて再試行してください。",
+    "clearScope": {
+      "history": "リソース履歴、通知履歴、確認済みの操作記録",
+      "scans": "アプリ一覧、空間マップのキャッシュ、ファイル分析結果",
+      "preferences": "画面設定と各機能のローカル設定"
+    },
+    "updatedReceipt": "v{{version}} から正常に更新しました",
+    "skipVersion": "v{{version}} をスキップ"
   },
   "onboarding": {
-    "kicker": "初回ガイド · {{current}} / {{total}}", "skip": "今はスキップ", "back": "戻る", "next": "次へ", "finish": "使い始める",
-    "controls": { "mode": "表示モードを選択", "everyday": "分かりやすい結論と操作ガイド", "professional": "すべての指標と診断根拠", "diskAccess": "フルディスクアクセス", "openDiskAccess": "フルディスクアクセス設定を開く", "diskAccessStatus": { "granted": "準備完了", "not_granted": "任意 · 未許可", "not_required": "このシステムでは不要", "unknown": "状態を確認できません" } },
+    "kicker": "初回ガイド · {{current}} / {{total}}",
+    "skip": "今はスキップ",
+    "back": "戻る",
+    "next": "次へ",
+    "finish": "使い始める",
+    "controls": {
+      "mode": "表示モードを選択",
+      "everyday": "分かりやすい結論と操作ガイド",
+      "professional": "すべての指標と診断根拠",
+      "diskAccess": "フルディスクアクセス",
+      "openDiskAccess": "フルディスクアクセス設定を開く",
+      "diskAccessStatus": {
+        "granted": "準備完了",
+        "not_granted": "任意 · 未許可",
+        "not_required": "このシステムでは不要",
+        "unknown": "状態を確認できません"
+      }
+    },
     "steps": {
-      "one": { "title": "自分に合う表示を選びましょう", "description": "日常モードは安定した結論と次の手順を示し、プロモードは完全な指標、プロセス、ネットワークの根拠を表示します。いつでも切り替えられます。", "note": "どちらのモードも同じ端末内状態を共有し、結論は同じです。" },
-      "two": { "title": "ウィンドウを閉じても静かに待機", "description": "CoreRobin はメニューバーに残り、低頻度でサンプリングします。メニューパネルと Robin は同じ安定状態を共有します。", "note": "メニューバーから一時停止、設定、完全終了ができます。" },
-      "three": { "title": "権限は必要なときだけ", "description": "通知、Robin、ログイン時起動は任意です。フルディスクアクセスは空間整理のスキャンをより完全にする場合にのみ使います。", "note": "許可しなくてもアクセス可能な範囲をスキャンできます。CoreRobin はこのガイドで権限を要求しません。" }
+      "one": {
+        "title": "自分に合う表示を選びましょう",
+        "description": "日常モードは安定した結論と次の手順を示し、プロモードは完全な指標、プロセス、ネットワークの根拠を表示します。いつでも切り替えられます。",
+        "note": "どちらのモードも同じ端末内状態を共有し、結論は同じです。"
+      },
+      "two": {
+        "title": "ウィンドウを閉じても静かに待機",
+        "description": "CoreRobin はメニューバーに残り、低頻度でサンプリングします。メニューパネルと Robin は同じ安定状態を共有します。",
+        "note": "メニューバーから一時停止、設定、完全終了ができます。"
+      },
+      "three": {
+        "title": "権限は必要なときだけ",
+        "description": "通知、Robin、ログイン時起動は任意です。フルディスクアクセスは空間整理のスキャンをより完全にする場合にのみ使います。",
+        "note": "許可しなくてもアクセス可能な範囲をスキャンできます。CoreRobin はこのガイドで権限を要求しません。"
+      }
     }
-  }
-,
+  },
   "applicationImpactHistory": {
     "label": "アプリ影響の集計を保存",
     "hint": "端末内履歴とアプリ表示名の保存許可が必要です。コマンドやファイルパスは保存しません。"
@@ -133,5 +302,18 @@
     "stepsHeading": "再現手順",
     "stepsPlaceholder": "<!-- 最短の再現手順を記載してください。 -->",
     "diagnosticHeading": "個人情報を除いた環境情報"
+  },
+  "transfer": {
+    "invalid": "対応する CoreRobin 設定バックアップではありません。",
+    "title": "設定とルールのバックアップ",
+    "description": "明示的なローカル JSON ファイルで CoreRobin の設定とアプリ監視ルールを移行します。",
+    "export": "設定を書き出す",
+    "import": "設定を読み込む",
+    "boundary": "設定と監視ルールだけを含みます。履歴、ファイルパス、接続記録、スキャン結果は書き出しません。",
+    "previewTitle": "読み込む変更を確認",
+    "preview_other": "異なる設定 {{count}} 件 · アプリ監視ルール {{rules}} 件",
+    "noChanges": "変更される設定はありません",
+    "apply": "読み込んだ設定を適用",
+    "preview": "異なる設定 {{count}} 件 · アプリ監視ルール {{rules}} 件"
   }
 }

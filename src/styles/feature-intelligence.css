@@ -454,7 +454,7 @@
   border-bottom: 1px solid var(--border);
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
   padding: 10px 4px;
 }
 .connection-history__row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

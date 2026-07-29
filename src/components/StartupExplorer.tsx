@@ -5,6 +5,7 @@ import {
   Rocket,
   Search,
   ShieldCheck,
+  Boxes,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -88,6 +89,16 @@ export function StartupExplorer({
     ).slice(0, variant === "guided" ? 8 : 100),
     [filter, items, query, variant],
   );
+  const visibleGroups = useMemo(() => {
+    const groups = new Map<string, StartupItem[]>();
+    for (const item of visible) {
+      const owner = item.responsibleApplication ?? item.publisher ?? item.name;
+      const group = groups.get(owner) ?? [];
+      group.push(item);
+      groups.set(owner, group);
+    }
+    return [...groups.entries()];
+  }, [visible]);
   const reviewCount = items.filter((item) => startupAdvice(item) === "review").length;
   const systemCount = items.filter((item) => item.system).length;
 
@@ -264,17 +275,28 @@ export function StartupExplorer({
               </div>
               <label className="startup-search"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("startup:search")} /></label>
             </div> : null}
-            {visible.length > 0 ? (
-              <div className="startup-items">
-                {visible.map((item) => (
-                  <StartupItemRow
-                    key={item.id}
-                    item={item}
-                    applications={applications}
-                    totalMemoryBytes={totalMemoryBytes}
-                    guided={variant === "guided"}
-                    onManage={() => void openActionDialog(item)}
-                  />
+            {visibleGroups.length > 0 ? (
+              <div className="startup-groups">
+                {visibleGroups.map(([owner, group]) => (
+                  <section className="startup-group" key={owner}>
+                    <header className="startup-group__owner">
+                      <Boxes size={14} />
+                      <strong>{owner}</strong>
+                      <span>{t("startup:ownership.itemCount", { count: group.length })}</span>
+                    </header>
+                    <div className="startup-items">
+                      {group.map((item) => (
+                        <StartupItemRow
+                          key={item.id}
+                          item={item}
+                          applications={applications}
+                          totalMemoryBytes={totalMemoryBytes}
+                          guided={variant === "guided"}
+                          onManage={() => void openActionDialog(item)}
+                        />
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             ) : (
@@ -502,6 +524,19 @@ function StartupItemRow({
       <div className="startup-item__identity">
         <strong>{item.name}</strong>
         <span>{item.publisher ?? t("startup:publisherUnknown")} · {t(`startup:source.${item.source}`)}</span>
+        <div className="startup-item__ownership">
+          {item.bundleId ? <small title={item.bundleId}>Bundle ID</small> : null}
+          {item.teamId ? <small title={item.teamId}>Team {item.teamId}</small> : null}
+          {item.signatureStatus ? (
+            <small className={`is-${item.signatureStatus}`}>
+              {t(`startup:ownership.signature.${item.signatureStatus}`, {
+                defaultValue: item.signatureStatus,
+              })}
+            </small>
+          ) : null}
+          {item.modernBackgroundItem ? <small>{t("startup:ownership.modern")}</small> : null}
+          {item.orphaned ? <small className="is-orphaned">{t("startup:ownership.orphaned")}</small> : null}
+        </div>
       </div>
       <div className="startup-item__meaning">
         <strong>{t(`startup:advice.${advice}.title`)}</strong>
@@ -531,6 +566,8 @@ function StartupItemRow({
       {!guided ? <details>
         <summary>{t("startup:technicalDetails")}</summary>
         <code title={item.command ?? item.path}>{item.command ?? item.path}</code>
+        {item.executablePath ? <code title={item.executablePath}>{item.executablePath}</code> : null}
+        {item.lastRunStatus ? <small>{t("startup:ownership.lastRun", { status: item.lastRunStatus })}</small> : null}
       </details> : null}
     </article>
   );

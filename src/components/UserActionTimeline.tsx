@@ -3,8 +3,11 @@ import {
   CircleStop,
   Clock3,
   ExternalLink,
+  Download,
+  HardDriveUpload,
   LoaderCircle,
   Power,
+  PackageX,
   RefreshCw,
   Rocket,
   RotateCw,
@@ -37,6 +40,9 @@ const ACTION_ICONS = {
   cleanup_delete: Trash2,
   startup_disable: CircleStop,
   startup_enable: Rocket,
+  application_uninstall: PackageX,
+  volume_eject: HardDriveUpload,
+  application_update: Download,
 } satisfies Record<UserActionKind, typeof Power>;
 
 export function UserActionTimeline({
@@ -102,7 +108,16 @@ export function UserActionTimeline({
                 </time>
                 {onOpenAction && record.status !== "running" ? (
                   <Button variant="plain" onClick={() => onOpenAction(record.kind)}>
-                    {t("history:actions.open")}<ExternalLink size={12} />
+                    {record.status === "failed"
+                    || record.status === "partial"
+                    || record.status === "interrupted"
+                      ? t("history:actions.retry")
+                      : t("history:actions.open")}
+                    {record.status === "failed"
+                    || record.status === "partial"
+                    || record.status === "interrupted"
+                      ? <RefreshCw size={12} />
+                      : <ExternalLink size={12} />}
                   </Button>
                 ) : null}
               </article>

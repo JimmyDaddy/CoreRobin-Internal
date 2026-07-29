@@ -364,7 +364,7 @@ function entryFromApplication(
   application: ApplicationImpact,
 ): ApplicationImpactHistoryEntry {
   return {
-    applicationId: stableApplicationId(application.id),
+    applicationId: stableApplicationId(application.applicationId ?? application.id),
     name: application.name.trim().slice(0, 120),
     sampleCount: 1,
     averageCpuPercent: Math.max(0, application.cpuPercent),

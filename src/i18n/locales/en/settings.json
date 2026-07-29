@@ -167,6 +167,8 @@
     "applyingUpdate": "Installing update",
     "updateReady": "The update is installed and ready. Restart to open the new version.",
     "restartUpdate": "Restart now and finish update",
+    "skipVersion": "Skip v{{version}}",
+    "updatedReceipt": "Updated successfully from v{{version}}",
     "restartingUpdate": "Restarting…",
     "updateInstallError": "The update could not be installed. Your current version is unchanged; try again later or view the release notes.",
     "updateRestartError": "The update is installed, but CoreRobin could not restart automatically. Try again, or quit and reopen it manually.",
@@ -241,6 +243,18 @@
   "applicationImpactHistory": {
     "label": "Keep application impact aggregates",
     "hint": "Requires on-device history and permission to save app display names; commands and file paths are never saved."
+  },
+  "transfer": {
+    "title": "Preferences and rule backup",
+    "description": "Move CoreRobin preferences and application watch rules between computers with an explicit local JSON file.",
+    "export": "Export settings",
+    "import": "Import settings",
+    "boundary": "Includes preferences and watch rules only. No history, file paths, connection records, or scan results are exported.",
+    "invalid": "This file is not a supported CoreRobin preferences backup.",
+    "previewTitle": "Review imported changes",
+    "preview": "{{count}} settings differ · {{rules}} application watch rules",
+    "noChanges": "No setting would change",
+    "apply": "Apply imported settings"
   },
   "supportFlow": {
     "action": "Prepare issue report",

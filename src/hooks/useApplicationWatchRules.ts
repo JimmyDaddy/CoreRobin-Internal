@@ -20,7 +20,9 @@ import {
   createApplicationWatchHistoryEvent,
   loadApplicationWatchHistory,
   mergeApplicationWatchHistory,
+  parseApplicationWatchHistory,
   saveApplicationWatchHistory,
+  serializeApplicationWatchHistory,
   type ApplicationWatchHistoryEvent,
 } from "../applicationWatchHistory";
 import { aggregateApplications } from "../diagnosis";
@@ -30,6 +32,7 @@ import { translateNotification } from "../i18n/notificationTranslator";
 import type { SupportedLanguage } from "../language";
 import type { ApplicationWatchRule } from "../settings";
 import type { SystemSnapshot } from "../types";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export function useApplicationWatchRules(
   snapshot: SystemSnapshot | null,
@@ -46,9 +49,17 @@ export function useApplicationWatchRules(
   const [activeRuleIds, setActiveRuleIds] = useState<string[]>([]);
   const [sessionEvents, setSessionEvents] =
     useState<ApplicationWatchHistoryEvent[]>([]);
-  const [storedEvents, setStoredEvents] = useState(
-    loadApplicationWatchHistory,
-  );
+  const desktop = isDesktopRuntime();
+  const storage = useNativeHistoryStorage<ApplicationWatchHistoryEvent[]>({
+    category: "application-watch",
+    enabled: persistenceEnabled,
+    initialValue: loadApplicationWatchHistory,
+    parse: parseApplicationWatchHistory,
+    serialize: serializeApplicationWatchHistory,
+    clearLegacy: clearApplicationWatchHistory,
+  });
+  const storedEvents = storage.value;
+  const setStoredEvents = storage.setValue;
   const [notificationDelivery, setNotificationDelivery] =
     useState<DesktopNotificationDelivery | null>(null);
 
@@ -102,7 +113,7 @@ export function useApplicationWatchRules(
                 snapshot.sampledAtMs,
                 retentionDays,
               );
-              saveApplicationWatchHistory(next);
+              if (!desktop) saveApplicationWatchHistory(next);
               return next;
             });
           }
@@ -142,7 +153,7 @@ export function useApplicationWatchRules(
         Date.now(),
         retentionDays,
       );
-      saveApplicationWatchHistory(next);
+      if (!desktop) saveApplicationWatchHistory(next);
       return next;
     });
   }, [retentionDays]);
@@ -154,7 +165,7 @@ export function useApplicationWatchRules(
         ...event,
         applicationName: null,
       }));
-      saveApplicationWatchHistory(next);
+      if (!desktop) saveApplicationWatchHistory(next);
       return next;
     });
   }, [applicationNamesEnabled]);
@@ -195,9 +206,8 @@ export function useApplicationWatchRules(
   );
 
   const clearSaved = useCallback(() => {
-    clearApplicationWatchHistory();
-    setStoredEvents([]);
-  }, []);
+    void storage.clear().catch(() => undefined);
+  }, [storage]);
 
   return {
     activeRuleIds,
@@ -205,6 +215,7 @@ export function useApplicationWatchRules(
     storedEvents,
     clearSaved,
     notificationDelivery,
+    storageStatus: storage.storageStatus,
   };
 }
 

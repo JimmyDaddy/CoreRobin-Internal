@@ -60,6 +60,8 @@ export default interface Resources {
       "interfacesAndConnections": "{{interfaces}} 个网络接口 · {{connections}} 个连接",
       "interval": "采样间隔 {{interval}} ms",
       "processCount": "{{count}} 个进程",
+      "samplerSaved": "原生采样 {{time}} · 连续失败 {{failures}} 次",
+      "samplerWaiting": "原生采样正在启动",
       "savedHistory": "{{count}} 个已保存历史点"
     },
     "storage": "存储",
@@ -171,6 +173,14 @@ export default interface Resources {
     "sortLabel": "应用排序方式",
     "systemComponent": "系统组件 · 不建议结束",
     "title": "应用资源影响",
+    "trashWatcher": {
+      "description": "可选的本机 30 秒检查；只生成 Bundle ID 精确归属的残留计划，绝不自动删除。",
+      "empty": "当前用户的废纸篓中没有待检查的应用。",
+      "error": "暂时无法检查废纸篓。",
+      "found": "已移入废纸篓 · 检查残留",
+      "planBoundary": "应用本体已经在废纸篓中；此计划只包含由精确 Bundle ID 归属且仍然存在的支持数据。",
+      "title": "观察移入废纸篓的应用"
+    },
     "uninstall": {
       "applicationUnit": "个应用",
       "artifacts": {
@@ -198,6 +208,19 @@ export default interface Resources {
         "application_bundle_identifier_missing": "无法验证此应用的 Bundle ID。",
         "application_bundle_unavailable": "应用当前不可访问，请确认它仍在原位置。",
         "application_identity_changed": "应用身份已经变化，请刷新清单后重试。"
+      },
+      "filters": {
+        "all": "全部",
+        "days": "{{count}} 天未使用",
+        "sort": "排序",
+        "sortBy": {
+          "last_used": "最久未使用",
+          "name": "按名称",
+          "size": "按大小降序",
+          "source": "按安装来源"
+        },
+        "source": "安装来源",
+        "unused": "最近使用"
       },
       "foundItems": "已确认归属的项目",
       "installedSize": "应用本体",
@@ -428,6 +451,11 @@ export default interface Resources {
       "workspaceKicker": "文件核对工作区"
     },
     "fullDiskAccessHint": "macOS 上可在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中授权 CoreRobin 后重新扫描。",
+    "growth": {
+      "noGrowth": "紧凑快照中没有发现持续增长的目录。",
+      "since": "与 {{time}} 的结果对比",
+      "title": "较上次扫描的空间变化"
+    },
     "itemCount": "{{count}} 个文件",
     "kicker": "本机空间分析",
     "largeFileBoundary": "只列出超过 500 MB 的文件，不建议自动删除",
@@ -455,6 +483,7 @@ export default interface Resources {
       }
     },
     "map": {
+      "addToBasket": "加入清理篮",
       "allScanned": "全部扫描结果",
       "allocatedSize": "实际占用",
       "ariaLabel": "{{name}} 的空间扇形图",
@@ -484,8 +513,12 @@ export default interface Resources {
         "cancelledNoDeletion": "已停止清理，没有内容被完整处理",
         "failed": "没有处理任何内容，{{failedCount}} 项失败",
         "partial": "已处理 {{deletedCount}} 项，另有 {{failedCount}} 项失败",
-        "reclaimed": "处理前核对的磁盘占用约为 {{size}}",
-        "success": "已完成 {{deletedCount}} 项清理"
+        "pendingReclaim": "已处理 {{processed}}，目前可用空间增加 {{size}}；差额可能仍由 APFS 快照、可清理空间或系统回收延迟占用",
+        "reclaimed": "本次已处理约 {{size}} 的物理占用",
+        "released": "文件系统可用空间已增加约 {{size}}",
+        "selectedSizes": "所选逻辑大小 {{logical}}，物理占用 {{allocated}}",
+        "success": "已完成 {{deletedCount}} 项清理",
+        "trashSpace": "内容已移到废纸篓；清空废纸篓前通常不会释放对应空间"
       },
       "deletionUnavailable": "清理暂不可用",
       "description": "扇形面积按磁盘实际占用计算；同色系表示同一目录分支，灰色表示文件。",
@@ -502,6 +535,7 @@ export default interface Resources {
         "refreshingFolder": "正在刷新 {{name}}…"
       },
       "grouped": "汇总分类",
+      "includedByParent": "已随上级文件夹加入",
       "loadDeeperHint": "点击这个目录时会按需读取下一层，不会重新扫描整台电脑。",
       "loadFailed": "无法读取目录",
       "loadingFolder": "正在读取这个目录…",
@@ -514,6 +548,7 @@ export default interface Resources {
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
+      "removeFromBasket": "移出清理篮",
       "restrictedHint": "系统未授予读取权限，此项不会加入清理篮",
       "restrictedObjects": "无法读取的对象",
       "selected": "当前选择",
@@ -1378,14 +1413,18 @@ export default interface Resources {
       "emptyTitle": "还没有执行过操作",
       "eyebrow": "你执行过的操作",
       "kind": {
+        "application_uninstall": "卸载应用",
+        "application_update": "安装应用更新",
         "cleanup_delete": "清理文件",
         "process_close": "正常退出应用",
         "process_force_quit": "强制结束应用",
         "process_restart": "重新启动应用",
         "startup_disable": "停用启动项",
-        "startup_enable": "恢复启动项"
+        "startup_enable": "恢复启动项",
+        "volume_eject": "推出可移除卷"
       },
       "open": "查看",
+      "retry": "重试",
       "saved": "{{count}} 项已保存操作",
       "status": {
         "cancelled": "已取消",
@@ -1487,6 +1526,20 @@ export default interface Resources {
         "title": "接近这台电脑平时的状态"
       }
     },
+    "batterySessions": {
+      "blockers": "阻止睡眠：{{names}}",
+      "charge": "电量变化",
+      "count": "{{count}} 次会话",
+      "description": "从拔掉电源开始分段，使用本机聚合历史解释掉电速度、主要资源来源和阻止睡眠的应用。",
+      "drainRate": "平均掉电",
+      "duration": "{{minutes}} 分钟",
+      "empty": "还没有积累出完整的电池使用会话。",
+      "evidence": "可能的主要资源来源",
+      "eyebrow": "电池使用时间轴",
+      "noApplicationEvidence": "未保存应用名称",
+      "ongoing": "进行中",
+      "title": "电池使用会话"
+    },
     "chartLabel": "CPU {{cpu}}%，内存 {{memory}}%",
     "clearSaved": "清除已保存数据",
     "controls": "历史记录设置",
@@ -1506,6 +1559,43 @@ export default interface Resources {
     "privacyEyebrow": "数据边界",
     "privacyLocal": "历史只保存在当前设备的 CoreRobin 私有存储中，不会上传或同步。",
     "privacyTitle": "隐私说明",
+    "replay": {
+      "actionImpact": {
+        "improved": "操作后 15 分钟内系统压力有所下降",
+        "increased": "操作后 15 分钟内系统压力有所上升",
+        "insufficient": "后续样本不足，暂时无法比较效果",
+        "stable": "操作前后系统压力基本持平"
+      },
+      "alert": {
+        "recovered": "资源压力恢复",
+        "triggered": "资源压力开始"
+      },
+      "applicationEvidence": "{{from}}–{{to}}，{{applications}} 是已记录的主要资源来源；整机峰值达到 CPU {{cpu}}、内存 {{memory}}。",
+      "description": "选择一个时段，关联资源变化、网络事件、应用归因以及你确认过的操作结果。",
+      "empty": "这段时间没有告警、网络、应用关注或操作事件。",
+      "evidenceTitle": "这段时间的证据",
+      "eyebrow": "证据时间轴",
+      "from": "开始",
+      "hours1": "1 小时",
+      "hours168": "7 天",
+      "hours24": "24 小时",
+      "leadingApplication": "{{application}} 在所选聚合中的平均 CPU 为 {{cpu}}，平均内存为 {{memory}}。",
+      "network": {
+        "direct_failure": "直连质量下降",
+        "dns_failure": "DNS 质量下降",
+        "interface_change": "网络接口发生变化",
+        "sleep_gap": "睡眠期间暂停采样",
+        "status_change": "网络状态发生变化"
+      },
+      "noApplicationEvidence": "这段时间未保存应用归因；整机峰值达到 CPU {{cpu}}、内存 {{memory}}。",
+      "range": "回放范围",
+      "title": "系统事件回放",
+      "to": "结束",
+      "watch": {
+        "recovered": "应用关注规则恢复",
+        "triggered": "应用关注规则触发"
+      }
+    },
     "resourceChart": "CPU 与内存",
     "resourceChartLabel": "历史 CPU 与内存趋势",
     "retention": "保留",
@@ -1514,6 +1604,11 @@ export default interface Resources {
     "savedPoints": "{{count}} 个已保存点",
     "saving": "正在本机保存",
     "sessionOnly": "仅当前会话",
+    "storage": {
+      "failed": "历史保存已暂停；停留查看原因",
+      "saved": "原生历史已保存 {{time}} · {{size}}",
+      "waiting": "原生历史存储正在启动"
+    },
     "stories": {
       "cause": "主要原因：{{name}} 当时占用最高",
       "count": "最近 {{count}} 件",
@@ -1647,17 +1742,23 @@ export default interface Resources {
     "establishingBaseline": "正在建立网络吞吐基线…",
     "history": {
       "application": "按应用",
+      "applications": "相关应用",
       "clear": "清空历史",
       "days": "{{count}} 天",
       "description": "按应用或域名查看更长时间的连接活动。",
+      "details": "连接详情",
       "domain": "按域名",
+      "domains": "域名与地址",
       "empty": "等待下一次活动连接采集。",
       "enable": "启用连接历史",
       "eyebrow": "本机可选记录",
+      "firstSeen": "首次出现",
       "groupBy": "聚合方式",
+      "lastSeen": "最后出现",
       "lookupFallback": "部分域名无法解析，已使用 IP 地址继续记录。",
       "observations": "{{count}} 次观察",
       "optIn": "连接历史可能包含应用名称、域名和远端 IP，因此默认关闭。启用后只保存在本机。",
+      "portsAndProtocols": "端口与协议",
       "privacy": "只保存五分钟聚合记录；最多 5000 条，可随时关闭或清空。",
       "retention": "保留",
       "title": "连接历史与聚合"
@@ -1954,6 +2055,7 @@ export default interface Resources {
       "reportIssue": "报告问题",
       "restartUpdate": "立即重启并完成更新",
       "restartingUpdate": "正在重新启动…",
+      "skipVersion": "跳过 v{{version}}",
       "title": "关于与支持",
       "upToDate": "已是最新版本 v{{version}}",
       "updateAvailable": "CoreRobin v{{version}} 已发布",
@@ -1961,6 +2063,7 @@ export default interface Resources {
       "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
       "updateReady": "更新已安装并准备就绪。重新启动后将直接使用新版本。",
       "updateRestartError": "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",
+      "updatedReceipt": "已从 v{{version}} 成功更新",
       "version": "当前版本",
       "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
       "versionTitle": "版本与更新",
@@ -2191,6 +2294,18 @@ export default interface Resources {
       "title": "资源告警阈值"
     },
     "title": "设置",
+    "transfer": {
+      "apply": "应用导入设置",
+      "boundary": "只包含偏好和关注规则；不导出历史、文件路径、连接记录或扫描结果。",
+      "description": "通过明确选择的本机 JSON 文件，在电脑之间迁移 CoreRobin 偏好和应用关注规则。",
+      "export": "导出设置",
+      "import": "导入设置",
+      "invalid": "这不是受支持的 CoreRobin 偏好备份文件。",
+      "noChanges": "没有设置会发生变化",
+      "preview": "{{count}} 项设置不同 · {{rules}} 条应用关注规则",
+      "previewTitle": "复核将要导入的变化",
+      "title": "偏好与规则备份"
+    },
     "watchRules": {
       "active": "条件已达到",
       "add": "添加规则",
@@ -2353,6 +2468,18 @@ export default interface Resources {
       "disabled": "已停用 {{name}} 的自动启动；当前应用不会被关闭。",
       "enabled": "已恢复 {{name}} 的自动启动。"
     },
+    "ownership": {
+      "itemCount": "{{count}} 个项目",
+      "lastRun": "系统最近报告状态：{{status}}",
+      "modern": "现代后台项目",
+      "orphaned": "可执行文件已不存在",
+      "signature": {
+        "invalid": "签名无效",
+        "system_reported": "由 macOS 报告",
+        "unknown": "签名状态未知",
+        "valid": "签名有效"
+      }
+    },
     "publisherUnknown": "发布者未知",
     "readOnlyBoundary": "当前平台没有可安全恢复的启动项来源，因此只读展示。",
     "reviewCount": "建议看一眼",
@@ -2360,6 +2487,7 @@ export default interface Resources {
     "scanning": "正在检查…",
     "search": "搜索名称、发布者或路径",
     "source": {
+      "background_task": "登录项与后台项目",
       "desktop_entry": "自动启动条目",
       "launch_agent": "LaunchAgent",
       "launch_daemon": "LaunchDaemon",

@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   clearPersistentHistoryStorage,
   loadPersistentHistory,
   mergePersistentHistory,
+  parsePersistentHistory,
   savePersistentHistory,
+  serializePersistentHistory,
   type HistoryRetentionDays,
 } from "../historyStore";
+import { isDesktopRuntime } from "../api";
 import type { HistoryPoint } from "../types";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 const HISTORY_FLUSH_INTERVAL_MS = 30_000;
 
@@ -17,9 +21,18 @@ export function usePersistentHistory(
   retentionDays: HistoryRetentionDays,
   active = true,
 ) {
-  const [storedPoints, setStoredPoints] = useState<HistoryPoint[]>(
-    loadPersistentHistory,
-  );
+  const desktop = isDesktopRuntime();
+  const storage = useNativeHistoryStorage<HistoryPoint[]>({
+    category: "resource",
+    enabled,
+    initialValue: loadPersistentHistory,
+    parse: parsePersistentHistory,
+    serialize: serializePersistentHistory,
+    clearLegacy: clearPersistentHistoryStorage,
+    flushDelayMs: HISTORY_FLUSH_INTERVAL_MS,
+  });
+  const storedPoints = storage.value;
+  const setStoredPoints = storage.setValue;
   const latestPointRef = useRef<HistoryPoint | null>(null);
   const enabledRef = useRef(enabled);
   const retentionDaysRef = useRef(retentionDays);
@@ -38,7 +51,7 @@ export function usePersistentHistory(
         Date.now(),
         retentionDaysRef.current,
       );
-      savePersistentHistory(next);
+      if (!desktop) savePersistentHistory(next);
       return next;
     });
   }, []);
@@ -51,7 +64,7 @@ export function usePersistentHistory(
         Date.now(),
         retentionDays,
       );
-      savePersistentHistory(next);
+      if (!desktop) savePersistentHistory(next);
       return next;
     });
   }, [retentionDays]);
@@ -67,7 +80,7 @@ export function usePersistentHistory(
     const flushBeforeExit = () => {
       const latest = latestPointRef.current;
       if (!enabledRef.current || !latest) return;
-      savePersistentHistory(
+      if (!desktop) savePersistentHistory(
         mergePersistentHistory(
           storedPoints,
           [latest],
@@ -92,9 +105,13 @@ export function usePersistentHistory(
   );
 
   const clear = useCallback(() => {
-    clearPersistentHistoryStorage();
-    setStoredPoints([]);
-  }, []);
+    void storage.clear().catch(() => undefined);
+  }, [storage]);
 
-  return { points, storedPoints, clear };
+  return {
+    points,
+    storedPoints,
+    clear,
+    storageStatus: storage.storageStatus,
+  };
 }

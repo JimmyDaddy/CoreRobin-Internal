@@ -110,9 +110,22 @@
   "source": {
     "launch_agent": "LaunchAgent",
     "launch_daemon": "LaunchDaemon",
+    "background_task": "登录项与后台项目",
     "desktop_entry": "自动启动条目",
     "registry_run": "注册表 Run",
     "startup_folder": "启动文件夹"
+  },
+  "ownership": {
+    "itemCount": "{{count}} 个项目",
+    "modern": "现代后台项目",
+    "orphaned": "可执行文件已不存在",
+    "lastRun": "系统最近报告状态：{{status}}",
+    "signature": {
+      "valid": "签名有效",
+      "invalid": "签名无效",
+      "unknown": "签名状态未知",
+      "system_reported": "由 macOS 报告"
+    }
   },
   "advice": {
     "review": {

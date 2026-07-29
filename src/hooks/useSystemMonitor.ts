@@ -6,14 +6,22 @@ import {
   useRef,
   useState,
 } from "react";
+import { listen } from "@tauri-apps/api/event";
 
-import { getSystemSnapshot, getSystemSummary } from "../api";
+import {
+  getSamplerStatus,
+  getSystemSnapshot,
+  getSystemSummary,
+  isDesktopRuntime,
+  setSamplerControl,
+} from "../api";
 import type {
   CommandError,
   HistoryPoint,
   SystemHealthSnapshot,
   SystemSnapshot,
   SystemSummary,
+  SamplerStatus,
 } from "../types";
 import {
   assertSupportedSnapshotSchema,
@@ -26,12 +34,15 @@ const HISTORY_WINDOW_MS = 5 * 60 * 1_000;
 const BATTERY_DRAIN_MIN_WINDOW_MS = 2 * 60 * 1_000;
 export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 export const HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS = 30_000;
+export const SYSTEM_SNAPSHOT_EVENT = "core-robin:system-snapshot";
+export const SAMPLER_STATUS_EVENT = "core-robin:sampler-status";
 
 export function useSystemMonitor(
   refreshIntervalMs = 1_000,
   visible = true,
   hiddenFullSnapshotIntervalMs: number | null =
     HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS,
+  includeApplicationNames = false,
 ) {
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
   const [summary, setSummary] = useState<SystemSummary | null>(null);
@@ -41,14 +52,45 @@ export function useSystemMonitor(
   const [error, setError] = useState<CommandError | null>(null);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [samplerStatus, setSamplerStatus] = useState<SamplerStatus | null>(null);
   const lastSequence = useRef(0);
   const requestInFlight = useRef<Promise<SystemSnapshot | null> | null>(null);
   const summaryRequestInFlight = useRef<Promise<SystemSummary | null> | null>(null);
   const lastFullSnapshotAtRef = useRef(0);
   const visibleRef = useRef(visible);
   const pausedRef = useRef(paused);
+  const includeApplicationNamesRef = useRef(includeApplicationNames);
   visibleRef.current = visible;
   pausedRef.current = paused;
+  includeApplicationNamesRef.current = includeApplicationNames;
+  const desktop = isDesktopRuntime();
+
+  const applySnapshot = useCallback((
+    nextSnapshot: SystemSnapshot,
+    allowHidden = true,
+  ) => {
+    assertSupportedSnapshotSchema(nextSnapshot);
+    if (
+      pausedRef.current ||
+      (!visibleRef.current && !allowHidden) ||
+      nextSnapshot.sequence <= lastSequence.current
+    ) {
+      return null;
+    }
+    lastSequence.current = nextSnapshot.sequence;
+    lastFullSnapshotAtRef.current = Date.now();
+    setSnapshot(nextSnapshot);
+    setSummary(summaryFromSnapshot(nextSnapshot));
+    setHealthSnapshot(nextSnapshot);
+    setError(null);
+    setLoading(false);
+    appendHistorySample(
+      setHistory,
+      nextSnapshot,
+      includeApplicationNamesRef.current,
+    );
+    return nextSnapshot;
+  }, []);
 
   const refreshSnapshot = useCallback((allowHidden = false) => {
     if (pausedRef.current || (!visibleRef.current && !allowHidden)) {
@@ -61,22 +103,7 @@ export function useSystemMonitor(
     const request = (async () => {
       try {
         const nextSnapshot = await getSystemSnapshot();
-        assertSupportedSnapshotSchema(nextSnapshot);
-        if (
-          pausedRef.current ||
-          (!visibleRef.current && !allowHidden) ||
-          nextSnapshot.sequence <= lastSequence.current
-        ) {
-          return null;
-        }
-
-        lastSequence.current = nextSnapshot.sequence;
-        lastFullSnapshotAtRef.current = Date.now();
-        setSnapshot(nextSnapshot);
-        setHealthSnapshot(nextSnapshot);
-        setError(null);
-        appendHistorySample(setHistory, nextSnapshot);
-        return nextSnapshot;
+        return applySnapshot(nextSnapshot, allowHidden);
       } catch (caughtError) {
         setError(normalizeCommandError(caughtError));
         return null;
@@ -89,7 +116,7 @@ export function useSystemMonitor(
       if (requestInFlight.current === request) requestInFlight.current = null;
     });
     return request;
-  }, []);
+  }, [applySnapshot]);
   const refreshNow = useCallback(
     () => refreshSnapshot(false),
     [refreshSnapshot],
@@ -118,7 +145,11 @@ export function useSystemMonitor(
         lastSequence.current = nextSummary.sequence;
         setSummary(nextSummary);
         setHealthSnapshot(nextSummary);
-        appendHistorySample(setHistory, nextSummary);
+        appendHistorySample(
+          setHistory,
+          nextSummary,
+          includeApplicationNamesRef.current,
+        );
         setError(null);
         return nextSummary;
       } catch (caughtError) {
@@ -140,6 +171,7 @@ export function useSystemMonitor(
   }, []);
 
   useEffect(() => {
+    if (desktop) return;
     if (paused) {
       return;
     }
@@ -182,7 +214,54 @@ export function useSystemMonitor(
     refreshNow,
     refreshSummaryNow,
     visible,
+    desktop,
   ]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    let disposed = false;
+    const unlisteners: (() => void)[] = [];
+    void Promise.all([
+      listen<SystemSnapshot>(SYSTEM_SNAPSHOT_EVENT, ({ payload }) => {
+        if (!disposed) applySnapshot(payload, true);
+      }),
+      listen<SamplerStatus>(SAMPLER_STATUS_EVENT, ({ payload }) => {
+        if (disposed) return;
+        setSamplerStatus(payload);
+        if (payload.degradedReason) {
+          setError({
+            code: "sampler_degraded",
+            message: payload.degradedReason,
+          });
+        }
+      }),
+    ]).then((next) => {
+      if (disposed) {
+        next.forEach((unlisten) => unlisten());
+      } else {
+        unlisteners.push(...next);
+      }
+    });
+    void getSamplerStatus().then((status) => {
+      if (!disposed) setSamplerStatus(status);
+    }).catch(() => undefined);
+    void refreshSnapshot(true);
+    return () => {
+      disposed = true;
+      unlisteners.forEach((unlisten) => unlisten());
+    };
+  }, [applySnapshot, desktop, refreshSnapshot]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    void setSamplerControl({
+      active: visible,
+      paused,
+      intervalMs: visible ? refreshIntervalMs : null,
+    }).then(setSamplerStatus).catch((caughtError) => {
+      setError(normalizeCommandError(caughtError));
+    });
+  }, [desktop, paused, refreshIntervalMs, visible]);
 
   return {
     snapshot,
@@ -193,15 +272,30 @@ export function useSystemMonitor(
     paused,
     setPaused,
     loading,
+    samplerStatus,
     refreshNow,
     refreshBackgroundSnapshotNow,
     refreshSummaryNow,
   };
 }
 
+function summaryFromSnapshot(snapshot: SystemSnapshot): SystemSummary {
+  return {
+    sequence: snapshot.sequence,
+    sampledAtMs: snapshot.sampledAtMs,
+    sampleIntervalMs: snapshot.sampleIntervalMs,
+    cpu: snapshot.cpu,
+    memory: snapshot.memory,
+    disk: snapshot.disk,
+    network: snapshot.network,
+    sensors: snapshot.sensors,
+  };
+}
+
 function appendHistorySample(
   setHistory: Dispatch<SetStateAction<HistoryPoint[]>>,
   snapshot: SystemHealthSnapshot,
+  includeApplicationNames: boolean,
 ): void {
   if (snapshot.cpu.usagePercent === null) return;
   setHistory((current) => {
@@ -248,6 +342,20 @@ function appendHistorySample(
       temperatureCelsius: snapshot.sensors.temperature.celsius,
       batteryChargePercent,
       batteryDrainPercentPerHour,
+      batteryPowerSource: snapshot.sensors.battery.powerSource,
+      sleepBlockerNames: includeApplicationNames
+        ? [...new Set(
+            snapshot.sensors.sleep.blockers
+              .map((blocker) => blocker.processName.trim())
+              .filter(Boolean),
+          )].slice(0, 8)
+        : [],
+      topApplicationName: includeApplicationNames
+        ? [...(snapshot.processes ?? [])]
+            .filter((process) => !process.protected)
+            .sort((left, right) =>
+              (right.cpuPercent ?? 0) - (left.cpuPercent ?? 0))[0]?.name ?? null
+        : null,
     };
     const cutoff = snapshot.sampledAtMs - HISTORY_WINDOW_MS;
     return [...current, point]

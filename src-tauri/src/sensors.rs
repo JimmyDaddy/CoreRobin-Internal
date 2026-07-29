@@ -4,6 +4,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::Components;
 
+#[cfg(target_os = "macos")]
+use crate::bounded_command;
 use crate::models::{
     BatterySnapshot, BatteryState, PowerSource, SensorsSnapshot, SleepSnapshot, TemperatureSnapshot,
 };
@@ -13,6 +15,10 @@ use crate::models::{SleepBlocker, SleepBlockerKind};
 const SENSOR_REFRESH_INTERVAL: Duration = Duration::from_secs(10);
 const SLEEP_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 const BATTERY_DETAILS_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
+#[cfg(target_os = "macos")]
+const SENSOR_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(target_os = "macos")]
+const SENSOR_COMMAND_OUTPUT_LIMIT: usize = 2 * 1_024 * 1_024;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct BatteryDetails {
@@ -117,7 +123,13 @@ fn sample_battery_details() -> Option<BatteryDetails> {
 fn run_system_profiler_battery_details(
     command: &mut std::process::Command,
 ) -> Option<BatteryDetails> {
-    let output = command.output().ok()?;
+    let output = bounded_command::output_with_circuit(
+        "sensor.system-profiler-battery",
+        command,
+        SENSOR_COMMAND_TIMEOUT,
+        SENSOR_COMMAND_OUTPUT_LIMIT,
+    )
+    .ok()?;
     if !output.status.success() {
         return None;
     }
@@ -207,7 +219,12 @@ fn run_sleep_sampler(snapshot: Weak<Mutex<SleepSnapshot>>) {
 fn sample_sleep_blockers() -> SleepSnapshot {
     use std::process::Command;
 
-    let output = Command::new("pmset").args(["-g", "assertions"]).output();
+    let output = bounded_command::output_with_circuit(
+        "sensor.pmset-assertions",
+        Command::new("pmset").args(["-g", "assertions"]),
+        SENSOR_COMMAND_TIMEOUT,
+        SENSOR_COMMAND_OUTPUT_LIMIT,
+    );
     let Some(output) = output.ok().filter(|output| output.status.success()) else {
         return unavailable_sleep();
     };
@@ -360,7 +377,12 @@ fn hottest_temperature(components: &Components) -> TemperatureSnapshot {
 fn sample_battery() -> BatterySnapshot {
     use std::process::Command;
 
-    let output = Command::new("pmset").args(["-g", "batt"]).output();
+    let output = bounded_command::output_with_circuit(
+        "sensor.pmset-battery",
+        Command::new("pmset").args(["-g", "batt"]),
+        SENSOR_COMMAND_TIMEOUT,
+        SENSOR_COMMAND_OUTPUT_LIMIT,
+    );
     output
         .ok()
         .filter(|output| output.status.success())

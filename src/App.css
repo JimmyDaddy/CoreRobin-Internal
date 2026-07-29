@@ -7189,16 +7189,19 @@ code,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-width: 0;
+  gap: 4px;
   min-height: 38px;
-  padding: 0 6px;
+  padding: 0 1px;
   color: var(--text-muted);
   border: 0;
   border-radius: 10px;
   background: transparent;
   font-weight: 720;
   transition: color 250ms ease, transform 250ms ease;
+}
+
+.sidebar-mode-switch button span {
+  white-space: nowrap;
 }
 
 .sidebar-mode-switch button:first-of-type.is-active {
@@ -7359,7 +7362,7 @@ code,
    safety actions with professional mode, but deliberately avoids its dense
    navigation and technical chrome. */
 .app-shell--daily {
-  grid-template-columns: 172px minmax(0, 1fr);
+  grid-template-columns: 188px minmax(0, 1fr);
   background:
     radial-gradient(circle at 56% 4%, rgba(86, 207, 147, 0.08), transparent 28%),
     radial-gradient(circle at 88% 40%, rgba(99, 168, 255, 0.06), transparent 30%),
@@ -7864,6 +7867,10 @@ code,
   .app-shell--daily .brand { justify-content: center; padding-inline: 0; }
   .app-shell--daily .daily-nav button { justify-content: center; padding-inline: 6px; }
   .app-shell--daily .daily-nav button.is-active { flex-direction: column; gap: 3px; font-size: 12px; }
+  .app-shell--daily .sidebar-mode-switch {
+    margin-inline: 2px;
+  }
+  .app-shell--daily .sidebar-mode-switch button span { display: none; }
   .daily-sidebar-footer { display: none; }
   .app-shell--daily .content-layout { padding: 14px; }
   .daily-topbar-actions .daily-topbar-status { display: none; }

@@ -1,23 +1,73 @@
 {
   "fileInsights": {
-    "eyebrow": "Verificación explícita de solo lectura", "title": "Archivos duplicados y sin modificar durante mucho tiempo", "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
-    "scan": "comprobar archivos", "scanAgain": "comprobar de nuevo", "cancel": "detener el control",
-    "phase": { "discovering": "Encontrar candidatos", "hashing": "Verificar contenido duplicado" },
+    "eyebrow": "Verificación explícita de solo lectura",
+    "title": "Archivos duplicados y sin modificar durante mucho tiempo",
+    "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
+    "scan": "comprobar archivos",
+    "scanAgain": "comprobar de nuevo",
+    "cancel": "detener el control",
+    "phase": {
+      "discovering": "Encontrar candidatos",
+      "hashing": "Verificar contenido duplicado"
+    },
     "progress": "Entradas {{scanned}} revisadas · Candidatos {{candidates}} · {{hashed}} hash",
-    "duplicateGroups": "duplicate groups", "possibleSavings": "possible savings", "oldFiles": "large long-unmodified files",
-    "truncated": "Este escaneo alcanzó su límite de seguridad; Se muestran los resultados completos.", "duplicates": "Contenido idéntico", "copies": "Copias {{count}}",
-    "noDuplicates": "No se encontró contenido duplicado entre los candidatos seleccionados.", "longUnmodified": "Más de 100 MB y sin cambios durante 180 días", "noOldFiles": "No se encontraron archivos grandes coincidentes.",
+    "duplicateGroups": "duplicate groups",
+    "possibleSavings": "possible savings",
+    "oldFiles": "large long-unmodified files",
+    "truncated": "Este escaneo alcanzó su límite de seguridad; Se muestran los resultados completos.",
+    "duplicates": "Contenido idéntico",
+    "copies": "Copias {{count}}",
+    "noDuplicates": "No se encontró contenido duplicado entre los candidatos seleccionados.",
+    "longUnmodified": "Más de 100 MB y sin cambios durante 180 días",
+    "noOldFiles": "No se encontraron archivos grandes coincidentes.",
     "boundary": "Solo se muestran pruebas y acciones de ruta; nada se elimina automáticamente. El desuso se estima por la fecha de modificación, no por el último acceso.",
     "empty": "Los contenidos candidatos se leen y SHA-256 se procesan localmente solo después de iniciar la verificación; no se sube nada.",
-    "workspaceKicker": "Espacio de trabajo de archivo de evidencia", "launcherDescription": "Abra un espacio de trabajo dedicado para el progreso del análisis, grupos duplicados y archivos grandes que no han sido modificados durante mucho tiempo.", "running": "Comprobando ahora", "openWorkspace": "Espacio de trabajo abierto", "back": "Volver a la limpieza del espacio",
-    "phaseDescription": { "discovering": "Revisar nombres, tamaños y fechas de modificación en carpetas personales comunes para limitar los candidatos de contenido.", "hashing": "Leer candidatos del mismo tamaño y calcular SHA-256 localmente; El contenido nunca sale de esta computadora." },
-    "phaseLabel": "Consultar fases", "loadingKicker": "Radar de contenido local", "loadingPrivacy": "Los hashes se calculan localmente. Los nombres de archivos, las rutas y el contenido no se cargan.",
-    "metrics": { "scanned": "Entradas revisadas", "candidates": "Archivos de candidatos", "hashed": "Contenidos verificados" }, "duration": "Consultar duración",
-    "localOnly": "Completamente en esta computadora", "welcomeTitle": "Muestra contenido idéntico, no solo nombres de archivos coincidentes", "welcomeDescription": "CoreRobin filtra rápidamente archivos del mismo tamaño antes de verificar las huellas digitales de su contenido, mientras organiza por separado archivos grandes que llevan mucho tiempo sin modificar para su revisión.",
-    "scopeTitle": "Comprobar alcance", "scope": { "desktop": "De oficina", "documents": "Documentos", "downloads": "Descargas", "movies": "Cine", "music": "Música", "pictures": "Fotos" },
-    "steps": { "filterTitle": "filtro rápido", "filterDescription": "Primero compare el tamaño y los metadatos", "hashTitle": "Huella digital de contenido", "hashDescription": "Calcular SHA-256 localmente", "reviewTitle": "Revisión por grupo", "reviewDescription": "Mantener evidencia de ruta y fecha" },
-    "completeKicker": "Verificación completa", "completeTitle": "Su expediente de evidencia está organizado.", "completeDescription": "Comience con los grupos duplicados que ofrecen los mayores ahorros posibles.", "resultNavigation": "Categorías de resultados",
-    "groupLabel": "Grupo de contenido idéntico", "groupSavings": "Ahorros después de conservar uno", "copyIndex": "Copiar {{count}}", "oldFileLabel": "Archivo sin modificar durante mucho tiempo",
+    "workspaceKicker": "Espacio de trabajo de archivo de evidencia",
+    "launcherDescription": "Abra un espacio de trabajo dedicado para el progreso del análisis, grupos duplicados y archivos grandes que no han sido modificados durante mucho tiempo.",
+    "running": "Comprobando ahora",
+    "openWorkspace": "Espacio de trabajo abierto",
+    "back": "Volver a la limpieza del espacio",
+    "phaseDescription": {
+      "discovering": "Revisar nombres, tamaños y fechas de modificación en carpetas personales comunes para limitar los candidatos de contenido.",
+      "hashing": "Leer candidatos del mismo tamaño y calcular SHA-256 localmente; El contenido nunca sale de esta computadora."
+    },
+    "phaseLabel": "Consultar fases",
+    "loadingKicker": "Radar de contenido local",
+    "loadingPrivacy": "Los hashes se calculan localmente. Los nombres de archivos, las rutas y el contenido no se cargan.",
+    "metrics": {
+      "scanned": "Entradas revisadas",
+      "candidates": "Archivos de candidatos",
+      "hashed": "Contenidos verificados"
+    },
+    "duration": "Consultar duración",
+    "localOnly": "Completamente en esta computadora",
+    "welcomeTitle": "Muestra contenido idéntico, no solo nombres de archivos coincidentes",
+    "welcomeDescription": "CoreRobin filtra rápidamente archivos del mismo tamaño antes de verificar las huellas digitales de su contenido, mientras organiza por separado archivos grandes que llevan mucho tiempo sin modificar para su revisión.",
+    "scopeTitle": "Comprobar alcance",
+    "scope": {
+      "desktop": "De oficina",
+      "documents": "Documentos",
+      "downloads": "Descargas",
+      "movies": "Cine",
+      "music": "Música",
+      "pictures": "Fotos"
+    },
+    "steps": {
+      "filterTitle": "filtro rápido",
+      "filterDescription": "Primero compare el tamaño y los metadatos",
+      "hashTitle": "Huella digital de contenido",
+      "hashDescription": "Calcular SHA-256 localmente",
+      "reviewTitle": "Revisión por grupo",
+      "reviewDescription": "Mantener evidencia de ruta y fecha"
+    },
+    "completeKicker": "Verificación completa",
+    "completeTitle": "Su expediente de evidencia está organizado.",
+    "completeDescription": "Comience con los grupos duplicados que ofrecen los mayores ahorros posibles.",
+    "resultNavigation": "Categorías de resultados",
+    "groupLabel": "Grupo de contenido idéntico",
+    "groupSavings": "Ahorros después de conservar uno",
+    "copyIndex": "Copiar {{count}}",
+    "oldFileLabel": "Archivo sin modificar durante mucho tiempo",
     "processing": {
       "selectGroup": "Procesar copias adicionales",
       "selectedGroup": "Grupo seleccionado",
@@ -175,7 +225,11 @@
       "failed": "No se procesó nada; fallaron {{failedCount}} elementos",
       "cancelled": "La limpieza se detuvo después de {{deletedCount}} elementos",
       "cancelledNoDeletion": "La limpieza se detuvo antes de completar ningún elemento",
-      "reclaimed": "Espacio verificado antes del procesamiento: aproximadamente {{size}}"
+      "reclaimed": "Se procesaron aproximadamente {{size}} de asignación física",
+      "selectedSizes": "Tamaño lógico seleccionado: {{logical}}; asignación física: {{allocated}}",
+      "released": "El espacio disponible del sistema de archivos aumentó aproximadamente {{size}}",
+      "pendingReclaim": "Se procesaron {{processed}}; el espacio disponible ha aumentado {{size}} hasta ahora. La diferencia puede permanecer en instantáneas APFS, espacio purgable o una recuperación retrasada del sistema.",
+      "trashSpace": "Los elementos están en la papelera; normalmente el espacio se libera al vaciarla"
     },
     "freshness": {
       "cached": "Mostrando el resultado del escaneo anterior",
@@ -184,7 +238,10 @@
       "changedShort": "Contenido modificado",
       "refreshFolder": "Actualizar {{name}}",
       "refreshingFolder": "Actualizando {{name}}…"
-    }
+    },
+    "removeFromBasket": "Quitar de la cesta de limpieza",
+    "includedByParent": "Incluido por una carpeta superior",
+    "addToBasket": "Añadir a la cesta de limpieza"
   },
   "deleteDialog": {
     "title": "Revisar la cesta de limpieza",
@@ -282,8 +339,7 @@
   "noLargeFiles": "No se encontraron archivos de más de 500 MB en las ubicaciones accesibles del disco del sistema.",
   "unreadable": "{{count}} Las ubicaciones estaban protegidas o temporalmente inaccesibles. Solo estas ubicaciones se excluyen del resultado.",
   "fullDiskAccessHint": "En macOS, otorgue el acceso completo al disco a CoreRobin en la configuración del Sistema → Privacidad y seguridad, luego vuelva a escanear.",
-  "safetyBoundary": "El escaneo no tiene límite de tiempo ni de elementos y nunca sigue enlaces simbólicos. Solo los elementos colocados en la cesta, verificados por ruta y confirmados explícitamente se eliminan permanentemente y no pueden ser restaurados."
-,
+  "safetyBoundary": "El escaneo no tiene límite de tiempo ni de elementos y nunca sigue enlaces simbólicos. Solo los elementos colocados en la cesta, verificados por ruta y confirmados explícitamente se eliminan permanentemente y no pueden ser restaurados.",
   "targets": {
     "kicker": "Scan scope",
     "title": "Choose what to scan",
@@ -309,5 +365,10 @@
     "completed": "Se procesaron {{count}} archivos y se liberaron {{size}}",
     "partial": "Se procesaron {{deletedCount}}; {{failedCount}} no pudieron procesarse",
     "cancelled": "El procesamiento se detuvo tras {{count}} archivos"
+  },
+  "growth": {
+    "since": "Comparado con {{time}}",
+    "title": "Cambio de espacio desde el último análisis",
+    "noGrowth": "No se encontró ningún directorio en crecimiento en la comparación compacta."
   }
 }

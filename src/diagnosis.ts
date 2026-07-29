@@ -47,6 +47,7 @@ export type DiagnosisRecommendationSafety =
 
 export interface ApplicationImpact {
   id: string;
+  applicationId?: string;
   name: string;
   processCount: number;
   cpuPercent: number;
@@ -147,7 +148,8 @@ export function aggregateApplications(
   const groups = new Map<string, { name: string; members: ProcessRow[] }>();
   for (const process of processes) {
     const name = applicationGroupName(process, processesByPid);
-    const key = `${process.user ?? "system"}:${name.toLocaleLowerCase()}`;
+    const stableId = process.applicationId ?? `name:${name.toLocaleLowerCase()}`;
+    const key = `${process.user ?? "system"}:${stableId}`;
     const group = groups.get(key) ?? { name, members: [] };
     group.members.push(process);
     groups.set(key, group);
@@ -165,6 +167,9 @@ export function aggregateApplications(
       const actionProcess = applicationActionProcess(members);
       return {
         id,
+        applicationId:
+          members.find((member) => member.applicationId)?.applicationId
+          ?? `name:${name.toLocaleLowerCase()}`,
         name,
         processCount: members.length,
         cpuPercent: members.reduce(
@@ -190,7 +195,10 @@ export function aggregateApplications(
         },
       };
     })
-    .filter((application): application is ApplicationImpact => application !== null)
+    .filter(
+      (application): application is NonNullable<typeof application> =>
+        application !== null,
+    )
     .sort(
       (left, right) =>
         right.cpuPercent - left.cpuPercent ||

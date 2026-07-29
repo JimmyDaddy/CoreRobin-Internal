@@ -25,6 +25,7 @@ import {
 
 import {
   sortVolumesByUsage,
+  storageHistoryDomain,
   storageHistorySegments,
   storageHistoryWindow,
   topDiskProcesses,
@@ -37,6 +38,10 @@ import type {
   ProcessRow,
   StorageHealthSnapshot,
 } from "../types";
+import type {
+  CompleteUserActionInput,
+  StartUserActionInput,
+} from "../userActionHistory";
 import {
   formatBytes,
   formatRate,
@@ -55,12 +60,17 @@ interface StorageExplorerProps {
   usageThresholds: UsageThresholds;
   onOpenCleanup: () => void;
   onVolumeEjected?: () => void | Promise<void>;
+  onUserActionStart?: (input: StartUserActionInput) => string;
+  onUserActionComplete?: (
+    id: string,
+    input: CompleteUserActionInput,
+  ) => void;
 }
 
 const CHART_WIDTH = 720;
-const CHART_HEIGHT = 176;
-const CHART_TOP = 12;
-const CHART_BOTTOM = 148;
+const CHART_HEIGHT = 136;
+const CHART_TOP = 8;
+const CHART_BOTTOM = 128;
 
 export function StorageExplorer({
   disk,
@@ -71,6 +81,8 @@ export function StorageExplorer({
   usageThresholds,
   onOpenCleanup,
   onVolumeEjected,
+  onUserActionStart,
+  onUserActionComplete,
 }: StorageExplorerProps) {
   const { t } = useAppTranslation();
   const [confirmingMountPoint, setConfirmingMountPoint] = useState<string | null>(null);
@@ -159,14 +171,35 @@ export function StorageExplorer({
     }
   };
   const ejectVolume = async (mountPoint: string, name: string) => {
+    const actionId = onUserActionStart?.({
+      kind: "volume_eject",
+      targetName: name || mountPoint,
+      targetCount: 1,
+    });
     setEjectingMountPoint(mountPoint);
     setEjectError(null);
     setEjectNotice(null);
     try {
       await ejectRemovableVolume(mountPoint);
+      if (actionId) {
+        onUserActionComplete?.(actionId, {
+          status: "succeeded",
+          verification: "verified",
+          targetCount: 1,
+          failedCount: 0,
+        });
+      }
       setConfirmingMountPoint(null);
       setEjectNotice(t("storage:eject.success", { name: name || mountPoint }));
     } catch (caughtError) {
+      if (actionId) {
+        onUserActionComplete?.(actionId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: 0,
+          failedCount: 1,
+        });
+      }
       const error = normalizeCommandError(caughtError);
       setEjectError(t(
         error.code === "volume_not_removable"
@@ -549,12 +582,11 @@ function StorageThroughput({
   const points = storageHistoryWindow(history);
   const readSegments = storageHistorySegments(points, "read");
   const writeSegments = storageHistorySegments(points, "write");
+  const domain = storageHistoryDomain(points);
   const values = [...readSegments, ...writeSegments].flatMap((segment) =>
     segment.map((point) => point.value),
   );
-  const maximum = Math.max(1, ...values);
-  const windowEnd = points[points.length - 1]?.timestamp ?? 0;
-  const windowStart = windowEnd - 5 * 60 * 1_000;
+  const maximum = Math.max(1, ...values) * 1.08;
   const readPeak = Math.max(
     0,
     ...readSegments.flatMap((segment) => segment.map((point) => point.value)),
@@ -583,46 +615,71 @@ function StorageThroughput({
         </div>
       ) : (
         <>
-          <svg
-            className="storage-history__chart"
-            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={t("storage:chartLabel", {
-              read: formatRate(disk.readBytesPerSecond),
-              write: formatRate(disk.writeBytesPerSecond),
-            })}
-          >
-            {[0.25, 0.5, 0.75].map((ratio) => (
-              <line
-                className="storage-history__grid-line"
-                key={ratio}
-                x1="0"
-                x2={CHART_WIDTH}
-                y1={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-                y2={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-              />
-            ))}
-            {readSegments.map((segment, index) => (
-              <path
-                className="storage-history__line storage-history__line--read"
-                d={storagePath(segment, windowStart, windowEnd, maximum)}
-                key={`read-${index}`}
-              />
-            ))}
-            {writeSegments.map((segment, index) => (
-              <path
-                className="storage-history__line storage-history__line--write"
-                d={storagePath(segment, windowStart, windowEnd, maximum)}
-                key={`write-${index}`}
-              />
-            ))}
-            <text x="0" y="172">{t("common:fiveMinutesBack")}</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common:now")}</text>
-          </svg>
-          <div className="storage-history__peaks">
-            <span>{t("storage:readPeak")} <strong>{formatRate(readPeak)}</strong></span>
-            <span>{t("storage:writePeak")} <strong>{formatRate(writePeak)}</strong></span>
+          <div className="storage-history__plot">
+            <svg
+              className="storage-history__chart"
+              viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={t("storage:chartLabel", {
+                read: formatRate(disk.readBytesPerSecond),
+                write: formatRate(disk.writeBytesPerSecond),
+              })}
+            >
+              <defs>
+                <linearGradient id="storage-read-area" x1="0" x2="0" y1="0%" y2="100%">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {[0, 0.33, 0.66, 1].map((ratio) => (
+                <line
+                  className="storage-history__grid-line"
+                  key={ratio}
+                  x1="0"
+                  x2={CHART_WIDTH}
+                  y1={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
+                  y2={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
+                />
+              ))}
+              {readSegments.map((segment, index) => (
+                <path
+                  className="storage-history__area"
+                  d={storageAreaPath(segment, domain.start, domain.end, maximum)}
+                  key={`read-area-${index}`}
+                />
+              ))}
+              {readSegments.map((segment, index) => (
+                <path
+                  className="storage-history__line storage-history__line--read"
+                  d={storagePath(segment, domain.start, domain.end, maximum)}
+                  key={`read-${index}`}
+                />
+              ))}
+              {writeSegments.map((segment, index) => (
+                <path
+                  className="storage-history__line storage-history__line--write"
+                  d={storagePath(segment, domain.start, domain.end, maximum)}
+                  key={`write-${index}`}
+                />
+              ))}
+            </svg>
+            <div className="storage-history__axis" aria-hidden="true">
+              <span>{t(domain.complete ? "common:fiveMinutesBack" : "common:earlier")}</span>
+              <span>{t("common:now")}</span>
+            </div>
+          </div>
+          <div className="storage-history__footer">
+            {!domain.complete ? (
+              <span className="storage-history__collecting">
+                <span className="live-status-dot" />
+                {t("storage:establishingBaseline")}
+              </span>
+            ) : null}
+            <div className="storage-history__peaks">
+              <span>{t("storage:readPeak")} <strong>{formatRate(readPeak)}</strong></span>
+              <span>{t("storage:writePeak")} <strong>{formatRate(writePeak)}</strong></span>
+            </div>
           </div>
         </>
       )}
@@ -644,4 +701,24 @@ function storagePath(
   });
   if (commands.length === 1) commands.push("h0.01");
   return commands.join(" ");
+}
+
+function storageAreaPath(
+  segment: readonly StorageSeriesPoint[],
+  windowStart: number,
+  windowEnd: number,
+  maximum: number,
+): string {
+  if (segment.length === 0) return "";
+  const duration = Math.max(1, windowEnd - windowStart);
+  const firstX = ((segment[0]!.timestamp - windowStart) / duration) * CHART_WIDTH;
+  const lastX =
+    ((segment[segment.length - 1]!.timestamp - windowStart) / duration)
+    * CHART_WIDTH;
+  return [
+    storagePath(segment, windowStart, windowEnd, maximum),
+    `L${lastX.toFixed(1)} ${CHART_BOTTOM}`,
+    `L${firstX.toFixed(1)} ${CHART_BOTTOM}`,
+    "Z",
+  ].join(" ");
 }

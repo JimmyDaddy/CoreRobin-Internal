@@ -34,6 +34,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 - Apps is a top-level entry in both Everyday and Professional mode. Everyday mode provides a stable app-impact snapshot; Professional mode opens the Complete Uninstall Assistant directly.
 - The inventory prefers the localized app name that matches the interface language and reuses the app's real icon. A local cache and application-directory fingerprint allow background refresh without a full scan on every visit; manual refresh forces a new read.
+- Sort the inventory by size, last use, source, or name, and filter apps that have not been used for 90 or 180 days. The optional Trash watcher runs while CoreRobin is open, shows a badge outside the Apps page, and only offers a residual-data plan for an exact Bundle ID; it never removes anything automatically.
 - On macOS, the Complete Uninstall Assistant identifies the app bundle and only leftovers attributed by an exact Bundle ID, then asks you to review every path. Moving to Trash is the default; direct deletion requires separate confirmation. On Windows it creates short-lived plans from the system MSI/MSIX catalogs, and on Linux from Flatpak, deb, RPM, or Snap ownership, then delegates removal to the operating-system installer or package manager. Identity is revalidated before execution and the frontend cannot supply a command. Portable or unverifiable apps remain view-only, and CoreRobin cannot uninstall itself.
 - CPU, memory, and disk evidence stays under Why this conclusion.
 - Professional mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
@@ -59,10 +60,12 @@ On macOS, Mail, Messages, other app data, and similar locations are protected by
 
 1. **Let the scan finish:** The page shows where it is scanning, how many items it has checked, and how much space it has found. The scan continues until it finishes unless you stop it.
 2. **Explore large folders:** Larger sectors use more space. Click a folder to open it, or click the center to go back.
-3. **Add items to the basket:** Hold a sector or an item in the directory list and start dragging. While scan results exist, the basket stays fixed at the bottom of the window. Adding an item does not move or delete it.
+3. **Add items to the basket:** Use the explicit **Add to cleanup basket** action, press Enter/Space on a focused item, or drag a sector or directory-list item. While scan results exist, the basket stays fixed at the bottom of the window. Adding an item does not move or delete it.
 4. **Review and choose a cleanup mode:** Review the name, path, and scanned size, then choose **Move to Trash** (recommended and recoverable until Trash is emptied) or **Delete directly** (irreversible). Switching modes does not repeat a deep scan.
 
 Full scan results stay on this computer for up to 7 days for browsing and are marked stale after 24 hours. Cleanup uses the selected scan evidence to open each target through a stable filesystem boundary. At execution time, existing regular files and folders are removed, missing items are treated as already gone, and inaccessible or unsupported objects are skipped and reported. The app does not force a recursive rescan every time you open the review or switch cleanup modes. Choose **Rescan** when you want an up-to-date space map.
+
+For each scan target, CoreRobin keeps up to three compact snapshots and shows total growth plus the fastest-growing top-level directories on the next scan. After cleanup, the receipt distinguishes selected logical size, selected physical allocation, physical allocation actually processed, and the change in filesystem free space. Trash, APFS snapshots, purgeable space, and delayed reclaim can make those values differ.
 
 **Duplicate and long-unmodified files** is a separate explicit check. It scans only Desktop, Documents, Downloads, Movies, Music, and Pictures without following symbolic links. It filters by size before reading likely duplicate candidates and calculating SHA-256 locally. “Long-unused” is approximated as over 100 MB and unchanged for 180 days because reliable last-access data is unavailable on many systems. Results are retained for up to seven days. Reopening incrementally checks known path, size, mtime, device ID, and inode values and only rehashes changed duplicate candidates instead of repeating the full scan. Both duplicate and long-unmodified files can be selected into the same cleanup basket, reusing Trash, direct delete, per-item skip results, and action history. Nothing is deleted automatically.
 
@@ -83,14 +86,14 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - Network is not a top-level Everyday page. Choose A network problem under Help me solve to check current traffic and connections first.
 - See current upload and download speeds, traffic since launch, network interfaces, and active connections.
 - Opening Network automatically separates local routing, DNS, IPv4, IPv6, and direct internet reachability, then alternates probes across two independent targets. While the page remains open, a lightweight sample runs every 30 seconds to build a recent 15-minute latency, jitter, and TCP-probe-failure trend with average, peak, and anomaly counts. Sampling stops by default when you leave, and **Check now** remains available. If you explicitly enable long-term network-quality history, the closed page uses five-minute sampling and aggregate buckets for one-hour, 24-hour, or seven-day views; the seven-day graph is downsampled into 30-minute buckets. The timeline explains sleep/wake gaps, active-interface or default-route changes, status changes, DNS failures, and direct-connectivity failures, and summarizes recent brief outages. Only a one-way route fingerprint is retained, never the gateway address.
-- Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime.
+- Connection history is off by default. When explicitly enabled, five-minute application and hostname-or-IP aggregates stay locally for 1, 7, or 30 days, capped at 5,000 entries, and can be cleared anytime. Select an application or domain aggregate to inspect the reverse application/domain relationship, ports and protocols, and first/last observation times.
 - Filter connections by TCP, UDP, and connection state.
 - The operating system may hide which process owns a connection. A missing app name does not mean the connection is suspicious.
 
 ### Startup items
 
 - Startup items are not a top-level Everyday page. They appear when you choose Slow startup, together with reversible actions where supported.
-- See which apps start with your computer and where they come from.
+- See which apps start with your computer and where they come from. On macOS, modern background items and legacy launch files are grouped by responsible application and can show Bundle ID, Team ID, signature state, executable path, last reported state, and missing executables. System-managed or unverifiable items remain read-only.
 - Supported third-party items can be turned off and restored later.
 - System items and sources that cannot be changed safely on the current platform are view-only.
 - CoreRobin does not delete startup configuration files.
@@ -101,13 +104,16 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 
 - Everyday mode uses a simple Records timeline to show when the computer became busy and when it recovered. Professional mode keeps the full technical history and filters.
 - A warning and its recovery are paired into one incident with its start time, duration, likely cause, and outcome.
-- Confirmed app quit or restart, permanent cleanup, and startup-item actions also record execution and verification results. Cleanup history stores only item counts and reclaimed space, never file paths.
+- A selectable system-event replay correlates resource peaks, network and sleep events, app attribution, and confirmed actions in the same time range. Completed actions show verified, partial, failed, interrupted, and retry states; when enough samples exist, CoreRobin compares the following 15 minutes with the preceding period without claiming causality.
+- Confirmed app quit or restart, cleanup, uninstall, volume eject, startup-item changes, and application updates record execution and verification results. Cleanup history stores only item counts and reclaimed space, never file paths.
 - Keep history for 1, 7, or 30 days, turn it off, or clear it anytime.
 - Notifications appear only when a problem lasts for a while, and the same warning is not repeated constantly.
 - CoreRobin follows up once after the problem has stably recovered. The main window, menu bar panel, and Robin companion share the same health state.
 - CPU, memory, and storage notifications can be turned off separately.
 - App and startup item names persist across restarts only after you allow names to be saved. Command lines, file locations, filenames, and connection addresses are not stored.
 - Optional application-impact history uses five-minute aggregates for one-hour, 24-hour, and seven-day attribution of CPU, memory, and disk usage. Select a timeline interval to see the ranking from that period; an incident's peak can open the same historical ranking directly. The panel also reports its last successful save, private-storage size, and any persistence failure. It stores only a stable app identity, aggregate values, and app names when name storage is allowed; it never stores PIDs, command lines, or file paths.
+- Resource, alert, network-quality, connection, action, watch-rule, startup-impact, and compact cleanup-scan histories use separate atomic files in CoreRobin's native private data directory. The status bar and History page expose the latest successful sample/save, storage size, consecutive sampler failures, and a degraded reason instead of silently dropping data.
+- Battery sessions begin when power switches to battery and summarize charge drain, likely resource-leading apps, and sleep blockers from saved aggregates. App and blocker names are retained only when history name storage is enabled.
 - Once enough resource history exists, the local baseline compares the latest 15 minutes with robust same-hour samples from the past seven days while retaining absolute safety thresholds. A metric needs coverage across at least three distinct comparable days before CoreRobin describes it as established; otherwise the interface says that part of the baseline is still learning and shows its coverage. It does not produce a combined health score.
 - App watch-rule trigger and recovery events appear in the local timeline, so a notification remains explainable after it disappears from the desktop.
 
@@ -117,7 +123,8 @@ Full scan results stay on this computer for up to 7 days for browsing and are ma
 - CoreRobin can launch quietly after system sign-in without opening the main window. On macOS, you can also choose whether it appears in the Dock and app switcher.
 - Pro Settings also includes sampling rates, connection refresh, alert colors, and the default process view. On first entry, the process page selects a suitable high-load process so the details panel is useful immediately.
 - App watch rules use styled app, metric, threshold, and duration controls. A rule notifies once when the sustained condition is met, can notify again only after recovery, and keeps a 10-minute cooldown.
-- About & Support checks the signed public updater manifest and shows release notes, the last check time, and any failure reason. It downloads an available stable release and installs it directly after you confirm. The report flow first previews a redacted diagnostic summary, then lets you copy it and open a GitHub Issue prefilled with version, system, and architecture. CoreRobin uploads no logs; you write the problem and reproduction steps.
+- Preferences and application watch rules can be previewed, exported, and imported through a local JSON file. The backup excludes history, paths, connections, and scan results.
+- The updater is an app-level task: it checks periodically, retries after the network returns, keeps download/install progress visible outside About, supports skipping one version, and offers restart plus a post-restart update receipt. The report flow first previews a redacted diagnostic summary, then lets you copy it and open a GitHub Issue prefilled with version, system, and architecture. CoreRobin uploads no logs; you write the problem and reproduction steps.
 - The Pro overview shows GPU activity and relative application energy impact when supported. Relative impact is not watts or energy; macOS currently provides the richest data and unsupported platforms report the capability as unavailable.
 
 ## Menu bar panel

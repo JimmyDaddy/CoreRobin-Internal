@@ -1,23 +1,73 @@
 {
   "fileInsights": {
-    "eyebrow": "명시적 읽기 전용 확인", "title": "중복되고 수정되지 않은 장기 파일", "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
-    "scan": "파일 확인", "scanAgain": "다시 확인하세요", "cancel": "점검 중지",
-    "phase": { "discovering": "후보자 찾기", "hashing": "중복 콘텐츠 확인 중" },
+    "eyebrow": "명시적 읽기 전용 확인",
+    "title": "중복되고 수정되지 않은 장기 파일",
+    "description": "Scans Desktop, Documents, Downloads, Movies, Music, and Pictures; files are filtered by size before duplicate candidates are hashed.",
+    "scan": "파일 확인",
+    "scanAgain": "다시 확인하세요",
+    "cancel": "점검 중지",
+    "phase": {
+      "discovering": "후보자 찾기",
+      "hashing": "중복 콘텐츠 확인 중"
+    },
     "progress": "검토된 {{scanned}} 항목 · {{candidates}} 후보 · {{hashed}} 해시됨",
-    "duplicateGroups": "duplicate groups", "possibleSavings": "possible savings", "oldFiles": "large long-unmodified files",
-    "truncated": "이 스캔은 안전 한계에 도달했습니다. 완료된 결과가 표시됩니다.", "duplicates": "동일한 콘텐츠", "copies": "{{count}} 복사본",
-    "noDuplicates": "확인된 후보 중에서 중복된 콘텐츠가 발견되지 않았습니다.", "longUnmodified": "100개 이상의 MB 및 180일 동안 변경되지 않음", "noOldFiles": "일치하는 대용량 파일을 찾을 수 없습니다.",
+    "duplicateGroups": "duplicate groups",
+    "possibleSavings": "possible savings",
+    "oldFiles": "large long-unmodified files",
+    "truncated": "이 스캔은 안전 한계에 도달했습니다. 완료된 결과가 표시됩니다.",
+    "duplicates": "동일한 콘텐츠",
+    "copies": "{{count}} 복사본",
+    "noDuplicates": "확인된 후보 중에서 중복된 콘텐츠가 발견되지 않았습니다.",
+    "longUnmodified": "100개 이상의 MB 및 180일 동안 변경되지 않음",
+    "noOldFiles": "일치하는 대용량 파일을 찾을 수 없습니다.",
     "boundary": "근거와 경로 작업만 제공하며 자동으로 삭제하지 않습니다. 장기 미사용 여부는 마지막 접근 시간이 아닌 수정 시간으로 추정합니다.",
     "empty": "검사를 시작한 후에만 후보 콘텐츠를 읽고 SHA-256가 로컬로 해시됩니다. 아무것도 업로드되지 않았습니다.",
-    "workspaceKicker": "파일 증거 작업 공간", "launcherDescription": "스캔 진행 상황, 중복 그룹, 수정되지 않은 긴 파일을 위한 전용 작업 공간을 엽니다.", "running": "지금 확인 중", "openWorkspace": "작업공간 열기", "back": "공간 정리로 돌아가기",
-    "phaseDescription": { "discovering": "공통 개인 폴더의 이름, 크기, 수정 날짜를 검토하여 콘텐츠 후보 범위를 좁힙니다.", "hashing": "동일한 크기의 후보를 읽고 로컬에서 SHA-256를 계산합니다. 콘텐츠는 이 컴퓨터를 떠나지 않습니다." },
-    "phaseLabel": "단계 확인", "loadingKicker": "로컬 콘텐츠 레이더", "loadingPrivacy": "해시는 로컬로 계산됩니다. 파일 이름, 경로, 내용은 업로드되지 않습니다.",
-    "metrics": { "scanned": "검토된 항목", "candidates": "후보 파일", "hashed": "검증된 내용" }, "duration": "기간 확인",
-    "localOnly": "전적으로 이 컴퓨터에 있음", "welcomeTitle": "단지 파일 이름만 일치하는 것이 아니라 동일한 콘텐츠가 표시됩니다.", "welcomeDescription": "CoreRobin는 콘텐츠 지문을 확인하기 전에 동일한 크기의 파일을 신속하게 필터링하는 동시에 검토를 위해 수정되지 않은 크고 긴 파일을 별도로 구성합니다.",
-    "scopeTitle": "범위 확인", "scope": { "desktop": "데스크탑", "documents": "서류", "downloads": "다운로드", "movies": "영화 산업", "music": "음악", "pictures": "영화" },
-    "steps": { "filterTitle": "빠른 필터", "filterDescription": "먼저 크기와 메타데이터를 비교하세요", "hashTitle": "콘텐츠 지문", "hashDescription": "로컬에서 SHA-256 계산", "reviewTitle": "그룹별 검토", "reviewDescription": "경로 및 날짜 증거 보관" },
-    "completeKicker": "확인 완료", "completeTitle": "귀하의 파일 증거가 정리되었습니다", "completeDescription": "가능한 가장 큰 절감 효과를 제공하는 중복 그룹부터 시작하십시오.", "resultNavigation": "결과 카테고리",
-    "groupLabel": "동일한 콘텐츠 그룹", "groupSavings": "보관 후 절약", "copyIndex": "{{count}} 복사", "oldFileLabel": "수정되지 않은 긴 파일",
+    "workspaceKicker": "파일 증거 작업 공간",
+    "launcherDescription": "스캔 진행 상황, 중복 그룹, 수정되지 않은 긴 파일을 위한 전용 작업 공간을 엽니다.",
+    "running": "지금 확인 중",
+    "openWorkspace": "작업공간 열기",
+    "back": "공간 정리로 돌아가기",
+    "phaseDescription": {
+      "discovering": "공통 개인 폴더의 이름, 크기, 수정 날짜를 검토하여 콘텐츠 후보 범위를 좁힙니다.",
+      "hashing": "동일한 크기의 후보를 읽고 로컬에서 SHA-256를 계산합니다. 콘텐츠는 이 컴퓨터를 떠나지 않습니다."
+    },
+    "phaseLabel": "단계 확인",
+    "loadingKicker": "로컬 콘텐츠 레이더",
+    "loadingPrivacy": "해시는 로컬로 계산됩니다. 파일 이름, 경로, 내용은 업로드되지 않습니다.",
+    "metrics": {
+      "scanned": "검토된 항목",
+      "candidates": "후보 파일",
+      "hashed": "검증된 내용"
+    },
+    "duration": "기간 확인",
+    "localOnly": "전적으로 이 컴퓨터에 있음",
+    "welcomeTitle": "단지 파일 이름만 일치하는 것이 아니라 동일한 콘텐츠가 표시됩니다.",
+    "welcomeDescription": "CoreRobin는 콘텐츠 지문을 확인하기 전에 동일한 크기의 파일을 신속하게 필터링하는 동시에 검토를 위해 수정되지 않은 크고 긴 파일을 별도로 구성합니다.",
+    "scopeTitle": "범위 확인",
+    "scope": {
+      "desktop": "데스크탑",
+      "documents": "서류",
+      "downloads": "다운로드",
+      "movies": "영화 산업",
+      "music": "음악",
+      "pictures": "영화"
+    },
+    "steps": {
+      "filterTitle": "빠른 필터",
+      "filterDescription": "먼저 크기와 메타데이터를 비교하세요",
+      "hashTitle": "콘텐츠 지문",
+      "hashDescription": "로컬에서 SHA-256 계산",
+      "reviewTitle": "그룹별 검토",
+      "reviewDescription": "경로 및 날짜 증거 보관"
+    },
+    "completeKicker": "확인 완료",
+    "completeTitle": "귀하의 파일 증거가 정리되었습니다",
+    "completeDescription": "가능한 가장 큰 절감 효과를 제공하는 중복 그룹부터 시작하십시오.",
+    "resultNavigation": "결과 카테고리",
+    "groupLabel": "동일한 콘텐츠 그룹",
+    "groupSavings": "보관 후 절약",
+    "copyIndex": "{{count}} 복사",
+    "oldFileLabel": "수정되지 않은 긴 파일",
     "processing": {
       "selectGroup": "추가 사본 처리",
       "selectedGroup": "선택된 그룹",
@@ -175,7 +225,11 @@
       "failed": "처리된 항목이 없으며 {{failedCount}}개가 실패했습니다",
       "cancelled": "{{deletedCount}}개 항목 후 정리를 중단했습니다",
       "cancelledNoDeletion": "항목이 완료되기 전에 정리를 중단했습니다",
-      "reclaimed": "처리 전에 확인한 공간: 약 {{size}}"
+      "reclaimed": "물리 할당 공간 약 {{size}}를 처리했습니다",
+      "selectedSizes": "선택한 논리 크기 {{logical}}, 물리 할당 {{allocated}}",
+      "released": "파일 시스템의 사용 가능 공간이 약 {{size}} 증가했습니다",
+      "pendingReclaim": "{{processed}}를 처리했고 사용 가능 공간은 현재 {{size}} 증가했습니다. 차이는 APFS 스냅샷, 정리 가능 공간 또는 지연된 시스템 회수에 남아 있을 수 있습니다.",
+      "trashSpace": "항목을 휴지통으로 옮겼습니다. 일반적으로 휴지통을 비운 뒤 해당 공간이 해제됩니다"
     },
     "freshness": {
       "cached": "이전 스캔 결과를 표시",
@@ -184,7 +238,10 @@
       "changedShort": "내용이 변경됨",
       "refreshFolder": "{{name}} 새로 고침",
       "refreshingFolder": "{{name}} 새로 고치는 중…"
-    }
+    },
+    "removeFromBasket": "정리 바구니에서 제거",
+    "includedByParent": "상위 폴더에 포함됨",
+    "addToBasket": "정리 바구니에 추가"
   },
   "deleteDialog": {
     "title": "정리 바구니 확인",
@@ -282,8 +339,7 @@
   "noLargeFiles": "500MB 이상의 파일이 접근 가능한 시스템 디스크 위치에서 발견되지 않았습니다.",
   "unreadable": "{{count}} 위치가 보호되었거나 일시적으로 읽을 수 없는 상태입니다. 해당 위치만 결과에서 제외됩니다.",
   "fullDiskAccessHint": "macOS에서는 시스템 설정 → 개인 정보 및 보안에서 CoreRobin에 전체 디스크 접근 권한을 부여한 후 다시 스캔하십시오.",
-  "safetyBoundary": "스캔에는 시간 또는 항목 제한이 없으며, 심볼릭 링크를 따르지 않습니다. 바구니에 추가되고, 경로가 확인되었으며, 명시적으로 확인된 항목만 영구적으로 삭제되며, 복구가 불가능합니다."
-,
+  "safetyBoundary": "스캔에는 시간 또는 항목 제한이 없으며, 심볼릭 링크를 따르지 않습니다. 바구니에 추가되고, 경로가 확인되었으며, 명시적으로 확인된 항목만 영구적으로 삭제되며, 복구가 불가능합니다.",
   "targets": {
     "kicker": "Scan scope",
     "title": "Choose what to scan",
@@ -309,5 +365,10 @@
     "completed": "{{count}}개 파일을 처리하고 {{size}}를 확보했습니다",
     "partial": "{{deletedCount}}개 처리됨; {{failedCount}}개는 처리할 수 없습니다",
     "cancelled": "{{count}}개 처리 후 중단되었습니다"
+  },
+  "growth": {
+    "since": "{{time}}와 비교",
+    "title": "이전 검사 이후 공간 변화",
+    "noGrowth": "간단 비교에서 증가한 디렉터리를 찾지 못했습니다."
   }
 }

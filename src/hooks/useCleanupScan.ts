@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   cancelCleanupScan,
@@ -23,8 +23,22 @@ import type {
   CommandError,
 } from "../types";
 import { normalizeCommandError } from "../utils";
+import {
+  appendCleanupScanSnapshot,
+  cleanupScanGrowthComparison,
+  parseCleanupScanHistory,
+  serializeCleanupScanHistory,
+} from "../cleanupScanHistory";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export function useCleanupScan() {
+  const scanHistory = useNativeHistoryStorage({
+    category: "cleanup-scans",
+    enabled: true,
+    initialValue: () => [] ,
+    parse: parseCleanupScanHistory,
+    serialize: serializeCleanupScanHistory,
+  });
   const [snapshot, setSnapshot] = useState<CleanupScan | null>(null);
   const [snapshotStatus, setSnapshotStatus] = useState<CleanupSnapshotStatus>("current");
   const [error, setError] = useState<CommandError | null>(null);
@@ -96,6 +110,8 @@ export function useCleanupScan() {
       snapshotRef.current = completed;
       setSnapshot(completed);
       setSnapshotStatus("current");
+      scanHistory.setValue((current) =>
+        appendCleanupScanSnapshot(current, completed));
     } catch (caughtError) {
       const normalized = normalizeCommandError(caughtError);
       if (normalized.code !== "cleanup_scan_cancelled") setError(normalized);
@@ -105,7 +121,7 @@ export function useCleanupScan() {
       setCancelling(false);
       setProgress(null);
     }
-  }, [enqueuePersistence]);
+  }, [enqueuePersistence, scanHistory.setValue]);
 
   const cancel = useCallback(async () => {
     if (!inFlight.current || cancelling) return;
@@ -184,6 +200,11 @@ export function useCleanupScan() {
     await enqueuePersistence(clearPersistedCleanupScan);
   }, [enqueuePersistence]);
 
+  const growthComparison = useMemo(
+    () => cleanupScanGrowthComparison(scanHistory.value, snapshot),
+    [scanHistory.value, snapshot],
+  );
+
   return {
     snapshot,
     snapshotStatus,
@@ -196,5 +217,7 @@ export function useCleanupScan() {
     clear,
     applyDeletion,
     retainSubtree,
+    growthComparison,
+    scanHistoryStorageStatus: scanHistory.storageStatus,
   };
 }

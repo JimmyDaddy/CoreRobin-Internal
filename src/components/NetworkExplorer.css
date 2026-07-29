@@ -112,3 +112,88 @@
   color: var(--green);
   font-size: 11px;
 }
+.connection-history__row {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.connection-history__row > svg {
+  transition: transform 160ms ease;
+}
+
+.connection-history__row.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-subtle));
+}
+
+.connection-history__row.is-selected > svg {
+  transform: rotate(180deg);
+}
+
+.connection-history__drilldown {
+  display: grid;
+  gap: 13px;
+  margin-top: 12px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: 14px;
+  background: var(--surface-subtle);
+}
+
+.connection-history__drilldown header,
+.connection-history__drilldown dl,
+.connection-history__relations {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.connection-history__drilldown header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.connection-history__drilldown header button {
+  align-self: start;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.connection-history__drilldown dl {
+  margin: 0;
+}
+
+.connection-history__drilldown dl > div {
+  display: grid;
+  gap: 3px;
+}
+
+.connection-history__drilldown dt,
+.connection-history__drilldown small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.connection-history__relations > section {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 6px;
+}
+
+.connection-history__relations section > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.connection-history__relations b {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -6,6 +6,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+#[cfg(target_os = "macos")]
+use std::process::Command;
+
+#[cfg(target_os = "macos")]
+use crate::bounded_command;
 use crate::error::CommandError;
 use crate::models::{
     StartupItem, StartupItemScope, StartupItemSource, StartupItemsSnapshot, StartupLaunchKind,
@@ -17,6 +22,8 @@ use crate::safe_fs::{BoundFileMove, SafeFileMoveRoot, SafeFileSnapshot};
 const STARTUP_LEASE_TTL: Duration = Duration::from_secs(60);
 const MAX_STARTUP_LEASES: usize = 16;
 const MAX_STARTUP_FILE_BYTES: u64 = 2 * 1_024 * 1_024;
+#[cfg(target_os = "macos")]
+const STARTUP_METADATA_TIMEOUT: Duration = Duration::from_millis(1_500);
 static NEXT_STARTUP_LEASE_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Default)]
@@ -304,6 +311,9 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
             Err(()) => {}
         }
     }
+    if let Ok(mut modern_items) = scan_macos_background_tasks() {
+        append_unique_startup_items(&mut items, modern_items.drain(..));
+    }
     (items, unreadable)
 }
 
@@ -392,6 +402,7 @@ fn macos_startup_item(
     } else {
         StartupManagementStatus::Available
     };
+    let ownership = macos_startup_ownership(program.as_deref(), &label);
     Some(StartupItem {
         id: format!(
             "{}:{}",
@@ -412,7 +423,210 @@ fn macos_startup_item(
             StartupLaunchKind::Conditional
         },
         management_status,
+        bundle_id: ownership.bundle_id,
+        team_id: ownership.team_id,
+        signature_status: ownership.signature_status,
+        executable_path: ownership.executable_path,
+        responsible_application: ownership.responsible_application,
+        last_run_status: None,
+        orphaned: ownership.orphaned,
+        modern_background_item: false,
     })
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Default)]
+struct MacosStartupOwnership {
+    bundle_id: Option<String>,
+    team_id: Option<String>,
+    signature_status: Option<String>,
+    executable_path: Option<String>,
+    responsible_application: Option<String>,
+    orphaned: bool,
+}
+
+#[cfg(target_os = "macos")]
+fn macos_startup_ownership(program: Option<&str>, label: &str) -> MacosStartupOwnership {
+    let executable = program.and_then(command_executable).map(PathBuf::from);
+    let app_bundle = executable.as_deref().and_then(containing_app_bundle);
+    let bundle_id = app_bundle.as_deref().and_then(macos_bundle_id);
+    let responsible_application = app_bundle
+        .as_deref()
+        .and_then(Path::file_stem)
+        .map(|value| value.to_string_lossy().into_owned())
+        .or_else(|| publisher_from_label(label));
+    let (team_id, signature_status) = app_bundle
+        .as_deref()
+        .map(macos_signature_metadata)
+        .unwrap_or((None, None));
+    let orphaned = executable.as_deref().is_some_and(|path| !path.exists());
+    MacosStartupOwnership {
+        bundle_id,
+        team_id,
+        signature_status,
+        executable_path: executable.map(|path| path.to_string_lossy().into_owned()),
+        responsible_application,
+        orphaned,
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn command_executable(command: &str) -> Option<&str> {
+    let trimmed = command.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Some(rest) = trimmed.strip_prefix('"') {
+        return rest.split('"').next().filter(|value| !value.is_empty());
+    }
+    Some(trimmed.split_whitespace().next().unwrap_or(trimmed))
+}
+
+#[cfg(target_os = "macos")]
+fn containing_app_bundle(path: &Path) -> Option<PathBuf> {
+    let mut candidate = PathBuf::new();
+    for component in path.components() {
+        candidate.push(component.as_os_str());
+        if candidate
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+        {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn macos_bundle_id(app: &Path) -> Option<String> {
+    let value = plist::Value::from_file(app.join("Contents/Info.plist")).ok()?;
+    value
+        .as_dictionary()?
+        .get("CFBundleIdentifier")?
+        .as_string()
+        .map(str::to_owned)
+}
+
+#[cfg(target_os = "macos")]
+fn macos_signature_metadata(app: &Path) -> (Option<String>, Option<String>) {
+    let mut command = Command::new("/usr/bin/codesign");
+    command.args(["-dv", "--verbose=4"]).arg(app);
+    match bounded_command::output(&mut command, STARTUP_METADATA_TIMEOUT, 256 * 1_024) {
+        Ok(output) => {
+            let text = String::from_utf8_lossy(&output.stderr);
+            let team_id = text.lines().find_map(|line| {
+                line.trim()
+                    .strip_prefix("TeamIdentifier=")
+                    .and_then(|value| {
+                        (!value.is_empty() && value != "not set").then(|| value.to_owned())
+                    })
+            });
+            let status = if output.status.success() {
+                Some("valid".to_owned())
+            } else {
+                Some("invalid".to_owned())
+            };
+            (team_id, status)
+        }
+        Err(_) => (None, Some("unknown".to_owned())),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn scan_macos_background_tasks() -> Result<Vec<StartupItem>, ()> {
+    let mut command = Command::new("/usr/bin/sfltool");
+    command.arg("dumpbtm");
+    let output = bounded_command::output_with_circuit(
+        "startup.sfltool",
+        &mut command,
+        STARTUP_METADATA_TIMEOUT,
+        2 * 1_024 * 1_024,
+    )
+    .map_err(|_| ())?;
+    if !output.status.success() {
+        return Err(());
+    }
+    Ok(parse_macos_background_tasks(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
+
+#[cfg(target_os = "macos")]
+fn parse_macos_background_tasks(text: &str) -> Vec<StartupItem> {
+    let mut blocks = Vec::<Vec<(&str, &str)>>::new();
+    let mut current = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("UUID:") && !current.is_empty() {
+            blocks.push(std::mem::take(&mut current));
+        }
+        if let Some((key, value)) = trimmed.split_once(':') {
+            current.push((key.trim(), value.trim()));
+        }
+    }
+    if !current.is_empty() {
+        blocks.push(current);
+    }
+    blocks
+        .into_iter()
+        .filter_map(|block| {
+            let field = |names: &[&str]| {
+                block
+                    .iter()
+                    .find_map(|(key, value)| names.contains(key).then(|| (*value).to_owned()))
+            };
+            let name = field(&["Name", "Developer Name"])?;
+            let bundle_id = field(&["Identifier", "Bundle Identifier"]);
+            let executable_path = field(&["Executable Path", "Path"]);
+            let url = field(&["URL"]);
+            let path = executable_path.clone().or(url).unwrap_or_default();
+            if path.is_empty() {
+                return None;
+            }
+            let item_type = field(&["Type"]).unwrap_or_default();
+            let disposition = field(&["Disposition"]).unwrap_or_default();
+            let team_id = field(&["Team Identifier", "Team ID"]);
+            let protected = bundle_id
+                .as_deref()
+                .is_some_and(|identifier| identifier.starts_with("com.apple."));
+            Some(StartupItem {
+                id: format!(
+                    "background-task:{}:{}",
+                    bundle_id.as_deref().unwrap_or(&name),
+                    path
+                ),
+                name: name.clone(),
+                publisher: field(&["Developer Name"]),
+                command: executable_path.clone(),
+                path: path.clone(),
+                source: StartupItemSource::BackgroundTask,
+                scope: StartupItemScope::User,
+                enabled: !disposition.to_lowercase().contains("disabled"),
+                system: protected,
+                launch_kind: if item_type.to_lowercase().contains("login item") {
+                    StartupLaunchKind::Login
+                } else {
+                    StartupLaunchKind::Conditional
+                },
+                management_status: if protected {
+                    StartupManagementStatus::Protected
+                } else {
+                    StartupManagementStatus::Unsupported
+                },
+                bundle_id,
+                team_id,
+                signature_status: field(&["Signature Status"])
+                    .or_else(|| Some("system_reported".to_owned())),
+                executable_path: executable_path.clone(),
+                responsible_application: Some(name),
+                last_run_status: field(&["Status", "Last Run"]),
+                orphaned: executable_path
+                    .as_deref()
+                    .is_some_and(|candidate| !Path::new(candidate).exists()),
+                modern_background_item: true,
+            })
+        })
+        .collect()
 }
 
 #[cfg(target_os = "linux")]
@@ -512,6 +726,15 @@ fn linux_desktop_item(
         system: scope == StartupItemScope::System,
         launch_kind: StartupLaunchKind::Login,
         management_status,
+        bundle_id: None,
+        team_id: None,
+        signature_status: None,
+        executable_path: field("Exec")
+            .and_then(|value| value.split_whitespace().next().map(str::to_owned)),
+        responsible_application: None,
+        last_run_status: None,
+        orphaned: false,
+        modern_background_item: false,
     })
 }
 
@@ -556,6 +779,14 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                         } else {
                             StartupManagementStatus::Unsupported
                         },
+                        bundle_id: None,
+                        team_id: None,
+                        signature_status: None,
+                        executable_path: Some(command.trim().to_owned()),
+                        responsible_application: None,
+                        last_run_status: None,
+                        orphaned: false,
+                        modern_background_item: false,
                     });
                 }
             }
@@ -601,6 +832,14 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                         } else {
                             StartupManagementStatus::Available
                         },
+                        bundle_id: None,
+                        team_id: None,
+                        signature_status: None,
+                        executable_path: Some(entry.path().to_string_lossy().into_owned()),
+                        responsible_application: None,
+                        last_run_status: None,
+                        orphaned: false,
+                        modern_background_item: false,
                     }
                 }));
             }
@@ -629,6 +868,14 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                             system: false,
                             launch_kind: StartupLaunchKind::Login,
                             management_status: StartupManagementStatus::Available,
+                            bundle_id: None,
+                            team_id: None,
+                            signature_status: None,
+                            executable_path: Some(original_path.to_string_lossy().into_owned()),
+                            responsible_application: None,
+                            last_run_status: None,
+                            orphaned: false,
+                            modern_background_item: false,
                         }
                     });
                     append_unique_startup_items(&mut items, found);
@@ -902,6 +1149,7 @@ fn source_name(source: StartupItemSource) -> &'static str {
     match source {
         StartupItemSource::LaunchAgent => "launch-agent",
         StartupItemSource::LaunchDaemon => "launch-daemon",
+        StartupItemSource::BackgroundTask => "background-task",
         StartupItemSource::DesktopEntry => "desktop-entry",
         StartupItemSource::RegistryRun => "registry-run",
         StartupItemSource::StartupFolder => "startup-folder",
@@ -935,7 +1183,10 @@ mod tests {
     };
 
     #[cfg(target_os = "macos")]
-    use super::{StartupController, macos_disabled_directories, platform_startup_items};
+    use super::{
+        StartupController, macos_disabled_directories, parse_macos_background_tasks,
+        platform_startup_items,
+    };
     use super::{friendly_label, publisher_from_label};
 
     #[test]
@@ -944,6 +1195,31 @@ mod tests {
         assert_eq!(
             publisher_from_label("com.spotify.client.helper").as_deref(),
             Some("Spotify")
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn parses_modern_background_task_ownership_as_read_only() {
+        let items = parse_macos_background_tasks(
+            r#"
+UUID: A1
+Name: Example Helper
+Developer Name: Example Inc
+Identifier: com.example.helper
+Team Identifier: TEAM123
+Type: curated legacy login item
+Disposition: [enabled, allowed, visible]
+Executable Path: /Applications/Example.app/Contents/Library/LoginItems/Helper.app/Contents/MacOS/Helper
+"#,
+        );
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].bundle_id.as_deref(), Some("com.example.helper"));
+        assert_eq!(items[0].team_id.as_deref(), Some("TEAM123"));
+        assert!(items[0].modern_background_item);
+        assert_eq!(
+            items[0].management_status,
+            StartupManagementStatus::Unsupported
         );
     }
 

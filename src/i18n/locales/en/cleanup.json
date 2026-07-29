@@ -108,6 +108,9 @@
     "loadingFolder": "Loading this folder…",
     "loadFailed": "Unable to load folder",
     "directActionHint": "Drag a sector or a folder from the list into the basket at the bottom",
+    "addToBasket": "Add to cleanup basket",
+    "removeFromBasket": "Remove from cleanup basket",
+    "includedByParent": "Included by a parent folder",
     "protectedSelectionHint": "System paths and the home root are view-only; only specific items inside your home folder can enter the basket",
     "trashRootProtected": "The Trash folder itself is protected; enter it and select the specific contents you want to remove",
     "planSummary": "{{count}} items selected · {{size}}",
@@ -135,7 +138,11 @@
       "failed": "Nothing was processed; {{failedCount}} items failed",
       "cancelled": "Cleanup stopped after {{deletedCount}} items",
       "cancelledNoDeletion": "Cleanup stopped before any item completed",
-      "reclaimed": "Allocated space verified before processing: about {{size}}"
+      "reclaimed": "About {{size}} of physical allocation was processed",
+      "selectedSizes": "Selected logical size {{logical}}; physical allocation {{allocated}}",
+      "released": "Filesystem available space increased by about {{size}}",
+      "pendingReclaim": "{{processed}} was processed; available space has increased by {{size}} so far. The difference may remain in APFS snapshots, purgeable space, or delayed system reclaim.",
+      "trashSpace": "Items are now in Trash; the corresponding space is normally released only after Trash is emptied"
     },
     "freshness": {
       "cached": "Showing the previous scan result",
@@ -292,6 +299,11 @@
     "recent": "Recent",
     "removable": "Removable",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+  },
+  "growth": {
+    "title": "Space change since the last scan",
+    "since": "Compared with {{time}}",
+    "noGrowth": "No growing directory was found in the compact comparison."
   },
   "oldFileProcessing": {
     "selectFile": "Select {{name}} for cleanup review",

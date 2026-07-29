@@ -5,9 +5,18 @@ use std::fs;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+use crate::bounded_command;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use crate::models::GpuAdapterSnapshot;
 use crate::models::GpuEnergySnapshot;
+#[cfg(target_os = "macos")]
+use std::time::Duration;
+
+#[cfg(target_os = "macos")]
+const GPU_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(target_os = "macos")]
+const GPU_COMMAND_OUTPUT_LIMIT: usize = 2 * 1_024 * 1_024;
 #[cfg(target_os = "macos")]
 use crate::models::ProcessEnergySample;
 
@@ -38,10 +47,12 @@ pub fn sample_gpu_energy() -> GpuEnergySnapshot {
 
 #[cfg(target_os = "macos")]
 fn sample_macos(snapshot: &mut GpuEnergySnapshot) {
-    if let Ok(output) = Command::new("ioreg")
-        .args(["-l", "-w", "0", "-r", "-c", "AGXAccelerator"])
-        .output()
-        && output.status.success()
+    if let Ok(output) = bounded_command::output_with_circuit(
+        "gpu.ioreg",
+        Command::new("ioreg").args(["-l", "-w", "0", "-r", "-c", "AGXAccelerator"]),
+        GPU_COMMAND_TIMEOUT,
+        GPU_COMMAND_OUTPUT_LIMIT,
+    ) && output.status.success()
     {
         let text = String::from_utf8_lossy(&output.stdout);
         if !text.trim().is_empty() {
@@ -59,10 +70,12 @@ fn sample_macos(snapshot: &mut GpuEnergySnapshot) {
         }
     }
 
-    if let Ok(output) = Command::new("top")
-        .args(["-l", "1", "-o", "power", "-n", "20", "-stats", "pid,power"])
-        .output()
-        && output.status.success()
+    if let Ok(output) = bounded_command::output_with_circuit(
+        "gpu.top",
+        Command::new("top").args(["-l", "1", "-o", "power", "-n", "20", "-stats", "pid,power"]),
+        GPU_COMMAND_TIMEOUT,
+        GPU_COMMAND_OUTPUT_LIMIT,
+    ) && output.status.success()
     {
         let text = String::from_utf8_lossy(&output.stdout);
         snapshot.process_energy = text

@@ -52,7 +52,10 @@
     "eyebrow": "Gemessener Anmeldestart",
     "title": "Echte Auswirkungen auf die Anmeldung",
     "description": "Wird nur dann abgetastet, wenn das Betriebssystem CoreRobin stillschweigend als Anmeldeelement startet, bis sich das System beruhigt.",
-    "settleTime": "Eingewöhnungszeit", "peakCpu": "Spitze CPU", "peakDisk": "Spitzenscheibe", "samples": "Proben",
+    "settleTime": "Eingewöhnungszeit",
+    "peakCpu": "Spitze CPU",
+    "peakDisk": "Spitzenscheibe",
+    "samples": "Proben",
     "boundary": "Dies misst die Auswirkungen nach der Anmeldung, nicht die Firmware-Startzeit. Die Messungen stoppen nach drei Minuten und die letzten fünf werden beibehalten.",
     "empty": "Noch keine echte Anmeldemessung. Aktivieren Sie Bei Anmeldung starten, um die nächste Anmeldung automatisch zu messen.",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "Daemon",
     "desktop_entry": "Automatische Ausführung",
     "registry_run": "Registry Run",
-    "startup_folder": "Startordner"
+    "startup_folder": "Startordner",
+    "background_task": "Hintergrundaufgabe"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "Derzeit deaktiviert",
       "description": "Die Konfiguration bleibt erhalten, aber das System startet es nicht automatisch von diesem Eintrag aus."
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "Vergleich mit den letzten Starts",
     "description": "Verwendet den Median von {{count}} früheren Messungen.",
@@ -149,6 +152,20 @@
       "improved": "Nach {{count}} Autostart-Änderungen stabilisierte sich der nächste Start schneller; keine einzelne Änderung kann dafür verantwortlich gemacht werden.",
       "similar": "Nach {{count}} Autostart-Änderungen entsprach der nächste Start dem bisherigen Muster.",
       "slower": "Nach {{count}} Autostart-Änderungen war der nächste Start weiterhin langsamer; eine einzelne Ursache ist nicht bestimmbar."
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} Element",
+    "modern": "Moderner Hintergrunddienst",
+    "orphaned": "Ausführbare Datei fehlt",
+    "lastRun": "Zuletzt gemeldeter Status: {{status}}",
+    "itemCount_one": "{{count}} Element",
+    "itemCount": "{{count}} Element",
+    "signature": {
+      "valid": "Gültige Signatur",
+      "invalid": "Ungültige Signatur",
+      "unknown": "Signatur unbekannt",
+      "system_reported": "Von macOS gemeldet"
     }
   }
 }

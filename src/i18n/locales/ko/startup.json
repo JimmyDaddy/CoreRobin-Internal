@@ -52,7 +52,10 @@
     "eyebrow": "측정된 로그인 실행",
     "title": "실제 로그인에 미치는 영향",
     "description": "시스템이 안정화될 때까지 운영 체제가 로그인 항목으로 CoreRobin를 자동으로 시작할 때만 샘플링합니다.",
-    "settleTime": "정착 시간", "peakCpu": "피크 CPU", "peakDisk": "피크 디스크", "samples": "샘플",
+    "settleTime": "정착 시간",
+    "peakCpu": "피크 CPU",
+    "peakDisk": "피크 디스크",
+    "samples": "샘플",
     "boundary": "이는 펌웨어 부팅 시간이 아닌 로그인 후 영향을 측정합니다. 측정은 3분 후에 중지되며 최근 5개가 유지됩니다.",
     "empty": "아직 실제 로그인 측정이 없습니다. 다음 로그인을 자동으로 측정하려면 로그인 시 실행을 활성화하세요.",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "데몬 프로세스",
     "desktop_entry": "자동 시작 항목",
     "registry_run": "레지스트리 자동 실행",
-    "startup_folder": "시작 폴더"
+    "startup_folder": "시작 폴더",
+    "background_task": "백그라운드 작업"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "현재 비활성화됨",
       "description": "설정이 유지되지만, 시스템은 이 항목에서 자동으로 시작하지 않습니다."
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "최근 시작과 비교",
     "description": "이전 {{count}}회 측정의 중앙값을 사용합니다.",
@@ -149,6 +152,19 @@
       "improved": "{{count}}개 시작 항목을 변경한 뒤 다음 시작에서 안정화 시간이 줄었습니다. 특정 앱의 영향으로 단정할 수는 없습니다.",
       "similar": "{{count}}개 시작 항목을 변경한 뒤 다음 시작은 평소와 비슷했습니다.",
       "slower": "{{count}}개 시작 항목을 변경한 뒤에도 다음 시작이 느렸습니다. 단일 변경을 원인으로 볼 수 없습니다."
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}}개 항목",
+    "modern": "최신 백그라운드 항목",
+    "orphaned": "실행 파일 없음",
+    "lastRun": "마지막 보고 상태: {{status}}",
+    "itemCount": "{{count}}개 항목",
+    "signature": {
+      "valid": "유효한 서명",
+      "invalid": "유효하지 않은 서명",
+      "unknown": "서명 알 수 없음",
+      "system_reported": "macOS에서 보고"
     }
   }
 }

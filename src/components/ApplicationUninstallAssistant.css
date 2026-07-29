@@ -247,6 +247,102 @@
 .application-uninstall__search:focus-within { color: var(--blue); border-color: rgba(99, 168, 255, 0.42); }
 .application-uninstall__search input { width: 100%; min-width: 0; padding: 10px 0; color: var(--text); border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; }
 
+.application-uninstall__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.application-uninstall__filters label {
+  display: grid;
+  gap: 4px;
+}
+
+.application-uninstall__filters span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.application-uninstall__filters select {
+  min-width: 0;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  font: inherit;
+  font-size: 10px;
+}
+
+.application-trash-watcher {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+}
+
+.application-trash-watcher.is-enabled {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.application-trash-watcher > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.application-trash-watcher > header > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.application-trash-watcher header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.application-trash-watcher header small,
+.application-trash-watcher__empty {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.application-trash-watcher__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.application-trash-watcher__items > button {
+  display: grid;
+  min-width: 210px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  text-align: left;
+}
+
+.application-trash-watcher__items > button > span {
+  display: grid;
+  gap: 2px;
+}
+
 .application-uninstall__list {
   display: flex;
   overflow: auto;

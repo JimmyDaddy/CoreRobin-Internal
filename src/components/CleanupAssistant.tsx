@@ -47,6 +47,7 @@ import type {
   VolumeSnapshot,
 } from "../types";
 import type { CleanupDeletionTargetSnapshot, CleanupSnapshotStatus } from "../cleanupScanStore";
+import type { CleanupScanGrowthComparison } from "../cleanupScanHistory";
 import { findUnusedApplications, unusedApplicationDays } from "../cleanupApplications";
 import type {
   CompleteUserActionInput,
@@ -79,6 +80,7 @@ interface CleanupAssistantProps {
   cancelling: boolean;
   progress: CleanupScanProgress | null;
   snapshotStatus: CleanupSnapshotStatus;
+  growthComparison?: CleanupScanGrowthComparison | null;
   volumes?: readonly VolumeSnapshot[];
   onScan: (target?: CleanupScanTarget) => void;
   onCancel: () => void;
@@ -108,6 +110,7 @@ export function CleanupAssistant({
   cancelling,
   progress,
   snapshotStatus,
+  growthComparison = null,
   volumes = [],
   onScan,
   onCancel,
@@ -667,6 +670,38 @@ export function CleanupAssistant({
               <span>{new Date(snapshot.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
           </div>
+
+          {growthComparison ? (
+            <section className="cleanup-growth" aria-labelledby="cleanup-growth-title">
+              <div className="cleanup-growth__headline">
+                <span><Sparkles size={17} /></span>
+                <div>
+                  <small>{t("cleanup:growth.since", {
+                    time: new Date(growthComparison.previousSampledAtMs)
+                      .toLocaleString(i18n.resolvedLanguage),
+                  })}</small>
+                  <h3 id="cleanup-growth-title">{t("cleanup:growth.title")}</h3>
+                </div>
+                <strong className={growthComparison.growthBytes > 0 ? "is-growth" : "is-reduced"}>
+                  {growthComparison.growthBytes > 0 ? "+" : ""}
+                  {formatBytes(growthComparison.growthBytes)}
+                </strong>
+              </div>
+              {growthComparison.fastestGrowing.length > 0 ? (
+                <ol>
+                  {growthComparison.fastestGrowing.map((directory) => (
+                    <li key={directory.path}>
+                      <FolderOpen size={14} />
+                      <span title={directory.path}>{directory.name}</span>
+                      <strong>+{formatBytes(directory.growthBytes)}</strong>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>{t("cleanup:growth.noGrowth")}</p>
+              )}
+            </section>
+          ) : null}
 
           <CleanupSpaceMap
             snapshot={snapshot}

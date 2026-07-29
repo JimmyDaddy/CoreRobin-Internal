@@ -44,7 +44,7 @@
     "professional": "Modo profesional",
     "short": {
       "simple": "Diario",
-      "professional": "Profesional"
+      "professional": "Pro"
     },
     "switchTo": {
       "simple": "Cambiar a modo sencillo",
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} aplicaciones o componentes del sistema",
     "savedHistory": "{{count}} puntos de historial guardados",
     "processCount": "{{count}} procesos",
-    "cleanupEntries": "{{count}} elementos revisados"
+    "cleanupEntries": "{{count}} elementos revisados",
+    "samplerSaved": "Muestreador nativo {{time}} · {{failures}} fallos consecutivos",
+    "samplerWaiting": "Iniciando el muestreador nativo"
   }
 }

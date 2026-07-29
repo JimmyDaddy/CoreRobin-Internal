@@ -408,6 +408,8 @@ struct CleanupDeleteExecution {
     deleted: Vec<CleanupDeleteSuccess>,
     failed: Vec<CleanupDeleteFailure>,
     targets: Vec<CleanupDeleteTarget>,
+    selected_logical_bytes: u64,
+    selected_allocated_bytes: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -443,6 +445,15 @@ impl Drop for MacOSTrashStaging {
 }
 
 impl CleanupDeleteController {
+    pub fn lease_measurement_path(&self, lease_id: &str) -> Option<PathBuf> {
+        self.leases
+            .iter()
+            .find(|lease| lease.id == lease_id)
+            .and_then(|lease| lease.targets.first())
+            .and_then(|target| target.canonical_path.parent())
+            .map(Path::to_path_buf)
+    }
+
     pub fn create_lease(
         &mut self,
         request: CleanupDeleteLeaseRequest,
@@ -492,6 +503,8 @@ impl CleanupDeleteController {
     ) -> Result<CleanupDeleteResult, CommandError> {
         let execution = self.take_validated_targets(request)?;
         let mode = execution.mode;
+        let selected_logical_bytes = execution.selected_logical_bytes;
+        let selected_allocated_bytes = execution.selected_allocated_bytes;
         let trash_destination = execution.trash_destination;
         let targets = execution.targets;
         let already_completed_target_count = execution
@@ -514,6 +527,8 @@ impl CleanupDeleteController {
             if cancelled.load(Ordering::Relaxed) {
                 return Ok(cancelled_delete_result(
                     deleted,
+                    selected_logical_bytes,
+                    selected_allocated_bytes,
                     deleted_bytes,
                     failed,
                     None,
@@ -578,6 +593,8 @@ impl CleanupDeleteController {
                 Ok(false) => {
                     return Ok(cancelled_delete_result(
                         deleted,
+                        selected_logical_bytes,
+                        selected_allocated_bytes,
                         deleted_bytes,
                         failed,
                         Some(target.display_path),
@@ -602,7 +619,11 @@ impl CleanupDeleteController {
         }
         Ok(CleanupDeleteResult {
             deleted,
+            selected_logical_bytes,
+            selected_allocated_bytes,
             deleted_bytes,
+            available_bytes_before: None,
+            available_bytes_after: None,
             failed,
             cancelled: false,
             interrupted_path: None,
@@ -743,6 +764,8 @@ impl CleanupDeleteController {
         F: FnMut(&Path) -> Result<u64, String>,
     {
         let execution = self.take_validated_targets(request)?;
+        let selected_logical_bytes = execution.selected_logical_bytes;
+        let selected_allocated_bytes = execution.selected_allocated_bytes;
         let mut deleted = execution.deleted;
         let mut deleted_bytes = 0_u64;
         let mut failed = execution.failed;
@@ -763,7 +786,11 @@ impl CleanupDeleteController {
         }
         Ok(CleanupDeleteResult {
             deleted,
+            selected_logical_bytes,
+            selected_allocated_bytes,
             deleted_bytes,
+            available_bytes_before: None,
+            available_bytes_after: None,
             failed,
             cancelled: false,
             interrupted_path: None,
@@ -809,12 +836,22 @@ impl CleanupDeleteController {
                 }),
             }
         }
+        let selected_logical_bytes = targets
+            .iter()
+            .map(|target| target.evidence.logical_size_bytes)
+            .fold(0_u64, u64::saturating_add);
+        let selected_allocated_bytes = targets
+            .iter()
+            .map(|target| target.evidence.allocated_size_bytes)
+            .fold(0_u64, u64::saturating_add);
         Ok(CleanupDeleteExecution {
             mode: lease.mode,
             trash_destination: lease.trash_destination,
             deleted,
             failed,
             targets,
+            selected_logical_bytes,
+            selected_allocated_bytes,
         })
     }
 }
@@ -1137,16 +1174,72 @@ fn cleanup_trash_destination_name(original: &std::ffi::OsStr, suffix: u32) -> st
 
 fn cancelled_delete_result(
     deleted: Vec<CleanupDeleteSuccess>,
+    selected_logical_bytes: u64,
+    selected_allocated_bytes: u64,
     deleted_bytes: u64,
     failed: Vec<CleanupDeleteFailure>,
     interrupted_path: Option<String>,
 ) -> CleanupDeleteResult {
     CleanupDeleteResult {
         deleted,
+        selected_logical_bytes,
+        selected_allocated_bytes,
         deleted_bytes,
+        available_bytes_before: None,
+        available_bytes_after: None,
         failed,
         cancelled: true,
         interrupted_path,
+    }
+}
+
+pub fn available_bytes_for_path(path: &Path) -> Option<u64> {
+    #[cfg(unix)]
+    {
+        use std::ffi::CString;
+        use std::os::unix::ffi::OsStrExt;
+
+        let path = CString::new(path.as_os_str().as_bytes()).ok()?;
+        let mut statistics = std::mem::MaybeUninit::<libc::statvfs>::uninit();
+        // SAFETY: `path` is NUL terminated and `statistics` points to writable,
+        // correctly sized storage initialized by a successful `statvfs` call.
+        if unsafe { libc::statvfs(path.as_ptr(), statistics.as_mut_ptr()) } != 0 {
+            return None;
+        }
+        // SAFETY: the successful call above initialized the structure.
+        let statistics = unsafe { statistics.assume_init() };
+        #[cfg(target_os = "macos")]
+        let available_blocks = u64::from(statistics.f_bavail);
+        #[cfg(not(target_os = "macos"))]
+        let available_blocks = statistics.f_bavail;
+        Some(available_blocks.saturating_mul(statistics.f_frsize))
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+
+        let mut path = path.as_os_str().encode_wide().collect::<Vec<_>>();
+        path.push(0);
+        let mut available = 0_u64;
+        // SAFETY: the path is NUL terminated and `available` is a valid output
+        // pointer for the duration of this call.
+        let succeeded = unsafe {
+            GetDiskFreeSpaceExW(
+                path.as_ptr(),
+                &mut available,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+        return (succeeded != 0).then_some(available);
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        None
     }
 }
 
@@ -2188,6 +2281,234 @@ pub fn prepare_application_uninstall(
             application_path,
             preferred_language,
         )
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn validate_trashed_application_bundle(
+    application_path: &str,
+    home: &Path,
+    preferred_language: Option<&str>,
+) -> Result<ValidatedApplicationBundle, CommandError> {
+    let trash_root = home.join(".Trash");
+    let canonical_root = trash_root.canonicalize().map_err(|error| {
+        CommandError::new(
+            "trash_unavailable",
+            format!("CoreRobin could not inspect the current user's Trash: {error}"),
+        )
+    })?;
+    let requested = PathBuf::from(application_path);
+    let metadata = fs::symlink_metadata(&requested).map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not inspect the trashed application: {error}"),
+        )
+    })?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(CommandError::new(
+            "application_bundle_invalid",
+            "The selected Trash item is not a no-follow application bundle.",
+        ));
+    }
+    let canonical_path = requested.canonicalize().map_err(|error| {
+        CommandError::new(
+            "application_bundle_unavailable",
+            format!("CoreRobin could not verify the trashed application: {error}"),
+        )
+    })?;
+    if canonical_path.parent() != Some(canonical_root.as_path())
+        || !canonical_path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+    {
+        return Err(CommandError::new(
+            "application_bundle_not_allowed",
+            "Only top-level application bundles in the current user's Trash can be inspected.",
+        ));
+    }
+    let info_path = canonical_path.join("Contents/Info.plist");
+    let plist = plist::Value::from_file(&info_path).map_err(|_| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "CoreRobin could not read the trashed application's Info.plist.",
+        )
+    })?;
+    let dictionary = plist.as_dictionary().ok_or_else(|| {
+        CommandError::new(
+            "application_bundle_invalid",
+            "The trashed application's Info.plist is not a dictionary.",
+        )
+    })?;
+    let bundle_id = dictionary
+        .get("CFBundleIdentifier")
+        .and_then(plist::Value::as_string)
+        .filter(|value| is_safe_bundle_identifier(value))
+        .map(str::to_owned);
+    let name = bundle_display_name(&canonical_path, dictionary, preferred_language);
+    let relative_path = canonical_path
+        .strip_prefix(&canonical_root)
+        .expect("validated Trash application is inside its root")
+        .to_path_buf();
+    Ok(ValidatedApplicationBundle {
+        path: canonical_path,
+        root: canonical_root,
+        relative_path,
+        name,
+        bundle_id,
+        modified_at_ms: metadata.modified().ok().and_then(system_time_millis),
+    })
+}
+
+pub fn scan_trashed_applications(
+    preferred_language: Option<&str>,
+) -> Result<Vec<crate::models::TrashedApplication>, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        let trash = home.join(".Trash");
+        let entries = match fs::read_dir(&trash) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Vec::new());
+            }
+            Err(error) => {
+                return Err(CommandError::new(
+                    "trash_unavailable",
+                    format!("CoreRobin could not read the current user's Trash: {error}"),
+                ));
+            }
+        };
+        let mut applications = entries
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+            })
+            .filter_map(|entry| {
+                let path = entry.path();
+                let bundle = validate_trashed_application_bundle(
+                    &path.to_string_lossy(),
+                    &home,
+                    preferred_language,
+                )
+                .ok()?;
+                Some(crate::models::TrashedApplication {
+                    name: bundle.name.clone(),
+                    path: bundle.path_string(),
+                    bundle_id: bundle.bundle_id,
+                    modified_at_ms: bundle.modified_at_ms,
+                })
+            })
+            .collect::<Vec<_>>();
+        applications.sort_by(|left, right| left.name.cmp(&right.name));
+        Ok(applications)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = preferred_language;
+        Ok(Vec::new())
+    }
+}
+
+pub fn prepare_trashed_application_residual_plan(
+    application_path: &str,
+    preferred_language: Option<&str>,
+) -> Result<ApplicationUninstallPlan, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = home_directory().ok_or_else(|| {
+            CommandError::new(
+                "home_directory_unavailable",
+                "CoreRobin could not locate the current user's home directory.",
+            )
+        })?;
+        let canonical_home = home.canonicalize().map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not verify the home directory: {error}"),
+            )
+        })?;
+        let bundle = validate_trashed_application_bundle(
+            application_path,
+            &canonical_home,
+            preferred_language,
+        )?;
+        let home_root = DeleteRoot::open(&canonical_home).map_err(|error| {
+            CommandError::new(
+                "home_directory_unavailable",
+                format!("CoreRobin could not retain a stable home directory handle: {error}"),
+            )
+        })?;
+        let mut artifacts = Vec::new();
+        let mut skipped_paths = Vec::new();
+        for (kind, path, required) in application_uninstall_candidates(&canonical_home, &bundle) {
+            if required {
+                continue;
+            }
+            let display = path.to_string_lossy().into_owned();
+            let Ok(relative) = path.strip_prefix(&canonical_home) else {
+                skipped_paths.push(display);
+                continue;
+            };
+            let bound = match home_root.bind(relative) {
+                Ok(bound) => bound,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(_) => {
+                    skipped_paths.push(display);
+                    continue;
+                }
+            };
+            let inspection = match CleanupTargetInspectionPolicy::Strict.inspect(&bound) {
+                Ok(inspection) => inspection,
+                Err(_) => {
+                    skipped_paths.push(display);
+                    continue;
+                }
+            };
+            artifacts.push(ApplicationUninstallArtifact {
+                kind,
+                path: display,
+                logical_size_bytes: inspection.logical_size_bytes,
+                allocated_size_bytes: inspection.allocated_size_bytes,
+                item_count: inspection.item_count,
+                required: false,
+            });
+        }
+        Ok(ApplicationUninstallPlan {
+            sampled_at_ms: now_millis(),
+            application: InstalledApplication {
+                name: bundle.name.clone(),
+                path: bundle.path_string(),
+                bundle_id: bundle.bundle_id,
+                size_bytes: 0,
+                last_used_at_ms: None,
+                modified_at_ms: bundle.modified_at_ms,
+                uninstallable: true,
+                unavailable_reason: None,
+                installation_source: crate::models::ApplicationInstallationSource::MacosBundle,
+                native_uninstall_identifier: None,
+                native_uninstall_requires_elevation: false,
+                icon_path: None,
+            },
+            artifacts,
+            skipped_paths,
+            native_uninstall: None,
+        })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (application_path, preferred_language);
+        Err(CommandError::new(
+            "trash_watcher_unsupported",
+            "Application Trash observation is available on macOS only.",
+        ))
     }
 }
 

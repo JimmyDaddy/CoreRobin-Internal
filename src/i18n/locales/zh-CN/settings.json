@@ -165,6 +165,8 @@
     "applyingUpdate": "正在安装更新",
     "updateReady": "更新已安装并准备就绪。重新启动后将直接使用新版本。",
     "restartUpdate": "立即重启并完成更新",
+    "skipVersion": "跳过 v{{version}}",
+    "updatedReceipt": "已从 v{{version}} 成功更新",
     "restartingUpdate": "正在重新启动…",
     "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
     "updateRestartError": "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",
@@ -239,6 +241,18 @@
   "applicationImpactHistory": {
     "label": "保留应用影响聚合",
     "hint": "需要先开启本机历史并允许保存应用显示名；不会保存命令或文件路径。"
+  },
+  "transfer": {
+    "title": "偏好与规则备份",
+    "description": "通过明确选择的本机 JSON 文件，在电脑之间迁移 CoreRobin 偏好和应用关注规则。",
+    "export": "导出设置",
+    "import": "导入设置",
+    "boundary": "只包含偏好和关注规则；不导出历史、文件路径、连接记录或扫描结果。",
+    "invalid": "这不是受支持的 CoreRobin 偏好备份文件。",
+    "previewTitle": "复核将要导入的变化",
+    "preview": "{{count}} 项设置不同 · {{rules}} 条应用关注规则",
+    "noChanges": "没有设置会发生变化",
+    "apply": "应用导入设置"
   },
   "supportFlow": {
     "action": "准备问题反馈",

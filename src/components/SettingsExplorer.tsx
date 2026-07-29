@@ -1,5 +1,6 @@
-import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, HardDrive, History, Languages, LayoutDashboard, ListTree, LoaderCircle, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2 } from "lucide-react";
-import { useMemo, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
+import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, Download, FileJson, HardDrive, History, Languages, LayoutDashboard, ListTree, LoaderCircle, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2, Upload } from "lucide-react";
+import { useMemo, useRef, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
+import "./SettingsExplorer.css";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { applicationWatchSamplingIntervalMs } from "../applicationWatchRules";
 import {
@@ -29,6 +30,7 @@ import type {
   DesktopNotificationStatus,
 } from "../desktopNotifications";
 import type { SystemSnapshot } from "../types";
+import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import type { ProductDataClearResult } from "../productDataClear";
 import { aggregateApplications } from "../diagnosis";
 import { formatBytes } from "../utils";
@@ -37,6 +39,13 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 import { ClearProductDataAction } from "./ClearProductDataAction";
+import {
+  createSettingsTransferDocument,
+  parseSettingsTransferDocument,
+  serializeSettingsTransferDocument,
+  settingsUpdateFromTransfer,
+  type SettingsTransferPreview,
+} from "../settingsTransfer";
 
 type SettingsIcon = ComponentType<{ size?: number | string }>;
 type SettingsSection =
@@ -59,9 +68,7 @@ interface SettingsExplorerProps {
   onOpenOnboarding: () => void;
   onClearAllData: () => Promise<void | ProductDataClearResult[]>;
   activeApplicationWatchRuleIds?: readonly string[];
-  availableUpdateVersion?: string | null;
-  lastUpdateCheckAt?: number | null;
-  backgroundUpdateCheckFailed?: boolean;
+  updater: AppUpdaterController;
 }
 
 const THRESHOLD_OPTIONS = Array.from({ length: 20 }, (_, index) =>
@@ -88,15 +95,50 @@ export function SettingsExplorer({
   onOpenOnboarding,
   onClearAllData,
   activeApplicationWatchRuleIds = [],
-  availableUpdateVersion = null,
-  lastUpdateCheckAt = null,
-  backgroundUpdateCheckFailed = false,
+  updater,
 }: SettingsExplorerProps) {
   const { t, i18n } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("general");
   const cleanupAccess = useCleanupScanAccess(activeSection === "privacy");
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [settingsImportPreview, setSettingsImportPreview] =
+    useState<SettingsTransferPreview | null>(null);
+  const [settingsTransferError, setSettingsTransferError] =
+    useState<string | null>(null);
+
+  const exportSettings = () => {
+    const content = serializeSettingsTransferDocument(
+      createSettingsTransferDocument(settings),
+    );
+    const url = URL.createObjectURL(new Blob([content], {
+      type: "application/json",
+    }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `CoreRobin-preferences-${new Date()
+      .toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importSettingsFile: ChangeEventHandler<HTMLInputElement> = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setSettingsTransferError(null);
+    void file.text()
+      .then((serialized) => {
+        setSettingsImportPreview(
+          parseSettingsTransferDocument(serialized, settings),
+        );
+      })
+      .catch(() => {
+        setSettingsImportPreview(null);
+        setSettingsTransferError(t("settings:transfer.invalid"));
+      });
+  };
 
   const updateThreshold = (index: number, value: number) => {
     const next = [...settings.usageThresholds] as [number, number, number];
@@ -135,8 +177,8 @@ export function SettingsExplorer({
                           ? "settings:dataPrivacy.title"
                           : "settings:about.title",
               )}
-              {section === "about" && availableUpdateVersion ? (
-                <em>v{availableUpdateVersion}</em>
+              {section === "about" && updater.availableVersion ? (
+                <em>v{updater.availableVersion}</em>
               ) : null}
             </button>
           ),
@@ -164,6 +206,55 @@ export function SettingsExplorer({
                 {t(`settings:experience.${experienceMode}`)}
               </button>
             ))}
+          </div>
+        </SettingsCard>
+
+        <SettingsCard
+          section="privacy"
+          className="settings-card--half settings-card--transfer"
+          icon={FileJson}
+          title={t("settings:transfer.title")}
+          description={t("settings:transfer.description")}
+        >
+          <div className="settings-transfer">
+            <button className="button button--secondary" type="button" onClick={exportSettings}>
+              <Download size={14} />{t("settings:transfer.export")}
+            </button>
+            <button className="button button--secondary" type="button" onClick={() => importInputRef.current?.click()}>
+              <Upload size={14} />{t("settings:transfer.import")}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={importSettingsFile}
+            />
+            <small><ShieldCheck size={13} />{t("settings:transfer.boundary")}</small>
+            {settingsTransferError ? (
+              <p role="alert"><AlertTriangle size={13} />{settingsTransferError}</p>
+            ) : null}
+            {settingsImportPreview ? (
+              <div className="settings-transfer__preview" role="dialog" aria-label={t("settings:transfer.previewTitle")}>
+                <strong>{t("settings:transfer.previewTitle")}</strong>
+                <span>{t("settings:transfer.preview", {
+                  count: settingsImportPreview.changedKeys.length,
+                  rules: settingsImportPreview.ruleCount,
+                })}</span>
+                <code>{settingsImportPreview.changedKeys.join(" · ") || t("settings:transfer.noChanges")}</code>
+                <div>
+                  <button className="button button--plain" type="button" onClick={() => setSettingsImportPreview(null)}>
+                    {t("common:cancel")}
+                  </button>
+                  <button className="button button--primary" type="button" onClick={() => {
+                    onChange(settingsUpdateFromTransfer(settingsImportPreview.document));
+                    setSettingsImportPreview(null);
+                  }}>
+                    <Check size={14} />{t("settings:transfer.apply")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </SettingsCard>
 
@@ -596,9 +687,7 @@ export function SettingsExplorer({
       <AboutSupport
         settings={settings}
         snapshot={snapshot}
-        backgroundUpdateVersion={availableUpdateVersion}
-        backgroundUpdateCheckedAt={lastUpdateCheckAt}
-        backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
+        updater={updater}
         onOpenOnboarding={onOpenOnboarding}
         onClearAllData={onClearAllData}
       />
@@ -628,6 +717,9 @@ function ApplicationWatchRulesEditor({
   const applicationByName = new Map(
     applications.map((application) => [application.name.toLocaleLowerCase(), application]),
   );
+  const applicationById = new Map(
+    applications.map((application) => [application.applicationId, application]),
+  );
   const [applicationName, setApplicationName] = useState("");
   const [metric, setMetric] = useState<ApplicationWatchMetric>("cpu");
   const [threshold, setThreshold] = useState(80);
@@ -639,8 +731,10 @@ function ApplicationWatchRulesEditor({
     selectedApplication?.name ?? applicationName.trim();
   const duplicateRule = Boolean(effectiveApplicationName) && rules.some(
     (rule) =>
-      rule.applicationName.toLocaleLowerCase() ===
-        effectiveApplicationName.toLocaleLowerCase() &&
+      (selectedApplication?.applicationId
+        ? rule.applicationId === selectedApplication.applicationId
+        : rule.applicationName.toLocaleLowerCase() ===
+          effectiveApplicationName.toLocaleLowerCase()) &&
       rule.metric === metric &&
       rule.threshold === threshold &&
       rule.durationSeconds === durationSeconds,
@@ -667,6 +761,7 @@ function ApplicationWatchRulesEditor({
     onChange([...rules, {
       id: globalThis.crypto?.randomUUID?.() ?? `watch-${Date.now()}-${Math.random()}`,
       applicationName: effectiveApplicationName,
+      applicationId: selectedApplication?.applicationId ?? null,
       metric,
       threshold,
       durationSeconds,
@@ -800,15 +895,21 @@ function ApplicationWatchRulesEditor({
           <label className="settings-switch watch-rules__switch"><input type="checkbox" role="switch" aria-label={rule.applicationName} checked={rule.enabled} onChange={(event) => onChange(rules.map((candidate) => candidate.id === rule.id ? { ...candidate, enabled: event.target.checked } : candidate))} /></label>
           <ApplicationAvatar
             name={rule.applicationName}
-            source={applicationByName.has(rule.applicationName.toLocaleLowerCase())
-              ? { process: applicationByName.get(rule.applicationName.toLocaleLowerCase())!.iconProcess }
+            source={(rule.applicationId
+              ? applicationById.get(rule.applicationId)
+              : undefined) ?? applicationByName.get(rule.applicationName.toLocaleLowerCase())
+              ? { process: ((rule.applicationId
+                ? applicationById.get(rule.applicationId)
+                : undefined) ?? applicationByName.get(rule.applicationName.toLocaleLowerCase()))!.iconProcess }
               : null}
             className="watch-rule-avatar"
           />
           <div><strong>{rule.applicationName}</strong><small>{t("settings:watchRules.summary", { metric: t(`settings:watchRules.metrics.${rule.metric}`), threshold: rule.threshold, unit: rule.metric === "cpu" ? "%" : rule.metric === "memory" ? "MiB" : "MiB/s", seconds: rule.durationSeconds })}</small></div>
           {activeRuleIds.includes(rule.id) ? (
             <em>{t("settings:watchRules.active")}</em>
-          ) : !applicationByName.has(rule.applicationName.toLocaleLowerCase()) ? (
+          ) : !((rule.applicationId
+            ? applicationById.has(rule.applicationId)
+            : false) || applicationByName.has(rule.applicationName.toLocaleLowerCase())) ? (
             <em>{t("common:unavailable")}</em>
           ) : null}
           <button type="button" aria-label={t("settings:watchRules.remove", { name: rule.applicationName })} onClick={() => onChange(rules.filter((candidate) => candidate.id !== rule.id))}><Trash2 size={14} /></button>

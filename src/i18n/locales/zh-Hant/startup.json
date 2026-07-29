@@ -52,7 +52,10 @@
     "eyebrow": "測量登入啟動",
     "title": "真實的登入影響",
     "description": "僅當作業系統以靜默方式啟動 CoreRobin 作為登入項目時才進行取樣，直到系統穩定下來。",
-    "settleTime": "穩定時間", "peakCpu": "峰值CPU", "peakDisk": "尖峰磁碟", "samples": "樣品",
+    "settleTime": "穩定時間",
+    "peakCpu": "峰值CPU",
+    "peakDisk": "尖峰磁碟",
+    "samples": "樣品",
     "boundary": "這衡量登入後的影響，而不是韌體啟動時間。三分鐘後測量停止，並保留最近的五次測量。",
     "empty": "還沒有真正的登入測量。啟用登入時啟動以自動測量下次登入。",
     "none": {
@@ -109,7 +112,8 @@
     "launch_daemon": "LaunchDaemon",
     "desktop_entry": "自動啟動條目",
     "registry_run": "登錄檔 Run",
-    "startup_folder": "啟動資料夾"
+    "startup_folder": "啟動資料夾",
+    "background_task": "背景工作項目"
   },
   "advice": {
     "review": {
@@ -128,8 +132,7 @@
       "title": "當前未啟用",
       "description": "配置仍然存在，但系統不會按該條目自動啟動。"
     }
-  }
-,
+  },
   "impactComparison": {
     "title": "與近期啟動比較",
     "description": "採用之前 {{count}} 次測量的中位數。",
@@ -149,6 +152,19 @@
       "improved": "變更 {{count}} 個啟動項目後，下一次啟動較快穩定；無法歸因於單一應用程式。",
       "similar": "變更 {{count}} 個啟動項目後，下一次啟動仍接近平常。",
       "slower": "變更 {{count}} 個啟動項目後，下一次啟動仍較慢；不能把原因歸於單一變更。"
+    }
+  },
+  "ownership": {
+    "itemCount_other": "{{count}} 個項目",
+    "modern": "現代背景項目",
+    "orphaned": "可執行檔遺失",
+    "lastRun": "最近回報狀態：{{status}}",
+    "itemCount": "{{count}} 個項目",
+    "signature": {
+      "valid": "有效簽章",
+      "invalid": "無效簽章",
+      "unknown": "簽章未知",
+      "system_reported": "由 macOS 回報"
     }
   }
 }

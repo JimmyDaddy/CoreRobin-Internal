@@ -108,6 +108,7 @@
     "emptyTitle": "No actions yet",
     "emptyDescription": "Results will appear here after you close an app, clean files, or manage a startup item.",
     "open": "View",
+    "retry": "Retry",
     "clear": "Clear action history",
     "kind": {
       "process_close": "Quit application normally",
@@ -115,7 +116,10 @@
       "process_force_quit": "Force quit application",
       "cleanup_delete": "Clean up files",
       "startup_disable": "Disable startup item",
-      "startup_enable": "Restore startup item"
+      "startup_enable": "Restore startup item",
+      "application_uninstall": "Uninstall application",
+      "volume_eject": "Eject removable volume",
+      "application_update": "Install application update"
     },
     "status": {
       "running": "In progress",
@@ -146,6 +150,43 @@
     "triggered": "{{metric}} reached {{value}}{{unit}}",
     "recovered": "{{metric}} recovered to {{value}}{{unit}}"
   },
+  "replay": {
+    "eyebrow": "Evidence timeline",
+    "title": "System event replay",
+    "description": "Choose a period to correlate resource changes, network events, app attribution, and the result of actions you confirmed.",
+    "range": "Replay range",
+    "hours1": "1 hour",
+    "hours24": "24 hours",
+    "hours168": "7 days",
+    "from": "From",
+    "to": "To",
+    "evidenceTitle": "Evidence from this period",
+    "applicationEvidence": "{{from}}–{{to}}: {{applications}} were the leading recorded resource sources. Whole-system peaks reached {{cpu}} CPU and {{memory}} memory.",
+    "noApplicationEvidence": "No app attribution was saved for this period. Whole-system peaks reached {{cpu}} CPU and {{memory}} memory.",
+    "leadingApplication": "{{application}} averaged {{cpu}} CPU and {{memory}} memory in the selected aggregates.",
+    "empty": "No alert, network, watch, or action event occurred in this period.",
+    "alert": {
+      "triggered": "Resource pressure began",
+      "recovered": "Resource pressure recovered"
+    },
+    "watch": {
+      "triggered": "Application watch rule triggered",
+      "recovered": "Application watch rule recovered"
+    },
+    "network": {
+      "sleep_gap": "Sampling paused during sleep",
+      "interface_change": "Network interface changed",
+      "status_change": "Network status changed",
+      "dns_failure": "DNS quality degraded",
+      "direct_failure": "Direct connection degraded"
+    },
+    "actionImpact": {
+      "improved": "System pressure decreased in the following 15 minutes",
+      "increased": "System pressure increased in the following 15 minutes",
+      "stable": "System pressure stayed near its previous level",
+      "insufficient": "Not enough following samples to compare the result"
+    }
+  },
   "privacyEyebrow": "Data boundaries",
   "privacyTitle": "Privacy policy",
   "privacyLocal": "History stays in CoreRobin's private storage on this device and is never uploaded or synchronized.",
@@ -174,6 +215,25 @@
     "storagePending": "waiting for the first write",
     "storageFailed": "History is still visible, but new samples could not be saved. CoreRobin will retry automatically.",
     "boundary": "Does not save commands or file paths; app names follow the separate privacy setting."
+  },
+  "batterySessions": {
+    "eyebrow": "Battery use timeline",
+    "title": "Battery usage sessions",
+    "description": "Each session starts when power switches to battery and explains drain, active resource leaders, and sleep blockers from locally saved aggregates.",
+    "count": "{{count}} sessions",
+    "ongoing": "In progress",
+    "duration": "{{minutes}} min",
+    "charge": "Charge",
+    "drainRate": "Average drain",
+    "evidence": "Likely resource leaders",
+    "noApplicationEvidence": "Application names were not saved",
+    "blockers": "Sleep blockers: {{names}}",
+    "empty": "No complete battery session has been collected yet."
+  },
+  "storage": {
+    "saved": "Native history saved {{time}} · {{size}}",
+    "waiting": "Native history storage is starting",
+    "failed": "History saving is paused; open this item for the reason"
   },
   "baseline": {
     "eyebrow": "This computer's baseline",

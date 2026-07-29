@@ -44,7 +44,7 @@
     "professional": "전문 모드",
     "short": {
       "simple": "일상",
-      "professional": "전문 모드"
+      "professional": "전문"
     },
     "switchTo": {
       "simple": "일상 모드로 전환",
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} 실행 중인 애플리케이션 및 시스템 구성 요소 수",
     "savedHistory": "{{count}} 저장된 사용 기록",
     "processCount": "{{count}} 실행 중인 프로세스 수",
-    "cleanupEntries": "{{count}} 검사된 항목"
+    "cleanupEntries": "{{count}} 검사된 항목",
+    "samplerSaved": "네이티브 샘플러 {{time}} · 연속 실패 {{failures}}회",
+    "samplerWaiting": "네이티브 샘플러 시작 중"
   }
 }

@@ -53,11 +53,7 @@ import {
 import { BrandWordmark } from "./components/BrandWordmark";
 import { MetricCard } from "./components/MetricCard";
 import { LocaleSelect } from "./components/LocaleSelect";
-import { ProcessInspector } from "./components/ProcessInspector";
-import { ProcessTable } from "./components/ProcessTable";
-import { PersonalBaselinePanel } from "./components/PersonalBaselinePanel";
 import { RobinIcon } from "./components/RobinIcon";
-import { ResourceHistory } from "./components/ResourceHistory";
 import { aggregateApplications, analyzeSystemHealth } from "./diagnosis";
 import { applicationWatchSamplingIntervalMs } from "./applicationWatchRules";
 import {
@@ -90,6 +86,8 @@ import { useFileInsightsScan } from "./hooks/useFileInsightsScan";
 import { useUserActionHistory } from "./hooks/useUserActionHistory";
 import { useProductDataPrivacy } from "./hooks/useProductDataPrivacy";
 import { useNetworkQualityMonitor } from "./hooks/useNetworkQualityMonitor";
+import { useAppUpdater } from "./hooks/useAppUpdater";
+import { useTrashApplicationWatcher } from "./hooks/useTrashApplicationWatcher";
 import { normalizeLanguage } from "./i18n";
 import brandMark from "./assets/brand-mark.png";
 import {
@@ -115,15 +113,10 @@ import {
 } from "./settings";
 import {
   beginProductDataReset,
-  checkForProductUpdate,
   clearCoreRobinWebData,
   completeOnboarding,
   hasCompletedOnboarding,
 } from "./productSupport";
-import {
-  loadAvailableUpdateVersion,
-  saveAvailableUpdateVersion,
-} from "./updateAvailability";
 import type {
   CommandError,
   ProcessAction,
@@ -164,7 +157,12 @@ const DeviceWellbeing = lazy(() => import("./components/DeviceWellbeing"));
 const HistoryExplorer = lazy(async () => ({ default: (await import("./components/HistoryExplorer")).HistoryExplorer }));
 const FirstRunGuide = lazy(async () => ({ default: (await import("./components/FirstRunGuide")).FirstRunGuide }));
 const GpuEnergyPanel = lazy(async () => ({ default: (await import("./components/GpuEnergyPanel")).GpuEnergyPanel }));
+const GlobalUpdateTask = lazy(async () => ({ default: (await import("./components/GlobalUpdateTask")).GlobalUpdateTask }));
 const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
+const PersonalBaselinePanel = lazy(async () => ({ default: (await import("./components/PersonalBaselinePanel")).PersonalBaselinePanel }));
+const ProcessInspector = lazy(async () => ({ default: (await import("./components/ProcessInspector")).ProcessInspector }));
+const ProcessTable = lazy(async () => ({ default: (await import("./components/ProcessTable")).ProcessTable }));
+const ResourceHistory = lazy(async () => ({ default: (await import("./components/ResourceHistory")).ResourceHistory }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
@@ -190,10 +188,6 @@ type SettingsOperationFailure =
       desired: { alwaysOnTop: boolean; show: boolean };
     };
 
-const UPDATE_CHECKED_AT_STORAGE_KEY =
-  "core-robin.update-check.checked-at.v1";
-const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;
-
 function App() {
   const { t, i18n } = useAppTranslation();
   const [settings, setSettings] = useState<AppSettings>(() =>
@@ -216,69 +210,11 @@ function App() {
     useState<SettingsOperationFailure | null>(null);
   const [settingsOperationRetryRevision, setSettingsOperationRetryRevision] =
     useState(0);
-  const [availableUpdateVersion, setAvailableUpdateVersion] =
-    useState<string | null>(loadAvailableUpdateVersion);
-  const [lastUpdateCheckAt, setLastUpdateCheckAt] = useState<number | null>(() => {
-    try {
-      const saved = Number(
-        window.localStorage.getItem(UPDATE_CHECKED_AT_STORAGE_KEY) ?? 0,
-      );
-      return Number.isFinite(saved) && saved > 0 ? saved : null;
-    } catch {
-      return null;
-    }
-  });
-  const [backgroundUpdateCheckFailed, setBackgroundUpdateCheckFailed] =
-    useState(false);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
   const mainVisible = useMainVisibility();
 
-  useEffect(() => {
-    let disposed = false;
-    let lastCheckedAt = 0;
-    try {
-      lastCheckedAt = Number(
-        window.localStorage.getItem(UPDATE_CHECKED_AT_STORAGE_KEY) ?? 0,
-      );
-    } catch {
-      // A storage failure should not prevent a lightweight update check.
-    }
-    if (Date.now() - lastCheckedAt < UPDATE_CHECK_INTERVAL_MS) return;
-    const timeout = window.setTimeout(() => {
-      void checkForProductUpdate()
-        .then((result) => {
-          if (disposed) return;
-          const checkedAt = Date.now();
-          setLastUpdateCheckAt(checkedAt);
-          setBackgroundUpdateCheckFailed(false);
-          setAvailableUpdateVersion(
-            result.status === "available" ? result.latestVersion : null,
-          );
-          try {
-            window.localStorage.setItem(
-              UPDATE_CHECKED_AT_STORAGE_KEY,
-              String(checkedAt),
-            );
-            saveAvailableUpdateVersion(
-              result.status === "available" ? result.latestVersion : null,
-            );
-          } catch {
-            // The check result remains usable for this session.
-          }
-        })
-        .catch(() => {
-          if (disposed) return;
-          setLastUpdateCheckAt(Date.now());
-          setBackgroundUpdateCheckFailed(true);
-        });
-    }, 5_000);
-    return () => {
-      disposed = true;
-      window.clearTimeout(timeout);
-    };
-  }, []);
   const hiddenApplicationSamplingIntervalMs =
     applicationWatchSamplingIntervalMs(settings.applicationWatchRules);
   const hiddenFullSnapshotIntervalMs =
@@ -294,14 +230,16 @@ function App() {
     paused,
     setPaused,
     loading,
+    samplerStatus,
     refreshNow,
   } = useSystemMonitor(
     settings.systemSampleIntervalMs,
     mainVisible,
     hiddenFullSnapshotIntervalMs,
+    settings.historyApplicationNamesEnabled,
   );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
-  const startupImpactMeasurements = useStartupImpactMeasurement();
+  const startupImpactMeasurements = useStartupImpactMeasurement(snapshot);
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
   const [selectedDailyIncident, setSelectedDailyIncident] =
     useState<DailyIncident | null>(null);
@@ -350,6 +288,23 @@ function App() {
     settings.historyPersistenceEnabled,
     settings.historyRetentionDays,
     settings.historyApplicationNamesEnabled,
+  );
+  const updater = useAppUpdater({
+    onOperationStart: (version) => userActions.start({
+      kind: "application_update",
+      targetName: `CoreRobin v${version}`,
+      targetCount: 1,
+    }),
+    onOperationComplete: (id, status) => userActions.complete(id, {
+      status,
+      verification: status === "succeeded" ? "verified" : "not_confirmed",
+      targetCount: status === "succeeded" ? 1 : 0,
+      failedCount: status === "failed" ? 1 : 0,
+    }),
+  });
+  const trashApplicationWatcher = useTrashApplicationWatcher(
+    settings.trashApplicationWatcherEnabled,
+    normalizeLanguage(settings.language),
   );
   const desktopNotifications = useDesktopNotifications(
     resourceAlerts.events,
@@ -1270,6 +1225,18 @@ function App() {
       navigateDaily("cleanup");
       return;
     }
+    if (kind === "application_uninstall") {
+      navigateDaily("applications");
+      return;
+    }
+    if (kind === "volume_eject") {
+      navigateDaily("storage");
+      return;
+    }
+    if (kind === "application_update") {
+      navigateDaily("settings");
+      return;
+    }
     if (kind === "startup_disable" || kind === "startup_enable") {
       if (dailyMode) openDailyIntent("startup");
       else setActiveView("startup");
@@ -1335,6 +1302,12 @@ function App() {
   };
   return (
     <div className={`app-shell${dailyMode ? " app-shell--daily" : " app-shell--professional"}${modeTransition ? ` is-mode-transitioning mode-transition--to-${modeTransition}` : ""}`}>
+      {updater.action === "installing" || updater.action === "ready"
+      || updater.action === "restartError" || updater.updatedFromVersion ? (
+        <Suspense fallback={null}>
+          <GlobalUpdateTask updater={updater} />
+        </Suspense>
+      ) : null}
       <nav className="sidebar" aria-label={t("app:mainNavigation")}>
         <div className="brand">
           <span className="brand-mark"><img src={brandMark} alt="" /></span>
@@ -1346,7 +1319,17 @@ function App() {
             <div className="nav-group daily-nav">
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
               <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
-              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}><ListTree size={18} />{t("app:applications")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}>
+                <ListTree size={18} />{t("app:applications")}
+                {trashApplicationWatcher.applications.length > 0 ? (
+                  <small
+                    className="nav-alert-badge"
+                    aria-label={`${trashApplicationWatcher.applications.length} ${t("applications:trashWatcher.title")}`}
+                  >
+                    {trashApplicationWatcher.applications.length}
+                  </small>
+                ) : null}
+              </button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
             </div>
@@ -1356,7 +1339,17 @@ function App() {
             <div className="nav-group">
               <span className="nav-label">{t("app:monitor")}</span>
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => setActiveView("overview")}><CircleGauge size={17} />{t("app:overview")}</button>
-              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => setActiveView("applications")}><ListTree size={17} />{t("app:applications")}</button>
+              <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => setActiveView("applications")}>
+                <ListTree size={17} />{t("app:applications")}
+                {trashApplicationWatcher.applications.length > 0 ? (
+                  <small
+                    className="nav-alert-badge"
+                    aria-label={`${trashApplicationWatcher.applications.length} ${t("applications:trashWatcher.title")}`}
+                  >
+                    {trashApplicationWatcher.applications.length}
+                  </small>
+                ) : null}
+              </button>
               <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><Cpu size={17} />{t("app:processes")}</button>
               <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
               <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
@@ -1368,7 +1361,7 @@ function App() {
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
               <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}>
                 <Settings2 size={17} />{t("app:settings")}
-                {availableUpdateVersion ? <small className="nav-update-badge">v{availableUpdateVersion}</small> : null}
+                {updater.availableVersion ? <small className="nav-update-badge">v{updater.availableVersion}</small> : null}
               </button>
             </div>
             <div className="sidebar-footer">
@@ -1458,18 +1451,18 @@ function App() {
                   onChange={(language) => updateSettings({ language })}
                 />
                 <button
-                  className={`icon-button update-aware-button${activeView === "settings" ? " is-active" : ""}${availableUpdateVersion ? " has-update" : ""}`}
+                  className={`icon-button update-aware-button${activeView === "settings" ? " is-active" : ""}${updater.availableVersion ? " has-update" : ""}`}
                   type="button"
-                  title={availableUpdateVersion
-                    ? t("settings:about.updateAvailable", { version: availableUpdateVersion })
+                  title={updater.availableVersion
+                    ? t("settings:about.updateAvailable", { version: updater.availableVersion })
                     : t("daily:nav.settings")}
-                  aria-label={availableUpdateVersion
-                    ? t("settings:about.updateAvailable", { version: availableUpdateVersion })
+                  aria-label={updater.availableVersion
+                    ? t("settings:about.updateAvailable", { version: updater.availableVersion })
                     : t("daily:nav.settings")}
                   onClick={() => navigateDaily("settings")}
                 >
                   <Settings2 size={16} />
-                  {availableUpdateVersion ? <i aria-hidden="true" /> : null}
+                  {updater.availableVersion ? <i aria-hidden="true" /> : null}
                 </button>
               </div>
             </>
@@ -1637,6 +1630,11 @@ function App() {
                 />
               ) : activeView === "applications" ? (
                 <ApplicationUninstallAssistant
+                  trashWatcherEnabled={settings.trashApplicationWatcherEnabled}
+                  onTrashWatcherEnabledChange={(trashApplicationWatcherEnabled) =>
+                    updateSettings({ trashApplicationWatcherEnabled })}
+                  trashedApplications={trashApplicationWatcher.applications}
+                  trashWatcherError={trashApplicationWatcher.error}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
                 />
@@ -1648,6 +1646,7 @@ function App() {
                   cancelling={cleanupScan.cancelling}
                   progress={cleanupScan.progress}
                   snapshotStatus={cleanupScan.snapshotStatus}
+                  growthComparison={cleanupScan.growthComparison}
                   volumes={snapshot.disk.volumes}
                   onScan={(target) => void cleanupScan.scan(target)}
                   onCancel={() => void cleanupScan.cancel()}
@@ -1678,9 +1677,7 @@ function App() {
                   settings={settings}
                   notificationStatus={desktopNotifications.status}
                   snapshot={snapshot}
-                  availableUpdateVersion={availableUpdateVersion}
-                  lastUpdateCheckAt={lastUpdateCheckAt}
-                  backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
+                  updater={updater}
                   onChange={updateSettings}
                   onOpenNotificationSettings={openNotificationSettings}
                   onOpenOnboarding={() => setOnboardingOpen(true)}
@@ -1841,9 +1838,16 @@ function App() {
                 onVolumeEjected={async () => {
                   await refreshNow();
                 }}
+                onUserActionStart={userActions.start}
+                onUserActionComplete={userActions.complete}
               />
             ) : activeView === "applications" ? (
               <ApplicationUninstallAssistant
+                trashWatcherEnabled={settings.trashApplicationWatcherEnabled}
+                onTrashWatcherEnabledChange={(trashApplicationWatcherEnabled) =>
+                  updateSettings({ trashApplicationWatcherEnabled })}
+                trashedApplications={trashApplicationWatcher.applications}
+                trashWatcherError={trashApplicationWatcher.error}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
               />
@@ -1855,6 +1859,7 @@ function App() {
                 cancelling={cleanupScan.cancelling}
                 progress={cleanupScan.progress}
                 snapshotStatus={cleanupScan.snapshotStatus}
+                growthComparison={cleanupScan.growthComparison}
                 volumes={snapshot.disk.volumes}
                 onScan={(target) => void cleanupScan.scan(target)}
                 onCancel={() => void cleanupScan.cancel()}
@@ -1922,11 +1927,13 @@ function App() {
                 applicationImpactStorageStatus={
                   applicationImpactHistory.storageStatus
                 }
+                historyStorageStatus={persistentHistory.storageStatus}
                 alertEvents={resourceAlerts.events}
                 storedAlertEventCount={resourceAlerts.storedEvents.length}
                 applicationWatchEvents={applicationWatchRules.events}
                 storedApplicationWatchEventCount={applicationWatchRules.storedEvents.length}
                 actionRecords={userActions.records}
+                networkQualityPoints={networkQuality.history}
                 storedUserActionCount={userActions.storedRecords.length}
                 activeAlertCount={resourceAlerts.activeAlerts.length}
                 persistenceEnabled={settings.historyPersistenceEnabled}
@@ -1966,9 +1973,7 @@ function App() {
                 dataPrivacy={productDataPrivacy}
                 activeApplicationWatchRuleIds={applicationWatchRules.activeRuleIds}
                 snapshot={snapshot}
-                availableUpdateVersion={availableUpdateVersion}
-                lastUpdateCheckAt={lastUpdateCheckAt}
-                backgroundUpdateCheckFailed={backgroundUpdateCheckFailed}
+                updater={updater}
                 onChange={updateSettings}
                 onOpenNotificationSettings={openNotificationSettings}
                 onSendTestNotification={desktopNotifications.sendTest}
@@ -1980,22 +1985,24 @@ function App() {
           </main>
 
           {settings.experienceMode === "professional" && (activeView === "overview" || activeView === "processes" || activeView === "storage") ? (
-            <ProcessInspector
-              selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
-              selectionMissing={selectionMissing}
-              detail={activeDetail}
-              detailError={detailError}
-              detailLoading={detailLoading}
-              history={selectedHistory}
-              capabilities={snapshot.capabilities}
-              preparingAction={preparingAction}
-              onAction={(action) => void beginProcessAction(action)}
-              onRestart={() => {
-                if (selectedIdentity && activeDetail) {
-                  void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
-                }
-              }}
-            />
+            <Suspense fallback={null}>
+              <ProcessInspector
+                selected={selectedProcess ?? (selectionMissing ? lastSelected : null)}
+                selectionMissing={selectionMissing}
+                detail={activeDetail}
+                detailError={detailError}
+                detailLoading={detailLoading}
+                history={selectedHistory}
+                capabilities={snapshot.capabilities}
+                preparingAction={preparingAction}
+                onAction={(action) => void beginProcessAction(action)}
+                onRestart={() => {
+                  if (selectedIdentity && activeDetail) {
+                    void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
+                  }
+                }}
+              />
+            </Suspense>
           ) : null}
         </div>
 
@@ -2018,6 +2025,27 @@ function App() {
               : t("app:status.processCount", { count: snapshot.processes.length })}
           </span>
           <span>{snapshot.host.cpuName || snapshot.host.kernelVersion}</span>
+          {samplerStatus ? (
+            <span
+              className={`statusbar__sampler${samplerStatus.consecutiveFailures > 0 ? " is-degraded" : ""}`}
+              style={samplerStatus.consecutiveFailures > 0
+                ? { color: "var(--warning)" }
+                : undefined}
+              title={samplerStatus.degradedReason ?? undefined}
+            >
+              {samplerStatus.lastSuccessAtMs
+                ? t("app:status.samplerSaved", {
+                    time: new Date(samplerStatus.lastSuccessAtMs)
+                      .toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      }),
+                    failures: samplerStatus.consecutiveFailures,
+                  })
+                : t("app:status.samplerWaiting")}
+            </span>
+          ) : null}
           <span className="statusbar__sequence">#{snapshot.sequence}</span>
         </footer> : null}
       </div>

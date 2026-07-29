@@ -52,6 +52,9 @@ export function evaluateApplicationWatchRules(
   const applicationByName = new Map(
     applications.map((application) => [application.name.toLocaleLowerCase(), application]),
   );
+  const applicationById = new Map(
+    applications.map((application) => [application.applicationId, application]),
+  );
   const ruleIds = new Set(rules.map((rule) => rule.id));
   for (const id of next.keys()) if (!ruleIds.has(id)) next.delete(id);
 
@@ -65,7 +68,11 @@ export function evaluateApplicationWatchRules(
       next.set(rule.id, { ...previous, startedAtMs: null, active: false });
       continue;
     }
-    const application = applicationByName.get(rule.applicationName.toLocaleLowerCase());
+    const application = (
+      rule.applicationId
+        ? applicationById.get(rule.applicationId)
+        : undefined
+    ) ?? applicationByName.get(rule.applicationName.toLocaleLowerCase());
     const value = application ? applicationMetricValue(application, rule.metric) : 0;
     if (!application || value < rule.threshold) {
       if (previous.active) {

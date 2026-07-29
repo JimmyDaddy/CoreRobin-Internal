@@ -724,7 +724,41 @@ function ConnectionHistoryPanel({
 }) {
   const { t, i18n } = useAppTranslation();
   const [groupBy, setGroupBy] = useState<ConnectionHistoryGroupBy>("application");
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const groups = useMemo(() => aggregateConnectionHistory(entries, groupBy).slice(0, 20), [entries, groupBy]);
+  const selectedEntries = useMemo(() => {
+    if (!selectedGroup) return [];
+    return entries.filter((entry) =>
+      groupBy === "application"
+        ? entry.applicationName === selectedGroup
+        : (entry.hostname ?? entry.remoteAddress) === selectedGroup);
+  }, [entries, groupBy, selectedGroup]);
+  const drilldown = useMemo(() => {
+    if (selectedEntries.length === 0) return null;
+    const counterparts = new Map<string, number>();
+    const endpoints = new Map<string, number>();
+    for (const entry of selectedEntries) {
+      const counterpart = groupBy === "application"
+        ? entry.hostname ?? entry.remoteAddress
+        : entry.applicationName;
+      counterparts.set(
+        counterpart,
+        (counterparts.get(counterpart) ?? 0) + entry.observationCount,
+      );
+      const endpoint = `${entry.protocol.toUpperCase()} ${entry.remotePort}`;
+      endpoints.set(endpoint, (endpoints.get(endpoint) ?? 0) + entry.observationCount);
+    }
+    return {
+      firstSeenAtMs: Math.min(...selectedEntries.map((entry) => entry.bucketStartMs)),
+      lastSeenAtMs: Math.max(...selectedEntries.map((entry) => entry.lastSeenAtMs)),
+      counterparts: [...counterparts.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 12),
+      endpoints: [...endpoints.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 12),
+    };
+  }, [groupBy, selectedEntries]);
 
   return (
     <section className="panel connection-history" aria-labelledby="connection-history-title">
@@ -750,7 +784,10 @@ function ConnectionHistoryPanel({
           <div className="connection-history__toolbar">
             <div className="network-connection-filters" role="group" aria-label={t("network:history.groupBy")}>
               {(["application", "domain"] as const).map((value) => (
-                <button type="button" key={value} className={groupBy === value ? "is-active" : ""} onClick={() => setGroupBy(value)}>
+                <button type="button" key={value} className={groupBy === value ? "is-active" : ""} onClick={() => {
+                  setGroupBy(value);
+                  setSelectedGroup(null);
+                }}>
                   {t(`network:history.${value}`)}
                 </button>
               ))}
@@ -766,14 +803,45 @@ function ConnectionHistoryPanel({
           {groups.length > 0 ? (
             <div className="connection-history__list">
               {groups.map((group) => (
-                <div key={group.key} className="connection-history__row">
+                <button
+                  type="button"
+                  key={group.key}
+                  className={`connection-history__row${selectedGroup === group.key ? " is-selected" : ""}`}
+                  onClick={() => setSelectedGroup((current) =>
+                    current === group.key ? null : group.key)}
+                >
                   <strong title={group.label}>{group.label}</strong>
                   <span>{t("network:history.observations", { count: group.observationCount })}</span>
                   <small>{new Date(group.lastSeenAtMs).toLocaleString(i18n.resolvedLanguage)}</small>
-                </div>
+                  <ChevronDown size={14} />
+                </button>
               ))}
             </div>
           ) : <p className="network-quality__empty">{t("network:history.empty")}</p>}
+          {selectedGroup && drilldown ? (
+            <section className="connection-history__drilldown" aria-label={t("network:history.details")}>
+              <header>
+                <div><small>{t("network:history.details")}</small><strong>{selectedGroup}</strong></div>
+                <button type="button" aria-label={t("common:close")} onClick={() => setSelectedGroup(null)}>
+                  <XCircle size={15} />
+                </button>
+              </header>
+              <dl>
+                <div><dt>{t("network:history.firstSeen")}</dt><dd>{new Date(drilldown.firstSeenAtMs).toLocaleString(i18n.resolvedLanguage)}</dd></div>
+                <div><dt>{t("network:history.lastSeen")}</dt><dd>{new Date(drilldown.lastSeenAtMs).toLocaleString(i18n.resolvedLanguage)}</dd></div>
+              </dl>
+              <div className="connection-history__relations">
+                <section>
+                  <strong>{t(groupBy === "application" ? "network:history.domains" : "network:history.applications")}</strong>
+                  {drilldown.counterparts.map(([label, count]) => <span key={label}><b title={label}>{label}</b><small>{count}</small></span>)}
+                </section>
+                <section>
+                  <strong>{t("network:history.portsAndProtocols")}</strong>
+                  {drilldown.endpoints.map(([label, count]) => <span key={label}><b>{label}</b><small>{count}</small></span>)}
+                </section>
+              </div>
+            </section>
+          ) : null}
           <small className="network-quality__method">{t("network:history.privacy")}</small>
         </>
       )}

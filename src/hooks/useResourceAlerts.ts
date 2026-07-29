@@ -4,8 +4,11 @@ import {
   clearResourceAlertStorage,
   loadResourceAlertEvents,
   mergeResourceAlertEvents,
+  parseResourceAlertEvents,
   saveResourceAlertEvents,
+  serializeResourceAlertEvents,
 } from "../alertStore";
+import { isDesktopRuntime } from "../api";
 import { alertCulpritName } from "../alertAttribution";
 import { aggregateApplications } from "../diagnosis";
 import type { HistoryRetentionDays } from "../historyStore";
@@ -21,6 +24,7 @@ import {
 import type { UsageThresholds } from "../settings";
 import { volumeUsage } from "../storageExplorer";
 import type { SystemHealthSnapshot } from "../types";
+import { useNativeHistoryStorage } from "./useNativeHistoryStorage";
 
 export function useResourceAlerts(
   snapshot: SystemHealthSnapshot | null,
@@ -37,9 +41,17 @@ export function useResourceAlerts(
   });
   const [activeAlerts, setActiveAlerts] = useState<ActiveResourceAlert[]>([]);
   const [sessionEvents, setSessionEvents] = useState<ResourceAlertEvent[]>([]);
-  const [storedEvents, setStoredEvents] = useState<ResourceAlertEvent[]>(
-    loadResourceAlertEvents,
-  );
+  const desktop = isDesktopRuntime();
+  const storage = useNativeHistoryStorage<ResourceAlertEvent[]>({
+    category: "resource-alerts",
+    enabled: persistenceEnabled,
+    initialValue: loadResourceAlertEvents,
+    parse: parseResourceAlertEvents,
+    serialize: serializeResourceAlertEvents,
+    clearLegacy: clearResourceAlertStorage,
+  });
+  const storedEvents = storage.value;
+  const setStoredEvents = storage.setValue;
 
   useEffect(() => {
     if (!snapshot) return;
@@ -107,7 +119,7 @@ export function useResourceAlerts(
           snapshot.sampledAtMs,
           retentionDays,
         );
-        saveResourceAlertEvents(next);
+        if (!desktop) saveResourceAlertEvents(next);
         return next;
       });
     }
@@ -117,7 +129,7 @@ export function useResourceAlerts(
     if (applicationNamesEnabled) return;
     setStoredEvents((current) => {
       const next = current.map((event) => ({ ...event, culpritName: null }));
-      saveResourceAlertEvents(next);
+      if (!desktop) saveResourceAlertEvents(next);
       return next;
     });
   }, [applicationNamesEnabled]);
@@ -125,7 +137,7 @@ export function useResourceAlerts(
   useEffect(() => {
     setStoredEvents((current) => {
       const next = mergeResourceAlertEvents(current, [], Date.now(), retentionDays);
-      saveResourceAlertEvents(next);
+      if (!desktop) saveResourceAlertEvents(next);
       return next;
     });
   }, [retentionDays]);
@@ -142,9 +154,14 @@ export function useResourceAlerts(
   );
 
   const clearSaved = useCallback(() => {
-    clearResourceAlertStorage();
-    setStoredEvents([]);
-  }, []);
+    void storage.clear().catch(() => undefined);
+  }, [storage]);
 
-  return { activeAlerts, events, storedEvents, clearSaved };
+  return {
+    activeAlerts,
+    events,
+    storedEvents,
+    clearSaved,
+    storageStatus: storage.storageStatus,
+  };
 }

@@ -43,7 +43,7 @@
     "simple": "Everyday mode",
     "professional": "Professional mode",
     "short": {
-      "simple": "Everyday",
+      "simple": "Daily",
       "professional": "Pro"
     },
     "switchTo": {
@@ -75,6 +75,8 @@
     "applicationCount": "{{count}} apps or system components",
     "savedHistory": "{{count}} saved history points",
     "processCount": "{{count}} processes",
-    "cleanupEntries": "{{count}} items checked"
+    "cleanupEntries": "{{count}} items checked",
+    "samplerSaved": "Native sampler {{time}} · {{failures}} consecutive failures",
+    "samplerWaiting": "Native sampler is starting"
   }
 }
