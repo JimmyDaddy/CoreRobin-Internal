@@ -111,8 +111,7 @@
     "protectedSelectionHint": "System paths and the home root are view-only; only specific items inside your home folder can enter the basket",
     "trashRootProtected": "The Trash folder itself is protected; enter it and select the specific contents you want to remove",
     "planSummary": "{{count}} items selected · {{size}}",
-    "reviewCleanup": "Review cleanup options",
-    "refreshCleanup": "Refresh selection before review",
+    "chooseDeleteMethod": "Choose deletion method",
     "deletionUnavailable": "Cleanup unavailable",
     "basket": {
       "title": "Cleanup basket",
@@ -142,7 +141,9 @@
       "cached": "Showing the previous scan result",
       "expired": "This scan is old; a rescan is recommended",
       "changed": "This folder changed; sizes may be inaccurate",
-      "changedShort": "Content changed"
+      "changedShort": "Content changed",
+      "refreshFolder": "Refresh {{name}}",
+      "refreshingFolder": "Refreshing {{name}}…"
     }
   },
   "deleteDialog": {
@@ -159,9 +160,9 @@
     "irreversible": "Cannot be undone",
     "recoverable": "Recoverable from Trash",
     "changed": "Changed since scan",
-    "changedWarning": "{{count}} items differ from the previous view. Sizes and item counts were updated; refresh again before confirming.",
+    "changedWarning": "{{count}} items changed after they were added. Sizes and item counts are updated; recheck before continuing.",
     "preparing": "Preparing cleanup…",
-    "refreshSelection": "Refresh selection again",
+    "recheckSelection": "Recheck and continue",
     "deleteConfirmTitle": "I understand these items will be permanently deleted",
     "deleteConfirmDescription": "Files will not enter Trash. Downloads, settings, and personal data may not be reproducible.",
     "trashConfirmTitle": "I confirm these items can move to Trash",
@@ -184,7 +185,7 @@
     "cancelling": "Stopping…",
     "cancelHint": "Completed items are not restored automatically. CoreRobin will stop after the current file operation.",
     "errors": {
-      "protected_cleanup_path": "CoreRobin will not delete system locations, important settings, temporary folder roots, your home directory, or the Trash folder itself.",
+      "protected_cleanup_path": "CoreRobin will not delete operating-system locations, credential stores, protected data-library roots, temporary folder roots, your home directory, or the Trash folder itself.",
       "cleanup_target_outside_home": "For safety, CoreRobin only handles content inside your personal folder or approved temporary locations.",
       "cleanup_cross_filesystem": "The selected directory enters another disk or mount point, so CoreRobin refused recursive deletion.",
       "cleanup_target_changed": "A file changed after confirmation, so CoreRobin deleted nothing. Cancel and review it again.",
@@ -215,7 +216,7 @@
     },
     "hidden_data": {
       "title": "Hidden user folders",
-      "description": "Dot-prefixed app data and configuration. Measured only; direct cleanup is not recommended."
+      "description": "Dot-prefixed app data and configuration. Review specific items before adding them to the cleanup basket."
     }
   },
   "safety": {

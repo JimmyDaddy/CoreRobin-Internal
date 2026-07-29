@@ -106,6 +106,86 @@ describe("cleanup subtree cancellation", () => {
     expect(onSubtreeRetained).toHaveBeenCalledWith(refreshed);
   });
 
+  it("refreshes only the focused folder after its contents change", async () => {
+    const initialSnapshot = snapshot();
+    const first = initialSnapshot.root.children[0];
+    first.children = [file("old", "/fixture/first/old.bin")];
+    cleanupApi.getCleanupPathState.mockImplementation(async (path: string) => ({
+      path,
+      exists: true,
+      modifiedAtMs: path === first.path ? 2_000 : 1_000,
+    }));
+    const refreshed = {
+      ...first,
+      sizeBytes: 7,
+      logicalSizeBytes: 7,
+      allocatedSizeBytes: 7,
+      children: [{
+        ...file("refreshed", "/fixture/first/refreshed.bin"),
+        name: "Refreshed file",
+      }],
+    };
+    cleanupApi.getCleanupSubtree.mockResolvedValue(refreshed);
+
+    function PersistentMap() {
+      const [currentSnapshot, setCurrentSnapshot] = useState(initialSnapshot);
+      return (
+        <CleanupSpaceMap
+          snapshot={currentSnapshot}
+          snapshotStatus="current"
+          onDeletionApplied={vi.fn()}
+          onSubtreeRetained={async (subtree) => {
+            setCurrentSnapshot((current) => retainCleanupSubtree(current, subtree, 3_000));
+          }}
+        />
+      );
+    }
+
+    render(<PersistentMap />);
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    const refresh = await screen.findByRole("button", { name: "Refresh First folder" });
+    expect(cleanupApi.getCleanupSubtree).not.toHaveBeenCalled();
+    fireEvent.click(refresh);
+
+    await waitFor(() => expect(cleanupApi.getCleanupSubtree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/fixture/first",
+        scanRoot: "/fixture",
+        expandSmallerObjects: false,
+      }),
+    ));
+    expect(await screen.findByRole("button", { name: /Refreshed file/ })).toBeTruthy();
+    await waitFor(() => expect(
+      screen.queryByRole("button", { name: "Refresh First folder" }),
+    ).toBeNull());
+    expect(cleanupApi.getCleanupSubtree).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer a targeted refresh for the system disk root", async () => {
+    const currentSnapshot = snapshot();
+    currentSnapshot.targetKind = "system_disk";
+    currentSnapshot.targetPath = "/";
+    currentSnapshot.root.path = "/";
+    cleanupApi.getCleanupPathState.mockResolvedValue({
+      path: "/",
+      exists: true,
+      modifiedAtMs: 2_000,
+    });
+
+    render(
+      <CleanupSpaceMap
+        snapshot={currentSnapshot}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("This folder changed; sizes may be inaccurate")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Refresh Fixture" })).toBeNull();
+    expect(cleanupApi.getCleanupSubtree).not.toHaveBeenCalled();
+  });
+
   it("keeps the expanded folder open when the loaded subtree is persisted", async () => {
     const initialSnapshot = snapshot();
     const first = initialSnapshot.root.children[0];
@@ -192,13 +272,17 @@ describe("cleanup subtree cancellation", () => {
 
     await waitFor(() => expect(folderButton.className).toContain("is-collected"));
     expect(basket?.textContent).toContain("1 items selected");
+    expect(screen.getByRole("button", { name: "Choose deletion method" })).toBeTruthy();
     delete (document as unknown as Record<string, unknown>).elementFromPoint;
   });
 
   it("shows a locked rejection effect and refuses protected folders", async () => {
     const currentSnapshot = snapshot();
+    const protectedPreferences = folder("first", "~/Library/Preferences");
+    protectedPreferences.deletionProtected = true;
+    protectedPreferences.protectionReason = "sensitive_user_data";
     currentSnapshot.root.children = [
-      folder("first", "~/Library/Preferences"),
+      protectedPreferences,
       folder("second", "~/Downloads/second"),
     ];
     render(

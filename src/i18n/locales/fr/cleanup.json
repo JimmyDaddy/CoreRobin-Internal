@@ -151,8 +151,7 @@
     "protectedSelectionHint": "Les chemins système et le répertoire racine sont consultables uniquement ; les éléments précis de votre dossier personnel peuvent être ajoutés au bac",
     "trashRootProtected": "Le dossier Corbeille lui-même est protégé ; ouvrez-le et sélectionnez précisément le contenu à supprimer",
     "planSummary": "{{count}} éléments sélectionnés · {{size}}",
-    "reviewCleanup": "Vérifier les options de nettoyage",
-    "refreshCleanup": "Rafraîchir le choix avant l'examen",
+    "chooseDeleteMethod": "Choisir le mode de suppression",
     "deletionUnavailable": "Le nettoyage n’est pas disponible",
     "basket": {
       "title": "Panier de nettoyage",
@@ -182,7 +181,9 @@
       "cached": "Affichage du résultat de l'analyse précédente",
       "expired": "Cette analyse est ancienne ; une nouvelle analyse est recommandée",
       "changed": "Ce dossier a été modifié ; les tailles peuvent être inexactes",
-      "changedShort": "Contenu modifié"
+      "changedShort": "Contenu modifié",
+      "refreshFolder": "Actualiser {{name}}",
+      "refreshingFolder": "Actualisation de {{name}}…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "Ne peut pas être annulé",
     "recoverable": "Récupérable depuis la Corbeille",
     "changed": "Modifié depuis la dernière analyse",
-    "changedWarning": "{{count}} Les éléments sont différents de la vue précédente. Les tailles et les nombres d'éléments ont été mis à jour ; veuillez rafraîchir avant de confirmer.",
+    "changedWarning": "{{count}} éléments ont changé après leur ajout. Les tailles et le nombre sont à jour ; vérifiez de nouveau avant de continuer.",
     "preparing": "Préparation du nettoyage…",
-    "refreshSelection": "Recharger la sélection",
+    "recheckSelection": "Revérifier et continuer",
     "deleteConfirmTitle": "Je comprends que ces éléments seront définitivement supprimés",
     "deleteConfirmDescription": "Les fichiers ne seront pas déplacés vers le dossier",
     "trashConfirmTitle": "Je confirme le déplacement vers la Corbeille",
@@ -224,7 +225,7 @@
     "cancelling": "Suppression en cours…",
     "cancelHint": "Les éléments traités ne sont pas restaurés automatiquement. CoreRobin s’arrêtera après l’opération actuelle.",
     "errors": {
-      "protected_cleanup_path": "CoreRobin ne supprime pas les emplacements système, les réglages importants, les racines de dossiers temporaires, votre dossier personnel ni la Corbeille elle-même.",
+      "protected_cleanup_path": "CoreRobin ne supprime pas les emplacements du système, les identifiants, les racines de bibliothèques protégées, les racines temporaires, votre dossier personnel ni la Corbeille.",
       "cleanup_target_outside_home": "Pour des raisons de sécurité, CoreRobin ne traite que les fichiers du dossier personnel ou des emplacements temporaires approuvés.",
       "cleanup_cross_filesystem": "Le répertoire sélectionné se trouve sur un autre disque ou point de montage, ce qui empêche la suppression récursive par CoreRobin.",
       "cleanup_target_changed": "Un fichier a été modifié après la confirmation, CoreRobin n'a donc supprimé rien. Annuler et vérifier à nouveau.",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "Dossiers utilisateurs cachés",
-      "description": "Données d'applications et configurations préfixées par un point. Mesuré uniquement ; la suppression directe n'est pas recommandée."
+      "description": "Données et réglages d’apps préfixés par un point. Vérifiez chaque élément avant de l’ajouter au panier de nettoyage."
     }
   },
   "safety": {

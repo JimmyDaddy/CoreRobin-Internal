@@ -111,8 +111,7 @@
     "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
     "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
     "planSummary": "已选择 {{count}} 项，共 {{size}}",
-    "reviewCleanup": "检查清理选项",
-    "refreshCleanup": "刷新所选内容后检查",
+    "chooseDeleteMethod": "选择删除方式",
     "deletionUnavailable": "清理暂不可用",
     "basket": {
       "title": "清理篮",
@@ -142,7 +141,9 @@
       "cached": "正在显示上次扫描结果",
       "expired": "扫描结果较旧，建议重新扫描",
       "changed": "此目录内容已变化，大小可能不准确",
-      "changedShort": "内容已变化"
+      "changedShort": "内容已变化",
+      "refreshFolder": "刷新 {{name}}",
+      "refreshingFolder": "正在刷新 {{name}}…"
     }
   },
   "deleteDialog": {
@@ -159,9 +160,9 @@
     "irreversible": "无法撤销",
     "recoverable": "可从废纸篓恢复",
     "changed": "扫描后有变化",
-    "changedWarning": "其中 {{count}} 项与上次展示不同。已更新大小和文件数；请再次刷新，稳定后重新确认。",
+    "changedWarning": "其中 {{count}} 项内容发生了变化，大小和文件数已更新。请重新检查后继续。",
     "preparing": "正在准备清理…",
-    "refreshSelection": "再次刷新所选内容",
+    "recheckSelection": "重新检查并继续",
     "deleteConfirmTitle": "我明白这些内容会被永久删除",
     "deleteConfirmDescription": "文件不会进入废纸篓，下载文件、配置与个人数据可能无法重新生成。",
     "trashConfirmTitle": "我确认把这些内容移到废纸篓",
@@ -184,7 +185,7 @@
     "cancelling": "正在停止…",
     "cancelHint": "已完成的项目不会自动还原；CoreRobin 会在当前文件操作结束后停止。",
     "errors": {
-      "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、临时目录根、主目录或废纸篓目录本身。",
+      "protected_cleanup_path": "CoreRobin 不会删除操作系统位置、凭据与密钥、受保护的数据资料库根、临时目录根、主目录或废纸篓目录本身。",
       "cleanup_target_outside_home": "出于安全考虑，CoreRobin 只处理个人目录或获准临时位置内的内容。",
       "cleanup_cross_filesystem": "所选目录进入了另一个磁盘或挂载点，CoreRobin 已拒绝递归删除。",
       "cleanup_target_changed": "文件在确认后又发生了变化，因此没有删除任何内容。请取消后重新检查。",
@@ -215,7 +216,7 @@
     },
     "hidden_data": {
       "title": "用户隐藏目录",
-      "description": "点号开头的应用数据和配置，仅统计，不建议直接清理。"
+      "description": "点号开头的应用数据和配置；核对具体内容后可以加入清理篮。"
     }
   },
   "safety": {

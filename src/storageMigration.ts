@@ -16,6 +16,7 @@ export const LEGACY_STORAGE_KEYS = {
     "pulse.resource-alert-events.v1",
   ],
   cleanupScan: [
+    "core-robin.cleanup-scan.v6",
     "status-orbit.cleanup-scan.v5",
     "status-orbit.cleanup-scan.v4",
     "status-orbit.cleanup-scan.v3",

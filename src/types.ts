@@ -380,6 +380,8 @@ export interface CleanupSubtreeRequest {
   path: string;
   /** Root selected for the full scan that produced this path. */
   scanRoot?: string;
+  /** Distinguishes an explicit folder/volume boundary from a whole-system scan. */
+  scanTargetKind?: CleanupScanTargetKind;
   safety: CleanupSafety;
   expandSmallerObjects?: boolean;
 }
@@ -422,6 +424,8 @@ export interface CleanupDeleteLeaseRequest {
   scanSampledAtMs: number;
   /** Optional non-system scan root that bounds every selected target. */
   scanRoot?: string;
+  /** Allows the backend to honor an explicitly selected same-disk folder. */
+  scanTargetKind?: CleanupScanTargetKind;
   expectedTargets: CleanupDeleteTargetEvidence[];
   mode: CleanupDeleteMode;
   applicationUninstall?: ApplicationUninstallScope;

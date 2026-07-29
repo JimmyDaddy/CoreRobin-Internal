@@ -287,7 +287,7 @@ export default interface Resources {
       "cancelHint": "已完成的项目不会自动还原；CoreRobin 会在当前文件操作结束后停止。",
       "cancelling": "正在停止…",
       "changed": "扫描后有变化",
-      "changedWarning": "其中 {{count}} 项与上次展示不同。已更新大小和文件数；请再次刷新，稳定后重新确认。",
+      "changedWarning": "其中 {{count}} 项内容发生了变化，大小和文件数已更新。请重新检查后继续。",
       "confirm": "永久删除 {{count}} 项",
       "confirmTrash": "移到废纸篓（{{count}} 项）",
       "deleteConfirmDescription": "文件不会进入废纸篓，下载文件、配置与个人数据可能无法重新生成。",
@@ -304,7 +304,7 @@ export default interface Resources {
         "cleanup_trash_unavailable": "CoreRobin 当前无法安全使用系统废纸篓。所选内容尚未处理，请稍后重试。",
         "invalid_cleanup_selection": "清理篮中的选择无效，请重新选择后再试。",
         "overlapping_cleanup_targets": "同时选择了文件夹和它的子内容，请只保留其中一层。",
-        "protected_cleanup_path": "CoreRobin 不会删除系统位置、重要配置、临时目录根、主目录或废纸篓目录本身。"
+        "protected_cleanup_path": "CoreRobin 不会删除操作系统位置、凭据与密钥、受保护的数据资料库根、临时目录根、主目录或废纸篓目录本身。"
       },
       "estimatedSize": "预估大小",
       "irreversible": "无法撤销",
@@ -323,9 +323,9 @@ export default interface Resources {
       "progressMovingToTrash": "正在移到废纸篓",
       "progressPreparing": "正在准备删除",
       "progressTargets": "已完成 {{completed}} / {{total}} 项",
+      "recheckSelection": "重新检查并继续",
       "recommended": "推荐",
       "recoverable": "可从废纸篓恢复",
-      "refreshSelection": "再次刷新所选内容",
       "selection": "所选内容",
       "title": "检查清理篮中的内容",
       "trashConfirmDescription": "原路径将立即释放；清空废纸篓前仍可恢复。",
@@ -446,7 +446,7 @@ export default interface Resources {
         "title": "下载文件"
       },
       "hidden_data": {
-        "description": "点号开头的应用数据和配置，仅统计，不建议直接清理。",
+        "description": "点号开头的应用数据和配置；核对具体内容后可以加入清理篮。",
         "title": "用户隐藏目录"
       },
       "trash": {
@@ -478,6 +478,7 @@ export default interface Resources {
       "breadcrumbs": "空间图层级",
       "categoryRoot": "用途分类",
       "centerBack": "返回上一级目录",
+      "chooseDeleteMethod": "选择删除方式",
       "deleteResult": {
         "cancelled": "已停止清理，完成了 {{deletedCount}} 项",
         "cancelledNoDeletion": "已停止清理，没有内容被完整处理",
@@ -496,7 +497,9 @@ export default interface Resources {
         "cached": "正在显示上次扫描结果",
         "changed": "此目录内容已变化，大小可能不准确",
         "changedShort": "内容已变化",
-        "expired": "扫描结果较旧，建议重新扫描"
+        "expired": "扫描结果较旧，建议重新扫描",
+        "refreshFolder": "刷新 {{name}}",
+        "refreshingFolder": "正在刷新 {{name}}…"
       },
       "grouped": "汇总分类",
       "loadDeeperHint": "点击这个目录时会按需读取下一层，不会重新扫描整台电脑。",
@@ -511,10 +514,8 @@ export default interface Resources {
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
-      "refreshCleanup": "刷新所选内容后检查",
       "restrictedHint": "系统未授予读取权限，此项不会加入清理篮",
       "restrictedObjects": "无法读取的对象",
-      "reviewCleanup": "检查清理选项",
       "selected": "当前选择",
       "smallerObjects": "较小的对象",
       "smallerObjectsHint": "打开后会按需列出因空间图数量限制而合并的真实文件和文件夹，具体项目都可以加入清理篮。",
@@ -1951,13 +1952,15 @@ export default interface Resources {
       "releaseNotes": "查看更新内容",
       "reopenGuide": "重新查看首次引导",
       "reportIssue": "报告问题",
-      "restartUpdate": "重新启动",
+      "restartUpdate": "立即重启并完成更新",
+      "restartingUpdate": "正在重新启动…",
       "title": "关于与支持",
       "upToDate": "已是最新版本 v{{version}}",
       "updateAvailable": "CoreRobin v{{version}} 已发布",
       "updateError": "暂时无法检查更新，请稍后重试。",
       "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
-      "updateReady": "更新已安装，重新启动 CoreRobin 即可完成更新。",
+      "updateReady": "更新已安装并准备就绪。重新启动后将直接使用新版本。",
+      "updateRestartError": "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",
       "version": "当前版本",
       "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
       "versionTitle": "版本与更新",

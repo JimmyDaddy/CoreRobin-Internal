@@ -151,8 +151,7 @@
     "protectedSelectionHint": "系統目錄和個人目錄根節點僅供檢視；個人目錄內的具體內容可以加入清理籃",
     "trashRootProtected": "廢紙簍目錄本身不會被刪除；進入裡面選擇需要清理的具體內容",
     "planSummary": "已選擇 {{count}} 項，共 {{size}}",
-    "reviewCleanup": "檢查清理選項",
-    "refreshCleanup": "重新整理所選內容後檢查",
+    "chooseDeleteMethod": "選擇刪除方式",
     "deletionUnavailable": "清理暫不可用",
     "basket": {
       "title": "清理籃",
@@ -182,7 +181,9 @@
       "cached": "正在顯示上次掃描結果",
       "expired": "掃描結果較舊，建議重新掃描",
       "changed": "此目錄內容已變化，大小可能不準確",
-      "changedShort": "內容已變化"
+      "changedShort": "內容已變化",
+      "refreshFolder": "重新整理 {{name}}",
+      "refreshingFolder": "正在重新整理 {{name}}…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "無法撤銷",
     "recoverable": "可從廢紙簍恢復",
     "changed": "掃描後有變化",
-    "changedWarning": "其中 {{count}} 項與上次展示不同。已更新大小和檔案數；請再次重新整理，穩定後重新確認。",
+    "changedWarning": "其中 {{count}} 項內容已發生變化，大小和檔案數已更新。請重新檢查後繼續。",
     "preparing": "正在準備清理…",
-    "refreshSelection": "再次重新整理所選內容",
+    "recheckSelection": "重新檢查並繼續",
     "deleteConfirmTitle": "我明白這些內容會被永久刪除",
     "deleteConfirmDescription": "檔案不會進入廢紙簍，下載檔案、配置與個人資料可能無法重新生成。",
     "trashConfirmTitle": "我確認把這些內容移到廢紙簍",
@@ -224,7 +225,7 @@
     "cancelling": "正在停止…",
     "cancelHint": "已完成的項目不會自動還原；CoreRobin 會在當前檔案操作結束後停止。",
     "errors": {
-      "protected_cleanup_path": "CoreRobin 不會刪除系統位置、重要設定、暫存目錄根、主目錄或廢紙簍目錄本身。",
+      "protected_cleanup_path": "CoreRobin 不會刪除作業系統位置、憑據與金鑰、受保護的資料庫根、暫存目錄根、主目錄或廢紙簍目錄本身。",
       "cleanup_target_outside_home": "出於安全考慮，CoreRobin 只處理個人目錄或獲准暫存位置內的內容。",
       "cleanup_cross_filesystem": "所選目錄進入了另一個磁碟或掛載點，CoreRobin 已拒絕遞迴刪除。",
       "cleanup_target_changed": "檔案在確認後又發生了變化，因此 CoreRobin 沒有刪除任何內容。請取消後重新檢查。",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "使用者隱藏目錄",
-      "description": "點號開頭的應用資料和配置，僅統計，不建議直接清理。"
+      "description": "點號開頭的應用資料和設定；核對具體內容後可以加入清理籃。"
     }
   },
   "safety": {

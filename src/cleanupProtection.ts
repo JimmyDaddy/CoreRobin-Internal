@@ -1,35 +1,9 @@
 import type { CleanupNode, CleanupProtectionReason } from "./types";
 
-const REGENERATABLE_ROOTS = [
-  ".cache",
-  ".pnpm-store",
-  ".cargo/registry",
-  ".cargo/git",
-  ".npm/_cacache",
-  ".yarn/berry/cache",
-  ".gradle/caches",
-  ".m2/repository",
-  ".bun/install/cache",
-  ".rustup/downloads",
-  ".rustup/tmp",
-  ".local/share/pnpm/store",
-  "library/caches",
-  "library/logs",
-  "library/developer/xcode/deriveddata",
-  "library/pnpm/store",
-  "appdata/local/temp",
-  "appdata/local/pnpm/store",
-] as const;
-
-const SENSITIVE_PROFILE_ROOTS = new Set([
+const LEGACY_VIEW_ONLY_PROFILE_ROOTS = new Set([
   "library",
   "appdata",
   "applications",
-  "system",
-  "ntuser.dat",
-  "ntuser.dat.log1",
-  "ntuser.dat.log2",
-  "ntuser.ini",
 ]);
 
 export function cleanupNodeProtection(node: CleanupNode): CleanupProtectionReason | null {
@@ -45,7 +19,7 @@ export function cleanupNodeProtection(node: CleanupNode): CleanupProtectionReaso
   if (!path.startsWith("~/")) return "system_location";
   if (isTrashRootPath(path)) return "trash_root";
   if (isInsideTrashPath(path)) return null;
-  return isSensitiveUserPath(path) ? "sensitive_user_data" : null;
+  return legacyStructuralProtection(path);
 }
 
 export function canCollectCleanupNode(node: CleanupNode): boolean {
@@ -70,19 +44,12 @@ export function isInsideTrashPath(path: string | null): boolean {
     normalized.startsWith("~/.local/share/trash/files/");
 }
 
-function isSensitiveUserPath(path: string): boolean {
+function legacyStructuralProtection(path: string): CleanupProtectionReason | null {
   const relative = path.slice(2);
-  if (REGENERATABLE_ROOTS.some((root) => relative === root || relative.startsWith(`${root}/`))) {
-    return false;
-  }
-  if (
-    /^library\/containers\/[^/]+\/data\/(?:tmp|library\/caches)(?:\/|$)/u.test(relative) ||
-    /^library\/group containers\/[^/]+\/library\/caches(?:\/|$)/u.test(relative)
-  ) {
-    return false;
-  }
-  const first = relative.split("/", 1)[0];
-  return first.startsWith(".") || SENSITIVE_PROFILE_ROOTS.has(first);
+  if (relative === "system" || relative.startsWith("system/")) return "sensitive_user_data";
+  return !relative.includes("/") && LEGACY_VIEW_ONLY_PROFILE_ROOTS.has(relative)
+    ? "sensitive_user_data"
+    : null;
 }
 
 function isTemporaryRootPath(path: string): boolean {

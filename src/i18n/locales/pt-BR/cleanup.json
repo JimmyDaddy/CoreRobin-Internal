@@ -151,8 +151,7 @@
     "protectedSelectionHint": "Pastas do sistema e a raiz da sua área pessoal são apenas para visualização; itens específicos dentro da sua pasta pessoal podem ser movidos para o cesto",
     "trashRootProtected": "A pasta de lixeira é protegida; entre nela e selecione os itens específicos que deseja remover",
     "planSummary": "{{count}} itens selecionados · {{size}}",
-    "reviewCleanup": "Revisar opções de limpeza",
-    "refreshCleanup": "Atualize a seleção antes de rever",
+    "chooseDeleteMethod": "Escolher forma de exclusão",
     "deletionUnavailable": "Limpeza indisponível",
     "basket": {
       "title": "Cesta de limpeza",
@@ -182,7 +181,9 @@
       "cached": "Mostrando o resultado da última varredura",
       "expired": "Esta verificação está desatualizada; recomendamos uma nova verificação",
       "changed": "Esta pasta foi alterada; os tamanhos podem ser imprecisos",
-      "changedShort": "Conteúdo modificado"
+      "changedShort": "Conteúdo modificado",
+      "refreshFolder": "Atualizar {{name}}",
+      "refreshingFolder": "Atualizando {{name}}…"
     }
   },
   "deleteDialog": {
@@ -199,9 +200,9 @@
     "irreversible": "Não pode ser desfeito",
     "recoverable": "Recuperável da Lixeira",
     "changed": "Modificado desde a última verificação",
-    "changedWarning": "{{count}} itens diferem da visualização anterior. Tamanhos e contagens foram atualizados; atualize novamente antes de confirmar.",
+    "changedWarning": "{{count}} itens mudaram depois de serem adicionados. Tamanhos e quantidades foram atualizados; verifique novamente antes de continuar.",
     "preparing": "Preparando a limpeza…",
-    "refreshSelection": "Atualizar a seleção novamente",
+    "recheckSelection": "Verificar novamente e continuar",
     "deleteConfirmTitle": "Entendo que esses itens serão excluídos permanentemente",
     "deleteConfirmDescription": "Os arquivos não serão movidos para a lixeira. Downloads, configurações e dados pessoais podem não ser recuperáveis.",
     "trashConfirmTitle": "Confirmo mover estes itens para a Lixeira",
@@ -224,7 +225,7 @@
     "cancelling": "Excluindo…",
     "cancelHint": "Os itens processados não são restaurados automaticamente. O CoreRobin parará após a operação atual.",
     "errors": {
-      "protected_cleanup_path": "O CoreRobin não exclui locais do sistema, configurações importantes, raízes de pastas temporárias, seu diretório pessoal ou a própria Lixeira.",
+      "protected_cleanup_path": "O CoreRobin não exclui locais do sistema operacional, credenciais, raízes de bibliotecas protegidas, raízes temporárias, seu diretório pessoal ou a própria Lixeira.",
       "cleanup_target_outside_home": "Por segurança, o CoreRobin só trata arquivos da pasta pessoal ou de locais temporários aprovados.",
       "cleanup_cross_filesystem": "A pasta selecionada está em um disco ou ponto de montagem diferente, por isso o CoreRobin não conseguiu realizar a exclusão recursiva.",
       "cleanup_target_changed": "Um arquivo foi alterado após a confirmação, portanto o CoreRobin não realizou nenhuma exclusão. Cancele e revise novamente.",
@@ -255,7 +256,7 @@
     },
     "hidden_data": {
       "title": "Pastas do usuário ocultas",
-      "description": "Dados de aplicativos com prefixo de ponto e configurações. Medido apenas; a limpeza direta não é recomendada."
+      "description": "Dados e configurações de apps com prefixo de ponto. Revise cada item antes de adicioná-lo à cesta de limpeza."
     }
   },
   "safety": {

@@ -333,11 +333,27 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const breadcrumbs = breadcrumbPath(focus, nodes, parents);
   const focusChanged = changedIds.has(focus.id);
   const freshness = focusChanged ? "changed" : snapshotStatus;
+  const refreshableFocus = Boolean(
+    focus.path &&
+    (focus.kind === "folder" || focus.kind === "restricted") &&
+    (focus.id !== root.id || snapshot.targetKind === "folder"),
+  );
+  const refreshingFocus = loadingNodeId === focus.id;
   const validationTargets = useMemo(() => {
-    if (focus.path) return [{ id: focus.id, path: focus.path }];
+    if (focus.path) {
+      return [{
+        id: focus.id,
+        path: focus.path,
+        sampledAtMs: snapshot.subtreeCacheSavedAtMs?.[focus.id] ?? snapshot.sampledAtMs,
+      }];
+    }
     if (!focus.id.startsWith("location:")) return [];
-    return focus.children.flatMap((child) => child.path ? [{ id: child.id, path: child.path }] : []);
-  }, [focus]);
+    return focus.children.flatMap((child) => child.path ? [{
+      id: child.id,
+      path: child.path,
+      sampledAtMs: snapshot.subtreeCacheSavedAtMs?.[child.id] ?? snapshot.sampledAtMs,
+    }] : []);
+  }, [focus, snapshot.sampledAtMs, snapshot.subtreeCacheSavedAtMs]);
   const selectMapNode = useCallback((node: CleanupMapNode | null) => {
     const nextId = node?.id ?? focus.id;
     setSelectedId((current) => current === nextId ? current : nextId);
@@ -382,7 +398,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     void Promise.all(validationTargets.map(async (target) => {
       try {
         const state = await getCleanupPathState(target.path);
-        return cleanupPathChanged(state, snapshot.sampledAtMs) ? target.id : null;
+        return cleanupPathChanged(state, target.sampledAtMs) ? target.id : null;
       } catch {
         return null;
       }
@@ -400,7 +416,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     return () => {
       cancelled = true;
     };
-  }, [focus.id, snapshot.sampledAtMs, validationRevision, validationTargets]);
+  }, [focus.id, validationRevision, validationTargets]);
 
   const navigateTo = (node: CleanupMapNode) => {
     if (loadingNodeId && node.id !== loadingNodeId) {
@@ -423,7 +439,48 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       next.set(subtree.id, subtree);
       return next;
     });
-    void onSubtreeRetained?.(subtree);
+    return onSubtreeRetained?.(subtree) ?? Promise.resolve();
+  };
+
+  const refreshFocusedFolder = async () => {
+    if (!refreshableFocus || !focus.path || refreshingFocus) return;
+    if (activeSubtreeRequestRef.current) {
+      cancelActiveSubtree();
+      subtreeRequestIdRef.current += 1;
+    }
+    const requestId = subtreeRequestIdRef.current + 1;
+    subtreeRequestIdRef.current = requestId;
+    const backendRequestId = `cleanup-subtree-manual-refresh-${snapshot.sampledAtMs}-${requestId}`;
+    activeSubtreeRequestRef.current = backendRequestId;
+    setLoadingNodeId(focus.id);
+    setSubtreeError(null);
+    try {
+      const subtree = await getCleanupSubtree({
+        requestId: backendRequestId,
+        path: focus.path,
+        scanRoot: snapshot.targetPath,
+        scanTargetKind: snapshot.targetKind,
+        safety: focus.safety,
+        expandSmallerObjects: false,
+      });
+      if (subtreeRequestIdRef.current !== requestId) return;
+      await retainLoadedSubtree(subtree as CleanupMapNode);
+      setChangedIds((current) => {
+        if (!current.has(focus.id)) return current;
+        const next = new Set(current);
+        next.delete(focus.id);
+        return next;
+      });
+    } catch (caughtError) {
+      if (subtreeRequestIdRef.current === requestId) {
+        setSubtreeError(normalizeCommandError(caughtError));
+      }
+    } finally {
+      if (subtreeRequestIdRef.current === requestId) {
+        activeSubtreeRequestRef.current = null;
+        setLoadingNodeId(null);
+      }
+    }
   };
 
   const revalidateCachedSubtree = async (node: CleanupMapNode) => {
@@ -447,11 +504,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         requestId: backendRequestId,
         path: node.path,
         scanRoot: snapshot.targetPath,
+        scanTargetKind: snapshot.targetKind,
         safety: node.safety,
         expandSmallerObjects: false,
       });
       if (subtreeRequestIdRef.current !== requestId) return;
-      retainLoadedSubtree(subtree as CleanupMapNode);
+      void retainLoadedSubtree(subtree as CleanupMapNode);
       setChangedIds((current) => {
         if (!current.has(node.id)) return current;
         const next = new Set(current);
@@ -500,12 +558,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         requestId: backendRequestId,
         path: subtreeRoot.path,
         scanRoot: snapshot.targetPath,
+        scanTargetKind: snapshot.targetKind,
         safety: subtreeRoot.safety,
         expandSmallerObjects: expandingSmallerObjects,
       });
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
-      retainLoadedSubtree(loaded);
+      void retainLoadedSubtree(loaded);
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {
@@ -688,6 +747,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           scanSampledAtMs,
           mode,
           snapshot.targetKind === "system_disk" ? undefined : snapshot.targetPath,
+          snapshot.targetKind,
         ),
       );
       if (deleteRequestIdRef.current !== requestId) {
@@ -937,12 +997,30 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         <div className="cleanup-map__visual">
           <div className="cleanup-map__canvas" ref={canvasRef}>
             {freshness !== "current" ? (
-              <div className={`cleanup-map__freshness is-${freshness}`} role="status">
-                {freshness === "changed" ? <RefreshCw size={13} /> : <Clock3 size={13} />}
-                <span>{t(`cleanup:map.freshness.${freshness}`)}</span>
+              <div className={`cleanup-map__freshness is-${freshness}`}>
+                {freshness === "changed" ? <AlertTriangle size={13} /> : <Clock3 size={13} />}
+                <span role="status">{t(`cleanup:map.freshness.${freshness}`)}</span>
+                {freshness === "changed" && refreshableFocus ? (
+                  <button
+                    type="button"
+                    className="cleanup-map__freshness-action"
+                    disabled={refreshingFocus}
+                    onClick={() => void refreshFocusedFolder()}
+                  >
+                    {refreshingFocus ? <LoaderCircle size={13} /> : <RefreshCw size={13} />}
+                    <span>
+                      {t(
+                        refreshingFocus
+                          ? "cleanup:map.freshness.refreshingFolder"
+                          : "cleanup:map.freshness.refreshFolder",
+                        { name: focus.name },
+                      )}
+                    </span>
+                  </button>
+                ) : null}
               </div>
             ) : null}
-            {loadingNodeId ? (
+            {loadingNodeId && loadingNodeId !== focus.id ? (
               <div className="cleanup-map__subtree-loading" role="status">
                 <LoaderCircle size={14} />
                 <span>{t("cleanup:map.loadingFolder")}</span>
@@ -1030,7 +1108,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   <button className="button button--primary cleanup-map__basket-review" type="button" disabled={!snapshot.deletionAvailable} onClick={() => void openDeleteDialog()}>
                     <ChevronRight size={14} />
                     {snapshot.deletionAvailable
-                      ? t(snapshotStatus === "current" ? "cleanup:map.reviewCleanup" : "cleanup:map.refreshCleanup")
+                      ? t("cleanup:map.chooseDeleteMethod")
                       : t("cleanup:map.deletionUnavailable")}
                   </button>
                 </>

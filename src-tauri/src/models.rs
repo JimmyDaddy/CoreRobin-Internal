@@ -534,6 +534,8 @@ pub struct CleanupSubtreeRequest {
     pub path: String,
     #[serde(default)]
     pub scan_root: Option<String>,
+    #[serde(default)]
+    pub scan_target_kind: CleanupScanTargetKind,
     pub safety: CleanupSafety,
     #[serde(default)]
     pub expand_smaller_objects: bool,
@@ -582,6 +584,8 @@ pub struct CleanupDeleteLeaseRequest {
     pub scan_sampled_at_ms: u64,
     #[serde(default)]
     pub scan_root: Option<String>,
+    #[serde(default)]
+    pub scan_target_kind: CleanupScanTargetKind,
     pub expected_targets: Vec<CleanupDeleteTargetEvidence>,
     pub mode: CleanupDeleteMode,
     #[serde(default)]
