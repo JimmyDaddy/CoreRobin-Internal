@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.14",
+  "title": {
+    "zh-CN": "更顺畅的空间清理与应用内更新",
+    "en": "Smoother cleanup and in-app updates"
+  },
+  "items": [
+    {
+      "zh-CN": "扇形空间图检测到内容变化后，可以只刷新当前文件夹，无需重新扫描整个磁盘。",
+      "en": "When disk-map contents change, CoreRobin can refresh only the current folder instead of rescanning the entire disk."
+    },
+    {
+      "zh-CN": "清理篮采用更直观的检查与删除文案；更新安装完成后可以直接重新启动 CoreRobin。",
+      "en": "Cleanup actions now use clearer review and delete wording, and CoreRobin can restart directly after an update is installed."
+    },
+    {
+      "zh-CN": "普通应用数据、隐藏配置目录和用户明确选择的同磁盘目录可以进入检查与清理流程，不再被一概拦截。",
+      "en": "Ordinary app data, hidden configuration folders, and explicitly selected same-disk folders can now enter the review and cleanup workflow instead of being blocked wholesale."
+    },
+    {
+      "zh-CN": "凭据、系统根目录、其他用户数据、符号链接和跨文件系统边界继续受到保护，并同步更新 10 种界面语言和中英文文档。",
+      "en": "Credentials, system roots, other users' data, symlinks, and filesystem boundaries remain protected, with all 10 interface languages and English/Chinese documentation updated accordingly."
+    }
+  ]
+}
