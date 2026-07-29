@@ -1,12 +1,23 @@
 .device-wellbeing__sleep-actions {
-  display: grid;
+  display: flex;
   grid-column: 1 / -1;
   gap: 5px;
   margin-top: 5px;
+  padding-bottom: 3px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  scroll-snap-type: inline proximity;
+}
+
+.device-wellbeing__sleep-actions::-webkit-scrollbar {
+  display: none;
 }
 
 .device-wellbeing__sleep-actions button {
   display: flex;
+  flex: 0 0 calc(100% - 22px);
   min-width: 0;
   align-items: center;
   justify-content: space-between;
@@ -16,6 +27,7 @@
   border: 1px solid rgba(245, 185, 76, 0.16);
   border-radius: 8px;
   background: rgba(245, 185, 76, 0.055);
+  scroll-snap-align: start;
   text-align: left;
 }
 

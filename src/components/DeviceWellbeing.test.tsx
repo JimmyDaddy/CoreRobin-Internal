@@ -40,24 +40,71 @@ describe("DeviceWellbeing sleep actions", () => {
 
     expect(onInspectSleepBlocker).toHaveBeenCalledWith("41:encoder");
   });
+
+  it("keeps every sleep blocker actionable without stacking the card vertically", () => {
+    const snapshot = getMockSnapshot();
+    snapshot.sensors.sleep = {
+      available: true,
+      sampledAtMs: 1,
+      blockers: [
+        sleepBlocker(41, "Video Encoder"),
+        sleepBlocker(42, "ChatGPT"),
+        sleepBlocker(43, "File Sync"),
+      ],
+    };
+    const onInspectSleepBlocker = vi.fn();
+    const { container } = render(
+      <DeviceWellbeing
+        sensors={snapshot.sensors}
+        applications={[
+          application(41, "Video Encoder", "encoder"),
+          application(42, "ChatGPT", "chatgpt"),
+          application(43, "File Sync", "sync"),
+        ]}
+        onInspectSleepBlocker={onInspectSleepBlocker}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll(".device-wellbeing__sleep-actions button"),
+    ).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole("button", { name: /ChatGPT/ }));
+
+    expect(onInspectSleepBlocker).toHaveBeenCalledWith("42:chatgpt");
+  });
 });
 
-function application(): ApplicationImpact {
+function sleepBlocker(pid: number, processName: string) {
   return {
-    id: "user:video-encoder",
-    name: "Video Encoder",
+    pid,
+    processName,
+    reason: "Active task",
+    kind: "idle_sleep" as const,
+    durationSeconds: 780,
+  };
+}
+
+function application(
+  pid = 41,
+  name = "Video Encoder",
+  birthToken = "encoder",
+): ApplicationImpact {
+  return {
+    id: `user:${birthToken}`,
+    name,
     processCount: 1,
     cpuPercent: 32,
     memoryBytes: 128 * 1_024 ** 2,
     diskBytesPerSecond: 0,
     systemComponent: false,
-    representativeIdentity: "41:encoder",
-    actionIdentity: "41:encoder",
-    memberIdentities: ["41:encoder"],
+    representativeIdentity: `${pid}:${birthToken}`,
+    actionIdentity: `${pid}:${birthToken}`,
+    memberIdentities: [`${pid}:${birthToken}`],
     iconProcess: {
-      pid: 41,
+      pid,
       snapshotStartTime: 1,
-      snapshotBirthToken: "encoder",
+      snapshotBirthToken: birthToken,
     },
   };
 }
