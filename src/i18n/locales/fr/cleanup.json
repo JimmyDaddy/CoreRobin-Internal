@@ -143,9 +143,10 @@
   "progress": {
     "scanningLocation": "Analyse de {{location}} éléments",
     "paused": "Le Mac est en veille ; l’analyse reprendra au réveil",
-    "stalled": "L’analyse ne progresse plus depuis un moment",
-    "stalledTitle": "Cette analyse est peut-être bloquée",
-    "stalledDescription": "Relancez l’analyse pour arrêter l’ancienne tâche sans attendre davantage.",
+    "stalled": "L’analyse reprend automatiquement",
+    "stalledTitle": "Un dossier qui ne répond pas va être ignoré",
+    "stalledDescription": "CoreRobin ignore cet emplacement illisible et reprend l’analyse depuis la progression enregistrée. Aucun redémarrage n’est nécessaire.",
+    "recoveryFailed": "CoreRobin n’a pas pu dépasser un ou plusieurs dossiers illisibles. Arrêtez l’analyse et choisissez un emplacement plus petit.",
     "entries": "Éléments vérifiés",
     "discovered": "Découvert",
     "elapsed": "Temps écoulé",

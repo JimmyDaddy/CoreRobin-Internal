@@ -103,4 +103,18 @@ describe("cleanup scan lifecycle", () => {
 
     await waitFor(() => expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce());
   });
+
+  it("keeps an automatically recovering scan attached and cancellable", async () => {
+    cleanupApi.getCleanupScanJob.mockResolvedValue({
+      ...runningJob,
+      phase: "stalled",
+    });
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("stalled")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+
+    await waitFor(() => expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce());
+    expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
+  });
 });

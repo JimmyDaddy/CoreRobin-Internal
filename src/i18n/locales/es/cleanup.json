@@ -143,9 +143,10 @@
   "progress": {
     "scanningLocation": "Analizando {{location}}",
     "paused": "El Mac está en reposo; el escaneo continuará al reactivarlo",
-    "stalled": "El escaneo lleva un tiempo sin avanzar",
-    "stalledTitle": "Este escaneo puede estar bloqueado",
-    "stalledDescription": "Reinicia el escaneo para finalizar la tarea anterior sin seguir esperando.",
+    "stalled": "El escaneo se está recuperando automáticamente",
+    "stalledTitle": "Se omitirá una carpeta que no responde",
+    "stalledDescription": "CoreRobin omitirá esta ubicación ilegible y continuará desde el progreso guardado. No necesitas reiniciar el escaneo.",
+    "recoveryFailed": "CoreRobin no pudo continuar tras una o más carpetas ilegibles. Detén el escaneo e inténtalo con una ubicación más pequeña.",
     "entries": "Comprobado",
     "discovered": "Encontrado",
     "elapsed": "Tiempo transcurrido",

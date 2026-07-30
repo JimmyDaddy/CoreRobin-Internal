@@ -143,9 +143,10 @@
   "progress": {
     "scanningLocation": "正在分析{{location}}",
     "paused": "Mac 已進入睡眠，喚醒後將繼續掃描",
-    "stalled": "掃描長時間沒有進展",
-    "stalledTitle": "這次掃描可能卡住了",
-    "stalledDescription": "可以重新開始掃描；CoreRobin 會結束舊的掃描工作，不會繼續等待。",
+    "stalled": "正在自動恢復掃描",
+    "stalledTitle": "正在略過沒有回應的資料夾",
+    "stalledDescription": "CoreRobin 會略過目前無法讀取的位置，並從已儲存的進度繼續掃描，無需重新開始。",
+    "recoveryFailed": "CoreRobin 無法繼續略過一個或多個異常資料夾。你可以停止掃描後改為掃描較小的範圍。",
     "entries": "已檢查",
     "discovered": "已發現",
     "elapsed": "已用時",
