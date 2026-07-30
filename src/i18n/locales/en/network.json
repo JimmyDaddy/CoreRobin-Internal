@@ -78,8 +78,8 @@
   "quality": {
     "eyebrow": "Automatic network sampling", "title": "Network quality", "description": "Checks every 30 seconds while open. Optionally retain five-minute aggregates for up to 7 days in the background.",
     "run": "Check now", "checking": "Checking…", "empty": "Running the first network quality check…",
-    "method": "TCP probes target example.com and one.one.one.one and separate local routing, DNS, IPv4/IPv6, and internet reachability without privileged raw packets.",
-    "dns": "DNS", "latency": "Average latency", "jitter": "Jitter", "loss": "TCP probe failures", "probes": "TCP probes", "probeSuccess": "{{successful}}/{{total}} succeeded", "probeAndTargets": "{{successful}}/{{total}} probes · {{targetSuccessful}}/{{targetTotal}} targets reachable",
+    "method": "CoreRobin checks the local network, name resolution, and internet access separately to help locate a connection problem.",
+    "dns": "Name resolution", "latency": "Average latency", "jitter": "Jitter", "loss": "Connection failures", "probes": "Connection checks", "probeSuccess": "{{successful}}/{{total}} succeeded", "probeAndTargets": "{{successful}}/{{total}} checks · {{targetSuccessful}}/{{targetTotal}} services reachable",
     "trendTitle": "Network quality trend", "trendWindow": "Last 15 minutes · updates every 30 seconds", "trendCollecting": "Collecting trend data", "legend": "Network quality legend", "chartLabel": "Network quality trend for the last 15 minutes with {{count}} samples", "now": "Now",
     "windowAverage": "Average latency", "windowPeak": "Peak latency", "anomalies": "Anomalies", "anomalyCount": "{{count}}",
     "history": {"title":"Continuous quality history","description":"When enabled, take one lightweight sample every five minutes in the background and keep only aggregates on this device.","range":"Trend range","minutes15":"15 minutes","hours1":"1 hour","hours24":"24 hours","window":"Last {{count}} hours · five-minute aggregates","clear":"Clear quality history","axisMinutes":"−{{count}} min","axisHours":"−{{count}} h"},

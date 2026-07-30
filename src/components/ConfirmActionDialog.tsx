@@ -1,4 +1,4 @@
-import { AlertOctagon, AlertTriangle, ShieldCheck, X } from "lucide-react";
+import { AlertOctagon, AlertTriangle, LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -119,7 +119,12 @@ export function ConfirmActionDialog({
             onClick={onConfirm}
           >
             {submitting
-              ? t("process:dialog.validating")
+              ? (
+                <>
+                  <LoaderCircle className="is-spinning" size={14} />
+                  {t("process:dialog.validating")}
+                </>
+              )
               : restartAction
                 ? t("diagnosis:actionDialog.confirmRestart", { name: displayName })
                 : diagnosisAction

@@ -490,8 +490,17 @@
 .startup-impact__apps li span,
 .startup-impact__apps li small { color: var(--text-secondary); }
 .startup-impact-avatar { width: 25px; height: 25px; border-radius: 7px; }
-.startup-impact__empty { align-items: center; color: var(--text-secondary); display: flex; gap: 9px; }
+.startup-impact__empty {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 11px;
+  min-height: 72px;
+}
+.startup-impact__empty > div { align-items: flex-start; display: flex; flex-direction: column; gap: 9px; }
 .startup-impact__empty p { font-size: 12px; margin: 0; }
+.startup-impact__empty small { color: var(--green); font-size: 11px; }
+.startup-impact__empty .button { min-height: 32px; }
 
 .settings-grid > .settings-card--watch-rules { grid-column: 1 / -1; }
 .watch-rules { display: grid; gap: 12px; }

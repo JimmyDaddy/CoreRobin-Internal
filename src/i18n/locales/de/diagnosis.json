@@ -128,8 +128,8 @@
     "safeDescription": "Dies fordert nur die laufende App auf, zu stoppen und löscht keine Daten.",
     "riskTitle": "Speichern Sie zuerst alle Änderungen",
     "riskDescription": "Ob eine Speichervorlage angezeigt wird, hängt von der Anwendung ab; ungespeicherte Daten können dennoch verloren gehen.",
-    "stableIdentity": "Ein stabiler Handle ist an den ausgewählten Prozess gebunden und wird vor der Ausführung erneut überprüft.",
-    "bestEffortIdentity": "Diese Plattform kann das Risiko der PID-Wiederverwendung nur durch Identitätsprüfungen reduzieren. CoreRobin lehnt die Aktion ab, wenn sich der Prozess geändert hat.",
+    "stableIdentity": "Die Aktion gilt nur für den ausgewählten Prozess und wird vor der Ausführung erneut bestätigt.",
+    "bestEffortIdentity": "CoreRobin prüft den Prozess vor der Aktion erneut und fährt bei einem Zielwechsel nicht fort.",
     "confirm": "Beenden von {{name}} bestätigen",
     "confirmRestart": "{{name}} neu starten"
   }

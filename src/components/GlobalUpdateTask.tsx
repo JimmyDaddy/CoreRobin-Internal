@@ -1,4 +1,5 @@
-import { Clock3, Download, RefreshCw } from "lucide-react";
+import { CheckCircle2, Clock3, Download, RefreshCw, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -10,11 +11,21 @@ export function GlobalUpdateTask({
   updater: AppUpdaterController;
 }) {
   const { t } = useAppTranslation();
+  const [receiptCollapsed, setReceiptCollapsed] = useState(false);
   const availableVersion = updater.availableVersion;
   const availablePrompt =
     updater.promptVisible
     && availableVersion !== null
     && updater.action === "idle";
+
+  useEffect(() => {
+    setReceiptCollapsed(false);
+    if (!updater.updatedFromVersion) return;
+    const timeout = window.setTimeout(() => {
+      setReceiptCollapsed(true);
+    }, 9_000);
+    return () => window.clearTimeout(timeout);
+  }, [updater.updatedFromVersion]);
 
   if (availablePrompt && availableVersion) {
     return (
@@ -63,12 +74,54 @@ export function GlobalUpdateTask({
     );
   }
 
+  if (updater.updatedFromVersion && receiptCollapsed) {
+    const receipt = t("settings:about.updatedReceipt", {
+      version: updater.updatedFromVersion,
+    });
+    return (
+      <aside
+        className="global-update-task global-update-task--receipt is-collapsed"
+        role="status"
+        aria-live="polite"
+        title={receipt}
+      >
+        <button
+          className="global-update-task__receipt-chip"
+          type="button"
+          aria-label={receipt}
+          onClick={() => setReceiptCollapsed(false)}
+        >
+          <CheckCircle2 size={17} />
+          <span>{t("settings:about.updatedCompact")}</span>
+        </button>
+        <button
+          className="global-update-task__receipt-close"
+          type="button"
+          aria-label={t("common:close")}
+          onClick={updater.dismissUpdatedReceipt}
+        >
+          <X size={14} />
+        </button>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="global-update-task" role="status" aria-live="polite">
-      <RefreshCw
-        className={updater.action === "installing" ? "is-spinning" : undefined}
-        size={17}
-      />
+    <aside
+      className={`global-update-task${updater.updatedFromVersion
+        ? " global-update-task--receipt"
+        : ""}`}
+      role="status"
+      aria-live="polite"
+    >
+      {updater.updatedFromVersion ? (
+        <CheckCircle2 size={17} />
+      ) : (
+        <RefreshCw
+          className={updater.action === "installing" ? "is-spinning" : undefined}
+          size={17}
+        />
+      )}
       <div>
         <strong>
           {updater.updatedFromVersion

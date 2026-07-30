@@ -902,12 +902,21 @@ function NetworkConnectionsPanel({
           <button
             className="network-connections__refresh"
             type="button"
-            aria-label={t("network:connections.refresh")}
-            title={t("network:connections.refresh")}
+            aria-label={t(loading
+              ? "network:connections.updating"
+              : "network:connections.refresh")}
+            title={t(loading
+              ? "network:connections.updating"
+              : "network:connections.refresh")}
+            disabled={loading}
             onClick={onRefresh}
           >
-            <RefreshCw size={13} aria-hidden="true" />
-            {t("common:refresh")}
+            <RefreshCw
+              className={loading ? "is-spinning" : undefined}
+              size={13}
+              aria-hidden="true"
+            />
+            {t(loading ? "network:connections.updating" : "common:refresh")}
           </button>
         </div>
       </header>

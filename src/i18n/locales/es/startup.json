@@ -57,7 +57,9 @@
     "peakDisk": "disco pico",
     "samples": "Muestras",
     "boundary": "Esto mide el impacto posterior al inicio de sesión, no el tiempo de inicio del firmware. Las mediciones se detienen después de tres minutos y se conservan los últimos cinco.",
-    "empty": "Aún no hay una medición real del inicio de sesión. Habilite Iniciar al iniciar sesión para medir el siguiente inicio de sesión automáticamente.",
+    "empty": "Aún no hay una medición real del inicio de sesión. Al activarlo, CoreRobin medirá automáticamente el próximo inicio.",
+    "enableLogin": "Activar inicio con la sesión",
+    "loginEnabled": "El inicio con la sesión está activo. Se creará una medición tras el próximo inicio.",
     "none": {
       "title": "Impacto de inicio sin efecto"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "Este elemento de inicio ha cambiado o desaparecido. Refresque la lista e inténtelo de nuevo.",
       "startup_state_changed": "El archivo de inicio ha cambiado después de la confirmación, por lo que CoreRobin no realizó cambios.",
       "startup_destination_conflict": "Otra configuración apareció en el destino. CoreRobin se negó a sobrescribirla.",
-      "startup_confirmation_unavailable": "Esta confirmación ya no está disponible. Cancela y ábrela de nuevo.",
-      "startup_confirmation_expired": "La confirmación ha caducado. Revise el elemento nuevamente antes de continuar.",
+      "startup_confirmation_unavailable": "El estado del elemento de inicio acaba de cambiar. CoreRobin no realizó la acción.",
+      "startup_confirmation_expired": "El estado del elemento de inicio acaba de cambiar. CoreRobin no realizó la acción.",
       "startup_management_failed": "El sistema no pudo mover el archivo de inicio de forma segura. Se ha mantenido el estado original."
     }
   },

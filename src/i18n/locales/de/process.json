@@ -54,11 +54,11 @@
     "userStatus": "Benutzerstatus",
     "runtime": "Laufzeit",
     "launchCommand": "Startbefehl",
-    "stableHandle": "Bestätigung erzeugt einen temporären, einmaligen Handle für das Betriebssystem; die Zielverfolgung erfolgt nicht mehr über PID.",
+    "stableHandle": "CoreRobin hält den ausgewählten Prozess fest und prüft vor der Aktion erneut, ob er unverändert ist.",
     "unavailableControl": "Sichere Prozesssteuerung ist auf dieser Plattform nicht verfügbar.",
-    "bestEffort": "macOS kann kein stabiles Signal-Handle für jeden Prozess bereitstellen. CoreRobin überprüft vor dem Senden die Startidentität, aber die Zielverfolgung erfolgt weiterhin über PID.",
-    "allowBestEffort": "Erlaube die Ausführung von Prozessen mit begrenzter Funktionalität.",
-    "binding": "Verbindung…",
+    "bestEffort": "CoreRobin prüft vor der Aktion erneut, ob dies noch der ausgewählte Prozess ist. Bei Änderungen wird abgebrochen.",
+    "allowBestEffort": "Prozess vor der Aktion erneut prüfen",
+    "binding": "Ziel wird geprüft…",
     "requestClose": "Beenden...",
     "restart": "App neu starten",
     "forceKill": "Prozess zwangsweise beenden…"
@@ -75,16 +75,16 @@
     "exited": "Der Prozess wurde beendet; Trendaktualisierungen wurden gestoppt."
   },
   "dialog": {
-    "windowsForce": "Windows ruft TerminateProcess über den verknüpften Prozess-Handle auf; der Prozess kann keinen Zustand speichern.",
-    "unixForce": "Das Ziel wird mit SIGKILL signalisiert; der Prozess kann keinen Zustand speichern und dies ist nicht rückgängig zu machen.",
-    "request": "Das Ziel erhält SIGTERM, um Aufräumarbeiten durchführen und beenden zu können.",
+    "windowsForce": "Der Prozess wird sofort beendet und kann aktuelle Inhalte möglicherweise nicht speichern.",
+    "unixForce": "Der Prozess wird sofort beendet, kann aktuelle Inhalte möglicherweise nicht speichern und die Aktion ist nicht rückgängig zu machen.",
+    "request": "Der Prozess wird zunächst zum normalen Beenden aufgefordert, damit er speichern und aufräumen kann.",
     "forceTitle": "Prozess zwangsweise beenden?",
     "requestTitle": "Beenden anfordern?",
     "user": "Benutzer",
     "startedAt": "Startzeit",
-    "stableIdentity": "Diese Bestätigung erstellt einen temporären, einmaligen Zugriff auf das Betriebssystem; die Ausführung sucht nicht mehr nach dem Ziel anhand der PID.",
-    "bestEffortIdentity": "macOS unterstützt nur eine PID-basierte Suche. Die hochauflösende Start-ID wird vor der Ausführung überprüft, kann aber keine Garantie wie bei einem stabilen Handle geben.",
-    "validating": "Validierung…",
+    "stableIdentity": "Die Aktion gilt nur für den gerade bestätigten Prozess. Bei einem Zielwechsel wird sie abgebrochen.",
+    "bestEffortIdentity": "CoreRobin prüft den Prozess vor der Aktion erneut und fährt bei einem Zielwechsel nicht fort.",
+    "validating": "Erneute Prüfung…",
     "confirmForce": "Zwangsweise beenden",
     "confirmRequest": "Beenden anfordern"
   }

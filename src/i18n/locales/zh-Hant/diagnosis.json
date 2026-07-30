@@ -128,8 +128,8 @@
     "safeDescription": "這項操作只請求當前應用結束執行，不會清理它的資料。",
     "riskTitle": "先儲存正在編輯的內容",
     "riskDescription": "應用是否顯示儲存提示取決於它自身；未儲存內容仍可能丟失。",
-    "stableIdentity": "已透過穩定控制代碼鎖定你剛剛選擇的程序，執行前還會再次複核。",
-    "bestEffortIdentity": "此平臺只能透過程序身份複核來降低 PID 重複使用的風險；如果程序已變化，CoreRobin 會拒絕執行。",
+    "stableIdentity": "操作只會作用於你剛剛選擇的程序，執行前還會再次確認。",
+    "bestEffortIdentity": "CoreRobin 會在執行前再次確認程序；如果目標已變化，不會繼續操作。",
     "confirm": "確認請求 {{name}} 退出",
     "confirmRestart": "重新啟動 {{name}}"
   }

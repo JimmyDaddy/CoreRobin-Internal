@@ -57,7 +57,9 @@
     "peakDisk": "Spitzenscheibe",
     "samples": "Proben",
     "boundary": "Dies misst die Auswirkungen nach der Anmeldung, nicht die Firmware-Startzeit. Die Messungen stoppen nach drei Minuten und die letzten fünf werden beibehalten.",
-    "empty": "Noch keine echte Anmeldemessung. Aktivieren Sie Bei Anmeldung starten, um die nächste Anmeldung automatisch zu messen.",
+    "empty": "Noch keine echte Anmeldemessung. Nach dem Aktivieren misst CoreRobin die nächste Anmeldung automatisch.",
+    "enableLogin": "Bei Anmeldung starten",
+    "loginEnabled": "Der Start bei der Anmeldung ist aktiviert. Nach der nächsten Anmeldung wird eine Messung erstellt.",
     "none": {
       "title": "Kein aktueller Startup-Einfluss"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "Dieser Start-Eintrag wurde verändert oder gelöscht. Aktualisieren Sie die Liste und versuchen Sie es erneut.",
       "startup_state_changed": "Die Startdatei wurde nach der Bestätigung geändert, daher hat CoreRobin nichts geändert.",
       "startup_destination_conflict": "Ein anderer Eintrag befindet sich bereits am Zielort. CoreRobin hat die Überschreibung verhindert.",
-      "startup_confirmation_unavailable": "Diese Bestätigung ist nicht mehr verfügbar. Abbrechen und erneut öffnen.",
-      "startup_confirmation_expired": "Die Bestätigung ist abgelaufen. Überprüfen Sie den Eintrag erneut, bevor Sie fortfahren.",
+      "startup_confirmation_unavailable": "Der Startobjekt-Status hat sich gerade geändert. CoreRobin hat nichts ausgeführt.",
+      "startup_confirmation_expired": "Der Startobjekt-Status hat sich gerade geändert. CoreRobin hat nichts ausgeführt.",
       "startup_management_failed": "Das System konnte die Startdatei nicht sicher verschieben. Der ursprüngliche Zustand wurde beibehalten."
     }
   },

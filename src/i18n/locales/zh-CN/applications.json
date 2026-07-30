@@ -43,31 +43,31 @@
     "boundary": "这些数值只是操作系统提供的相对分数，不是瓦特或电量；零值不进入排行，展开时每 15 秒低频刷新。"
   },
   "uninstall": {
-    "scanKicker": "本机应用索引", "scanningHint": "正在核对应用包、占用空间和 Bundle ID；大型应用可能需要多一点时间。",
-    "kicker": "应用管理", "title": "彻底卸载助手", "description": "识别应用本体和可由 Bundle ID 明确归属的残留文件；每个路径都由你确认后才会处理。", "refresh": "刷新应用",
+    "scanKicker": "本机应用索引", "scanningHint": "正在核对应用、占用空间和身份信息；大型应用可能需要多一点时间。",
+    "kicker": "应用管理", "title": "彻底卸载助手", "description": "识别应用本体和能够明确确认归属的残留文件；每个路径都由你确认后才会处理。", "refresh": "刷新应用",
     "unsupportedTitle": "系统应用清单暂不可用", "unsupportedDescription": "未能读取受支持的 macOS、Windows 或 Linux 应用清单。请等待系统完成应用或软件包数据库更新后重试。",
-    "applicationUnit": "个应用", "installedSize": "应用本体", "localOnly": "仅在本机读取，不上传清单", "cachedInventory": "显示 {{time}} 的本机缓存，可随时刷新", "search": "搜索已安装应用", "searchPlaceholder": "搜索名称、Bundle ID 或路径", "scanning": "正在读取应用清单…", "empty": "没有匹配的应用",
+    "applicationUnit": "个应用", "installedSize": "应用本体", "localOnly": "仅在本机读取，不上传清单", "cachedInventory": "显示 {{time}} 的本机缓存，可随时刷新", "search": "搜索已安装应用", "searchPlaceholder": "搜索名称、应用标识或路径", "scanning": "正在读取应用清单…", "empty": "没有匹配的应用",
     "filters": {
       "sort": "排序", "unused": "最近使用", "source": "安装来源", "all": "全部",
       "days": "{{count}} 天未使用",
       "sortBy": { "size": "按大小降序", "last_used": "最久未使用", "source": "按安装来源", "name": "按名称" }
     },
-    "preparingPlan": "正在核对应用身份和残留文件…", "planKicker": "卸载计划", "planBoundary": "请先退出这个应用。这里只列出 Bundle ID 能够精确证明归属的路径，不按名称猜测。", "bundleOnlyBoundary": "此应用没有可验证的 Bundle ID，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。", "foundItems": "已确认归属的项目", "required": "必选",
-    "selectedSize": "已选 {{count}} 项", "review": "检查并卸载 {{name}}", "reveal": "在访达中显示应用", "skipped": "{{count}} 个项目未纳入计划", "skippedDescription": "这些路径无法通过安全文件句柄检查，助手不会处理它们。",
+    "preparingPlan": "正在核对应用身份和残留文件…", "planKicker": "卸载计划", "planBoundary": "请先退出这个应用。这里只列出能够明确确认属于它的路径，不按名称猜测。", "bundleOnlyBoundary": "此应用没有提供足够的身份信息，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。", "foundItems": "已确认归属的项目", "required": "必选", "appIdentifier": "应用标识",
+    "selectedSize": "已选 {{count}} 项", "review": "检查并卸载 {{name}}", "reveal": "在访达中显示应用", "skipped": "{{count}} 个项目未纳入计划", "skippedDescription": "这些路径的当前状态无法安全确认，助手不会处理它们。",
     "selectTitle": "选择一个应用", "selectDescription": "助手会先生成逐路径卸载计划，再进入最终确认。", "cannotPrepare": "无法为这个应用生成安全计划", "dialogTitle": "卸载 {{name}}", "dialogDescription": "请逐项核对应用本体和相关数据。默认移入废纸篓，仍可恢复。",
     "outcomeComplete": "{{name}} 已处理 {{count}} 项，共 {{size}}。", "outcomeMovedToTrash": "{{name}} 已移至废纸篓；共处理 {{count}} 项、{{size}}，清空废纸篓前仍可恢复。", "outcomeDeletedPermanently": "{{name}} 已直接删除；共处理 {{count}} 项、{{size}}。", "outcomePartial": "{{name}} 的卸载未完全结束；已处理 {{count}} 项，共 {{size}}。",
     "removed": { "trash": "已移至废纸篓", "permanent": "已直接删除", "trashDescription": "应用已经离开原位置，可在清空废纸篓前恢复；主动刷新清单后将移除这条记录。", "permanentDescription": "应用已经从磁盘直接删除，无法从废纸篓恢复；主动刷新清单后将移除这条记录。", "partial": "应用本体已经移除，但部分相关项目未能处理。" },
     "artifacts": { "application": "应用本体", "application_support": "应用支持数据", "cache": "缓存", "preferences": "偏好设置", "saved_state": "窗口恢复状态", "container": "沙盒容器", "web_data": "网页数据", "http_storage": "网络存储", "cookies": "Cookie 数据", "logs": "日志", "launch_agent": "用户启动代理" },
-    "unavailable": { "generic": "此应用无法通过当前安全规则卸载。", "current_application_protected": "CoreRobin 运行期间不能卸载自身。", "application_bundle_identifier_missing": "应用未提供可安全验证的 Bundle ID。", "application_bundle_invalid": "应用包结构不完整或不受支持。", "application_bundle_not_allowed": "只支持“应用程序”目录中的顶层应用。" },
-    "errors": { "application_identity_changed": "应用身份已经变化，请刷新清单后重试。", "application_bundle_unavailable": "应用当前不可访问，请确认它仍在原位置。", "application_artifact_unavailable": "某个项目在确认前发生变化，请刷新卸载计划。", "application_bundle_identifier_missing": "无法验证此应用的 Bundle ID。" }
+    "unavailable": { "generic": "此应用无法通过当前安全规则卸载。", "current_application_protected": "CoreRobin 运行期间不能卸载自身。", "application_bundle_identifier_missing": "应用没有提供足够的身份信息。", "application_bundle_invalid": "应用包结构不完整或不受支持。", "application_bundle_not_allowed": "只支持“应用程序”目录中的顶层应用。" },
+    "errors": { "application_identity_changed": "应用身份已经变化，请刷新清单后重试。", "application_bundle_unavailable": "应用当前不可访问，请确认它仍在原位置。", "application_artifact_unavailable": "某个项目在确认前发生变化，请刷新卸载计划。", "application_bundle_identifier_missing": "无法确认此应用的身份。" }
   },
   "trashWatcher": {
     "title": "观察移入废纸篓的应用",
-    "description": "可选的本机 30 秒检查；只生成 Bundle ID 精确归属的残留计划，绝不自动删除。",
+    "description": "可选的本机 30 秒检查；只提供能够明确确认归属的残留计划，绝不自动删除。",
     "found": "已移入废纸篓 · 检查残留",
     "empty": "当前用户的废纸篓中没有待检查的应用。",
     "error": "暂时无法检查废纸篓。",
-    "planBoundary": "应用本体已经在废纸篓中；此计划只包含由精确 Bundle ID 归属且仍然存在的支持数据。"
+    "planBoundary": "应用本体已经在废纸篓中；此计划只包含仍然存在且能够明确确认归属的支持数据。"
   },
   "empty": "没有匹配的应用",
   "safety": "点击应用只会打开资源证据；任何结束操作仍需单独确认。",

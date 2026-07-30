@@ -69,7 +69,9 @@
     "peakDisk": "磁盘峰值",
     "samples": "采样数",
     "boundary": "这是登录后影响测量，不是固件开机耗时；最多测量 3 分钟，并保留最近 5 次。",
-    "empty": "还没有真实登录启动记录。启用“登录时启动”后，在下一次登录时自动测量。",
+    "empty": "还没有真实登录启动记录。启用后，CoreRobin 会在下一次登录时自动测量。",
+    "enableLogin": "启用登录时启动",
+    "loginEnabled": "登录时启动已启用；下一次登录后会自动生成记录。",
     "running": "当前运行：CPU {{cpu}} · 内存 {{memory}}",
     "notMatched": "未匹配到当前正在运行的应用"
   },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "这个启动项已经变化或不存在，请刷新列表后再试。",
       "startup_state_changed": "启动配置在确认后发生变化，CoreRobin 没有执行操作。",
       "startup_destination_conflict": "目标位置出现了另一份配置，为避免覆盖，CoreRobin 没有执行操作。",
-      "startup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开。",
-      "startup_confirmation_expired": "确认已超时，请重新检查后再操作。",
+      "startup_confirmation_unavailable": "启动项状态刚刚发生变化，CoreRobin 没有执行操作。",
+      "startup_confirmation_expired": "启动项状态刚刚发生变化，CoreRobin 没有执行操作。",
       "startup_management_failed": "系统未能安全移动启动配置；原文件仍保留在当前状态。"
     }
   },

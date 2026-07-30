@@ -54,11 +54,11 @@
     "userStatus": "Usuário / status",
     "runtime": "Tempo de execução",
     "launchCommand": "Comando de lançamento",
-    "stableHandle": "Confirmação vincula um handle temporário e de uso único do sistema operacional; a execução não procura novamente o alvo pelo PID.",
+    "stableHandle": "O CoreRobin fixa o processo selecionado e confirma que ele não mudou antes da ação.",
     "unavailableControl": "Controle seguro do processo não está disponível nesta plataforma.",
-    "bestEffort": "O macOS não pode fornecer um handle de sinal estável para cada processo. O CoreRobin verifica a identidade de lançamento antes de enviar o sinal, mas o direcionamento via PID continua sendo de melhor esforço.",
-    "allowBestEffort": "Permitir ações do processo com tentativa.",
-    "binding": "Vinculando…",
+    "bestEffort": "O CoreRobin confirma novamente que este ainda é o processo selecionado antes da ação. Se mudou, a ação é cancelada.",
+    "allowBestEffort": "Confirmar o processo novamente antes da ação",
+    "binding": "Confirmando o alvo…",
     "requestClose": "Solicitar saída",
     "restart": "Reiniciar aplicativo",
     "forceKill": "Forçar encerramento…"
@@ -75,16 +75,16 @@
     "exited": "O processo foi encerrado; as atualizações de tendência foram interrompidas."
   },
   "dialog": {
-    "windowsForce": "O Windows enviará o sinal TerminateProcess através do manipulador do processo; o processo não poderá salvar seu estado.",
-    "unixForce": "O processo receberá o sinal SIGKILL; o processo não poderá salvar seu estado e essa ação não pode ser desfeita.",
-    "request": "O processo receberá o sinal SIGTERM para realizar a limpeza e encerrar.",
+    "windowsForce": "O processo será encerrado imediatamente e talvez não consiga salvar o trabalho atual.",
+    "unixForce": "O processo será encerrado imediatamente, talvez não consiga salvar o trabalho atual e a ação não pode ser desfeita.",
+    "request": "Primeiro peça ao processo para sair normalmente, permitindo que ele salve e conclua a limpeza.",
     "forceTitle": "Forçar encerramento do processo?",
     "requestTitle": "Solicitar saída do processo?",
     "user": "Usuário",
     "startedAt": "Iniciado em",
-    "stableIdentity": "Esta confirmação vincula um identificador temporário e de uso único do sistema operacional; a execução não procura novamente pelo alvo por PID.",
-    "bestEffortIdentity": "macOS só suporta o direcionamento de PID com base no esforço máximo. A identidade de lançamento de alta resolução é verificada antes da execução, mas não garante a correspondência com os identificadores temporários.",
-    "validating": "Validando…",
+    "stableIdentity": "A ação se aplica apenas ao processo que você acabou de confirmar. Ela é cancelada se o alvo mudar.",
+    "bestEffortIdentity": "O CoreRobin confirma o processo novamente antes da ação e não continua se o alvo mudou.",
+    "validating": "Confirmando novamente…",
     "confirmForce": "Forçar encerramento",
     "confirmRequest": "Solicitar saída"
   }

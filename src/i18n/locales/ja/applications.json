@@ -50,10 +50,10 @@
   },
   "uninstall": {
     "scanKicker": "ローカルアプリインデックス",
-    "scanningHint": "アプリバンドル、ディスク使用量、バンドル ID を確認します。大きなアプリの場合は少し時間がかかる場合があります。",
+    "scanningHint": "アプリ、ディスク使用量、識別情報を確認しています。大きなアプリは少し時間がかかる場合があります。",
     "kicker": "アプリケーション管理",
     "title": "完全なアンインストール アシスタント",
-    "description": "正確なバンドル ID に基づいてアプリ バンドルと残り物を検索します。各パスを確認するまでは何も処理されません。",
+    "description": "アプリ本体と、明確に関連付けられる残存データを探します。各パスを確認するまでは何も処理しません。",
     "refresh": "アプリを更新する",
     "unsupportedTitle": "システムのアプリカタログを利用できません",
     "unsupportedDescription": "信頼できるOSのアプリ情報を読み取れませんでした。対応するmacOS、Windows、Linuxで再試行してください。",
@@ -62,20 +62,21 @@
     "localOnly": "ローカルで読みます。在庫は決してアップロードされません",
     "cachedInventory": "{{time}} からのローカル キャッシュを表示します。いつでもリフレッシュ",
     "search": "インストールされているアプリケーションを検索する",
-    "searchPlaceholder": "名前、バンドル ID、またはパスを検索します",
+    "searchPlaceholder": "名前、アプリ識別子、パスを検索",
     "scanning": "アプリケーションインベントリを読み取っています…",
     "empty": "一致するアプリケーションがありません",
     "preparingPlan": "アプリの ID とサポート ファイルを確認しています…",
     "planKicker": "アンインストール計画",
-    "planBoundary": "まずこのアプリを終了してください。正確なバンドル ID によって証明されたパスのみがリストされます。アプリ名の推測は除外されます。",
-    "bundleOnlyBoundary": "このアプリには検証可能な Bundle ID がないため、CoreRobin はパスと構造を確認できたアプリ本体のみを削除し、関連ファイルを推測しません。",
+    "planBoundary": "まずこのアプリを終了してください。明確にこのアプリに属すると確認できるパスだけを表示し、名前から推測しません。",
+    "bundleOnlyBoundary": "このアプリには十分な識別情報がないため、CoreRobin はパスと構造を確認できたアプリ本体だけを削除し、関連ファイルを推測しません。",
     "foundItems": "確認済みの項目",
     "required": "必須",
+    "appIdentifier": "アプリ識別子",
     "selectedSize": "{{count}} アイテムが選択されました",
     "review": "{{name}} を確認してアンインストールする",
     "reveal": "Finder でアプリケーションを公開",
     "skipped": "{{count}} 品目はプランから除外されます",
-    "skippedDescription": "これらのパスは安全なファイル ハンドル検査に合格しなかったため、アシスタントはそれらのパスには触れません。",
+    "skippedDescription": "これらのパスは現在の状態を安全に確認できないため、アシスタントは処理しません。",
     "selectTitle": "アプリケーションを選択してください",
     "selectDescription": "アシスタントは、最終確認の前にパスごとの計画を作成します。",
     "cannotPrepare": "このアプリケーションには安全なプランを作成できません",
@@ -108,7 +109,7 @@
     "unavailable": {
       "generic": "現在の安全ルールではこのアプリをアンインストールできません。",
       "current_application_protected": "CoreRobin は、実行中にそれ自体をアンインストールできません。",
-      "application_bundle_identifier_missing": "アプリケーションは安全に検証可能なバンドル ID を提供しません。",
+      "application_bundle_identifier_missing": "アプリに十分な識別情報がありません。",
       "application_bundle_invalid": "アプリケーション バンドルが不完全であるか、サポートされていません。",
       "application_bundle_not_allowed": "アプリケーション フォルダー内の最上位のアプリのみがサポートされます。"
     },
@@ -116,7 +117,7 @@
       "application_identity_changed": "アプリケーション ID が変更されました。インベントリを更新して、再試行してください。",
       "application_bundle_unavailable": "アプリにアクセスできません。元の場所に残っているか確認してください。",
       "application_artifact_unavailable": "確認前に項目が変更されました。アンインストール計画を更新します。",
-      "application_bundle_identifier_missing": "アプリケーションのバンドル ID を確認できませんでした。"
+      "application_bundle_identifier_missing": "アプリの識別情報を確認できませんでした。"
     },
     "filters": {
       "sort": "並べ替え",
@@ -177,10 +178,10 @@
   },
   "trashWatcher": {
     "title": "ゴミ箱に移動したアプリを監視",
-    "description": "任意のローカル確認を 30 秒ごとに実行します。正確な Bundle ID の残存データ計画だけを提示し、自動削除はしません。",
+    "description": "任意のローカル確認を 30 秒ごとに実行します。明確に関連付けられる残存データだけを提示し、自動削除はしません。",
     "found": "ゴミ箱へ移動済み · 残存データを確認",
     "error": "現在ゴミ箱を確認できません。",
     "empty": "このユーザーのゴミ箱に待機中のアプリはありません。",
-    "planBoundary": "アプリ本体はすでにゴミ箱にあります。この計画には正確な Bundle ID で帰属できる既存のサポートデータだけが含まれます。"
+    "planBoundary": "アプリ本体はすでにゴミ箱にあります。この計画には、現在も存在し明確に関連付けられるサポートデータだけが含まれます。"
   }
 }

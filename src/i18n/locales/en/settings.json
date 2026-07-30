@@ -5,6 +5,8 @@
   "intervalMs": "{{interval}} ms",
   "intervalSeconds": "{{seconds}} sec",
   "experience": {
+    "sectionTitle": "Interface and language",
+    "sectionDescription": "Choose an interface mode and language.",
     "title": "Interface mode",
     "description": "Everyday mode starts with real problems and guided next steps; professional mode keeps every process and metric.",
     "label": "Interface mode",
@@ -170,6 +172,7 @@
     "restartUpdate": "Restart now and finish update",
     "skipVersion": "Skip v{{version}}",
     "updatedReceipt": "Updated successfully from v{{version}}",
+    "updatedCompact": "Updated",
     "restartingUpdate": "Restarting…",
     "updateInstallError": "The update could not be installed. Your current version is unchanged; try again later or view the release notes.",
     "updateRestartError": "The update is installed, but CoreRobin could not restart automatically. Try again, or quit and reopen it manually.",

@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} ms",
   "intervalSeconds": "{{seconds}} Sek.",
   "experience": {
+    "sectionTitle": "Oberfläche und Sprache",
+    "sectionDescription": "Oberflächenmodus und Sprache wählen.",
     "title": "Benutzeroberflächen-Modus",
     "description": "Der Alltag-Modus startet mit realen Problemen und führt den Benutzer durch die nächsten Schritte; der Professional-Modus zeigt alle Prozesse und Metriken an.",
     "label": "Benutzeroberflächen-Modus",
@@ -240,6 +242,7 @@
       "preferences": "Oberflächeneinstellungen und lokale Funktionsoptionen"
     },
     "updatedReceipt": "Erfolgreich von v{{version}} aktualisiert",
+    "updatedCompact": "Aktualisiert",
     "skipVersion": "v{{version}} überspringen"
   },
   "onboarding": {

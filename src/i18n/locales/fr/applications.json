@@ -50,10 +50,10 @@
   },
   "uninstall": {
     "scanKicker": "Index des applications locales",
-    "scanningHint": "Vérification des bundles d'applications, de l'utilisation du disque et des ID de bundle. Les applications plus volumineuses peuvent prendre un peu plus de temps.",
+    "scanningHint": "Vérification des applications, de l’espace utilisé et de leurs informations d’identité. Les grandes applications peuvent prendre un peu plus de temps.",
     "kicker": "Gestion des applications",
     "title": "Assistant de désinstallation complet",
-    "description": "Recherche le bundle d'applications et les restes attribués par l'ID exact du bundle. Rien n'est géré jusqu'à ce que vous confirmiez chaque chemin.",
+    "description": "Recherche l’application et les données restantes qui peuvent lui être clairement attribuées. Aucun chemin n’est traité avant votre confirmation.",
     "refresh": "Actualiser les applications",
     "unsupportedTitle": "Le catalogue d’applications du système est indisponible",
     "unsupportedDescription": "CoreRobin n’a pas pu lire une source fiable du système. Réessayez sur un système macOS, Windows ou Linux pris en charge.",
@@ -62,20 +62,21 @@
     "localOnly": "Lire localement ; l'inventaire n'est jamais téléchargé",
     "cachedInventory": "Affichage du cache local de {{time}} ; actualiser à tout moment",
     "search": "Rechercher les applications installées",
-    "searchPlaceholder": "Rechercher le nom, l'ID du bundle ou le chemin",
+    "searchPlaceholder": "Rechercher un nom, un identifiant d’application ou un chemin",
     "scanning": "Lecture de l’inventaire des candidatures…",
     "empty": "Aucune candidature correspondante",
     "preparingPlan": "Vérification de l'identité de l'application et des fichiers de support…",
     "planKicker": "Plan de désinstallation",
-    "planBoundary": "Quittez d'abord cette application. Seuls les chemins prouvés par l'ID exact du bundle sont répertoriés ; les suppositions sur le nom de l'application sont exclues.",
-    "bundleOnlyBoundary": "Cette application n’a pas de Bundle ID vérifiable. CoreRobin supprimera uniquement le paquet validé par son chemin et sa structure, sans deviner les fichiers associés.",
+    "planBoundary": "Quittez d’abord l’application. Seuls les chemins qui peuvent lui être clairement attribués sont listés, sans déduction à partir du nom.",
+    "bundleOnlyBoundary": "Cette application ne fournit pas assez d’informations d’identité. CoreRobin ne supprimera que l’application validée par son chemin et sa structure, sans deviner les fichiers associés.",
     "foundItems": "Articles vérifiés",
     "required": "Requis",
+    "appIdentifier": "Identifiant d’application",
     "selectedSize": "Articles {{count}} sélectionnés",
     "review": "Vérifier et désinstaller {{name}}",
     "reveal": "Révéler l'application dans Finder",
     "skipped": "Articles {{count}} exclus du plan",
-    "skippedDescription": "Ces chemins n’ont pas passé avec succès l’inspection sécurisée des descripteurs de fichiers, l’assistant ne les touchera donc pas.",
+    "skippedDescription": "L’état actuel de ces chemins n’a pas pu être confirmé en toute sécurité ; ils ne seront donc pas traités.",
     "selectTitle": "Sélectionnez une application",
     "selectDescription": "L'assistant crée un plan chemin par chemin avant confirmation finale.",
     "cannotPrepare": "Un plan sécurisé ne peut pas être créé pour cette application",
@@ -108,7 +109,7 @@
     "unavailable": {
       "generic": "Cette application ne peut pas être désinstallée selon les règles de sécurité actuelles.",
       "current_application_protected": "CoreRobin ne peut pas se désinstaller pendant son exécution.",
-      "application_bundle_identifier_missing": "L'application ne fournit pas d'ID de bundle vérifiable en toute sécurité.",
+      "application_bundle_identifier_missing": "L’application ne fournit pas assez d’informations d’identité.",
       "application_bundle_invalid": "L'ensemble d'applications est incomplet ou n'est pas pris en charge.",
       "application_bundle_not_allowed": "Seules les applications de niveau supérieur dans un dossier Applications sont prises en charge."
     },
@@ -116,7 +117,7 @@
       "application_identity_changed": "L'identité de l'application a changé. Actualisez l'inventaire et réessayez.",
       "application_bundle_unavailable": "L’application est inaccessible. Vérifiez qu’elle se trouve toujours à son emplacement d’origine.",
       "application_artifact_unavailable": "Un élément modifié avant confirmation. Actualisez le plan de désinstallation.",
-      "application_bundle_identifier_missing": "L'ID du bundle de l'application n'a pas pu être vérifié."
+      "application_bundle_identifier_missing": "L’identité de l’application n’a pas pu être confirmée."
     },
     "filters": {
       "sort": "Trier",
@@ -178,10 +179,10 @@
   },
   "trashWatcher": {
     "title": "Surveiller les apps placées dans la corbeille",
-    "description": "Vérification locale facultative toutes les 30 secondes. Propose uniquement un plan de résidus lié à l’identifiant Bundle exact et ne supprime rien automatiquement.",
+    "description": "Vérification locale facultative toutes les 30 secondes. Ne propose que les données restantes clairement attribuables et ne supprime rien automatiquement.",
     "found": "Placée dans la corbeille · inspecter les résidus",
     "error": "Impossible de vérifier la corbeille pour le moment.",
     "empty": "Aucune app n’attend dans la corbeille de cet utilisateur.",
-    "planBoundary": "L’app est déjà dans la corbeille. Ce plan contient uniquement les données d’assistance existantes attribuées par son identifiant Bundle exact."
+    "planBoundary": "L’app est déjà dans la corbeille. Ce plan contient uniquement les données d’assistance existantes qui peuvent lui être clairement attribuées."
   }
 }

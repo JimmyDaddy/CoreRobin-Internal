@@ -50,10 +50,10 @@
   },
   "uninstall": {
     "scanKicker": "Lokaler App-Index",
-    "scanningHint": "Überprüfen von App-Bundles, Festplattennutzung und Bundle-IDs. Bei größeren Apps kann es etwas länger dauern.",
+    "scanningHint": "Apps, Speicherbedarf und Identitätsinformationen werden geprüft. Größere Apps können etwas länger dauern.",
     "kicker": "Anwendungsmanagement",
     "title": "Vollständiger Deinstallationsassistent",
-    "description": "Findet das App-Bundle und die Reste, zugeordnet nach der genauen Bundle-ID. Es wird nichts bearbeitet, bis Sie jeden Pfad bestätigen.",
+    "description": "Findet die App selbst und Restdaten, die ihr eindeutig zugeordnet werden können. Vor Ihrer Bestätigung wird kein Pfad bearbeitet.",
     "refresh": "Apps aktualisieren",
     "unsupportedTitle": "Der System-App-Katalog ist auf dieser Plattform nicht verfügbar",
     "unsupportedDescription": "CoreRobin konnte keine vertrauenswürdige App-Quelle des Betriebssystems lesen. Auf unterstützten macOS-, Windows- und Linux-Systemen erneut versuchen.",
@@ -62,20 +62,21 @@
     "localOnly": "Lokal lesen; Das Inventar wird nie hochgeladen",
     "cachedInventory": "Zeigt den lokalen Cache von {{time}}; jederzeit aktualisieren",
     "search": "Durchsuchen Sie installierte Anwendungen",
-    "searchPlaceholder": "Suchname, Bundle-ID oder Pfad",
+    "searchPlaceholder": "Name, App-Kennung oder Pfad suchen",
     "scanning": "Lesen des Anwendungsinventars…",
     "empty": "Keine passenden Bewerbungen",
     "preparingPlan": "App-Identität und Supportdateien werden überprüft …",
     "planKicker": "Plan deinstallieren",
-    "planBoundary": "Beenden Sie zuerst diese App. Es werden nur Pfade aufgeführt, die durch die genaue Bundle-ID nachgewiesen werden. Vermutungen über App-Namen sind ausgeschlossen.",
-    "bundleOnlyBoundary": "Diese App hat keine überprüfbare Bundle-ID. CoreRobin entfernt daher nur das über Pfad und Struktur bestätigte App-Paket und errät keine Support-Dateien.",
+    "planBoundary": "Beenden Sie die App zuerst. Es werden nur eindeutig zugehörige Pfade aufgeführt; anhand des Namens wird nichts vermutet.",
+    "bundleOnlyBoundary": "Diese App liefert nicht genügend Identitätsinformationen. CoreRobin entfernt daher nur die über Pfad und Struktur bestätigte App selbst und errät keine Support-Dateien.",
     "foundItems": "Verifizierte Artikel",
     "required": "Erforderlich",
+    "appIdentifier": "App-Kennung",
     "selectedSize": "{{count}} Elemente ausgewählt",
     "review": "Überprüfen und deinstallieren Sie {{name}}",
     "reveal": "Offenlegungsanwendung in Finder",
     "skipped": "{{count}} Artikel, die vom Plan ausgeschlossen sind",
-    "skippedDescription": "Diese Pfade haben die sichere Datei-Handle-Prüfung nicht bestanden, sodass der Assistent sie nicht berührt.",
+    "skippedDescription": "Der aktuelle Zustand dieser Pfade konnte nicht sicher bestätigt werden, daher werden sie nicht bearbeitet.",
     "selectTitle": "Wählen Sie eine Anwendung aus",
     "selectDescription": "Der Assistent erstellt vor der endgültigen Bestätigung einen Pfad-für-Pfad-Plan.",
     "cannotPrepare": "Für diese Anwendung kann kein sicherer Plan erstellt werden",
@@ -108,7 +109,7 @@
     "unavailable": {
       "generic": "Diese App kann nach den aktuellen Sicherheitsregeln nicht deinstalliert werden.",
       "current_application_protected": "CoreRobin kann sich während der Ausführung nicht selbst deinstallieren.",
-      "application_bundle_identifier_missing": "Die Anwendung stellt keine sicher überprüfbare Bundle-ID bereit.",
+      "application_bundle_identifier_missing": "Die App liefert nicht genügend Identitätsinformationen.",
       "application_bundle_invalid": "Das Anwendungspaket ist unvollständig oder wird nicht unterstützt.",
       "application_bundle_not_allowed": "Es werden nur Apps der obersten Ebene in einem Anwendungsordner unterstützt."
     },
@@ -116,7 +117,7 @@
       "application_identity_changed": "Die Anwendungsidentität hat sich geändert. Aktualisieren Sie das Inventar und versuchen Sie es erneut.",
       "application_bundle_unavailable": "Die App ist nicht erreichbar. Prüfe, ob sie sich noch am ursprünglichen Ort befindet.",
       "application_artifact_unavailable": "Ein Artikel wurde vor der Bestätigung geändert. Aktualisieren Sie den Deinstallationsplan.",
-      "application_bundle_identifier_missing": "Die Bundle-ID der Anwendung konnte nicht überprüft werden."
+      "application_bundle_identifier_missing": "Die Identität der App konnte nicht bestätigt werden."
     },
     "filters": {
       "sort": "Sortieren",
@@ -178,10 +179,10 @@
   },
   "trashWatcher": {
     "title": "Apps im Papierkorb beobachten",
-    "description": "Optionale lokale Prüfung alle 30 Sekunden. Sie bietet nur einen Restdatenplan anhand der exakten Bundle-ID und löscht nie automatisch.",
+    "description": "Optionale lokale Prüfung alle 30 Sekunden. Sie zeigt nur eindeutig zuordenbare Restdaten und löscht nie automatisch.",
     "found": "In den Papierkorb verschoben · Restdaten prüfen",
     "error": "Der Papierkorb kann gerade nicht geprüft werden.",
     "empty": "Im Papierkorb dieses Benutzers wartet keine App.",
-    "planBoundary": "Die App selbst liegt bereits im Papierkorb. Dieser Plan enthält nur vorhandene Supportdaten, die über die exakte Bundle-ID zugeordnet wurden."
+    "planBoundary": "Die App selbst liegt bereits im Papierkorb. Dieser Plan enthält nur vorhandene Supportdaten, die ihr eindeutig zugeordnet werden können."
   }
 }

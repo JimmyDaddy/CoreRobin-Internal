@@ -128,8 +128,8 @@
     "safeDescription": "Isso apenas solicita que o aplicativo em execução pare e não limpa seus dados.",
     "riskTitle": "Salve qualquer coisa que esteja editando primeiro",
     "riskDescription": "A exibição de um aviso de salvamento depende do aplicativo; o trabalho não salvo ainda pode ser perdido.",
-    "stableIdentity": "Um identificador estável está vinculado ao processo selecionado e será verificado novamente antes da execução.",
-    "bestEffortIdentity": "Esta plataforma só pode reduzir o risco de reutilização de PID por meio de verificações de identidade. O CoreRobin rejeita a ação se o processo tiver mudado.",
+    "stableIdentity": "A ação se aplica apenas ao processo selecionado e será confirmada novamente antes da execução.",
+    "bestEffortIdentity": "O CoreRobin confirma o processo novamente antes da ação e não continua se o alvo mudou.",
     "confirm": "Confirmar solicitação de saída para {{name}}",
     "confirmRestart": "Reiniciar {{name}}"
   }

@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} ms",
   "intervalSeconds": "{{seconds}} segundos",
   "experience": {
+    "sectionTitle": "Interface e idioma",
+    "sectionDescription": "Escolha o modo da interface e o idioma.",
     "title": "Modo da interface",
     "description": "O modo 'Diário' começa com problemas reais e fornece etapas guiadas; o modo 'Profissional' monitora todos os processos e métricas.",
     "label": "Modo da interface",
@@ -240,6 +242,7 @@
       "preferences": "Preferências da interface e configurações locais dos recursos"
     },
     "updatedReceipt": "Atualizado com sucesso desde v{{version}}",
+    "updatedCompact": "Atualizado",
     "skipVersion": "Ignorar v{{version}}"
   },
   "onboarding": {

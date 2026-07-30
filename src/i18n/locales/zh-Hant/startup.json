@@ -57,7 +57,9 @@
     "peakDisk": "尖峰磁碟",
     "samples": "樣品",
     "boundary": "這衡量登入後的影響，而不是韌體啟動時間。三分鐘後測量停止，並保留最近的五次測量。",
-    "empty": "還沒有真正的登入測量。啟用登入時啟動以自動測量下次登入。",
+    "empty": "還沒有真正的登入測量。啟用後，CoreRobin 會在下次登入時自動測量。",
+    "enableLogin": "啟用登入時啟動",
+    "loginEnabled": "登入時啟動已啟用；下次登入後會自動建立記錄。",
     "none": {
       "title": "當前無啟動影響"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "這個啟動項已經變化或不存在，請重新整理列表後再試。",
       "startup_state_changed": "啟動配置在確認後發生變化，CoreRobin 沒有執行操作。",
       "startup_destination_conflict": "目標位置出現了另一份配置，為避免覆蓋，CoreRobin 沒有執行操作。",
-      "startup_confirmation_unavailable": "本次確認已經失效，請取消後重新開啟。",
-      "startup_confirmation_expired": "確認已超時，請重新檢查後再操作。",
+      "startup_confirmation_unavailable": "啟動項目狀態剛剛發生變化，CoreRobin 沒有執行操作。",
+      "startup_confirmation_expired": "啟動項目狀態剛剛發生變化，CoreRobin 沒有執行操作。",
       "startup_management_failed": "系統未能安全移動啟動配置；原檔案仍保留在當前狀態。"
     }
   },

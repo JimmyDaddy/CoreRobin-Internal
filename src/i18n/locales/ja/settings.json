@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} ミリ秒",
   "intervalSeconds": "{{seconds}} 秒",
   "experience": {
+    "sectionTitle": "インターフェースと言語",
+    "sectionDescription": "表示モードと言語を選びます。",
     "title": "インターフェースモード",
     "description": "通常モードでは、実際の問題から始まり、段階的な解決策が提示されます。プロフェッショナルモードでは、すべてのプロセスと指標が表示されます。",
     "label": "インターフェースモード",
@@ -240,6 +242,7 @@
       "preferences": "画面設定と各機能のローカル設定"
     },
     "updatedReceipt": "v{{version}} から正常に更新しました",
+    "updatedCompact": "更新済み",
     "skipVersion": "v{{version}} をスキップ"
   },
   "onboarding": {

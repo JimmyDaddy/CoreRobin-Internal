@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} ms",
   "intervalSeconds": "{{seconds}} s",
   "experience": {
+    "sectionTitle": "Interface et langue",
+    "sectionDescription": "Choisissez le mode d’interface et la langue.",
     "title": "Mode d'interface",
     "description": "Le mode quotidien démarre avec les problèmes réels et des étapes guidées ; le mode professionnel conserve tous les processus et les mesures.",
     "label": "Mode d'interface",
@@ -240,6 +242,7 @@
       "preferences": "Préférences d’interface et réglages locaux des fonctions"
     },
     "updatedReceipt": "Mise à jour réussie depuis v{{version}}",
+    "updatedCompact": "Mis à jour",
     "skipVersion": "Ignorer v{{version}}"
   },
   "onboarding": {

@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} 밀리초",
   "intervalSeconds": "{{seconds}} 초",
   "experience": {
+    "sectionTitle": "인터페이스 및 언어",
+    "sectionDescription": "인터페이스 모드와 표시 언어를 선택합니다.",
     "title": "인터페이스 모드",
     "description": "일상 모드는 실제 문제와 안내된 다음 단계를 시작합니다. 전문 모드는 모든 프로세스와 지표를 유지합니다.",
     "label": "인터페이스 모드",
@@ -240,6 +242,7 @@
       "preferences": "인터페이스 환경 설정 및 기능별 로컬 설정"
     },
     "updatedReceipt": "v{{version}}에서 성공적으로 업데이트됨",
+    "updatedCompact": "업데이트됨",
     "skipVersion": "v{{version}} 건너뛰기"
   },
   "onboarding": {

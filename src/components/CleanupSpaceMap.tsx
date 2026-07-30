@@ -1030,7 +1030,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     disabled={refreshingFocus}
                     onClick={() => void refreshFocusedFolder()}
                   >
-                    {refreshingFocus ? <LoaderCircle size={13} /> : <RefreshCw size={13} />}
+                    {refreshingFocus ? <LoaderCircle className="is-spinning" size={13} /> : <RefreshCw size={13} />}
                     <span>
                       {t(
                         refreshingFocus
@@ -1045,7 +1045,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             ) : null}
             {loadingNodeId && loadingNodeId !== focus.id ? (
               <div className="cleanup-map__subtree-loading" role="status">
-                <LoaderCircle size={14} />
+                <LoaderCircle className="is-spinning" size={14} />
                 <span>{t("cleanup:map.loadingFolder")}</span>
               </div>
             ) : null}

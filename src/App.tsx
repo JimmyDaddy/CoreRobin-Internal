@@ -1057,62 +1057,93 @@ function App() {
 
   const handleAction = async () => {
     if (!pendingAction || submittingActionRef.current) return;
-    const currentKey = pendingAction.source !== "process"
-      ? selectedProcess && processIdentity(selectedProcess) === pendingAction.selectionIdentity
-        ? pendingAction.key
+    const pending = pendingAction;
+    const currentKey = pending.source !== "process"
+      ? selectedProcess && processIdentity(selectedProcess) === pending.selectionIdentity
+        ? pending.key
         : null
       : activeDetail?.key ?? null;
     if (
-      selectedIdentity !== pendingAction.selectionIdentity ||
-      !processKeysEqual(currentKey, pendingAction.key)
+      selectedIdentity !== pending.selectionIdentity ||
+      !processKeysEqual(currentKey, pending.key)
     ) {
-      await releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
+      await releaseProcessControlLease({ leaseId: pending.lease.id }).catch(() => undefined);
       setNotice(t("app:staleTarget"));
       setPendingAction(null);
       return;
     }
 
-    const actionRecordId = userActions.start({
-      kind: pendingAction.source === "restart"
-        ? "process_restart"
-        : pendingAction.action === "force_kill"
-          ? "process_force_quit"
-          : "process_close",
-      targetName: pendingAction.displayName,
-      targetCount: 1,
-    });
     submittingActionRef.current = true;
     setSubmittingAction(true);
+    let executionLease: ProcessControlLease | null = null;
+    let actionRecordId: string | null = null;
     try {
+      executionLease = await createProcessControlLease({
+        key: pending.key,
+        action: pending.action,
+        acknowledgeBestEffort: true,
+      });
+      const latestKey = pending.source !== "process"
+        ? selectedProcess && processIdentity(selectedProcess) === pending.selectionIdentity
+          ? pending.key
+          : null
+        : activeDetailKeyRef.current;
+      if (
+        selectedIdentityRef.current !== pending.selectionIdentity ||
+        !processKeysEqual(latestKey, pending.key)
+      ) {
+        await releaseProcessControlLease({ leaseId: executionLease.id })
+          .catch(() => undefined);
+        executionLease = null;
+        setNotice(t("app:staleTarget"));
+        setPendingAction(null);
+        return;
+      }
+      await releaseProcessControlLease({ leaseId: pending.lease.id })
+        .catch(() => undefined);
+      setPendingAction((current) =>
+        current?.lease.id === pending.lease.id && executionLease
+          ? { ...current, lease: executionLease }
+          : current,
+      );
+      actionRecordId = userActions.start({
+        kind: pending.source === "restart"
+          ? "process_restart"
+          : pending.action === "force_kill"
+            ? "process_force_quit"
+            : "process_close",
+        targetName: pending.displayName,
+        targetCount: 1,
+      });
       const result = await executeProcessAction({
-        leaseId: pendingAction.lease.id,
-        key: pendingAction.key,
-        action: pendingAction.action,
+        leaseId: executionLease.id,
+        key: pending.key,
+        action: pending.action,
       });
       let resultMessage = result.message;
       let actionStatus: "succeeded" | "failed" = "succeeded";
       let actionVerification: "verified" | "not_confirmed" = "verified";
-      if (pendingAction.relaunchExecutable) {
+      if (pending.relaunchExecutable) {
         const exited = result.outcome === "exited" ||
           result.outcome === "already_exited" ||
           await waitForProcessIdentityExit(
-            pendingAction.selectionIdentity,
+            pending.selectionIdentity,
             getSystemSnapshot,
           );
         if (exited) {
-          await relaunchApplication(pendingAction.relaunchExecutable);
+          await relaunchApplication(pending.relaunchExecutable);
           const relaunched = await waitForProcessReplacement(
-            pendingAction.selectionIdentity,
-            pendingAction.displayName,
+            pending.selectionIdentity,
+            pending.displayName,
             getSystemSnapshot,
           );
           resultMessage = t("daily:applications.restartComplete", {
-            name: pendingAction.displayName,
+            name: pending.displayName,
           });
           actionVerification = relaunched ? "verified" : "not_confirmed";
         } else {
           resultMessage = t("daily:applications.restartStillRunning", {
-            name: pendingAction.displayName,
+            name: pending.displayName,
           });
           actionStatus = "failed";
         }
@@ -1120,7 +1151,7 @@ function App() {
         const exited = result.outcome === "exited" ||
           result.outcome === "already_exited" ||
           await waitForProcessIdentityExit(
-            pendingAction.selectionIdentity,
+            pending.selectionIdentity,
             getSystemSnapshot,
           );
         actionStatus = exited ? "succeeded" : "failed";
@@ -1131,9 +1162,9 @@ function App() {
         targetCount: 1,
       });
       setNotice(resultMessage);
-      if (pendingAction.dailyIntent) {
+      if (pending.dailyIntent) {
         setDailyRecheck({
-          intent: pendingAction.dailyIntent,
+          intent: pending.dailyIntent,
           outcome: result.outcome,
           checkedAtMs: Date.now(),
         });
@@ -1142,12 +1173,15 @@ function App() {
       await refreshNow();
     } catch (caughtError) {
       const actionError = normalizeCommandError(caughtError);
-      userActions.complete(actionRecordId, {
-        status: "failed",
-        verification: "not_confirmed",
-        targetCount: 1,
-      });
-      void releaseProcessControlLease({ leaseId: pendingAction.lease.id }).catch(() => undefined);
+      if (actionRecordId) {
+        userActions.complete(actionRecordId, {
+          status: "failed",
+          verification: "not_confirmed",
+          targetCount: 1,
+        });
+      }
+      const leaseId = executionLease?.id ?? pending.lease.id;
+      void releaseProcessControlLease({ leaseId }).catch(() => undefined);
       setNotice(actionError.message);
       setPendingAction(null);
     } finally {
@@ -1383,8 +1417,10 @@ function App() {
             className={dailyMode ? "is-active" : ""}
             type="button"
             aria-pressed={dailyMode}
-            aria-label={t("app:mode.switchTo.simple")}
-            disabled={modeTransition !== null}
+            aria-label={dailyMode
+              ? t("app:mode.simple")
+              : t("app:mode.switchTo.simple")}
+            disabled={modeTransition !== null || dailyMode}
             onClick={() => switchExperienceMode("simple")}
           >
             <Sparkles size={15} /><span>{t("app:mode.short.simple")}</span>
@@ -1393,8 +1429,10 @@ function App() {
             className={!dailyMode ? "is-active" : ""}
             type="button"
             aria-pressed={!dailyMode}
-            aria-label={t("app:mode.switchTo.professional")}
-            disabled={modeTransition !== null}
+            aria-label={!dailyMode
+              ? t("app:mode.professional")
+              : t("app:mode.switchTo.professional")}
+            disabled={modeTransition !== null || !dailyMode}
             onClick={() => openProfessional("overview")}
           >
             <SlidersHorizontal size={15} /><span>{t("app:mode.short.professional")}</span>
@@ -1925,7 +1963,11 @@ function App() {
                 totalMemoryBytes={snapshot.memory.totalBytes}
                 impactMeasurements={startupImpactMeasurements}
                 actionRecords={userActions.records}
+                launchAtLogin={settings.launchAtLogin}
                 onRefresh={startupItems.refresh}
+                onEnableLaunchAtLogin={() =>
+                  updateSettings({ launchAtLogin: true })
+                }
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
               />

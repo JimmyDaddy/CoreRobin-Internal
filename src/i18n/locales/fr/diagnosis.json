@@ -128,8 +128,8 @@
     "safeDescription": "Cela ne demande qu'à l'application en cours d'exécution de s'arrêter et ne nettoie pas ses données.",
     "riskTitle": "Sauvegardez d'abord tout ce que vous modifiez",
     "riskDescription": "La présence d'une demande de sauvegarde dépend de l'application ; la perte de données non sauvegardées est toujours possible.",
-    "stableIdentity": "Une identité stable est associée au processus sélectionné et sera vérifiée avant l'exécution.",
-    "bestEffortIdentity": "Cette plateforme ne peut réduire que le risque de réutilisation des PID grâce aux vérifications d'identité. CoreRobin refuse l'action si le processus a changé.",
+    "stableIdentity": "L’action ne vise que le processus sélectionné et sera confirmée de nouveau avant l’exécution.",
+    "bestEffortIdentity": "CoreRobin vérifie de nouveau le processus avant d’agir et ne continue pas si la cible a changé.",
     "confirm": "Confirmer la demande de fermeture pour {{name}}",
     "confirmRestart": "Redémarrer {{name}}"
   }

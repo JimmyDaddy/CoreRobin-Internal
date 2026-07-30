@@ -54,11 +54,11 @@
     "userStatus": "ユーザーの状態",
     "runtime": "実行時間",
     "launchCommand": "起動コマンド",
-    "stableHandle": "一時的なOSハンドルを確立します。実行時に、ターゲットプロセスをPIDで再度検索しません。",
+    "stableHandle": "CoreRobin は選択したプロセスを固定し、操作前に変更されていないことを再確認します。",
     "unavailableControl": "このプラットフォームでは、安全なプロセス制御が利用できません。",
-    "bestEffort": "macOSは、すべてのプロセスに対して安定したシグナルハンドルを提供できません。CoreRobinは起動時のIDを再確認しますが、PIDによるターゲット指定は依然として試行錯誤です。",
-    "allowBestEffort": "このセッションでの、最善のプロセス操作を許可",
-    "binding": "バインディング中...",
+    "bestEffort": "CoreRobin は操作前に、選択したプロセスのままであることを再確認します。対象が変わっていれば操作を中止します。",
+    "allowBestEffort": "操作前にプロセスを再確認する",
+    "binding": "対象を確認中…",
     "requestClose": "終了リクエスト",
     "restart": "アプリを再起動",
     "forceKill": "強制終了..."
@@ -75,16 +75,16 @@
     "exited": "プロセスが終了しました。トレンドの追跡は停止します。"
   },
   "dialog": {
-    "windowsForce": "Windows は関連付けられたプロセスハンドルで TerminateProcess を呼び出します。プロセスは状態を保存できません。",
-    "unixForce": "SIGKILLシグナルが送信され、プロセスは状態を保存できず、この操作は元に戻せません。",
-    "request": "SIGTERMシグナルが送信され、プロセスは正常に終了できます。",
+    "windowsForce": "プロセスを直ちに終了します。現在の内容を保存できない場合があります。",
+    "unixForce": "プロセスを直ちに終了します。現在の内容を保存できない場合があり、元に戻せません。",
+    "request": "プロセスに通常終了を依頼し、保存と後処理の時間を与えます。",
     "forceTitle": "プロセスを強制終了しますか？",
     "requestTitle": "プロセスの終了をリクエストしますか？",
     "user": "ユーザー",
     "startedAt": "開始されました",
-    "stableIdentity": "この確認は、一時的な、使い捨てのOSハンドルを関連付けます。実行時には、ターゲットプロセスをPIDで再度検索しません。",
-    "bestEffortIdentity": "macOSでは、PIDによるターゲット指定は試行錯誤です。高解像度の起動情報は実行前に再確認されますが、安定したハンドルの保証には対応できません。",
-    "validating": "検証中…",
+    "stableIdentity": "操作は今確認したプロセスだけに適用されます。対象が変わると自動的に中止します。",
+    "bestEffortIdentity": "CoreRobin は操作前にプロセスを再確認します。対象が変わっていれば続行しません。",
+    "validating": "再確認中…",
     "confirmForce": "強制終了",
     "confirmRequest": "終了をリクエスト"
   }

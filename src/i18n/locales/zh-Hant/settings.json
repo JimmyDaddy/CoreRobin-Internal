@@ -27,6 +27,8 @@
   "intervalMs": "{{interval}} 毫秒",
   "intervalSeconds": "{{seconds}} 秒",
   "experience": {
+    "sectionTitle": "介面與語言",
+    "sectionDescription": "選擇介面模式與顯示語言。",
     "title": "介面模式",
     "description": "日常模式從實際問題出發並給出引導；專業模式保留完整程序與指標。",
     "label": "介面模式",
@@ -240,6 +242,7 @@
       "preferences": "介面偏好和各項功能的本機設定"
     },
     "updatedReceipt": "已成功從 v{{version}} 更新",
+    "updatedCompact": "已更新",
     "skipVersion": "略過 v{{version}}"
   },
   "onboarding": {

@@ -116,6 +116,15 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+.is-spinning {
+  transform-origin: center;
+  animation: core-robin-loading-spin 850ms linear infinite;
+}
+
+@keyframes core-robin-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
@@ -802,10 +811,6 @@ code,
   grid-column: 1 / -1;
 }
 
-.settings-card--language {
-  grid-column: span 2;
-}
-
 .settings-card--thresholds {
   min-height: 148px;
   grid-column: span 6;
@@ -890,18 +895,6 @@ code,
   background: var(--blue);
   box-shadow: 0 0 8px rgba(99, 168, 255, 0.45);
   transform: translateX(16px);
-}
-
-.settings-card--mode {
-  min-height: 130px;
-  grid-column: span 4;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
-  align-items: center;
-}
-
-.settings-card--mode .settings-segmented {
-  width: 100%;
 }
 
 .settings-card > header {
@@ -6451,9 +6444,6 @@ code,
   background: var(--danger-soft);
 }
 
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .detail-list {
   display: flex;
   flex-direction: column;
@@ -6960,9 +6950,7 @@ code,
   .settings-grid { grid-template-columns: minmax(0, 1fr); }
   .settings-card,
   .settings-card--half,
-  .settings-card--language,
   .settings-card--thresholds { grid-column: 1 / -1; }
-  .settings-card--mode { grid-template-columns: minmax(0, 1fr); }
   .settings-background-controls { grid-template-columns: minmax(0, 1fr); }
   .settings-thresholds { grid-template-columns: minmax(0, 1fr); }
   .device-wellbeing__grid { grid-template-columns: minmax(0, 1fr); }
@@ -7186,6 +7174,11 @@ code,
   background: transparent;
   font-weight: 720;
   transition: color 250ms ease, transform 250ms ease;
+}
+
+.sidebar-mode-switch button:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .sidebar-mode-switch button span {

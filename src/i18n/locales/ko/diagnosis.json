@@ -128,8 +128,8 @@
     "safeDescription": "이 기능은 실행 중인 애플리케이션을 종료하는 것만으로, 데이터 정리 기능을 제공하지 않습니다.",
     "riskTitle": "먼저 편집 중인 내용을 저장하세요",
     "riskDescription": "어플리케이션에 따라 저장 프롬프트가 표시될 수 있습니다. 저장이 안 된 작업은 여전히 손실될 수 있습니다.",
-    "stableIdentity": "안정적인 핸들은 선택한 프로세스와 연결되며, 실행 전에 다시 확인됩니다.",
-    "bestEffortIdentity": "이 플랫폼에서는 신원 확인을 통해서만 PID 재사용 위험을 줄일 수 있습니다. 프로세스가 변경된 경우 CoreRobin는 작업을 거부합니다.",
+    "stableIdentity": "이 작업은 선택한 프로세스에만 적용되며 실행 전에 다시 확인됩니다.",
+    "bestEffortIdentity": "CoreRobin이 실행 전에 프로세스를 다시 확인하며, 대상이 바뀌면 계속하지 않습니다.",
     "confirm": "{{name}} 종료 요청을 확인",
     "confirmRestart": "{{name}} 재시작"
   }
