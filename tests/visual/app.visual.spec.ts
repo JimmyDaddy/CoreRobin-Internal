@@ -59,7 +59,9 @@ test("history export privacy preview at compact width", async ({ page }) => {
   await stabilize(page);
   await expect(page).toHaveScreenshot("history-export-zh-900.png", {
     animations: "disabled",
-    maxDiffPixelRatio: 0.02,
+    // Dense CJK text produces stable cross-platform antialiasing differences.
+    // Keep the extra tolerance scoped to this scenario; layout changes still fail.
+    maxDiffPixelRatio: 0.025,
   });
 });
 
