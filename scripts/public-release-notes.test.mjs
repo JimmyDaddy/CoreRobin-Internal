@@ -46,6 +46,16 @@ describe("public website release notes", () => {
     expect(() => validatePublicReleaseNote({ ...note, title: { "zh-CN": "只有中文" } }, tag)).toThrow(/requires en/);
   });
 
+  it("rejects engineering-only implementation details", () => {
+    expect(() => validatePublicReleaseNote({
+      ...note,
+      items: [{
+        "zh-CN": "优化 Apple 公证状态与 CI 工作流。",
+        en: "Improved the notarization workflow and CI pipeline.",
+      }],
+    }, tag)).toThrow(/engineering-only term/);
+  });
+
   it("builds one atomic manifest and keeps previous history", () => {
     const manifest = buildPublicReleaseManifest(release, {
       schemaVersion: 2,

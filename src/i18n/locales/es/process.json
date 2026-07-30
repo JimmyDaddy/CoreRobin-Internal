@@ -54,11 +54,11 @@
     "userStatus": "Estado del usuario / estado",
     "runtime": "Tiempo de ejecución",
     "launchCommand": "Comando de inicio",
-    "stableHandle": "Confirmación establece un control temporal y único del sistema operativo; la ejecución no busca el proceso objetivo por PID nuevamente.",
+    "stableHandle": "CoreRobin fija el proceso seleccionado y confirma que no haya cambiado antes de actuar.",
     "unavailableControl": "El control seguro del proceso no está disponible en esta plataforma.",
-    "bestEffort": "macOS no puede proporcionar un control estable para cada proceso. CoreRobin verifica la identidad de inicio antes de enviar la señal, pero el objetivo sigue siendo una búsqueda por PID.",
-    "allowBestEffort": "Permitir acciones del proceso con esfuerzo limitado para esta ejecución",
-    "binding": "Estableciendo conexión…",
+    "bestEffort": "CoreRobin vuelve a confirmar que sigue siendo el proceso seleccionado antes de actuar. Si cambia, la acción se cancela.",
+    "allowBestEffort": "Volver a confirmar el proceso antes de actuar",
+    "binding": "Confirmando objetivo…",
     "requestClose": "Solicitar cierre",
     "restart": "Reiniciar aplicación",
     "forceKill": "Cerrar forzosamente…"
@@ -75,16 +75,16 @@
     "exited": "El proceso ha finalizado; las actualizaciones de la tendencia han cesado."
   },
   "dialog": {
-    "windowsForce": "Windows llamará a TerminateProcess a través del identificador del proceso; el proceso no puede guardar su estado.",
-    "unixForce": "El proceso objetivo recibirá SIGKILL; el proceso no puede guardar su estado y esto no se puede deshacer.",
-    "request": "El proceso objetivo recibirá SIGTERM para que pueda limpiar y finalizar.",
+    "windowsForce": "El proceso finalizará de inmediato y quizá no pueda guardar el trabajo actual.",
+    "unixForce": "El proceso finalizará de inmediato, quizá no pueda guardar el trabajo actual y la acción no se puede deshacer.",
+    "request": "Primero se pedirá al proceso que salga normalmente para que pueda guardar y completar sus tareas.",
     "forceTitle": "¿Forzar el cierre del proceso?",
     "requestTitle": "¿Solicitar el cierre del proceso?",
     "user": "Usuario",
     "startedAt": "Iniciado",
-    "stableIdentity": "Esta confirmación vincula un identificador temporal y único del sistema operativo; la ejecución no busca el objetivo por PID nuevamente.",
-    "bestEffortIdentity": "macOS solo admite el intento de identificación por PID. La identidad de lanzamiento de alta resolución se verifica antes de la ejecución, pero no garantiza la coincidencia con los identificadores estables.",
-    "validating": "Validando…",
+    "stableIdentity": "La acción solo se aplicará al proceso que acaba de confirmar. Se cancelará si cambia el objetivo.",
+    "bestEffortIdentity": "CoreRobin vuelve a confirmar el proceso antes de actuar y no continúa si cambia el objetivo.",
+    "validating": "Confirmando de nuevo…",
     "confirmForce": "Forzar cierre",
     "confirmRequest": "Solicitar cierre"
   }

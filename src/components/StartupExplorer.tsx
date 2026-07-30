@@ -50,7 +50,9 @@ interface StartupExplorerProps {
   totalMemoryBytes: number;
   impactMeasurements?: readonly StartupImpactMeasurement[];
   actionRecords?: readonly UserActionRecord[];
+  launchAtLogin?: boolean;
   onRefresh: () => void | Promise<void>;
+  onEnableLaunchAtLogin?: () => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -64,7 +66,9 @@ export function StartupExplorer({
   totalMemoryBytes,
   impactMeasurements = [],
   actionRecords = [],
+  launchAtLogin = false,
   onRefresh,
+  onEnableLaunchAtLogin,
   onUserActionStart,
   onUserActionComplete,
 }: StartupExplorerProps) {
@@ -160,16 +164,34 @@ export function StartupExplorer({
 
   const confirmAction = async () => {
     if (!actionItem || !action || !lease || submitting) return;
+    const item = actionItem;
+    const requestedAction = action;
+    const previewLease = lease;
+    const requestId = requestIdRef.current;
     const actionRecordId = onUserActionStart?.({
-      kind: action === "enable" ? "startup_enable" : "startup_disable",
-      targetName: actionItem.name,
+      kind: requestedAction === "enable" ? "startup_enable" : "startup_disable",
+      targetName: item.name,
       targetCount: 1,
     }) ?? null;
     let actionRecorded = false;
     setSubmitting(true);
     setActionError(null);
     try {
-      const result = await executeStartupManagement({ leaseId: lease.id });
+      const executionLease = await createStartupManagementLease({
+        itemId: item.id,
+        action: requestedAction,
+      });
+      if (requestIdRef.current !== requestId) {
+        await releaseStartupManagementLease({ leaseId: executionLease.id });
+        return;
+      }
+      await releaseStartupManagementLease({ leaseId: previewLease.id })
+        .catch(() => undefined);
+      leaseRef.current = executionLease;
+      setLease(executionLease);
+      const result = await executeStartupManagement({
+        leaseId: executionLease.id,
+      });
       leaseRef.current = null;
       if (actionRecordId) {
         onUserActionComplete?.(actionRecordId, {
@@ -179,7 +201,7 @@ export function StartupExplorer({
         });
         actionRecorded = true;
       }
-      setOutcome({ name: actionItem.name, enabled: result.enabled });
+      setOutcome({ name: item.name, enabled: result.enabled });
       requestIdRef.current += 1;
       setActionItem(null);
       setAction(null);
@@ -244,6 +266,8 @@ export function StartupExplorer({
           measurements={impactMeasurements}
           applications={applications}
           actionRecords={actionRecords}
+          launchAtLogin={launchAtLogin}
+          onEnableLaunchAtLogin={onEnableLaunchAtLogin}
         />
       ) : null}
 
@@ -330,10 +354,14 @@ function StartupImpactPanel({
   measurements,
   applications,
   actionRecords,
+  launchAtLogin,
+  onEnableLaunchAtLogin,
 }: {
   measurements: readonly StartupImpactMeasurement[];
   applications: readonly ApplicationImpact[];
   actionRecords: readonly UserActionRecord[];
+  launchAtLogin: boolean;
+  onEnableLaunchAtLogin?: () => void;
 }) {
   const { t, i18n } = useAppTranslation();
   const latest = measurements[0];
@@ -414,7 +442,26 @@ function StartupImpactPanel({
           })}</ol> : null}
           <small>{t("startup:impact.boundary")}</small>
         </>
-      ) : <div className="startup-impact__empty"><Rocket size={20} /><p>{t("startup:impact.empty")}</p></div>}
+      ) : (
+        <div className="startup-impact__empty">
+          <Rocket size={20} />
+          <div>
+            <p>{t("startup:impact.empty")}</p>
+            {launchAtLogin ? (
+              <small>{t("startup:impact.loginEnabled")}</small>
+            ) : onEnableLaunchAtLogin ? (
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={onEnableLaunchAtLogin}
+              >
+                <Rocket size={14} />
+                {t("startup:impact.enableLogin")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -525,7 +572,9 @@ function StartupItemRow({
         <strong>{item.name}</strong>
         <span>{item.publisher ?? t("startup:publisherUnknown")} · {t(`startup:source.${item.source}`)}</span>
         <div className="startup-item__ownership">
-          {item.bundleId ? <small title={item.bundleId}>Bundle ID</small> : null}
+          {item.bundleId ? (
+            <small title={item.bundleId}>{t("applications:uninstall.appIdentifier")}</small>
+          ) : null}
           {item.teamId ? <small title={item.teamId}>Team {item.teamId}</small> : null}
           {item.signatureStatus ? (
             <small className={`is-${item.signatureStatus}`}>

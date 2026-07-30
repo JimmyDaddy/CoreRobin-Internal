@@ -27,6 +27,53 @@
     color-mix(in srgb, var(--panel) 96%, transparent);
 }
 
+.global-update-task--receipt {
+  border-color: color-mix(in srgb, var(--green) 46%, var(--border));
+}
+
+.global-update-task--receipt > svg {
+  color: var(--green);
+}
+
+.global-update-task--receipt.is-collapsed {
+  left: auto;
+  right: 18px;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 999px;
+  transform: none;
+}
+
+.global-update-task__receipt-chip,
+.global-update-task__receipt-close {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+}
+
+.global-update-task__receipt-chip {
+  color: var(--green) !important;
+  font-weight: 700;
+}
+
+.global-update-task__receipt-chip span {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.global-update-task__receipt-close {
+  width: 30px;
+  padding: 0 !important;
+  color: var(--text-muted) !important;
+}
+
 .global-update-task__release-icon {
   display: inline-flex;
   align-items: center;

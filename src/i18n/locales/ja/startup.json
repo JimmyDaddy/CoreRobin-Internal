@@ -57,7 +57,9 @@
     "peakDisk": "ピークディスク",
     "samples": "サンプル",
     "boundary": "これは、ファームウェアの起動時間ではなく、サインイン後の影響を測定します。測定は 3 分後に停止し、最新の 5 分が保持されます。",
-    "empty": "実際のサインインの測定はまだ行われていません。次回のサインインを自動的に測定するには、ログイン時に起動を有効にします。",
+    "empty": "実際のサインイン測定はまだありません。有効にすると、CoreRobin が次回のサインインを自動的に測定します。",
+    "enableLogin": "ログイン時の起動を有効にする",
+    "loginEnabled": "ログイン時の起動は有効です。次回のサインイン後に記録が作成されます。",
     "none": {
       "title": "現在、起動時に影響はありません"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "この起動アイテムが変更または削除されました。リストを更新して再度お試しください。",
       "startup_state_changed": "確認後にファイルの状態が変更されたため、CoreRobinは何も変更しませんでした。",
       "startup_destination_conflict": "別の設定が宛先に存在します。CoreRobinは上書きしませんでした。",
-      "startup_confirmation_unavailable": "この確認は利用できません。キャンセルして再度開いてください。",
-      "startup_confirmation_expired": "確認が無効になりました。続行する前に、アイテムを再度確認してください。",
+      "startup_confirmation_unavailable": "起動項目の状態が変わりました。CoreRobin は操作を実行していません。",
+      "startup_confirmation_expired": "起動項目の状態が変わりました。CoreRobin は操作を実行していません。",
       "startup_management_failed": "システムが起動ファイルの移動を安全に行うことができませんでした。元の状態は保持されています。"
     }
   },

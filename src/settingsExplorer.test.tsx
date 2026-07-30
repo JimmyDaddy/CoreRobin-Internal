@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "./i18n";
@@ -38,8 +38,12 @@ describe("SettingsExplorer", () => {
   it("keeps desktop setting rows explicitly balanced", () => {
     renderSettings();
 
-    expect(screen.getByRole("heading", { name: "界面语言" }).closest("section")?.classList)
-      .toContain("settings-card--language");
+    const interfaceCard = screen
+      .getByRole("heading", { name: "界面与语言" })
+      .closest("section");
+    expect(interfaceCard?.classList).toContain("settings-card--interface");
+    expect(within(interfaceCard!).getByRole("group", { name: "界面模式" })).toBeTruthy();
+    expect(within(interfaceCard!).getByRole("combobox", { name: "语言" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "数据与隐私中心" }));
     expect(screen.getByRole("heading", { name: "历史记录" }).closest("section")?.classList)
       .toContain("settings-card--half");

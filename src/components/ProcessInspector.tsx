@@ -156,7 +156,7 @@ export function ProcessInspector({
       <ProcessHistory history={history} />
 
       {detailLoading ? (
-        <div className="detail-loading" role="status"><LoaderCircle className="spin" size={17} />{t("process:inspector.verifying")}</div>
+        <div className="detail-loading" role="status"><LoaderCircle className="is-spinning" size={17} />{t("process:inspector.verifying")}</div>
       ) : null}
       {detailError ? (
         <div className="detail-error" role="alert"><AlertTriangle size={16} />{detailError.message}</div>

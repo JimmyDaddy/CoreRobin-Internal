@@ -24,6 +24,7 @@ export function validatePublicReleaseNote(note, expectedTag) {
     throw new Error(`Public release note requires at least one item: ${expectedTag}.`);
   }
   note.items.forEach((item, index) => assertLocalizedText(item, `item ${index + 1}`, expectedTag));
+  assertUserFacingReleaseNote(note, expectedTag);
   return note;
 }
 
@@ -56,6 +57,30 @@ function assertLocalizedText(value, label, tag) {
   for (const locale of ["zh-CN", "en"]) {
     if (!String(value?.[locale] ?? "").trim()) {
       throw new Error(`Public release note ${label} requires ${locale}: ${tag}.`);
+    }
+  }
+}
+
+function assertUserFacingReleaseNote(note, tag) {
+  const forbiddenEngineeringTerms = {
+    "zh-CN": /(?:\bCI\b|GitHub Actions|(?:发布|构建|自动化|公证|签名)工作流|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|工具链|构建缓存|单元测试|代码重构|文档同步|发布验收|公证状态|签名管线)/i,
+    en: /\b(?:CI|GitHub Actions|(?:release|build|automation|notarization|signing) workflow|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|toolchain|build cache|unit tests?|code refactor|documentation sync|release checks?|notarization reconciliation|signing pipeline)\b/i,
+  };
+  for (const locale of ["zh-CN", "en"]) {
+    const entries = [
+      { label: "title", text: note.title[locale] },
+      ...note.items.map((item, index) => ({
+        label: `item ${index + 1}`,
+        text: item[locale],
+      })),
+    ];
+    for (const entry of entries) {
+      const match = String(entry.text).match(forbiddenEngineeringTerms[locale]);
+      if (match) {
+        throw new Error(
+          `Public release note ${entry.label} contains engineering-only term "${match[0]}" (${locale}): ${tag}.`,
+        );
+      }
     }
   }
 }

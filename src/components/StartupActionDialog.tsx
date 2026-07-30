@@ -94,7 +94,12 @@ export function StartupActionDialog({
         <footer>
           <button ref={cancelButton} type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>{t("common:cancel")}</button>
           <button type="button" className="button button--primary" disabled={!lease || preparing || submitting || Boolean(error)} onClick={onConfirm}>
-            {submitting ? t("startup:actionDialog.applying") : t(`startup:actionDialog.${action}.confirm`, { name: item.name })}
+            {submitting ? (
+              <>
+                <LoaderCircle className="is-spinning" size={14} />
+                {t("startup:actionDialog.applying")}
+              </>
+            ) : t(`startup:actionDialog.${action}.confirm`, { name: item.name })}
           </button>
         </footer>
       </section>

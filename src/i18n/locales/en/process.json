@@ -54,11 +54,11 @@
     "userStatus": "User / status",
     "runtime": "Runtime",
     "launchCommand": "Launch command",
-    "stableHandle": "Confirmation binds a short-lived, single-use stable OS handle; execution does not look up the target by PID again.",
+    "stableHandle": "CoreRobin locks onto the process you selected and confirms it has not changed before acting.",
     "unavailableControl": "Safe process control is unavailable on this platform.",
-    "bestEffort": "macOS cannot provide a stable signal handle for every process. CoreRobin rechecks the launch identity before signaling, but targeting remains best-effort by PID.",
-    "allowBestEffort": "Allow best-effort process actions for this run",
-    "binding": "Binding…",
+    "bestEffort": "CoreRobin confirms that this is still the process you selected before acting. If it changed, the action is cancelled.",
+    "allowBestEffort": "Confirm the process again before acting",
+    "binding": "Confirming target…",
     "requestClose": "Request exit",
     "restart": "Restart app",
     "forceKill": "Force quit…"
@@ -75,16 +75,16 @@
     "exited": "The process exited; trend updates stopped."
   },
   "dialog": {
-    "windowsForce": "Windows will call TerminateProcess through the bound process handle; the process cannot save state.",
-    "unixForce": "The verified target will receive SIGKILL; the process cannot save state and this cannot be undone.",
-    "request": "The verified target will receive SIGTERM so it can clean up and exit.",
+    "windowsForce": "This ends the process immediately. It may not have time to save its current work.",
+    "unixForce": "This ends the process immediately. It may not have time to save its current work, and the action cannot be undone.",
+    "request": "Ask the process to exit on its own so it has time to save and clean up.",
     "forceTitle": "Force quit process?",
     "requestTitle": "Request process exit?",
     "user": "User",
     "startedAt": "Started",
-    "stableIdentity": "This confirmation binds a short-lived, single-use stable OS handle; execution does not look up the target by PID again.",
-    "bestEffortIdentity": "macOS only supports best-effort PID targeting. The high-resolution launch identity is rechecked before execution, but it cannot match stable-handle guarantees.",
-    "validating": "Validating…",
+    "stableIdentity": "The action applies only to the process you just confirmed. It is cancelled if the target changes.",
+    "bestEffortIdentity": "CoreRobin confirms the process identity again before acting. It will not continue if the target changed.",
+    "validating": "Confirming again…",
     "confirmForce": "Force quit",
     "confirmRequest": "Request exit"
   }

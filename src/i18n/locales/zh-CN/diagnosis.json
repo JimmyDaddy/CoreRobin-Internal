@@ -128,8 +128,8 @@
     "safeDescription": "这项操作只请求当前应用结束运行，不会清理它的数据。",
     "riskTitle": "先保存正在编辑的内容",
     "riskDescription": "应用是否显示保存提示取决于它自身；未保存内容仍可能丢失。",
-    "stableIdentity": "已通过稳定句柄锁定你刚刚选择的进程，执行前还会再次复核。",
-    "bestEffortIdentity": "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，CoreRobin 会拒绝执行。",
+    "stableIdentity": "操作只会作用于你刚刚选择的进程，执行前还会再次确认。",
+    "bestEffortIdentity": "CoreRobin 会在执行前再次确认进程；如果目标已经变化，不会继续操作。",
     "confirm": "确认请求 {{name}} 退出",
     "confirmRestart": "重新启动 {{name}}"
   }

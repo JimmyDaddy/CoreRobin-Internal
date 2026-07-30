@@ -1,3 +1,47 @@
+.settings-card--interface {
+  grid-column: 1 / -1;
+}
+
+.settings-interface-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.settings-interface-control {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(200px, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--panel-soft);
+}
+
+.settings-interface-control > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.settings-interface-control > span svg {
+  color: var(--blue);
+}
+
+.settings-interface-control .settings-segmented,
+.settings-interface-control .locale-select {
+  width: 100%;
+}
+
+.settings-interface-control .settings-segmented button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .settings-transfer {
   position: relative;
   display: flex;
@@ -44,4 +88,11 @@
   display: flex;
   justify-content: flex-end;
   gap: 7px;
+}
+
+@media (max-width: 760px) {
+  .settings-interface-controls,
+  .settings-interface-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

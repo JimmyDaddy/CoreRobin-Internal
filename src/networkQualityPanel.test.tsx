@@ -34,10 +34,10 @@ beforeEach(async () => {
 });
 
 describe("network quality monitoring", () => {
-  it("checks automatically, reports probe counts, and keeps a manual recheck", async () => {
+  it("checks automatically, reports connection counts, and keeps a manual recheck", async () => {
     render(<NetworkQualityHarness />);
 
-    expect(await screen.findByText("6/6 探测成功 · 2/2 目标可达")).toBeTruthy();
+    expect(await screen.findByText("6/6 次检查成功 · 2/2 个服务可达")).toBeTruthy();
     expect(runNetworkQualityCheck).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("img", { name: /共 1 个样本/ })).toBeTruthy();
 

@@ -54,11 +54,11 @@
     "userStatus": "用户 / 状态",
     "runtime": "已运行",
     "launchCommand": "启动命令",
-    "stableHandle": "确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
+    "stableHandle": "CoreRobin 会锁定你选择的进程，并在执行前再次确认它没有变化。",
     "unavailableControl": "此平台暂不支持安全的进程控制。",
-    "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。CoreRobin 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
-    "allowBestEffort": "本次运行中允许 best-effort 进程操作",
-    "binding": "正在绑定…",
+    "bestEffort": "CoreRobin 会在执行前再次确认进程仍是你选择的那个；如果目标已经变化，操作会被取消。",
+    "allowBestEffort": "允许在执行前再次确认进程",
+    "binding": "正在确认目标…",
     "requestClose": "请求结束",
     "restart": "重新启动应用",
     "forceKill": "强制结束…"
@@ -75,16 +75,16 @@
     "exited": "进程已退出，趋势停止更新。"
   },
   "dialog": {
-    "windowsForce": "Windows 将通过已绑定的进程句柄执行 TerminateProcess；进程无法保存状态。",
-    "unixForce": "系统将向已核验目标发送 SIGKILL；进程无法保存状态，此操作不可撤销。",
-    "request": "系统将向已核验目标发送 SIGTERM，让进程有机会清理并退出。",
+    "windowsForce": "将立即结束这个进程；它可能来不及保存当前内容。",
+    "unixForce": "将立即结束这个进程；它可能来不及保存当前内容，此操作不可撤销。",
+    "request": "先请求进程自行退出，让它有机会保存内容并完成清理。",
     "forceTitle": "强制结束进程？",
     "requestTitle": "请求进程结束？",
     "user": "用户",
     "startedAt": "启动时间",
-    "stableIdentity": "本次确认已绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
-    "bestEffortIdentity": "macOS 仅支持 best-effort PID 定位。执行前会再次校验高精度启动标识，但无法提供稳定句柄的同等级保证。",
-    "validating": "正在校验…",
+    "stableIdentity": "执行只会作用于你刚刚确认的这个进程；目标变化时会自动取消。",
+    "bestEffortIdentity": "CoreRobin 会在执行前再次确认进程身份；如果目标已经变化，不会继续操作。",
+    "validating": "正在重新确认…",
     "confirmForce": "确认强制结束",
     "confirmRequest": "确认请求结束"
   }

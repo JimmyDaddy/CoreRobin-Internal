@@ -57,7 +57,9 @@
     "peakDisk": "Disco de pico",
     "samples": "Amostras",
     "boundary": "Isso mede o impacto pós-login, não o tempo de inicialização do firmware. As medições param após três minutos e os últimos cinco são mantidos.",
-    "empty": "Nenhuma medição real de login ainda. Habilite Iniciar no login para medir o próximo login automaticamente.",
+    "empty": "Ainda não há uma medição real de login. Depois de ativado, o CoreRobin medirá o próximo login automaticamente.",
+    "enableLogin": "Ativar início no login",
+    "loginEnabled": "O início no login está ativo. Uma medição será criada após o próximo login.",
     "none": {
       "title": "Nenhum impacto no momento"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "Este item de inicialização foi alterado ou removido. Atualize a lista e tente novamente.",
       "startup_state_changed": "O arquivo de inicialização foi alterado após a confirmação, portanto, o CoreRobin não fez alterações.",
       "startup_destination_conflict": "Outra configuração apareceu no destino. O CoreRobin recusou sobrescrevê-la.",
-      "startup_confirmation_unavailable": "Esta confirmação não está mais disponível. Cancele e abra novamente.",
-      "startup_confirmation_expired": "A confirmação expirou. Revise o item novamente antes de continuar.",
+      "startup_confirmation_unavailable": "O estado do item de inicialização acabou de mudar. O CoreRobin não executou a ação.",
+      "startup_confirmation_expired": "O estado do item de inicialização acabou de mudar. O CoreRobin não executou a ação.",
       "startup_management_failed": "O sistema não conseguiu mover o arquivo de inicialização com segurança. O estado original foi preservado."
     }
   },

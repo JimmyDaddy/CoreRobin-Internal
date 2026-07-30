@@ -12,7 +12,6 @@ export default interface Resources {
     "diagnostics": "诊断",
     "history": "历史",
     "live": "实时",
-    "localSampling": "本机采样",
     "mainNavigation": "主导航",
     "metrics": {
       "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
@@ -174,14 +173,15 @@ export default interface Resources {
     "systemComponent": "系统组件 · 不建议结束",
     "title": "应用资源影响",
     "trashWatcher": {
-      "description": "可选的本机 30 秒检查；只生成 Bundle ID 精确归属的残留计划，绝不自动删除。",
+      "description": "可选的本机 30 秒检查；只提供能够明确确认归属的残留计划，绝不自动删除。",
       "empty": "当前用户的废纸篓中没有待检查的应用。",
       "error": "暂时无法检查废纸篓。",
       "found": "已移入废纸篓 · 检查残留",
-      "planBoundary": "应用本体已经在废纸篓中；此计划只包含由精确 Bundle ID 归属且仍然存在的支持数据。",
+      "planBoundary": "应用本体已经在废纸篓中；此计划只包含仍然存在且能够明确确认归属的支持数据。",
       "title": "观察移入废纸篓的应用"
     },
     "uninstall": {
+      "appIdentifier": "应用标识",
       "applicationUnit": "个应用",
       "artifacts": {
         "application": "应用本体",
@@ -196,16 +196,16 @@ export default interface Resources {
         "saved_state": "窗口恢复状态",
         "web_data": "网页数据"
       },
-      "bundleOnlyBoundary": "此应用没有可验证的 Bundle ID，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。",
+      "bundleOnlyBoundary": "此应用没有提供足够的身份信息，因此只卸载经过路径与结构验证的应用本体，不猜测或删除残留文件。",
       "cachedInventory": "显示 {{time}} 的本机缓存，可随时刷新",
       "cannotPrepare": "无法为这个应用生成安全计划",
-      "description": "识别应用本体和可由 Bundle ID 明确归属的残留文件；每个路径都由你确认后才会处理。",
+      "description": "识别应用本体和能够明确确认归属的残留文件；每个路径都由你确认后才会处理。",
       "dialogDescription": "请逐项核对应用本体和相关数据。默认移入废纸篓，仍可恢复。",
       "dialogTitle": "卸载 {{name}}",
       "empty": "没有匹配的应用",
       "errors": {
         "application_artifact_unavailable": "某个项目在确认前发生变化，请刷新卸载计划。",
-        "application_bundle_identifier_missing": "无法验证此应用的 Bundle ID。",
+        "application_bundle_identifier_missing": "无法确认此应用的身份。",
         "application_bundle_unavailable": "应用当前不可访问，请确认它仍在原位置。",
         "application_identity_changed": "应用身份已经变化，请刷新清单后重试。"
       },
@@ -230,7 +230,7 @@ export default interface Resources {
       "outcomeDeletedPermanently": "{{name}} 已直接删除；共处理 {{count}} 项、{{size}}。",
       "outcomeMovedToTrash": "{{name}} 已移至废纸篓；共处理 {{count}} 项、{{size}}，清空废纸篓前仍可恢复。",
       "outcomePartial": "{{name}} 的卸载未完全结束；已处理 {{count}} 项，共 {{size}}。",
-      "planBoundary": "请先退出这个应用。这里只列出 Bundle ID 能够精确证明归属的路径，不按名称猜测。",
+      "planBoundary": "请先退出这个应用。这里只列出能够明确确认属于它的路径，不按名称猜测。",
       "planKicker": "卸载计划",
       "preparingPlan": "正在核对应用身份和残留文件…",
       "refresh": "刷新应用",
@@ -246,17 +246,17 @@ export default interface Resources {
       "review": "检查并卸载 {{name}}",
       "scanKicker": "本机应用索引",
       "scanning": "正在读取应用清单…",
-      "scanningHint": "正在核对应用包、占用空间和 Bundle ID；大型应用可能需要多一点时间。",
+      "scanningHint": "正在核对应用、占用空间和身份信息；大型应用可能需要多一点时间。",
       "search": "搜索已安装应用",
-      "searchPlaceholder": "搜索名称、Bundle ID 或路径",
+      "searchPlaceholder": "搜索名称、应用标识或路径",
       "selectDescription": "助手会先生成逐路径卸载计划，再进入最终确认。",
       "selectTitle": "选择一个应用",
       "selectedSize": "已选 {{count}} 项",
       "skipped": "{{count}} 个项目未纳入计划",
-      "skippedDescription": "这些路径无法通过安全文件句柄检查，助手不会处理它们。",
+      "skippedDescription": "这些路径的当前状态无法安全确认，助手不会处理它们。",
       "title": "彻底卸载助手",
       "unavailable": {
-        "application_bundle_identifier_missing": "应用未提供可安全验证的 Bundle ID。",
+        "application_bundle_identifier_missing": "应用没有提供足够的身份信息。",
         "application_bundle_invalid": "应用包结构不完整或不受支持。",
         "application_bundle_not_allowed": "只支持“应用程序”目录中的顶层应用。",
         "current_application_protected": "CoreRobin 运行期间不能卸载自身。",
@@ -1281,7 +1281,7 @@ export default interface Resources {
   },
   "diagnosis": {
     "actionDialog": {
-      "bestEffortIdentity": "此平台只能通过进程身份复核来降低误操作风险；如果进程已变化，CoreRobin 会拒绝执行。",
+      "bestEffortIdentity": "CoreRobin 会在执行前再次确认进程；如果目标已经变化，不会继续操作。",
       "confirm": "确认请求 {{name}} 退出",
       "confirmRestart": "重新启动 {{name}}",
       "description": "CoreRobin 将向应用发送正常结束请求；这是温和处理，不是强制结束。",
@@ -1291,7 +1291,7 @@ export default interface Resources {
       "riskTitle": "先保存正在编辑的内容",
       "safeDescription": "这项操作只请求当前应用结束运行，不会清理它的数据。",
       "safeTitle": "不会删除应用或文件",
-      "stableIdentity": "已通过稳定句柄锁定你刚刚选择的进程，执行前还会再次复核。",
+      "stableIdentity": "操作只会作用于你刚刚选择的进程，执行前还会再次确认。",
       "title": "请求 {{name}} 退出？"
     },
     "actions": {
@@ -1810,12 +1810,12 @@ export default interface Resources {
       "description": "打开页面后每 30 秒检查；可选择在后台保留最长 7 天的五分钟聚合趋势。",
       "diagnostics": {
         "stages": {
-          "dns": "DNS",
-          "independent_service": "独立服务",
-          "internet": "公网",
-          "ipv4": "IPv4",
-          "ipv6": "IPv6",
-          "local_link": "本地路由"
+          "dns": "域名解析",
+          "independent_service": "备用服务",
+          "internet": "互联网",
+          "ipv4": "IPv4 网络",
+          "ipv6": "IPv6 网络",
+          "local_link": "本地网络"
         },
         "status": {
           "degraded": "受限",
@@ -1825,7 +1825,7 @@ export default interface Resources {
         },
         "title": "分层网络诊断"
       },
-      "dns": "DNS",
+      "dns": "域名解析",
       "empty": "正在进行首次网络质量检查…",
       "eyebrow": "自动网络采样",
       "history": {
@@ -1843,12 +1843,12 @@ export default interface Resources {
       "jitter": "抖动",
       "latency": "平均延迟",
       "legend": "网络质量图例",
-      "loss": "TCP 探测失败",
-      "method": "使用 TCP 分别探测 example.com 与 one.one.one.one，并区分本地路由、DNS、IPv4/IPv6 和公网连通性；不发送需要提权的原始数据包。",
+      "loss": "连接失败",
+      "method": "CoreRobin 会分别检查本地网络、域名解析和互联网连接，帮助判断问题发生在哪里。",
       "now": "现在",
-      "probeAndTargets": "{{successful}}/{{total}} 探测成功 · {{targetSuccessful}}/{{targetTotal}} 目标可达",
+      "probeAndTargets": "{{successful}}/{{total}} 次检查成功 · {{targetSuccessful}}/{{targetTotal}} 个服务可达",
       "probeSuccess": "{{successful}}/{{total}} 次成功",
-      "probes": "TCP 探测",
+      "probes": "连接检查",
       "run": "立即复测",
       "status": {
         "limited": "连接受限",
@@ -1952,18 +1952,18 @@ export default interface Resources {
       "status": "状态"
     },
     "dialog": {
-      "bestEffortIdentity": "macOS 仅支持 best-effort PID 定位。执行前会再次校验高精度启动标识，但无法提供稳定句柄的同等级保证。",
+      "bestEffortIdentity": "CoreRobin 会在执行前再次确认进程身份；如果目标已经变化，不会继续操作。",
       "confirmForce": "确认强制结束",
       "confirmRequest": "确认请求结束",
       "forceTitle": "强制结束进程？",
-      "request": "系统将向已核验目标发送 SIGTERM，让进程有机会清理并退出。",
+      "request": "先请求进程自行退出，让它有机会保存内容并完成清理。",
       "requestTitle": "请求进程结束？",
-      "stableIdentity": "本次确认已绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
+      "stableIdentity": "执行只会作用于你刚刚确认的这个进程；目标变化时会自动取消。",
       "startedAt": "启动时间",
-      "unixForce": "系统将向已核验目标发送 SIGKILL；进程无法保存状态，此操作不可撤销。",
+      "unixForce": "将立即结束这个进程；它可能来不及保存当前内容，此操作不可撤销。",
       "user": "用户",
-      "validating": "正在校验…",
-      "windowsForce": "Windows 将通过已绑定的进程句柄执行 TerminateProcess；进程无法保存状态。"
+      "validating": "正在重新确认…",
+      "windowsForce": "将立即结束这个进程；它可能来不及保存当前内容。"
     },
     "expand": "展开{{name}}",
     "flat": "平铺",
@@ -1989,9 +1989,9 @@ export default interface Resources {
       "title": "资源趋势"
     },
     "inspector": {
-      "allowBestEffort": "本次运行中允许 best-effort 进程操作",
-      "bestEffort": "macOS 无法为任意进程提供可发信号的稳定句柄。CoreRobin 会在发信号前再次核验启动标识，但仍属于 best-effort PID 定位。",
-      "binding": "正在绑定…",
+      "allowBestEffort": "允许在执行前再次确认进程",
+      "bestEffort": "CoreRobin 会在执行前再次确认进程仍是你选择的那个；如果目标已经变化，操作会被取消。",
+      "binding": "正在确认目标…",
       "choose": "选择一个进程",
       "chooseDetail": "查看资源证据、父进程和安全操作。",
       "executable": "可执行文件",
@@ -2005,7 +2005,7 @@ export default interface Resources {
       "residentMemory": "常驻内存",
       "restart": "重新启动应用",
       "runtime": "已运行",
-      "stableHandle": "确认后会绑定短期、单次使用的稳定系统句柄；执行时不会重新按 PID 查找目标。",
+      "stableHandle": "CoreRobin 会锁定你选择的进程，并在执行前再次确认它没有变化。",
       "unavailableControl": "此平台暂不支持安全的进程控制。",
       "userStatus": "用户 / 状态",
       "verifying": "正在核验进程身份…"
@@ -2086,6 +2086,7 @@ export default interface Resources {
       "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
       "updateReady": "更新已安装并准备就绪。重新启动后将直接使用新版本。",
       "updateRestartError": "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",
+      "updatedCompact": "已更新",
       "updatedReceipt": "已从 v{{version}} 成功更新",
       "version": "当前版本",
       "versionDescription": "直接在 CoreRobin 中检查、下载并安装最新稳定版本。",
@@ -2180,6 +2181,8 @@ export default interface Resources {
       "description": "日常模式从实际问题出发并给出引导；专业模式保留完整进程与指标。",
       "label": "界面模式",
       "professional": "专业模式",
+      "sectionDescription": "选择界面模式和显示语言。",
+      "sectionTitle": "界面与语言",
       "simple": "日常模式",
       "title": "界面模式"
     },
@@ -2373,8 +2376,8 @@ export default interface Resources {
         "whenDescription": "从下次登录开始，系统会再次允许这个项目自动启动。"
       },
       "errors": {
-        "startup_confirmation_expired": "确认已超时，请重新检查后再操作。",
-        "startup_confirmation_unavailable": "本次确认已经失效，请取消后重新打开。",
+        "startup_confirmation_expired": "启动项状态刚刚发生变化，CoreRobin 没有执行操作。",
+        "startup_confirmation_unavailable": "启动项状态刚刚发生变化，CoreRobin 没有执行操作。",
         "startup_destination_conflict": "目标位置出现了另一份配置，为避免覆盖，CoreRobin 没有执行操作。",
         "startup_item_protected": "这不是可安全管理的用户级第三方启动项，CoreRobin 没有执行操作。",
         "startup_item_unavailable": "这个启动项已经变化或不存在，请刷新列表后再试。",
@@ -2434,11 +2437,13 @@ export default interface Resources {
     "impact": {
       "boundary": "这是登录后影响测量，不是固件开机耗时；最多测量 3 分钟，并保留最近 5 次。",
       "description": "仅在 CoreRobin 被系统作为登录项静默启动时采样，记录到系统趋于稳定为止。",
-      "empty": "还没有真实登录启动记录。启用“登录时启动”后，在下一次登录时自动测量。",
+      "empty": "还没有真实登录启动记录。启用后，CoreRobin 会在下一次登录时自动测量。",
+      "enableLogin": "启用登录时启动",
       "eyebrow": "登录启动实测",
       "high": {
         "title": "当前后台影响较高"
       },
+      "loginEnabled": "登录时启动已启用；下一次登录后会自动生成记录。",
       "low": {
         "title": "预计影响较低"
       },

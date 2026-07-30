@@ -128,8 +128,8 @@
     "safeDescription": "This only asks the running app to stop and does not clean up its data.",
     "riskTitle": "Save anything you are editing first",
     "riskDescription": "Whether a save prompt appears depends on the app; unsaved work could still be lost.",
-    "stableIdentity": "A stable handle is bound to the process you selected and will be checked again before execution.",
-    "bestEffortIdentity": "This platform can only reduce PID-reuse risk through identity checks. CoreRobin refuses the action if the process has changed.",
+    "stableIdentity": "The action applies only to the process you selected and is confirmed again before execution.",
+    "bestEffortIdentity": "CoreRobin confirms the process again before acting and will not continue if the target changed.",
     "confirm": "Confirm quit request for {{name}}",
     "confirmRestart": "Restart {{name}}"
   }

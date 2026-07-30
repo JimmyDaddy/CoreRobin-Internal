@@ -59,7 +59,7 @@ impl ProcessController {
         {
             return Err(CommandError::new(
                 "best_effort_confirmation_required",
-                "This platform can only target the PID on a best-effort basis. Explicit acknowledgement is required.",
+                "CoreRobin must confirm the selected process again before continuing.",
             ));
         }
 
@@ -253,9 +253,9 @@ fn action_result_message(
         },
         ProcessActionOutcome::StillRunning => {
             let suffix = if targeting == ProcessControlTargeting::BestEffortPid {
-                "此平台使用 best-effort PID 定位，CoreRobin 将继续通过采样核验。"
+                "CoreRobin 已在执行前重新确认目标，并会继续检查它是否退出。"
             } else {
-                "稳定句柄仍指向同一目标，CoreRobin 将继续通过采样核验。"
+                "CoreRobin 已确认操作仍指向同一目标，并会继续检查它是否退出。"
             };
             match action {
                 ProcessAction::RequestClose => {

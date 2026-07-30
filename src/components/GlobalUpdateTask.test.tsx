@@ -1,13 +1,16 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import i18n from "../i18n";
 import { GlobalUpdateTask } from "./GlobalUpdateTask";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
 });
@@ -38,6 +41,34 @@ describe("global update prompt", () => {
     expect(install).toHaveBeenCalledOnce();
     expect(remindLater).toHaveBeenCalledOnce();
     expect(skipAvailableVersion).toHaveBeenCalledOnce();
+  });
+
+  it("collapses a successful update receipt after nine seconds", () => {
+    vi.useFakeTimers();
+    const dismissUpdatedReceipt = vi.fn();
+    render(
+      <GlobalUpdateTask
+        updater={updater({
+          promptVisible: false,
+          availableVersion: null,
+          updatedFromVersion: "1.2.3",
+          dismissUpdatedReceipt,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("已从 v1.2.3 成功更新")).toBeTruthy();
+    act(() => vi.advanceTimersByTime(9_000));
+
+    const compact = screen.getByRole("button", {
+      name: "已从 v1.2.3 成功更新",
+    });
+    expect(compact).toBeTruthy();
+    expect(screen.getByText("已更新")).toBeTruthy();
+
+    fireEvent.click(compact);
+    expect(screen.getByText("已从 v1.2.3 成功更新")).toBeTruthy();
+    expect(dismissUpdatedReceipt).not.toHaveBeenCalled();
   });
 });
 

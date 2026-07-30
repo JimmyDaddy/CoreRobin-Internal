@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "tagName": "v0.1.16",
   "title": {
-    "zh-CN": "主动更新、今日回顾与更可靠的发布收尾",
-    "en": "Proactive updates, daily review, and resilient release finalization"
+    "zh-CN": "主动更新、今日回顾与更顺畅的日常操作",
+    "en": "Proactive updates, daily review, and smoother everyday actions"
   },
   "items": [
     {
@@ -19,12 +19,8 @@
       "en": "Robin can now open the main window by double-click or menu, and apps blocking automatic sleep can be opened directly in the process view."
     },
     {
-      "zh-CN": "专业模式品牌和技术信息文案更加清晰，并完成全部 10 种界面语言、用户指南和发布验收内容同步。",
-      "en": "Professional-mode branding and technical labels are clearer, with all 10 interface languages, user guides, and release checks updated together."
-    },
-    {
-      "zh-CN": "修复 Linux glib 中危安全告警，并为 Apple 公证 webhook 增加持久重试和定时状态核对，降低人工 Finalize 依赖。",
-      "en": "The Linux glib medium-severity advisory is patched, while persistent webhook retries and scheduled notarization reconciliation reduce reliance on manual Finalize runs."
+      "zh-CN": "专业模式左上角品牌和文件位置等操作文案更加清晰，减少难懂的技术表达。",
+      "en": "Professional-mode branding and file-location actions now use clearer, less technical wording."
     }
   ]
 }

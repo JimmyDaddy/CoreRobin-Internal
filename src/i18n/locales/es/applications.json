@@ -50,10 +50,10 @@
   },
   "uninstall": {
     "scanKicker": "Índice de aplicaciones locales",
-    "scanningHint": "Comprobación de paquetes de aplicaciones, uso de disco e ID de paquetes. Las aplicaciones más grandes pueden tardar un poco más.",
+    "scanningHint": "Comprobando aplicaciones, espacio utilizado e información de identidad. Las aplicaciones grandes pueden tardar un poco más.",
     "kicker": "Gestión de aplicaciones",
     "title": "Asistente de desinstalación completo",
-    "description": "Encuentra el paquete de aplicaciones y los restos atribuidos por ID de paquete exacto. No se maneja nada hasta que confirmes cada ruta.",
+    "description": "Encuentra la aplicación y los restos que pueden atribuirse claramente a ella. No se procesa ninguna ruta hasta que la confirmes.",
     "refresh": "Actualizar aplicaciones",
     "unsupportedTitle": "El catálogo de aplicaciones del sistema no está disponible",
     "unsupportedDescription": "CoreRobin no pudo leer una fuente fiable del sistema operativo. Vuelve a intentarlo en un sistema macOS, Windows o Linux compatible.",
@@ -62,20 +62,21 @@
     "localOnly": "Leer localmente; el inventario nunca se sube",
     "cachedInventory": "Mostrando el caché local de {{time}}; actualizar en cualquier momento",
     "search": "Buscar aplicaciones instaladas",
-    "searchPlaceholder": "Nombre de búsqueda, ID de paquete o ruta",
+    "searchPlaceholder": "Buscar nombre, identificador de aplicación o ruta",
     "scanning": "Leyendo el inventario de aplicaciones…",
     "empty": "No hay aplicaciones coincidentes",
     "preparingPlan": "Verificando la identidad de la aplicación y los archivos de soporte...",
     "planKicker": "Plan de desinstalación",
-    "planBoundary": "Salga de esta aplicación primero. Sólo se enumeran las rutas comprobadas por el ID exacto del paquete; Se excluyen las conjeturas sobre el nombre de la aplicación.",
-    "bundleOnlyBoundary": "Esta aplicación no tiene un Bundle ID verificable. CoreRobin solo eliminará el paquete validado por ruta y estructura, sin adivinar archivos de soporte.",
+    "planBoundary": "Cierra primero la aplicación. Solo se muestran rutas que pueden atribuirse claramente a ella, sin adivinar por el nombre.",
+    "bundleOnlyBoundary": "Esta aplicación no aporta suficiente información de identidad. CoreRobin solo eliminará la aplicación validada por ruta y estructura, sin adivinar archivos relacionados.",
     "foundItems": "Artículos verificados",
     "required": "Requerido",
+    "appIdentifier": "Identificador de aplicación",
     "selectedSize": "Elementos {{count}} seleccionados",
     "review": "Revisar y desinstalar {{name}}",
     "reveal": "Revelar aplicación en Finder",
     "skipped": "Artículos {{count}} excluidos del plan.",
-    "skippedDescription": "Estos caminos no pasaron la inspección segura del manejo de archivos, por lo que el asistente no los tocará.",
+    "skippedDescription": "No se pudo confirmar de forma segura el estado actual de estas rutas, por lo que no se procesarán.",
     "selectTitle": "Seleccione una aplicación",
     "selectDescription": "El asistente crea un plan ruta por ruta antes de la confirmación final.",
     "cannotPrepare": "No se puede crear un plan seguro para esta aplicación",
@@ -108,7 +109,7 @@
     "unavailable": {
       "generic": "Esta aplicación no se puede desinstalar con las reglas de seguridad actuales.",
       "current_application_protected": "CoreRobin no puede desinstalarse mientras se está ejecutando.",
-      "application_bundle_identifier_missing": "La aplicación no proporciona un ID de paquete verificable de forma segura.",
+      "application_bundle_identifier_missing": "La aplicación no aporta suficiente información de identidad.",
       "application_bundle_invalid": "El paquete de aplicaciones está incompleto o no es compatible.",
       "application_bundle_not_allowed": "Solo se admiten aplicaciones de nivel superior en una carpeta de Aplicaciones."
     },
@@ -116,7 +117,7 @@
       "application_identity_changed": "La identidad de la aplicación cambió. Actualiza el inventario y vuelve a intentarlo.",
       "application_bundle_unavailable": "La aplicación no está accesible. Comprueba que siga en su ubicación original.",
       "application_artifact_unavailable": "Un artículo cambió antes de la confirmación. Actualiza el plan de desinstalación.",
-      "application_bundle_identifier_missing": "No se pudo verificar el ID del paquete de la aplicación."
+      "application_bundle_identifier_missing": "No se pudo confirmar la identidad de la aplicación."
     },
     "filters": {
       "sort": "Ordenar",
@@ -178,10 +179,10 @@
   },
   "trashWatcher": {
     "title": "Vigilar apps movidas a la papelera",
-    "description": "Comprobación local opcional cada 30 segundos. Solo ofrece un plan de residuos por Bundle ID exacto y nunca elimina nada automáticamente.",
+    "description": "Comprobación local opcional cada 30 segundos. Solo ofrece restos claramente atribuibles y nunca elimina nada automáticamente.",
     "found": "Movida a la papelera · revisar residuos",
     "error": "No se puede comprobar la papelera ahora.",
     "empty": "No hay apps esperando en la papelera de este usuario.",
-    "planBoundary": "La app ya está en la papelera. Este plan solo contiene datos auxiliares existentes atribuidos por su Bundle ID exacto."
+    "planBoundary": "La app ya está en la papelera. Este plan solo contiene datos auxiliares existentes que pueden atribuirse claramente a ella."
   }
 }

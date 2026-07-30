@@ -57,7 +57,9 @@
     "peakDisk": "Disque de pointe",
     "samples": "Échantillons",
     "boundary": "Cela mesure l’impact après la connexion, et non le temps de démarrage du micrologiciel. Les mesures s'arrêtent au bout de trois minutes et les cinq dernières sont conservées.",
-    "empty": "Aucune véritable mesure de connexion pour l’instant. Activez Lancer à la connexion pour mesurer automatiquement la prochaine connexion.",
+    "empty": "Aucune mesure réelle de connexion pour l’instant. Une fois activé, CoreRobin mesurera automatiquement la prochaine connexion.",
+    "enableLogin": "Activer le lancement à la connexion",
+    "loginEnabled": "Le lancement à la connexion est activé. Une mesure sera créée après la prochaine connexion.",
     "none": {
       "title": "Aucune impact de démarrage actuel"
     },
@@ -102,8 +104,8 @@
       "startup_item_unavailable": "Cet élément de démarrage a été modifié ou supprimé. Rafraîchissez la liste et réessayez.",
       "startup_state_changed": "Le fichier de démarrage a été modifié après la confirmation, CoreRobin n'a donc rien changé.",
       "startup_destination_conflict": "Une autre configuration a été trouvée à la destination. CoreRobin a refusé de l'écraser.",
-      "startup_confirmation_unavailable": "Cette confirmation n'est plus disponible. Annuler et rouvrir.",
-      "startup_confirmation_expired": "La confirmation est expirée. Vérifiez à nouveau l'élément avant de continuer.",
+      "startup_confirmation_unavailable": "L’état de l’élément de démarrage vient de changer. CoreRobin n’a rien exécuté.",
+      "startup_confirmation_expired": "L’état de l’élément de démarrage vient de changer. CoreRobin n’a rien exécuté.",
       "startup_management_failed": "Le système n'a pas pu déplacer le fichier de démarrage en toute sécurité. L'état initial a été conservé."
     }
   },

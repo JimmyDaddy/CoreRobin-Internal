@@ -128,8 +128,8 @@
     "safeDescription": "Esto solo solicita que la aplicación en ejecución se detenga y no limpia sus datos.",
     "riskTitle": "Guarde cualquier trabajo en curso primero",
     "riskDescription": "La aparición de un mensaje de guardado depende de la aplicación; el trabajo no guardado podría perderse.",
-    "stableIdentity": "Una identidad estable está vinculada al proceso seleccionado y se verificará nuevamente antes de la ejecución.",
-    "bestEffortIdentity": "Esta plataforma solo puede reducir el riesgo de reutilización de PID mediante comprobaciones de identidad. CoreRobin rechaza la acción si el proceso ha cambiado.",
+    "stableIdentity": "La acción solo se aplicará al proceso seleccionado y se confirmará de nuevo antes de ejecutarse.",
+    "bestEffortIdentity": "CoreRobin vuelve a confirmar el proceso antes de actuar y no continúa si cambia el objetivo.",
     "confirm": "Confirmar solicitud de cierre para {{name}}",
     "confirmRestart": "Reiniciar {{name}}"
   }

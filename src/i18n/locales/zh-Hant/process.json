@@ -54,11 +54,11 @@
     "userStatus": "使用者 / 狀態",
     "runtime": "已執行",
     "launchCommand": "啟動命令",
-    "stableHandle": "確認後會繫結短期、單次使用的穩定系統控制代碼；執行時不會重新按 PID 查詢目標。",
+    "stableHandle": "CoreRobin 會鎖定你選擇的程序，並在執行前再次確認它沒有變化。",
     "unavailableControl": "此平臺暫不支援安全的程序控制。",
-    "bestEffort": "macOS 無法為任意程序提供可發訊號的穩定控制代碼。CoreRobin 會在發訊號前再次核驗啟動標識，但仍屬於 best-effort PID 定位。",
-    "allowBestEffort": "本次執行中允許 best-effort 程序操作",
-    "binding": "正在繫結…",
+    "bestEffort": "CoreRobin 會在執行前再次確認程序仍是你選擇的那個；如果目標已變化，操作會被取消。",
+    "allowBestEffort": "允許在執行前再次確認程序",
+    "binding": "正在確認目標…",
     "requestClose": "請求結束",
     "restart": "重新啟動應用",
     "forceKill": "強制結束…"
@@ -75,16 +75,16 @@
     "exited": "程序已退出，趨勢停止更新。"
   },
   "dialog": {
-    "windowsForce": "Windows 將透過已繫結的程序控制代碼執行 TerminateProcess；程序無法儲存狀態。",
-    "unixForce": "系統將向已核驗目標傳送 SIGKILL；程序無法儲存狀態，此操作不可撤銷。",
-    "request": "系統將向已核驗目標傳送 SIGTERM，讓程序有機會清理並退出。",
+    "windowsForce": "將立即結束這個程序；它可能來不及儲存目前內容。",
+    "unixForce": "將立即結束這個程序；它可能來不及儲存目前內容，此操作不可撤銷。",
+    "request": "先請求程序自行退出，讓它有機會儲存內容並完成清理。",
     "forceTitle": "強制結束程序？",
     "requestTitle": "請求程序結束？",
     "user": "使用者",
     "startedAt": "啟動時間",
-    "stableIdentity": "本次確認已繫結短期、單次使用的穩定系統控制代碼；執行時不會重新按 PID 查詢目標。",
-    "bestEffortIdentity": "macOS 僅支援 best-effort PID 定位。執行前會再次校驗高精度啟動標識，但無法提供穩定控制代碼的同等級保證。",
-    "validating": "正在校驗…",
+    "stableIdentity": "操作只會作用於你剛剛確認的程序；目標變化時會自動取消。",
+    "bestEffortIdentity": "CoreRobin 會在執行前再次確認程序身分；如果目標已變化，不會繼續操作。",
+    "validating": "正在重新確認…",
     "confirmForce": "確認強制結束",
     "confirmRequest": "確認請求結束"
   }

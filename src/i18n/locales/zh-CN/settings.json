@@ -5,6 +5,8 @@
   "intervalMs": "{{interval}} 毫秒",
   "intervalSeconds": "{{seconds}} 秒",
   "experience": {
+    "sectionTitle": "界面与语言",
+    "sectionDescription": "选择界面模式和显示语言。",
     "title": "界面模式",
     "description": "日常模式从实际问题出发并给出引导；专业模式保留完整进程与指标。",
     "label": "界面模式",
@@ -168,6 +170,7 @@
     "restartUpdate": "立即重启并完成更新",
     "skipVersion": "跳过 v{{version}}",
     "updatedReceipt": "已从 v{{version}} 成功更新",
+    "updatedCompact": "已更新",
     "restartingUpdate": "正在重新启动…",
     "updateInstallError": "更新未能安装。当前版本没有变化，请稍后重试或查看更新内容。",
     "updateRestartError": "更新已经安装，但 CoreRobin 未能自动重新启动。请重试，或手动退出后重新打开。",

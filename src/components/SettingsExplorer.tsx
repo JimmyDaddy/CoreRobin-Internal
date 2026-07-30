@@ -166,7 +166,7 @@ export function SettingsExplorer({
             >
               {t(
                 section === "general"
-                  ? "settings:experience.title"
+                  ? "settings:experience.sectionTitle"
                   : section === "background"
                     ? "settings:background.title"
                     : section === "monitoring"
@@ -189,23 +189,43 @@ export function SettingsExplorer({
       <div className="settings-grid" data-active-section={activeSection}>
         <SettingsCard
           section="general"
-          className="settings-card--mode"
+          className="settings-card--interface"
           icon={LayoutDashboard}
-          title={t("settings:experience.title")}
-          description={t("settings:experience.description")}
+          title={t("settings:experience.sectionTitle")}
+          description={t("settings:experience.sectionDescription")}
         >
-          <div className="settings-segmented" role="group" aria-label={t("settings:experience.label")}>
-            {(["simple", "professional"] as const).map((experienceMode) => (
-              <button
-                type="button"
-                key={experienceMode}
-                className={settings.experienceMode === experienceMode ? "is-active" : ""}
-                aria-pressed={settings.experienceMode === experienceMode}
-                onClick={() => onChange({ experienceMode })}
-              >
-                {t(`settings:experience.${experienceMode}`)}
-              </button>
-            ))}
+          <div className="settings-interface-controls">
+            <div className="settings-interface-control">
+              <span>
+                <LayoutDashboard size={15} />
+                <strong>{t("settings:experience.title")}</strong>
+              </span>
+              <div className="settings-segmented" role="group" aria-label={t("settings:experience.label")}>
+                {(["simple", "professional"] as const).map((experienceMode) => (
+                  <button
+                    type="button"
+                    key={experienceMode}
+                    className={settings.experienceMode === experienceMode ? "is-active" : ""}
+                    aria-pressed={settings.experienceMode === experienceMode}
+                    disabled={settings.experienceMode === experienceMode}
+                    onClick={() => onChange({ experienceMode })}
+                  >
+                    {t(`settings:experience.${experienceMode}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="settings-interface-control">
+              <span>
+                <Languages size={15} />
+                <strong>{t("settings:language.title")}</strong>
+              </span>
+              <LocaleSelect
+                value={settings.language}
+                label={t("settings:language.label")}
+                onChange={(language) => onChange({ language })}
+              />
+            </div>
           </div>
         </SettingsCard>
 
@@ -340,20 +360,6 @@ export function SettingsExplorer({
               />
             </div>
           </div>
-        </SettingsCard>
-
-        <SettingsCard
-          section="general"
-          className="settings-card--language"
-          icon={Languages}
-          title={t("settings:language.title")}
-          description={t("settings:language.description")}
-        >
-          <LocaleSelect
-            value={settings.language}
-            label={t("settings:language.label")}
-            onChange={(language) => onChange({ language })}
-          />
         </SettingsCard>
 
         <SettingsCard

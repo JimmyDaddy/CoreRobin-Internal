@@ -54,11 +54,11 @@
     "userStatus": "État de l'utilisateur",
     "runtime": "Temps d'exécution",
     "launchCommand": "Commande de lancement",
-    "stableHandle": "La confirmation utilise un handle OS temporaire et unique; l'exécution ne recherche plus le processus cible par PID.",
+    "stableHandle": "CoreRobin verrouille le processus sélectionné et confirme qu’il n’a pas changé avant d’agir.",
     "unavailableControl": "Le contrôle des processus n'est pas disponible sur cette plateforme.",
-    "bestEffort": "macOS ne peut pas fournir un handle stable pour chaque processus. CoreRobin vérifie l'identité de lancement avant d'envoyer le signal, mais la cible reste déterminée par PID.",
-    "allowBestEffort": "Autoriser les actions des processus avec une approche optimiste",
-    "binding": "Association…",
+    "bestEffort": "CoreRobin vérifie avant l’action qu’il s’agit toujours du processus sélectionné. Si la cible a changé, l’action est annulée.",
+    "allowBestEffort": "Revérifier le processus avant l’action",
+    "binding": "Vérification de la cible…",
     "requestClose": "Demander la fermeture",
     "restart": "Redémarrer l’application",
     "forceKill": "Fermeture forcée…"
@@ -75,16 +75,16 @@
     "exited": "Le processus s'est terminé; les mises à jour de la tendance sont arrêtées."
   },
   "dialog": {
-    "windowsForce": "Windows appellera TerminateProcess via le handle du processus; le processus ne peut pas enregistrer son état.",
-    "unixForce": "Le signal SIGKILL sera envoyé au processus cible; le processus ne peut pas enregistrer son état et cette action est irréversible.",
-    "request": "Le signal SIGTERM sera envoyé au processus cible pour qu'il puisse effectuer un nettoyage et se terminer.",
+    "windowsForce": "Le processus sera arrêté immédiatement et risque de ne pas enregistrer son travail en cours.",
+    "unixForce": "Le processus sera arrêté immédiatement, risque de ne pas enregistrer son travail en cours et l’action est irréversible.",
+    "request": "Demander d’abord au processus de quitter normalement afin qu’il puisse enregistrer et terminer son nettoyage.",
     "forceTitle": "Fermer le processus de force ?",
     "requestTitle": "Demander la fermeture du processus ?",
     "user": "Utilisateur",
     "startedAt": "Démarré",
-    "stableIdentity": "Cette confirmation crée une référence temporaire et unique au système d'exploitation ; l'exécution ne recherche plus le processus cible par son PID.",
-    "bestEffortIdentity": "macOS ne prend en charge que la tentative de correspondance du PID. L'identité de lancement haute résolution est vérifiée avant l'exécution, mais elle ne garantit pas une correspondance avec la référence stable.",
-    "validating": "Validation…",
+    "stableIdentity": "L’action ne vise que le processus que vous venez de confirmer. Elle est annulée si la cible change.",
+    "bestEffortIdentity": "CoreRobin vérifie de nouveau le processus avant d’agir et ne continue pas si la cible a changé.",
+    "validating": "Nouvelle vérification…",
     "confirmForce": "Fermer de force",
     "confirmRequest": "Demander la fermeture"
   }
