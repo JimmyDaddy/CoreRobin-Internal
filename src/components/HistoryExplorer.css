@@ -514,6 +514,42 @@
   background: color-mix(in srgb, var(--surface) 78%, transparent);
 }
 
+.history-export input[type="checkbox"] {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin: 0;
+  appearance: none;
+  place-content: center;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 70%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 92%, black);
+}
+
+.history-export input[type="checkbox"]::before {
+  width: 8px;
+  height: 8px;
+  content: "";
+  clip-path: polygon(14% 44%, 0 60%, 42% 100%, 100% 18%, 82% 0, 40% 68%);
+  background: var(--surface);
+  transform: scale(0);
+}
+
+.history-export input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.history-export input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.history-export input[type="checkbox"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, white);
+  outline-offset: 2px;
+}
+
 .history-export__preview {
   display: flex;
   gap: 10px;

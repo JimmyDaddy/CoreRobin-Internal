@@ -20,6 +20,8 @@ import type { UserActionRecord } from "./userActionHistory";
 document.documentElement.dataset.surface = "main";
 document.body.dataset.surface = "main";
 
+const VISUAL_NOW_MS = Date.UTC(2026, 6, 30, 8, 0, 0);
+
 function VisualRegressionHarness() {
   const query = new URLSearchParams(window.location.search);
   const language = query.get("language") || "en";
@@ -37,7 +39,7 @@ function VisualRegressionHarness() {
 }
 
 function StateScenario() {
-  const now = Date.now();
+  const now = VISUAL_NOW_MS;
   const points = [
     chartPoint(now - 60 * 60_000, 18, 32),
     chartPoint(now - 55 * 60_000, 28, 36),
@@ -108,7 +110,7 @@ function StateScenario() {
 }
 
 function ReviewScenario() {
-  const now = Date.now();
+  const now = VISUAL_NOW_MS;
   const completedAtMs = now - 20 * 60_000;
   const points = [
     historyPoint(completedAtMs - 10 * 60_000, 74, 71),
@@ -157,7 +159,7 @@ function ReviewScenario() {
 }
 
 function ExportScenario() {
-  const now = Date.now();
+  const now = VISUAL_NOW_MS;
   const points = [
     historyPoint(now - 90 * 60_000, 33, 58),
     historyPoint(now - 30 * 60_000, 45, 62),
@@ -165,6 +167,7 @@ function ExportScenario() {
   return (
     <main className="visual-harness">
       <HistoryExportPanel
+        nowMs={VISUAL_NOW_MS}
         sources={{
           points,
           alerts: [],

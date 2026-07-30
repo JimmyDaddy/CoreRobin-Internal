@@ -25,10 +25,13 @@ import { Button } from "./Button";
 
 export function HistoryExportPanel({
   sources,
+  nowMs,
 }: {
   sources: HistoryExportSources;
+  nowMs?: number;
 }) {
   const { t, i18n } = useAppTranslation();
+  const now = useMemo(() => nowMs ?? Date.now(), [nowMs]);
   const [range, setRange] = useState<HistoryExportRange>(168);
   const [format, setFormat] = useState<HistoryExportFormat>("json");
   const [metrics, setMetrics] = useState<HistoryExportMetric[]>([
@@ -51,8 +54,8 @@ export function HistoryExportPanel({
     includeApplicationNames,
   }), [includeApplicationNames, metrics, range]);
   const preview = useMemo(
-    () => previewHistoryExport(sources, selection),
-    [selection, sources],
+    () => previewHistoryExport(sources, selection, now),
+    [now, selection, sources],
   );
 
   const toggleMetric = (metric: HistoryExportMetric, checked: boolean) => {
@@ -65,7 +68,7 @@ export function HistoryExportPanel({
     setSaving(true);
     setNotice(null);
     try {
-      const fileName = historyExportFileName(format);
+      const fileName = historyExportFileName(format, now);
       let path = fileName;
       if (isDesktopRuntime()) {
         const { save } = await import("@tauri-apps/plugin-dialog");
@@ -81,7 +84,7 @@ export function HistoryExportPanel({
       }
       await writeHistoryExport(
         path,
-        buildHistoryExport(sources, selection, format),
+        buildHistoryExport(sources, selection, format, now),
       );
       setNotice({
         kind: "success",

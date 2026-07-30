@@ -12,6 +12,7 @@ export default defineConfig({
     deviceScaleFactor: 1,
     locale: "en-US",
     screenshot: "only-on-failure",
+    timezoneId: "Asia/Shanghai",
   },
   webServer: {
     command: "pnpm dev:web --host 127.0.0.1",
