@@ -1372,9 +1372,6 @@ function App() {
                 {updater.availableVersion ? <small className="nav-update-badge">v{updater.availableVersion}</small> : null}
               </button>
             </div>
-            <div className="sidebar-footer">
-              <span className="live-indicator"><i />{t("app:localSampling")}</span>
-            </div>
           </>
         )}
         <div className="sidebar-mode-switch" role="group" aria-label={t("app:mode.label")}>

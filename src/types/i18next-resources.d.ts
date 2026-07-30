@@ -12,7 +12,6 @@ export default interface Resources {
     "diagnostics": "诊断",
     "history": "历史",
     "live": "实时",
-    "localSampling": "本机采样",
     "mainNavigation": "主导航",
     "metrics": {
       "cpuContext": "{{count}} 个逻辑核心 · 单进程可超过 100%",
