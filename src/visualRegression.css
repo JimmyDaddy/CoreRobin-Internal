@@ -1,0 +1,86 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.visual-harness {
+  display: grid;
+  gap: 18px;
+  margin: 0 auto;
+  max-width: 1500px;
+  padding: 28px;
+}
+
+.visual-harness > header small {
+  color: var(--blue);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.visual-harness > header h1 {
+  margin: 6px 0 0;
+  font-size: clamp(24px, 3vw, 38px);
+}
+
+.visual-harness__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px;
+}
+
+.visual-harness__states {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.visual-harness__states article {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+  min-height: 130px;
+  padding: 18px;
+}
+
+.visual-harness__states article span {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.visual-harness__states .is-loading svg {
+  color: var(--blue);
+}
+
+.visual-harness__states .is-error {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--border));
+}
+
+.visual-harness__states .is-error svg {
+  color: var(--red);
+}
+
+.visual-harness__states .is-empty svg {
+  color: var(--green);
+}
+
+.visual-harness__chart {
+  padding: 18px;
+}
+
+.visual-harness__chart h2 {
+  margin: 0 0 10px;
+}
+
+@media (max-width: 900px) {
+  .visual-harness__states {
+    grid-template-columns: 1fr;
+  }
+}

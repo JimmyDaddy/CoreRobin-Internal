@@ -22,7 +22,7 @@ import type {
   UserActionKind,
   UserActionRecord,
 } from "../userActionHistory";
-import { formatPercent } from "../utils";
+import { formatBytes, formatPercent } from "../utils";
 import { Button } from "./Button";
 import "./TodayReview.css";
 
@@ -165,9 +165,11 @@ function ActionResult({
   onOpen: () => void;
 }) {
   const { t } = useAppTranslation();
-  const effect = result.effect === "not_applicable"
-    ? t(`history:actions.verification.${result.record.verification}`)
-    : t(`history:replay.actionImpact.${result.effect}`);
+  const metricEffects = [
+    [t("daily:review.metricNames.cpu"), result.cpuEffect] as const,
+    [t("daily:review.metricNames.memory"), result.memoryEffect] as const,
+  ].filter(([, observed]) => observed.effect !== "not_applicable");
+  const outcome = actionOutcomeSummary(result.record, t);
   return (
     <article className={`is-${result.record.status}`}>
       <span><CheckCircle2 size={15} /></span>
@@ -177,11 +179,72 @@ function ActionResult({
           {result.record.targetName
             ?? t("history:actions.target.application")}
         </strong>
-        <p>{effect}</p>
+        {metricEffects.length > 0 ? (
+          <div className="today-review__metric-effects">
+            {metricEffects.map(([metric, observed]) => (
+              <p key={metric}>
+                {observed.beforeAverage === null || observed.afterAverage === null
+                  ? t(`history:replay.actionImpact.${observed.effect}`)
+                  : t("daily:review.observedMetric", {
+                    metric,
+                    before: formatPercent(observed.beforeAverage),
+                    after: formatPercent(observed.afterAverage),
+                    effect: t(`history:replay.actionImpact.${observed.effect}`),
+                  })}
+              </p>
+            ))}
+          </div>
+        ) : <p>{outcome}</p>}
       </div>
       <Button variant="plain" onClick={onOpen}>
         {t("daily:review.open")}<ArrowRight size={12} />
       </Button>
     </article>
   );
+}
+
+function actionOutcomeSummary(
+  record: UserActionRecord,
+  t: ReturnType<typeof useAppTranslation>["t"],
+): string {
+  const outcome = record.outcome;
+  if (!outcome) {
+    return t(`history:actions.verification.${record.verification}`);
+  }
+  if (record.kind === "cleanup_delete") {
+    return t("daily:review.outcomes.cleanup", {
+      selected: outcome.selectedCount ?? record.targetCount ?? 0,
+      succeeded: outcome.succeededCount ?? 0,
+      skipped: outcome.skippedCount ?? record.failedCount ?? 0,
+      size: formatBytes(outcome.releasedBytes ?? record.affectedBytes ?? 0),
+    });
+  }
+  if (record.kind === "application_uninstall") {
+    return t(outcome.applicationRemoved
+      ? "daily:review.outcomes.uninstallRemoved"
+      : "daily:review.outcomes.uninstallKept", {
+      succeeded: outcome.residualSucceededCount ?? 0,
+      failed: outcome.residualFailedCount ?? record.failedCount ?? 0,
+    });
+  }
+  if (record.kind === "volume_eject") {
+    return t(outcome.volumeUnmounted
+      ? "daily:review.outcomes.volumeEjected"
+      : "daily:review.outcomes.volumeNotEjected");
+  }
+  if (record.kind === "startup_disable" || record.kind === "startup_enable") {
+    return t(outcome.startupStateChanged
+      ? "daily:review.outcomes.startupChanged"
+      : "daily:review.outcomes.startupNotConfirmed");
+  }
+  if (record.kind === "application_update") {
+    return t(outcome.updateInstalled
+      ? outcome.updateRestarted
+        ? "daily:review.outcomes.updateConfirmed"
+        : "daily:review.outcomes.updateReady"
+      : "daily:review.outcomes.updateNotInstalled", {
+      version: outcome.confirmedVersion ?? record.targetName ?? "",
+    });
+  }
+  return t(`history:actions.verification.${record.verification}`);
 }

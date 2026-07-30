@@ -29,6 +29,8 @@
   "throughputChart": "Festplatten- und Netzwerkdurchsatz",
   "resourceChartLabel": "Historische CPU- und Speicherentwicklung",
   "throughputChartLabel": "Historische Daten für Festplatte und Netzwerk, Trend",
+  "chartRange": "Diagrammzeitraum",
+  "dataCompleteness": "{{percent}} % Datenabdeckung",
   "stories": {
     "eyebrow": "Was ist passiert?",
     "title": "Computer-Ereignisse",
@@ -152,6 +154,17 @@
     "triggered": "{{metric}} erreichte {{value}}{{unit}}",
     "recovered": "{{metric}} erholte sich auf {{value}}{{unit}}"
   },
+  "export": {
+    "eyebrow": "Lokale Kopie", "title": "Verlauf exportieren",
+    "description": "Zeitraum und Messwerte wählen, Datenschutz prüfen und als CSV oder JSON auf diesem Gerät speichern.",
+    "range": "Zeitraum", "ranges": { "24": "24 Stunden", "168": "7 Tage", "all": "Alle gespeicherten" },
+    "format": "Dateiformat", "metrics": "Messwerte und Einträge",
+    "metric": { "cpu": "CPU", "memory": "Speicher", "disk": "Datenträger", "network": "Netzwerk", "events": "Warnungen", "actions": "Abgeschlossene Aktionen", "applications": "App-Auswirkung" },
+    "previewTitle": "Datenschutzvorschau", "preview": "{{count}} Zeilen von {{from}} bis {{to}}",
+    "excluded": "Prozessbefehle, vollständige Dateipfade und Verbindungsadressen sind immer ausgeschlossen.",
+    "includeNames": "App-Namen einschließen", "includeNamesDescription": "Standardmäßig aus. Sonst werden Apps als application-1 usw. anonymisiert.",
+    "localOnly": "Die Datei bleibt lokal und wird nicht hochgeladen.", "save": "Export speichern", "saved": "Verlauf wurde exportiert."
+  },
   "privacyEyebrow": "Datengrenzen",
   "privacyTitle": "Datenschutzrichtlinie",
   "privacyLocal": "Die Historie bleibt im privaten CoreRobin-Speicher dieses Geräts und wird nicht hochgeladen oder synchronisiert.",
@@ -172,6 +185,7 @@
     "learningTitle": "App-Verlauf wird aufgebaut",
     "learningDescription": "Ranglisten erscheinen, sobald genügend Fünf-Minuten-Stichproben vorliegen.",
     "timeline": "Einfluss im Zeitverlauf",
+    "relativeActivity": "Relative Aktivität",
     "timelineHint": "Balken auswählen, um diesen Zeitraum zu prüfen",
     "explanation": "Gegen {{time}} führte {{name}} diesen Zeitraum mit durchschnittlich {{cpu}} CPU und {{memory}} Arbeitsspeicher an.",
     "peakCpu": "CPU-Spitze {{value}}",

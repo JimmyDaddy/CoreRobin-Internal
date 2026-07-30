@@ -38,7 +38,7 @@ Download the package for your platform from [GitHub Releases](https://github.com
 - On macOS, the Complete Uninstall Assistant identifies the app bundle and only leftovers attributed by an exact Bundle ID, then asks you to review every path. Moving to Trash is the default; direct deletion requires separate confirmation. On Windows it creates short-lived plans from the system MSI/MSIX catalogs, and on Linux from Flatpak, deb, RPM, or Snap ownership, then delegates removal to the operating-system installer or package manager. Identity is revalidated before execution and the frontend cannot supply a command. Portable or unverifiable apps remain view-only, and CoreRobin cannot uninstall itself.
 - CPU, memory, and disk evidence stays under Why this conclusion.
 - Professional mode adds a process tree, search, sorting, file locations, launch commands, and five-minute trends.
-- Prefer Request Stop so an app has time to save its work. Use Force Stop only when an app is completely unresponsive.
+- Prefer Request Stop so an app has time to save its work. On Windows this asks the app's top-level windows to close; on Linux it sends the normal termination request through a stable process handle. Use Force Stop only when an app is completely unresponsive. Windows/Linux process control remains an early-preview capability until its dedicated real-device smoke passes.
 - CoreRobin checks the target again before stopping it. If the process has exited or changed, the action stops.
 - After an action, Everyday mode checks again and tells you whether the app actually stopped.
 - Critical system processes and CoreRobin itself cannot be stopped by mistake.

@@ -598,12 +598,17 @@ export default interface Resources {
         "systemDisk": "系统磁盘",
         "trash": "废纸篓"
       },
+      "paused": "电脑已休眠，唤醒后将继续扫描",
       "scanningLocation": "正在分析{{location}}",
-      "stageKicker": "空间地图生成中"
+      "stageKicker": "空间地图生成中",
+      "stalled": "扫描长时间没有进展",
+      "stalledDescription": "扫描任务仍有响应，但当前目录可能读取异常。重新开始后会立即替换旧任务，无需继续等待。",
+      "stalledTitle": "当前目录长时间没有扫描进展"
     },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
     "readOnlyTitle": "先看清楚，再决定是否处理",
     "reclaimableEstimate": "可能可回收空间",
+    "restartScan": "重新开始扫描",
     "reviewFirst": "逐项确认",
     "safety": {
       "reclaimable": "通常可回收",
@@ -1099,6 +1104,10 @@ export default interface Resources {
       "description": "把今天的异常、恢复和你执行过的操作整理成一份可核对的结果。",
       "evidence": "今天记录的主要资源来源是 {{name}}；整机峰值 CPU {{cpu}}、内存 {{memory}}。",
       "kicker": "本机 · 今天",
+      "metricNames": {
+        "cpu": "CPU",
+        "memory": "内存"
+      },
       "metrics": {
         "actions": "已执行操作",
         "events": "值得留意",
@@ -1106,7 +1115,20 @@ export default interface Resources {
         "resolved": "已经恢复"
       },
       "noResults": "完成退出应用、清理或启动项调整后，核对结果会显示在这里。",
+      "observedMetric": "{{metric}}：操作后观察到 {{before}} → {{after}} · {{effect}}",
       "open": "打开对应功能",
+      "outcomes": {
+        "cleanup": "选择 {{selected}} 项，成功处理 {{succeeded}} 项，跳过 {{skipped}} 项，实际释放 {{size}}。",
+        "startupChanged": "系统已重新检查并确认启动状态已变更。",
+        "startupNotConfirmed": "暂时无法确认启动状态已经变更。",
+        "uninstallKept": "尚未确认应用本体已移除；成功处理 {{succeeded}} 个残留，{{failed}} 个未完成。",
+        "uninstallRemoved": "应用本体已移除；成功处理 {{succeeded}} 个残留，{{failed}} 个未完成。",
+        "updateConfirmed": "应用已重启，并确认当前版本为 {{version}}。",
+        "updateNotInstalled": "尚未确认更新已安装。",
+        "updateReady": "更新已下载并安装，仍需重启应用完成版本切换。",
+        "volumeEjected": "系统已确认该存储卷完成卸载。",
+        "volumeNotEjected": "系统未能确认该存储卷已卸载。"
+      },
       "resultsDescription": "只比较操作前后的本机采样，不把相关性说成因果。",
       "resultsTitle": "处理效果",
       "status": {
@@ -1277,6 +1299,32 @@ export default interface Resources {
     "topbar": {
       "thisComputer": "这台电脑",
       "thisMac": "这台 Mac"
+    },
+    "weekly": {
+      "actions": "已处理",
+      "anomalies": "异常",
+      "averages": "平均 CPU {{cpu}} · 内存 {{memory}}",
+      "comparison": {
+        "fewer": "今天少记录到 {{count}} 次异常。",
+        "more": "今天多记录到 {{count}} 次异常。",
+        "same": "今天同样记录到 {{count}} 次异常。"
+      },
+      "comparisonTitle": "与昨天相比",
+      "coverage": "已有 {{days}} 天采样 · 七天日均 {{average}} 次异常",
+      "description": "分别比较已记录的异常与处理结果，不把无关指标拼成健康分数。",
+      "improvementObserved": "操作后 {{metrics}} 下降 · {{time}}",
+      "improvements": "观察到改善",
+      "improvementsTitle": "操作后观察到的改善",
+      "kicker": "七天回顾",
+      "noImprovements": "目前还没有哪项操作具备足够的前后采样来确认改善。",
+      "notification": "每周提醒",
+      "notificationBody": "过去 7 天记录到 {{anomalies}} 次异常、{{improvements}} 项操作后改善。打开回顾可查看依据。",
+      "notificationTitle": "CoreRobin 每周回顾已准备好",
+      "notificationUnavailable": "请先在设置中开启桌面通知，再启用本机每周提醒。",
+      "sevenDays": "过去 7 天",
+      "title": "昨天与这一周",
+      "today": "今天",
+      "yesterday": "昨天"
     }
   },
   "diagnosis": {
@@ -1503,6 +1551,7 @@ export default interface Resources {
       "learningTitle": "正在建立应用历史",
       "peakCpu": "CPU 峰值 {{value}}",
       "range": "应用历史范围",
+      "relativeActivity": "相对活动",
       "storageFailed": "历史仍可查看，但新采样暂时无法保存；CoreRobin 会自动重试。",
       "storageLoading": "正在打开私有历史存储…",
       "storagePending": "等待首次写入",
@@ -1562,11 +1611,43 @@ export default interface Resources {
       "title": "电池使用会话"
     },
     "chartLabel": "CPU {{cpu}}%，内存 {{memory}}%",
+    "chartRange": "图表时间范围",
     "clearSaved": "清除已保存数据",
     "controls": "历史记录设置",
+    "dataCompleteness": "数据完整度 {{percent}}%",
     "emptyDescription": "收到第一个有效采样后会显示趋势；启用本机保存后可跨重启保留。",
     "emptyTitle": "正在建立历史基线",
     "establishing": "正在建立趋势基线…",
+    "export": {
+      "description": "选择时间范围和指标，确认隐私内容后，将 CSV 或 JSON 文件保存到这台电脑。",
+      "excluded": "始终不包含进程命令、完整文件路径和网络连接地址。",
+      "eyebrow": "本地副本",
+      "format": "文件格式",
+      "includeNames": "包含应用名称",
+      "includeNamesDescription": "默认关闭；关闭时应用身份会替换为 application-1 等匿名标签。",
+      "localOnly": "文件只保存在本机，不会上传。",
+      "metric": {
+        "actions": "已完成操作",
+        "applications": "应用影响",
+        "cpu": "CPU",
+        "disk": "磁盘",
+        "events": "异常提醒",
+        "memory": "内存",
+        "network": "网络"
+      },
+      "metrics": "指标与记录",
+      "preview": "{{from}} 至 {{to}}，共 {{count}} 行",
+      "previewTitle": "隐私预览",
+      "range": "时间范围",
+      "ranges": {
+        "168": "7 天",
+        "24": "24 小时",
+        "all": "全部记录"
+      },
+      "save": "保存导出文件",
+      "saved": "历史数据已导出。",
+      "title": "导出历史数据"
+    },
     "fiveMinuteResolution": "5 分钟分辨率",
     "legend": "图表图例",
     "localArchive": "本机资源档案",
@@ -1964,6 +2045,13 @@ export default interface Resources {
       "user": "用户",
       "validating": "正在重新确认…",
       "windowsForce": "将立即结束这个进程；它可能来不及保存当前内容。"
+    },
+    "errors": {
+      "busy": "同时打开的进程确认过多，请关闭一个后重试。",
+      "noCloseWindow": "这个后台进程没有可供 Windows 请求关闭的应用窗口。只有明确了解风险时才使用强制结束。",
+      "permissionDenied": "操作系统不允许 CoreRobin 控制这个进程。CoreRobin 不会自动请求管理员权限。",
+      "targetChanged": "这个进程已经退出或发生变化，没有结束其他进程。",
+      "unavailable": "当前系统无法对所选进程执行这项操作。"
     },
     "expand": "展开{{name}}",
     "flat": "平铺",
@@ -2607,6 +2695,10 @@ export default interface Resources {
       "background": "后台采样",
       "foreground": "前台采样"
     },
+    "dataStatus": {
+      "paused": "数据已暂停",
+      "stale": "数据已过期"
+    },
     "health": {
       "attention": "需要关注",
       "loading": "连接中",
@@ -2649,6 +2741,10 @@ export default interface Resources {
       "observing": {
         "description": "再观察一会儿，避免把短暂波动误判成问题。",
         "title": "正在了解电脑状态"
+      },
+      "stale": {
+        "description": "主界面采样连接已中断；重新打开 CoreRobin 后会自动恢复。",
+        "title": "暂时没有收到新的电脑状态"
       },
       "urgent": {
         "description": "建议打开 CoreRobin 查看证据后再处理。",

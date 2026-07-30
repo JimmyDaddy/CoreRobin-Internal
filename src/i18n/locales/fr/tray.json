@@ -10,6 +10,10 @@
     "foreground": "Mesure au premier plan",
     "background": "Mesure en arrière-plan"
   },
+  "dataStatus": {
+    "paused": "Données en pause",
+    "stale": "Données expirées"
+  },
   "health": {
     "loading": "Connexion en cours",
     "observing": "Analyse de l'état",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "Analyse de l'état de cet ordinateur",
       "description": "Surveillance pendant un court laps de temps pour éviter de confondre une brève augmentation avec un problème."
+    },
+    "stale": {
+      "title": "Aucun état récent du système",
+      "description": "La connexion au moniteur principal a été interrompue. Rouvrez CoreRobin pour la reprendre."
     },
     "normal": {
       "title": "Votre ordinateur fonctionne correctement",

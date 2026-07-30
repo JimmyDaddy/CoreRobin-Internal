@@ -118,7 +118,7 @@ export function useApplicationWatchRules(
             });
           }
         }
-        if (!notificationsEnabled || notificationStatus !== "ready") return;
+        if (desktop || !notificationsEnabled || notificationStatus !== "ready") return;
         for (const event of result.events) {
           void sendWatchRuleNotification(event, language).then((sent) => {
             if (cancelled) return;

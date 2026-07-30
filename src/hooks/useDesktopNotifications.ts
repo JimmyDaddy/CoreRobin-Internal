@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 
 import {
   deliverDesktopNotification,
@@ -33,6 +34,7 @@ export function useDesktopNotifications(
   );
   const [delivery, setDelivery] =
     useState<DesktopNotificationDelivery | null>(null);
+  const desktop = isDesktopRuntime();
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +54,25 @@ export function useDesktopNotifications(
       cancelled = true;
     };
   }, [enabled]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen<DesktopNotificationDelivery>(
+      "core-robin:supervisor-notification",
+      ({ payload }) => {
+        if (!disposed) setDelivery(payload);
+      },
+    ).then((listener) => {
+      if (disposed) listener();
+      else unlisten = listener;
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [desktop]);
 
   useEffect(() => {
     if (!enabled || !isDesktopRuntime()) return;
@@ -95,7 +116,7 @@ export function useDesktopNotifications(
 
   useEffect(() => {
     const unseen = reconcileSeenResourceAlertIds(seenIds.current, events);
-    if (!enabled || status !== "ready") return;
+    if (!enabled || status !== "ready" || desktop) return;
     const now = Date.now();
     const selected = selectNotificationsWithinDailyBudget(
       unseen.filter((event) => !mutedResources.includes(event.resource)),
@@ -125,7 +146,7 @@ export function useDesktopNotifications(
     return () => {
       disposed = true;
     };
-  }, [enabled, events, language, mutedResources, status]);
+  }, [desktop, enabled, events, language, mutedResources, status]);
 
   const sendTest = async () => {
     if (!enabled || status !== "ready") return false;

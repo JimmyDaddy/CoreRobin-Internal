@@ -88,6 +88,8 @@ import { useProductDataPrivacy } from "./hooks/useProductDataPrivacy";
 import { useNetworkQualityMonitor } from "./hooks/useNetworkQualityMonitor";
 import { useAppUpdater } from "./hooks/useAppUpdater";
 import { useTrashApplicationWatcher } from "./hooks/useTrashApplicationWatcher";
+import { useBackgroundSupervisor } from "./hooks/useBackgroundSupervisor";
+import { useWeeklyReviewNotification } from "./hooks/useWeeklyReviewNotification";
 import { normalizeLanguage } from "./i18n";
 import brandMark from "./assets/brand-mark.png";
 import {
@@ -115,6 +117,7 @@ import {
   beginProductDataReset,
   clearCoreRobinWebData,
   completeOnboarding,
+  CURRENT_APP_VERSION,
   hasCompletedOnboarding,
 } from "./productSupport";
 import type {
@@ -126,6 +129,7 @@ import type {
   ProcessRow,
   SystemSettingsDestination,
 } from "./types";
+import { buildWeeklyReview } from "./weeklyReview";
 import {
   formatBytes,
   formatPercent,
@@ -220,6 +224,11 @@ function App() {
   const hiddenFullSnapshotIntervalMs =
     hiddenApplicationSamplingIntervalMs ??
     (settings.networkConnectionHistoryEnabled
+      || (
+        settings.historyPersistenceEnabled
+        && settings.historyApplicationNamesEnabled
+        && settings.applicationImpactHistoryEnabled
+      )
       ? HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS
       : null);
   const {
@@ -300,8 +309,22 @@ function App() {
       verification: status === "succeeded" ? "verified" : "not_confirmed",
       targetCount: status === "succeeded" ? 1 : 0,
       failedCount: status === "failed" ? 1 : 0,
+      outcome: {
+        selectedCount: 1,
+        succeededCount: status === "succeeded" ? 1 : 0,
+        updateDownloaded: status === "succeeded",
+        updateInstalled: status === "succeeded",
+        updateRestarted: false,
+      },
     }),
   });
+  useEffect(() => {
+    if (!updater.updatedFromVersion) return;
+    userActions.confirmLatestApplicationUpdate(CURRENT_APP_VERSION);
+  }, [
+    updater.updatedFromVersion,
+    userActions.confirmLatestApplicationUpdate,
+  ]);
   const trashApplicationWatcher = useTrashApplicationWatcher(
     settings.trashApplicationWatcherEnabled,
     normalizeLanguage(settings.language),
@@ -312,6 +335,15 @@ function App() {
     settings.language,
     settings.mutedNotificationResources,
     handleOpenAlertEvidence,
+  );
+  const translateSupervisor = useCallback(
+    (key: string) => t(key as never),
+    [t],
+  );
+  useBackgroundSupervisor(
+    settings,
+    desktopNotifications.status,
+    translateSupervisor,
   );
   const applicationWatchRules = useApplicationWatchRules(
     snapshot,
@@ -365,6 +397,28 @@ function App() {
       .map((networkInterface) => networkInterface.name)
       .sort()
       .join("|") ?? "",
+  });
+  const weeklyReview = useMemo(() => buildWeeklyReview({
+    points: persistentHistory.points,
+    alerts: resourceAlerts.events,
+    networkQualityPoints: networkQuality.history,
+    actions: userActions.records,
+  }), [
+    networkQuality.history,
+    persistentHistory.points,
+    resourceAlerts.events,
+    userActions.records,
+  ]);
+  useWeeklyReviewNotification({
+    enabled:
+      settings.desktopNotificationsEnabled
+      && settings.weeklyReviewNotificationEnabled,
+    notificationStatus: desktopNotifications.status,
+    title: t("daily:weekly.notificationTitle"),
+    body: t("daily:weekly.notificationBody", {
+      anomalies: weeklyReview.sevenDays.anomalyCount,
+      improvements: weeklyReview.sevenDays.observedImprovementCount,
+    }),
   });
   const productDataPrivacy = useProductDataPrivacy({
     resourceItemCount:
@@ -955,7 +1009,7 @@ function App() {
           relaunchExecutable: null,
         });
       } catch (caughtError) {
-        setNotice(normalizeCommandError(caughtError).message);
+        setNotice(processActionErrorMessage(caughtError, t));
       } finally {
         preparingActionRef.current = false;
         setPreparingAction(false);
@@ -1046,7 +1100,7 @@ function App() {
           relaunchExecutable: restartAfterClose ? nextDetail.executable : null,
         });
       } catch (caughtError) {
-        setNotice(normalizeCommandError(caughtError).message);
+        setNotice(processActionErrorMessage(caughtError, t));
       } finally {
         preparingActionRef.current = false;
         setPreparingAction(false);
@@ -1160,6 +1214,14 @@ function App() {
         status: actionStatus,
         verification: actionVerification,
         targetCount: 1,
+        outcome: {
+          selectedCount: 1,
+          succeededCount: actionStatus === "succeeded" ? 1 : 0,
+          processExited: actionStatus === "succeeded",
+          processRestarted: pending.source === "restart"
+            && actionStatus === "succeeded"
+            && actionVerification === "verified",
+        },
       });
       setNotice(resultMessage);
       if (pending.dailyIntent) {
@@ -1182,7 +1244,7 @@ function App() {
       }
       const leaseId = executionLease?.id ?? pending.lease.id;
       void releaseProcessControlLease({ leaseId }).catch(() => undefined);
-      setNotice(actionError.message);
+      setNotice(processActionErrorMessage(actionError, t));
       setPendingAction(null);
     } finally {
       submittingActionRef.current = false;
@@ -1687,6 +1749,7 @@ function App() {
                   error={cleanupScan.error}
                   loading={cleanupScan.loading}
                   cancelling={cleanupScan.cancelling}
+                  phase={cleanupScan.phase}
                   progress={cleanupScan.progress}
                   snapshotStatus={cleanupScan.snapshotStatus}
                   growthComparison={cleanupScan.growthComparison}
@@ -1717,6 +1780,14 @@ function App() {
                   storedActionCount={userActions.storedRecords.length}
                   onOpenAction={openUserActionDestination}
                   onClearSavedActions={userActions.clearSaved}
+                  weeklyReviewNotificationEnabled={
+                    settings.weeklyReviewNotificationEnabled
+                  }
+                  notificationStatus={desktopNotifications.status}
+                  onWeeklyReviewNotificationEnabledChange={
+                    (weeklyReviewNotificationEnabled) =>
+                      updateSettings({ weeklyReviewNotificationEnabled })
+                  }
                 />
               ) : activeView === "settings" ? (
                 <DailySettings
@@ -1910,6 +1981,7 @@ function App() {
                 error={cleanupScan.error}
                 loading={cleanupScan.loading}
                 cancelling={cleanupScan.cancelling}
+                phase={cleanupScan.phase}
                 progress={cleanupScan.progress}
                 snapshotStatus={cleanupScan.snapshotStatus}
                 growthComparison={cleanupScan.growthComparison}
@@ -2150,6 +2222,36 @@ function App() {
 
 function latestNonZeroTimestamp(values: readonly number[]): number | null {
   return values.reduce((latest, value) => Math.max(latest, value), 0) || null;
+}
+
+function processActionErrorMessage(
+  error: unknown,
+  t: ReturnType<typeof useAppTranslation>["t"],
+): string {
+  const normalized = normalizeCommandError(error);
+  if (
+    normalized.code === "stale_process"
+    || normalized.code === "process_exited"
+    || normalized.code === "control_lease_mismatch"
+  ) {
+    return t("process:errors.targetChanged");
+  }
+  if (normalized.code === "permission_denied") {
+    return t("process:errors.permissionDenied");
+  }
+  if (normalized.code === "graceful_close_unavailable") {
+    return t("process:errors.noCloseWindow");
+  }
+  if (
+    normalized.code === "control_unavailable"
+    || normalized.code === "unsupported_action"
+  ) {
+    return t("process:errors.unavailable");
+  }
+  if (normalized.code === "resource_exhausted") {
+    return t("process:errors.busy");
+  }
+  return normalized.message;
 }
 
 export default App;

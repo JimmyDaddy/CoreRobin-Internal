@@ -93,6 +93,7 @@ describe("file insights workspace", () => {
         error={null}
         loading={false}
         cancelling={false}
+        phase={null}
         progress={null}
         snapshotStatus="current"
         onScan={() => undefined}

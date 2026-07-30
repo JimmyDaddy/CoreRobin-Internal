@@ -94,6 +94,7 @@
   "description": "Scannen Sie die Systemfestplatte und sehen Sie den Speicherverbrauch nach Dateipfad.",
   "startScan": "Nur Lesen-Scan starten",
   "scanAgain": "Nochmal scannen",
+  "restartScan": "Scan neu starten",
   "scanning": "Wird gescannt…",
   "cancelScan": "Scan abbrechen",
   "cancelling": "Wird abgebrochen…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "Analysiere {{location}}",
+    "paused": "Der Mac befindet sich im Ruhezustand; der Scan wird nach dem Aufwachen fortgesetzt",
+    "stalled": "Der Scan macht seit einiger Zeit keinen Fortschritt",
+    "stalledTitle": "Dieser Scan reagiert möglicherweise nicht mehr",
+    "stalledDescription": "Starten Sie den Scan neu, um den alten Vorgang zu beenden, statt weiter zu warten.",
     "entries": "Überprüft",
     "discovered": "Gefunden",
     "elapsed": "Verstrichene Zeit",

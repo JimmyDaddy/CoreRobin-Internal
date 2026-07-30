@@ -19,7 +19,9 @@ import {
 } from "../applicationImpactHistory";
 import type { ApplicationImpactHistoryStorageStatus } from "../hooks/useApplicationImpactHistory";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { timeSeriesBucketMs } from "../timeSeries";
 import { formatBytes, formatPercent, formatRate } from "../utils";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 
 export function ApplicationImpactHistoryPanel({
   points,
@@ -143,32 +145,33 @@ export function ApplicationImpactHistoryPanel({
               <span><Clock3 size={13} />{t("history:applicationImpact.timeline")}</span>
               <small>{t("history:applicationImpact.timelineHint")}</small>
             </div>
-            <div
-              className="application-impact-history__bars"
-              role="listbox"
-              aria-label={t("history:applicationImpact.timeline")}
-            >
-              {displayPoints.map((point) => {
-                const score = applicationImpactPointScore(point);
-                const active = selectedPoint?.bucketStartMs === point.bucketStartMs;
-                return (
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    className={active ? "is-active" : undefined}
-                    key={point.bucketStartMs}
-                    title={new Intl.DateTimeFormat(i18n.resolvedLanguage, {
-                      dateStyle: rangeHours === 168 ? "short" : undefined,
-                      timeStyle: "short",
-                    }).format(point.sampledAtMs)}
-                    onClick={() => setSelectedAtMs(point.bucketStartMs)}
-                  >
-                    <i style={{ height: `${Math.max(8, score / maximumScore * 100)}%` }} />
-                  </button>
-                );
-              })}
-            </div>
+            <TimeSeriesChart
+              ariaLabel={t("history:applicationImpact.timeline")}
+              className="application-impact-history__chart"
+              completenessLabel={(percent) => t("history:dataCompleteness", { percent })}
+              earlierLabel={new Intl.DateTimeFormat(i18n.resolvedLanguage, {
+                dateStyle: rangeHours === 168 ? "short" : undefined,
+                timeStyle: "short",
+              }).format(Date.now() - rangeHours * 60 * 60 * 1_000)}
+              endAtMs={Date.now()}
+              expectedIntervalMs={timeSeriesBucketMs(rangeHours)}
+              gapThresholdMs={timeSeriesBucketMs(rangeHours) * 2.5}
+              language={i18n.resolvedLanguage}
+              maximum={maximumScore}
+              nowLabel={t("common:now")}
+              onSelectPoint={(point) => setSelectedAtMs(point.timestamp)}
+              points={displayPoints.map((point) => ({
+                timestamp: point.bucketStartMs,
+                values: [applicationImpactPointScore(point)],
+                sampleCount: point.sampleCount,
+              }))}
+              series={[{
+                label: t("history:applicationImpact.relativeActivity"),
+                color: "var(--blue)",
+                format: (value) => value.toFixed(0),
+              }]}
+              startAtMs={Date.now() - rangeHours * 60 * 60 * 1_000}
+            />
             {selectedPoint && selectedApplications[0] ? (
               <p className="application-impact-history__explanation">
                 {t("history:applicationImpact.explanation", {

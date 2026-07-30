@@ -29,6 +29,8 @@
   "throughputChart": "ディスクとネットワークの処理速度",
   "resourceChartLabel": "過去のCPUとメモリの使用状況の変化",
   "throughputChartLabel": "過去のディスクとネットワークのパフォーマンス推移",
+  "chartRange": "グラフの期間",
+  "dataCompleteness": "データ完全性 {{percent}}%",
   "stories": {
     "eyebrow": "何が起きたか",
     "title": "コンピューターに関する情報",
@@ -151,6 +153,17 @@
     "triggered": "{{metric}} が {{value}}{{unit}} に到達",
     "recovered": "{{metric}} が {{value}}{{unit}} に回復"
   },
+  "export": {
+    "eyebrow": "ローカルコピー", "title": "履歴をエクスポート",
+    "description": "期間と指標を選び、プライバシー内容を確認して CSV または JSON をこの端末に保存します。",
+    "range": "期間", "ranges": { "24": "24 時間", "168": "7 日間", "all": "保存済みすべて" },
+    "format": "ファイル形式", "metrics": "指標と記録",
+    "metric": { "cpu": "CPU", "memory": "メモリ", "disk": "ディスク", "network": "ネットワーク", "events": "警告", "actions": "完了した操作", "applications": "アプリの影響" },
+    "previewTitle": "プライバシープレビュー", "preview": "{{from}} から {{to}} まで {{count}} 行",
+    "excluded": "プロセスコマンド、完全なファイルパス、接続先アドレスは常に除外されます。",
+    "includeNames": "アプリ名を含める", "includeNamesDescription": "既定ではオフ。オフの場合は application-1 のように匿名化されます。",
+    "localOnly": "ファイルは端末内だけに保存され、アップロードされません。", "save": "エクスポートを保存", "saved": "履歴を保存しました。"
+  },
   "privacyEyebrow": "データに関する情報",
   "privacyTitle": "プライバシーポリシー",
   "privacyLocal": "履歴はこのデバイスのCoreRobin専用ストレージに保存され、アップロードや同期はされません。",
@@ -171,6 +184,7 @@
     "learningTitle": "アプリ履歴を作成中",
     "learningDescription": "十分な5分サンプルが集まるとランキングを表示します。",
     "timeline": "時間ごとの影響",
+    "relativeActivity": "相対アクティビティ",
     "timelineHint": "バーを選択してその時間帯を確認",
     "explanation": "{{time}} 頃は {{name}} の影響が最も大きく、平均CPU {{cpu}}、メモリ {{memory}} でした。",
     "peakCpu": "CPUピーク {{value}}",

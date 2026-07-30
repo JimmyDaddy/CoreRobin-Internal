@@ -53,6 +53,37 @@ export function buildPublicReleaseManifest(release, currentManifest, releaseNote
   };
 }
 
+export function renderPublicReleaseNotes(note) {
+  const validated = validatePublicReleaseNote(note, note?.tagName);
+  const embedded = encodeURIComponent(JSON.stringify(validated));
+  return `CoreRobin ${validated.tagName}
+
+<!-- corerobin-release-note:${embedded} -->
+
+## ${validated.title["zh-CN"]}
+
+${validated.items.map((item) => `- ${item["zh-CN"]}`).join("\n")}
+
+## ${validated.title.en}
+
+${validated.items.map((item) => `- ${item.en}`).join("\n")}`;
+}
+
+export function assertUserFacingText(text, locale, label, tag) {
+  const forbiddenEngineeringTerms = {
+    "zh-CN": /(?:\bCI\b|GitHub Actions|(?:发布|构建|自动化|公证|签名)工作流|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|工具链|构建缓存|单元测试|代码重构|文档同步|发布验收|公证状态|签名管线)/i,
+    en: /\b(?:CI|GitHub Actions|(?:release|build|automation|notarization|signing) workflow|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|toolchain|build cache|unit tests?|code refactor|documentation sync|release checks?|notarization reconciliation|signing pipeline)\b/i,
+  };
+  const pattern = forbiddenEngineeringTerms[locale];
+  if (!pattern) throw new Error(`Unsupported release-note locale: ${locale}.`);
+  const match = String(text).match(pattern);
+  if (match) {
+    throw new Error(
+      `Public release note ${label} contains engineering-only term "${match[0]}" (${locale}): ${tag}.`,
+    );
+  }
+}
+
 function assertLocalizedText(value, label, tag) {
   for (const locale of ["zh-CN", "en"]) {
     if (!String(value?.[locale] ?? "").trim()) {
@@ -62,10 +93,6 @@ function assertLocalizedText(value, label, tag) {
 }
 
 function assertUserFacingReleaseNote(note, tag) {
-  const forbiddenEngineeringTerms = {
-    "zh-CN": /(?:\bCI\b|GitHub Actions|(?:发布|构建|自动化|公证|签名)工作流|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|工具链|构建缓存|单元测试|代码重构|文档同步|发布验收|公证状态|签名管线)/i,
-    en: /\b(?:CI|GitHub Actions|(?:release|build|automation|notarization|signing) workflow|webhook|Finalize|Dependabot|TypeScript|glib|GTK|Tauri|SBOM|Sigstore|toolchain|build cache|unit tests?|code refactor|documentation sync|release checks?|notarization reconciliation|signing pipeline)\b/i,
-  };
   for (const locale of ["zh-CN", "en"]) {
     const entries = [
       { label: "title", text: note.title[locale] },
@@ -75,12 +102,7 @@ function assertUserFacingReleaseNote(note, tag) {
       })),
     ];
     for (const entry of entries) {
-      const match = String(entry.text).match(forbiddenEngineeringTerms[locale]);
-      if (match) {
-        throw new Error(
-          `Public release note ${entry.label} contains engineering-only term "${match[0]}" (${locale}): ${tag}.`,
-        );
-      }
+      assertUserFacingText(entry.text, locale, entry.label, tag);
     }
   }
 }

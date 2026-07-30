@@ -947,6 +947,15 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           targetCount: deleteDialogItems.length,
           affectedBytes: result.deletedBytes,
           failedCount: result.failed.length,
+          outcome: {
+            selectedCount: deleteDialogItems.length,
+            succeededCount: result.deleted.length,
+            skippedCount: Math.max(
+              0,
+              deleteDialogItems.length - result.deleted.length - result.failed.length,
+            ),
+            releasedBytes: result.deletedBytes,
+          },
         });
         actionRecorded = true;
       }

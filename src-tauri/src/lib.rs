@@ -1,8 +1,10 @@
 mod application_history;
 mod application_icon;
 mod application_metadata;
+mod background_supervisor;
 mod bounded_command;
 mod cleanup;
+mod cleanup_scan_job;
 #[cfg(test)]
 mod command_names;
 mod error;
@@ -10,6 +12,7 @@ mod file_insights;
 mod file_ownership;
 mod gpu_energy;
 mod health_state;
+mod history_export;
 mod history_storage;
 mod identity;
 mod models;
@@ -29,6 +32,9 @@ mod user_actions;
 pub use cleanup::{
     CleanupBenchmarkResult, benchmark_cleanup_root, benchmark_cleanup_root_with_cancel,
 };
+pub fn maybe_run_cleanup_scan_worker() -> bool {
+    cleanup_scan_job::maybe_run_worker()
+}
 
 use std::sync::{
     Arc, Mutex, Weak,
@@ -41,16 +47,17 @@ use application_history::{
     remove as remove_application_history, save as save_application_history,
 };
 use application_icon::{load_application_bundle_icon, load_application_icon};
+use background_supervisor::BackgroundSupervisorConfig;
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
     available_bytes_for_path, canonical_cleanup_subtree_path, cleanup_scan_access,
     inspect_cleanup_path, load_cleanup_scan_cache, load_or_scan_application_inventory,
     open_full_disk_access_settings, prepare_application_uninstall,
     prepare_trashed_application_residual_plan, remove_cleanup_scan_cache,
-    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache,
-    save_cleanup_scan_snapshot_cache_at, scan_cleanup, scan_cleanup_subtree,
+    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache_at, scan_cleanup_subtree,
     scan_trashed_applications,
 };
+use cleanup_scan_job::CleanupScanJobManager;
 use error::CommandError;
 use file_insights::{
     FileInsightsCoordinator, load_file_insights_cache, remove_file_insights_cache,
@@ -69,7 +76,7 @@ use models::{
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest,
     CleanupDeleteProgress, CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess,
-    CleanupScanProgress, CleanupScanRequest, CleanupSubtreeRequest, FileInsightsProgress,
+    CleanupScanJobStatus, CleanupScanRequest, CleanupSubtreeRequest, FileInsightsProgress,
     FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
     NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
@@ -258,6 +265,7 @@ struct AppState {
     health_state: Arc<HealthStateStore>,
     process_controller: Arc<Mutex<ProcessController>>,
     cleanup_scan: Arc<CleanupWorkCoordinator>,
+    cleanup_scan_jobs: Arc<CleanupScanJobManager>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
     file_insights: Arc<FileInsightsCoordinator>,
@@ -280,6 +288,7 @@ impl AppState {
             health_state: Arc::new(HealthStateStore::default()),
             process_controller,
             cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
+            cleanup_scan_jobs: Arc::new(CleanupScanJobManager::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
@@ -312,6 +321,21 @@ fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
             }
         })
         .expect("failed to start the process-control lease reaper");
+}
+
+fn start_health_state_watchdog(store: Arc<HealthStateStore>, app: AppHandle) {
+    std::thread::Builder::new()
+        .name("core-robin-health-state-watchdog".to_owned())
+        .spawn(move || {
+            loop {
+                std::thread::sleep(Duration::from_secs(1));
+                let Ok(Some(snapshot)) = store.expire_stale_frontend(now_millis()) else {
+                    continue;
+                };
+                let _ = app.emit(HEALTH_STATE_EVENT, snapshot);
+            }
+        })
+        .expect("failed to start the health state watchdog");
 }
 
 async fn with_monitor<T, F>(
@@ -415,6 +439,27 @@ fn set_sampler_control(
 ) -> Result<SamplerStatus, CommandError> {
     require_main_window(&window)?;
     Ok(state.sampler.configure(control))
+}
+
+#[tauri::command]
+fn report_frontend_heartbeat(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<SamplerStatus, CommandError> {
+    require_main_window(&window)?;
+    state.health_state.frontend_heartbeat();
+    Ok(state.sampler.frontend_heartbeat())
+}
+
+#[tauri::command]
+fn configure_background_supervisor(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    config: BackgroundSupervisorConfig,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    state.sampler.configure_supervisor(config);
+    Ok(())
 }
 
 #[tauri::command]
@@ -617,32 +662,36 @@ async fn execute_startup_management(
 }
 
 #[tauri::command]
-async fn get_cleanup_scan(
+fn start_cleanup_scan(
     app: AppHandle,
     state: State<'_, AppState>,
-    on_progress: Channel<CleanupScanProgress>,
     request: Option<CleanupScanRequest>,
-) -> Result<CleanupScan, CommandError> {
+) -> Result<CleanupScanJobStatus, CommandError> {
+    let app_data = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    let job_directory = app_data.join("cleanup-scan-jobs");
     let cache_path = cleanup_scan_cache_path(&app)?;
-    let coordinator = Arc::clone(&state.cleanup_scan);
-    let cancelled = coordinator.begin_full_scan()?;
-    let worker_cancelled = Arc::clone(&cancelled);
-    let worker_coordinator = Arc::clone(&coordinator);
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        worker_coordinator.run_full_scan(&worker_cancelled, || {
-            let scan = scan_cleanup(
-                request.unwrap_or_default(),
-                &worker_cancelled,
-                &mut |progress| {
-                    let _ = on_progress.send(progress);
-                },
-            )?;
-            let _ = save_cleanup_scan_snapshot_cache(&cache_path, &scan);
-            Ok::<_, CommandError>(scan)
-        })
-    })
-    .await;
-    result.map_err(|error| CommandError::internal(format!("Cleanup scan failed: {error}")))?
+    state
+        .cleanup_scan_jobs
+        .start(request.unwrap_or_default(), &job_directory, &cache_path)
+}
+
+#[tauri::command]
+fn get_cleanup_scan_job(
+    state: State<'_, AppState>,
+) -> Result<Option<CleanupScanJobStatus>, CommandError> {
+    state.cleanup_scan_jobs.status()
+}
+
+#[tauri::command]
+fn load_cleanup_scan_job_result(
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<CleanupScan, CommandError> {
+    state.cleanup_scan_jobs.result(&job_id)
 }
 
 #[tauri::command]
@@ -1036,7 +1085,7 @@ async fn clear_persisted_product_data(app: AppHandle) -> Result<(), CommandError
 
 #[tauri::command]
 fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError> {
-    state.cleanup_scan.cancel_full_scan()
+    state.cleanup_scan_jobs.cancel()
 }
 
 #[tauri::command]
@@ -1198,6 +1247,16 @@ fn can_relaunch_application(
 ) -> Result<bool, CommandError> {
     require_main_window(&window)?;
     user_actions::can_relaunch_application(&executable_path)
+}
+
+#[tauri::command]
+fn write_history_export(
+    window: WebviewWindow,
+    path: String,
+    content: String,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    history_export::write(&path, &content)
 }
 
 #[tauri::command]
@@ -2038,7 +2097,9 @@ pub fn run() {
     builder
         .manage(AppState::new(background_launch))
         .setup(|app| {
-            app.state::<AppState>().sampler.start(app.handle().clone());
+            let state = app.state::<AppState>();
+            state.sampler.start(app.handle().clone());
+            start_health_state_watchdog(Arc::clone(&state.health_state), app.handle().clone());
             #[cfg(target_os = "macos")]
             {
                 app.handle()
@@ -2175,6 +2236,8 @@ pub fn run() {
             get_system_summary,
             get_sampler_status,
             set_sampler_control,
+            report_frontend_heartbeat,
+            configure_background_supervisor,
             publish_health_state,
             get_health_state,
             get_network_connections,
@@ -2192,7 +2255,9 @@ pub fn run() {
             create_startup_management_lease,
             release_startup_management_lease,
             execute_startup_management,
-            get_cleanup_scan,
+            start_cleanup_scan,
+            get_cleanup_scan_job,
+            load_cleanup_scan_job_result,
             get_cleanup_path_state,
             get_cleanup_subtree,
             load_persisted_cleanup_scan,
@@ -2224,6 +2289,7 @@ pub fn run() {
             open_product_issue,
             relaunch_application,
             can_relaunch_application,
+            write_history_export,
             get_installed_applications,
             get_application_uninstall_plan,
             get_trashed_applications,
@@ -2486,6 +2552,7 @@ mod security_boundary_tests {
         "open_product_issue",
         "relaunch_application",
         "can_relaunch_application",
+        "write_history_export",
         "get_installed_applications",
         "get_application_uninstall_plan",
         "get_trashed_applications",
@@ -2497,6 +2564,8 @@ mod security_boundary_tests {
         "execute_cleanup_delete",
         "cancel_cleanup_delete",
         "publish_health_state",
+        "report_frontend_heartbeat",
+        "configure_background_supervisor",
         "set_dock_icon_visible",
         "get_launch_at_login",
         "set_launch_at_login",

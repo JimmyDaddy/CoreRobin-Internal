@@ -74,6 +74,13 @@
     "diskIo": "磁盘 I/O",
     "exited": "进程已退出，趋势停止更新。"
   },
+  "errors": {
+    "targetChanged": "这个进程已经退出或发生变化，没有结束其他进程。",
+    "permissionDenied": "操作系统不允许 CoreRobin 控制这个进程。CoreRobin 不会自动请求管理员权限。",
+    "noCloseWindow": "这个后台进程没有可供 Windows 请求关闭的应用窗口。只有明确了解风险时才使用强制结束。",
+    "unavailable": "当前系统无法对所选进程执行这项操作。",
+    "busy": "同时打开的进程确认过多，请关闭一个后重试。"
+  },
   "dialog": {
     "windowsForce": "将立即结束这个进程；它可能来不及保存当前内容。",
     "unixForce": "将立即结束这个进程；它可能来不及保存当前内容，此操作不可撤销。",

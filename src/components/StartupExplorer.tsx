@@ -198,6 +198,11 @@ export function StartupExplorer({
           status: "succeeded",
           verification: "verified",
           targetCount: 1,
+          outcome: {
+            selectedCount: 1,
+            succeededCount: 1,
+            startupStateChanged: result.enabled === (requestedAction === "enable"),
+          },
         });
         actionRecorded = true;
       }

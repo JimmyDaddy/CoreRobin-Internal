@@ -1,0 +1,103 @@
+.time-series-chart {
+  height: 210px;
+  min-width: 0;
+  position: relative;
+}
+
+.time-series-chart[data-selectable="true"] {
+  cursor: crosshair;
+}
+
+.time-series-chart svg {
+  display: block;
+  height: 100%;
+  overflow: visible;
+  width: 100%;
+}
+
+.time-series-chart svg text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.time-series-chart__grid {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.time-series-chart__line {
+  fill: none;
+  stroke: var(--time-series-color);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.time-series-chart__line.is-dashed {
+  stroke-dasharray: 6 5;
+}
+
+.time-series-chart__cursor {
+  stroke: color-mix(in srgb, var(--text-primary) 40%, transparent);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.time-series-chart__completeness {
+  bottom: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.time-series-chart__tooltip {
+  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+  padding: 10px 12px;
+  pointer-events: none;
+  position: absolute;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.time-series-chart__tooltip strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.time-series-chart__tooltip span {
+  align-items: center;
+  color: var(--text-secondary);
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+  grid-template-columns: 8px 1fr auto;
+}
+
+.time-series-chart__tooltip span i {
+  border-radius: 999px;
+  height: 7px;
+  width: 7px;
+}
+
+.time-series-chart__tooltip span b {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.time-series-chart__tooltip small {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding-top: 5px;
+}

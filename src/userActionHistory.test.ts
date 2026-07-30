@@ -21,6 +21,12 @@ describe("user action history", () => {
       verification: "verified",
       affectedBytes: 2_048,
       failedCount: 1,
+      outcome: {
+        selectedCount: 3,
+        succeededCount: 2,
+        skippedCount: 1,
+        releasedBytes: 2_048,
+      },
     }, 2_000);
 
     expect(completed).toMatchObject({
@@ -31,7 +37,39 @@ describe("user action history", () => {
       targetCount: 3,
       affectedBytes: 2_048,
       failedCount: 1,
+      outcome: {
+        selectedCount: 3,
+        succeededCount: 2,
+        skippedCount: 1,
+        releasedBytes: 2_048,
+      },
     });
+  });
+
+  it("migrates version 1 records and preserves structured outcomes in version 2", () => {
+    const legacy = parseUserActionHistory(JSON.stringify({
+      version: 1,
+      records: [{
+        ...completeUserActionRecord(
+          createUserActionRecord({ kind: "volume_eject" }, 1_000),
+          { status: "succeeded", verification: "verified" },
+          2_000,
+        ),
+        outcome: undefined,
+      }],
+    }));
+    expect(legacy[0]?.outcome).toBeNull();
+
+    const completed = completeUserActionRecord(
+      createUserActionRecord({ kind: "volume_eject" }, 3_000),
+      {
+        status: "succeeded",
+        verification: "verified",
+        outcome: { volumeUnmounted: true },
+      },
+      4_000,
+    );
+    expect(completed.outcome).toEqual({ volumeUnmounted: true });
   });
 
   it("rejects malformed payloads and impossible running states", () => {

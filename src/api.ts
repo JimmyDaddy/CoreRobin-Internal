@@ -28,7 +28,7 @@ import type {
   CleanupPathState,
   CleanupScan,
   CleanupScanAccess,
-  CleanupScanProgress,
+  CleanupScanJobStatus,
   CleanupScanTarget,
   CleanupSubtreeRequest,
   CleanupDeleteExecutionRequest,
@@ -74,8 +74,8 @@ import type {
   HealthStateSnapshot,
   HealthStateUpdate,
 } from "./healthState";
+import type { BackgroundSupervisorConfig } from "./backgroundSupervisor";
 
-let mockCleanupCancelled = false;
 let mockCleanupDeleteCancelled = false;
 let mockCleanupDeleteInFlight = false;
 const mockCleanupDeletePaths = new Map<string, string[]>();
@@ -211,6 +211,11 @@ export async function getSamplerStatus(): Promise<SamplerStatus> {
       paused: false,
       active: true,
       intervalMs: 1_000,
+      fullSnapshotIntervalMs: null,
+      lastFullSnapshotAtMs: Date.now(),
+      lastFrontendHeartbeatAtMs: Date.now(),
+      dataFreshness: "live",
+      sampleKind: "full",
       lastAttemptAtMs: Date.now(),
       lastSuccessAtMs: Date.now(),
       consecutiveFailures: 0,
@@ -229,6 +234,11 @@ export async function setSamplerControl(
       paused: control.paused,
       active: control.active,
       intervalMs: control.intervalMs ?? (control.active ? 1_000 : 5_000),
+      fullSnapshotIntervalMs: control.fullSnapshotIntervalMs ?? null,
+      lastFullSnapshotAtMs: Date.now(),
+      lastFrontendHeartbeatAtMs: Date.now(),
+      dataFreshness: control.paused ? "paused" : "live",
+      sampleKind: control.active ? "full" : "summary",
       lastAttemptAtMs: Date.now(),
       lastSuccessAtMs: Date.now(),
       consecutiveFailures: 0,
@@ -236,6 +246,18 @@ export async function setSamplerControl(
     };
   }
   return invoke<SamplerStatus>("set_sampler_control", { control });
+}
+
+export async function reportFrontendHeartbeat(): Promise<SamplerStatus> {
+  if (canUseDevelopmentMock()) return getSamplerStatus();
+  return invoke<SamplerStatus>("report_frontend_heartbeat");
+}
+
+export async function configureBackgroundSupervisor(
+  config: BackgroundSupervisorConfig,
+): Promise<void> {
+  if (canUseDevelopmentMock()) return;
+  await invoke<void>("configure_background_supervisor", { config });
 }
 
 export async function getNetworkConnections(): Promise<NetworkConnectionsSnapshot> {
@@ -415,36 +437,44 @@ export async function executeStartupManagement(
   return invoke<StartupManagementResult>("execute_startup_management", { request });
 }
 
-export async function getCleanupScan(
-  onProgress: (progress: CleanupScanProgress) => void,
+export async function startCleanupScan(
   target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
-): Promise<CleanupScan> {
+): Promise<CleanupScanJobStatus> {
   if (canUseDevelopmentMock()) {
-    mockCleanupCancelled = false;
-    const steps: CleanupScanProgress[] = [
-      { scannedEntryCount: 640, discoveredBytes: 1_280_000_000, currentPath: "~/Downloads", elapsedMs: 180 },
-      { scannedEntryCount: 6_420, discoveredBytes: 5_460_000_000, currentPath: "~/Library/Caches", elapsedMs: 520 },
-      { scannedEntryCount: 15_680, discoveredBytes: 9_840_000_000, currentPath: "~/.cargo/registry", elapsedMs: 980 },
-      { scannedEntryCount: 21_104, discoveredBytes: 17_430_000_000, currentPath: "~/.config", elapsedMs: 1_480 },
-    ];
-    for (const step of steps) {
-      await new Promise((resolve) => window.setTimeout(resolve, 450));
-      if (mockCleanupCancelled) {
-        throw { code: "cleanup_scan_cancelled", message: "The cleanup scan was cancelled." };
-      }
-      onProgress(step);
-    }
+    const now = Date.now();
     return {
-      ...getMockCleanupScan(),
-      targetKind: target.targetKind,
-      targetPath: target.targetPath ?? getMockCleanupScan().targetPath,
+      jobId: `mock-cleanup-${now}`,
+      generation: now,
+      phase: "completed",
+      startedAtMs: now - 1_480,
+      updatedAtMs: now,
+      lastHeartbeatAtMs: now,
+      lastProgressAtMs: now,
+      progress: {
+        scannedEntryCount: 21_104,
+        discoveredBytes: 17_430_000_000,
+        currentPath: "~/.config",
+        elapsedMs: 1_480,
+      },
+      target,
+      resultAvailable: true,
+      errorCode: null,
+      errorMessage: null,
     };
   }
-  const progressChannel = new Channel<CleanupScanProgress>(onProgress);
-  return invoke<CleanupScan>("get_cleanup_scan", {
-    onProgress: progressChannel,
+  return invoke<CleanupScanJobStatus>("start_cleanup_scan", {
     request: target,
   });
+}
+
+export async function getCleanupScanJob(): Promise<CleanupScanJobStatus | null> {
+  if (canUseDevelopmentMock()) return null;
+  return invoke<CleanupScanJobStatus | null>("get_cleanup_scan_job");
+}
+
+export async function loadCleanupScanJobResult(jobId: string): Promise<CleanupScan> {
+  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  return invoke<CleanupScan>("load_cleanup_scan_job_result", { jobId });
 }
 
 export async function getCleanupScanAccess(): Promise<CleanupScanAccess> {
@@ -568,6 +598,24 @@ export async function openProductIssue(
 export async function canRelaunchApplication(executablePath: string): Promise<boolean> {
   if (canUseDevelopmentMock()) return executablePath.includes(".app/");
   return invoke<boolean>("can_relaunch_application", { executablePath });
+}
+
+export async function writeHistoryExport(
+  path: string,
+  content: string,
+): Promise<void> {
+  if (!isDesktopRuntime()) {
+    const type = path.toLocaleLowerCase().endsWith(".csv")
+      ? "text/csv;charset=utf-8"
+      : "application/json;charset=utf-8";
+    const anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(new Blob([content], { type }));
+    anchor.download = path.split(/[\\/]/).pop() || "corerobin-history.json";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(anchor.href), 0);
+    return;
+  }
+  await invoke<void>("write_history_export", { path, content });
 }
 
 export async function getInstalledApplications(
@@ -821,7 +869,6 @@ export async function clearApplicationInventoryCache(): Promise<void> {
 
 export async function cancelCleanupScan(): Promise<boolean> {
   if (canUseDevelopmentMock()) {
-    mockCleanupCancelled = true;
     return true;
   }
   return invoke<boolean>("cancel_cleanup_scan");

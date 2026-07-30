@@ -141,7 +141,7 @@ describe("release workflow privilege separation", () => {
     );
     expect(publish).toContain("sha256sum --check");
     expect(publish).toContain("cosign verify-blob");
-    expect(publish).toContain("Render release notes from changelog");
+    expect(publish).toContain("Render structured user release notes");
     expect(publish).toContain("--notes-file release-notes.md");
     expect(publish).toContain('--repo "$PUBLIC_RELEASE_REPOSITORY"');
     expect(publish).toContain("--draft");
@@ -295,7 +295,7 @@ describe("release workflow privilege separation", () => {
     expect(packageJob).toContain("ref: ${{ github.sha }}");
     expect(packageJob).toContain("ref: ${{ needs.resolve.outputs.commit }}");
     expect(packageJob).toContain("path: release-source");
-    expect(packageJob).toContain("--changelog release-source/CHANGELOG.md");
+    expect(packageJob).toContain("--release-root release-source");
     expect(finalizeWorkflow).not.toContain("recover_updaters");
 
     const signatureRecovery = workflowJob(finalizeWorkflow, "recover_updater_signatures");

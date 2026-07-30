@@ -74,6 +74,13 @@
     "diskIo": "Disk I/O",
     "exited": "The process exited; trend updates stopped."
   },
+  "errors": {
+    "targetChanged": "The process already exited or changed. Nothing else was stopped.",
+    "permissionDenied": "The operating system did not allow CoreRobin to control this process. CoreRobin will not request administrator access automatically.",
+    "noCloseWindow": "This background process has no app window that Windows can ask to close. Use Force quit only if you understand the risk.",
+    "unavailable": "This action is not available for the selected process on this system.",
+    "busy": "Too many process confirmations are open. Close one and try again."
+  },
   "dialog": {
     "windowsForce": "This ends the process immediately. It may not have time to save its current work.",
     "unixForce": "This ends the process immediately. It may not have time to save its current work, and the action cannot be undone.",

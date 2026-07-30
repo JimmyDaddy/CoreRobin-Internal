@@ -11,6 +11,10 @@
     "foreground": "Foreground sampling",
     "background": "Background sampling"
   },
+  "dataStatus": {
+    "paused": "Data paused",
+    "stale": "Data expired"
+  },
   "health": {
     "loading": "Connecting",
     "observing": "Learning status",
@@ -26,6 +30,10 @@
     "observing": {
       "title": "Learning this computer's state",
       "description": "Watching a little longer so a brief spike is not mistaken for a problem."
+    },
+    "stale": {
+      "title": "No recent system status is available",
+      "description": "The main monitor connection was interrupted. Reopen CoreRobin to resume it."
     },
     "normal": {
       "title": "Your computer is running smoothly",

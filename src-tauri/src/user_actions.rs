@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -388,13 +388,21 @@ pub fn relaunch_application(executable_path: &str) -> Result<(), CommandError> {
         )
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(target_os = "linux", windows))]
     {
-        let _ = executable_path;
-        Err(CommandError::new(
-            "application_relaunch_unavailable",
-            "Safe application relaunch is not supported on this platform yet.",
-        ))
+        if !is_relaunchable_executable(&executable_path) {
+            return Err(CommandError::new(
+                "application_relaunch_unavailable",
+                "The selected process does not have a relaunchable executable.",
+            ));
+        }
+        spawn_and_reap(
+            Command::new(&executable_path)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+            "The application could not be restarted.",
+        )
     }
 }
 
@@ -404,11 +412,31 @@ pub fn can_relaunch_application(executable_path: &str) -> Result<bool, CommandEr
     #[cfg(target_os = "macos")]
     return Ok(validated_application_bundle(&executable_path).is_some());
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(target_os = "linux", windows))]
     {
-        let _ = executable_path;
-        Ok(false)
+        Ok(is_relaunchable_executable(&executable_path))
     }
+}
+
+#[cfg(target_os = "linux")]
+fn is_relaunchable_executable(path: &PathBuf) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::metadata(path)
+        .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+fn is_relaunchable_executable(path: &PathBuf) -> bool {
+    fs::metadata(path)
+        .map(|metadata| metadata.is_file())
+        .unwrap_or(false)
+        && path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| extension.eq_ignore_ascii_case("exe"))
+            .unwrap_or(false)
 }
 
 fn canonical_existing_path(path: &str) -> Result<PathBuf, CommandError> {
@@ -511,7 +539,7 @@ fn command_status_error(failure_message: &str, stderr: &[u8]) -> CommandError {
     CommandError::new(code, format!("{failure_message}{detail}"))
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
 fn spawn_and_reap(command: &mut Command, failure_message: &str) -> Result<(), CommandError> {
     let mut child = command
         .spawn()

@@ -45,6 +45,13 @@ import type { NetworkQualityHistoryPoint } from "../networkQualityHistory";
 import { SystemEventReplay } from "./SystemEventReplay";
 import { buildBatteryUsageSessions } from "../batterySessions";
 import type { NativeHistoryStorageStatus } from "../hooks/useNativeHistoryStorage";
+import {
+  downsampleTimeSeries,
+  timeSeriesBucketMs,
+  type TimeSeriesRangeHours,
+} from "../timeSeries";
+import { TimeSeriesChart } from "./TimeSeriesChart";
+import { HistoryExportPanel } from "./HistoryExportPanel";
 
 interface HistoryExplorerProps {
   points: HistoryPoint[];
@@ -70,11 +77,6 @@ interface HistoryExplorerProps {
   onClear: () => void;
   onOpenUserAction: (kind: UserActionKind) => void;
 }
-
-const CHART_WIDTH = 900;
-const CHART_HEIGHT = 210;
-const CHART_TOP = 14;
-const CHART_BOTTOM = 178;
 
 export function HistoryExplorer({
   points,
@@ -104,6 +106,8 @@ export function HistoryExplorer({
   const [alertFilter, setAlertFilter] = useState<"all" | ResourceAlertResource>("all");
   const [applicationImpactFocusAtMs, setApplicationImpactFocusAtMs] =
     useState<number | null>(null);
+  const [chartRangeHours, setChartRangeHours] =
+    useState<TimeSeriesRangeHours>(24);
   const summary = useMemo(() => summarizeHistory(points), [points]);
   const visibleAlertEvents = useMemo(
     () =>
@@ -225,8 +229,25 @@ export function HistoryExplorer({
             <HistorySummaryItem label={t("history:peakNetwork")} value={formatRate(summary.peakNetwork)} />
           </section>
 
-          <ResourceArchiveChart points={points} />
-          <ThroughputArchiveChart points={points} />
+          <div
+            className="application-impact-history__ranges"
+            role="group"
+            aria-label={t("history:chartRange")}
+          >
+            {([1, 24, 168] as const).map((hours) => (
+              <button
+                type="button"
+                className={chartRangeHours === hours ? "is-active" : undefined}
+                aria-pressed={chartRangeHours === hours}
+                key={hours}
+                onClick={() => setChartRangeHours(hours)}
+              >
+                {t(`history:applicationImpact.hours${hours}`)}
+              </button>
+            ))}
+          </div>
+          <ResourceArchiveChart points={points} rangeHours={chartRangeHours} />
+          <ThroughputArchiveChart points={points} rangeHours={chartRangeHours} />
           <PersonalBaselinePanel points={points} />
         </>
       )}
@@ -246,6 +267,16 @@ export function HistoryExplorer({
         watchEvents={applicationWatchEvents}
         networkQualityPoints={networkQualityPoints}
         actions={actionRecords}
+      />
+
+      <HistoryExportPanel
+        sources={{
+          points,
+          alerts: alertEvents,
+          networkQualityPoints,
+          actions: actionRecords,
+          applicationImpactPoints,
+        }}
       />
 
       <section className="panel battery-sessions" aria-labelledby="battery-sessions-title">
@@ -538,10 +569,24 @@ function HistorySummaryItem({
   );
 }
 
-function ResourceArchiveChart({ points }: { points: HistoryPoint[] }) {
+function ResourceArchiveChart({
+  points,
+  rangeHours,
+}: {
+  points: HistoryPoint[];
+  rangeHours: TimeSeriesRangeHours;
+}) {
   const { t, i18n } = useAppTranslation();
-  const cpuPath = percentagePath(points.map((point) => point.cpuPercent));
-  const memoryPath = percentagePath(points.map((point) => point.memoryPercent));
+  const now = Date.now();
+  const bucketMs = timeSeriesBucketMs(rangeHours);
+  const displayPoints = downsampleTimeSeries(
+    points.map((point) => ({
+      timestamp: point.timestamp,
+      values: [point.cpuPercent, point.memoryPercent],
+    })),
+    rangeHours,
+    now,
+  );
   return (
     <section className="panel history-archive-chart" aria-labelledby="history-resource-chart-title">
       <ArchiveChartHeader
@@ -553,19 +598,43 @@ function ResourceArchiveChart({ points }: { points: HistoryPoint[] }) {
           { label: t("history:memory"), className: "is-memory" },
         ]}
       />
-      <HistorySvg
-        label={t("history:resourceChartLabel")}
-        points={points}
+      <TimeSeriesChart
+        ariaLabel={t("history:resourceChartLabel")}
+        completenessLabel={(percent) => t("history:dataCompleteness", { percent })}
+        earlierLabel={formatRangeStart(now, rangeHours, i18n.resolvedLanguage)}
+        endAtMs={now}
+        expectedIntervalMs={bucketMs}
+        gapThresholdMs={bucketMs * 2.5}
         language={i18n.resolvedLanguage}
-      >
-        <path className="history-archive-line is-memory" d={memoryPath} />
-        <path className="history-archive-line is-cpu" d={cpuPath} />
-      </HistorySvg>
+        maximum={100}
+        nowLabel={t("common:now")}
+        points={displayPoints}
+        series={[
+          {
+            label: "CPU",
+            color: "var(--chart-cpu)",
+            format: (value) => `${value.toFixed(0)}%`,
+          },
+          {
+            label: t("history:memory"),
+            color: "var(--chart-memory)",
+            dashed: true,
+            format: (value) => `${value.toFixed(0)}%`,
+          },
+        ]}
+        startAtMs={now - rangeHours * 60 * 60 * 1_000}
+      />
     </section>
   );
 }
 
-function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
+function ThroughputArchiveChart({
+  points,
+  rangeHours,
+}: {
+  points: HistoryPoint[];
+  rangeHours: TimeSeriesRangeHours;
+}) {
   const { t, i18n } = useAppTranslation();
   const diskValues = points.map(
     (point) => (point.diskReadBytesPerSecond ?? 0) + (point.diskWriteBytesPerSecond ?? 0),
@@ -574,6 +643,21 @@ function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
     (point) => (point.networkReceivedBytesPerSecond ?? 0) + (point.networkTransmittedBytesPerSecond ?? 0),
   );
   const scale = Math.max(1, ...diskValues, ...networkValues);
+  const now = Date.now();
+  const bucketMs = timeSeriesBucketMs(rangeHours);
+  const displayPoints = downsampleTimeSeries(
+    points.map((point) => ({
+      timestamp: point.timestamp,
+      values: [
+        (point.diskReadBytesPerSecond ?? 0)
+          + (point.diskWriteBytesPerSecond ?? 0),
+        (point.networkReceivedBytesPerSecond ?? 0)
+          + (point.networkTransmittedBytesPerSecond ?? 0),
+      ],
+    })),
+    rangeHours,
+    now,
+  );
   return (
     <section className="panel history-archive-chart" aria-labelledby="history-throughput-chart-title">
       <ArchiveChartHeader
@@ -585,14 +669,32 @@ function ThroughputArchiveChart({ points }: { points: HistoryPoint[] }) {
           { label: t("app:metrics.network"), className: "is-network" },
         ]}
       />
-      <HistorySvg
-        label={t("history:throughputChartLabel")}
-        points={points}
+      <TimeSeriesChart
+        ariaLabel={t("history:throughputChartLabel")}
+        completenessLabel={(percent) => t("history:dataCompleteness", { percent })}
+        earlierLabel={formatRangeStart(now, rangeHours, i18n.resolvedLanguage)}
+        endAtMs={now}
+        expectedIntervalMs={bucketMs}
+        gapThresholdMs={bucketMs * 2.5}
         language={i18n.resolvedLanguage}
-      >
-        <path className="history-archive-line is-disk" d={scaledPath(diskValues, scale)} />
-        <path className="history-archive-line is-network" d={scaledPath(networkValues, scale)} />
-      </HistorySvg>
+        maximum={scale}
+        nowLabel={t("common:now")}
+        points={displayPoints}
+        series={[
+          {
+            label: t("app:metrics.disk"),
+            color: "var(--green)",
+            format: formatRate,
+          },
+          {
+            label: t("app:metrics.network"),
+            color: "var(--blue)",
+            dashed: true,
+            format: formatRate,
+          },
+        ]}
+        startAtMs={now - rangeHours * 60 * 60 * 1_000}
+      />
       <div className="history-throughput-peaks">
         <span><Database size={13} />{t("history:peakDisk")} <strong>{formatRate(Math.max(...diskValues))}</strong></span>
         <span><Network size={13} />{t("history:peakNetwork")} <strong>{formatRate(Math.max(...networkValues))}</strong></span>
@@ -627,54 +729,15 @@ function ArchiveChartHeader({
   );
 }
 
-function HistorySvg({
-  label,
-  points,
-  language,
-  children,
-}: {
-  label: string;
-  points: HistoryPoint[];
-  language: string | undefined;
-  children: React.ReactNode;
-}) {
-  const first = points[0];
-  const last = points[points.length - 1];
-  return (
-    <svg
-      className="history-archive-svg"
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={label}
-    >
-      {[25, 50, 75].map((value) => {
-        const y = CHART_TOP + (1 - value / 100) * (CHART_BOTTOM - CHART_TOP);
-        return <line key={value} className="history-archive-grid" x1="0" x2={CHART_WIDTH} y1={y} y2={y} />;
-      })}
-      {children}
-      <text x="0" y={CHART_HEIGHT - 4}>{first ? formatTimestamp(first.timestamp, language) : ""}</text>
-      <text x={CHART_WIDTH} y={CHART_HEIGHT - 4} textAnchor="end">{last ? formatTimestamp(last.timestamp, language) : ""}</text>
-    </svg>
+function formatRangeStart(
+  now: number,
+  rangeHours: TimeSeriesRangeHours,
+  language: string | undefined,
+): string {
+  return formatTimestamp(
+    now - rangeHours * 60 * 60 * 1_000,
+    language,
   );
-}
-
-function percentagePath(values: number[]): string {
-  return scaledPath(values.map((value) => Math.min(100, Math.max(0, value))), 100);
-}
-
-function scaledPath(values: number[], maximum: number): string {
-  if (values.length === 0) return "";
-  const height = CHART_BOTTOM - CHART_TOP;
-  if (values.length === 1) {
-    const y = CHART_TOP + (1 - Math.min(maximum, Math.max(0, values[0] ?? 0)) / maximum) * height;
-    return `M0 ${y.toFixed(1)} L${CHART_WIDTH} ${y.toFixed(1)}`;
-  }
-  return values.map((value, index) => {
-    const x = index / (values.length - 1) * CHART_WIDTH;
-    const y = CHART_TOP + (1 - Math.min(maximum, Math.max(0, value)) / maximum) * height;
-    return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }).join(" ");
 }
 
 function summarizeHistory(points: readonly HistoryPoint[]) {

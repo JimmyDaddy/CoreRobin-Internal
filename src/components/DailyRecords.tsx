@@ -23,6 +23,8 @@ import type { UserActionKind, UserActionRecord } from "../userActionHistory";
 import { UserActionTimeline } from "./UserActionTimeline";
 import { ApplicationWatchTimeline } from "./ApplicationWatchTimeline";
 import { TodayReview } from "./TodayReview";
+import { WeeklyReview } from "./WeeklyReview";
+import type { DesktopNotificationStatus } from "../desktopNotifications";
 
 interface DailyRecordsProps {
   alertEvents: readonly ResourceAlertEvent[];
@@ -34,6 +36,9 @@ interface DailyRecordsProps {
   storedActionCount: number;
   onOpenAction: (kind: UserActionKind) => void;
   onClearSavedActions: () => void;
+  weeklyReviewNotificationEnabled: boolean;
+  notificationStatus: DesktopNotificationStatus;
+  onWeeklyReviewNotificationEnabledChange: (enabled: boolean) => void;
 }
 
 export function DailyRecords({
@@ -46,6 +51,9 @@ export function DailyRecords({
   storedActionCount,
   onOpenAction,
   onClearSavedActions,
+  weeklyReviewNotificationEnabled,
+  notificationStatus,
+  onWeeklyReviewNotificationEnabledChange,
 }: DailyRecordsProps) {
   const { t } = useAppTranslation();
   const [showAll, setShowAll] = useState(false);
@@ -69,6 +77,16 @@ export function DailyRecords({
         networkQualityPoints={networkQualityPoints}
         actionRecords={actionRecords}
         onOpenAction={onOpenAction}
+      />
+
+      <WeeklyReview
+        points={points}
+        alerts={alertEvents}
+        networkQualityPoints={networkQualityPoints}
+        actions={actionRecords}
+        notificationEnabled={weeklyReviewNotificationEnabled}
+        notificationsAvailable={notificationStatus === "ready"}
+        onNotificationEnabledChange={onWeeklyReviewNotificationEnabledChange}
       />
 
       {actionRecords.length > 0 ? (

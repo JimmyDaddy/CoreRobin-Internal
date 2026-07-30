@@ -94,6 +94,7 @@
   "description": "Scannez le disque système et visualisez l'utilisation de l'espace par chemin de fichier réel.",
   "startScan": "Débuter une analyse en lecture seule",
   "scanAgain": "Réaliser une nouvelle analyse",
+  "restartScan": "Relancer l’analyse",
   "scanning": "Analyse…",
   "cancelScan": "Annuler l'analyse",
   "cancelling": "Annulation…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "Analyse de {{location}} éléments",
+    "paused": "Le Mac est en veille ; l’analyse reprendra au réveil",
+    "stalled": "L’analyse ne progresse plus depuis un moment",
+    "stalledTitle": "Cette analyse est peut-être bloquée",
+    "stalledDescription": "Relancez l’analyse pour arrêter l’ancienne tâche sans attendre davantage.",
     "entries": "Éléments vérifiés",
     "discovered": "Découvert",
     "elapsed": "Temps écoulé",

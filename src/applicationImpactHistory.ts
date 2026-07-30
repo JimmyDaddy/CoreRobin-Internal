@@ -233,11 +233,7 @@ export function applicationImpactHistoryForDisplay(
   points: readonly ApplicationImpactHistoryPoint[],
   hours: ApplicationImpactHistoryRangeHours,
 ): ApplicationImpactHistoryPoint[] {
-  const displayBucketMs = hours === 1
-    ? APPLICATION_IMPACT_HISTORY_BUCKET_MS
-    : hours === 24
-      ? 15 * 60 * 1_000
-      : 2 * 60 * 60 * 1_000;
+  const displayBucketMs = timeSeriesBucketMs(hours);
   const buckets = new Map<number, ApplicationImpactHistoryPoint>();
   for (const point of points) {
     const bucketStartMs =
@@ -495,3 +491,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function finite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+import { timeSeriesBucketMs } from "./timeSeries";

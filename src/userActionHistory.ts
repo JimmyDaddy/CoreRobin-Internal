@@ -40,6 +40,24 @@ export type UserActionKind = (typeof USER_ACTION_KINDS)[number];
 export type UserActionStatus = (typeof USER_ACTION_STATUSES)[number];
 export type UserActionVerification = (typeof USER_ACTION_VERIFICATIONS)[number];
 
+export interface UserActionOutcome {
+  selectedCount?: number;
+  succeededCount?: number;
+  skippedCount?: number;
+  releasedBytes?: number;
+  applicationRemoved?: boolean;
+  residualSucceededCount?: number;
+  residualFailedCount?: number;
+  volumeUnmounted?: boolean;
+  startupStateChanged?: boolean;
+  processExited?: boolean;
+  processRestarted?: boolean;
+  updateDownloaded?: boolean;
+  updateInstalled?: boolean;
+  updateRestarted?: boolean;
+  confirmedVersion?: string;
+}
+
 export interface UserActionRecord {
   id: string;
   kind: UserActionKind;
@@ -51,6 +69,7 @@ export interface UserActionRecord {
   targetCount: number | null;
   affectedBytes: number | null;
   failedCount: number | null;
+  outcome?: UserActionOutcome | null;
 }
 
 export interface StartUserActionInput {
@@ -65,10 +84,11 @@ export interface CompleteUserActionInput {
   targetCount?: number | null;
   affectedBytes?: number | null;
   failedCount?: number | null;
+  outcome?: UserActionOutcome | null;
 }
 
 interface UserActionHistoryPayload {
-  version: 1;
+  version: 2;
   records: UserActionRecord[];
 }
 
@@ -90,6 +110,7 @@ export function createUserActionRecord(
     targetCount: normalizeOptionalCount(input.targetCount),
     affectedBytes: null,
     failedCount: null,
+    outcome: null,
   };
 }
 
@@ -108,6 +129,9 @@ export function completeUserActionRecord(
       : normalizeOptionalCount(input.targetCount),
     affectedBytes: normalizeOptionalCount(input.affectedBytes),
     failedCount: normalizeOptionalCount(input.failedCount),
+    outcome: input.outcome === undefined
+      ? record.outcome
+      : normalizeOutcome(input.outcome),
   };
 }
 
@@ -115,10 +139,21 @@ export function parseUserActionHistory(serialized: string | null): UserActionRec
   if (!serialized) return [];
   try {
     const value = JSON.parse(serialized) as unknown;
-    if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.records)) {
+    if (
+      !isRecord(value)
+      || (value.version !== 1 && value.version !== 2)
+      || !Array.isArray(value.records)
+    ) {
       return [];
     }
-    return deduplicateUserActionRecords(value.records.filter(isUserActionRecord));
+    return deduplicateUserActionRecords(
+      value.records
+        .filter(isUserActionRecord)
+        .map((record) => ({
+          ...record,
+          outcome: normalizeOutcome(record.outcome),
+        })),
+    );
   } catch {
     return [];
   }
@@ -154,7 +189,7 @@ export function serializeUserActionHistory(
   records: readonly UserActionRecord[],
 ): string {
   const payload: UserActionHistoryPayload = {
-    version: 1,
+    version: 2,
     records: deduplicateUserActionRecords(records),
   };
   return JSON.stringify(payload);
@@ -238,10 +273,84 @@ function isUserActionRecord(value: unknown): value is UserActionRecord {
     isOptionalCount(value.targetCount) &&
     isOptionalCount(value.affectedBytes) &&
     isOptionalCount(value.failedCount) &&
+    (value.outcome === undefined || value.outcome === null || isUserActionOutcome(value.outcome)) &&
     (value.status === "running"
       ? value.completedAtMs === null && value.verification === "pending"
       : value.completedAtMs !== null && value.verification !== "pending")
   );
+}
+
+function normalizeOutcome(
+  value: UserActionOutcome | null | undefined,
+): UserActionOutcome | null {
+  if (!value || !isUserActionOutcome(value)) return null;
+  return {
+    ...copyOptionalCount(value, "selectedCount"),
+    ...copyOptionalCount(value, "succeededCount"),
+    ...copyOptionalCount(value, "skippedCount"),
+    ...copyOptionalCount(value, "releasedBytes"),
+    ...copyOptionalCount(value, "residualSucceededCount"),
+    ...copyOptionalCount(value, "residualFailedCount"),
+    ...copyOptionalBoolean(value, "applicationRemoved"),
+    ...copyOptionalBoolean(value, "volumeUnmounted"),
+    ...copyOptionalBoolean(value, "startupStateChanged"),
+    ...copyOptionalBoolean(value, "processExited"),
+    ...copyOptionalBoolean(value, "processRestarted"),
+    ...copyOptionalBoolean(value, "updateDownloaded"),
+    ...copyOptionalBoolean(value, "updateInstalled"),
+    ...copyOptionalBoolean(value, "updateRestarted"),
+    ...(typeof value.confirmedVersion === "string"
+      && /^\d+\.\d+\.\d+$/.test(value.confirmedVersion)
+      ? { confirmedVersion: value.confirmedVersion }
+      : {}),
+  };
+}
+
+function isUserActionOutcome(value: unknown): value is UserActionOutcome {
+  if (!isRecord(value)) return false;
+  return [
+    "selectedCount",
+    "succeededCount",
+    "skippedCount",
+    "releasedBytes",
+    "residualSucceededCount",
+    "residualFailedCount",
+  ].every((key) => value[key] === undefined || isOptionalCount(value[key]))
+    && [
+      "applicationRemoved",
+      "volumeUnmounted",
+      "startupStateChanged",
+      "processExited",
+      "processRestarted",
+      "updateDownloaded",
+      "updateInstalled",
+      "updateRestarted",
+    ].every((key) => value[key] === undefined || typeof value[key] === "boolean")
+    && (
+      value.confirmedVersion === undefined
+      || (
+        typeof value.confirmedVersion === "string"
+        && /^\d+\.\d+\.\d+$/.test(value.confirmedVersion)
+      )
+    );
+}
+
+function copyOptionalCount(
+  value: UserActionOutcome,
+  key: keyof UserActionOutcome,
+): UserActionOutcome {
+  const candidate = value[key];
+  return typeof candidate === "number" && Number.isFinite(candidate) && candidate >= 0
+    ? { [key]: candidate }
+    : {};
+}
+
+function copyOptionalBoolean(
+  value: UserActionOutcome,
+  key: keyof UserActionOutcome,
+): UserActionOutcome {
+  const candidate = value[key];
+  return typeof candidate === "boolean" ? { [key]: candidate } : {};
 }
 
 function normalizeTargetName(value: string | null | undefined): string | null {

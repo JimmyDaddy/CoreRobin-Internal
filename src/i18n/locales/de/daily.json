@@ -19,6 +19,18 @@
     "thisMac": "Dieser Mac",
     "thisComputer": "Dieses Computer"
   },
+  "weekly": {
+    "kicker": "Sieben-Tage-Rückblick", "title": "Gestern und diese Woche",
+    "description": "Aufgezeichnete Auffälligkeiten und Aktionen vergleichen, ohne daraus einen Gesundheitswert zu erfinden.",
+    "today": "Heute", "yesterday": "Gestern", "sevenDays": "Letzte 7 Tage",
+    "anomalies": "Auffälligkeiten", "actions": "Aktionen", "improvements": "Beobachtete Verbesserungen",
+    "averages": "Ø CPU {{cpu}} · Speicher {{memory}}", "comparisonTitle": "Im Vergleich zu gestern",
+    "comparison": { "same": "Heute wurden ebenfalls {{count}} Auffälligkeiten erfasst.", "fewer": "Heute wurden {{count}} weniger erfasst.", "more": "Heute wurden {{count}} mehr erfasst." },
+    "coverage": "{{days}} Tage mit Daten · Tagesmittel {{average}}", "improvementsTitle": "Aktionen mit beobachteter Verbesserung",
+    "improvementObserved": "{{metrics}} sank nach der Aktion · {{time}}", "noImprovements": "Noch nicht genug Vorher-Nachher-Daten.",
+    "notification": "Wöchentliche Erinnerung", "notificationUnavailable": "Desktop-Mitteilungen zuerst in den Einstellungen aktivieren.",
+    "notificationTitle": "Ihr CoreRobin-Wochenrückblick ist bereit", "notificationBody": "7 Tage: {{anomalies}} Auffälligkeiten und {{improvements}} beobachtete Verbesserungen."
+  },
   "status": {
     "observing": {
       "short": "Ich beobachte den normalen Zustand",
@@ -407,6 +419,20 @@
     "resultsTitle": "Beobachtete Wirkung",
     "resultsDescription": "Vergleicht nur lokale Messwerte vor und nach der Aktion, ohne eine Ursache zu behaupten.",
     "noResults": "Nach dem Beenden einer App, einer Bereinigung oder einer Startobjekt-Änderung erscheinen die Ergebnisse hier.",
+    "metricNames": { "cpu": "CPU", "memory": "Speicher" },
+    "observedMetric": "{{metric}}: nach der Aktion {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "{{selected}} ausgewählt, {{succeeded}} verarbeitet, {{skipped}} übersprungen und {{size}} freigegeben.",
+      "uninstallRemoved": "Die App wurde entfernt; {{succeeded}} Restobjekte wurden verarbeitet, {{failed}} schlugen fehl.",
+      "uninstallKept": "Das Entfernen der App wurde nicht bestätigt; {{succeeded}} Restobjekte wurden verarbeitet, {{failed}} schlugen fehl.",
+      "volumeEjected": "Das Betriebssystem hat das Aushängen des Volumes bestätigt.",
+      "volumeNotEjected": "Das Aushängen des Volumes wurde nicht bestätigt.",
+      "startupChanged": "Der angeforderte Startstatus wurde geprüft und bestätigt.",
+      "startupNotConfirmed": "Der angeforderte Startstatus konnte nicht bestätigt werden.",
+      "updateReady": "Das Update wurde geladen und installiert; ein Neustart steht noch aus.",
+      "updateConfirmed": "Die App wurde neu gestartet; aktuelle Version: {{version}}.",
+      "updateNotInstalled": "Die Installation des Updates wurde nicht bestätigt."
+    },
     "open": "Zugehörige Funktion öffnen"
   },
   "records": {

@@ -5,7 +5,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/.local-dev/**", "dist/**", "node_modules/**", "src-tauri/target/**"],
+    ignores: [
+      "**/.local-dev/**",
+      "dist/**",
+      "node_modules/**",
+      "playwright-report/**",
+      "src-tauri/target/**",
+      "test-results/**",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

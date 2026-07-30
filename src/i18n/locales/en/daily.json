@@ -19,6 +19,28 @@
     "thisMac": "This Mac",
     "thisComputer": "This computer"
   },
+  "weekly": {
+    "kicker": "Seven-day review",
+    "title": "Yesterday and this week",
+    "description": "Compare recorded anomalies and completed actions without turning unrelated signals into a health score.",
+    "today": "Today", "yesterday": "Yesterday", "sevenDays": "Past 7 days",
+    "anomalies": "Anomalies", "actions": "Actions", "improvements": "Observed improvements",
+    "averages": "Average CPU {{cpu}} · memory {{memory}}",
+    "comparisonTitle": "Compared with yesterday",
+    "comparison": {
+      "same": "Today has the same {{count}} recorded anomalies.",
+      "fewer": "Today has {{count}} fewer recorded anomalies.",
+      "more": "Today has {{count}} more recorded anomalies."
+    },
+    "coverage": "{{days}} days have samples · seven-day daily average {{average}} anomalies",
+    "improvementsTitle": "Operations followed by an observed improvement",
+    "improvementObserved": "{{metrics}} decreased after this action · {{time}}",
+    "noImprovements": "No operation has enough before-and-after samples to show an improvement yet.",
+    "notification": "Weekly reminder",
+    "notificationUnavailable": "Enable desktop notifications in Settings before turning on the local weekly reminder.",
+    "notificationTitle": "Your CoreRobin weekly review is ready",
+    "notificationBody": "Past 7 days: {{anomalies}} anomalies and {{improvements}} observed improvements. Open Review for the evidence."
+  },
   "status": {
     "observing": {
       "short": "Learning its normal state",
@@ -416,6 +438,20 @@
     "resultsTitle": "Observed results",
     "resultsDescription": "Compares local samples before and after an action without claiming causation.",
     "noResults": "Results will appear here after quitting an app, cleaning files, or adjusting startup items.",
+    "metricNames": { "cpu": "CPU", "memory": "Memory" },
+    "observedMetric": "{{metric}}: {{before}} → {{after}} after the action · {{effect}}",
+    "outcomes": {
+      "cleanup": "Selected {{selected}}, processed {{succeeded}}, skipped {{skipped}}, and reclaimed {{size}}.",
+      "uninstallRemoved": "The app was removed; {{succeeded}} residual items were handled and {{failed}} failed.",
+      "uninstallKept": "The app itself was not confirmed as removed; {{succeeded}} residual items were handled and {{failed}} failed.",
+      "volumeEjected": "The operating system confirmed that the volume was unmounted.",
+      "volumeNotEjected": "The volume was not confirmed as unmounted.",
+      "startupChanged": "The requested startup state was checked and confirmed.",
+      "startupNotConfirmed": "The requested startup state could not be confirmed.",
+      "updateReady": "The update was downloaded and installed; restart is still pending.",
+      "updateConfirmed": "The app restarted and the current version was confirmed as {{version}}.",
+      "updateNotInstalled": "The update was not confirmed as installed."
+    },
     "open": "Open related feature"
   },
   "records": {

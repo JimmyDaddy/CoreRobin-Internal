@@ -4,6 +4,7 @@
   "description": "Scan the system disk and see space usage by real file path.",
   "startScan": "Start read-only scan",
   "scanAgain": "Scan again",
+  "restartScan": "Restart scan",
   "scanning": "Scanning…",
   "cancelScan": "Stop scan",
   "cancelling": "Stopping…",
@@ -51,6 +52,10 @@
   },
   "progress": {
     "scanningLocation": "Analyzing {{location}}",
+    "paused": "This computer is asleep; scanning will continue after wake",
+    "stalled": "The scan has not made progress for a while",
+    "stalledTitle": "This scan may be stuck",
+    "stalledDescription": "The worker is still responsive, but the current location has made no progress. Restart to replace it immediately.",
     "entries": "Checked",
     "discovered": "Discovered",
     "elapsed": "Elapsed",

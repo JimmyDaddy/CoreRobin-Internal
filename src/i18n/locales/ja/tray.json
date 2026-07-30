@@ -10,6 +10,10 @@
     "foreground": "フォアグラウンド取得",
     "background": "バックグラウンド取得"
   },
+  "dataStatus": {
+    "paused": "データ取得を一時停止中",
+    "stale": "データが古くなっています"
+  },
   "health": {
     "loading": "接続中",
     "observing": "システムの状況を学習中",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "コンピューターの状態を学習中",
       "description": "一時的な上昇が問題と誤認されないように、しばらく観察します。"
+    },
+    "stale": {
+      "title": "最新のシステム状態を取得できません",
+      "description": "メインモニターとの接続が中断されました。CoreRobin を開き直すと再開します。"
     },
     "normal": {
       "title": "コンピューターは正常に動作しています",

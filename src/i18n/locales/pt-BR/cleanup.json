@@ -94,6 +94,7 @@
   "description": "Analise o uso do espaço em disco e visualize o espaço utilizado por arquivos específicos.",
   "startScan": "Iniciar varredura somente leitura",
   "scanAgain": "Reiniciar varredura",
+  "restartScan": "Reiniciar varredura",
   "scanning": "Varrendo…",
   "cancelScan": "Cancelar varredura",
   "cancelling": "Parando…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "Analisando {{location}}",
+    "paused": "O Mac está em repouso; a verificação continuará ao despertar",
+    "stalled": "A verificação não avança há algum tempo",
+    "stalledTitle": "Esta verificação pode estar travada",
+    "stalledDescription": "Reinicie para encerrar a tarefa anterior sem continuar esperando.",
     "entries": "Verificado",
     "discovered": "Encontrado",
     "elapsed": "Tempo decorrido",

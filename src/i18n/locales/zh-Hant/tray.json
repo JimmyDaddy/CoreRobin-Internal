@@ -10,6 +10,10 @@
     "foreground": "前景取樣",
     "background": "背景取樣"
   },
+  "dataStatus": {
+    "paused": "資料已暫停",
+    "stale": "資料已過期"
+  },
   "health": {
     "loading": "連線中",
     "observing": "正在瞭解狀態",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "正在瞭解電腦狀態",
       "description": "再觀察一會兒，避免把短暫波動誤判成問題。"
+    },
+    "stale": {
+      "title": "暫時沒有收到新的電腦狀態",
+      "description": "主畫面取樣連線已中斷；重新開啟 CoreRobin 後會自動恢復。"
     },
     "normal": {
       "title": "電腦執行平穩",

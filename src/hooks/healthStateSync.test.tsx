@@ -126,9 +126,10 @@ describe("health state synchronization", () => {
 
 function updateAt(sampledAtMs: number): HealthStateUpdate {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     sampledAtMs,
     dataMode: "foreground",
+    dataStatus: "fresh",
     paused: false,
     health: "normal",
     reason: "none",

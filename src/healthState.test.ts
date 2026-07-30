@@ -23,8 +23,9 @@ describe("shared health state", () => {
     );
 
     expect(state).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       dataMode: "background",
+      dataStatus: "fresh",
       health: "attention",
       reason: "battery",
       activeCount: 1,

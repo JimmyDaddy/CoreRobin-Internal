@@ -4,8 +4,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CommandError;
 
-pub const HEALTH_STATE_SCHEMA_VERSION: u16 = 2;
+pub const HEALTH_STATE_SCHEMA_VERSION: u16 = 3;
 pub const HEALTH_STATE_EVENT: &str = "core-robin:health-state-changed";
+pub const FRONTEND_HEARTBEAT_STALE_AFTER_MS: u64 = 15_000;
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthDataStatus {
+    Fresh,
+    Paused,
+    Stale,
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -83,6 +92,7 @@ pub struct HealthStateUpdate {
     pub schema_version: u16,
     pub sampled_at_ms: u64,
     pub data_mode: HealthDataMode,
+    pub data_status: HealthDataStatus,
     pub paused: bool,
     pub health: HealthLevel,
     pub reason: HealthReason,
@@ -112,6 +122,7 @@ pub struct HealthStateSnapshot {
 #[derive(Default)]
 struct HealthStateRegistry {
     revision: u64,
+    last_frontend_heartbeat_at_ms: Option<u64>,
     current: Option<HealthStateSnapshot>,
 }
 
@@ -121,6 +132,12 @@ pub struct HealthStateStore {
 }
 
 impl HealthStateStore {
+    pub fn frontend_heartbeat(&self) {
+        if let Ok(mut registry) = self.registry.lock() {
+            registry.last_frontend_heartbeat_at_ms = Some(now_millis());
+        }
+    }
+
     pub fn publish(&self, update: HealthStateUpdate) -> Result<HealthStateSnapshot, CommandError> {
         validate_update(&update)?;
         let mut registry = self
@@ -142,11 +159,56 @@ impl HealthStateStore {
             .map(|registry| registry.current.clone())
             .map_err(|_| CommandError::internal("The health state lock was poisoned."))
     }
+
+    pub fn expire_stale_frontend(
+        &self,
+        now_ms: u64,
+    ) -> Result<Option<HealthStateSnapshot>, CommandError> {
+        let mut registry = self
+            .registry
+            .lock()
+            .map_err(|_| CommandError::internal("The health state lock was poisoned."))?;
+        let heartbeat_at = registry.last_frontend_heartbeat_at_ms.unwrap_or(0);
+        let should_expire = registry.current.as_ref().is_some_and(|snapshot| {
+            !snapshot.update.paused
+                && snapshot.update.data_status != HealthDataStatus::Stale
+                && (heartbeat_at == 0
+                    || now_ms.saturating_sub(heartbeat_at) > FRONTEND_HEARTBEAT_STALE_AFTER_MS)
+        });
+        if !should_expire {
+            return Ok(None);
+        }
+        let Some(current) = registry.current.as_ref() else {
+            return Ok(None);
+        };
+        let mut update = current.update.clone();
+        update.data_status = HealthDataStatus::Stale;
+        update.paused = false;
+        update.health = HealthLevel::Observing;
+        update.reason = HealthReason::None;
+        update.active_count = 0;
+        update.pending_count = 0;
+        update.recovering_count = 0;
+        update.primary_incident = None;
+        registry.revision = registry.revision.saturating_add(1);
+        let snapshot = HealthStateSnapshot {
+            revision: registry.revision,
+            update,
+        };
+        registry.current = Some(snapshot.clone());
+        Ok(Some(snapshot))
+    }
 }
 
 fn validate_update(update: &HealthStateUpdate) -> Result<(), CommandError> {
     let valid = update.schema_version == HEALTH_STATE_SCHEMA_VERSION
         && update.sampled_at_ms > 0
+        && update.data_status
+            == if update.paused {
+                HealthDataStatus::Paused
+            } else {
+                HealthDataStatus::Fresh
+            }
         && update.recovering_count <= update.active_count
         && (update.active_count > 0) == update.primary_incident.is_some()
         && (update.active_count > 0) == (update.reason != HealthReason::None)
@@ -167,6 +229,14 @@ fn validate_update(update: &HealthStateUpdate) -> Result<(), CommandError> {
     }
 }
 
+fn now_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -176,6 +246,7 @@ mod tests {
             schema_version: HEALTH_STATE_SCHEMA_VERSION,
             sampled_at_ms: 100,
             data_mode: HealthDataMode::Foreground,
+            data_status: HealthDataStatus::Fresh,
             paused: false,
             health: if active_count == 0 {
                 HealthLevel::Normal
@@ -243,9 +314,34 @@ mod tests {
 
         assert_eq!(value["revision"], 1);
         assert_eq!(value["schemaVersion"], HEALTH_STATE_SCHEMA_VERSION);
+        assert_eq!(value["dataStatus"], "fresh");
         assert_eq!(
             value["primaryIncident"]["occurrenceId"],
             "diagnosis:sustained_cpu:100"
+        );
+    }
+
+    #[test]
+    fn stale_frontend_replaces_green_health_with_explicit_observing_state() {
+        let store = HealthStateStore::default();
+        store.frontend_heartbeat();
+        store.publish(update(0)).unwrap();
+
+        let stale = store
+            .expire_stale_frontend(now_millis() + FRONTEND_HEARTBEAT_STALE_AFTER_MS + 1)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(stale.update.data_status, HealthDataStatus::Stale);
+        assert_eq!(stale.update.health, HealthLevel::Observing);
+        assert_eq!(stale.update.reason, HealthReason::None);
+        assert_eq!(stale.update.active_count, 0);
+        assert!(stale.update.primary_incident.is_none());
+        assert!(
+            store
+                .expire_stale_frontend(now_millis() + FRONTEND_HEARTBEAT_STALE_AFTER_MS + 2)
+                .unwrap()
+                .is_none()
         );
     }
 }

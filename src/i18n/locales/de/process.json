@@ -74,6 +74,13 @@
     "diskIo": "Festplatten-I/O",
     "exited": "Der Prozess wurde beendet; Trendaktualisierungen wurden gestoppt."
   },
+  "errors": {
+    "targetChanged": "Der Prozess wurde bereits beendet oder hat sich geändert. Kein anderer Prozess wurde beendet.",
+    "permissionDenied": "Das Betriebssystem verweigert den Zugriff. CoreRobin fordert nicht automatisch Administratorrechte an.",
+    "noCloseWindow": "Dieser Hintergrundprozess hat kein Windows-Fenster zum normalen Schließen.",
+    "unavailable": "Diese Aktion ist für den gewählten Prozess nicht verfügbar.",
+    "busy": "Zu viele Bestätigungen sind geöffnet. Eine schließen und erneut versuchen."
+  },
   "dialog": {
     "windowsForce": "Der Prozess wird sofort beendet und kann aktuelle Inhalte möglicherweise nicht speichern.",
     "unixForce": "Der Prozess wird sofort beendet, kann aktuelle Inhalte möglicherweise nicht speichern und die Aktion ist nicht rückgängig zu machen.",

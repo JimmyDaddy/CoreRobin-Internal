@@ -39,6 +39,15 @@
 .today-review__result-list article > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .today-review__result-list small,
 .today-review__result-list p { overflow: hidden; margin: 0; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.today-review__metric-effects {
+  display: grid;
+  gap: 2px;
+}
+.today-review__metric-effects p {
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
 .today-review__result-list strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .today-review__result-list .button { padding: 5px 6px; font-size: 10px; }
 .today-review__empty { display: flex; align-items: center; gap: 7px; margin: 0; padding: 11px 12px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px; font-size: 11px; }

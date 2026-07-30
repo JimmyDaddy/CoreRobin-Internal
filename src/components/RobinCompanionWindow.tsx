@@ -62,7 +62,8 @@ export function RobinCompanionWindow() {
   const resizeEpochRef = useRef(0);
   const shellRef = useRef<HTMLElement | null>(null);
   const [visibilityPhase, setVisibilityPhase] = useState<"idle" | "entering" | "exiting">("idle");
-  const health = summary?.health ?? "loading";
+  const dataStale = summary?.dataStatus === "stale";
+  const health = dataStale ? "observing" : summary?.health ?? "loading";
 
   useEffect(() => {
     return () => {
@@ -321,13 +322,17 @@ export function RobinCompanionWindow() {
         </div> : expanded ? <div className="robin-buddy-bubble">
           <small>{t("companion:kicker")}</small>
           <strong>
-            {summary && summary.activeCount > 0 &&
+            {dataStale
+              ? t("tray:status.stale.title")
+              : summary && summary.activeCount > 0 &&
               (summary.health === "attention" || summary.health === "urgent")
               ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
               : t(`tray:status.${health}.title`)}
           </strong>
           <p>
-            {summary?.primaryIncident?.phase === "recovering"
+            {dataStale
+              ? t("tray:status.stale.description")
+              : summary?.primaryIncident?.phase === "recovering"
               ? t("companion:recovering")
               : summary?.reason && summary.reason !== "none"
               ? t("companion:reason", { resource: t(`tray:resource.${summary.reason}`) })

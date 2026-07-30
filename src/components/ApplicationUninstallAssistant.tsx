@@ -453,6 +453,22 @@ export function ApplicationUninstallAssistant({
           targetCount: dialogItems.length,
           affectedBytes: result.deletedBytes,
           failedCount: result.failed.length,
+          outcome: {
+            selectedCount: dialogItems.length,
+            succeededCount: result.deleted.length,
+            skippedCount: Math.max(
+              0,
+              dialogItems.length - result.deleted.length - result.failed.length,
+            ),
+            releasedBytes: result.deletedBytes,
+            applicationRemoved,
+            residualSucceededCount: result.deleted.filter(
+              (item) => item.path !== applicationPath,
+            ).length,
+            residualFailedCount: result.failed.filter(
+              (item) => item.path !== applicationPath,
+            ).length,
+          },
         });
       }
       closeDeleteDialog();
@@ -556,6 +572,13 @@ export function ApplicationUninstallAssistant({
               : "failed",
           verification: removed ? "verified" : "not_confirmed",
           targetCount: 1,
+          outcome: {
+            selectedCount: 1,
+            succeededCount: removed ? 1 : 0,
+            applicationRemoved: removed,
+            residualSucceededCount: 0,
+            residualFailedCount: 0,
+          },
         });
       }
       if (result.outcome !== "failed") setNativeDialogOpen(false);

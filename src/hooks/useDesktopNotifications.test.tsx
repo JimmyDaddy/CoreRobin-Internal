@@ -3,12 +3,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  DESKTOP_NOTIFICATION_LOG_KEY,
-} from "../desktopNotifications";
 import type { ResourceAlertEvent } from "../resourceAlerts";
 import { useDesktopNotifications } from "./useDesktopNotifications";
 
+const eventBridge = vi.hoisted(() => ({
+  listener: null as ((event: { payload: unknown }) => void) | null,
+  unlisten: vi.fn(),
+}));
 const notification = vi.hoisted(() => ({
   isPermissionGranted: vi.fn(async () => true),
   requestPermission: vi.fn(async () => "granted"),
@@ -17,6 +18,15 @@ const notification = vi.hoisted(() => ({
 }));
 
 vi.mock("@tauri-apps/plugin-notification", () => notification);
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (
+    _event: string,
+    listener: (event: { payload: unknown }) => void,
+  ) => {
+    eventBridge.listener = listener;
+    return eventBridge.unlisten;
+  }),
+}));
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
   return { ...actual, isDesktopRuntime: () => true };
@@ -26,12 +36,13 @@ beforeEach(() => {
   window.localStorage.clear();
   notification.sendNotification.mockReset();
   notification.isPermissionGranted.mockClear();
+  eventBridge.listener = null;
+  eventBridge.unlisten.mockReset();
 });
 
 describe("useDesktopNotifications", () => {
-  it("charges the daily budget only after the notification API accepts delivery", async () => {
+  it("uses native supervisor deliveries on desktop without duplicating resource notifications", async () => {
     const first = alertEvent("memory:first", 100);
-    const second = alertEvent("memory:second", 200);
     const { result, rerender } = renderHook(
       ({ events }) => useDesktopNotifications(
         events,
@@ -44,26 +55,24 @@ describe("useDesktopNotifications", () => {
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    notification.sendNotification.mockImplementationOnce(() => {
-      throw new Error("system rejected notification");
-    });
     rerender({ events: [first] });
-
-    await waitFor(() =>
-      expect(result.current.delivery?.status).toBe("failed")
-    );
-    expect(window.localStorage.getItem(DESKTOP_NOTIFICATION_LOG_KEY)).toBeNull();
+    expect(notification.sendNotification).not.toHaveBeenCalled();
+    act(() => {
+      eventBridge.listener?.({
+        payload: {
+          kind: "resource",
+          status: "sent",
+          attemptedAtMs: 500,
+        },
+      });
+    });
+    expect(result.current.delivery).toEqual({
+      kind: "resource",
+      status: "sent",
+      attemptedAtMs: 500,
+    });
 
     notification.sendNotification.mockImplementation(() => undefined);
-    rerender({ events: [first, second] });
-
-    await waitFor(() =>
-      expect(result.current.delivery?.status).toBe("sent")
-    );
-    expect(JSON.parse(
-      window.localStorage.getItem(DESKTOP_NOTIFICATION_LOG_KEY) ?? "[]",
-    )).toHaveLength(1);
-
     await act(async () => {
       expect(await result.current.sendTest()).toBe(true);
     });

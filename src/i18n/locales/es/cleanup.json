@@ -94,6 +94,7 @@
   "description": "Escanea el disco del sistema y muestra el uso del espacio por ruta de archivo real.",
   "startScan": "Iniciar escaneo en modo de solo lectura",
   "scanAgain": "Re-escanear",
+  "restartScan": "Reiniciar escaneo",
   "scanning": "Escaneando…",
   "cancelScan": "Detener escaneo",
   "cancelling": "Deteniendo…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "Analizando {{location}}",
+    "paused": "El Mac está en reposo; el escaneo continuará al reactivarlo",
+    "stalled": "El escaneo lleva un tiempo sin avanzar",
+    "stalledTitle": "Este escaneo puede estar bloqueado",
+    "stalledDescription": "Reinicia el escaneo para finalizar la tarea anterior sin seguir esperando.",
     "entries": "Comprobado",
     "discovered": "Encontrado",
     "elapsed": "Tiempo transcurrido",

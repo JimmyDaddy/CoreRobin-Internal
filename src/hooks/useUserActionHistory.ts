@@ -95,6 +95,45 @@ export function useUserActionHistory(
     });
   }, []);
 
+  const confirmLatestApplicationUpdate = useCallback((version: string) => {
+    const confirm = (records: UserActionRecord[]) => {
+      let index = -1;
+      for (let candidate = records.length - 1; candidate >= 0; candidate -= 1) {
+        const record = records[candidate]!;
+        if (
+          record.kind === "application_update"
+          && record.status === "succeeded"
+          && record.outcome?.updateInstalled === true
+          && record.outcome.updateRestarted !== true
+        ) {
+          index = candidate;
+          break;
+        }
+      }
+      if (index < 0) return records;
+      const next = [...records];
+      const record = next[index]!;
+      next[index] = {
+        ...record,
+        verification: "verified",
+        outcome: {
+          ...record.outcome,
+          updateDownloaded: true,
+          updateInstalled: true,
+          updateRestarted: true,
+          confirmedVersion: version,
+        },
+      };
+      return next;
+    };
+    setSessionRecords(confirm);
+    setStoredRecords((current) => {
+      const next = confirm(current);
+      if (!desktop && next !== current) saveUserActionHistory(next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (targetNamesEnabled) return;
     setStoredRecords((current) => {
@@ -135,6 +174,7 @@ export function useUserActionHistory(
     storedRecords,
     start,
     complete,
+    confirmLatestApplicationUpdate,
     clearSaved,
     storageStatus: storage.storageStatus,
   };

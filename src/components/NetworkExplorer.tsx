@@ -27,7 +27,6 @@ import {
   visibleNetworkInterfaces,
   type NetworkConnectionFilter,
   type NetworkProcessIndex,
-  type NetworkSeriesPoint,
 } from "../networkExplorer";
 import {
   aggregateConnectionHistory,
@@ -46,6 +45,7 @@ import type {
 } from "../types";
 import { formatBytes, formatRate } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 import {
   NETWORK_QUALITY_REFRESH_MS,
   NETWORK_QUALITY_WINDOW_MS,
@@ -90,10 +90,6 @@ interface NetworkExplorerProps {
   onQualityHistoryHoursChange: (hours: NetworkQualityHistoryHours) => void;
 }
 
-const CHART_WIDTH = 720;
-const CHART_HEIGHT = 176;
-const CHART_TOP = 12;
-const CHART_BOTTOM = 148;
 const CONNECTION_PAGE_SIZE = 100;
 const QUALITY_CHART_WIDTH = 720;
 const QUALITY_CHART_HEIGHT = 148;
@@ -1212,43 +1208,41 @@ function NetworkThroughput({
         </div>
       ) : (
         <>
-          <svg
-            className="network-history__chart"
-            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={t("network:chartLabel", {
+          <TimeSeriesChart
+            ariaLabel={t("network:chartLabel", {
               receive: formatRate(network.receivedBytesPerSecond),
               send: formatRate(network.transmittedBytesPerSecond),
             })}
-          >
-            {[0.25, 0.5, 0.75].map((ratio) => (
-              <line
-                className="network-history__grid-line"
-                key={ratio}
-                x1="0"
-                x2={CHART_WIDTH}
-                y1={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-                y2={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-              />
-            ))}
-            {receivedSegments.map((segment, index) => (
-              <path
-                className="network-history__line network-history__line--received"
-                d={networkPath(segment, windowStart, windowEnd, maximum)}
-                key={`received-${index}`}
-              />
-            ))}
-            {transmittedSegments.map((segment, index) => (
-              <path
-                className="network-history__line network-history__line--transmitted"
-                d={networkPath(segment, windowStart, windowEnd, maximum)}
-                key={`transmitted-${index}`}
-              />
-            ))}
-            <text x="0" y="172">{t("common:fiveMinutesBack")}</text>
-            <text x={CHART_WIDTH} y="172" textAnchor="end">{t("common:now")}</text>
-          </svg>
+            className="network-history__chart"
+            completenessLabel={(percent) => t("history:dataCompleteness", { percent })}
+            earlierLabel={t("common:fiveMinutesBack")}
+            endAtMs={windowEnd}
+            expectedIntervalMs={1_000}
+            gapThresholdMs={5_000}
+            maximum={maximum}
+            nowLabel={t("common:now")}
+            points={points.map((point) => ({
+              timestamp: point.timestamp,
+              values: [
+                point.networkReceivedBytesPerSecond,
+                point.networkTransmittedBytesPerSecond,
+              ],
+            }))}
+            series={[
+              {
+                label: t("network:receive"),
+                color: "var(--green)",
+                format: formatRate,
+              },
+              {
+                label: t("network:send"),
+                color: "var(--blue)",
+                dashed: true,
+                format: formatRate,
+              },
+            ]}
+            startAtMs={windowStart}
+          />
           <div className="network-history__peaks">
             <span>{t("network:receivePeak")} <strong>{formatRate(receivedPeak)}</strong></span>
             <span>{t("network:sendPeak")} <strong>{formatRate(transmittedPeak)}</strong></span>
@@ -1321,20 +1315,4 @@ function NetworkInterfaceRow({
       </div>
     </li>
   );
-}
-
-function networkPath(
-  segment: readonly NetworkSeriesPoint[],
-  windowStart: number,
-  windowEnd: number,
-  maximum: number,
-): string {
-  const duration = Math.max(1, windowEnd - windowStart);
-  const commands = segment.map((point, index) => {
-    const x = ((point.timestamp - windowStart) / duration) * CHART_WIDTH;
-    const y = CHART_BOTTOM - (point.value / maximum) * (CHART_BOTTOM - CHART_TOP);
-    return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  });
-  if (commands.length === 1) commands.push("h0.01");
-  return commands.join(" ");
 }

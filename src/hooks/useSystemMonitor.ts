@@ -13,6 +13,7 @@ import {
   getSystemSnapshot,
   getSystemSummary,
   isDesktopRuntime,
+  reportFrontendHeartbeat,
   setSamplerControl,
 } from "../api";
 import type {
@@ -35,7 +36,9 @@ const BATTERY_DRAIN_MIN_WINDOW_MS = 2 * 60 * 1_000;
 export const HIDDEN_SYSTEM_SUMMARY_INTERVAL_MS = 5_000;
 export const HIDDEN_SYSTEM_SNAPSHOT_INTERVAL_MS = 30_000;
 export const SYSTEM_SNAPSHOT_EVENT = "core-robin:system-snapshot";
+export const SYSTEM_SUMMARY_EVENT = "core-robin:system-summary";
 export const SAMPLER_STATUS_EVENT = "core-robin:sampler-status";
+export const FRONTEND_HEARTBEAT_INTERVAL_MS = 5_000;
 
 export function useSystemMonitor(
   refreshIntervalMs = 1_000,
@@ -90,6 +93,27 @@ export function useSystemMonitor(
       includeApplicationNamesRef.current,
     );
     return nextSnapshot;
+  }, []);
+
+  const applySummary = useCallback((nextSummary: SystemSummary) => {
+    if (
+      pausedRef.current
+      || visibleRef.current
+      || nextSummary.sequence <= lastSequence.current
+    ) {
+      return null;
+    }
+    lastSequence.current = nextSummary.sequence;
+    setSummary(nextSummary);
+    setHealthSnapshot(nextSummary);
+    appendHistorySample(
+      setHistory,
+      nextSummary,
+      includeApplicationNamesRef.current,
+    );
+    setError(null);
+    setLoading(false);
+    return nextSummary;
   }, []);
 
   const refreshSnapshot = useCallback((allowHidden = false) => {
@@ -225,6 +249,9 @@ export function useSystemMonitor(
       listen<SystemSnapshot>(SYSTEM_SNAPSHOT_EVENT, ({ payload }) => {
         if (!disposed) applySnapshot(payload, true);
       }),
+      listen<SystemSummary>(SYSTEM_SUMMARY_EVENT, ({ payload }) => {
+        if (!disposed) applySummary(payload);
+      }),
       listen<SamplerStatus>(SAMPLER_STATUS_EVENT, ({ payload }) => {
         if (disposed) return;
         setSamplerStatus(payload);
@@ -250,7 +277,7 @@ export function useSystemMonitor(
       disposed = true;
       unlisteners.forEach((unlisten) => unlisten());
     };
-  }, [applySnapshot, desktop, refreshSnapshot]);
+  }, [applySnapshot, applySummary, desktop, refreshSnapshot]);
 
   useEffect(() => {
     if (!desktop) return;
@@ -258,10 +285,35 @@ export function useSystemMonitor(
       active: visible,
       paused,
       intervalMs: visible ? refreshIntervalMs : null,
+      fullSnapshotIntervalMs: visible ? null : hiddenFullSnapshotIntervalMs,
     }).then(setSamplerStatus).catch((caughtError) => {
       setError(normalizeCommandError(caughtError));
     });
-  }, [desktop, paused, refreshIntervalMs, visible]);
+  }, [
+    desktop,
+    hiddenFullSnapshotIntervalMs,
+    paused,
+    refreshIntervalMs,
+    visible,
+  ]);
+
+  useEffect(() => {
+    if (!desktop) return;
+    let disposed = false;
+    const heartbeat = () => {
+      void reportFrontendHeartbeat()
+        .then((status) => {
+          if (!disposed) setSamplerStatus(status);
+        })
+        .catch(() => undefined);
+    };
+    heartbeat();
+    const interval = window.setInterval(heartbeat, FRONTEND_HEARTBEAT_INTERVAL_MS);
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+    };
+  }, [desktop]);
 
   return {
     snapshot,

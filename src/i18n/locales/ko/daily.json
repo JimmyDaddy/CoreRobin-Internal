@@ -19,6 +19,18 @@
     "thisMac": "현재 Mac",
     "thisComputer": "현재 컴퓨터"
   },
+  "weekly": {
+    "kicker": "7일 돌아보기", "title": "어제와 이번 주",
+    "description": "관련 없는 지표를 점수로 합치지 않고 이상과 작업을 비교합니다.",
+    "today": "오늘", "yesterday": "어제", "sevenDays": "지난 7일",
+    "anomalies": "이상", "actions": "작업", "improvements": "관찰된 개선",
+    "averages": "평균 CPU {{cpu}} · 메모리 {{memory}}", "comparisonTitle": "어제와 비교",
+    "comparison": { "same": "오늘도 {{count}}건이 기록되었습니다.", "fewer": "오늘은 {{count}}건 적습니다.", "more": "오늘은 {{count}}건 많습니다." },
+    "coverage": "{{days}}일 데이터 · 일평균 {{average}}건", "improvementsTitle": "작업 후 관찰된 개선",
+    "improvementObserved": "작업 후 {{metrics}} 감소 · {{time}}", "noImprovements": "전후 비교에 필요한 샘플이 아직 부족합니다.",
+    "notification": "주간 알림", "notificationUnavailable": "먼저 데스크톱 알림을 켜세요.",
+    "notificationTitle": "CoreRobin 주간 돌아보기가 준비됐습니다", "notificationBody": "7일: 이상 {{anomalies}}건, 관찰된 개선 {{improvements}}건."
+  },
   "status": {
     "observing": {
       "short": "정상 작동 상태 학습 중",
@@ -407,6 +419,20 @@
     "resultsTitle": "관찰된 처리 효과",
     "resultsDescription": "작업 전후의 로컬 샘플만 비교하며 인과 관계로 단정하지 않습니다.",
     "noResults": "앱 종료, 파일 정리 또는 시작 항목 조정 후 결과가 여기에 표시됩니다.",
+    "metricNames": { "cpu": "CPU", "memory": "메모리" },
+    "observedMetric": "{{metric}}: 작업 후 {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "{{selected}}개를 선택해 {{succeeded}}개 처리, {{skipped}}개 건너뛰고 {{size}}를 확보했습니다.",
+      "uninstallRemoved": "앱을 제거했고 잔여 항목 {{succeeded}}개를 처리했으며 {{failed}}개는 실패했습니다.",
+      "uninstallKept": "앱 제거를 확인하지 못했습니다. 잔여 항목 {{succeeded}}개를 처리했고 {{failed}}개는 실패했습니다.",
+      "volumeEjected": "시스템이 볼륨 마운트 해제를 확인했습니다.",
+      "volumeNotEjected": "볼륨 마운트 해제를 확인하지 못했습니다.",
+      "startupChanged": "요청한 시작 상태를 다시 확인했습니다.",
+      "startupNotConfirmed": "요청한 시작 상태를 확인하지 못했습니다.",
+      "updateReady": "업데이트를 다운로드하고 설치했습니다. 재시작이 필요합니다.",
+      "updateConfirmed": "앱을 재시작했고 현재 버전이 {{version}}임을 확인했습니다.",
+      "updateNotInstalled": "업데이트 설치를 확인하지 못했습니다."
+    },
     "open": "관련 기능 열기"
   },
   "records": {
