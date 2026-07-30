@@ -26,6 +26,8 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
     let result_path = private.join("result.json");
     let cache_path = private.join("cache.json");
     let checkpoint_path = private.join("checkpoint.json");
+    let exclusions_path = private.join("exclusions.json");
+    fs::write(&exclusions_path, b"[]").unwrap();
     fs::write(
         &request_path,
         serde_json::to_vec(&serde_json::json!({
@@ -42,6 +44,7 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
         .arg(&result_path)
         .arg(&cache_path)
         .arg(&checkpoint_path)
+        .arg(&exclusions_path)
         .env("CORE_ROBIN_TEST_STOP_AFTER_CLEANUP_SEGMENTS", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -68,6 +71,7 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
         .arg(&result_path)
         .arg(&cache_path)
         .arg(&checkpoint_path)
+        .arg(&exclusions_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -118,6 +122,8 @@ fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
     let result_path = private.join("result.json");
     let cache_path = private.join("cache.json");
     let checkpoint_path = private.join("checkpoint.json");
+    let exclusions_path = private.join("exclusions.json");
+    fs::write(&exclusions_path, b"[]").unwrap();
     fs::write(
         &request_path,
         serde_json::to_vec(&serde_json::json!({
@@ -134,6 +140,7 @@ fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
         .arg(&result_path)
         .arg(&cache_path)
         .arg(&checkpoint_path)
+        .arg(&exclusions_path)
         .env("CORE_ROBIN_TEST_BLOCK_CLEANUP_WORKER_MS", "30000")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
