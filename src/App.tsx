@@ -372,7 +372,8 @@ function App() {
     loading: connectionsLoading,
     refreshNow: refreshConnections,
   } = useNetworkConnections(
-    activeView === "network" ||
+    activeView === "processes" ||
+      activeView === "network" ||
       (activeView === "overview" && diagnosisExpanded) ||
       dailyIntent === "slow" || dailyIntent === "network" ||
       dailyIntent === "checkup" ||
@@ -1905,6 +1906,7 @@ function App() {
                 <ProcessTable
                     compact
                     processes={snapshot.processes}
+                    connections={connectionsSnapshot?.connections}
                     selectedIdentity={selectedIdentity}
                     onSelect={selectProcess}
                     query={processPreferences.query}
@@ -1920,6 +1922,7 @@ function App() {
             ) : activeView === "processes" ? (
               <ProcessTable
                   processes={snapshot.processes}
+                  connections={connectionsSnapshot?.connections}
                   selectedIdentity={selectedIdentity}
                   onSelect={selectProcess}
                   query={processPreferences.query}

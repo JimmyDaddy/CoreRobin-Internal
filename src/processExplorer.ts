@@ -1,4 +1,5 @@
 import type {
+  NetworkConnection,
   ProcessHistoryPoint,
   ProcessRow,
   ProcessSortKey,
@@ -65,6 +66,13 @@ export interface VirtualRange {
 interface ProcessTreeIndex {
   processByIdentity: Map<string, ProcessRow>;
   parentByIdentity: Map<string, string>;
+}
+
+export type ProcessPortIndex = ReadonlyMap<number, readonly number[]>;
+
+export interface ProcessProjectionContext {
+  identityOrder?: ReadonlyMap<string, number>;
+  portsByPid?: ProcessPortIndex;
 }
 
 export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences {
@@ -197,6 +205,7 @@ export function buildProcessTreeProjection(
   expandedIdentities: ReadonlySet<string>,
   selectedIdentity: string | null,
   followSelection: boolean,
+  context: ProcessProjectionContext = {},
 ): ProcessTreeProjection {
   const { processByIdentity, parentByIdentity } = buildProcessTreeIndex(processes);
 
@@ -217,7 +226,10 @@ export function buildProcessTreeProjection(
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const queryMatches = new Set<string>();
   for (const process of processes) {
-    if (!normalizedQuery || processMatchesQuery(process, normalizedQuery)) {
+    if (
+      !normalizedQuery ||
+      processMatchesQuery(process, normalizedQuery, context.portsByPid)
+    ) {
       queryMatches.add(processIdentity(process));
     }
   }
@@ -247,7 +259,12 @@ export function buildProcessTreeProjection(
 
   const rows: VisibleProcessRow[] = [];
   const visited = new Set<string>();
-  const stack = sortProcesses(roots, sortKey, direction)
+  const stack = sortProcesses(
+    roots,
+    sortKey,
+    direction,
+    context.identityOrder,
+  )
     .reverse()
     .map((process) => ({ process, depth: 0 }));
   while (stack.length > 0) {
@@ -264,6 +281,7 @@ export function buildProcessTreeProjection(
       ),
       sortKey,
       direction,
+      context.identityOrder,
     );
     const hasChildren = children.length > 0;
     const expanded =
@@ -342,15 +360,18 @@ export function buildFlatProcessRows(
   query: string,
   sortKey: ProcessSortKey,
   direction: SortDirection,
+  context: ProcessProjectionContext = {},
 ): VisibleProcessRow[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return sortProcesses(
     processes.filter(
       (process) =>
-        !normalizedQuery || processMatchesQuery(process, normalizedQuery),
+        !normalizedQuery ||
+        processMatchesQuery(process, normalizedQuery, context.portsByPid),
     ),
     sortKey,
     direction,
+    context.identityOrder,
   ).map((process) => ({
     identity: processIdentity(process),
     process,
@@ -360,6 +381,67 @@ export function buildFlatProcessRows(
     expanded: false,
     queryMatch: true,
   }));
+}
+
+export function indexProcessPorts(
+  connections: readonly NetworkConnection[],
+): ProcessPortIndex {
+  const portsByPid = new Map<number, Set<number>>();
+  for (const connection of connections) {
+    const ports = [
+      connection.localEndpoint.port,
+      connection.remoteEndpoint?.port ?? 0,
+    ].filter((port) => port > 0 && port <= 65_535);
+    if (ports.length === 0) continue;
+    for (const pid of new Set(connection.associatedPids)) {
+      if (!Number.isInteger(pid) || pid <= 0) continue;
+      const processPorts = portsByPid.get(pid) ?? new Set<number>();
+      for (const port of ports) processPorts.add(port);
+      portsByPid.set(pid, processPorts);
+    }
+  }
+  return new Map(
+    [...portsByPid.entries()].map(([pid, ports]) => [
+      pid,
+      [...ports].sort((left, right) => left - right),
+    ]),
+  );
+}
+
+export function matchingProcessPort(
+  query: string,
+  pid: number,
+  portsByPid: ProcessPortIndex,
+): number | null {
+  const port = parsePortQuery(query);
+  if (port === null) return null;
+  return portsByPid.get(pid)?.includes(port) ? port : null;
+}
+
+export function reconcileStableProcessOrder(
+  previousIdentities: readonly string[],
+  processes: readonly ProcessRow[],
+  sortKey: ProcessSortKey,
+  direction: SortDirection,
+  forceResort = false,
+): string[] {
+  if (forceResort || previousIdentities.length === 0) {
+    return sortProcesses(processes, sortKey, direction).map(processIdentity);
+  }
+
+  const processByIdentity = new Map(
+    processes.map((process) => [processIdentity(process), process]),
+  );
+  const retained = previousIdentities.filter((identity) =>
+    processByIdentity.has(identity),
+  );
+  const retainedSet = new Set(retained);
+  const newcomers = sortProcesses(
+    processes.filter((process) => !retainedSet.has(processIdentity(process))),
+    sortKey,
+    direction,
+  ).map(processIdentity);
+  return [...retained, ...newcomers];
 }
 
 export function updateSelectedProcessHistory(
@@ -453,20 +535,45 @@ export function computeVirtualRange(
   };
 }
 
-function processMatchesQuery(process: ProcessRow, normalizedQuery: string): boolean {
-  return [process.name, String(process.pid), process.user ?? "", process.status]
+function processMatchesQuery(
+  process: ProcessRow,
+  normalizedQuery: string,
+  portsByPid?: ProcessPortIndex,
+): boolean {
+  const textMatch = [
+    process.name,
+    String(process.pid),
+    process.user ?? "",
+    process.status,
+  ]
     .join(" ")
     .toLocaleLowerCase()
     .includes(normalizedQuery);
+  if (textMatch) return true;
+  const port = parsePortQuery(normalizedQuery);
+  return (
+    port !== null &&
+    (portsByPid?.get(process.pid)?.includes(port) ?? false)
+  );
 }
 
 function sortProcesses(
   processes: readonly ProcessRow[],
   sortKey: ProcessSortKey,
   direction: SortDirection,
+  identityOrder?: ReadonlyMap<string, number>,
 ): ProcessRow[] {
   const multiplier = direction === "ascending" ? 1 : -1;
   return [...processes].sort((left, right) => {
+    if (identityOrder) {
+      const leftRank = identityOrder.get(processIdentity(left));
+      const rightRank = identityOrder.get(processIdentity(right));
+      if (leftRank !== undefined && rightRank !== undefined) {
+        return leftRank - rightRank;
+      }
+      if (leftRank !== undefined) return -1;
+      if (rightRank !== undefined) return 1;
+    }
     let comparison = 0;
     switch (sortKey) {
       case "name":
@@ -491,6 +598,16 @@ function sortProcesses(
     if (comparison !== 0) return comparison * multiplier;
     return processIdentity(left).localeCompare(processIdentity(right));
   });
+}
+
+function parsePortQuery(query: string): number | null {
+  const match = query
+    .trim()
+    .toLocaleLowerCase()
+    .match(/^(?:(?:port|端口)\s*[:=]?\s*|:)?(\d{1,5})$/u);
+  if (!match?.[1]) return null;
+  const port = Number.parseInt(match[1], 10);
+  return port > 0 && port <= 65_535 ? port : null;
 }
 
 function nullableMetric(

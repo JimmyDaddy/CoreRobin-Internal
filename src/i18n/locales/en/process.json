@@ -9,10 +9,12 @@
   "flatTitle": "Flat view",
   "treeTitle": "Show parent-child relationships; roots open automatically and siblings follow column sort",
   "follow": "Follow",
-  "followTitle": "Keep the selected process visible after refresh and reordering",
+  "followTitle": "Keep the selected process visible while data refreshes",
   "resetView": "Reset process view",
+  "resort": "Re-sort by current metrics",
   "search": "Search processes",
-  "searchPlaceholder": "Name, PID, or user",
+  "searchPlaceholder": "Name, PID, user, or port",
+  "matchedPort": "Matches port {{port}}",
   "systemProcesses": "System processes",
   "columns": {
     "process": "Process",
@@ -29,6 +31,7 @@
     "tree": "Visible {{visible}} · matched {{matches}} / {{total}} processes",
     "flat": "{{visible}} / {{total}} processes · rendered on demand",
     "siblingSort": "Roots open automatically · sibling sort",
+    "stableOrder": "Metrics update live · order changes only when you sort",
     "selectionFiltered": "Selected process is filtered out · clear filter"
   },
   "status": {

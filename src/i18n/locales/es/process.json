@@ -9,10 +9,12 @@
   "flatTitle": "Vista plana",
   "treeTitle": "Mostrar relaciones padre-hijo; los procesos raíz se abren automáticamente y los hermanos siguen el orden de columna",
   "follow": "Seguir",
-  "followTitle": "Mantener visible el proceso seleccionado después de refrescar y reordenar",
+  "followTitle": "Mantener visible el proceso seleccionado durante la actualización",
   "resetView": "Restablecer vista del proceso",
+  "resort": "Reordenar por las métricas actuales",
   "search": "Buscar procesos",
-  "searchPlaceholder": "Nombre, PID o usuario",
+  "searchPlaceholder": "Nombre, PID, usuario o puerto",
+  "matchedPort": "Coincide con el puerto {{port}}",
   "systemProcesses": "Procesos del sistema",
   "columns": {
     "process": "Proceso",
@@ -29,6 +31,7 @@
     "tree": "Mostrando {{visible}} · coincidencias con {{matches}} / {{total}} procesos",
     "flat": "{{visible}} / {{total}} procesos · renderizado bajo demanda",
     "siblingSort": "Árboles abiertos automáticamente · orden de hermanos",
+    "stableOrder": "Métricas en vivo · el orden solo cambia al ordenar",
     "selectionFiltered": "Proceso seleccionado está filtrado · limpiar filtro"
   },
   "status": {

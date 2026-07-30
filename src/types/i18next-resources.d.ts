@@ -2058,12 +2058,13 @@ export default interface Resources {
     "flat": "平铺",
     "flatTitle": "平铺视图",
     "follow": "跟随",
-    "followTitle": "刷新重排后保持选中进程在视野内",
+    "followTitle": "刷新时保持选中进程在视野内",
     "footer": {
       "compact": "显示 {{visible}} / {{total}} 个进程",
       "flat": "{{visible}} / {{total}} 个进程 · 按需渲染",
       "selectionFiltered": "选中进程被筛选隐藏 · 清除筛选",
       "siblingSort": "根层自动展开 · 同级排序",
+      "stableOrder": "指标实时更新 · 顺序仅在手动排序时变化",
       "tree": "可见 {{visible}} · 匹配 {{matches}} / {{total}} 个进程"
     },
     "history": {
@@ -2099,12 +2100,14 @@ export default interface Resources {
       "userStatus": "用户 / 状态",
       "verifying": "正在核验进程身份…"
     },
+    "matchedPort": "匹配端口 {{port}}",
     "noMatches": "没有匹配的进程",
     "protected": "受保护",
     "realtime": "实时采样",
     "resetView": "恢复默认进程视图",
+    "resort": "按当前指标重新排序",
     "search": "搜索进程",
-    "searchPlaceholder": "名称、PID 或用户",
+    "searchPlaceholder": "名称、PID、用户或端口",
     "status": {
       "Dead": "退出",
       "Idle": "空闲",

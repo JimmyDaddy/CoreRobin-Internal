@@ -9,10 +9,12 @@
   "flatTitle": "Übersicht",
   "treeTitle": "Zeigt Eltern-Kind-Beziehungen; Wurzeln werden automatisch geöffnet und untergeordnete Prozesse folgen der Spaltensortierung",
   "follow": "Folgen",
-  "followTitle": "Halte den ausgewählten Prozess sichtbar nach Aktualisierung und Neuordnung",
+  "followTitle": "Ausgewählten Prozess bei Aktualisierungen sichtbar halten",
   "resetView": "Zurücksetzen der Prozessansicht",
+  "resort": "Nach aktuellen Messwerten neu sortieren",
   "search": "Prozesse suchen",
-  "searchPlaceholder": "Name, PID oder Benutzer",
+  "searchPlaceholder": "Name, PID, Benutzer oder Port",
+  "matchedPort": "Passender Port {{port}}",
   "systemProcesses": "Systemprozesse",
   "columns": {
     "process": "Prozess",
@@ -29,6 +31,7 @@
     "tree": "Anzahl der sichtbaren Prozesse: {{visible}} · Anzahl der übereinstimmenden Prozesse: {{matches}} · {{total}}",
     "flat": "{{visible}} / {{total}} Prozesse · Bei Bedarf gerendert",
     "siblingSort": "Wurzeln automatisch geöffnet · Untergeordnete Prozesse nach Spalte sortiert",
+    "stableOrder": "Messwerte live · Reihenfolge ändert sich nur manuell",
     "selectionFiltered": "Ausgewiesener Prozess ist gefiltert · Filter aufheben"
   },
   "status": {
