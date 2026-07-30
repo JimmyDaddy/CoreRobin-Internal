@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.17",
+  "title": {
+    "zh-CN": "更顺畅的操作确认与状态反馈",
+    "en": "Smoother confirmations and clearer progress feedback"
+  },
+  "items": [
+    {
+      "zh-CN": "启动项和进程操作不再因确认窗口停留较久而要求重新开始；最终确认时会自动刷新当前操作状态。",
+      "en": "Startup-item and process actions no longer force you to start over after leaving a confirmation open; the action state is refreshed automatically when you confirm."
+    },
+    {
+      "zh-CN": "日常与专业模式切换会保持当前位置，当前模式不会重复触发跳转；界面、语言和外观设置也集中到同一入口。",
+      "en": "Switching between Everyday and Professional modes now preserves your context, while interface, language, and appearance settings are grouped in one place."
+    },
+    {
+      "zh-CN": "检查更新、下载、安装、扫描和重新载入等进行中状态现在使用统一的动态反馈，更新完成提示也会自动收起。",
+      "en": "Update checks, downloads, installation, scans, and reloads now use consistent animated progress feedback, and completed-update notices collapse automatically."
+    },
+    {
+      "zh-CN": "启动影响空状态可直接启用登录时启动，进程、网络和应用说明也改为更容易理解的表达。",
+      "en": "The startup-impact empty state can now enable launch at login directly, and process, network, and application explanations use clearer language."
+    },
+    {
+      "zh-CN": "精简重复的采样说明，并改善历史与设备状态区域的间距、高度和内容布局。",
+      "en": "Redundant sampling labels have been removed, with improved spacing, sizing, and content layout across history and device-status sections."
+    }
+  ]
+}
