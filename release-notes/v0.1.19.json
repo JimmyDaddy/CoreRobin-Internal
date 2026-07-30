@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.19",
+  "title": {
+    "zh-CN": "更可靠的长时间空间扫描",
+    "en": "More reliable long-running space scans"
+  },
+  "items": [
+    {
+      "zh-CN": "空间扫描在个别文件夹长时间无响应时会自动恢复并继续检查其他内容，保留已经完成的进度；无需一直停留在应用前台或手动重新扫描，恢复过程中仍可随时停止。",
+      "en": "Space scans now recover automatically when an individual folder remains unresponsive, keep completed progress, and continue checking other content; you no longer need to keep CoreRobin in the foreground or restart the scan manually, and can still stop at any time."
+    }
+  ]
+}
