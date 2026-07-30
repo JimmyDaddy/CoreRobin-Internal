@@ -51,7 +51,6 @@
   },
   "progress": {
     "scanningLocation": "Analyzing {{location}}",
-    "showPath": "Show current technical path",
     "entries": "Checked",
     "discovered": "Discovered",
     "elapsed": "Elapsed",

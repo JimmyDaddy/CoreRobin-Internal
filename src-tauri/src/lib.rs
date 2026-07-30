@@ -629,7 +629,7 @@ async fn get_cleanup_scan(
     let worker_cancelled = Arc::clone(&cancelled);
     let worker_coordinator = Arc::clone(&coordinator);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        worker_coordinator.run_exclusive(&worker_cancelled, || {
+        worker_coordinator.run_full_scan(&worker_cancelled, || {
             let scan = scan_cleanup(
                 request.unwrap_or_default(),
                 &worker_cancelled,
@@ -642,7 +642,6 @@ async fn get_cleanup_scan(
         })
     })
     .await;
-    coordinator.finish_full_scan(&cancelled);
     result.map_err(|error| CommandError::internal(format!("Cleanup scan failed: {error}")))?
 }
 
@@ -664,12 +663,11 @@ async fn get_cleanup_subtree(
     let worker_cancelled = Arc::clone(&cancelled);
     let worker_coordinator = Arc::clone(&coordinator);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        worker_coordinator.run_exclusive(&worker_cancelled, || {
+        worker_coordinator.run_subtree(&worker_cancelled, || {
             scan_cleanup_subtree(request, &worker_cancelled)
         })
     })
     .await;
-    coordinator.finish_subtree(&cancelled);
     result
         .map_err(|error| CommandError::internal(format!("Cleanup subtree scan failed: {error}")))?
 }

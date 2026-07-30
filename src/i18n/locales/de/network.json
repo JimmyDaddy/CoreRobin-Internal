@@ -174,7 +174,7 @@
     "unknown": "Unbekannt",
     "dormant": "Inaktiv",
     "notpresent": "Nicht vorhanden",
-    "lowerlayerdown": "Unterer Layer getrennt"
+    "lowerlayerdown": "Netzwerkschnittstelle nicht verbunden"
   },
   "noIp": "Keine IP-Adresse gemeldet",
   "accumulated": "Gesamt {{value}}",

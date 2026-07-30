@@ -174,7 +174,7 @@
     "unknown": "Desconocido",
     "dormant": "Inactivo",
     "notpresent": "No presente",
-    "lowerlayerdown": "Capa inferior desconectada"
+    "lowerlayerdown": "Interfaz de red desconectada"
   },
   "noIp": "No se reporta dirección IP",
   "accumulated": "{{value}}",

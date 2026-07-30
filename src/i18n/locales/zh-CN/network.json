@@ -114,7 +114,7 @@
     "unknown": "未知",
     "dormant": "待机",
     "notpresent": "不存在",
-    "lowerlayerdown": "底层未连接"
+    "lowerlayerdown": "网络接口未连接"
   },
   "noIp": "未报告 IP 地址",
   "accumulated": "累计 {{value}}",

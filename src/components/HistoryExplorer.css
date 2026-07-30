@@ -1,6 +1,7 @@
 .application-impact-history {
   display: grid;
   gap: 13px;
+  padding: 16px 18px;
 }
 
 .application-impact-history > header {
@@ -331,6 +332,7 @@
 .battery-sessions {
   display: grid;
   gap: 14px;
+  padding: 16px 18px;
 }
 
 .battery-sessions > header {

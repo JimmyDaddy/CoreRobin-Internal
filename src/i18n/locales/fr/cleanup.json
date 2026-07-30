@@ -141,7 +141,6 @@
   },
   "progress": {
     "scanningLocation": "Analyse de {{location}} éléments",
-    "showPath": "Afficher le chemin technique actuel",
     "entries": "Éléments vérifiés",
     "discovered": "Découvert",
     "elapsed": "Temps écoulé",

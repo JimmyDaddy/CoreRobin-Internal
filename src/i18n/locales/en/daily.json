@@ -35,7 +35,7 @@
       "title": "{{count}} things are worth a look",
       "title_one": "{{count}} thing is worth a look",
       "title_other": "{{count}} things are worth a look",
-      "summary": "CoreRobin has organized the reasons and next steps, so you do not need to interpret technical metrics."
+      "summary": "CoreRobin has organized the causes and next steps so you can act directly."
     },
     "urgent": {
       "short": "Take a look soon",
@@ -394,7 +394,7 @@
     },
     "language": "Interface language",
     "professional": "Professional mode",
-    "professionalDescription": "View every metric, process tree, and technical detail"
+    "professionalDescription": "View every metric, the process tree, and more details"
   },
   "review": {
     "kicker": "On this device · Today",
@@ -476,7 +476,7 @@
     "result": "Check result",
     "viewEvidence": "Why CoreRobin says this",
     "safety": "CoreRobin suggests only evidence-backed actions. Any system action still needs your confirmation.",
-    "professional": "View all technical evidence",
+    "professional": "View all metrics and processes",
     "slow": {
       "kicker": "Responsiveness check",
       "title": "Find out why your computer feels slow",

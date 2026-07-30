@@ -141,7 +141,6 @@
   },
   "progress": {
     "scanningLocation": "스캔 중 {{location}}",
-    "showPath": "현재 경로 표시",
     "entries": "확인됨",
     "discovered": "발견됨",
     "elapsed": "소요 시간",

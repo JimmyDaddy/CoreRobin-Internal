@@ -141,7 +141,6 @@
   },
   "progress": {
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
-    "showPath": "現在のパスを表示",
     "entries": "確認済み",
     "discovered": "検出されました",
     "elapsed": "経過時間",

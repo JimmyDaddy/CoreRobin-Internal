@@ -33,7 +33,7 @@
     "attention": {
       "short": "Il y a quelque chose à vérifier",
       "title": "{{count}} éléments nécessitent une attention",
-      "summary": "CoreRobin a organisé les raisons et les prochaines étapes, afin que vous n'ayez pas besoin d'interpréter les données techniques."
+      "summary": "CoreRobin a regroupé les causes et les prochaines étapes pour vous permettre d’agir directement."
     },
     "urgent": {
       "short": "Vérifiez rapidement",
@@ -385,7 +385,7 @@
     },
     "language": "Langue de l'interface",
     "professional": "Mode professionnel",
-    "professionalDescription": "Visualisez toutes les métriques, l'arborescence des processus et les détails techniques"
+    "professionalDescription": "Afficher toutes les mesures, l’arborescence des processus et plus de détails"
   },
   "review": {
     "kicker": "Sur cet appareil · Aujourd’hui",
@@ -467,7 +467,7 @@
     "result": "Résultat de la vérification",
     "viewEvidence": "Explication de CoreRobin",
     "safety": "CoreRobin suggère uniquement des actions basées sur des preuves. Toute action système nécessite votre confirmation.",
-    "professional": "Consulter toutes les données techniques",
+    "professional": "Afficher toutes les mesures et tous les processus",
     "slow": {
       "kicker": "Vérification de la réactivité",
       "title": "Déterminez pourquoi votre ordinateur semble lent",

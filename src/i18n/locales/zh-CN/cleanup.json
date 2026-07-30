@@ -51,7 +51,6 @@
   },
   "progress": {
     "scanningLocation": "正在分析{{location}}",
-    "showPath": "查看当前技术路径",
     "entries": "已检查",
     "discovered": "已发现",
     "elapsed": "已用时",

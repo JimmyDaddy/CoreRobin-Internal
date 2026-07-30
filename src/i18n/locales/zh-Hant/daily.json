@@ -33,7 +33,7 @@
     "attention": {
       "short": "有些情況值得留意",
       "title": "有 {{count}} 項情況值得留意",
-      "summary": "CoreRobin 已經整理好原因和下一步，你不需要自己判斷技術指標。"
+      "summary": "CoreRobin 已經整理好原因和下一步，你可以直接按建議處理。"
     },
     "urgent": {
       "short": "建議儘快看看",
@@ -385,7 +385,7 @@
     },
     "language": "介面語言",
     "professional": "專業模式",
-    "professionalDescription": "檢視完整指標、程序樹和技術詳情"
+    "professionalDescription": "檢視完整指標、程序樹和更多詳情"
   },
   "review": {
     "kicker": "本機 · 今天",
@@ -467,7 +467,7 @@
     "result": "檢查結果",
     "viewEvidence": "為什麼 CoreRobin 這樣判斷",
     "safety": "CoreRobin 只提出有依據的建議，任何系統操作仍需要你確認。",
-    "professional": "檢視全部技術依據",
+    "professional": "檢視完整指標和程序",
     "slow": {
       "kicker": "流暢度檢查",
       "title": "找出電腦變慢的原因",

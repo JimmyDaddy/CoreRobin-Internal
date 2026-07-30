@@ -141,7 +141,6 @@
   },
   "progress": {
     "scanningLocation": "Analysiere {{location}}",
-    "showPath": "Aktuellen Pfad anzeigen",
     "entries": "Überprüft",
     "discovered": "Gefunden",
     "elapsed": "Verstrichene Zeit",

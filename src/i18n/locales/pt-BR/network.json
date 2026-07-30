@@ -174,7 +174,7 @@
     "unknown": "Indefinido",
     "dormant": "Inativo",
     "notpresent": "Não presente",
-    "lowerlayerdown": "Camada inferior inativa"
+    "lowerlayerdown": "Interface de rede desconectada"
   },
   "noIp": "Endereço IP não reportado",
   "accumulated": "{{value}} acumulados",

@@ -326,6 +326,7 @@
 .personal-baseline {
   display: grid;
   gap: 13px;
+  padding: 16px 18px;
 }
 
 .personal-baseline > header {

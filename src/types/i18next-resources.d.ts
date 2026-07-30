@@ -599,7 +599,6 @@ export default interface Resources {
         "trash": "废纸篓"
       },
       "scanningLocation": "正在分析{{location}}",
-      "showPath": "查看当前技术路径",
       "stageKicker": "空间地图生成中"
     },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
@@ -853,7 +852,7 @@ export default interface Resources {
         "unknownDescription": "当前流量或连接列表不可用，因此不能判断网络是否正常。",
         "unknownTitle": "暂时没有足够的网络信息"
       },
-      "professional": "查看全部技术依据",
+      "professional": "查看完整指标和进程",
       "result": "检查结果",
       "safety": "CoreRobin 只提出有依据的建议，任何系统操作仍需要你确认。",
       "slow": {
@@ -972,7 +971,7 @@ export default interface Resources {
         "title": "网络诊断"
       },
       "professional": "专业模式",
-      "professionalDescription": "查看完整指标、进程树和技术详情",
+      "professionalDescription": "查看完整指标、进程树和更多详情",
       "settings": {
         "description": "语言、通知、历史保留和采样偏好",
         "title": "设置"
@@ -1234,7 +1233,7 @@ export default interface Resources {
     "status": {
       "attention": {
         "short": "有些情况值得留意",
-        "summary": "CoreRobin 已经整理好原因和下一步，你不需要自己判断技术指标。",
+        "summary": "CoreRobin 已经整理好原因和下一步，你可以直接按建议处理。",
         "title": "有 {{count}} 项情况值得留意"
       },
       "normal": {
@@ -1790,7 +1789,7 @@ export default interface Resources {
     "interfaceStates": {
       "dormant": "待机",
       "down": "未连接",
-      "lowerlayerdown": "底层未连接",
+      "lowerlayerdown": "网络接口未连接",
       "notpresent": "不存在",
       "other": "其他",
       "testing": "测试中",
