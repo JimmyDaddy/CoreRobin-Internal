@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.18",
+  "title": {
+    "zh-CN": "更可靠的空间扫描与更完整的历史回顾",
+    "en": "More reliable space scans and richer history reviews"
+  },
+  "items": [
+    {
+      "zh-CN": "长时间空间扫描现在可以在切换页面、隐藏窗口或重新载入界面后继续显示同一任务；电脑休眠后能够恢复，停止扫描后也可以立即重新开始。",
+      "en": "Long-running space scans now remain connected when you switch pages, hide the window, or reload the interface; they recover after sleep and can be restarted immediately after stopping."
+    },
+    {
+      "zh-CN": "关闭主窗口后，必要的本机状态观察和提醒仍会继续；当数据暂停、过期或暂时不可用时，主窗口、状态栏和 Robin 会明确显示当前状态。",
+      "en": "Essential local monitoring and alerts now continue after the main window closes, while the main window, menu bar, and Robin clearly identify paused, stale, or temporarily unavailable data."
+    },
+    {
+      "zh-CN": "资源、存储、网络和应用影响历史改用真实时间轴，能够保留休眠与采样中断造成的缺口，并查看应用影响的峰值时段与当时排名。",
+      "en": "Resource, storage, network, and application-impact history now uses real time, preserves gaps caused by sleep or interrupted sampling, and shows peak periods with the application ranking at that time."
+    },
+    {
+      "zh-CN": "回顾页面新增今天、昨天和过去七天的对比以及可选的本机每周提醒；清理、卸载、进程、启动项、卷推出和应用更新也会记录操作后的实际结果。",
+      "en": "Reviews now compare today, yesterday, and the past seven days with an optional local weekly reminder, while cleanup, uninstall, process, startup-item, volume-eject, and update actions record their observed results."
+    },
+    {
+      "zh-CN": "历史数据可以按时间范围和指标导出为 CSV 或 JSON；导出前会显示隐私预览，默认不包含应用名称、命令行、完整路径或连接地址。",
+      "en": "History can now be exported as CSV or JSON by time range and metric, with a privacy preview that excludes application names, command lines, full paths, and connection addresses by default."
+    },
+    {
+      "zh-CN": "Windows 和 Linux 的进程操作预览新增请求结束、强制结束与安全重启，并在目标已经变化、没有可关闭窗口或权限不足时给出明确说明。",
+      "en": "The Windows and Linux process-control preview now supports request close, force stop, and safe restart, with clear explanations when the target changed, has no closable window, or requires additional permission."
+    }
+  ]
+}

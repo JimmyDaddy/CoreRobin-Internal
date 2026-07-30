@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "core-robin"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
