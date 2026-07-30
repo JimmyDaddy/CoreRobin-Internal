@@ -143,9 +143,10 @@
   "progress": {
     "scanningLocation": "Analisando {{location}}",
     "paused": "O Mac está em repouso; a verificação continuará ao despertar",
-    "stalled": "A verificação não avança há algum tempo",
-    "stalledTitle": "Esta verificação pode estar travada",
-    "stalledDescription": "Reinicie para encerrar a tarefa anterior sem continuar esperando.",
+    "stalled": "A verificação está se recuperando automaticamente",
+    "stalledTitle": "Ignorando uma pasta que não responde",
+    "stalledDescription": "O CoreRobin ignorará este local ilegível e continuará a partir do progresso salvo. Não é necessário reiniciar a verificação.",
+    "recoveryFailed": "O CoreRobin não conseguiu continuar após uma ou mais pastas ilegíveis. Interrompa a verificação e escolha um local menor.",
     "entries": "Verificado",
     "discovered": "Encontrado",
     "elapsed": "Tempo decorrido",

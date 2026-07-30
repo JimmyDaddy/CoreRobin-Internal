@@ -599,11 +599,12 @@ export default interface Resources {
         "trash": "废纸篓"
       },
       "paused": "电脑已休眠，唤醒后将继续扫描",
+      "recoveryFailed": "CoreRobin 无法继续跳过一个或多个异常文件夹。你可以停止扫描后改为扫描较小的范围。",
       "scanningLocation": "正在分析{{location}}",
       "stageKicker": "空间地图生成中",
-      "stalled": "扫描长时间没有进展",
-      "stalledDescription": "扫描任务仍有响应，但当前目录可能读取异常。重新开始后会立即替换旧任务，无需继续等待。",
-      "stalledTitle": "当前目录长时间没有扫描进展"
+      "stalled": "正在自动恢复扫描",
+      "stalledDescription": "CoreRobin 会跳过当前无法读取的位置，并从已保存的进度继续扫描，无需重新开始。",
+      "stalledTitle": "正在跳过无响应的文件夹"
     },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
     "readOnlyTitle": "先看清楚，再决定是否处理",

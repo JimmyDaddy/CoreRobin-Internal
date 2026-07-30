@@ -143,9 +143,10 @@
   "progress": {
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
     "paused": "Macはスリープ中です。復帰後にスキャンを続行します",
-    "stalled": "スキャンがしばらく進んでいません",
-    "stalledTitle": "スキャンが停止している可能性があります",
-    "stalledDescription": "待ち続けず、再開すると以前のスキャン処理を終了できます。",
+    "stalled": "スキャンを自動的に復旧しています",
+    "stalledTitle": "応答しないフォルダをスキップしています",
+    "stalledDescription": "CoreRobin は読み取れない場所をスキップし、保存済みの進捗からスキャンを続行します。再開操作は不要です。",
+    "recoveryFailed": "CoreRobin は 1 つ以上の読み取れないフォルダを越えてスキャンを続行できませんでした。より小さい場所を選択してください。",
     "entries": "確認済み",
     "discovered": "検出されました",
     "elapsed": "経過時間",

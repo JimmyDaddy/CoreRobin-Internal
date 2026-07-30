@@ -1361,6 +1361,7 @@ pub fn cleanup_scan_segment_plan(
 pub fn scan_cleanup_segment(
     plan: &CleanupScanSegmentPlan,
     segment_path: &Path,
+    excluded_paths: &[PathBuf],
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<CleanupScan, CommandError> {
@@ -1379,6 +1380,7 @@ pub fn scan_cleanup_segment(
             },
             selected_cleanup_root: !system_scan,
             include_application_inventory: false,
+            excluded_paths,
         },
         cancelled,
         on_progress,
@@ -1695,6 +1697,7 @@ pub fn benchmark_cleanup_root_with_cancel(
             definitions: Vec::new(),
             selected_cleanup_root: false,
             include_application_inventory: false,
+            excluded_paths: &[],
         },
         cancelled,
         &mut |progress| latest_progress = progress,
@@ -1896,6 +1899,7 @@ fn scan_cleanup_subtree_at(
         location_summaries: &mut location_summaries,
         application_sizes: &mut application_sizes,
         prefetched_subtrees: &mut prefetched_subtrees,
+        excluded_paths: &[],
         cancelled,
         on_progress: &mut ignore_progress,
     };
@@ -3606,6 +3610,7 @@ struct ScanContext<'a> {
     location_summaries: &'a mut [LocationSummary],
     application_sizes: &'a mut HashMap<PathBuf, u64>,
     prefetched_subtrees: &'a mut PrefetchedSubtreeAccumulator,
+    excluded_paths: &'a [PathBuf],
     cancelled: &'a AtomicBool,
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
 }
@@ -3773,6 +3778,7 @@ fn scan_home(
             definitions,
             selected_cleanup_root: false,
             include_application_inventory,
+            excluded_paths: &[],
         },
         cancelled,
         on_progress,
@@ -3786,6 +3792,7 @@ struct ScanFilesystemOptions<'a> {
     definitions: Vec<LocationDefinition>,
     selected_cleanup_root: bool,
     include_application_inventory: bool,
+    excluded_paths: &'a [PathBuf],
 }
 
 fn scan_filesystem(
@@ -3800,6 +3807,7 @@ fn scan_filesystem(
         definitions,
         selected_cleanup_root,
         include_application_inventory,
+        excluded_paths,
     } = options;
     let boundary = ScanFilesystemBoundary::for_root(scan_root)?;
     let mut stats = ScanStats::new();
@@ -3829,6 +3837,7 @@ fn scan_filesystem(
             location_summaries: &mut location_summaries,
             application_sizes: &mut application_sizes,
             prefetched_subtrees: &mut prefetched_subtrees,
+            excluded_paths,
             cancelled,
             on_progress,
         };
@@ -4248,6 +4257,19 @@ fn scan_directory(
     layout: CleanupNodeLayout,
 ) -> Result<CleanupNode, CommandError> {
     let directory_safety = context.safety_for_path(directory, safety);
+    if context
+        .excluded_paths
+        .iter()
+        .any(|excluded| excluded == directory)
+    {
+        context.stats.record_unreadable(directory);
+        context
+            .stats
+            .report_progress(directory, context.home, context.on_progress, true);
+        let node = restricted_cleanup_node(directory, directory_safety, context.home);
+        context.capture_location_root(directory, &node);
+        return Ok(node);
+    }
     if is_cloud_backed_cleanup_root(directory, context.home) {
         ensure_scan_active(context.cancelled)?;
         context.stats.record_unreadable(directory);
@@ -4458,6 +4480,20 @@ fn scan_directory_summary(
         context
             .stats
             .report_progress(&directory, context.home, context.on_progress, false);
+        if context
+            .excluded_paths
+            .iter()
+            .any(|excluded| excluded == &directory)
+        {
+            context.stats.record_unreadable(&directory);
+            if let Some(direct_child_path) = direct_child_path.as_ref() {
+                direct_children
+                    .entry(direct_child_path.clone())
+                    .or_insert_with(|| SummaryDirectChild::directory(direct_child_path.clone()))
+                    .restricted = true;
+            }
+            continue;
+        }
         let entries = match fs::read_dir(&directory) {
             Ok(entries) => {
                 if directory == root {
@@ -5679,6 +5715,7 @@ mod tests {
                 }],
                 selected_cleanup_root: false,
                 include_application_inventory: false,
+                excluded_paths: &[],
             },
             &AtomicBool::new(false),
             &mut |_| {},
@@ -6660,8 +6697,8 @@ mod tests {
             segment_paths: vec![segment.clone()],
         };
 
-        let scan =
-            scan_cleanup_segment(&plan, &segment, &AtomicBool::new(false), &mut |_| {}).unwrap();
+        let scan = scan_cleanup_segment(&plan, &segment, &[], &AtomicBool::new(false), &mut |_| {})
+            .unwrap();
 
         assert_eq!(
             scan.root.path.as_deref(),
@@ -6672,6 +6709,54 @@ mod tests {
             cleanup_protection_for_scan_path(&scan_root, &plan.home, &scan_root, true),
             Some(CleanupProtectionReason::SystemLocation)
         );
+        fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn segmented_scan_skips_an_unresponsive_nested_directory_and_keeps_other_results() {
+        let base = test_root("segmented-scan-exclusion");
+        let home = base.join("home");
+        let scan_root = base.join("selected");
+        let segment = scan_root.join("Downloads");
+        let excluded = segment.join("unresponsive");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&excluded).unwrap();
+        fs::write(segment.join("available.bin"), b"available").unwrap();
+        fs::write(excluded.join("blocked.bin"), b"blocked").unwrap();
+        let plan = CleanupScanSegmentPlan {
+            request: CleanupScanRequest {
+                target_kind: CleanupScanTargetKind::Folder,
+                target_path: Some(scan_root.to_string_lossy().into_owned()),
+            },
+            home,
+            scan_root: scan_root.clone(),
+            target_kind: CleanupScanTargetKind::Folder,
+            segment_paths: vec![segment.clone()],
+        };
+
+        let scan = scan_cleanup_segment(
+            &plan,
+            &segment,
+            std::slice::from_ref(&excluded),
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+
+        assert!(scan.scanned_entry_count > 0);
+        assert!(scan.unreadable_entry_count > 0);
+        assert!(
+            scan.unreadable_paths
+                .contains(&excluded.to_string_lossy().into_owned())
+        );
+        assert!(scan.root.children.iter().any(|node| {
+            node.path.as_deref() == Some(excluded.to_string_lossy().as_ref())
+                && node.kind == CleanupNodeKind::Restricted
+        }));
+        assert!(scan.root.children.iter().any(|node| {
+            node.path.as_deref() == Some(segment.join("available.bin").to_string_lossy().as_ref())
+                && node.kind == CleanupNodeKind::File
+        }));
         fs::remove_dir_all(base).unwrap();
     }
 

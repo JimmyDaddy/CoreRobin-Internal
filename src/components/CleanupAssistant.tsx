@@ -173,6 +173,12 @@ export function CleanupAssistant({
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
+  const scanErrorMessage = error && (
+    error.code === "cleanup_scan_auto_recovery_exhausted"
+    || error.code === "cleanup_scan_worker_restart_failed"
+  )
+    ? t("cleanup:progress.recoveryFailed")
+    : error?.message;
   const pristine = !snapshot && !loading && !error && !accessGuideOpen;
   const selectableVolumes = useMemo(
     () => volumes.filter((volume) => volume.mountPoint !== "/"),
@@ -251,11 +257,7 @@ export function CleanupAssistant({
   }, [checkScanAccess, waitingForAccess]);
 
   const requestScan = () => {
-    if (scanStalled) {
-      startSelectedScan();
-      return;
-    }
-    if (loading && !scanStalled) {
+    if (loading) {
       onCancel();
       return;
     }
@@ -382,16 +384,12 @@ export function CleanupAssistant({
             disabled={cancelling || checkingAccess}
             onClick={requestScan}
           >
-            {scanStalled
-              ? <RefreshCw size={15} />
-              : loading
+            {loading
               ? cancelling ? <RefreshCw className="is-spinning" size={15} /> : <Square size={13} />
               : checkingAccess ? <RefreshCw className="is-spinning" size={15} /> : <ScanSearch size={15} />}
             {checkingAccess
               ? t("cleanup:access.checking")
-              : scanStalled
-                ? t("cleanup:restartScan")
-                : loading
+              : loading
                 ? cancelling ? t("cleanup:cancelling") : t("cleanup:cancelScan")
                 : snapshot
                   ? t("cleanup:scanAgain")
@@ -621,8 +619,8 @@ export function CleanupAssistant({
       ) : null}
 
       {scanStalled ? (
-        <div className="cleanup-assistant__error is-recoverable" role="alert">
-          <AlertTriangle size={17} />
+        <div className="cleanup-assistant__error is-recoverable" role="status">
+          <RefreshCw className="is-spinning" size={17} />
           <div>
             <strong>{t("cleanup:progress.stalledTitle")}</strong>
             <span>{t("cleanup:progress.stalledDescription")}</span>
@@ -655,7 +653,7 @@ export function CleanupAssistant({
       {error ? (
         <div className="cleanup-assistant__error" role="alert">
           <AlertTriangle size={17} />
-          <div><strong>{t("cleanup:failed")}</strong><span>{error.message}</span></div>
+          <div><strong>{t("cleanup:failed")}</strong><span>{scanErrorMessage}</span></div>
         </div>
       ) : null}
 
