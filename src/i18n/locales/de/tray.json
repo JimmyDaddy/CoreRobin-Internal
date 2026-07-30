@@ -10,6 +10,10 @@
     "foreground": "Aktive Messung",
     "background": "Hintergrundmessung"
   },
+  "dataStatus": {
+    "paused": "Datenerfassung pausiert",
+    "stale": "Daten veraltet"
+  },
   "health": {
     "loading": "Verbinde...",
     "observing": "Status wird analysiert",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "Zustand des Computers analysieren",
       "description": "Überwachung für kurze Zeit, um Fehlalarme zu vermeiden."
+    },
+    "stale": {
+      "title": "Keine aktuellen Systemdaten verfügbar",
+      "description": "Die Verbindung zum Hauptmonitor wurde unterbrochen. Öffnen Sie CoreRobin erneut, um sie fortzusetzen."
     },
     "normal": {
       "title": "Ihr Computer läuft reibungslos",

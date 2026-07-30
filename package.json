@@ -17,6 +17,8 @@
     "i18n:check": "i18next-cli status && i18next-cli types --ci && NODE_OPTIONS=--no-experimental-webstorage vitest run src/i18n.test.ts scripts/i18n-translation-quality.test.mjs src/desktopNotifications.test.ts src/robinCompanion.test.tsx",
     "test:surface-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run scripts/surface-contracts.test.mjs src/healthStatePublisher.test.ts src/hooks/healthStateSync.test.tsx src/trayPanel.test.tsx src/robinCompanion.test.tsx",
     "test:performance-contracts": "NODE_OPTIONS=--no-experimental-webstorage vitest run src/hooks/monitorVisibility.test.tsx src/cleanupCanvasPatterns.test.ts",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots",
     "verify:web-bundle": "node scripts/verify-web-bundle.mjs",
     "verify:release-tools": "pnpm release:preflight && node scripts/record-release-device-smoke.mjs -- --dry-run && node scripts/capture-monitor-baseline.mjs -- --dry-run && node scripts/capture-runtime-energy-baseline.mjs -- --dry-run && bash -n scripts/verify-packaged-macos.sh scripts/verify-packaged-linux.sh scripts/release-macos-local.sh",
     "release:gate:static": "pnpm build && pnpm verify:web-bundle && pnpm test:surface-contracts && pnpm test:performance-contracts",
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.58.2",
     "@tauri-apps/cli": "^2",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.1.8",

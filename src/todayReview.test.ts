@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTodayReview,
-  observedActionEffect,
+  observedActionEffects,
 } from "./todayReview";
 import type { HistoryPoint } from "./types";
 import type { UserActionRecord } from "./userActionHistory";
@@ -18,13 +18,27 @@ describe("today review", () => {
       point(completedAtMs + 120_000, 15, 35),
     ];
 
-    expect(observedActionEffect(points, action)).toBe("improved");
+    expect(observedActionEffects(points, action)).toMatchObject({
+      cpu: {
+        effect: "improved",
+        beforeAverage: 75,
+        afterAverage: 17.5,
+      },
+      memory: {
+        effect: "improved",
+        beforeAverage: 70,
+        afterAverage: 37.5,
+      },
+    });
   });
 
   it("does not infer immediate system pressure effects for unrelated actions", () => {
-    expect(observedActionEffect([], actionRecord({
+    expect(observedActionEffects([], actionRecord({
       kind: "cleanup_delete",
-    }))).toBe("not_applicable");
+    }))).toMatchObject({
+      cpu: { effect: "not_applicable" },
+      memory: { effect: "not_applicable" },
+    });
   });
 
   it("builds a local-day summary and excludes sleep gaps from network incidents", () => {

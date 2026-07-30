@@ -395,7 +395,7 @@ jobs:
         run: |
           node scripts/render-release-notes.mjs \
             "$RELEASE_TAG" \
-            --changelog release-source/CHANGELOG.md \
+            --release-root release-source \
             --output release-notes.md
           pub_date="$(git show -s --format=%cI "$RELEASE_COMMIT")"
           node scripts/generate-updater-manifest.mjs \
@@ -532,7 +532,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             release-artifacts/SHA256SUMS
 
-      - name: Render release notes from changelog
+      - name: Render structured user release notes
         run: node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
 
       - name: Create or update finalized public draft release

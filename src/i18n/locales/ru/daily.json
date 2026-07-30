@@ -19,6 +19,18 @@
     "thisMac": "Этот компьютер",
     "thisComputer": "Этот компьютер"
   },
+  "weekly": {
+    "kicker": "Обзор за семь дней", "title": "Вчера и эта неделя",
+    "description": "Сравнение аномалий и действий без выдуманной оценки здоровья.",
+    "today": "Сегодня", "yesterday": "Вчера", "sevenDays": "Последние 7 дней",
+    "anomalies": "Аномалии", "actions": "Действия", "improvements": "Наблюдаемые улучшения",
+    "averages": "Средняя CPU {{cpu}} · память {{memory}}", "comparisonTitle": "По сравнению со вчера",
+    "comparison": { "same": "Сегодня те же {{count}} аномалий.", "fewer": "Сегодня на {{count}} меньше.", "more": "Сегодня на {{count}} больше." },
+    "coverage": "{{days}} дней с данными · в среднем {{average}}", "improvementsTitle": "Действия с наблюдаемым улучшением",
+    "improvementObserved": "После действия снизилось: {{metrics}} · {{time}}", "noImprovements": "Пока недостаточно данных до и после.",
+    "notification": "Еженедельное напоминание", "notificationUnavailable": "Сначала включите системные уведомления.",
+    "notificationTitle": "Еженедельный обзор CoreRobin готов", "notificationBody": "7 дней: {{anomalies}} аномалий и {{improvements}} улучшений."
+  },
   "status": {
     "observing": {
       "short": "Изучение нормального состояния",
@@ -407,6 +419,20 @@
     "resultsTitle": "Наблюдаемый результат",
     "resultsDescription": "Сравнивает только локальные замеры до и после действия, не заявляя о причинной связи.",
     "noResults": "После выхода из приложения, очистки файлов или изменения автозапуска результаты появятся здесь.",
+    "metricNames": { "cpu": "CPU", "memory": "Память" },
+    "observedMetric": "{{metric}}: после действия {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "Выбрано {{selected}}, обработано {{succeeded}}, пропущено {{skipped}}, освобождено {{size}}.",
+      "uninstallRemoved": "Приложение удалено; обработано остатков: {{succeeded}}, ошибок: {{failed}}.",
+      "uninstallKept": "Удаление приложения не подтверждено; обработано остатков: {{succeeded}}, ошибок: {{failed}}.",
+      "volumeEjected": "Система подтвердила отключение тома.",
+      "volumeNotEjected": "Отключение тома не подтверждено.",
+      "startupChanged": "Запрошенное состояние автозапуска проверено и подтверждено.",
+      "startupNotConfirmed": "Запрошенное состояние автозапуска не удалось подтвердить.",
+      "updateReady": "Обновление загружено и установлено; требуется перезапуск.",
+      "updateConfirmed": "Приложение перезапущено, текущая версия — {{version}}.",
+      "updateNotInstalled": "Установка обновления не подтверждена."
+    },
     "open": "Открыть связанную функцию"
   },
   "records": {

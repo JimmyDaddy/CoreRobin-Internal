@@ -19,6 +19,19 @@
     "thisMac": "這臺 Mac",
     "thisComputer": "這臺電腦"
   },
+  "weekly": {
+    "kicker": "七天回顧", "title": "昨天與這一週",
+    "description": "分別比較已記錄的異常與處理結果，不把無關指標拼成健康分數。",
+    "today": "今天", "yesterday": "昨天", "sevenDays": "過去 7 天",
+    "anomalies": "異常", "actions": "已處理", "improvements": "觀察到改善",
+    "averages": "平均 CPU {{cpu}} · 記憶體 {{memory}}", "comparisonTitle": "與昨天相比",
+    "comparison": { "same": "今天同樣記錄到 {{count}} 次異常。", "fewer": "今天少記錄到 {{count}} 次異常。", "more": "今天多記錄到 {{count}} 次異常。" },
+    "coverage": "已有 {{days}} 天採樣 · 七天日均 {{average}} 次異常",
+    "improvementsTitle": "操作後觀察到的改善", "improvementObserved": "操作後 {{metrics}} 下降 · {{time}}",
+    "noImprovements": "目前還沒有足夠的前後採樣來確認改善。",
+    "notification": "每週提醒", "notificationUnavailable": "請先在設定中開啟桌面通知。",
+    "notificationTitle": "CoreRobin 每週回顧已準備好", "notificationBody": "過去 7 天有 {{anomalies}} 次異常、{{improvements}} 項操作後改善。"
+  },
   "status": {
     "observing": {
       "short": "正在瞭解狀態",
@@ -407,6 +420,20 @@
     "resultsTitle": "處理效果",
     "resultsDescription": "只比較操作前後的本機採樣，不把相關性說成因果。",
     "noResults": "完成退出應用程式、清理或啟動項目調整後，核對結果會顯示在這裡。",
+    "metricNames": { "cpu": "CPU", "memory": "記憶體" },
+    "observedMetric": "{{metric}}：操作後觀察到 {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "選擇 {{selected}} 項，成功處理 {{succeeded}} 項，略過 {{skipped}} 項，實際釋放 {{size}}。",
+      "uninstallRemoved": "應用程式本體已移除；成功處理 {{succeeded}} 個殘留，{{failed}} 個未完成。",
+      "uninstallKept": "尚未確認應用程式本體已移除；成功處理 {{succeeded}} 個殘留，{{failed}} 個未完成。",
+      "volumeEjected": "系統已確認該儲存卷完成卸載。",
+      "volumeNotEjected": "系統未能確認該儲存卷已卸載。",
+      "startupChanged": "系統已重新檢查並確認啟動狀態已變更。",
+      "startupNotConfirmed": "暫時無法確認啟動狀態已變更。",
+      "updateReady": "更新已下載並安裝，仍需重新啟動應用程式。",
+      "updateConfirmed": "應用程式已重新啟動，並確認目前版本為 {{version}}。",
+      "updateNotInstalled": "尚未確認更新已安裝。"
+    },
     "open": "開啟對應功能"
   },
   "records": {

@@ -54,4 +54,34 @@ describe("useUserActionHistory", () => {
     expect(result.current.records).toHaveLength(1);
     expect(window.localStorage.getItem(USER_ACTION_HISTORY_STORAGE_KEY)).toBeNull();
   });
+
+  it("confirms the installed version after the application restarts", () => {
+    const { result } = renderHook(() => useUserActionHistory(true, 7, true));
+    let id = "";
+    act(() => {
+      id = result.current.start({
+        kind: "application_update",
+        targetName: "CoreRobin v2.0.0",
+      });
+      result.current.complete(id, {
+        status: "succeeded",
+        verification: "verified",
+        outcome: {
+          updateDownloaded: true,
+          updateInstalled: true,
+          updateRestarted: false,
+        },
+      });
+    });
+    act(() => {
+      result.current.confirmLatestApplicationUpdate("2.0.0");
+    });
+
+    expect(result.current.records[0]?.outcome).toMatchObject({
+      updateDownloaded: true,
+      updateInstalled: true,
+      updateRestarted: true,
+      confirmedVersion: "2.0.0",
+    });
+  });
 });

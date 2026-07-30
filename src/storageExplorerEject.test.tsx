@@ -199,8 +199,10 @@ describe("storage throughput chart", () => {
       />,
     );
 
-    const readLine = container.querySelector(".storage-history__line--read");
-    expect(readLine?.getAttribute("d")).toMatch(/^M0\.0 .+ L720\.0 /);
+    const readLine = container.querySelector(
+      ".time-series-chart__line:not(.is-dashed)",
+    );
+    expect(readLine?.getAttribute("d")).toMatch(/^M0\.0 .+ L900\.0 /);
     expect(screen.getByText("较早")).toBeTruthy();
     expect(screen.getByText("正在建立磁盘吞吐基线…")).toBeTruthy();
   });

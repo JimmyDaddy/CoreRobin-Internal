@@ -74,6 +74,13 @@
     "diskIo": "磁碟 I/O",
     "exited": "程序已退出，趨勢停止更新。"
   },
+  "errors": {
+    "targetChanged": "程序已退出或發生變化，沒有結束其他程序。",
+    "permissionDenied": "作業系統不允許 CoreRobin 控制這個程序，亦不會自動要求管理員權限。",
+    "noCloseWindow": "這個背景程序沒有可供 Windows 要求關閉的視窗。只有了解風險時才使用強制結束。",
+    "unavailable": "目前系統無法對所選程序執行這項操作。",
+    "busy": "同時開啟的確認過多，請關閉一個後再試。"
+  },
   "dialog": {
     "windowsForce": "將立即結束這個程序；它可能來不及儲存目前內容。",
     "unixForce": "將立即結束這個程序；它可能來不及儲存目前內容，此操作不可撤銷。",

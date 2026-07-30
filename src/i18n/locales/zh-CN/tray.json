@@ -11,6 +11,10 @@
     "foreground": "前台采样",
     "background": "后台采样"
   },
+  "dataStatus": {
+    "paused": "数据已暂停",
+    "stale": "数据已过期"
+  },
   "health": {
     "loading": "连接中",
     "observing": "正在了解状态",
@@ -26,6 +30,10 @@
     "observing": {
       "title": "正在了解电脑状态",
       "description": "再观察一会儿，避免把短暂波动误判成问题。"
+    },
+    "stale": {
+      "title": "暂时没有收到新的电脑状态",
+      "description": "主界面采样连接已中断；重新打开 CoreRobin 后会自动恢复。"
     },
     "normal": {
       "title": "电脑运行平稳",

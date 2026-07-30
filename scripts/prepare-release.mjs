@@ -87,7 +87,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     try {
       await prepareReleaseVersion(version);
       console.log(`Prepared CoreRobin ${version} in all four version sources.`);
-      console.log(`Complete CHANGELOG.md and release-notes/v${version}.json, then run pnpm release:preflight before creating a tag.`);
+      console.log(`Complete release-notes/v${version}.json, mirror its Chinese product items in CHANGELOG.md, then run pnpm release:preflight before creating a tag.`);
     } catch (error) {
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;

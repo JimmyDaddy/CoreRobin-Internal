@@ -74,6 +74,13 @@
     "diskIo": "I/O do disco",
     "exited": "O processo foi encerrado; as atualizações de tendência foram interrompidas."
   },
+  "errors": {
+    "targetChanged": "O processo terminou ou mudou. Nenhum outro processo foi encerrado.",
+    "permissionDenied": "O sistema não permitiu controlar este processo. O CoreRobin não solicitará acesso de administrador automaticamente.",
+    "noCloseWindow": "Este processo em segundo plano não tem uma janela que o Windows possa fechar normalmente.",
+    "unavailable": "Esta ação não está disponível para o processo selecionado.",
+    "busy": "Há confirmações demais abertas. Feche uma e tente novamente."
+  },
   "dialog": {
     "windowsForce": "O processo será encerrado imediatamente e talvez não consiga salvar o trabalho atual.",
     "unixForce": "O processo será encerrado imediatamente, talvez não consiga salvar o trabalho atual e a ação não pode ser desfeita.",

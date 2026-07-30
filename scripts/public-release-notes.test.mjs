@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPublicReleaseManifest,
   readPublicReleaseNote,
+  renderPublicReleaseNotes,
   validatePublicReleaseNote,
 } from "./public-release-notes.mjs";
 
@@ -66,6 +67,13 @@ describe("public website release notes", () => {
     expect(manifest.schemaVersion).toBe(2);
     expect(manifest.releaseHistory.map((entry) => entry.tagName)).toEqual([tag, "v1.2.2"]);
     expect(manifest.releaseHistory[0].publishedAt).toBe(release.published_at);
+  });
+
+  it("embeds the same structured note for localized in-app display", () => {
+    const rendered = renderPublicReleaseNotes(note);
+    expect(rendered).toContain("## A faster release");
+    const payload = rendered.match(/corerobin-release-note:([^\s]+)/)?.[1];
+    expect(JSON.parse(decodeURIComponent(payload))).toEqual(note);
   });
 
   it("keeps the checked-in release note aligned with the current version", () => {

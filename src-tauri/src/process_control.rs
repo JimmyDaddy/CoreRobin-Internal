@@ -63,7 +63,7 @@ impl ProcessController {
             ));
         }
 
-        let binding = platform::bind(&request.key)?;
+        let binding = platform::bind(&request.key, request.action)?;
         let now = Instant::now();
         let id = next_lease_id();
         let expires_at = now + LEASE_TTL;
@@ -304,7 +304,7 @@ mod platform {
         }
     }
 
-    pub fn bind(key: &ProcessKey) -> Result<NativeBinding, CommandError> {
+    pub fn bind(key: &ProcessKey, _action: ProcessAction) -> Result<NativeBinding, CommandError> {
         ensure_birth_token(key.pid, &key.birth_token)
             .map_err(|error| normalize_identity_error(error, key.pid))?;
         Ok(NativeBinding { key: key.clone() })
@@ -468,7 +468,7 @@ mod platform {
         }
     }
 
-    pub fn bind(key: &ProcessKey) -> Result<NativeBinding, CommandError> {
+    pub fn bind(key: &ProcessKey, _action: ProcessAction) -> Result<NativeBinding, CommandError> {
         ensure_birth_token(key.pid, &key.birth_token)?;
         let raw_pid = i32::try_from(key.pid).map_err(|_| {
             CommandError::new(
@@ -618,6 +618,9 @@ mod platform {
         OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE,
         TerminateProcess, WaitForSingleObject,
     };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CLOSE,
+    };
 
     use crate::error::CommandError;
     use crate::identity::windows_birth_token_from_handle;
@@ -630,18 +633,16 @@ mod platform {
 
     pub struct NativeBinding {
         handle: OwnedHandle,
+        pid: u32,
     }
 
     pub fn capabilities(lease_ttl_ms: u64) -> ProcessControlCapabilities {
         ProcessControlCapabilities {
             targeting: ProcessControlTargeting::StableHandle,
             request_close: ProcessActionCapability {
-                enabled: false,
-                semantic: None,
-                disabled_reason: Some(
-                    "Windows has no universal graceful-close operation for arbitrary processes."
-                        .to_owned(),
-                ),
+                enabled: true,
+                semantic: Some(ProcessActionSemantic::WmClose),
+                disabled_reason: None,
             },
             force_kill: ProcessActionCapability {
                 enabled: true,
@@ -652,8 +653,14 @@ mod platform {
         }
     }
 
-    pub fn bind(key: &ProcessKey) -> Result<NativeBinding, CommandError> {
-        let rights = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE | PROCESS_SYNCHRONIZE;
+    pub fn bind(key: &ProcessKey, action: ProcessAction) -> Result<NativeBinding, CommandError> {
+        let rights = PROCESS_QUERY_LIMITED_INFORMATION
+            | PROCESS_SYNCHRONIZE
+            | if action == ProcessAction::ForceKill {
+                PROCESS_TERMINATE
+            } else {
+                0
+            };
         let handle = unsafe { OpenProcess(rights, 0, key.pid) };
         if handle.is_null() {
             return Err(map_windows_error(
@@ -669,21 +676,35 @@ mod platform {
                 "The PID now belongs to a different process; no action was taken.",
             ));
         }
-        Ok(NativeBinding { handle })
+        Ok(NativeBinding {
+            handle,
+            pid: key.pid,
+        })
     }
 
     impl ProcessBinding for NativeBinding {
         fn execute(self, action: ProcessAction) -> Result<ActionExecution, CommandError> {
-            if action != ProcessAction::ForceKill {
-                return Err(CommandError::new(
-                    "unsupported_action",
-                    "Windows only exposes force termination for arbitrary processes.",
-                ));
-            }
             if has_exited(&self.handle, 0)? {
                 return Ok(ActionExecution {
                     signal_sent: false,
                     outcome: ProcessActionOutcome::AlreadyExited,
+                });
+            }
+            if action == ProcessAction::RequestClose {
+                let posted = post_close_to_top_level_windows(self.pid)?;
+                if posted == 0 {
+                    return Err(CommandError::new(
+                        "graceful_close_unavailable",
+                        "This process has no top-level window that Windows can ask to close.",
+                    ));
+                }
+                return Ok(ActionExecution {
+                    signal_sent: true,
+                    outcome: if has_exited(&self.handle, 750)? {
+                        ProcessActionOutcome::Exited
+                    } else {
+                        ProcessActionOutcome::StillRunning
+                    },
                 });
             }
             if unsafe { TerminateProcess(raw_handle(&self.handle), 1) } == 0 {
@@ -708,6 +729,41 @@ mod platform {
         }
     }
 
+    struct WindowCloseContext {
+        pid: u32,
+        posted: u32,
+    }
+
+    unsafe extern "system" fn close_window_for_pid(
+        window: windows_sys::Win32::Foundation::HWND,
+        parameter: windows_sys::Win32::Foundation::LPARAM,
+    ) -> i32 {
+        let context = unsafe { &mut *(parameter as *mut WindowCloseContext) };
+        let mut owner_pid = 0;
+        unsafe { GetWindowThreadProcessId(window, &mut owner_pid) };
+        if owner_pid == context.pid && unsafe { PostMessageW(window, WM_CLOSE, 0, 0) } != 0 {
+            context.posted = context.posted.saturating_add(1);
+        }
+        1
+    }
+
+    fn post_close_to_top_level_windows(pid: u32) -> Result<u32, CommandError> {
+        let mut context = WindowCloseContext { pid, posted: 0 };
+        if unsafe {
+            EnumWindows(
+                Some(close_window_for_pid),
+                (&mut context as *mut WindowCloseContext) as isize,
+            )
+        } == 0
+        {
+            return Err(map_windows_error(
+                unsafe { GetLastError() },
+                "enumerate application windows",
+            ));
+        }
+        Ok(context.posted)
+    }
+
     fn raw_handle(handle: &OwnedHandle) -> HANDLE {
         handle.as_raw_handle()
     }
@@ -727,7 +783,7 @@ mod platform {
         }
     }
 
-    fn map_windows_error(code: u32, operation: &str) -> CommandError {
+    pub(super) fn map_windows_error(code: u32, operation: &str) -> CommandError {
         use windows_sys::Win32::Foundation::{
             ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER, ERROR_PRIVILEGE_NOT_HELD,
         };
@@ -779,7 +835,7 @@ mod platform {
         }
     }
 
-    pub fn bind(_key: &ProcessKey) -> Result<NativeBinding, CommandError> {
+    pub fn bind(_key: &ProcessKey, _action: ProcessAction) -> Result<NativeBinding, CommandError> {
         Err(CommandError::new(
             "control_unavailable",
             "Stable process control is not implemented for this platform.",
@@ -1133,6 +1189,132 @@ mod tests {
             assert!(helper.try_wait().unwrap().is_none());
             helper.kill().unwrap();
             helper.wait().unwrap();
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    mod linux_process_tests {
+        use std::process::Command;
+
+        use crate::identity::read_birth_token;
+        use crate::models::{
+            ProcessAction, ProcessActionOutcome, ProcessActionRequest, ProcessControlLeaseRequest,
+            ProcessControlTargeting, ProcessKey,
+        };
+
+        use super::super::super::ProcessController;
+
+        #[test]
+        fn pidfd_request_close_terminates_only_the_bound_helper() {
+            let mut helper = Command::new("sleep").arg("30").spawn().unwrap();
+            let pid = helper.id();
+            let key = ProcessKey {
+                pid,
+                birth_token: read_birth_token(pid).unwrap(),
+            };
+            let mut controller = ProcessController::new();
+            assert_eq!(
+                controller.capabilities().targeting,
+                ProcessControlTargeting::StableHandle
+            );
+            let lease = controller
+                .create_lease(ProcessControlLeaseRequest {
+                    key: key.clone(),
+                    action: ProcessAction::RequestClose,
+                    acknowledge_best_effort: false,
+                })
+                .unwrap();
+            let result = controller
+                .execute_action(ProcessActionRequest {
+                    lease_id: lease.id,
+                    key,
+                    action: ProcessAction::RequestClose,
+                })
+                .unwrap();
+
+            assert!(result.signal_sent);
+            assert!(matches!(
+                result.outcome,
+                ProcessActionOutcome::Exited | ProcessActionOutcome::StillRunning
+            ));
+            helper.wait().unwrap();
+        }
+
+        #[test]
+        fn stale_linux_identity_never_signals_the_helper() {
+            let mut helper = Command::new("sleep").arg("30").spawn().unwrap();
+            let mut controller = ProcessController::new();
+            let error = controller
+                .create_lease(ProcessControlLeaseRequest {
+                    key: ProcessKey {
+                        pid: helper.id(),
+                        birth_token: "linux:stale".to_owned(),
+                    },
+                    action: ProcessAction::ForceKill,
+                    acknowledge_best_effort: false,
+                })
+                .unwrap_err();
+            assert_eq!(error.code, "stale_process");
+            assert!(helper.try_wait().unwrap().is_none());
+            helper.kill().unwrap();
+            helper.wait().unwrap();
+        }
+    }
+
+    #[cfg(windows)]
+    mod windows_process_tests {
+        use std::process::Command;
+
+        use windows_sys::Win32::Foundation::ERROR_ACCESS_DENIED;
+
+        use crate::identity::read_birth_token;
+        use crate::models::{
+            ProcessAction, ProcessActionRequest, ProcessControlLeaseRequest,
+            ProcessControlTargeting, ProcessKey,
+        };
+
+        use super::super::super::{ProcessController, platform};
+
+        #[test]
+        fn stable_handle_force_kill_terminates_the_bound_helper() {
+            let mut helper = Command::new("cmd")
+                .args(["/C", "ping 127.0.0.1 -n 30 >NUL"])
+                .spawn()
+                .unwrap();
+            let pid = helper.id();
+            let key = ProcessKey {
+                pid,
+                birth_token: read_birth_token(pid).unwrap(),
+            };
+            let mut controller = ProcessController::new();
+            assert_eq!(
+                controller.capabilities().targeting,
+                ProcessControlTargeting::StableHandle
+            );
+            let lease = controller
+                .create_lease(ProcessControlLeaseRequest {
+                    key: key.clone(),
+                    action: ProcessAction::ForceKill,
+                    acknowledge_best_effort: false,
+                })
+                .unwrap();
+            let result = controller
+                .execute_action(ProcessActionRequest {
+                    lease_id: lease.id,
+                    key,
+                    action: ProcessAction::ForceKill,
+                })
+                .unwrap();
+            assert!(result.signal_sent);
+            helper.wait().unwrap();
+        }
+
+        #[test]
+        fn windows_permission_errors_are_not_reported_as_internal_failures() {
+            assert_eq!(
+                platform::map_windows_error(ERROR_ACCESS_DENIED, "control the process").code,
+                "permission_denied"
+            );
         }
     }
 }

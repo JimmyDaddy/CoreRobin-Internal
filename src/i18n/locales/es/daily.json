@@ -19,6 +19,18 @@
     "thisMac": "Este equipo",
     "thisComputer": "Este ordenador"
   },
+  "weekly": {
+    "kicker": "Resumen de siete días", "title": "Ayer y esta semana",
+    "description": "Compara anomalías y acciones sin inventar una puntuación de salud.",
+    "today": "Hoy", "yesterday": "Ayer", "sevenDays": "Últimos 7 días",
+    "anomalies": "Anomalías", "actions": "Acciones", "improvements": "Mejoras observadas",
+    "averages": "CPU media {{cpu}} · memoria {{memory}}", "comparisonTitle": "Comparado con ayer",
+    "comparison": { "same": "Hoy hay las mismas {{count}} anomalías.", "fewer": "Hoy hay {{count}} menos.", "more": "Hoy hay {{count}} más." },
+    "coverage": "{{days}} días con datos · media diaria {{average}}", "improvementsTitle": "Acciones seguidas de una mejora",
+    "improvementObserved": "{{metrics}} bajó tras la acción · {{time}}", "noImprovements": "Aún no hay suficientes muestras anteriores y posteriores.",
+    "notification": "Recordatorio semanal", "notificationUnavailable": "Activa primero las notificaciones de escritorio.",
+    "notificationTitle": "Tu resumen semanal de CoreRobin está listo", "notificationBody": "7 días: {{anomalies}} anomalías y {{improvements}} mejoras observadas."
+  },
   "status": {
     "observing": {
       "short": "Analizando su estado normal",
@@ -407,6 +419,20 @@
     "resultsTitle": "Resultados observados",
     "resultsDescription": "Compara muestras locales antes y después sin afirmar una relación causal.",
     "noResults": "Los resultados aparecerán aquí tras cerrar una app, limpiar archivos o ajustar elementos de inicio.",
+    "metricNames": { "cpu": "CPU", "memory": "Memoria" },
+    "observedMetric": "{{metric}}: después de la acción {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "Se seleccionaron {{selected}}, se procesaron {{succeeded}}, se omitieron {{skipped}} y se liberaron {{size}}.",
+      "uninstallRemoved": "La aplicación se eliminó; se procesaron {{succeeded}} residuos y fallaron {{failed}}.",
+      "uninstallKept": "No se confirmó la eliminación de la aplicación; se procesaron {{succeeded}} residuos y fallaron {{failed}}.",
+      "volumeEjected": "El sistema confirmó que el volumen se desmontó.",
+      "volumeNotEjected": "No se confirmó que el volumen se desmontara.",
+      "startupChanged": "Se comprobó y confirmó el estado de inicio solicitado.",
+      "startupNotConfirmed": "No se pudo confirmar el estado de inicio solicitado.",
+      "updateReady": "La actualización se descargó e instaló; falta reiniciar.",
+      "updateConfirmed": "La aplicación se reinició y la versión actual es {{version}}.",
+      "updateNotInstalled": "No se confirmó la instalación de la actualización."
+    },
     "open": "Abrir función relacionada"
   },
   "records": {

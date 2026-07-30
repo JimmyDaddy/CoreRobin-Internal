@@ -94,6 +94,7 @@
   "description": "시스템 디스크를 스캔하여 실제 파일 경로별 사용량을 확인합니다.",
   "startScan": "읽기 전용 스캔 시작",
   "scanAgain": "다시 스캔",
+  "restartScan": "스캔 다시 시작",
   "scanning": "스캔 중…",
   "cancelScan": "스캔 중단",
   "cancelling": "중단 중…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "스캔 중 {{location}}",
+    "paused": "Mac이 잠자기 상태입니다. 깨어나면 스캔을 계속합니다",
+    "stalled": "스캔이 한동안 진행되지 않았습니다",
+    "stalledTitle": "스캔이 멈춘 것 같습니다",
+    "stalledDescription": "계속 기다리지 않고 다시 시작하여 이전 스캔 작업을 종료할 수 있습니다.",
     "entries": "확인됨",
     "discovered": "발견됨",
     "elapsed": "소요 시간",

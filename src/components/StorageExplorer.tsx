@@ -29,7 +29,6 @@ import {
   storageHistorySegments,
   storageHistoryWindow,
   topDiskProcesses,
-  type StorageSeriesPoint,
 } from "../storageExplorer";
 import type { UsageThresholds } from "../settings";
 import type {
@@ -50,6 +49,7 @@ import {
   resourceUsageLevel,
 } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 
 interface StorageExplorerProps {
   disk: DiskSnapshot;
@@ -66,11 +66,6 @@ interface StorageExplorerProps {
     input: CompleteUserActionInput,
   ) => void;
 }
-
-const CHART_WIDTH = 720;
-const CHART_HEIGHT = 136;
-const CHART_TOP = 8;
-const CHART_BOTTOM = 128;
 
 export function StorageExplorer({
   disk,
@@ -187,6 +182,11 @@ export function StorageExplorer({
           verification: "verified",
           targetCount: 1,
           failedCount: 0,
+          outcome: {
+            selectedCount: 1,
+            succeededCount: 1,
+            volumeUnmounted: true,
+          },
         });
       }
       setConfirmingMountPoint(null);
@@ -198,6 +198,11 @@ export function StorageExplorer({
           verification: "not_confirmed",
           targetCount: 0,
           failedCount: 1,
+          outcome: {
+            selectedCount: 1,
+            succeededCount: 0,
+            volumeUnmounted: false,
+          },
         });
       }
       const error = normalizeCommandError(caughtError);
@@ -616,58 +621,41 @@ function StorageThroughput({
       ) : (
         <>
           <div className="storage-history__plot">
-            <svg
-              className="storage-history__chart"
-              viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-              preserveAspectRatio="none"
-              role="img"
-              aria-label={t("storage:chartLabel", {
+            <TimeSeriesChart
+              ariaLabel={t("storage:chartLabel", {
                 read: formatRate(disk.readBytesPerSecond),
                 write: formatRate(disk.writeBytesPerSecond),
               })}
-            >
-              <defs>
-                <linearGradient id="storage-read-area" x1="0" x2="0" y1="0%" y2="100%">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {[0, 0.33, 0.66, 1].map((ratio) => (
-                <line
-                  className="storage-history__grid-line"
-                  key={ratio}
-                  x1="0"
-                  x2={CHART_WIDTH}
-                  y1={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-                  y2={CHART_TOP + ratio * (CHART_BOTTOM - CHART_TOP)}
-                />
-              ))}
-              {readSegments.map((segment, index) => (
-                <path
-                  className="storage-history__area"
-                  d={storageAreaPath(segment, domain.start, domain.end, maximum)}
-                  key={`read-area-${index}`}
-                />
-              ))}
-              {readSegments.map((segment, index) => (
-                <path
-                  className="storage-history__line storage-history__line--read"
-                  d={storagePath(segment, domain.start, domain.end, maximum)}
-                  key={`read-${index}`}
-                />
-              ))}
-              {writeSegments.map((segment, index) => (
-                <path
-                  className="storage-history__line storage-history__line--write"
-                  d={storagePath(segment, domain.start, domain.end, maximum)}
-                  key={`write-${index}`}
-                />
-              ))}
-            </svg>
-            <div className="storage-history__axis" aria-hidden="true">
-              <span>{t(domain.complete ? "common:fiveMinutesBack" : "common:earlier")}</span>
-              <span>{t("common:now")}</span>
-            </div>
+              className="storage-history__chart"
+              completenessLabel={(percent) => t("history:dataCompleteness", { percent })}
+              earlierLabel={t(domain.complete ? "common:fiveMinutesBack" : "common:earlier")}
+              endAtMs={domain.end}
+              expectedIntervalMs={1_000}
+              gapThresholdMs={5_000}
+              maximum={maximum}
+              nowLabel={t("common:now")}
+              points={points.map((point) => ({
+                timestamp: point.timestamp,
+                values: [
+                  point.diskReadBytesPerSecond,
+                  point.diskWriteBytesPerSecond,
+                ],
+              }))}
+              series={[
+                {
+                  label: t("common:read"),
+                  color: "var(--green)",
+                  format: formatRate,
+                },
+                {
+                  label: t("common:write"),
+                  color: "var(--amber)",
+                  dashed: true,
+                  format: formatRate,
+                },
+              ]}
+              startAtMs={domain.start}
+            />
           </div>
           <div className="storage-history__footer">
             {!domain.complete ? (
@@ -685,40 +673,4 @@ function StorageThroughput({
       )}
     </section>
   );
-}
-
-function storagePath(
-  segment: readonly StorageSeriesPoint[],
-  windowStart: number,
-  windowEnd: number,
-  maximum: number,
-): string {
-  const duration = Math.max(1, windowEnd - windowStart);
-  const commands = segment.map((point, index) => {
-    const x = ((point.timestamp - windowStart) / duration) * CHART_WIDTH;
-    const y = CHART_BOTTOM - (point.value / maximum) * (CHART_BOTTOM - CHART_TOP);
-    return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  });
-  if (commands.length === 1) commands.push("h0.01");
-  return commands.join(" ");
-}
-
-function storageAreaPath(
-  segment: readonly StorageSeriesPoint[],
-  windowStart: number,
-  windowEnd: number,
-  maximum: number,
-): string {
-  if (segment.length === 0) return "";
-  const duration = Math.max(1, windowEnd - windowStart);
-  const firstX = ((segment[0]!.timestamp - windowStart) / duration) * CHART_WIDTH;
-  const lastX =
-    ((segment[segment.length - 1]!.timestamp - windowStart) / duration)
-    * CHART_WIDTH;
-  return [
-    storagePath(segment, windowStart, windowEnd, maximum),
-    `L${lastX.toFixed(1)} ${CHART_BOTTOM}`,
-    `L${firstX.toFixed(1)} ${CHART_BOTTOM}`,
-    "Z",
-  ].join(" ");
 }

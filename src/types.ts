@@ -32,6 +32,11 @@ export interface SamplerStatus {
   paused: boolean;
   active: boolean;
   intervalMs: number;
+  fullSnapshotIntervalMs: number | null;
+  lastFullSnapshotAtMs: number | null;
+  lastFrontendHeartbeatAtMs: number | null;
+  dataFreshness: "live" | "paused" | "stale";
+  sampleKind: "full" | "summary" | null;
   lastAttemptAtMs: number | null;
   lastSuccessAtMs: number | null;
   consecutiveFailures: number;
@@ -42,6 +47,7 @@ export interface SamplerControl {
   active: boolean;
   paused: boolean;
   intervalMs?: number | null;
+  fullSnapshotIntervalMs?: number | null;
 }
 
 export type SystemHealthSnapshot = Pick<
@@ -433,6 +439,31 @@ export interface CleanupScanTarget {
   targetPath: string | null;
 }
 
+export type CleanupScanJobPhase =
+  | "preparing"
+  | "scanning"
+  | "paused"
+  | "cancelling"
+  | "cancelled"
+  | "completed"
+  | "failed"
+  | "stalled";
+
+export interface CleanupScanJobStatus {
+  jobId: string;
+  generation: number;
+  phase: CleanupScanJobPhase;
+  startedAtMs: number;
+  updatedAtMs: number;
+  lastHeartbeatAtMs: number | null;
+  lastProgressAtMs: number | null;
+  progress: CleanupScanProgress;
+  target: CleanupScanTarget;
+  resultAvailable: boolean;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
 export type CleanupFullDiskAccessStatus =
   | "granted"
   | "not_granted"
@@ -770,7 +801,11 @@ export type ProcessControlTargeting =
   | "best_effort_pid"
   | "unavailable";
 
-export type ProcessActionSemantic = "sigterm" | "sigkill" | "terminate_process";
+export type ProcessActionSemantic =
+  | "sigterm"
+  | "sigkill"
+  | "wm_close"
+  | "terminate_process";
 
 export interface ProcessActionCapability {
   enabled: boolean;

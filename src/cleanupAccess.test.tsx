@@ -173,6 +173,7 @@ function renderAssistant(
       error={null}
       loading={loading}
       cancelling={false}
+      phase={loading ? "scanning" : null}
       progress={progress}
       snapshotStatus="current"
       onScan={onScan}

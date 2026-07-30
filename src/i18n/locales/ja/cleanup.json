@@ -94,6 +94,7 @@
   "description": "システムドライブをスキャンし、実際のファイルパスごとの使用状況を確認します。",
   "startScan": "読み取り専用スキャンを開始",
   "scanAgain": "再度スキャン",
+  "restartScan": "スキャンを再開",
   "scanning": "スキャン中…",
   "cancelScan": "スキャンを停止",
   "cancelling": "停止しています…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
+    "paused": "Macはスリープ中です。復帰後にスキャンを続行します",
+    "stalled": "スキャンがしばらく進んでいません",
+    "stalledTitle": "スキャンが停止している可能性があります",
+    "stalledDescription": "待ち続けず、再開すると以前のスキャン処理を終了できます。",
     "entries": "確認済み",
     "discovered": "検出されました",
     "elapsed": "経過時間",

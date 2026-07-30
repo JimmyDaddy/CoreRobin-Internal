@@ -341,11 +341,47 @@ pub enum CleanupScanTargetKind {
     Folder,
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScanRequest {
     pub target_kind: CleanupScanTargetKind,
     pub target_path: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupScanJobPhase {
+    Preparing,
+    Scanning,
+    Paused,
+    Cancelling,
+    Cancelled,
+    Completed,
+    Failed,
+    Stalled,
+}
+
+impl CleanupScanJobPhase {
+    pub fn is_terminal(self) -> bool {
+        matches!(self, Self::Cancelled | Self::Completed | Self::Failed)
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScanJobStatus {
+    pub job_id: String,
+    pub generation: u64,
+    pub phase: CleanupScanJobPhase,
+    pub started_at_ms: u64,
+    pub updated_at_ms: u64,
+    pub last_heartbeat_at_ms: Option<u64>,
+    pub last_progress_at_ms: Option<u64>,
+    pub progress: CleanupScanProgress,
+    pub target: CleanupScanRequest,
+    pub result_available: bool,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -559,7 +595,7 @@ pub struct CleanupSubtreeRequest {
     pub expand_smaller_objects: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScanProgress {
     pub scanned_entry_count: usize,
@@ -1030,6 +1066,7 @@ pub enum ProcessControlTargeting {
 pub enum ProcessActionSemantic {
     Sigterm,
     Sigkill,
+    WmClose,
     TerminateProcess,
 }
 

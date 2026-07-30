@@ -41,6 +41,7 @@ import type {
   CleanupLocationKind,
   CleanupScan,
   CleanupScanAccess,
+  CleanupScanJobPhase,
   CleanupScanProgress,
   CleanupScanTarget,
   CommandError,
@@ -78,6 +79,7 @@ interface CleanupAssistantProps {
   error: CommandError | null;
   loading: boolean;
   cancelling: boolean;
+  phase: CleanupScanJobPhase | null;
   progress: CleanupScanProgress | null;
   snapshotStatus: CleanupSnapshotStatus;
   growthComparison?: CleanupScanGrowthComparison | null;
@@ -108,6 +110,7 @@ export function CleanupAssistant({
   error,
   loading,
   cancelling,
+  phase,
   progress,
   snapshotStatus,
   growthComparison = null,
@@ -168,6 +171,8 @@ export function CleanupAssistant({
     [snapshot],
   );
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
+  const scanStalled = phase === "stalled";
+  const scanPaused = phase === "paused";
   const pristine = !snapshot && !loading && !error && !accessGuideOpen;
   const selectableVolumes = useMemo(
     () => volumes.filter((volume) => volume.mountPoint !== "/"),
@@ -246,7 +251,11 @@ export function CleanupAssistant({
   }, [checkScanAccess, waitingForAccess]);
 
   const requestScan = () => {
-    if (loading) {
+    if (scanStalled) {
+      startSelectedScan();
+      return;
+    }
+    if (loading && !scanStalled) {
       onCancel();
       return;
     }
@@ -373,12 +382,16 @@ export function CleanupAssistant({
             disabled={cancelling || checkingAccess}
             onClick={requestScan}
           >
-            {loading
+            {scanStalled
+              ? <RefreshCw size={15} />
+              : loading
               ? cancelling ? <RefreshCw className="is-spinning" size={15} /> : <Square size={13} />
               : checkingAccess ? <RefreshCw className="is-spinning" size={15} /> : <ScanSearch size={15} />}
             {checkingAccess
               ? t("cleanup:access.checking")
-              : loading
+              : scanStalled
+                ? t("cleanup:restartScan")
+                : loading
                 ? cancelling ? t("cleanup:cancelling") : t("cleanup:cancelScan")
                 : snapshot
                   ? t("cleanup:scanAgain")
@@ -587,7 +600,16 @@ export function CleanupAssistant({
           <div className="cleanup-progress__content">
             <span><RefreshCw className="is-spinning" size={15} /></span>
             <div>
-              <strong>{t("cleanup:progress.scanningLocation", { location: progressLocation })}</strong>
+              <strong>
+                {t(
+                  scanStalled
+                    ? "cleanup:progress.stalled"
+                    : scanPaused
+                      ? "cleanup:progress.paused"
+                      : "cleanup:progress.scanningLocation",
+                  { location: progressLocation },
+                )}
+              </strong>
             </div>
           </div>
           <dl>
@@ -595,6 +617,16 @@ export function CleanupAssistant({
             <div><dt>{t("cleanup:progress.discovered")}</dt><dd>{formatBytes(progress.discoveredBytes)}</dd></div>
             <div><dt>{t("cleanup:progress.elapsed")}</dt><dd>{Math.max(0.1, progress.elapsedMs / 1_000).toFixed(1)}s</dd></div>
           </dl>
+        </div>
+      ) : null}
+
+      {scanStalled ? (
+        <div className="cleanup-assistant__error is-recoverable" role="alert">
+          <AlertTriangle size={17} />
+          <div>
+            <strong>{t("cleanup:progress.stalledTitle")}</strong>
+            <span>{t("cleanup:progress.stalledDescription")}</span>
+          </div>
         </div>
       ) : null}
 

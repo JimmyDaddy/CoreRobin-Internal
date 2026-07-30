@@ -8,9 +8,11 @@ import { useCleanupScan } from "./useCleanupScan";
 const cleanupApi = vi.hoisted(() => ({
   cancelCleanupScan: vi.fn(),
   clearPersistedCleanupScan: vi.fn(),
-  getCleanupScan: vi.fn(),
+  getCleanupScanJob: vi.fn(),
+  loadCleanupScanJobResult: vi.fn(),
   loadPersistedCleanupScan: vi.fn(),
   savePersistedCleanupScan: vi.fn(),
+  startCleanupScan: vi.fn(),
 }));
 
 vi.mock("../api", () => cleanupApi);
@@ -33,21 +35,43 @@ vi.mock("./useNativeHistoryStorage", () => ({
 function Harness() {
   const scan = useCleanupScan();
   return (
-    <button type="button" onClick={() => void scan.scan()}>
-      Start
-    </button>
+    <>
+      <span>{scan.phase ?? "idle"}</span>
+      <button type="button" onClick={() => void scan.scan()}>Start</button>
+      <button type="button" onClick={() => void scan.cancel()}>Stop</button>
+    </>
   );
 }
+
+const runningJob = {
+  jobId: "cleanup-1",
+  generation: 1,
+  phase: "scanning" as const,
+  startedAtMs: 100,
+  updatedAtMs: 200,
+  lastHeartbeatAtMs: 200,
+  lastProgressAtMs: 200,
+  progress: {
+    scannedEntryCount: 640,
+    discoveredBytes: 1_280_000_000,
+    currentPath: "~/Downloads",
+    elapsedMs: 100,
+  },
+  target: { targetKind: "system_disk" as const, targetPath: null },
+  resultAvailable: false,
+  errorCode: null,
+  errorMessage: null,
+};
 
 describe("cleanup scan lifecycle", () => {
   beforeEach(() => {
     cleanupApi.cancelCleanupScan.mockReset().mockResolvedValue(true);
     cleanupApi.clearPersistedCleanupScan.mockReset().mockResolvedValue(undefined);
-    cleanupApi.getCleanupScan.mockReset().mockImplementation(
-      () => new Promise(() => undefined),
-    );
+    cleanupApi.getCleanupScanJob.mockReset().mockResolvedValue(null);
+    cleanupApi.loadCleanupScanJobResult.mockReset();
     cleanupApi.loadPersistedCleanupScan.mockReset().mockResolvedValue(null);
     cleanupApi.savePersistedCleanupScan.mockReset().mockResolvedValue(undefined);
+    cleanupApi.startCleanupScan.mockReset().mockResolvedValue(runningJob);
     window.localStorage.clear();
   });
 
@@ -56,14 +80,27 @@ describe("cleanup scan lifecycle", () => {
     vi.clearAllMocks();
   });
 
-  it("cancels the native worker when reload abandons an active scan", async () => {
+  it("reattaches to a native scan after the WebView reloads", async () => {
+    cleanupApi.getCleanupScanJob.mockResolvedValue(runningJob);
     const view = render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
-    await waitFor(() => expect(cleanupApi.getCleanupScan).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByText("scanning")).toBeTruthy());
 
-    window.dispatchEvent(new Event("pagehide"));
+    view.unmount();
+    expect(cleanupApi.cancelCleanupScan).not.toHaveBeenCalled();
+
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("scanning")).toBeTruthy());
+    expect(cleanupApi.getCleanupScanJob.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(cleanupApi.cancelCleanupScan).not.toHaveBeenCalled();
+  });
+
+  it("asks the native manager to cancel the active job", async () => {
+    cleanupApi.getCleanupScanJob.mockResolvedValue(runningJob);
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("scanning")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
 
     await waitFor(() => expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce());
-    view.unmount();
   });
 });

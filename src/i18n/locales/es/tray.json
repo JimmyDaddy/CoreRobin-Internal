@@ -10,6 +10,10 @@
     "foreground": "Muestreo en primer plano",
     "background": "Muestreo en segundo plano"
   },
+  "dataStatus": {
+    "paused": "Datos en pausa",
+    "stale": "Datos desactualizados"
+  },
   "health": {
     "loading": "Conectando",
     "observing": "Analizando estado",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "Estudiando el estado de este equipo",
       "description": "Observando durante un tiempo para evitar confundir un pico breve con un problema."
+    },
+    "stale": {
+      "title": "No hay datos recientes del sistema",
+      "description": "Se interrumpió la conexión con el monitor principal. Vuelva a abrir CoreRobin para reanudarla."
     },
     "normal": {
       "title": "El equipo funciona correctamente",

@@ -72,6 +72,7 @@ export interface AppSettings {
   applicationWatchRules: ApplicationWatchRule[];
   trashApplicationWatcherEnabled: boolean;
   desktopNotificationsEnabled: boolean;
+  weeklyReviewNotificationEnabled: boolean;
   mutedNotificationResources: ResourceAlertResource[];
   interfaceScale: InterfaceScale;
   reduceMotion: boolean;
@@ -103,6 +104,7 @@ export function defaultAppSettings(
     applicationWatchRules: [],
     trashApplicationWatcherEnabled: false,
     desktopNotificationsEnabled: false,
+    weeklyReviewNotificationEnabled: false,
     mutedNotificationResources: [],
     interfaceScale: "comfortable",
     reduceMotion: false,
@@ -195,6 +197,10 @@ export function parseAppSettings(
         typeof value.desktopNotificationsEnabled === "boolean"
           ? value.desktopNotificationsEnabled
           : fallback.desktopNotificationsEnabled,
+      weeklyReviewNotificationEnabled:
+        typeof value.weeklyReviewNotificationEnabled === "boolean"
+          ? value.weeklyReviewNotificationEnabled
+          : fallback.weeklyReviewNotificationEnabled,
       mutedNotificationResources: isNotificationResourceArray(value.mutedNotificationResources)
         ? value.mutedNotificationResources
         : fallback.mutedNotificationResources,

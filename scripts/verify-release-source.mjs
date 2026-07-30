@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { readPublicReleaseNote } from "./public-release-notes.mjs";
+import {
+  assertUserFacingText,
+  readPublicReleaseNote,
+} from "./public-release-notes.mjs";
 
 export function versionFromReleaseTag(tag) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
@@ -39,7 +42,7 @@ export function readProjectVersions(repositoryRoot = process.cwd()) {
   };
 }
 
-export function assertReleaseChangelog(version, changelog) {
+export function assertReleaseChangelog(version, changelog, releaseNote) {
   const escapedVersion = version.replaceAll(".", "\\.");
   const heading = new RegExp(`^##\\s+${escapedVersion}(?:\\s|—|$).*`, "m");
   const match = changelog.match(heading);
@@ -51,6 +54,17 @@ export function assertReleaseChangelog(version, changelog) {
   const nextHeading = remaining.search(/^##\s+/m);
   const body = (nextHeading < 0 ? remaining : remaining.slice(0, nextHeading)).trim();
   if (!body) throw new Error(`CHANGELOG.md release section for ${version} is empty.`);
+  assertUserFacingText(body, "zh-CN", "CHANGELOG section", `v${version}`);
+  if (releaseNote) {
+    const missingItems = releaseNote.items
+      .map((item) => item["zh-CN"])
+      .filter((item) => !body.includes(item));
+    if (missingItems.length > 0) {
+      throw new Error(
+        `CHANGELOG.md must mirror the structured user release note for ${version}; missing ${missingItems.length} item(s).`,
+      );
+    }
+  }
 }
 
 export function verifyReleaseReadiness(expectedVersion, repositoryRoot = process.cwd()) {
@@ -59,9 +73,9 @@ export function verifyReleaseReadiness(expectedVersion, repositoryRoot = process
   }
   const versions = readProjectVersions(repositoryRoot);
   assertMatchingVersions(expectedVersion, versions);
-  const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
-  assertReleaseChangelog(expectedVersion, changelog);
   const releaseNote = readPublicReleaseNote(`v${expectedVersion}`, repositoryRoot);
+  const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
+  assertReleaseChangelog(expectedVersion, changelog, releaseNote);
   return { expectedVersion, versions, releaseNote };
 }
 

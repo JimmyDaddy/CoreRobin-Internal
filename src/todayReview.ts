@@ -19,7 +19,14 @@ export type TodayReviewStatus = "active" | "settled" | "handled" | "calm";
 
 export interface TodayActionResult {
   record: UserActionRecord;
+  cpuEffect: ObservedMetricEffect;
+  memoryEffect: ObservedMetricEffect;
+}
+
+export interface ObservedMetricEffect {
   effect: ActionObservedEffect;
+  beforeAverage: number | null;
+  afterAverage: number | null;
 }
 
 export interface TodayReviewSummary {
@@ -94,29 +101,38 @@ export function buildTodayReview({
       todayPoints.map(({ memoryPercent }) => memoryPercent),
     ),
     leadingApplicationName: leadingApplication?.name ?? null,
-    actionResults: completedActions.slice(0, 4).map((record) => ({
-      record,
-      effect: observedActionEffect(points, record),
-    })),
+    actionResults: completedActions.slice(0, 4).map((record) => {
+      const observed = observedActionEffects(points, record);
+      return {
+        record,
+        cpuEffect: observed.cpu,
+        memoryEffect: observed.memory,
+      };
+    }),
   };
 }
 
-export function observedActionEffect(
+export function observedActionEffects(
   points: readonly HistoryPoint[],
   action: UserActionRecord,
-): ActionObservedEffect {
+): { cpu: ObservedMetricEffect; memory: ObservedMetricEffect } {
+  const notApplicable: ObservedMetricEffect = {
+    effect: "not_applicable",
+    beforeAverage: null,
+    afterAverage: null,
+  };
   if (
     action.status !== "succeeded"
     && action.status !== "partial"
   ) {
-    return "not_applicable";
+    return { cpu: notApplicable, memory: notApplicable };
   }
   if (
     action.kind !== "process_close"
     && action.kind !== "process_restart"
     && action.kind !== "process_force_quit"
   ) {
-    return "not_applicable";
+    return { cpu: notApplicable, memory: notApplicable };
   }
   const completedAtMs = action.completedAtMs ?? action.startedAtMs;
   const windowMs = 15 * 60 * 1_000;
@@ -126,19 +142,55 @@ export function observedActionEffect(
   const after = points.filter((point) =>
     point.timestamp > completedAtMs
     && point.timestamp <= completedAtMs + windowMs);
-  if (before.length < 2 || after.length < 2) return "insufficient";
+  if (before.length < 2 || after.length < 2) {
+    const insufficient: ObservedMetricEffect = {
+      effect: "insufficient",
+      beforeAverage: null,
+      afterAverage: null,
+    };
+    return { cpu: insufficient, memory: insufficient };
+  }
+  return {
+    cpu: metricEffect(before, after, (point) => point.cpuPercent),
+    memory: metricEffect(before, after, (point) => point.memoryPercent),
+  };
+}
 
-  const delta = averagePressure(after) - averagePressure(before);
-  if (delta <= -5) return "improved";
-  if (delta >= 5) return "increased";
+export function observedActionEffect(
+  points: readonly HistoryPoint[],
+  action: UserActionRecord,
+): ActionObservedEffect {
+  const { cpu, memory } = observedActionEffects(points, action);
+  if (cpu.effect === "not_applicable") return "not_applicable";
+  if (cpu.effect === "insufficient" || memory.effect === "insufficient") {
+    return "insufficient";
+  }
+  if (cpu.effect === "increased" || memory.effect === "increased") {
+    return "increased";
+  }
+  if (cpu.effect === "improved" || memory.effect === "improved") {
+    return "improved";
+  }
   return "stable";
 }
 
-function averagePressure(samples: readonly HistoryPoint[]): number {
-  return samples.reduce(
-    (total, point) => total + point.cpuPercent + point.memoryPercent,
-    0,
-  ) / samples.length;
+function metricEffect(
+  before: readonly HistoryPoint[],
+  after: readonly HistoryPoint[],
+  value: (point: HistoryPoint) => number,
+): ObservedMetricEffect {
+  const beforeAverage = average(before.map(value));
+  const afterAverage = average(after.map(value));
+  const delta = afterAverage - beforeAverage;
+  return {
+    effect: delta <= -5 ? "improved" : delta >= 5 ? "increased" : "stable",
+    beforeAverage,
+    afterAverage,
+  };
+}
+
+function average(values: readonly number[]): number {
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function maximum(values: readonly number[]): number {

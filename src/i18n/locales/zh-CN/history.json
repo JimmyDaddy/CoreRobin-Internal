@@ -29,6 +29,8 @@
   "throughputChart": "磁盘与网络吞吐",
   "resourceChartLabel": "历史 CPU 与内存趋势",
   "throughputChartLabel": "历史磁盘与网络吞吐趋势",
+  "chartRange": "图表时间范围",
+  "dataCompleteness": "数据完整度 {{percent}}%",
   "stories": {
     "eyebrow": "发生过什么",
     "title": "电脑状态故事",
@@ -188,6 +190,24 @@
       "not_applicable": "这项操作不适合用系统压力变化判断效果"
     }
   },
+  "export": {
+    "eyebrow": "本地副本",
+    "title": "导出历史数据",
+    "description": "选择时间范围和指标，确认隐私内容后，将 CSV 或 JSON 文件保存到这台电脑。",
+    "range": "时间范围",
+    "ranges": { "24": "24 小时", "168": "7 天", "all": "全部记录" },
+    "format": "文件格式",
+    "metrics": "指标与记录",
+    "metric": { "cpu": "CPU", "memory": "内存", "disk": "磁盘", "network": "网络", "events": "异常提醒", "actions": "已完成操作", "applications": "应用影响" },
+    "previewTitle": "隐私预览",
+    "preview": "{{from}} 至 {{to}}，共 {{count}} 行",
+    "excluded": "始终不包含进程命令、完整文件路径和网络连接地址。",
+    "includeNames": "包含应用名称",
+    "includeNamesDescription": "默认关闭；关闭时应用身份会替换为 application-1 等匿名标签。",
+    "localOnly": "文件只保存在本机，不会上传。",
+    "save": "保存导出文件",
+    "saved": "历史数据已导出。"
+  },
   "privacyEyebrow": "数据边界",
   "privacyTitle": "隐私说明",
   "privacyLocal": "历史只保存在当前设备的 CoreRobin 私有存储中，不会上传或同步。",
@@ -208,6 +228,7 @@
     "learningTitle": "正在建立应用历史",
     "learningDescription": "收集到足够的五分钟采样后会显示排名。",
     "timeline": "应用影响趋势",
+    "relativeActivity": "相对活动",
     "timelineHint": "点击柱形查看对应时段",
     "explanation": "{{time}} 左右，{{name}} 在该时段影响最高，平均 CPU {{cpu}}、内存 {{memory}}。",
     "peakCpu": "CPU 峰值 {{value}}",

@@ -19,6 +19,28 @@
     "thisMac": "这台 Mac",
     "thisComputer": "这台电脑"
   },
+  "weekly": {
+    "kicker": "七天回顾",
+    "title": "昨天与这一周",
+    "description": "分别比较已记录的异常与处理结果，不把无关指标拼成健康分数。",
+    "today": "今天", "yesterday": "昨天", "sevenDays": "过去 7 天",
+    "anomalies": "异常", "actions": "已处理", "improvements": "观察到改善",
+    "averages": "平均 CPU {{cpu}} · 内存 {{memory}}",
+    "comparisonTitle": "与昨天相比",
+    "comparison": {
+      "same": "今天同样记录到 {{count}} 次异常。",
+      "fewer": "今天少记录到 {{count}} 次异常。",
+      "more": "今天多记录到 {{count}} 次异常。"
+    },
+    "coverage": "已有 {{days}} 天采样 · 七天日均 {{average}} 次异常",
+    "improvementsTitle": "操作后观察到的改善",
+    "improvementObserved": "操作后 {{metrics}} 下降 · {{time}}",
+    "noImprovements": "目前还没有哪项操作具备足够的前后采样来确认改善。",
+    "notification": "每周提醒",
+    "notificationUnavailable": "请先在设置中开启桌面通知，再启用本机每周提醒。",
+    "notificationTitle": "CoreRobin 每周回顾已准备好",
+    "notificationBody": "过去 7 天记录到 {{anomalies}} 次异常、{{improvements}} 项操作后改善。打开回顾可查看依据。"
+  },
   "status": {
     "observing": {
       "short": "正在了解状态",
@@ -412,6 +434,20 @@
     "resultsTitle": "处理效果",
     "resultsDescription": "只比较操作前后的本机采样，不把相关性说成因果。",
     "noResults": "完成退出应用、清理或启动项调整后，核对结果会显示在这里。",
+    "metricNames": { "cpu": "CPU", "memory": "内存" },
+    "observedMetric": "{{metric}}：操作后观察到 {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "选择 {{selected}} 项，成功处理 {{succeeded}} 项，跳过 {{skipped}} 项，实际释放 {{size}}。",
+      "uninstallRemoved": "应用本体已移除；成功处理 {{succeeded}} 个残留，{{failed}} 个未完成。",
+      "uninstallKept": "尚未确认应用本体已移除；成功处理 {{succeeded}} 个残留，{{failed}} 个未完成。",
+      "volumeEjected": "系统已确认该存储卷完成卸载。",
+      "volumeNotEjected": "系统未能确认该存储卷已卸载。",
+      "startupChanged": "系统已重新检查并确认启动状态已变更。",
+      "startupNotConfirmed": "暂时无法确认启动状态已经变更。",
+      "updateReady": "更新已下载并安装，仍需重启应用完成版本切换。",
+      "updateConfirmed": "应用已重启，并确认当前版本为 {{version}}。",
+      "updateNotInstalled": "尚未确认更新已安装。"
+    },
     "open": "打开对应功能"
   },
   "records": {

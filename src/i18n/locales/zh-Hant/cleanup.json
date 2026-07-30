@@ -94,6 +94,7 @@
   "description": "完整掃描系統磁碟，按真實檔案路徑檢視空間佔用。",
   "startScan": "開始只讀掃描",
   "scanAgain": "重新掃描",
+  "restartScan": "重新開始掃描",
   "scanning": "掃描中…",
   "cancelScan": "停止掃描",
   "cancelling": "正在停止…",
@@ -141,6 +142,10 @@
   },
   "progress": {
     "scanningLocation": "正在分析{{location}}",
+    "paused": "Mac 已進入睡眠，喚醒後將繼續掃描",
+    "stalled": "掃描長時間沒有進展",
+    "stalledTitle": "這次掃描可能卡住了",
+    "stalledDescription": "可以重新開始掃描；CoreRobin 會結束舊的掃描工作，不會繼續等待。",
     "entries": "已檢查",
     "discovered": "已發現",
     "elapsed": "已用時",

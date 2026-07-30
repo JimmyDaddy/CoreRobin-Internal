@@ -29,6 +29,8 @@
   "throughputChart": "디스크 및 네트워크 처리량 변화 추이",
   "resourceChartLabel": "역사적 CPU 및 메모리 사용량 변화",
   "throughputChartLabel": "과거의 디스크 및 네트워크 처리량 추세",
+  "chartRange": "차트 기간",
+  "dataCompleteness": "데이터 완전성 {{percent}}%",
   "stories": {
     "eyebrow": "무슨 일이 일어났는지",
     "title": "컴퓨터 관련 정보",
@@ -151,6 +153,17 @@
     "triggered": "{{metric}}이(가) {{value}}{{unit}}에 도달",
     "recovered": "{{metric}}이(가) {{value}}{{unit}}로 회복"
   },
+  "export": {
+    "eyebrow": "로컬 사본", "title": "기록 내보내기",
+    "description": "기간과 지표를 선택하고 개인정보 범위를 확인한 뒤 CSV 또는 JSON을 이 기기에 저장합니다.",
+    "range": "기간", "ranges": { "24": "24시간", "168": "7일", "all": "저장된 전체 기록" },
+    "format": "파일 형식", "metrics": "지표 및 기록",
+    "metric": { "cpu": "CPU", "memory": "메모리", "disk": "디스크", "network": "네트워크", "events": "알림", "actions": "완료한 작업", "applications": "앱 영향" },
+    "previewTitle": "개인정보 미리보기", "preview": "{{from}}부터 {{to}}까지 {{count}}행",
+    "excluded": "프로세스 명령, 전체 파일 경로, 연결 주소는 항상 제외됩니다.",
+    "includeNames": "앱 이름 포함", "includeNamesDescription": "기본값은 끔이며 application-1 같은 익명 레이블로 대체됩니다.",
+    "localOnly": "파일은 로컬에만 저장되며 업로드되지 않습니다.", "save": "내보내기 저장", "saved": "기록을 내보냈습니다."
+  },
   "privacyEyebrow": "데이터 범위 설정",
   "privacyTitle": "개인 정보 보호 정책",
   "privacyLocal": "사용 기록은 이 장치의 CoreRobin 전용 저장소에만 남으며 업로드되거나 동기화되지 않습니다.",
@@ -171,6 +184,7 @@
     "learningTitle": "앱 기록을 만드는 중",
     "learningDescription": "5분 샘플이 충분히 모이면 순위가 표시됩니다.",
     "timeline": "시간대별 영향",
+    "relativeActivity": "상대 활동",
     "timelineHint": "막대를 선택하면 해당 시점의 앱 순위를 볼 수 있습니다.",
     "explanation": "{{time}} 무렵에는 {{name}}의 영향이 가장 컸으며 평균 CPU {{cpu}}, 메모리 {{memory}}였습니다.",
     "peakCpu": "최고 CPU {{value}}",

@@ -29,6 +29,8 @@
   "throughputChart": "Gráfico de rendimiento del disco y la red",
   "resourceChartLabel": "Tendencia histórica de uso de CPU y memoria",
   "throughputChartLabel": "Tendencia histórica de rendimiento del disco y la red",
+  "chartRange": "Intervalo de tiempo del gráfico",
+  "dataCompleteness": "{{percent}} % de cobertura de datos",
   "stories": {
     "eyebrow": "Qué ocurrió",
     "title": "Informes del sistema",
@@ -152,6 +154,17 @@
     "triggered": "{{metric}} alcanzó {{value}}{{unit}}",
     "recovered": "{{metric}} se recuperó a {{value}}{{unit}}"
   },
+  "export": {
+    "eyebrow": "Copia local", "title": "Exportar historial",
+    "description": "Elige el periodo y las métricas, revisa la privacidad y guarda un CSV o JSON en este dispositivo.",
+    "range": "Periodo", "ranges": { "24": "24 horas", "168": "7 días", "all": "Todo lo guardado" },
+    "format": "Formato", "metrics": "Métricas y registros",
+    "metric": { "cpu": "CPU", "memory": "Memoria", "disk": "Disco", "network": "Red", "events": "Alertas", "actions": "Acciones completadas", "applications": "Impacto de aplicaciones" },
+    "previewTitle": "Vista previa de privacidad", "preview": "{{count}} filas de {{from}} a {{to}}",
+    "excluded": "Siempre se excluyen comandos, rutas completas y direcciones de conexión.",
+    "includeNames": "Incluir nombres de aplicaciones", "includeNamesDescription": "Desactivado por defecto; las aplicaciones se anonimizan como application-1.",
+    "localOnly": "El archivo se guarda localmente y no se sube.", "save": "Guardar exportación", "saved": "Historial exportado."
+  },
   "privacyEyebrow": "Límites de datos",
   "privacyTitle": "Política de privacidad",
   "privacyLocal": "El historial permanece en el almacenamiento privado de CoreRobin de este dispositivo y nunca se sube ni sincroniza.",
@@ -172,6 +185,7 @@
     "learningTitle": "Creando el historial de aplicaciones",
     "learningDescription": "La clasificación aparecerá cuando haya suficientes muestras de cinco minutos.",
     "timeline": "Impacto a lo largo del tiempo",
+    "relativeActivity": "Actividad relativa",
     "timelineHint": "Selecciona una barra para revisar ese periodo",
     "explanation": "Alrededor de las {{time}}, {{name}} lideró el periodo con CPU media de {{cpu}} y memoria de {{memory}}.",
     "peakCpu": "Pico de CPU {{value}}",

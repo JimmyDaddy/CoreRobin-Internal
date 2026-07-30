@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { localizeUpdateReleaseNotes } from "../updateReleaseNotes";
 import "./GlobalUpdateTask.css";
 
 export function GlobalUpdateTask({
@@ -10,7 +11,7 @@ export function GlobalUpdateTask({
 }: {
   updater: AppUpdaterController;
 }) {
-  const { t } = useAppTranslation();
+  const { t, i18n } = useAppTranslation();
   const [receiptCollapsed, setReceiptCollapsed] = useState(false);
   const availableVersion = updater.availableVersion;
   const availablePrompt =
@@ -46,7 +47,10 @@ export function GlobalUpdateTask({
             })}
           </strong>
           <p>
-            {updater.installableUpdate?.notes
+            {localizeUpdateReleaseNotes(
+              updater.installableUpdate?.notes ?? null,
+              i18n.resolvedLanguage,
+            )
               ?? t("settings:about.versionDescription")}
           </p>
         </div>

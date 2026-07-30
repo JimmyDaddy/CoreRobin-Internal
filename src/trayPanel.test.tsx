@@ -11,10 +11,11 @@ const { emitToMock, invokeMock, sharedHealthState } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   sharedHealthState: {
     current: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       revision: 7,
       sampledAtMs: 1_720_000_000_000,
       dataMode: "background",
+      dataStatus: "fresh",
       paused: false,
       health: "normal",
       reason: "none",

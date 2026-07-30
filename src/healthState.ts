@@ -14,11 +14,12 @@ import type {
 } from "./types";
 import { memoryUsagePercent } from "./utils";
 
-export const HEALTH_STATE_SCHEMA_VERSION = 2;
+export const HEALTH_STATE_SCHEMA_VERSION = 3;
 export const HEALTH_STATE_EVENT = "core-robin:health-state-changed";
 
 export type HealthLevel = "observing" | "normal" | "attention" | "urgent";
 export type HealthDataMode = "foreground" | "background";
+export type HealthDataStatus = "fresh" | "paused" | "stale";
 
 export interface HealthIncidentProjection {
   id: string;
@@ -35,6 +36,7 @@ export interface HealthStateUpdate {
   schemaVersion: typeof HEALTH_STATE_SCHEMA_VERSION;
   sampledAtMs: number;
   dataMode: HealthDataMode;
+  dataStatus: HealthDataStatus;
   paused: boolean;
   health: HealthLevel;
   reason: DailyStatusReason;
@@ -83,6 +85,7 @@ export function buildHealthStateUpdate(
     schemaVersion: HEALTH_STATE_SCHEMA_VERSION,
     sampledAtMs: snapshot.sampledAtMs,
     dataMode,
+    dataStatus: paused ? "paused" : "fresh",
     paused,
     health: status.level,
     reason: status.reason,

@@ -10,6 +10,10 @@
     "foreground": "포그라운드 샘플링",
     "background": "백그라운드 샘플링"
   },
+  "dataStatus": {
+    "paused": "데이터 일시 중지",
+    "stale": "데이터 만료"
+  },
   "health": {
     "loading": "연결 중",
     "observing": "상태 학습",
@@ -25,6 +29,10 @@
     "observing": {
       "title": "컴퓨터 상태를 파악 중",
       "description": "잠시 더 관찰하여 일시적인 성능 저하를 문제로 오해하지 않도록 합니다."
+    },
+    "stale": {
+      "title": "최근 시스템 상태가 없습니다",
+      "description": "기본 모니터 연결이 중단되었습니다. CoreRobin을 다시 열면 재개됩니다."
     },
     "normal": {
       "title": "컴퓨터가 원활하게 작동 중입니다",

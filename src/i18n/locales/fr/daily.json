@@ -19,6 +19,18 @@
     "thisMac": "Cet ordinateur",
     "thisComputer": "Cet ordinateur"
   },
+  "weekly": {
+    "kicker": "Bilan sur sept jours", "title": "Hier et cette semaine",
+    "description": "Compare les anomalies et les actions sans inventer de score de santé.",
+    "today": "Aujourd’hui", "yesterday": "Hier", "sevenDays": "7 derniers jours",
+    "anomalies": "Anomalies", "actions": "Actions", "improvements": "Améliorations observées",
+    "averages": "CPU moyen {{cpu}} · mémoire {{memory}}", "comparisonTitle": "Par rapport à hier",
+    "comparison": { "same": "Aujourd’hui compte les mêmes {{count}} anomalies.", "fewer": "Aujourd’hui en compte {{count}} de moins.", "more": "Aujourd’hui en compte {{count}} de plus." },
+    "coverage": "{{days}} jours de données · moyenne {{average}}", "improvementsTitle": "Actions suivies d’une amélioration",
+    "improvementObserved": "{{metrics}} a baissé après l’action · {{time}}", "noImprovements": "Pas encore assez de mesures avant et après.",
+    "notification": "Rappel hebdomadaire", "notificationUnavailable": "Activez d’abord les notifications de bureau.",
+    "notificationTitle": "Votre bilan CoreRobin est prêt", "notificationBody": "7 jours : {{anomalies}} anomalies et {{improvements}} améliorations observées."
+  },
   "status": {
     "observing": {
       "short": "Apprendre son état normal",
@@ -407,6 +419,20 @@
     "resultsTitle": "Résultats observés",
     "resultsDescription": "Compare les mesures locales avant et après une action sans prétendre à un lien causal.",
     "noResults": "Les résultats apparaîtront ici après avoir quitté une app, nettoyé des fichiers ou ajusté le démarrage.",
+    "metricNames": { "cpu": "CPU", "memory": "Mémoire" },
+    "observedMetric": "{{metric}} : après l’action {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "{{selected}} éléments sélectionnés, {{succeeded}} traités, {{skipped}} ignorés et {{size}} libérés.",
+      "uninstallRemoved": "L’application a été supprimée ; {{succeeded}} résidus traités et {{failed}} en échec.",
+      "uninstallKept": "La suppression de l’application n’a pas été confirmée ; {{succeeded}} résidus traités et {{failed}} en échec.",
+      "volumeEjected": "Le système a confirmé le démontage du volume.",
+      "volumeNotEjected": "Le démontage du volume n’a pas été confirmé.",
+      "startupChanged": "L’état de démarrage demandé a été vérifié et confirmé.",
+      "startupNotConfirmed": "L’état de démarrage demandé n’a pas pu être confirmé.",
+      "updateReady": "La mise à jour est téléchargée et installée ; un redémarrage reste nécessaire.",
+      "updateConfirmed": "L’application a redémarré et la version actuelle est {{version}}.",
+      "updateNotInstalled": "L’installation de la mise à jour n’a pas été confirmée."
+    },
     "open": "Ouvrir la fonction associée"
   },
   "records": {

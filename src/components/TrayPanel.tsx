@@ -42,6 +42,8 @@ export function TrayPanel() {
   const { t } = useAuxiliaryTranslation();
   const summary = useSharedHealthState();
   const language = getAuxiliaryLanguage();
+  const dataStale = summary?.dataStatus === "stale";
+  const displayedHealth = dataStale ? "observing" : summary?.health ?? "loading";
   const [availableUpdateVersion, setAvailableUpdateVersion] = useState(
     loadAvailableUpdateVersion,
   );
@@ -102,8 +104,10 @@ export function TrayPanel() {
         <header className="tray-header">
           <span className="tray-logo"><img src={brandMark} alt="" /></span>
           <span className="tray-brand"><BrandWordmark /><small>{t("tray:localMonitor")}</small></span>
-          <span className={`tray-health tray-health--${summary?.health ?? "loading"}`}>
-            <i />{t(`tray:health.${summary?.health ?? "loading"}`)}
+          <span className={`tray-health tray-health--${displayedHealth}`}>
+            <i />{dataStale
+              ? t("tray:dataStatus.stale")
+              : t(`tray:health.${displayedHealth}`)}
           </span>
         </header>
 
@@ -115,13 +119,17 @@ export function TrayPanel() {
         >
           <span>
             <strong>
-              {summary && summary.activeCount > 0 &&
+              {dataStale
+                ? t("tray:status.stale.title")
+                : summary && summary.activeCount > 0 &&
                 (summary.health === "attention" || summary.health === "urgent")
                 ? t(`tray:incidentTitle.${summary.health}`, { count: summary.activeCount })
                 : t(`tray:status.${summary?.health ?? "loading"}.title`)}
             </strong>
             <small>
-              {summary?.primaryIncident?.phase === "recovering"
+              {dataStale
+                ? t("tray:status.stale.description")
+                : summary?.primaryIncident?.phase === "recovering"
                 ? t("tray:recovering")
                 : summary?.reason && summary.reason !== "none"
                 ? t("tray:reason", { resource: t(`tray:resource.${summary.reason}`) })
@@ -195,7 +203,11 @@ export function TrayPanel() {
 
         <div className="tray-context">
           <span><Clock3 size={13} />{lastUpdated ? t("tray:updatedAt", { time: lastUpdated }) : t("tray:health.loading")}</span>
-          <span><Activity size={13} />{summary?.paused ? t("app:paused") : t(`tray:dataMode.${summary?.dataMode ?? "background"}`)}</span>
+          <span><Activity size={13} />{dataStale
+            ? t("tray:dataStatus.stale")
+            : summary?.paused
+              ? t("tray:dataStatus.paused")
+              : t(`tray:dataMode.${summary?.dataMode ?? "background"}`)}</span>
         </div>
 
         {availableUpdateVersion ? (

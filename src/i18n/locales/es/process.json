@@ -74,6 +74,13 @@
     "diskIo": "E/S del disco",
     "exited": "El proceso ha finalizado; las actualizaciones de la tendencia han cesado."
   },
+  "errors": {
+    "targetChanged": "El proceso terminó o cambió. No se detuvo ningún otro proceso.",
+    "permissionDenied": "El sistema no permitió controlar este proceso. CoreRobin no pedirá permisos de administrador automáticamente.",
+    "noCloseWindow": "Este proceso en segundo plano no tiene una ventana que Windows pueda cerrar normalmente.",
+    "unavailable": "Esta acción no está disponible para el proceso seleccionado.",
+    "busy": "Hay demasiadas confirmaciones abiertas. Cierra una e inténtalo de nuevo."
+  },
   "dialog": {
     "windowsForce": "El proceso finalizará de inmediato y quizá no pueda guardar el trabajo actual.",
     "unixForce": "El proceso finalizará de inmediato, quizá no pueda guardar el trabajo actual y la acción no se puede deshacer.",

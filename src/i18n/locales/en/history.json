@@ -29,6 +29,8 @@
   "throughputChart": "Disk and network throughput",
   "resourceChartLabel": "Historical CPU and memory trend",
   "throughputChartLabel": "Historical disk and network throughput trend",
+  "chartRange": "Chart time range",
+  "dataCompleteness": "{{percent}}% data coverage",
   "stories": {
     "eyebrow": "What happened",
     "title": "Computer stories",
@@ -188,6 +190,24 @@
       "not_applicable": "System pressure is not a meaningful outcome for this action"
     }
   },
+  "export": {
+    "eyebrow": "Local copy",
+    "title": "Export history",
+    "description": "Choose a time range and metrics, preview the privacy boundary, then save a CSV or JSON file on this device.",
+    "range": "Time range",
+    "ranges": { "24": "24 hours", "168": "7 days", "all": "All saved" },
+    "format": "File format",
+    "metrics": "Metrics and records",
+    "metric": { "cpu": "CPU", "memory": "Memory", "disk": "Disk", "network": "Network", "events": "Alerts", "actions": "Completed actions", "applications": "Application impact" },
+    "previewTitle": "Privacy preview",
+    "preview": "{{count}} rows from {{from}} to {{to}}",
+    "excluded": "Process commands, full file paths, and connection addresses are always excluded.",
+    "includeNames": "Include application names",
+    "includeNamesDescription": "Off by default. When off, application identities are replaced with labels such as application-1.",
+    "localOnly": "The file is saved locally and is not uploaded.",
+    "save": "Save export",
+    "saved": "History export saved."
+  },
   "privacyEyebrow": "Data boundaries",
   "privacyTitle": "Privacy policy",
   "privacyLocal": "History stays in CoreRobin's private storage on this device and is never uploaded or synchronized.",
@@ -208,6 +228,7 @@
     "learningTitle": "Building application history",
     "learningDescription": "Rankings appear after enough five-minute samples are collected.",
     "timeline": "Impact over time",
+    "relativeActivity": "Relative activity",
     "timelineHint": "Select a bar to inspect that period",
     "explanation": "Around {{time}}, {{name}} led this period with average CPU {{cpu}} and memory {{memory}}.",
     "peakCpu": "Peak CPU {{value}}",

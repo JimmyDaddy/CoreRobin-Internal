@@ -31,6 +31,7 @@ import {
 } from "../productSupport";
 import type { AppSettings } from "../settings";
 import type { SystemSnapshot } from "../types";
+import { localizeUpdateReleaseNotes } from "../updateReleaseNotes";
 import { Button } from "./Button";
 import { ClearProductDataAction } from "./ClearProductDataAction";
 
@@ -75,6 +76,10 @@ export function AboutSupport({
     updateAction === "ready" ||
     updateAction === "restarting" ||
     updateAction === "restartError";
+  const localizedUpdateNotes = localizeUpdateReleaseNotes(
+    installableUpdate?.notes ?? null,
+    i18n.resolvedLanguage,
+  );
 
   const copyDiagnostic = async () => {
     try {
@@ -211,10 +216,10 @@ export function AboutSupport({
               })}
             </p>
           ) : null}
-          {installableUpdate?.notes ? (
+          {localizedUpdateNotes ? (
             <details className="about-support__release-notes">
               <summary>{t("settings:about.whatsNew")}</summary>
-              <p>{installableUpdate.notes}</p>
+              <p>{localizedUpdateNotes}</p>
             </details>
           ) : null}
           {updateAction === "installing" && updateProgress ? (

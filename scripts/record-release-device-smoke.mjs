@@ -42,6 +42,29 @@ const checks = [
     title: "日常模式的“回顾”能汇总当天事件、恢复与已确认操作；效果文案只描述观察结果，不虚构因果关系",
   },
   {
+    id: "weekly-review-export",
+    title: "回顾页能分别比较今天、昨天和过去七天；可导出 CSV/JSON，默认不包含应用名称、命令行、完整路径或连接地址",
+  },
+  {
+    id: "cleanup-scan-lifecycle",
+    title: "长时间空间扫描中切换页面、隐藏窗口或重载主界面后仍能恢复同一任务；停止能在明确时间内结束，随后可立即重新扫描",
+  },
+  {
+    id: "native-process-request-close",
+    title: "对专门的验收应用执行“请求结束”，系统确认目标身份未变化并让应用正常退出；无可关闭窗口或权限不足时显示明确原因",
+    platforms: ["win32", "linux"],
+  },
+  {
+    id: "native-process-restart",
+    title: "重新启动专门的验收应用时，CoreRobin 先确认原进程退出，再从已验证的可执行文件启动新进程；PID 变化且没有结束其他进程",
+    platforms: ["win32", "linux"],
+  },
+  {
+    id: "native-process-force-kill",
+    title: "仅对专门的无响应验收应用执行强制结束；稳定句柄仍指向原进程，权限拒绝与进程已退出能被区分",
+    platforms: ["win32", "linux"],
+  },
+  {
     id: "application-uninstall-review",
     title: "选择一个非 CoreRobin 应用后可看到本体与关联数据，打开卸载复核并安全取消，应用与文件保持不变",
     platforms: ["darwin"],

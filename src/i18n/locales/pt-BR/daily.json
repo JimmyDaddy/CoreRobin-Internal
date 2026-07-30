@@ -19,6 +19,18 @@
     "thisMac": "Este computador",
     "thisComputer": "Este computador"
   },
+  "weekly": {
+    "kicker": "Revisão de sete dias", "title": "Ontem e esta semana",
+    "description": "Compara anomalias e ações sem inventar uma pontuação de saúde.",
+    "today": "Hoje", "yesterday": "Ontem", "sevenDays": "Últimos 7 dias",
+    "anomalies": "Anomalias", "actions": "Ações", "improvements": "Melhorias observadas",
+    "averages": "CPU média {{cpu}} · memória {{memory}}", "comparisonTitle": "Comparado a ontem",
+    "comparison": { "same": "Hoje houve as mesmas {{count}} anomalias.", "fewer": "Hoje houve {{count}} a menos.", "more": "Hoje houve {{count}} a mais." },
+    "coverage": "{{days}} dias com dados · média diária {{average}}", "improvementsTitle": "Ações seguidas de melhora",
+    "improvementObserved": "{{metrics}} caiu após a ação · {{time}}", "noImprovements": "Ainda não há amostras suficientes antes e depois.",
+    "notification": "Lembrete semanal", "notificationUnavailable": "Ative primeiro as notificações do sistema.",
+    "notificationTitle": "Sua revisão semanal do CoreRobin está pronta", "notificationBody": "7 dias: {{anomalies}} anomalias e {{improvements}} melhorias observadas."
+  },
   "status": {
     "observing": {
       "short": "Monitorando seu estado normal",
@@ -407,6 +419,20 @@
     "resultsTitle": "Resultados observados",
     "resultsDescription": "Compara amostras locais antes e depois da ação sem afirmar causalidade.",
     "noResults": "Os resultados aparecerão aqui após encerrar um app, limpar arquivos ou ajustar itens de inicialização.",
+    "metricNames": { "cpu": "CPU", "memory": "Memória" },
+    "observedMetric": "{{metric}}: após a ação {{before}} → {{after}} · {{effect}}",
+    "outcomes": {
+      "cleanup": "{{selected}} selecionados, {{succeeded}} processados, {{skipped}} ignorados e {{size}} liberados.",
+      "uninstallRemoved": "O app foi removido; {{succeeded}} resíduos foram processados e {{failed}} falharam.",
+      "uninstallKept": "A remoção do app não foi confirmada; {{succeeded}} resíduos foram processados e {{failed}} falharam.",
+      "volumeEjected": "O sistema confirmou que o volume foi desmontado.",
+      "volumeNotEjected": "Não foi possível confirmar que o volume foi desmontado.",
+      "startupChanged": "O estado de inicialização solicitado foi verificado.",
+      "startupNotConfirmed": "O estado de inicialização solicitado não pôde ser confirmado.",
+      "updateReady": "A atualização foi baixada e instalada; ainda é preciso reiniciar.",
+      "updateConfirmed": "O app reiniciou e a versão atual foi confirmada como {{version}}.",
+      "updateNotInstalled": "A instalação da atualização não foi confirmada."
+    },
     "open": "Abrir recurso relacionado"
   },
   "records": {

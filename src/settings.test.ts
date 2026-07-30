@@ -84,6 +84,7 @@ describe("application settings", () => {
         enabled: true,
       }],
       desktopNotificationsEnabled: true,
+      weeklyReviewNotificationEnabled: false,
       mutedNotificationResources: ["cpu"],
       interfaceScale: "large",
       reduceMotion: true,

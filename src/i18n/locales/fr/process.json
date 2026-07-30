@@ -74,6 +74,13 @@
     "diskIo": "E/S disque",
     "exited": "Le processus s'est terminé; les mises à jour de la tendance sont arrêtées."
   },
+  "errors": {
+    "targetChanged": "Le processus est terminé ou a changé. Aucun autre processus n’a été arrêté.",
+    "permissionDenied": "Le système a refusé l’accès. CoreRobin ne demandera pas automatiquement les droits administrateur.",
+    "noCloseWindow": "Ce processus en arrière-plan n’a pas de fenêtre que Windows puisse fermer normalement.",
+    "unavailable": "Cette action n’est pas disponible pour le processus sélectionné.",
+    "busy": "Trop de confirmations sont ouvertes. Fermez-en une et réessayez."
+  },
   "dialog": {
     "windowsForce": "Le processus sera arrêté immédiatement et risque de ne pas enregistrer son travail en cours.",
     "unixForce": "Le processus sera arrêté immédiatement, risque de ne pas enregistrer son travail en cours et l’action est irréversible.",
