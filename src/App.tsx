@@ -1400,7 +1400,8 @@ function App() {
   return (
     <div className={`app-shell${dailyMode ? " app-shell--daily" : " app-shell--professional"}${modeTransition ? ` is-mode-transitioning mode-transition--to-${modeTransition}` : ""}`}>
       {updater.promptVisible || updater.action === "installing" || updater.action === "ready"
-      || updater.action === "restartError" || updater.updatedFromVersion ? (
+      || updater.action === "installError" || updater.action === "restartError"
+      || updater.updatedFromVersion ? (
         <Suspense fallback={null}>
           <GlobalUpdateTask updater={updater} />
         </Suspense>

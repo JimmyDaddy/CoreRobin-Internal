@@ -11,8 +11,9 @@ import { AboutSupport } from "./AboutSupport";
 
 const mocks = vi.hoisted(() => ({
   desktopRuntime: true,
-  checkForInstallableAppUpdate: vi.fn(),
-  restartAfterAppUpdate: vi.fn(),
+  updaterCheck: vi.fn(),
+  invoke: vi.fn(),
+  relaunch: vi.fn(),
   checkForProductUpdate: vi.fn(),
   openProductPage: vi.fn(),
 }));
@@ -22,10 +23,9 @@ vi.mock("../api", () => ({
   openProductPage: mocks.openProductPage,
 }));
 
-vi.mock("../appUpdater", () => ({
-  checkForInstallableAppUpdate: mocks.checkForInstallableAppUpdate,
-  restartAfterAppUpdate: mocks.restartAfterAppUpdate,
-}));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
+vi.mock("@tauri-apps/plugin-updater", () => ({ check: mocks.updaterCheck }));
+vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: mocks.relaunch }));
 
 vi.mock("../productSupport", async () => {
   const actual = await vi.importActual<typeof import("../productSupport")>("../productSupport");
@@ -35,8 +35,27 @@ vi.mock("../productSupport", async () => {
 beforeEach(async () => {
   mocks.desktopRuntime = true;
   mocks.checkForProductUpdate.mockReset();
-  mocks.checkForInstallableAppUpdate.mockReset();
-  mocks.restartAfterAppUpdate.mockReset();
+  mocks.updaterCheck.mockReset();
+  mocks.invoke.mockReset();
+  mocks.invoke.mockImplementation((command: string) => {
+    if (command === "start_app_update") {
+      return Promise.resolve({
+        version: "9.0.0",
+        phase: "ready",
+        downloadedBytes: 1_000,
+        contentLength: 1_000,
+        updatedAtMs: 1,
+      });
+    }
+    return Promise.resolve({
+      version: null,
+      phase: "idle",
+      downloadedBytes: 0,
+      contentLength: null,
+      updatedAtMs: 0,
+    });
+  });
+  mocks.relaunch.mockReset();
   mocks.openProductPage.mockReset();
   await i18n.changeLanguage("zh-CN");
 });
@@ -45,11 +64,9 @@ afterEach(() => cleanup());
 
 describe("AboutSupport", () => {
   it("checks updates and opens only allowlisted product pages", async () => {
-    const install = vi.fn().mockResolvedValue(undefined);
-    mocks.checkForInstallableAppUpdate.mockResolvedValue({
+    mocks.updaterCheck.mockResolvedValue({
       version: "9.0.0",
       notes: null,
-      install,
       close: vi.fn().mockResolvedValue(undefined),
     });
     renderSupport();
@@ -58,26 +75,27 @@ describe("AboutSupport", () => {
     expect(await screen.findByText("CoreRobin v9.0.0 已发布")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "下载并安装" }));
     expect(await screen.findByText("更新已安装并准备就绪。重新启动后将直接使用新版本。")).toBeTruthy();
-    expect(install).toHaveBeenCalledOnce();
+    expect(mocks.invoke).toHaveBeenCalledWith("start_app_update", {
+      version: "9.0.0",
+    });
     fireEvent.click(screen.getByRole("button", { name: "立即重启并完成更新" }));
     const restarting = await screen.findByRole("button", { name: "正在重新启动…" });
     expect((restarting as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "用户指南" }));
 
     await waitFor(() => {
-      expect(mocks.restartAfterAppUpdate).toHaveBeenCalledOnce();
+      expect(mocks.relaunch).toHaveBeenCalledOnce();
       expect(mocks.openProductPage).toHaveBeenCalledWith("guide", "zh-CN");
     });
   });
 
   it("keeps the restart action available when automatic relaunch fails", async () => {
-    mocks.checkForInstallableAppUpdate.mockResolvedValue({
+    mocks.updaterCheck.mockResolvedValue({
       version: "9.0.0",
       notes: null,
-      install: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
     });
-    mocks.restartAfterAppUpdate.mockRejectedValue(new Error("restart failed"));
+    mocks.relaunch.mockRejectedValue(new Error("restart failed"));
     renderSupport();
 
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
@@ -128,7 +146,7 @@ describe("AboutSupport", () => {
     expect(await screen.findByText("CoreRobin v9.0.0 已发布")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "前往下载" }));
 
-    expect(mocks.checkForInstallableAppUpdate).not.toHaveBeenCalled();
+    expect(mocks.updaterCheck).not.toHaveBeenCalled();
     expect(mocks.openProductPage).toHaveBeenCalledWith("releases", "zh-CN");
   });
 });

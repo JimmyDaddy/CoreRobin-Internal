@@ -82,4 +82,6 @@ pub const ALL_COMMANDS: &[&str] = &[
     "create_process_control_lease",
     "release_process_control_lease",
     "execute_process_action",
+    "start_app_update",
+    "get_app_update_task",
 ];

@@ -2,20 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   checkForInstallableAppUpdate,
+  progressFromSnapshot,
   restartAfterAppUpdate,
   type AppUpdateProgress,
 } from "./appUpdater";
 
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
+  invoke: vi.fn(),
   relaunch: vi.fn(),
 }));
 
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: mocks.check }));
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: mocks.relaunch }));
 
 beforeEach(() => {
   mocks.check.mockReset();
+  mocks.invoke.mockReset();
   mocks.relaunch.mockReset();
 });
 
@@ -29,17 +33,17 @@ describe("app updater", () => {
 
   it("maps download progress and installs the verified update", async () => {
     const close = vi.fn().mockResolvedValue(undefined);
-    const downloadAndInstall = vi.fn(async (onProgress) => {
-      onProgress({ event: "Started", data: { contentLength: 1_000 } });
-      onProgress({ event: "Progress", data: { chunkLength: 250 } });
-      onProgress({ event: "Progress", data: { chunkLength: 750 } });
-      onProgress({ event: "Finished" });
-    });
     mocks.check.mockResolvedValue({
       version: "0.2.0",
       body: "  Safer updates.  ",
-      downloadAndInstall,
       close,
+    });
+    mocks.invoke.mockResolvedValue({
+      version: "0.2.0",
+      phase: "ready",
+      downloadedBytes: 1_000,
+      contentLength: 1_000,
+      updatedAtMs: 1,
     });
 
     const update = await checkForInstallableAppUpdate();
@@ -49,13 +53,28 @@ describe("app updater", () => {
     expect(update?.version).toBe("0.2.0");
     expect(update?.notes).toBe("Safer updates.");
     expect(events).toEqual([
-      { phase: "downloading", downloadedBytes: 0, contentLength: 1_000, percent: 0 },
-      { phase: "downloading", downloadedBytes: 250, contentLength: 1_000, percent: 25 },
-      { phase: "downloading", downloadedBytes: 1_000, contentLength: 1_000, percent: 100 },
       { phase: "installing", downloadedBytes: 1_000, contentLength: 1_000, percent: 100 },
     ]);
+    expect(mocks.invoke).toHaveBeenCalledWith("start_app_update", {
+      version: "0.2.0",
+    });
     await update?.close();
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("maps native background task progress for the update UI", () => {
+    expect(progressFromSnapshot({
+      version: "0.2.0",
+      phase: "downloading",
+      downloadedBytes: 250,
+      contentLength: 1_000,
+      updatedAtMs: 1,
+    })).toEqual({
+      phase: "downloading",
+      downloadedBytes: 250,
+      contentLength: 1_000,
+      percent: 25,
+    });
   });
 
   it("restarts through the restricted process plugin", async () => {
