@@ -171,6 +171,7 @@ export function CleanupAssistant({
   const progressLocation = progress
     ? cleanupProgressLocation(progress.currentPath, t)
     : t("cleanup:progress.locations.personal");
+  const displayedElapsedMs = useSmoothCleanupElapsedMs(loading, progress);
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
@@ -682,7 +683,7 @@ export function CleanupAssistant({
           <dl>
             <div><dt>{t("cleanup:progress.entries")}</dt><dd>{progress.scannedEntryCount.toLocaleString(i18n.resolvedLanguage)}</dd></div>
             <div><dt>{t("cleanup:progress.discovered")}</dt><dd>{formatBytes(progress.discoveredBytes)}</dd></div>
-            <div><dt>{t("cleanup:progress.elapsed")}</dt><dd>{Math.max(0.1, progress.elapsedMs / 1_000).toFixed(1)}s</dd></div>
+            <div><dt>{t("cleanup:progress.elapsed")}</dt><dd>{Math.max(0.1, displayedElapsedMs / 1_000).toFixed(1)}s</dd></div>
           </dl>
         </div>
       ) : null}
@@ -943,6 +944,37 @@ export function CleanupAssistant({
       ) : null}
     </section>
   );
+}
+
+function useSmoothCleanupElapsedMs(
+  loading: boolean,
+  progress: CleanupScanProgress | null,
+): number {
+  const startedAtRef = useRef<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!loading || !progress) {
+      startedAtRef.current = null;
+      return;
+    }
+    const reportedStart = Date.now() - Math.max(0, progress.elapsedMs);
+    startedAtRef.current = startedAtRef.current === null
+      ? reportedStart
+      : Math.min(startedAtRef.current, reportedStart);
+    setNow(Date.now());
+  }, [loading, progress?.elapsedMs]);
+
+  const hasProgress = progress !== null;
+
+  useEffect(() => {
+    if (!loading || !hasProgress) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [hasProgress, loading]);
+
+  if (!progress || startedAtRef.current === null) return progress?.elapsedMs ?? 0;
+  return Math.max(progress.elapsedMs, now - startedAtRef.current);
 }
 
 function targetLabel(

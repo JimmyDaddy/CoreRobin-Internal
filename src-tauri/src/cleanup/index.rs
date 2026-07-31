@@ -60,6 +60,7 @@ struct DirectoryTotals {
 #[derive(Debug)]
 struct IndexScanStats {
     started: Instant,
+    elapsed_before_start_ms: u64,
     scanned_entry_count: usize,
     discovered_bytes: u64,
     unreadable_entry_count: usize,
@@ -73,6 +74,7 @@ impl IndexScanStats {
     fn new() -> Self {
         Self {
             started: Instant::now(),
+            elapsed_before_start_ms: 0,
             scanned_entry_count: 0,
             discovered_bytes: 0,
             unreadable_entry_count: 0,
@@ -81,6 +83,17 @@ impl IndexScanStats {
             largest_files: Vec::new(),
             location_totals: HashMap::new(),
         }
+    }
+
+    fn resuming_from(started_at_ms: u64) -> Self {
+        let mut stats = Self::new();
+        stats.elapsed_before_start_ms = now_millis_u64().saturating_sub(started_at_ms);
+        stats
+    }
+
+    fn elapsed_ms(&self) -> u64 {
+        self.elapsed_before_start_ms
+            .saturating_add(self.started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
     }
 
     fn record_unreadable(&mut self, path: &Path, home: &Path) {
@@ -141,7 +154,7 @@ impl IndexScanStats {
             scanned_entry_count: self.scanned_entry_count,
             discovered_bytes: self.discovered_bytes,
             current_path: display_path(path, home),
-            elapsed_ms: self.started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+            elapsed_ms: self.elapsed_ms(),
         });
     }
 }
@@ -232,9 +245,14 @@ fn build_indexed_scan_with_shared_identities(
         &scope_paths,
     )?;
 
+    let started_at_ms = scan_started_at_ms(&connection, scan_id)?;
     let boundary = ScanFilesystemBoundary::for_root(&scan_root)?;
     let mut seen_files = load_seen_files(&connection, scan_id)?;
-    let mut stats = IndexScanStats::new();
+    // A scan worker can be restarted while its final SQLite checkpoint is in
+    // flight. Keep the original wall-clock start time so both the recovered
+    // result and progress continue from the same scan rather than appearing
+    // to complete in a few milliseconds.
+    let mut stats = IndexScanStats::resuming_from(started_at_ms);
     restore_completed_segment_stats(&connection, scan_id, &mut stats)?;
     let root_id = root_node_id(&connection, scan_id)?;
     let selected_cleanup_root = target_kind != CleanupScanTargetKind::SystemDisk;
@@ -311,6 +329,20 @@ fn build_indexed_scan_with_shared_identities(
 
     ensure_scan_active(cancelled)?;
     update_root_totals(&connection, scan_id, root_id)?;
+    // Keep the worker lease fresh while the final SQLite work runs. The tree
+    // has already been collected, but materializing its summaries can still
+    // take noticeable time on a large scan.
+    stats.report(&scan_root, &home, on_progress, true);
+    replace_scan_locations_from_index(&connection, scan_id, &definitions)?;
+    rebuild_largest_files(&connection, scan_id)?;
+    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
+    checkpoint_index(&connection)?;
+    enforce_private_index_permissions(index_path)?;
+    // The completion state is the commit marker observed by recovery. Do not
+    // set it until all indexed nodes, summaries and filesystem metadata are
+    // ready to be read as one coherent result. If the worker is replaced
+    // earlier, prepare_scan keeps this running scan and resumes its completed
+    // segments instead of deleting the just-built node tree.
     let completed_at_ms = now_millis_i64();
     connection
         .execute(
@@ -322,18 +354,13 @@ fn build_indexed_scan_with_shared_identities(
             params![
                 scan_id,
                 completed_at_ms,
-                elapsed_millis(stats.started),
+                to_i64(stats.elapsed_ms()),
                 to_i64(stats.scanned_entry_count as u64),
                 to_i64(stats.unreadable_entry_count as u64),
                 serde_json::to_string(&stats.unreadable_paths).unwrap_or_else(|_| "[]".to_owned()),
             ],
         )
         .map_err(index_error)?;
-    replace_scan_locations_from_index(&connection, scan_id, &definitions)?;
-    rebuild_largest_files(&connection, scan_id)?;
-    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
-    checkpoint_index(&connection)?;
-    enforce_private_index_permissions(index_path)?;
     load_scan(&connection, index_path, scan_id)
 }
 
@@ -673,21 +700,37 @@ pub(crate) fn load_latest_indexed_scan(
     if !index_path.is_file() {
         return Ok(None);
     }
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
-    purge_expired_and_incomplete(&connection)?;
-    let scan_id = connection
-        .query_row(
-            "SELECT id FROM scans WHERE state = 'completed'
-             ORDER BY sampled_at_ms DESC LIMIT 1",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(index_error)?;
-    scan_id
-        .map(|scan_id| load_scan(&connection, index_path, &scan_id))
-        .transpose()
+    let (scan, discard_index) = {
+        let connection = open_index(index_path)?;
+        initialize_schema(&connection)?;
+        purge_expired_and_incomplete(&connection)?;
+        let scan_id = connection
+            .query_row(
+                "SELECT id FROM scans WHERE state = 'completed'
+                 ORDER BY sampled_at_ms DESC LIMIT 1",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(index_error)?;
+        let Some(scan_id) = scan_id else {
+            return Ok(None);
+        };
+        let scan = load_scan(&connection, index_path, &scan_id)?;
+        let discard_index = scan_has_missing_nodes(&connection, &scan_id, &scan)?;
+        (scan, discard_index)
+    };
+
+    if discard_index {
+        // v0.1.21 could leave a completed quick-scan record with segment
+        // counters but no navigable nodes if its worker was recovered during
+        // the final checkpoint. It is only a local cache and cannot produce a
+        // truthful map, so clear it rather than showing a misleading 0 B scan
+        // or retaining several gigabytes of orphaned SQLite pages.
+        remove_cleanup_index(index_path)?;
+        return Ok(None);
+    }
+    Ok(Some(scan))
 }
 
 pub(crate) fn load_indexed_scan(
@@ -904,7 +947,7 @@ pub(crate) fn refresh_indexed_directory(
             params![
                 scan_id,
                 now_millis_i64(),
-                elapsed_millis(stats.started),
+                to_i64(stats.elapsed_ms()),
                 to_i64(stats.scanned_entry_count as u64),
                 to_i64(stats.unreadable_entry_count as u64),
             ],
@@ -2715,18 +2758,23 @@ fn common_location_roots(home: &Path, scan_root: &Path) -> Result<Vec<PathBuf>, 
         home.join("Music"),
         home.join("Pictures"),
     ];
+    // A quick scan must stay focused. Hidden application data and container
+    // directories can contain millions of entries; including every hidden
+    // folder here made the supposedly quick path slower than a complete scan.
+    // Keep user-facing folders, Trash, and caches that are normally useful to
+    // reclaim. A complete scan remains available for all other locations.
     for definition in platform_paths(home) {
-        candidates.extend(definition.paths);
+        if matches!(
+            definition.kind,
+            CleanupLocationKind::Trash
+                | CleanupLocationKind::AppCache
+                | CleanupLocationKind::DeveloperCache
+        ) {
+            candidates.extend(definition.paths);
+        }
     }
     #[cfg(target_os = "macos")]
-    candidates.extend([
-        home.join("Library/Application Support"),
-        home.join("Library/Containers"),
-        home.join("Library/Group Containers"),
-        PathBuf::from("/Library/Caches"),
-        PathBuf::from("/private/var/folders"),
-        PathBuf::from("/private/tmp"),
-    ]);
+    candidates.extend([PathBuf::from("/private/tmp")]);
     #[cfg(target_os = "linux")]
     candidates.extend([home.join(".local/share"), PathBuf::from("/tmp")]);
     #[cfg(windows)]
@@ -2948,6 +2996,39 @@ fn root_node_id(connection: &Connection, scan_id: &str) -> Result<i64, CommandEr
         .map_err(index_error)
 }
 
+fn scan_started_at_ms(connection: &Connection, scan_id: &str) -> Result<u64, CommandError> {
+    connection
+        .query_row(
+            "SELECT started_at_ms FROM scans WHERE id = ?1",
+            params![scan_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|started_at_ms| u64::try_from(started_at_ms).unwrap_or(0))
+        .map_err(index_error)
+}
+
+fn scan_has_missing_nodes(
+    connection: &Connection,
+    scan_id: &str,
+    scan: &CleanupScan,
+) -> Result<bool, CommandError> {
+    if scan.scanned_entry_count == 0
+        || scan.root.allocated_size_bytes != 0
+        || !scan.root.children.is_empty()
+    {
+        return Ok(false);
+    }
+    let discovered_bytes = connection
+        .query_row(
+            "SELECT COALESCE(SUM(discovered_bytes), 0)
+             FROM scan_segments WHERE scan_id = ?1",
+            params![scan_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map_err(index_error)?;
+    Ok(discovered_bytes > 0)
+}
+
 fn completed_segment(
     connection: &Connection,
     scan_id: &str,
@@ -3103,7 +3184,12 @@ fn open_index_read_only(path: &Path) -> Result<Connection, CommandError> {
 
 fn checkpoint_index(connection: &Connection) -> Result<(), CommandError> {
     connection
-        .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+        // TRUNCATE may spend minutes waiting for a reader after a large scan.
+        // The job watchdog would then replace a healthy worker between the
+        // final index commit and result hand-off. A passive checkpoint keeps
+        // the work non-blocking; SQLite will continue its normal checkpoints
+        // once readers release their snapshots.
+        .execute_batch("PRAGMA wal_checkpoint(PASSIVE); PRAGMA optimize;")
         .map_err(index_error)
 }
 
@@ -3155,16 +3241,16 @@ fn index_error(error: rusqlite::Error) -> CommandError {
     CommandError::internal(format!("Cleanup scan index operation failed: {error}"))
 }
 
-fn elapsed_millis(started: Instant) -> i64 {
-    i64::try_from(started.elapsed().as_millis()).unwrap_or(i64::MAX)
-}
-
 fn now_millis_i64() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .ok()
         .and_then(|duration| i64::try_from(duration.as_millis()).ok())
         .unwrap_or(0)
+}
+
+fn now_millis_u64() -> u64 {
+    u64::try_from(now_millis_i64()).unwrap_or(0)
 }
 
 fn to_i64(value: u64) -> i64 {
@@ -3320,8 +3406,10 @@ mod tests {
         let home = root.path().join("home");
         fs::create_dir_all(home.join("Downloads")).unwrap();
         fs::create_dir_all(home.join(".cache/nested")).unwrap();
+        fs::create_dir_all(home.join(".codex/sessions")).unwrap();
         let roots = common_location_roots(&home, root.path()).unwrap();
         assert!(!roots.is_empty());
+        assert!(!roots.contains(&home.join(".codex")));
         for (index, root) in roots.iter().enumerate() {
             assert!(
                 roots
@@ -3380,6 +3468,7 @@ mod tests {
         assert_eq!(root.children.len(), 2);
         assert!(root.children.iter().any(|node| node.name == "Downloads"));
         assert!(root.children.iter().any(|node| node.name == "Caches"));
+        assert!(root.allocated_size_bytes > 0);
         assert_eq!(stats.scanned_entry_count, 2);
         assert!(
             fs::read_dir(storage.path())
@@ -3390,6 +3479,83 @@ mod tests {
                     .to_string_lossy()
                     .starts_with(".cleanup-quick-"))
         );
+    }
+
+    #[test]
+    fn running_scan_recovery_keeps_the_completed_indexed_nodes() {
+        let fixture = tempdir().unwrap();
+        let folder = fixture.path().join("Downloads");
+        fs::create_dir_all(&folder).unwrap();
+        fs::write(folder.join("item.bin"), vec![1_u8; 1_024]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let scan = scan_folder(fixture.path(), &index_path, "resume");
+        let root_before = scan.root.allocated_size_bytes;
+
+        let connection = open_index(&index_path).unwrap();
+        connection
+            .execute("UPDATE scans SET state = 'running' WHERE id = 'resume'", [])
+            .unwrap();
+        prepare_scan(
+            &connection,
+            "resume",
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::Folder,
+            fixture.path().to_string_lossy().as_ref(),
+            &cleanup_node_name(fixture.path()),
+            &display_path(fixture.path(), fixture.path()),
+            &[],
+        )
+        .unwrap();
+
+        let restored = materialize_node(
+            &connection,
+            "resume",
+            root_node_id(&connection, "resume").unwrap(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(restored.allocated_size_bytes, root_before);
+        assert!(!restored.children.is_empty());
+    }
+
+    #[test]
+    fn incomplete_completed_payload_is_discarded_instead_of_shown_as_empty() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "broken",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            "/",
+            "Common locations",
+            "/",
+            &[],
+        )
+        .unwrap();
+        connection
+            .execute(
+                "UPDATE scans SET state = 'completed', sampled_at_ms = ?2,
+                 scanned_entry_count = 64 WHERE id = ?1",
+                params!["broken", now_millis_i64()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO scan_segments(
+                   scan_id, path, completed_at_ms, scanned_entry_count, discovered_bytes,
+                   unreadable_entry_count, unreadable_paths_json
+                 ) VALUES ('broken', '/tmp/segment', ?1, 64, 1024, 0, '[]')",
+                params![now_millis_i64()],
+            )
+            .unwrap();
+        drop(connection);
+
+        assert!(load_latest_indexed_scan(&index_path).unwrap().is_none());
+        assert!(!index_path.exists());
     }
 
     #[cfg(unix)]
