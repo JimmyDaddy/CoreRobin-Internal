@@ -1913,6 +1913,7 @@ function App() {
                     onQueryChange={(query) => updateProcessPreferences({ query })}
                     sortKey={processPreferences.sortKey}
                     direction={processPreferences.sortDirection}
+                    liveSort={processPreferences.liveSort}
                     onSortChange={(sortKey, sortDirection) =>
                       updateProcessPreferences({ sortKey, sortDirection })
                     }
@@ -1929,6 +1930,10 @@ function App() {
                   onQueryChange={(query) => updateProcessPreferences({ query })}
                   sortKey={processPreferences.sortKey}
                   direction={processPreferences.sortDirection}
+                  liveSort={processPreferences.liveSort}
+                  onLiveSortChange={(liveSort) =>
+                    updateProcessPreferences({ liveSort })
+                  }
                   onSortChange={(sortKey, sortDirection) =>
                     updateProcessPreferences({ sortKey, sortDirection })
                   }

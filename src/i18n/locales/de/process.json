@@ -12,6 +12,8 @@
   "followTitle": "Ausgewählten Prozess bei Aktualisierungen sichtbar halten",
   "resetView": "Zurücksetzen der Prozessansicht",
   "resort": "Nach aktuellen Messwerten neu sortieren",
+  "liveSort": "Live sortieren",
+  "liveSortTitle": "Die Liste bei Änderungen der Live-Messwerte automatisch neu sortieren",
   "search": "Prozesse suchen",
   "searchPlaceholder": "Name, PID, Benutzer oder Port",
   "matchedPort": "Passender Port {{port}}",
@@ -32,6 +34,7 @@
     "flat": "{{visible}} / {{total}} Prozesse · Bei Bedarf gerendert",
     "siblingSort": "Wurzeln automatisch geöffnet · Untergeordnete Prozesse nach Spalte sortiert",
     "stableOrder": "Messwerte live · Reihenfolge ändert sich nur manuell",
+    "liveOrder": "Messwerte live · Reihenfolge folgt automatisch der aktuellen Sortierung",
     "selectionFiltered": "Ausgewiesener Prozess ist gefiltert · Filter aufheben"
   },
   "status": {

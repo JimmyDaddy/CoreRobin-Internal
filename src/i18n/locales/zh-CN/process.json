@@ -12,6 +12,8 @@
   "followTitle": "刷新时保持选中进程在视野内",
   "resetView": "恢复默认进程视图",
   "resort": "按当前指标重新排序",
+  "liveSort": "实时排序",
+  "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
   "search": "搜索进程",
   "searchPlaceholder": "名称、PID、用户或端口",
   "matchedPort": "匹配端口 {{port}}",
@@ -32,6 +34,7 @@
     "flat": "{{visible}} / {{total}} 个进程 · 按需渲染",
     "siblingSort": "根层自动展开 · 同级排序",
     "stableOrder": "指标实时更新 · 顺序仅在手动排序时变化",
+    "liveOrder": "指标实时更新 · 顺序会随当前排序自动变化",
     "selectionFiltered": "选中进程被筛选隐藏 · 清除筛选"
   },
   "status": {

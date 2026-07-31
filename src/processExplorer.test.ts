@@ -201,6 +201,7 @@ describe("process explorer preferences", () => {
         query,
         sortKey: "invalid",
         sortDirection: "sideways",
+        liveSort: "yes",
         expandedIdentities: ["live", "live", "", "x".repeat(513), 42],
         followSelection: "yes",
       }),
@@ -230,12 +231,24 @@ describe("process explorer preferences", () => {
     expect(parsed.viewMode).toBe("tree");
     expect(parsed.sortKey).toBe("memory");
     expect(parsed.sortDirection).toBe("ascending");
+    expect(parsed.liveSort).toBe(false);
     expect(parsed.followSelection).toBe(false);
     expect(parsed.expandedIdentities).toHaveLength(512);
     expect(parsed.expandedIdentities[0]).toBe("id-8");
     expect(
       parsed.expandedIdentities[parsed.expandedIdentities.length - 1],
     ).toBe("id-519");
+  });
+
+  it("persists the live sorting preference when explicitly enabled", () => {
+    const parsed = parseProcessExplorerPreferences(
+      JSON.stringify({
+        ...defaultProcessExplorerPreferences(),
+        liveSort: true,
+      }),
+    );
+
+    expect(parsed.liveSort).toBe(true);
   });
 
   it("prunes stale expansion identities without matching a reused PID", () => {

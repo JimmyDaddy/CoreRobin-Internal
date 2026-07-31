@@ -12,6 +12,8 @@
   "followTitle": "Garder le processus sélectionné visible pendant l’actualisation",
   "resetView": "Réinitialiser la vue des processus",
   "resort": "Retriez selon les mesures actuelles",
+  "liveSort": "Tri en direct",
+  "liveSortTitle": "Retriez automatiquement la liste quand les mesures évoluent",
   "search": "Rechercher les processus",
   "searchPlaceholder": "Nom, PID, utilisateur ou port",
   "matchedPort": "Correspond au port {{port}}",
@@ -32,6 +34,7 @@
     "flat": "{{visible}} / {{total}} processus · affichage à la demande",
     "siblingSort": "Arborescence ouverte automatiquement · tri des frères",
     "stableOrder": "Mesures en direct · l’ordre change uniquement sur demande",
+    "liveOrder": "Mesures en direct · l’ordre suit automatiquement le tri actuel",
     "selectionFiltered": "Le processus sélectionné est filtré · Supprimer le filtre"
   },
   "status": {

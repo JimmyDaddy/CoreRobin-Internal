@@ -27,6 +27,7 @@ export interface ProcessExplorerPreferences {
   query: string;
   sortKey: ProcessSortKey;
   sortDirection: SortDirection;
+  liveSort: boolean;
   expandedIdentities: string[];
   followSelection: boolean;
 }
@@ -82,6 +83,7 @@ export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences 
     query: "",
     sortKey: "cpu",
     sortDirection: "descending",
+    liveSort: false,
     expandedIdentities: [],
     followSelection: true,
   };
@@ -138,6 +140,10 @@ export function parseProcessExplorerPreferences(
       sortDirection: isSortDirection(value.sortDirection)
         ? value.sortDirection
         : fallback.sortDirection,
+      liveSort:
+        typeof value.liveSort === "boolean"
+          ? value.liveSort
+          : fallback.liveSort,
       expandedIdentities,
       followSelection:
         typeof value.followSelection === "boolean"

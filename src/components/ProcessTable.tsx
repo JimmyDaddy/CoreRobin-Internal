@@ -1,4 +1,5 @@
 import {
+  Activity,
   ArrowDown,
   ArrowDownUp,
   ArrowUp,
@@ -63,6 +64,8 @@ interface ProcessTableProps {
   sortKey: ProcessSortKey;
   direction: SortDirection;
   onSortChange: (sortKey: ProcessSortKey, direction: SortDirection) => void;
+  liveSort?: boolean;
+  onLiveSortChange?: (enabled: boolean) => void;
   viewMode?: ProcessViewMode;
   onViewModeChange?: (viewMode: ProcessViewMode) => void;
   expandedIdentities?: string[];
@@ -101,6 +104,8 @@ export function ProcessTable({
   sortKey,
   direction,
   onSortChange,
+  liveSort = false,
+  onLiveSortChange,
   viewMode = "flat",
   onViewModeChange,
   expandedIdentities = [],
@@ -133,6 +138,7 @@ export function ProcessTable({
   const identityOrder = useMemo(() => {
     const previous = stableOrderRef.current;
     const forceResort =
+      liveSort ||
       previous === null ||
       previous.sortKey !== sortKey ||
       previous.direction !== direction ||
@@ -153,7 +159,7 @@ export function ProcessTable({
     return new Map(
       identities.map((identity, index) => [identity, index]),
     );
-  }, [direction, orderRevision, processes, sortKey]);
+  }, [direction, liveSort, orderRevision, processes, sortKey]);
   const projectionContext = useMemo(
     () => ({ identityOrder, portsByPid }),
     [identityOrder, portsByPid],
@@ -482,6 +488,15 @@ export function ProcessTable({
                 <LocateFixed size={14} />{t("process:follow")}
               </button>
               <button
+                className="process-tool-button"
+                type="button"
+                aria-pressed={liveSort}
+                title={t("process:liveSortTitle")}
+                onClick={() => onLiveSortChange?.(!liveSort)}
+              >
+                <Activity size={14} />{t("process:liveSort")}
+              </button>
+              <button
                 className="process-tool-button process-tool-button--icon"
                 type="button"
                 aria-label={t("process:resort")}
@@ -748,7 +763,13 @@ export function ProcessTable({
           </span>
         )}
         {!compact ? (
-          <span>{t("process:footer.stableOrder")}</span>
+          <span>
+            {t(
+              liveSort
+                ? "process:footer.liveOrder"
+                : "process:footer.stableOrder",
+            )}
+          </span>
         ) : null}
         {selectionFiltered ? (
           <button type="button" onClick={() => onQueryChange("")}>

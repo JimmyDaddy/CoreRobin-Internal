@@ -2062,6 +2062,7 @@ export default interface Resources {
     "footer": {
       "compact": "显示 {{visible}} / {{total}} 个进程",
       "flat": "{{visible}} / {{total}} 个进程 · 按需渲染",
+      "liveOrder": "指标实时更新 · 顺序会随当前排序自动变化",
       "selectionFiltered": "选中进程被筛选隐藏 · 清除筛选",
       "siblingSort": "根层自动展开 · 同级排序",
       "stableOrder": "指标实时更新 · 顺序仅在手动排序时变化",
@@ -2100,6 +2101,8 @@ export default interface Resources {
       "userStatus": "用户 / 状态",
       "verifying": "正在核验进程身份…"
     },
+    "liveSort": "实时排序",
+    "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
     "matchedPort": "匹配端口 {{port}}",
     "noMatches": "没有匹配的进程",
     "protected": "受保护",
