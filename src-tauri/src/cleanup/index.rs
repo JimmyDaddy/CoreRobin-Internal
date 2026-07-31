@@ -543,6 +543,11 @@ fn scan_quick_roots_parallel(
     on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<(), CommandError> {
     let parallelism = quick_scan_parallelism(scan_root);
+    let mut root_name_counts = HashMap::<String, usize>::new();
+    for root in roots {
+        let count = root_name_counts.entry(cleanup_node_name(root)).or_default();
+        *count = count.saturating_add(1);
+    }
     let part_node_limit = MAX_PERSISTED_NODES
         .saturating_sub(1)
         .checked_div(roots.len().max(1))
@@ -652,6 +657,11 @@ fn scan_quick_roots_parallel(
         for outcome in parts {
             match outcome {
                 QuickScanPartOutcome::Indexed(part) => {
+                    let root_name = cleanup_node_name(&part.root_path);
+                    let root_name_override = root_name_counts
+                        .get(&root_name)
+                        .is_some_and(|count| *count > 1)
+                        .then(|| display_path(&part.root_path, home));
                     if let Err(error) = merge_quick_scan_part(
                         connection,
                         scan_id,
@@ -660,6 +670,7 @@ fn scan_quick_roots_parallel(
                         scan_root,
                         definitions,
                         &part,
+                        root_name_override.as_deref(),
                         stats,
                     ) {
                         let _ = remove_quick_part_indexes(index_path);
@@ -759,6 +770,7 @@ fn merge_quick_scan_part(
     scan_root: &Path,
     definitions: &[super::LocationDefinition],
     part: &QuickScanPart,
+    root_name_override: Option<&str>,
     stats: &mut IndexScanStats,
 ) -> Result<(), CommandError> {
     let source = open_index_read_only(&part.index_path)?;
@@ -771,6 +783,7 @@ fn merge_quick_scan_part(
         source_root_id,
         scan_id,
         Some(root_id),
+        root_name_override,
     )?;
     let metadata = fs::symlink_metadata(&part.root_path).map_err(|error| {
         CommandError::new(
@@ -2632,8 +2645,10 @@ fn clone_external_node_subtree(
     source_node_id: i64,
     target_scan_id: &str,
     target_parent_id: Option<i64>,
+    target_name_override: Option<&str>,
 ) -> Result<i64, CommandError> {
     let stored = load_stored_node(source, source_scan_id, source_node_id)?;
+    let target_name = target_name_override.unwrap_or(&stored.name);
     target
         .execute(
             "INSERT INTO nodes(
@@ -2649,7 +2664,7 @@ fn clone_external_node_subtree(
             params![
                 target_scan_id,
                 target_parent_id,
-                stored.name,
+                target_name,
                 stored.absolute_path,
                 stored.display_path,
                 stored.logical_size_bytes,
@@ -2678,6 +2693,7 @@ fn clone_external_node_subtree(
             child_id,
             target_scan_id,
             Some(target_node_id),
+            None,
         )?;
     }
     Ok(target_node_id)
@@ -3882,6 +3898,78 @@ mod tests {
                     .file_name()
                     .to_string_lossy()
                     .starts_with(".cleanup-quick-"))
+        );
+    }
+
+    #[test]
+    fn quick_roots_with_the_same_folder_name_keep_distinct_index_nodes() {
+        let fixture = tempdir().unwrap();
+        let home = fixture.path().join("home");
+        let first = home.join(".bun/install/cache");
+        let second = home.join(".yarn/berry/cache");
+        fs::create_dir_all(&first).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        fs::write(first.join("bun.bin"), vec![1_u8; 1_024]).unwrap();
+        fs::write(second.join("yarn.bin"), vec![2_u8; 2_048]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup-scan-index-v1.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "quick-duplicate-names",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            &fixture.path().to_string_lossy(),
+            "Common locations",
+            "/",
+            &[first.clone(), second.clone()],
+        )
+        .unwrap();
+        let root_id = root_node_id(&connection, "quick-duplicate-names").unwrap();
+        let mut stats = IndexScanStats::new();
+
+        scan_quick_roots_parallel(
+            &mut connection,
+            &index_path,
+            "quick-duplicate-names",
+            root_id,
+            &[first.clone(), second.clone()],
+            &home,
+            fixture.path(),
+            &platform_paths(&home),
+            &[],
+            &AtomicBool::new(false),
+            &mut stats,
+            &mut |_| {},
+        )
+        .unwrap();
+        update_root_totals(&connection, "quick-duplicate-names", root_id).unwrap();
+        let root = materialize_node(&connection, "quick-duplicate-names", root_id, 2).unwrap();
+
+        assert_eq!(root.children.len(), 2);
+        assert!(
+            root.children
+                .iter()
+                .any(|node| node.name == "~/.bun/install/cache")
+        );
+        assert!(
+            root.children
+                .iter()
+                .any(|node| node.name == "~/.yarn/berry/cache")
+        );
+        assert_eq!(stats.scanned_entry_count, 2);
+        let first = first.canonicalize().unwrap();
+        let second = second.canonicalize().unwrap();
+        assert!(
+            root.children
+                .iter()
+                .any(|node| { node.path.as_deref() == Some(first.to_string_lossy().as_ref()) })
+        );
+        assert!(
+            root.children
+                .iter()
+                .any(|node| { node.path.as_deref() == Some(second.to_string_lossy().as_ref()) })
         );
     }
 
