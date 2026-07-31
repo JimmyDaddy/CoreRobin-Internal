@@ -63,6 +63,7 @@ interface FileInsightsLauncherProps {
   scan: FileInsightsScan | null;
   snapshotStatus?: FileInsightsSnapshotStatus;
   loading: boolean;
+  compact?: boolean;
   onOpen: () => void;
 }
 
@@ -99,6 +100,7 @@ export function FileInsightsLauncher({
   scan,
   snapshotStatus = "current",
   loading,
+  compact = false,
   onOpen,
 }: FileInsightsLauncherProps) {
   const { t } = useAppTranslation();
@@ -108,7 +110,11 @@ export function FileInsightsLauncher({
   ) ?? 0;
 
   return (
-    <button className="file-insights-launcher" type="button" onClick={onOpen}>
+    <button
+      className={`file-insights-launcher${compact ? " is-compact" : ""}`}
+      type="button"
+      onClick={onOpen}
+    >
       <span className="file-insights-launcher__visual" aria-hidden="true">
         <i /><i />
         <Files size={19} />

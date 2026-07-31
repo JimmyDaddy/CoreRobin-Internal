@@ -30,6 +30,9 @@ const DETAIL_RETENTION: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const DIRECTORY_PAGE_SIZE: usize = 24;
 const VISIBLE_FILES_PER_DIRECTORY: usize = 64;
 const MAX_PERSISTED_NODES: usize = 250_000;
+// Keep the route to user-owned content navigable even when earlier system trees
+// consume the ordinary node budget during a complete system-disk scan.
+const NAVIGATION_ANCHOR_RESERVE: usize = 4_096;
 const MAX_INDEX_BYTES: u64 = 1024 * 1024 * 1024;
 const INDEX_VACUUM_PAGES: usize = 8_192;
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -51,26 +54,36 @@ struct IndexedFile {
 struct IndexNodeBudget {
     used: usize,
     limit: usize,
+    ordinary_limit: usize,
 }
 
 impl IndexNodeBudget {
-    fn new(used: usize, limit: usize) -> Self {
+    fn new(used: usize, limit: usize, required_reserve: usize) -> Self {
+        let limit = limit.max(used);
+        let ordinary_limit = limit
+            .saturating_sub(required_reserve.min(limit.saturating_sub(used)))
+            .max(used);
         Self {
             used,
-            limit: limit.max(used),
+            limit,
+            ordinary_limit,
         }
     }
 
     fn reserve(&mut self) -> bool {
-        if self.used >= self.limit {
+        if self.used >= self.ordinary_limit {
             return false;
         }
         self.used = self.used.saturating_add(1);
         true
     }
 
-    fn reserve_required(&mut self) {
+    fn reserve_required(&mut self) -> bool {
+        if self.used >= self.limit {
+            return false;
+        }
         self.used = self.used.saturating_add(1);
+        true
     }
 }
 
@@ -291,7 +304,18 @@ fn build_indexed_scan_with_shared_identities(
     // to complete in a few milliseconds.
     let mut stats = IndexScanStats::resuming_from(started_at_ms);
     restore_completed_segment_stats(&connection, scan_id, &mut stats)?;
-    let mut node_budget = IndexNodeBudget::new(count_scan_nodes(&connection, scan_id)?, node_limit);
+    let navigation_anchor_reserve = if request.profile == CleanupScanProfile::Complete
+        && target_kind == CleanupScanTargetKind::SystemDisk
+    {
+        NAVIGATION_ANCHOR_RESERVE
+    } else {
+        0
+    };
+    let mut node_budget = IndexNodeBudget::new(
+        count_scan_nodes(&connection, scan_id)?,
+        node_limit,
+        navigation_anchor_reserve,
+    );
     let root_id = root_node_id(&connection, scan_id)?;
     let selected_cleanup_root = target_kind != CleanupScanTargetKind::SystemDisk;
     let roots = if request.profile == CleanupScanProfile::CommonLocations {
@@ -1061,6 +1085,7 @@ pub(crate) fn refresh_indexed_directory(
     let mut node_budget = IndexNodeBudget::new(
         count_scan_nodes(&connection, &staging_scan_id)?,
         refresh_node_limit,
+        0,
     );
     let transaction = connection.transaction().map_err(index_error)?;
     let mut context = ScanContext {
@@ -1289,9 +1314,15 @@ fn scan_directory_into_index(
         });
     }
 
-    let persist_node = if force_persist {
-        context.node_budget.reserve_required();
-        true
+    let path_anchor = force_persist
+        || should_preserve_navigation_anchor(
+            directory,
+            context.scan_root,
+            context.home,
+            context.selected_cleanup_root,
+        );
+    let persist_node = if path_anchor {
+        context.node_budget.reserve_required()
     } else {
         context.node_budget.reserve()
     };
@@ -1306,7 +1337,7 @@ fn scan_directory_into_index(
                 directory_safety,
                 protection_reason,
                 &metadata,
-                force_persist,
+                path_anchor,
             )
         })
         .transpose()?;
@@ -1478,6 +1509,22 @@ fn scan_directory_into_index(
         totals,
         persisted: persist_node,
     })
+}
+
+fn should_preserve_navigation_anchor(
+    directory: &Path,
+    scan_root: &Path,
+    home: &Path,
+    selected_cleanup_root: bool,
+) -> bool {
+    if selected_cleanup_root || directory == scan_root {
+        return false;
+    }
+
+    directory.parent() == Some(scan_root)
+        || directory == home
+        || directory.parent() == Some(home)
+        || home.starts_with(directory)
 }
 
 fn retain_largest_indexed_file(
@@ -4481,6 +4528,53 @@ mod tests {
                 .iter()
                 .any(|node| node.kind == CleanupNodeKind::Aggregate)
         );
+    }
+
+    #[test]
+    fn node_budget_keeps_capacity_for_required_navigation_anchors() {
+        let mut budget = IndexNodeBudget::new(0, 5, 2);
+
+        assert!(budget.reserve());
+        assert!(budget.reserve());
+        assert!(budget.reserve());
+        assert!(!budget.reserve());
+        assert!(budget.reserve_required());
+        assert!(budget.reserve_required());
+        assert!(!budget.reserve_required());
+    }
+
+    #[test]
+    fn system_scan_preserves_the_user_navigation_spine() {
+        let scan_root = Path::new("scan-root");
+        let home = Path::new("scan-root/Users/demo");
+
+        assert!(should_preserve_navigation_anchor(
+            Path::new("scan-root/Users"),
+            scan_root,
+            home,
+            false,
+        ));
+        assert!(should_preserve_navigation_anchor(
+            home, scan_root, home, false,
+        ));
+        assert!(should_preserve_navigation_anchor(
+            Path::new("scan-root/Users/demo/Downloads"),
+            scan_root,
+            home,
+            false,
+        ));
+        assert!(!should_preserve_navigation_anchor(
+            Path::new("scan-root/Users/demo/Downloads/archive"),
+            scan_root,
+            home,
+            false,
+        ));
+        assert!(!should_preserve_navigation_anchor(
+            Path::new("scan-root/Users/demo/Downloads"),
+            scan_root,
+            home,
+            true,
+        ));
     }
 
     #[test]

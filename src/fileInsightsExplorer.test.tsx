@@ -86,6 +86,41 @@ beforeEach(async () => {
 });
 
 describe("file insights workspace", () => {
+  it("combines completed scan facts and actions into one compact overview", () => {
+    const scan = {
+      ...getMockCleanupScan(),
+      profile: "common_locations" as const,
+      scopePaths: ["/Users/demo/Downloads", "/Users/demo/Library/Caches"],
+    };
+    render(
+      <CleanupAssistant
+        snapshot={scan}
+        error={null}
+        loading={false}
+        cancelling={false}
+        phase={null}
+        progress={null}
+        snapshotStatus="current"
+        growthComparison={{
+          previousSampledAtMs: scan.sampledAtMs - 60_000,
+          currentSampledAtMs: scan.sampledAtMs,
+          growthBytes: 0,
+          fastestGrowing: [],
+        }}
+        onScan={() => undefined}
+        onCancel={() => undefined}
+        onDeletionApplied={async () => undefined}
+        fileInsights={EMPTY_FILE_INSIGHTS}
+      />,
+    );
+
+    const overview = document.querySelector<HTMLElement>(".cleanup-result-overview");
+    expect(overview).not.toBeNull();
+    expect(overview?.querySelector(".file-insights-launcher.is-compact")).not.toBeNull();
+    expect(document.querySelector(".cleanup-result-overview__growth")).toBeNull();
+    expect(screen.getByRole("button", { name: "继续完整扫描" })).toBeTruthy();
+  });
+
   it("opens as a separate workspace from the space cleanup page and returns", () => {
     render(
       <CleanupAssistant
