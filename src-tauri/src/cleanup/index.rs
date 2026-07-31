@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 use sysinfo::{DiskKind, Disks};
 
 use crate::error::CommandError;
@@ -694,8 +694,7 @@ pub(crate) fn load_indexed_scan(
     index_path: &Path,
     scan_id: &str,
 ) -> Result<CleanupScan, CommandError> {
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
+    let connection = open_index_read_only(index_path)?;
     load_scan(&connection, index_path, scan_id)
 }
 
@@ -704,8 +703,7 @@ pub(crate) fn load_indexed_directory(
     scan_id: &str,
     directory_id: &str,
 ) -> Result<CleanupNode, CommandError> {
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
+    let connection = open_index_read_only(index_path)?;
     let node_id = parse_index_node_id(scan_id, directory_id)?;
     ensure_directory_exists(&connection, scan_id, node_id)?;
     materialize_node(&connection, scan_id, node_id, 1)
@@ -718,8 +716,7 @@ pub(crate) fn load_indexed_children(
     cursor: usize,
     limit: usize,
 ) -> Result<CleanupIndexedChildrenPage, CommandError> {
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
+    let connection = open_index_read_only(index_path)?;
     let node_id = parse_index_node_id(scan_id, directory_id)?;
     ensure_directory_exists(&connection, scan_id, node_id)?;
     let limit = limit.clamp(1, 100);
@@ -3091,6 +3088,15 @@ fn open_index(path: &Path) -> Result<Connection, CommandError> {
         .map_err(index_error)?;
     connection
         .pragma_update(None, "synchronous", "NORMAL")
+        .map_err(index_error)?;
+    Ok(connection)
+}
+
+fn open_index_read_only(path: &Path) -> Result<Connection, CommandError> {
+    let connection =
+        Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(index_error)?;
+    connection
+        .busy_timeout(SQLITE_BUSY_TIMEOUT)
         .map_err(index_error)?;
     Ok(connection)
 }

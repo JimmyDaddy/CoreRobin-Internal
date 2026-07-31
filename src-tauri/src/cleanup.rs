@@ -2876,18 +2876,26 @@ fn relative_cleanup_path(path: &Path, boundary: &Path) -> Option<PathBuf> {
     }
 
     #[cfg(windows)]
-    {
-        let normalized_path = windows_non_verbatim_path(path).unwrap_or_else(|| path.to_path_buf());
-        let normalized_boundary =
-            windows_non_verbatim_path(boundary).unwrap_or_else(|| boundary.to_path_buf());
-        return normalized_path
-            .strip_prefix(normalized_boundary)
-            .ok()
-            .map(Path::to_path_buf);
+    let (normalized_path, normalized_boundary) = (
+        windows_non_verbatim_path(path).unwrap_or_else(|| path.to_path_buf()),
+        windows_non_verbatim_path(boundary).unwrap_or_else(|| boundary.to_path_buf()),
+    );
+    #[cfg(windows)]
+    if let Ok(relative) = normalized_path.strip_prefix(&normalized_boundary) {
+        return Some(relative.to_path_buf());
     }
 
-    #[cfg(not(windows))]
-    None
+    let canonical_path = canonical_cleanup_candidate(path)?;
+    let canonical_boundary = boundary.canonicalize().ok()?;
+    #[cfg(windows)]
+    let canonical_path = windows_non_verbatim_path(&canonical_path).unwrap_or(canonical_path);
+    #[cfg(windows)]
+    let canonical_boundary =
+        windows_non_verbatim_path(&canonical_boundary).unwrap_or(canonical_boundary);
+    canonical_path
+        .strip_prefix(canonical_boundary)
+        .ok()
+        .map(Path::to_path_buf)
 }
 
 #[cfg(windows)]
@@ -2897,6 +2905,13 @@ fn windows_non_verbatim_path(path: &Path) -> Option<PathBuf> {
         return Some(PathBuf::from(format!(r"\\{relative}")));
     }
     path.strip_prefix(r"\\?\").map(PathBuf::from)
+}
+
+fn canonical_cleanup_candidate(path: &Path) -> Option<PathBuf> {
+    path.canonicalize().ok().or_else(|| {
+        let name = path.file_name()?;
+        Some(path.parent()?.canonicalize().ok()?.join(name))
+    })
 }
 
 fn validate_selected_cleanup_root(
@@ -4677,9 +4692,14 @@ mod tests {
             selected.to_string_lossy().as_ref(),
             &home.canonicalize().unwrap(),
         )
+        .unwrap()
         .unwrap();
 
-        assert_eq!(boundary, Some(selected.canonicalize().unwrap()));
+        assert_eq!(boundary, selected.canonicalize().unwrap());
+        assert_eq!(
+            relative_cleanup_path(&selected_file, &boundary),
+            Some(PathBuf::from("app-data").join("history.db"))
+        );
 
         let inspection = {
             let selected_root = DeleteRoot::open(&selected.canonicalize().unwrap()).unwrap();
