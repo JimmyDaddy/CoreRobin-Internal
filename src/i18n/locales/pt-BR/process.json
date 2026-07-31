@@ -9,10 +9,14 @@
   "flatTitle": "Visualização em lista",
   "treeTitle": "Mostrar relações pai-filho; processos raiz são exibidos automaticamente e irmãos são organizados por coluna",
   "follow": "Seguir",
-  "followTitle": "Manter o processo selecionado visível após atualizar e reorganizar",
+  "followTitle": "Manter o processo selecionado visível durante a atualização",
   "resetView": "Redefinir visualização de processos",
+  "resort": "Reordenar pelas métricas atuais",
+  "liveSort": "Ordenação ao vivo",
+  "liveSortTitle": "Reordenar a lista automaticamente conforme as métricas mudam",
   "search": "Pesquisar processos",
-  "searchPlaceholder": "Nome, PID ou usuário",
+  "searchPlaceholder": "Nome, PID, usuário ou porta",
+  "matchedPort": "Corresponde à porta {{port}}",
   "systemProcesses": "Processos do sistema",
   "columns": {
     "process": "Processo",
@@ -29,6 +33,8 @@
     "tree": "Visíveis {{visible}} · correspondentes {{matches}} / {{total}} processos",
     "flat": "{{visible}} / {{total}} processos · renderizados sob demanda",
     "siblingSort": "Árvores abertas automaticamente · ordenação de irmãos",
+    "stableOrder": "Métricas ao vivo · a ordem só muda manualmente",
+    "liveOrder": "Métricas ao vivo · a ordem acompanha automaticamente a classificação atual",
     "selectionFiltered": "Processo selecionado está filtrado · limpar filtro"
   },
   "status": {

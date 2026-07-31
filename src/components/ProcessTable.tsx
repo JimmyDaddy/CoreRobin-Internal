@@ -1,5 +1,7 @@
 import {
+  Activity,
   ArrowDown,
+  ArrowDownUp,
   ArrowUp,
   ChevronDown,
   ChevronRight,
@@ -29,9 +31,13 @@ import {
   buildProcessTreeProjection,
   computeVirtualRange,
   expandableProcessTreeRootIdentities,
+  indexProcessPorts,
+  matchingProcessPort,
+  reconcileStableProcessOrder,
   type VisibleProcessRow,
 } from "../processExplorer";
 import type {
+  NetworkConnection,
   ProcessRow,
   ProcessSortKey,
   ProcessViewMode,
@@ -50,6 +56,7 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface ProcessTableProps {
   processes: ProcessRow[];
+  connections?: readonly NetworkConnection[];
   selectedIdentity: string | null;
   onSelect: (process: ProcessRow) => void;
   query: string;
@@ -57,6 +64,8 @@ interface ProcessTableProps {
   sortKey: ProcessSortKey;
   direction: SortDirection;
   onSortChange: (sortKey: ProcessSortKey, direction: SortDirection) => void;
+  liveSort?: boolean;
+  onLiveSortChange?: (enabled: boolean) => void;
   viewMode?: ProcessViewMode;
   onViewModeChange?: (viewMode: ProcessViewMode) => void;
   expandedIdentities?: string[];
@@ -87,6 +96,7 @@ function sortAriaValue(
 
 export function ProcessTable({
   processes,
+  connections = [],
   selectedIdentity,
   onSelect,
   query,
@@ -94,6 +104,8 @@ export function ProcessTable({
   sortKey,
   direction,
   onSortChange,
+  liveSort = false,
+  onLiveSortChange,
   viewMode = "flat",
   onViewModeChange,
   expandedIdentities = [],
@@ -111,7 +123,47 @@ export function ProcessTable({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(340);
   const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);
+  const [orderRevision, setOrderRevision] = useState(0);
+  const stableOrderRef = useRef<{
+    sortKey: ProcessSortKey;
+    direction: SortDirection;
+    revision: number;
+    identities: string[];
+  } | null>(null);
   const effectiveViewMode: ProcessViewMode = compact ? "flat" : viewMode;
+  const portsByPid = useMemo(
+    () => indexProcessPorts(connections),
+    [connections],
+  );
+  const identityOrder = useMemo(() => {
+    const previous = stableOrderRef.current;
+    const forceResort =
+      liveSort ||
+      previous === null ||
+      previous.sortKey !== sortKey ||
+      previous.direction !== direction ||
+      previous.revision !== orderRevision;
+    const identities = reconcileStableProcessOrder(
+      previous?.identities ?? [],
+      processes,
+      sortKey,
+      direction,
+      forceResort,
+    );
+    stableOrderRef.current = {
+      sortKey,
+      direction,
+      revision: orderRevision,
+      identities,
+    };
+    return new Map(
+      identities.map((identity, index) => [identity, index]),
+    );
+  }, [direction, liveSort, orderRevision, processes, sortKey]);
+  const projectionContext = useMemo(
+    () => ({ identityOrder, portsByPid }),
+    [identityOrder, portsByPid],
+  );
 
   const treeProjection = useMemo(
     () =>
@@ -124,6 +176,7 @@ export function ProcessTable({
             new Set(expandedIdentities),
             selectedIdentity,
             followSelection,
+            projectionContext,
           )
         : null,
     [
@@ -132,6 +185,7 @@ export function ProcessTable({
       expandedIdentities,
       followSelection,
       processes,
+      projectionContext,
       query,
       selectedIdentity,
       sortKey,
@@ -140,8 +194,21 @@ export function ProcessTable({
   const allRows = useMemo(
     () =>
       treeProjection?.rows ??
-      buildFlatProcessRows(processes, query, sortKey, direction),
-    [direction, processes, query, sortKey, treeProjection],
+      buildFlatProcessRows(
+        processes,
+        query,
+        sortKey,
+        direction,
+        projectionContext,
+      ),
+    [
+      direction,
+      processes,
+      projectionContext,
+      query,
+      sortKey,
+      treeProjection,
+    ],
   );
   const rows = compact ? allRows.slice(0, COMPACT_ROWS) : allRows;
 
@@ -246,6 +313,7 @@ export function ProcessTable({
       nextSortKey === sortKey && direction === "descending"
         ? "ascending"
         : "descending";
+    setOrderRevision((current) => current + 1);
     onSortChange(nextSortKey, nextDirection);
   };
 
@@ -420,11 +488,32 @@ export function ProcessTable({
                 <LocateFixed size={14} />{t("process:follow")}
               </button>
               <button
+                className="process-tool-button"
+                type="button"
+                aria-pressed={liveSort}
+                title={t("process:liveSortTitle")}
+                onClick={() => onLiveSortChange?.(!liveSort)}
+              >
+                <Activity size={14} />{t("process:liveSort")}
+              </button>
+              <button
+                className="process-tool-button process-tool-button--icon"
+                type="button"
+                aria-label={t("process:resort")}
+                title={t("process:resort")}
+                onClick={() => setOrderRevision((current) => current + 1)}
+              >
+                <ArrowDownUp size={14} />
+              </button>
+              <button
                 className="process-tool-button process-tool-button--icon"
                 type="button"
                 aria-label={t("process:resetView")}
                 title={t("process:resetView")}
-                onClick={onResetPreferences}
+                onClick={() => {
+                  setOrderRevision((current) => current + 1);
+                  onResetPreferences?.();
+                }}
               >
                 <RotateCcw size={14} />
               </button>
@@ -504,6 +593,11 @@ export function ProcessTable({
           ) : null}
           {visibleRows.map((row, visibleIndex) => {
             const { process, identity } = row;
+            const matchedPort = matchingProcessPort(
+              query,
+              process.pid,
+              portsByPid,
+            );
             const selected = identity === selectedIdentity;
             const rowIndex = virtualRange.start + visibleIndex;
             const treeRowProps =
@@ -591,6 +685,15 @@ export function ProcessTable({
                   >
                     {process.name || t("common:unnamedProcess")}
                   </button>
+                  {matchedPort !== null ? (
+                    <span
+                      className="background-task-chip process-port-match tabular"
+                      title={t("process:matchedPort", { port: matchedPort })}
+                      style={{ minHeight: 0, padding: "2px 5px" }}
+                    >
+                      :{matchedPort}
+                    </span>
+                  ) : null}
                   {process.protected ? (
                     <ShieldCheck size={13} aria-label={t("process:protected")} />
                   ) : null}
@@ -659,8 +762,14 @@ export function ProcessTable({
             })}
           </span>
         )}
-        {!compact && effectiveViewMode === "tree" ? (
-          <span>{t("process:footer.siblingSort")}</span>
+        {!compact ? (
+          <span>
+            {t(
+              liveSort
+                ? "process:footer.liveOrder"
+                : "process:footer.stableOrder",
+            )}
+          </span>
         ) : null}
         {selectionFiltered ? (
           <button type="button" onClick={() => onQueryChange("")}>

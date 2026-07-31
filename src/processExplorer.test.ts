@@ -4,19 +4,24 @@ import { buildProcessHistoryLineSegments } from "./components/ProcessHistory";
 import {
   MAX_PROCESS_HISTORY_POINTS,
   PROCESS_HISTORY_WINDOW_MS,
+  buildFlatProcessRows,
   buildProcessTreeProjection,
   computeVirtualRange,
   defaultProcessExplorerPreferences,
   expandableProcessTreeRootIdentities,
+  indexProcessPorts,
   loadProcessExplorerPreferences,
+  matchingProcessPort,
   parseProcessExplorerPreferences,
   pruneExpandedIdentities,
+  reconcileStableProcessOrder,
   saveProcessExplorerPreferences,
   selectDefaultInspectorProcess,
   updateSelectedProcessHistory,
 } from "./processExplorer";
 import {
   SNAPSHOT_SCHEMA_VERSION,
+  type NetworkConnection,
   type ProcessRow,
   type ProcessHistoryPoint,
   type ProcessSortKey,
@@ -196,6 +201,7 @@ describe("process explorer preferences", () => {
         query,
         sortKey: "invalid",
         sortDirection: "sideways",
+        liveSort: "yes",
         expandedIdentities: ["live", "live", "", "x".repeat(513), 42],
         followSelection: "yes",
       }),
@@ -225,12 +231,24 @@ describe("process explorer preferences", () => {
     expect(parsed.viewMode).toBe("tree");
     expect(parsed.sortKey).toBe("memory");
     expect(parsed.sortDirection).toBe("ascending");
+    expect(parsed.liveSort).toBe(false);
     expect(parsed.followSelection).toBe(false);
     expect(parsed.expandedIdentities).toHaveLength(512);
     expect(parsed.expandedIdentities[0]).toBe("id-8");
     expect(
       parsed.expandedIdentities[parsed.expandedIdentities.length - 1],
     ).toBe("id-519");
+  });
+
+  it("persists the live sorting preference when explicitly enabled", () => {
+    const parsed = parseProcessExplorerPreferences(
+      JSON.stringify({
+        ...defaultProcessExplorerPreferences(),
+        liveSort: true,
+      }),
+    );
+
+    expect(parsed.liveSort).toBe(true);
   });
 
   it("prunes stale expansion identities without matching a reused PID", () => {
@@ -309,6 +327,138 @@ describe("process explorer preferences", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("process port search", () => {
+  const connections: NetworkConnection[] = [
+    {
+      protocol: "tcp",
+      addressFamily: "ipv4",
+      localEndpoint: { address: "127.0.0.1", port: 3_000 },
+      remoteEndpoint: { address: "203.0.113.10", port: 443 },
+      state: "established",
+      associatedPids: [101],
+    },
+    {
+      protocol: "udp",
+      addressFamily: "ipv4",
+      localEndpoint: { address: "0.0.0.0", port: 5_353 },
+      remoteEndpoint: null,
+      state: "unconnected",
+      associatedPids: [101, 102, 101],
+    },
+  ];
+
+  it("indexes unique local and remote ports by owning process", () => {
+    const portsByPid = indexProcessPorts(connections);
+
+    expect(portsByPid.get(101)).toEqual([443, 3_000, 5_353]);
+    expect(portsByPid.get(102)).toEqual([5_353]);
+    expect(matchingProcessPort(":3000", 101, portsByPid)).toBe(3_000);
+    expect(matchingProcessPort("port:443", 101, portsByPid)).toBe(443);
+    expect(matchingProcessPort("65536", 101, portsByPid)).toBeNull();
+  });
+
+  it("finds processes by plain or explicit port queries", () => {
+    const web = processFixture(101, { name: "web-server" });
+    const mdns = processFixture(102, { name: "discovery" });
+    const other = processFixture(103, { name: "worker" });
+    const context = { portsByPid: indexProcessPorts(connections) };
+
+    expect(
+      buildFlatProcessRows(
+        [other, mdns, web],
+        "3000",
+        "name",
+        "ascending",
+        context,
+      ).map((row) => row.process.name),
+    ).toEqual(["web-server"]);
+    expect(
+      buildFlatProcessRows(
+        [other, mdns, web],
+        "端口 5353",
+        "name",
+        "ascending",
+        context,
+      ).map((row) => row.process.name),
+    ).toEqual(["discovery", "web-server"]);
+  });
+
+  it("keeps ancestors visible when a descendant matches a port", () => {
+    const root = processFixture(100, { name: "launcher" });
+    const child = processFixture(101, {
+      name: "web-server",
+      parentPid: 100,
+    });
+    const projection = buildProcessTreeProjection(
+      [child, root],
+      ":3000",
+      "name",
+      "ascending",
+      new Set(),
+      null,
+      false,
+      { portsByPid: indexProcessPorts(connections) },
+    );
+
+    expect(projection.rows.map((row) => row.process.name)).toEqual([
+      "launcher",
+      "web-server",
+    ]);
+    expect(projection.rows.map((row) => row.queryMatch)).toEqual([false, true]);
+  });
+});
+
+describe("stable process ordering", () => {
+  it("updates metrics in place until the user explicitly requests another sort", () => {
+    const alpha = processFixture(201, { name: "alpha", cpuPercent: 90 });
+    const beta = processFixture(202, { name: "beta", cpuPercent: 20 });
+    const initial = reconcileStableProcessOrder(
+      [],
+      [beta, alpha],
+      "cpu",
+      "descending",
+    );
+    expect(initial).toEqual([processIdentity(alpha), processIdentity(beta)]);
+
+    const updatedAlpha = { ...alpha, cpuPercent: 1 };
+    const updatedBeta = { ...beta, cpuPercent: 95 };
+    expect(
+      reconcileStableProcessOrder(
+        initial,
+        [updatedBeta, updatedAlpha],
+        "cpu",
+        "descending",
+      ),
+    ).toEqual(initial);
+
+    expect(
+      reconcileStableProcessOrder(
+        initial,
+        [updatedBeta, updatedAlpha],
+        "cpu",
+        "descending",
+        true,
+      ),
+    ).toEqual([processIdentity(beta), processIdentity(alpha)]);
+  });
+
+  it("removes exited processes and appends new processes without moving existing rows", () => {
+    const alpha = processFixture(211, { cpuPercent: 80 });
+    const beta = processFixture(212, { cpuPercent: 40 });
+    const gamma = processFixture(213, { cpuPercent: 100 });
+    const initial = [processIdentity(alpha), processIdentity(beta)];
+
+    expect(
+      reconcileStableProcessOrder(
+        initial,
+        [gamma, beta],
+        "cpu",
+        "descending",
+      ),
+    ).toEqual([processIdentity(beta), processIdentity(gamma)]);
   });
 });
 

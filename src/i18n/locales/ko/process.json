@@ -9,10 +9,14 @@
   "flatTitle": "프로세스 목록 보기",
   "treeTitle": "부모-자식 관계 표시; 루트 프로세스는 자동으로 열리고, 형제 프로세스는 열을 따라 정렬됨",
   "follow": "선택된 프로세스를 유지",
-  "followTitle": "프로세스 목록 새로 고침 및 재정렬 후에도 선택한 프로세스가 계속 보임",
+  "followTitle": "데이터를 새로 고치는 동안 선택한 프로세스를 계속 표시",
   "resetView": "프로세스 보기 초기화",
+  "resort": "현재 지표로 다시 정렬",
+  "liveSort": "실시간 정렬",
+  "liveSortTitle": "지표가 바뀔 때마다 목록을 자동으로 다시 정렬합니다",
   "search": "프로세스 검색",
-  "searchPlaceholder": "프로세스 이름, PID 또는 사용자",
+  "searchPlaceholder": "프로세스 이름, PID, 사용자 또는 포트",
+  "matchedPort": "포트 {{port}} 일치",
   "systemProcesses": "시스템 프로세스",
   "columns": {
     "process": "프로세스",
@@ -29,6 +33,8 @@
     "tree": "표시된 프로세스 수: {{visible}} · 일치하는 프로세스 수: {{matches}} / {{total}}",
     "flat": "{{visible}}개 / {{total}}개 프로세스 · 필요에 따라 렌더링",
     "siblingSort": "루트 자동 열림 · 형제 프로세스 정렬",
+    "stableOrder": "지표 실시간 업데이트 · 수동 정렬 시에만 순서 변경",
+    "liveOrder": "지표 실시간 업데이트 · 현재 정렬 기준으로 순서 자동 변경",
     "selectionFiltered": "선택된 프로세스는 필터링됨 · 필터를 제거"
   },
   "status": {

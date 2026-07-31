@@ -9,10 +9,14 @@
   "flatTitle": "平鋪檢視",
   "treeTitle": "按父子關係顯示；根層自動展開並按列排序同級程序",
   "follow": "跟隨",
-  "followTitle": "重新整理重排後保持選中程序在視野內",
+  "followTitle": "重新整理時保持選中程序在視野內",
   "resetView": "恢復預設程序檢視",
+  "resort": "依目前指標重新排序",
+  "liveSort": "即時排序",
+  "liveSortTitle": "開啟後，清單會隨即時指標變化自動重新排序",
   "search": "搜尋程序",
-  "searchPlaceholder": "名稱、PID 或使用者",
+  "searchPlaceholder": "名稱、PID、使用者或連接埠",
+  "matchedPort": "符合連接埠 {{port}}",
   "systemProcesses": "系統程序",
   "columns": {
     "process": "程序",
@@ -29,6 +33,8 @@
     "tree": "可見 {{visible}} · 匹配 {{matches}} / {{total}} 個程序",
     "flat": "{{visible}} / {{total}} 個程序 · 按需渲染",
     "siblingSort": "根層自動展開 · 同級排序",
+    "stableOrder": "指標即時更新 · 順序僅在手動排序時變更",
+    "liveOrder": "指標即時更新 · 順序會依目前排序自動變更",
     "selectionFiltered": "選中程序被篩選隱藏 · 清除篩選"
   },
   "status": {

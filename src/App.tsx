@@ -372,7 +372,8 @@ function App() {
     loading: connectionsLoading,
     refreshNow: refreshConnections,
   } = useNetworkConnections(
-    activeView === "network" ||
+    activeView === "processes" ||
+      activeView === "network" ||
       (activeView === "overview" && diagnosisExpanded) ||
       dailyIntent === "slow" || dailyIntent === "network" ||
       dailyIntent === "checkup" ||
@@ -1905,12 +1906,14 @@ function App() {
                 <ProcessTable
                     compact
                     processes={snapshot.processes}
+                    connections={connectionsSnapshot?.connections}
                     selectedIdentity={selectedIdentity}
                     onSelect={selectProcess}
                     query={processPreferences.query}
                     onQueryChange={(query) => updateProcessPreferences({ query })}
                     sortKey={processPreferences.sortKey}
                     direction={processPreferences.sortDirection}
+                    liveSort={processPreferences.liveSort}
                     onSortChange={(sortKey, sortDirection) =>
                       updateProcessPreferences({ sortKey, sortDirection })
                     }
@@ -1920,12 +1923,17 @@ function App() {
             ) : activeView === "processes" ? (
               <ProcessTable
                   processes={snapshot.processes}
+                  connections={connectionsSnapshot?.connections}
                   selectedIdentity={selectedIdentity}
                   onSelect={selectProcess}
                   query={processPreferences.query}
                   onQueryChange={(query) => updateProcessPreferences({ query })}
                   sortKey={processPreferences.sortKey}
                   direction={processPreferences.sortDirection}
+                  liveSort={processPreferences.liveSort}
+                  onLiveSortChange={(liveSort) =>
+                    updateProcessPreferences({ liveSort })
+                  }
                   onSortChange={(sortKey, sortDirection) =>
                     updateProcessPreferences({ sortKey, sortDirection })
                   }

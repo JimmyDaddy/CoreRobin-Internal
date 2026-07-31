@@ -9,10 +9,14 @@
   "flatTitle": "一覧表示",
   "treeTitle": "親子関係を表示。ルートは自動で開き、兄弟は列順に並びます",
   "follow": "追跡",
-  "followTitle": "再読み込みや並べ替え後も選択したプロセスを常に表示",
+  "followTitle": "更新中も選択したプロセスを表示範囲内に保つ",
   "resetView": "プロセス表示をリセット",
+  "resort": "現在の指標で並べ替え直す",
+  "liveSort": "リアルタイム並べ替え",
+  "liveSortTitle": "指標の変化に合わせて一覧を自動的に並べ替えます",
   "search": "プロセスを検索",
-  "searchPlaceholder": "名前、PID、またはユーザー名",
+  "searchPlaceholder": "名前、PID、ユーザー名、またはポート",
+  "matchedPort": "ポート {{port}} に一致",
   "systemProcesses": "システムプロセス",
   "columns": {
     "process": "プロセス",
@@ -29,6 +33,8 @@
     "tree": "表示中のプロセス数：{{visible}} · 関連するプロセス数：{{matches}} / {{total}}",
     "flat": "表示中のプロセス数：{{visible}} / {{total}} · 必要に応じてレンダリング",
     "siblingSort": "ルートは自動的に開きます · 兄弟プロセスの並べ替え",
+    "stableOrder": "指標はリアルタイム更新 · 並び順は手動操作時のみ変更",
+    "liveOrder": "指標はリアルタイム更新 · 現在の条件で自動的に並べ替え",
     "selectionFiltered": "選択されたプロセスはフィルタリングされています · フィルタをクリア"
   },
   "status": {
