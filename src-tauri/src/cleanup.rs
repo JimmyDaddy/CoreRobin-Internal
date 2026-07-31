@@ -2725,20 +2725,17 @@ fn validate_cleanup_targets(
     let mut unavailable_failures = Vec::new();
     for display in &request.paths {
         let path = expand_cleanup_path(display, &canonical_home)?;
-        let home_relative = path
-            .strip_prefix(home)
-            .or_else(|_| path.strip_prefix(&canonical_home))
-            .ok()
-            .map(Path::to_path_buf);
+        let home_relative = relative_cleanup_path(&path, home)
+            .or_else(|| relative_cleanup_path(&path, &canonical_home));
         let (boundary_root, relative_path, trusted_system_root) = if let Some(relative) =
             home_relative
         {
             (canonical_home.clone(), relative, false)
         } else if let Some(root) = selected_scan_root.as_ref()
-            && let Ok(relative) = path.strip_prefix(root)
+            && let Some(relative) = relative_cleanup_path(&path, root)
             && !relative.as_os_str().is_empty()
         {
-            (root.clone(), relative.to_path_buf(), true)
+            (root.clone(), relative, true)
         } else if let Some((boundary, relative)) = temporary_cleanup_boundary_for_path(&path) {
             (
                 boundary.canonical_root.clone(),
@@ -2871,6 +2868,35 @@ fn validate_cleanup_targets(
         missing_paths,
         unavailable_failures,
     })
+}
+
+fn relative_cleanup_path(path: &Path, boundary: &Path) -> Option<PathBuf> {
+    if let Ok(relative) = path.strip_prefix(boundary) {
+        return Some(relative.to_path_buf());
+    }
+
+    #[cfg(windows)]
+    {
+        let normalized_path = windows_non_verbatim_path(path).unwrap_or_else(|| path.to_path_buf());
+        let normalized_boundary =
+            windows_non_verbatim_path(boundary).unwrap_or_else(|| boundary.to_path_buf());
+        return normalized_path
+            .strip_prefix(normalized_boundary)
+            .ok()
+            .map(Path::to_path_buf);
+    }
+
+    #[cfg(not(windows))]
+    None
+}
+
+#[cfg(windows)]
+fn windows_non_verbatim_path(path: &Path) -> Option<PathBuf> {
+    let path = path.to_str()?;
+    if let Some(relative) = path.strip_prefix(r"\\?\UNC\") {
+        return Some(PathBuf::from(format!(r"\\{relative}")));
+    }
+    path.strip_prefix(r"\\?\").map(PathBuf::from)
 }
 
 fn validate_selected_cleanup_root(
@@ -4624,6 +4650,18 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn cleanup_boundaries_accept_windows_verbatim_paths() {
+        let boundary = Path::new(r"\\?\C:\Users\runner\AppData\Local\Temp\selected");
+        let target = Path::new(r"C:\Users\runner\AppData\Local\Temp\selected\app-data\history.db");
+
+        assert_eq!(
+            relative_cleanup_path(target, boundary),
+            Some(PathBuf::from(r"app-data\history.db"))
+        );
+    }
 
     #[test]
     fn same_disk_folder_scan_creates_an_explicit_bounded_delete_authority() {
