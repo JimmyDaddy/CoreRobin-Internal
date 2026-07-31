@@ -51,12 +51,12 @@ use application_history::{
 use application_icon::{load_application_bundle_icon, load_application_icon};
 use background_supervisor::BackgroundSupervisorConfig;
 use cleanup::{
-    CleanupDeleteController, CleanupDeleteCoordinator, CleanupWorkCoordinator,
-    available_bytes_for_path, canonical_cleanup_subtree_path, cleanup_scan_access,
-    inspect_cleanup_path, load_cleanup_scan_cache, load_or_scan_application_inventory,
-    open_full_disk_access_settings, prepare_application_uninstall,
-    prepare_trashed_application_residual_plan, remove_cleanup_scan_cache,
-    reveal_cleanup_application_bundle, save_cleanup_scan_snapshot_cache_at, scan_cleanup_subtree,
+    CleanupDeleteController, CleanupDeleteCoordinator, apply_indexed_deletions,
+    available_bytes_for_path, cleanup_index_summary, cleanup_scan_access, inspect_cleanup_path,
+    load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
+    load_or_scan_application_inventory, open_full_disk_access_settings,
+    prepare_application_uninstall, prepare_trashed_application_residual_plan, remove_cleanup_index,
+    remove_cleanup_scan_cache, resolve_indexed_delete_request, reveal_cleanup_application_bundle,
     scan_trashed_applications,
 };
 use cleanup_scan_job::CleanupScanJobManager;
@@ -77,8 +77,10 @@ use models::{
     ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
     CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseReleaseRequest, CleanupDeleteLeaseRequest,
-    CleanupDeleteProgress, CleanupDeleteResult, CleanupPathState, CleanupScan, CleanupScanAccess,
-    CleanupScanJobStatus, CleanupScanRequest, CleanupSubtreeRequest, FileInsightsProgress,
+    CleanupDeleteProgress, CleanupDeleteResult, CleanupDirectoryRefreshRequest,
+    CleanupIndexDeletionRequest, CleanupIndexedChildrenPage, CleanupIndexedChildrenRequest,
+    CleanupIndexedDirectoryRequest, CleanupPathState, CleanupScan, CleanupScanAccess,
+    CleanupScanIndexSummary, CleanupScanJobStatus, CleanupScanRequest, FileInsightsProgress,
     FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
     NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
@@ -266,8 +268,8 @@ struct AppState {
     sampler: Arc<SamplerService>,
     health_state: Arc<HealthStateStore>,
     process_controller: Arc<Mutex<ProcessController>>,
-    cleanup_scan: Arc<CleanupWorkCoordinator>,
     cleanup_scan_jobs: Arc<CleanupScanJobManager>,
+    cleanup_refresh_jobs: Arc<CleanupScanJobManager>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
     file_insights: Arc<FileInsightsCoordinator>,
@@ -289,8 +291,8 @@ impl AppState {
             sampler,
             health_state: Arc::new(HealthStateStore::default()),
             process_controller,
-            cleanup_scan: Arc::new(CleanupWorkCoordinator::default()),
             cleanup_scan_jobs: Arc::new(CleanupScanJobManager::default()),
+            cleanup_refresh_jobs: Arc::new(CleanupScanJobManager::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
@@ -675,10 +677,11 @@ fn start_cleanup_scan(
         ))
     })?;
     let job_directory = app_data.join("cleanup-scan-jobs");
-    let cache_path = cleanup_scan_cache_path(&app)?;
+    let index_path = cleanup_scan_index_path(&app)?;
+    remove_legacy_cleanup_scan_caches(&app_data)?;
     state
         .cleanup_scan_jobs
-        .start(request.unwrap_or_default(), &job_directory, &cache_path)
+        .start(request.unwrap_or_default(), &job_directory, &index_path)
 }
 
 #[tauri::command]
@@ -697,38 +700,54 @@ fn load_cleanup_scan_job_result(
 }
 
 #[tauri::command]
+fn start_cleanup_directory_refresh(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: CleanupDirectoryRefreshRequest,
+) -> Result<CleanupScanJobStatus, CommandError> {
+    let app_data = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    let job_directory = app_data.join("cleanup-scan-jobs");
+    let index_path = cleanup_scan_index_path(&app)?;
+    state
+        .cleanup_refresh_jobs
+        .start_directory_refresh(request, &job_directory, &index_path)
+}
+
+#[tauri::command]
+fn get_cleanup_directory_refresh_job(
+    state: State<'_, AppState>,
+) -> Result<Option<CleanupScanJobStatus>, CommandError> {
+    state.cleanup_refresh_jobs.status()
+}
+
+#[tauri::command]
+fn load_cleanup_directory_refresh_result(
+    state: State<'_, AppState>,
+    job_id: String,
+) -> Result<CleanupScan, CommandError> {
+    state.cleanup_refresh_jobs.result(&job_id)
+}
+
+#[tauri::command]
+fn cancel_cleanup_directory_refresh(state: State<'_, AppState>) -> Result<bool, CommandError> {
+    state.cleanup_refresh_jobs.cancel()
+}
+
+#[tauri::command]
 async fn get_cleanup_path_state(path: String) -> Result<CleanupPathState, CommandError> {
     tauri::async_runtime::spawn_blocking(move || inspect_cleanup_path(&path))
         .await
         .map_err(|error| CommandError::internal(format!("Cleanup path check failed: {error}")))?
 }
 
-#[tauri::command]
-async fn get_cleanup_subtree(
-    state: State<'_, AppState>,
-    request: CleanupSubtreeRequest,
-) -> Result<models::CleanupNode, CommandError> {
-    let canonical_path = canonical_cleanup_subtree_path(&request.path)?;
-    let coordinator = Arc::clone(&state.cleanup_scan);
-    let cancelled = coordinator.begin_subtree(request.request_id.clone(), canonical_path)?;
-    let worker_cancelled = Arc::clone(&cancelled);
-    let worker_coordinator = Arc::clone(&coordinator);
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        worker_coordinator.run_subtree(&worker_cancelled, || {
-            scan_cleanup_subtree(request, &worker_cancelled)
-        })
-    })
-    .await;
-    result
-        .map_err(|error| CommandError::internal(format!("Cleanup subtree scan failed: {error}")))?
-}
-
-fn cleanup_scan_cache_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
+fn cleanup_scan_index_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
     app.path()
         .app_data_dir()
-        // Keep the on-disk location stable so a fresh scan replaces or clears
-        // the previous schema instead of leaving an orphaned cache file.
-        .map(|directory| directory.join("cleanup-scan-v3.json"))
+        .map(|directory| directory.join("cleanup-scan-index-v1.sqlite"))
         .map_err(|error| {
             CommandError::internal(format!(
                 "Could not resolve the application data folder: {error}"
@@ -736,38 +755,114 @@ fn cleanup_scan_cache_path(app: &AppHandle) -> Result<std::path::PathBuf, Comman
         })
 }
 
-#[tauri::command]
-async fn load_persisted_cleanup_scan(app: AppHandle) -> Result<Option<String>, CommandError> {
-    let path = cleanup_scan_cache_path(&app)?;
-    tauri::async_runtime::spawn_blocking(move || load_cleanup_scan_cache(&path))
-        .await
-        .map_err(|error| CommandError::internal(format!("Cleanup cache read failed: {error}")))?
+fn remove_legacy_cleanup_scan_caches(directory: &std::path::Path) -> Result<(), CommandError> {
+    remove_cleanup_scan_cache(&directory.join("cleanup-scan-v3.json"))?;
+    remove_cleanup_scan_cache(&directory.join("cleanup-scan-v2.json"))
 }
 
 #[tauri::command]
-async fn save_persisted_cleanup_scan(
+async fn load_persisted_cleanup_scan(app: AppHandle) -> Result<Option<CleanupScan>, CommandError> {
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    let path = directory.join("cleanup-scan-index-v1.sqlite");
+    tauri::async_runtime::spawn_blocking(move || {
+        remove_legacy_cleanup_scan_caches(&directory)?;
+        load_latest_indexed_scan(&path)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Cleanup index read failed: {error}")))?
+}
+
+#[tauri::command]
+async fn get_cleanup_indexed_directory(
     app: AppHandle,
-    snapshot: CleanupScan,
-) -> Result<(), CommandError> {
-    let path = cleanup_scan_cache_path(&app)?;
-    let saved_at_ms = snapshot.sampled_at_ms;
+    request: CleanupIndexedDirectoryRequest,
+) -> Result<models::CleanupNode, CommandError> {
+    let path = cleanup_scan_index_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        save_cleanup_scan_snapshot_cache_at(&path, &snapshot, saved_at_ms)
+        load_indexed_directory(&path, &request.scan_id, &request.directory_id)
     })
     .await
-    .map_err(|error| CommandError::internal(format!("Cleanup cache update failed: {error}")))?
+    .map_err(|error| CommandError::internal(format!("Cleanup index lookup failed: {error}")))?
 }
 
 #[tauri::command]
-async fn clear_persisted_cleanup_scan(app: AppHandle) -> Result<(), CommandError> {
-    let path = cleanup_scan_cache_path(&app)?;
-    let legacy_path = path.with_file_name("cleanup-scan-v2.json");
+async fn get_cleanup_scan_overview(
+    app: AppHandle,
+    scan_id: String,
+) -> Result<CleanupScan, CommandError> {
+    let path = cleanup_scan_index_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || load_indexed_scan(&path, &scan_id))
+        .await
+        .map_err(|error| CommandError::internal(format!("Cleanup index read failed: {error}")))?
+}
+
+#[tauri::command]
+async fn get_cleanup_indexed_children(
+    app: AppHandle,
+    request: CleanupIndexedChildrenRequest,
+) -> Result<CleanupIndexedChildrenPage, CommandError> {
+    let path = cleanup_scan_index_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        remove_cleanup_scan_cache(&path)?;
-        remove_cleanup_scan_cache(&legacy_path)
+        load_indexed_children(
+            &path,
+            &request.scan_id,
+            &request.directory_id,
+            request.cursor.unwrap_or(0),
+            request.limit.unwrap_or(50),
+        )
     })
     .await
-    .map_err(|error| CommandError::internal(format!("Cleanup cache removal failed: {error}")))?
+    .map_err(|error| CommandError::internal(format!("Cleanup index lookup failed: {error}")))?
+}
+
+#[tauri::command]
+async fn get_cleanup_scan_index_summary(
+    app: AppHandle,
+) -> Result<CleanupScanIndexSummary, CommandError> {
+    let path = cleanup_scan_index_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || cleanup_index_summary(&path))
+        .await
+        .map_err(|error| CommandError::internal(format!("Cleanup index summary failed: {error}")))?
+}
+
+#[tauri::command]
+async fn apply_cleanup_index_deletions(
+    app: AppHandle,
+    window: WebviewWindow,
+    request: CleanupIndexDeletionRequest,
+) -> Result<CleanupScan, CommandError> {
+    require_main_window(&window)?;
+    let path = cleanup_scan_index_path(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        apply_indexed_deletions(&path, &request.scan_id, &request.node_ids)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Cleanup index update failed: {error}")))?
+}
+
+#[tauri::command]
+async fn clear_persisted_cleanup_scan(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.cleanup_scan_jobs.terminate_active();
+    state.cleanup_refresh_jobs.terminate_active();
+    let directory = app.path().app_data_dir().map_err(|error| {
+        CommandError::internal(format!(
+            "Could not resolve the application data folder: {error}"
+        ))
+    })?;
+    let path = directory.join("cleanup-scan-index-v1.sqlite");
+    tauri::async_runtime::spawn_blocking(move || {
+        remove_cleanup_index(&path)?;
+        remove_legacy_cleanup_scan_caches(&directory)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Cleanup index removal failed: {error}")))?
 }
 
 fn application_history_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
@@ -976,6 +1071,9 @@ fn product_data_cache_summary_at(
     let history_summary = history_storage_summary(directory);
     Ok(ProductDataCacheSummary {
         cleanup_scan: cache_item_summary([
+            directory.join("cleanup-scan-index-v1.sqlite"),
+            directory.join("cleanup-scan-index-v1.sqlite-wal"),
+            directory.join("cleanup-scan-index-v1.sqlite-shm"),
             directory.join("cleanup-scan-v3.json"),
             directory.join("cleanup-scan-v2.json"),
         ]),
@@ -1018,12 +1116,11 @@ fn clear_application_inventory_cache_at(directory: &std::path::Path) -> Result<(
 }
 
 fn clear_persisted_product_data_at(directory: &std::path::Path) -> Result<(), CommandError> {
-    let cleanup_path = directory.join("cleanup-scan-v3.json");
-    let legacy_cleanup_path = directory.join("cleanup-scan-v2.json");
+    let cleanup_index_path = directory.join("cleanup-scan-index-v1.sqlite");
     let file_insights_path = directory.join("file-insights-v1.json");
     let application_history_path = directory.join(APPLICATION_HISTORY_FILE_NAME);
-    remove_cleanup_scan_cache(&cleanup_path)?;
-    remove_cleanup_scan_cache(&legacy_cleanup_path)?;
+    remove_cleanup_index(&cleanup_index_path)?;
+    remove_legacy_cleanup_scan_caches(directory)?;
     remove_file_insights_cache(&file_insights_path)?;
     remove_application_history(&application_history_path).map_err(|error| {
         CommandError::internal(format!("Application history could not be removed: {error}"))
@@ -1072,7 +1169,12 @@ async fn clear_application_inventory_cache(app: AppHandle) -> Result<(), Command
 }
 
 #[tauri::command]
-async fn clear_persisted_product_data(app: AppHandle) -> Result<(), CommandError> {
+async fn clear_persisted_product_data(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), CommandError> {
+    state.cleanup_scan_jobs.terminate_active();
+    state.cleanup_refresh_jobs.terminate_active();
     let directory = app.path().app_data_dir().map_err(|error| {
         CommandError::internal(format!(
             "Could not resolve the application data folder: {error}"
@@ -1088,14 +1190,6 @@ async fn clear_persisted_product_data(app: AppHandle) -> Result<(), CommandError
 #[tauri::command]
 fn cancel_cleanup_scan(state: State<'_, AppState>) -> Result<bool, CommandError> {
     state.cleanup_scan_jobs.cancel()
-}
-
-#[tauri::command]
-fn cancel_cleanup_subtree(
-    state: State<'_, AppState>,
-    request_id: String,
-) -> Result<bool, CommandError> {
-    state.cleanup_scan.cancel_subtree(&request_id)
 }
 
 #[tauri::command]
@@ -1366,11 +1460,22 @@ async fn execute_native_application_uninstall(
 
 #[tauri::command]
 async fn create_cleanup_delete_lease(
+    app: AppHandle,
     window: WebviewWindow,
     state: State<'_, AppState>,
-    request: CleanupDeleteLeaseRequest,
+    mut request: CleanupDeleteLeaseRequest,
 ) -> Result<CleanupDeleteLease, CommandError> {
     require_main_window(&window)?;
+    if request.scan_id.is_some() || !request.directory_ids.is_empty() {
+        let path = cleanup_scan_index_path(&app)?;
+        request = tauri::async_runtime::spawn_blocking(move || {
+            resolve_indexed_delete_request(&path, request)
+        })
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Cleanup index validation failed: {error}"))
+        })??;
+    }
     with_cleanup_delete_controller(
         Arc::clone(&state.cleanup_delete_controller),
         move |controller| controller.create_lease(request),
@@ -2281,10 +2386,17 @@ pub fn run() {
             start_cleanup_scan,
             get_cleanup_scan_job,
             load_cleanup_scan_job_result,
+            start_cleanup_directory_refresh,
+            get_cleanup_directory_refresh_job,
+            load_cleanup_directory_refresh_result,
+            cancel_cleanup_directory_refresh,
             get_cleanup_path_state,
-            get_cleanup_subtree,
+            get_cleanup_indexed_directory,
+            get_cleanup_indexed_children,
+            get_cleanup_scan_overview,
+            get_cleanup_scan_index_summary,
+            apply_cleanup_index_deletions,
             load_persisted_cleanup_scan,
-            save_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
             load_persisted_application_history,
             save_persisted_application_history,
@@ -2297,7 +2409,6 @@ pub fn run() {
             clear_application_inventory_cache,
             clear_persisted_product_data,
             cancel_cleanup_scan,
-            cancel_cleanup_subtree,
             get_cleanup_scan_access,
             open_cleanup_full_disk_access_settings,
             reveal_cleanup_app_bundle,

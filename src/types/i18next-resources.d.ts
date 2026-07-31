@@ -296,6 +296,12 @@ export default interface Resources {
     "categories": {
       "title": "这些空间大多用来做什么"
     },
+    "coverage": {
+      "continueComplete": "继续完整扫描",
+      "quickLimit": "其他磁盘区域尚未扫描；此结果不会冒充完整磁盘统计。",
+      "quickResult": "已精确检查 {{count}} 个常用位置，找到 {{size}} 内容",
+      "title": "扫描范围"
+    },
     "deleteDialog": {
       "cancelDelete": "停止删除",
       "cancelHint": "已完成的项目不会自动还原；CoreRobin 会在当前文件操作结束后停止。",
@@ -527,9 +533,10 @@ export default interface Resources {
       },
       "grouped": "汇总分类",
       "includedByParent": "已随上级文件夹加入",
-      "loadDeeperHint": "点击这个目录时会按需读取下一层，不会重新扫描整台电脑。",
-      "loadFailed": "无法读取目录",
-      "loadingFolder": "正在读取这个目录…",
+      "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
+      "loadFailed": "无法读取目录索引",
+      "loadMore": "再显示 50 项",
+      "loadingFolder": "正在读取目录索引…",
       "logicalSize": "文件标称 {{size}}",
       "mode": {
         "category": "用途分类",
@@ -539,13 +546,15 @@ export default interface Resources {
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
+      "refreshFailed": "无法刷新文件夹",
+      "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
       "removeFromBasket": "移出清理篮",
       "restrictedHint": "系统未授予读取权限，此项不会加入清理篮",
       "restrictedObjects": "无法读取的对象",
       "selected": "当前选择",
       "selectedPath": "当前选择路径",
       "smallerObjects": "较小的对象",
-      "smallerObjectsHint": "打开后会按需列出因空间图数量限制而合并的真实文件和文件夹，具体项目都可以加入清理篮。",
+      "smallerObjectsHint": "这是未在当前图层单独展示的较小项目汇总；可在右侧分页查看更多，或在访达中打开目录。",
       "title": "空间都去了哪里",
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {
@@ -575,6 +584,20 @@ export default interface Resources {
       "summary": "已选择 {{count}} 个长期未修改文件，共 {{size}}"
     },
     "pathUnavailable": "没有可扫描路径",
+    "profiles": {
+      "complete": {
+        "description": "顺序遍历整个系统磁盘，耗时更长",
+        "title": "完整扫描"
+      },
+      "label": "扫描模式",
+      "quick": {
+        "description": "精确检查常见的大空间与可清理位置",
+        "scope": "下载、桌面、文稿、媒体文件夹、废纸篓、应用与开发缓存、应用支持数据、容器、隐藏应用数据和系统临时目录。",
+        "scopeTitle": "本次会检查",
+        "title": "快速扫描"
+      },
+      "recommended": "推荐"
+    },
     "progress": {
       "discovered": "已发现",
       "elapsed": "已用时",
@@ -613,7 +636,7 @@ export default interface Resources {
     "scanning": "扫描中…",
     "snapshot": {
       "cached": {
-        "description": "无需重新等待即可继续查看；进入具体目录时，CoreRobin 会按需核对它是否发生变化。",
+        "description": "无需重新等待即可继续查看；切换目录只读取本机索引，不会访问文件系统。",
         "title": "已恢复上次扫描结果"
       },
       "expired": {
@@ -621,7 +644,7 @@ export default interface Resources {
         "title": "这份结果已超过 24 小时"
       },
       "refresh": "更新结果",
-      "retained": "结果已留存在本机；浏览目录时按需核对变化"
+      "retained": "结果已索引在本机；浏览目录不会重新扫描"
     },
     "startScan": "开始只读扫描",
     "targets": {
@@ -2128,7 +2151,7 @@ export default interface Resources {
       "checking": "正在检查…",
       "clearAction": "清空全部数据",
       "clearConfirm": "此操作无法撤销。CoreRobin 将清除本机数据并重新启动；登录启动等系统授权不会被静默移除。",
-      "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描缓存。",
+      "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描索引。",
       "clearError": "部分本机数据未能清除，CoreRobin 不会把它显示成已完成。请关闭正在运行的扫描后重试。",
       "clearNow": "清空并重新启动",
       "clearScope": {
@@ -2220,8 +2243,8 @@ export default interface Resources {
           "title": "资源与操作历史"
         },
         "scanCaches": {
-          "description": "空间清理与文件洞察结果，包含路径、大小和修改时间。",
-          "title": "扫描结果缓存"
+          "description": "原生空间扫描索引与文件洞察结果包含路径、大小和修改时间。",
+          "title": "扫描索引与结果"
         }
       },
       "clear": "清空全部本机数据",
@@ -2240,6 +2263,7 @@ export default interface Resources {
         "title": "完全磁盘访问权限"
       },
       "metrics": {
+        "cleanupIndex": "空间扫描索引占用：{{size}}",
         "items": "{{count}} 项",
         "never": "尚无本机数据",
         "retention": "保留 {{count}} 天",

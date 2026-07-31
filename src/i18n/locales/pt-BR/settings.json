@@ -124,11 +124,12 @@
         "description": "Metadados de apps instalados por idioma da interface, sem armazenar conteúdo dos apps."
       },
       "scanCaches": {
-        "title": "Caches dos resultados de verificação",
-        "description": "Resultados de limpeza e arquivos com caminhos, tamanhos e horários de modificação."
+        "title": "Índice e resultados da verificação",
+        "description": "O índice nativo de espaço e os resultados de arquivos contêm caminhos, tamanhos e horários de modificação."
       }
     },
     "metrics": {
+      "cleanupIndex": "Índice de espaço: {{size}}",
       "items": "{{count}} itens",
       "updated": "Atualizado em {{time}}",
       "never": "Ainda não há dados locais",

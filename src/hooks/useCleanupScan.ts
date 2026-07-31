@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  applyCleanupIndexDeletions,
+  cancelCleanupDirectoryRefresh,
   cancelCleanupScan,
   clearPersistedCleanupScan,
+  getCleanupDirectoryRefreshJob,
   getCleanupScanJob,
+  loadCleanupDirectoryRefreshResult,
   loadPersistedCleanupScan,
   loadCleanupScanJobResult,
-  savePersistedCleanupScan,
+  startCleanupDirectoryRefresh,
   startCleanupScan,
 } from "../api";
 import {
-  clearStoredCleanupScan,
-  parseStoredCleanupScan,
   reconcileCleanupScanAfterDeletion,
-  retainCleanupSubtree,
   type CleanupDeletionTargetSnapshot,
   type CleanupSnapshotStatus,
 } from "../cleanupScanStore";
 import type {
-  CleanupNode,
   CleanupScan,
   CleanupScanJobPhase,
   CleanupScanJobStatus,
@@ -57,33 +57,26 @@ export function useCleanupScan() {
   const [progress, setProgress] = useState<CleanupScanProgress | null>(null);
   const [phase, setPhase] = useState<CleanupScanJobPhase | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const activeRefreshJobIdRef = useRef<string | null>(null);
   const trackerRef = useRef(0);
+  const refreshTrackerRef = useRef(0);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
-  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
-
-  const enqueuePersistence = useCallback((operation: () => Promise<void>) => {
-    const queued = persistenceQueueRef.current
-      .catch(() => undefined)
-      .then(operation);
-    persistenceQueueRef.current = queued.catch(() => undefined);
-    return queued;
-  }, []);
+  const [refreshStatus, setRefreshStatus] = useState<CleanupScanJobStatus | null>(null);
+  const [refreshError, setRefreshError] = useState<CommandError | null>(null);
 
   useEffect(() => {
     snapshotRef.current = snapshot;
   }, [snapshot]);
 
   useEffect(() => {
-    clearStoredCleanupScan();
     let disposed = false;
     void loadPersistedCleanupScan()
-      .then((serialized) => parseStoredCleanupScan(serialized))
       .then((persisted) => {
         if (disposed || stateTouched.current || !persisted) return;
-        snapshotRef.current = persisted.snapshot;
-        setSnapshot(persisted.snapshot);
-        setSnapshotStatus(persisted.status);
+        snapshotRef.current = persisted;
+        setSnapshot(persisted);
+        setSnapshotStatus("current");
       })
       .catch(() => {
         // A missing or unavailable disk cache is equivalent to no prior scan.
@@ -192,17 +185,114 @@ export function useCleanupScan() {
     };
   }, [followJob]);
 
+  const followDirectoryRefresh = useCallback(async (
+    initialStatus: CleanupScanJobStatus,
+    tracker: number,
+  ) => {
+    let status: CleanupScanJobStatus | null = initialStatus;
+    activeRefreshJobIdRef.current = initialStatus.jobId;
+    while (
+      status
+      && refreshTrackerRef.current === tracker
+      && activeRefreshJobIdRef.current === initialStatus.jobId
+    ) {
+      setRefreshStatus(status);
+      if (status.phase === "completed") {
+        try {
+          const completed = await loadCleanupDirectoryRefreshResult(status.jobId);
+          if (refreshTrackerRef.current !== tracker) return;
+          snapshotRef.current = completed;
+          setSnapshot(completed);
+          setSnapshotStatus("current");
+          setRefreshError(null);
+        } catch (caughtError) {
+          if (refreshTrackerRef.current === tracker) {
+            setRefreshError(normalizeCommandError(caughtError));
+          }
+        }
+        activeRefreshJobIdRef.current = null;
+        return;
+      }
+      if (status.phase === "cancelled") {
+        activeRefreshJobIdRef.current = null;
+        return;
+      }
+      if (status.phase === "failed") {
+        activeRefreshJobIdRef.current = null;
+        setRefreshError({
+          code: status.errorCode ?? "cleanup_refresh_failed",
+          message: status.errorMessage ?? "The folder refresh worker stopped unexpectedly.",
+        });
+        return;
+      }
+      await waitForCleanupJobPoll();
+      if (refreshTrackerRef.current !== tracker) return;
+      try {
+        status = await getCleanupDirectoryRefreshJob();
+      } catch (caughtError) {
+        if (refreshTrackerRef.current === tracker) {
+          activeRefreshJobIdRef.current = null;
+          setRefreshError(normalizeCommandError(caughtError));
+        }
+        return;
+      }
+      if (status && status.jobId !== initialStatus.jobId) return;
+    }
+  }, []);
+
+  useEffect(() => {
+    const tracker = ++refreshTrackerRef.current;
+    void getCleanupDirectoryRefreshJob()
+      .then((status) => {
+        if (!status || refreshTrackerRef.current !== tracker) return;
+        void followDirectoryRefresh(status, tracker);
+      })
+      .catch(() => {
+        // No native refresh job is the normal idle state.
+      });
+    return () => {
+      refreshTrackerRef.current += 1;
+    };
+  }, [followDirectoryRefresh]);
+
+  const refreshDirectory = useCallback(async (directoryId: string) => {
+    const current = snapshotRef.current;
+    if (!current?.scanId) return;
+    const tracker = ++refreshTrackerRef.current;
+    setRefreshError(null);
+    try {
+      const job = await startCleanupDirectoryRefresh({
+        scanId: current.scanId,
+        directoryId,
+      });
+      if (refreshTrackerRef.current !== tracker) return;
+      setRefreshStatus(job);
+      void followDirectoryRefresh(job, tracker);
+    } catch (caughtError) {
+      if (refreshTrackerRef.current === tracker) {
+        setRefreshError(normalizeCommandError(caughtError));
+      }
+    }
+  }, [followDirectoryRefresh]);
+
+  const cancelDirectoryRefresh = useCallback(async () => {
+    if (!activeRefreshJobIdRef.current) return;
+    try {
+      await cancelCleanupDirectoryRefresh();
+    } catch (caughtError) {
+      setRefreshError(normalizeCommandError(caughtError));
+    }
+  }, []);
+
   const scan = useCallback(async (
-    target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
+    target: CleanupScanTarget = {
+      profile: "common_locations",
+      targetKind: "system_disk",
+      targetPath: null,
+    },
   ) => {
     const tracker = ++trackerRef.current;
     stateTouched.current = true;
-    clearStoredCleanupScan();
-    try {
-      await enqueuePersistence(clearPersistedCleanupScan);
-    } catch {
-      // A stale cache must not prevent a new scan.
-    }
     setSnapshot(null);
     snapshotRef.current = null;
     setSnapshotStatus("current");
@@ -229,7 +319,7 @@ export function useCleanupScan() {
       setProgress(null);
       setPhase("failed");
     }
-  }, [enqueuePersistence, followJob]);
+  }, [followJob]);
 
   const cancel = useCallback(async () => {
     if (!activeJobIdRef.current || cancelling) return;
@@ -249,45 +339,24 @@ export function useCleanupScan() {
   ) => {
     const current = snapshotRef.current;
     if (!current || (targets.length === 0 && !invalidateSnapshot)) return;
-    const updated = targets.length > 0
-      ? reconcileCleanupScanAfterDeletion(current, targets)
-      : current;
+    const indexedNodeIds = targets
+      .map((target) => target.id)
+      .filter((id): id is string => Boolean(id?.startsWith(`index:${current.scanId}:`)));
+    const updated = indexedNodeIds.length > 0 && current.indexed
+      ? await applyCleanupIndexDeletions({
+          scanId: current.scanId,
+          nodeIds: indexedNodeIds,
+        })
+      : targets.length > 0
+        ? reconcileCleanupScanAfterDeletion(current, targets)
+        : current;
     snapshotRef.current = updated;
     setSnapshot(updated);
     if (invalidateSnapshot) {
       setSnapshotStatus("expired");
-      clearStoredCleanupScan();
-      try {
-        await enqueuePersistence(clearPersistedCleanupScan);
-      } catch {
-        // The in-memory map is visibly marked as stale even if disk cleanup fails.
-      }
       return;
     }
-    try {
-      await enqueuePersistence(() => savePersistedCleanupScan(updated));
-    } catch {
-      // Never retain a pre-deletion map if the corrected snapshot cannot be saved.
-      try {
-        await enqueuePersistence(clearPersistedCleanupScan);
-      } catch {
-        // The in-memory result is still authoritative for this app session.
-      }
-    }
-  }, [enqueuePersistence]);
-
-  const retainSubtree = useCallback(async (subtree: CleanupNode) => {
-    const current = snapshotRef.current;
-    if (!current) return;
-    const updated = retainCleanupSubtree(current, subtree);
-    snapshotRef.current = updated;
-    setSnapshot(updated);
-    try {
-      await enqueuePersistence(() => savePersistedCleanupScan(updated));
-    } catch {
-      // The in-memory subtree remains useful for this session if disk caching fails.
-    }
-  }, [enqueuePersistence]);
+  }, []);
 
   const clear = useCallback(async () => {
     stateTouched.current = true;
@@ -299,8 +368,16 @@ export function useCleanupScan() {
         // Continue clearing cached state even if an active scan cannot be cancelled.
       }
     }
+    refreshTrackerRef.current += 1;
+    if (activeRefreshJobIdRef.current) {
+      try {
+        await cancelCleanupDirectoryRefresh();
+      } catch {
+        // The native clear command still terminates any remaining refresh worker.
+      }
+    }
     activeJobIdRef.current = null;
-    clearStoredCleanupScan();
+    activeRefreshJobIdRef.current = null;
     snapshotRef.current = null;
     setSnapshot(null);
     setSnapshotStatus("current");
@@ -309,8 +386,10 @@ export function useCleanupScan() {
     setCancelling(false);
     setProgress(null);
     setPhase(null);
-    await enqueuePersistence(clearPersistedCleanupScan);
-  }, [enqueuePersistence]);
+    setRefreshStatus(null);
+    setRefreshError(null);
+    await clearPersistedCleanupScan();
+  }, []);
 
   const growthComparison = useMemo(
     () => cleanupScanGrowthComparison(scanHistory.value, snapshot),
@@ -329,8 +408,11 @@ export function useCleanupScan() {
     cancel,
     clear,
     applyDeletion,
-    retainSubtree,
     growthComparison,
     scanHistoryStorageStatus: scanHistory.storageStatus,
+    refreshDirectory,
+    cancelDirectoryRefresh,
+    directoryRefreshStatus: refreshStatus,
+    directoryRefreshError: refreshError,
   };
 }

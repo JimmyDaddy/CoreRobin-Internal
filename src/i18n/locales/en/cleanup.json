@@ -38,12 +38,32 @@
   "estimateBoundary": "This is an estimate for caches and trash, not a recommendation to remove everything.",
   "entriesScanned": "{{count}} items checked",
   "scanDuration": "{{seconds}} sec",
+  "profiles": {
+    "label": "Scan mode",
+    "recommended": "Recommended",
+    "quick": {
+      "title": "Quick scan",
+      "description": "Precisely check common large and cleanable locations",
+      "scopeTitle": "This scan includes",
+      "scope": "Downloads, Desktop, Documents, media folders, Trash, app and developer caches, application support data, containers, hidden app data, and system temporary folders."
+    },
+    "complete": {
+      "title": "Complete scan",
+      "description": "Walk the entire system disk sequentially; takes longer"
+    }
+  },
+  "coverage": {
+    "title": "Scan coverage",
+    "quickResult": "Precisely checked {{count}} common locations and found {{size}}",
+    "quickLimit": "Other disk areas have not been scanned; this result is not presented as a whole-disk total.",
+    "continueComplete": "Continue with complete scan"
+  },
   "snapshot": {
-    "retained": "Saved on this device; changes are checked as you browse",
+    "retained": "Indexed on this device; browsing never rescans folders",
     "refresh": "Refresh result",
     "cached": {
       "title": "Previous scan restored",
-      "description": "Keep exploring without waiting for another scan. CoreRobin checks a directory for changes only when you browse into it."
+      "description": "Keep exploring without waiting. Directory navigation reads the local index and does not access the filesystem."
     },
     "expired": {
       "title": "This result is over 24 hours old",
@@ -109,10 +129,13 @@
       "restricted": "Restricted"
     },
     "noDeeperBreakdown": "No deeper directory grouping is available at this level.",
-    "loadDeeperHint": "Select this folder to load the next level without rescanning the whole computer.",
-    "smallerObjectsHint": "Open this group to load the real files and folders hidden by the space-map limit; each item can then be added to the cleanup basket.",
-    "loadingFolder": "Loading this folder…",
-    "loadFailed": "Unable to load folder",
+    "loadDeeperHint": "Select this folder to open the next level from the local index.",
+    "smallerObjectsHint": "This group summarizes smaller items not shown separately in the current layer. Page through the list or open the folder in Finder.",
+    "loadingFolder": "Reading the directory index…",
+    "loadFailed": "Unable to read the directory index",
+    "loadMore": "Show 50 more items",
+    "refreshProgress": "{{count}} items checked · {{time}} sec",
+    "refreshFailed": "Unable to refresh folder",
     "directActionHint": "Drag a sector or a folder from the list into the basket at the bottom",
     "addToBasket": "Add to cleanup basket",
     "removeFromBasket": "Remove from cleanup basket",

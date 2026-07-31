@@ -27,6 +27,7 @@ export interface ProductDataCategorySummary {
   itemCount: number;
   updatedAtMs: number | null;
   retentionDays: number | null;
+  indexByteSize?: number;
 }
 
 export interface ProductDataClearReceipt {
@@ -224,6 +225,7 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
       scanCaches: {
         byteSize:
           cacheSummary.cleanupScan.byteSize + cacheSummary.fileInsights.byteSize,
+        indexByteSize: cacheSummary.cleanupScan.byteSize,
         itemCount: input.cleanupItemCount + input.fileInsightsItemCount,
         updatedAtMs: Math.max(
           input.cleanupUpdatedAtMs ?? 0,

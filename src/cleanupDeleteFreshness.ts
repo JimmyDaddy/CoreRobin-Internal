@@ -12,9 +12,15 @@ export function buildCleanupDeleteLeaseRequest(
   mode: CleanupDeleteMode,
   scanRoot?: string,
   scanTargetKind: CleanupDeleteLeaseRequest["scanTargetKind"] = "system_disk",
+  scanId?: string,
 ): CleanupDeleteLeaseRequest {
   const expectedTargets = items.flatMap(cleanupNodeEvidence);
+  const indexedIds = items
+    .map((item) => item.id)
+    .filter((id) => id.startsWith("index:"));
+  const indexedSelection = Boolean(scanId) && indexedIds.length === items.length;
   return {
+    ...(indexedSelection ? { scanId, directoryIds: indexedIds } : {}),
     paths: expectedTargets.map((target) => target.path),
     scanSampledAtMs,
     ...(scanRoot ? { scanRoot } : {}),

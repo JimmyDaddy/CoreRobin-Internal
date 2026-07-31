@@ -7,7 +7,7 @@ import { CleanupAssistant } from "./components/CleanupAssistant";
 import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
 import { getMockCleanupScan } from "./mockData";
-import type { CleanupScanProgress } from "./types";
+import type { CleanupScanProgress, CleanupScanTarget } from "./types";
 
 const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
   snapshot: null,
@@ -50,6 +50,34 @@ describe("cleanup full disk access guide", () => {
     expect(screen.getByRole("heading", { name: "先看清楚，再决定是否处理" })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "开始只读扫描" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /重复与长期未修改文件/ })).toBeNull();
+  });
+
+  it("keeps quick and complete system scans explicit and forwards the selected profile", async () => {
+    cleanupApi.getCleanupScanAccess.mockResolvedValue({
+      fullDiskAccess: "granted",
+      fullDiskAccessRecommended: true,
+      applicationBundleAvailable: true,
+      applicationBundlePath: "/Applications/CoreRobin.app",
+    });
+    const onScan = vi.fn();
+    renderAssistant(onScan);
+
+    expect(screen.getByText(/下载、桌面、文稿/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "开始只读扫描" }));
+    await waitFor(() => expect(onScan).toHaveBeenCalledWith({
+      profile: "common_locations",
+      targetKind: "system_disk",
+      targetPath: null,
+    }));
+
+    onScan.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /完整扫描/ }));
+    fireEvent.click(screen.getByRole("button", { name: "开始只读扫描" }));
+    await waitFor(() => expect(onScan).toHaveBeenCalledWith({
+      profile: "complete",
+      targetKind: "system_disk",
+      targetPath: null,
+    }));
   });
 
   it("offers a limited scan instead of blocking when access is not granted", async () => {
@@ -162,7 +190,7 @@ describe("cleanup full disk access guide", () => {
 });
 
 function renderAssistant(
-  onScan: () => void,
+  onScan: (target?: CleanupScanTarget) => void,
   snapshot: ReturnType<typeof getMockCleanupScan> | null = null,
   loading = false,
   progress: CleanupScanProgress | null = null,
@@ -179,7 +207,6 @@ function renderAssistant(
       onScan={onScan}
       onCancel={() => undefined}
       onDeletionApplied={async () => undefined}
-      onSubtreeRetained={async () => undefined}
       fileInsights={EMPTY_FILE_INSIGHTS}
     />,
   );

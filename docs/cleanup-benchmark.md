@@ -32,8 +32,8 @@ cargo run --manifest-path src-tauri/Cargo.toml --release --example cleanup-bench
 1. 固定机器、卷、供电模式和 Full Disk Access 状态；记录 OS、硬件、CoreRobin commit、DaisyDisk 版本及 fixture 条目数。
 2. 冷态数据必须在重启后首次运行，不能把 `purge` 或手工删缓存冒充重启冷态。
 3. 热态连续运行至少 3 次，记录原始 JSON，并以中位数比较。
-4. 同时记录 `child_watchdog_*` 与 `subtree_requests_are_last_request_wins_and_never_scan_concurrently` 测试结果，覆盖卡死 child 和快速连续 subtree。
-5. 内部目录遍历取消目标为 2 秒内返回，外部 child 取消目标为 5 秒内返回；同一路径 subtree 的实际扫描并发必须为 1。
+4. 同时记录 `child_watchdog_*`、索引刷新取消测试和 `indexed_child_queries_stay_below_the_interaction_budget`，覆盖卡死 child、事务性刷新与无文件系统访问的目录查询。
+5. 内部目录遍历取消目标为 2 秒内返回，外部 child 取消目标为 5 秒内返回；索引目录查询 P95 必须低于 150 ms。
 6. 只有同机同 fixture 的基线和修复后数据都存在时，才判断“回退是否超过 10%”；没有基线时只记录当前值，不能宣称已满足相对阈值。
 
 ## 记录模板
@@ -50,7 +50,7 @@ cargo run --manifest-path src-tauri/Cargo.toml --release --example cleanup-bench
 | 热态耗时中位数 |  |
 | 取消延迟 |  |
 | child watchdog |  |
-| subtree 最大实际并发 | 1（自动化测试断言） |
+| 索引目录查询 P95 | < 150 ms（自动化测试断言） |
 | 结论 / D9、D10 复核 |  |
 
 ## 2026-07-15 首轮记录
@@ -69,6 +69,6 @@ cargo run --manifest-path src-tauri/Cargo.toml --release --example cleanup-bench
 | 热态耗时中位数 | 272 ms |
 | 100 ms 后取消 | 0 ms（毫秒粒度）；worker 返回 `cleanup_scan_cancelled` |
 | child watchdog | deadline 与 4 MiB 输出上限自动化测试通过 |
-| subtree | last-request-wins 自动化测试通过；最大实际扫描并发为 1 |
+| 索引目录查询 | 当时尚未建立原生目录索引；此项不适用于首轮记录 |
 
-这组数据足以验证当前 10 万级 fixture 的可重复入口、取消门槛和并发门槛。它没有修复前同机基线、重启后冷态或 DaisyDisk 同 fixture 数据，因此不能据此宣称“相对修复前回退不超过 10%”或“达到竞品完整扫描速度”。D9 继续采用精确完整扫描；D10 中取消和 subtree 并发目标已有实测证据，其余相对阈值保留到发布前同机对照复核。
+这组数据足以验证当时 10 万级 fixture 的可重复入口和取消门槛。它没有修复前同机基线、重启后冷态或 DaisyDisk 同 fixture 数据，因此不能据此宣称“相对修复前回退不超过 10%”或“达到竞品完整扫描速度”。现在的产品扫描另提供“常用位置快速扫描”，完整扫描仍保持精确遍历；扫描完成后的目录导航由 SQLite 索引查询覆盖，不再用 subtree 重扫指标衡量。

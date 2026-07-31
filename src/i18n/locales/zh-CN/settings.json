@@ -83,9 +83,10 @@
       "resourceHistory": { "title": "资源与操作历史", "description": "整机资源、提醒、应用关注和本机操作记录。" },
       "connectionHistory": { "title": "连接历史", "description": "可选的五分钟聚合记录，可能包含远端地址、端口和应用名。" },
       "applicationInventory": { "title": "应用清单缓存", "description": "按界面语言保存的已安装应用元数据，不包含应用内容。" },
-      "scanCaches": { "title": "扫描结果缓存", "description": "空间清理与文件洞察结果，包含路径、大小和修改时间。" }
+      "scanCaches": { "title": "扫描索引与结果", "description": "原生空间扫描索引与文件洞察结果包含路径、大小和修改时间。" }
     },
     "metrics": {
+      "cleanupIndex": "空间扫描索引占用：{{size}}",
       "items": "{{count}} 项",
       "updated": "更新于 {{time}}",
       "never": "尚无本机数据",
@@ -193,7 +194,7 @@
       "error": "复制失败"
     },
     "clearTitle": "清空全部本地数据",
-    "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描缓存。",
+    "clearDescription": "清除偏好、历史、提醒、操作记录和空间扫描索引。",
     "clearConfirm": "此操作无法撤销。CoreRobin 将清除本机数据并重新启动；登录启动等系统授权不会被静默移除。",
     "clearNow": "清空并重新启动",
     "clearAction": "清空全部数据",

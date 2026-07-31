@@ -1,35 +1,19 @@
-import type {
-  CleanupApplication,
-  CleanupFile,
-  CleanupLocation,
-  CleanupNode,
-  CleanupScan,
-} from "./types";
-import {
-  LEGACY_STORAGE_KEYS,
-  removeStorageItems,
-} from "./storageMigration";
-
-export const CLEANUP_SCAN_STORAGE_KEY = "core-robin.cleanup-scan.v7";
-export const CLEANUP_SCAN_STALE_AFTER_MS = 24 * 60 * 60 * 1_000;
-export const CLEANUP_SCAN_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
-const MAX_CACHED_SUBTREES = 256;
-const MAX_CACHED_SUBTREE_NODES = 12_500;
+import type { CleanupNode, CleanupScan } from "./types";
 
 export type CleanupSnapshotStatus = "current" | "cached" | "expired";
 
-export interface StoredCleanupScan {
-  snapshot: CleanupScan;
-  status: Exclude<CleanupSnapshotStatus, "current">;
-}
-
 export interface CleanupDeletionTargetSnapshot {
+  id?: string;
   path: string;
   logicalSizeBytes: number;
   allocatedSizeBytes: number;
   itemCount: number;
 }
 
+/**
+ * Reconciles path-only items added by another workspace. Indexed cleanup-map
+ * items are reconciled transactionally by the native SQLite index instead.
+ */
 export function reconcileCleanupScanAfterDeletion(
   snapshot: CleanupScan,
   targets: readonly CleanupDeletionTargetSnapshot[],
@@ -37,33 +21,30 @@ export function reconcileCleanupScanAfterDeletion(
   const uniqueTargets = deduplicateDeletionTargets(targets);
   if (uniqueTargets.length === 0) return snapshot;
 
-  const targetsByLocation = snapshot.locations.map(() => [] as CleanupDeletionTargetSnapshot[]);
+  const targetsByLocation = snapshot.locations.map(
+    () => [] as CleanupDeletionTargetSnapshot[],
+  );
   for (const target of uniqueTargets) {
     const locationIndex = snapshot.locations.findIndex((location) =>
       location.paths.some((path) => isSameOrDescendantPath(target.path, path))
     );
     if (locationIndex >= 0) targetsByLocation[locationIndex].push(target);
   }
-  const prefetchedSubtrees = snapshot.prefetchedSubtrees?.flatMap((node) => {
-    const reconciled = reconcileCleanupNodeAfterDeletion(node, uniqueTargets);
-    return reconciled ? [reconciled] : [];
-  });
-  const retainedSubtreeIds = new Set(prefetchedSubtrees?.map((node) => node.id) ?? []);
 
   return {
     ...snapshot,
     root: reconcileCleanupNodeAfterDeletion(snapshot.root, uniqueTargets) ?? snapshot.root,
-    prefetchedSubtrees,
-    subtreeCacheSavedAtMs: Object.fromEntries(
-      Object.entries(snapshot.subtreeCacheSavedAtMs ?? {}).filter(([id]) =>
-        retainedSubtreeIds.has(id)
-      ),
-    ),
     locations: snapshot.locations.map((location, index) => {
       const locationTargets = targetsByLocation[index];
       if (locationTargets.length === 0) return location;
-      const allocatedRemoved = locationTargets.reduce((total, target) => total + target.allocatedSizeBytes, 0);
-      const itemsRemoved = locationTargets.reduce((total, target) => total + target.itemCount, 0);
+      const allocatedRemoved = locationTargets.reduce(
+        (total, target) => total + target.allocatedSizeBytes,
+        0,
+      );
+      const itemsRemoved = locationTargets.reduce(
+        (total, target) => total + target.itemCount,
+        0,
+      );
       return {
         ...location,
         sizeBytes: Math.max(0, location.sizeBytes - allocatedRemoved),
@@ -80,39 +61,6 @@ export function reconcileCleanupScanAfterDeletion(
   };
 }
 
-export function retainCleanupSubtree(
-  snapshot: CleanupScan,
-  subtree: CleanupNode,
-  savedAtMs = Date.now(),
-): CleanupScan {
-  const retained = [
-    subtree,
-    ...(snapshot.prefetchedSubtrees ?? []).filter((node) => node.id !== subtree.id),
-  ];
-  let retainedNodeCount = retained.reduce(
-    (total, node) => total + countCleanupNodes(node),
-    0,
-  );
-  while (
-    retained.length > 1 &&
-    (retained.length > MAX_CACHED_SUBTREES || retainedNodeCount > MAX_CACHED_SUBTREE_NODES)
-  ) {
-    const removed = retained.pop();
-    if (removed) retainedNodeCount -= countCleanupNodes(removed);
-  }
-  const retainedIds = new Set(retained.map((node) => node.id));
-  return {
-    ...snapshot,
-    prefetchedSubtrees: retained,
-    subtreeCacheSavedAtMs: {
-      ...Object.fromEntries(
-        Object.entries(snapshot.subtreeCacheSavedAtMs ?? {}).filter(([id]) => retainedIds.has(id)),
-      ),
-      [subtree.id]: savedAtMs,
-    },
-  };
-}
-
 export function reconcileCleanupNodeAfterDeletion(
   node: CleanupNode,
   targets: readonly CleanupDeletionTargetSnapshot[],
@@ -122,11 +70,23 @@ export function reconcileCleanupNodeAfterDeletion(
   }
   if (!node.path) return node;
 
-  const nestedTargets = targets.filter((target) => cleanupNodeContainsPath(node, target.path));
+  const nestedTargets = targets.filter((target) =>
+    cleanupNodeContainsPath(node, target.path)
+  );
   if (nestedTargets.length === 0) return node;
-  const logicalRemoved = nestedTargets.reduce((total, target) => total + target.logicalSizeBytes, 0);
-  const allocatedRemoved = nestedTargets.reduce((total, target) => total + target.allocatedSizeBytes, 0);
-  const itemsRemoved = nestedTargets.reduce((total, target) => total + target.itemCount, 0);
+
+  const logicalRemoved = nestedTargets.reduce(
+    (total, target) => total + target.logicalSizeBytes,
+    0,
+  );
+  const allocatedRemoved = nestedTargets.reduce(
+    (total, target) => total + target.allocatedSizeBytes,
+    0,
+  );
+  const itemsRemoved = nestedTargets.reduce(
+    (total, target) => total + target.itemCount,
+    0,
+  );
   const children = node.children.flatMap((child) => {
     const reconciled = reconcileCleanupNodeAfterDeletion(child, nestedTargets);
     return reconciled ? [reconciled] : [];
@@ -139,7 +99,9 @@ export function reconcileCleanupNodeAfterDeletion(
     logicalSizeBytes: Math.max(0, node.logicalSizeBytes - logicalRemoved),
     allocatedSizeBytes,
     itemCount,
-    hasChildren: children.length > 0 || (node.hasChildren && (itemCount > 0 || allocatedSizeBytes > 0)),
+    hasChildren:
+      children.length > 0 ||
+      (node.hasChildren && (itemCount > 0 || allocatedSizeBytes > 0)),
     children,
   };
 }
@@ -147,184 +109,6 @@ export function reconcileCleanupNodeAfterDeletion(
 function cleanupNodeContainsPath(node: CleanupNode, targetPath: string): boolean {
   if (node.path && isSameOrDescendantPath(targetPath, node.path)) return true;
   return node.children.some((child) => cleanupNodeContainsPath(child, targetPath));
-}
-
-export function parseStoredCleanupScan(
-  serialized: string | null,
-  now = Date.now(),
-): StoredCleanupScan | null {
-  if (!serialized) return null;
-  try {
-    const value = JSON.parse(serialized) as unknown;
-    const snapshot = normalizeCleanupScan(
-      isRecord(value) ? value.snapshot : null,
-    );
-    if (
-      !isRecord(value) ||
-      value.version !== 7 ||
-      !isFiniteNonNegativeNumber(value.savedAtMs) ||
-      !isCleanupScan(snapshot)
-    ) {
-      return null;
-    }
-    const ageMs = Math.max(0, now - value.savedAtMs);
-    if (ageMs > CLEANUP_SCAN_RETENTION_MS) return null;
-    return {
-      snapshot,
-      status: ageMs > CLEANUP_SCAN_STALE_AFTER_MS ? "expired" : "cached",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function normalizeCleanupScan(value: unknown): unknown {
-  if (!isRecord(value)) return value;
-  const prefetchedSubtrees = Array.isArray(value.prefetchedSubtrees)
-    ? value.prefetchedSubtrees
-    : [];
-  const fallbackSavedAtMs = isFiniteNonNegativeNumber(value.sampledAtMs)
-    ? value.sampledAtMs
-    : 0;
-  return {
-    ...value,
-    prefetchedSubtrees,
-    subtreeCacheSavedAtMs: isTimestampRecord(value.subtreeCacheSavedAtMs)
-      ? value.subtreeCacheSavedAtMs
-      : Object.fromEntries(
-          prefetchedSubtrees
-            .filter(isCleanupNode)
-            .map((node) => [node.id, fallbackSavedAtMs]),
-        ),
-    installedApplications: Array.isArray(value.installedApplications)
-      ? value.installedApplications
-      : [],
-    applicationInventoryAvailable: typeof value.applicationInventoryAvailable === "boolean"
-      ? value.applicationInventoryAvailable
-      : false,
-    targetKind:
-      value.targetKind === "volume" || value.targetKind === "folder"
-        ? value.targetKind
-        : "system_disk",
-    targetPath: typeof value.targetPath === "string"
-      ? value.targetPath
-      : typeof (value.root as Record<string, unknown> | undefined)?.path === "string"
-        ? (value.root as Record<string, unknown>).path
-        : "",
-  };
-}
-
-export function clearStoredCleanupScan(): void {
-  try {
-    removeStorageItems(
-      window.localStorage,
-      CLEANUP_SCAN_STORAGE_KEY,
-      LEGACY_STORAGE_KEYS.cleanupScan,
-    );
-  } catch {
-    // A storage failure must not prevent a fresh scan from starting.
-  }
-}
-
-function isCleanupScan(value: unknown): value is CleanupScan {
-  if (!isRecord(value)) return false;
-  return (
-    isFiniteNonNegativeNumber(value.sampledAtMs) &&
-    isFiniteNonNegativeNumber(value.durationMs) &&
-    isCleanupNode(value.root) &&
-    Array.isArray(value.prefetchedSubtrees) &&
-    value.prefetchedSubtrees.every(isCleanupNode) &&
-    isTimestampRecord(value.subtreeCacheSavedAtMs) &&
-    Array.isArray(value.locations) &&
-    value.locations.every(isCleanupLocation) &&
-    Array.isArray(value.largestFiles) &&
-    value.largestFiles.every(isCleanupFile) &&
-    Array.isArray(value.installedApplications) &&
-    value.installedApplications.every(isCleanupApplication) &&
-    typeof value.applicationInventoryAvailable === "boolean" &&
-    isFiniteNonNegativeNumber(value.scannedEntryCount) &&
-    isFiniteNonNegativeNumber(value.unreadableEntryCount) &&
-    Array.isArray(value.unreadablePaths) &&
-    value.unreadablePaths.every((path) => typeof path === "string") &&
-    typeof value.deletionAvailable === "boolean" &&
-    (value.targetKind === "system_disk"
-      || value.targetKind === "volume"
-      || value.targetKind === "folder") &&
-    typeof value.targetPath === "string"
-  );
-}
-
-function countCleanupNodes(node: CleanupNode): number {
-  return 1 + node.children.reduce(
-    (total, child) => total + countCleanupNodes(child),
-    0,
-  );
-}
-
-function isTimestampRecord(value: unknown): value is Record<string, number> {
-  return isRecord(value) && Object.values(value).every(isFiniteNonNegativeNumber);
-}
-
-function isCleanupApplication(value: unknown): value is CleanupApplication {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.name === "string" &&
-    typeof value.path === "string" &&
-    isFiniteNonNegativeNumber(value.sizeBytes) &&
-    (value.lastUsedAtMs === null || isFiniteNonNegativeNumber(value.lastUsedAtMs)) &&
-    (value.modifiedAtMs === null || isFiniteNonNegativeNumber(value.modifiedAtMs))
-  );
-}
-
-function isCleanupLocation(value: unknown): value is CleanupLocation {
-  if (!isRecord(value)) return false;
-  return (
-    ["downloads", "trash", "app_cache", "developer_cache", "hidden_data"].includes(String(value.kind)) &&
-    Array.isArray(value.paths) &&
-    value.paths.every((path) => typeof path === "string") &&
-    isFiniteNonNegativeNumber(value.sizeBytes) &&
-    isFiniteNonNegativeNumber(value.itemCount) &&
-    (value.safety === "reclaimable" || value.safety === "review") &&
-    typeof value.available === "boolean" &&
-    Array.isArray(value.nodes) &&
-    value.nodes.every(isCleanupNode)
-  );
-}
-
-function isCleanupNode(value: unknown): value is CleanupNode {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.name === "string" &&
-    (value.path === null || typeof value.path === "string") &&
-    isFiniteNonNegativeNumber(value.sizeBytes) &&
-    isFiniteNonNegativeNumber(value.logicalSizeBytes) &&
-    isFiniteNonNegativeNumber(value.allocatedSizeBytes) &&
-    isFiniteNonNegativeNumber(value.itemCount) &&
-    typeof value.hasChildren === "boolean" &&
-    (value.safety === "reclaimable" || value.safety === "review") &&
-    ["folder", "file", "aggregate", "restricted"].includes(String(value.kind)) &&
-    Array.isArray(value.children) &&
-    value.children.every(isCleanupNode)
-  );
-}
-
-function isCleanupFile(value: unknown): value is CleanupFile {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.name === "string" &&
-    typeof value.path === "string" &&
-    isFiniteNonNegativeNumber(value.sizeBytes) &&
-    (value.modifiedAtMs === null || isFiniteNonNegativeNumber(value.modifiedAtMs))
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isFiniteNonNegativeNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 function deduplicateDeletionTargets(
@@ -338,7 +122,8 @@ function deduplicateDeletionTargets(
 function isSameOrDescendantPath(candidate: string, ancestor: string): boolean {
   const normalizedCandidate = normalizeCleanupPath(candidate);
   const normalizedAncestor = normalizeCleanupPath(ancestor);
-  return normalizedCandidate === normalizedAncestor || normalizedCandidate.startsWith(`${normalizedAncestor}/`);
+  return normalizedCandidate === normalizedAncestor ||
+    normalizedCandidate.startsWith(`${normalizedAncestor}/`);
 }
 
 function normalizeCleanupPath(path: string): string {

@@ -23,54 +23,29 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
     let private = fixture.path().join("private");
     fs::create_dir_all(&private).unwrap();
     let request_path = private.join("request.json");
-    let result_path = private.join("result.json");
-    let cache_path = private.join("cache.json");
-    let checkpoint_path = private.join("checkpoint.json");
+    let result_path = private.join("cleanup-test.result.json");
+    let index_path = private.join("cleanup-scan-index-v1.sqlite");
     let exclusions_path = private.join("exclusions.json");
     fs::write(&exclusions_path, b"[]").unwrap();
     fs::write(
         &request_path,
         serde_json::to_vec(&serde_json::json!({
-            "targetKind": "folder",
-            "targetPath": scan_root,
+            "operation": "scan",
+            "request": {
+                "profile": "complete",
+                "targetKind": "folder",
+                "targetPath": scan_root,
+            },
         }))
         .unwrap(),
     )
     .unwrap();
 
-    let mut interrupted = Command::new(env!("CARGO_BIN_EXE_core-robin"))
-        .arg("--cleanup-scan-worker")
-        .arg(&request_path)
-        .arg(&result_path)
-        .arg(&cache_path)
-        .arg(&checkpoint_path)
-        .arg(&exclusions_path)
-        .env("CORE_ROBIN_TEST_STOP_AFTER_CLEANUP_SEGMENTS", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let interrupted_control = interrupted.stdin.take().unwrap();
-    let interrupted_output = interrupted.wait_with_output().unwrap();
-    drop(interrupted_control);
-    assert!(interrupted_output.status.success());
-    assert!(checkpoint_path.is_file());
-    assert!(!result_path.is_file());
-    assert!(
-        String::from_utf8(interrupted_output.stdout)
-            .unwrap()
-            .lines()
-            .any(|line| line.contains("cleanup_scan_test_interrupted"))
-    );
-    fs::remove_dir_all(scan_root.join("nested")).unwrap();
-
     let mut child = Command::new(env!("CARGO_BIN_EXE_core-robin"))
         .arg("--cleanup-scan-worker")
         .arg(&request_path)
         .arg(&result_path)
-        .arg(&cache_path)
-        .arg(&checkpoint_path)
+        .arg(&index_path)
         .arg(&exclusions_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -95,6 +70,9 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
     }));
 
     let result: Value = serde_json::from_slice(&fs::read(result_path).unwrap()).unwrap();
+    assert_eq!(result["scanId"], "cleanup-test");
+    assert_eq!(result["profile"], "complete");
+    assert_eq!(result["indexed"], true);
     assert_eq!(result["targetKind"], "folder");
     assert_eq!(
         result["targetPath"],
@@ -106,11 +84,10 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
             .as_array()
             .unwrap()
             .iter()
-            .all(|node| node["name"] != "nested"),
-        "a removed segment must not survive checkpoint recovery"
+            .any(|node| node["name"] == "nested"),
+        "the native index should retain the scanned directory tree"
     );
-    assert!(cache_path.is_file());
-    assert!(!checkpoint_path.exists());
+    assert!(index_path.is_file());
 }
 
 #[test]
@@ -119,16 +96,19 @@ fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
     let private = fixture.path().join("private");
     fs::create_dir_all(&private).unwrap();
     let request_path = private.join("request.json");
-    let result_path = private.join("result.json");
-    let cache_path = private.join("cache.json");
-    let checkpoint_path = private.join("checkpoint.json");
+    let result_path = private.join("blocked-worker.result.json");
+    let index_path = private.join("cleanup-scan-index-v1.sqlite");
     let exclusions_path = private.join("exclusions.json");
     fs::write(&exclusions_path, b"[]").unwrap();
     fs::write(
         &request_path,
         serde_json::to_vec(&serde_json::json!({
-            "targetKind": "folder",
-            "targetPath": fixture.path(),
+            "operation": "scan",
+            "request": {
+                "profile": "complete",
+                "targetKind": "folder",
+                "targetPath": fixture.path(),
+            },
         }))
         .unwrap(),
     )
@@ -138,8 +118,7 @@ fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
         .arg("--cleanup-scan-worker")
         .arg(&request_path)
         .arg(&result_path)
-        .arg(&cache_path)
-        .arg(&checkpoint_path)
+        .arg(&index_path)
         .arg(&exclusions_path)
         .env("CORE_ROBIN_TEST_BLOCK_CLEANUP_WORKER_MS", "30000")
         .stdin(Stdio::piped())

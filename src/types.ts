@@ -261,14 +261,15 @@ export type CleanupProtectionReason =
   | "restricted";
 
 export interface CleanupScan {
+  scanId: string;
+  profile: CleanupScanProfile;
+  scopePaths: string[];
+  indexed: boolean;
+  indexByteSize: number;
   sampledAtMs: number;
   durationMs: number;
   /** The actual directory hierarchy rooted at the scanned system disk. */
   root: CleanupNode;
-  /** Bounded deep-folder expansions captured during the full scan. */
-  prefetchedSubtrees?: CleanupNode[];
-  /** Last successful scan time for each cached subtree ID. */
-  subtreeCacheSavedAtMs?: Record<string, number>;
   locations: CleanupLocation[];
   largestFiles: CleanupFile[];
   installedApplications: CleanupApplication[];
@@ -414,17 +415,6 @@ export interface CleanupNode {
   children: CleanupNode[];
 }
 
-export interface CleanupSubtreeRequest {
-  requestId: string;
-  path: string;
-  /** Root selected for the full scan that produced this path. */
-  scanRoot?: string;
-  /** Distinguishes an explicit folder/volume boundary from a whole-system scan. */
-  scanTargetKind?: CleanupScanTargetKind;
-  safety: CleanupSafety;
-  expandSmallerObjects?: boolean;
-}
-
 export interface CleanupScanProgress {
   scannedEntryCount: number;
   discoveredBytes: number;
@@ -435,9 +425,12 @@ export interface CleanupScanProgress {
 export type CleanupScanTargetKind = "system_disk" | "volume" | "folder";
 
 export interface CleanupScanTarget {
+  profile?: CleanupScanProfile;
   targetKind: CleanupScanTargetKind;
   targetPath: string | null;
 }
+
+export type CleanupScanProfile = "common_locations" | "complete";
 
 export type CleanupScanJobPhase =
   | "preparing"
@@ -464,6 +457,40 @@ export interface CleanupScanJobStatus {
   errorMessage: string | null;
 }
 
+export interface CleanupIndexedDirectoryRequest {
+  scanId: string;
+  directoryId: string;
+}
+
+export interface CleanupIndexedChildrenRequest {
+  scanId: string;
+  directoryId: string;
+  cursor: number | null;
+  limit?: number | null;
+}
+
+export interface CleanupIndexedChildrenPage {
+  items: CleanupNode[];
+  nextCursor: number | null;
+}
+
+export interface CleanupDirectoryRefreshRequest {
+  scanId: string;
+  directoryId: string;
+}
+
+export interface CleanupIndexDeletionRequest {
+  scanId: string;
+  nodeIds: string[];
+}
+
+export interface CleanupScanIndexSummary {
+  available: boolean;
+  byteSize: number;
+  scanCount: number;
+  updatedAtMs: number | null;
+}
+
 export type CleanupFullDiskAccessStatus =
   | "granted"
   | "not_granted"
@@ -484,6 +511,10 @@ export interface CleanupPathState {
 }
 
 export interface CleanupDeleteLeaseRequest {
+  /** Completed native scan that owns the selected indexed nodes. */
+  scanId?: string;
+  /** Stable opaque node IDs resolved by the backend, never client paths. */
+  directoryIds?: string[];
   paths: string[];
   scanSampledAtMs: number;
   /** Optional non-system scan root that bounds every selected target. */

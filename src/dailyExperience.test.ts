@@ -160,6 +160,11 @@ describe("daily experience model", () => {
 
   it("counts only available reclaimable cleanup locations", () => {
     expect(cleanupReclaimableBytes({
+      scanId: "fixture",
+      profile: "complete",
+      scopePaths: [],
+      indexed: true,
+      indexByteSize: 1_024,
       sampledAtMs: 0,
       durationMs: 10,
       root: {

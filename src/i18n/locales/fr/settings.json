@@ -124,11 +124,12 @@
         "description": "Métadonnées des apps installées par langue d’interface, sans contenu des apps."
       },
       "scanCaches": {
-        "title": "Caches des résultats d’analyse",
-        "description": "Résultats du nettoyage et de l’analyse de fichiers avec chemins, tailles et dates de modification."
+        "title": "Index et résultats d’analyse",
+        "description": "L’index natif de l’espace et les résultats d’analyse contiennent chemins, tailles et dates de modification."
       }
     },
     "metrics": {
+      "cleanupIndex": "Index d’analyse de l’espace : {{size}}",
       "items": "{{count}} éléments",
       "updated": "Mis à jour {{time}}",
       "never": "Aucune donnée locale",

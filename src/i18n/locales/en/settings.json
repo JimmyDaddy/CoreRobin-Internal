@@ -85,9 +85,10 @@
       "resourceHistory": { "title": "Resource and action history", "description": "Device resources, alerts, app watches, and local action records." },
       "connectionHistory": { "title": "Connection history", "description": "Optional five-minute aggregates that can include remote addresses, ports, and app names." },
       "applicationInventory": { "title": "Application inventory cache", "description": "Installed-app metadata cached per interface language. App contents are never stored." },
-      "scanCaches": { "title": "Scan result caches", "description": "Cleanup and file-insight results containing paths, sizes, and modification times." }
+      "scanCaches": { "title": "Scan indexes and results", "description": "The native space-scan index and file-insight results contain paths, sizes, and modification times." }
     },
     "metrics": {
+      "cleanupIndex": "Space-scan index: {{size}}",
       "items": "{{count}} items",
       "updated": "Updated {{time}}",
       "never": "No local data yet",
@@ -195,7 +196,7 @@
       "error": "Copy failed"
     },
     "clearTitle": "Clear all local data",
-    "clearDescription": "Clear preferences, history, alerts, action records, and the space-scan cache.",
+    "clearDescription": "Clear preferences, history, alerts, action records, and the space-scan index.",
     "clearConfirm": "This cannot be undone. CoreRobin will clear on-device data and restart; system permissions such as login startup are not silently removed.",
     "clearNow": "Clear and restart",
     "clearAction": "Clear all data",

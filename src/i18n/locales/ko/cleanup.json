@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "스캔 모드",
+    "recommended": "권장",
+    "quick": {
+      "title": "빠른 스캔",
+      "description": "용량이 크거나 정리 가능한 주요 위치를 정확히 확인합니다",
+      "scopeTitle": "스캔 대상",
+      "scope": "다운로드, 데스크탑, 문서, 미디어 폴더, 휴지통, 앱 및 개발 캐시, 앱 지원 데이터, 컨테이너, 숨겨진 앱 데이터, 시스템 임시 폴더."
+    },
+    "complete": {
+      "title": "전체 스캔",
+      "description": "시스템 디스크 전체를 순서대로 확인하며 더 오래 걸립니다"
+    }
+  },
+  "coverage": {
+    "title": "스캔 범위",
+    "quickResult": "주요 위치 {{count}}곳을 정확히 확인하여 {{size}}를 찾았습니다",
+    "quickLimit": "디스크의 다른 영역은 스캔하지 않았으며, 이 결과는 전체 디스크 합계가 아닙니다.",
+    "continueComplete": "전체 스캔 계속"
+  },
   "fileInsights": {
     "eyebrow": "명시적 읽기 전용 확인",
     "title": "중복되고 수정되지 않은 장기 파일",
@@ -199,10 +219,13 @@
       "restricted": "제한된 항목"
     },
     "noDeeperBreakdown": "현재 수준에서는 더 깊이의 디렉토리 그룹화를 사용할 수 없습니다.",
-    "loadDeeperHint": "이 폴더를 선택하여 전체 컴퓨터를 다시 스캔하지 않고 다음 레벨을 로드합니다.",
-    "smallerObjectsHint": "이 그룹을 열면 공간 지도 개수 제한으로 묶인 실제 파일과 폴더를 불러오며, 각 항목을 정리 바구니에 추가할 수 있습니다.",
+    "loadDeeperHint": "이 폴더를 선택하면 로컬 인덱스에서 다음 단계를 엽니다.",
+    "smallerObjectsHint": "작은 항목을 요약한 그룹입니다. 목록을 더 보거나 Finder에서 폴더를 여세요.",
     "loadingFolder": "이 폴더를 로딩 중…",
-    "loadFailed": "폴더 로딩 실패",
+    "loadFailed": "디렉터리 인덱스를 읽을 수 없음",
+    "loadMore": "50개 항목 더 보기",
+    "refreshProgress": "{{count}}개 항목 확인 · {{time}}초",
+    "refreshFailed": "폴더를 새로 고칠 수 없음",
     "directActionHint": "섹터나 목록의 폴더를 아래 정리 바구니로 드래그하세요.",
     "protectedSelectionHint": "시스템 경로와 홈 루트는 읽기 전용입니다. 홈 폴더 내 구체적인 항목은 정리 바구니에 추가할 수 있습니다.",
     "trashRootProtected": "쓰레기 폴더 자체는 보호되어 있습니다. 해당 폴더를 열고 삭제하려는 특정 항목을 선택하세요.",

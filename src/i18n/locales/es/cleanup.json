@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "Modo de análisis",
+    "recommended": "Recomendado",
+    "quick": {
+      "title": "Análisis rápido",
+      "description": "Comprueba con precisión ubicaciones grandes y limpiables habituales",
+      "scopeTitle": "Este análisis incluye",
+      "scope": "Descargas, Escritorio, Documentos, carpetas multimedia, Papelera, cachés de aplicaciones y desarrollo, datos de soporte, contenedores, datos ocultos y carpetas temporales del sistema."
+    },
+    "complete": {
+      "title": "Análisis completo",
+      "description": "Recorre todo el disco del sistema en orden; tarda más"
+    }
+  },
+  "coverage": {
+    "title": "Cobertura del análisis",
+    "quickResult": "Se comprobaron con precisión {{count}} ubicaciones habituales y se encontraron {{size}}",
+    "quickLimit": "No se han analizado otras áreas del disco; este resultado no representa el total del disco.",
+    "continueComplete": "Continuar con el análisis completo"
+  },
   "fileInsights": {
     "eyebrow": "Verificación explícita de solo lectura",
     "title": "Archivos duplicados y sin modificar durante mucho tiempo",
@@ -199,10 +219,13 @@
       "restricted": "Restringidos"
     },
     "noDeeperBreakdown": "No se puede agrupar directorios en niveles inferiores en este nivel.",
-    "loadDeeperHint": "Seleccione esta carpeta para cargar el siguiente nivel sin escanear todo el equipo.",
-    "smallerObjectsHint": "Abra este grupo para cargar los archivos y carpetas reales agrupados por el límite del mapa; después podrá añadir cada elemento al cesto.",
+    "loadDeeperHint": "Seleccione esta carpeta para abrir el siguiente nivel desde el índice local.",
+    "smallerObjectsHint": "Este grupo resume elementos pequeños. Recorra la lista o abra la carpeta en Finder.",
     "loadingFolder": "Cargando esta carpeta…",
-    "loadFailed": "No se pudo cargar la carpeta",
+    "loadFailed": "No se pudo leer el índice de directorios",
+    "loadMore": "Mostrar 50 elementos más",
+    "refreshProgress": "{{count}} elementos comprobados · {{time}} s",
+    "refreshFailed": "No se pudo actualizar la carpeta",
     "directActionHint": "Arrastra un sector o una carpeta de la lista a la cesta inferior",
     "protectedSelectionHint": "Las rutas del sistema y la raíz del directorio de inicio son solo de visualización; los elementos específicos dentro de su carpeta de inicio pueden entrar al cesto",
     "trashRootProtected": "El propio cesto está protegido; acceda a él y seleccione el contenido específico que desea eliminar",

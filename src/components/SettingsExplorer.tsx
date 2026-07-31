@@ -971,6 +971,13 @@ function ProductDataCategoryRow({
         <strong>{t(`settings:dataPrivacy.categories.${category}.title`)}</strong>
         <small>{t(`settings:dataPrivacy.categories.${category}.description`)}</small>
         <span className="settings-data-category__metrics">
+          {category === "scanCaches" ? (
+            <span>
+              {t("settings:dataPrivacy.metrics.cleanupIndex", {
+                size: formatBytes(summary.indexByteSize ?? 0),
+              })}
+            </span>
+          ) : null}
           <span>
             {t("settings:dataPrivacy.metrics.items", {
               count: summary.itemCount,

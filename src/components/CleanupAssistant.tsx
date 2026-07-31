@@ -41,6 +41,7 @@ import type {
   CleanupLocationKind,
   CleanupScan,
   CleanupScanAccess,
+  CleanupScanJobStatus,
   CleanupScanJobPhase,
   CleanupScanProgress,
   CleanupScanTarget,
@@ -88,7 +89,10 @@ interface CleanupAssistantProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
-  onSubtreeRetained: (subtree: CleanupScan["root"]) => Promise<void>;
+  directoryRefreshStatus?: CleanupScanJobStatus | null;
+  directoryRefreshError?: CommandError | null;
+  onRefreshDirectory?: (directoryId: string) => void;
+  onCancelDirectoryRefresh?: () => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
   fileInsights: FileInsightsScanController;
@@ -115,7 +119,10 @@ export function CleanupAssistant({
   onScan,
   onCancel,
   onDeletionApplied,
-  onSubtreeRetained,
+  directoryRefreshStatus = null,
+  directoryRefreshError = null,
+  onRefreshDirectory = () => undefined,
+  onCancelDirectoryRefresh = () => undefined,
   onUserActionStart,
   onUserActionComplete,
   fileInsights,
@@ -134,8 +141,16 @@ export function CleanupAssistant({
   const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files">("space");
   const [selectedTarget, setSelectedTarget] = useState<CleanupScanTarget>(
     () => snapshot
-      ? { targetKind: snapshot.targetKind, targetPath: snapshot.targetPath }
-      : { targetKind: "system_disk", targetPath: null },
+      ? {
+          profile: snapshot.profile,
+          targetKind: snapshot.targetKind,
+          targetPath: snapshot.targetPath,
+        }
+      : {
+          profile: "common_locations",
+          targetKind: "system_disk",
+          targetPath: null,
+        },
   );
   const [recentTargets, setRecentTargets] = useState(loadRecentCleanupTargets);
   const [selectingFolder, setSelectingFolder] = useState(false);
@@ -174,6 +189,7 @@ export function CleanupAssistant({
   useEffect(() => {
     if (!snapshot) return;
     setSelectedTarget({
+      profile: snapshot.profile,
       targetKind: snapshot.targetKind,
       targetPath: snapshot.targetPath,
     });
@@ -302,6 +318,7 @@ export function CleanupAssistant({
       });
       if (typeof selected !== "string" || selected.length === 0) return;
       const target: CleanupScanTarget = {
+        profile: "complete",
         targetKind: "folder",
         targetPath: selected,
       };
@@ -316,7 +333,22 @@ export function CleanupAssistant({
 
   const selectTarget = (target: CleanupScanTarget) => {
     if (loading) return;
+    setSelectedTarget({
+      ...target,
+      profile: target.targetKind === "system_disk"
+        ? target.profile ?? selectedTarget.profile ?? "common_locations"
+        : "complete",
+    });
+  };
+
+  const continueWithCompleteScan = () => {
+    const target: CleanupScanTarget = {
+      profile: "complete",
+      targetKind: "system_disk",
+      targetPath: null,
+    };
     setSelectedTarget(target);
+    onScan(target);
   };
 
   const sendMapCommand = (
@@ -399,7 +431,11 @@ export function CleanupAssistant({
             className={selectedTarget.targetKind === "system_disk" ? "is-selected" : undefined}
             type="button"
             disabled={loading}
-            onClick={() => selectTarget({ targetKind: "system_disk", targetPath: null })}
+            onClick={() => selectTarget({
+              profile: selectedTarget.profile ?? "common_locations",
+              targetKind: "system_disk",
+              targetPath: null,
+            })}
           >
             <HardDrive size={15} />
             <span>{t("cleanup:targets.systemDisk")}</span>
@@ -411,7 +447,11 @@ export function CleanupAssistant({
               type="button"
               disabled={loading}
               title={volume.mountPoint}
-              onClick={() => selectTarget({ targetKind: "volume", targetPath: volume.mountPoint })}
+              onClick={() => selectTarget({
+                profile: "complete",
+                targetKind: "volume",
+                targetPath: volume.mountPoint,
+              })}
             >
               <ArchiveRestore size={15} />
               <span>{volume.name || volume.mountPoint}</span>
@@ -428,6 +468,49 @@ export function CleanupAssistant({
             <span>{t("cleanup:targets.chooseFolder")}</span>
           </button>
         </div>
+        {selectedTarget.targetKind === "system_disk" ? (
+          <div className="cleanup-scan-profile">
+            <div className="cleanup-scan-profile__choices" role="group" aria-label={t("cleanup:profiles.label")}>
+              <button
+                type="button"
+                className={selectedTarget.profile !== "complete" ? "is-selected" : undefined}
+                disabled={loading}
+                onClick={() => setSelectedTarget((current) => ({
+                  ...current,
+                  profile: "common_locations",
+                }))}
+              >
+                <Sparkles size={15} />
+                <span>
+                  <strong>{t("cleanup:profiles.quick.title")}</strong>
+                  <small>{t("cleanup:profiles.quick.description")}</small>
+                </span>
+                <em>{t("cleanup:profiles.recommended")}</em>
+              </button>
+              <button
+                type="button"
+                className={selectedTarget.profile === "complete" ? "is-selected" : undefined}
+                disabled={loading}
+                onClick={() => setSelectedTarget((current) => ({
+                  ...current,
+                  profile: "complete",
+                }))}
+              >
+                <HardDrive size={15} />
+                <span>
+                  <strong>{t("cleanup:profiles.complete.title")}</strong>
+                  <small>{t("cleanup:profiles.complete.description")}</small>
+                </span>
+              </button>
+            </div>
+            {selectedTarget.profile !== "complete" ? (
+              <div className="cleanup-scan-profile__scope">
+                <span>{t("cleanup:profiles.quick.scopeTitle")}</span>
+                <p>{t("cleanup:profiles.quick.scope")}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {recentTargets.length > 0 ? (
           <div className="cleanup-targets__recent">
             <span>{t("cleanup:targets.recent")}</span>
@@ -670,6 +753,29 @@ export function CleanupAssistant({
 
       {snapshot ? (
         <>
+          {snapshot.profile === "common_locations" ? (
+            <section className="cleanup-scan-coverage" aria-label={t("cleanup:coverage.title")}>
+              <div>
+                <Sparkles size={17} />
+                <span>
+                  <strong>{t("cleanup:coverage.quickResult", {
+                    count: snapshot.scopePaths.length,
+                    size: formatBytes(snapshot.root.allocatedSizeBytes),
+                  })}</strong>
+                  <small>{t("cleanup:coverage.quickLimit")}</small>
+                </span>
+              </div>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={loading}
+                onClick={continueWithCompleteScan}
+              >
+                <HardDrive size={14} />
+                {t("cleanup:coverage.continueComplete")}
+              </button>
+            </section>
+          ) : null}
           <div className="cleanup-assistant__summary">
             <span><ArchiveRestore size={17} /></span>
             <div>
@@ -723,7 +829,10 @@ export function CleanupAssistant({
               setMapCommand((current) => current?.id === id ? null : current);
             }}
             onDeletionApplied={onDeletionApplied}
-            onSubtreeRetained={onSubtreeRetained}
+            directoryRefreshStatus={directoryRefreshStatus}
+            directoryRefreshError={directoryRefreshError}
+            onRefreshDirectory={onRefreshDirectory}
+            onCancelDirectoryRefresh={onCancelDirectoryRefresh}
             onUserActionStart={onUserActionStart}
             onUserActionComplete={onUserActionComplete}
           />

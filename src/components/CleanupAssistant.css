@@ -109,6 +109,93 @@
   color: var(--green);
 }
 
+.cleanup-scan-profile {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.cleanup-scan-profile__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cleanup-scan-profile__choices > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 10px 11px;
+  color: var(--text-muted);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.cleanup-scan-profile__choices > button.is-selected {
+  color: var(--text);
+  border-color: rgba(99, 168, 255, 0.42);
+  background: linear-gradient(135deg, rgba(99, 168, 255, 0.13), rgba(99, 168, 255, 0.035));
+  box-shadow: inset 0 0 0 1px rgba(99, 168, 255, 0.06);
+}
+
+.cleanup-scan-profile__choices > button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.cleanup-scan-profile__choices strong { color: var(--text); font-size: 12px; }
+.cleanup-scan-profile__choices small { color: var(--text-dim); font-size: 10px; line-height: 1.4; }
+.cleanup-scan-profile__choices em {
+  align-self: flex-start;
+  padding: 3px 6px;
+  color: var(--green);
+  font-size: 9px;
+  font-style: normal;
+  border-radius: 999px;
+  background: rgba(86, 207, 147, 0.1);
+}
+
+.cleanup-scan-profile__scope {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 8px 10px;
+  color: var(--text-dim);
+  border-radius: 9px;
+  background: rgba(99, 168, 255, 0.045);
+}
+.cleanup-scan-profile__scope > span { color: var(--blue); font-size: 10px; font-weight: 700; }
+.cleanup-scan-profile__scope > p { margin: 0; font-size: 10px; line-height: 1.55; }
+
+.cleanup-scan-coverage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 14px 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(99, 168, 255, 0.2);
+  border-radius: 11px;
+  background: linear-gradient(90deg, rgba(99, 168, 255, 0.09), rgba(99, 168, 255, 0.02));
+}
+.cleanup-scan-coverage > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+.cleanup-scan-coverage > div > svg { flex: 0 0 auto; color: var(--blue); }
+.cleanup-scan-coverage > div > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.cleanup-scan-coverage strong { color: var(--text); font-size: 12px; }
+.cleanup-scan-coverage small { color: var(--text-muted); font-size: 10px; }
+
 .cleanup-empty-state {
   position: relative;
   display: grid;
