@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.20",
+  "title": {
+    "zh-CN": "更稳定的后台更新与更顺手的进程和空间操作",
+    "en": "More reliable background updates and smoother process and storage workflows"
+  },
+  "items": [
+    {
+      "zh-CN": "进程页新增端口搜索与实时排序开关；关闭实时排序后，列表会保持单次排序结果，查看或操作进程时不再因采样更新不断跳动。",
+      "en": "The process page now supports port search and a live sorting toggle. With live sorting off, the list keeps its one-time order so rows no longer jump while you inspect or manage a process."
+    },
+    {
+      "zh-CN": "空间清理统一了结果卡片宽度和间距，路径支持逐级点击返回；存储页的最高占用可直接进入清理，长期未使用应用则集中到应用页查看。",
+      "en": "Space cleanup now uses consistent result-card sizing and spacing, with clickable path segments for moving back through folders. The highest-storage item opens cleanup directly, while long-unused apps are now grouped in the Applications area."
+    },
+    {
+      "zh-CN": "应用更新在隐藏主窗口或重新载入界面后会继续下载、校验和安装；重新打开会接回同一进度，传输失败时可直接重试。",
+      "en": "App updates now keep downloading, verifying, and installing when the main window is hidden or reloaded. Reopening the window reconnects to the same progress, and failed transfers can be retried directly."
+    }
+  ]
+}
