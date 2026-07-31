@@ -330,15 +330,6 @@
   "unavailable": "當前平臺不可用",
   "pathUnavailable": "沒有可掃描路徑",
   "morePaths": " 等 {{count}} 個位置",
-  "applications": {
-    "kicker": "只讀應用盤點",
-    "title": "很久沒用的應用",
-    "boundary": "僅列出 macOS 能確認 6 個月以上未開啟的應用；CoreRobin 絕不會自動解除安裝",
-    "lastUsed": "{{date}} 最後使用 · 已有 {{days}} 天未開啟",
-    "none": "沒有發現能夠確認已超過 6 個月未使用的應用。",
-    "unavailable": "當前平臺暫時無法可靠讀取應用的最後使用時間。",
-    "unknownExcluded": "另有 {{count}} 個應用無法確認最後使用時間，CoreRobin 沒有把它們歸為長期未用。"
-  },
   "reviewFirst": "逐項確認",
   "largestFiles": "系統磁碟中的大檔案",
   "largeFileBoundary": "只列出超過 500 MB 的檔案，不建議自動刪除",

@@ -330,15 +330,6 @@
   "unavailable": "Não disponível nesta plataforma",
   "pathUnavailable": "Local não acessível para varredura",
   "morePaths": "e {{count}} mais locais",
-  "applications": {
-    "kicker": "Inventário de aplicativos somente leitura",
-    "title": "Aplicativos que não foram utilizados há muito tempo",
-    "boundary": "Apenas aplicativos que, segundo o macOS, não são abertos há pelo menos seis meses; o CoreRobin nunca os desinstala automaticamente",
-    "lastUsed": "Última utilização {{date}} · não aberto há {{days}} dias",
-    "none": "Nenhum aplicativo pôde ser confirmado como não utilizado por mais de seis meses.",
-    "unavailable": "Esta plataforma atualmente não fornece datas de última utilização de aplicativos de forma confiável.",
-    "unknownExcluded": "{{count}} Outros aplicativos não possuem uma data de uso confirmada, portanto, o CoreRobin não os classificou como não utilizados."
-  },
   "reviewFirst": "Verificar um por um",
   "largestFiles": "Arquivos grandes no disco do sistema",
   "largeFileBoundary": "Apenas arquivos com mais de 500 MB são listados; a exclusão automática não é recomendada",

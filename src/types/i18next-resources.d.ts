@@ -291,15 +291,6 @@ export default interface Resources {
       "unknown": "暂时无法确认权限状态；你仍可以打开系统设置授权，或执行有限扫描。",
       "waiting": "系统设置已打开。如果列表中没有 CoreRobin，请点击列表下方的 +，选择 CoreRobin.app；开启后返回，扫描会自动开始。"
     },
-    "applications": {
-      "boundary": "仅列出系统能确认 6 个月以上未打开的应用，不会自动卸载",
-      "kicker": "只读应用盘点",
-      "lastUsed": "{{date}} 最后使用 · 已有 {{days}} 天未打开",
-      "none": "没有发现能够确认已超过 6 个月未使用的应用。",
-      "title": "很久没用的应用",
-      "unavailable": "当前平台暂时无法可靠读取应用的最后使用时间。",
-      "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，CoreRobin 没有把它们归为长期未用。"
-    },
     "cancelScan": "停止扫描",
     "cancelling": "正在停止…",
     "categories": {

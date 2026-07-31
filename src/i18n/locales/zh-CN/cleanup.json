@@ -240,15 +240,6 @@
   "unavailable": "当前平台不可用",
   "pathUnavailable": "没有可扫描路径",
   "morePaths": " 等 {{count}} 个位置",
-  "applications": {
-    "kicker": "只读应用盘点",
-    "title": "很久没用的应用",
-    "boundary": "仅列出系统能确认 6 个月以上未打开的应用，不会自动卸载",
-    "lastUsed": "{{date}} 最后使用 · 已有 {{days}} 天未打开",
-    "none": "没有发现能够确认已超过 6 个月未使用的应用。",
-    "unavailable": "当前平台暂时无法可靠读取应用的最后使用时间。",
-    "unknownExcluded": "另有 {{count}} 个应用无法确认最后使用时间，CoreRobin 没有把它们归为长期未用。"
-  },
   "fileInsights": {
     "eyebrow": "主动只读检查", "workspaceKicker": "文件核对工作区", "title": "重复与长期未修改文件", "description": "独立检查常用个人目录，先用大小筛选候选，再在本机核对内容指纹。",
     "launcherDescription": "进入独立工作区，查看扫描过程、重复内容组和长期未修改大文件。", "running": "正在核对", "openWorkspace": "打开工作区", "back": "返回空间清理",

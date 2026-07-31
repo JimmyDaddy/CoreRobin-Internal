@@ -266,6 +266,8 @@ export function StorageExplorer({
             }
             context={highestUsage?.volume.name}
             tone={highestUsage?.lowSpace ? "warning" : "capacity"}
+            onClick={highestUsage ? onOpenCleanup : undefined}
+            actionLabel={`${t("storage:highestUsage")} · ${t("storage:openCleanup")}`}
           />
         </div>
       </section>
@@ -555,6 +557,8 @@ interface StorageSummaryItemProps {
   value: string;
   context?: string;
   tone: "read" | "write" | "capacity" | "warning";
+  onClick?: () => void;
+  actionLabel?: string;
 }
 
 function StorageSummaryItem({
@@ -563,16 +567,31 @@ function StorageSummaryItem({
   value,
   context,
   tone,
+  onClick,
+  actionLabel,
 }: StorageSummaryItemProps) {
-  return (
-    <div className={`storage-summary__item storage-summary__item--${tone}`}>
+  const content = (
+    <>
       <Icon size={16} aria-hidden="true" />
       <span>
         <small>{label}</small>
         <strong>{value}</strong>
         {context ? <em>{context}</em> : null}
       </span>
-    </div>
+    </>
+  );
+  const className = `storage-summary__item storage-summary__item--${tone}`;
+  return onClick ? (
+    <button
+      className={`${className} is-action`}
+      type="button"
+      aria-label={actionLabel}
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 

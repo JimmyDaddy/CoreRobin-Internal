@@ -122,6 +122,48 @@ describe("application uninstall assistant", () => {
     expect(uninstallApi.getInstalledApplications).toHaveBeenNthCalledWith(2, "zh-CN", true);
   });
 
+  it("keeps the long-unused filter in applications and excludes unknown usage dates", async () => {
+    const now = Date.now();
+    const application = (
+      name: string,
+      lastUsedAtMs: number | null,
+    ) => ({
+      name,
+      path: `/Applications/${name}.app`,
+      bundleId: `com.example.${name.toLocaleLowerCase()}`,
+      sizeBytes: 4_096,
+      lastUsedAtMs,
+      modifiedAtMs: now,
+      uninstallable: true,
+      unavailableReason: null,
+      installationSource: "macos_bundle" as const,
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
+    });
+    uninstallApi.getInstalledApplications.mockResolvedValue({
+      sampledAtMs: now,
+      platformSupported: true,
+      cached: false,
+      refreshRecommended: false,
+      applications: [
+        application("Old", now - 200 * 86_400_000),
+        application("Recent", now - 20 * 86_400_000),
+        application("Unknown", null),
+      ],
+    });
+
+    render(<ApplicationUninstallAssistant />);
+
+    fireEvent.change(await screen.findByLabelText("最近使用"), {
+      target: { value: "180" },
+    });
+
+    expect(screen.getByRole("button", { name: /Old/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Recent/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Unknown/ })).toBeNull();
+  });
+
   it("offers bundle-only uninstall when the app has no bundle identifier", async () => {
     const application = {
       name: "Legacy App",

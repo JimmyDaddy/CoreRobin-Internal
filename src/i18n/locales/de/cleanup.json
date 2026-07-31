@@ -330,15 +330,6 @@
   "unavailable": "Nicht auf dieser Plattform verfügbar",
   "pathUnavailable": "Kein scannbarer Speicherort",
   "morePaths": "und {{count}} weitere Speicherorte",
-  "applications": {
-    "kicker": "Nur-Lese-App-Inventar",
-    "title": "Apps, die seit längerem nicht verwendet werden",
-    "boundary": "Nur Apps, deren letzte Nutzung laut macOS mindestens sechs Monate zurückliegt; CoreRobin deinstalliert sie niemals automatisch",
-    "lastUsed": "Letzte Verwendung {{date}} · seit {{days}} Tagen nicht verwendet",
-    "none": "Keine App konnte bestätigt werden, dass sie länger als sechs Monate nicht verwendet wurde.",
-    "unavailable": "Diese Plattform kann derzeit keine zuverlässigen Informationen über das letzte Verwendungsdatum von Apps bereitstellen.",
-    "unknownExcluded": "{{count}} andere Apps haben kein bestätigtes letztes Verwendungsdatum, daher hat CoreRobin sie nicht als nicht verwendet klassifiziert."
-  },
   "reviewFirst": "Einzeln überprüfen",
   "largestFiles": "Große Dateien auf der Systemfestplatte",
   "largeFileBoundary": "Nur Dateien über 500 MB werden angezeigt; automatische Löschung wird nicht empfohlen",

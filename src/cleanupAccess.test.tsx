@@ -181,7 +181,6 @@ function renderAssistant(
       onDeletionApplied={async () => undefined}
       onSubtreeRetained={async () => undefined}
       fileInsights={EMPTY_FILE_INSIGHTS}
-      onOpenApplications={() => undefined}
     />,
   );
 }
