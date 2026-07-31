@@ -33,7 +33,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
 plist = "1.8"
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.40.1", features = ["bundled"] }
 sysinfo = { version = "=0.39.6", default-features = false, features = ["component", "disk", "network", "system", "user"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
