@@ -1394,7 +1394,7 @@ pub fn assemble_cleanup_scan_segments(
     plan: &CleanupScanSegmentPlan,
     mut segments: Vec<CleanupScan>,
     cancelled: &AtomicBool,
-    on_progress: &mut dyn FnMut(CleanupScanProgress),
+    _on_progress: &mut dyn FnMut(CleanupScanProgress),
 ) -> Result<CleanupScan, CommandError> {
     ensure_scan_active(cancelled)?;
     segments.sort_by(|left, right| left.target_path.cmp(&right.target_path));
@@ -1523,22 +1523,6 @@ pub fn assemble_cleanup_scan_segments(
     let duration_ms = segments.iter().fold(0_u64, |total, segment| {
         total.saturating_add(segment.duration_ms)
     });
-    let mut application_stats = ScanStats::new();
-    application_stats.scanned_entry_count = scanned_entry_count;
-    application_stats.discovered_bytes = allocated_size_bytes;
-    let (installed_applications, application_inventory_available) =
-        if plan.target_kind == CleanupScanTargetKind::SystemDisk {
-            scan_installed_applications(
-                &plan.home,
-                cancelled,
-                &mut application_stats,
-                on_progress,
-                &HashMap::new(),
-            )?
-        } else {
-            (Vec::new(), false)
-        };
-
     Ok(CleanupScan {
         sampled_at_ms: now_millis(),
         duration_ms,
@@ -1547,9 +1531,9 @@ pub fn assemble_cleanup_scan_segments(
         subtree_cache_saved_at_ms,
         locations,
         largest_files,
-        installed_applications,
-        application_inventory_available,
-        scanned_entry_count: application_stats.scanned_entry_count,
+        installed_applications: Vec::new(),
+        application_inventory_available: false,
+        scanned_entry_count,
         unreadable_entry_count,
         unreadable_paths,
         deletion_available: true,

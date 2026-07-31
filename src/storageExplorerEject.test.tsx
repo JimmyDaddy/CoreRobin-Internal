@@ -20,6 +20,37 @@ beforeEach(async () => {
 });
 
 describe("removable volume actions", () => {
+  it("opens space cleanup from the highest-usage card", () => {
+    const onOpenCleanup = vi.fn();
+    render(
+      <StorageExplorer
+        disk={{
+          readBytesPerSecond: 0,
+          writeBytesPerSecond: 0,
+          volumes: [{
+            name: "Macintosh HD",
+            mountPoint: "/",
+            totalBytes: 1_000,
+            availableBytes: 20,
+            removable: false,
+          }],
+        }}
+        history={[]}
+        processes={[]}
+        selectedIdentity={null}
+        onSelectProcess={vi.fn()}
+        usageThresholds={[35, 65, 85]}
+        onOpenCleanup={onOpenCleanup}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "最高占用 · 分析空间",
+    }));
+
+    expect(onOpenCleanup).toHaveBeenCalledOnce();
+  });
+
   it("requires one confirmation, ejects in place, and refreshes once", async () => {
     const onVolumeEjected = vi.fn(async () => undefined);
     render(

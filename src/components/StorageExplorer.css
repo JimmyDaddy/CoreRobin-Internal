@@ -52,6 +52,29 @@
     var(--panel-soft);
 }
 
+.storage-summary__item.is-action {
+  width: 100%;
+  color: inherit;
+  border: 1px solid transparent;
+  font: inherit;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.storage-summary__item.is-action:hover {
+  border-color: rgba(99, 168, 255, 0.3);
+  background:
+    linear-gradient(145deg, rgba(99, 168, 255, 0.08), transparent 65%),
+    var(--panel-soft);
+  transform: translateY(-1px);
+}
+
+.storage-summary__item.is-action:focus-visible {
+  border-color: var(--blue);
+  outline: 2px solid color-mix(in srgb, var(--blue) 32%, transparent);
+  outline-offset: 2px;
+}
+
 .storage-summary__item > svg {
   width: 18px;
   height: 18px;

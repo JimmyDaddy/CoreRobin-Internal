@@ -91,6 +91,7 @@
     "ariaLabel": "Space sunburst for {{name}}",
     "back": "Back one level",
     "breadcrumbs": "Space map hierarchy",
+    "selectedPath": "Selected path",
     "centerBack": "Go to the parent folder",
     "details": "Space details",
     "selected": "Selected",
@@ -239,15 +240,6 @@
   "unavailable": "Unavailable on this platform",
   "pathUnavailable": "No scannable location",
   "morePaths": " and {{count}} more locations",
-  "applications": {
-    "kicker": "Read-only app inventory",
-    "title": "Applications not used for a long time",
-    "boundary": "Only apps macOS confirms were unopened for at least six months; CoreRobin never uninstalls them automatically",
-    "lastUsed": "Last used {{date}} · unopened for {{days}} days",
-    "none": "No application could be confirmed as unused for more than six months.",
-    "unavailable": "This platform cannot currently provide reliable application last-use dates.",
-    "unknownExcluded": "{{count}} other apps have no confirmed last-use date, so CoreRobin did not classify them as unused."
-  },
   "fileInsights": {
     "eyebrow": "Explicit read-only check", "workspaceKicker": "File evidence workspace", "title": "Duplicate and long-unmodified files", "description": "Inspect common personal folders separately, filtering by size before content fingerprints are verified locally.",
     "launcherDescription": "Open a dedicated workspace for scan progress, duplicate groups, and large long-unmodified files.", "running": "Checking now", "openWorkspace": "Open workspace", "back": "Back to space cleanup",

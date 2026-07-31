@@ -181,6 +181,7 @@
     "ariaLabel": "Mapa circular para {{name}}",
     "back": "Regresar un nivel",
     "breadcrumbs": "Jerarquía del mapa de espacio",
+    "selectedPath": "Ruta seleccionada",
     "centerBack": "Volver al directorio padre",
     "details": "Detalles del espacio",
     "selected": "Seleccionado",
@@ -329,15 +330,6 @@
   "unavailable": "No disponible en esta plataforma",
   "pathUnavailable": "Ubicación no accesible para el escaneo",
   "morePaths": "y {{count}} más ubicaciones",
-  "applications": {
-    "kicker": "Inventario de aplicaciones solo lectura",
-    "title": "Aplicaciones que no se han utilizado durante mucho tiempo",
-    "boundary": "Solo las aplicaciones que macOS confirma como sin abrir durante al menos seis meses; CoreRobin nunca las desinstala automáticamente",
-    "lastUsed": "Última utilización {{date}} · sin abrir durante {{days}} días",
-    "none": "No se pudo confirmar ninguna aplicación como no utilizada por más de seis meses.",
-    "unavailable": "Esta plataforma no puede proporcionar actualmente fechas fiables de la última utilización de las aplicaciones.",
-    "unknownExcluded": "{{count}} Algunas aplicaciones no tienen una fecha de uso confirmada, por lo que CoreRobin no las clasificó como sin usar."
-  },
   "reviewFirst": "Revisar uno por uno",
   "largestFiles": "Archivos grandes en el disco del sistema",
   "largeFileBoundary": "Solo se muestran los archivos de más de 500 MB; no se recomienda la eliminación automática",

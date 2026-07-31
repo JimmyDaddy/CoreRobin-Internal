@@ -49,13 +49,11 @@ import type {
 } from "../types";
 import type { CleanupDeletionTargetSnapshot, CleanupSnapshotStatus } from "../cleanupScanStore";
 import type { CleanupScanGrowthComparison } from "../cleanupScanHistory";
-import { findUnusedApplications, unusedApplicationDays } from "../cleanupApplications";
 import type {
   CompleteUserActionInput,
   StartUserActionInput,
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
-import { ApplicationAvatar } from "./ApplicationAvatar";
 import { Button } from "./Button";
 import {
   CleanupSpaceMap,
@@ -94,7 +92,6 @@ interface CleanupAssistantProps {
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
   fileInsights: FileInsightsScanController;
-  onOpenApplications: () => void;
 }
 
 const LOCATION_ICONS = {
@@ -122,7 +119,6 @@ export function CleanupAssistant({
   onUserActionStart,
   onUserActionComplete,
   fileInsights,
-  onOpenApplications,
 }: CleanupAssistantProps) {
   const { t, i18n } = useAppTranslation();
   const [accessGuideOpen, setAccessGuideOpen] = useState(false);
@@ -160,16 +156,6 @@ export function CleanupAssistant({
   const progressLocation = progress
     ? cleanupProgressLocation(progress.currentPath, t)
     : t("cleanup:progress.locations.personal");
-  const unusedApplications = useMemo(
-    () => snapshot
-      ? findUnusedApplications(snapshot.installedApplications, snapshot.sampledAtMs)
-      : [],
-    [snapshot],
-  );
-  const unknownApplicationUseCount = useMemo(
-    () => snapshot?.installedApplications.filter((application) => application.lastUsedAtMs === null).length ?? 0,
-    [snapshot],
-  );
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
@@ -793,54 +779,6 @@ export function CleanupAssistant({
               );
             })}
           </div>
-
-          <section className="cleanup-applications" aria-labelledby="cleanup-applications-title">
-            <header>
-              <div>
-                <span className="eyebrow">{t("cleanup:applications.kicker")}</span>
-                <h3 id="cleanup-applications-title">{t("cleanup:applications.title")}</h3>
-              </div>
-              <span>{t("cleanup:applications.boundary")}</span>
-            </header>
-            {!snapshot.applicationInventoryAvailable ? (
-              <div className="cleanup-applications__empty">{t("cleanup:applications.unavailable")}</div>
-            ) : unusedApplications.length > 0 ? (
-              <ol>
-                {unusedApplications.map((application) => {
-                  const inactiveDays = unusedApplicationDays(application, snapshot.sampledAtMs);
-                  return (
-                    <li key={application.path} title={application.path}>
-                      <ApplicationAvatar
-                        name={application.name}
-                        source={{ applicationPath: application.path }}
-                        className="cleanup-application-avatar"
-                      />
-                      <div>
-                        <strong>{application.name}</strong>
-                        <small>{t("cleanup:applications.lastUsed", {
-                          date: new Date(application.lastUsedAtMs ?? 0).toLocaleDateString(i18n.resolvedLanguage),
-                          days: inactiveDays ?? 0,
-                        })}</small>
-                      </div>
-                      <strong>{formatBytes(application.sizeBytes)}</strong>
-                      <button
-                        className="button button--plain cleanup-applications__open"
-                        type="button"
-                        onClick={onOpenApplications}
-                      >
-                        {t("app:applications")}<ArrowRight size={13} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <div className="cleanup-applications__empty">{t("cleanup:applications.none")}</div>
-            )}
-            {snapshot.applicationInventoryAvailable && unknownApplicationUseCount > 0 ? (
-              <footer>{t("cleanup:applications.unknownExcluded", { count: unknownApplicationUseCount })}</footer>
-            ) : null}
-          </section>
 
           <section className="cleanup-largest" aria-labelledby="cleanup-largest-title">
             <header>

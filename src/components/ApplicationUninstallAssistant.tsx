@@ -197,8 +197,10 @@ export function ApplicationUninstallAssistant({
         )
         && (
           unusedDays === 0
-          || application.lastUsedAtMs === null
-          || application.lastUsedAtMs <= cutoff
+          || (
+            application.lastUsedAtMs !== null
+            && application.lastUsedAtMs <= cutoff
+          )
         ))
       .sort((left, right) => {
         if (sortBy === "size") {

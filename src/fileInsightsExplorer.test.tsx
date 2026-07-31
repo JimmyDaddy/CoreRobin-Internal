@@ -101,7 +101,6 @@ describe("file insights workspace", () => {
         onDeletionApplied={async () => undefined}
         onSubtreeRetained={async () => undefined}
         fileInsights={EMPTY_FILE_INSIGHTS}
-        onOpenApplications={() => undefined}
       />,
     );
 

@@ -323,7 +323,7 @@
 .cleanup-growth {
   display: grid;
   gap: 12px;
-  margin: 0 22px 18px;
+  margin: 12px 14px 0;
   padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
   border-radius: 16px;
@@ -396,6 +396,49 @@
 .cleanup-growth li strong {
   color: var(--warning);
   font-size: 13px;
+}
+
+.cleanup-map__selected-path {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.cleanup-map__selected-path > span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.cleanup-map__selected-path button,
+.cleanup-map__selected-path em {
+  max-width: 150px;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cleanup-map__selected-path button:hover,
+.cleanup-map__selected-path button:focus-visible {
+  color: var(--blue);
+  background: var(--blue-soft);
+  outline: none;
+}
+
+.cleanup-map__selected-path em[aria-current="page"] {
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.025);
 }
 .cleanup-map__path-actions-slot:not(.is-empty) {
   display: flex;

@@ -1762,7 +1762,6 @@ function App() {
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
                   fileInsights={fileInsights}
-                  onOpenApplications={() => setActiveView("applications")}
                 />
               ) : activeView === "more" ? (
                 <DailySolve
@@ -2001,7 +2000,6 @@ function App() {
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
                 fileInsights={fileInsights}
-                onOpenApplications={() => setActiveView("applications")}
               />
             ) : activeView === "network" ? (
               <NetworkExplorer

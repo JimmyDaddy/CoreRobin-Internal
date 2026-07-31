@@ -181,6 +181,7 @@
     "ariaLabel": "Carte en forme de soleil pour {{name}}",
     "back": "Revenir d'un niveau",
     "breadcrumbs": "Hiérarchie de la carte de l'espace",
+    "selectedPath": "Chemin sélectionné",
     "centerBack": "Retour au dossier parent",
     "details": "Détails de l'espace",
     "selected": "Sélectionné",
@@ -329,15 +330,6 @@
   "unavailable": "Non disponible sur cette plateforme",
   "pathUnavailable": "Aucun emplacement accessible",
   "morePaths": "et {{count}} d'autres emplacements",
-  "applications": {
-    "kicker": "Inventaire des applications en lecture seule",
-    "title": "Applications non utilisées depuis longtemps",
-    "boundary": "Uniquement les apps dont macOS confirme qu'elles n'ont pas été ouvertes depuis au moins six mois ; CoreRobin ne les désinstalle jamais automatiquement",
-    "lastUsed": "Dernière utilisation {{date}} · non ouverte depuis {{days}} jours",
-    "none": "Aucune application n'a pu être confirmée comme inutilisée depuis plus de six mois.",
-    "unavailable": "Cette plateforme ne peut actuellement fournir des dates fiables de dernière utilisation des applications.",
-    "unknownExcluded": "{{count}} Les autres applications n'ont pas de date d'utilisation confirmée, donc CoreRobin ne les a pas classées comme inutilisées."
-  },
   "reviewFirst": "Examiner les éléments un par un",
   "largestFiles": "Fichiers volumineux sur le disque système",
   "largeFileBoundary": "Seuls les fichiers de plus de 500 Mo sont listés ; la suppression automatique n'est pas recommandée",
