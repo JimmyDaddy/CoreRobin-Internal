@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.21",
+  "title": {
+    "zh-CN": "更快、更清晰的空间扫描",
+    "en": "Faster, clearer space scans"
+  },
+  "items": [
+    {
+      "zh-CN": "新增推荐的快速扫描：会精确检查下载、桌面、废纸篓、缓存、应用数据和常见开发工具缓存等明确范围，并清楚标出尚未扫描的磁盘区域；需要时可直接继续完整扫描。",
+      "en": "A new recommended Quick Scan precisely checks clearly listed locations such as Downloads, Desktop, Trash, caches, app data, and common developer-tool caches, while showing which disk areas remain unscanned. You can continue to a full scan at any time."
+    },
+    {
+      "zh-CN": "完整扫描、外置卷和自选文件夹现在会建立可浏览的空间索引；完成后进入、返回或展开任意已扫描文件夹无需再次读取磁盘，空间地图和列表会更快响应。",
+      "en": "Complete scans, external volumes, and selected folders now build a browsable space index. Once finished, entering, returning from, or expanding any scanned folder no longer rereads the disk, so the space map and list respond faster."
+    },
+    {
+      "zh-CN": "文件夹在扫描后发生变化时，会先继续显示已有结果，并提供针对当前文件夹的刷新操作；刷新可在后台运行、显示进度并随时取消，失败时旧结果仍可继续查看。",
+      "en": "When a folder changes after a scan, CoreRobin keeps the existing result visible and offers a refresh for that folder. Refreshes run in the background with progress and cancellation, and the previous result remains available if a refresh fails."
+    },
+    {
+      "zh-CN": "长时间扫描与文件夹刷新在隐藏窗口、重新打开页面或电脑暂时休眠后能够恢复状态；扫描结果和清理操作会继续使用已验证的文件信息。",
+      "en": "Long scans and folder refreshes can recover their state after the window is hidden, the page is reopened, or the computer briefly sleeps. Scan results and cleanup actions continue to use verified file information."
+    }
+  ]
+}
