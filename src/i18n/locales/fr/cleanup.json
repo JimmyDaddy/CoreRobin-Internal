@@ -181,6 +181,7 @@
     "ariaLabel": "Carte en forme de soleil pour {{name}}",
     "back": "Revenir d'un niveau",
     "breadcrumbs": "Hiérarchie de la carte de l'espace",
+    "selectedPath": "Chemin sélectionné",
     "centerBack": "Retour au dossier parent",
     "details": "Détails de l'espace",
     "selected": "Sélectionné",

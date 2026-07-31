@@ -552,6 +552,7 @@ export default interface Resources {
       "restrictedHint": "系统未授予读取权限，此项不会加入清理篮",
       "restrictedObjects": "无法读取的对象",
       "selected": "当前选择",
+      "selectedPath": "当前选择路径",
       "smallerObjects": "较小的对象",
       "smallerObjectsHint": "打开后会按需列出因空间图数量限制而合并的真实文件和文件夹，具体项目都可以加入清理篮。",
       "title": "空间都去了哪里",

@@ -181,6 +181,7 @@
     "ariaLabel": "スペース サンバースト {{name}}",
     "back": "階層に戻る",
     "breadcrumbs": "ファイルパスの階層構造",
+    "selectedPath": "選択中のパス",
     "centerBack": "親フォルダに戻る",
     "details": "ファイル詳細",
     "selected": "選択",

@@ -181,6 +181,7 @@
     "ariaLabel": "Speicherkarte für {{name}}",
     "back": "Zurück ein Level",
     "breadcrumbs": "Hierarchische Ansicht der Speicherkarte",
+    "selectedPath": "Ausgewählter Pfad",
     "centerBack": "Zurück zum übergeordneten Ordner",
     "details": "Details des Bereichs",
     "selected": "Ausgewählt",

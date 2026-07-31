@@ -181,6 +181,7 @@
     "ariaLabel": "Mapa circular para {{name}}",
     "back": "Regresar un nivel",
     "breadcrumbs": "Jerarquía del mapa de espacio",
+    "selectedPath": "Ruta seleccionada",
     "centerBack": "Volver al directorio padre",
     "details": "Detalles del espacio",
     "selected": "Seleccionado",

@@ -91,6 +91,7 @@
     "ariaLabel": "Space sunburst for {{name}}",
     "back": "Back one level",
     "breadcrumbs": "Space map hierarchy",
+    "selectedPath": "Selected path",
     "centerBack": "Go to the parent folder",
     "details": "Space details",
     "selected": "Selected",

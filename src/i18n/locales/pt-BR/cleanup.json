@@ -181,6 +181,7 @@
     "ariaLabel": "Mapa em formato de sol para {{name}}",
     "back": "Voltar um nível",
     "breadcrumbs": "Hierarquia do mapa de espaço",
+    "selectedPath": "Caminho selecionado",
     "centerBack": "Retornar ao diretório pai",
     "details": "Detalhes do espaço",
     "selected": "Selecionado",

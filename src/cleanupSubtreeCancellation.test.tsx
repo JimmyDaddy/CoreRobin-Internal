@@ -186,6 +186,33 @@ describe("cleanup subtree cancellation", () => {
     expect(cleanupApi.getCleanupSubtree).not.toHaveBeenCalled();
   });
 
+  it("navigates back through the selected path in the details panel", () => {
+    render(
+      <CleanupSpaceMap
+        snapshot={snapshot()}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    const selectedPath = screen.getByRole("navigation", {
+      name: "Selected path",
+    });
+    const root = selectedPath.querySelector<HTMLButtonElement>("button");
+    expect(root?.textContent).toBe("Fixture");
+    expect(
+      selectedPath.querySelector('[aria-current="page"]')?.textContent,
+    ).toBe("First folder");
+
+    fireEvent.click(root!);
+
+    expect(
+      selectedPath.querySelector('[aria-current="page"]')?.textContent,
+    ).toBe("Fixture");
+  });
+
   it("keeps the expanded folder open when the loaded subtree is persisted", async () => {
     const initialSnapshot = snapshot();
     const first = initialSnapshot.root.children[0];

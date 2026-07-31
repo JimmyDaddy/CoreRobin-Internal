@@ -348,6 +348,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   );
   const parentId = parents.get(focus.id) ?? null;
   const breadcrumbs = breadcrumbPath(focus, nodes, parents);
+  const selectedBreadcrumbs = breadcrumbPath(selected, nodes, parents);
   const focusChanged = changedIds.has(focus.id);
   const freshness = focusChanged ? "changed" : snapshotStatus;
   const refreshableFocus = Boolean(
@@ -1158,7 +1159,32 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
               <strong>{nodeDisplayName(selected, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
-              <code title={selected.path ?? selected.name}>{selected.path ?? t("cleanup:map.grouped")}</code>
+              {mapMode === "path" && selected.path ? (
+                <nav
+                  className="cleanup-map__selected-path"
+                  aria-label={t("cleanup:map.selectedPath")}
+                  title={selected.path}
+                >
+                  {selectedBreadcrumbs.map((node, index) => (
+                    <span key={node.id}>
+                      {index > 0 ? <ChevronRight size={10} aria-hidden="true" /> : null}
+                      {node.id === selected.id ? (
+                        <em aria-current="page">{node.name}</em>
+                      ) : (
+                        <button
+                          type="button"
+                          title={node.path ?? node.name}
+                          onClick={() => navigateTo(node)}
+                        >
+                          {node.name}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </nav>
+              ) : (
+                <code title={selected.path ?? selected.name}>{selected.path ?? t("cleanup:map.grouped")}</code>
+              )}
             </div>
             <span>
               <strong>{formatBytes(selected.allocatedSizeBytes)}</strong>

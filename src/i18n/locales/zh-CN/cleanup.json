@@ -91,6 +91,7 @@
     "ariaLabel": "{{name}} 的空间扇形图",
     "back": "返回上一级",
     "breadcrumbs": "空间图层级",
+    "selectedPath": "当前选择路径",
     "centerBack": "返回上一级目录",
     "details": "空间明细",
     "selected": "当前选择",

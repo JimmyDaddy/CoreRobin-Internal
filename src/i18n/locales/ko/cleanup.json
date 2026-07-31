@@ -181,6 +181,7 @@
     "ariaLabel": "공간에서 태양을 시각화합니다 {{name}}",
     "back": "한 단계 뒤로 이동",
     "breadcrumbs": "공간 지도 계층 구조",
+    "selectedPath": "선택한 경로",
     "centerBack": "상위 폴더로 이동",
     "details": "공간 정보",
     "selected": "선택된 항목",
