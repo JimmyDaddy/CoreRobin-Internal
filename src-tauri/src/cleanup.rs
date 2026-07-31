@@ -2734,17 +2734,17 @@ fn validate_cleanup_targets(
             home_relative
         {
             (canonical_home.clone(), relative, false)
+        } else if let Some(root) = selected_scan_root.as_ref()
+            && let Ok(relative) = path.strip_prefix(root)
+            && !relative.as_os_str().is_empty()
+        {
+            (root.clone(), relative.to_path_buf(), true)
         } else if let Some((boundary, relative)) = temporary_cleanup_boundary_for_path(&path) {
             (
                 boundary.canonical_root.clone(),
                 relative,
                 boundary.trusted_system_root,
             )
-        } else if let Some(root) = selected_scan_root.as_ref()
-            && let Ok(relative) = path.strip_prefix(root)
-            && !relative.as_os_str().is_empty()
-        {
-            (root.clone(), relative.to_path_buf(), true)
         } else {
             return Err(CommandError::new(
                 "cleanup_target_outside_home",
