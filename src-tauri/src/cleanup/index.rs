@@ -3122,11 +3122,11 @@ fn ensure_private_index_parent(path: &Path) -> Result<(), CommandError> {
     Ok(())
 }
 
-fn enforce_private_index_permissions(path: &Path) -> Result<(), CommandError> {
+fn enforce_private_index_permissions(_path: &Path) -> Result<(), CommandError> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|error| {
+        fs::set_permissions(_path, fs::Permissions::from_mode(0o600)).map_err(|error| {
             CommandError::internal(format!("Could not protect the cleanup scan index: {error}"))
         })?;
     }
@@ -3832,25 +3832,27 @@ mod tests {
         );
         assert_eq!(resolved.expected_targets[0].logical_size_bytes, 2_048);
 
-        fs::rename(&file, fixture.path().join("original.bin")).unwrap();
-        fs::write(&file, vec![4_u8; 2_048]).unwrap();
-        let stale = CleanupDeleteLeaseRequest {
-            scan_id: Some(scan.scan_id),
-            directory_ids: vec![node.id.clone()],
-            paths: vec![file.to_string_lossy().into_owned()],
-            scan_sampled_at_ms: scan.sampled_at_ms,
-            scan_root: Some(fixture.path().to_string_lossy().into_owned()),
-            scan_target_kind: CleanupScanTargetKind::Folder,
-            expected_targets: resolved.expected_targets,
-            mode: crate::models::CleanupDeleteMode::Permanent,
-            application_uninstall: None,
-        };
         #[cfg(unix)]
-        assert_eq!(
-            resolve_indexed_delete_request(&index_path, stale)
-                .unwrap_err()
-                .code,
-            "cleanup_index_identity_changed",
-        );
+        {
+            fs::rename(&file, fixture.path().join("original.bin")).unwrap();
+            fs::write(&file, vec![4_u8; 2_048]).unwrap();
+            let stale = CleanupDeleteLeaseRequest {
+                scan_id: Some(scan.scan_id),
+                directory_ids: vec![node.id.clone()],
+                paths: vec![file.to_string_lossy().into_owned()],
+                scan_sampled_at_ms: scan.sampled_at_ms,
+                scan_root: Some(fixture.path().to_string_lossy().into_owned()),
+                scan_target_kind: CleanupScanTargetKind::Folder,
+                expected_targets: resolved.expected_targets,
+                mode: crate::models::CleanupDeleteMode::Permanent,
+                application_uninstall: None,
+            };
+            assert_eq!(
+                resolve_indexed_delete_request(&index_path, stale)
+                    .unwrap_err()
+                    .code,
+                "cleanup_index_identity_changed",
+            );
+        }
     }
 }

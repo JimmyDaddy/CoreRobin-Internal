@@ -4619,6 +4619,7 @@ fn next_cleanup_lease_id() -> String {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    #[cfg(target_os = "macos")]
     use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
