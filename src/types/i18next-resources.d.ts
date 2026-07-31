@@ -592,7 +592,7 @@ export default interface Resources {
       "label": "扫描模式",
       "quick": {
         "description": "精确检查常见的大空间与可清理位置",
-        "scope": "下载、桌面、文稿、媒体文件夹、废纸篓、应用与开发缓存、应用支持数据、容器、隐藏应用数据和系统临时目录。",
+        "scope": "下载、桌面、文稿、媒体文件夹、废纸篓，以及常见应用和开发缓存。应用支持数据、容器和其他隐藏目录可用完整扫描查看。",
         "scopeTitle": "本次会检查",
         "title": "快速扫描"
       },
@@ -633,6 +633,9 @@ export default interface Resources {
     "safetyBoundary": "扫描没有时间或数量上限，也不会跟随符号链接；只有放入清理篮、核对路径并明确确认的内容才会移到废纸篓或永久删除。",
     "scanAgain": "重新扫描",
     "scanDuration": "用时 {{seconds}} 秒",
+    "scanErrors": {
+      "targetUnavailable": "所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。"
+    },
     "scanning": "扫描中…",
     "snapshot": {
       "cached": {

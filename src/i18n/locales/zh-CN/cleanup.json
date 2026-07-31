@@ -11,6 +11,9 @@
   "readOnlyTitle": "先看清楚，再决定是否处理",
   "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
   "failed": "无法完成空间扫描",
+  "scanErrors": {
+    "targetUnavailable": "所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。"
+  },
   "access": {
     "kicker": "扫描前准备",
     "title": "允许查看整个系统磁盘",
