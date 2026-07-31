@@ -7,7 +7,7 @@ import { CleanupAssistant } from "./components/CleanupAssistant";
 import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
 import { getMockCleanupScan } from "./mockData";
-import type { CleanupScanProgress, CleanupScanTarget } from "./types";
+import type { CleanupScanProgress, CleanupScanTarget, CommandError } from "./types";
 
 const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
   snapshot: null,
@@ -187,6 +187,17 @@ describe("cleanup full disk access guide", () => {
     expect(screen.queryByText("~/.cargo/registry")).toBeNull();
     expect(screen.queryByText("查看当前技术路径")).toBeNull();
   });
+
+  it("localizes an unavailable scan target instead of exposing a native error", () => {
+    const nativeMessage = "CoreRobin could not read the selected scan root: Operation not permitted (os error 1)";
+    renderAssistant(vi.fn(), null, false, null, {
+      code: "cleanup_scan_root_unavailable",
+      message: nativeMessage,
+    });
+
+    expect(screen.getByText("所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。")).toBeTruthy();
+    expect(screen.queryByText(nativeMessage)).toBeNull();
+  });
 });
 
 function renderAssistant(
@@ -194,11 +205,12 @@ function renderAssistant(
   snapshot: ReturnType<typeof getMockCleanupScan> | null = null,
   loading = false,
   progress: CleanupScanProgress | null = null,
+  error: CommandError | null = null,
 ) {
   return render(
     <CleanupAssistant
       snapshot={snapshot}
-      error={null}
+      error={error}
       loading={loading}
       cancelling={false}
       phase={loading ? "scanning" : null}

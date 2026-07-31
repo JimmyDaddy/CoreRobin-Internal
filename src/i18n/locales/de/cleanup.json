@@ -121,6 +121,9 @@
   "readOnlyTitle": "Zuerst prüfen, dann entscheiden",
   "readOnlyDescription": "Der Hintergrund-Scan liest Namen, Größen und andere Metadaten, bis er abgeschlossen ist. Er liest niemals Dateiinhalte oder ändert, verschiebt oder lädt Dateien.",
   "failed": "Der Speicher-Scan konnte nicht abgeschlossen werden",
+  "scanErrors": {
+    "targetUnavailable": "Der ausgewählte Ort kann derzeit nicht gelesen werden. Prüfe, ob er noch vorhanden und zugänglich ist, und versuche es erneut."
+  },
   "access": {
     "kicker": "Vor dem Scan",
     "title": "Zugriff auf die gesamte Festplatte erlauben",

@@ -121,6 +121,9 @@
   "readOnlyTitle": "Vérifiez d'abord, décidez ensuite",
   "readOnlyDescription": "L'analyse en arrière-plan lit les noms, les tailles et autres métadonnées jusqu'à ce qu'elle soit terminée. Elle ne lit jamais le contenu des fichiers ni ne modifie, déplace ou télécharge de fichiers.",
   "failed": "La numérisation du disque n'a pas pu être terminée",
+  "scanErrors": {
+    "targetUnavailable": "L’emplacement sélectionné ne peut pas être lu actuellement. Vérifiez qu’il existe toujours et reste accessible, puis réessayez."
+  },
   "access": {
     "kicker": "Avant de commencer la numérisation",
     "title": "Autoriser l'accès à l'intégralité du disque système",

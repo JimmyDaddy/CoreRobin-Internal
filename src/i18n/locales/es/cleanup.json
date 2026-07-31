@@ -121,6 +121,9 @@
   "readOnlyTitle": "Revisar primero, decidir después",
   "readOnlyDescription": "El escaneo en segundo plano lee nombres, tamaños y otra información hasta que se complete. Nunca lee el contenido de los archivos ni modifica, mueve o carga archivos.",
   "failed": "La comprobación del almacenamiento no pudo completarse",
+  "scanErrors": {
+    "targetUnavailable": "La ubicación seleccionada no se puede leer en este momento. Comprueba que siga existiendo y sea accesible, y vuelve a intentarlo."
+  },
   "access": {
     "kicker": "Antes de iniciar la comprobación",
     "title": "Permitir acceso al disco completo del sistema",

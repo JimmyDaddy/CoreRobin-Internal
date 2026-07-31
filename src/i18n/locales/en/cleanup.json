@@ -11,6 +11,9 @@
   "readOnlyTitle": "Review first, decide later",
   "readOnlyDescription": "The background scan reads names, sizes, and other metadata until complete. It never reads file contents or modifies, moves, or uploads files.",
   "failed": "The storage scan could not finish",
+  "scanErrors": {
+    "targetUnavailable": "The selected location cannot be read right now. Make sure it still exists and is accessible, then try again."
+  },
   "access": {
     "kicker": "Before scanning",
     "title": "Allow access to the whole system disk",

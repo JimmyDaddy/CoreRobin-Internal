@@ -121,6 +121,9 @@
   "readOnlyTitle": "Verifique primeiro, decida depois",
   "readOnlyDescription": "A varredura em segundo plano lê nomes, tamanhos e outros metadados até a conclusão. Não lê o conteúdo dos arquivos nem os modifica, move ou envia para a nuvem.",
   "failed": "A verificação do armazenamento não pôde ser concluída",
+  "scanErrors": {
+    "targetUnavailable": "O local selecionado não pode ser lido no momento. Confirme que ele ainda existe e está acessível e tente novamente."
+  },
   "access": {
     "kicker": "Antes de iniciar a verificação",
     "title": "Permitir acesso a todo o disco do sistema",

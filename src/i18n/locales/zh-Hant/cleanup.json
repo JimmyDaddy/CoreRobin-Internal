@@ -121,6 +121,9 @@
   "readOnlyTitle": "先看清楚，再決定是否處理",
   "readOnlyDescription": "掃描會在後臺讀取檔名、大小等後設資料直至完成，不讀取檔案內容，也不會修改、移動或上傳檔案。",
   "failed": "無法完成空間掃描",
+  "scanErrors": {
+    "targetUnavailable": "目前無法讀取所選位置。請確認它仍然存在且可存取，然後再試一次。"
+  },
   "access": {
     "kicker": "掃描前準備",
     "title": "允許檢視整個系統磁碟",

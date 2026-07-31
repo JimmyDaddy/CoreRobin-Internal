@@ -517,6 +517,16 @@ struct QuickScanPart {
     root_path: PathBuf,
 }
 
+enum QuickScanPartOutcome {
+    Indexed(Box<QuickScanPart>),
+    Unreadable {
+        index_path: PathBuf,
+        root_path: PathBuf,
+    },
+}
+
+type QuickScanPartResults = Result<Vec<QuickScanPartOutcome>, CommandError>;
+
 #[allow(clippy::too_many_arguments)]
 fn scan_quick_roots_parallel(
     connection: &mut Connection,
@@ -554,7 +564,7 @@ fn scan_quick_roots_parallel(
         ensure_scan_active(cancelled)?;
         let base_scanned = stats.scanned_entry_count;
         let base_discovered = stats.discovered_bytes;
-        let parts = match thread::scope(|scope| -> Result<Vec<QuickScanPart>, CommandError> {
+        let parts = match thread::scope(|scope| -> QuickScanPartResults {
             let (sender, receiver) = mpsc::channel::<(usize, CleanupScanProgress)>();
             let handles = wave
                 .iter()
@@ -586,12 +596,23 @@ fn scan_quick_roots_parallel(
                             },
                             Some(&shared_seen_files),
                             part_node_limit,
-                        )?;
-                        Ok::<_, CommandError>(QuickScanPart {
-                            index_path: part_path,
-                            scan,
-                            root_path: root,
-                        })
+                        );
+                        match scan {
+                            Ok(scan) => Ok::<_, CommandError>(QuickScanPartOutcome::Indexed(
+                                Box::new(QuickScanPart {
+                                    index_path: part_path,
+                                    scan,
+                                    root_path: root,
+                                }),
+                            )),
+                            Err(error) if quick_scan_root_error_is_skippable(&error) => {
+                                Ok(QuickScanPartOutcome::Unreadable {
+                                    index_path: part_path,
+                                    root_path: root,
+                                })
+                            }
+                            Err(error) => Err(error),
+                        }
                     })
                 })
                 .collect::<Vec<_>>();
@@ -628,23 +649,79 @@ fn scan_quick_roots_parallel(
                 return Err(error);
             }
         };
-        for part in parts {
-            if let Err(error) = merge_quick_scan_part(
-                connection,
-                scan_id,
-                root_id,
-                home,
-                scan_root,
-                definitions,
-                &part,
-                stats,
-            ) {
-                let _ = remove_quick_part_indexes(index_path);
-                return Err(error);
+        for outcome in parts {
+            match outcome {
+                QuickScanPartOutcome::Indexed(part) => {
+                    if let Err(error) = merge_quick_scan_part(
+                        connection,
+                        scan_id,
+                        root_id,
+                        home,
+                        scan_root,
+                        definitions,
+                        &part,
+                        stats,
+                    ) {
+                        let _ = remove_quick_part_indexes(index_path);
+                        return Err(error);
+                    }
+                    remove_cleanup_index(&part.index_path)?;
+                }
+                QuickScanPartOutcome::Unreadable {
+                    index_path: part_path,
+                    root_path,
+                } => {
+                    remove_cleanup_index(&part_path)?;
+                    record_unreadable_quick_root(
+                        connection,
+                        scan_id,
+                        &root_path,
+                        home,
+                        stats,
+                        on_progress,
+                    )?;
+                }
             }
-            remove_cleanup_index(&part.index_path)?;
         }
     }
+    Ok(())
+}
+
+fn quick_scan_root_error_is_skippable(error: &CommandError) -> bool {
+    matches!(
+        error.code.as_str(),
+        "cleanup_scan_root_unavailable"
+            | "cleanup_scan_target_unavailable"
+            | "cleanup_scan_target_invalid"
+    )
+}
+
+fn record_unreadable_quick_root(
+    connection: &Connection,
+    scan_id: &str,
+    root: &Path,
+    home: &Path,
+    stats: &mut IndexScanStats,
+    on_progress: &mut dyn FnMut(CleanupScanProgress),
+) -> Result<(), CommandError> {
+    let absolute = root.to_string_lossy().into_owned();
+    let display = display_path(root, home);
+    stats.record_unreadable(root, home);
+    connection
+        .execute(
+            "INSERT OR REPLACE INTO scan_segments(
+               scan_id, path, completed_at_ms, scanned_entry_count,
+               discovered_bytes, unreadable_entry_count, unreadable_paths_json
+             ) VALUES (?1, ?2, ?3, 0, 0, 1, ?4)",
+            params![
+                scan_id,
+                absolute,
+                now_millis_i64(),
+                serde_json::to_string(&[display]).unwrap_or_else(|_| "[]".to_owned()),
+            ],
+        )
+        .map_err(index_error)?;
+    stats.report(root, home, on_progress, true);
     Ok(())
 }
 
@@ -3806,6 +3883,101 @@ mod tests {
                     .to_string_lossy()
                     .starts_with(".cleanup-quick-"))
         );
+    }
+
+    #[test]
+    fn quick_scan_skips_an_unavailable_root_and_keeps_accessible_results() {
+        let fixture = tempdir().unwrap();
+        let home = fixture.path().join("home");
+        let accessible = home.join("Downloads");
+        let unavailable = home.join("Library/Caches");
+        fs::create_dir_all(&accessible).unwrap();
+        fs::create_dir_all(&unavailable).unwrap();
+        fs::write(accessible.join("download.bin"), vec![1_u8; 1_024]).unwrap();
+        fs::remove_dir(&unavailable).unwrap();
+
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup-scan-index-v1.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "quick-unavailable",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            &fixture.path().to_string_lossy(),
+            "Common locations",
+            "/",
+            &[accessible.clone(), unavailable.clone()],
+        )
+        .unwrap();
+        let root_id = root_node_id(&connection, "quick-unavailable").unwrap();
+        let mut stats = IndexScanStats::new();
+
+        scan_quick_roots_parallel(
+            &mut connection,
+            &index_path,
+            "quick-unavailable",
+            root_id,
+            &[accessible, unavailable],
+            &home,
+            fixture.path(),
+            &platform_paths(&home),
+            &[],
+            &AtomicBool::new(false),
+            &mut stats,
+            &mut |_| {},
+        )
+        .unwrap();
+        update_root_totals(&connection, "quick-unavailable", root_id).unwrap();
+        let root = materialize_node(&connection, "quick-unavailable", root_id, 2).unwrap();
+        let (segment_count, unreadable_count) = connection
+            .query_row(
+                "SELECT COUNT(*), COALESCE(SUM(unreadable_entry_count), 0)
+                 FROM scan_segments WHERE scan_id = 'quick-unavailable'",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .unwrap();
+
+        assert_eq!(root.children.len(), 1);
+        assert_eq!(root.children[0].name, "Downloads");
+        assert!(root.allocated_size_bytes > 0);
+        assert_eq!(stats.scanned_entry_count, 1);
+        assert_eq!(stats.unreadable_entry_count, 1);
+        assert_eq!(stats.unreadable_paths, vec!["~/Library/Caches"]);
+        assert_eq!(segment_count, 2);
+        assert_eq!(unreadable_count, 1);
+        assert!(
+            fs::read_dir(storage.path())
+                .unwrap()
+                .flatten()
+                .all(|entry| !entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".cleanup-quick-"))
+        );
+    }
+
+    #[test]
+    fn quick_scan_only_skips_errors_that_mean_a_root_cannot_be_read() {
+        for code in [
+            "cleanup_scan_root_unavailable",
+            "cleanup_scan_target_unavailable",
+            "cleanup_scan_target_invalid",
+        ] {
+            assert!(quick_scan_root_error_is_skippable(&CommandError::new(
+                code,
+                "unavailable",
+            )));
+        }
+        assert!(!quick_scan_root_error_is_skippable(&CommandError::new(
+            "cleanup_scan_cancelled",
+            "cancelled",
+        )));
+        assert!(!quick_scan_root_error_is_skippable(
+            &CommandError::internal("sqlite failed",)
+        ));
     }
 
     #[test]

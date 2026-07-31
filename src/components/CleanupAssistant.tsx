@@ -180,7 +180,14 @@ export function CleanupAssistant({
     || error.code === "cleanup_scan_worker_restart_failed"
   )
     ? t("cleanup:progress.recoveryFailed")
-    : error?.message;
+    : error && (
+      error.code === "cleanup_scan_root_unavailable"
+      || error.code === "cleanup_scan_target_unavailable"
+      || error.code === "cleanup_scan_target_invalid"
+      || error.code === "cleanup_scan_target_missing"
+    )
+      ? t("cleanup:scanErrors.targetUnavailable")
+      : error?.message;
   const pristine = !snapshot && !loading && !error && !accessGuideOpen;
   const selectableVolumes = useMemo(
     () => volumes.filter((volume) => volume.mountPoint !== "/"),
