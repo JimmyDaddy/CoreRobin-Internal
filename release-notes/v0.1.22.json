@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.22",
+  "title": {
+    "zh-CN": "更可靠的快速空间扫描",
+    "en": "More reliable Quick Scans"
+  },
+  "items": [
+    {
+      "zh-CN": "修复快速扫描完成后偶尔显示 0 B 或没有结果的问题；扫描结果现在会稳定保留并立即展示。",
+      "en": "Fixed an issue where a completed Quick Scan could occasionally show 0 B or no result. Scan results are now preserved and displayed immediately."
+    },
+    {
+      "zh-CN": "快速扫描遇到个别无法访问的位置时会跳过并继续，保留其他可读取位置的结果，同时清楚提示未能检查的内容。",
+      "en": "Quick Scan now skips individual inaccessible locations and continues, preserving results from readable locations while clearly identifying what could not be checked."
+    },
+    {
+      "zh-CN": "大型磁盘的空间索引现在会控制占用并自动汇总超出展示范围的项目，长时间扫描不再因索引持续膨胀而失败。",
+      "en": "Space indexes for large disks now keep their footprint bounded and summarize items beyond the display limit, preventing long scans from failing as the index grows."
+    }
+  ]
+}
