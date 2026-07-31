@@ -70,6 +70,23 @@ describe("global update prompt", () => {
     expect(screen.getByText("已从 v1.2.3 成功更新")).toBeTruthy();
     expect(dismissUpdatedReceipt).not.toHaveBeenCalled();
   });
+
+  it("keeps a failed background update actionable", () => {
+    const install = vi.fn(async () => undefined);
+    render(
+      <GlobalUpdateTask
+        updater={updater({
+          promptVisible: false,
+          action: "installError",
+          install,
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/更新未能安装/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "下载并安装" }));
+    expect(install).toHaveBeenCalledOnce();
+  });
 });
 
 function updater(

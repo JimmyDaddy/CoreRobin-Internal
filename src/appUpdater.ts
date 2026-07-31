@@ -1,9 +1,8 @@
+import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
-import {
-  check,
-  type DownloadEvent,
-  type Update,
-} from "@tauri-apps/plugin-updater";
+import { check, type Update } from "@tauri-apps/plugin-updater";
+
+const UPDATE_TASK_POLL_INTERVAL_MS = 500;
 
 export interface AppUpdateProgress {
   phase: "downloading" | "installing";
@@ -19,6 +18,21 @@ export interface InstallableAppUpdate {
   close: () => Promise<void>;
 }
 
+export type AppUpdateTaskPhase =
+  | "idle"
+  | "downloading"
+  | "installing"
+  | "ready"
+  | "failed";
+
+export interface AppUpdateTaskSnapshot {
+  version: string | null;
+  phase: AppUpdateTaskPhase;
+  downloadedBytes: number;
+  contentLength: number | null;
+  updatedAtMs: number;
+}
+
 export async function checkForInstallableAppUpdate(): Promise<InstallableAppUpdate | null> {
   const update = await check({ timeout: 15_000 });
   return update ? wrapUpdate(update) : null;
@@ -28,50 +42,60 @@ export async function restartAfterAppUpdate(): Promise<void> {
   await relaunch();
 }
 
+export async function getAppUpdateTask(): Promise<AppUpdateTaskSnapshot> {
+  return invoke<AppUpdateTaskSnapshot>("get_app_update_task");
+}
+
 function wrapUpdate(update: Update): InstallableAppUpdate {
   return {
     version: update.version,
     notes: update.body?.trim() || null,
-    install: async (onProgress) => {
-      let downloadedBytes = 0;
-      let contentLength: number | null = null;
-      await update.downloadAndInstall((event) => {
-        const progress = progressFromEvent(event, downloadedBytes, contentLength);
-        downloadedBytes = progress.downloadedBytes;
-        contentLength = progress.contentLength;
-        onProgress(progress);
-      });
-    },
+    install: (onProgress) =>
+      installAppUpdate(update.version, onProgress),
     close: () => update.close(),
   };
 }
 
-function progressFromEvent(
-  event: DownloadEvent,
-  downloadedBytes: number,
-  contentLength: number | null,
-): AppUpdateProgress {
-  if (event.event === "Started") {
-    const total = event.data.contentLength ?? null;
-    return progress("downloading", 0, total);
+async function installAppUpdate(
+  version: string,
+  onProgress: (progress: AppUpdateProgress) => void,
+): Promise<void> {
+  let snapshot = await invoke<AppUpdateTaskSnapshot>("start_app_update", {
+    version,
+  });
+  while (true) {
+    if (snapshot.version !== version) {
+      throw new Error("The active app update changed.");
+    }
+    onProgress(progressFromSnapshot(snapshot));
+    if (snapshot.phase === "ready") return;
+    if (snapshot.phase === "failed" || snapshot.phase === "idle") {
+      throw new Error("The app update task did not complete.");
+    }
+    await delay(UPDATE_TASK_POLL_INTERVAL_MS);
+    snapshot = await getAppUpdateTask();
   }
-  if (event.event === "Progress") {
-    return progress("downloading", downloadedBytes + event.data.chunkLength, contentLength);
-  }
-  return progress("installing", downloadedBytes, contentLength);
 }
 
-function progress(
-  phase: AppUpdateProgress["phase"],
-  downloadedBytes: number,
-  contentLength: number | null,
+export function progressFromSnapshot(
+  snapshot: AppUpdateTaskSnapshot,
 ): AppUpdateProgress {
+  const contentLength = snapshot.contentLength;
   return {
-    phase,
-    downloadedBytes,
+    phase: snapshot.phase === "installing" || snapshot.phase === "ready"
+      ? "installing"
+      : "downloading",
+    downloadedBytes: snapshot.downloadedBytes,
     contentLength,
     percent: contentLength && contentLength > 0
-      ? Math.min(100, Math.round((downloadedBytes / contentLength) * 100))
+      ? Math.min(
+          100,
+          Math.round((snapshot.downloadedBytes / contentLength) * 100),
+        )
       : null,
   };
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
 }

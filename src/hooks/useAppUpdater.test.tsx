@@ -10,6 +10,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   checkForInstallableAppUpdate: vi.fn(),
+  getAppUpdateTask: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
@@ -18,6 +19,19 @@ vi.mock("../api", () => ({
 
 vi.mock("../appUpdater", () => ({
   checkForInstallableAppUpdate: mocks.checkForInstallableAppUpdate,
+  getAppUpdateTask: mocks.getAppUpdateTask,
+  progressFromSnapshot: (task: {
+    phase: "downloading" | "installing" | "ready";
+    downloadedBytes: number;
+    contentLength: number | null;
+  }) => ({
+    phase: task.phase === "downloading" ? "downloading" : "installing",
+    downloadedBytes: task.downloadedBytes,
+    contentLength: task.contentLength,
+    percent: task.contentLength
+      ? Math.round((task.downloadedBytes / task.contentLength) * 100)
+      : null,
+  }),
   restartAfterAppUpdate: vi.fn(),
 }));
 
@@ -28,6 +42,8 @@ describe("useAppUpdater background prompt", () => {
     vi.setSystemTime(new Date("2026-07-29T12:00:00Z"));
     mocks.checkForInstallableAppUpdate.mockReset();
     mocks.checkForInstallableAppUpdate.mockResolvedValue(update("9.0.0"));
+    mocks.getAppUpdateTask.mockReset();
+    mocks.getAppUpdateTask.mockResolvedValue(nativeTask("idle"));
   });
 
   afterEach(() => {
@@ -62,6 +78,29 @@ describe("useAppUpdater background prompt", () => {
     expect(result.current.availableVersion).toBe("9.0.1");
     expect(result.current.promptVisible).toBe(true);
   });
+
+  it("reattaches to a native update task after the window returns", async () => {
+    mocks.getAppUpdateTask.mockResolvedValueOnce(
+      nativeTask("downloading", 250, 1_000),
+    );
+    const { result } = renderHook(() => useAppUpdater());
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.action).toBe("installing");
+    expect(result.current.progress?.percent).toBe(25);
+
+    mocks.getAppUpdateTask.mockResolvedValue(
+      nativeTask("ready", 1_000, 1_000),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(750);
+    });
+    expect(result.current.action).toBe("ready");
+    expect(result.current.progress?.percent).toBe(100);
+  });
 });
 
 function update(version: string) {
@@ -70,5 +109,19 @@ function update(version: string) {
     notes: null,
     install: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
+  };
+}
+
+function nativeTask(
+  phase: "idle" | "downloading" | "installing" | "ready" | "failed",
+  downloadedBytes = 0,
+  contentLength: number | null = null,
+) {
+  return {
+    version: phase === "idle" ? null : "9.0.0",
+    phase,
+    downloadedBytes,
+    contentLength,
+    updatedAtMs: Date.now(),
   };
 }

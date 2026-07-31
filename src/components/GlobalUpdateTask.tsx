@@ -134,6 +134,8 @@ export function GlobalUpdateTask({
               })
             : updater.action === "installing"
               ? t("settings:about.downloadingUpdate")
+              : updater.action === "installError"
+                ? t("settings:about.updateInstallError")
               : t("settings:about.updateReady")}
         </strong>
         {updater.action === "installing" && updater.progress ? (
@@ -143,6 +145,14 @@ export function GlobalUpdateTask({
       {updater.action === "ready" || updater.action === "restartError" ? (
         <button type="button" onClick={() => void updater.restart()}>
           {t("settings:about.restartUpdate")}
+        </button>
+      ) : updater.action === "installError" ? (
+        <button
+          type="button"
+          disabled={!updater.installableUpdate}
+          onClick={() => void updater.install()}
+        >
+          {t("settings:about.installUpdate")}
         </button>
       ) : updater.updatedFromVersion ? (
         <button type="button" onClick={updater.dismissUpdatedReceipt}>

@@ -94,6 +94,8 @@
     "allow-get-application-icon",
     "allow-create-process-control-lease",
     "allow-release-process-control-lease",
-    "allow-execute-process-action"
+    "allow-execute-process-action",
+    "allow-start-app-update",
+    "allow-get-app-update-task"
   ]
 }

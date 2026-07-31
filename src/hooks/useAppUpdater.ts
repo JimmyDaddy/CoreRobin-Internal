@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   AppUpdateProgress,
+  AppUpdateTaskSnapshot,
   InstallableAppUpdate,
 } from "../appUpdater";
 import { isDesktopRuntime } from "../api";
@@ -199,6 +200,61 @@ export function useAppUpdater({
 
   useEffect(() => () => {
     void currentUpdateRef.current?.close().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    let timer: number | null = null;
+
+    const reconcileNativeTask = (
+      task: AppUpdateTaskSnapshot,
+      toProgress: (task: AppUpdateTaskSnapshot) => AppUpdateProgress,
+    ) => {
+      if (task.phase === "downloading" || task.phase === "installing") {
+        setAction("installing");
+        setProgress(toProgress(task));
+        setPromptVisible(false);
+      } else if (task.phase === "ready") {
+        setAction("ready");
+        setProgress(toProgress(task));
+        setPromptVisible(false);
+      } else if (task.phase === "failed") {
+        setAction("installError");
+        setPromptVisible(false);
+      }
+    };
+
+    const reconcile = async () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      try {
+        const { getAppUpdateTask, progressFromSnapshot } = await import(
+          "../appUpdater"
+        );
+        const task = await getAppUpdateTask();
+        if (disposed) return;
+        reconcileNativeTask(task, progressFromSnapshot);
+        if (task.phase === "downloading" || task.phase === "installing") {
+          timer = window.setTimeout(reconcile, 750);
+        }
+      } catch {
+        // Update checks remain available if the native task status cannot load.
+      }
+    };
+
+    void reconcile();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void reconcile();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   const install = useCallback(async () => {

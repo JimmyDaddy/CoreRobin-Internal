@@ -27,7 +27,7 @@ const checks = [
   },
   {
     id: "updater-install-restart",
-    title: "另行安装上一稳定版并通过正式更新通道下载更新；安装完成后点击重启，新版本自动打开且语言、主题和本机历史仍保留",
+    title: "另行安装上一稳定版并通过正式更新通道下载更新；下载中隐藏并重新打开主窗口后仍接回同一任务，安装完成后点击重启，新版本自动打开且语言、主题和本机历史仍保留",
   },
   {
     id: "application-uninstall-capability",

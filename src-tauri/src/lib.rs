@@ -1,3 +1,4 @@
+mod app_update;
 mod application_history;
 mod application_icon;
 mod application_metadata;
@@ -42,6 +43,7 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use app_update::{AppUpdateTaskManager, AppUpdateTaskSnapshot};
 use application_history::{
     APPLICATION_HISTORY_FILE_NAME, ApplicationHistoryStorage, load as load_application_history,
     remove as remove_application_history, save as save_application_history,
@@ -2079,6 +2081,26 @@ async fn execute_process_action(
     .await
 }
 
+#[tauri::command]
+fn start_app_update(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppUpdateTaskManager>,
+    version: String,
+) -> Result<AppUpdateTaskSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state.start(app, version)
+}
+
+#[tauri::command]
+fn get_app_update_task(
+    window: WebviewWindow,
+    state: State<'_, AppUpdateTaskManager>,
+) -> Result<AppUpdateTaskSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state.snapshot()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let background_launch = std::env::args_os().any(|argument| argument == "--background");
@@ -2096,6 +2118,7 @@ pub fn run() {
     ));
     builder
         .manage(AppState::new(background_launch))
+        .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
             state.sampler.start(app.handle().clone());
@@ -2314,7 +2337,9 @@ pub fn run() {
             get_application_icon,
             create_process_control_lease,
             release_process_control_lease,
-            execute_process_action
+            execute_process_action,
+            start_app_update,
+            get_app_update_task
         ])
         .build(tauri::generate_context!())
         .expect("error while building CoreRobin")
@@ -2572,6 +2597,8 @@ mod security_boundary_tests {
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",
+        "start_app_update",
+        "get_app_update_task",
         "run_network_quality_check",
         "resolve_network_hosts",
         "get_gpu_energy_snapshot",
