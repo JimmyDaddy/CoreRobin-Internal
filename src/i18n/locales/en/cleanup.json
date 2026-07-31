@@ -45,7 +45,7 @@
       "title": "Quick scan",
       "description": "Precisely check common large and cleanable locations",
       "scopeTitle": "This scan includes",
-      "scope": "Downloads, Desktop, Documents, media folders, Trash, app and developer caches, application support data, containers, hidden app data, and system temporary folders."
+      "scope": "Downloads, Desktop, Documents, media folders, Trash, and common app and developer caches. Use a complete scan for application support data, containers, and other hidden folders."
     },
     "complete": {
       "title": "Complete scan",
