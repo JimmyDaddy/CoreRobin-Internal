@@ -38,12 +38,32 @@
   "estimateBoundary": "这是缓存与废纸篓的估算值，不代表必须清理。",
   "entriesScanned": "已检查 {{count}} 个项目",
   "scanDuration": "用时 {{seconds}} 秒",
+  "profiles": {
+    "label": "扫描模式",
+    "recommended": "推荐",
+    "quick": {
+      "title": "快速扫描",
+      "description": "精确检查常见的大空间与可清理位置",
+      "scopeTitle": "本次会检查",
+      "scope": "下载、桌面、文稿、媒体文件夹、废纸篓、应用与开发缓存、应用支持数据、容器、隐藏应用数据和系统临时目录。"
+    },
+    "complete": {
+      "title": "完整扫描",
+      "description": "顺序遍历整个系统磁盘，耗时更长"
+    }
+  },
+  "coverage": {
+    "title": "扫描范围",
+    "quickResult": "已精确检查 {{count}} 个常用位置，找到 {{size}} 内容",
+    "quickLimit": "其他磁盘区域尚未扫描；此结果不会冒充完整磁盘统计。",
+    "continueComplete": "继续完整扫描"
+  },
   "snapshot": {
-    "retained": "结果已留存在本机；浏览目录时按需核对变化",
+    "retained": "结果已索引在本机；浏览目录不会重新扫描",
     "refresh": "更新结果",
     "cached": {
       "title": "已恢复上次扫描结果",
-      "description": "无需重新等待即可继续查看；进入具体目录时，CoreRobin 会按需核对它是否发生变化。"
+      "description": "无需重新等待即可继续查看；切换目录只读取本机索引，不会访问文件系统。"
     },
     "expired": {
       "title": "这份结果已超过 24 小时",
@@ -109,10 +129,13 @@
       "restricted": "受限内容"
     },
     "noDeeperBreakdown": "当前层级没有更细的目录分组。",
-    "loadDeeperHint": "点击这个目录时会按需读取下一层，不会重新扫描整台电脑。",
-    "smallerObjectsHint": "打开后会按需列出因空间图数量限制而合并的真实文件和文件夹，具体项目都可以加入清理篮。",
-    "loadingFolder": "正在读取这个目录…",
-    "loadFailed": "无法读取目录",
+    "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
+    "smallerObjectsHint": "这是未在当前图层单独展示的较小项目汇总；可在右侧分页查看更多，或在访达中打开目录。",
+    "loadingFolder": "正在读取目录索引…",
+    "loadFailed": "无法读取目录索引",
+    "loadMore": "再显示 50 项",
+    "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
+    "refreshFailed": "无法刷新文件夹",
     "directActionHint": "拖动扇区或右侧目录到底部清理篮",
     "addToBasket": "加入清理篮",
     "removeFromBasket": "移出清理篮",

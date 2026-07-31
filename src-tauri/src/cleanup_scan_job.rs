@@ -1,3 +1,4 @@
+#[cfg(test)]
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -10,17 +11,14 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use crate::cleanup::{
-    CleanupScanSegmentPlan, assemble_cleanup_scan_segments, cleanup_scan_segment_plan,
-    save_cleanup_scan_snapshot_cache, scan_cleanup_segment,
-};
+use crate::cleanup::{build_indexed_scan, refresh_indexed_directory};
 use crate::error::CommandError;
 use crate::models::{
-    CleanupScan, CleanupScanJobPhase, CleanupScanJobStatus, CleanupScanProgress, CleanupScanRequest,
+    CleanupDirectoryRefreshRequest, CleanupScan, CleanupScanJobPhase, CleanupScanJobStatus,
+    CleanupScanProfile, CleanupScanProgress, CleanupScanRequest, CleanupScanTargetKind,
 };
 use crate::private_storage;
 
@@ -32,8 +30,6 @@ const AUTO_RECOVER_AFTER: Duration = Duration::from_secs(120);
 const MAX_AUTO_RECOVERIES: usize = 12;
 const FORCE_CANCEL_AFTER: Duration = Duration::from_secs(2);
 const MAX_JOB_FILE_BYTES: u64 = 64 * 1_024 * 1_024;
-const CHECKPOINT_VERSION: u8 = 1;
-const CHECKPOINT_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 
 #[derive(Debug)]
 struct CleanupScanJobRuntime {
@@ -41,10 +37,10 @@ struct CleanupScanJobRuntime {
     child: Option<Arc<Mutex<Child>>>,
     request_path: PathBuf,
     result_path: PathBuf,
-    cache_path: PathBuf,
-    checkpoint_path: PathBuf,
+    index_path: PathBuf,
     exclusions_path: PathBuf,
     worker_attempt: u64,
+    allow_path_exclusions: bool,
     skipped_paths: Vec<String>,
     cancel_requested_at_ms: Option<u64>,
 }
@@ -78,21 +74,15 @@ enum CleanupScanWorkerEvent {
     },
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CleanupScanCheckpoint {
-    version: u8,
-    saved_at_ms: u64,
-    request: CleanupScanRequest,
-    completed_segments: Vec<CleanupScanCompletedSegment>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CleanupScanCompletedSegment {
-    path: String,
-    modified_at_ms: Option<u64>,
-    scan: CleanupScan,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "operation", rename_all = "snake_case")]
+enum CleanupIndexWorkerRequest {
+    Scan {
+        request: CleanupScanRequest,
+    },
+    RefreshDirectory {
+        request: CleanupDirectoryRefreshRequest,
+    },
 }
 
 enum CleanupScanWatchdogAction {
@@ -107,8 +97,7 @@ enum CleanupScanWatchdogAction {
 fn spawn_worker_process(
     request_path: &Path,
     result_path: &Path,
-    cache_path: &Path,
-    checkpoint_path: &Path,
+    index_path: &Path,
     exclusions_path: &Path,
 ) -> Result<(Arc<Mutex<Child>>, ChildStdout, ChildStderr), CommandError> {
     let mut command = Command::new(std::env::current_exe().map_err(|error| {
@@ -120,8 +109,7 @@ fn spawn_worker_process(
         .arg(WORKER_ARGUMENT)
         .arg(request_path)
         .arg(result_path)
-        .arg(cache_path)
-        .arg(checkpoint_path)
+        .arg(index_path)
         .arg(exclusions_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -146,16 +134,58 @@ impl CleanupScanJobManager {
         self: &Arc<Self>,
         request: CleanupScanRequest,
         job_directory: &Path,
-        cache_path: &Path,
+        index_path: &Path,
+    ) -> Result<CleanupScanJobStatus, CommandError> {
+        self.start_task(
+            CleanupIndexWorkerRequest::Scan {
+                request: request.clone(),
+            },
+            request,
+            "cleanup",
+            true,
+            job_directory,
+            index_path,
+        )
+    }
+
+    pub fn start_directory_refresh(
+        self: &Arc<Self>,
+        request: CleanupDirectoryRefreshRequest,
+        job_directory: &Path,
+        index_path: &Path,
+    ) -> Result<CleanupScanJobStatus, CommandError> {
+        let target = CleanupScanRequest {
+            profile: CleanupScanProfile::Complete,
+            target_kind: CleanupScanTargetKind::Folder,
+            target_path: Some(request.directory_id.clone()),
+        };
+        self.start_task(
+            CleanupIndexWorkerRequest::RefreshDirectory { request },
+            target,
+            "cleanup-refresh",
+            false,
+            job_directory,
+            index_path,
+        )
+    }
+
+    fn start_task(
+        self: &Arc<Self>,
+        worker_request: CleanupIndexWorkerRequest,
+        status_target: CleanupScanRequest,
+        job_prefix: &str,
+        allow_path_exclusions: bool,
+        job_directory: &Path,
+        index_path: &Path,
     ) -> Result<CleanupScanJobStatus, CommandError> {
         self.terminate_active_for_replacement();
 
         let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
         let started_at_ms = now_millis();
-        let job_id = format!("cleanup-{started_at_ms}-{generation}");
+        let job_id = format!("{job_prefix}-{started_at_ms}-{generation}");
         let request_path = job_directory.join(format!("{job_id}.request.json"));
         let result_path = job_directory.join(format!("{job_id}.result.json"));
-        let request_bytes = serde_json::to_vec(&request).map_err(|error| {
+        let request_bytes = serde_json::to_vec(&worker_request).map_err(|error| {
             CommandError::internal(format!(
                 "Could not encode the cleanup scan request: {error}"
             ))
@@ -165,17 +195,11 @@ impl CleanupScanJobManager {
                 "Could not prepare the cleanup scan worker request: {error}"
             ))
         })?;
-        let checkpoint_path = cleanup_scan_checkpoint_path(job_directory, &request_bytes);
         let exclusions_path = job_directory.join(format!("{job_id}.exclusions.json"));
         save_worker_exclusions(&exclusions_path, &[])?;
 
-        let (child, stdout, stderr) = spawn_worker_process(
-            &request_path,
-            &result_path,
-            cache_path,
-            &checkpoint_path,
-            &exclusions_path,
-        )?;
+        let (child, stdout, stderr) =
+            spawn_worker_process(&request_path, &result_path, index_path, &exclusions_path)?;
         let status = CleanupScanJobStatus {
             job_id: job_id.clone(),
             generation,
@@ -190,7 +214,7 @@ impl CleanupScanJobManager {
                 current_path: "~".to_owned(),
                 elapsed_ms: 0,
             },
-            target: request,
+            target: status_target,
             result_available: false,
             error_code: None,
             error_message: None,
@@ -204,10 +228,10 @@ impl CleanupScanJobManager {
                 child: Some(Arc::clone(&child)),
                 request_path,
                 result_path,
-                cache_path: cache_path.to_path_buf(),
-                checkpoint_path,
+                index_path: index_path.to_path_buf(),
                 exclusions_path,
                 worker_attempt: 1,
+                allow_path_exclusions,
                 skipped_paths: Vec::new(),
                 cancel_requested_at_ms: None,
             });
@@ -301,6 +325,10 @@ impl CleanupScanJobManager {
             let _ = stdin.flush();
         }
         Ok(true)
+    }
+
+    pub fn terminate_active(&self) {
+        self.terminate_active_for_replacement();
     }
 
     fn terminate_active_for_replacement(&self) {
@@ -408,13 +436,19 @@ impl CleanupScanJobManager {
                         {
                             job.status.phase = CleanupScanJobPhase::Stalled;
                             job.status.updated_at_ms = now;
-                            let recovery_path = next_recovery_path(
-                                &job.status.progress.current_path,
-                                &job.skipped_paths,
-                            )
-                            .filter(|_| job.skipped_paths.len() < MAX_AUTO_RECOVERIES);
+                            let recovery_path = if job.allow_path_exclusions {
+                                next_recovery_path(
+                                    &job.status.progress.current_path,
+                                    &job.skipped_paths,
+                                )
+                                .filter(|_| job.skipped_paths.len() < MAX_AUTO_RECOVERIES)
+                            } else {
+                                (job.worker_attempt <= MAX_AUTO_RECOVERIES as u64).then(String::new)
+                            };
                             if let Some(recovery_path) = recovery_path {
-                                job.skipped_paths.push(recovery_path);
+                                if !recovery_path.is_empty() {
+                                    job.skipped_paths.push(recovery_path);
+                                }
                                 job.worker_attempt = job.worker_attempt.saturating_add(1);
                                 let next_attempt = job.worker_attempt;
                                 job.status.last_heartbeat_at_ms = None;
@@ -483,13 +517,12 @@ impl CleanupScanJobManager {
             (
                 job.request_path.clone(),
                 job.result_path.clone(),
-                job.cache_path.clone(),
-                job.checkpoint_path.clone(),
+                job.index_path.clone(),
                 job.exclusions_path.clone(),
                 job.skipped_paths.clone(),
             )
         };
-        if let Err(error) = save_worker_exclusions(&worker_input.4, &worker_input.5) {
+        if let Err(error) = save_worker_exclusions(&worker_input.3, &worker_input.4) {
             let Ok(mut active) = self.active.lock() else {
                 return;
             };
@@ -512,7 +545,6 @@ impl CleanupScanJobManager {
             &worker_input.1,
             &worker_input.2,
             &worker_input.3,
-            &worker_input.4,
         ) {
             Ok(worker) => worker,
             Err(error) => {
@@ -561,7 +593,7 @@ impl CleanupScanJobManager {
         };
         if !installed {
             kill_worker(&child);
-            let _ = private_storage::remove(&worker_input.4);
+            let _ = private_storage::remove(&worker_input.3);
             return;
         }
 
@@ -756,32 +788,17 @@ pub fn maybe_run_worker() -> bool {
     let Some(result_path) = arguments.get(index + 2).map(PathBuf::from) else {
         return true;
     };
-    let Some(cache_path) = arguments.get(index + 3).map(PathBuf::from) else {
+    let Some(index_path) = arguments.get(index + 3).map(PathBuf::from) else {
         return true;
     };
-    let Some(checkpoint_path) = arguments.get(index + 4).map(PathBuf::from) else {
+    let Some(exclusions_path) = arguments.get(index + 4).map(PathBuf::from) else {
         return true;
     };
-    let Some(exclusions_path) = arguments.get(index + 5).map(PathBuf::from) else {
-        return true;
-    };
-    run_worker(
-        &request_path,
-        &result_path,
-        &cache_path,
-        &checkpoint_path,
-        &exclusions_path,
-    );
+    run_worker(&request_path, &result_path, &index_path, &exclusions_path);
     true
 }
 
-fn run_worker(
-    request_path: &Path,
-    result_path: &Path,
-    cache_path: &Path,
-    checkpoint_path: &Path,
-    exclusions_path: &Path,
-) {
+fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclusions_path: &Path) {
     let cancelled = Arc::new(AtomicBool::new(false));
     let completed = Arc::new(AtomicBool::new(false));
     start_worker_control(Arc::clone(&cancelled), Arc::clone(&completed));
@@ -806,87 +823,45 @@ fn run_worker(
                 )
             })
             .and_then(|bytes| {
-                serde_json::from_slice::<CleanupScanRequest>(&bytes).map_err(|error| {
+                serde_json::from_slice::<CleanupIndexWorkerRequest>(&bytes).map_err(|error| {
                     CommandError::internal(format!("Could not decode the scan request: {error}"))
                 })
             })?;
         emit_worker_activity();
-        let plan = cleanup_scan_segment_plan(request.clone(), &cancelled)?;
-        let excluded_paths = load_worker_exclusions(exclusions_path)
-            .into_iter()
-            .filter_map(|path| resolve_worker_display_path(&path, &plan))
-            .collect::<Vec<_>>();
-        let mut completed_segments = load_checkpoint(checkpoint_path, &plan);
-        let mut completed_paths = completed_segments
-            .iter()
-            .map(|segment| segment.path.clone())
-            .collect::<std::collections::HashSet<_>>();
-        let mut base_entries = completed_segments.iter().fold(0_usize, |total, segment| {
-            total.saturating_add(segment.scan.scanned_entry_count)
-        });
-        let mut base_bytes = completed_segments.iter().fold(0_u64, |total, segment| {
-            total.saturating_add(segment.scan.root.allocated_size_bytes)
-        });
-        for segment_path in &plan.segment_paths {
-            ensure_worker_active(&cancelled)?;
-            let path = segment_path.to_string_lossy().into_owned();
-            if completed_paths.contains(&path) {
-                continue;
-            }
-            let scan = scan_cleanup_segment(
-                &plan,
-                segment_path,
-                &excluded_paths,
-                &cancelled,
-                &mut |mut progress| {
-                    progress.scanned_entry_count =
-                        base_entries.saturating_add(progress.scanned_entry_count);
-                    progress.discovered_bytes =
-                        base_bytes.saturating_add(progress.discovered_bytes);
-                    emit_worker_event(&CleanupScanWorkerEvent::Progress {
-                        at_ms: now_millis(),
-                        progress,
-                    });
-                },
-            )?;
-            base_entries = base_entries.saturating_add(scan.scanned_entry_count);
-            base_bytes = base_bytes.saturating_add(scan.root.allocated_size_bytes);
-            completed_paths.insert(path.clone());
-            completed_segments.push(CleanupScanCompletedSegment {
-                path,
-                modified_at_ms: path_modified_at_ms(segment_path),
-                scan,
+        let job_id = result_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .and_then(|name| name.strip_suffix(".result.json"))
+            .filter(|name| !name.is_empty())
+            .ok_or_else(|| {
+                CommandError::internal("The cleanup scan result path has no valid job identifier.")
+            })?;
+        let excluded_paths = load_worker_exclusions(exclusions_path);
+        let mut emit_progress = |progress| {
+            emit_worker_event(&CleanupScanWorkerEvent::Progress {
+                at_ms: now_millis(),
+                progress,
             });
-            emit_worker_activity();
-            save_checkpoint(checkpoint_path, &request, &completed_segments)?;
-            emit_worker_activity();
-            #[cfg(debug_assertions)]
-            if std::env::var("CORE_ROBIN_TEST_STOP_AFTER_CLEANUP_SEGMENTS")
-                .ok()
-                .and_then(|value| value.parse::<usize>().ok())
-                == Some(completed_segments.len())
-            {
-                return Err(CommandError::new(
-                    "cleanup_scan_test_interrupted",
-                    "The cleanup scan worker was interrupted after a completed segment.",
-                ));
-            }
-        }
-        emit_worker_activity();
-        let scan = assemble_cleanup_scan_segments(
-            &plan,
-            completed_segments
-                .iter()
-                .map(|segment| segment.scan.clone())
-                .collect(),
-            &cancelled,
-            &mut |progress| {
-                emit_worker_event(&CleanupScanWorkerEvent::Progress {
-                    at_ms: now_millis(),
-                    progress,
-                });
-            },
-        )?;
+        };
+        let scan = match request {
+            CleanupIndexWorkerRequest::Scan { request } => build_indexed_scan(
+                request,
+                job_id,
+                index_path,
+                &cancelled,
+                &excluded_paths,
+                &mut emit_progress,
+            )?,
+            CleanupIndexWorkerRequest::RefreshDirectory { request } => refresh_indexed_directory(
+                index_path,
+                &request.scan_id,
+                &request.directory_id,
+                job_id,
+                &cancelled,
+                &excluded_paths,
+                &mut emit_progress,
+            )?,
+        };
         emit_worker_activity();
         let bytes = serde_json::to_vec(&scan).map_err(|error| {
             CommandError::internal(format!("Could not encode the cleanup scan result: {error}"))
@@ -895,10 +870,6 @@ fn run_worker(
         private_storage::write_atomic(result_path, &bytes).map_err(|error| {
             CommandError::internal(format!("Could not save the cleanup scan result: {error}"))
         })?;
-        emit_worker_activity();
-        save_cleanup_scan_snapshot_cache(cache_path, &scan)?;
-        emit_worker_activity();
-        let _ = private_storage::remove(checkpoint_path);
         Ok::<(), CommandError>(())
     })();
 
@@ -913,21 +884,6 @@ fn run_worker(
             message: error.message,
         }),
     }
-}
-
-fn resolve_worker_display_path(display: &Path, plan: &CleanupScanSegmentPlan) -> Option<PathBuf> {
-    let text = display.to_string_lossy();
-    let candidate = if text == "~" {
-        plan.home.clone()
-    } else if let Some(relative) = text.strip_prefix("~/") {
-        plan.home.join(relative)
-    } else if display.is_absolute() {
-        display.to_path_buf()
-    } else {
-        return None;
-    };
-    let resolved = candidate.canonicalize().unwrap_or(candidate);
-    resolved.starts_with(&plan.scan_root).then_some(resolved)
 }
 
 fn emit_worker_activity() {
@@ -958,104 +914,6 @@ fn load_worker_exclusions(path: &Path) -> Vec<PathBuf> {
         .into_iter()
         .map(PathBuf::from)
         .collect()
-}
-
-fn cleanup_scan_checkpoint_path(job_directory: &Path, request_bytes: &[u8]) -> PathBuf {
-    let digest = Sha256::digest(request_bytes);
-    let key = digest
-        .iter()
-        .take(12)
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    job_directory.join(format!("checkpoint-{key}.json"))
-}
-
-fn load_checkpoint(
-    checkpoint_path: &Path,
-    plan: &CleanupScanSegmentPlan,
-) -> Vec<CleanupScanCompletedSegment> {
-    let Ok(Some(bytes)) = private_storage::read_limited(checkpoint_path, MAX_JOB_FILE_BYTES) else {
-        return Vec::new();
-    };
-    let Ok(mut checkpoint) = serde_json::from_slice::<CleanupScanCheckpoint>(&bytes) else {
-        let _ = private_storage::remove(checkpoint_path);
-        return Vec::new();
-    };
-    if checkpoint.version != CHECKPOINT_VERSION
-        || checkpoint.request != plan.request
-        || now_millis().saturating_sub(checkpoint.saved_at_ms)
-            > CHECKPOINT_MAX_AGE.as_millis() as u64
-    {
-        let _ = private_storage::remove(checkpoint_path);
-        return Vec::new();
-    }
-    let planned = plan
-        .segment_paths
-        .iter()
-        .map(|path| path.to_string_lossy().into_owned())
-        .collect::<std::collections::HashSet<_>>();
-    checkpoint.completed_segments.retain(|segment| {
-        planned.contains(&segment.path)
-            && path_modified_at_ms(Path::new(&segment.path)) == segment.modified_at_ms
-    });
-    checkpoint.completed_segments
-}
-
-fn save_checkpoint(
-    checkpoint_path: &Path,
-    request: &CleanupScanRequest,
-    completed_segments: &[CleanupScanCompletedSegment],
-) -> Result<(), CommandError> {
-    let bytes = serde_json::to_vec(&CleanupScanCheckpoint {
-        version: CHECKPOINT_VERSION,
-        saved_at_ms: now_millis(),
-        request: request.clone(),
-        completed_segments: completed_segments
-            .iter()
-            .map(|segment| CleanupScanCompletedSegment {
-                path: segment.path.clone(),
-                modified_at_ms: segment.modified_at_ms,
-                scan: segment.scan.clone(),
-            })
-            .collect(),
-    })
-    .map_err(|error| {
-        CommandError::internal(format!(
-            "Could not encode the cleanup scan checkpoint: {error}"
-        ))
-    })?;
-    if bytes.len() as u64 > MAX_JOB_FILE_BYTES {
-        return Err(CommandError::new(
-            "cleanup_scan_checkpoint_too_large",
-            "The cleanup scan checkpoint became too large to save safely.",
-        ));
-    }
-    private_storage::write_atomic(checkpoint_path, &bytes).map_err(|error| {
-        CommandError::internal(format!(
-            "Could not save the cleanup scan checkpoint: {error}"
-        ))
-    })
-}
-
-fn path_modified_at_ms(path: &Path) -> Option<u64> {
-    fs::metadata(path)
-        .ok()?
-        .modified()
-        .ok()?
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .map(|duration| duration.as_millis().min(u128::from(u64::MAX)) as u64)
-}
-
-fn ensure_worker_active(cancelled: &AtomicBool) -> Result<(), CommandError> {
-    if cancelled.load(Ordering::Relaxed) {
-        Err(CommandError::new(
-            "cleanup_scan_cancelled",
-            "The cleanup scan was cancelled.",
-        ))
-    } else {
-        Ok(())
-    }
 }
 
 fn start_worker_control(cancelled: Arc<AtomicBool>, completed: Arc<AtomicBool>) {
@@ -1141,10 +999,10 @@ mod tests {
             child: None,
             request_path: PathBuf::from("/fixture/request"),
             result_path: PathBuf::from("/fixture/result"),
-            cache_path: PathBuf::from("/fixture/cache"),
-            checkpoint_path: PathBuf::from("/fixture/checkpoint"),
+            index_path: PathBuf::from("/fixture/index.sqlite"),
             exclusions_path: PathBuf::from("/fixture/exclusions"),
             worker_attempt: 1,
+            allow_path_exclusions: true,
             skipped_paths: Vec::new(),
             cancel_requested_at_ms: None,
         });
@@ -1257,10 +1115,10 @@ mod tests {
             child: Some(Arc::clone(&child)),
             request_path: PathBuf::from("/fixture/request"),
             result_path: PathBuf::from("/fixture/result"),
-            cache_path: PathBuf::from("/fixture/cache"),
-            checkpoint_path: PathBuf::from("/fixture/checkpoint"),
+            index_path: PathBuf::from("/fixture/index.sqlite"),
             exclusions_path: PathBuf::from("/fixture/exclusions"),
             worker_attempt: 1,
+            allow_path_exclusions: true,
             skipped_paths: Vec::new(),
             cancel_requested_at_ms: None,
         });
@@ -1310,26 +1168,6 @@ mod tests {
         let status = manager.status().unwrap().unwrap();
         assert_eq!(status.phase, CleanupScanJobPhase::Failed);
         assert_eq!(status.updated_at_ms, failed_status.updated_at_ms);
-    }
-
-    #[test]
-    fn worker_display_paths_resolve_inside_the_scan_root() {
-        let plan = CleanupScanSegmentPlan {
-            request: CleanupScanRequest::default(),
-            home: PathBuf::from("/Users/fixture"),
-            scan_root: PathBuf::from("/"),
-            target_kind: crate::models::CleanupScanTargetKind::SystemDisk,
-            segment_paths: Vec::new(),
-        };
-
-        assert_eq!(
-            resolve_worker_display_path(Path::new("~/Library/Caches"), &plan),
-            Some(PathBuf::from("/Users/fixture/Library/Caches"))
-        );
-        assert_eq!(
-            resolve_worker_display_path(Path::new("relative/cache"), &plan),
-            None
-        );
     }
 
     #[test]

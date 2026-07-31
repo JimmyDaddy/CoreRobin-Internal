@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "掃描模式",
+    "recommended": "建議",
+    "quick": {
+      "title": "快速掃描",
+      "description": "精確檢查常見的大型與可清理位置",
+      "scopeTitle": "這次掃描包括",
+      "scope": "下載項目、桌面、文件、媒體資料夾、垃圾桶、應用程式與開發快取、應用支援資料、容器、隱藏應用資料和系統暫存資料夾。"
+    },
+    "complete": {
+      "title": "完整掃描",
+      "description": "依序檢查整個系統磁碟；需要較長時間"
+    }
+  },
+  "coverage": {
+    "title": "掃描範圍",
+    "quickResult": "已精確檢查 {{count}} 個常用位置，找到 {{size}}",
+    "quickLimit": "其他磁碟區域尚未掃描；此結果不代表整個磁碟的總量。",
+    "continueComplete": "繼續完整掃描"
+  },
   "fileInsights": {
     "eyebrow": "明確唯讀檢查",
     "title": "重複且長期未修改的文件",
@@ -199,10 +219,13 @@
       "restricted": "受限內容"
     },
     "noDeeperBreakdown": "當前層級沒有更細的目錄分組。",
-    "loadDeeperHint": "點選這個目錄時會按需讀取下一層，不會重新掃描整臺電腦。",
-    "smallerObjectsHint": "開啟後會按需列出因空間圖數量限制而合併的真實檔案與資料夾，具體項目都可以加入清理籃。",
+    "loadDeeperHint": "選取這個資料夾即可從本機索引開啟下一層。",
+    "smallerObjectsHint": "這裡彙總未單獨顯示的較小項目；可繼續瀏覽清單，或在 Finder 中開啟資料夾。",
     "loadingFolder": "正在讀取這個目錄…",
-    "loadFailed": "無法讀取目錄",
+    "loadFailed": "無法讀取資料夾索引",
+    "loadMore": "再顯示 50 個項目",
+    "refreshProgress": "已檢查 {{count}} 項 · {{time}} 秒",
+    "refreshFailed": "無法重新整理資料夾",
     "directActionHint": "拖動扇區或右側目錄到底部清理籃",
     "protectedSelectionHint": "系統目錄和個人目錄根節點僅供檢視；個人目錄內的具體內容可以加入清理籃",
     "trashRootProtected": "廢紙簍目錄本身不會被刪除；進入裡面選擇需要清理的具體內容",

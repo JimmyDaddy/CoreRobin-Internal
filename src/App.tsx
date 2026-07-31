@@ -1759,7 +1759,10 @@ function App() {
                   onScan={(target) => void cleanupScan.scan(target)}
                   onCancel={() => void cleanupScan.cancel()}
                   onDeletionApplied={cleanupScan.applyDeletion}
-                  onSubtreeRetained={cleanupScan.retainSubtree}
+                  directoryRefreshStatus={cleanupScan.directoryRefreshStatus}
+                  directoryRefreshError={cleanupScan.directoryRefreshError}
+                  onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
+                  onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
                   fileInsights={fileInsights}
@@ -1997,7 +2000,10 @@ function App() {
                 onScan={(target) => void cleanupScan.scan(target)}
                 onCancel={() => void cleanupScan.cancel()}
                 onDeletionApplied={cleanupScan.applyDeletion}
-                onSubtreeRetained={cleanupScan.retainSubtree}
+                directoryRefreshStatus={cleanupScan.directoryRefreshStatus}
+                directoryRefreshError={cleanupScan.directoryRefreshError}
+                onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
+                onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
                 fileInsights={fileInsights}

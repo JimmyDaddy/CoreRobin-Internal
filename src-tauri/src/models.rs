@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 pub const SNAPSHOT_SCHEMA_VERSION: u16 = 7;
@@ -303,21 +301,22 @@ pub struct NetworkInterfaceSnapshot {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScan {
+    #[serde(default)]
+    pub scan_id: String,
+    #[serde(default)]
+    pub profile: CleanupScanProfile,
+    #[serde(default)]
+    pub scope_paths: Vec<String>,
+    #[serde(default)]
+    pub indexed: bool,
+    #[serde(default)]
+    pub index_byte_size: u64,
     pub sampled_at_ms: u64,
     pub duration_ms: u64,
     /// The real directory hierarchy rooted at the system disk.
     /// Category summaries are kept separately in `locations` and must not be
     /// used to fabricate the filesystem tree shown by the path map.
     pub root: CleanupNode,
-    /// One-level expansions captured while the full scan is already walking
-    /// deep directories. The UI can materialize these nodes without reading
-    /// the same subtree from disk again.
-    #[serde(default)]
-    pub prefetched_subtrees: Vec<CleanupNode>,
-    /// Last successful scan time for each cached subtree ID. The frontend uses
-    /// this to show cached details immediately and only refresh changed roots.
-    #[serde(default)]
-    pub subtree_cache_saved_at_ms: HashMap<String, u64>,
     pub locations: Vec<CleanupLocation>,
     pub largest_files: Vec<CleanupFile>,
     pub installed_applications: Vec<CleanupApplication>,
@@ -341,9 +340,19 @@ pub enum CleanupScanTargetKind {
     Folder,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupScanProfile {
+    CommonLocations,
+    #[default]
+    Complete,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScanRequest {
+    #[serde(default)]
+    pub profile: CleanupScanProfile,
     pub target_kind: CleanupScanTargetKind,
     pub target_path: Option<String>,
 }
@@ -574,25 +583,56 @@ pub struct CleanupNode {
     pub deletion_protected: bool,
     #[serde(default)]
     pub protection_reason: Option<CleanupProtectionReason>,
-    /// Whether the directory contains entries beyond the currently materialized
-    /// visualization tree. The frontend can request a fresh bounded subtree on
-    /// demand without forcing the initial scan to return every file node.
+    /// Whether the directory contains indexed entries beyond the currently
+    /// materialized visualization tree.
     pub has_children: bool,
     pub children: Vec<CleanupNode>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CleanupSubtreeRequest {
-    pub request_id: String,
-    pub path: String,
-    #[serde(default)]
-    pub scan_root: Option<String>,
-    #[serde(default)]
-    pub scan_target_kind: CleanupScanTargetKind,
-    pub safety: CleanupSafety,
-    #[serde(default)]
-    pub expand_smaller_objects: bool,
+pub struct CleanupIndexedDirectoryRequest {
+    pub scan_id: String,
+    pub directory_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupIndexedChildrenRequest {
+    pub scan_id: String,
+    pub directory_id: String,
+    pub cursor: Option<usize>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupIndexedChildrenPage {
+    pub items: Vec<CleanupNode>,
+    pub next_cursor: Option<usize>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDirectoryRefreshRequest {
+    pub scan_id: String,
+    pub directory_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupIndexDeletionRequest {
+    pub scan_id: String,
+    pub node_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupScanIndexSummary {
+    pub available: bool,
+    pub byte_size: u64,
+    pub scan_count: usize,
+    pub updated_at_ms: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -634,6 +674,10 @@ pub struct CleanupPathState {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteLeaseRequest {
+    #[serde(default)]
+    pub scan_id: Option<String>,
+    #[serde(default)]
+    pub directory_ids: Vec<String>,
     pub paths: Vec<String>,
     pub scan_sampled_at_ms: u64,
     #[serde(default)]
@@ -750,7 +794,7 @@ pub struct CleanupDeleteFailure {
     pub message: String,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum CleanupLocationKind {
     Downloads,

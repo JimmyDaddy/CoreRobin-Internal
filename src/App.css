@@ -4363,25 +4363,45 @@ code,
   animation: spin 0.8s linear infinite;
 }
 
-.cleanup-map__subtree-loading {
+.cleanup-map__refresh-progress {
   position: absolute;
-  z-index: 4;
-  top: 43px;
-  left: 50%;
+  z-index: 5;
+  top: 52px;
+  left: 14px;
+  right: 14px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--text);
+  border: 1px solid rgba(88, 165, 255, 0.28);
+  border-radius: 9px;
+  background: rgba(19, 32, 45, 0.94);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.cleanup-map__refresh-progress > svg { color: var(--blue); }
+.cleanup-map__refresh-progress > small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cleanup-map__refresh-progress > button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  color: var(--blue);
-  border: 1px solid rgba(99, 168, 255, 0.24);
-  border-radius: 999px;
-  background: rgba(13, 20, 26, 0.9);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-  font-size: 12px;
-  transform: translateX(-50%);
-  backdrop-filter: blur(10px);
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 8px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
 }
-.cleanup-map__subtree-loading svg { animation: spin 850ms linear infinite; }
 
 .cleanup-map__center-control {
   position: absolute;
@@ -4567,6 +4587,17 @@ code,
 .cleanup-map__legend button.is-selected strong { color: #fff; }
 .cleanup-map__legend button.is-selected small,
 .cleanup-map__legend button.is-selected b { color: var(--text); }
+.cleanup-map__legend .cleanup-map__load-more {
+  border-top: 1px solid rgba(78, 143, 201, 0.22);
+}
+.cleanup-map__legend .cleanup-map__load-more button {
+  justify-content: center;
+  color: var(--blue);
+}
+.cleanup-map__legend .cleanup-map__load-more button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
 .cleanup-map__legend button.is-delete-failed {
   border-color: rgba(255, 125, 115, 0.44);
   background: var(--danger-soft);

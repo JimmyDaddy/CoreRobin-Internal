@@ -124,11 +124,12 @@
         "description": "인터페이스 언어별 설치 앱 메타데이터이며 앱 내용은 저장하지 않습니다."
       },
       "scanCaches": {
-        "title": "검사 결과 캐시",
-        "description": "경로, 크기 및 수정 시간이 포함된 정리와 파일 분석 결과입니다."
+        "title": "검사 색인 및 결과",
+        "description": "기본 공간 검사 색인과 파일 분석 결과에는 경로, 크기 및 수정 시간이 포함됩니다."
       }
     },
     "metrics": {
+      "cleanupIndex": "공간 검사 색인: {{size}}",
       "items": "{{count}}개 항목",
       "updated": "{{time}} 업데이트",
       "never": "로컬 데이터 없음",

@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "Modo de verificação",
+    "recommended": "Recomendado",
+    "quick": {
+      "title": "Verificação rápida",
+      "description": "Verifica com precisão locais comuns, grandes e que podem ser limpos",
+      "scopeTitle": "Esta verificação inclui",
+      "scope": "Downloads, Mesa, Documentos, pastas de mídia, Lixeira, caches de apps e desenvolvimento, dados de suporte, contêineres, dados ocultos e pastas temporárias do sistema."
+    },
+    "complete": {
+      "title": "Verificação completa",
+      "description": "Percorre todo o disco do sistema em sequência; leva mais tempo"
+    }
+  },
+  "coverage": {
+    "title": "Cobertura da verificação",
+    "quickResult": "{{count}} locais comuns verificados com precisão; {{size}} encontrados",
+    "quickLimit": "Outras áreas do disco não foram verificadas; este resultado não representa o total do disco.",
+    "continueComplete": "Continuar com a verificação completa"
+  },
   "fileInsights": {
     "eyebrow": "Verificação explícita somente leitura",
     "title": "Arquivos duplicados e não modificados há muito tempo",
@@ -199,10 +219,13 @@
       "restricted": "Restritos"
     },
     "noDeeperBreakdown": "Não é possível agrupar diretórios em níveis mais profundos neste momento.",
-    "loadDeeperHint": "Selecione esta pasta para carregar o próximo nível sem escanear todo o computador.",
-    "smallerObjectsHint": "Abra este grupo para carregar os arquivos e pastas reais agrupados pelo limite do mapa; depois, cada item poderá ser adicionado ao cesto.",
+    "loadDeeperHint": "Selecione esta pasta para abrir o próximo nível pelo índice local.",
+    "smallerObjectsHint": "Este grupo resume itens menores. Percorra a lista ou abra a pasta no Finder.",
     "loadingFolder": "Carregando esta pasta…",
-    "loadFailed": "Não foi possível carregar a pasta",
+    "loadFailed": "Não foi possível ler o índice de pastas",
+    "loadMore": "Mostrar mais 50 itens",
+    "refreshProgress": "{{count}} itens verificados · {{time}} s",
+    "refreshFailed": "Não foi possível atualizar a pasta",
     "directActionHint": "Arraste um setor ou uma pasta da lista para a cesta na parte inferior.",
     "protectedSelectionHint": "Pastas do sistema e a raiz da sua área pessoal são apenas para visualização; itens específicos dentro da sua pasta pessoal podem ser movidos para o cesto",
     "trashRootProtected": "A pasta de lixeira é protegida; entre nela e selecione os itens específicos que deseja remover",

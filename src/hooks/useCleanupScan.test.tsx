@@ -8,11 +8,15 @@ import { useCleanupScan } from "./useCleanupScan";
 const cleanupApi = vi.hoisted(() => ({
   cancelCleanupScan: vi.fn(),
   clearPersistedCleanupScan: vi.fn(),
+  cancelCleanupDirectoryRefresh: vi.fn(),
+  getCleanupDirectoryRefreshJob: vi.fn(),
   getCleanupScanJob: vi.fn(),
+  loadCleanupDirectoryRefreshResult: vi.fn(),
   loadCleanupScanJobResult: vi.fn(),
   loadPersistedCleanupScan: vi.fn(),
   savePersistedCleanupScan: vi.fn(),
   startCleanupScan: vi.fn(),
+  startCleanupDirectoryRefresh: vi.fn(),
 }));
 
 vi.mock("../api", () => cleanupApi);
@@ -39,6 +43,7 @@ function Harness() {
       <span>{scan.phase ?? "idle"}</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
+      <button type="button" onClick={() => void scan.clear()}>Clear</button>
     </>
   );
 }
@@ -66,12 +71,16 @@ const runningJob = {
 describe("cleanup scan lifecycle", () => {
   beforeEach(() => {
     cleanupApi.cancelCleanupScan.mockReset().mockResolvedValue(true);
+    cleanupApi.cancelCleanupDirectoryRefresh.mockReset().mockResolvedValue(true);
     cleanupApi.clearPersistedCleanupScan.mockReset().mockResolvedValue(undefined);
     cleanupApi.getCleanupScanJob.mockReset().mockResolvedValue(null);
+    cleanupApi.getCleanupDirectoryRefreshJob.mockReset().mockResolvedValue(null);
     cleanupApi.loadCleanupScanJobResult.mockReset();
+    cleanupApi.loadCleanupDirectoryRefreshResult.mockReset();
     cleanupApi.loadPersistedCleanupScan.mockReset().mockResolvedValue(null);
     cleanupApi.savePersistedCleanupScan.mockReset().mockResolvedValue(undefined);
     cleanupApi.startCleanupScan.mockReset().mockResolvedValue(runningJob);
+    cleanupApi.startCleanupDirectoryRefresh.mockReset();
     window.localStorage.clear();
   });
 
@@ -116,5 +125,26 @@ describe("cleanup scan lifecycle", () => {
 
     await waitFor(() => expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce());
     expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
+  });
+
+  it("terminates both native workers before clearing the index", async () => {
+    cleanupApi.getCleanupScanJob.mockResolvedValue(runningJob);
+    cleanupApi.getCleanupDirectoryRefreshJob.mockResolvedValue({
+      ...runningJob,
+      jobId: "cleanup-refresh-1",
+      target: {
+        profile: "complete",
+        targetKind: "folder",
+        targetPath: "index:fixture:2",
+      },
+    });
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("scanning")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    await waitFor(() => expect(cleanupApi.clearPersistedCleanupScan).toHaveBeenCalledOnce());
+    expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce();
+    expect(cleanupApi.cancelCleanupDirectoryRefresh).toHaveBeenCalledOnce();
   });
 });

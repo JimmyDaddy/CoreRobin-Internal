@@ -124,11 +124,12 @@
         "description": "依介面語言儲存已安裝應用程式的中繼資料，不包含應用程式內容。"
       },
       "scanCaches": {
-        "title": "掃描結果快取",
-        "description": "空間清理與檔案分析結果，包含路徑、大小與修改時間。"
+        "title": "掃描索引與結果",
+        "description": "原生空間掃描索引與檔案分析結果包含路徑、大小與修改時間。"
       }
     },
     "metrics": {
+      "cleanupIndex": "空間掃描索引佔用：{{size}}",
       "items": "{{count}} 項",
       "updated": "更新於 {{time}}",
       "never": "尚無本機資料",

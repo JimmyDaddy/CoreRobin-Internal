@@ -402,11 +402,14 @@ export function getMockCleanupScan(): CleanupScan {
   const systemItems = systemChildren.reduce((total, node) => total + node.itemCount, 0);
 
   return {
+    scanId: "mock-cleanup-scan",
+    profile: "complete",
+    scopePaths: [],
+    indexed: true,
+    indexByteSize: 128_000,
     sampledAtMs: Date.now(),
     durationMs: 1_840,
     root: cleanupNode("/", "/", systemSize, systemItems, "review", systemChildren),
-    prefetchedSubtrees: [],
-    subtreeCacheSavedAtMs: {},
     locations,
     largestFiles: [
       {

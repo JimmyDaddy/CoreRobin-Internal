@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "Scanmodus",
+    "recommended": "Empfohlen",
+    "quick": {
+      "title": "Schnellscan",
+      "description": "Prüft häufig große und bereinigbare Orte genau",
+      "scopeTitle": "Dieser Scan umfasst",
+      "scope": "Downloads, Schreibtisch, Dokumente, Medienordner, Papierkorb, App- und Entwickler-Caches, Anwendungsdaten, Container, versteckte App-Daten und temporäre Systemordner."
+    },
+    "complete": {
+      "title": "Vollständiger Scan",
+      "description": "Durchsucht das gesamte Systemlaufwerk nacheinander; dauert länger"
+    }
+  },
+  "coverage": {
+    "title": "Scanabdeckung",
+    "quickResult": "{{count}} häufige Orte genau geprüft und {{size}} gefunden",
+    "quickLimit": "Andere Laufwerksbereiche wurden nicht geprüft; dieses Ergebnis ist keine Gesamtsumme des Laufwerks.",
+    "continueComplete": "Mit vollständigem Scan fortfahren"
+  },
   "fileInsights": {
     "eyebrow": "Explizite schreibgeschützte Prüfung",
     "title": "Doppelte und seit langem unveränderte Dateien",
@@ -199,10 +219,13 @@
       "restricted": "Beschränkte Objekte"
     },
     "noDeeperBreakdown": "Eine tiefere Verzeichnisstruktur ist auf dieser Ebene nicht verfügbar.",
-    "loadDeeperHint": "Wählen Sie diesen Ordner, um das nächste Level zu laden, ohne den gesamten Computer neu zu scannen.",
-    "smallerObjectsHint": "Öffnen Sie diese Gruppe, um die durch das Kartenlimit zusammengefassten Dateien und Ordner zu laden; jedes Element kann danach in den Bereinigungskorb gelegt werden.",
+    "loadDeeperHint": "Wählen Sie diesen Ordner, um die nächste Ebene aus dem lokalen Index zu öffnen.",
+    "smallerObjectsHint": "Diese Gruppe fasst kleinere Elemente zusammen. Blättern Sie durch die Liste oder öffnen Sie den Ordner im Finder.",
     "loadingFolder": "Dieser Ordner wird geladen…",
-    "loadFailed": "Ordner konnte nicht geladen werden",
+    "loadFailed": "Verzeichnisindex konnte nicht gelesen werden",
+    "loadMore": "Weitere 50 Elemente anzeigen",
+    "refreshProgress": "{{count}} Elemente geprüft · {{time}} Sek.",
+    "refreshFailed": "Ordner konnte nicht aktualisiert werden",
     "directActionHint": "Ziehen Sie einen Sektor oder Ordner aus der Liste in den Korb am unteren Rand",
     "protectedSelectionHint": "Systempfade und das Home-Verzeichnis sind nur zum Anzeigen; konkrete Elemente innerhalb Ihres Home-Verzeichnisses können in den Korb gelangen",
     "trashRootProtected": "Der Papierkorb-Ordner selbst ist geschützt; öffnen Sie ihn und wählen Sie die spezifischen Inhalte aus, die Sie entfernen möchten",

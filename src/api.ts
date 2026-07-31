@@ -25,19 +25,24 @@ import type {
   ApplicationInventorySnapshot,
   ApplicationUninstallPlan,
   CleanupNode,
+  CleanupIndexedChildrenPage,
+  CleanupIndexedChildrenRequest,
+  CleanupIndexedDirectoryRequest,
   CleanupPathState,
   CleanupScan,
   CleanupScanAccess,
+  CleanupScanIndexSummary,
   CleanupScanJobStatus,
   CleanupScanTarget,
-  CleanupSubtreeRequest,
   CleanupDeleteExecutionRequest,
   CleanupDeleteLease,
   CleanupDeleteLeaseModeRequest,
   CleanupDeleteLeaseReleaseRequest,
   CleanupDeleteLeaseRequest,
+  CleanupIndexDeletionRequest,
   CleanupDeleteProgress,
   CleanupDeleteResult,
+  CleanupDirectoryRefreshRequest,
   ProcessActionRequest,
   ProcessActionResult,
   ProcessControlLease,
@@ -438,7 +443,11 @@ export async function executeStartupManagement(
 }
 
 export async function startCleanupScan(
-  target: CleanupScanTarget = { targetKind: "system_disk", targetPath: null },
+  target: CleanupScanTarget = {
+    profile: "common_locations",
+    targetKind: "system_disk",
+    targetPath: null,
+  },
 ): Promise<CleanupScanJobStatus> {
   if (canUseDevelopmentMock()) {
     const now = Date.now();
@@ -739,13 +748,13 @@ export async function getCleanupPathState(path: string): Promise<CleanupPathStat
   return invoke<CleanupPathState>("get_cleanup_path_state", { path });
 }
 
-export async function getCleanupSubtree(
-  request: CleanupSubtreeRequest,
+export async function getCleanupIndexedDirectory(
+  request: CleanupIndexedDirectoryRequest,
 ): Promise<CleanupNode> {
   if (canUseDevelopmentMock()) {
     const findNode = (nodes: CleanupNode[]): CleanupNode | null => {
       for (const node of nodes) {
-        if (node.path === request.path) return node;
+        if (node.id === request.directoryId) return node;
         const nested = findNode(node.children);
         if (nested) return nested;
       }
@@ -753,19 +762,66 @@ export async function getCleanupSubtree(
     };
     const found = findNode([getMockCleanupScan().root]);
     if (found) return found;
-    throw { code: "cleanup_subtree_unavailable", message: "The folder is unavailable." };
+    throw { code: "cleanup_index_node_missing", message: "The folder is unavailable." };
   }
-  return invoke<CleanupNode>("get_cleanup_subtree", { request });
+  return invoke<CleanupNode>("get_cleanup_indexed_directory", { request });
 }
 
-export async function loadPersistedCleanupScan(): Promise<string | null> {
+export async function getCleanupIndexedChildren(
+  request: CleanupIndexedChildrenRequest,
+): Promise<CleanupIndexedChildrenPage> {
+  if (canUseDevelopmentMock()) return { items: [], nextCursor: null };
+  return invoke<CleanupIndexedChildrenPage>("get_cleanup_indexed_children", { request });
+}
+
+export async function getCleanupScanOverview(scanId: string): Promise<CleanupScan> {
+  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  return invoke<CleanupScan>("get_cleanup_scan_overview", { scanId });
+}
+
+export async function applyCleanupIndexDeletions(
+  request: CleanupIndexDeletionRequest,
+): Promise<CleanupScan> {
+  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  return invoke<CleanupScan>("apply_cleanup_index_deletions", { request });
+}
+
+export async function startCleanupDirectoryRefresh(
+  request: CleanupDirectoryRefreshRequest,
+): Promise<CleanupScanJobStatus> {
+  if (canUseDevelopmentMock()) return startCleanupScan({
+    profile: "complete",
+    targetKind: "folder",
+    targetPath: request.directoryId,
+  });
+  return invoke<CleanupScanJobStatus>("start_cleanup_directory_refresh", { request });
+}
+
+export async function getCleanupDirectoryRefreshJob(): Promise<CleanupScanJobStatus | null> {
   if (canUseDevelopmentMock()) return null;
-  return invoke<string | null>("load_persisted_cleanup_scan");
+  return invoke<CleanupScanJobStatus | null>("get_cleanup_directory_refresh_job");
 }
 
-export async function savePersistedCleanupScan(snapshot: CleanupScan): Promise<void> {
-  if (canUseDevelopmentMock()) return;
-  return invoke<void>("save_persisted_cleanup_scan", { snapshot });
+export async function loadCleanupDirectoryRefreshResult(jobId: string): Promise<CleanupScan> {
+  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  return invoke<CleanupScan>("load_cleanup_directory_refresh_result", { jobId });
+}
+
+export async function cancelCleanupDirectoryRefresh(): Promise<boolean> {
+  if (canUseDevelopmentMock()) return true;
+  return invoke<boolean>("cancel_cleanup_directory_refresh");
+}
+
+export async function loadPersistedCleanupScan(): Promise<CleanupScan | null> {
+  if (canUseDevelopmentMock()) return null;
+  return invoke<CleanupScan | null>("load_persisted_cleanup_scan");
+}
+
+export async function getCleanupScanIndexSummary(): Promise<CleanupScanIndexSummary> {
+  if (canUseDevelopmentMock()) {
+    return { available: false, byteSize: 0, scanCount: 0, updatedAtMs: null };
+  }
+  return invoke<CleanupScanIndexSummary>("get_cleanup_scan_index_summary");
 }
 
 export async function clearPersistedCleanupScan(): Promise<void> {
@@ -872,11 +928,6 @@ export async function cancelCleanupScan(): Promise<boolean> {
     return true;
   }
   return invoke<boolean>("cancel_cleanup_scan");
-}
-
-export async function cancelCleanupSubtree(requestId: string): Promise<boolean> {
-  if (canUseDevelopmentMock()) return true;
-  return invoke<boolean>("cancel_cleanup_subtree", { requestId });
 }
 
 export async function createCleanupDeleteLease(

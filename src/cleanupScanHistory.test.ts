@@ -43,6 +43,11 @@ function scan(sampledAtMs: number, size: number): CleanupScan {
     children: [],
   };
   return {
+    scanId: `fixture-${sampledAtMs}`,
+    profile: "complete",
+    scopePaths: [],
+    indexed: true,
+    indexByteSize: 1_024,
     sampledAtMs,
     durationMs: 1,
     root: {
@@ -52,8 +57,6 @@ function scan(sampledAtMs: number, size: number): CleanupScan {
       path: "/Users/example",
       children: [child],
     },
-    prefetchedSubtrees: [],
-    subtreeCacheSavedAtMs: {},
     locations: [],
     largestFiles: [],
     installedApplications: [],

@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 #[cfg(any(windows, target_os = "linux"))]
 use std::time::Duration;
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(target_os = "linux")]
 use std::fs;
 #[cfg(target_os = "linux")]
 use std::path::Path;

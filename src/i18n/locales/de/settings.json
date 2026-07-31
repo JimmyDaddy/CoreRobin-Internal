@@ -124,11 +124,12 @@
         "description": "Metadaten installierter Apps je Oberflächensprache. App-Inhalte werden nicht gespeichert."
       },
       "scanCaches": {
-        "title": "Scan-Ergebnis-Caches",
-        "description": "Bereinigungs- und Dateianalyseergebnisse mit Pfaden, Größen und Änderungszeiten."
+        "title": "Scan-Index und Ergebnisse",
+        "description": "Der native Speicher-Scan-Index und Dateianalyseergebnisse enthalten Pfade, Größen und Änderungszeiten."
       }
     },
     "metrics": {
+      "cleanupIndex": "Speicher-Scan-Index: {{size}}",
       "items": "{{count}} Einträge",
       "updated": "Aktualisiert: {{time}}",
       "never": "Noch keine lokalen Daten",

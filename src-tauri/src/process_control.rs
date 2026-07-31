@@ -1273,7 +1273,9 @@ mod tests {
             ProcessControlTargeting, ProcessKey,
         };
 
-        use super::super::super::{ProcessController, platform};
+        use crate::process_control::platform;
+
+        use super::super::super::ProcessController;
 
         #[test]
         fn stable_handle_force_kill_terminates_the_bound_helper() {

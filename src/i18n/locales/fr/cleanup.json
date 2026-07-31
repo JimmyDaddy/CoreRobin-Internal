@@ -1,4 +1,24 @@
 {
+  "profiles": {
+    "label": "Mode d’analyse",
+    "recommended": "Recommandé",
+    "quick": {
+      "title": "Analyse rapide",
+      "description": "Vérifie précisément les emplacements courants volumineux et nettoyables",
+      "scopeTitle": "Cette analyse comprend",
+      "scope": "Téléchargements, Bureau, Documents, dossiers multimédias, Corbeille, caches d’apps et de développement, données de support, conteneurs, données cachées et dossiers temporaires du système."
+    },
+    "complete": {
+      "title": "Analyse complète",
+      "description": "Parcourt tout le disque système dans l’ordre ; prend plus de temps"
+    }
+  },
+  "coverage": {
+    "title": "Couverture de l’analyse",
+    "quickResult": "{{count}} emplacements courants vérifiés précisément, {{size}} trouvés",
+    "quickLimit": "Les autres zones du disque n’ont pas été analysées ; ce résultat ne représente pas le total du disque.",
+    "continueComplete": "Poursuivre avec l’analyse complète"
+  },
   "fileInsights": {
     "eyebrow": "Vérification explicite en lecture seule",
     "title": "Fichiers en double et non modifiés depuis longtemps",
@@ -199,10 +219,13 @@
       "restricted": "Restreints"
     },
     "noDeeperBreakdown": "Aucun regroupement de dossiers supplémentaire n'est disponible à ce niveau.",
-    "loadDeeperHint": "Sélectionnez cet dossier pour charger le niveau suivant sans rescanner l'ensemble de l'ordinateur.",
-    "smallerObjectsHint": "Ouvrez ce groupe pour charger les fichiers et dossiers réels regroupés par la limite de la carte ; chaque élément pourra ensuite être ajouté au panier.",
+    "loadDeeperHint": "Sélectionnez ce dossier pour ouvrir le niveau suivant depuis l’index local.",
+    "smallerObjectsHint": "Ce groupe résume les petits éléments. Parcourez la liste ou ouvrez le dossier dans Finder.",
     "loadingFolder": "Chargement de ce dossier…",
-    "loadFailed": "Impossible de charger le dossier",
+    "loadFailed": "Impossible de lire l’index des dossiers",
+    "loadMore": "Afficher 50 éléments supplémentaires",
+    "refreshProgress": "{{count}} éléments vérifiés · {{time}} s",
+    "refreshFailed": "Impossible d’actualiser le dossier",
     "directActionHint": "Faites glisser un secteur ou un dossier de la liste vers le panier en bas",
     "protectedSelectionHint": "Les chemins système et le répertoire racine sont consultables uniquement ; les éléments précis de votre dossier personnel peuvent être ajoutés au bac",
     "trashRootProtected": "Le dossier Corbeille lui-même est protégé ; ouvrez-le et sélectionnez précisément le contenu à supprimer",

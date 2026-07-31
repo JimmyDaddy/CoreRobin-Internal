@@ -5,10 +5,10 @@ import { useAppTranslation } from "../i18n/useAppTranslation";
 import {
   createCleanupDeleteLease,
   cancelCleanupDelete,
-  cancelCleanupSubtree,
   executeCleanupDelete,
+  getCleanupIndexedChildren,
+  getCleanupIndexedDirectory,
   getCleanupPathState,
-  getCleanupSubtree,
   releaseCleanupDeleteLease,
   setCleanupDeleteLeaseMode,
 } from "../api";
@@ -41,7 +41,7 @@ import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "../storageMigration";
-import type { CleanupDeleteFailure, CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CommandError } from "../types";
+import type { CleanupDeleteFailure, CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CleanupScanJobStatus, CommandError } from "../types";
 import type {
   CompleteUserActionInput,
   StartUserActionInput,
@@ -61,7 +61,10 @@ interface CleanupSpaceMapProps {
     targets: readonly CleanupDeletionTargetSnapshot[],
     invalidateSnapshot?: boolean,
   ) => Promise<void>;
-  onSubtreeRetained?: (subtree: CleanupMapNode) => Promise<void>;
+  directoryRefreshStatus?: CleanupScanJobStatus | null;
+  directoryRefreshError?: CommandError | null;
+  onRefreshDirectory?: (directoryId: string) => void;
+  onCancelDirectoryRefresh?: () => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -127,14 +130,24 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   command = null,
   onCommandHandled,
   onDeletionApplied,
-  onSubtreeRetained,
+  directoryRefreshStatus = null,
+  directoryRefreshError = null,
+  onRefreshDirectory = () => undefined,
+  onCancelDirectoryRefresh = () => undefined,
   onUserActionStart,
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
   const { t } = useAppTranslation();
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(
-    () => prefetchedSubtreeMap(snapshot.prefetchedSubtrees),
+    () => new Map(),
   );
+  const [pagedChildren, setPagedChildren] = useState<Map<string, CleanupMapNode[]>>(
+    () => new Map(),
+  );
+  const [pageCursors, setPageCursors] = useState<Map<string, number | null>>(
+    () => new Map(),
+  );
+  const [pagingDirectoryId, setPagingDirectoryId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
   const pathRoot = useMemo<CleanupMapNode>(
     () => materializeCleanupNode(snapshot.root, loadedSubtrees),
@@ -184,13 +197,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [externalPlanNodes, setExternalPlanNodes] =
     useState<Map<string, CleanupMapNode>>(() => new Map());
   const root = mapMode === "path" ? pathRoot : categoryRoot;
-  const { nodes, parents, depths } = useMemo(() => indexTree(root), [root]);
+  const { nodes, parents, depths } = useMemo(
+    () => indexTree(root, pagedChildren),
+    [pagedChildren, root],
+  );
   const planNodes = useMemo(() => {
-    const pathNodes = indexTree(pathRoot).nodes;
+    const pathNodes = indexTree(pathRoot, pagedChildren).nodes;
     for (const [id, node] of indexTree(categoryRoot).nodes) pathNodes.set(id, node);
     for (const [id, node] of externalPlanNodes) pathNodes.set(id, node);
     return pathNodes;
-  }, [categoryRoot, externalPlanNodes, pathRoot]);
+  }, [categoryRoot, externalPlanNodes, pagedChildren, pathRoot]);
   const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
@@ -211,7 +227,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [deleteMode, setDeleteMode] = useState<CleanupDeleteMode>("trash");
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
   const [deleteOutcome, setDeleteOutcome] = useState<CleanupDeleteOutcome | null>(null);
-  const [loadingNodeId, setLoadingNodeId] = useState<string | null>(null);
   const [subtreeError, setSubtreeError] = useState<CommandError | null>(null);
   const dragStateRef = useRef<CleanupDragState | null>(null);
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -222,24 +237,37 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const deleteRequestIdRef = useRef(0);
   const subtreeRequestIdRef = useRef(0);
-  const activeSubtreeRequestRef = useRef<string | null>(null);
-  const revalidatingNodeIdsRef = useRef(new Set<string>());
-  const activeSnapshotSampledAtRef = useRef(snapshot.sampledAtMs);
+  const activeScanIdRef = useRef(snapshot.scanId);
+  const appliedRefreshJobRef = useRef<string | null>(null);
   const requestedFocusIdRef = useRef<string | null>(null);
 
-  const cancelActiveSubtree = useCallback(() => {
-    const requestId = activeSubtreeRequestRef.current;
-    if (!requestId) return;
-    activeSubtreeRequestRef.current = null;
-    void cancelCleanupSubtree(requestId);
+  const retainLoadedSubtree = useCallback((subtree: CleanupMapNode) => {
+    setLoadedSubtrees((current) => new Map(current).set(subtree.id, subtree));
+    setPagedChildren((current) => {
+      let anyChanged = false;
+      const next = new Map(current);
+      for (const [parentId, children] of current) {
+        let parentChanged = false;
+        const replaced = children.map((child) => {
+          if (child.id !== subtree.id) return child;
+          parentChanged = true;
+          anyChanged = true;
+          return subtree;
+        });
+        if (parentChanged) next.set(parentId, replaced);
+      }
+      return anyChanged ? next : current;
+    });
   }, []);
 
   useEffect(() => {
-    if (activeSnapshotSampledAtRef.current === snapshot.sampledAtMs) return;
-    activeSnapshotSampledAtRef.current = snapshot.sampledAtMs;
-    cancelActiveSubtree();
+    if (activeScanIdRef.current === snapshot.scanId) return;
+    activeScanIdRef.current = snapshot.scanId;
     subtreeRequestIdRef.current += 1;
-    setLoadedSubtrees(prefetchedSubtreeMap(snapshot.prefetchedSubtrees));
+    setLoadedSubtrees(new Map());
+    setPagedChildren(new Map());
+    setPageCursors(new Map());
+    setPagingDirectoryId(null);
     setFocusId(root.id);
     setSelectedId(root.id);
     setPlannedIds(new Set());
@@ -253,9 +281,42 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setDragState(null);
     window.clearTimeout(blockedDropTimerRef.current);
     setBlockedDropNodeId(null);
-    setLoadingNodeId(null);
     setSubtreeError(null);
-  }, [cancelActiveSubtree, snapshot.prefetchedSubtrees, snapshot.sampledAtMs]);
+  }, [snapshot.scanId]);
+
+  useEffect(() => {
+    if (
+      directoryRefreshStatus?.phase !== "completed"
+      || !directoryRefreshStatus.target.targetPath
+      || appliedRefreshJobRef.current === directoryRefreshStatus.jobId
+    ) return;
+    appliedRefreshJobRef.current = directoryRefreshStatus.jobId;
+    const directoryId = directoryRefreshStatus.target.targetPath;
+    let cancelled = false;
+    void getCleanupIndexedDirectory({
+      scanId: snapshot.scanId,
+      directoryId,
+    }).then((directory) => {
+      if (cancelled) return;
+      retainLoadedSubtree(directory);
+      setChangedIds((current) => {
+        const next = new Set(current);
+        next.delete(directoryId);
+        return next;
+      });
+    }).catch((error) => {
+      if (!cancelled) setSubtreeError(normalizeCommandError(error));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    directoryRefreshStatus?.jobId,
+    directoryRefreshStatus?.phase,
+    directoryRefreshStatus?.target.targetPath,
+    retainLoadedSubtree,
+    snapshot.scanId,
+  ]);
 
   useEffect(() => {
     if (!command) return;
@@ -290,22 +351,18 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [command, onCommandHandled]);
 
   useEffect(() => {
-    cancelActiveSubtree();
     subtreeRequestIdRef.current += 1;
     const requestedFocusId = requestedFocusIdRef.current;
     requestedFocusIdRef.current = null;
     setFocusId(requestedFocusId ?? root.id);
     setSelectedId(requestedFocusId ?? root.id);
-    setLoadingNodeId(null);
     setSubtreeError(null);
     try {
       window.localStorage.setItem(CLEANUP_MAP_MODE_STORAGE_KEY, mapMode);
     } catch {
       // The view remains switchable for this session when storage is unavailable.
     }
-  }, [cancelActiveSubtree, mapMode]);
-
-  useEffect(() => () => cancelActiveSubtree(), [cancelActiveSubtree]);
+  }, [mapMode, root.id]);
 
   const focus = nodes.get(focusId) ?? root;
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
@@ -332,6 +389,54 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     () => [...focus.children].sort((left, right) => right.allocatedSizeBytes - left.allocatedSizeBytes || left.name.localeCompare(right.name)),
     [focus],
   );
+  const extraChildren = pagedChildren.get(focus.id) ?? [];
+  const legendChildren = useMemo(() => {
+    const loadedLogicalBytes = extraChildren.reduce(
+      (total, child) => total + child.logicalSizeBytes,
+      0,
+    );
+    const loadedAllocatedBytes = extraChildren.reduce(
+      (total, child) => total + child.allocatedSizeBytes,
+      0,
+    );
+    const loadedItemCount = extraChildren.reduce(
+      (total, child) => total + child.itemCount,
+      0,
+    );
+    const remainingAggregates = directChildren
+      .filter((child) => child.kind === "aggregate")
+      .map((child) => {
+        const logicalSizeBytes = Math.max(0, child.logicalSizeBytes - loadedLogicalBytes);
+        const allocatedSizeBytes = Math.max(0, child.allocatedSizeBytes - loadedAllocatedBytes);
+        const itemCount = Math.max(0, child.itemCount - loadedItemCount);
+        return {
+          ...child,
+          sizeBytes: allocatedSizeBytes,
+          logicalSizeBytes,
+          allocatedSizeBytes,
+          itemCount,
+        };
+      })
+      .filter((child) => child.itemCount > 0 || child.allocatedSizeBytes > 0);
+    return [
+      ...directChildren.filter((child) => child.kind !== "aggregate"),
+      ...extraChildren,
+      ...remainingAggregates,
+    ];
+  }, [directChildren, extraChildren]);
+  const implicitPageCursor = directChildren.some(
+    (child) => child.kind === "aggregate" && child.id.endsWith("#other-items"),
+  )
+    ? directChildren.filter((child) => child.kind !== "aggregate").length
+    : null;
+  const nextPageCursor = pageCursors.has(focus.id)
+    ? pageCursors.get(focus.id) ?? null
+    : implicitPageCursor;
+  const canPageFocus = Boolean(
+    snapshot.indexed
+    && focus.id.startsWith(`index:${snapshot.scanId}:`)
+    && nextPageCursor !== null,
+  );
   const planned = [...plannedIds]
     .map((id) => planNodes.get(id))
     .filter((node): node is CleanupMapNode => node !== undefined);
@@ -352,26 +457,32 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const focusChanged = changedIds.has(focus.id);
   const freshness = focusChanged ? "changed" : snapshotStatus;
   const refreshableFocus = Boolean(
-    focus.path &&
+    snapshot.indexed &&
+    focus.id.startsWith(`index:${snapshot.scanId}:`) &&
     (focus.kind === "folder" || focus.kind === "restricted") &&
     (focus.id !== root.id || snapshot.targetKind === "folder"),
   );
-  const refreshingFocus = loadingNodeId === focus.id;
+  const refreshPhase = directoryRefreshStatus?.phase ?? null;
+  const refreshingFocus = Boolean(
+    directoryRefreshStatus?.target.targetPath === focus.id
+    && refreshPhase
+    && !["cancelled", "completed", "failed"].includes(refreshPhase),
+  );
   const validationTargets = useMemo(() => {
     if (focus.path) {
       return [{
         id: focus.id,
         path: focus.path,
-        sampledAtMs: snapshot.subtreeCacheSavedAtMs?.[focus.id] ?? snapshot.sampledAtMs,
+        sampledAtMs: snapshot.sampledAtMs,
       }];
     }
     if (!focus.id.startsWith("location:")) return [];
     return focus.children.flatMap((child) => child.path ? [{
       id: child.id,
       path: child.path,
-      sampledAtMs: snapshot.subtreeCacheSavedAtMs?.[child.id] ?? snapshot.sampledAtMs,
+      sampledAtMs: snapshot.sampledAtMs,
     }] : []);
-  }, [focus, snapshot.sampledAtMs, snapshot.subtreeCacheSavedAtMs]);
+  }, [focus, snapshot.sampledAtMs]);
   const selectMapNode = useCallback((node: CleanupMapNode | null) => {
     const nextId = node?.id ?? focus.id;
     setSelectedId((current) => current === nextId ? current : nextId);
@@ -437,11 +548,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [focus.id, validationRevision, validationTargets]);
 
   const navigateTo = (node: CleanupMapNode) => {
-    if (loadingNodeId && node.id !== loadingNodeId) {
-      cancelActiveSubtree();
-      subtreeRequestIdRef.current += 1;
-      setLoadingNodeId(null);
-    }
     setSubtreeError(null);
     if (node.id === focus.id) {
       setSelectedId(node.id);
@@ -451,148 +557,68 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setSelectedId(node.id);
   };
 
-  const retainLoadedSubtree = (subtree: CleanupMapNode) => {
-    setLoadedSubtrees((current) => {
-      const next = new Map(current);
-      next.set(subtree.id, subtree);
-      return next;
-    });
-    return onSubtreeRetained?.(subtree) ?? Promise.resolve();
-  };
-
-  const refreshFocusedFolder = async () => {
-    if (!refreshableFocus || !focus.path || refreshingFocus) return;
-    if (activeSubtreeRequestRef.current) {
-      cancelActiveSubtree();
-      subtreeRequestIdRef.current += 1;
-    }
-    const requestId = subtreeRequestIdRef.current + 1;
-    subtreeRequestIdRef.current = requestId;
-    const backendRequestId = `cleanup-subtree-manual-refresh-${snapshot.sampledAtMs}-${requestId}`;
-    activeSubtreeRequestRef.current = backendRequestId;
-    setLoadingNodeId(focus.id);
+  const refreshFocusedFolder = () => {
+    if (!refreshableFocus || refreshingFocus) return;
     setSubtreeError(null);
-    try {
-      const subtree = await getCleanupSubtree({
-        requestId: backendRequestId,
-        path: focus.path,
-        scanRoot: snapshot.targetPath,
-        scanTargetKind: snapshot.targetKind,
-        safety: focus.safety,
-        expandSmallerObjects: false,
-      });
-      if (subtreeRequestIdRef.current !== requestId) return;
-      await retainLoadedSubtree(subtree as CleanupMapNode);
-      setChangedIds((current) => {
-        if (!current.has(focus.id)) return current;
-        const next = new Set(current);
-        next.delete(focus.id);
-        return next;
-      });
-    } catch (caughtError) {
-      if (subtreeRequestIdRef.current === requestId) {
-        setSubtreeError(normalizeCommandError(caughtError));
-      }
-    } finally {
-      if (subtreeRequestIdRef.current === requestId) {
-        activeSubtreeRequestRef.current = null;
-        setLoadingNodeId(null);
-      }
-    }
-  };
-
-  const revalidateCachedSubtree = async (node: CleanupMapNode) => {
-    if (!node.path || revalidatingNodeIdsRef.current.has(node.id)) return;
-    revalidatingNodeIdsRef.current.add(node.id);
-    let backendRequestId: string | null = null;
-    try {
-      const state = await getCleanupPathState(node.path);
-      const cachedAtMs = snapshot.subtreeCacheSavedAtMs?.[node.id] ?? snapshot.sampledAtMs;
-      if (!cleanupPathChanged(state, cachedAtMs)) return;
-      if (!state.exists) {
-        setChangedIds((current) => new Set(current).add(node.id));
-        return;
-      }
-      if (activeSubtreeRequestRef.current) return;
-      const requestId = subtreeRequestIdRef.current + 1;
-      subtreeRequestIdRef.current = requestId;
-      backendRequestId = `cleanup-subtree-refresh-${snapshot.sampledAtMs}-${requestId}`;
-      activeSubtreeRequestRef.current = backendRequestId;
-      const subtree = await getCleanupSubtree({
-        requestId: backendRequestId,
-        path: node.path,
-        scanRoot: snapshot.targetPath,
-        scanTargetKind: snapshot.targetKind,
-        safety: node.safety,
-        expandSmallerObjects: false,
-      });
-      if (subtreeRequestIdRef.current !== requestId) return;
-      void retainLoadedSubtree(subtree as CleanupMapNode);
-      setChangedIds((current) => {
-        if (!current.has(node.id)) return current;
-        const next = new Set(current);
-        next.delete(node.id);
-        return next;
-      });
-    } catch {
-      // Cached details stay visible; a future visit or full scan can retry.
-    } finally {
-      if (backendRequestId && activeSubtreeRequestRef.current === backendRequestId) {
-        activeSubtreeRequestRef.current = null;
-      }
-      revalidatingNodeIdsRef.current.delete(node.id);
-    }
+    onRefreshDirectory(focus.id);
   };
 
   const drillInto = async (node: CleanupMapNode) => {
-    if (loadingNodeId === node.id) return;
-    if (activeSubtreeRequestRef.current) {
-      cancelActiveSubtree();
-      subtreeRequestIdRef.current += 1;
-      setLoadingNodeId(null);
-    }
     setSubtreeError(null);
     setSelectedId(node.id);
-    if (node.kind !== "aggregate" && (node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
+    if (node.kind === "aggregate") return;
+    if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
       navigateTo(node);
-      if (loadedSubtrees.has(node.id)) void revalidateCachedSubtree(node);
       return;
     }
-    const expandingSmallerObjects = node.kind === "aggregate";
-    const subtreeRoot = expandingSmallerObjects ? focus : node;
     if (
-      !subtreeRoot.path ||
-      (!expandingSmallerObjects && (node.kind !== "folder" || !node.hasChildren))
+      !snapshot.indexed
+      || !snapshot.scanId
+      || !node.id.startsWith(`index:${snapshot.scanId}:`)
+      || (node.kind !== "folder" && node.kind !== "restricted")
+      || !node.hasChildren
     ) return;
 
     const requestId = subtreeRequestIdRef.current + 1;
     subtreeRequestIdRef.current = requestId;
-    const backendRequestId = `cleanup-subtree-${snapshot.sampledAtMs}-${requestId}`;
-    activeSubtreeRequestRef.current = backendRequestId;
-    setLoadingNodeId(node.id);
-    setSubtreeError(null);
     try {
-      const subtree = await getCleanupSubtree({
-        requestId: backendRequestId,
-        path: subtreeRoot.path,
-        scanRoot: snapshot.targetPath,
-        scanTargetKind: snapshot.targetKind,
-        safety: subtreeRoot.safety,
-        expandSmallerObjects: expandingSmallerObjects,
+      const subtree = await getCleanupIndexedDirectory({
+        scanId: snapshot.scanId,
+        directoryId: node.id,
       });
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
-      void retainLoadedSubtree(loaded);
+      retainLoadedSubtree(loaded);
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {
         setSubtreeError(normalizeCommandError(caughtError));
       }
+    }
+  };
+
+  const loadMoreChildren = async () => {
+    if (!canPageFocus || nextPageCursor === null || pagingDirectoryId) return;
+    setPagingDirectoryId(focus.id);
+    setSubtreeError(null);
+    try {
+      const page = await getCleanupIndexedChildren({
+        scanId: snapshot.scanId,
+        directoryId: focus.id,
+        cursor: nextPageCursor,
+        limit: 50,
+      });
+      setPagedChildren((current) => {
+        const existing = current.get(focus.id) ?? [];
+        const seen = new Set(existing.map((node) => node.id));
+        const appended = page.items.filter((node) => !seen.has(node.id));
+        return new Map(current).set(focus.id, [...existing, ...appended]);
+      });
+      setPageCursors((current) => new Map(current).set(focus.id, page.nextCursor));
+    } catch (caughtError) {
+      setSubtreeError(normalizeCommandError(caughtError));
     } finally {
-      if (subtreeRequestIdRef.current === requestId) {
-        activeSubtreeRequestRef.current = null;
-        setLoadingNodeId(null);
-      }
+      setPagingDirectoryId(null);
     }
   };
 
@@ -766,6 +792,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           mode,
           snapshot.targetKind === "system_disk" ? undefined : snapshot.targetPath,
           snapshot.targetKind,
+          snapshot.scanId,
         ),
       );
       if (deleteRequestIdRef.current !== requestId) {
@@ -883,6 +910,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         (item): item is CleanupMapNode & { path: string } => item.path !== null && deletedPaths.has(item.path),
       );
       const deletionTargets = deletedItems.map<CleanupDeletionTargetSnapshot>((item) => ({
+        id: item.id,
         path: item.path,
         logicalSizeBytes: item.logicalSizeBytes,
         allocatedSizeBytes: deletedByPath.get(item.path) ?? item.allocatedSizeBytes,
@@ -1038,7 +1066,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     type="button"
                     className="cleanup-map__freshness-action"
                     disabled={refreshingFocus}
-                    onClick={() => void refreshFocusedFolder()}
+                    onClick={refreshFocusedFolder}
                   >
                     {refreshingFocus ? <LoaderCircle className="is-spinning" size={13} /> : <RefreshCw size={13} />}
                     <span>
@@ -1053,10 +1081,22 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 ) : null}
               </div>
             ) : null}
-            {loadingNodeId && loadingNodeId !== focus.id ? (
-              <div className="cleanup-map__subtree-loading" role="status">
+            {refreshingFocus && directoryRefreshStatus ? (
+              <div className="cleanup-map__refresh-progress" role="status">
                 <LoaderCircle className="is-spinning" size={14} />
-                <span>{t("cleanup:map.loadingFolder")}</span>
+                <span>
+                  {t("cleanup:map.refreshProgress", {
+                    count: directoryRefreshStatus.progress.scannedEntryCount,
+                    time: Math.max(1, Math.round(directoryRefreshStatus.progress.elapsedMs / 1_000)),
+                  })}
+                </span>
+                <small title={directoryRefreshStatus.progress.currentPath}>
+                  {directoryRefreshStatus.progress.currentPath}
+                </small>
+                <button type="button" onClick={onCancelDirectoryRefresh}>
+                  <CircleStop size={13} />
+                  {t("common:cancel")}
+                </button>
               </div>
             ) : null}
             <div className="cleanup-map__surface">
@@ -1272,7 +1312,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
           {directChildren.length > 0 ? (
             <ol className="cleanup-map__legend">
-              {directChildren.map((child) => {
+              {legendChildren.map((child) => {
                 const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
                 const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
                 const expandableAggregate = child.kind === "aggregate" && focus.path !== null;
@@ -1317,6 +1357,22 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   </li>
                 );
               })}
+              {canPageFocus ? (
+                <li className="cleanup-map__load-more">
+                  <button
+                    type="button"
+                    disabled={pagingDirectoryId === focus.id}
+                    onClick={() => void loadMoreChildren()}
+                  >
+                    {pagingDirectoryId === focus.id
+                      ? <LoaderCircle className="is-spinning" size={14} />
+                      : <Plus size={14} />}
+                    <span>
+                      <strong>{t("cleanup:map.loadMore")}</strong>
+                    </span>
+                  </button>
+                </li>
+              ) : null}
             </ol>
           ) : (
             <div className="cleanup-map__leaf">
@@ -1327,6 +1383,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           {subtreeError ? (
             <div className="cleanup-map__subtree-error" role="alert">
               {t("cleanup:map.loadFailed")}: {subtreeError.message}
+            </div>
+          ) : null}
+          {directoryRefreshError ? (
+            <div className="cleanup-map__subtree-error" role="alert">
+              {t("cleanup:map.refreshFailed")}: {directoryRefreshError.message}
             </div>
           ) : null}
 
@@ -1397,12 +1458,6 @@ function materializeCleanupNode(
   };
 }
 
-function prefetchedSubtreeMap(
-  subtrees: readonly CleanupMapNode[] | undefined,
-): Map<string, CleanupMapNode> {
-  return new Map((subtrees ?? []).map((node) => [node.id, node]));
-}
-
 function readCleanupMapMode(): CleanupMapMode {
   try {
     return readMigratedStorageItem(
@@ -1417,7 +1472,10 @@ function readCleanupMapMode(): CleanupMapMode {
   }
 }
 
-function indexTree(root: CleanupMapNode) {
+function indexTree(
+  root: CleanupMapNode,
+  pagedChildren: ReadonlyMap<string, readonly CleanupMapNode[]> = new Map(),
+) {
   const nodes = new Map<string, CleanupMapNode>();
   const parents = new Map<string, string>();
   const depths = new Map<string, number>();
@@ -1428,6 +1486,14 @@ function indexTree(root: CleanupMapNode) {
     node.children.forEach((child) => visit(child, node.id, depth + 1));
   };
   visit(root, null, 0);
+  for (const [parentId, children] of pagedChildren) {
+    const parentDepth = depths.get(parentId);
+    if (parentDepth === undefined) continue;
+    for (const child of children) {
+      if (nodes.has(child.id)) continue;
+      visit(child, parentId, parentDepth + 1);
+    }
+  }
   return { nodes, parents, depths };
 }
 
