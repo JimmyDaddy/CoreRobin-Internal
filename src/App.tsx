@@ -1763,6 +1763,7 @@ function App() {
                   directoryRefreshError={cleanupScan.directoryRefreshError}
                   onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                   onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                  onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
                   fileInsights={fileInsights}
@@ -2004,6 +2005,7 @@ function App() {
                 directoryRefreshError={cleanupScan.directoryRefreshError}
                 onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                 onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
                 fileInsights={fileInsights}

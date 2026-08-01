@@ -93,6 +93,7 @@ interface CleanupAssistantProps {
   directoryRefreshError?: CommandError | null;
   onRefreshDirectory?: (directoryId: string) => void;
   onCancelDirectoryRefresh?: () => void;
+  onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
   fileInsights: FileInsightsScanController;
@@ -123,6 +124,7 @@ export function CleanupAssistant({
   directoryRefreshError = null,
   onRefreshDirectory = () => undefined,
   onCancelDirectoryRefresh = () => undefined,
+  onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
   fileInsights,
@@ -199,6 +201,12 @@ export function CleanupAssistant({
     () => volumes.filter((volume) => volume.mountPoint !== "/"),
     [volumes],
   );
+
+  useEffect(() => {
+    void onReloadLatestSnapshot().catch(() => {
+      // Keep the current result usable if the native index is briefly busy.
+    });
+  }, [onReloadLatestSnapshot]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -859,6 +867,7 @@ export function CleanupAssistant({
             directoryRefreshError={directoryRefreshError}
             onRefreshDirectory={onRefreshDirectory}
             onCancelDirectoryRefresh={onCancelDirectoryRefresh}
+            onReloadLatestSnapshot={onReloadLatestSnapshot}
             onUserActionStart={onUserActionStart}
             onUserActionComplete={onUserActionComplete}
           />

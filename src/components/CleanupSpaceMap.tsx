@@ -65,6 +65,7 @@ interface CleanupSpaceMapProps {
   directoryRefreshError?: CommandError | null;
   onRefreshDirectory?: (directoryId: string) => void;
   onCancelDirectoryRefresh?: () => void;
+  onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -134,6 +135,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   directoryRefreshError = null,
   onRefreshDirectory = () => undefined,
   onCancelDirectoryRefresh = () => undefined,
+  onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
@@ -592,7 +594,22 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {
-        setSubtreeError(normalizeCommandError(caughtError));
+        const normalized = normalizeCommandError(caughtError);
+        if (
+          normalized.code === "cleanup_index_node_missing"
+          || normalized.code === "cleanup_index_scan_missing"
+        ) {
+          try {
+            const latest = await onReloadLatestSnapshot();
+            if (
+              subtreeRequestIdRef.current !== requestId
+              || (latest && latest.scanId !== snapshot.scanId)
+            ) return;
+          } catch {
+            // Fall through to the original, actionable index error.
+          }
+        }
+        setSubtreeError(normalized);
       }
     }
   };
@@ -1382,7 +1399,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
           {subtreeError ? (
             <div className="cleanup-map__subtree-error" role="alert">
-              {t("cleanup:map.loadFailed")}: {subtreeError.message}
+              {t("cleanup:map.loadFailed")}
+              {subtreeError.code === "cleanup_index_node_missing"
+                || subtreeError.code === "cleanup_index_scan_missing"
+                ? null
+                : `: ${subtreeError.message}`}
             </div>
           ) : null}
           {directoryRefreshError ? (

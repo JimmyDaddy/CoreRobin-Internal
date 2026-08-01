@@ -147,6 +147,31 @@ describe("indexed cleanup navigation", () => {
     expect(onRefreshDirectory).toHaveBeenCalledWith(first.id);
   });
 
+  it("reconciles an expired scan generation instead of exposing a missing-node error", async () => {
+    const current = snapshot();
+    cleanupApi.getCleanupIndexedDirectory.mockRejectedValue({
+      code: "cleanup_index_node_missing",
+      message: "The selected folder is not available in this scan index.",
+    });
+    const latest = snapshot();
+    latest.scanId = "new-generation";
+    latest.root.id = "index:new-generation:1";
+    const onReloadLatestSnapshot = vi.fn().mockResolvedValue(latest);
+    render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+        onReloadLatestSnapshot={onReloadLatestSnapshot}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    await waitFor(() => expect(onReloadLatestSnapshot).toHaveBeenCalledOnce());
+    expect(screen.queryByText(/selected folder is not available/i)).toBeNull();
+  });
+
   it("shows refresh progress and exposes cancellation while the old map remains usable", () => {
     const current = snapshot();
     const first = current.root.children[0];

@@ -62,6 +62,7 @@ export function useCleanupScan() {
   const refreshTrackerRef = useRef(0);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
+  const snapshotSyncRef = useRef<Promise<CleanupScan | null> | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<CleanupScanJobStatus | null>(null);
   const [refreshError, setRefreshError] = useState<CommandError | null>(null);
 
@@ -85,6 +86,58 @@ export function useCleanupScan() {
       disposed = true;
     };
   }, []);
+
+  const reloadLatestSnapshot = useCallback((): Promise<CleanupScan | null> => {
+    if (snapshotSyncRef.current) return snapshotSyncRef.current;
+    const sync = (async () => {
+      const job = await getCleanupScanJob().catch(() => null);
+      if (job && (
+        job.phase === "preparing"
+        || job.phase === "scanning"
+        || job.phase === "paused"
+        || job.phase === "cancelling"
+        || job.phase === "stalled"
+      )) {
+        return snapshotRef.current;
+      }
+      const persisted = await loadPersistedCleanupScan();
+      if (!persisted) return null;
+      const current = snapshotRef.current;
+      if (
+        !current
+        || persisted.scanId !== current.scanId
+        || persisted.sampledAtMs > current.sampledAtMs
+      ) {
+        snapshotRef.current = persisted;
+        setSnapshot(persisted);
+        setSnapshotStatus("current");
+        setError(null);
+        scanHistory.setValue((history) =>
+          appendCleanupScanSnapshot(history, persisted));
+      }
+      return persisted;
+    })().finally(() => {
+      snapshotSyncRef.current = null;
+    });
+    snapshotSyncRef.current = sync;
+    return sync;
+  }, [scanHistory.setValue]);
+
+  useEffect(() => {
+    const reconcileWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void reloadLatestSnapshot().catch(() => {
+          // The existing result stays usable if the native cache is briefly busy.
+        });
+      }
+    };
+    window.addEventListener("focus", reconcileWhenVisible);
+    document.addEventListener("visibilitychange", reconcileWhenVisible);
+    return () => {
+      window.removeEventListener("focus", reconcileWhenVisible);
+      document.removeEventListener("visibilitychange", reconcileWhenVisible);
+    };
+  }, [reloadLatestSnapshot]);
 
   const followJob = useCallback(async (
     initialStatus: CleanupScanJobStatus,
@@ -411,6 +464,7 @@ export function useCleanupScan() {
     growthComparison,
     scanHistoryStorageStatus: scanHistory.storageStatus,
     refreshDirectory,
+    reloadLatestSnapshot,
     cancelDirectoryRefresh,
     directoryRefreshStatus: refreshStatus,
     directoryRefreshError: refreshError,

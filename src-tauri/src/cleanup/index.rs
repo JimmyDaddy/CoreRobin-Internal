@@ -346,19 +346,6 @@ fn build_indexed_scan_with_shared_identities(
     // to complete in a few milliseconds.
     let mut stats = IndexScanStats::resuming_from(started_at_ms);
     restore_completed_segment_stats(&connection, scan_id, &mut stats)?;
-    let navigation_anchor_reserve = if request.profile == CleanupScanProfile::Complete
-        && target_kind == CleanupScanTargetKind::SystemDisk
-    {
-        NAVIGATION_ANCHOR_RESERVE
-    } else {
-        0
-    };
-    let mut node_budget = IndexNodeBudget::new(
-        count_scan_nodes(&connection, scan_id)?,
-        count_scan_file_details(&connection, scan_id)?,
-        node_limit,
-        navigation_anchor_reserve,
-    );
     let root_id = root_node_id(&connection, scan_id)?;
     let selected_cleanup_root = target_kind != CleanupScanTargetKind::SystemDisk;
     let roots = if request.profile == CleanupScanProfile::CommonLocations {
@@ -366,6 +353,32 @@ fn build_indexed_scan_with_shared_identities(
     } else {
         scan_root_children(&scan_root, boundary, cancelled)?
     };
+    let required_navigation_paths = if request.profile == CleanupScanProfile::Complete
+        && target_kind == CleanupScanTargetKind::SystemDisk
+    {
+        seed_system_navigation_anchors(
+            &mut connection,
+            scan_id,
+            root_id,
+            &roots,
+            &home,
+            &scan_root,
+            &definitions,
+        )?
+    } else {
+        Vec::new()
+    };
+    let navigation_anchor_reserve = if required_navigation_paths.is_empty() {
+        0
+    } else {
+        NAVIGATION_ANCHOR_RESERVE
+    };
+    let mut node_budget = IndexNodeBudget::new(
+        count_scan_nodes(&connection, scan_id)?,
+        count_scan_file_details(&connection, scan_id)?,
+        node_limit,
+        navigation_anchor_reserve,
+    );
 
     if request.profile == CleanupScanProfile::CommonLocations {
         remove_quick_part_indexes(index_path)?;
@@ -442,7 +455,7 @@ fn build_indexed_scan_with_shared_identities(
     stats.report(&scan_root, &home, on_progress, true);
     replace_scan_locations_from_index(&connection, scan_id, &definitions)?;
     rebuild_largest_files(&connection, scan_id)?;
-    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
+    validate_navigation_anchors(&connection, scan_id, &required_navigation_paths)?;
     // The completion state is the commit marker observed by recovery. Do not
     // set it until all indexed nodes, summaries and filesystem metadata are
     // ready to be read as one coherent result. If the worker is replaced
@@ -478,6 +491,10 @@ fn build_indexed_scan_with_shared_identities(
             )
             .map_err(index_error)?;
     }
+    // Publish the new generation before pruning older ones. Readers holding a
+    // result from the previous WebView generation can therefore finish their
+    // navigation while the frontend atomically switches to this scan.
+    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
     reclaim_index_space(&connection)?;
     checkpoint_index(&connection)?;
     enforce_private_index_permissions(index_path)?;
@@ -531,8 +548,14 @@ fn scan_root_segment(
         stats,
         on_progress,
     };
-    let indexed =
-        scan_directory_into_index(&transaction, root_id, root, safety, &mut context, false)?;
+    let indexed = scan_directory_into_index(
+        &transaction,
+        Some(root_id),
+        root,
+        safety,
+        &mut context,
+        false,
+    )?;
     if !indexed.persisted && indexed.totals.item_count > 0 {
         let folded = DirectoryTotals {
             logical_size_bytes: indexed.totals.logical_size_bytes,
@@ -930,37 +953,33 @@ pub(crate) fn load_latest_indexed_scan(
     if !index_path.is_file() {
         return Ok(None);
     }
-    let (scan, discard_index) = {
-        let connection = open_index(index_path)?;
-        initialize_schema(&connection)?;
-        purge_expired_and_incomplete(&connection)?;
-        let scan_id = connection
-            .query_row(
+    let connection = open_index(index_path)?;
+    initialize_schema(&connection)?;
+    purge_expired_and_incomplete(&connection)?;
+    let scan_ids = {
+        let mut statement = connection
+            .prepare(
                 "SELECT id FROM scans WHERE state = 'completed'
-                 ORDER BY sampled_at_ms DESC LIMIT 1",
-                [],
-                |row| row.get::<_, String>(0),
+                 ORDER BY sampled_at_ms DESC, started_at_ms DESC",
             )
-            .optional()
             .map_err(index_error)?;
-        let Some(scan_id) = scan_id else {
-            return Ok(None);
-        };
-        let scan = load_scan(&connection, index_path, &scan_id)?;
-        let discard_index = scan_has_missing_nodes(&connection, &scan_id, &scan)?;
-        (scan, discard_index)
+        statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(index_error)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(index_error)?
     };
-
-    if discard_index {
-        // v0.1.21 could leave a completed quick-scan record with segment
-        // counters but no navigable nodes if its worker was recovered during
-        // the final checkpoint. It is only a local cache and cannot produce a
-        // truthful map, so clear it rather than showing a misleading 0 B scan
-        // or retaining several gigabytes of orphaned SQLite pages.
-        remove_cleanup_index(index_path)?;
-        return Ok(None);
+    for scan_id in scan_ids {
+        let scan = load_scan(&connection, index_path, &scan_id)?;
+        if !scan_has_missing_nodes(&connection, &scan_id, &scan)? {
+            return Ok(Some(scan));
+        }
+        // A broken generation is a cache entry, not a reason to destroy every
+        // older valid result. Remove only that scan and fall back to its
+        // retained predecessor.
+        delete_scan(&connection, &scan_id)?;
     }
-    Ok(Some(scan))
+    Ok(None)
 }
 
 pub(crate) fn load_indexed_scan(
@@ -1150,7 +1169,7 @@ pub(crate) fn refresh_indexed_directory(
     };
     scan_directory_into_index(
         &transaction,
-        staging_root_id,
+        Some(staging_root_id),
         &target,
         parse_safety(&safety),
         &mut context,
@@ -1312,9 +1331,163 @@ fn remove_quick_part_indexes(index_path: &Path) -> Result<(), CommandError> {
     Ok(())
 }
 
+fn seed_system_navigation_anchors(
+    connection: &mut Connection,
+    scan_id: &str,
+    root_id: i64,
+    roots: &[PathBuf],
+    home: &Path,
+    scan_root: &Path,
+    definitions: &[super::LocationDefinition],
+) -> Result<Vec<PathBuf>, CommandError> {
+    let transaction = connection.transaction().map_err(index_error)?;
+    let mut anchors = HashMap::from([(scan_root.to_path_buf(), root_id)]);
+    let mut required_paths = Vec::new();
+
+    for path in roots {
+        seed_navigation_anchor(
+            &transaction,
+            scan_id,
+            root_id,
+            path,
+            home,
+            scan_root,
+            definitions,
+            &mut anchors,
+            &mut required_paths,
+        )?;
+    }
+
+    if let Ok(relative_home) = home.strip_prefix(scan_root) {
+        let mut path = scan_root.to_path_buf();
+        let mut parent_id = root_id;
+        for component in relative_home.components() {
+            path.push(component.as_os_str());
+            parent_id = seed_navigation_anchor(
+                &transaction,
+                scan_id,
+                parent_id,
+                &path,
+                home,
+                scan_root,
+                definitions,
+                &mut anchors,
+                &mut required_paths,
+            )?;
+        }
+
+        if let Ok(entries) = fs::read_dir(home) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let Ok(file_type) = entry.file_type() else {
+                    continue;
+                };
+                if file_type.is_dir() && !file_type.is_symlink() {
+                    seed_navigation_anchor(
+                        &transaction,
+                        scan_id,
+                        parent_id,
+                        &path,
+                        home,
+                        scan_root,
+                        definitions,
+                        &mut anchors,
+                        &mut required_paths,
+                    )?;
+                }
+            }
+        }
+    }
+
+    transaction.commit().map_err(index_error)?;
+    required_paths.sort();
+    required_paths.dedup();
+    Ok(required_paths)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn seed_navigation_anchor(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+    parent_id: i64,
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+    definitions: &[super::LocationDefinition],
+    anchors: &mut HashMap<PathBuf, i64>,
+    required_paths: &mut Vec<PathBuf>,
+) -> Result<i64, CommandError> {
+    if let Some(node_id) = anchors.get(path) {
+        return Ok(*node_id);
+    }
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => metadata,
+        _ => return Ok(parent_id),
+    };
+    let safety = matching_location_definition(definitions, path)
+        .map_or(CleanupSafety::Review, |(_, definition)| definition.safety);
+    let protection_reason = cleanup_protection_for_scan_path(path, home, scan_root, false);
+    let name = cleanup_node_name(path);
+    let node_id =
+        if let Some(node_id) = find_directory_node_id(transaction, scan_id, parent_id, &name)? {
+            update_directory_placeholder(
+                transaction,
+                node_id,
+                path,
+                home,
+                safety,
+                protection_reason,
+                &metadata,
+                true,
+            )?;
+            node_id
+        } else {
+            insert_directory_placeholder(
+                transaction,
+                scan_id,
+                parent_id,
+                path,
+                home,
+                safety,
+                protection_reason,
+                &metadata,
+                true,
+            )?
+        };
+    anchors.insert(path.to_path_buf(), node_id);
+    required_paths.push(path.to_path_buf());
+    Ok(node_id)
+}
+
+fn validate_navigation_anchors(
+    connection: &Connection,
+    scan_id: &str,
+    required_paths: &[PathBuf],
+) -> Result<(), CommandError> {
+    for path in required_paths {
+        let exists = connection
+            .query_row(
+                "SELECT COUNT(*) FROM nodes
+                 WHERE scan_id = ?1 AND absolute_path = ?2
+                   AND kind IN ('folder', 'restricted')",
+                params![scan_id, path.to_string_lossy().as_ref()],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(index_error)?
+            > 0;
+        if !exists {
+            return Err(CommandError::new(
+                "cleanup_index_incomplete",
+                "The space scan finished without a complete navigation index.",
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn scan_directory_into_index(
     transaction: &Transaction<'_>,
-    parent_id: i64,
+    parent_id: Option<i64>,
     directory: &Path,
     fallback_safety: CleanupSafety,
     context: &mut ScanContext<'_>,
@@ -1365,13 +1538,36 @@ fn scan_directory_into_index(
             context.home,
             context.selected_cleanup_root,
         );
-    let persist_node = reserve_directory_node(
-        transaction,
-        context.scan_id,
-        context.node_budget,
-        path_anchor,
-    )?;
-    let node_id = persist_node
+    let existing_node_id = parent_id
+        .map(|parent_id| {
+            find_directory_node_id(
+                transaction,
+                context.scan_id,
+                parent_id,
+                &cleanup_node_name(directory),
+            )
+        })
+        .transpose()?
+        .flatten();
+    let node_id = if let Some(node_id) = existing_node_id {
+        update_directory_placeholder(
+            transaction,
+            node_id,
+            directory,
+            context.home,
+            directory_safety,
+            protection_reason,
+            &metadata,
+            path_anchor,
+        )?;
+        Some(node_id)
+    } else if let Some(parent_id) = parent_id {
+        reserve_directory_node(
+            transaction,
+            context.scan_id,
+            context.node_budget,
+            path_anchor,
+        )?
         .then(|| {
             insert_directory_placeholder(
                 transaction,
@@ -1385,7 +1581,11 @@ fn scan_directory_into_index(
                 path_anchor,
             )
         })
-        .transpose()?;
+        .transpose()?
+    } else {
+        None
+    };
+    let persist_node = node_id.is_some();
     let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
         Err(_) => {
@@ -1442,7 +1642,7 @@ fn scan_directory_into_index(
             }
             let child = scan_directory_into_index(
                 transaction,
-                node_id.unwrap_or(parent_id),
+                node_id,
                 &path,
                 directory_safety,
                 context,
@@ -2369,7 +2569,7 @@ fn insert_directory_placeholder(
     let (device_id, inode) = (None::<i64>, None::<i64>);
     transaction
         .execute(
-            "INSERT OR REPLACE INTO nodes(
+            "INSERT INTO nodes(
                scan_id, parent_id, name, absolute_path, display_path, safety, kind,
                deletion_protected, protection_reason, has_children, modified_at_ms,
                device_id, inode
@@ -2394,6 +2594,65 @@ fn insert_directory_placeholder(
         )
         .map_err(index_error)?;
     Ok(transaction.last_insert_rowid())
+}
+
+fn find_directory_node_id(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+    parent_id: i64,
+    name: &str,
+) -> Result<Option<i64>, CommandError> {
+    transaction
+        .query_row(
+            "SELECT id FROM nodes
+             WHERE scan_id = ?1 AND parent_id = ?2 AND name = ?3
+               AND kind IN ('folder', 'restricted')",
+            params![scan_id, parent_id, name],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .map_err(index_error)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn update_directory_placeholder(
+    transaction: &Transaction<'_>,
+    node_id: i64,
+    path: &Path,
+    home: &Path,
+    safety: CleanupSafety,
+    protection_reason: Option<CleanupProtectionReason>,
+    metadata: &Metadata,
+    path_anchor: bool,
+) -> Result<(), CommandError> {
+    transaction
+        .execute(
+            "UPDATE nodes SET
+               absolute_path = CASE WHEN ?2 THEN ?3 ELSE absolute_path END,
+               display_path = CASE WHEN ?2 THEN ?4 ELSE display_path END,
+               safety = ?5, kind = 'folder', deletion_protected = ?6,
+               protection_reason = ?7, modified_at_ms = ?8,
+               device_id = ?9, inode = ?10
+             WHERE id = ?1",
+            params![
+                node_id,
+                path_anchor,
+                path.to_string_lossy().as_ref(),
+                display_path(path, home),
+                safety_text(safety),
+                i64::from(protection_reason.is_some()),
+                protection_reason.map(protection_reason_text),
+                metadata
+                    .modified()
+                    .ok()
+                    .and_then(system_time_millis)
+                    .map(to_i64),
+                metadata_device_id(metadata),
+                metadata_inode(metadata),
+            ],
+        )
+        .map_err(index_error)?;
+    Ok(())
 }
 
 fn insert_file(
@@ -3564,6 +3823,37 @@ fn scan_has_missing_nodes(
     scan_id: &str,
     scan: &CleanupScan,
 ) -> Result<bool, CommandError> {
+    let (profile, target_kind) = connection
+        .query_row(
+            "SELECT profile, target_kind FROM scans WHERE id = ?1",
+            params![scan_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .map_err(index_error)?;
+    if profile == profile_text(CleanupScanProfile::Complete)
+        && target_kind == target_kind_text(CleanupScanTargetKind::SystemDisk)
+    {
+        let missing_anchor = connection
+            .query_row(
+                "SELECT EXISTS(
+                   SELECT 1 FROM scan_segments AS segment
+                   WHERE segment.scan_id = ?1
+                     AND NOT EXISTS(
+                       SELECT 1 FROM nodes
+                       WHERE nodes.scan_id = ?1
+                         AND nodes.absolute_path = segment.path
+                         AND nodes.kind IN ('folder', 'restricted')
+                     )
+                 )",
+                params![scan_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .map_err(index_error)?
+            != 0;
+        if missing_anchor {
+            return Ok(true);
+        }
+    }
     if scan.scanned_entry_count == 0
         || scan.root.allocated_size_bytes != 0
         || !scan.root.children.is_empty()
@@ -3650,7 +3940,9 @@ fn retire_previous_detailed_scans(
         .prepare(
             "SELECT id FROM scans
              WHERE id != ?1 AND state = 'completed'
-               AND target_kind = ?2 AND target_path = ?3",
+               AND target_kind = ?2 AND target_path = ?3
+             ORDER BY sampled_at_ms DESC, started_at_ms DESC
+             LIMIT -1 OFFSET 1",
         )
         .map_err(index_error)?;
     let previous = statement
@@ -3662,6 +3954,10 @@ fn retire_previous_detailed_scans(
         .collect::<Result<Vec<_>, _>>()
         .map_err(index_error)?;
     drop(statement);
+    // Retain one completed predecessor. A visible WebView can still hold its
+    // opaque node IDs for a short time after the native worker publishes a new
+    // result, so deleting every prior generation makes otherwise valid clicks
+    // fail during that handoff.
     for scan_id in previous {
         delete_scan(connection, &scan_id)?;
     }
@@ -4346,7 +4642,51 @@ mod tests {
         drop(connection);
 
         assert!(load_latest_indexed_scan(&index_path).unwrap().is_none());
-        assert!(!index_path.exists());
+        assert!(index_path.exists());
+        let connection = open_index_read_only(&index_path).unwrap();
+        assert_eq!(count_scan_nodes(&connection, "broken").unwrap(), 0);
+    }
+
+    #[test]
+    fn broken_system_generation_falls_back_to_the_previous_valid_scan() {
+        let fixture = tempdir().unwrap();
+        fs::write(fixture.path().join("item.bin"), vec![1_u8; 1_024]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        scan_folder(fixture.path(), &index_path, "previous-valid");
+        let connection = open_index(&index_path).unwrap();
+        prepare_scan(
+            &connection,
+            "broken-system",
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::SystemDisk,
+            "/",
+            "System disk",
+            "/",
+            &[],
+        )
+        .unwrap();
+        connection
+            .execute(
+                "UPDATE scans SET state = 'completed', sampled_at_ms = ?2,
+                 scanned_entry_count = 64 WHERE id = ?1",
+                params!["broken-system", now_millis_i64().saturating_add(1_000)],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO scan_segments(
+                   scan_id, path, completed_at_ms, scanned_entry_count, discovered_bytes,
+                   unreadable_entry_count, unreadable_paths_json
+                 ) VALUES ('broken-system', '/Users', ?1, 64, 1024, 0, '[]')",
+                params![now_millis_i64()],
+            )
+            .unwrap();
+        drop(connection);
+
+        let restored = load_latest_indexed_scan(&index_path).unwrap().unwrap();
+        assert_eq!(restored.scan_id, "previous-valid");
+        assert!(load_indexed_scan(&index_path, "broken-system").is_err());
     }
 
     #[cfg(unix)]
@@ -4945,6 +5285,135 @@ mod tests {
     }
 
     #[test]
+    fn system_navigation_anchors_are_seeded_before_the_node_budget_fills() {
+        let fixture = tempdir().unwrap();
+        let scan_root = fixture.path();
+        let users = scan_root.join("Users");
+        let home = users.join("demo");
+        let downloads = home.join("Downloads");
+        let applications = scan_root.join("Applications");
+        fs::create_dir_all(&downloads).unwrap();
+        fs::create_dir_all(&applications).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "system-anchors",
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::SystemDisk,
+            scan_root.to_string_lossy().as_ref(),
+            "System disk",
+            "/",
+            &[],
+        )
+        .unwrap();
+        let root_id = root_node_id(&connection, "system-anchors").unwrap();
+        let roots = vec![applications.clone(), users.clone()];
+        let required = seed_system_navigation_anchors(
+            &mut connection,
+            "system-anchors",
+            root_id,
+            &roots,
+            &home,
+            scan_root,
+            &platform_paths(&home),
+        )
+        .unwrap();
+
+        validate_navigation_anchors(&connection, "system-anchors", &required).unwrap();
+        for path in [&applications, &users, &home, &downloads] {
+            let count = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM nodes
+                     WHERE scan_id = 'system-anchors' AND absolute_path = ?1",
+                    params![path.to_string_lossy().as_ref()],
+                    |row| row.get::<_, i64>(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1, "missing anchor {}", path.display());
+        }
+
+        let before = count_scan_nodes(&connection, "system-anchors").unwrap();
+        seed_system_navigation_anchors(
+            &mut connection,
+            "system-anchors",
+            root_id,
+            &roots,
+            &home,
+            scan_root,
+            &platform_paths(&home),
+        )
+        .unwrap();
+        assert_eq!(
+            count_scan_nodes(&connection, "system-anchors").unwrap(),
+            before
+        );
+    }
+
+    #[test]
+    fn omitted_directory_descendants_are_never_flattened_into_an_ancestor() {
+        let fixture = tempdir().unwrap();
+        let omitted = fixture.path().join("omitted");
+        fs::create_dir_all(omitted.join("nested")).unwrap();
+        fs::write(omitted.join("nested/item.bin"), vec![1_u8; 512]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "no-flattening",
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::Folder,
+            fixture.path().to_string_lossy().as_ref(),
+            "fixture",
+            "fixture",
+            &[],
+        )
+        .unwrap();
+        let boundary = ScanFilesystemBoundary::for_root(fixture.path()).unwrap();
+        let mut seen_files = HashSet::new();
+        let mut stats = IndexScanStats::new();
+        let mut budget = IndexNodeBudget::new(1, 0, 1, 0);
+        let definitions = platform_paths(fixture.path());
+        let cancelled = AtomicBool::new(false);
+        let transaction = connection.transaction().unwrap();
+        let mut progress = |_| {};
+        let mut context = ScanContext {
+            scan_id: "no-flattening",
+            home: fixture.path(),
+            scan_root: fixture.path(),
+            protection_root: fixture.path(),
+            selected_cleanup_root: true,
+            boundary,
+            definitions: &definitions,
+            excluded_paths: &[],
+            cancelled: &cancelled,
+            seen_files: &mut seen_files,
+            shared_seen_files: None,
+            node_budget: &mut budget,
+            stats: &mut stats,
+            on_progress: &mut progress,
+        };
+        let result = scan_directory_into_index(
+            &transaction,
+            None,
+            &omitted,
+            CleanupSafety::Review,
+            &mut context,
+            false,
+        )
+        .unwrap();
+        transaction.commit().unwrap();
+
+        assert!(!result.persisted);
+        assert_eq!(result.totals.item_count, 1);
+        assert_eq!(count_scan_nodes(&connection, "no-flattening").unwrap(), 1);
+    }
+
+    #[test]
     fn large_flat_directories_keep_only_the_largest_visible_files() {
         let fixture = tempdir().unwrap();
         for index in 0..2_000 {
@@ -5187,18 +5656,20 @@ mod tests {
     }
 
     #[test]
-    fn only_the_latest_detailed_index_is_kept_for_each_target() {
+    fn the_latest_and_previous_detailed_indexes_are_kept_for_each_target() {
         let fixture = tempdir().unwrap();
         fs::write(fixture.path().join("item.bin"), vec![1_u8; 1_024]).unwrap();
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
-        scan_folder(fixture.path(), &index_path, "older");
+        scan_folder(fixture.path(), &index_path, "oldest");
+        scan_folder(fixture.path(), &index_path, "previous");
         let latest = scan_folder(fixture.path(), &index_path, "latest");
 
         assert_eq!(latest.scan_id, "latest");
-        assert!(load_indexed_scan(&index_path, "older").is_err());
+        assert!(load_indexed_scan(&index_path, "oldest").is_err());
+        assert!(load_indexed_scan(&index_path, "previous").is_ok());
         let summary = cleanup_index_summary(&index_path).unwrap();
-        assert_eq!(summary.scan_count, 1);
+        assert_eq!(summary.scan_count, 2);
     }
 
     #[test]

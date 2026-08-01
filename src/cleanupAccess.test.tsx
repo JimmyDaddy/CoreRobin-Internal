@@ -44,6 +44,14 @@ beforeEach(async () => {
 });
 
 describe("cleanup full disk access guide", () => {
+  it("reconciles a background-completed scan whenever the cleanup page opens", async () => {
+    const onReloadLatestSnapshot = vi.fn().mockResolvedValue(null);
+
+    renderAssistant(vi.fn(), null, false, null, null, onReloadLatestSnapshot);
+
+    await waitFor(() => expect(onReloadLatestSnapshot).toHaveBeenCalledOnce());
+  });
+
   it("starts with one focused scan action and keeps secondary tools out of the way", () => {
     renderAssistant(vi.fn());
 
@@ -206,6 +214,7 @@ function renderAssistant(
   loading = false,
   progress: CleanupScanProgress | null = null,
   error: CommandError | null = null,
+  onReloadLatestSnapshot: () => Promise<ReturnType<typeof getMockCleanupScan> | null> = async () => null,
 ) {
   return render(
     <CleanupAssistant
@@ -219,6 +228,7 @@ function renderAssistant(
       onScan={onScan}
       onCancel={() => undefined}
       onDeletionApplied={async () => undefined}
+      onReloadLatestSnapshot={onReloadLatestSnapshot}
       fileInsights={EMPTY_FILE_INSIGHTS}
     />,
   );
