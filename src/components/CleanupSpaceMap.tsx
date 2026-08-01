@@ -1107,7 +1107,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 changedIds={changedIds}
                 collectedIds={collectedIds}
                 focusKey={focus.id}
-                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects")) })}
+                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects")) })}
                 onSelect={selectMapNode}
                 onActivate={(node) => {
                   if (suppressNextClickRef.current) {
@@ -1130,7 +1130,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   if (parent) navigateTo(parent);
                 }}
               >
-                <span>{nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</span>
+                <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</span>
                 <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
                 {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
               </button>
@@ -1198,7 +1198,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </span>
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
               {mapMode === "path" && selected.path ? (
                 <nav
                   className="cleanup-map__selected-path"
@@ -1345,7 +1345,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                         {protectedNode ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
-                        <strong>{nodeDisplayName(child, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
+                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
                           {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
                           {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
@@ -1398,7 +1398,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
                 : selected.kind === "aggregate" && focus.path
-                  ? t("cleanup:map.smallerObjectsHint")
+                  ? t("cleanup:map.otherContentHint")
                 : isTrashRootPath(selected.path)
                   ? t("cleanup:map.trashRootProtected")
                   : canCollectCleanupNode(selected)

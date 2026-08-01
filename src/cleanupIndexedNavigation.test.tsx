@@ -81,7 +81,7 @@ describe("indexed cleanup navigation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Smaller objects/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Other content/ }));
 
     await Promise.resolve();
     expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe("indexed cleanup navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Show 50 more/ }));
     const pagedButton = await screen.findByRole("button", { name: /Paged folder/ });
-    expect(screen.queryByRole("button", { name: /Smaller objects/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Other content/ })).toBeNull();
     fireEvent.click(pagedButton);
 
     await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
@@ -195,7 +195,7 @@ function file(id: string, path: string): CleanupNode {
 
 function aggregate(): CleanupNode {
   return {
-    ...folder("index:fixture:1#other-items", "Smaller objects", "", false),
+    ...folder("index:fixture:1#other-items", "Other content", "", false),
     path: null,
     kind: "aggregate",
     deletionProtected: true,

@@ -53,37 +53,63 @@ struct IndexedFile {
 #[derive(Debug)]
 struct IndexNodeBudget {
     used: usize,
+    file_details: usize,
     limit: usize,
     ordinary_limit: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DirectoryReservation {
+    NewSlot,
+    ReclaimFileDetail,
+    Unavailable,
+}
+
 impl IndexNodeBudget {
-    fn new(used: usize, limit: usize, required_reserve: usize) -> Self {
+    fn new(used: usize, file_details: usize, limit: usize, required_reserve: usize) -> Self {
         let limit = limit.max(used);
         let ordinary_limit = limit
             .saturating_sub(required_reserve.min(limit.saturating_sub(used)))
             .max(used);
         Self {
             used,
+            file_details: file_details.min(used),
             limit,
             ordinary_limit,
         }
     }
 
-    fn reserve(&mut self) -> bool {
+    fn reserve_file_detail(&mut self) -> bool {
         if self.used >= self.ordinary_limit {
             return false;
         }
         self.used = self.used.saturating_add(1);
+        self.file_details = self.file_details.saturating_add(1);
         true
     }
 
-    fn reserve_required(&mut self) -> bool {
-        if self.used >= self.limit {
-            return false;
+    fn reserve_directory(&mut self, required: bool) -> DirectoryReservation {
+        let ceiling = if required {
+            self.limit
+        } else {
+            self.ordinary_limit
+        };
+        if self.used < ceiling {
+            self.used = self.used.saturating_add(1);
+            return DirectoryReservation::NewSlot;
         }
-        self.used = self.used.saturating_add(1);
-        true
+        // The reserved ceiling limits growth, not replacement. A directory may
+        // still take over an existing file-detail slot without increasing the
+        // index, including after required navigation anchors start using their
+        // reserved capacity.
+        if self.used <= self.limit && self.file_details > 0 {
+            return DirectoryReservation::ReclaimFileDetail;
+        }
+        DirectoryReservation::Unavailable
+    }
+
+    fn record_reclaimed_file_detail(&mut self) {
+        self.file_details = self.file_details.saturating_sub(1);
     }
 }
 
@@ -313,6 +339,7 @@ fn build_indexed_scan_with_shared_identities(
     };
     let mut node_budget = IndexNodeBudget::new(
         count_scan_nodes(&connection, scan_id)?,
+        count_scan_file_details(&connection, scan_id)?,
         node_limit,
         navigation_anchor_reserve,
     );
@@ -1084,6 +1111,7 @@ pub(crate) fn refresh_indexed_directory(
     let mut stats = IndexScanStats::new();
     let mut node_budget = IndexNodeBudget::new(
         count_scan_nodes(&connection, &staging_scan_id)?,
+        count_scan_file_details(&connection, &staging_scan_id)?,
         refresh_node_limit,
         0,
     );
@@ -1321,11 +1349,12 @@ fn scan_directory_into_index(
             context.home,
             context.selected_cleanup_root,
         );
-    let persist_node = if path_anchor {
-        context.node_budget.reserve_required()
-    } else {
-        context.node_budget.reserve()
-    };
+    let persist_node = reserve_directory_node(
+        transaction,
+        context.scan_id,
+        context.node_budget,
+        path_anchor,
+    )?;
     let node_id = persist_node
         .then(|| {
             insert_directory_placeholder(
@@ -1491,7 +1520,7 @@ fn scan_directory_into_index(
     if let (Some(node_id), Some(mut visible_files)) = (node_id, visible_files) {
         visible_files.sort_by_key(|file| Reverse(file.allocated_size_bytes));
         for file in visible_files {
-            if context.node_budget.reserve() {
+            if context.node_budget.reserve_file_detail() {
                 insert_file(transaction, context.scan_id, node_id, &file)?;
             } else {
                 totals.omitted_file_logical_bytes = totals
@@ -1525,6 +1554,71 @@ fn should_preserve_navigation_anchor(
         || directory == home
         || directory.parent() == Some(home)
         || home.starts_with(directory)
+}
+
+fn reserve_directory_node(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+    node_budget: &mut IndexNodeBudget,
+    required: bool,
+) -> Result<bool, CommandError> {
+    match node_budget.reserve_directory(required) {
+        DirectoryReservation::NewSlot => Ok(true),
+        DirectoryReservation::ReclaimFileDetail => {
+            let reclaimed = reclaim_smallest_file_detail(transaction, scan_id)?;
+            if reclaimed {
+                node_budget.record_reclaimed_file_detail();
+            }
+            Ok(reclaimed)
+        }
+        DirectoryReservation::Unavailable => Ok(false),
+    }
+}
+
+fn reclaim_smallest_file_detail(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+) -> Result<bool, CommandError> {
+    let candidate = transaction
+        .query_row(
+            "SELECT id, parent_id, logical_size_bytes, allocated_size_bytes, item_count
+             FROM nodes
+             WHERE scan_id = ?1 AND kind = 'file'
+             ORDER BY allocated_size_bytes ASC, id DESC
+             LIMIT 1",
+            params![scan_id],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(index_error)?;
+    let Some((node_id, parent_id, logical, allocated, item_count)) = candidate else {
+        return Ok(false);
+    };
+    transaction
+        .execute(
+            "DELETE FROM nodes WHERE scan_id = ?1 AND id = ?2 AND kind = 'file'",
+            params![scan_id, node_id],
+        )
+        .map_err(index_error)?;
+    transaction
+        .execute(
+            "UPDATE nodes SET
+               omitted_file_logical_bytes = omitted_file_logical_bytes + ?2,
+               omitted_file_allocated_bytes = omitted_file_allocated_bytes + ?3,
+               omitted_file_count = omitted_file_count + ?4
+             WHERE scan_id = ?1 AND id = ?5",
+            params![scan_id, logical, allocated, item_count, parent_id],
+        )
+        .map_err(index_error)?;
+    Ok(true)
 }
 
 fn retain_largest_indexed_file(
@@ -1632,7 +1726,7 @@ fn scan_direct_files_into_index(
     }
     candidates.sort_by_key(|file| Reverse(file.allocated_size_bytes));
     for file in candidates {
-        if context.node_budget.reserve() {
+        if context.node_budget.reserve_file_detail() {
             insert_file(transaction, context.scan_id, parent_id, &file)?;
         } else {
             totals.omitted_file_logical_bytes = totals
@@ -2039,6 +2133,8 @@ fn initialize_schema(connection: &Connection) -> Result<(), CommandError> {
             );
             CREATE INDEX IF NOT EXISTS nodes_by_parent
               ON nodes(scan_id, parent_id, allocated_size_bytes DESC, name);
+            CREATE INDEX IF NOT EXISTS nodes_file_reclaim
+              ON nodes(scan_id, kind, allocated_size_bytes, id);
             CREATE TABLE IF NOT EXISTS scan_segments(
               scan_id TEXT NOT NULL,
               path TEXT NOT NULL,
@@ -3369,6 +3465,17 @@ fn count_scan_nodes(connection: &Connection, scan_id: &str) -> Result<usize, Com
         .map_err(index_error)
 }
 
+fn count_scan_file_details(connection: &Connection, scan_id: &str) -> Result<usize, CommandError> {
+    connection
+        .query_row(
+            "SELECT COUNT(*) FROM nodes WHERE scan_id = ?1 AND kind = 'file'",
+            params![scan_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|count| usize::try_from(count).unwrap_or(usize::MAX))
+        .map_err(index_error)
+}
+
 fn count_subtree_nodes(
     connection: &Connection,
     scan_id: &str,
@@ -4532,15 +4639,107 @@ mod tests {
 
     #[test]
     fn node_budget_keeps_capacity_for_required_navigation_anchors() {
-        let mut budget = IndexNodeBudget::new(0, 5, 2);
+        let mut budget = IndexNodeBudget::new(0, 0, 5, 2);
 
-        assert!(budget.reserve());
-        assert!(budget.reserve());
-        assert!(budget.reserve());
-        assert!(!budget.reserve());
-        assert!(budget.reserve_required());
-        assert!(budget.reserve_required());
-        assert!(!budget.reserve_required());
+        assert!(budget.reserve_file_detail());
+        assert!(budget.reserve_file_detail());
+        assert!(budget.reserve_file_detail());
+        assert!(!budget.reserve_file_detail());
+        assert_eq!(
+            budget.reserve_directory(false),
+            DirectoryReservation::ReclaimFileDetail
+        );
+        assert_eq!(
+            budget.reserve_directory(true),
+            DirectoryReservation::NewSlot
+        );
+        assert_eq!(
+            budget.reserve_directory(true),
+            DirectoryReservation::NewSlot
+        );
+        assert_eq!(
+            budget.reserve_directory(true),
+            DirectoryReservation::ReclaimFileDetail
+        );
+        assert_eq!(
+            budget.reserve_directory(false),
+            DirectoryReservation::ReclaimFileDetail
+        );
+        budget.record_reclaimed_file_detail();
+        budget.record_reclaimed_file_detail();
+        budget.record_reclaimed_file_detail();
+        assert_eq!(
+            budget.reserve_directory(false),
+            DirectoryReservation::Unavailable
+        );
+    }
+
+    #[test]
+    fn directory_navigation_reclaims_file_details_when_the_index_is_full() {
+        let fixture = tempdir().unwrap();
+        let early_files = fixture.path().join("aaa-files");
+        let late_tree = fixture.path().join("zzz-tree/level-one/level-two");
+        fs::create_dir_all(&early_files).unwrap();
+        fs::create_dir_all(&late_tree).unwrap();
+        for index in 0..10 {
+            fs::write(
+                early_files.join(format!("item-{index:02}.bin")),
+                vec![index as u8; (index + 1) * 4_096],
+            )
+            .unwrap();
+        }
+        fs::write(late_tree.join("kept-in-totals.bin"), vec![7_u8; 1_024]).unwrap();
+
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let scan = scan_folder_with_limit(fixture.path(), &index_path, "directory-first", 8);
+        let connection = open_index_read_only(&index_path).unwrap();
+        assert!(count_scan_nodes(&connection, &scan.scan_id).unwrap() <= 8);
+
+        let early = scan
+            .root
+            .children
+            .iter()
+            .find(|node| node.name == "aaa-files")
+            .unwrap();
+        let early = load_indexed_directory(&index_path, &scan.scan_id, &early.id).unwrap();
+        let omitted = early
+            .children
+            .iter()
+            .find(|node| node.kind == CleanupNodeKind::Aggregate)
+            .unwrap();
+        let retained_files = early
+            .children
+            .iter()
+            .filter(|node| node.kind == CleanupNodeKind::File)
+            .map(|node| node.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(early.item_count, 10);
+        assert_eq!(omitted.item_count, 7);
+        assert_eq!(
+            retained_files,
+            vec!["item-09.bin", "item-08.bin", "item-07.bin"]
+        );
+
+        let late = scan
+            .root
+            .children
+            .iter()
+            .find(|node| node.name == "zzz-tree")
+            .unwrap();
+        let late = load_indexed_directory(&index_path, &scan.scan_id, &late.id).unwrap();
+        let level_one = late
+            .children
+            .iter()
+            .find(|node| node.name == "level-one")
+            .unwrap();
+        let level_one = load_indexed_directory(&index_path, &scan.scan_id, &level_one.id).unwrap();
+        assert!(
+            level_one
+                .children
+                .iter()
+                .any(|node| node.name == "level-two")
+        );
     }
 
     #[test]

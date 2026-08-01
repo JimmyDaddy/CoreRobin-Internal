@@ -544,6 +544,8 @@ export default interface Resources {
         "path": "文件路径"
       },
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
+      "otherContent": "其余内容",
+      "otherContentHint": "这里汇总因索引容量或当前分页而未单独展示的内容；它们不一定较小。可继续浏览列表，或在访达中打开当前文件夹。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
       "refreshFailed": "无法刷新文件夹",
@@ -553,8 +555,6 @@ export default interface Resources {
       "restrictedObjects": "无法读取的对象",
       "selected": "当前选择",
       "selectedPath": "当前选择路径",
-      "smallerObjects": "较小的对象",
-      "smallerObjectsHint": "这是未在当前图层单独展示的较小项目汇总；可在右侧分页查看更多，或在访达中打开目录。",
       "title": "空间都去了哪里",
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {
