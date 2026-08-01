@@ -15,6 +15,7 @@
   "liveSort": "实时排序",
   "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
   "search": "搜索进程",
+  "clearSearch": "清除进程筛选",
   "searchPlaceholder": "名称、PID、用户或端口",
   "matchedPort": "匹配端口 {{port}}",
   "systemProcesses": "系统进程",

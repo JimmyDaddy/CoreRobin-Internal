@@ -3240,6 +3240,26 @@ code,
   font-family: inherit;
 }
 
+.search-field__clear {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  padding: 0;
+  place-items: center;
+  color: var(--text-muted);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.search-field__clear:hover,
+.search-field__clear:focus-visible {
+  color: var(--text);
+  background: var(--panel-soft);
+  outline: none;
+}
+
 .process-table {
   display: flex;
   min-height: 0;
@@ -4546,7 +4566,7 @@ code,
 .cleanup-map__legend span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .cleanup-map__legend strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .cleanup-map__legend small { color: var(--text-muted); font-size: 12px; }
-.cleanup-map__legend b { color: var(--text-soft); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cleanup-map__legend b { display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cleanup-map__legend button.is-selected strong { color: #fff; }
 .cleanup-map__legend button.is-selected small,
 .cleanup-map__legend button.is-selected b { color: var(--text); }

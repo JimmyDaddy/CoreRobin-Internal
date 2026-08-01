@@ -240,6 +240,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const deleteRequestIdRef = useRef(0);
   const subtreeRequestIdRef = useRef(0);
   const activeScanIdRef = useRef(snapshot.scanId);
+  const activeSampledAtRef = useRef(snapshot.sampledAtMs);
   const appliedRefreshJobRef = useRef<string | null>(null);
   const requestedFocusIdRef = useRef<string | null>(null);
 
@@ -265,6 +266,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   useEffect(() => {
     if (activeScanIdRef.current === snapshot.scanId) return;
     activeScanIdRef.current = snapshot.scanId;
+    activeSampledAtRef.current = snapshot.sampledAtMs;
     subtreeRequestIdRef.current += 1;
     setLoadedSubtrees(new Map());
     setPagedChildren(new Map());
@@ -287,6 +289,15 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [snapshot.scanId]);
 
   useEffect(() => {
+    if (activeSampledAtRef.current === snapshot.sampledAtMs) return;
+    activeSampledAtRef.current = snapshot.sampledAtMs;
+    subtreeRequestIdRef.current += 1;
+    setPagedChildren(new Map());
+    setPageCursors(new Map());
+    setPagingDirectoryId(null);
+  }, [snapshot.sampledAtMs]);
+
+  useEffect(() => {
     if (
       directoryRefreshStatus?.phase !== "completed"
       || !directoryRefreshStatus.target.targetPath
@@ -294,13 +305,19 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     ) return;
     appliedRefreshJobRef.current = directoryRefreshStatus.jobId;
     const directoryId = directoryRefreshStatus.target.targetPath;
+    const directoryChain = [directoryId];
+    let ancestorId = parents.get(directoryId) ?? null;
+    while (ancestorId && ancestorId !== root.id) {
+      directoryChain.push(ancestorId);
+      ancestorId = parents.get(ancestorId) ?? null;
+    }
     let cancelled = false;
-    void getCleanupIndexedDirectory({
+    void Promise.all(directoryChain.map((directoryId) => getCleanupIndexedDirectory({
       scanId: snapshot.scanId,
       directoryId,
-    }).then((directory) => {
+    }))).then((directories) => {
       if (cancelled) return;
-      retainLoadedSubtree(directory);
+      setLoadedSubtrees(new Map(directories.map((directory) => [directory.id, directory])));
       setChangedIds((current) => {
         const next = new Set(current);
         next.delete(directoryId);
@@ -316,7 +333,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     directoryRefreshStatus?.jobId,
     directoryRefreshStatus?.phase,
     directoryRefreshStatus?.target.targetPath,
-    retainLoadedSubtree,
+    parents,
+    root.id,
     snapshot.scanId,
   ]);
 
@@ -568,7 +586,18 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const drillInto = async (node: CleanupMapNode) => {
     setSubtreeError(null);
     setSelectedId(node.id);
-    if (node.kind === "aggregate") return;
+    if (node.kind === "aggregate") {
+      if (
+        node.hasChildren
+        && !refreshingFocus
+        && snapshot.indexed
+        && focus.id.startsWith(`index:${snapshot.scanId}:`)
+        && (focus.kind === "folder" || focus.kind === "restricted")
+      ) {
+        onRefreshDirectory(focus.id);
+      }
+      return;
+    }
     if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
       navigateTo(node);
       return;
@@ -1124,7 +1153,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 changedIds={changedIds}
                 collectedIds={collectedIds}
                 focusKey={focus.id}
-                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects")) })}
+                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects")) })}
                 onSelect={selectMapNode}
                 onActivate={(node) => {
                   if (suppressNextClickRef.current) {
@@ -1147,7 +1176,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   if (parent) navigateTo(parent);
                 }}
               >
-                <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</span>
+                <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</span>
                 <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
                 {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
               </button>
@@ -1215,7 +1244,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </span>
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</strong>
               {mapMode === "path" && selected.path ? (
                 <nav
                   className="cleanup-map__selected-path"
@@ -1332,7 +1361,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               {legendChildren.map((child) => {
                 const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
                 const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
-                const expandableAggregate = child.kind === "aggregate" && focus.path !== null;
+                const expandableAggregate = child.kind === "aggregate" && child.hasChildren && focus.path !== null;
                 const protectionReason = expandableAggregate ? null : cleanupNodeProtection(child);
                 const protectedNode = protectionReason !== null;
                 const protectedDragSource = dragState?.dragging && dragState.nodeId === child.id && dragState.blocked;
@@ -1362,14 +1391,23 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                         {protectedNode ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
-                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
+                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
-                          {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
+                          {child.kind === "aggregate" && child.hasChildren
+                            ? t("cleanup:map.types.deferred")
+                            : t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
                           {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
                           {protectedNode ? ` · ${t("cleanup:map.basket.protectedBadge")}` : ""}
                         </small>
                       </span>
-                      <b>{child.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(child.allocatedSizeBytes)}</b>
+                      <b>
+                        {child.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(child.allocatedSizeBytes)}
+                        {expandableAggregate
+                          ? refreshingFocus
+                            ? <LoaderCircle className="is-spinning" size={14} />
+                            : <ChevronRight size={14} />
+                          : null}
+                      </b>
                     </button>
                   </li>
                 );
@@ -1418,6 +1456,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               ? t("cleanup:map.basket.collectedHint")
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
+                : selected.kind === "aggregate" && selected.hasChildren && focus.path
+                  ? t("cleanup:map.deferredContentHint")
                 : selected.kind === "aggregate" && focus.path
                   ? t("cleanup:map.otherContentHint")
                 : isTrashRootPath(selected.path)
@@ -1538,8 +1578,13 @@ function percentage(value: number, total: number) {
   return total <= 0 ? "0%" : `${Math.max(0.1, value / total * 100).toFixed(value / total >= 0.1 ? 0 : 1)}%`;
 }
 
-function nodeDisplayName(node: CleanupMapNode, aggregateLabel: string, restrictedLabel: string) {
-  if (node.kind === "aggregate") return aggregateLabel;
+function nodeDisplayName(
+  node: CleanupMapNode,
+  aggregateLabel: string,
+  deferredLabel: string,
+  restrictedLabel: string,
+) {
+  if (node.kind === "aggregate") return node.hasChildren ? deferredLabel : aggregateLabel;
   if (node.kind === "restricted" && node.path === null) return restrictedLabel;
   return node.name;
 }

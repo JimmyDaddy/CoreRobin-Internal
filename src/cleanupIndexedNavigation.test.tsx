@@ -87,6 +87,25 @@ describe("indexed cleanup navigation", () => {
     expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
   });
 
+  it("loads deferred directory details without rescanning the whole disk", () => {
+    const current = snapshot();
+    current.root.children = [deferredAggregate()];
+    const onRefreshDirectory = vi.fn();
+    render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+        onRefreshDirectory={onRefreshDirectory}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Details not loaded/ }));
+
+    expect(onRefreshDirectory).toHaveBeenCalledWith(current.root.id);
+    expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
+  });
+
   it("keeps paged children navigable through the native index", async () => {
     const current = snapshot();
     current.root.children = [current.root.children[0], aggregate()];
@@ -193,6 +212,40 @@ describe("indexed cleanup navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledOnce();
   });
+
+  it("reloads a refreshed directory together with its indexed parent chain", async () => {
+    const current = snapshot();
+    const first = current.root.children[0];
+    const deep = folder("index:fixture:4", "Deep folder", "/fixture/first/deep");
+    first.children = [deep];
+    cleanupApi.getCleanupIndexedDirectory.mockImplementation(
+      async ({ directoryId }: { directoryId: string }) => directoryId === deep.id
+        ? { ...deep, children: [file("index:fixture:5", "/fixture/first/deep/file.bin")] }
+        : { ...first, children: [deep] },
+    );
+    const status = refreshStatus(deep.id);
+    status.phase = "completed";
+    status.resultAvailable = true;
+
+    render(
+      <CleanupSpaceMap
+        snapshot={{ ...current, sampledAtMs: 2_000 }}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+        directoryRefreshStatus={status}
+      />,
+    );
+
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledTimes(2));
+    expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
+      scanId: "fixture",
+      directoryId: deep.id,
+    });
+    expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
+      scanId: "fixture",
+      directoryId: first.id,
+    });
+  });
 });
 
 function folder(id: string, name: string, path: string, hasChildren = true): CleanupNode {
@@ -225,6 +278,13 @@ function aggregate(): CleanupNode {
     kind: "aggregate",
     deletionProtected: true,
     protectionReason: "aggregate",
+  };
+}
+
+function deferredAggregate(): CleanupNode {
+  return {
+    ...aggregate(),
+    hasChildren: true,
   };
 }
 

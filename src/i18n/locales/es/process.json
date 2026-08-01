@@ -15,6 +15,7 @@
   "liveSort": "Orden en vivo",
   "liveSortTitle": "Reordenar automáticamente la lista cuando cambien las métricas",
   "search": "Buscar procesos",
+  "clearSearch": "Borrar el filtro de procesos",
   "searchPlaceholder": "Nombre, PID, usuario o puerto",
   "matchedPort": "Coincide con el puerto {{port}}",
   "systemProcesses": "Procesos del sistema",

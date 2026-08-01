@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 import i18n from "../i18n";
 import type { ProcessRow } from "../types";
@@ -77,6 +78,23 @@ function table(
   );
 }
 
+function SearchHarness({ initialQuery = "node" }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
+  return (
+    <ProcessTable
+      processes={[processFixture(1, "node", 10)]}
+      selectedIdentity={null}
+      onSelect={() => undefined}
+      query={query}
+      onQueryChange={setQuery}
+      sortKey="cpu"
+      direction="descending"
+      onSortChange={() => undefined}
+      liveSort={false}
+    />
+  );
+}
+
 describe("process table sorting mode", () => {
   const initial = [
     processFixture(1, "Alpha", 90),
@@ -110,5 +128,42 @@ describe("process table sorting mode", () => {
     fireEvent.click(screen.getByRole("button", { name: "实时排序" }));
 
     expect(onLiveSortChange).toHaveBeenCalledWith(true);
+  });
+
+  it("allows typing, deleting, clearing, and escaping the process filter", () => {
+    render(<SearchHarness />);
+    const input = screen.getByRole("textbox", { name: "搜索进程" }) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(input.value).toBe("");
+
+    fireEvent.change(input, { target: { value: "node" } });
+    fireEvent.click(screen.getByRole("button", { name: "清除进程筛选" }));
+    expect(input.value).toBe("");
+
+    fireEvent.change(input, { target: { value: "8080" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input.value).toBe("");
+  });
+
+  it("clears the filter when restoring the default process view", () => {
+    const onQueryChange = vi.fn();
+    render(
+      <ProcessTable
+        processes={initial}
+        selectedIdentity={null}
+        onSelect={() => undefined}
+        query="node"
+        onQueryChange={onQueryChange}
+        sortKey="cpu"
+        direction="descending"
+        onSortChange={() => undefined}
+        liveSort={false}
+        onResetPreferences={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认进程视图" }));
+    expect(onQueryChange).toHaveBeenCalledWith("");
   });
 });

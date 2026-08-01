@@ -32,7 +32,7 @@ cargo run --manifest-path src-tauri/Cargo.toml --release --example cleanup-bench
 1. 固定机器、卷、供电模式和 Full Disk Access 状态；记录 OS、硬件、CoreRobin commit、DaisyDisk 版本及 fixture 条目数。
 2. 冷态数据必须在重启后首次运行，不能把 `purge` 或手工删缓存冒充重启冷态。
 3. 热态连续运行至少 3 次，记录原始 JSON，并以中位数比较。
-4. 同时记录 `child_watchdog_*`、索引刷新取消测试和 `indexed_child_queries_stay_below_the_interaction_budget`，覆盖卡死 child、事务性刷新与无文件系统访问的目录查询；`node_budget_preserves_totals_without_persisting_the_whole_tree`、`large_flat_directories_keep_only_the_largest_visible_files` 另行约束超大目录的索引容量与聚合结果准确性。
+4. 同时记录 `child_watchdog_*`、索引刷新取消测试和 `indexed_child_queries_stay_below_the_interaction_budget`，覆盖卡死 child、事务性刷新与无文件系统访问的目录查询；`node_budget_preserves_totals_without_persisting_the_whole_tree`、`large_flat_directories_keep_only_the_largest_visible_files` 约束超大目录的索引容量与聚合结果准确性，`directory_refresh_reclaims_unrelated_details_as_a_loadable_summary` 约束按需载入只能替换工作集且被折叠目录仍可再次展开。
 5. 内部目录遍历取消目标为 2 秒内返回，外部 child 取消目标为 5 秒内返回；索引目录查询 P95 必须低于 150 ms。
 6. 只有同机同 fixture 的基线和修复后数据都存在时，才判断“回退是否超过 10%”；没有基线时只记录当前值，不能宣称已满足相对阈值。
 

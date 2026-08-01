@@ -15,6 +15,7 @@
   "liveSort": "Live sort",
   "liveSortTitle": "Keep reordering the list as live metrics change",
   "search": "Search processes",
+  "clearSearch": "Clear process filter",
   "searchPlaceholder": "Name, PID, user, or port",
   "matchedPort": "Matches port {{port}}",
   "systemProcesses": "System processes",

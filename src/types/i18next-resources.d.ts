@@ -505,6 +505,8 @@ export default interface Resources {
       "categoryRoot": "用途分类",
       "centerBack": "返回上一级目录",
       "chooseDeleteMethod": "选择删除方式",
+      "deferredContent": "尚未展开的内容",
+      "deferredContentHint": "这个文件夹的容量已经统计，但详细目录尚未保存在本机索引中。点击上方项目即可只载入当前文件夹，无需重新扫描整个磁盘。",
       "deleteResult": {
         "cancelled": "已停止清理，完成了 {{deletedCount}} 项",
         "cancelledNoDeletion": "已停止清理，没有内容被完整处理",
@@ -559,6 +561,7 @@ export default interface Resources {
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {
         "aggregate": "合并的小对象",
+        "deferred": "可继续载入",
         "file": "文件",
         "folder": "文件夹",
         "restricted": "受限内容"
@@ -2044,6 +2047,7 @@ export default interface Resources {
   },
   "process": {
     "allProcesses": "所有进程",
+    "clearSearch": "清除进程筛选",
     "collapse": "折叠{{name}}",
     "columns": {
       "disk": "磁盘 I/O",
