@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.24",
+  "title": {
+    "zh-CN": "更可靠、更易操作的空间扫描",
+    "en": "More reliable, easier-to-navigate space scans"
+  },
+  "items": [
+    {
+      "zh-CN": "大型目录不再全部合并成无法操作的“其余内容”；尚未展开的分支会明确标出，点击即可只载入当前文件夹，无需重新扫描整个磁盘。",
+      "en": "Large folders are no longer collapsed into an unusable Other content entry. Branches whose details have not been loaded are clearly identified and can be expanded without rescanning the entire disk."
+    },
+    {
+      "zh-CN": "长时间空间扫描在应用隐藏到后台或遇到无响应目录时会自动绕过受影响位置并继续，已完成的扫描结果也会保留，不再要求退出应用后重来。",
+      "en": "Long-running space scans now continue when CoreRobin is hidden or a folder stops responding. Affected locations are skipped automatically, and completed results remain available instead of requiring an app restart and a new scan."
+    },
+    {
+      "zh-CN": "进程筛选新增清除按钮和 Escape 快捷操作，重置进程视图时也会同时清空搜索内容。",
+      "en": "Process filtering now includes a clear button and Escape shortcut, and resetting the process view also clears the current search."
+    }
+  ]
+}
