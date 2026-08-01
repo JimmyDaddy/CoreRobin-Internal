@@ -15,6 +15,7 @@
   "liveSort": "リアルタイム並べ替え",
   "liveSortTitle": "指標の変化に合わせて一覧を自動的に並べ替えます",
   "search": "プロセスを検索",
+  "clearSearch": "プロセスの絞り込みを解除",
   "searchPlaceholder": "名前、PID、ユーザー名、またはポート",
   "matchedPort": "ポート {{port}} に一致",
   "systemProcesses": "システムプロセス",

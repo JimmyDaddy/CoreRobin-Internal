@@ -15,6 +15,7 @@
   "liveSort": "即時排序",
   "liveSortTitle": "開啟後，清單會隨即時指標變化自動重新排序",
   "search": "搜尋程序",
+  "clearSearch": "清除程序篩選",
   "searchPlaceholder": "名稱、PID、使用者或連接埠",
   "matchedPort": "符合連接埠 {{port}}",
   "systemProcesses": "系統程序",

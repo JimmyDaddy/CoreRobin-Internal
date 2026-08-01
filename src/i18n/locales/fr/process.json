@@ -15,6 +15,7 @@
   "liveSort": "Tri en direct",
   "liveSortTitle": "Retriez automatiquement la liste quand les mesures évoluent",
   "search": "Rechercher les processus",
+  "clearSearch": "Effacer le filtre des processus",
   "searchPlaceholder": "Nom, PID, utilisateur ou port",
   "matchedPort": "Correspond au port {{port}}",
   "systemProcesses": "Processus système",

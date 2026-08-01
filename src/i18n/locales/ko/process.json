@@ -15,6 +15,7 @@
   "liveSort": "실시간 정렬",
   "liveSortTitle": "지표가 바뀔 때마다 목록을 자동으로 다시 정렬합니다",
   "search": "프로세스 검색",
+  "clearSearch": "프로세스 필터 지우기",
   "searchPlaceholder": "프로세스 이름, PID, 사용자 또는 포트",
   "matchedPort": "포트 {{port}} 일치",
   "systemProcesses": "시스템 프로세스",

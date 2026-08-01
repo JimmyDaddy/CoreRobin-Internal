@@ -15,6 +15,7 @@
   "liveSort": "Live sortieren",
   "liveSortTitle": "Die Liste bei Änderungen der Live-Messwerte automatisch neu sortieren",
   "search": "Prozesse suchen",
+  "clearSearch": "Prozessfilter löschen",
   "searchPlaceholder": "Name, PID, Benutzer oder Port",
   "matchedPort": "Passender Port {{port}}",
   "systemProcesses": "Systemprozesse",

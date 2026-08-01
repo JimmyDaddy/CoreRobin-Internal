@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import {
   type CSSProperties,
@@ -512,6 +513,7 @@ export function ProcessTable({
                 title={t("process:resetView")}
                 onClick={() => {
                   setOrderRevision((current) => current + 1);
+                  onQueryChange("");
                   onResetPreferences?.();
                 }}
               >
@@ -520,18 +522,36 @@ export function ProcessTable({
             </div>
           ) : null}
         </div>
-        <label className="search-field">
+        <div className="search-field" role="search">
           <Search size={15} aria-hidden="true" />
-          <span className="sr-only">{t("process:search")}</span>
           <input
+            aria-label={t("process:search")}
             value={query}
             maxLength={256}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" || !query) return;
+              event.preventDefault();
+              onQueryChange("");
+            }}
             placeholder={t("process:searchPlaceholder")}
             spellCheck={false}
           />
-          {query ? <kbd>{matchCount}</kbd> : <kbd>⌘K</kbd>}
-        </label>
+          {query ? (
+            <>
+              <kbd>{matchCount}</kbd>
+              <button
+                className="search-field__clear"
+                type="button"
+                aria-label={t("process:clearSearch")}
+                title={t("process:clearSearch")}
+                onClick={() => onQueryChange("")}
+              >
+                <X size={13} />
+              </button>
+            </>
+          ) : <kbd>⌘K</kbd>}
+        </div>
       </div>
 
       <div
