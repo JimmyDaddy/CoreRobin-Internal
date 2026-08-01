@@ -25,7 +25,7 @@ use super::{
     matching_location_definition, platform_paths, resolve_cleanup_scan_target, system_time_millis,
 };
 
-const SCHEMA_VERSION: i64 = 3;
+const SCHEMA_VERSION: i64 = 4;
 const DETAIL_RETENTION: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const DIRECTORY_PAGE_SIZE: usize = 24;
 const VISIBLE_FILES_PER_DIRECTORY: usize = 64;
@@ -4415,7 +4415,7 @@ mod tests {
         legacy
             .execute_batch(
                 "CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                 INSERT INTO metadata(key, value) VALUES ('schema_version', '2');
+                 INSERT INTO metadata(key, value) VALUES ('schema_version', '3');
                  CREATE TABLE legacy_payload(value TEXT NOT NULL);
                  INSERT INTO legacy_payload(value) VALUES ('stale');",
             )
