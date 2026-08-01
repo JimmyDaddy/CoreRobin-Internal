@@ -30,6 +30,10 @@ const DETAIL_RETENTION: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const DIRECTORY_PAGE_SIZE: usize = 24;
 const VISIBLE_FILES_PER_DIRECTORY: usize = 64;
 const MAX_PERSISTED_NODES: usize = 250_000;
+// Reclaim file details in bounded batches once directory navigation needs
+// their slots. This keeps the directory-first policy without turning every
+// later directory into a separate indexed SQLite lookup and delete.
+const DIRECTORY_RECLAIM_MAX_BATCH: usize = 4_096;
 // Keep the route to user-owned content navigable even when earlier system trees
 // consume the ordinary node budget during a complete system-disk scan.
 const NAVIGATION_ANCHOR_RESERVE: usize = 4_096;
@@ -108,8 +112,20 @@ impl IndexNodeBudget {
         DirectoryReservation::Unavailable
     }
 
-    fn record_reclaimed_file_detail(&mut self) {
-        self.file_details = self.file_details.saturating_sub(1);
+    fn directory_reclaim_batch_size(&self) -> usize {
+        // Reclaim at most 1/64 of a custom index limit so tiny test or refresh
+        // indexes do not discard most of their useful file details at once.
+        // Production scans still amortize the work across roughly 4K future
+        // directory insertions.
+        let proportional_batch = self.limit.saturating_add(63).checked_div(64).unwrap_or(1);
+        self.file_details
+            .min(DIRECTORY_RECLAIM_MAX_BATCH.min(proportional_batch).max(1))
+    }
+
+    fn record_reclaimed_file_details(&mut self, count: usize) {
+        let reclaimed = count.min(self.file_details).min(self.used);
+        self.used = self.used.saturating_sub(reclaimed);
+        self.file_details = self.file_details.saturating_sub(reclaimed);
     }
 }
 
@@ -1562,63 +1578,95 @@ fn reserve_directory_node(
     node_budget: &mut IndexNodeBudget,
     required: bool,
 ) -> Result<bool, CommandError> {
-    match node_budget.reserve_directory(required) {
-        DirectoryReservation::NewSlot => Ok(true),
-        DirectoryReservation::ReclaimFileDetail => {
-            let reclaimed = reclaim_smallest_file_detail(transaction, scan_id)?;
-            if reclaimed {
-                node_budget.record_reclaimed_file_detail();
+    loop {
+        match node_budget.reserve_directory(required) {
+            DirectoryReservation::NewSlot => return Ok(true),
+            DirectoryReservation::ReclaimFileDetail => {
+                let batch_size = node_budget.directory_reclaim_batch_size();
+                let reclaimed = reclaim_smallest_file_details(transaction, scan_id, batch_size)?;
+                if reclaimed == 0 {
+                    return Ok(false);
+                }
+                node_budget.record_reclaimed_file_details(reclaimed);
             }
-            Ok(reclaimed)
+            DirectoryReservation::Unavailable => return Ok(false),
         }
-        DirectoryReservation::Unavailable => Ok(false),
     }
 }
 
-fn reclaim_smallest_file_detail(
+fn reclaim_smallest_file_details(
     transaction: &Transaction<'_>,
     scan_id: &str,
-) -> Result<bool, CommandError> {
-    let candidate = transaction
-        .query_row(
-            "SELECT id, parent_id, logical_size_bytes, allocated_size_bytes, item_count
+    limit: usize,
+) -> Result<usize, CommandError> {
+    if limit == 0 {
+        return Ok(0);
+    }
+    transaction
+        .execute_batch(
+            "CREATE TEMP TABLE IF NOT EXISTS cleanup_file_reclaim_batch(
+               id INTEGER PRIMARY KEY,
+               parent_id INTEGER NOT NULL,
+               logical_size_bytes INTEGER NOT NULL,
+               allocated_size_bytes INTEGER NOT NULL,
+               item_count INTEGER NOT NULL
+             ) WITHOUT ROWID;
+             CREATE INDEX IF NOT EXISTS temp.cleanup_file_reclaim_batch_parent
+               ON cleanup_file_reclaim_batch(parent_id);
+             DELETE FROM temp.cleanup_file_reclaim_batch;",
+        )
+        .map_err(index_error)?;
+    let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+    let selected = transaction
+        .execute(
+            "INSERT INTO temp.cleanup_file_reclaim_batch(
+               id, parent_id, logical_size_bytes, allocated_size_bytes, item_count
+             )
+             SELECT id, parent_id, logical_size_bytes, allocated_size_bytes, item_count
              FROM nodes
              WHERE scan_id = ?1 AND kind = 'file'
-             ORDER BY allocated_size_bytes ASC, id DESC
-             LIMIT 1",
+             ORDER BY allocated_size_bytes ASC, id ASC
+             LIMIT ?2",
+            params![scan_id, limit],
+        )
+        .map_err(index_error)?;
+    if selected == 0 {
+        return Ok(0);
+    }
+    transaction
+        .execute(
+            "UPDATE nodes AS parent SET
+               omitted_file_logical_bytes = omitted_file_logical_bytes + (
+                 SELECT COALESCE(SUM(batch.logical_size_bytes), 0)
+                 FROM temp.cleanup_file_reclaim_batch AS batch
+                 WHERE batch.parent_id = parent.id
+               ),
+               omitted_file_allocated_bytes = omitted_file_allocated_bytes + (
+                 SELECT COALESCE(SUM(batch.allocated_size_bytes), 0)
+                 FROM temp.cleanup_file_reclaim_batch AS batch
+                 WHERE batch.parent_id = parent.id
+               ),
+               omitted_file_count = omitted_file_count + (
+                 SELECT COALESCE(SUM(batch.item_count), 0)
+                 FROM temp.cleanup_file_reclaim_batch AS batch
+                 WHERE batch.parent_id = parent.id
+               )
+             WHERE parent.scan_id = ?1 AND parent.id IN (
+               SELECT parent_id FROM temp.cleanup_file_reclaim_batch
+             )",
             params![scan_id],
-            |row| {
-                Ok((
-                    row.get::<_, i64>(0)?,
-                    row.get::<_, i64>(1)?,
-                    row.get::<_, i64>(2)?,
-                    row.get::<_, i64>(3)?,
-                    row.get::<_, i64>(4)?,
-                ))
-            },
         )
-        .optional()
         .map_err(index_error)?;
-    let Some((node_id, parent_id, logical, allocated, item_count)) = candidate else {
-        return Ok(false);
-    };
-    transaction
+    let deleted = transaction
         .execute(
-            "DELETE FROM nodes WHERE scan_id = ?1 AND id = ?2 AND kind = 'file'",
-            params![scan_id, node_id],
+            "DELETE FROM nodes
+             WHERE scan_id = ?1 AND kind = 'file' AND id IN (
+               SELECT id FROM temp.cleanup_file_reclaim_batch
+             )",
+            params![scan_id],
         )
         .map_err(index_error)?;
-    transaction
-        .execute(
-            "UPDATE nodes SET
-               omitted_file_logical_bytes = omitted_file_logical_bytes + ?2,
-               omitted_file_allocated_bytes = omitted_file_allocated_bytes + ?3,
-               omitted_file_count = omitted_file_count + ?4
-             WHERE scan_id = ?1 AND id = ?5",
-            params![scan_id, logical, allocated, item_count, parent_id],
-        )
-        .map_err(index_error)?;
-    Ok(true)
+    Ok(deleted.min(selected))
 }
 
 fn retain_largest_indexed_file(
@@ -2133,6 +2181,8 @@ fn initialize_schema(connection: &Connection) -> Result<(), CommandError> {
             );
             CREATE INDEX IF NOT EXISTS nodes_by_parent
               ON nodes(scan_id, parent_id, allocated_size_bytes DESC, name);
+            CREATE INDEX IF NOT EXISTS nodes_by_path
+              ON nodes(scan_id, absolute_path);
             CREATE INDEX IF NOT EXISTS nodes_file_reclaim
               ON nodes(scan_id, kind, allocated_size_bytes, id);
             CREATE TABLE IF NOT EXISTS scan_segments(
@@ -4480,6 +4530,30 @@ mod tests {
     }
 
     #[test]
+    fn exact_path_lookups_use_the_persisted_path_index() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        let query_plan = connection
+            .query_row(
+                "EXPLAIN QUERY PLAN
+                 SELECT allocated_size_bytes, item_count
+                 FROM nodes
+                 WHERE scan_id = ?1 AND absolute_path = ?2
+                 ORDER BY id LIMIT 1",
+                params!["scan", "/Users"],
+                |row| row.get::<_, String>(3),
+            )
+            .unwrap();
+
+        assert!(
+            query_plan.contains("nodes_by_path"),
+            "unexpected query plan: {query_plan}"
+        );
+    }
+
+    #[test]
     fn bundled_sqlite_includes_the_wal_reset_fix() {
         let connection = Connection::open_in_memory().unwrap();
         let version = connection
@@ -4649,6 +4723,12 @@ mod tests {
             budget.reserve_directory(false),
             DirectoryReservation::ReclaimFileDetail
         );
+        assert_eq!(budget.directory_reclaim_batch_size(), 1);
+        budget.record_reclaimed_file_details(1);
+        assert_eq!(
+            budget.reserve_directory(false),
+            DirectoryReservation::NewSlot
+        );
         assert_eq!(
             budget.reserve_directory(true),
             DirectoryReservation::NewSlot
@@ -4660,18 +4740,106 @@ mod tests {
         assert_eq!(
             budget.reserve_directory(true),
             DirectoryReservation::ReclaimFileDetail
+        );
+        budget.record_reclaimed_file_details(1);
+        assert_eq!(
+            budget.reserve_directory(true),
+            DirectoryReservation::NewSlot
         );
         assert_eq!(
             budget.reserve_directory(false),
             DirectoryReservation::ReclaimFileDetail
         );
-        budget.record_reclaimed_file_detail();
-        budget.record_reclaimed_file_detail();
-        budget.record_reclaimed_file_detail();
+        budget.record_reclaimed_file_details(1);
         assert_eq!(
             budget.reserve_directory(false),
             DirectoryReservation::Unavailable
         );
+    }
+
+    #[test]
+    fn production_node_budget_reclaims_directory_capacity_in_bounded_batches() {
+        let mut budget = IndexNodeBudget::new(
+            MAX_PERSISTED_NODES,
+            100_000,
+            MAX_PERSISTED_NODES,
+            NAVIGATION_ANCHOR_RESERVE,
+        );
+
+        assert_eq!(budget.directory_reclaim_batch_size(), 3_907);
+        budget.record_reclaimed_file_details(3_907);
+        assert_eq!(budget.used, MAX_PERSISTED_NODES - 3_907);
+        assert_eq!(budget.file_details, 96_093);
+        assert_eq!(
+            budget.reserve_directory(true),
+            DirectoryReservation::NewSlot
+        );
+    }
+
+    #[test]
+    fn batched_file_detail_reclaim_preserves_parent_aggregates() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "batch-reclaim",
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::Folder,
+            storage.path().to_string_lossy().as_ref(),
+            "batch-reclaim",
+            "/batch-reclaim",
+            &[],
+        )
+        .unwrap();
+        let root_id = root_node_id(&connection, "batch-reclaim").unwrap();
+        let transaction = connection.transaction().unwrap();
+        let mut expected_omitted = 0_i64;
+        for index in 0_i64..4_096 {
+            let size = index + 1;
+            if index < 3_907 {
+                expected_omitted += size;
+            }
+            transaction
+                .execute(
+                    "INSERT INTO nodes(
+                       scan_id, parent_id, name, absolute_path, display_path,
+                       logical_size_bytes, allocated_size_bytes, item_count,
+                       safety, kind
+                     ) VALUES (?1, ?2, ?3, NULL, ?3, ?4, ?4, 1, 'review', 'file')",
+                    params!["batch-reclaim", root_id, format!("file-{index:04}"), size],
+                )
+                .unwrap();
+        }
+
+        assert_eq!(
+            reclaim_smallest_file_details(&transaction, "batch-reclaim", 3_907).unwrap(),
+            3_907
+        );
+        transaction.commit().unwrap();
+
+        let remaining = count_scan_file_details(&connection, "batch-reclaim").unwrap();
+        let (omitted_logical, omitted_allocated, omitted_count) = connection
+            .query_row(
+                "SELECT omitted_file_logical_bytes,
+                        omitted_file_allocated_bytes,
+                        omitted_file_count
+                 FROM nodes WHERE id = ?1",
+                params![root_id],
+                |row| {
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, i64>(2)?,
+                    ))
+                },
+            )
+            .unwrap();
+        assert_eq!(remaining, 189);
+        assert_eq!(omitted_logical, expected_omitted);
+        assert_eq!(omitted_allocated, expected_omitted);
+        assert_eq!(omitted_count, 3_907);
     }
 
     #[test]
