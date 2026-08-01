@@ -4145,43 +4145,6 @@ code,
 .cleanup-assistant__error strong { color: var(--text); font-size: 12px; }
 .cleanup-assistant__error span { color: var(--text-soft); font-size: 12px; line-height: 1.5; }
 
-.cleanup-assistant__summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  margin: 12px 14px 0;
-  padding: 12px 13px;
-  border: 1px solid rgba(86, 207, 147, 0.16);
-  border-radius: 11px;
-  background: linear-gradient(90deg, var(--green-soft), rgba(86, 207, 147, 0.025));
-}
-
-.cleanup-assistant__summary > span {
-  display: inline-flex;
-  color: var(--green);
-}
-
-.cleanup-assistant__summary > div:not(.cleanup-assistant__scan-meta) {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cleanup-assistant__summary small { color: var(--text-muted); font-size: 11px; }
-.cleanup-assistant__summary strong { font-size: 22px; letter-spacing: -0.025em; }
-.cleanup-assistant__summary em { color: var(--text-soft); font-size: 11px; font-style: normal; }
-
-.cleanup-assistant__scan-meta {
-  display: flex;
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
 .cleanup-assistant__retained {
   color: var(--green);
   font-weight: 650;
@@ -6953,11 +6916,6 @@ code,
     grid-column: 2;
   }
   .cleanup-location-grid { grid-template-columns: minmax(0, 1fr); }
-  .cleanup-assistant__summary { grid-template-columns: auto minmax(0, 1fr); }
-  .cleanup-assistant__scan-meta {
-    align-items: flex-start;
-    grid-column: 2;
-  }
   .cleanup-largest > header {
     align-items: flex-start;
     flex-direction: column;
@@ -6971,13 +6929,6 @@ code,
   }
   .content-layout--wide .cleanup-location-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .content-layout--wide .cleanup-assistant__summary {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .content-layout--wide .cleanup-assistant__scan-meta {
-    align-items: flex-end;
-    grid-column: auto;
   }
   .network-overview__heading {
     align-items: flex-start;

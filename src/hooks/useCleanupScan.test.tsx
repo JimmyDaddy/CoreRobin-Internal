@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCleanupScan } from "./useCleanupScan";
+import type { CleanupScan } from "../types";
 
 const cleanupApi = vi.hoisted(() => ({
   cancelCleanupScan: vi.fn(),
@@ -41,9 +42,11 @@ function Harness() {
   return (
     <>
       <span>{scan.phase ?? "idle"}</span>
+      <span>{scan.snapshot?.scanId ?? "no-snapshot"}</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
       <button type="button" onClick={() => void scan.clear()}>Clear</button>
+      <button type="button" onClick={() => void scan.reloadLatestSnapshot()}>Reload</button>
     </>
   );
 }
@@ -147,4 +150,52 @@ describe("cleanup scan lifecycle", () => {
     expect(cleanupApi.cancelCleanupScan).toHaveBeenCalledOnce();
     expect(cleanupApi.cancelCleanupDirectoryRefresh).toHaveBeenCalledOnce();
   });
+
+  it("atomically adopts a newer persisted scan generation", async () => {
+    cleanupApi.loadPersistedCleanupScan
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("no-snapshot")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+
+    await waitFor(() => expect(screen.getByText("cleanup-new")).toBeTruthy());
+    expect(cleanupApi.getCleanupScanJob).toHaveBeenCalled();
+  });
 });
+
+function latestSnapshot(): CleanupScan {
+  return {
+    scanId: "cleanup-new",
+    profile: "complete",
+    scopePaths: [],
+    indexed: true,
+    indexByteSize: 1_024,
+    sampledAtMs: 1_000,
+    durationMs: 100,
+    root: {
+      id: "index:cleanup-new:1",
+      name: "System disk",
+      path: "/",
+      sizeBytes: 1,
+      logicalSizeBytes: 1,
+      allocatedSizeBytes: 1,
+      itemCount: 1,
+      safety: "review",
+      kind: "folder",
+      hasChildren: false,
+      children: [],
+    },
+    locations: [],
+    largestFiles: [],
+    installedApplications: [],
+    applicationInventoryAvailable: false,
+    scannedEntryCount: 1,
+    unreadableEntryCount: 0,
+    unreadablePaths: [],
+    deletionAvailable: true,
+    targetKind: "system_disk",
+    targetPath: "/",
+  };
+}

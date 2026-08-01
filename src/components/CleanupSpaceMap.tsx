@@ -65,6 +65,7 @@ interface CleanupSpaceMapProps {
   directoryRefreshError?: CommandError | null;
   onRefreshDirectory?: (directoryId: string) => void;
   onCancelDirectoryRefresh?: () => void;
+  onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
 }
@@ -134,6 +135,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   directoryRefreshError = null,
   onRefreshDirectory = () => undefined,
   onCancelDirectoryRefresh = () => undefined,
+  onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
@@ -592,7 +594,22 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {
-        setSubtreeError(normalizeCommandError(caughtError));
+        const normalized = normalizeCommandError(caughtError);
+        if (
+          normalized.code === "cleanup_index_node_missing"
+          || normalized.code === "cleanup_index_scan_missing"
+        ) {
+          try {
+            const latest = await onReloadLatestSnapshot();
+            if (
+              subtreeRequestIdRef.current !== requestId
+              || (latest && latest.scanId !== snapshot.scanId)
+            ) return;
+          } catch {
+            // Fall through to the original, actionable index error.
+          }
+        }
+        setSubtreeError(normalized);
       }
     }
   };
@@ -1107,7 +1124,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 changedIds={changedIds}
                 collectedIds={collectedIds}
                 focusKey={focus.id}
-                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects")) })}
+                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects")) })}
                 onSelect={selectMapNode}
                 onActivate={(node) => {
                   if (suppressNextClickRef.current) {
@@ -1130,7 +1147,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   if (parent) navigateTo(parent);
                 }}
               >
-                <span>{nodeDisplayName(focus, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</span>
+                <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</span>
                 <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
                 {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
               </button>
@@ -1198,7 +1215,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </span>
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
               {mapMode === "path" && selected.path ? (
                 <nav
                   className="cleanup-map__selected-path"
@@ -1345,7 +1362,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                         {protectedNode ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
-                        <strong>{nodeDisplayName(child, t("cleanup:map.smallerObjects"), t("cleanup:map.restrictedObjects"))}</strong>
+                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
                           {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
                           {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
@@ -1382,7 +1399,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
           {subtreeError ? (
             <div className="cleanup-map__subtree-error" role="alert">
-              {t("cleanup:map.loadFailed")}: {subtreeError.message}
+              {t("cleanup:map.loadFailed")}
+              {subtreeError.code === "cleanup_index_node_missing"
+                || subtreeError.code === "cleanup_index_scan_missing"
+                ? null
+                : `: ${subtreeError.message}`}
             </div>
           ) : null}
           {directoryRefreshError ? (
@@ -1398,7 +1419,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
                 : selected.kind === "aggregate" && focus.path
-                  ? t("cleanup:map.smallerObjectsHint")
+                  ? t("cleanup:map.otherContentHint")
                 : isTrashRootPath(selected.path)
                   ? t("cleanup:map.trashRootProtected")
                   : canCollectCleanupNode(selected)

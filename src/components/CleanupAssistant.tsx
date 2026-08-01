@@ -93,6 +93,7 @@ interface CleanupAssistantProps {
   directoryRefreshError?: CommandError | null;
   onRefreshDirectory?: (directoryId: string) => void;
   onCancelDirectoryRefresh?: () => void;
+  onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
   fileInsights: FileInsightsScanController;
@@ -123,6 +124,7 @@ export function CleanupAssistant({
   directoryRefreshError = null,
   onRefreshDirectory = () => undefined,
   onCancelDirectoryRefresh = () => undefined,
+  onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
   fileInsights,
@@ -168,6 +170,12 @@ export function CleanupAssistant({
     ) ?? 0,
     [snapshot],
   );
+  const visibleGrowthComparison = growthComparison && (
+    growthComparison.growthBytes !== 0
+    || growthComparison.fastestGrowing.length > 0
+  )
+    ? growthComparison
+    : null;
   const progressLocation = progress
     ? cleanupProgressLocation(progress.currentPath, t)
     : t("cleanup:progress.locations.personal");
@@ -193,6 +201,12 @@ export function CleanupAssistant({
     () => volumes.filter((volume) => volume.mountPoint !== "/"),
     [volumes],
   );
+
+  useEffect(() => {
+    void onReloadLatestSnapshot().catch(() => {
+      // Keep the current result usable if the native index is briefly busy.
+    });
+  }, [onReloadLatestSnapshot]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -734,15 +748,6 @@ export function CleanupAssistant({
         </div>
       ) : null}
 
-      {snapshot ? (
-        <FileInsightsLauncher
-          scan={fileInsights.snapshot}
-          snapshotStatus={fileInsights.snapshotStatus}
-          loading={fileInsights.loading}
-          onOpen={() => setActiveWorkspace("files")}
-        />
-      ) : null}
-
       {snapshot && preferAccessibleScan ? (
         <div className="cleanup-assistant__limited-notice" role="status">
           <ShieldCheck size={15} />
@@ -761,73 +766,94 @@ export function CleanupAssistant({
 
       {snapshot ? (
         <>
-          {snapshot.profile === "common_locations" ? (
-            <section className="cleanup-scan-coverage" aria-label={t("cleanup:coverage.title")}>
+          <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
+            <div className="cleanup-result-overview__primary">
+              <span><ArchiveRestore size={18} /></span>
               <div>
-                <Sparkles size={17} />
-                <span>
-                  <strong>{t("cleanup:coverage.quickResult", {
-                    count: snapshot.scopePaths.length,
-                    size: formatBytes(snapshot.root.allocatedSizeBytes),
-                  })}</strong>
-                  <small>{t("cleanup:coverage.quickLimit")}</small>
-                </span>
+                <small>{t("cleanup:reclaimableEstimate")}</small>
+                <strong>{formatBytes(reclaimableBytes)}</strong>
+                <em>{t("cleanup:estimateBoundary")}</em>
               </div>
-              <button
-                className="button button--secondary"
-                type="button"
-                disabled={loading}
-                onClick={continueWithCompleteScan}
-              >
-                <HardDrive size={14} />
-                {t("cleanup:coverage.continueComplete")}
-              </button>
-            </section>
-          ) : null}
-          <div className="cleanup-assistant__summary">
-            <span><ArchiveRestore size={17} /></span>
-            <div>
-              <small>{t("cleanup:reclaimableEstimate")}</small>
-              <strong>{formatBytes(reclaimableBytes)}</strong>
-              <em>{t("cleanup:estimateBoundary")}</em>
             </div>
-            <div className="cleanup-assistant__scan-meta">
-              <span>{t("cleanup:entriesScanned", { count: snapshot.scannedEntryCount })}</span>
-              <span>{new Date(snapshot.sampledAtMs).toLocaleTimeString(i18n.resolvedLanguage, { hour: "2-digit", minute: "2-digit" })}</span>
-            </div>
-          </div>
 
-          {growthComparison ? (
-            <section className="cleanup-growth" aria-labelledby="cleanup-growth-title">
-              <div className="cleanup-growth__headline">
-                <span><Sparkles size={17} /></span>
-                <div>
-                  <small>{t("cleanup:growth.since", {
-                    time: new Date(growthComparison.previousSampledAtMs)
-                      .toLocaleString(i18n.resolvedLanguage),
-                  })}</small>
-                  <h3 id="cleanup-growth-title">{t("cleanup:growth.title")}</h3>
-                </div>
-                <strong className={growthComparison.growthBytes > 0 ? "is-growth" : "is-reduced"}>
-                  {growthComparison.growthBytes > 0 ? "+" : ""}
-                  {formatBytes(growthComparison.growthBytes)}
+            <div className="cleanup-result-overview__coverage">
+              <strong>
+                {snapshot.profile === "common_locations"
+                  ? t("cleanup:coverage.quickResult", {
+                      count: snapshot.scopePaths.length,
+                      size: formatBytes(snapshot.root.allocatedSizeBytes),
+                    })
+                  : t("cleanup:entriesScanned", { count: snapshot.scannedEntryCount })}
+              </strong>
+              <small>
+                {snapshot.profile === "common_locations"
+                  ? t("cleanup:coverage.quickLimit")
+                  : t("cleanup:scanDuration", {
+                      seconds: Math.max(0.1, snapshot.durationMs / 1_000).toFixed(1),
+                    })}
+              </small>
+              {snapshot.profile === "common_locations" ? (
+                <span>
+                  {t("cleanup:entriesScanned", { count: snapshot.scannedEntryCount })}
+                  <i aria-hidden="true" />
+                  {t("cleanup:scanDuration", {
+                    seconds: Math.max(0.1, snapshot.durationMs / 1_000).toFixed(1),
+                  })}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="cleanup-result-overview__actions">
+              <FileInsightsLauncher
+                compact
+                scan={fileInsights.snapshot}
+                snapshotStatus={fileInsights.snapshotStatus}
+                loading={fileInsights.loading}
+                onOpen={() => setActiveWorkspace("files")}
+              />
+              {snapshot.profile === "common_locations" ? (
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={loading}
+                  onClick={continueWithCompleteScan}
+                >
+                  <HardDrive size={14} />
+                  {t("cleanup:coverage.continueComplete")}
+                </button>
+              ) : null}
+            </div>
+
+            {visibleGrowthComparison ? (
+              <div className="cleanup-result-overview__growth">
+                <span>
+                  <Sparkles size={15} />
+                  <span>
+                    <strong>{t("cleanup:growth.title")}</strong>
+                    <small>{t("cleanup:growth.since", {
+                      time: new Date(visibleGrowthComparison.previousSampledAtMs)
+                        .toLocaleString(i18n.resolvedLanguage),
+                    })}</small>
+                  </span>
+                </span>
+                <strong className={visibleGrowthComparison.growthBytes > 0 ? "is-growth" : "is-reduced"}>
+                  {visibleGrowthComparison.growthBytes > 0 ? "+" : ""}
+                  {formatBytes(visibleGrowthComparison.growthBytes)}
                 </strong>
+                {visibleGrowthComparison.fastestGrowing.length > 0 ? (
+                  <ol>
+                    {visibleGrowthComparison.fastestGrowing.slice(0, 3).map((directory) => (
+                      <li key={directory.path} title={directory.path}>
+                        <FolderOpen size={13} />
+                        <span>{directory.name}</span>
+                        <strong>+{formatBytes(directory.growthBytes)}</strong>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
               </div>
-              {growthComparison.fastestGrowing.length > 0 ? (
-                <ol>
-                  {growthComparison.fastestGrowing.map((directory) => (
-                    <li key={directory.path}>
-                      <FolderOpen size={14} />
-                      <span title={directory.path}>{directory.name}</span>
-                      <strong>+{formatBytes(directory.growthBytes)}</strong>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p>{t("cleanup:growth.noGrowth")}</p>
-              )}
-            </section>
-          ) : null}
+            ) : null}
+          </section>
 
           <CleanupSpaceMap
             snapshot={snapshot}
@@ -841,6 +867,7 @@ export function CleanupAssistant({
             directoryRefreshError={directoryRefreshError}
             onRefreshDirectory={onRefreshDirectory}
             onCancelDirectoryRefresh={onCancelDirectoryRefresh}
+            onReloadLatestSnapshot={onReloadLatestSnapshot}
             onUserActionStart={onUserActionStart}
             onUserActionComplete={onUserActionComplete}
           />

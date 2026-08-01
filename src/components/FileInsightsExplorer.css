@@ -65,6 +65,47 @@
 .file-insights-launcher__status.is-ready strong { color: var(--green); font-size: 15px; }
 .file-insights-launcher__status.is-ready small { color: var(--text-muted); font-size: 10px; }
 
+.file-insights-launcher.is-compact {
+  width: auto;
+  grid-template-columns: auto minmax(0, auto) auto;
+  gap: 7px;
+  min-height: 34px;
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: rgba(99, 168, 255, 0.055);
+  box-shadow: none;
+}
+.file-insights-launcher.is-compact::after { display: none; }
+.file-insights-launcher.is-compact .file-insights-launcher__visual {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(99, 168, 255, 0.09);
+  box-shadow: none;
+}
+.file-insights-launcher.is-compact .file-insights-launcher__visual i,
+.file-insights-launcher.is-compact .file-insights-launcher__copy small,
+.file-insights-launcher.is-compact .file-insights-launcher__copy > span,
+.file-insights-launcher.is-compact .file-insights-launcher__status.is-ready small {
+  display: none;
+}
+.file-insights-launcher.is-compact .file-insights-launcher__copy strong {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.file-insights-launcher.is-compact .file-insights-launcher__status,
+.file-insights-launcher.is-compact .file-insights-launcher__status.is-ready {
+  align-items: center;
+  flex-direction: row;
+  gap: 4px;
+  font-size: 9px;
+}
+.file-insights-launcher.is-compact .file-insights-launcher__status.is-ready strong {
+  font-size: 10px;
+}
+
 .file-insights-page {
   position: relative;
   display: flex;

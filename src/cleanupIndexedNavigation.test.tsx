@@ -81,7 +81,7 @@ describe("indexed cleanup navigation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Smaller objects/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Other content/ }));
 
     await Promise.resolve();
     expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe("indexed cleanup navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Show 50 more/ }));
     const pagedButton = await screen.findByRole("button", { name: /Paged folder/ });
-    expect(screen.queryByRole("button", { name: /Smaller objects/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Other content/ })).toBeNull();
     fireEvent.click(pagedButton);
 
     await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
@@ -145,6 +145,31 @@ describe("indexed cleanup navigation", () => {
 
     fireEvent.click(refresh);
     expect(onRefreshDirectory).toHaveBeenCalledWith(first.id);
+  });
+
+  it("reconciles an expired scan generation instead of exposing a missing-node error", async () => {
+    const current = snapshot();
+    cleanupApi.getCleanupIndexedDirectory.mockRejectedValue({
+      code: "cleanup_index_node_missing",
+      message: "The selected folder is not available in this scan index.",
+    });
+    const latest = snapshot();
+    latest.scanId = "new-generation";
+    latest.root.id = "index:new-generation:1";
+    const onReloadLatestSnapshot = vi.fn().mockResolvedValue(latest);
+    render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+        onReloadLatestSnapshot={onReloadLatestSnapshot}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /First folder/ }));
+
+    await waitFor(() => expect(onReloadLatestSnapshot).toHaveBeenCalledOnce());
+    expect(screen.queryByText(/selected folder is not available/i)).toBeNull();
   });
 
   it("shows refresh progress and exposes cancellation while the old map remains usable", () => {
@@ -195,7 +220,7 @@ function file(id: string, path: string): CleanupNode {
 
 function aggregate(): CleanupNode {
   return {
-    ...folder("index:fixture:1#other-items", "Smaller objects", "", false),
+    ...folder("index:fixture:1#other-items", "Other content", "", false),
     path: null,
     kind: "aggregate",
     deletionProtected: true,
