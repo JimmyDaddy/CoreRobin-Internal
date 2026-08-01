@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use crate::cleanup::{build_indexed_scan, refresh_indexed_directory};
+use crate::cleanup::{build_indexed_scan, discard_indexed_scan, refresh_indexed_directory};
 use crate::error::CommandError;
 use crate::models::{
     CleanupDirectoryRefreshRequest, CleanupScan, CleanupScanJobPhase, CleanupScanJobStatus,
@@ -26,8 +26,9 @@ const WORKER_ARGUMENT: &str = "--cleanup-scan-worker";
 const WORKER_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 const MANAGER_WATCH_INTERVAL: Duration = Duration::from_millis(250);
 const HEARTBEAT_MISSING_AFTER: Duration = Duration::from_secs(5);
-const AUTO_RECOVER_AFTER: Duration = Duration::from_secs(120);
-const MAX_AUTO_RECOVERIES: usize = 12;
+const AUTO_RECOVER_AFTER: Duration = Duration::from_secs(30);
+const MAX_BLIND_AUTO_RECOVERIES: usize = 12;
+const RECOVERY_SHARED_ANCESTOR_MIN_COMPONENTS: usize = 4;
 const FORCE_CANCEL_AFTER: Duration = Duration::from_secs(2);
 const MAX_JOB_FILE_BYTES: u64 = 64 * 1_024 * 1_024;
 
@@ -315,6 +316,13 @@ impl CleanupScanJobManager {
             job.status.phase = CleanupScanJobPhase::Cancelled;
             let _ = private_storage::remove(&job.request_path);
             let _ = private_storage::remove(&job.exclusions_path);
+            let abandoned_scan = job
+                .allow_path_exclusions
+                .then(|| (job.index_path.clone(), job.status.job_id.clone()));
+            drop(active);
+            if let Some((index_path, scan_id)) = abandoned_scan {
+                discard_abandoned_scan(&index_path, &scan_id);
+            }
             return Ok(true);
         }
         if let Some(child) = job.child.as_ref()
@@ -336,12 +344,18 @@ impl CleanupScanJobManager {
         let Some(mut previous) = previous else {
             return;
         };
+        let abandoned_scan = (previous.allow_path_exclusions
+            && previous.status.phase != CleanupScanJobPhase::Completed)
+            .then(|| (previous.index_path.clone(), previous.status.job_id.clone()));
         if let Some(child) = previous.child.take() {
             kill_worker(&child);
         }
         let _ = private_storage::remove(&previous.request_path);
         let _ = private_storage::remove(&previous.result_path);
         let _ = private_storage::remove(&previous.exclusions_path);
+        if let Some((index_path, scan_id)) = abandoned_scan {
+            discard_abandoned_scan(&index_path, &scan_id);
+        }
     }
 
     fn start_event_reader(
@@ -437,13 +451,17 @@ impl CleanupScanJobManager {
                             job.status.phase = CleanupScanJobPhase::Stalled;
                             job.status.updated_at_ms = now;
                             let recovery_path = if job.allow_path_exclusions {
+                                // Every path recovery adds a distinct excluded subtree, so these
+                                // attempts make monotonic progress and do not need an arbitrary
+                                // retry cap. Repeating the same stall broadens toward its parent
+                                // until no safe recovery path remains.
                                 next_recovery_path(
                                     &job.status.progress.current_path,
                                     &job.skipped_paths,
                                 )
-                                .filter(|_| job.skipped_paths.len() < MAX_AUTO_RECOVERIES)
                             } else {
-                                (job.worker_attempt <= MAX_AUTO_RECOVERIES as u64).then(String::new)
+                                (job.worker_attempt <= MAX_BLIND_AUTO_RECOVERIES as u64)
+                                    .then(String::new)
                             };
                             if let Some(recovery_path) = recovery_path {
                                 if !recovery_path.is_empty() {
@@ -655,9 +673,15 @@ impl CleanupScanJobManager {
                 if job.status.phase != CleanupScanJobPhase::Cancelling {
                     job.status.phase = CleanupScanJobPhase::Scanning;
                 }
+                let made_progress = progress.scanned_entry_count
+                    > job.status.progress.scanned_entry_count
+                    || progress.discovered_bytes > job.status.progress.discovered_bytes
+                    || progress.current_path != job.status.progress.current_path;
                 job.status.updated_at_ms = at_ms;
                 job.status.last_heartbeat_at_ms = Some(at_ms);
-                job.status.last_progress_at_ms = Some(at_ms);
+                if made_progress {
+                    job.status.last_progress_at_ms = Some(at_ms);
+                }
                 job.status.progress = progress;
             }
             CleanupScanWorkerEvent::Completed { at_ms } => {
@@ -727,6 +751,13 @@ impl CleanupScanJobManager {
         }
         let _ = private_storage::remove(&job.request_path);
         let _ = private_storage::remove(&job.exclusions_path);
+        let abandoned_scan = (job.allow_path_exclusions
+            && job.status.phase != CleanupScanJobPhase::Completed)
+            .then(|| (job.index_path.clone(), job.status.job_id.clone()));
+        drop(active);
+        if let Some((index_path, scan_id)) = abandoned_scan {
+            discard_abandoned_scan(&index_path, &scan_id);
+        }
     }
 
     fn mark_cancelled(&self, job_id: &str, generation: u64) {
@@ -736,11 +767,28 @@ impl CleanupScanJobManager {
         let Some(job) = active.as_mut() else {
             return;
         };
-        if job.status.job_id == job_id && job.status.generation == generation {
+        let abandoned_scan = if job.status.job_id == job_id && job.status.generation == generation {
             job.status.phase = CleanupScanJobPhase::Cancelled;
             job.status.updated_at_ms = now_millis();
             job.child = None;
+            job.allow_path_exclusions
+                .then(|| (job.index_path.clone(), job.status.job_id.clone()))
+        } else {
+            None
+        };
+        drop(active);
+        if let Some((index_path, scan_id)) = abandoned_scan {
+            discard_abandoned_scan(&index_path, &scan_id);
         }
+    }
+}
+
+fn discard_abandoned_scan(index_path: &Path, scan_id: &str) {
+    if let Err(error) = discard_indexed_scan(index_path, scan_id) {
+        eprintln!(
+            "Could not discard the abandoned cleanup scan index {scan_id}: {}",
+            error.message
+        );
     }
 }
 
@@ -753,10 +801,44 @@ fn next_recovery_path(current_path: &str, skipped_paths: &[String]) -> Option<St
             return None;
         }
         if !skipped_paths.contains(&text) {
+            if let Some(scope) = application_cache_recovery_scope(&candidate) {
+                let scope = scope.to_string_lossy().into_owned();
+                if !skipped_paths.contains(&scope) {
+                    return Some(scope);
+                }
+            }
+            if let Some(shared_ancestor) = candidate.ancestors().find(|ancestor| {
+                ancestor.components().count() >= RECOVERY_SHARED_ANCESTOR_MIN_COMPONENTS
+                    && skipped_paths.iter().any(|path| {
+                        let skipped = Path::new(path.as_str());
+                        skipped != *ancestor && skipped.starts_with(ancestor)
+                    })
+            }) {
+                let shared = shared_ancestor.to_string_lossy().into_owned();
+                if !skipped_paths.contains(&shared) {
+                    return Some(shared);
+                }
+            }
             return Some(text);
         }
         candidate = candidate.parent()?.to_path_buf();
     }
+}
+
+fn application_cache_recovery_scope(path: &Path) -> Option<PathBuf> {
+    let components = path.components().collect::<Vec<_>>();
+    let app_index = components
+        .windows(2)
+        .position(|pair| pair[0].as_os_str() == "Library" && pair[1].as_os_str() == "Caches")?
+        + 2;
+    if app_index >= components.len() {
+        return None;
+    }
+    let mut scope = PathBuf::new();
+    for component in &components[..=app_index] {
+        scope.push(component.as_os_str());
+    }
+    Some(scope)
 }
 
 fn kill_worker(child: &Arc<Mutex<Child>>) {
@@ -912,8 +994,25 @@ fn load_worker_exclusions(path: &Path) -> Vec<PathBuf> {
         .and_then(|bytes| serde_json::from_slice::<Vec<String>>(&bytes).ok())
         .unwrap_or_default()
         .into_iter()
-        .map(PathBuf::from)
+        .map(expand_worker_exclusion)
         .collect()
+}
+
+fn expand_worker_exclusion(path: String) -> PathBuf {
+    let Some(home) = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+    else {
+        return PathBuf::from(path);
+    };
+    if path == "~" {
+        return home;
+    }
+    if let Some(relative) = path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")) {
+        home.join(relative)
+    } else {
+        PathBuf::from(path)
+    }
 }
 
 fn start_worker_control(cancelled: Arc<AtomicBool>, completed: Arc<AtomicBool>) {
@@ -1079,6 +1178,32 @@ mod tests {
         );
     }
 
+    #[test]
+    fn repeated_progress_snapshot_does_not_postpone_stall_recovery() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Scanning);
+        let last_progress_at = manager.status().unwrap().unwrap().last_progress_at_ms;
+
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Progress {
+                at_ms: now_millis(),
+                progress: CleanupScanProgress {
+                    scanned_entry_count: 0,
+                    discovered_bytes: 0,
+                    current_path: "/fixture".to_owned(),
+                    elapsed_ms: 30_000,
+                },
+            },
+        );
+
+        assert_eq!(
+            manager.status().unwrap().unwrap().last_progress_at_ms,
+            last_progress_at
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn cancelling_an_unresponsive_worker_forces_it_to_exit() {
@@ -1182,6 +1307,63 @@ mod tests {
     }
 
     #[test]
+    fn sibling_recovery_coalesces_only_inside_a_deep_directory() {
+        let skipped = vec!["~/Library/Application Support/example/bee/first".to_owned()];
+        assert_eq!(
+            next_recovery_path("~/Library/Application Support/example/bee/second", &skipped,),
+            Some("~/Library/Application Support/example/bee".to_owned())
+        );
+
+        assert_eq!(
+            next_recovery_path(
+                "~/Library/Application Support/another-app/blocked",
+                &skipped,
+            ),
+            Some("~/Library/Application Support/another-app/blocked".to_owned())
+        );
+
+        let top_level = vec!["~/Desktop".to_owned(), "~/Documents".to_owned()];
+        assert_eq!(
+            next_recovery_path("~/Downloads", &top_level),
+            Some("~/Downloads".to_owned())
+        );
+    }
+
+    #[test]
+    fn recovery_coalesces_nested_stalls_to_their_deepest_shared_ancestor() {
+        let skipped = vec![
+            "~/Library/Application Support/com.example/data/version/a/first.bundle".to_owned(),
+        ];
+
+        assert_eq!(
+            next_recovery_path(
+                "~/Library/Application Support/com.example/data/version/b/nested/second.bundle",
+                &skipped,
+            ),
+            Some("~/Library/Application Support/com.example/data/version".to_owned())
+        );
+    }
+
+    #[test]
+    fn recovery_skips_only_the_unresponsive_application_cache() {
+        assert_eq!(
+            next_recovery_path(
+                "~/Library/Caches/com.example.app/WebKit/NetworkCache/record",
+                &[],
+            ),
+            Some("~/Library/Caches/com.example.app".to_owned())
+        );
+        assert_eq!(
+            next_recovery_path("~/Library/Caches", &[]),
+            Some("~/Library/Caches".to_owned())
+        );
+        assert_eq!(
+            next_recovery_path("~/Documents/project/cache/record", &[]),
+            Some("~/Documents/project/cache/record".to_owned())
+        );
+    }
+
+    #[test]
     fn recovery_paths_round_trip_through_private_worker_state() {
         let root =
             std::env::temp_dir().join(format!("core-robin-cleanup-recovery-{}", now_millis()));
@@ -1196,7 +1378,11 @@ mod tests {
 
         assert_eq!(
             load_worker_exclusions(&path),
-            skipped.into_iter().map(PathBuf::from).collect::<Vec<_>>()
+            vec![
+                PathBuf::from(std::env::var_os("HOME").unwrap())
+                    .join("Library/Caches/unresponsive"),
+                PathBuf::from("/Volumes/Archive/stalled"),
+            ]
         );
         fs::remove_dir_all(root).unwrap();
     }

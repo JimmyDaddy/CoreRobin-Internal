@@ -74,9 +74,9 @@ mod paths;
 mod protection;
 
 pub(crate) use index::{
-    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, load_indexed_children,
-    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan, refresh_indexed_directory,
-    remove_cleanup_index, resolve_indexed_delete_request,
+    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, discard_indexed_scan,
+    load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
+    refresh_indexed_directory, remove_cleanup_index, resolve_indexed_delete_request,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{

@@ -43,6 +43,8 @@ const NAVIGATION_ANCHOR_RESERVE: usize = 4_096;
 const MAX_INDEX_BYTES: u64 = 512 * 1024 * 1024;
 const INDEX_VACUUM_PAGES: usize = 8_192;
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
+const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Clone, Debug)]
 struct IndexedFile {
@@ -153,6 +155,7 @@ struct DirectoryTotals {
 #[derive(Debug)]
 struct IndexScanStats {
     started: Instant,
+    last_reported_at: Instant,
     elapsed_before_start_ms: u64,
     scanned_entry_count: usize,
     discovered_bytes: u64,
@@ -165,8 +168,10 @@ struct IndexScanStats {
 
 impl IndexScanStats {
     fn new() -> Self {
+        let started = Instant::now();
         Self {
-            started: Instant::now(),
+            started,
+            last_reported_at: started,
             elapsed_before_start_ms: 0,
             scanned_entry_count: 0,
             discovered_bytes: 0,
@@ -234,15 +239,17 @@ impl IndexScanStats {
         on_progress: &mut dyn FnMut(CleanupScanProgress),
         force: bool,
     ) {
+        let entries_since_last_report = self
+            .scanned_entry_count
+            .saturating_sub(self.last_reported_entry_count);
         if !force
-            && self
-                .scanned_entry_count
-                .saturating_sub(self.last_reported_entry_count)
-                < 512
+            && entries_since_last_report < PROGRESS_ENTRY_INTERVAL
+            && self.last_reported_at.elapsed() < PROGRESS_TIME_INTERVAL
         {
             return;
         }
         self.last_reported_entry_count = self.scanned_entry_count;
+        self.last_reported_at = Instant::now();
         on_progress(CleanupScanProgress {
             scanned_entry_count: self.scanned_entry_count,
             discovered_bytes: self.discovered_bytes,
@@ -313,6 +320,12 @@ fn build_indexed_scan_with_shared_identities(
     let (home, scan_root, target_kind) = resolve_cleanup_scan_target(&request)?;
     ensure_private_index_parent(index_path)?;
     let scan_exclusions = cleanup_scan_exclusions(index_path, &scan_root, excluded_paths);
+    if path_is_excluded(&scan_root, excluded_paths) {
+        return Err(CommandError::new(
+            "cleanup_scan_root_unavailable",
+            "The scan location was skipped after it stopped responding.",
+        ));
+    }
     let mut connection = open_index(index_path)?;
     initialize_schema(&connection)?;
     purge_expired_and_incomplete(&connection)?;
@@ -620,6 +633,16 @@ enum QuickScanPartOutcome {
     },
 }
 
+enum QuickScanPartEvent {
+    Progress {
+        slot: usize,
+        progress: CleanupScanProgress,
+    },
+    Finished {
+        slot: usize,
+    },
+}
+
 type QuickScanPartResults = Result<Vec<QuickScanPartOutcome>, CommandError>;
 
 #[allow(clippy::too_many_arguments)]
@@ -665,7 +688,7 @@ fn scan_quick_roots_parallel(
         let base_scanned = stats.scanned_entry_count;
         let base_discovered = stats.discovered_bytes;
         let parts = match thread::scope(|scope| -> QuickScanPartResults {
-            let (sender, receiver) = mpsc::channel::<(usize, CleanupScanProgress)>();
+            let (sender, receiver) = mpsc::channel::<QuickScanPartEvent>();
             let handles = wave
                 .iter()
                 .enumerate()
@@ -679,60 +702,100 @@ fn scan_quick_roots_parallel(
                     );
                     let shared_seen_files = Arc::clone(&shared_seen_files);
                     scope.spawn(move || {
-                        remove_cleanup_index(&part_path)?;
-                        let part_scan_id = format!("quick-part-{wave_index}-{slot}");
-                        let scan = build_indexed_scan_with_shared_identities(
-                            CleanupScanRequest {
-                                profile: CleanupScanProfile::Complete,
-                                target_kind: CleanupScanTargetKind::Folder,
-                                target_path: Some(root.to_string_lossy().into_owned()),
+                        let _ = sender.send(QuickScanPartEvent::Progress {
+                            slot,
+                            progress: CleanupScanProgress {
+                                scanned_entry_count: 0,
+                                discovered_bytes: 0,
+                                current_path: display_path(&root, home),
+                                elapsed_ms: 0,
                             },
-                            &part_scan_id,
-                            &part_path,
-                            cancelled,
-                            excluded_paths,
-                            &mut |progress| {
-                                let _ = sender.send((slot, progress));
-                            },
-                            Some(&shared_seen_files),
-                            part_node_limit,
-                        );
-                        match scan {
-                            Ok(scan) => Ok::<_, CommandError>(QuickScanPartOutcome::Indexed(
-                                Box::new(QuickScanPart {
-                                    index_path: part_path,
-                                    scan,
-                                    root_path: root,
-                                }),
-                            )),
-                            Err(error) if quick_scan_root_error_is_skippable(&error) => {
-                                Ok(QuickScanPartOutcome::Unreadable {
-                                    index_path: part_path,
-                                    root_path: root,
-                                })
+                        });
+                        let outcome = (|| {
+                            remove_cleanup_index(&part_path)?;
+                            let part_scan_id = format!("quick-part-{wave_index}-{slot}");
+                            let scan = build_indexed_scan_with_shared_identities(
+                                CleanupScanRequest {
+                                    profile: CleanupScanProfile::Complete,
+                                    target_kind: CleanupScanTargetKind::Folder,
+                                    target_path: Some(root.to_string_lossy().into_owned()),
+                                },
+                                &part_scan_id,
+                                &part_path,
+                                cancelled,
+                                excluded_paths,
+                                &mut |progress| {
+                                    let _ = sender
+                                        .send(QuickScanPartEvent::Progress { slot, progress });
+                                },
+                                Some(&shared_seen_files),
+                                part_node_limit,
+                            );
+                            match scan {
+                                Ok(scan) => Ok::<_, CommandError>(QuickScanPartOutcome::Indexed(
+                                    Box::new(QuickScanPart {
+                                        index_path: part_path,
+                                        scan,
+                                        root_path: root,
+                                    }),
+                                )),
+                                Err(error) if quick_scan_root_error_is_skippable(&error) => {
+                                    Ok(QuickScanPartOutcome::Unreadable {
+                                        index_path: part_path,
+                                        root_path: root,
+                                    })
+                                }
+                                Err(error) => Err(error),
                             }
-                            Err(error) => Err(error),
-                        }
+                        })();
+                        let _ = sender.send(QuickScanPartEvent::Finished { slot });
+                        outcome
                     })
                 })
                 .collect::<Vec<_>>();
             drop(sender);
             let mut latest = HashMap::<usize, CleanupScanProgress>::new();
-            while let Ok((slot, progress)) = receiver.recv() {
-                latest.insert(slot, progress.clone());
-                on_progress(CleanupScanProgress {
-                    scanned_entry_count: base_scanned.saturating_add(
-                        latest.values().map(|value| value.scanned_entry_count).sum(),
-                    ),
-                    discovered_bytes: base_discovered
-                        .saturating_add(latest.values().map(|value| value.discovered_bytes).sum()),
-                    current_path: progress.current_path,
-                    elapsed_ms: stats
-                        .started
-                        .elapsed()
-                        .as_millis()
-                        .min(u128::from(u64::MAX)) as u64,
-                });
+            let mut active = (0..wave.len()).collect::<HashSet<_>>();
+            let mut last_activity = active
+                .iter()
+                .map(|slot| (*slot, Instant::now()))
+                .collect::<HashMap<_, _>>();
+            while !active.is_empty() {
+                match receiver.recv_timeout(PROGRESS_TIME_INTERVAL) {
+                    Ok(QuickScanPartEvent::Progress { slot, progress }) => {
+                        last_activity.insert(slot, Instant::now());
+                        latest.insert(slot, progress.clone());
+                        emit_parallel_progress(
+                            base_scanned,
+                            base_discovered,
+                            &latest,
+                            progress.current_path,
+                            stats,
+                            on_progress,
+                        );
+                    }
+                    Ok(QuickScanPartEvent::Finished { slot }) => {
+                        active.remove(&slot);
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        let Some(slot) = active
+                            .iter()
+                            .min_by_key(|slot| last_activity.get(slot).copied())
+                            .copied()
+                        else {
+                            continue;
+                        };
+                        emit_parallel_progress(
+                            base_scanned,
+                            base_discovered,
+                            &latest,
+                            parallel_progress_path(slot, &latest, wave, home),
+                            stats,
+                            on_progress,
+                        );
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                }
             }
             handles
                 .into_iter()
@@ -793,6 +856,38 @@ fn scan_quick_roots_parallel(
     Ok(())
 }
 
+fn parallel_progress_path(
+    slot: usize,
+    latest: &HashMap<usize, CleanupScanProgress>,
+    roots: &[PathBuf],
+    home: &Path,
+) -> String {
+    latest
+        .get(&slot)
+        .map(|progress| progress.current_path.trim())
+        .filter(|path| !path.is_empty())
+        .map(str::to_owned)
+        .unwrap_or_else(|| display_path(&roots[slot], home))
+}
+
+fn emit_parallel_progress(
+    base_scanned: usize,
+    base_discovered: u64,
+    latest: &HashMap<usize, CleanupScanProgress>,
+    current_path: String,
+    stats: &IndexScanStats,
+    on_progress: &mut dyn FnMut(CleanupScanProgress),
+) {
+    on_progress(CleanupScanProgress {
+        scanned_entry_count: base_scanned
+            .saturating_add(latest.values().map(|value| value.scanned_entry_count).sum()),
+        discovered_bytes: base_discovered
+            .saturating_add(latest.values().map(|value| value.discovered_bytes).sum()),
+        current_path,
+        elapsed_ms: stats.elapsed_ms(),
+    });
+}
+
 fn quick_scan_root_error_is_skippable(error: &CommandError) -> bool {
     matches!(
         error.code.as_str(),
@@ -843,6 +938,10 @@ fn quick_scan_parallelism(scan_root: &Path) -> usize {
 }
 
 fn quick_part_index_path(index_path: &Path, scan_id: &str, slot: usize) -> PathBuf {
+    index_path.with_file_name(format!("{}{slot}.sqlite", quick_part_index_prefix(scan_id)))
+}
+
+fn quick_part_index_prefix(scan_id: &str) -> String {
     let safe_id = scan_id
         .chars()
         .map(|character| {
@@ -853,7 +952,7 @@ fn quick_part_index_path(index_path: &Path, scan_id: &str, slot: usize) -> PathB
             }
         })
         .collect::<String>();
-    index_path.with_file_name(format!(".cleanup-quick-{safe_id}-{slot}.sqlite"))
+    format!(".cleanup-quick-{safe_id}-")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1312,6 +1411,18 @@ pub(crate) fn remove_cleanup_index(index_path: &Path) -> Result<(), CommandError
     Ok(())
 }
 
+pub(crate) fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(), CommandError> {
+    if index_path.is_file() {
+        let connection = open_index(index_path)?;
+        initialize_schema(&connection)?;
+        delete_scan(&connection, scan_id)?;
+        reclaim_index_space(&connection)?;
+        checkpoint_index(&connection)?;
+        enforce_private_index_permissions(index_path)?;
+    }
+    remove_quick_part_indexes_for_scan(index_path, scan_id)
+}
+
 fn cleanup_scan_exclusions(
     index_path: &Path,
     scan_root: &Path,
@@ -1344,6 +1455,21 @@ fn path_is_excluded(path: &Path, excluded_paths: &[PathBuf]) -> bool {
 }
 
 fn remove_quick_part_indexes(index_path: &Path) -> Result<(), CommandError> {
+    remove_matching_quick_part_indexes(index_path, None)
+}
+
+fn remove_quick_part_indexes_for_scan(
+    index_path: &Path,
+    scan_id: &str,
+) -> Result<(), CommandError> {
+    let prefix = quick_part_index_prefix(scan_id);
+    remove_matching_quick_part_indexes(index_path, Some(&prefix))
+}
+
+fn remove_matching_quick_part_indexes(
+    index_path: &Path,
+    required_prefix: Option<&str>,
+) -> Result<(), CommandError> {
     let Some(parent) = index_path.parent() else {
         return Ok(());
     };
@@ -1354,6 +1480,7 @@ fn remove_quick_part_indexes(index_path: &Path) -> Result<(), CommandError> {
         let name = entry.file_name();
         let name = name.to_string_lossy();
         if !name.starts_with(".cleanup-quick-")
+            || required_prefix.is_some_and(|prefix| !name.starts_with(prefix))
             || !(name.ends_with(".sqlite")
                 || name.ends_with(".sqlite-wal")
                 || name.ends_with(".sqlite-shm"))
@@ -1624,6 +1751,9 @@ fn scan_directory_into_index(
         None
     };
     let persist_node = node_id.is_some();
+    context
+        .stats
+        .report(directory, context.home, context.on_progress, false);
     let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
         Err(_) => {
@@ -1645,6 +1775,9 @@ fn scan_directory_into_index(
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
+        context
+            .stats
+            .report(directory, context.home, context.on_progress, false);
         let entry = match entry {
             Ok(entry) => entry,
             Err(_) => {
@@ -2038,6 +2171,9 @@ fn scan_directory_totals_only(
         for entry in entries {
             ensure_scan_active(context.cancelled)?;
             context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
+            context
+                .stats
+                .report(&directory, context.home, context.on_progress, false);
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(_) => {
@@ -2273,6 +2409,9 @@ fn scan_direct_files_into_index(
     safety: CleanupSafety,
     context: &mut ScanContext<'_>,
 ) -> Result<(), CommandError> {
+    context
+        .stats
+        .report(directory, context.home, context.on_progress, false);
     let entries = fs::read_dir(directory).map_err(|error| {
         CommandError::new(
             "cleanup_scan_root_unavailable",
@@ -2294,6 +2433,9 @@ fn scan_direct_files_into_index(
             continue;
         }
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
+        context
+            .stats
+            .report(directory, context.home, context.on_progress, false);
         let Ok(metadata) = entry.metadata() else {
             context.stats.record_unreadable(&path, context.home);
             continue;
@@ -4792,6 +4934,121 @@ mod tests {
             node_limit,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn progress_is_reported_inside_one_large_directory() {
+        let mut stats = IndexScanStats::new();
+        let mut updates = Vec::new();
+        for _ in 0..PROGRESS_ENTRY_INTERVAL {
+            stats.scanned_entry_count = stats.scanned_entry_count.saturating_add(1);
+            stats.report(
+                Path::new("/fixture"),
+                Path::new("/"),
+                &mut |progress| updates.push(progress),
+                false,
+            );
+        }
+
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].scanned_entry_count, PROGRESS_ENTRY_INTERVAL);
+
+        stats.last_reported_at = Instant::now().checked_sub(PROGRESS_TIME_INTERVAL).unwrap();
+        stats.scanned_entry_count = stats.scanned_entry_count.saturating_add(1);
+        stats.report(
+            Path::new("/fixture"),
+            Path::new("/"),
+            &mut |progress| updates.push(progress),
+            false,
+        );
+
+        assert_eq!(updates.len(), 2);
+        assert_eq!(updates[1].scanned_entry_count, PROGRESS_ENTRY_INTERVAL + 1);
+    }
+
+    #[test]
+    fn parallel_timeout_keeps_the_latest_directory_instead_of_the_root() {
+        let roots = vec![PathBuf::from("/Users/example/Pictures")];
+        let latest = HashMap::from([(
+            0,
+            CleanupScanProgress {
+                scanned_entry_count: 4_096,
+                discovered_bytes: 1_024,
+                current_path: "~/Pictures/Photo Library.photoslibrary/originals".to_owned(),
+                elapsed_ms: 500,
+            },
+        )]);
+
+        assert_eq!(
+            parallel_progress_path(0, &latest, &roots, Path::new("/Users/example")),
+            "~/Pictures/Photo Library.photoslibrary/originals"
+        );
+    }
+
+    #[test]
+    fn discarding_an_abandoned_scan_keeps_the_completed_generation() {
+        let fixture = tempdir().unwrap();
+        fs::write(fixture.path().join("item.bin"), vec![1_u8; 1_024]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup-scan-index-v1.sqlite");
+        scan_folder(fixture.path(), &index_path, "completed");
+        scan_folder(fixture.path(), &index_path, "abandoned");
+        let connection = open_index(&index_path).unwrap();
+        connection
+            .execute(
+                "UPDATE scans SET state = 'running' WHERE id = 'abandoned'",
+                [],
+            )
+            .unwrap();
+        drop(connection);
+        let quick_part = quick_part_index_path(&index_path, "abandoned", 0);
+        fs::write(&quick_part, b"temporary").unwrap();
+
+        discard_indexed_scan(&index_path, "abandoned").unwrap();
+
+        let connection = open_index_read_only(&index_path).unwrap();
+        let completed = connection
+            .query_row(
+                "SELECT COUNT(*) FROM scans WHERE id = 'completed'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap();
+        let abandoned = connection
+            .query_row(
+                "SELECT COUNT(*) FROM scans WHERE id = 'abandoned'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap();
+        assert_eq!(completed, 1);
+        assert_eq!(abandoned, 0);
+        assert!(!quick_part.exists());
+    }
+
+    #[test]
+    fn recovery_exclusion_skips_the_unresponsive_scan_root_before_opening_it() {
+        let fixture = tempdir().unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup-scan-index-v1.sqlite");
+        let scan_root = fixture.path().canonicalize().unwrap();
+
+        let error = build_indexed_scan(
+            CleanupScanRequest {
+                profile: CleanupScanProfile::Complete,
+                target_kind: CleanupScanTargetKind::Folder,
+                target_path: Some(scan_root.to_string_lossy().into_owned()),
+            },
+            "excluded-root",
+            &index_path,
+            &AtomicBool::new(false),
+            &[scan_root],
+            &mut |_| {},
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "cleanup_scan_root_unavailable");
+        assert!(!index_path.exists());
     }
 
     #[test]
