@@ -8,6 +8,10 @@ const reconcileWorkflow = readFileSync(".github/workflows/reconcile-notarization
 const promoteWorkflow = readFileSync(".github/workflows/promote-release.yml", "utf8");
 const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const macOSPackageVerifier = readFileSync("scripts/verify-packaged-macos.sh", "utf8");
+const notarizationDiscovery = readFileSync(
+  "scripts/discover-pending-notarization.sh",
+  "utf8",
+);
 const releaseNotesRenderer = readFileSync("scripts/render-release-notes.mjs", "utf8");
 const updaterManifestGenerator = readFileSync("scripts/generate-updater-manifest.mjs", "utf8");
 const workflowFiles = readdirSync(".github/workflows")
@@ -236,11 +240,16 @@ describe("release workflow privilege separation", () => {
     const recheck = workflowJob(reconcileWorkflow, "recheck");
     const dispatch = workflowJob(reconcileWorkflow, "dispatch");
     expect(reconcileWorkflow).toContain("schedule:");
-    expect(reconcileWorkflow).toContain('"17,47 * * * *"');
+    expect(reconcileWorkflow).toContain('"17 */6 * * *"');
     expect(reconcileWorkflow).toContain("workflow_dispatch:");
     expect(discover).toContain("actions: read");
-    expect(discover).toContain("stable_release_exists");
-    expect(discover).toContain("finalize_already_started");
+    expect(discover).toContain("Check out trusted reconciliation tooling");
+    expect(discover).toContain("scripts/discover-pending-notarization.sh");
+    expect(notarizationDiscovery).toContain("stable_release_exists");
+    expect(notarizationDiscovery).toContain("latest_stable_tag");
+    expect(notarizationDiscovery).toContain("version_is_newer");
+    expect(notarizationDiscovery).toContain("finalize_already_started");
+    expect(notarizationDiscovery).toContain('--repo "$GITHUB_REPOSITORY"');
     expect(recheck).toContain("runs-on: macos-latest");
     expect(recheck).toContain("scripts/macos-notarization-state.mjs verify");
     expect(recheck).toContain("xcrun notarytool info");
@@ -249,6 +258,7 @@ describe("release workflow privilege separation", () => {
     expect(recheck).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
     expect(dispatch).toContain("contents: write");
     expect(dispatch).toContain("apple-notarization-complete");
+    expect(dispatch).toContain('--repo "$GITHUB_REPOSITORY"');
     expect(dispatch).not.toContain("APPLE_API_PRIVATE_KEY_BASE64");
     expect(finalizeWorkflow).toContain("run-name: Finalize");
   });

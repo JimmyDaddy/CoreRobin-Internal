@@ -3,7 +3,7 @@ run-name: Reconcile Apple notarization ${{ inputs.tag || 'pending release' }}
 
 on:
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       tag:
@@ -42,122 +42,19 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PUBLIC_RELEASE_READ_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
     steps:
+      - name: Check out trusted reconciliation tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
       - name: Resolve explicit or scheduled candidate
         id: candidate
         shell: bash
         env:
           REQUESTED_TAG: ${{ inputs.tag }}
           REQUESTED_RUN_ID: ${{ inputs.source_run_id }}
-        run: |
-          set -euo pipefail
-          test -n "$PUBLIC_RELEASE_READ_TOKEN"
-
-          validate_source_run() {
-            local tag=$1
-            local run_id=$2
-            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-            [[ "$run_id" =~ ^[0-9]+$ ]]
-            local run_json
-            run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
-            test "$(jq -r .path <<<"$run_json")" = ".github/workflows/release.yml"
-            test "$(jq -r .head_branch <<<"$run_json")" = "$tag"
-            test "$(jq -r .status <<<"$run_json")" = "completed"
-            test "$(jq -r .conclusion <<<"$run_json")" = "success"
-            jq -r .head_sha <<<"$run_json"
-          }
-
-          preview_exists() {
-            local tag=$1
-            local preview_json
-            preview_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
-              "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/${tag}-preview.1" 2>/dev/null)" \
-              || return 1
-            test "$(jq -r .draft <<<"$preview_json")" = "false"
-            test "$(jq -r .prerelease <<<"$preview_json")" = "true"
-          }
-
-          stable_release_exists() {
-            GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
-              "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$1" >/dev/null 2>&1
-          }
-
-          finalize_already_started() {
-            local tag=$1
-            local runs_json
-            if ! runs_json="$(gh run list \
-              --workflow finalize-release.yml \
-              --limit 50 \
-              --json displayTitle,status,conclusion)"; then
-              echo "Unable to query Finalize workflow runs for $tag." >&2
-              return 2
-            fi
-            if jq -e --arg title "Finalize $tag" '
-                  any(.[]; .displayTitle == $title and (
-                    .status != "completed" or .conclusion == "success"
-                  ))
-                ' >/dev/null <<<"$runs_json"; then
-              return 0
-            fi
-            local jq_status=$?
-            if [[ "$jq_status" -eq 1 ]]; then
-              return 1
-            fi
-            echo "Unable to parse Finalize workflow runs for $tag." >&2
-            return 2
-          }
-
-          selected_tag=""
-          selected_run_id=""
-          selected_commit=""
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            selected_tag="$REQUESTED_TAG"
-            selected_run_id="$REQUESTED_RUN_ID"
-            selected_commit="$(validate_source_run "$selected_tag" "$selected_run_id")"
-            if stable_release_exists "$selected_tag"; then
-              echo "Stable release $selected_tag already exists; reconciliation is complete."
-              echo "pending=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            preview_exists "$selected_tag"
-          else
-            runs_json="$(gh run list \
-              --workflow release.yml \
-              --status success \
-              --limit 30 \
-              --json databaseId,headBranch,headSha,createdAt)"
-            while IFS=$'\t' read -r tag run_id commit; do
-              [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
-              stable_release_exists "$tag" && continue
-              preview_exists "$tag" || continue
-              if finalize_already_started "$tag"; then
-                continue
-              else
-                finalize_status=$?
-                if [[ "$finalize_status" -ne 1 ]]; then
-                  exit "$finalize_status"
-                fi
-              fi
-              selected_tag="$tag"
-              selected_run_id="$run_id"
-              selected_commit="$(validate_source_run "$tag" "$run_id")"
-              test "$selected_commit" = "$commit"
-              break
-            done < <(jq -r '.[] | [.headBranch, .databaseId, .headSha] | @tsv' <<<"$runs_json")
-          fi
-
-          if [[ -z "$selected_tag" ]]; then
-            echo "No successful release is waiting for Apple notarization finalization."
-            echo "pending=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          {
-            echo "pending=true"
-            echo "tag=$selected_tag"
-            echo "run_id=$selected_run_id"
-            echo "commit=$selected_commit"
-          } >> "$GITHUB_OUTPUT"
-          echo "Will recheck $selected_tag from Release run $selected_run_id."
+        run: bash scripts/discover-pending-notarization.sh
 
   recheck:
     name: Recheck both Apple submissions
@@ -301,6 +198,7 @@ jobs:
             exit 0
           fi
           finalize_runs="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
             --workflow finalize-release.yml \
             --limit 50 \
             --json displayTitle,status,conclusion)"

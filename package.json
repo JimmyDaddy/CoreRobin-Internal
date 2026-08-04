@@ -20,7 +20,7 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "verify:web-bundle": "node scripts/verify-web-bundle.mjs",
-    "verify:release-tools": "pnpm release:preflight && node scripts/record-release-device-smoke.mjs -- --dry-run && node scripts/capture-monitor-baseline.mjs -- --dry-run && node scripts/capture-runtime-energy-baseline.mjs -- --dry-run && bash -n scripts/verify-packaged-macos.sh scripts/verify-packaged-linux.sh scripts/release-macos-local.sh",
+    "verify:release-tools": "pnpm release:preflight && node scripts/record-release-device-smoke.mjs -- --dry-run && node scripts/capture-monitor-baseline.mjs -- --dry-run && node scripts/capture-runtime-energy-baseline.mjs -- --dry-run && bash -n scripts/discover-pending-notarization.sh scripts/verify-packaged-macos.sh scripts/verify-packaged-linux.sh scripts/release-macos-local.sh",
     "release:gate:static": "pnpm build && pnpm verify:web-bundle && pnpm test:surface-contracts && pnpm test:performance-contracts",
     "release:smoke:device": "node scripts/record-release-device-smoke.mjs",
     "performance:baseline": "node scripts/capture-monitor-baseline.mjs",
