@@ -205,6 +205,9 @@ fn run_quick_cleanup_at(
             &category_root(*category, &roots),
             cancelled,
             on_progress,
+            result.freed_bytes,
+            result.freed_items,
+            result.skipped_items,
         )?;
         result.freed_bytes = result.freed_bytes.saturating_add(category_result.freed_bytes);
         result.freed_items = result.freed_items.saturating_add(category_result.freed_items);
@@ -219,6 +222,9 @@ fn clean_category(
     root: &Path,
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(QuickCleanProgress),
+    base_freed_bytes: u64,
+    base_freed_items: u64,
+    base_skipped_items: u64,
 ) -> Result<QuickCleanCategoryResult, CommandError> {
     let mut out = QuickCleanCategoryResult {
         category,
@@ -257,9 +263,9 @@ fn clean_category(
                     category,
                     processed_item_count,
                     total_item_count,
-                    out.freed_bytes,
-                    out.freed_items,
-                    out.skipped_items,
+                    base_freed_bytes.saturating_add(out.freed_bytes),
+                    base_freed_items.saturating_add(out.freed_items),
+                    base_skipped_items.saturating_add(out.skipped_items),
                     &current_path,
                 );
                 continue;
@@ -281,9 +287,13 @@ fn clean_category(
                     category,
                     processed_item_count,
                     total_item_count,
-                    out.freed_bytes.saturating_add(entry_bytes),
-                    out.freed_items.saturating_add(entry_files),
-                    out.skipped_items,
+                    base_freed_bytes
+                        .saturating_add(out.freed_bytes)
+                        .saturating_add(entry_bytes),
+                    base_freed_items
+                        .saturating_add(out.freed_items)
+                        .saturating_add(entry_files),
+                    base_skipped_items.saturating_add(out.skipped_items),
                     &current_path,
                 );
             }
@@ -303,9 +313,9 @@ fn clean_category(
             category,
             processed_item_count,
             total_item_count,
-            out.freed_bytes,
-            out.freed_items,
-            out.skipped_items,
+            base_freed_bytes.saturating_add(out.freed_bytes),
+            base_freed_items.saturating_add(out.freed_items),
+            base_skipped_items.saturating_add(out.skipped_items),
             &current_path,
         );
     }
@@ -447,6 +457,9 @@ mod tests {
         assert!(!roots.home.join(".Trash/old.bin").exists());
         assert!(roots.temp.join("tmp0.tmp").exists());
         assert!(progress.len() >= 2);
+        let last = progress.last().unwrap();
+        assert_eq!(last.freed_bytes, result.freed_bytes);
+        assert_eq!(last.freed_items, result.freed_items);
     }
 
     #[test]
