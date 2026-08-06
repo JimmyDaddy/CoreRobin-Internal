@@ -1417,15 +1417,9 @@ mod tests {
             ),
             Some(cache_scope.to_string_lossy().into_owned())
         );
-        let caches = {
-            let mut scope = PathBuf::from("~");
-            scope.push("Library");
-            scope.push("Caches");
-            scope
-        };
         assert_eq!(
             next_recovery_path("~/Library/Caches", &[]),
-            Some(caches.to_string_lossy().into_owned())
+            Some("~/Library/Caches".to_owned())
         );
         assert_eq!(
             next_recovery_path("~/Documents/project/cache/record", &[]),
