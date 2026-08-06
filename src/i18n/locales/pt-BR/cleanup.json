@@ -46,7 +46,6 @@
     "launcherDescription": "Abra um espaço de trabalho dedicado para o progresso da verificação, grupos duplicados e arquivos grandes que não foram modificados há muito tempo.",
     "running": "Verificando agora",
     "openWorkspace": "Abrir espaço de trabalho",
-    "back": "Voltar à verificação do disco",
     "phaseDescription": {
       "discovering": "Revisar nomes, tamanhos e datas de modificação em pastas pessoais comuns para restringir os candidatos a conteúdo.",
       "hashing": "Ler candidatos do mesmo tamanho e calcular SHA-256 localmente; o conteúdo nunca sai deste computador."

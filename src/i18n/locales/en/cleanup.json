@@ -112,7 +112,6 @@
       "category": "Purpose"
     },
     "ariaLabel": "Space sunburst for {{name}}",
-    "back": "Back to disk scan",
     "breadcrumbs": "Space map hierarchy",
     "selectedPath": "Selected path",
     "centerBack": "Go to the parent folder",

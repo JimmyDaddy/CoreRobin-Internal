@@ -485,7 +485,6 @@ export default interface Resources {
       "allScanned": "全部扫描结果",
       "allocatedSize": "实际占用",
       "ariaLabel": "{{name}} 的空间扇形图",
-      "back": "返回磁盘扫描",
       "basket": {
         "cancelled": "清理已停止，已完成 {{deletedCount}} 项",
         "clear": "清空",

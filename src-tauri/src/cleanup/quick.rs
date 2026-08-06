@@ -16,6 +16,10 @@ use super::home_directory;
 // well-known, user-owned locations. Everything else (documents, app data,
 // cookies, downloads) is deliberately out of scope.
 const QUICK_CLEAN_ANALYZE_ENTRY_CAP: usize = 250_000;
+// Emit a progress update at least this often while deleting one entry, so a
+// multi-gigabyte cache with hundreds of thousands of files keeps the UI
+// moving instead of looking frozen until the entry finishes.
+const QUICK_CLEAN_PROGRESS_INTERVAL: usize = 256;
 const QUICK_CLEAN_ORDER: [QuickCleanCategory; 4] = [
     QuickCleanCategory::UserCache,
     QuickCleanCategory::Logs,
@@ -253,18 +257,36 @@ fn clean_category(
                     category,
                     processed_item_count,
                     total_item_count,
-                    &out,
+                    out.freed_bytes,
+                    out.freed_items,
+                    out.skipped_items,
                     &current_path,
                 );
                 continue;
             }
         };
         let mut entry_bytes = 0_u64;
+        let mut entry_files = 0_u64;
+        let mut throttled_files = 0_u64;
         match bound.delete_cancellable(cancelled, &mut |bytes| {
             entry_bytes = entry_bytes.saturating_add(bytes);
+            entry_files = entry_files.saturating_add(1);
+            if entry_files.saturating_sub(throttled_files) >= QUICK_CLEAN_PROGRESS_INTERVAL as u64 {
+                throttled_files = entry_files;
+                emit_progress(
+                    on_progress,
+                    category,
+                    processed_item_count,
+                    total_item_count,
+                    out.freed_bytes.saturating_add(entry_bytes),
+                    out.freed_items.saturating_add(entry_files),
+                    out.skipped_items,
+                    &current_path,
+                );
+            }
         }) {
             Ok(true) => {
-                out.freed_items += 1;
+                out.freed_items = out.freed_items.saturating_add(entry_files);
                 out.freed_bytes = out.freed_bytes.saturating_add(entry_bytes);
             }
             Ok(false) | Err(_) => {
@@ -278,28 +300,33 @@ fn clean_category(
             category,
             processed_item_count,
             total_item_count,
-            &out,
+            out.freed_bytes,
+            out.freed_items,
+            out.skipped_items,
             &current_path,
         );
     }
     Ok(out)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_progress(
     on_progress: &mut dyn FnMut(QuickCleanProgress),
     category: QuickCleanCategory,
     processed_item_count: usize,
     total_item_count: usize,
-    out: &QuickCleanCategoryResult,
+    freed_bytes: u64,
+    freed_items: u64,
+    skipped_items: u64,
     current_path: &str,
 ) {
     on_progress(QuickCleanProgress {
         category,
         processed_item_count,
         total_item_count,
-        freed_bytes: out.freed_bytes,
-        freed_items: out.freed_items,
-        skipped_items: out.skipped_items,
+        freed_bytes,
+        freed_items,
+        skipped_items,
         current_path: current_path.to_owned(),
     });
 }
@@ -402,7 +429,7 @@ mod tests {
             .iter()
             .find(|result| result.category == QuickCleanCategory::UserCache)
             .unwrap();
-        assert_eq!(caches.freed_items, 1);
+        assert_eq!(caches.freed_items, 4);
         assert!(caches.freed_bytes >= 6_144);
         assert!(roots.home.join("Library/Caches").is_dir());
         assert!(!roots.home.join("Library/Caches/com.example").exists());
@@ -417,6 +444,39 @@ mod tests {
         assert!(!roots.home.join(".Trash/old.bin").exists());
         assert!(roots.temp.join("tmp0.tmp").exists());
         assert!(progress.len() >= 2);
+    }
+
+    #[test]
+    fn large_entries_emit_throttled_progress_while_deleting() {
+        let fixture = tempdir().unwrap();
+        let roots = fixture_roots(fixture.path());
+        let big = roots.home.join("Library/Caches/big-cache");
+        for index in 0..600 {
+            write_file(&big.join(format!("file-{index:04}.bin")), 256);
+        }
+        let cancelled = AtomicBool::new(false);
+        let mut progress = Vec::new();
+        let result = run_quick_cleanup_at(
+            roots.clone(),
+            &QuickCleanRequest {
+                categories: vec![QuickCleanCategory::UserCache],
+            },
+            &cancelled,
+            &mut |update| progress.push(update),
+        )
+        .unwrap();
+        assert!(
+            progress.len() >= 3,
+            "expected throttled progress events, got {}",
+            progress.len()
+        );
+        let caches = result
+            .results
+            .iter()
+            .find(|result| result.category == QuickCleanCategory::UserCache)
+            .unwrap();
+        assert!(caches.freed_items >= 600);
+        assert!(!roots.home.join("Library/Caches/big-cache").exists());
     }
 
     #[test]

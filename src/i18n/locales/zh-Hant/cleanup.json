@@ -46,7 +46,6 @@
     "launcherDescription": "開啟專用工作區以顯示掃描進度、重複群組和長期未修改的大型檔案。",
     "running": "立即檢查",
     "openWorkspace": "開放工作區",
-    "back": "返回磁碟掃描",
     "phaseDescription": {
       "discovering": "檢查常用個人資料夾中的名稱、大小和修改日期，以縮小候選內容範圍。",
       "hashing": "讀取相同大小的候選並在本地計算SHA-256；內容永遠不會離開這台電腦。"

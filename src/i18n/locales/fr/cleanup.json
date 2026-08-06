@@ -46,7 +46,6 @@
     "launcherDescription": "Ouvrez un espace de travail dédié à la progression de l'analyse, aux groupes en double et aux fichiers volumineux non modifiés depuis longtemps.",
     "running": "Vérifier maintenant",
     "openWorkspace": "Espace de travail ouvert",
-    "back": "Retour à l'analyse du disque",
     "phaseDescription": {
       "discovering": "Examen des noms, des tailles et des dates de modification dans les dossiers personnels communs pour affiner le contenu des candidats.",
       "hashing": "Lecture de candidats de même taille et calcul local de SHA-256 ; le contenu ne quitte jamais cet ordinateur."

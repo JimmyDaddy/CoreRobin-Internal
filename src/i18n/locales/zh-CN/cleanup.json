@@ -112,7 +112,6 @@
       "category": "用途分类"
     },
     "ariaLabel": "{{name}} 的空间扇形图",
-    "back": "返回磁盘扫描",
     "breadcrumbs": "空间图层级",
     "selectedPath": "当前选择路径",
     "centerBack": "返回上一级目录",

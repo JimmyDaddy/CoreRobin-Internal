@@ -46,7 +46,6 @@
     "launcherDescription": "Öffnen Sie einen dedizierten Arbeitsbereich für den Scan-Fortschritt, doppelte Gruppen und große, lange Zeit unveränderte Dateien.",
     "running": "Jetzt prüfen",
     "openWorkspace": "Arbeitsbereich öffnen",
-    "back": "Zurück zum Festplatten-Scan",
     "phaseDescription": {
       "discovering": "Überprüfen von Namen, Größen und Änderungsdaten in allgemeinen persönlichen Ordnern, um die Inhaltskandidaten einzugrenzen.",
       "hashing": "Kandidaten gleicher Größe lesen und SHA-256 lokal berechnen; Der Inhalt verlässt niemals diesen Computer."

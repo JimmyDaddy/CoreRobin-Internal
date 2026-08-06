@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
   Boxes,
   Check,
@@ -162,13 +161,6 @@ export function QuickCleanupPage({ onBack }: { onBack: () => void }) {
 
   return (
     <section className="quick-clean-page" aria-labelledby="quick-clean-title">
-      <div className="quick-clean-page__nav">
-        <button className="button button--secondary" type="button" onClick={onBack}>
-          <ArrowLeft size={14} />
-          {t("cleanup:quickClean.back")}
-        </button>
-      </div>
-
       <div className="quick-clean">
         <header className="quick-clean__header">
           <span className="quick-clean__icon" aria-hidden="true">
@@ -316,6 +308,11 @@ export function QuickCleanupPage({ onBack }: { onBack: () => void }) {
                   : "cleanup:quickClean.cleaning",
               )}
             </span>
+            {progress?.currentPath ? (
+              <small className="quick-clean__working-path" title={progress.currentPath}>
+                {progress.currentPath}
+              </small>
+            ) : null}
             <em>
               {t("cleanup:quickClean.freedSoFar", {
                 size: formatBytes(cleanedBytes),

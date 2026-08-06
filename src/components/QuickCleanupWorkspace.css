@@ -5,11 +5,6 @@
   padding: 18px 22px;
 }
 
-.quick-clean-page__nav {
-  display: flex;
-  align-items: center;
-}
-
 .quick-clean-page .quick-clean {
   width: 100%;
   margin: 0;
@@ -588,6 +583,15 @@
 .quick-clean__working-copy span {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.quick-clean__working-path {
+  max-width: min(72vw, 520px);
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-clean__working-copy em {
