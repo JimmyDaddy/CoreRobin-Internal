@@ -103,10 +103,10 @@
     "confirmRequest": "Solicitar saída"
   },
   "orphan": {
-    "kicker": "Processos órfãos",
-    "title": "Processos sem pai detectados",
-    "summary": "{{count}} processos órfãos usam {{size}}",
-    "none": "Nenhum processo órfão — tudo certo",
+    "kicker": "Processos sem gestão",
+    "title": "Processos sem gestão detectados",
+    "summary": "{{count}} processos sem gestão usam {{size}}",
+    "none": "Nenhum processo sem gestão — tudo certo",
     "view": "Ver e limpar",
     "collapse": "Recolher",
     "refresh": "Detectar de novo",
@@ -114,14 +114,15 @@
     "end": "Encerrar",
     "forceEnd": "Forçar",
     "cleanAll": "Encerrar todos",
-    "confirmAll": "Encerrar os {{count}} processos órfãos?",
+    "confirmAll": "Encerrar os {{count}} processos sem gestão?",
     "confirmYes": "Encerrar",
+    "confirmMore": " e mais {{count}}",
     "safety": "Apenas processos seus são listados; cada um é reverificado antes de encerrar",
     "reportTitle": "Resultado",
-    "filter": "Só órfãos",
-    "filterTitle": "Mostrar apenas processos cujo pai saiu",
+    "filter": "Só sem gestão",
+    "filterTitle": "Mostrar apenas processos cujo pai saiu e que não são gerenciados",
     "reason": {
-      "parent_exited": "Pai saiu; adotado pelo sistema",
+      "parent_exited": "Pai saiu; sem gestor",
       "parent_missing": "O pai não existe mais"
     },
     "status": {

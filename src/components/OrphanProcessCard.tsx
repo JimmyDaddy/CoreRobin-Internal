@@ -249,6 +249,10 @@ export function OrphanProcessCard() {
             {confirmAll ? (
               <div className="orphan-card__confirm">
                 <span>{t("process:orphan.confirmAll", { count })}</span>
+                <small className="orphan-card__confirm-list">
+                  {orphans.slice(0, 6).map((orphan) => orphan.name).join("、")}
+                  {orphans.length > 6 ? t("process:orphan.confirmMore", { count: orphans.length - 6 }) : ""}
+                </small>
                 <button className="button orphan-card__kill" type="button" onClick={killAll}>
                   {t("process:orphan.confirmYes")}
                 </button>

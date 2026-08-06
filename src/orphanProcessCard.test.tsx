@@ -69,13 +69,13 @@ describe("OrphanProcessCard", () => {
     });
     render(<OrphanProcessCard />);
 
-    await waitFor(() => expect(screen.getByText(/2 个孤儿进程/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/2 个无主进程/)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "查看并清理" }));
     expect(screen.getByText("leftover-agent")).toBeTruthy();
     expect(screen.getByText("orphan-helper")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "一键清理全部" }));
-    expect(screen.getByText(/确认结束全部 2 个孤儿进程/)).toBeTruthy();
+    expect(screen.getByText(/确认结束全部 2 个无主进程/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "确认清理" }));
 
     await waitFor(() => expect(orphanApi.killOrphanProcesses).toHaveBeenCalled());
@@ -97,7 +97,7 @@ describe("OrphanProcessCard", () => {
       ],
     });
     render(<OrphanProcessCard />);
-    await waitFor(() => expect(screen.getByText(/2 个孤儿进程/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/2 个无主进程/)).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "查看并清理" }));
 
     const inspectButtons = screen.getAllByRole("button", { name: "检查" });

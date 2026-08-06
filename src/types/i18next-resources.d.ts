@@ -2169,7 +2169,8 @@ export default interface Resources {
     "orphan": {
       "cleanAll": "一键清理全部",
       "collapse": "收起",
-      "confirmAll": "确认结束全部 {{count}} 个孤儿进程？",
+      "confirmAll": "确认结束全部 {{count}} 个无主进程？",
+      "confirmMore": "等 {{count}} 个",
       "confirmYes": "确认清理",
       "detail": {
         "command": "命令行",
@@ -2180,14 +2181,14 @@ export default interface Resources {
         "status": "状态"
       },
       "end": "结束",
-      "filter": "仅看孤儿",
-      "filterTitle": "只显示父进程已退出的进程",
+      "filter": "仅看无主",
+      "filterTitle": "只显示父进程已退出、无人托管的进程",
       "forceEnd": "强制结束",
       "inspect": "检查",
-      "kicker": "孤儿进程",
-      "none": "没有孤儿进程，一切正常",
+      "kicker": "无主进程",
+      "none": "没有无主进程，一切正常",
       "reason": {
-        "parent_exited": "父进程已退出，被系统收养",
+        "parent_exited": "父进程已退出，当前无人托管",
         "parent_missing": "父进程已不存在"
       },
       "refresh": "重新检测",
@@ -2200,7 +2201,7 @@ export default interface Resources {
         "skipped": "已跳过",
         "survived": "未退出"
       },
-      "summary": "{{count}} 个孤儿进程，占用 {{size}}",
+      "summary": "{{count}} 个无主进程，占用 {{size}}",
       "title": "检测到无主进程",
       "view": "查看并清理"
     },

@@ -104,9 +104,9 @@
   },
   "orphan": {
     "kicker": "Verwaiste Prozesse",
-    "title": "Elternlose Prozesse gefunden",
-    "summary": "{{count}} verwaiste Prozesse nutzen {{size}}",
-    "none": "Keine verwaisten Prozesse — alles in Ordnung",
+    "title": "Nicht verwaltete Prozesse gefunden",
+    "summary": "{{count}} nicht verwaltete Prozesse nutzen {{size}}",
+    "none": "Keine nicht verwalteten Prozesse — alles in Ordnung",
     "view": "Ansehen & bereinigen",
     "collapse": "Einklappen",
     "refresh": "Neu prüfen",
@@ -114,14 +114,15 @@
     "end": "Beenden",
     "forceEnd": "Erzwingen",
     "cleanAll": "Alle beenden",
-    "confirmAll": "Alle {{count}} verwaisten Prozesse beenden?",
+    "confirmAll": "Alle {{count}} nicht verwalteten Prozesse beenden?",
     "confirmYes": "Beenden",
+    "confirmMore": " und {{count}} weitere",
     "safety": "Nur eigene Prozesse werden gelistet; jeder wird vor dem Beenden erneut geprüft",
     "reportTitle": "Ergebnis",
-    "filter": "Nur verwaiste",
-    "filterTitle": "Nur Prozesse anzeigen, deren Eltern beendet sind",
+    "filter": "Nur unverwaltete",
+    "filterTitle": "Nur Prozesse anzeigen, deren Eltern beendet sind und die nicht verwaltet werden",
     "reason": {
-      "parent_exited": "Elternprozess beendet; vom System übernommen",
+      "parent_exited": "Elternprozess beendet; ohne Verwalter",
       "parent_missing": "Elternprozess existiert nicht mehr"
     },
     "status": {

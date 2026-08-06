@@ -103,10 +103,10 @@
     "confirmRequest": "Solicitar cierre"
   },
   "orphan": {
-    "kicker": "Procesos huérfanos",
-    "title": "Procesos sin padre detectados",
-    "summary": "{{count}} procesos huérfanos usan {{size}}",
-    "none": "Sin procesos huérfanos — todo en orden",
+    "kicker": "Procesos sin gestión",
+    "title": "Procesos sin gestión detectados",
+    "summary": "{{count}} procesos sin gestión usan {{size}}",
+    "none": "Sin procesos sin gestión — todo en orden",
     "view": "Ver y limpiar",
     "collapse": "Contraer",
     "refresh": "Volver a detectar",
@@ -114,14 +114,15 @@
     "end": "Terminar",
     "forceEnd": "Forzar",
     "cleanAll": "Terminar todos",
-    "confirmAll": "¿Terminar los {{count}} procesos huérfanos?",
+    "confirmAll": "¿Terminar los {{count}} procesos sin gestión?",
     "confirmYes": "Terminar",
+    "confirmMore": " y {{count}} más",
     "safety": "Solo se listan procesos tuyos; cada uno se re-verifica antes de terminar",
     "reportTitle": "Resultado",
-    "filter": "Solo huérfanos",
-    "filterTitle": "Mostrar solo procesos cuyo padre ha salido",
+    "filter": "Solo sin gestión",
+    "filterTitle": "Mostrar solo procesos cuyo padre salió y no están gestionados",
     "reason": {
-      "parent_exited": "El padre salió; adoptado por el sistema",
+      "parent_exited": "El padre salió; sin gestor",
       "parent_missing": "El padre ya no existe"
     },
     "status": {

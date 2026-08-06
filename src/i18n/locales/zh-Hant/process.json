@@ -103,10 +103,10 @@
     "confirmRequest": "確認請求結束"
   },
   "orphan": {
-    "kicker": "孤兒程序",
+    "kicker": "無主程序",
     "title": "偵測到無主程序",
-    "summary": "{{count}} 個孤兒程序，占用 {{size}}",
-    "none": "沒有孤兒程序，一切正常",
+    "summary": "{{count}} 個無主程序，占用 {{size}}",
+    "none": "沒有無主程序，一切正常",
     "view": "檢視並清理",
     "collapse": "收起",
     "refresh": "重新偵測",
@@ -114,14 +114,15 @@
     "end": "結束",
     "forceEnd": "強制結束",
     "cleanAll": "一鍵清理全部",
-    "confirmAll": "確認結束全部 {{count}} 個孤兒程序？",
+    "confirmAll": "確認結束全部 {{count}} 個無主程序？",
     "confirmYes": "確認清理",
+    "confirmMore": "等 {{count}} 個",
     "safety": "只列出目前使用者擁有的程序；結束前會再次驗證程序身分",
     "reportTitle": "清理結果",
-    "filter": "僅看孤兒",
-    "filterTitle": "只顯示父程序已結束的程序",
+    "filter": "僅看無主",
+    "filterTitle": "只顯示父程序已結束、無人託管的程序",
     "reason": {
-      "parent_exited": "父程序已結束，被系統收養",
+      "parent_exited": "父程序已結束，目前無人託管",
       "parent_missing": "父程序已不存在"
     },
     "status": {

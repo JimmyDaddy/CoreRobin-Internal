@@ -103,10 +103,10 @@
     "confirmRequest": "Demander la fermeture"
   },
   "orphan": {
-    "kicker": "Processus orphelins",
-    "title": "Processus sans parent détectés",
-    "summary": "{{count}} processus orphelins utilisent {{size}}",
-    "none": "Aucun processus orphelin — tout va bien",
+    "kicker": "Processus non gérés",
+    "title": "Processus non gérés détectés",
+    "summary": "{{count}} processus non gérés utilisent {{size}}",
+    "none": "Aucun processus non géré — tout va bien",
     "view": "Voir et nettoyer",
     "collapse": "Réduire",
     "refresh": "Relancer",
@@ -114,14 +114,15 @@
     "end": "Terminer",
     "forceEnd": "Forcer",
     "cleanAll": "Tout terminer",
-    "confirmAll": "Terminer les {{count}} processus orphelins ?",
+    "confirmAll": "Terminer les {{count}} processus non gérés ?",
     "confirmYes": "Terminer",
+    "confirmMore": " et {{count}} autres",
     "safety": "Seuls vos processus sont listés ; chacun est re-vérifié avant la fin",
     "reportTitle": "Résultat",
-    "filter": "Orphelins",
-    "filterTitle": "Afficher uniquement les processus dont le parent est parti",
+    "filter": "Non gérés",
+    "filterTitle": "Afficher uniquement les processus dont le parent est parti et qui ne sont pas gérés",
     "reason": {
-      "parent_exited": "Parent parti ; adopté par le système",
+      "parent_exited": "Parent parti ; plus de gestionnaire",
       "parent_missing": "Le parent n'existe plus"
     },
     "status": {

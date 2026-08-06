@@ -103,10 +103,10 @@
     "confirmRequest": "Request exit"
   },
   "orphan": {
-    "kicker": "Orphan processes",
-    "title": "Parentless processes found",
-    "summary": "{{count}} orphan processes using {{size}}",
-    "none": "No orphan processes — all healthy",
+    "kicker": "Unmanaged processes",
+    "title": "Unmanaged processes found",
+    "summary": "{{count}} unmanaged processes using {{size}}",
+    "none": "No unmanaged processes — all healthy",
     "view": "View & clean",
     "collapse": "Collapse",
     "refresh": "Re-scan",
@@ -114,14 +114,15 @@
     "end": "End",
     "forceEnd": "Force end",
     "cleanAll": "End all",
-    "confirmAll": "End all {{count}} orphan processes?",
+    "confirmAll": "End all {{count}} unmanaged processes?",
     "confirmYes": "End them",
+    "confirmMore": " and {{count}} more",
     "safety": "Only processes you own are listed; each one is re-verified before ending",
     "reportTitle": "Result",
-    "filter": "Orphans only",
-    "filterTitle": "Show only processes whose parent has exited",
+    "filter": "Unmanaged only",
+    "filterTitle": "Show only processes whose parent has exited and are not managed",
     "reason": {
-      "parent_exited": "Parent exited; adopted by the system",
+      "parent_exited": "Parent exited; no manager left",
       "parent_missing": "Parent no longer exists"
     },
     "status": {

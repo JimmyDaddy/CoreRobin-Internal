@@ -259,3 +259,12 @@
   background: var(--danger-soft);
   font-size: 12px;
 }
+
+.orphan-card__confirm-list {
+  max-width: 240px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
