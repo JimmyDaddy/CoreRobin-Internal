@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.25",
+  "title": {
+    "zh-CN": "快速清理与无主进程管理",
+    "en": "Quick cleanup and unmanaged process management"
+  },
+  "items": [
+    {
+      "zh-CN": "新增快速清理：无需扫描磁盘，一键清理应用缓存、日志、临时文件与废纸篓，为磁盘腾出空间；清理过程中会实时显示进度和正在处理的位置。",
+      "en": "New quick cleanup: reclaim disk space without a full scan by clearing app caches, logs, temporary files and Trash in one tap, with live progress and the current location shown while it works."
+    },
+    {
+      "zh-CN": "快速清理和磁盘扫描现在都有独立的导航入口，日常模式中也可以一键进入快速清理；原空间清理页面更名为磁盘扫描。",
+      "en": "Quick cleanup and the disk scan now have separate navigation entries, and quick cleanup is reachable from the daily mode as well; the space cleanup page is now called Disk Scan."
+    },
+    {
+      "zh-CN": "新增无主进程检测：列出父进程已退出、当前无人托管的进程及占用情况，可以逐个检查后结束，也可以一键批量清理；结束前会重新校验进程身份，仅列出当前用户拥有的进程。",
+      "en": "New unmanaged process detection: processes whose parent has exited are listed with their resource usage; you can inspect and end them individually or clean them all at once, with re-verification before ending and only your own processes listed."
+    },
+    {
+      "zh-CN": "修复空间扫描偶发失败的问题：不再因为索引占用冲突或索引空间不足导致扫描中断；索引上限也会自动腾出空间，扫描更稳定。",
+      "en": "Fixed occasional disk scan failures: scans no longer abort from index lock conflicts or insufficient index space, and the index now frees space automatically to keep scans stable."
+    },
+    {
+      "zh-CN": "快速清理更完整：包含符号链接的缓存目录（如 node_modules）也能整体清理；释放空间按实际清理的文件数量统计。",
+      "en": "Quick cleanup is more thorough: cache trees containing symlinks (such as node_modules) are fully removed, and freed space is reported by the actual number of items cleaned."
+    }
+  ]
+}
