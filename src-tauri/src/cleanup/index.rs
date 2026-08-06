@@ -42,7 +42,14 @@ const NAVIGATION_ANCHOR_RESERVE: usize = 4_096;
 // transactional directory refresh, while preventing unbounded growth.
 const MAX_INDEX_BYTES: u64 = 512 * 1024 * 1024;
 const INDEX_VACUUM_PAGES: usize = 8_192;
-const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+// WAL allows a single writer at a time. The scan worker is a separate process,
+// so it must out-wait short-lived maintenance writes from the main process
+// (e.g. discarding an old scan) instead of aborting the whole scan with
+// SQLITE_BUSY once the busy handler gives up.
+const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
+// Delete scan rows in bounded batches so no single statement holds the WAL
+// write lock long enough to stall a concurrent scan worker.
+const INDEX_DELETE_BATCH: usize = 5_000;
 const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -1057,9 +1064,10 @@ pub(crate) fn load_latest_indexed_scan(
     if !index_path.is_file() {
         return Ok(None);
     }
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
-    purge_expired_and_incomplete(&connection)?;
+    // Stay read-only: the main process must never take the WAL write lock
+    // while a scan worker is writing. Expired and broken generations are
+    // reclaimed by the next scan instead of here.
+    let connection = open_index_read_only(index_path)?;
     let scan_ids = {
         let mut statement = connection
             .prepare(
@@ -1079,9 +1087,8 @@ pub(crate) fn load_latest_indexed_scan(
             return Ok(Some(scan));
         }
         // A broken generation is a cache entry, not a reason to destroy every
-        // older valid result. Remove only that scan and fall back to its
-        // retained predecessor.
-        delete_scan(&connection, &scan_id)?;
+        // older valid result. Skip it and fall back to its retained
+        // predecessor; the next scan of the same target retires it.
     }
     Ok(None)
 }
@@ -3442,17 +3449,42 @@ fn delete_node_subtree(
 ) -> Result<(), CommandError> {
     transaction
         .execute(
-            "WITH RECURSIVE subtree(id) AS (
+            "CREATE TEMP TABLE IF NOT EXISTS cleanup_subtree_ids(id INTEGER PRIMARY KEY)",
+            [],
+        )
+        .map_err(index_error)?;
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
+        .map_err(index_error)?;
+    transaction
+        .execute(
+            "INSERT INTO cleanup_subtree_ids(id)
+             WITH RECURSIVE subtree(id) AS (
                SELECT id FROM nodes WHERE scan_id = ?1 AND id = ?2
                UNION ALL
                SELECT nodes.id FROM nodes
                JOIN subtree ON nodes.parent_id = subtree.id
                WHERE nodes.scan_id = ?1
              )
-             DELETE FROM nodes
-             WHERE scan_id = ?1 AND id IN (SELECT id FROM subtree)",
+             SELECT id FROM subtree",
             params![scan_id, node_id],
         )
+        .map_err(index_error)?;
+    loop {
+        let deleted = transaction
+            .execute(
+                "DELETE FROM nodes WHERE scan_id = ?1 AND id IN (
+                   SELECT id FROM cleanup_subtree_ids LIMIT ?2
+                 )",
+                params![scan_id, INDEX_DELETE_BATCH as i64],
+            )
+            .map_err(index_error)?;
+        if deleted == 0 {
+            break;
+        }
+    }
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
         .map_err(index_error)?;
     Ok(())
 }
@@ -4395,19 +4427,47 @@ fn collapse_indexed_directory_details(
     if subtree_node_count <= 1 {
         return Ok(0);
     }
+    // Materialize the descendant ids once, then delete in bounded batches.
+    // Re-running the recursive CTE per batch would strand descendants whose
+    // parents were removed by an earlier batch.
     transaction
         .execute(
-            "WITH RECURSIVE descendants(id) AS (
+            "CREATE TEMP TABLE IF NOT EXISTS cleanup_subtree_ids(id INTEGER PRIMARY KEY)",
+            [],
+        )
+        .map_err(index_error)?;
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
+        .map_err(index_error)?;
+    transaction
+        .execute(
+            "INSERT INTO cleanup_subtree_ids(id)
+             WITH RECURSIVE descendants(id) AS (
                SELECT id FROM nodes WHERE scan_id = ?1 AND parent_id = ?2
                UNION ALL
                SELECT nodes.id FROM nodes
                JOIN descendants ON nodes.parent_id = descendants.id
                WHERE nodes.scan_id = ?1
              )
-             DELETE FROM nodes
-             WHERE scan_id = ?1 AND id IN (SELECT id FROM descendants)",
+             SELECT id FROM descendants",
             params![scan_id, node_id],
         )
+        .map_err(index_error)?;
+    loop {
+        let deleted = transaction
+            .execute(
+                "DELETE FROM nodes WHERE scan_id = ?1 AND id IN (
+                   SELECT id FROM cleanup_subtree_ids LIMIT ?2
+                 )",
+                params![scan_id, INDEX_DELETE_BATCH as i64],
+            )
+            .map_err(index_error)?;
+        if deleted == 0 {
+            break;
+        }
+    }
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
         .map_err(index_error)?;
     transaction
         .execute(
@@ -4603,19 +4663,28 @@ fn purge_expired_and_incomplete(connection: &Connection) -> Result<(), CommandEr
 }
 
 fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandError> {
-    for table in [
-        "nodes",
-        "scan_segments",
-        "scan_locations",
-        "largest_files",
-        "seen_files",
+    for (table, key) in [
+        ("nodes", "id"),
+        ("scan_segments", "path"),
+        ("scan_locations", "kind"),
+        ("largest_files", "path"),
+        ("seen_files", "identity_a"),
     ] {
-        connection
-            .execute(
-                &format!("DELETE FROM {table} WHERE scan_id = ?1"),
-                params![scan_id],
-            )
-            .map_err(index_error)?;
+        loop {
+            let deleted = connection
+                .execute(
+                    &format!(
+                        "DELETE FROM {table} WHERE scan_id = ?1 AND {key} IN (
+                           SELECT {key} FROM {table} WHERE scan_id = ?1 LIMIT ?2
+                         )"
+                    ),
+                    params![scan_id, INDEX_DELETE_BATCH as i64],
+                )
+                .map_err(index_error)?;
+            if deleted == 0 {
+                break;
+            }
+        }
     }
     connection
         .execute("DELETE FROM scans WHERE id = ?1", params![scan_id])
@@ -5338,7 +5407,7 @@ mod tests {
     }
 
     #[test]
-    fn incomplete_completed_payload_is_discarded_instead_of_shown_as_empty() {
+    fn incomplete_completed_payload_is_skipped_instead_of_shown_as_empty() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
         let connection = open_index(&index_path).unwrap();
@@ -5374,8 +5443,10 @@ mod tests {
 
         assert!(load_latest_indexed_scan(&index_path).unwrap().is_none());
         assert!(index_path.exists());
+        // The reader skips the broken generation without mutating the index;
+        // the next worker scan retires it instead.
         let connection = open_index_read_only(&index_path).unwrap();
-        assert_eq!(count_scan_nodes(&connection, "broken").unwrap(), 0);
+        assert_eq!(count_scan_nodes(&connection, "broken").unwrap(), 1);
     }
 
     #[test]
@@ -5417,7 +5488,10 @@ mod tests {
 
         let restored = load_latest_indexed_scan(&index_path).unwrap().unwrap();
         assert_eq!(restored.scan_id, "previous-valid");
-        assert!(load_indexed_scan(&index_path, "broken-system").is_err());
+        // The reader falls back to the previous valid generation without
+        // deleting the broken one; the next worker scan of the same target
+        // retires it from the cache.
+        assert!(load_indexed_scan(&index_path, "broken-system").is_ok());
     }
 
     #[cfg(unix)]
