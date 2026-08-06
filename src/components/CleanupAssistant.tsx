@@ -419,7 +419,7 @@ export function CleanupAssistant({
         </div>
         {!pristine ? (
           <button
-            className="button button--secondary cleanup-assistant__scan"
+            className={`button ${loading ? "button--secondary" : "button--primary"} cleanup-assistant__scan`}
             type="button"
             disabled={cancelling || checkingAccess}
             onClick={requestScan}
