@@ -85,17 +85,15 @@ use models::{
     CleanupScanIndexSummary, CleanupScanJobStatus, CleanupScanRequest, FileInsightsProgress,
     FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
-    NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
-    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
-    ProcessDetail, ProcessDetailRequest, OrphanKillReport, OrphanKillRequest, OrphanProcess,
-    QuickCleanCategorySummary, QuickCleanProgress,
-    QuickCleanRequest, QuickCleanResult, StartupContext, StartupItemsSnapshot,
-    StartupManagementExecutionRequest, StartupManagementLease,
-    StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
-    SystemSnapshot, SystemSummary, TrashedApplication,
+    NetworkHostLookupRequest, NetworkQualityResult, OrphanKillReport, OrphanKillRequest,
+    OrphanProcess, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
+    ProcessDetailRequest, QuickCleanCategorySummary, QuickCleanProgress, QuickCleanRequest,
+    QuickCleanResult, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
+    StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
+    StartupManagementResult, SystemSnapshot, SystemSummary, TrashedApplication,
 };
 use monitor::SystemMonitor;
-use orphan_processes::{kill_orphan_processes, scan_orphan_processes};
 use network_connections::sample_network_connections;
 use network_quality::{
     resolve_network_hosts as resolve_hosts, run_network_quality_check as check_network_quality,
@@ -108,6 +106,7 @@ use objc2::{MainThreadMarker, sel};
 use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
+use orphan_processes::{kill_orphan_processes, scan_orphan_processes};
 use process_control::ProcessController;
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
@@ -896,9 +895,7 @@ async fn run_quick_cleanup_command(
         run_quick_cleanup(&request, &cancelled, &mut emit_progress)
     })
     .await
-    .map_err(|error| {
-        CommandError::internal(format!("Quick cleanup failed: {error}"))
-    })?;
+    .map_err(|error| CommandError::internal(format!("Quick cleanup failed: {error}")))?;
     state.quick_clean.finish(&finished_cancelled);
     result
 }

@@ -259,8 +259,10 @@ impl SystemMonitor {
             .as_ref()
             .is_none_or(|(refreshed_at, _)| refreshed_at.elapsed() >= LAUNCHD_CACHE_TTL)
         {
-            self.launchd_pids_cache =
-                Some((Instant::now(), crate::orphan_processes::launchd_registered_pids()));
+            self.launchd_pids_cache = Some((
+                Instant::now(),
+                crate::orphan_processes::launchd_registered_pids(),
+            ));
         }
         let launchd_pids = self
             .launchd_pids_cache

@@ -56,16 +56,6 @@ fn fresh_system() -> System {
     system
 }
 
-#[cfg(unix)]
-fn current_uid() -> u32 {
-    unsafe { libc::getuid() }
-}
-
-#[cfg(not(unix))]
-fn current_uid() -> u32 {
-    0
-}
-
 fn is_orphan(
     process: &sysinfo::Process,
     live_pids: &HashSet<u32>,
@@ -104,7 +94,11 @@ pub(crate) fn scan_orphan_processes() -> Result<Vec<OrphanProcess>, CommandError
     let own_pid = sysinfo::get_current_pid()
         .map(|pid| pid.as_u32())
         .unwrap_or(u32::MAX);
-    let uid = current_uid();
+    // The current process runs as the current user, so its own user id is the
+    // platform-independent ownership reference (Uid on unix, Sid on Windows).
+    let own_user_id = system
+        .process(sysinfo::Pid::from_u32(own_pid))
+        .and_then(|process| process.user_id().cloned());
     let launchd_pids = launchd_registered_pids();
 
     let candidate_reasons = |system: &System| -> Vec<(u32, OrphanReason)> {
@@ -125,9 +119,7 @@ pub(crate) fn scan_orphan_processes() -> Result<Vec<OrphanProcess>, CommandError
                         process.status(),
                         sysinfo::ProcessStatus::Zombie | sysinfo::ProcessStatus::Dead
                     )
-                    && process
-                        .user_id()
-                        .is_some_and(|user_id| **user_id == uid)
+                    && process.user_id() == own_user_id.as_ref()
                     && !is_known_session_agent(&process.name().to_string_lossy())
             })
             .filter_map(|process| {
@@ -185,7 +177,7 @@ pub(crate) fn scan_orphan_processes() -> Result<Vec<OrphanProcess>, CommandError
                     .join(" "),
                 parent_pid: parent,
                 parent_name,
-                user: uid.to_string(),
+                user: String::new(),
                 cpu_percent: process.cpu_usage().max(0.0),
                 memory_bytes: process.memory(),
                 status: format!("{:?}", process.status()),
@@ -204,16 +196,30 @@ pub(crate) fn kill_orphan_processes(
         outcomes: Vec::with_capacity(request.targets.len()),
     };
     for target in &request.targets {
-        report.outcomes.push(kill_one(target.pid, target.expected_start_time, request.force));
+        report.outcomes.push(kill_one(
+            target.pid,
+            target.expected_start_time,
+            request.force,
+        ));
     }
     Ok(report)
 }
 
 fn kill_one(pid: u32, expected_start_time: u64, force: bool) -> OrphanKillOutcome {
     let system = fresh_system();
-    let uid = current_uid();
+    let own_pid = sysinfo::get_current_pid()
+        .map(|pid| pid.as_u32())
+        .unwrap_or(u32::MAX);
+    let own_user_id = system
+        .process(sysinfo::Pid::from_u32(own_pid))
+        .and_then(|process| process.user_id().cloned());
     let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) else {
-        return outcome(pid, String::new(), OrphanKillStatus::Skipped, Some("进程已不存在".to_owned()));
+        return outcome(
+            pid,
+            String::new(),
+            OrphanKillStatus::Skipped,
+            Some("进程已不存在".to_owned()),
+        );
     };
     let name = process.name().to_string_lossy().into_owned();
     if process.start_time() != expected_start_time {
@@ -224,7 +230,7 @@ fn kill_one(pid: u32, expected_start_time: u64, force: bool) -> OrphanKillOutcom
             Some("进程已被替换，未执行操作".to_owned()),
         );
     }
-    if process.user_id().is_none_or(|user_id| **user_id != uid) {
+    if process.user_id() != own_user_id.as_ref() {
         return outcome(
             pid,
             name,
@@ -247,8 +253,7 @@ fn kill_one(pid: u32, expected_start_time: u64, force: bool) -> OrphanKillOutcom
         );
     }
 
-    let signaled = unsafe { libc::kill(pid as i32, libc::SIGTERM) } == 0;
-    if !signaled {
+    if !terminate_process(pid) {
         return outcome(
             pid,
             name,
@@ -267,20 +272,51 @@ fn kill_one(pid: u32, expected_start_time: u64, force: bool) -> OrphanKillOutcom
             Some("进程未在等待时间内退出，可强制结束".to_owned()),
         );
     }
-    let killed = unsafe { libc::kill(pid as i32, libc::SIGKILL) } == 0
-        && wait_for_exit(pid, ORPHAN_TERM_GRACE);
+    let killed = force_kill_process(pid) && wait_for_exit(pid, ORPHAN_TERM_GRACE);
     if killed {
         outcome(pid, name, OrphanKillStatus::ForceKilled, None)
     } else {
-        outcome(pid, name, OrphanKillStatus::Failed, Some("强制结束失败".to_owned()))
+        outcome(
+            pid,
+            name,
+            OrphanKillStatus::Failed,
+            Some("强制结束失败".to_owned()),
+        )
     }
+}
+
+#[cfg(unix)]
+fn terminate_process(pid: u32) -> bool {
+    unsafe { libc::kill(pid as i32, libc::SIGTERM) == 0 }
+}
+
+#[cfg(unix)]
+fn force_kill_process(pid: u32) -> bool {
+    unsafe { libc::kill(pid as i32, libc::SIGKILL) == 0 }
+}
+
+#[cfg(windows)]
+fn terminate_process(pid: u32) -> bool {
+    std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string()])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+fn force_kill_process(pid: u32) -> bool {
+    std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/F", "/T"])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
 }
 
 fn wait_for_exit(pid: u32, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     loop {
-        let alive = unsafe { libc::kill(pid as i32, 0) } == 0;
-        if !alive {
+        if !process_exists(pid) {
             return true;
         }
         if Instant::now() >= deadline {
@@ -288,6 +324,22 @@ fn wait_for_exit(pid: u32, timeout: Duration) -> bool {
         }
         std::thread::sleep(Duration::from_millis(80));
     }
+}
+
+#[cfg(unix)]
+fn process_exists(pid: u32) -> bool {
+    unsafe { libc::kill(pid as i32, 0) == 0 }
+}
+
+#[cfg(windows)]
+fn process_exists(pid: u32) -> bool {
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[sysinfo::Pid::from_u32(pid)]),
+        true,
+        ProcessRefreshKind::nothing(),
+    );
+    system.process(sysinfo::Pid::from_u32(pid)).is_some()
 }
 
 fn outcome(

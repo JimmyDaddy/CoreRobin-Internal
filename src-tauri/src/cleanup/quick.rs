@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::error::CommandError;
 use crate::models::{
-    QuickCleanCategory, QuickCleanCategoryResult, QuickCleanCategorySummary,
-    QuickCleanProgress, QuickCleanRequest, QuickCleanResult,
+    QuickCleanCategory, QuickCleanCategoryResult, QuickCleanCategorySummary, QuickCleanProgress,
+    QuickCleanRequest, QuickCleanResult,
 };
 use crate::safe_fs::DeleteRoot;
 
@@ -209,9 +209,15 @@ fn run_quick_cleanup_at(
             result.freed_items,
             result.skipped_items,
         )?;
-        result.freed_bytes = result.freed_bytes.saturating_add(category_result.freed_bytes);
-        result.freed_items = result.freed_items.saturating_add(category_result.freed_items);
-        result.skipped_items = result.skipped_items.saturating_add(category_result.skipped_items);
+        result.freed_bytes = result
+            .freed_bytes
+            .saturating_add(category_result.freed_bytes);
+        result.freed_items = result
+            .freed_items
+            .saturating_add(category_result.freed_items);
+        result.skipped_items = result
+            .skipped_items
+            .saturating_add(category_result.skipped_items);
         result.results.push(category_result);
     }
     Ok(result)
@@ -363,6 +369,7 @@ fn allocated_size(metadata: &fs::Metadata) -> u64 {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    #[cfg(unix)]
     use std::os::unix::fs::symlink;
     use std::path::Path;
     use std::sync::atomic::AtomicBool;
@@ -386,8 +393,16 @@ mod tests {
 
     fn seed_fixture(base: &Path) -> QuickCleanRoots {
         let roots = fixture_roots(base);
-        write_file(&roots.home.join("Library/Caches/com.example/cache.bin"), 2_048);
-        write_file(&roots.home.join("Library/Caches/com.example/deep/nested.bin"), 4_096);
+        write_file(
+            &roots.home.join("Library/Caches/com.example/cache.bin"),
+            2_048,
+        );
+        write_file(
+            &roots
+                .home
+                .join("Library/Caches/com.example/deep/nested.bin"),
+            4_096,
+        );
         write_file(&roots.home.join("Library/Logs/example.log"), 1_024);
         write_file(&roots.home.join(".Trash/old.bin"), 512);
         write_file(&roots.temp.join("tmp0.tmp"), 256);
@@ -462,14 +477,22 @@ mod tests {
         assert_eq!(last.freed_items, result.freed_items);
     }
 
+    #[cfg(unix)]
     #[test]
     fn internal_symlinks_are_unlinked_without_following() {
         let fixture = tempdir().unwrap();
         let roots = fixture_roots(fixture.path());
         let target = fixture.path().join("outside.bin");
         write_file(&target, 8_192);
-        let pkg = roots.home.join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/.bin");
-        write_file(&roots.home.join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/index.js"), 512);
+        let pkg = roots
+            .home
+            .join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/.bin");
+        write_file(
+            &roots
+                .home
+                .join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/index.js"),
+            512,
+        );
         fs::create_dir_all(&pkg).unwrap();
         symlink("../../pkg/index.js", pkg.join("pkg")).unwrap();
 
@@ -527,13 +550,17 @@ mod tests {
         assert!(!roots.home.join("Library/Caches/big-cache").exists());
     }
 
+    #[cfg(unix)]
     #[test]
     fn symlinks_are_never_followed_or_deleted() {
         let fixture = tempdir().unwrap();
         let roots = fixture_roots(fixture.path());
         let target = fixture.path().join("outside.bin");
         write_file(&target, 8_192);
-        write_file(&roots.home.join("Library/Caches/com.example/cache.bin"), 2_048);
+        write_file(
+            &roots.home.join("Library/Caches/com.example/cache.bin"),
+            2_048,
+        );
         fs::create_dir_all(roots.home.join("Library/Caches")).unwrap();
         symlink(&target, roots.home.join("Library/Caches/link.bin")).unwrap();
 
@@ -598,7 +625,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result.freed_items, 0);
-        assert!(roots.home.join("Library/Caches/com.example/cache.bin").exists());
+        assert!(
+            roots
+                .home
+                .join("Library/Caches/com.example/cache.bin")
+                .exists()
+        );
         assert!(roots.home.join(".Trash/old.bin").exists());
     }
 
@@ -623,7 +655,7 @@ mod bench {
     use tempfile::tempdir;
 
     use super::run_quick_cleanup_at;
-    use crate::cleanup::quick::{QuickCleanRoots, QUICK_CLEAN_ORDER};
+    use crate::cleanup::quick::{QUICK_CLEAN_ORDER, QuickCleanRoots};
     use crate::models::QuickCleanRequest;
 
     #[test]
@@ -645,7 +677,8 @@ mod bench {
             fs::create_dir_all(dir.join("node_modules/pkg/dist")).unwrap();
             for f in 0..80 {
                 fs::write(
-                    dir.join("node_modules/pkg/dist").join(format!("f-{f:03}.js")),
+                    dir.join("node_modules/pkg/dist")
+                        .join(format!("f-{f:03}.js")),
                     vec![1_u8; 512],
                 )
                 .unwrap();

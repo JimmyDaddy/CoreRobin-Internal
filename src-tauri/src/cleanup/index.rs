@@ -1792,7 +1792,11 @@ fn scan_directory_into_index(
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context.stats.scanned_entry_count.is_multiple_of(INDEX_SPACE_CHECK_INTERVAL) {
+        if context
+            .stats
+            .scanned_entry_count
+            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
+        {
             trim_seen_files_for_index_space(transaction, context.scan_id)?;
         }
         context
@@ -2453,7 +2457,11 @@ fn scan_direct_files_into_index(
             continue;
         }
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context.stats.scanned_entry_count.is_multiple_of(INDEX_SPACE_CHECK_INTERVAL) {
+        if context
+            .stats
+            .scanned_entry_count
+            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
+        {
             trim_seen_files_for_index_space(transaction, context.scan_id)?;
         }
         context

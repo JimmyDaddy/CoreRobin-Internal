@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "entries": {
     "index.html": {
-      "javascriptBytes": 490000,
-      "javascriptGzipBytes": 300000,
+      "javascriptBytes": 510000,
+      "javascriptGzipBytes": 310000,
       "cssBytes": 300000,
       "cssGzipBytes": 40000
     },

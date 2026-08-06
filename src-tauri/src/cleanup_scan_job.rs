@@ -892,6 +892,7 @@ pub(crate) fn reap_orphan_workers(job_directory: &Path) {
         if orphaned {
             // Workers run in their own process group (process_group(0)), so a
             // negative kill reaches the worker and anything it spawned.
+            #[cfg(unix)]
             unsafe {
                 let _ = libc::kill(-(pid as i32), libc::SIGKILL);
                 let _ = libc::kill(pid as i32, libc::SIGKILL);
