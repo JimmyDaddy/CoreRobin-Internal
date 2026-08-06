@@ -11,7 +11,8 @@
     "more": "更多",
     "today": "电脑状态",
     "solve": "帮我解决",
-    "cleanup": "清理空间",
+    "cleanupQuick": "快速清理",
+    "cleanupScan": "磁盘扫描",
     "records": "回顾",
     "settings": "设置"
   },

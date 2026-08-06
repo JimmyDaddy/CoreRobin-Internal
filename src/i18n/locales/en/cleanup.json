@@ -1,6 +1,6 @@
 {
   "kicker": "Deep analysis",
-  "title": "Space scan",
+  "title": "Disk Scan",
   "description": "Scan the system disk and see space usage by real file path.",
   "startScan": "Start read-only scan",
   "scanAgain": "Scan again",
@@ -112,7 +112,7 @@
       "category": "Purpose"
     },
     "ariaLabel": "Space sunburst for {{name}}",
-    "back": "Back one level",
+    "back": "Back to disk scan",
     "breadcrumbs": "Space map hierarchy",
     "selectedPath": "Selected path",
     "centerBack": "Go to the parent folder",
@@ -378,7 +378,7 @@
     "back": "Back to space scan",
     "guideTitle": "Want a deeper clean?",
     "guideDescription": "Scan the whole disk, see space usage by real file path, then decide what to clean.",
-    "guideAction": "Go to deep scan",
+    "guideAction": "Go to disk scan",
     "analyzingHint": "Measuring caches, logs, temp files and Trash…"
   }
 }

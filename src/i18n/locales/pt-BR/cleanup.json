@@ -3,7 +3,7 @@
     "label": "Modo de verificação",
     "recommended": "Recomendado",
     "quick": {
-      "title": "Verificação de espaço",
+      "title": "Verificação do disco",
       "description": "Verifica com precisão locais comuns, grandes e que podem ser limpos",
       "scopeTitle": "Esta verificação inclui",
       "scope": "Downloads, Mesa, Documentos, pastas de mídia, Lixeira, caches de apps e desenvolvimento, dados de suporte, contêineres, dados ocultos e pastas temporárias do sistema."
@@ -46,7 +46,7 @@
     "launcherDescription": "Abra um espaço de trabalho dedicado para o progresso da verificação, grupos duplicados e arquivos grandes que não foram modificados há muito tempo.",
     "running": "Verificando agora",
     "openWorkspace": "Abrir espaço de trabalho",
-    "back": "De volta à limpeza do espaço",
+    "back": "Voltar à verificação do disco",
     "phaseDescription": {
       "discovering": "Revisar nomes, tamanhos e datas de modificação em pastas pessoais comuns para restringir os candidatos a conteúdo.",
       "hashing": "Ler candidatos do mesmo tamanho e calcular SHA-256 localmente; o conteúdo nunca sai deste computador."
@@ -428,7 +428,7 @@
     "back": "Voltar à verificação de espaço",
     "guideTitle": "Quer uma limpeza mais profunda?",
     "guideDescription": "Analise o disco inteiro, veja o uso por caminho real e decida o que limpar.",
-    "guideAction": "Ir para a verificação profunda",
+    "guideAction": "Ir para a verificação do disco",
     "analyzingHint": "Medindo caches, logs, temporários e lixeira…"
   }
 }

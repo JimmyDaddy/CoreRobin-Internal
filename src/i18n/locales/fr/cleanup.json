@@ -3,7 +3,7 @@
     "label": "Mode d’analyse",
     "recommended": "Recommandé",
     "quick": {
-      "title": "Analyse de l'espace",
+      "title": "Analyse du disque",
       "description": "Vérifie précisément les emplacements courants volumineux et nettoyables",
       "scopeTitle": "Cette analyse comprend",
       "scope": "Téléchargements, Bureau, Documents, dossiers multimédias, Corbeille, caches d’apps et de développement, données de support, conteneurs, données cachées et dossiers temporaires du système."
@@ -46,7 +46,7 @@
     "launcherDescription": "Ouvrez un espace de travail dédié à la progression de l'analyse, aux groupes en double et aux fichiers volumineux non modifiés depuis longtemps.",
     "running": "Vérifier maintenant",
     "openWorkspace": "Espace de travail ouvert",
-    "back": "Retour au nettoyage de l'espace",
+    "back": "Retour à l'analyse du disque",
     "phaseDescription": {
       "discovering": "Examen des noms, des tailles et des dates de modification dans les dossiers personnels communs pour affiner le contenu des candidats.",
       "hashing": "Lecture de candidats de même taille et calcul local de SHA-256 ; le contenu ne quitte jamais cet ordinateur."
@@ -428,7 +428,7 @@
     "back": "Retour à l'analyse de l'espace",
     "guideTitle": "Un nettoyage plus poussé ?",
     "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
-    "guideAction": "Aller à l'analyse approfondie",
+    "guideAction": "Aller à l'analyse du disque",
     "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"
   }
 }

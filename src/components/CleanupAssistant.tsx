@@ -97,7 +97,8 @@ interface CleanupAssistantProps {
   onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
-  quickCleanOpenSignal?: number;
+  workspaceRequest?: { workspace: "space" | "quick"; id: number } | null;
+  onWorkspaceChange?: (workspace: "space" | "quick") => void;
   fileInsights: FileInsightsScanController;
 }
 
@@ -129,7 +130,8 @@ export function CleanupAssistant({
   onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
-  quickCleanOpenSignal = 0,
+  workspaceRequest = null,
+  onWorkspaceChange = () => undefined,
   fileInsights,
 }: CleanupAssistantProps) {
   const { t, i18n } = useAppTranslation();
@@ -164,10 +166,13 @@ export function CleanupAssistant({
   const mapCommandIdRef = useRef(0);
   const accessCheckInFlight = useRef(false);
   useEffect(() => {
-    if (quickCleanOpenSignal > 0) {
-      setActiveWorkspace("quick");
+    if (workspaceRequest) {
+      setActiveWorkspace(workspaceRequest.workspace);
     }
-  }, [quickCleanOpenSignal]);
+  }, [workspaceRequest]);
+  useEffect(() => {
+    onWorkspaceChange(activeWorkspace === "quick" ? "quick" : "space");
+  }, [activeWorkspace, onWorkspaceChange]);
   const reclaimableBytes = useMemo(
     () => snapshot?.locations.reduce(
       (total, location) =>

@@ -3,7 +3,7 @@
     "label": "掃描模式",
     "recommended": "建議",
     "quick": {
-      "title": "空間掃描",
+      "title": "磁碟掃描",
       "description": "精確檢查常見的大型與可清理位置",
       "scopeTitle": "這次掃描包括",
       "scope": "下載項目、桌面、文件、媒體資料夾、垃圾桶、應用程式與開發快取、應用支援資料、容器、隱藏應用資料和系統暫存資料夾。"
@@ -46,7 +46,7 @@
     "launcherDescription": "開啟專用工作區以顯示掃描進度、重複群組和長期未修改的大型檔案。",
     "running": "立即檢查",
     "openWorkspace": "開放工作區",
-    "back": "返回空間清理",
+    "back": "返回磁碟掃描",
     "phaseDescription": {
       "discovering": "檢查常用個人資料夾中的名稱、大小和修改日期，以縮小候選內容範圍。",
       "hashing": "讀取相同大小的候選並在本地計算SHA-256；內容永遠不會離開這台電腦。"
@@ -428,7 +428,7 @@
     "back": "返回空間掃描",
     "guideTitle": "想清理得更徹底？",
     "guideDescription": "深度掃描整個磁碟，按真實檔案路徑查看空間占用，再決定清理什麼。",
-    "guideAction": "前往深度掃描",
+    "guideAction": "前往磁碟掃描",
     "analyzingHint": "正在統計快取、日誌、暫存檔與資源回收筒…"
   }
 }

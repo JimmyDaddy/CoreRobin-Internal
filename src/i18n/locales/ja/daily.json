@@ -11,7 +11,8 @@
     "more": "詳細",
     "today": "現在の状態",
     "solve": "問題を解決するのを手伝います",
-    "cleanup": "不要なデータを削除します",
+    "cleanupQuick": "クイック削除",
+    "cleanupScan": "ディスクスキャン",
     "records": "振り返り",
     "settings": "設定を変更"
   },

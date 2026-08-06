@@ -1,6 +1,6 @@
 {
   "kicker": "深度分析",
-  "title": "空间扫描",
+  "title": "磁盘扫描",
   "description": "完整扫描系统磁盘，按真实文件路径查看空间占用。",
   "startScan": "开始只读扫描",
   "scanAgain": "重新扫描",
@@ -112,7 +112,7 @@
       "category": "用途分类"
     },
     "ariaLabel": "{{name}} 的空间扇形图",
-    "back": "返回上一级",
+    "back": "返回磁盘扫描",
     "breadcrumbs": "空间图层级",
     "selectedPath": "当前选择路径",
     "centerBack": "返回上一级目录",
@@ -378,7 +378,7 @@
     "back": "返回空间扫描",
     "guideTitle": "想清理得更彻底？",
     "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
-    "guideAction": "去深度扫描",
+    "guideAction": "去磁盘扫描",
     "analyzingHint": "正在统计缓存、日志、临时文件与废纸篓…"
   }
 }

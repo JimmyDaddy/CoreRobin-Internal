@@ -3,7 +3,7 @@
     "label": "Modo de análisis",
     "recommended": "Recomendado",
     "quick": {
-      "title": "Escaneo de espacio",
+      "title": "Escaneo de disco",
       "description": "Comprueba con precisión ubicaciones grandes y limpiables habituales",
       "scopeTitle": "Este análisis incluye",
       "scope": "Descargas, Escritorio, Documentos, carpetas multimedia, Papelera, cachés de aplicaciones y desarrollo, datos de soporte, contenedores, datos ocultos y carpetas temporales del sistema."
@@ -46,7 +46,7 @@
     "launcherDescription": "Abra un espacio de trabajo dedicado para el progreso del análisis, grupos duplicados y archivos grandes que no han sido modificados durante mucho tiempo.",
     "running": "Comprobando ahora",
     "openWorkspace": "Espacio de trabajo abierto",
-    "back": "Volver a la limpieza del espacio",
+    "back": "Volver al escaneo de disco",
     "phaseDescription": {
       "discovering": "Revisar nombres, tamaños y fechas de modificación en carpetas personales comunes para limitar los candidatos de contenido.",
       "hashing": "Leer candidatos del mismo tamaño y calcular SHA-256 localmente; El contenido nunca sale de esta computadora."
@@ -428,7 +428,7 @@
     "back": "Volver al escaneo de espacio",
     "guideTitle": "¿Quieres una limpieza más profunda?",
     "guideDescription": "Escanea todo el disco, mira el uso por ruta real y decide qué limpiar.",
-    "guideAction": "Ir al escaneo profundo",
+    "guideAction": "Ir al escaneo de disco",
     "analyzingHint": "Midiendo cachés, registros, temporales y papelera…"
   }
 }

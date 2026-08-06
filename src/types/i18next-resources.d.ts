@@ -2,7 +2,8 @@
 export default interface Resources {
   "app": {
     "applications": "应用",
-    "cleanup": "清理",
+    "cleanupQuick": "快速清理",
+    "cleanupScan": "磁盘扫描",
     "comingSoon": "即将推出",
     "companion": {
       "hide": "隐藏 Robin",
@@ -484,7 +485,7 @@ export default interface Resources {
       "allScanned": "全部扫描结果",
       "allocatedSize": "实际占用",
       "ariaLabel": "{{name}} 的空间扇形图",
-      "back": "返回上一级",
+      "back": "返回磁盘扫描",
       "basket": {
         "cancelled": "清理已停止，已完成 {{deletedCount}} 项",
         "clear": "清空",
@@ -646,7 +647,7 @@ export default interface Resources {
       "empty": "没有可清理的内容，磁盘很干净！",
       "freedSoFar": "已释放 {{size}}",
       "freedSummary": "释放了 {{size}}，共 {{count}} 个项目",
-      "guideAction": "去深度扫描",
+      "guideAction": "去磁盘扫描",
       "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
       "guideTitle": "想清理得更彻底？",
       "kicker": "无需扫描",
@@ -697,7 +698,7 @@ export default interface Resources {
       "systemDisk": "系统磁盘",
       "title": "选择要扫描的位置"
     },
-    "title": "空间扫描",
+    "title": "磁盘扫描",
     "unavailable": "当前平台不可用",
     "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。"
   },
@@ -1048,7 +1049,8 @@ export default interface Resources {
     },
     "nav": {
       "applications": "应用",
-      "cleanup": "清理空间",
+      "cleanupQuick": "快速清理",
+      "cleanupScan": "磁盘扫描",
       "home": "电脑状态",
       "more": "更多",
       "records": "回顾",

@@ -11,7 +11,8 @@
     "more": "Plus",
     "today": "État",
     "solve": "Aidez-moi à résoudre le problème",
-    "cleanup": "Libérer de l'espace",
+    "cleanupQuick": "Nettoyage rapide",
+    "cleanupScan": "Analyse du disque",
     "records": "Bilan",
     "settings": "Paramètres"
   },

@@ -11,7 +11,8 @@
     "more": "Mehr",
     "today": "Status",
     "solve": "Hilf mir, das Problem zu beheben",
-    "cleanup": "Bereich aufräumen",
+    "cleanupQuick": "Schnelle Bereinigung",
+    "cleanupScan": "Festplatten-Scan",
     "records": "Rückblick",
     "settings": "Einstellungen"
   },

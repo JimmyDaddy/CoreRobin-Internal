@@ -11,7 +11,8 @@
     "more": "更多",
     "today": "電腦狀態",
     "solve": "幫我解決",
-    "cleanup": "清理空間",
+    "cleanupQuick": "快速清理",
+    "cleanupScan": "磁碟掃描",
     "records": "回顧",
     "settings": "設定"
   },
