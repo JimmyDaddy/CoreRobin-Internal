@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   Boxes,
   Check,
   FileText,
@@ -26,7 +28,7 @@ import type {
   QuickCleanResult,
 } from "../types";
 import { formatBytes, normalizeCommandError } from "../utils";
-import "./QuickCleanupCard.css";
+import "./QuickCleanupWorkspace.css";
 
 const ALL_CATEGORIES: QuickCleanCategory[] = [
   "user_cache",
@@ -68,7 +70,7 @@ function useAnimatedCount(target: number, active: boolean): number {
   return value;
 }
 
-export function QuickCleanupCard() {
+export function QuickCleanupPage({ onBack }: { onBack: () => void }) {
   const { t } = useAppTranslation();
   const [phase, setPhase] = useState<QuickCleanPhase>("idle");
   const [summaries, setSummaries] = useState<QuickCleanCategorySummary[]>([]);
@@ -159,19 +161,27 @@ export function QuickCleanupCard() {
   const processedCategory = progress?.category ?? null;
 
   return (
-    <section className="quick-clean" aria-labelledby="quick-clean-title">
-      <header className="quick-clean__header">
-        <span className="quick-clean__icon" aria-hidden="true">
-          <Wand2 size={18} />
-        </span>
-        <div>
-          <span className="eyebrow">{t("cleanup:quickClean.kicker")}</span>
-          <h3 id="quick-clean-title">{t("cleanup:quickClean.title")}</h3>
-          <p>{t("cleanup:quickClean.description")}</p>
-        </div>
-      </header>
+    <section className="quick-clean-page" aria-labelledby="quick-clean-title">
+      <div className="quick-clean-page__nav">
+        <button className="button button--secondary" type="button" onClick={onBack}>
+          <ArrowLeft size={14} />
+          {t("cleanup:quickClean.back")}
+        </button>
+      </div>
 
-      {phase === "idle" || phase === "analyzing" ? (
+      <div className="quick-clean">
+        <header className="quick-clean__header">
+          <span className="quick-clean__icon" aria-hidden="true">
+            <Wand2 size={18} />
+          </span>
+          <div>
+            <span className="eyebrow">{t("cleanup:quickClean.kicker")}</span>
+            <h3 id="quick-clean-title">{t("cleanup:quickClean.title")}</h3>
+            <p>{t("cleanup:quickClean.description")}</p>
+          </div>
+        </header>
+
+      {phase === "idle" ? (
         <div className="quick-clean__idle">
           <p className="quick-clean__promise">
             <Sparkles size={14} />
@@ -180,20 +190,42 @@ export function QuickCleanupCard() {
           <button
             className="button button--primary"
             type="button"
-            disabled={phase === "analyzing"}
             onClick={() => void analyze()}
           >
-            {phase === "analyzing" ? (
-              <RefreshCw className="is-spinning" size={15} />
-            ) : (
-              <FolderSearch size={15} />
-            )}
-            {t(
-              phase === "analyzing"
-                ? "cleanup:quickClean.analyzing"
-                : "cleanup:quickClean.analyze",
-            )}
+            <FolderSearch size={15} />
+            {t("cleanup:quickClean.analyze")}
           </button>
+        </div>
+      ) : null}
+
+      {phase === "analyzing" ? (
+        <div className="quick-clean__analyzing" role="status" aria-live="polite">
+          <div className="quick-clean__radar" aria-hidden="true">
+            <div className="quick-clean__radar-sweep" />
+            <div className="quick-clean__radar-ring is-outer" />
+            <div className="quick-clean__radar-ring is-inner" />
+            {ALL_CATEGORIES.map((category, index) => {
+              const Icon = CATEGORY_ICONS[category];
+              return (
+                <span
+                  className={`quick-clean__radar-orbit is-${category}`}
+                  key={category}
+                  style={
+                    { "--orbit-angle": `${index * 90 + 45}deg` } as React.CSSProperties
+                  }
+                >
+                  <Icon size={14} />
+                </span>
+              );
+            })}
+            <div className="quick-clean__radar-core">
+              <Wand2 size={20} />
+            </div>
+          </div>
+          <div className="quick-clean__working-copy">
+            <strong>{t("cleanup:quickClean.analyzing")}</strong>
+            <span>{t("cleanup:quickClean.analyzingHint")}</span>
+          </div>
         </div>
       ) : null}
 
@@ -368,6 +400,44 @@ export function QuickCleanupCard() {
           <span>{error}</span>
         </div>
       ) : null}
+      </div>
+
+      <div className="quick-clean-page__guide">
+        <span className="quick-clean-page__guide-icon" aria-hidden="true">
+          <FolderSearch size={20} />
+        </span>
+        <div>
+          <strong>{t("cleanup:quickClean.guideTitle")}</strong>
+          <p>{t("cleanup:quickClean.guideDescription")}</p>
+        </div>
+        <button className="button button--primary" type="button" onClick={onBack}>
+          {t("cleanup:quickClean.guideAction")}
+          <ArrowRight size={14} />
+        </button>
+      </div>
     </section>
+  );
+}
+
+export function QuickCleanLauncher({ onOpen }: { onOpen: () => void }) {
+  const { t } = useAppTranslation();
+  return (
+    <button
+      className="quick-clean-launcher"
+      type="button"
+      onClick={onOpen}
+    >
+      <span className="quick-clean-launcher__icon" aria-hidden="true">
+        <Wand2 size={17} />
+      </span>
+      <span className="quick-clean-launcher__copy">
+        <strong>{t("cleanup:quickClean.title")}</strong>
+        <small>{t("cleanup:quickClean.launcherDescription")}</small>
+      </span>
+      <span className="quick-clean-launcher__action">
+        {t("cleanup:quickClean.open")}
+        <ArrowRight size={13} />
+      </span>
+    </button>
   );
 }

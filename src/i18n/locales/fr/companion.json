@@ -15,8 +15,6 @@
   },
   "recovering": "La valeur s'est stabilisée. Je continue de surveiller pour confirmer la reprise.",
   "quickClean": {
-    "action": "Nettoyage rapide",
-    "freed": "{{size}} libérés",
-    "error": "Échec du nettoyage"
+    "action": "Nettoyage rapide"
   }
 }

@@ -1,6 +1,6 @@
 {
-  "kicker": "Local space analysis",
-  "title": "Storage cleanup assistant",
+  "kicker": "Deep analysis",
+  "title": "Space scan",
   "description": "Scan the system disk and see space usage by real file path.",
   "startScan": "Start read-only scan",
   "scanAgain": "Scan again",
@@ -372,6 +372,13 @@
       "logs": "Log files",
       "temp_files": "Temporary files",
       "trash": "Trash"
-    }
+    },
+    "launcherDescription": "No scan needed — clear caches, logs, temp files and Trash in one tap.",
+    "open": "Open quick cleanup",
+    "back": "Back to space scan",
+    "guideTitle": "Want a deeper clean?",
+    "guideDescription": "Scan the whole disk, see space usage by real file path, then decide what to clean.",
+    "guideAction": "Go to deep scan",
+    "analyzingHint": "Measuring caches, logs, temp files and Trash…"
   }
 }

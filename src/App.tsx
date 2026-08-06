@@ -248,6 +248,7 @@ function App() {
     settings.historyApplicationNamesEnabled,
   );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [quickCleanOpenSignal, setQuickCleanOpenSignal] = useState(0);
   const startupImpactMeasurements = useStartupImpactMeasurement(snapshot);
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
   const [selectedDailyIncident, setSelectedDailyIncident] =
@@ -622,6 +623,13 @@ function App() {
         setSelectedDailyIncident(incident);
         setDailyIntent(incident?.item.intent ?? null);
         setActiveView(request.view);
+      }),
+      listen("core-robin:open-quick-clean", () => {
+        if (disposed) return;
+        setSelectedDailyIncident(null);
+        setDailyIntent(null);
+        setActiveView("cleanup");
+        setQuickCleanOpenSignal((signal) => signal + 1);
       }),
       listen("core-robin:open-about", () => {
         if (disposed) return;
@@ -1763,6 +1771,7 @@ function App() {
                   directoryRefreshError={cleanupScan.directoryRefreshError}
                   onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                   onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                  quickCleanOpenSignal={quickCleanOpenSignal}
                   onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
@@ -2005,6 +2014,7 @@ function App() {
                 directoryRefreshError={cleanupScan.directoryRefreshError}
                 onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                 onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                quickCleanOpenSignal={quickCleanOpenSignal}
                 onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}

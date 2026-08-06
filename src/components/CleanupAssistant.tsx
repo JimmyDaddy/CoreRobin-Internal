@@ -62,7 +62,7 @@ import {
 } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
 import { PathActions } from "./PathActions";
-import { QuickCleanupCard } from "./QuickCleanupCard";
+import { QuickCleanLauncher, QuickCleanupPage } from "./QuickCleanupWorkspace";
 import "./CleanupAssistant.css";
 
 const LIMITED_SCAN_PREFERENCE_KEY =
@@ -97,6 +97,7 @@ interface CleanupAssistantProps {
   onReloadLatestSnapshot?: () => Promise<CleanupScan | null>;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
+  quickCleanOpenSignal?: number;
   fileInsights: FileInsightsScanController;
 }
 
@@ -128,6 +129,7 @@ export function CleanupAssistant({
   onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
+  quickCleanOpenSignal = 0,
   fileInsights,
 }: CleanupAssistantProps) {
   const { t, i18n } = useAppTranslation();
@@ -141,7 +143,7 @@ export function CleanupAssistant({
   const [preferAccessibleScan, setPreferAccessibleScan] = useState(
     readAccessibleScanPreference,
   );
-  const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files">("space");
+  const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files" | "quick">("space");
   const [selectedTarget, setSelectedTarget] = useState<CleanupScanTarget>(
     () => snapshot
       ? {
@@ -161,6 +163,11 @@ export function CleanupAssistant({
     useState<CleanupSpaceMapCommand | null>(null);
   const mapCommandIdRef = useRef(0);
   const accessCheckInFlight = useRef(false);
+  useEffect(() => {
+    if (quickCleanOpenSignal > 0) {
+      setActiveWorkspace("quick");
+    }
+  }, [quickCleanOpenSignal]);
   const reclaimableBytes = useMemo(
     () => snapshot?.locations.reduce(
       (total, location) =>
@@ -388,6 +395,12 @@ export function CleanupAssistant({
     });
   };
 
+  if (activeWorkspace === "quick") {
+    return (
+      <QuickCleanupPage onBack={() => setActiveWorkspace("space")} />
+    );
+  }
+
   if (activeWorkspace === "files") {
     return (
       <FileInsightsExplorer
@@ -438,6 +451,8 @@ export function CleanupAssistant({
           </button>
         ) : null}
       </header>
+
+      <QuickCleanLauncher onOpen={() => setActiveWorkspace("quick")} />
 
       <section className="cleanup-targets" aria-labelledby="cleanup-targets-title">
         <div className="cleanup-targets__heading">
@@ -558,8 +573,6 @@ export function CleanupAssistant({
           </p>
         ) : null}
       </section>
-
-      <QuickCleanupCard />
 
       {accessGuideOpen && !loading ? (
         <section className="cleanup-access-guide" aria-labelledby="cleanup-access-title">

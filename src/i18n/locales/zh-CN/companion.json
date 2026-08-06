@@ -15,8 +15,6 @@
   },
   "recovering": "指标已回落，我再观察一会儿确认它是否恢复。",
   "quickClean": {
-    "action": "一键清理",
-    "freed": "已释放 {{size}}",
-    "error": "清理失败"
+    "action": "快速清理"
   }
 }

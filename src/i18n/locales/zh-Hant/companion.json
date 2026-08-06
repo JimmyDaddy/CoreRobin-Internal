@@ -15,8 +15,6 @@
   },
   "recovering": "指標已回落，我再觀察一會兒確認它是否恢復。",
   "quickClean": {
-    "action": "一鍵清理",
-    "freed": "已釋放 {{size}}",
-    "error": "清理失敗"
+    "action": "快速清理"
   }
 }

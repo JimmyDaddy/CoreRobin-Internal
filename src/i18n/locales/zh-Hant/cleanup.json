@@ -3,7 +3,7 @@
     "label": "掃描模式",
     "recommended": "建議",
     "quick": {
-      "title": "快速掃描",
+      "title": "空間掃描",
       "description": "精確檢查常見的大型與可清理位置",
       "scopeTitle": "這次掃描包括",
       "scope": "下載項目、桌面、文件、媒體資料夾、垃圾桶、應用程式與開發快取、應用支援資料、容器、隱藏應用資料和系統暫存資料夾。"
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "這個分類很明確"
   },
-  "kicker": "本機空間分析",
+  "kicker": "深度分析",
   "title": "空間清理助手",
   "description": "完整掃描系統磁碟，按真實檔案路徑檢視空間佔用。",
   "startScan": "開始只讀掃描",
@@ -422,6 +422,13 @@
       "logs": "日誌檔",
       "temp_files": "暫存檔",
       "trash": "資源回收筒"
-    }
+    },
+    "launcherDescription": "不掃描，一鍵清理快取、日誌、暫存檔與資源回收筒。",
+    "open": "開啟快速清理",
+    "back": "返回空間掃描",
+    "guideTitle": "想清理得更徹底？",
+    "guideDescription": "深度掃描整個磁碟，按真實檔案路徑查看空間占用，再決定清理什麼。",
+    "guideAction": "前往深度掃描",
+    "analyzingHint": "正在統計快取、日誌、暫存檔與資源回收筒…"
   }
 }

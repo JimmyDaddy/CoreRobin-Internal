@@ -3,7 +3,7 @@
     "label": "Mode d’analyse",
     "recommended": "Recommandé",
     "quick": {
-      "title": "Analyse rapide",
+      "title": "Analyse de l'espace",
       "description": "Vérifie précisément les emplacements courants volumineux et nettoyables",
       "scopeTitle": "Cette analyse comprend",
       "scope": "Téléchargements, Bureau, Documents, dossiers multimédias, Corbeille, caches d’apps et de développement, données de support, conteneurs, données cachées et dossiers temporaires du système."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Cette catégorie est claire"
   },
-  "kicker": "Analyse de l'espace disque",
+  "kicker": "Analyse approfondie",
   "title": "Assistant d'organisation du stockage",
   "description": "Scannez le disque système et visualisez l'utilisation de l'espace par chemin de fichier réel.",
   "startScan": "Débuter une analyse en lecture seule",
@@ -422,6 +422,13 @@
       "logs": "Journaux",
       "temp_files": "Fichiers temporaires",
       "trash": "Corbeille"
-    }
+    },
+    "launcherDescription": "Sans analyse : videz caches, journaux, fichiers temporaires et corbeille en un geste.",
+    "open": "Ouvrir le nettoyage rapide",
+    "back": "Retour à l'analyse de l'espace",
+    "guideTitle": "Un nettoyage plus poussé ?",
+    "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
+    "guideAction": "Aller à l'analyse approfondie",
+    "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"
   }
 }

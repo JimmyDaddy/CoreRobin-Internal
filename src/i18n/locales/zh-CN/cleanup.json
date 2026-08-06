@@ -1,6 +1,6 @@
 {
-  "kicker": "本机空间分析",
-  "title": "空间清理助手",
+  "kicker": "深度分析",
+  "title": "空间扫描",
   "description": "完整扫描系统磁盘，按真实文件路径查看空间占用。",
   "startScan": "开始只读扫描",
   "scanAgain": "重新扫描",
@@ -372,6 +372,13 @@
       "logs": "日志文件",
       "temp_files": "临时文件",
       "trash": "废纸篓"
-    }
+    },
+    "launcherDescription": "不扫描，一键清理缓存、日志、临时文件与废纸篓。",
+    "open": "打开快速清理",
+    "back": "返回空间扫描",
+    "guideTitle": "想清理得更彻底？",
+    "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
+    "guideAction": "去深度扫描",
+    "analyzingHint": "正在统计缓存、日志、临时文件与废纸篓…"
   }
 }

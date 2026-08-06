@@ -15,8 +15,6 @@
   },
   "recovering": "지표가 안정되었습니다. 추가 확인 후 정상 작동 여부를 모니터링합니다.",
   "quickClean": {
-    "action": "빠른 정리",
-    "freed": "{{size}} 확보",
-    "error": "정리 실패"
+    "action": "빠른 정리"
   }
 }

@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { QuickCleanupCard } from "./components/QuickCleanupCard";
+import { QuickCleanupPage } from "./components/QuickCleanupWorkspace";
 import i18n from "./i18n";
 import type {
   QuickCleanCategorySummary,
@@ -44,10 +44,10 @@ beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
 });
 
-describe("QuickCleanupCard", () => {
+describe("QuickCleanupPage", () => {
   it("starts in the idle state and analyzes on demand", async () => {
     quickCleanApi.analyzeQuickCleanup.mockResolvedValue(SUMMARIES);
-    render(<QuickCleanupCard />);
+    render(<QuickCleanupPage onBack={() => undefined} />);
 
     expect(screen.getByText("快速清理")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "开始分析" }));
@@ -63,7 +63,7 @@ describe("QuickCleanupCard", () => {
   it("cleans the selected categories and shows the freed summary", async () => {
     quickCleanApi.analyzeQuickCleanup.mockResolvedValue(SUMMARIES);
     quickCleanApi.runQuickCleanup.mockImplementation(
-      async (categories, onProgress) => {
+      async (_categories, onProgress) => {
         onProgress({
           category: "user_cache",
           processedItemCount: 1,
@@ -76,7 +76,7 @@ describe("QuickCleanupCard", () => {
         return RESULT;
       },
     );
-    render(<QuickCleanupCard />);
+    render(<QuickCleanupPage onBack={() => undefined} />);
     fireEvent.click(screen.getByRole("button", { name: "开始分析" }));
     await waitFor(() => expect(screen.getByText("应用缓存")).toBeTruthy());
 
@@ -96,7 +96,7 @@ describe("QuickCleanupCard", () => {
       code: "internal",
       message: "analysis exploded",
     });
-    render(<QuickCleanupCard />);
+    render(<QuickCleanupPage onBack={() => undefined} />);
     fireEvent.click(screen.getByRole("button", { name: "开始分析" }));
 
     await waitFor(() => expect(screen.getByText(/analysis exploded/)).toBeTruthy());

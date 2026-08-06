@@ -454,7 +454,7 @@ export default interface Resources {
       "title": "较上次扫描的空间变化"
     },
     "itemCount": "{{count}} 个文件",
-    "kicker": "本机空间分析",
+    "kicker": "深度分析",
     "largeFileBoundary": "只列出超过 500 MB 的文件，不建议自动删除",
     "largestFiles": "系统磁盘中的大文件",
     "locations": {
@@ -629,6 +629,8 @@ export default interface Resources {
       "analyze": "开始分析",
       "analyzeAgain": "重新分析",
       "analyzing": "正在分析…",
+      "analyzingHint": "正在统计缓存、日志、临时文件与废纸篓…",
+      "back": "返回空间扫描",
       "cancel": "取消",
       "category": {
         "logs": "日志文件",
@@ -644,8 +646,13 @@ export default interface Resources {
       "empty": "没有可清理的内容，磁盘很干净！",
       "freedSoFar": "已释放 {{size}}",
       "freedSummary": "释放了 {{size}}，共 {{count}} 个项目",
+      "guideAction": "去深度扫描",
+      "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
+      "guideTitle": "想清理得更彻底？",
       "kicker": "无需扫描",
+      "launcherDescription": "不扫描，一键清理缓存、日志、临时文件与废纸篓。",
       "noRiskNote": "只清理可再生的缓存与已丢弃的废纸篓内容，不含你的文档、照片和登录信息。",
+      "open": "打开快速清理",
       "skippedNote": "{{count}} 个项目正在被占用，已安全跳过。",
       "title": "快速清理",
       "total": "共可释放",
@@ -690,7 +697,7 @@ export default interface Resources {
       "systemDisk": "系统磁盘",
       "title": "选择要扫描的位置"
     },
-    "title": "空间清理助手",
+    "title": "空间扫描",
     "unavailable": "当前平台不可用",
     "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。"
   },
@@ -754,9 +761,7 @@ export default interface Resources {
     "kicker": "Robin",
     "menu": "Robin 菜单",
     "quickClean": {
-      "action": "一键清理",
-      "error": "清理失败",
-      "freed": "已释放 {{size}}"
+      "action": "快速清理"
     },
     "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
     "recovering": "指标已回落，我再观察一会儿确认它是否恢复。"

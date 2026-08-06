@@ -16,13 +16,11 @@ import { createAsyncListenerRegistry } from "../asyncListener";
 import type { HealthStateSnapshot } from "../healthState";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
-import { formatBytes } from "../utils";
 import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "../storageMigration";
 import { AnimatedRobin } from "./AnimatedRobin";
-import { analyzeQuickCleanup, runQuickCleanup } from "../api";
 
 const COMPANION_POSITION_KEY = "core-robin.companion-position.v1";
 const COMPANION_EXPANDED_LOGICAL_SIZE = { width: 386, height: 92 };
@@ -52,60 +50,36 @@ const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
   && getCurrentWindow().label === "companion";
 
-type QuickCleanCompanionState = "idle" | "busy" | "done" | "error";
-
 function QuickCleanCompanionAction() {
   const { t } = useAuxiliaryTranslation();
-  const [state, setState] = useState<QuickCleanCompanionState>("idle");
-  const [freed, setFreed] = useState(0);
-  const timerRef = useRef<number | undefined>(undefined);
+  const [opening, setOpening] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== undefined) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const run = useCallback(async () => {
-    if (state === "busy") return;
-    setState("busy");
+  const openQuickClean = useCallback(async () => {
+    if (opening) return;
+    setOpening(true);
     try {
-      const summaries = await analyzeQuickCleanup();
-      const categories = summaries
-        .filter((summary) => summary.available)
-        .map((summary) => summary.category);
-      const outcome = await runQuickCleanup(
-        categories.length > 0 ? categories : ["user_cache", "logs", "temp_files", "trash"],
-        () => {},
-      );
-      setFreed(outcome.freedBytes);
-      setState("done");
-      timerRef.current = window.setTimeout(() => setState("idle"), 8_000);
-    } catch {
-      setState("error");
-      timerRef.current = window.setTimeout(() => setState("idle"), 5_000);
+      if (desktopRuntime) {
+        await emitTo("main", "core-robin:open-quick-clean");
+        await invoke("show_main_window");
+      }
+    } finally {
+      setOpening(false);
     }
-  }, [state]);
+  }, [opening]);
 
   return (
     <button
-      className={`robin-buddy-clean is-${state}`}
+      className="robin-buddy-clean"
       type="button"
-      disabled={state === "busy"}
-      onClick={() => void run()}
+      disabled={opening}
+      onClick={() => void openQuickClean()}
     >
-      {state === "busy" ? (
+      {opening ? (
         <RefreshCw className="is-spinning" size={11} />
       ) : (
         <Wand2 size={11} />
       )}
-      {state === "done"
-        ? t("companion:quickClean.freed", { size: formatBytes(freed, 0) })
-        : state === "error"
-          ? t("companion:quickClean.error")
-          : t("companion:quickClean.action")}
+      {t("companion:quickClean.action")}
     </button>
   );
 }

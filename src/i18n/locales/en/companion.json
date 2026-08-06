@@ -15,8 +15,6 @@
   },
   "recovering": "The metric has eased. I’m watching a little longer to confirm recovery.",
   "quickClean": {
-    "action": "Quick clean",
-    "freed": "Freed {{size}}",
-    "error": "Cleanup failed"
+    "action": "Quick clean"
   }
 }

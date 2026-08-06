@@ -3,7 +3,7 @@
     "label": "Modo de verificação",
     "recommended": "Recomendado",
     "quick": {
-      "title": "Verificação rápida",
+      "title": "Verificação de espaço",
       "description": "Verifica com precisão locais comuns, grandes e que podem ser limpos",
       "scopeTitle": "Esta verificação inclui",
       "scope": "Downloads, Mesa, Documentos, pastas de mídia, Lixeira, caches de apps e desenvolvimento, dados de suporte, contêineres, dados ocultos e pastas temporárias do sistema."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Esta categoria é clara"
   },
-  "kicker": "Análise de espaço em disco",
+  "kicker": "Análise profunda",
   "title": "Assistente de limpeza de disco",
   "description": "Analise o uso do espaço em disco e visualize o espaço utilizado por arquivos específicos.",
   "startScan": "Iniciar varredura somente leitura",
@@ -422,6 +422,13 @@
       "logs": "Arquivos de log",
       "temp_files": "Arquivos temporários",
       "trash": "Lixeira"
-    }
+    },
+    "launcherDescription": "Sem varredura: limpe caches, logs, temporários e lixeira com um toque.",
+    "open": "Abrir limpeza rápida",
+    "back": "Voltar à verificação de espaço",
+    "guideTitle": "Quer uma limpeza mais profunda?",
+    "guideDescription": "Analise o disco inteiro, veja o uso por caminho real e decida o que limpar.",
+    "guideAction": "Ir para a verificação profunda",
+    "analyzingHint": "Medindo caches, logs, temporários e lixeira…"
   }
 }

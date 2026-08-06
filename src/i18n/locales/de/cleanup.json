@@ -3,7 +3,7 @@
     "label": "Scanmodus",
     "recommended": "Empfohlen",
     "quick": {
-      "title": "Schnellscan",
+      "title": "Speicher-Scan",
       "description": "Prüft häufig große und bereinigbare Orte genau",
       "scopeTitle": "Dieser Scan umfasst",
       "scope": "Downloads, Schreibtisch, Dokumente, Medienordner, Papierkorb, App- und Entwickler-Caches, Anwendungsdaten, Container, versteckte App-Daten und temporäre Systemordner."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Diese Kategorie ist klar"
   },
-  "kicker": "Lokaler Speicherverbrauch analysieren",
+  "kicker": "Tiefenanalyse",
   "title": "Hilfe zur Speicherbereinigung",
   "description": "Scannen Sie die Systemfestplatte und sehen Sie den Speicherverbrauch nach Dateipfad.",
   "startScan": "Nur Lesen-Scan starten",
@@ -422,6 +422,13 @@
       "logs": "Logdateien",
       "temp_files": "Temporäre Dateien",
       "trash": "Papierkorb"
-    }
+    },
+    "launcherDescription": "Ohne Scan: Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren.",
+    "open": "Schnelle Bereinigung öffnen",
+    "back": "Zurück zum Speicher-Scan",
+    "guideTitle": "Gründlicher aufräumen?",
+    "guideDescription": "Scannen Sie die ganze Festplatte, sehen Sie den Speicher pro Pfad und entscheiden Sie dann.",
+    "guideAction": "Zur Tiefenscan",
+    "analyzingHint": "Caches, Logs, Temp-Dateien und Papierkorb werden gemessen…"
   }
 }

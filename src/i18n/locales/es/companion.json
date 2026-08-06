@@ -15,8 +15,6 @@
   },
   "recovering": "El valor ha mejorado. Estoy observando un poco más para confirmar la recuperación.",
   "quickClean": {
-    "action": "Limpiar",
-    "freed": "{{size}} liberados",
-    "error": "Error al limpiar"
+    "action": "Limpiar rápido"
   }
 }
