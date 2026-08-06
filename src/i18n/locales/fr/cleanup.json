@@ -396,5 +396,32 @@
     "since": "Comparé à {{time}}",
     "title": "Évolution depuis la dernière analyse",
     "noGrowth": "Aucun dossier en croissance dans la comparaison compacte."
+  },
+  "quickClean": {
+    "kicker": "Aucune analyse requise",
+    "title": "Nettoyage rapide",
+    "description": "Videz caches, journaux, fichiers temporaires et corbeille en un geste. Vos documents et photos restent intacts.",
+    "analyze": "Analyser",
+    "analyzing": "Analyse…",
+    "analyzeAgain": "Réanalyser",
+    "clean": "Nettoyer {{size}}",
+    "cleaning": "Nettoyage…",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "freedSoFar": "{{size}} libérés jusqu'ici",
+    "freedSummary": "{{size}} libérés sur {{count}} éléments",
+    "again": "Nettoyer à nouveau",
+    "close": "Fermer",
+    "total": "Total récupérable",
+    "unavailable": "Indisponible",
+    "empty": "Rien à nettoyer — votre disque est impeccable !",
+    "skippedNote": "{{count}} éléments en cours d'utilisation ont été ignorés.",
+    "noRiskNote": "Seuls les caches régénérables et le contenu de la corbeille sont supprimés — jamais vos documents, photos ou identifiants.",
+    "category": {
+      "user_cache": "Caches d'apps",
+      "logs": "Journaux",
+      "temp_files": "Fichiers temporaires",
+      "trash": "Corbeille"
+    }
   }
 }

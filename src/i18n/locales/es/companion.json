@@ -13,5 +13,10 @@
     "attention": "Ver detalles",
     "urgent": "Revisar ahora"
   },
-  "recovering": "El valor ha mejorado. Estoy observando un poco más para confirmar la recuperación."
+  "recovering": "El valor ha mejorado. Estoy observando un poco más para confirmar la recuperación.",
+  "quickClean": {
+    "action": "Limpiar",
+    "freed": "{{size}} liberados",
+    "error": "Error al limpiar"
+  }
 }

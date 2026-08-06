@@ -396,5 +396,32 @@
     "since": "{{time}} と比較",
     "title": "前回スキャンからの容量変化",
     "noGrowth": "簡易比較では増加したディレクトリが見つかりませんでした。"
+  },
+  "quickClean": {
+    "kicker": "スキャン不要",
+    "title": "クイッククリーンアップ",
+    "description": "キャッシュ、ログ、一時ファイル、ゴミ箱をワンタップで削除。書類や写真には触れません。",
+    "analyze": "分析を開始",
+    "analyzing": "分析中…",
+    "analyzeAgain": "再分析",
+    "clean": "{{size}} を削除",
+    "cleaning": "削除中…",
+    "cancel": "キャンセル",
+    "done": "完了しました",
+    "freedSoFar": "これまでに {{size}} 解放",
+    "freedSummary": "{{size}} を解放（{{count}} 項目）",
+    "again": "もう一度",
+    "close": "完了",
+    "total": "合計で解放可能",
+    "unavailable": "利用不可",
+    "empty": "削除できるものはありません。ディスクはきれいです！",
+    "skippedNote": "{{count}} 項目は使用中のため安全にスキップしました。",
+    "noRiskNote": "再生成可能なキャッシュとゴミ箱の中身だけを削除します。書類・写真・ログイン情報は対象外です。",
+    "category": {
+      "user_cache": "アプリキャッシュ",
+      "logs": "ログファイル",
+      "temp_files": "一時ファイル",
+      "trash": "ゴミ箱"
+    }
   }
 }

@@ -50,6 +50,10 @@ import type {
   ProcessControlLeaseRequest,
   ProcessDetail,
   ProcessDetailRequest,
+  QuickCleanCategory,
+  QuickCleanCategorySummary,
+  QuickCleanProgress,
+  QuickCleanResult,
   NetworkConnectionsSnapshot,
   NetworkHostLookup,
   NetworkQualityResult,
@@ -827,6 +831,60 @@ export async function getCleanupScanIndexSummary(): Promise<CleanupScanIndexSumm
 export async function clearPersistedCleanupScan(): Promise<void> {
   if (canUseDevelopmentMock()) return;
   return invoke<void>("clear_persisted_cleanup_scan");
+}
+
+export async function analyzeQuickCleanup(): Promise<QuickCleanCategorySummary[]> {
+  if (canUseDevelopmentMock()) {
+    return [
+      { category: "user_cache", byteSize: 1_240_000_000, itemCount: 18_420, skippedCount: 3, available: true },
+      { category: "logs", byteSize: 96_000_000, itemCount: 2_104, skippedCount: 0, available: true },
+      { category: "temp_files", byteSize: 512_000_000, itemCount: 8_870, skippedCount: 12, available: true },
+      { category: "trash", byteSize: 230_000_000, itemCount: 96, skippedCount: 0, available: true },
+    ];
+  }
+  return invoke<QuickCleanCategorySummary[]>("analyze_quick_cleanup_command");
+}
+
+export async function runQuickCleanup(
+  categories: QuickCleanCategory[],
+  onProgress: (progress: QuickCleanProgress) => void,
+): Promise<QuickCleanResult> {
+  if (canUseDevelopmentMock()) {
+    const ticks: QuickCleanCategory[] = ["user_cache", "logs", "temp_files", "trash"];
+    for (const category of ticks) {
+      await new Promise((resolve) => window.setTimeout(resolve, 350));
+      onProgress({
+        category,
+        processedItemCount: 1,
+        totalItemCount: 1,
+        freedBytes: 1_000_000_000,
+        freedItems: 1,
+        skippedItems: 0,
+        currentPath: category,
+      });
+    }
+    return {
+      freedBytes: 2_078_000_000,
+      freedItems: 4,
+      skippedItems: 0,
+      results: [
+        { category: "user_cache", freedBytes: 1_240_000_000, freedItems: 1, skippedItems: 0 },
+        { category: "logs", freedBytes: 96_000_000, freedItems: 1, skippedItems: 0 },
+        { category: "temp_files", freedBytes: 512_000_000, freedItems: 1, skippedItems: 0 },
+        { category: "trash", freedBytes: 230_000_000, freedItems: 1, skippedItems: 0 },
+      ],
+    };
+  }
+  const progressChannel = new Channel<QuickCleanProgress>(onProgress);
+  return invoke<QuickCleanResult>("run_quick_cleanup_command", {
+    request: { categories },
+    onProgress: progressChannel,
+  });
+}
+
+export async function cancelQuickCleanup(): Promise<boolean> {
+  if (canUseDevelopmentMock()) return false;
+  return invoke<boolean>("cancel_quick_cleanup");
 }
 
 export async function clearPersistedProductData(): Promise<void> {

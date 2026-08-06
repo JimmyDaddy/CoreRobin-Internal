@@ -396,5 +396,32 @@
     "since": "與 {{time}} 相比",
     "title": "自上次掃描以來的空間變化",
     "noGrowth": "精簡比較中未發現增長的目錄。"
+  },
+  "quickClean": {
+    "kicker": "無需掃描",
+    "title": "快速清理",
+    "description": "一鍵清理快取、日誌、暫存檔案與資源回收筒，不會碰你的文件與相片。",
+    "analyze": "開始分析",
+    "analyzing": "正在分析…",
+    "analyzeAgain": "重新分析",
+    "clean": "清理 {{size}}",
+    "cleaning": "正在清理…",
+    "cancel": "取消",
+    "done": "清理完成",
+    "freedSoFar": "已釋放 {{size}}",
+    "freedSummary": "釋放了 {{size}}，共 {{count}} 個項目",
+    "again": "再清理一次",
+    "close": "完成",
+    "total": "共可釋放",
+    "unavailable": "無法使用",
+    "empty": "沒有可清理的內容，磁碟很乾淨！",
+    "skippedNote": "{{count}} 個項目正在被占用，已安全跳過。",
+    "noRiskNote": "只清理可再生的快取與已丟棄的資源回收筒內容，不含你的文件、相片與登入資訊。",
+    "category": {
+      "user_cache": "應用程式快取",
+      "logs": "日誌檔",
+      "temp_files": "暫存檔",
+      "trash": "資源回收筒"
+    }
   }
 }

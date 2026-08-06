@@ -396,5 +396,32 @@
     "since": "Verglichen mit {{time}}",
     "title": "Speicheränderung seit dem letzten Scan",
     "noGrowth": "Im kompakten Vergleich wurde kein wachsendes Verzeichnis gefunden."
+  },
+  "quickClean": {
+    "kicker": "Kein Scan nötig",
+    "title": "Schnelle Bereinigung",
+    "description": "Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren. Dokumente und Fotos bleiben unberührt.",
+    "analyze": "Analysieren",
+    "analyzing": "Analyse läuft…",
+    "analyzeAgain": "Erneut analysieren",
+    "clean": "{{size}} bereinigen",
+    "cleaning": "Wird bereinigt…",
+    "cancel": "Abbrechen",
+    "done": "Fertig",
+    "freedSoFar": "Bisher {{size}} freigegeben",
+    "freedSummary": "{{size}} bei {{count}} Elementen freigegeben",
+    "again": "Erneut bereinigen",
+    "close": "Schließen",
+    "total": "Gesamt freigebbar",
+    "unavailable": "Nicht verfügbar",
+    "empty": "Nichts zu bereinigen – Ihre Festplatte ist sauber!",
+    "skippedNote": "{{count}} Elemente waren in Benutzung und wurden übersprungen.",
+    "noRiskNote": "Nur regenerierbare Caches und Papierkorb-Inhalte werden entfernt – niemals Dokumente, Fotos oder Anmeldedaten.",
+    "category": {
+      "user_cache": "App-Caches",
+      "logs": "Logdateien",
+      "temp_files": "Temporäre Dateien",
+      "trash": "Papierkorb"
+    }
   }
 }

@@ -396,5 +396,32 @@
     "since": "Comparado com {{time}}",
     "title": "Mudança desde a última verificação",
     "noGrowth": "Nenhum diretório em crescimento foi encontrado na comparação compacta."
+  },
+  "quickClean": {
+    "kicker": "Sem escaneamento",
+    "title": "Limpeza rápida",
+    "description": "Limpe caches, logs, arquivos temporários e a lixeira com um toque. Seus documentos e fotos ficam intactos.",
+    "analyze": "Analisar",
+    "analyzing": "Analisando…",
+    "analyzeAgain": "Analisar novamente",
+    "clean": "Limpar {{size}}",
+    "cleaning": "Limpando…",
+    "cancel": "Cancelar",
+    "done": "Concluído",
+    "freedSoFar": "{{size}} liberados até agora",
+    "freedSummary": "{{size}} liberados em {{count}} itens",
+    "again": "Limpar novamente",
+    "close": "Concluir",
+    "total": "Total recuperável",
+    "unavailable": "Indisponível",
+    "empty": "Nada para limpar — seu disco está ótimo!",
+    "skippedNote": "{{count}} itens estavam em uso e foram ignorados com segurança.",
+    "noRiskNote": "Apenas caches regeneráveis e o conteúdo da lixeira são removidos — nunca seus documentos, fotos ou credenciais.",
+    "category": {
+      "user_cache": "Caches de apps",
+      "logs": "Arquivos de log",
+      "temp_files": "Arquivos temporários",
+      "trash": "Lixeira"
+    }
   }
 }

@@ -346,5 +346,32 @@
     "completed": "已处理 {{count}} 个长期未修改文件，释放 {{size}}",
     "partial": "已处理 {{deletedCount}} 个，{{failedCount}} 个未能处理",
     "cancelled": "处理已停止，已完成 {{count}} 个"
+  },
+  "quickClean": {
+    "kicker": "无需扫描",
+    "title": "快速清理",
+    "description": "一键清理缓存、日志、临时文件和废纸篓，不触碰你的文档与照片。",
+    "analyze": "开始分析",
+    "analyzing": "正在分析…",
+    "analyzeAgain": "重新分析",
+    "clean": "清理 {{size}}",
+    "cleaning": "正在清理…",
+    "cancel": "取消",
+    "done": "清理完成",
+    "freedSoFar": "已释放 {{size}}",
+    "freedSummary": "释放了 {{size}}，共 {{count}} 个项目",
+    "again": "再清理一次",
+    "close": "完成",
+    "total": "共可释放",
+    "unavailable": "不可用",
+    "empty": "没有可清理的内容，磁盘很干净！",
+    "skippedNote": "{{count}} 个项目正在被占用，已安全跳过。",
+    "noRiskNote": "只清理可再生的缓存与已丢弃的废纸篓内容，不含你的文档、照片和登录信息。",
+    "category": {
+      "user_cache": "应用缓存",
+      "logs": "日志文件",
+      "temp_files": "临时文件",
+      "trash": "废纸篓"
+    }
   }
 }

@@ -787,6 +787,61 @@ pub struct CleanupDeleteSuccess {
     pub deleted_bytes: u64,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum QuickCleanCategory {
+    UserCache,
+    Logs,
+    TempFiles,
+    Trash,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanCategorySummary {
+    pub category: QuickCleanCategory,
+    pub byte_size: u64,
+    pub item_count: u64,
+    pub skipped_count: u64,
+    pub available: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanRequest {
+    pub categories: Vec<QuickCleanCategory>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanProgress {
+    pub category: QuickCleanCategory,
+    pub processed_item_count: usize,
+    pub total_item_count: usize,
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+    pub current_path: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanCategoryResult {
+    pub category: QuickCleanCategory,
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanResult {
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+    pub results: Vec<QuickCleanCategoryResult>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteFailure {

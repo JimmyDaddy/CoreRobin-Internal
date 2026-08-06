@@ -624,6 +624,33 @@ export default interface Resources {
       "stalledDescription": "CoreRobin 会跳过当前无法读取的位置，并从已保存的进度继续扫描，无需重新开始。",
       "stalledTitle": "正在跳过无响应的文件夹"
     },
+    "quickClean": {
+      "again": "再清理一次",
+      "analyze": "开始分析",
+      "analyzeAgain": "重新分析",
+      "analyzing": "正在分析…",
+      "cancel": "取消",
+      "category": {
+        "logs": "日志文件",
+        "temp_files": "临时文件",
+        "trash": "废纸篓",
+        "user_cache": "应用缓存"
+      },
+      "clean": "清理 {{size}}",
+      "cleaning": "正在清理…",
+      "close": "完成",
+      "description": "一键清理缓存、日志、临时文件和废纸篓，不触碰你的文档与照片。",
+      "done": "清理完成",
+      "empty": "没有可清理的内容，磁盘很干净！",
+      "freedSoFar": "已释放 {{size}}",
+      "freedSummary": "释放了 {{size}}，共 {{count}} 个项目",
+      "kicker": "无需扫描",
+      "noRiskNote": "只清理可再生的缓存与已丢弃的废纸篓内容，不含你的文档、照片和登录信息。",
+      "skippedNote": "{{count}} 个项目正在被占用，已安全跳过。",
+      "title": "快速清理",
+      "total": "共可释放",
+      "unavailable": "不可用"
+    },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
     "readOnlyTitle": "先看清楚，再决定是否处理",
     "reclaimableEstimate": "可能可回收空间",
@@ -726,6 +753,11 @@ export default interface Resources {
     "hide": "隐藏 Robin",
     "kicker": "Robin",
     "menu": "Robin 菜单",
+    "quickClean": {
+      "action": "一键清理",
+      "error": "清理失败",
+      "freed": "已释放 {{size}}"
+    },
     "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
     "recovering": "指标已回落，我再观察一会儿确认它是否恢复。"
   },

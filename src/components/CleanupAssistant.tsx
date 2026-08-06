@@ -62,6 +62,7 @@ import {
 } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
 import { PathActions } from "./PathActions";
+import { QuickCleanupCard } from "./QuickCleanupCard";
 import "./CleanupAssistant.css";
 
 const LIMITED_SCAN_PREFERENCE_KEY =
@@ -557,6 +558,8 @@ export function CleanupAssistant({
           </p>
         ) : null}
       </section>
+
+      <QuickCleanupCard />
 
       {accessGuideOpen && !loading ? (
         <section className="cleanup-access-guide" aria-labelledby="cleanup-access-title">

@@ -2,10 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowRight, EyeOff, Maximize2 } from "lucide-react";
+import { ArrowRight, EyeOff, Maximize2, RefreshCw, Wand2 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -15,11 +16,13 @@ import { createAsyncListenerRegistry } from "../asyncListener";
 import type { HealthStateSnapshot } from "../healthState";
 import { useSharedHealthState } from "../hooks/useSharedHealthState";
 import { useAuxiliaryTranslation } from "../useAuxiliaryTranslation";
+import { formatBytes } from "../utils";
 import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "../storageMigration";
 import { AnimatedRobin } from "./AnimatedRobin";
+import { analyzeQuickCleanup, runQuickCleanup } from "../api";
 
 const COMPANION_POSITION_KEY = "core-robin.companion-position.v1";
 const COMPANION_EXPANDED_LOGICAL_SIZE = { width: 386, height: 92 };
@@ -48,6 +51,64 @@ const nativeCompanionDailyBridge: CompanionDailyBridge = {
 const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
   && getCurrentWindow().label === "companion";
+
+type QuickCleanCompanionState = "idle" | "busy" | "done" | "error";
+
+function QuickCleanCompanionAction() {
+  const { t } = useAuxiliaryTranslation();
+  const [state, setState] = useState<QuickCleanCompanionState>("idle");
+  const [freed, setFreed] = useState(0);
+  const timerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== undefined) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const run = useCallback(async () => {
+    if (state === "busy") return;
+    setState("busy");
+    try {
+      const summaries = await analyzeQuickCleanup();
+      const categories = summaries
+        .filter((summary) => summary.available)
+        .map((summary) => summary.category);
+      const outcome = await runQuickCleanup(
+        categories.length > 0 ? categories : ["user_cache", "logs", "temp_files", "trash"],
+        () => {},
+      );
+      setFreed(outcome.freedBytes);
+      setState("done");
+      timerRef.current = window.setTimeout(() => setState("idle"), 8_000);
+    } catch {
+      setState("error");
+      timerRef.current = window.setTimeout(() => setState("idle"), 5_000);
+    }
+  }, [state]);
+
+  return (
+    <button
+      className={`robin-buddy-clean is-${state}`}
+      type="button"
+      disabled={state === "busy"}
+      onClick={() => void run()}
+    >
+      {state === "busy" ? (
+        <RefreshCw className="is-spinning" size={11} />
+      ) : (
+        <Wand2 size={11} />
+      )}
+      {state === "done"
+        ? t("companion:quickClean.freed", { size: formatBytes(freed, 0) })
+        : state === "error"
+          ? t("companion:quickClean.error")
+          : t("companion:quickClean.action")}
+    </button>
+  );
+}
 
 export function RobinCompanionWindow() {
   const { t } = useAuxiliaryTranslation();
@@ -338,9 +399,12 @@ export function RobinCompanionWindow() {
               ? t("companion:reason", { resource: t(`tray:resource.${summary.reason}`) })
               : t(`tray:status.${health}.description`)}
           </p>
-          <button type="button" onClick={() => void openDaily()}>
-            {t(`companion:action.${health}`)}<ArrowRight size={13} />
-          </button>
+          <div className="robin-buddy-actions">
+            <button type="button" onClick={() => void openDaily()}>
+              {t(`companion:action.${health}`)}<ArrowRight size={13} />
+            </button>
+            <QuickCleanCompanionAction />
+          </div>
         </div> : null}
       </section>
     </main>

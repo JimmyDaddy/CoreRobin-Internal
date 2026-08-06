@@ -16,6 +16,9 @@
     "allow-get-health-state",
     "allow-show-main-window",
     "allow-hide-companion-window",
-    "allow-set-companion-expanded"
+    "allow-set-companion-expanded",
+    "allow-analyze-quick-cleanup-command",
+    "allow-run-quick-cleanup-command",
+    "allow-cancel-quick-cleanup"
   ]
 }

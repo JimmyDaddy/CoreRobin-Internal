@@ -346,5 +346,32 @@
     "completed": "Processed {{count}} long-unmodified files and freed {{size}}",
     "partial": "Processed {{deletedCount}}; {{failedCount}} could not be processed",
     "cancelled": "Processing stopped after {{count}} files"
+  },
+  "quickClean": {
+    "kicker": "No scan needed",
+    "title": "Quick Cleanup",
+    "description": "Clear caches, logs, temporary files and Trash in one tap. Your documents and photos stay untouched.",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing…",
+    "analyzeAgain": "Analyze again",
+    "clean": "Clean {{size}}",
+    "cleaning": "Cleaning…",
+    "cancel": "Cancel",
+    "done": "All done",
+    "freedSoFar": "Freed {{size}} so far",
+    "freedSummary": "Freed {{size}} across {{count}} items",
+    "again": "Clean again",
+    "close": "Done",
+    "total": "Total reclaimable",
+    "unavailable": "Unavailable",
+    "empty": "Nothing to clean — your disk is tidy!",
+    "skippedNote": "{{count}} items were in use and safely skipped.",
+    "noRiskNote": "Only regenerable caches and discarded Trash content are removed — never your documents, photos or sign-in data.",
+    "category": {
+      "user_cache": "App caches",
+      "logs": "Log files",
+      "temp_files": "Temporary files",
+      "trash": "Trash"
+    }
   }
 }

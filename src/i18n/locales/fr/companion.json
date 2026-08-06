@@ -13,5 +13,10 @@
     "attention": "Vérifiez la raison",
     "urgent": "Consultez maintenant"
   },
-  "recovering": "La valeur s'est stabilisée. Je continue de surveiller pour confirmer la reprise."
+  "recovering": "La valeur s'est stabilisée. Je continue de surveiller pour confirmer la reprise.",
+  "quickClean": {
+    "action": "Nettoyage rapide",
+    "freed": "{{size}} libérés",
+    "error": "Échec du nettoyage"
+  }
 }

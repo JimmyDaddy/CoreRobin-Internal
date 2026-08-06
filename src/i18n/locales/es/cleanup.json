@@ -396,5 +396,32 @@
     "since": "Comparado con {{time}}",
     "title": "Cambio de espacio desde el último análisis",
     "noGrowth": "No se encontró ningún directorio en crecimiento en la comparación compacta."
+  },
+  "quickClean": {
+    "kicker": "Sin escaneo",
+    "title": "Limpieza rápida",
+    "description": "Limpia cachés, registros, archivos temporales y la papelera con un toque. Tus documentos y fotos quedan intactos.",
+    "analyze": "Analizar",
+    "analyzing": "Analizando…",
+    "analyzeAgain": "Volver a analizar",
+    "clean": "Limpiar {{size}}",
+    "cleaning": "Limpiando…",
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "freedSoFar": "{{size}} liberados hasta ahora",
+    "freedSummary": "{{size}} liberados en {{count}} elementos",
+    "again": "Limpiar de nuevo",
+    "close": "Hecho",
+    "total": "Total recuperable",
+    "unavailable": "No disponible",
+    "empty": "No hay nada que limpiar: ¡tu disco está impecable!",
+    "skippedNote": "{{count}} elementos estaban en uso y se omitieron.",
+    "noRiskNote": "Solo se eliminan cachés regenerables y el contenido de la papelera: nunca tus documentos, fotos ni credenciales.",
+    "category": {
+      "user_cache": "Cachés de apps",
+      "logs": "Registros",
+      "temp_files": "Archivos temporales",
+      "trash": "Papelera"
+    }
   }
 }

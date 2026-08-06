@@ -72,12 +72,14 @@ use objc2_foundation::{NSFileManager, NSURL};
 mod index;
 mod paths;
 mod protection;
+mod quick;
 
 pub(crate) use index::{
     apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, discard_indexed_scan,
     load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
     refresh_indexed_directory, remove_cleanup_index, resolve_indexed_delete_request,
 };
+pub(crate) use quick::{QuickCleanCoordinator, analyze_quick_cleanup, run_quick_cleanup};
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
     cleanup_protection_for_path, cleanup_protection_for_selected_scan_path,

@@ -396,5 +396,32 @@
     "since": "{{time}}와 비교",
     "title": "이전 검사 이후 공간 변화",
     "noGrowth": "간단 비교에서 증가한 디렉터리를 찾지 못했습니다."
+  },
+  "quickClean": {
+    "kicker": "스캔 불필요",
+    "title": "빠른 정리",
+    "description": "캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다. 문서와 사진은 건드리지 않아요.",
+    "analyze": "분석 시작",
+    "analyzing": "분석 중…",
+    "analyzeAgain": "다시 분석",
+    "clean": "{{size}} 정리",
+    "cleaning": "정리 중…",
+    "cancel": "취소",
+    "done": "정리 완료",
+    "freedSoFar": "지금까지 {{size}} 확보",
+    "freedSummary": "{{size}} 확보, 항목 {{count}}개",
+    "again": "한 번 더 정리",
+    "close": "완료",
+    "total": "확보 가능한 공간",
+    "unavailable": "사용 불가",
+    "empty": "정리할 내용이 없습니다. 디스크가 깨끗해요!",
+    "skippedNote": "{{count}}개 항목이 사용 중이라 안전하게 건너뛰었습니다.",
+    "noRiskNote": "재생성 가능한 캐시와 버려진 휴지통 내용만 제거합니다. 문서, 사진, 로그인 정보는 제외됩니다.",
+    "category": {
+      "user_cache": "앱 캐시",
+      "logs": "로그 파일",
+      "temp_files": "임시 파일",
+      "trash": "휴지통"
+    }
   }
 }
