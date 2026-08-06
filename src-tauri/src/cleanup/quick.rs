@@ -268,7 +268,10 @@ fn clean_category(
         let mut entry_bytes = 0_u64;
         let mut entry_files = 0_u64;
         let mut throttled_files = 0_u64;
-        match bound.delete_cancellable(cancelled, &mut |bytes| {
+        // Cache trees legitimately contain internal symlinks (e.g.
+        // node_modules/.bin, app bundle links). They are unlinked as entries,
+        // never followed, so the whole cache entry can be removed.
+        match bound.delete_cancellable_allowing_internal_symlinks(cancelled, &mut |bytes| {
             entry_bytes = entry_bytes.saturating_add(bytes);
             entry_files = entry_files.saturating_add(1);
             if entry_files.saturating_sub(throttled_files) >= QUICK_CLEAN_PROGRESS_INTERVAL as u64 {
@@ -447,6 +450,38 @@ mod tests {
     }
 
     #[test]
+    fn internal_symlinks_are_unlinked_without_following() {
+        let fixture = tempdir().unwrap();
+        let roots = fixture_roots(fixture.path());
+        let target = fixture.path().join("outside.bin");
+        write_file(&target, 8_192);
+        let pkg = roots.home.join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/.bin");
+        write_file(&roots.home.join("Library/Caches/Yarn/v6/npm-pkg/node_modules/pkg/index.js"), 512);
+        fs::create_dir_all(&pkg).unwrap();
+        symlink("../../pkg/index.js", pkg.join("pkg")).unwrap();
+
+        let cancelled = AtomicBool::new(false);
+        let result = run_quick_cleanup_at(
+            roots.clone(),
+            &QuickCleanRequest {
+                categories: vec![QuickCleanCategory::UserCache],
+            },
+            &cancelled,
+            &mut |_| {},
+        )
+        .unwrap();
+        let caches = result
+            .results
+            .iter()
+            .find(|result| result.category == QuickCleanCategory::UserCache)
+            .unwrap();
+        assert_eq!(caches.freed_items, 8);
+        assert_eq!(caches.skipped_items, 0);
+        assert!(!roots.home.join("Library/Caches/Yarn").exists());
+        assert!(target.exists());
+    }
+
+    #[test]
     fn large_entries_emit_throttled_progress_while_deleting() {
         let fixture = tempdir().unwrap();
         let roots = fixture_roots(fixture.path());
@@ -563,5 +598,65 @@ mod tests {
         assert!(first.load(Ordering::Relaxed));
         coordinator.finish(&first);
         assert!(coordinator.begin().is_ok());
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use std::fs;
+    use std::sync::atomic::AtomicBool;
+    use std::time::Instant;
+
+    use tempfile::tempdir;
+
+    use super::run_quick_cleanup_at;
+    use crate::cleanup::quick::{QuickCleanRoots, QUICK_CLEAN_ORDER};
+    use crate::models::QuickCleanRequest;
+
+    #[test]
+    fn bench_delete_throughput() {
+        let fixture = tempdir().unwrap();
+        let mut roots = QuickCleanRoots {
+            home: fixture.path().join("home"),
+            temp: fixture.path().join("temp"),
+        };
+        if let Ok(external) = std::env::var("CORE_ROBIN_BENCH_HOME") {
+            roots.home = external.into();
+        }
+        // Mimic the Yarn cache shape: 125 packages x 80 small files in nested dirs.
+        for pkg in 0..125 {
+            let dir = roots
+                .home
+                .join("Library/Caches/Yarn/v6")
+                .join(format!("npm-pkg-{pkg}"));
+            fs::create_dir_all(dir.join("node_modules/pkg/dist")).unwrap();
+            for f in 0..80 {
+                fs::write(
+                    dir.join("node_modules/pkg/dist").join(format!("f-{f:03}.js")),
+                    vec![1_u8; 512],
+                )
+                .unwrap();
+            }
+        }
+        let cancelled = AtomicBool::new(false);
+        let started = Instant::now();
+        let result = run_quick_cleanup_at(
+            roots.clone(),
+            &QuickCleanRequest {
+                categories: QUICK_CLEAN_ORDER.to_vec(),
+            },
+            &cancelled,
+            &mut |_| {},
+        )
+        .unwrap();
+        let elapsed = started.elapsed();
+        eprintln!("BENCH results: {:?}", result.results);
+        let files = result.freed_items;
+        eprintln!(
+            "BENCH: deleted {files} entries in {:.2}s -> {:.0} entries/sec",
+            elapsed.as_secs_f64(),
+            files as f64 / elapsed.as_secs_f64()
+        );
+        assert!(elapsed.as_secs() < 60, "deletion too slow: {elapsed:?}");
     }
 }
