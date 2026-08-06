@@ -1403,16 +1403,29 @@ mod tests {
 
     #[test]
     fn recovery_skips_only_the_unresponsive_application_cache() {
+        let cache_scope = {
+            let mut scope = PathBuf::from("~");
+            scope.push("Library");
+            scope.push("Caches");
+            scope.push("com.example.app");
+            scope
+        };
         assert_eq!(
             next_recovery_path(
                 "~/Library/Caches/com.example.app/WebKit/NetworkCache/record",
                 &[],
             ),
-            Some("~/Library/Caches/com.example.app".to_owned())
+            Some(cache_scope.to_string_lossy().into_owned())
         );
+        let caches = {
+            let mut scope = PathBuf::from("~");
+            scope.push("Library");
+            scope.push("Caches");
+            scope
+        };
         assert_eq!(
             next_recovery_path("~/Library/Caches", &[]),
-            Some("~/Library/Caches".to_owned())
+            Some(caches.to_string_lossy().into_owned())
         );
         assert_eq!(
             next_recovery_path("~/Documents/project/cache/record", &[]),
