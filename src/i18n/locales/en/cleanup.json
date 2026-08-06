@@ -101,6 +101,7 @@
   },
   "map": {
     "title": "Where the space went",
+    "back": "Back one level",
     "description": "Sector area represents allocated disk space. Related hues belong to one folder branch; gray sectors are files.",
     "descriptionPath": "Shown by real path across the system disk: each ring is the next directory level, and sector area represents allocated disk space.",
     "descriptionCategory": "The same scan is regrouped by common purpose. Categories are a supporting view, not the real directory hierarchy.",
@@ -374,8 +375,7 @@
     },
     "launcherDescription": "No scan needed — clear caches, logs, temp files and Trash in one tap.",
     "open": "Open quick cleanup",
-    "back": "Back to space scan",
-    "guideTitle": "Want a deeper clean?",
+    "back": "Back to space scan",    "guideTitle": "Want a deeper clean?",
     "guideDescription": "Scan the whole disk, see space usage by real file path, then decide what to clean.",
     "guideAction": "Go to disk scan",
     "analyzingHint": "Measuring caches, logs, temp files and Trash…"

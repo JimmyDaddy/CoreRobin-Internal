@@ -26,6 +26,7 @@
     "scan": "檢查文件",
     "scanAgain": "再次檢查",
     "cancel": "停止檢查",
+    "back": "返回空間清理",
     "phase": {
       "discovering": "尋找候選人",
       "hashing": "驗證重複內容"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "不掃描，一鍵清理快取、日誌、暫存檔與資源回收筒。",
     "open": "開啟快速清理",
-    "back": "返回空間掃描",
-    "guideTitle": "想清理得更徹底？",
+    "back": "返回空間掃描",    "guideTitle": "想清理得更徹底？",
     "guideDescription": "深度掃描整個磁碟，按真實檔案路徑查看空間占用，再決定清理什麼。",
     "guideAction": "前往磁碟掃描",
     "analyzingHint": "正在統計快取、日誌、暫存檔與資源回收筒…"

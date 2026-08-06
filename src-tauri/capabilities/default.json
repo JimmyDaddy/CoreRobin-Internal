@@ -100,6 +100,8 @@
     "allow-set-companion-expanded",
     "allow-configure-companion-window",
     "allow-get-process-detail",
+    "allow-scan-orphan-processes-command",
+    "allow-kill-orphan-processes-command",
     "allow-get-application-icon",
     "allow-create-process-control-lease",
     "allow-release-process-control-lease",

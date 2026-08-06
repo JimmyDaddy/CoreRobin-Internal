@@ -26,6 +26,7 @@
     "scan": "Dateien prüfen",
     "scanAgain": "Überprüfen Sie es noch einmal",
     "cancel": "Stoppen Sie die Überprüfung",
+    "back": "Zurück zur Weltraumreinigung",
     "phase": {
       "discovering": "Kandidaten finden",
       "hashing": "Überprüfung doppelter Inhalte"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "Ohne Scan: Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren.",
     "open": "Schnelle Bereinigung öffnen",
-    "back": "Zurück zum Speicher-Scan",
-    "guideTitle": "Gründlicher aufräumen?",
+    "back": "Zurück zum Speicher-Scan",    "guideTitle": "Gründlicher aufräumen?",
     "guideDescription": "Scannen Sie die ganze Festplatte, sehen Sie den Speicher pro Pfad und entscheiden Sie dann.",
     "guideAction": "Zum Festplatten-Scan",
     "analyzingHint": "Caches, Logs, Temp-Dateien und Papierkorb werden gemessen…"

@@ -26,6 +26,7 @@
     "scan": "Verifique os arquivos",
     "scanAgain": "Verifique novamente",
     "cancel": "Parar verificação",
+    "back": "De volta à limpeza do espaço",
     "phase": {
       "discovering": "Encontrando candidatos",
       "hashing": "Verificando conteúdo duplicado"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "Sem varredura: limpe caches, logs, temporários e lixeira com um toque.",
     "open": "Abrir limpeza rápida",
-    "back": "Voltar à verificação de espaço",
-    "guideTitle": "Quer uma limpeza mais profunda?",
+    "back": "Voltar à verificação de espaço",    "guideTitle": "Quer uma limpeza mais profunda?",
     "guideDescription": "Analise o disco inteiro, veja o uso por caminho real e decida o que limpar.",
     "guideAction": "Ir para a verificação do disco",
     "analyzingHint": "Medindo caches, logs, temporários e lixeira…"

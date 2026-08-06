@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, Mutex,
@@ -24,6 +24,7 @@ use crate::sensors::SensorSampler;
 
 const EJECTED_VOLUME_RECONCILIATION_GRACE: Duration = Duration::from_secs(2);
 const VOLUME_CATALOG_REFRESH_INTERVAL: Duration = Duration::from_secs(15);
+const LAUNCHD_CACHE_TTL: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct NetworkSessionCounters {
@@ -72,6 +73,7 @@ pub struct SystemMonitor {
     volume_refresh_in_flight: Arc<AtomicBool>,
     last_volume_refresh: Instant,
     application_identities: HashMap<PathBuf, Option<String>>,
+    launchd_pids_cache: Option<(Instant, HashSet<u32>)>,
 }
 
 impl SystemMonitor {
@@ -115,6 +117,7 @@ impl SystemMonitor {
             volume_refresh_in_flight: Arc::new(AtomicBool::new(false)),
             last_volume_refresh: Instant::now(),
             application_identities: HashMap::new(),
+            launchd_pids_cache: None,
         }
     }
 
@@ -242,6 +245,30 @@ impl SystemMonitor {
         self.application_identities
             .retain(|path, _| executable_paths.contains(path));
 
+        let live_pids = self
+            .system
+            .processes()
+            .values()
+            .map(|process| process.pid().as_u32())
+            .collect::<HashSet<_>>();
+        let own_pid = sysinfo::get_current_pid()
+            .map(|pid| pid.as_u32())
+            .unwrap_or(u32::MAX);
+        if self
+            .launchd_pids_cache
+            .as_ref()
+            .is_none_or(|(refreshed_at, _)| refreshed_at.elapsed() >= LAUNCHD_CACHE_TTL)
+        {
+            self.launchd_pids_cache =
+                Some((Instant::now(), crate::orphan_processes::launchd_registered_pids()));
+        }
+        let launchd_pids = self
+            .launchd_pids_cache
+            .as_ref()
+            .map(|(_, pids)| pids)
+            .cloned()
+            .unwrap_or_default();
+
         let mut processes = self
             .system
             .processes()
@@ -249,6 +276,15 @@ impl SystemMonitor {
             .map(|process| {
                 let pid = process.pid().as_u32();
                 let disk_usage = process.disk_usage();
+                let orphaned = pid != own_pid
+                    && match process.parent() {
+                        Some(parent) => {
+                            let parent_pid = parent.as_u32();
+                            (parent_pid == 1 && !launchd_pids.contains(&pid))
+                                || !live_pids.contains(&parent_pid)
+                        }
+                        None => false,
+                    };
                 ProcessRow {
                     pid,
                     birth_token: process_birth_tokens.get(&pid).cloned().flatten(),
@@ -273,6 +309,7 @@ impl SystemMonitor {
                     disk_write_bytes_per_second: (!warming_up)
                         .then(|| bytes_per_second(disk_usage.written_bytes, elapsed_ms)),
                     protected: protected_reason(pid, self.own_pid).is_some(),
+                    orphaned,
                 }
             })
             .collect::<Vec<_>>();

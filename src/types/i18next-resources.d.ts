@@ -485,6 +485,7 @@ export default interface Resources {
       "allScanned": "全部扫描结果",
       "allocatedSize": "实际占用",
       "ariaLabel": "{{name}} 的空间扇形图",
+      "back": "返回上一级",
       "basket": {
         "cancelled": "清理已停止，已完成 {{deletedCount}} 项",
         "clear": "清空",
@@ -2165,6 +2166,44 @@ export default interface Resources {
     "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
     "matchedPort": "匹配端口 {{port}}",
     "noMatches": "没有匹配的进程",
+    "orphan": {
+      "cleanAll": "一键清理全部",
+      "collapse": "收起",
+      "confirmAll": "确认结束全部 {{count}} 个孤儿进程？",
+      "confirmYes": "确认清理",
+      "detail": {
+        "command": "命令行",
+        "cpu": "CPU",
+        "parent": "原父进程",
+        "reason": "孤儿原因",
+        "started": "启动时间",
+        "status": "状态"
+      },
+      "end": "结束",
+      "filter": "仅看孤儿",
+      "filterTitle": "只显示父进程已退出的进程",
+      "forceEnd": "强制结束",
+      "inspect": "检查",
+      "kicker": "孤儿进程",
+      "none": "没有孤儿进程，一切正常",
+      "reason": {
+        "parent_exited": "父进程已退出，被系统收养",
+        "parent_missing": "父进程已不存在"
+      },
+      "refresh": "重新检测",
+      "reportTitle": "清理结果",
+      "safety": "只列出当前用户拥有的进程；结束前会再次校验进程身份",
+      "status": {
+        "failed": "失败",
+        "forceKilled": "已强制结束",
+        "killed": "已结束",
+        "skipped": "已跳过",
+        "survived": "未退出"
+      },
+      "summary": "{{count}} 个孤儿进程，占用 {{size}}",
+      "title": "检测到无主进程",
+      "view": "查看并清理"
+    },
     "protected": "受保护",
     "realtime": "实时采样",
     "resetView": "恢复默认进程视图",

@@ -101,5 +101,43 @@
     "validating": "正在重新確認…",
     "confirmForce": "確認強制結束",
     "confirmRequest": "確認請求結束"
+  },
+  "orphan": {
+    "kicker": "孤兒程序",
+    "title": "偵測到無主程序",
+    "summary": "{{count}} 個孤兒程序，占用 {{size}}",
+    "none": "沒有孤兒程序，一切正常",
+    "view": "檢視並清理",
+    "collapse": "收起",
+    "refresh": "重新偵測",
+    "inspect": "檢查",
+    "end": "結束",
+    "forceEnd": "強制結束",
+    "cleanAll": "一鍵清理全部",
+    "confirmAll": "確認結束全部 {{count}} 個孤兒程序？",
+    "confirmYes": "確認清理",
+    "safety": "只列出目前使用者擁有的程序；結束前會再次驗證程序身分",
+    "reportTitle": "清理結果",
+    "filter": "僅看孤兒",
+    "filterTitle": "只顯示父程序已結束的程序",
+    "reason": {
+      "parent_exited": "父程序已結束，被系統收養",
+      "parent_missing": "父程序已不存在"
+    },
+    "status": {
+      "killed": "已結束",
+      "forceKilled": "已強制結束",
+      "survived": "未結束",
+      "failed": "失敗",
+      "skipped": "已跳過"
+    },
+    "detail": {
+      "command": "命令列",
+      "parent": "原父程序",
+      "reason": "孤兒原因",
+      "started": "啟動時間",
+      "cpu": "CPU",
+      "status": "狀態"
+    }
   }
 }

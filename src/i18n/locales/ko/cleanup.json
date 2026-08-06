@@ -26,6 +26,7 @@
     "scan": "파일 확인",
     "scanAgain": "다시 확인하세요",
     "cancel": "점검 중지",
+    "back": "공간 정리로 돌아가기",
     "phase": {
       "discovering": "후보자 찾기",
       "hashing": "중복 콘텐츠 확인 중"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "스캔 없이 캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다.",
     "open": "빠른 정리 열기",
-    "back": "디스크 스캔으로 돌아가기",
-    "guideTitle": "더 철저하게 정리할까요?",
+    "back": "디스크 스캔으로 돌아가기",    "guideTitle": "더 철저하게 정리할까요?",
     "guideDescription": "전체 디스크를 스캔해 실제 파일 경로별 용량을 확인한 뒤 정리할 항목을 고를 수 있습니다.",
     "guideAction": "디스크 스캔하기",
     "analyzingHint": "캐시, 로그, 임시 파일, 휴지통을 집계하는 중…"

@@ -26,6 +26,7 @@
     "scan": "comprobar archivos",
     "scanAgain": "comprobar de nuevo",
     "cancel": "detener el control",
+    "back": "Volver a la limpieza del espacio",
     "phase": {
       "discovering": "Encontrar candidatos",
       "hashing": "Verificar contenido duplicado"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "Sin escaneo: limpia cachés, registros, temporales y papelera con un toque.",
     "open": "Abrir limpieza rápida",
-    "back": "Volver al escaneo de espacio",
-    "guideTitle": "¿Quieres una limpieza más profunda?",
+    "back": "Volver al escaneo de espacio",    "guideTitle": "¿Quieres una limpieza más profunda?",
     "guideDescription": "Escanea todo el disco, mira el uso por ruta real y decide qué limpiar.",
     "guideAction": "Ir al escaneo de disco",
     "analyzingHint": "Midiendo cachés, registros, temporales y papelera…"

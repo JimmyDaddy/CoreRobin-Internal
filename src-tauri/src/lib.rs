@@ -21,6 +21,7 @@ mod monitor;
 mod native_uninstall;
 mod network_connections;
 mod network_quality;
+mod orphan_processes;
 mod private_storage;
 mod process_control;
 mod safe_fs;
@@ -86,13 +87,15 @@ use models::{
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
     NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
     ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
-    ProcessDetail, ProcessDetailRequest, QuickCleanCategorySummary, QuickCleanProgress,
+    ProcessDetail, ProcessDetailRequest, OrphanKillReport, OrphanKillRequest, OrphanProcess,
+    QuickCleanCategorySummary, QuickCleanProgress,
     QuickCleanRequest, QuickCleanResult, StartupContext, StartupItemsSnapshot,
     StartupManagementExecutionRequest, StartupManagementLease,
     StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
     SystemSnapshot, SystemSummary, TrashedApplication,
 };
 use monitor::SystemMonitor;
+use orphan_processes::{kill_orphan_processes, scan_orphan_processes};
 use network_connections::sample_network_connections;
 use network_quality::{
     resolve_network_hosts as resolve_hosts, run_network_quality_check as check_network_quality,
@@ -2140,6 +2143,22 @@ async fn get_process_detail(
 }
 
 #[tauri::command]
+async fn scan_orphan_processes_command() -> Result<Vec<OrphanProcess>, CommandError> {
+    tauri::async_runtime::spawn_blocking(scan_orphan_processes)
+        .await
+        .map_err(|error| CommandError::internal(format!("Orphan process scan failed: {error}")))?
+}
+
+#[tauri::command]
+async fn kill_orphan_processes_command(
+    request: OrphanKillRequest,
+) -> Result<OrphanKillReport, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || kill_orphan_processes(&request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Orphan process kill failed: {error}")))?
+}
+
+#[tauri::command]
 async fn get_application_icon(
     state: State<'_, AppState>,
     request: ApplicationIconRequest,
@@ -2266,6 +2285,17 @@ pub fn run() {
         .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
+            // Kill scan workers left over from a previous session and remove
+            // their stale job files, without blocking startup.
+            if let Ok(job_directory) = app
+                .path()
+                .app_data_dir()
+                .map(|directory| directory.join("cleanup-scan-jobs"))
+            {
+                tauri::async_runtime::spawn_blocking(move || {
+                    cleanup_scan_job::reap_orphan_workers(&job_directory);
+                });
+            }
             state.sampler.start(app.handle().clone());
             start_health_state_watchdog(Arc::clone(&state.health_state), app.handle().clone());
             #[cfg(target_os = "macos")]
@@ -2488,6 +2518,8 @@ pub fn run() {
             set_companion_expanded,
             configure_companion_window,
             get_process_detail,
+            scan_orphan_processes_command,
+            kill_orphan_processes_command,
             get_application_icon,
             create_process_control_lease,
             release_process_control_lease,

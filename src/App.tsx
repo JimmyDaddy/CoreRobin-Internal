@@ -167,6 +167,7 @@ const NetworkExplorer = lazy(async () => ({ default: (await import("./components
 const PersonalBaselinePanel = lazy(async () => ({ default: (await import("./components/PersonalBaselinePanel")).PersonalBaselinePanel }));
 const ProcessInspector = lazy(async () => ({ default: (await import("./components/ProcessInspector")).ProcessInspector }));
 const ProcessTable = lazy(async () => ({ default: (await import("./components/ProcessTable")).ProcessTable }));
+const OrphanProcessCard = lazy(async () => ({ default: (await import("./components/OrphanProcessCard")).OrphanProcessCard }));
 const ResourceHistory = lazy(async () => ({ default: (await import("./components/ResourceHistory")).ResourceHistory }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
@@ -1974,7 +1975,9 @@ function App() {
                 <GpuEnergyPanel processes={snapshot.processes} />
               </>
             ) : activeView === "processes" ? (
-              <ProcessTable
+              <>
+                <OrphanProcessCard />
+                <ProcessTable
                   processes={snapshot.processes}
                   connections={connectionsSnapshot?.connections}
                   selectedIdentity={selectedIdentity}
@@ -2002,6 +2005,10 @@ function App() {
                   onFollowSelectionChange={(followSelection) =>
                     updateProcessPreferences({ followSelection })
                   }
+                  orphanOnly={processPreferences.orphanOnly}
+                  onOrphanOnlyChange={(orphanOnly) =>
+                    updateProcessPreferences({ orphanOnly })
+                  }
                   onResetPreferences={() =>
                     setProcessPreferences({
                       ...defaultProcessExplorerPreferences(),
@@ -2009,6 +2016,7 @@ function App() {
                     })
                   }
               />
+              </>
             ) : activeView === "storage" ? (
               <StorageExplorer
                 disk={snapshot.disk}

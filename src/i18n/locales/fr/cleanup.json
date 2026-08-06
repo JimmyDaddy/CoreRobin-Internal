@@ -26,6 +26,7 @@
     "scan": "Vérifier les fichiers",
     "scanAgain": "Revérifier",
     "cancel": "Arrêter le contrôle",
+    "back": "Retour au nettoyage de l'espace",
     "phase": {
       "discovering": "Recherche de candidats",
       "hashing": "Vérification du contenu en double"
@@ -424,8 +425,7 @@
     },
     "launcherDescription": "Sans analyse : videz caches, journaux, fichiers temporaires et corbeille en un geste.",
     "open": "Ouvrir le nettoyage rapide",
-    "back": "Retour à l'analyse de l'espace",
-    "guideTitle": "Un nettoyage plus poussé ?",
+    "back": "Retour à l'analyse de l'espace",    "guideTitle": "Un nettoyage plus poussé ?",
     "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
     "guideAction": "Aller à l'analyse du disque",
     "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"

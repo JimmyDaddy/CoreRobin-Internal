@@ -101,5 +101,43 @@
     "validating": "Confirmando de nuevo…",
     "confirmForce": "Forzar cierre",
     "confirmRequest": "Solicitar cierre"
+  },
+  "orphan": {
+    "kicker": "Procesos huérfanos",
+    "title": "Procesos sin padre detectados",
+    "summary": "{{count}} procesos huérfanos usan {{size}}",
+    "none": "Sin procesos huérfanos — todo en orden",
+    "view": "Ver y limpiar",
+    "collapse": "Contraer",
+    "refresh": "Volver a detectar",
+    "inspect": "Inspeccionar",
+    "end": "Terminar",
+    "forceEnd": "Forzar",
+    "cleanAll": "Terminar todos",
+    "confirmAll": "¿Terminar los {{count}} procesos huérfanos?",
+    "confirmYes": "Terminar",
+    "safety": "Solo se listan procesos tuyos; cada uno se re-verifica antes de terminar",
+    "reportTitle": "Resultado",
+    "filter": "Solo huérfanos",
+    "filterTitle": "Mostrar solo procesos cuyo padre ha salido",
+    "reason": {
+      "parent_exited": "El padre salió; adoptado por el sistema",
+      "parent_missing": "El padre ya no existe"
+    },
+    "status": {
+      "killed": "Terminado",
+      "forceKilled": "Forzado",
+      "survived": "Sigue activo",
+      "failed": "Error",
+      "skipped": "Omitido"
+    },
+    "detail": {
+      "command": "Línea de comandos",
+      "parent": "Padre original",
+      "reason": "Motivo",
+      "started": "Inicio",
+      "cpu": "CPU",
+      "status": "Estado"
+    }
   }
 }

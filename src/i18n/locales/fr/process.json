@@ -101,5 +101,43 @@
     "validating": "Nouvelle vérification…",
     "confirmForce": "Fermer de force",
     "confirmRequest": "Demander la fermeture"
+  },
+  "orphan": {
+    "kicker": "Processus orphelins",
+    "title": "Processus sans parent détectés",
+    "summary": "{{count}} processus orphelins utilisent {{size}}",
+    "none": "Aucun processus orphelin — tout va bien",
+    "view": "Voir et nettoyer",
+    "collapse": "Réduire",
+    "refresh": "Relancer",
+    "inspect": "Inspecter",
+    "end": "Terminer",
+    "forceEnd": "Forcer",
+    "cleanAll": "Tout terminer",
+    "confirmAll": "Terminer les {{count}} processus orphelins ?",
+    "confirmYes": "Terminer",
+    "safety": "Seuls vos processus sont listés ; chacun est re-vérifié avant la fin",
+    "reportTitle": "Résultat",
+    "filter": "Orphelins",
+    "filterTitle": "Afficher uniquement les processus dont le parent est parti",
+    "reason": {
+      "parent_exited": "Parent parti ; adopté par le système",
+      "parent_missing": "Le parent n'existe plus"
+    },
+    "status": {
+      "killed": "Terminé",
+      "forceKilled": "Forcé",
+      "survived": "Toujours actif",
+      "failed": "Échec",
+      "skipped": "Ignoré"
+    },
+    "detail": {
+      "command": "Ligne de commande",
+      "parent": "Parent d'origine",
+      "reason": "Raison",
+      "started": "Démarrage",
+      "cpu": "CPU",
+      "status": "État"
+    }
   }
 }
