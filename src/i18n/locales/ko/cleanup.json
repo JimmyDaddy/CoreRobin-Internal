@@ -3,7 +3,7 @@
     "label": "스캔 모드",
     "recommended": "권장",
     "quick": {
-      "title": "빠른 스캔",
+      "title": "디스크 스캔",
       "description": "용량이 크거나 정리 가능한 주요 위치를 정확히 확인합니다",
       "scopeTitle": "스캔 대상",
       "scope": "다운로드, 데스크탑, 문서, 미디어 폴더, 휴지통, 앱 및 개발 캐시, 앱 지원 데이터, 컨테이너, 숨겨진 앱 데이터, 시스템 임시 폴더."
@@ -26,6 +26,7 @@
     "scan": "파일 확인",
     "scanAgain": "다시 확인하세요",
     "cancel": "점검 중지",
+    "back": "공간 정리로 돌아가기",
     "phase": {
       "discovering": "후보자 찾기",
       "hashing": "중복 콘텐츠 확인 중"
@@ -46,7 +47,6 @@
     "launcherDescription": "스캔 진행 상황, 중복 그룹, 수정되지 않은 긴 파일을 위한 전용 작업 공간을 엽니다.",
     "running": "지금 확인 중",
     "openWorkspace": "작업공간 열기",
-    "back": "공간 정리로 돌아가기",
     "phaseDescription": {
       "discovering": "공통 개인 폴더의 이름, 크기, 수정 날짜를 검토하여 콘텐츠 후보 범위를 좁힙니다.",
       "hashing": "동일한 크기의 후보를 읽고 로컬에서 SHA-256를 계산합니다. 콘텐츠는 이 컴퓨터를 떠나지 않습니다."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "이 카테고리는 명확합니다"
   },
-  "kicker": "로컬 저장 공간 분석",
+  "kicker": "심층 분석",
   "title": "저장 공간 정리 도우미",
   "description": "시스템 디스크를 스캔하여 실제 파일 경로별 사용량을 확인합니다.",
   "startScan": "읽기 전용 스캔 시작",
@@ -396,5 +396,38 @@
     "since": "{{time}}와 비교",
     "title": "이전 검사 이후 공간 변화",
     "noGrowth": "간단 비교에서 증가한 디렉터리를 찾지 못했습니다."
+  },
+  "quickClean": {
+    "kicker": "스캔 불필요",
+    "title": "빠른 정리",
+    "description": "캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다. 문서와 사진은 건드리지 않아요.",
+    "analyze": "분석 시작",
+    "analyzing": "분석 중…",
+    "analyzeAgain": "다시 분석",
+    "clean": "{{size}} 정리",
+    "cleaning": "정리 중…",
+    "cancel": "취소",
+    "done": "정리 완료",
+    "freedSoFar": "지금까지 {{size}} 확보",
+    "freedSummary": "{{size}} 확보, 항목 {{count}}개",
+    "again": "한 번 더 정리",
+    "close": "완료",
+    "total": "확보 가능한 공간",
+    "unavailable": "사용 불가",
+    "empty": "정리할 내용이 없습니다. 디스크가 깨끗해요!",
+    "skippedNote": "{{count}}개 항목이 사용 중이라 안전하게 건너뛰었습니다.",
+    "noRiskNote": "재생성 가능한 캐시와 버려진 휴지통 내용만 제거합니다. 문서, 사진, 로그인 정보는 제외됩니다.",
+    "category": {
+      "user_cache": "앱 캐시",
+      "logs": "로그 파일",
+      "temp_files": "임시 파일",
+      "trash": "휴지통"
+    },
+    "launcherDescription": "스캔 없이 캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다.",
+    "open": "빠른 정리 열기",
+    "back": "디스크 스캔으로 돌아가기",    "guideTitle": "더 철저하게 정리할까요?",
+    "guideDescription": "전체 디스크를 스캔해 실제 파일 경로별 용량을 확인한 뒤 정리할 항목을 고를 수 있습니다.",
+    "guideAction": "디스크 스캔하기",
+    "analyzingHint": "캐시, 로그, 임시 파일, 휴지통을 집계하는 중…"
   }
 }

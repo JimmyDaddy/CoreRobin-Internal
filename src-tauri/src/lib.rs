@@ -21,6 +21,7 @@ mod monitor;
 mod native_uninstall;
 mod network_connections;
 mod network_quality;
+mod orphan_processes;
 mod private_storage;
 mod process_control;
 mod safe_fs;
@@ -51,13 +52,14 @@ use application_history::{
 use application_icon::{load_application_bundle_icon, load_application_icon};
 use background_supervisor::BackgroundSupervisorConfig;
 use cleanup::{
-    CleanupDeleteController, CleanupDeleteCoordinator, apply_indexed_deletions,
-    available_bytes_for_path, cleanup_index_summary, cleanup_scan_access, inspect_cleanup_path,
-    load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
+    CleanupDeleteController, CleanupDeleteCoordinator, QuickCleanCoordinator,
+    analyze_quick_cleanup, apply_indexed_deletions, available_bytes_for_path,
+    cleanup_index_summary, cleanup_scan_access, inspect_cleanup_path, load_indexed_children,
+    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
     load_or_scan_application_inventory, open_full_disk_access_settings,
     prepare_application_uninstall, prepare_trashed_application_residual_plan, remove_cleanup_index,
     remove_cleanup_scan_cache, resolve_indexed_delete_request, reveal_cleanup_application_bundle,
-    scan_trashed_applications,
+    run_quick_cleanup, scan_trashed_applications,
 };
 use cleanup_scan_job::CleanupScanJobManager;
 use error::CommandError;
@@ -83,12 +85,13 @@ use models::{
     CleanupScanIndexSummary, CleanupScanJobStatus, CleanupScanRequest, FileInsightsProgress,
     FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
-    NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
-    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
-    ProcessDetail, ProcessDetailRequest, StartupContext, StartupItemsSnapshot,
-    StartupManagementExecutionRequest, StartupManagementLease,
-    StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
-    SystemSnapshot, SystemSummary, TrashedApplication,
+    NetworkHostLookupRequest, NetworkQualityResult, OrphanKillReport, OrphanKillRequest,
+    OrphanProcess, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
+    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
+    ProcessDetailRequest, QuickCleanCategorySummary, QuickCleanProgress, QuickCleanRequest,
+    QuickCleanResult, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
+    StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
+    StartupManagementResult, SystemSnapshot, SystemSummary, TrashedApplication,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -103,6 +106,7 @@ use objc2::{MainThreadMarker, sel};
 use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
+use orphan_processes::{kill_orphan_processes, scan_orphan_processes};
 use process_control::ProcessController;
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
@@ -272,6 +276,7 @@ struct AppState {
     cleanup_refresh_jobs: Arc<CleanupScanJobManager>,
     cleanup_delete: Arc<CleanupDeleteCoordinator>,
     cleanup_delete_controller: Arc<Mutex<CleanupDeleteController>>,
+    quick_clean: Arc<QuickCleanCoordinator>,
     file_insights: Arc<FileInsightsCoordinator>,
     startup_controller: Arc<Mutex<StartupController>>,
 }
@@ -295,6 +300,7 @@ impl AppState {
             cleanup_refresh_jobs: Arc::new(CleanupScanJobManager::default()),
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
+            quick_clean: Arc::new(QuickCleanCoordinator::default()),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
         }
@@ -863,6 +869,40 @@ async fn clear_persisted_cleanup_scan(
     })
     .await
     .map_err(|error| CommandError::internal(format!("Cleanup index removal failed: {error}")))?
+}
+
+#[tauri::command]
+async fn analyze_quick_cleanup_command() -> Result<Vec<QuickCleanCategorySummary>, CommandError> {
+    tauri::async_runtime::spawn_blocking(analyze_quick_cleanup)
+        .await
+        .map_err(|error| {
+            CommandError::internal(format!("Quick cleanup analysis failed: {error}"))
+        })?
+}
+
+#[tauri::command]
+async fn run_quick_cleanup_command(
+    state: State<'_, AppState>,
+    request: QuickCleanRequest,
+    on_progress: Channel<QuickCleanProgress>,
+) -> Result<QuickCleanResult, CommandError> {
+    let cancelled = state.quick_clean.begin()?;
+    let finished_cancelled = Arc::clone(&cancelled);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let mut emit_progress = |progress: QuickCleanProgress| {
+            let _ = on_progress.send(progress);
+        };
+        run_quick_cleanup(&request, &cancelled, &mut emit_progress)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Quick cleanup failed: {error}")))?;
+    state.quick_clean.finish(&finished_cancelled);
+    result
+}
+
+#[tauri::command]
+async fn cancel_quick_cleanup(state: State<'_, AppState>) -> Result<bool, CommandError> {
+    state.quick_clean.cancel()
 }
 
 fn application_history_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
@@ -2100,6 +2140,22 @@ async fn get_process_detail(
 }
 
 #[tauri::command]
+async fn scan_orphan_processes_command() -> Result<Vec<OrphanProcess>, CommandError> {
+    tauri::async_runtime::spawn_blocking(scan_orphan_processes)
+        .await
+        .map_err(|error| CommandError::internal(format!("Orphan process scan failed: {error}")))?
+}
+
+#[tauri::command]
+async fn kill_orphan_processes_command(
+    request: OrphanKillRequest,
+) -> Result<OrphanKillReport, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || kill_orphan_processes(&request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Orphan process kill failed: {error}")))?
+}
+
+#[tauri::command]
 async fn get_application_icon(
     state: State<'_, AppState>,
     request: ApplicationIconRequest,
@@ -2226,6 +2282,17 @@ pub fn run() {
         .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
+            // Kill scan workers left over from a previous session and remove
+            // their stale job files, without blocking startup.
+            if let Ok(job_directory) = app
+                .path()
+                .app_data_dir()
+                .map(|directory| directory.join("cleanup-scan-jobs"))
+            {
+                tauri::async_runtime::spawn_blocking(move || {
+                    cleanup_scan_job::reap_orphan_workers(&job_directory);
+                });
+            }
             state.sampler.start(app.handle().clone());
             start_health_state_watchdog(Arc::clone(&state.health_state), app.handle().clone());
             #[cfg(target_os = "macos")]
@@ -2398,6 +2465,9 @@ pub fn run() {
             apply_cleanup_index_deletions,
             load_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
+            analyze_quick_cleanup_command,
+            run_quick_cleanup_command,
+            cancel_quick_cleanup,
             load_persisted_application_history,
             save_persisted_application_history,
             clear_persisted_application_history,
@@ -2445,6 +2515,8 @@ pub fn run() {
             set_companion_expanded,
             configure_companion_window,
             get_process_detail,
+            scan_orphan_processes_command,
+            kill_orphan_processes_command,
             get_application_icon,
             create_process_control_lease,
             release_process_control_lease,

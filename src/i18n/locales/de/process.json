@@ -101,5 +101,44 @@
     "validating": "Erneute Prüfung…",
     "confirmForce": "Zwangsweise beenden",
     "confirmRequest": "Beenden anfordern"
+  },
+  "orphan": {
+    "kicker": "Verwaiste Prozesse",
+    "title": "Nicht verwaltete Prozesse gefunden",
+    "summary": "{{count}} nicht verwaltete Prozesse nutzen {{size}}",
+    "none": "Keine nicht verwalteten Prozesse — alles in Ordnung",
+    "view": "Ansehen & bereinigen",
+    "collapse": "Einklappen",
+    "refresh": "Neu prüfen",
+    "inspect": "Prüfen",
+    "end": "Beenden",
+    "forceEnd": "Erzwingen",
+    "cleanAll": "Alle beenden",
+    "confirmAll": "Alle {{count}} nicht verwalteten Prozesse beenden?",
+    "confirmYes": "Beenden",
+    "confirmMore": " und {{count}} weitere",
+    "safety": "Nur eigene Prozesse werden gelistet; jeder wird vor dem Beenden erneut geprüft",
+    "reportTitle": "Ergebnis",
+    "filter": "Nur unverwaltete",
+    "filterTitle": "Nur Prozesse anzeigen, deren Eltern beendet sind und die nicht verwaltet werden",
+    "reason": {
+      "parent_exited": "Elternprozess beendet; ohne Verwalter",
+      "parent_missing": "Elternprozess existiert nicht mehr"
+    },
+    "status": {
+      "killed": "Beendet",
+      "forceKilled": "Erzwungen",
+      "survived": "Läuft weiter",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "detail": {
+      "command": "Befehlszeile",
+      "parent": "Ursprünglicher Elternprozess",
+      "reason": "Grund",
+      "started": "Gestartet",
+      "cpu": "CPU",
+      "status": "Status"
+    }
   }
 }

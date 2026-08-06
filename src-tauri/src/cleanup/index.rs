@@ -42,7 +42,22 @@ const NAVIGATION_ANCHOR_RESERVE: usize = 4_096;
 // transactional directory refresh, while preventing unbounded growth.
 const MAX_INDEX_BYTES: u64 = 512 * 1024 * 1024;
 const INDEX_VACUUM_PAGES: usize = 8_192;
-const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+// WAL allows a single writer at a time. The scan worker is a separate process,
+// so it must out-wait short-lived maintenance writes from the main process
+// (e.g. discarding an old scan) instead of aborting the whole scan with
+// SQLITE_BUSY once the busy handler gives up.
+const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
+// Delete scan rows in bounded batches so no single statement holds the WAL
+// write lock long enough to stall a concurrent scan worker.
+const INDEX_DELETE_BATCH: usize = 5_000;
+// Re-check the index byte budget every this many scanned entries and trim
+// recovery-only file identities so a large scan cannot hit the byte cap.
+const INDEX_SPACE_CHECK_INTERVAL: usize = 4_096;
+// Percent of MAX_INDEX_BYTES at which a new scan retires surplus generations
+// before writing, and the watermarks used by the mid-scan seen_files trim.
+const INDEX_RETIRE_THRESHOLD_PERCENT: i64 = 75;
+const INDEX_TRIM_HIGH_PERCENT: i64 = 85;
+const INDEX_TRIM_LOW_PERCENT: i64 = 75;
 const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -329,6 +344,7 @@ fn build_indexed_scan_with_shared_identities(
     let mut connection = open_index(index_path)?;
     initialize_schema(&connection)?;
     purge_expired_and_incomplete(&connection)?;
+    retire_surplus_generations_when_index_full(&connection, scan_id)?;
 
     let definitions = platform_paths(&home);
     let scope_paths = if request.profile == CleanupScanProfile::CommonLocations {
@@ -1057,9 +1073,10 @@ pub(crate) fn load_latest_indexed_scan(
     if !index_path.is_file() {
         return Ok(None);
     }
-    let connection = open_index(index_path)?;
-    initialize_schema(&connection)?;
-    purge_expired_and_incomplete(&connection)?;
+    // Stay read-only: the main process must never take the WAL write lock
+    // while a scan worker is writing. Expired and broken generations are
+    // reclaimed by the next scan instead of here.
+    let connection = open_index_read_only(index_path)?;
     let scan_ids = {
         let mut statement = connection
             .prepare(
@@ -1079,9 +1096,8 @@ pub(crate) fn load_latest_indexed_scan(
             return Ok(Some(scan));
         }
         // A broken generation is a cache entry, not a reason to destroy every
-        // older valid result. Remove only that scan and fall back to its
-        // retained predecessor.
-        delete_scan(&connection, &scan_id)?;
+        // older valid result. Skip it and fall back to its retained
+        // predecessor; the next scan of the same target retires it.
     }
     Ok(None)
 }
@@ -1161,6 +1177,7 @@ pub(crate) fn refresh_indexed_directory(
     ensure_private_index_parent(index_path)?;
     let mut connection = open_index(index_path)?;
     initialize_schema(&connection)?;
+    retire_surplus_generations_when_index_full(&connection, scan_id)?;
     let node_id = parse_index_node_id(scan_id, directory_id)?;
     let (parent_id, safety) = connection
         .query_row(
@@ -1775,6 +1792,13 @@ fn scan_directory_into_index(
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
+        if context
+            .stats
+            .scanned_entry_count
+            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
+        {
+            trim_seen_files_for_index_space(transaction, context.scan_id)?;
+        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -2433,6 +2457,13 @@ fn scan_direct_files_into_index(
             continue;
         }
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
+        if context
+            .stats
+            .scanned_entry_count
+            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
+        {
+            trim_seen_files_for_index_space(transaction, context.scan_id)?;
+        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -3442,17 +3473,42 @@ fn delete_node_subtree(
 ) -> Result<(), CommandError> {
     transaction
         .execute(
-            "WITH RECURSIVE subtree(id) AS (
+            "CREATE TEMP TABLE IF NOT EXISTS cleanup_subtree_ids(id INTEGER PRIMARY KEY)",
+            [],
+        )
+        .map_err(index_error)?;
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
+        .map_err(index_error)?;
+    transaction
+        .execute(
+            "INSERT INTO cleanup_subtree_ids(id)
+             WITH RECURSIVE subtree(id) AS (
                SELECT id FROM nodes WHERE scan_id = ?1 AND id = ?2
                UNION ALL
                SELECT nodes.id FROM nodes
                JOIN subtree ON nodes.parent_id = subtree.id
                WHERE nodes.scan_id = ?1
              )
-             DELETE FROM nodes
-             WHERE scan_id = ?1 AND id IN (SELECT id FROM subtree)",
+             SELECT id FROM subtree",
             params![scan_id, node_id],
         )
+        .map_err(index_error)?;
+    loop {
+        let deleted = transaction
+            .execute(
+                "DELETE FROM nodes WHERE scan_id = ?1 AND id IN (
+                   SELECT id FROM cleanup_subtree_ids LIMIT ?2
+                 )",
+                params![scan_id, INDEX_DELETE_BATCH as i64],
+            )
+            .map_err(index_error)?;
+        if deleted == 0 {
+            break;
+        }
+    }
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
         .map_err(index_error)?;
     Ok(())
 }
@@ -4395,19 +4451,47 @@ fn collapse_indexed_directory_details(
     if subtree_node_count <= 1 {
         return Ok(0);
     }
+    // Materialize the descendant ids once, then delete in bounded batches.
+    // Re-running the recursive CTE per batch would strand descendants whose
+    // parents were removed by an earlier batch.
     transaction
         .execute(
-            "WITH RECURSIVE descendants(id) AS (
+            "CREATE TEMP TABLE IF NOT EXISTS cleanup_subtree_ids(id INTEGER PRIMARY KEY)",
+            [],
+        )
+        .map_err(index_error)?;
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
+        .map_err(index_error)?;
+    transaction
+        .execute(
+            "INSERT INTO cleanup_subtree_ids(id)
+             WITH RECURSIVE descendants(id) AS (
                SELECT id FROM nodes WHERE scan_id = ?1 AND parent_id = ?2
                UNION ALL
                SELECT nodes.id FROM nodes
                JOIN descendants ON nodes.parent_id = descendants.id
                WHERE nodes.scan_id = ?1
              )
-             DELETE FROM nodes
-             WHERE scan_id = ?1 AND id IN (SELECT id FROM descendants)",
+             SELECT id FROM descendants",
             params![scan_id, node_id],
         )
+        .map_err(index_error)?;
+    loop {
+        let deleted = transaction
+            .execute(
+                "DELETE FROM nodes WHERE scan_id = ?1 AND id IN (
+                   SELECT id FROM cleanup_subtree_ids LIMIT ?2
+                 )",
+                params![scan_id, INDEX_DELETE_BATCH as i64],
+            )
+            .map_err(index_error)?;
+        if deleted == 0 {
+            break;
+        }
+    }
+    transaction
+        .execute("DELETE FROM cleanup_subtree_ids", [])
         .map_err(index_error)?;
     transaction
         .execute(
@@ -4602,20 +4686,128 @@ fn purge_expired_and_incomplete(connection: &Connection) -> Result<(), CommandEr
     Ok(())
 }
 
-fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandError> {
-    for table in [
-        "nodes",
-        "scan_segments",
-        "scan_locations",
-        "largest_files",
-        "seen_files",
-    ] {
-        connection
+fn retire_surplus_generations_when_index_full(
+    connection: &Connection,
+    current_scan_id: &str,
+) -> Result<(), CommandError> {
+    if index_bytes(connection)? < (MAX_INDEX_BYTES as i64 * INDEX_RETIRE_THRESHOLD_PERCENT) / 100 {
+        return Ok(());
+    }
+    retire_surplus_generations(connection, current_scan_id)?;
+    reclaim_index_space(connection)?;
+    Ok(())
+}
+
+fn retire_surplus_generations(
+    connection: &Connection,
+    current_scan_id: &str,
+) -> Result<(), CommandError> {
+    // The index only needs the current and hand-off generations. When it is
+    // nearly full, drop every completed scan older than the newest two so the
+    // incoming scan has room instead of failing with SQLITE_FULL.
+    let mut statement = connection
+        .prepare(
+            "SELECT id FROM scans
+             WHERE state = 'completed' AND id != ?1
+             ORDER BY sampled_at_ms DESC, started_at_ms DESC
+             LIMIT -1 OFFSET 2",
+        )
+        .map_err(index_error)?;
+    let ids = statement
+        .query_map(params![current_scan_id], |row| row.get::<_, String>(0))
+        .map_err(index_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(index_error)?;
+    drop(statement);
+    for id in ids {
+        delete_scan(connection, &id)?;
+    }
+    Ok(())
+}
+
+fn index_bytes(connection: &Connection) -> Result<i64, CommandError> {
+    let page_count = current_page_count(connection)?;
+    let page_size: i64 = connection
+        .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
+        .map_err(index_error)?;
+    Ok(page_count.saturating_mul(page_size))
+}
+
+fn current_page_count(connection: &Connection) -> Result<i64, CommandError> {
+    connection
+        .query_row("PRAGMA page_count", [], |row| row.get::<_, i64>(0))
+        .map_err(index_error)
+}
+
+fn trim_seen_files_for_index_space(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+) -> Result<(), CommandError> {
+    let page_size: i64 = transaction
+        .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
+        .map_err(index_error)?;
+    let budget_pages = (MAX_INDEX_BYTES as i64)
+        .checked_div(page_size.max(1))
+        .unwrap_or(0);
+    trim_seen_files_to_budget(transaction, scan_id, budget_pages)
+}
+
+fn trim_seen_files_to_budget(
+    transaction: &Transaction<'_>,
+    scan_id: &str,
+    budget_pages: i64,
+) -> Result<(), CommandError> {
+    let high = budget_pages.saturating_mul(INDEX_TRIM_HIGH_PERCENT) / 100;
+    let low = budget_pages.saturating_mul(INDEX_TRIM_LOW_PERCENT) / 100;
+    if current_page_count(transaction)? < high {
+        return Ok(());
+    }
+    // seen_files only carries resume state for the current scan; the in-memory
+    // identity set keeps the running scan correct. Dropping the persisted rows
+    // frees pages for reuse so a very large scan keeps going instead of
+    // failing with SQLITE_FULL. A resumed worker may re-count some files.
+    loop {
+        let deleted = transaction
             .execute(
-                &format!("DELETE FROM {table} WHERE scan_id = ?1"),
-                params![scan_id],
+                "DELETE FROM seen_files WHERE scan_id = ?1 AND identity_a IN (
+                   SELECT identity_a FROM seen_files WHERE scan_id = ?1 LIMIT ?2
+                 )",
+                params![scan_id, INDEX_DELETE_BATCH as i64],
             )
             .map_err(index_error)?;
+        if deleted == 0 {
+            break;
+        }
+        if current_page_count(transaction)? < low {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandError> {
+    for (table, key) in [
+        ("nodes", "id"),
+        ("scan_segments", "path"),
+        ("scan_locations", "kind"),
+        ("largest_files", "path"),
+        ("seen_files", "identity_a"),
+    ] {
+        loop {
+            let deleted = connection
+                .execute(
+                    &format!(
+                        "DELETE FROM {table} WHERE scan_id = ?1 AND {key} IN (
+                           SELECT {key} FROM {table} WHERE scan_id = ?1 LIMIT ?2
+                         )"
+                    ),
+                    params![scan_id, INDEX_DELETE_BATCH as i64],
+                )
+                .map_err(index_error)?;
+            if deleted == 0 {
+                break;
+            }
+        }
     }
     connection
         .execute("DELETE FROM scans WHERE id = ?1", params![scan_id])
@@ -4751,6 +4943,14 @@ fn index_file_size(path: &Path) -> u64 {
 }
 
 fn index_error(error: rusqlite::Error) -> CommandError {
+    if let rusqlite::Error::SqliteFailure(ffi_error, _) = &error
+        && ffi_error.code == rusqlite::ErrorCode::DiskFull
+    {
+        return CommandError::new(
+            "cleanup_scan_index_full",
+            "The cleanup scan index reached its storage limit. CoreRobin retired old scan results to make room; please start the scan again.",
+        );
+    }
     CommandError::internal(format!("Cleanup scan index operation failed: {error}"))
 }
 
@@ -5338,7 +5538,136 @@ mod tests {
     }
 
     #[test]
-    fn incomplete_completed_payload_is_discarded_instead_of_shown_as_empty() {
+    fn surplus_generations_are_retired_keeping_the_two_newest() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        for (scan_id, sampled_at_delta) in [
+            ("oldest", 4_000_i64),
+            ("older", 3_000),
+            ("middle", 2_000),
+            ("newest", 1_000),
+        ] {
+            prepare_scan(
+                &connection,
+                scan_id,
+                CleanupScanProfile::CommonLocations,
+                CleanupScanTargetKind::SystemDisk,
+                "/",
+                "Common locations",
+                "/",
+                &[],
+            )
+            .unwrap();
+            connection
+                .execute(
+                    "UPDATE scans SET state = 'completed', sampled_at_ms = ?2 WHERE id = ?1",
+                    params![scan_id, now_millis_i64().saturating_sub(sampled_at_delta)],
+                )
+                .unwrap();
+        }
+
+        retire_surplus_generations(&connection, "running-next").unwrap();
+
+        let mut statement = connection
+            .prepare(
+                "SELECT id FROM scans WHERE state = 'completed'
+                 ORDER BY sampled_at_ms DESC, started_at_ms DESC",
+            )
+            .unwrap();
+        let remaining = statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(remaining, vec!["newest".to_owned(), "middle".to_owned()]);
+        assert!(load_indexed_scan(&index_path, "oldest").is_err());
+        assert!(load_indexed_scan(&index_path, "older").is_err());
+    }
+
+    #[test]
+    fn seen_files_are_trimmed_when_the_index_nears_its_byte_budget() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "trim",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            "/",
+            "Common locations",
+            "/",
+            &[],
+        )
+        .unwrap();
+        for identity in 0..6_000_i64 {
+            connection
+                .execute(
+                    "INSERT OR IGNORE INTO seen_files(scan_id, identity_a, identity_b)
+                     VALUES (?1, ?2, 0)",
+                    params!["trim", identity],
+                )
+                .unwrap();
+        }
+        let pages = current_page_count(&connection).unwrap();
+        let transaction = connection.transaction().unwrap();
+        // A budget below the current page count forces the high watermark.
+        trim_seen_files_to_budget(&transaction, "trim", pages - 1).unwrap();
+        transaction.commit().unwrap();
+
+        let remaining: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM seen_files WHERE scan_id = ?1",
+                params!["trim"],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn seen_files_are_kept_while_the_index_has_room() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "keep",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            "/",
+            "Common locations",
+            "/",
+            &[],
+        )
+        .unwrap();
+        connection
+            .execute(
+                "INSERT OR IGNORE INTO seen_files(scan_id, identity_a, identity_b)
+                 VALUES (?1, 1, 0)",
+                params!["keep"],
+            )
+            .unwrap();
+        let transaction = connection.transaction().unwrap();
+        trim_seen_files_to_budget(&transaction, "keep", i64::MAX).unwrap();
+        transaction.commit().unwrap();
+
+        let remaining: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM seen_files WHERE scan_id = ?1",
+                params!["keep"],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap();
+        assert_eq!(remaining, 1);
+    }
+
+    #[test]
+    fn incomplete_completed_payload_is_skipped_instead_of_shown_as_empty() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
         let connection = open_index(&index_path).unwrap();
@@ -5374,8 +5703,10 @@ mod tests {
 
         assert!(load_latest_indexed_scan(&index_path).unwrap().is_none());
         assert!(index_path.exists());
+        // The reader skips the broken generation without mutating the index;
+        // the next worker scan retires it instead.
         let connection = open_index_read_only(&index_path).unwrap();
-        assert_eq!(count_scan_nodes(&connection, "broken").unwrap(), 0);
+        assert_eq!(count_scan_nodes(&connection, "broken").unwrap(), 1);
     }
 
     #[test]
@@ -5417,7 +5748,10 @@ mod tests {
 
         let restored = load_latest_indexed_scan(&index_path).unwrap().unwrap();
         assert_eq!(restored.scan_id, "previous-valid");
-        assert!(load_indexed_scan(&index_path, "broken-system").is_err());
+        // The reader falls back to the previous valid generation without
+        // deleting the broken one; the next worker scan of the same target
+        // retires it from the cache.
+        assert!(load_indexed_scan(&index_path, "broken-system").is_ok());
     }
 
     #[cfg(unix)]

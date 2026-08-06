@@ -3,7 +3,7 @@
     "label": "Modo de análisis",
     "recommended": "Recomendado",
     "quick": {
-      "title": "Análisis rápido",
+      "title": "Escaneo de disco",
       "description": "Comprueba con precisión ubicaciones grandes y limpiables habituales",
       "scopeTitle": "Este análisis incluye",
       "scope": "Descargas, Escritorio, Documentos, carpetas multimedia, Papelera, cachés de aplicaciones y desarrollo, datos de soporte, contenedores, datos ocultos y carpetas temporales del sistema."
@@ -26,6 +26,7 @@
     "scan": "comprobar archivos",
     "scanAgain": "comprobar de nuevo",
     "cancel": "detener el control",
+    "back": "Volver a la limpieza del espacio",
     "phase": {
       "discovering": "Encontrar candidatos",
       "hashing": "Verificar contenido duplicado"
@@ -46,7 +47,6 @@
     "launcherDescription": "Abra un espacio de trabajo dedicado para el progreso del análisis, grupos duplicados y archivos grandes que no han sido modificados durante mucho tiempo.",
     "running": "Comprobando ahora",
     "openWorkspace": "Espacio de trabajo abierto",
-    "back": "Volver a la limpieza del espacio",
     "phaseDescription": {
       "discovering": "Revisar nombres, tamaños y fechas de modificación en carpetas personales comunes para limitar los candidatos de contenido.",
       "hashing": "Leer candidatos del mismo tamaño y calcular SHA-256 localmente; El contenido nunca sale de esta computadora."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Esta categoría es clara."
   },
-  "kicker": "Análisis del espacio local",
+  "kicker": "Análisis profundo",
   "title": "Asistente de limpieza de almacenamiento",
   "description": "Escanea el disco del sistema y muestra el uso del espacio por ruta de archivo real.",
   "startScan": "Iniciar escaneo en modo de solo lectura",
@@ -396,5 +396,38 @@
     "since": "Comparado con {{time}}",
     "title": "Cambio de espacio desde el último análisis",
     "noGrowth": "No se encontró ningún directorio en crecimiento en la comparación compacta."
+  },
+  "quickClean": {
+    "kicker": "Sin escaneo",
+    "title": "Limpieza rápida",
+    "description": "Limpia cachés, registros, archivos temporales y la papelera con un toque. Tus documentos y fotos quedan intactos.",
+    "analyze": "Analizar",
+    "analyzing": "Analizando…",
+    "analyzeAgain": "Volver a analizar",
+    "clean": "Limpiar {{size}}",
+    "cleaning": "Limpiando…",
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "freedSoFar": "{{size}} liberados hasta ahora",
+    "freedSummary": "{{size}} liberados en {{count}} elementos",
+    "again": "Limpiar de nuevo",
+    "close": "Hecho",
+    "total": "Total recuperable",
+    "unavailable": "No disponible",
+    "empty": "No hay nada que limpiar: ¡tu disco está impecable!",
+    "skippedNote": "{{count}} elementos estaban en uso y se omitieron.",
+    "noRiskNote": "Solo se eliminan cachés regenerables y el contenido de la papelera: nunca tus documentos, fotos ni credenciales.",
+    "category": {
+      "user_cache": "Cachés de apps",
+      "logs": "Registros",
+      "temp_files": "Archivos temporales",
+      "trash": "Papelera"
+    },
+    "launcherDescription": "Sin escaneo: limpia cachés, registros, temporales y papelera con un toque.",
+    "open": "Abrir limpieza rápida",
+    "back": "Volver al escaneo de espacio",    "guideTitle": "¿Quieres una limpieza más profunda?",
+    "guideDescription": "Escanea todo el disco, mira el uso por ruta real y decide qué limpiar.",
+    "guideAction": "Ir al escaneo de disco",
+    "analyzingHint": "Midiendo cachés, registros, temporales y papelera…"
   }
 }

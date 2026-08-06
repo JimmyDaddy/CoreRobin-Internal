@@ -140,10 +140,10 @@ describe("file insights workspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /重复与长期未修改文件/ }));
     expect(screen.getByRole("heading", { name: "重复与长期未修改文件" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "空间清理助手" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "磁盘扫描" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "返回空间清理" }));
-    expect(screen.getByRole("heading", { name: "空间清理助手" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "磁盘扫描" })).toBeTruthy();
   });
 
   it("shows a visual phase story and live counters while scanning", () => {

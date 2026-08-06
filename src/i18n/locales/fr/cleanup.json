@@ -3,7 +3,7 @@
     "label": "Mode d’analyse",
     "recommended": "Recommandé",
     "quick": {
-      "title": "Analyse rapide",
+      "title": "Analyse du disque",
       "description": "Vérifie précisément les emplacements courants volumineux et nettoyables",
       "scopeTitle": "Cette analyse comprend",
       "scope": "Téléchargements, Bureau, Documents, dossiers multimédias, Corbeille, caches d’apps et de développement, données de support, conteneurs, données cachées et dossiers temporaires du système."
@@ -26,6 +26,7 @@
     "scan": "Vérifier les fichiers",
     "scanAgain": "Revérifier",
     "cancel": "Arrêter le contrôle",
+    "back": "Retour au nettoyage de l'espace",
     "phase": {
       "discovering": "Recherche de candidats",
       "hashing": "Vérification du contenu en double"
@@ -46,7 +47,6 @@
     "launcherDescription": "Ouvrez un espace de travail dédié à la progression de l'analyse, aux groupes en double et aux fichiers volumineux non modifiés depuis longtemps.",
     "running": "Vérifier maintenant",
     "openWorkspace": "Espace de travail ouvert",
-    "back": "Retour au nettoyage de l'espace",
     "phaseDescription": {
       "discovering": "Examen des noms, des tailles et des dates de modification dans les dossiers personnels communs pour affiner le contenu des candidats.",
       "hashing": "Lecture de candidats de même taille et calcul local de SHA-256 ; le contenu ne quitte jamais cet ordinateur."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Cette catégorie est claire"
   },
-  "kicker": "Analyse de l'espace disque",
+  "kicker": "Analyse approfondie",
   "title": "Assistant d'organisation du stockage",
   "description": "Scannez le disque système et visualisez l'utilisation de l'espace par chemin de fichier réel.",
   "startScan": "Débuter une analyse en lecture seule",
@@ -396,5 +396,38 @@
     "since": "Comparé à {{time}}",
     "title": "Évolution depuis la dernière analyse",
     "noGrowth": "Aucun dossier en croissance dans la comparaison compacte."
+  },
+  "quickClean": {
+    "kicker": "Aucune analyse requise",
+    "title": "Nettoyage rapide",
+    "description": "Videz caches, journaux, fichiers temporaires et corbeille en un geste. Vos documents et photos restent intacts.",
+    "analyze": "Analyser",
+    "analyzing": "Analyse…",
+    "analyzeAgain": "Réanalyser",
+    "clean": "Nettoyer {{size}}",
+    "cleaning": "Nettoyage…",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "freedSoFar": "{{size}} libérés jusqu'ici",
+    "freedSummary": "{{size}} libérés sur {{count}} éléments",
+    "again": "Nettoyer à nouveau",
+    "close": "Fermer",
+    "total": "Total récupérable",
+    "unavailable": "Indisponible",
+    "empty": "Rien à nettoyer — votre disque est impeccable !",
+    "skippedNote": "{{count}} éléments en cours d'utilisation ont été ignorés.",
+    "noRiskNote": "Seuls les caches régénérables et le contenu de la corbeille sont supprimés — jamais vos documents, photos ou identifiants.",
+    "category": {
+      "user_cache": "Caches d'apps",
+      "logs": "Journaux",
+      "temp_files": "Fichiers temporaires",
+      "trash": "Corbeille"
+    },
+    "launcherDescription": "Sans analyse : videz caches, journaux, fichiers temporaires et corbeille en un geste.",
+    "open": "Ouvrir le nettoyage rapide",
+    "back": "Retour à l'analyse de l'espace",    "guideTitle": "Un nettoyage plus poussé ?",
+    "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
+    "guideAction": "Aller à l'analyse du disque",
+    "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"
   }
 }

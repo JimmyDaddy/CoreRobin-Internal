@@ -2,7 +2,8 @@
 export default interface Resources {
   "app": {
     "applications": "应用",
-    "cleanup": "清理",
+    "cleanupQuick": "快速清理",
+    "cleanupScan": "磁盘扫描",
     "comingSoon": "即将推出",
     "companion": {
       "hide": "隐藏 Robin",
@@ -454,7 +455,7 @@ export default interface Resources {
       "title": "较上次扫描的空间变化"
     },
     "itemCount": "{{count}} 个文件",
-    "kicker": "本机空间分析",
+    "kicker": "深度分析",
     "largeFileBoundary": "只列出超过 500 MB 的文件，不建议自动删除",
     "largestFiles": "系统磁盘中的大文件",
     "locations": {
@@ -624,6 +625,40 @@ export default interface Resources {
       "stalledDescription": "CoreRobin 会跳过当前无法读取的位置，并从已保存的进度继续扫描，无需重新开始。",
       "stalledTitle": "正在跳过无响应的文件夹"
     },
+    "quickClean": {
+      "again": "再清理一次",
+      "analyze": "开始分析",
+      "analyzeAgain": "重新分析",
+      "analyzing": "正在分析…",
+      "analyzingHint": "正在统计缓存、日志、临时文件与废纸篓…",
+      "back": "返回空间扫描",
+      "cancel": "取消",
+      "category": {
+        "logs": "日志文件",
+        "temp_files": "临时文件",
+        "trash": "废纸篓",
+        "user_cache": "应用缓存"
+      },
+      "clean": "清理 {{size}}",
+      "cleaning": "正在清理…",
+      "close": "完成",
+      "description": "一键清理缓存、日志、临时文件和废纸篓，不触碰你的文档与照片。",
+      "done": "清理完成",
+      "empty": "没有可清理的内容，磁盘很干净！",
+      "freedSoFar": "已释放 {{size}}",
+      "freedSummary": "释放了 {{size}}，共 {{count}} 个项目",
+      "guideAction": "去磁盘扫描",
+      "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
+      "guideTitle": "想清理得更彻底？",
+      "kicker": "无需扫描",
+      "launcherDescription": "不扫描，一键清理缓存、日志、临时文件与废纸篓。",
+      "noRiskNote": "只清理可再生的缓存与已丢弃的废纸篓内容，不含你的文档、照片和登录信息。",
+      "open": "打开快速清理",
+      "skippedNote": "{{count}} 个项目正在被占用，已安全跳过。",
+      "title": "快速清理",
+      "total": "共可释放",
+      "unavailable": "不可用"
+    },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
     "readOnlyTitle": "先看清楚，再决定是否处理",
     "reclaimableEstimate": "可能可回收空间",
@@ -663,7 +698,7 @@ export default interface Resources {
       "systemDisk": "系统磁盘",
       "title": "选择要扫描的位置"
     },
-    "title": "空间清理助手",
+    "title": "磁盘扫描",
     "unavailable": "当前平台不可用",
     "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。"
   },
@@ -726,6 +761,9 @@ export default interface Resources {
     "hide": "隐藏 Robin",
     "kicker": "Robin",
     "menu": "Robin 菜单",
+    "quickClean": {
+      "action": "快速清理"
+    },
     "reason": "{{resource}}最近值得留意，可以打开主窗口看看原因。",
     "recovering": "指标已回落，我再观察一会儿确认它是否恢复。"
   },
@@ -1011,7 +1049,8 @@ export default interface Resources {
     },
     "nav": {
       "applications": "应用",
-      "cleanup": "清理空间",
+      "cleanupQuick": "快速清理",
+      "cleanupScan": "磁盘扫描",
       "home": "电脑状态",
       "more": "更多",
       "records": "回顾",
@@ -2127,6 +2166,45 @@ export default interface Resources {
     "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
     "matchedPort": "匹配端口 {{port}}",
     "noMatches": "没有匹配的进程",
+    "orphan": {
+      "cleanAll": "一键清理全部",
+      "collapse": "收起",
+      "confirmAll": "确认结束全部 {{count}} 个无主进程？",
+      "confirmMore": "等 {{count}} 个",
+      "confirmYes": "确认清理",
+      "detail": {
+        "command": "命令行",
+        "cpu": "CPU",
+        "parent": "原父进程",
+        "reason": "孤儿原因",
+        "started": "启动时间",
+        "status": "状态"
+      },
+      "end": "结束",
+      "filter": "仅看无主",
+      "filterTitle": "只显示父进程已退出、无人托管的进程",
+      "forceEnd": "强制结束",
+      "inspect": "检查",
+      "kicker": "无主进程",
+      "none": "没有无主进程，一切正常",
+      "reason": {
+        "parent_exited": "父进程已退出，当前无人托管",
+        "parent_missing": "父进程已不存在"
+      },
+      "refresh": "重新检测",
+      "reportTitle": "清理结果",
+      "safety": "只列出当前用户拥有的进程；结束前会再次校验进程身份",
+      "status": {
+        "failed": "失败",
+        "forceKilled": "已强制结束",
+        "killed": "已结束",
+        "skipped": "已跳过",
+        "survived": "未退出"
+      },
+      "summary": "{{count}} 个无主进程，占用 {{size}}",
+      "title": "检测到无主进程",
+      "view": "查看并清理"
+    },
     "protected": "受保护",
     "realtime": "实时采样",
     "resetView": "恢复默认进程视图",

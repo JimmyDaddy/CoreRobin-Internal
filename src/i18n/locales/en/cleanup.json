@@ -1,6 +1,6 @@
 {
-  "kicker": "Local space analysis",
-  "title": "Storage cleanup assistant",
+  "kicker": "Deep analysis",
+  "title": "Disk Scan",
   "description": "Scan the system disk and see space usage by real file path.",
   "startScan": "Start read-only scan",
   "scanAgain": "Scan again",
@@ -101,6 +101,7 @@
   },
   "map": {
     "title": "Where the space went",
+    "back": "Back one level",
     "description": "Sector area represents allocated disk space. Related hues belong to one folder branch; gray sectors are files.",
     "descriptionPath": "Shown by real path across the system disk: each ring is the next directory level, and sector area represents allocated disk space.",
     "descriptionCategory": "The same scan is regrouped by common purpose. Categories are a supporting view, not the real directory hierarchy.",
@@ -112,7 +113,6 @@
       "category": "Purpose"
     },
     "ariaLabel": "Space sunburst for {{name}}",
-    "back": "Back one level",
     "breadcrumbs": "Space map hierarchy",
     "selectedPath": "Selected path",
     "centerBack": "Go to the parent folder",
@@ -346,5 +346,38 @@
     "completed": "Processed {{count}} long-unmodified files and freed {{size}}",
     "partial": "Processed {{deletedCount}}; {{failedCount}} could not be processed",
     "cancelled": "Processing stopped after {{count}} files"
+  },
+  "quickClean": {
+    "kicker": "No scan needed",
+    "title": "Quick Cleanup",
+    "description": "Clear caches, logs, temporary files and Trash in one tap. Your documents and photos stay untouched.",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing…",
+    "analyzeAgain": "Analyze again",
+    "clean": "Clean {{size}}",
+    "cleaning": "Cleaning…",
+    "cancel": "Cancel",
+    "done": "All done",
+    "freedSoFar": "Freed {{size}} so far",
+    "freedSummary": "Freed {{size}} across {{count}} items",
+    "again": "Clean again",
+    "close": "Done",
+    "total": "Total reclaimable",
+    "unavailable": "Unavailable",
+    "empty": "Nothing to clean — your disk is tidy!",
+    "skippedNote": "{{count}} items were in use and safely skipped.",
+    "noRiskNote": "Only regenerable caches and discarded Trash content are removed — never your documents, photos or sign-in data.",
+    "category": {
+      "user_cache": "App caches",
+      "logs": "Log files",
+      "temp_files": "Temporary files",
+      "trash": "Trash"
+    },
+    "launcherDescription": "No scan needed — clear caches, logs, temp files and Trash in one tap.",
+    "open": "Open quick cleanup",
+    "back": "Back to space scan",    "guideTitle": "Want a deeper clean?",
+    "guideDescription": "Scan the whole disk, see space usage by real file path, then decide what to clean.",
+    "guideAction": "Go to disk scan",
+    "analyzingHint": "Measuring caches, logs, temp files and Trash…"
   }
 }

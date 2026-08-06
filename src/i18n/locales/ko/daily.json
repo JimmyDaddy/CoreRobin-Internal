@@ -11,7 +11,8 @@
     "more": "더 보기",
     "today": "현재 상태",
     "solve": "문제 해결을 도와주세요",
-    "cleanup": "사용 공간 정리",
+    "cleanupQuick": "빠른 정리",
+    "cleanupScan": "디스크 스캔",
     "records": "오늘 돌아보기",
     "settings": "설정 관리"
   },

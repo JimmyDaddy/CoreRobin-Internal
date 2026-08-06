@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  UserX,
   X,
 } from "lucide-react";
 import {
@@ -74,6 +75,8 @@ interface ProcessTableProps {
   followSelection?: boolean;
   onFollowSelectionChange?: (enabled: boolean) => void;
   onResetPreferences?: () => void;
+  orphanOnly?: boolean;
+  onOrphanOnlyChange?: (enabled: boolean) => void;
   compact?: boolean;
 }
 
@@ -114,6 +117,8 @@ export function ProcessTable({
   followSelection = true,
   onFollowSelectionChange,
   onResetPreferences,
+  orphanOnly = false,
+  onOrphanOnlyChange,
   compact = false,
 }: ProcessTableProps) {
   const { t } = useAppTranslation();
@@ -178,6 +183,7 @@ export function ProcessTable({
             selectedIdentity,
             followSelection,
             projectionContext,
+            orphanOnly,
           )
         : null,
     [
@@ -185,6 +191,7 @@ export function ProcessTable({
       effectiveViewMode,
       expandedIdentities,
       followSelection,
+      orphanOnly,
       processes,
       projectionContext,
       query,
@@ -201,9 +208,11 @@ export function ProcessTable({
         sortKey,
         direction,
         projectionContext,
+        orphanOnly,
       ),
     [
       direction,
+      orphanOnly,
       processes,
       projectionContext,
       query,
@@ -487,6 +496,15 @@ export function ProcessTable({
                 onClick={() => onFollowSelectionChange?.(!followSelection)}
               >
                 <LocateFixed size={14} />{t("process:follow")}
+              </button>
+              <button
+                className="process-tool-button"
+                type="button"
+                aria-pressed={orphanOnly}
+                title={t("process:orphan.filterTitle")}
+                onClick={() => onOrphanOnlyChange?.(!orphanOnly)}
+              >
+                <UserX size={14} />{t("process:orphan.filter")}
               </button>
               <button
                 className="process-tool-button"

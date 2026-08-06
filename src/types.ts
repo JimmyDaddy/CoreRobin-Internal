@@ -491,6 +491,40 @@ export interface CleanupScanIndexSummary {
   updatedAtMs: number | null;
 }
 
+export type QuickCleanCategory = "user_cache" | "logs" | "temp_files" | "trash";
+
+export interface QuickCleanCategorySummary {
+  category: QuickCleanCategory;
+  byteSize: number;
+  itemCount: number;
+  skippedCount: number;
+  available: boolean;
+}
+
+export interface QuickCleanProgress {
+  category: QuickCleanCategory;
+  processedItemCount: number;
+  totalItemCount: number;
+  freedBytes: number;
+  freedItems: number;
+  skippedItems: number;
+  currentPath: string;
+}
+
+export interface QuickCleanCategoryResult {
+  category: QuickCleanCategory;
+  freedBytes: number;
+  freedItems: number;
+  skippedItems: number;
+}
+
+export interface QuickCleanResult {
+  freedBytes: number;
+  freedItems: number;
+  skippedItems: number;
+  results: QuickCleanCategoryResult[];
+}
+
 export type CleanupFullDiskAccessStatus =
   | "granted"
   | "not_granted"
@@ -819,6 +853,46 @@ export interface ProcessRow {
   diskReadBytesPerSecond: number | null;
   diskWriteBytesPerSecond: number | null;
   protected: boolean;
+  orphaned?: boolean;
+}
+
+export type OrphanReason = "parent_exited" | "parent_missing";
+
+export interface OrphanProcess {
+  pid: number;
+  startTime: number;
+  name: string;
+  commandLine: string;
+  parentPid: number | null;
+  parentName: string | null;
+  user: string;
+  cpuPercent: number;
+  memoryBytes: number;
+  status: string;
+  orphanReason: OrphanReason;
+}
+
+export interface OrphanKillTarget {
+  pid: number;
+  expectedStartTime: number;
+}
+
+export interface OrphanKillRequest {
+  targets: OrphanKillTarget[];
+  force: boolean;
+}
+
+export type OrphanKillStatus = "killed" | "force_killed" | "survived" | "failed" | "skipped";
+
+export interface OrphanKillOutcome {
+  pid: number;
+  name: string;
+  status: OrphanKillStatus;
+  message: string | null;
+}
+
+export interface OrphanKillReport {
+  outcomes: OrphanKillOutcome[];
 }
 
 export interface Capabilities {

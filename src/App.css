@@ -3747,6 +3747,12 @@ code,
   line-height: 1.5;
 }
 
+.cleanup-assistant__scan {
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
 .cleanup-assistant__scan:disabled { cursor: wait; opacity: 0.7; }
 .cleanup-assistant__scan .is-spinning { animation: cleanup-spin 900ms linear infinite; }
 

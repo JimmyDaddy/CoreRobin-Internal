@@ -2,10 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowRight, EyeOff, Maximize2 } from "lucide-react";
+import { ArrowRight, EyeOff, Maximize2, RefreshCw, Wand2 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -48,6 +49,40 @@ const nativeCompanionDailyBridge: CompanionDailyBridge = {
 const desktopRuntime = typeof window !== "undefined"
   && "__TAURI_INTERNALS__" in window
   && getCurrentWindow().label === "companion";
+
+function QuickCleanCompanionAction() {
+  const { t } = useAuxiliaryTranslation();
+  const [opening, setOpening] = useState(false);
+
+  const openQuickClean = useCallback(async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      if (desktopRuntime) {
+        await emitTo("main", "core-robin:open-quick-clean");
+        await invoke("show_main_window");
+      }
+    } finally {
+      setOpening(false);
+    }
+  }, [opening]);
+
+  return (
+    <button
+      className="robin-buddy-clean"
+      type="button"
+      disabled={opening}
+      onClick={() => void openQuickClean()}
+    >
+      {opening ? (
+        <RefreshCw className="is-spinning" size={11} />
+      ) : (
+        <Wand2 size={11} />
+      )}
+      {t("companion:quickClean.action")}
+    </button>
+  );
+}
 
 export function RobinCompanionWindow() {
   const { t } = useAuxiliaryTranslation();
@@ -338,9 +373,12 @@ export function RobinCompanionWindow() {
               ? t("companion:reason", { resource: t(`tray:resource.${summary.reason}`) })
               : t(`tray:status.${health}.description`)}
           </p>
-          <button type="button" onClick={() => void openDaily()}>
-            {t(`companion:action.${health}`)}<ArrowRight size={13} />
-          </button>
+          <div className="robin-buddy-actions">
+            <button type="button" onClick={() => void openDaily()}>
+              {t(`companion:action.${health}`)}<ArrowRight size={13} />
+            </button>
+            <QuickCleanCompanionAction />
+          </div>
         </div> : null}
       </section>
     </main>

@@ -140,8 +140,11 @@
 .robin-buddy-bubble small { grid-column: 1; color: var(--companion-accent); font-size: 10px; font-weight: 800; letter-spacing: 0.07em; }
 .robin-buddy-bubble strong { grid-column: 1; max-width: 100%; overflow: hidden; font-size: 13px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .robin-buddy-bubble p { grid-column: 1; overflow: hidden; max-width: 100%; margin: 1px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.robin-buddy-bubble button { display: inline-flex; grid-column: 2; grid-row: 1 / -1; align-items: center; align-self: center; gap: 5px; min-height: 30px; padding: 0 8px; color: var(--text); border: 1px solid color-mix(in srgb, var(--companion-accent) 30%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--companion-accent) 12%, var(--panel-raised)); cursor: pointer; font-size: 10px; font-weight: 760; white-space: nowrap; }
+.robin-buddy-actions { display: flex; grid-column: 2; grid-row: 1 / -1; flex-direction: column; gap: 5px; }
+.robin-buddy-bubble button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 26px; padding: 0 8px; color: var(--text); border: 1px solid color-mix(in srgb, var(--companion-accent) 30%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--companion-accent) 12%, var(--panel-raised)); cursor: pointer; font-size: 10px; font-weight: 760; white-space: nowrap; }
 .robin-buddy-bubble button:hover { border-color: color-mix(in srgb, var(--companion-accent) 58%, var(--border)); transform: translateY(-1px); }
+.robin-buddy-bubble button:disabled { cursor: default; opacity: 0.8; transform: none; }
+.robin-buddy-clean { color: var(--text-soft) !important; }
 
 .robin-buddy-menu {
   position: absolute;

@@ -13,5 +13,8 @@
     "attention": "Überprüfen Sie die Ursache",
     "urgent": "Sofort überprüfen"
   },
-  "recovering": "Der Wert hat sich verbessert. Ich beobachte es noch etwas, um die Erholung zu bestätigen."
+  "recovering": "Der Wert hat sich verbessert. Ich beobachte es noch etwas, um die Erholung zu bestätigen.",
+  "quickClean": {
+    "action": "Schnell bereinigen"
+  }
 }

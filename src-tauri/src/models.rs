@@ -787,6 +787,61 @@ pub struct CleanupDeleteSuccess {
     pub deleted_bytes: u64,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum QuickCleanCategory {
+    UserCache,
+    Logs,
+    TempFiles,
+    Trash,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanCategorySummary {
+    pub category: QuickCleanCategory,
+    pub byte_size: u64,
+    pub item_count: u64,
+    pub skipped_count: u64,
+    pub available: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanRequest {
+    pub categories: Vec<QuickCleanCategory>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanProgress {
+    pub category: QuickCleanCategory,
+    pub processed_item_count: usize,
+    pub total_item_count: usize,
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+    pub current_path: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanCategoryResult {
+    pub category: QuickCleanCategory,
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanResult {
+    pub freed_bytes: u64,
+    pub freed_items: u64,
+    pub skipped_items: u64,
+    pub results: Vec<QuickCleanCategoryResult>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteFailure {
@@ -1085,6 +1140,69 @@ pub struct ProcessRow {
     pub disk_read_bytes_per_second: Option<u64>,
     pub disk_write_bytes_per_second: Option<u64>,
     pub protected: bool,
+    pub orphaned: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OrphanReason {
+    ParentExited,
+    ParentMissing,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrphanProcess {
+    pub pid: u32,
+    pub start_time: u64,
+    pub name: String,
+    pub command_line: String,
+    pub parent_pid: Option<u32>,
+    pub parent_name: Option<String>,
+    pub user: String,
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+    pub status: String,
+    pub orphan_reason: OrphanReason,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrphanKillTarget {
+    pub pid: u32,
+    pub expected_start_time: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrphanKillRequest {
+    pub targets: Vec<OrphanKillTarget>,
+    pub force: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OrphanKillStatus {
+    Killed,
+    ForceKilled,
+    Survived,
+    Failed,
+    Skipped,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrphanKillOutcome {
+    pub pid: u32,
+    pub name: String,
+    pub status: OrphanKillStatus,
+    pub message: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrphanKillReport {
+    pub outcomes: Vec<OrphanKillOutcome>,
 }
 
 #[derive(Clone, Debug, Serialize)]

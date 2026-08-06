@@ -11,7 +11,8 @@
     "more": "More",
     "today": "Status",
     "solve": "Help me fix it",
-    "cleanup": "Clean up space",
+    "cleanupQuick": "Quick Cleanup",
+    "cleanupScan": "Disk Scan",
     "records": "Review",
     "settings": "Settings"
   },

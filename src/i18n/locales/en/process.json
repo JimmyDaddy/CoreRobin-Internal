@@ -101,5 +101,44 @@
     "validating": "Confirming again…",
     "confirmForce": "Force quit",
     "confirmRequest": "Request exit"
+  },
+  "orphan": {
+    "kicker": "Unmanaged processes",
+    "title": "Unmanaged processes found",
+    "summary": "{{count}} unmanaged processes using {{size}}",
+    "none": "No unmanaged processes — all healthy",
+    "view": "View & clean",
+    "collapse": "Collapse",
+    "refresh": "Re-scan",
+    "inspect": "Inspect",
+    "end": "End",
+    "forceEnd": "Force end",
+    "cleanAll": "End all",
+    "confirmAll": "End all {{count}} unmanaged processes?",
+    "confirmYes": "End them",
+    "confirmMore": " and {{count}} more",
+    "safety": "Only processes you own are listed; each one is re-verified before ending",
+    "reportTitle": "Result",
+    "filter": "Unmanaged only",
+    "filterTitle": "Show only processes whose parent has exited and are not managed",
+    "reason": {
+      "parent_exited": "Parent exited; no manager left",
+      "parent_missing": "Parent no longer exists"
+    },
+    "status": {
+      "killed": "Ended",
+      "forceKilled": "Force ended",
+      "survived": "Still running",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "detail": {
+      "command": "Command line",
+      "parent": "Original parent",
+      "reason": "Orphan reason",
+      "started": "Started",
+      "cpu": "CPU",
+      "status": "Status"
+    }
   }
 }

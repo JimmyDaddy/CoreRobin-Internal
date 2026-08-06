@@ -16,6 +16,7 @@ import {
   Settings2,
   Sparkles,
   SlidersHorizontal,
+  Wand2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -166,6 +167,7 @@ const NetworkExplorer = lazy(async () => ({ default: (await import("./components
 const PersonalBaselinePanel = lazy(async () => ({ default: (await import("./components/PersonalBaselinePanel")).PersonalBaselinePanel }));
 const ProcessInspector = lazy(async () => ({ default: (await import("./components/ProcessInspector")).ProcessInspector }));
 const ProcessTable = lazy(async () => ({ default: (await import("./components/ProcessTable")).ProcessTable }));
+const OrphanProcessCard = lazy(async () => ({ default: (await import("./components/OrphanProcessCard")).OrphanProcessCard }));
 const ResourceHistory = lazy(async () => ({ default: (await import("./components/ResourceHistory")).ResourceHistory }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
@@ -248,6 +250,11 @@ function App() {
     settings.historyApplicationNamesEnabled,
   );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [cleanupWorkspace, setCleanupWorkspace] = useState<"space" | "quick">("space");
+  const [cleanupWorkspaceRequest, setCleanupWorkspaceRequest] = useState<{
+    workspace: "space" | "quick";
+    id: number;
+  } | null>(null);
   const startupImpactMeasurements = useStartupImpactMeasurement(snapshot);
   const [dailyIntent, setDailyIntent] = useState<DailyIntent | null>(null);
   const [selectedDailyIncident, setSelectedDailyIncident] =
@@ -622,6 +629,10 @@ function App() {
         setSelectedDailyIncident(incident);
         setDailyIntent(incident?.item.intent ?? null);
         setActiveView(request.view);
+      }),
+      listen("core-robin:open-quick-clean", () => {
+        if (disposed) return;
+        openCleanupWorkspace("quick");
       }),
       listen("core-robin:open-about", () => {
         if (disposed) return;
@@ -1314,8 +1325,17 @@ function App() {
     setDailyIntent(null);
     setActiveView(view);
   };
+  const openCleanupWorkspace = (workspace: "space" | "quick") => {
+    setSelectedDailyIncident(null);
+    setDailyIntent(null);
+    setActiveView("cleanup");
+    setCleanupWorkspaceRequest((current) => ({
+      workspace,
+      id: (current?.id ?? 0) + 1,
+    }));
+  };
   const openDailyCleanup = () => {
-    navigateDaily("cleanup");
+    openCleanupWorkspace("space");
   };
   const openUserActionDestination = (kind: UserActionKind) => {
     if (kind === "cleanup_delete") {
@@ -1436,7 +1456,20 @@ function App() {
                   </small>
                 ) : null}
               </button>
-              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={openDailyCleanup}><Sparkles size={18} />{t("daily:nav.cleanup")}</button>
+              <button
+                className={activeView === "cleanup" && cleanupWorkspace === "quick" ? "is-active" : ""}
+                type="button"
+                onClick={() => openCleanupWorkspace("quick")}
+              >
+                <Wand2 size={18} />{t("daily:nav.cleanupQuick")}
+              </button>
+              <button
+                className={activeView === "cleanup" && cleanupWorkspace !== "quick" ? "is-active" : ""}
+                type="button"
+                onClick={() => openCleanupWorkspace("space")}
+              >
+                <Sparkles size={18} />{t("daily:nav.cleanupScan")}
+              </button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => navigateDaily("history")}><History size={18} />{t("daily:nav.records")}</button>
             </div>
           </>
@@ -1458,7 +1491,20 @@ function App() {
               </button>
               <button className={activeView === "processes" ? "is-active" : ""} type="button" onClick={() => setActiveView("processes")}><Cpu size={17} />{t("app:processes")}</button>
               <button className={activeView === "storage" ? "is-active" : ""} type="button" onClick={() => setActiveView("storage")}><Database size={17} />{t("app:storage")}</button>
-              <button className={activeView === "cleanup" ? "is-active" : ""} type="button" onClick={() => setActiveView("cleanup")}><Sparkles size={17} />{t("app:cleanup")}</button>
+              <button
+                className={activeView === "cleanup" && cleanupWorkspace === "quick" ? "is-active" : ""}
+                type="button"
+                onClick={() => openCleanupWorkspace("quick")}
+              >
+                <Wand2 size={17} />{t("app:cleanupQuick")}
+              </button>
+              <button
+                className={activeView === "cleanup" && cleanupWorkspace !== "quick" ? "is-active" : ""}
+                type="button"
+                onClick={() => openCleanupWorkspace("space")}
+              >
+                <Sparkles size={17} />{t("app:cleanupScan")}
+              </button>
               <button className={activeView === "network" ? "is-active" : ""} type="button" onClick={() => setActiveView("network")}><Network size={17} />{t("app:network")}</button>
             </div>
             <div className="nav-group">
@@ -1514,7 +1560,9 @@ function App() {
                   : t(`daily:nav.${activeView === "more"
                     ? "solve"
                     : activeView === "cleanup" || activeView === "storage"
-                      ? "cleanup"
+                      ? cleanupWorkspace === "quick"
+                        ? "cleanupQuick"
+                        : "cleanupScan"
                       : activeView === "history"
                         ? "records"
                         : activeView === "settings"
@@ -1763,6 +1811,8 @@ function App() {
                   directoryRefreshError={cleanupScan.directoryRefreshError}
                   onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                   onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                  workspaceRequest={cleanupWorkspaceRequest}
+                  onWorkspaceChange={setCleanupWorkspace}
                   onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                   onUserActionStart={userActions.start}
                   onUserActionComplete={userActions.complete}
@@ -1925,7 +1975,9 @@ function App() {
                 <GpuEnergyPanel processes={snapshot.processes} />
               </>
             ) : activeView === "processes" ? (
-              <ProcessTable
+              <>
+                <OrphanProcessCard />
+                <ProcessTable
                   processes={snapshot.processes}
                   connections={connectionsSnapshot?.connections}
                   selectedIdentity={selectedIdentity}
@@ -1953,6 +2005,10 @@ function App() {
                   onFollowSelectionChange={(followSelection) =>
                     updateProcessPreferences({ followSelection })
                   }
+                  orphanOnly={processPreferences.orphanOnly}
+                  onOrphanOnlyChange={(orphanOnly) =>
+                    updateProcessPreferences({ orphanOnly })
+                  }
                   onResetPreferences={() =>
                     setProcessPreferences({
                       ...defaultProcessExplorerPreferences(),
@@ -1960,6 +2016,7 @@ function App() {
                     })
                   }
               />
+              </>
             ) : activeView === "storage" ? (
               <StorageExplorer
                 disk={snapshot.disk}
@@ -2005,6 +2062,8 @@ function App() {
                 directoryRefreshError={cleanupScan.directoryRefreshError}
                 onRefreshDirectory={(directoryId) => void cleanupScan.refreshDirectory(directoryId)}
                 onCancelDirectoryRefresh={() => void cleanupScan.cancelDirectoryRefresh()}
+                workspaceRequest={cleanupWorkspaceRequest}
+                onWorkspaceChange={setCleanupWorkspace}
                 onReloadLatestSnapshot={cleanupScan.reloadLatestSnapshot}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}

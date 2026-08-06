@@ -13,5 +13,8 @@
     "attention": "看看原因",
     "urgent": "現在檢視"
   },
-  "recovering": "指標已回落，我再觀察一會兒確認它是否恢復。"
+  "recovering": "指標已回落，我再觀察一會兒確認它是否恢復。",
+  "quickClean": {
+    "action": "快速清理"
+  }
 }

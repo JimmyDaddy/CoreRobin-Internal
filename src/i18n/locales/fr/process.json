@@ -101,5 +101,44 @@
     "validating": "Nouvelle vérification…",
     "confirmForce": "Fermer de force",
     "confirmRequest": "Demander la fermeture"
+  },
+  "orphan": {
+    "kicker": "Processus non gérés",
+    "title": "Processus non gérés détectés",
+    "summary": "{{count}} processus non gérés utilisent {{size}}",
+    "none": "Aucun processus non géré — tout va bien",
+    "view": "Voir et nettoyer",
+    "collapse": "Réduire",
+    "refresh": "Relancer",
+    "inspect": "Inspecter",
+    "end": "Terminer",
+    "forceEnd": "Forcer",
+    "cleanAll": "Tout terminer",
+    "confirmAll": "Terminer les {{count}} processus non gérés ?",
+    "confirmYes": "Terminer",
+    "confirmMore": " et {{count}} autres",
+    "safety": "Seuls vos processus sont listés ; chacun est re-vérifié avant la fin",
+    "reportTitle": "Résultat",
+    "filter": "Non gérés",
+    "filterTitle": "Afficher uniquement les processus dont le parent est parti et qui ne sont pas gérés",
+    "reason": {
+      "parent_exited": "Parent parti ; plus de gestionnaire",
+      "parent_missing": "Le parent n'existe plus"
+    },
+    "status": {
+      "killed": "Terminé",
+      "forceKilled": "Forcé",
+      "survived": "Toujours actif",
+      "failed": "Échec",
+      "skipped": "Ignoré"
+    },
+    "detail": {
+      "command": "Ligne de commande",
+      "parent": "Parent d'origine",
+      "reason": "Raison",
+      "started": "Démarrage",
+      "cpu": "CPU",
+      "status": "État"
+    }
   }
 }

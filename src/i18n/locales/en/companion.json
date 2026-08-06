@@ -13,5 +13,8 @@
     "attention": "See why",
     "urgent": "Review now"
   },
-  "recovering": "The metric has eased. I’m watching a little longer to confirm recovery."
+  "recovering": "The metric has eased. I’m watching a little longer to confirm recovery.",
+  "quickClean": {
+    "action": "Quick clean"
+  }
 }

@@ -3,7 +3,7 @@
     "label": "Scanmodus",
     "recommended": "Empfohlen",
     "quick": {
-      "title": "Schnellscan",
+      "title": "Festplatten-Scan",
       "description": "Prüft häufig große und bereinigbare Orte genau",
       "scopeTitle": "Dieser Scan umfasst",
       "scope": "Downloads, Schreibtisch, Dokumente, Medienordner, Papierkorb, App- und Entwickler-Caches, Anwendungsdaten, Container, versteckte App-Daten und temporäre Systemordner."
@@ -26,6 +26,7 @@
     "scan": "Dateien prüfen",
     "scanAgain": "Überprüfen Sie es noch einmal",
     "cancel": "Stoppen Sie die Überprüfung",
+    "back": "Zurück zur Weltraumreinigung",
     "phase": {
       "discovering": "Kandidaten finden",
       "hashing": "Überprüfung doppelter Inhalte"
@@ -46,7 +47,6 @@
     "launcherDescription": "Öffnen Sie einen dedizierten Arbeitsbereich für den Scan-Fortschritt, doppelte Gruppen und große, lange Zeit unveränderte Dateien.",
     "running": "Jetzt prüfen",
     "openWorkspace": "Arbeitsbereich öffnen",
-    "back": "Zurück zur Weltraumreinigung",
     "phaseDescription": {
       "discovering": "Überprüfen von Namen, Größen und Änderungsdaten in allgemeinen persönlichen Ordnern, um die Inhaltskandidaten einzugrenzen.",
       "hashing": "Kandidaten gleicher Größe lesen und SHA-256 lokal berechnen; Der Inhalt verlässt niemals diesen Computer."
@@ -109,7 +109,7 @@
     },
     "emptyResultTitle": "Diese Kategorie ist klar"
   },
-  "kicker": "Lokaler Speicherverbrauch analysieren",
+  "kicker": "Tiefenanalyse",
   "title": "Hilfe zur Speicherbereinigung",
   "description": "Scannen Sie die Systemfestplatte und sehen Sie den Speicherverbrauch nach Dateipfad.",
   "startScan": "Nur Lesen-Scan starten",
@@ -396,5 +396,38 @@
     "since": "Verglichen mit {{time}}",
     "title": "Speicheränderung seit dem letzten Scan",
     "noGrowth": "Im kompakten Vergleich wurde kein wachsendes Verzeichnis gefunden."
+  },
+  "quickClean": {
+    "kicker": "Kein Scan nötig",
+    "title": "Schnelle Bereinigung",
+    "description": "Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren. Dokumente und Fotos bleiben unberührt.",
+    "analyze": "Analysieren",
+    "analyzing": "Analyse läuft…",
+    "analyzeAgain": "Erneut analysieren",
+    "clean": "{{size}} bereinigen",
+    "cleaning": "Wird bereinigt…",
+    "cancel": "Abbrechen",
+    "done": "Fertig",
+    "freedSoFar": "Bisher {{size}} freigegeben",
+    "freedSummary": "{{size}} bei {{count}} Elementen freigegeben",
+    "again": "Erneut bereinigen",
+    "close": "Schließen",
+    "total": "Gesamt freigebbar",
+    "unavailable": "Nicht verfügbar",
+    "empty": "Nichts zu bereinigen – Ihre Festplatte ist sauber!",
+    "skippedNote": "{{count}} Elemente waren in Benutzung und wurden übersprungen.",
+    "noRiskNote": "Nur regenerierbare Caches und Papierkorb-Inhalte werden entfernt – niemals Dokumente, Fotos oder Anmeldedaten.",
+    "category": {
+      "user_cache": "App-Caches",
+      "logs": "Logdateien",
+      "temp_files": "Temporäre Dateien",
+      "trash": "Papierkorb"
+    },
+    "launcherDescription": "Ohne Scan: Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren.",
+    "open": "Schnelle Bereinigung öffnen",
+    "back": "Zurück zum Speicher-Scan",    "guideTitle": "Gründlicher aufräumen?",
+    "guideDescription": "Scannen Sie die ganze Festplatte, sehen Sie den Speicher pro Pfad und entscheiden Sie dann.",
+    "guideAction": "Zum Festplatten-Scan",
+    "analyzingHint": "Caches, Logs, Temp-Dateien und Papierkorb werden gemessen…"
   }
 }

@@ -13,5 +13,8 @@
     "attention": "Verifique",
     "urgent": "Analise agora"
   },
-  "recovering": "A métrica está melhorando. Estou monitorando por mais tempo para confirmar a recuperação."
+  "recovering": "A métrica está melhorando. Estou monitorando por mais tempo para confirmar a recuperação.",
+  "quickClean": {
+    "action": "Limpeza rápida"
+  }
 }

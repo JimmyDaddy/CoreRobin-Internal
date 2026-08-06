@@ -101,5 +101,44 @@
     "validating": "Confirmando novamente…",
     "confirmForce": "Forçar encerramento",
     "confirmRequest": "Solicitar saída"
+  },
+  "orphan": {
+    "kicker": "Processos sem gestão",
+    "title": "Processos sem gestão detectados",
+    "summary": "{{count}} processos sem gestão usam {{size}}",
+    "none": "Nenhum processo sem gestão — tudo certo",
+    "view": "Ver e limpar",
+    "collapse": "Recolher",
+    "refresh": "Detectar de novo",
+    "inspect": "Inspecionar",
+    "end": "Encerrar",
+    "forceEnd": "Forçar",
+    "cleanAll": "Encerrar todos",
+    "confirmAll": "Encerrar os {{count}} processos sem gestão?",
+    "confirmYes": "Encerrar",
+    "confirmMore": " e mais {{count}}",
+    "safety": "Apenas processos seus são listados; cada um é reverificado antes de encerrar",
+    "reportTitle": "Resultado",
+    "filter": "Só sem gestão",
+    "filterTitle": "Mostrar apenas processos cujo pai saiu e que não são gerenciados",
+    "reason": {
+      "parent_exited": "Pai saiu; sem gestor",
+      "parent_missing": "O pai não existe mais"
+    },
+    "status": {
+      "killed": "Encerrado",
+      "forceKilled": "Forçado",
+      "survived": "Ainda ativo",
+      "failed": "Falhou",
+      "skipped": "Ignorado"
+    },
+    "detail": {
+      "command": "Linha de comando",
+      "parent": "Pai original",
+      "reason": "Motivo",
+      "started": "Início",
+      "cpu": "CPU",
+      "status": "Estado"
+    }
   }
 }

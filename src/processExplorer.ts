@@ -30,6 +30,7 @@ export interface ProcessExplorerPreferences {
   liveSort: boolean;
   expandedIdentities: string[];
   followSelection: boolean;
+  orphanOnly: boolean;
 }
 
 export interface VisibleProcessRow {
@@ -86,6 +87,7 @@ export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences 
     liveSort: false,
     expandedIdentities: [],
     followSelection: true,
+    orphanOnly: false,
   };
 }
 
@@ -149,6 +151,10 @@ export function parseProcessExplorerPreferences(
         typeof value.followSelection === "boolean"
           ? value.followSelection
           : fallback.followSelection,
+      orphanOnly:
+        typeof value.orphanOnly === "boolean"
+          ? value.orphanOnly
+          : fallback.orphanOnly,
     };
   } catch {
     return fallback;
@@ -212,6 +218,7 @@ export function buildProcessTreeProjection(
   selectedIdentity: string | null,
   followSelection: boolean,
   context: ProcessProjectionContext = {},
+  orphanOnly = false,
 ): ProcessTreeProjection {
   const { processByIdentity, parentByIdentity } = buildProcessTreeIndex(processes);
 
@@ -241,11 +248,20 @@ export function buildProcessTreeProjection(
   }
 
   const included = new Set<string>();
-  if (!normalizedQuery) {
+  if (!normalizedQuery && !orphanOnly) {
     for (const identity of processByIdentity.keys()) included.add(identity);
   } else {
+    const orphanMatches = orphanOnly
+      ? new Set(
+          [...processByIdentity.entries()]
+            .filter(([, process]) => process.orphaned)
+            .map(([identity]) => identity),
+        )
+      : null;
     for (const matchIdentity of queryMatches) {
-      addIdentityAndAncestors(matchIdentity, parentByIdentity, included);
+      if (!orphanMatches || orphanMatches.has(matchIdentity)) {
+        addIdentityAndAncestors(matchIdentity, parentByIdentity, included);
+      }
     }
   }
 
@@ -367,13 +383,15 @@ export function buildFlatProcessRows(
   sortKey: ProcessSortKey,
   direction: SortDirection,
   context: ProcessProjectionContext = {},
+  orphanOnly = false,
 ): VisibleProcessRow[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return sortProcesses(
     processes.filter(
       (process) =>
-        !normalizedQuery ||
-        processMatchesQuery(process, normalizedQuery, context.portsByPid),
+        (!orphanOnly || process.orphaned) &&
+        (!normalizedQuery ||
+          processMatchesQuery(process, normalizedQuery, context.portsByPid)),
     ),
     sortKey,
     direction,

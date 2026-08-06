@@ -856,6 +856,63 @@ fn kill_worker(child: &Arc<Mutex<Child>>) {
     let _ = child.wait();
 }
 
+/// Reaps scan workers orphaned by an unclean app exit. A worker is a direct
+/// child of the app; once the app is gone it is reparented to launchd (PID 1).
+/// Called at app startup, so any matching worker whose parent is not this app
+/// instance is a leftover from a previous session.
+pub(crate) fn reap_orphan_workers(job_directory: &Path) {
+    let mut system = sysinfo::System::new();
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        sysinfo::ProcessRefreshKind::nothing()
+            .with_cmd(sysinfo::UpdateKind::OnlyIfNotSet)
+            .without_tasks(),
+    );
+    let live_pids = system
+        .processes()
+        .values()
+        .map(|process| process.pid().as_u32())
+        .collect::<std::collections::HashSet<_>>();
+    let own_pid = sysinfo::get_current_pid()
+        .map(|pid| pid.as_u32())
+        .unwrap_or(u32::MAX);
+    for process in system.processes().values() {
+        let pid = process.pid().as_u32();
+        if pid == own_pid || !process.cmd().iter().any(|arg| arg == WORKER_ARGUMENT) {
+            continue;
+        }
+        let orphaned = match process.parent() {
+            Some(parent) => {
+                let parent_pid = parent.as_u32();
+                parent_pid == 1 || !live_pids.contains(&parent_pid)
+            }
+            None => false,
+        };
+        if orphaned {
+            // Workers run in their own process group (process_group(0)), so a
+            // negative kill reaches the worker and anything it spawned.
+            #[cfg(unix)]
+            unsafe {
+                let _ = libc::kill(-(pid as i32), libc::SIGKILL);
+                let _ = libc::kill(pid as i32, libc::SIGKILL);
+            }
+        }
+    }
+    if let Ok(entries) = std::fs::read_dir(job_directory) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.ends_with(".request.json")
+                || name.ends_with(".result.json")
+                || name.ends_with(".exclusions.json")
+            {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
 pub fn maybe_run_worker() -> bool {
     let arguments = std::env::args_os().collect::<Vec<_>>();
     let Some(index) = arguments
@@ -1346,12 +1403,19 @@ mod tests {
 
     #[test]
     fn recovery_skips_only_the_unresponsive_application_cache() {
+        let cache_scope = {
+            let mut scope = PathBuf::from("~");
+            scope.push("Library");
+            scope.push("Caches");
+            scope.push("com.example.app");
+            scope
+        };
         assert_eq!(
             next_recovery_path(
                 "~/Library/Caches/com.example.app/WebKit/NetworkCache/record",
                 &[],
             ),
-            Some("~/Library/Caches/com.example.app".to_owned())
+            Some(cache_scope.to_string_lossy().into_owned())
         );
         assert_eq!(
             next_recovery_path("~/Library/Caches", &[]),
