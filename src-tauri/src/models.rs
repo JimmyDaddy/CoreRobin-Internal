@@ -114,6 +114,7 @@ pub struct StartupScanWarning {
 pub enum StartupScanIssue {
     UnreadableLocation,
     InvalidEntry,
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
     SourceUnavailable,
 }
 

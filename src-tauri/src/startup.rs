@@ -869,10 +869,10 @@ fn scan_linux_desktop_entries(
             invalid += 1;
             continue;
         };
-        if !entry
+        if entry
             .path()
             .extension()
-            .is_some_and(|extension| extension == "desktop")
+            .is_none_or(|extension| extension != "desktop")
         {
             continue;
         }
