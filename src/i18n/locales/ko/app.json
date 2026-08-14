@@ -1,5 +1,6 @@
 {
   "mainNavigation": "메인 메뉴",
+  "tasks": { "kicker": "백그라운드 작업", "title": "작업 센터", "activeCount": "{{count}}개 작업 실행 중", "needsAttention": "확인이 필요한 작업이 있습니다", "preparing": "준비 중…", "open": "작업으로 돌아가기", "retry": "확인 후 다시 시도", "empty": "실행 중인 작업이 없습니다", "emptyHint": "스캔, 업데이트 및 목록 작업이 여기에 표시됩니다.", "cleanup": { "title": "공간 스캔", "progress": "{{count}}개 항목 확인", "failed": "공간 스캔이 완료되지 않았습니다" }, "folder": { "title": "폴더 새로 고침", "progress": "{{count}}개 항목 확인" }, "files": { "title": "파일 검토", "progress": "{{count}}개 항목 확인", "failed": "파일 검토가 완료되지 않았습니다" }, "startup": { "title": "시작 항목 목록", "failed": "시작 항목 목록이 완료되지 않았습니다" }, "update": { "installing": "업데이트 다운로드 및 설치 중", "ready": "업데이트 준비 완료", "installError": "업데이트 설치가 완료되지 않았습니다", "restartError": "앱을 다시 시작해야 합니다", "current": "CoreRobin 업데이트" } },
   "monitor": "모니터링",
   "diagnostics": "진단",
   "overview": "개요",

@@ -201,6 +201,7 @@
       "path": "Caminhos de arquivos",
       "category": "Uso"
     },
+    "view": { "label": "Visualizar como", "map": "Mapa de espaço", "list": "Lista", "search": "Pesquisar nesta pasta", "clearSearch": "Limpar pesquisa", "sortSize": "Ordenar por tamanho", "sortName": "Ordenar por nome", "descending": "Decrescente", "ascending": "Crescente", "loading": "Lendo o índice…", "loadFailed": "Não foi possível carregar a lista. Tente novamente.", "empty": "Nenhum item correspondente" },
     "ariaLabel": "Mapa em formato de sol para {{name}}",
     "back": "Voltar um nível",
     "breadcrumbs": "Hierarquia do mapa de espaço",
@@ -210,7 +211,6 @@
     "selected": "Selecionado",
     "grouped": "Categoria agrupada",
     "otherContent": "Outros conteúdos",
-    "deferredContent": "Detalhes ainda não carregados",
     "restrictedObjects": "Objetos inacessíveis",
     "allocatedSize": "Alocado no disco",
     "logicalSize": "{{size}} tamanho lógico",
@@ -220,13 +220,11 @@
       "folder": "Pasta",
       "file": "Arquivo",
       "aggregate": "Objetos pequenos agrupados",
-      "deferred": "Detalhes carregáveis",
       "restricted": "Restritos"
     },
     "noDeeperBreakdown": "Não é possível agrupar diretórios em níveis mais profundos neste momento.",
     "loadDeeperHint": "Selecione esta pasta para abrir o próximo nível pelo índice local.",
     "otherContentHint": "Este grupo contém itens que não são exibidos separadamente devido à capacidade do índice ou à página atual; eles não são necessariamente pequenos. Continue pela lista ou abra a pasta atual no Finder.",
-    "deferredContentHint": "O tamanho da pasta já foi calculado, mas os detalhes ainda não estão no índice local. Selecione o item acima para carregar somente esta pasta sem verificar o disco inteiro novamente.",
     "loadingFolder": "Carregando esta pasta…",
     "loadFailed": "Não foi possível ler o índice de pastas",
     "loadMore": "Mostrar mais 50 itens",
@@ -269,6 +267,7 @@
     "freshness": {
       "cached": "Mostrando o resultado da última varredura",
       "expired": "Esta verificação está desatualizada; recomendamos uma nova verificação",
+      "updating": "Atualizando a verificação; o mapa anterior continua disponível",
       "changed": "Esta pasta foi alterada; os tamanhos podem ser imprecisos",
       "changedShort": "Conteúdo modificado",
       "refreshFolder": "Atualizar {{name}}",

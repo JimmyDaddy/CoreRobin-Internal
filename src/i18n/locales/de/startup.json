@@ -14,6 +14,8 @@
   "scanning": "Überprüfung…",
   "loadingTitle": "Start-Up-Positionen lesen",
   "loadingDescription": "CoreRobin liest nur öffentliche Start-Konfigurationen und führt niemals Befehle darin aus.",
+  "scanFailed": "Die Autostart-Objekte konnten nicht gelesen werden. Es wurde nichts geändert. Versuche es erneut.",
+  "openSettingsFailed": "Die Systemeinstellungen konnten nicht geöffnet werden. Versuche es erneut oder öffne die Anmeldeobjekte manuell.",
   "summary": "Zusammenfassung der Start-Up-Items",
   "reviewCount": "Es lohnt sich, dies zu überprüfen",
   "reviewHint": "Drittanbieter-Items, die beim Anmelden gestartet werden",
@@ -24,7 +26,16 @@
   "inventory": "Start-Up-Inventar",
   "listTitle": "Welche Items starten automatisch",
   "filters": "Filter für Start-Up-Items",
+  "loginCount": "Beim Anmelden öffnen",
+  "loginHint": "Apps und Helfer nach der Anmeldung",
+  "backgroundCount": "Hintergrundaktivität",
+  "backgroundHint": "Bedingte Synchronisierung, Updates und Wartung",
+  "disabledCount": "Deaktiviert",
+  "disabledHint": "Wiederherstellbare zuvor deaktivierte Einträge",
   "filter": {
+    "login": "Beim Anmelden öffnen",
+    "background": "Hintergrundaktivität",
+    "disabled": "Deaktiviert",
     "review": "Es lohnt sich, dies zu überprüfen",
     "all": "Alle",
     "system": "System-Items"
@@ -40,9 +51,15 @@
   "readOnlyBoundary": "Diese Plattform stellt keine Startup-Quelle zur Verfügung, die CoreRobin sicher wiederherstellen kann, sodass das Inventar schreibgeschützt bleibt.",
   "unreadable": "{{count}} Startprogramme konnten aufgrund von Berechtigungen nicht gelesen werden",
   "actions": {
+    "openSettings": "In den Systemeinstellungen verwalten",
     "disable": "Deaktivieren beim Anmelden",
     "enable": "Wiederherstellen beim Anmelden"
   },
+  "showingCount": "{{shown}} von {{total}} Einträgen werden angezeigt",
+  "showMore": "Weitere {{count}} anzeigen",
+  "completeScan": "Alle verfügbaren Startquellen wurden gelesen",
+  "partialScan": "Teilergebnis: {{count}} Probleme mit Startquellen",
+  "scanIssue": { "unreadable_location": "{{count}} Ort konnte nicht gelesen werden", "invalid_entry": "{{count}} ungültiger Eintrag wurde übersprungen", "source_unavailable": "Die Quelle antwortet nicht" },
   "managementStatus": {
     "system": "System-Element · schreibgeschützt",
     "protected": "Geschütztes Element",
@@ -75,11 +92,14 @@
     "running": "Wird gerade ausgeführt: CPU {{cpu}} · Arbeitsspeicher {{memory}}",
     "notMatched": "Keine aktuell laufende Anwendung konnte gefunden werden"
   },
+  "currentUse": { "none": "Derzeit nicht aktiv", "low": "Aktuelle Ressourcennutzung ist niedrig", "moderate": "Aktuelle Ressourcennutzung ist mittel", "high": "Aktuelle Ressourcennutzung ist hoch", "running": "Aktuell: CPU {{cpu}} · Speicher {{memory}}", "notMatched": "Keine passende App ist derzeit aktiv" },
   "outcome": {
+    "undo": "Rückgängig",
     "disabled": "Automatische Startup für {{name}} ist deaktiviert. Die laufende Anwendung wurde nicht geschlossen.",
     "enabled": "Automatische Startup für {{name}} ist wiederhergestellt."
   },
   "actionDialog": {
+    "owner": "Anwendung", "source": "Startquelle", "effect": "Zeitpunkt der Wirkung",
     "disable": {
       "title": "Automatische Startup für {{name}} deaktivieren?",
       "description": "CoreRobin verschiebt diese Benutzer-Startdatei in ein eigenes, wiederherstellbares Speicherverzeichnis und löscht sie nicht.",
@@ -157,6 +177,7 @@
     }
   },
   "ownership": {
+    "moreItems": "{{count}} Hilfseinträge",
     "itemCount_other": "{{count}} Element",
     "modern": "Moderner Hintergrunddienst",
     "orphaned": "Ausführbare Datei fehlt",

@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "統一應用程式檢視", "title": "應用程式中心", "description": "在同一個應用程式身分下查看目前用量、啟動行為、網路活動、歷史與解除安裝。", "tabs": { "label": "應用程式中心頁面", "activity": "目前活動", "history": "歷史", "manage": "管理與解除安裝" }, "selected": "目前應用程式", "localIdentity": "本機應用程式身分", "startup": "啟動行為", "startupCount": "關聯 {{count}} 個啟動項目", "network": "網路活動", "connectionCount": "目前 {{count}} 個連線", "history": "歷史記錄", "historySamples": "已儲存 {{count}} 個樣本", "manage": "管理應用程式", "manageHint": "檢查殘留檔案或解除安裝", "boundary": "僅依穩定應用程式身分關聯本機資料，不儲存命令列或檔案內容。" },
   "energy": {
     "eyebrow": "可選的擴展指標",
     "title": "GPU與相對能量",

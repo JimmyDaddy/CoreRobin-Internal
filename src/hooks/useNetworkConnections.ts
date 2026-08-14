@@ -18,6 +18,8 @@ export function useNetworkConnections(
   const [error, setError] = useState<CommandError | null>(null);
   const [loading, setLoading] = useState(true);
   const requestInFlight = useRef(false);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
   const samplingEnabledRef = useRef(
     enabled && !paused && (visible || backgroundEnabled),
   );
@@ -25,26 +27,30 @@ export function useNetworkConnections(
     enabled && !paused && (visible || backgroundEnabled);
 
   const refreshNow = useCallback(async () => {
-    if (!samplingEnabledRef.current || requestInFlight.current) return;
+    if (!enabledRef.current || requestInFlight.current) return;
 
     requestInFlight.current = true;
+    setLoading(true);
     try {
       const nextSnapshot = await getNetworkConnections();
-      if (!samplingEnabledRef.current) return;
+      if (!enabledRef.current) return;
       setSnapshot(nextSnapshot);
       setError(null);
     } catch (caughtError) {
-      if (samplingEnabledRef.current) {
+      if (enabledRef.current) {
         setError(normalizeCommandError(caughtError));
       }
     } finally {
-      if (samplingEnabledRef.current) setLoading(false);
+      if (enabledRef.current) setLoading(false);
       requestInFlight.current = false;
     }
   }, []);
 
   useEffect(() => {
-    if (!enabled || paused || (!visible && !backgroundEnabled)) return;
+    if (!enabled || paused || (!visible && !backgroundEnabled)) {
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;

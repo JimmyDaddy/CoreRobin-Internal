@@ -62,6 +62,8 @@ export function useCleanupScan() {
   const refreshTrackerRef = useRef(0);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
+  const snapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
+  const preScanSnapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const snapshotSyncRef = useRef<Promise<CleanupScan | null> | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<CleanupScanJobStatus | null>(null);
   const [refreshError, setRefreshError] = useState<CommandError | null>(null);
@@ -69,6 +71,10 @@ export function useCleanupScan() {
   useEffect(() => {
     snapshotRef.current = snapshot;
   }, [snapshot]);
+
+  useEffect(() => {
+    snapshotStatusRef.current = snapshotStatus;
+  }, [snapshotStatus]);
 
   useEffect(() => {
     let disposed = false;
@@ -189,6 +195,7 @@ export function useCleanupScan() {
         setCancelling(false);
         setProgress(null);
         setPhase("cancelled");
+        setSnapshotStatus(preScanSnapshotStatusRef.current);
         return;
       }
       if (status.phase === "failed") {
@@ -197,6 +204,7 @@ export function useCleanupScan() {
         setCancelling(false);
         setProgress(null);
         setPhase("failed");
+        setSnapshotStatus(preScanSnapshotStatusRef.current);
         setError({
           code: status.errorCode ?? "cleanup_scan_failed",
           message: status.errorMessage ?? "The cleanup scan worker stopped unexpectedly.",
@@ -214,6 +222,7 @@ export function useCleanupScan() {
           setLoading(false);
           setCancelling(false);
           setPhase("failed");
+          setSnapshotStatus(preScanSnapshotStatusRef.current);
           setError(normalizeCommandError(caughtError));
         }
         return;
@@ -346,9 +355,8 @@ export function useCleanupScan() {
   ) => {
     const tracker = ++trackerRef.current;
     stateTouched.current = true;
-    setSnapshot(null);
-    snapshotRef.current = null;
-    setSnapshotStatus("current");
+    preScanSnapshotStatusRef.current = snapshotStatusRef.current;
+    if (snapshotRef.current) setSnapshotStatus("updating");
     setLoading(true);
     setCancelling(false);
     setPhase("preparing");
@@ -371,6 +379,7 @@ export function useCleanupScan() {
       setCancelling(false);
       setProgress(null);
       setPhase("failed");
+      setSnapshotStatus(preScanSnapshotStatusRef.current);
     }
   }, [followJob]);
 

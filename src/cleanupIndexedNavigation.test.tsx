@@ -87,7 +87,7 @@ describe("indexed cleanup navigation", () => {
     expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
   });
 
-  it("loads deferred directory details without rescanning the whole disk", () => {
+  it("never turns an aggregate into an implicit directory refresh", async () => {
     const current = snapshot();
     current.root.children = [deferredAggregate()];
     const onRefreshDirectory = vi.fn();
@@ -100,9 +100,10 @@ describe("indexed cleanup navigation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Details not loaded/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Other content/ }));
 
-    expect(onRefreshDirectory).toHaveBeenCalledWith(current.root.id);
+    await Promise.resolve();
+    expect(onRefreshDirectory).not.toHaveBeenCalled();
     expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
   });
 
@@ -136,6 +137,41 @@ describe("indexed cleanup navigation", () => {
       directoryId: paged.id,
     }));
     expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
+  });
+
+  it("offers a paged searchable list backed by the scan index", async () => {
+    const current = snapshot();
+    const indexed = folder("index:fixture:8", "Large Cache", "/fixture/cache");
+    cleanupApi.getCleanupIndexedChildren.mockResolvedValue({
+      items: [indexed],
+      nextCursor: 60,
+    });
+    render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenCalledWith({
+      scanId: "fixture",
+      directoryId: current.root.id,
+      cursor: null,
+      limit: 60,
+      query: null,
+      sortBy: "size",
+      descending: true,
+    }));
+    expect(await screen.findByText("Large Cache")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText("Search this folder"), {
+      target: { value: "cache" },
+    });
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: "cache" }),
+    ));
   });
 
   it("keeps stale data visible and starts an explicit background refresh", async () => {

@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "Visão unificada de aplicativos", "title": "Central de aplicativos", "description": "Veja uso atual, inicialização, rede, histórico e desinstalação sob uma única identidade.", "tabs": { "label": "Páginas da central de aplicativos", "activity": "Atividade atual", "history": "Histórico", "manage": "Gerenciar e desinstalar" }, "selected": "Aplicativo selecionado", "localIdentity": "Identidade local", "startup": "Comportamento na inicialização", "startupCount": "{{count}} itens de inicialização relacionados", "network": "Atividade de rede", "connectionCount": "{{count}} conexões atuais", "history": "Histórico", "historySamples": "{{count}} amostras salvas", "manage": "Gerenciar aplicativo", "manageHint": "Revisar arquivos residuais ou desinstalar", "boundary": "Os dados locais são vinculados apenas por identidade estável; comandos e conteúdo de arquivos nunca são salvos." },
   "energy": {
     "eyebrow": "Métrica estendida opcional",
     "title": "GPU e energia relativa",

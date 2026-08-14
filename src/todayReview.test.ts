@@ -108,6 +108,23 @@ describe("today review", () => {
       peakMemoryPercent: 64,
     });
   });
+
+  it("assigns an action to the day it completed rather than the day it started", () => {
+    const nowMs = new Date(2026, 6, 29, 12, 0, 0).getTime();
+    const startedAtMs = new Date(2026, 6, 28, 23, 59, 0).getTime();
+    const completedAtMs = new Date(2026, 6, 29, 0, 1, 0).getTime();
+    const review = buildTodayReview({
+      nowMs,
+      points: [],
+      applicationImpactPoints: [],
+      alerts: [],
+      networkQualityPoints: [],
+      actions: [actionRecord({ startedAtMs, completedAtMs, kind: "cleanup_delete" })],
+    });
+
+    expect(review.completedActionCount).toBe(1);
+    expect(review.actionResults[0]?.record.completedAtMs).toBe(completedAtMs);
+  });
 });
 
 function point(

@@ -58,11 +58,13 @@ type SettingsSection =
 
 interface SettingsExplorerProps {
   settings: AppSettings;
+  launchAtLoginStatus?: "loading" | "ready" | "updating" | "error";
   notificationStatus: DesktopNotificationStatus;
   notificationDelivery?: DesktopNotificationDelivery | null;
   dataPrivacy?: ProductDataPrivacyController | null;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  onLaunchAtLoginChange?: (enabled: boolean) => void;
   onOpenNotificationSettings?: () => void;
   onSendTestNotification?: () => Promise<boolean>;
   onOpenOnboarding: () => void;
@@ -85,11 +87,13 @@ const WATCH_DURATIONS = [10, 30, 60, 300] as const;
 
 export function SettingsExplorer({
   settings,
+  launchAtLoginStatus = "ready",
   notificationStatus,
   notificationDelivery = null,
   dataPrivacy = null,
   snapshot,
   onChange,
+  onLaunchAtLoginChange = (enabled) => onChange({ launchAtLogin: enabled }),
   onOpenNotificationSettings = () => undefined,
   onSendTestNotification = async () => false,
   onOpenOnboarding,
@@ -380,9 +384,14 @@ export function SettingsExplorer({
             <BackgroundSwitch
               icon={Rocket}
               label={t("settings:background.launchAtLogin")}
-              description={t("settings:background.launchAtLoginDescription")}
+              description={`${t("settings:background.launchAtLoginDescription")}${
+                launchAtLoginStatus === "ready"
+                  ? ""
+                  : ` · ${t(launchAtLoginStatus === "error" ? "common:unavailable" : "common:loading")}`
+              }`}
               checked={settings.launchAtLogin}
-              onChange={(checked) => onChange({ launchAtLogin: checked })}
+              disabled={launchAtLoginStatus === "loading" || launchAtLoginStatus === "updating"}
+              onChange={onLaunchAtLoginChange}
             />
             <BackgroundSwitch
               icon={RobinIcon}
@@ -1028,19 +1037,21 @@ function BackgroundSwitch({
   label,
   description,
   checked,
+  disabled = false,
   onChange,
 }: {
   icon: SettingsIcon;
   label: string;
   description: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="settings-background-option">
+    <label className={`settings-background-option${disabled ? " is-disabled" : ""}`}>
       <span aria-hidden="true"><Icon size={16} /></span>
       <span><strong>{label}</strong><small>{description}</small></span>
-      <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input type="checkbox" role="switch" aria-label={label} checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
     </label>
   );
 }

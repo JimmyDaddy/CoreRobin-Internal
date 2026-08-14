@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "Einheitliche App-Ansicht", "title": "Anwendungszentrale", "description": "Aktuelle Nutzung, Autostart, Netzwerk, Verlauf und Deinstallation unter einer App-Identität anzeigen.", "tabs": { "label": "Seiten der Anwendungszentrale", "activity": "Aktuelle Aktivität", "history": "Verlauf", "manage": "Verwalten und deinstallieren" }, "selected": "Ausgewählte Anwendung", "localIdentity": "Lokale App-Identität", "startup": "Startverhalten", "startupCount": "{{count}} zugehörige Autostart-Elemente", "network": "Netzwerkaktivität", "connectionCount": "{{count}} aktuelle Verbindungen", "history": "Verlauf", "historySamples": "{{count}} gespeicherte Messwerte", "manage": "Anwendung verwalten", "manageHint": "Restdateien prüfen oder deinstallieren", "boundary": "Lokale Daten werden nur über eine stabile App-Identität verknüpft; Befehle und Dateiinhalte werden nicht gespeichert." },
   "energy": {
     "eyebrow": "Optionale erweiterte Metrik",
     "title": "GPU und relative Energie",

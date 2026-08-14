@@ -25,6 +25,12 @@ const UPDATE_REMINDER_STORAGE_KEY =
 const UPDATE_INSTALLED_VERSION_STORAGE_KEY =
   "core-robin.update.installed-version.v1";
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;
+const UPDATE_CHECK_RETRY_DELAYS_MS = [
+  5 * 60 * 1_000,
+  30 * 60 * 1_000,
+  2 * 60 * 60 * 1_000,
+  6 * 60 * 60 * 1_000,
+];
 export const UPDATE_REMIND_LATER_MS = 24 * 60 * 60 * 1_000;
 
 export type AppUpdateAction =
@@ -87,6 +93,7 @@ export function useAppUpdater({
     () => readTimestamp(UPDATE_CHECKED_AT_STORAGE_KEY),
   );
   const [lastCheckFailed, setLastCheckFailed] = useState(false);
+  const [consecutiveCheckFailures, setConsecutiveCheckFailures] = useState(0);
   const [updatedFromVersion, setUpdatedFromVersion] = useState<string | null>(
     detectUpdatedFromVersion,
   );
@@ -148,6 +155,7 @@ export function useAppUpdater({
       );
       setLastCheckedAt(checkedAt);
       setLastCheckFailed(false);
+      setConsecutiveCheckFailures(0);
       writeString(UPDATE_CHECKED_AT_STORAGE_KEY, String(checkedAt));
       saveAvailableUpdateVersion(visibleVersion);
     } catch {
@@ -155,6 +163,7 @@ export function useAppUpdater({
       setResult("error");
       setLastCheckedAt(checkedAt);
       setLastCheckFailed(true);
+      setConsecutiveCheckFailures((current) => current + 1);
       writeString(UPDATE_CHECKED_AT_STORAGE_KEY, String(checkedAt));
     } finally {
       setChecking(false);
@@ -163,8 +172,14 @@ export function useAppUpdater({
 
   useEffect(() => {
     const now = Date.now();
-    const due = !lastCheckedAt
-      || now - lastCheckedAt >= UPDATE_CHECK_INTERVAL_MS;
+    const scheduledDelay = lastCheckFailed
+      ? UPDATE_CHECK_RETRY_DELAYS_MS[Math.min(
+          Math.max(0, consecutiveCheckFailures - 1),
+          UPDATE_CHECK_RETRY_DELAYS_MS.length - 1,
+        )]
+      : lastCheckedAt === null
+        ? 5_000
+        : Math.max(5_000, UPDATE_CHECK_INTERVAL_MS - (now - lastCheckedAt));
     const cachedUpdateNeedsHandle =
       isDesktopRuntime()
       && availableVersion !== null
@@ -172,26 +187,25 @@ export function useAppUpdater({
     const reminderDelay = availableVersion && remindAt
       ? Math.max(0, remindAt - now)
       : null;
-    const timerDelay = due || cachedUpdateNeedsHandle
+    const timerDelay = cachedUpdateNeedsHandle
       ? 5_000
-      : reminderDelay;
-    const timer = timerDelay === null
-      ? null
-      : window.setTimeout(
-          () => void check(false),
-          Math.min(timerDelay, UPDATE_CHECK_INTERVAL_MS),
-        );
+      : Math.min(scheduledDelay, reminderDelay ?? Number.POSITIVE_INFINITY);
+    const timer = window.setTimeout(
+      () => void check(false),
+      Math.min(timerDelay, UPDATE_CHECK_INTERVAL_MS),
+    );
     const retryWhenOnline = () => {
       if (lastCheckFailed) void check(false);
     };
     window.addEventListener("online", retryWhenOnline);
     return () => {
-      if (timer !== null) window.clearTimeout(timer);
+      window.clearTimeout(timer);
       window.removeEventListener("online", retryWhenOnline);
     };
   }, [
     availableVersion,
     check,
+    consecutiveCheckFailures,
     installableUpdate,
     lastCheckFailed,
     lastCheckedAt,
@@ -206,6 +220,8 @@ export function useAppUpdater({
     if (!isDesktopRuntime()) return;
     let disposed = false;
     let timer: number | null = null;
+    let queryFailures = 0;
+    let nativeTaskActive = false;
 
     const reconcileNativeTask = (
       task: AppUpdateTaskSnapshot,
@@ -236,12 +252,23 @@ export function useAppUpdater({
         );
         const task = await getAppUpdateTask();
         if (disposed) return;
+        queryFailures = 0;
+        nativeTaskActive = task.phase === "downloading" || task.phase === "installing";
         reconcileNativeTask(task, progressFromSnapshot);
-        if (task.phase === "downloading" || task.phase === "installing") {
+        if (nativeTaskActive) {
           timer = window.setTimeout(reconcile, 750);
         }
       } catch {
-        // Update checks remain available if the native task status cannot load.
+        // A native download keeps running independently of this WebView. A
+        // transient query failure must reconnect instead of turning the task
+        // into a false installation failure.
+        if (!disposed && nativeTaskActive) {
+          queryFailures += 1;
+          timer = window.setTimeout(
+            reconcile,
+            Math.min(30_000, 750 * 2 ** Math.min(queryFailures, 5)),
+          );
+        }
       }
     };
 

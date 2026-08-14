@@ -9,6 +9,9 @@ export function useStartupItems(enabled: boolean) {
   const [error, setError] = useState<CommandError | null>(null);
   const [loading, setLoading] = useState(false);
   const inFlight = useRef(false);
+  const enabledRef = useRef(enabled);
+  const lastLoadedAtRef = useRef(0);
+  enabledRef.current = enabled;
 
   const refresh = useCallback(async () => {
     if (inFlight.current) return;
@@ -17,6 +20,7 @@ export function useStartupItems(enabled: boolean) {
     setError(null);
     try {
       setSnapshot(await getStartupItems());
+      lastLoadedAtRef.current = Date.now();
     } catch (caughtError) {
       setError(normalizeCommandError(caughtError));
     } finally {
@@ -28,6 +32,24 @@ export function useStartupItems(enabled: boolean) {
   useEffect(() => {
     if (enabled && !snapshot && !loading) void refresh();
   }, [enabled, loading, refresh, snapshot]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (
+        enabledRef.current
+        && document.visibilityState === "visible"
+        && Date.now() - lastLoadedAtRef.current >= 5_000
+      ) {
+        void refresh();
+      }
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refresh]);
 
   return { snapshot, error, loading, refresh };
 }

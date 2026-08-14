@@ -159,13 +159,16 @@ export function useApplicationImpactHistory(
         }));
       }
     };
-    const flush = () => {
+    const flush = (force = false) => {
       if (isProductDataResetInProgress()) return;
       const now = Date.now();
-      if (
-        saveInFlightRef.current
-        || now - lastSavedAtRef.current < APPLICATION_HISTORY_FLUSH_INTERVAL_MS
-      ) {
+      if (saveInFlightRef.current) {
+        if (force) {
+          void saveInFlightRef.current.finally(() => persist());
+        }
+        return;
+      }
+      if (!force && now - lastSavedAtRef.current < APPLICATION_HISTORY_FLUSH_INTERVAL_MS) {
         return;
       }
       lastSavedAtRef.current = now;
@@ -175,22 +178,35 @@ export function useApplicationImpactHistory(
       saveInFlightRef.current = request;
     };
     flush();
-    const interval = window.setInterval(flush, APPLICATION_HISTORY_FLUSH_INTERVAL_MS);
+    const interval = window.setInterval(() => flush(), APPLICATION_HISTORY_FLUSH_INTERVAL_MS);
+    const flushForLifecycle = () => flush(true);
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") flush(true);
+    };
+    window.addEventListener("pagehide", flushForLifecycle);
+    window.addEventListener("beforeunload", flushForLifecycle);
+    document.addEventListener("visibilitychange", flushWhenHidden);
     return () => {
       window.clearInterval(interval);
+      window.removeEventListener("pagehide", flushForLifecycle);
+      window.removeEventListener("beforeunload", flushForLifecycle);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
     };
   }, [desktop, enabled, hydrated]);
 
-  const clear = useCallback(() => {
+  const clear = useCallback(async () => {
     clearApplicationImpactHistory();
     if (desktop) {
-      void clearPersistedApplicationHistory().catch((reason) => {
+      try {
+        await clearPersistedApplicationHistory();
+      } catch (reason) {
         setStorageStatus((current) => ({
           ...current,
           state: "failed",
           error: reason instanceof Error ? reason.message : String(reason),
         }));
-      });
+        throw reason;
+      }
     }
     setPoints([]);
     setStorageStatus((current) => ({

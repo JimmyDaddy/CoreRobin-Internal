@@ -1,5 +1,6 @@
 {
   "mainNavigation": "主導航",
+  "tasks": { "kicker": "背景工作", "title": "工作中心", "activeCount": "{{count}} 個工作進行中", "needsAttention": "工作需要處理", "preparing": "正在準備…", "open": "返回工作", "retry": "查看並重試", "empty": "沒有執行中的工作", "emptyHint": "掃描、更新與盤點會顯示在這裡。", "cleanup": { "title": "空間掃描", "progress": "已檢查 {{count}} 項", "failed": "空間掃描未完成" }, "folder": { "title": "資料夾重新整理", "progress": "已檢查 {{count}} 項" }, "files": { "title": "檔案核對", "progress": "已檢查 {{count}} 項", "failed": "檔案核對未完成" }, "startup": { "title": "啟動項目盤點", "failed": "啟動項目盤點未完成" }, "update": { "installing": "正在下載並安裝更新", "ready": "更新已就緒", "installError": "更新安裝未完成", "restartError": "需要重新啟動應用程式", "current": "CoreRobin 更新" } },
   "monitor": "監控",
   "diagnostics": "診斷",
   "overview": "概覽",

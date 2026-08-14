@@ -1,5 +1,6 @@
 {
   "mainNavigation": "Navigation principale",
+  "tasks": { "kicker": "Travail en arrière-plan", "title": "Centre des tâches", "activeCount": "{{count}} tâches en cours", "needsAttention": "Une tâche nécessite votre attention", "preparing": "Préparation…", "open": "Revenir à la tâche", "retry": "Vérifier et réessayer", "empty": "Aucune tâche en cours", "emptyHint": "Les analyses, mises à jour et inventaires apparaissent ici.", "cleanup": { "title": "Analyse de l’espace", "progress": "{{count}} éléments vérifiés", "failed": "L’analyse n’est pas terminée" }, "folder": { "title": "Actualisation du dossier", "progress": "{{count}} éléments vérifiés" }, "files": { "title": "Vérification des fichiers", "progress": "{{count}} éléments vérifiés", "failed": "La vérification n’est pas terminée" }, "startup": { "title": "Inventaire du démarrage", "failed": "L’inventaire n’est pas terminé" }, "update": { "installing": "Téléchargement et installation de la mise à jour", "ready": "Mise à jour prête", "installError": "Installation non terminée", "restartError": "Redémarrage de l’application requis", "current": "Mise à jour CoreRobin" } },
   "monitor": "Surveillance",
   "diagnostics": "Diagnostics",
   "overview": "Vue d'ensemble",

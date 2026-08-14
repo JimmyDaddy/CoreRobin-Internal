@@ -101,6 +101,36 @@ describe("useAppUpdater background prompt", () => {
     expect(result.current.action).toBe("ready");
     expect(result.current.progress?.percent).toBe(100);
   });
+
+  it("keeps scheduling checks after a current-version response", async () => {
+    mocks.checkForInstallableAppUpdate.mockResolvedValue(null);
+    renderHook(() => useAppUpdater());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(mocks.checkForInstallableAppUpdate).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1_000);
+    });
+    expect(mocks.checkForInstallableAppUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it("reconnects to a running native update after a transient query failure", async () => {
+    mocks.getAppUpdateTask
+      .mockResolvedValueOnce(nativeTask("downloading", 100, 1_000))
+      .mockRejectedValueOnce(new Error("temporary bridge failure"))
+      .mockResolvedValueOnce(nativeTask("ready", 1_000, 1_000));
+    const { result } = renderHook(() => useAppUpdater());
+
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(750);
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(result.current.action).toBe("ready");
+  });
 });
 
 function update(version: string) {

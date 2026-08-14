@@ -1,5 +1,6 @@
 {
   "mainNavigation": "メインのナビゲーション",
+  "tasks": { "kicker": "バックグラウンド処理", "title": "タスクセンター", "activeCount": "{{count}} 件のタスクを実行中", "needsAttention": "確認が必要なタスクがあります", "preparing": "準備中…", "open": "タスクに戻る", "retry": "確認して再試行", "empty": "実行中のタスクはありません", "emptyHint": "スキャン、更新、一覧作成がここに表示されます。", "cleanup": { "title": "容量スキャン", "progress": "{{count}} 項目を確認", "failed": "容量スキャンが完了しませんでした" }, "folder": { "title": "フォルダ更新", "progress": "{{count}} 項目を確認" }, "files": { "title": "ファイル確認", "progress": "{{count}} 項目を確認", "failed": "ファイル確認が完了しませんでした" }, "startup": { "title": "起動項目一覧", "failed": "起動項目一覧が完了しませんでした" }, "update": { "installing": "更新をダウンロードしてインストール中", "ready": "更新の準備完了", "installError": "更新のインストールが完了しませんでした", "restartError": "アプリの再起動が必要です", "current": "CoreRobin 更新" } },
   "monitor": "システムの状態を監視",
   "diagnostics": "システムの診断",
   "overview": "概要を表示",

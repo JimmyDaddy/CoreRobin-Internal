@@ -14,6 +14,8 @@
   "scanning": "Verificando…",
   "loadingTitle": "Lendo configurações de inicialização",
   "loadingDescription": "O CoreRobin apenas lê a configuração de inicialização pública e nunca executa os comandos dentro dela.",
+  "scanFailed": "Não foi possível ler os itens de inicialização. Nada foi alterado. Tente novamente.",
+  "openSettingsFailed": "Não foi possível abrir os Ajustes do Sistema. Tente novamente ou abra os itens de início manualmente.",
   "summary": "Resumo da inicialização",
   "reviewCount": "Vale a pena verificar",
   "reviewHint": "Itens de terceiros que são iniciados no login",
@@ -24,7 +26,9 @@
   "inventory": "Inventário de inicialização",
   "listTitle": "Quais programas iniciam automaticamente?",
   "filters": "Filtros para itens de inicialização",
+  "loginCount": "Abrir ao iniciar sessão", "loginHint": "Apps e auxiliares iniciados após o login", "backgroundCount": "Atividade em segundo plano", "backgroundHint": "Sincronização, atualização e manutenção condicionais", "disabledCount": "Desativado", "disabledHint": "Itens recuperáveis desativados anteriormente",
   "filter": {
+    "login": "Abrir ao iniciar sessão", "background": "Atividade em segundo plano", "disabled": "Desativado",
     "review": "Revisar",
     "all": "Todos",
     "system": "Itens do sistema"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "Esta plataforma não expõe nenhum arquivo de inicialização do CoreRobin que possa ser restaurado com segurança, portanto, o inventário permanece somente leitura.",
   "unreadable": "{{count}} Não foi possível ler as localizações de inicialização devido a permissões",
   "actions": {
+    "openSettings": "Gerenciar nos Ajustes do Sistema",
     "disable": "Desativar no login",
     "enable": "Restaurar no login"
   },
+  "showingCount": "Mostrando {{shown}} de {{total}} itens", "showMore": "Mostrar mais {{count}}", "completeScan": "Todas as fontes de inicialização disponíveis foram lidas", "partialScan": "Resultado parcial: {{count}} problemas nas fontes", "scanIssue": { "unreadable_location": "Não foi possível ler {{count}} local", "invalid_entry": "{{count}} entrada inválida foi ignorada", "source_unavailable": "A fonte não respondeu" },
   "managementStatus": {
     "system": "Item do sistema · somente leitura",
     "protected": "Item protegido",
@@ -75,11 +81,14 @@
     "running": "Em execução: CPU {{cpu}} · Memória {{memory}}",
     "notMatched": "Nenhuma aplicação em execução pode ser identificada"
   },
+  "currentUse": { "none": "Não está em execução", "low": "Uso atual de recursos baixo", "moderate": "Uso atual de recursos moderado", "high": "Uso atual de recursos alto", "running": "Uso atual: CPU {{cpu}} · Memória {{memory}}", "notMatched": "Nenhum app correspondente em execução" },
   "outcome": {
+    "undo": "Desfazer",
     "disabled": "A inicialização automática para {{name}} está desativada. A aplicação não foi fechada.",
     "enabled": "A inicialização automática para {{name}} foi restaurada."
   },
   "actionDialog": {
+    "owner": "Aplicativo", "source": "Fonte de inicialização", "effect": "Quando entra em vigor",
     "disable": {
       "title": "Desativar a inicialização automática para {{name}}?",
       "description": "O CoreRobin move este arquivo de inicialização do usuário para seu próprio armazenamento recuperável e não o exclui.",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "{{count}} itens auxiliares",
     "itemCount_other": "{{count}} item",
     "modern": "Item de segundo plano moderno",
     "orphaned": "Executável ausente",

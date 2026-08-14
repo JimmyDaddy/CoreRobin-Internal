@@ -112,6 +112,11 @@
       "path": "File paths",
       "category": "Purpose"
     },
+    "view": {
+      "label": "Browse as", "map": "Space map", "list": "List", "search": "Search this folder", "clearSearch": "Clear search",
+      "sortSize": "Sort by size", "sortName": "Sort by name", "descending": "Descending", "ascending": "Ascending",
+      "loading": "Reading the index…", "loadFailed": "Could not load the list. Try again.", "empty": "No matching items in this folder"
+    },
     "ariaLabel": "Space sunburst for {{name}}",
     "breadcrumbs": "Space map hierarchy",
     "selectedPath": "Selected path",
@@ -120,7 +125,6 @@
     "selected": "Selected",
     "grouped": "Grouped category",
     "otherContent": "Other content",
-    "deferredContent": "Details not loaded",
     "restrictedObjects": "Unreadable objects",
     "allocatedSize": "allocated on disk",
     "logicalSize": "{{size}} logical",
@@ -130,13 +134,11 @@
       "folder": "Folder",
       "file": "File",
       "aggregate": "Grouped small objects",
-      "deferred": "Loadable details",
       "restricted": "Restricted"
     },
     "noDeeperBreakdown": "No deeper directory grouping is available at this level.",
     "loadDeeperHint": "Select this folder to open the next level from the local index.",
-    "otherContentHint": "This group contains content not shown separately because of index capacity or the current page; the items are not necessarily small. Continue through the list or open the current folder in Finder.",
-    "deferredContentHint": "The folder size is known, but its directory details are not currently cached. Select the item above to load only this folder without rescanning the whole disk.",
+    "otherContentHint": "This group contains only files omitted from the current page or individual file details. Every child folder is indexed; use Show 50 more items to continue browsing directories.",
     "loadingFolder": "Reading the directory index…",
     "loadFailed": "Unable to read the directory index",
     "loadMore": "Show 50 more items",
@@ -182,6 +184,7 @@
     "freshness": {
       "cached": "Showing the previous scan result",
       "expired": "This scan is old; a rescan is recommended",
+      "updating": "Updating the scan; the previous map remains available",
       "changed": "This folder changed; sizes may be inaccurate",
       "changedShort": "Content changed",
       "refreshFolder": "Refresh {{name}}",

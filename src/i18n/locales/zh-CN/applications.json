@@ -1,4 +1,11 @@
 {
+  "center": {
+    "kicker": "统一应用视图", "title": "应用中心", "description": "在同一个应用身份下查看当前占用、启动行为、网络活动、历史记录与卸载入口。",
+    "tabs": { "label": "应用中心页面", "activity": "当前活动", "history": "历史归因", "manage": "管理与卸载" },
+    "selected": "当前应用", "localIdentity": "本机应用身份", "startup": "启动行为", "startupCount": "关联 {{count}} 个启动项",
+    "network": "网络活动", "connectionCount": "当前 {{count}} 个连接", "history": "历史记录", "historySamples": "已保存 {{count}} 个样本",
+    "manage": "管理应用", "manageHint": "检查残留文件或卸载", "boundary": "只按稳定应用身份关联本机数据，不保存命令行或文件内容。"
+  },
   "kicker": "应用级汇总",
   "overviewTitle": "现在谁影响最大",
   "title": "应用资源影响",

@@ -141,8 +141,8 @@ export function useNetworkQualityMonitor({
     return () => window.clearInterval(interval);
   }, [active, historyEnabled, runCheck]);
 
-  const clearHistory = useCallback(() => {
-    void historyStorage.clear().catch(() => undefined);
+  const clearHistory = useCallback(async () => {
+    await historyStorage.clear();
   }, [historyStorage]);
 
   return {

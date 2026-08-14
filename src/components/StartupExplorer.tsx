@@ -1,11 +1,14 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ExternalLink,
   RefreshCw,
   Rocket,
   Search,
   ShieldCheck,
   Boxes,
+  Undo2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -15,6 +18,7 @@ import "./StartupExplorer.css";
 import {
   createStartupManagementLease,
   executeStartupManagement,
+  openSystemSettings,
   releaseStartupManagementLease,
 } from "../api";
 import type { ApplicationImpact } from "../diagnosis";
@@ -25,6 +29,7 @@ import {
   startupAdvice,
   startupImpactLevel,
   startupRuntimeApplication,
+  type StartupFilter,
 } from "../startupItems";
 import type {
   CommandError,
@@ -73,26 +78,31 @@ export function StartupExplorer({
   onUserActionComplete,
 }: StartupExplorerProps) {
   const { t, i18n } = useAppTranslation();
-  const [filter, setFilter] = useState<"review" | "all" | "system">("review");
+  const [filter, setFilter] = useState<StartupFilter>("review");
   const [query, setQuery] = useState("");
+  const [rowLimit, setRowLimit] = useState(variant === "guided" ? 8 : 60);
   const [actionItem, setActionItem] = useState<StartupItem | null>(null);
   const [action, setAction] = useState<StartupManagementAction | null>(null);
-  const [lease, setLease] = useState<StartupManagementLease | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<CommandError | null>(null);
-  const [outcome, setOutcome] = useState<{ name: string; enabled: boolean } | null>(null);
+  const [pageError, setPageError] = useState<"settings" | null>(null);
+  const [outcome, setOutcome] = useState<{
+    item: StartupItem;
+    enabled: boolean;
+  } | null>(null);
   const leaseRef = useRef<StartupManagementLease | null>(null);
   const requestIdRef = useRef(0);
   const items = snapshot?.items ?? [];
-  const visible = useMemo(
+  const filtered = useMemo(
     () => filterStartupItems(
       items,
       variant === "guided" ? "review" : filter,
       variant === "guided" ? "" : query,
-    ).slice(0, variant === "guided" ? 8 : 100),
+    ),
     [filter, items, query, variant],
   );
+  const visible = useMemo(() => filtered.slice(0, rowLimit), [filtered, rowLimit]);
   const visibleGroups = useMemo(() => {
     const groups = new Map<string, StartupItem[]>();
     for (const item of visible) {
@@ -103,7 +113,14 @@ export function StartupExplorer({
     }
     return [...groups.entries()];
   }, [visible]);
+  useEffect(() => {
+    setRowLimit(variant === "guided" ? 8 : 60);
+  }, [filter, query, variant]);
+
   const reviewCount = items.filter((item) => startupAdvice(item) === "review").length;
+  const loginCount = items.filter((item) => !item.system && item.enabled && item.launchKind === "login").length;
+  const backgroundCount = items.filter((item) => !item.system && item.enabled && (item.launchKind === "conditional" || item.modernBackgroundItem)).length;
+  const disabledCount = items.filter((item) => !item.enabled).length;
   const systemCount = items.filter((item) => item.system).length;
 
   const closeActionDialog = useCallback(() => {
@@ -115,7 +132,6 @@ export function StartupExplorer({
     }
     setActionItem(null);
     setAction(null);
-    setLease(null);
     setPreparing(false);
     setSubmitting(false);
     setActionError(null);
@@ -129,44 +145,23 @@ export function StartupExplorer({
     }
   }, []);
 
-  const openActionDialog = async (item: StartupItem) => {
+  const openActionDialog = (item: StartupItem) => {
     if (item.managementStatus !== "available") return;
     const nextAction: StartupManagementAction = item.enabled ? "disable" : "enable";
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
+    requestIdRef.current += 1;
     setActionItem(item);
     setAction(nextAction);
-    setLease(null);
     leaseRef.current = null;
-    setPreparing(true);
+    setPreparing(false);
     setSubmitting(false);
     setActionError(null);
     setOutcome(null);
-    try {
-      const nextLease = await createStartupManagementLease({
-        itemId: item.id,
-        action: nextAction,
-      });
-      if (requestIdRef.current !== requestId) {
-        await releaseStartupManagementLease({ leaseId: nextLease.id });
-        return;
-      }
-      leaseRef.current = nextLease;
-      setLease(nextLease);
-    } catch (caughtError) {
-      if (requestIdRef.current === requestId) {
-        setActionError(normalizeCommandError(caughtError));
-      }
-    } finally {
-      if (requestIdRef.current === requestId) setPreparing(false);
-    }
   };
 
   const confirmAction = async () => {
-    if (!actionItem || !action || !lease || submitting) return;
+    if (!actionItem || !action || submitting) return;
     const item = actionItem;
     const requestedAction = action;
-    const previewLease = lease;
     const requestId = requestIdRef.current;
     const actionRecordId = onUserActionStart?.({
       kind: requestedAction === "enable" ? "startup_enable" : "startup_disable",
@@ -175,6 +170,7 @@ export function StartupExplorer({
     }) ?? null;
     let actionRecorded = false;
     setSubmitting(true);
+    setPreparing(true);
     setActionError(null);
     try {
       const executionLease = await createStartupManagementLease({
@@ -185,10 +181,8 @@ export function StartupExplorer({
         await releaseStartupManagementLease({ leaseId: executionLease.id });
         return;
       }
-      await releaseStartupManagementLease({ leaseId: previewLease.id })
-        .catch(() => undefined);
       leaseRef.current = executionLease;
-      setLease(executionLease);
+      setPreparing(false);
       const result = await executeStartupManagement({
         leaseId: executionLease.id,
       });
@@ -206,11 +200,10 @@ export function StartupExplorer({
         });
         actionRecorded = true;
       }
-      setOutcome({ name: item.name, enabled: result.enabled });
+      setOutcome({ item, enabled: result.enabled });
       requestIdRef.current += 1;
       setActionItem(null);
       setAction(null);
-      setLease(null);
       await onRefresh();
     } catch (caughtError) {
       if (actionRecordId && !actionRecorded) {
@@ -221,10 +214,25 @@ export function StartupExplorer({
         });
       }
       leaseRef.current = null;
-      setLease(null);
       setActionError(normalizeCommandError(caughtError));
     } finally {
+      setPreparing(false);
       setSubmitting(false);
+    }
+  };
+
+  const undoOutcome = () => {
+    if (!outcome) return;
+    openActionDialog({ ...outcome.item, enabled: outcome.enabled });
+  };
+
+  const openLoginItemsSettings = async () => {
+    setActionError(null);
+    setPageError(null);
+    try {
+      await openSystemSettings("login_items");
+    } catch {
+      setPageError("settings");
     }
   };
 
@@ -248,12 +256,12 @@ export function StartupExplorer({
         </header>
       )}
 
-      {error ? (
+      {error || pageError ? (
         <div className="panel startup-error" role="alert">
           <AlertTriangle size={17} />
-          <span>{error.message}</span>
-          <button className="button button--secondary" type="button" onClick={onRefresh}>
-            <RefreshCw size={14} />{t("common:retry")}
+          <span>{t(pageError ? "startup:openSettingsFailed" : "startup:scanFailed")}</span>
+          <button className="button button--secondary" type="button" onClick={pageError ? () => void openLoginItemsSettings() : onRefresh}>
+            {pageError ? <ExternalLink size={14} /> : <RefreshCw size={14} />}{t("common:retry")}
           </button>
         </div>
       ) : null}
@@ -261,19 +269,12 @@ export function StartupExplorer({
       {outcome ? (
         <div className="panel startup-outcome" role="status">
           <CheckCircle2 size={16} />
-          <span>{t(outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled", { name: outcome.name })}</span>
+          <span>{t(outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled", { name: outcome.item.name })}</span>
+          <button className="button button--plain" type="button" onClick={undoOutcome}>
+            <Undo2 size={14} />{t("startup:outcome.undo")}
+          </button>
           <button type="button" onClick={() => setOutcome(null)}>{t("common:close")}</button>
         </div>
-      ) : null}
-
-      {variant === "professional" ? (
-        <StartupImpactPanel
-          measurements={impactMeasurements}
-          applications={applications}
-          actionRecords={actionRecords}
-          launchAtLogin={launchAtLogin}
-          onEnableLaunchAtLogin={onEnableLaunchAtLogin}
-        />
       ) : null}
 
       {!snapshot && loading ? (
@@ -282,7 +283,9 @@ export function StartupExplorer({
         <>
           {variant === "professional" ? <section className="startup-summary" aria-label={t("startup:summary")}>
             <article className="panel is-review"><strong>{reviewCount}</strong><span>{t("startup:reviewCount")}</span><small>{t("startup:reviewHint")}</small></article>
-            <article className="panel"><strong>{items.length - systemCount}</strong><span>{t("startup:thirdPartyCount")}</span><small>{t("startup:thirdPartyHint")}</small></article>
+            <article className="panel"><strong>{loginCount}</strong><span>{t("startup:loginCount")}</span><small>{t("startup:loginHint")}</small></article>
+            <article className="panel"><strong>{backgroundCount}</strong><span>{t("startup:backgroundCount")}</span><small>{t("startup:backgroundHint")}</small></article>
+            <article className="panel"><strong>{disabledCount}</strong><span>{t("startup:disabledCount")}</span><small>{t("startup:disabledHint")}</small></article>
             <article className="panel is-system"><strong>{systemCount}</strong><span>{t("startup:systemCount")}</span><small>{t("startup:systemHint")}</small></article>
           </section> : (
             <section className={`startup-guided-summary${reviewCount > 0 ? " has-items" : ""}`}>
@@ -298,7 +301,7 @@ export function StartupExplorer({
             </header> : null}
             {variant === "professional" ? <div className="startup-toolbar">
               <div className="startup-filters" role="group" aria-label={t("startup:filters")}>
-                {(["review", "all", "system"] as const).map((value) => (
+                {(["review", "login", "background", "disabled", "system"] as const).map((value) => (
                   <button type="button" className={filter === value ? "is-active" : ""} aria-pressed={filter === value} key={value} onClick={() => setFilter(value)}>{t(`startup:filter.${value}`)}</button>
                 ))}
               </div>
@@ -314,16 +317,30 @@ export function StartupExplorer({
                       <span>{t("startup:ownership.itemCount", { count: group.length })}</span>
                     </header>
                     <div className="startup-items">
-                      {group.map((item) => (
-                        <StartupItemRow
-                          key={item.id}
-                          item={item}
-                          applications={applications}
-                          totalMemoryBytes={totalMemoryBytes}
-                          guided={variant === "guided"}
-                          onManage={() => void openActionDialog(item)}
-                        />
-                      ))}
+                      <StartupItemRow
+                        item={group[0]!}
+                        applications={applications}
+                        totalMemoryBytes={totalMemoryBytes}
+                        guided={variant === "guided"}
+                        onManage={() => openActionDialog(group[0]!)}
+                        onOpenSettings={() => void openLoginItemsSettings()}
+                      />
+                      {group.length > 1 ? (
+                        <details className="startup-group__helpers">
+                          <summary><ChevronDown size={13} />{t("startup:ownership.moreItems", { count: group.length - 1 })}</summary>
+                          {group.slice(1).map((item) => (
+                            <StartupItemRow
+                              key={item.id}
+                              item={item}
+                              applications={applications}
+                              totalMemoryBytes={totalMemoryBytes}
+                              guided={variant === "guided"}
+                              onManage={() => openActionDialog(item)}
+                              onOpenSettings={() => void openLoginItemsSettings()}
+                            />
+                          ))}
+                        </details>
+                      ) : null}
                     </div>
                   </section>
                 ))}
@@ -331,19 +348,44 @@ export function StartupExplorer({
             ) : (
               <div className="startup-empty"><CheckCircle2 size={20} /><strong>{t("startup:emptyTitle")}</strong><span>{t("startup:emptyDescription")}</span></div>
             )}
+            <div className="startup-list__pagination" role="status">
+              <span>{t("startup:showingCount", { shown: visible.length, total: filtered.length })}</span>
+              {visible.length < filtered.length ? (
+                <button className="button button--secondary" type="button" onClick={() => setRowLimit((current) => current + 60)}>
+                  {t("startup:showMore", { count: Math.min(60, filtered.length - visible.length) })}
+                </button>
+              ) : null}
+            </div>
             <footer>
               <ShieldCheck size={14} />
               <span>{t(snapshot.managementAvailable ? "startup:managementBoundary" : "startup:readOnlyBoundary")}</span>
-              {snapshot.unreadableLocationCount > 0 ? <em>{t("startup:unreadable", { count: snapshot.unreadableLocationCount })}</em> : null}
+              {snapshot.unreadableLocationCount > 0 ? (
+                <details className="startup-scan-warnings">
+                  <summary><AlertTriangle size={13} />{t("startup:partialScan", { count: snapshot.unreadableLocationCount })}</summary>
+                  {(snapshot.scanWarnings ?? []).map((warning) => (
+                    <span key={`${warning.source}-${warning.issue}`}>
+                      {t(`startup:source.${warning.source}`)} · {t(`startup:scanIssue.${warning.issue}`, { count: warning.count })}
+                    </span>
+                  ))}
+                </details>
+              ) : <em>{t("startup:completeScan")}</em>}
             </footer>
           </section>
+          {variant === "professional" ? (
+            <StartupImpactPanel
+              measurements={impactMeasurements}
+              applications={applications}
+              actionRecords={actionRecords}
+              launchAtLogin={launchAtLogin}
+              onEnableLaunchAtLogin={onEnableLaunchAtLogin}
+            />
+          ) : null}
         </>
       ) : null}
       {actionItem && action ? (
         <StartupActionDialog
           item={actionItem}
           action={action}
-          lease={lease}
           preparing={preparing}
           submitting={submitting}
           error={actionError}
@@ -552,12 +594,14 @@ function StartupItemRow({
   totalMemoryBytes,
   guided,
   onManage,
+  onOpenSettings,
 }: {
   item: StartupItem;
   applications: readonly ApplicationImpact[];
   totalMemoryBytes: number;
   guided: boolean;
   onManage: () => void;
+  onOpenSettings: () => void;
 }) {
   const { t } = useAppTranslation();
   const advice = startupAdvice(item);
@@ -597,14 +641,14 @@ function StartupItemRow({
         <span>{t(`startup:advice.${advice}.description`)}</span>
       </div>
       <div className={`startup-item__impact is-${impact}`}>
-        <strong>{t(`startup:impact.${impact}.title`)}</strong>
+        <strong>{t(`startup:currentUse.${impact}`)}</strong>
         <span>
           {application
-            ? t("startup:impact.running", {
+            ? t("startup:currentUse.running", {
                 cpu: formatPercent(application.cpuPercent),
                 memory: formatBytes(application.memoryBytes),
               })
-            : t("startup:impact.notMatched")}
+            : t("startup:currentUse.notMatched")}
         </span>
       </div>
       <div className="startup-item__controls">
@@ -614,7 +658,14 @@ function StartupItemRow({
             {t(item.enabled ? "startup:actions.disable" : "startup:actions.enable")}
           </button>
         ) : (
-          <small>{t(`startup:managementStatus.${item.managementStatus}`)}</small>
+          <>
+            <small>{t(`startup:managementStatus.${item.managementStatus}`)}</small>
+            {!item.system && item.managementStatus === "unsupported" ? (
+              <button type="button" onClick={onOpenSettings}>
+                <ExternalLink size={13} />{t("startup:actions.openSettings")}
+              </button>
+            ) : null}
+          </>
         )}
       </div>
       {!guided ? <details>

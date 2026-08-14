@@ -34,6 +34,7 @@ import { ProcessHistory } from "./ProcessHistory";
 import { PathActions } from "./PathActions";
 import { Button } from "./Button";
 import { ApplicationAvatar } from "./ApplicationAvatar";
+import "./ProcessInspector.css";
 
 interface ProcessInspectorProps {
   selected: ProcessRow | null;
@@ -46,6 +47,7 @@ interface ProcessInspectorProps {
   preparingAction: boolean;
   onAction: (action: ProcessAction) => void;
   onRestart: () => void;
+  onRetryDetail: () => void;
 }
 
 export function ProcessInspector({
@@ -59,6 +61,7 @@ export function ProcessInspector({
   preparingAction,
   onAction,
   onRestart,
+  onRetryDetail,
 }: ProcessInspectorProps) {
   const { t } = useAppTranslation();
   if (selectionMissing) {
@@ -159,7 +162,14 @@ export function ProcessInspector({
         <div className="detail-loading" role="status"><LoaderCircle className="is-spinning" size={17} />{t("process:inspector.verifying")}</div>
       ) : null}
       {detailError ? (
-        <div className="detail-error" role="alert"><AlertTriangle size={16} />{detailError.message}</div>
+        <div className="detail-error" role="alert">
+          <AlertTriangle size={16} />
+          <span>{detailError.message}</span>
+          <button type="button" disabled={detailLoading} onClick={onRetryDetail}>
+            <RotateCw className={detailLoading ? "is-spinning" : undefined} size={14} />
+            {t("common:retry")}
+          </button>
+        </div>
       ) : null}
 
       {detail ? (

@@ -201,6 +201,7 @@
       "path": "Rutas de archivos",
       "category": "Propósito"
     },
+    "view": { "label": "Ver como", "map": "Mapa de espacio", "list": "Lista", "search": "Buscar en esta carpeta", "clearSearch": "Borrar búsqueda", "sortSize": "Ordenar por tamaño", "sortName": "Ordenar por nombre", "descending": "Descendente", "ascending": "Ascendente", "loading": "Leyendo el índice…", "loadFailed": "No se pudo cargar la lista. Inténtalo de nuevo.", "empty": "No hay elementos coincidentes" },
     "ariaLabel": "Mapa circular para {{name}}",
     "back": "Regresar un nivel",
     "breadcrumbs": "Jerarquía del mapa de espacio",
@@ -210,7 +211,6 @@
     "selected": "Seleccionado",
     "grouped": "Categoría agrupada",
     "otherContent": "Otro contenido",
-    "deferredContent": "Detalles aún no cargados",
     "restrictedObjects": "Objetos inaccesibles",
     "allocatedSize": "Asignado en disco",
     "logicalSize": "{{size}} tamaño lógico",
@@ -220,13 +220,11 @@
       "folder": "Carpeta",
       "file": "Archivo",
       "aggregate": "Objetos pequeños agrupados",
-      "deferred": "Detalles cargables",
       "restricted": "Restringidos"
     },
     "noDeeperBreakdown": "No se puede agrupar directorios en niveles inferiores en este nivel.",
     "loadDeeperHint": "Seleccione esta carpeta para abrir el siguiente nivel desde el índice local.",
     "otherContentHint": "Este grupo contiene elementos que no se muestran por separado debido a la capacidad del índice o a la página actual; no tienen por qué ser pequeños. Continúa por la lista o abre la carpeta actual en Finder.",
-    "deferredContentHint": "Se conoce el tamaño de la carpeta, pero sus detalles aún no están guardados en el índice local. Selecciona el elemento anterior para cargar solo esta carpeta sin volver a analizar todo el disco.",
     "loadingFolder": "Cargando esta carpeta…",
     "loadFailed": "No se pudo leer el índice de directorios",
     "loadMore": "Mostrar 50 elementos más",
@@ -269,6 +267,7 @@
     "freshness": {
       "cached": "Mostrando el resultado del escaneo anterior",
       "expired": "Esta comprobación es antigua; se recomienda una nueva comprobación",
+      "updating": "Actualizando el análisis; el mapa anterior sigue disponible",
       "changed": "Esta carpeta ha cambiado; los tamaños pueden ser inexactos",
       "changedShort": "Contenido modificado",
       "refreshFolder": "Actualizar {{name}}",

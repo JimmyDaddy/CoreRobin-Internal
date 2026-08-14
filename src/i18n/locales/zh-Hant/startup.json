@@ -14,6 +14,8 @@
   "scanning": "正在檢查…",
   "loadingTitle": "正在讀取啟動位置",
   "loadingDescription": "CoreRobin 只讀取系統公開的啟動配置，不會載入或執行其中的命令。",
+  "scanFailed": "暫時無法讀取啟動項目。沒有修改任何內容，請再試一次。",
+  "openSettingsFailed": "無法開啟系統設定，請再試一次，或在系統設定中手動開啟「登入項目」。",
   "summary": "啟動項摘要",
   "reviewCount": "建議看一眼",
   "reviewHint": "登入時啟動的第三方專案",
@@ -24,7 +26,9 @@
   "inventory": "啟動項清單",
   "listTitle": "哪些內容會自動啟動",
   "filters": "啟動項篩選",
+  "loginCount": "登入時開啟", "loginHint": "登入後自動啟動的應用與助手", "backgroundCount": "背景活動", "backgroundHint": "按條件執行的同步、更新與維護助手", "disabledCount": "已停用", "disabledHint": "CoreRobin 可隨時恢復的項目",
   "filter": {
+    "login": "登入時開啟", "background": "背景活動", "disabled": "已停用",
     "review": "建議檢視",
     "all": "全部",
     "system": "系統專案"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "當前平臺沒有 CoreRobin 能安全恢復的啟動項來源，因此只讀展示。",
   "unreadable": "{{count}} 個啟動位置因許可權不足未能讀取",
   "actions": {
+    "openSettings": "前往系統設定管理",
     "disable": "停用開機啟動",
     "enable": "恢復開機啟動"
   },
+  "showingCount": "正在顯示 {{shown}} / {{total}} 項", "showMore": "再顯示 {{count}} 項", "completeScan": "已讀取全部可用啟動來源", "partialScan": "結果不完整：發現 {{count}} 個啟動來源問題", "scanIssue": { "unreadable_location": "{{count}} 個位置無法讀取", "invalid_entry": "已略過 {{count}} 個無效項目", "source_unavailable": "該來源暫時沒有回應" },
   "managementStatus": {
     "system": "系統專案只讀",
     "protected": "受保護專案",
@@ -75,11 +81,14 @@
     "running": "當前執行：CPU {{cpu}} · 記憶體 {{memory}}",
     "notMatched": "未匹配到當前正在執行的應用"
   },
+  "currentUse": { "none": "目前未執行", "low": "目前資源佔用較低", "moderate": "目前資源佔用中等", "high": "目前資源佔用較高", "running": "目前佔用：CPU {{cpu}} · 記憶體 {{memory}}", "notMatched": "目前沒有符合的執行中應用" },
   "outcome": {
+    "undo": "復原",
     "disabled": "已停用 {{name}} 的自動啟動；當前應用不會被關閉。",
     "enabled": "已恢復 {{name}} 的自動啟動。"
   },
   "actionDialog": {
+    "owner": "所屬應用", "source": "啟動來源", "effect": "生效時間",
     "disable": {
       "title": "停用 {{name}} 的自動啟動？",
       "description": "CoreRobin 會把這份使用者級啟動配置移到自己的可恢復儲存中，不會刪除它。",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "另外 {{count}} 個輔助項目",
     "itemCount_other": "{{count}} 個項目",
     "modern": "現代背景項目",
     "orphaned": "可執行檔遺失",

@@ -14,6 +14,8 @@
   "scanning": "Verificando…",
   "loadingTitle": "Leyendo ubicaciones de inicio",
   "loadingDescription": "CoreRobin solo lee la configuración de inicio pública y nunca ejecuta los comandos contenidos en ella.",
+  "scanFailed": "No se pudieron leer los elementos de inicio. No se cambió nada. Inténtalo de nuevo.",
+  "openSettingsFailed": "No se pudo abrir Ajustes del Sistema. Inténtalo de nuevo o abre los ítems de inicio manualmente.",
   "summary": "Resumen de inicio",
   "reviewCount": "Vale la pena revisar",
   "reviewHint": "Aplicaciones de terceros que se inician al iniciar sesión",
@@ -24,7 +26,9 @@
   "inventory": "Inventario de inicio",
   "listTitle": "Qué se inicia automáticamente",
   "filters": "Filtros para elementos de inicio",
+  "loginCount": "Abrir al iniciar sesión", "loginHint": "Aplicaciones y asistentes iniciados después del acceso", "backgroundCount": "Actividad en segundo plano", "backgroundHint": "Sincronización, actualización y mantenimiento condicional", "disabledCount": "Deshabilitado", "disabledHint": "Elementos recuperables desactivados anteriormente",
   "filter": {
+    "login": "Abrir al iniciar sesión", "background": "Actividad en segundo plano", "disabled": "Deshabilitado",
     "review": "Revisar",
     "all": "Todos",
     "system": "Elementos del sistema"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "Esta plataforma no expone ninguna fuente de inicio que CoreRobin pueda restaurar de forma segura, por lo que el inventario permanece en modo de solo lectura.",
   "unreadable": "{{count}} No se pudieron leer las ubicaciones de inicio debido a permisos",
   "actions": {
+    "openSettings": "Administrar en Ajustes del Sistema",
     "disable": "Deshabilitar al iniciar sesión",
     "enable": "Restaurar al iniciar sesión"
   },
+  "showingCount": "Mostrando {{shown}} de {{total}} elementos", "showMore": "Mostrar {{count}} más", "completeScan": "Se leyeron todas las fuentes de inicio disponibles", "partialScan": "Resultado parcial: {{count}} problemas en fuentes de inicio", "scanIssue": { "unreadable_location": "No se pudo leer {{count}} ubicación", "invalid_entry": "Se omitió {{count}} entrada no válida", "source_unavailable": "La fuente no respondió" },
   "managementStatus": {
     "system": "Elemento del sistema · Solo lectura",
     "protected": "Elemento protegido",
@@ -75,11 +81,14 @@
     "running": "En ejecución actualmente: CPU {{cpu}} · Memoria {{memory}}",
     "notMatched": "No se pudo identificar ninguna aplicación en ejecución"
   },
+  "currentUse": { "none": "No se está ejecutando", "low": "El uso actual de recursos es bajo", "moderate": "El uso actual de recursos es moderado", "high": "El uso actual de recursos es alto", "running": "Uso actual: CPU {{cpu}} · Memoria {{memory}}", "notMatched": "No hay una aplicación coincidente en ejecución" },
   "outcome": {
+    "undo": "Deshacer",
     "disabled": "El inicio automático para {{name}} está deshabilitado. La aplicación en ejecución no fue cerrada.",
     "enabled": "El inicio automático para {{name}} ha sido restaurado."
   },
   "actionDialog": {
+    "owner": "Aplicación", "source": "Fuente de inicio", "effect": "Cuándo se aplica",
     "disable": {
       "title": "Deshabilitar el inicio automático para {{name}}?",
       "description": "CoreRobin guarda este archivo de inicio en su propio almacenamiento recuperable y no lo elimina.",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "{{count}} elementos auxiliares",
     "itemCount_other": "{{count}} elemento",
     "modern": "Elemento de fondo moderno",
     "orphaned": "Falta el ejecutable",

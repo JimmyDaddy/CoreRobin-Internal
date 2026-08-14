@@ -62,10 +62,21 @@ export function useNativeHistoryStorage<T>({
     });
   const valueRef = useRef(value);
   const enabledRef = useRef(enabled);
+  const hydratedRef = useRef(!desktop);
+  const pendingUpdatesRef = useRef<SetStateAction<T>[]>([]);
   const lastSerializedRef = useRef(desktop ? "" : serialize(value));
   const saveInFlightRef = useRef<Promise<void> | null>(null);
   valueRef.current = value;
   enabledRef.current = enabled;
+
+  const updateValue = useCallback<Dispatch<SetStateAction<T>>>((action) => {
+    if (!hydratedRef.current) pendingUpdatesRef.current.push(action);
+    setValue((current) => {
+      const next = applyStateAction(current, action);
+      valueRef.current = next;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!desktop) return;
@@ -77,10 +88,15 @@ export function useNativeHistoryStorage<T>({
           ? null
           : parse(stored.payload);
         const legacyValue = initialValue();
-        const next = nativeValue ?? legacyValue;
+        let next: T = nativeValue ?? legacyValue;
+        for (const action of pendingUpdatesRef.current) {
+          next = applyStateAction(next, action);
+        }
+        pendingUpdatesRef.current = [];
         const serialized = serialize(next);
         setValue(next);
         valueRef.current = next;
+        hydratedRef.current = true;
         lastSerializedRef.current = stored.payload ?? "";
         setHydrated(true);
         setStorageStatus({
@@ -105,6 +121,8 @@ export function useNativeHistoryStorage<T>({
       })
       .catch((reason) => {
         if (!active) return;
+        hydratedRef.current = true;
+        pendingUpdatesRef.current = [];
         setHydrated(true);
         setStorageStatus({
           state: "failed",
@@ -167,10 +185,30 @@ export function useNativeHistoryStorage<T>({
     return () => window.clearTimeout(timer);
   }, [enabled, flushDelayMs, hydrated, persistNow, value]);
 
+  useEffect(() => {
+    if (!hydrated || !enabled) return;
+    const flush = () => {
+      void persistNow().catch(() => undefined);
+    };
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, [enabled, hydrated, persistNow]);
+
   const clear = useCallback(async () => {
     clearLegacy?.();
-    setValue(parse(null));
-    valueRef.current = parse(null);
+    const empty = parse(null);
+    pendingUpdatesRef.current = [];
+    setValue(empty);
+    valueRef.current = empty;
     lastSerializedRef.current = "";
     if (!desktop) {
       setStorageStatus({
@@ -202,12 +240,18 @@ export function useNativeHistoryStorage<T>({
 
   return {
     value,
-    setValue,
+    setValue: updateValue,
     hydrated,
     storageStatus,
     clear,
     persistNow,
   };
+}
+
+function applyStateAction<T>(current: T, action: SetStateAction<T>): T {
+  return typeof action === "function"
+    ? (action as (value: T) => T)(current)
+    : action;
 }
 
 function errorMessage(reason: unknown): string {

@@ -97,7 +97,25 @@ pub struct StartupItemsSnapshot {
     pub sampled_at_ms: u64,
     pub items: Vec<StartupItem>,
     pub unreadable_location_count: usize,
+    pub scan_warnings: Vec<StartupScanWarning>,
     pub management_available: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartupScanWarning {
+    pub source: StartupItemSource,
+    pub issue: StartupScanIssue,
+    pub count: usize,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupScanIssue {
+    UnreadableLocation,
+    InvalidEntry,
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    SourceUnavailable,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -603,6 +621,17 @@ pub struct CleanupIndexedChildrenRequest {
     pub directory_id: String,
     pub cursor: Option<usize>,
     pub limit: Option<usize>,
+    pub query: Option<String>,
+    pub sort_by: Option<CleanupIndexedSort>,
+    pub descending: Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupIndexedSort {
+    #[default]
+    Size,
+    Name,
 }
 
 #[derive(Clone, Debug, Serialize)]

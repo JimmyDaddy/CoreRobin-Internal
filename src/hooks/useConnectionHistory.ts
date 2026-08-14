@@ -89,8 +89,8 @@ export function useConnectionHistory(
     };
   }, [enabled, retentionDays, snapshot]);
 
-  const clear = useCallback(() => {
-    void storage.clear().catch(() => undefined);
+  const clear = useCallback(async () => {
+    await storage.clear();
   }, [storage]);
 
   return {

@@ -14,9 +14,17 @@
   "scanning": "正在检查…",
   "loadingTitle": "正在读取启动位置",
   "loadingDescription": "CoreRobin 只读取系统公开的启动配置，不会加载或运行其中的命令。",
+  "scanFailed": "暂时无法读取启动项。没有修改任何内容，请重试。",
+  "openSettingsFailed": "未能打开系统设置，请重试，或在系统设置中手动打开“登录项”。",
   "summary": "启动项摘要",
   "reviewCount": "建议看一眼",
   "reviewHint": "登录时启动的第三方项目",
+  "loginCount": "登录时打开",
+  "loginHint": "登录后自动启动的应用与助手",
+  "backgroundCount": "后台活动",
+  "backgroundHint": "按条件运行的同步、更新与维护助手",
+  "disabledCount": "已停用",
+  "disabledHint": "CoreRobin 可随时恢复的项目",
   "thirdPartyCount": "第三方项目",
   "thirdPartyHint": "包含按条件启动的后台助手",
   "systemCount": "系统项目",
@@ -26,6 +34,9 @@
   "filters": "启动项筛选",
   "filter": {
     "review": "建议查看",
+    "login": "登录时打开",
+    "background": "后台活动",
+    "disabled": "已停用",
     "all": "全部",
     "system": "系统项目"
   },
@@ -41,7 +52,17 @@
   "unreadable": "{{count}} 个启动位置因权限不足未能读取",
   "actions": {
     "disable": "停用开机启动",
-    "enable": "恢复开机启动"
+    "enable": "恢复开机启动",
+    "openSettings": "前往系统设置管理"
+  },
+  "showingCount": "正在展示 {{shown}} / {{total}} 项",
+  "showMore": "再显示 {{count}} 项",
+  "completeScan": "已读取全部可用启动来源",
+  "partialScan": "结果不完整：发现 {{count}} 个启动来源问题",
+  "scanIssue": {
+    "unreadable_location": "{{count}} 个位置无法读取",
+    "invalid_entry": "已跳过 {{count}} 个无效条目",
+    "source_unavailable": "该来源暂时没有响应"
   },
   "managementStatus": {
     "system": "系统项目只读",
@@ -75,9 +96,18 @@
     "running": "当前运行：CPU {{cpu}} · 内存 {{memory}}",
     "notMatched": "未匹配到当前正在运行的应用"
   },
+  "currentUse": {
+    "none": "当前未运行",
+    "low": "当前资源占用较低",
+    "moderate": "当前资源占用中等",
+    "high": "当前资源占用较高",
+    "running": "当前占用：CPU {{cpu}} · 内存 {{memory}}",
+    "notMatched": "当前没有匹配到正在运行的应用"
+  },
   "outcome": {
     "disabled": "已停用 {{name}} 的自动启动；当前应用不会被关闭。",
-    "enabled": "已恢复 {{name}} 的自动启动。"
+    "enabled": "已恢复 {{name}} 的自动启动。",
+    "undo": "撤销"
   },
   "actionDialog": {
     "disable": {
@@ -97,6 +127,9 @@
     "whenTitle": "不会立刻改变当前会话",
     "runningTitle": "当前应用会继续运行",
     "runningDescription": "停用自动启动不会关闭正在运行的应用，也不会中断正在进行的工作。",
+    "owner": "所属应用",
+    "source": "启动来源",
+    "effect": "生效时间",
     "preparing": "正在核对启动项与文件状态…",
     "applying": "正在安全更新…",
     "errors": {
@@ -119,6 +152,7 @@
   },
   "ownership": {
     "itemCount": "{{count}} 个项目",
+    "moreItems": "另外 {{count}} 个辅助项目",
     "modern": "现代后台项目",
     "orphaned": "可执行文件已不存在",
     "lastRun": "系统最近报告状态：{{status}}",

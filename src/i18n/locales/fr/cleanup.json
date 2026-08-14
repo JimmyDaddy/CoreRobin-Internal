@@ -201,6 +201,7 @@
       "path": "Chemins de fichiers",
       "category": "Utilisation"
     },
+    "view": { "label": "Mode d’affichage", "map": "Carte d’espace", "list": "Liste", "search": "Rechercher dans ce dossier", "clearSearch": "Effacer la recherche", "sortSize": "Trier par taille", "sortName": "Trier par nom", "descending": "Décroissant", "ascending": "Croissant", "loading": "Lecture de l’index…", "loadFailed": "Impossible de charger la liste. Réessayez.", "empty": "Aucun élément correspondant" },
     "ariaLabel": "Carte en forme de soleil pour {{name}}",
     "back": "Revenir d'un niveau",
     "breadcrumbs": "Hiérarchie de la carte de l'espace",
@@ -210,7 +211,6 @@
     "selected": "Sélectionné",
     "grouped": "Catégorie groupée",
     "otherContent": "Autres contenus",
-    "deferredContent": "Détails non chargés",
     "restrictedObjects": "Objets non accessibles",
     "allocatedSize": "Alloué sur le disque",
     "logicalSize": "{{size}} taille logique",
@@ -220,13 +220,11 @@
       "folder": "Dossier",
       "file": "Fichier",
       "aggregate": "Objets de petite taille regroupés",
-      "deferred": "Détails à charger",
       "restricted": "Restreints"
     },
     "noDeeperBreakdown": "Aucun regroupement de dossiers supplémentaire n'est disponible à ce niveau.",
     "loadDeeperHint": "Sélectionnez ce dossier pour ouvrir le niveau suivant depuis l’index local.",
     "otherContentHint": "Ce groupe contient les éléments non affichés séparément en raison de la capacité de l’index ou de la page actuelle ; ils ne sont pas nécessairement petits. Parcourez la suite ou ouvrez le dossier actuel dans Finder.",
-    "deferredContentHint": "La taille du dossier est connue, mais ses détails ne sont pas encore conservés dans l’index local. Sélectionnez l’élément ci-dessus pour charger uniquement ce dossier sans réanalyser tout le disque.",
     "loadingFolder": "Chargement de ce dossier…",
     "loadFailed": "Impossible de lire l’index des dossiers",
     "loadMore": "Afficher 50 éléments supplémentaires",
@@ -269,6 +267,7 @@
     "freshness": {
       "cached": "Affichage du résultat de l'analyse précédente",
       "expired": "Cette analyse est ancienne ; une nouvelle analyse est recommandée",
+      "updating": "Mise à jour de l’analyse ; la carte précédente reste disponible",
       "changed": "Ce dossier a été modifié ; les tailles peuvent être inexactes",
       "changedShort": "Contenu modifié",
       "refreshFolder": "Actualiser {{name}}",

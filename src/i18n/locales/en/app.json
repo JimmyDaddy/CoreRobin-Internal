@@ -1,5 +1,6 @@
 {
   "mainNavigation": "Main navigation",
+  "tasks": { "kicker": "Background work", "title": "Task Center", "activeCount": "{{count}} tasks running", "needsAttention": "A task needs attention", "preparing": "Preparing…", "open": "Return to task", "retry": "Review and retry", "empty": "No tasks are running", "emptyHint": "Scans, updates, and inventories appear here.", "cleanup": { "title": "Space scan", "progress": "{{count}} items checked", "failed": "Space scan did not finish" }, "folder": { "title": "Folder refresh", "progress": "{{count}} items checked" }, "files": { "title": "File review", "progress": "{{count}} items checked", "failed": "File review did not finish" }, "startup": { "title": "Startup inventory", "failed": "Startup inventory did not finish" }, "update": { "installing": "Downloading and installing update", "ready": "Update is ready", "installError": "Update installation did not finish", "restartError": "Application restart is required", "current": "CoreRobin update" } },
   "monitor": "Monitor",
   "diagnostics": "Diagnostics",
   "overview": "Overview",

@@ -4,11 +4,19 @@ import type { StartupItem } from "./types";
 
 export type StartupAdvice = "review" | "normal" | "system" | "disabled";
 export type StartupImpactLevel = "none" | "low" | "moderate" | "high";
+export type StartupFilter =
+  | "review"
+  | "login"
+  | "background"
+  | "disabled"
+  | "system";
 
 export function startupAdvice(item: StartupItem): StartupAdvice {
   if (!item.enabled) return "disabled";
   if (item.system) return "system";
-  return item.launchKind === "login" ? "review" : "normal";
+  return item.launchKind === "login" && item.managementStatus === "available"
+    ? "review"
+    : "normal";
 }
 
 export function startupRuntimeApplication(
@@ -53,12 +61,19 @@ export function startupImpactLevel(
 
 export function filterStartupItems(
   items: readonly StartupItem[],
-  filter: "review" | "all" | "system",
+  filter: StartupFilter,
   query: string,
 ): StartupItem[] {
   const normalized = query.trim().toLowerCase();
   return items.filter((item) => {
     if (filter === "review" && startupAdvice(item) !== "review") return false;
+    if (filter === "login" && (item.system || !item.enabled || item.launchKind !== "login")) return false;
+    if (filter === "background" && (
+      item.system
+      || !item.enabled
+      || (item.launchKind !== "conditional" && !item.modernBackgroundItem)
+    )) return false;
+    if (filter === "disabled" && item.enabled) return false;
     if (filter === "system" && !item.system) return false;
     if (!normalized) return true;
     return [item.name, item.publisher, item.command, item.path]

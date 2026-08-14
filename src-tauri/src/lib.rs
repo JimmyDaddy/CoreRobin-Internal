@@ -812,17 +812,9 @@ async fn get_cleanup_indexed_children(
     request: CleanupIndexedChildrenRequest,
 ) -> Result<CleanupIndexedChildrenPage, CommandError> {
     let path = cleanup_scan_index_path(&app)?;
-    tauri::async_runtime::spawn_blocking(move || {
-        load_indexed_children(
-            &path,
-            &request.scan_id,
-            &request.directory_id,
-            request.cursor.unwrap_or(0),
-            request.limit.unwrap_or(50),
-        )
-    })
-    .await
-    .map_err(|error| CommandError::internal(format!("Cleanup index lookup failed: {error}")))?
+    tauri::async_runtime::spawn_blocking(move || load_indexed_children(&path, &request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Cleanup index lookup failed: {error}")))?
 }
 
 #[tauri::command]

@@ -1,5 +1,6 @@
 {
   "mainNavigation": "主导航",
+  "tasks": { "kicker": "后台任务", "title": "任务中心", "activeCount": "{{count}} 个任务进行中", "needsAttention": "任务需要处理", "preparing": "正在准备…", "open": "返回任务", "retry": "查看并重试", "empty": "没有正在运行的任务", "emptyHint": "扫描、更新和盘点会统一显示在这里。", "cleanup": { "title": "空间扫描", "progress": "已检查 {{count}} 项", "failed": "空间扫描未完成" }, "folder": { "title": "文件夹刷新", "progress": "已检查 {{count}} 项" }, "files": { "title": "文件核对", "progress": "已检查 {{count}} 项", "failed": "文件核对未完成" }, "startup": { "title": "启动项盘点", "failed": "启动项盘点未完成" }, "update": { "installing": "正在下载并安装更新", "ready": "更新已就绪", "installError": "更新安装未完成", "restartError": "需要重新启动应用", "current": "CoreRobin 更新" } },
   "monitor": "监控",
   "diagnostics": "诊断",
   "overview": "概览",
