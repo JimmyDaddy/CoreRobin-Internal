@@ -228,6 +228,58 @@ describe("application uninstall assistant", () => {
     ));
   });
 
+  it("keeps the uninstall plan bound to the latest selected application", async () => {
+    const application = (name: string) => ({
+      name,
+      path: `/Applications/${name}.app`,
+      bundleId: `com.example.${name.toLocaleLowerCase()}`,
+      sizeBytes: 4_096,
+      lastUsedAtMs: null,
+      modifiedAtMs: 900,
+      uninstallable: true,
+      unavailableReason: null,
+      installationSource: "macos_bundle" as const,
+      nativeUninstallIdentifier: null,
+      nativeUninstallRequiresElevation: false,
+      iconPath: null,
+    });
+    const first = application("First");
+    const second = application("Second");
+    uninstallApi.getInstalledApplications.mockResolvedValue({
+      sampledAtMs: 1_000,
+      platformSupported: true,
+      cached: false,
+      refreshRecommended: false,
+      applications: [first, second],
+    });
+    const resolvers = new Map<string, (value: unknown) => void>();
+    uninstallApi.getApplicationUninstallPlan.mockImplementation((path: string) =>
+      new Promise((resolve) => resolvers.set(path, resolve)));
+
+    render(<ApplicationUninstallAssistant />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /First/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Second/ }));
+    resolvers.get(second.path)?.({
+      sampledAtMs: 2_000,
+      application: second,
+      artifacts: [],
+      skippedPaths: [],
+    });
+    expect(await screen.findByRole("heading", { name: "Second" })).toBeTruthy();
+
+    resolvers.get(first.path)?.({
+      sampledAtMs: 1_500,
+      application: first,
+      artifacts: [],
+      skippedPaths: [],
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Second" })).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "First" })).toBeNull();
+    });
+  });
+
   it("keeps a removed app in place with its Trash status instead of rescanning the inventory", async () => {
     const application = {
       name: "Example",

@@ -72,7 +72,9 @@ interface NetworkExplorerProps {
   connections: NetworkConnectionsSnapshot | null;
   connectionsError: CommandError | null;
   connectionsLoading: boolean;
+  connectionsPaused: boolean;
   onRefreshConnections: () => void;
+  onResumeMonitoring: () => void;
   connectionRefreshIntervalMs: number;
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
@@ -113,7 +115,9 @@ export function NetworkExplorer({
   connections,
   connectionsError,
   connectionsLoading,
+  connectionsPaused,
   onRefreshConnections,
+  onResumeMonitoring,
   connectionRefreshIntervalMs,
   processes,
   onSelectProcess,
@@ -227,7 +231,9 @@ export function NetworkExplorer({
           snapshot={connections}
           error={connectionsError}
           loading={connectionsLoading}
+          paused={connectionsPaused}
           onRefresh={onRefreshConnections}
+          onResume={onResumeMonitoring}
           refreshIntervalMs={connectionRefreshIntervalMs}
           processes={processes}
           onSelectProcess={onSelectProcess}
@@ -849,7 +855,9 @@ function NetworkConnectionsPanel({
   snapshot,
   error,
   loading,
+  paused,
   onRefresh,
+  onResume,
   refreshIntervalMs,
   processes,
   onSelectProcess,
@@ -857,7 +865,9 @@ function NetworkConnectionsPanel({
   snapshot: NetworkConnectionsSnapshot | null;
   error: CommandError | null;
   loading: boolean;
+  paused: boolean;
   onRefresh: () => void;
+  onResume: () => void;
   refreshIntervalMs: number;
   processes: ProcessRow[];
   onSelectProcess: (process: ProcessRow) => void;
@@ -916,6 +926,20 @@ function NetworkConnectionsPanel({
           </button>
         </div>
       </header>
+
+      {paused ? (
+        <div className="network-connections__notice" role="status">
+          <MinusCircle size={13} aria-hidden="true" />
+          <span>{t("network:connections.paused")}</span>
+          <button className="button button--secondary" type="button" onClick={onResume}>
+            {t("network:connections.resume")}
+          </button>
+          <button className="button button--plain" type="button" disabled={loading} onClick={onRefresh}>
+            <RefreshCw className={loading ? "is-spinning" : undefined} size={13} />
+            {t("network:connections.refreshOnce")}
+          </button>
+        </div>
+      ) : null}
 
       {snapshot ? (
         <div className="network-connection-summary" aria-label={t("network:connections.summary")}>

@@ -149,6 +149,22 @@ describe("visibility-aware system monitoring", () => {
 });
 
 describe("visibility-aware network monitoring", () => {
+  it("leaves loading state while paused and still allows a one-shot refresh", async () => {
+    const { result } = renderHook(() =>
+      useNetworkConnections(true, true, 500, true),
+    );
+    await flushEffects();
+    expect(result.current.loading).toBe(false);
+    expect(getNetworkConnections).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.refreshNow();
+    });
+    expect(getNetworkConnections).toHaveBeenCalledOnce();
+    expect(result.current.snapshot).not.toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
   it("stops hidden polling and refreshes immediately when shown", async () => {
     const { rerender } = renderHook(
       ({ visible }) => useNetworkConnections(true, false, 500, visible),

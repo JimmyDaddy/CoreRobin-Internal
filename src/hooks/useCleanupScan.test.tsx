@@ -43,6 +43,7 @@ function Harness() {
     <>
       <span>{scan.phase ?? "idle"}</span>
       <span>{scan.snapshot?.scanId ?? "no-snapshot"}</span>
+      <span>{scan.snapshotStatus}</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
       <button type="button" onClick={() => void scan.clear()}>Clear</button>
@@ -162,6 +163,17 @@ describe("cleanup scan lifecycle", () => {
 
     await waitFor(() => expect(screen.getByText("cleanup-new")).toBeTruthy());
     expect(cleanupApi.getCleanupScanJob).toHaveBeenCalled();
+  });
+
+  it("keeps the previous map available while a replacement scan runs", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByText("cleanup-new")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    await waitFor(() => expect(screen.getByText("updating")).toBeTruthy());
+    expect(screen.getByText("cleanup-new")).toBeTruthy();
   });
 });
 

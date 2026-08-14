@@ -66,6 +66,42 @@ export default interface Resources {
     },
     "storage": "存储",
     "switchLanguage": "切换界面语言",
+    "tasks": {
+      "activeCount": "{{count}} 个任务进行中",
+      "cleanup": {
+        "failed": "空间扫描未完成",
+        "progress": "已检查 {{count}} 项",
+        "title": "空间扫描"
+      },
+      "empty": "没有正在运行的任务",
+      "emptyHint": "扫描、更新和盘点会统一显示在这里。",
+      "files": {
+        "failed": "文件核对未完成",
+        "progress": "已检查 {{count}} 项",
+        "title": "文件核对"
+      },
+      "folder": {
+        "progress": "已检查 {{count}} 项",
+        "title": "文件夹刷新"
+      },
+      "kicker": "后台任务",
+      "needsAttention": "任务需要处理",
+      "open": "返回任务",
+      "preparing": "正在准备…",
+      "retry": "查看并重试",
+      "startup": {
+        "failed": "启动项盘点未完成",
+        "title": "启动项盘点"
+      },
+      "title": "任务中心",
+      "update": {
+        "current": "CoreRobin 更新",
+        "installError": "更新安装未完成",
+        "installing": "正在下载并安装更新",
+        "ready": "更新已就绪",
+        "restartError": "需要重新启动应用"
+      }
+    },
     "technicalOverview": {
       "description": "展开 CPU、内存、磁盘、网络和五分钟趋势。",
       "title": "查看实时资源详情"
@@ -83,6 +119,28 @@ export default interface Resources {
     }
   },
   "applications": {
+    "center": {
+      "boundary": "只按稳定应用身份关联本机数据，不保存命令行或文件内容。",
+      "connectionCount": "当前 {{count}} 个连接",
+      "description": "在同一个应用身份下查看当前占用、启动行为、网络活动、历史记录与卸载入口。",
+      "history": "历史记录",
+      "historySamples": "已保存 {{count}} 个样本",
+      "kicker": "统一应用视图",
+      "localIdentity": "本机应用身份",
+      "manage": "管理应用",
+      "manageHint": "检查残留文件或卸载",
+      "network": "网络活动",
+      "selected": "当前应用",
+      "startup": "启动行为",
+      "startupCount": "关联 {{count}} 个启动项",
+      "tabs": {
+        "activity": "当前活动",
+        "history": "历史归因",
+        "label": "应用中心页面",
+        "manage": "管理与卸载"
+      },
+      "title": "应用中心"
+    },
     "description": "CoreRobin 会把辅助进程合并到熟悉的应用名称下，再汇总 CPU、内存和磁盘活动。",
     "disk": "磁盘",
     "empty": "没有匹配的应用",
@@ -506,8 +564,6 @@ export default interface Resources {
       "categoryRoot": "用途分类",
       "centerBack": "返回上一级目录",
       "chooseDeleteMethod": "选择删除方式",
-      "deferredContent": "尚未展开的内容",
-      "deferredContentHint": "这个文件夹的容量已经统计，但详细目录尚未保存在本机索引中。点击上方项目即可只载入当前文件夹，无需重新扫描整个磁盘。",
       "deleteResult": {
         "cancelled": "已停止清理，完成了 {{deletedCount}} 项",
         "cancelledNoDeletion": "已停止清理，没有内容被完整处理",
@@ -532,7 +588,8 @@ export default interface Resources {
         "changedShort": "内容已变化",
         "expired": "扫描结果较旧，建议重新扫描",
         "refreshFolder": "刷新 {{name}}",
-        "refreshingFolder": "正在刷新 {{name}}…"
+        "refreshingFolder": "正在刷新 {{name}}…",
+        "updating": "正在更新扫描，上一次空间地图仍可使用"
       },
       "grouped": "汇总分类",
       "includedByParent": "已随上级文件夹加入",
@@ -548,7 +605,7 @@ export default interface Resources {
       },
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
       "otherContent": "其余内容",
-      "otherContentHint": "这里汇总因索引容量或当前分页而未单独展示的内容；它们不一定较小。可继续浏览列表，或在访达中打开当前文件夹。",
+      "otherContentHint": "这里仅汇总当前页未显示或未单独保存的文件；所有子文件夹都已收录，可用“再显示 50 项”继续浏览目录。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
       "refreshFailed": "无法刷新文件夹",
@@ -562,12 +619,25 @@ export default interface Resources {
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {
         "aggregate": "合并的小对象",
-        "deferred": "可继续载入",
         "file": "文件",
         "folder": "文件夹",
         "restricted": "受限内容"
       },
-      "unreadable": "无法读取"
+      "unreadable": "无法读取",
+      "view": {
+        "ascending": "从小到大",
+        "clearSearch": "清空搜索",
+        "descending": "从大到小",
+        "empty": "当前文件夹没有匹配内容",
+        "label": "浏览方式",
+        "list": "列表",
+        "loadFailed": "列表读取失败，请重试",
+        "loading": "正在读取索引…",
+        "map": "空间图",
+        "search": "搜索当前文件夹",
+        "sortName": "按名称",
+        "sortSize": "按占用大小"
+      }
     },
     "morePaths": " 等 {{count}} 个位置",
     "noLargeFiles": "可访问的系统磁盘位置中没有发现超过 500 MB 的文件。",
@@ -1869,10 +1939,13 @@ export default interface Resources {
       "localAddress": "本地地址",
       "more": "显示更多（剩余 {{count}} 项）",
       "ownerUnavailable": "当前快照中不可用",
+      "paused": "监控已暂停，上一次连接结果仍可查看。",
       "process": "进程",
       "protocol": "协议",
       "refresh": "刷新活动连接",
+      "refreshOnce": "仅刷新一次",
       "remoteAddress": "远端地址",
+      "resume": "恢复监控",
       "skipped": "{{count}} 个连接条目因系统限制未能读取。",
       "state": "状态",
       "states": {
@@ -2565,6 +2638,7 @@ export default interface Resources {
         "title": "停用 {{name}} 的自动启动？",
         "whenDescription": "下次登录时生效；恢复后也会从下一次登录开始重新允许自动启动。"
       },
+      "effect": "生效时间",
       "enable": {
         "confirm": "确认恢复自动启动",
         "description": "CoreRobin 会把之前保存的配置放回原位置。",
@@ -2580,16 +2654,19 @@ export default interface Resources {
         "startup_management_failed": "系统未能安全移动启动配置；原文件仍保留在当前状态。",
         "startup_state_changed": "启动配置在确认后发生变化，CoreRobin 没有执行操作。"
       },
+      "owner": "所属应用",
       "preparing": "正在核对启动项与文件状态…",
       "reversibleDescription": "配置文件只会在两个用户目录之间移动，不会被编辑或删除。",
       "reversibleTitle": "随时可以恢复",
       "runningDescription": "停用自动启动不会关闭正在运行的应用，也不会中断正在进行的工作。",
       "runningTitle": "当前应用会继续运行",
+      "source": "启动来源",
       "whenTitle": "不会立刻改变当前会话"
     },
     "actions": {
       "disable": "停用开机启动",
-      "enable": "恢复开机启动"
+      "enable": "恢复开机启动",
+      "openSettings": "前往系统设置管理"
     },
     "advice": {
       "disabled": {
@@ -2609,14 +2686,30 @@ export default interface Resources {
         "title": "系统或设备服务"
       }
     },
+    "backgroundCount": "后台活动",
+    "backgroundHint": "按条件运行的同步、更新与维护助手",
+    "completeScan": "已读取全部可用启动来源",
+    "currentUse": {
+      "high": "当前资源占用较高",
+      "low": "当前资源占用较低",
+      "moderate": "当前资源占用中等",
+      "none": "当前未运行",
+      "notMatched": "当前没有匹配到正在运行的应用",
+      "running": "当前占用：CPU {{cpu}} · 内存 {{memory}}"
+    },
     "description": "查看会在登录时或后台条件满足时启动的项目，优先解释第三方项目，不把系统服务包装成普通开关。",
     "disabled": "已停用",
+    "disabledCount": "已停用",
+    "disabledHint": "CoreRobin 可随时恢复的项目",
     "emptyDescription": "可以切换到“全部”查看按条件启动和系统维护项目。",
     "emptyTitle": "没有需要查看的项目",
     "enabled": "会自动启动",
     "eyebrow": "开机与登录",
     "filter": {
       "all": "全部",
+      "background": "后台活动",
+      "disabled": "已停用",
+      "login": "登录时打开",
       "review": "建议查看",
       "system": "系统项目"
     },
@@ -2682,20 +2775,25 @@ export default interface Resources {
     "listTitle": "哪些内容会自动启动",
     "loadingDescription": "CoreRobin 只读取系统公开的启动配置，不会加载或运行其中的命令。",
     "loadingTitle": "正在读取启动位置",
+    "loginCount": "登录时打开",
+    "loginHint": "登录后自动启动的应用与助手",
     "managementBoundary": "只有可恢复的用户级第三方启动文件可以停用；系统项目和不支持的来源保持只读。",
     "managementStatus": {
       "protected": "受保护项目",
       "system": "系统项目只读",
       "unsupported": "此来源暂不支持管理"
     },
+    "openSettingsFailed": "未能打开系统设置，请重试，或在系统设置中手动打开“登录项”。",
     "outcome": {
       "disabled": "已停用 {{name}} 的自动启动；当前应用不会被关闭。",
-      "enabled": "已恢复 {{name}} 的自动启动。"
+      "enabled": "已恢复 {{name}} 的自动启动。",
+      "undo": "撤销"
     },
     "ownership": {
       "itemCount": "{{count}} 个项目",
       "lastRun": "系统最近报告状态：{{status}}",
       "modern": "现代后台项目",
+      "moreItems": "另外 {{count}} 个辅助项目",
       "orphaned": "可执行文件已不存在",
       "signature": {
         "invalid": "签名无效",
@@ -2704,12 +2802,21 @@ export default interface Resources {
         "valid": "签名有效"
       }
     },
+    "partialScan": "结果不完整：发现 {{count}} 个启动来源问题",
     "publisherUnknown": "发布者未知",
     "readOnlyBoundary": "当前平台没有可安全恢复的启动项来源，因此只读展示。",
     "reviewCount": "建议看一眼",
     "reviewHint": "登录时启动的第三方项目",
+    "scanFailed": "暂时无法读取启动项。没有修改任何内容，请重试。",
+    "scanIssue": {
+      "invalid_entry": "已跳过 {{count}} 个无效条目",
+      "source_unavailable": "该来源暂时没有响应",
+      "unreadable_location": "{{count}} 个位置无法读取"
+    },
     "scanning": "正在检查…",
     "search": "搜索名称、发布者或路径",
+    "showMore": "再显示 {{count}} 项",
+    "showingCount": "正在展示 {{shown}} / {{total}} 项",
     "source": {
       "background_task": "登录项与后台项目",
       "desktop_entry": "自动启动条目",

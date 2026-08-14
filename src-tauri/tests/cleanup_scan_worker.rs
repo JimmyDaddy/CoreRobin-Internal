@@ -1,13 +1,17 @@
 use std::fs;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::tempdir;
 
+static WORKER_TEST_LOCK: Mutex<()> = Mutex::new(());
+
 #[test]
 fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
+    let _worker_guard = WORKER_TEST_LOCK.lock().unwrap();
     let fixture = tempdir().unwrap();
     let scan_root = fixture.path().join("scan-root");
     fs::create_dir_all(scan_root.join("nested")).unwrap();
@@ -92,6 +96,7 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
 
 #[test]
 fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
+    let _worker_guard = WORKER_TEST_LOCK.lock().unwrap();
     let fixture = tempdir().unwrap();
     let private = fixture.path().join("private");
     fs::create_dir_all(&private).unwrap();

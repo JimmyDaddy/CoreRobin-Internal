@@ -142,8 +142,40 @@ pub struct BackgroundSupervisor {
 impl BackgroundSupervisor {
     pub fn configure(&self, mut config: BackgroundSupervisorConfig) {
         config.application_watch_rules.truncate(50);
+        let permission_restored = self
+            .config
+            .lock()
+            .map(|current| {
+                current.notifications_enabled
+                    && !current.notification_permission_granted
+                    && config.notifications_enabled
+                    && config.notification_permission_granted
+            })
+            .unwrap_or(false);
         if let Ok(mut current) = self.config.lock() {
             *current = config;
+        }
+        if permission_restored {
+            self.rearm_active_notifications();
+        }
+    }
+
+    fn rearm_active_notifications(&self) {
+        let Ok(mut runtime) = self.runtime.lock() else {
+            return;
+        };
+        for tracker in runtime.resources.values_mut() {
+            if tracker.active_since_ms.is_some() {
+                tracker.active_since_ms = None;
+                tracker.breach_since_ms = None;
+                tracker.recovery_since_ms = None;
+            }
+        }
+        for tracker in runtime.watches.values_mut() {
+            if tracker.active {
+                tracker.active = false;
+                tracker.started_at_ms = None;
+            }
         }
     }
 
@@ -566,5 +598,48 @@ mod tests {
             ),
             "Example: CPU 81% for 30 seconds"
         );
+    }
+
+    #[test]
+    fn restoring_notification_permission_rearms_active_conditions() {
+        let supervisor = BackgroundSupervisor::default();
+        supervisor.configure(BackgroundSupervisorConfig {
+            notifications_enabled: true,
+            notification_permission_granted: false,
+            ..BackgroundSupervisorConfig::default()
+        });
+        {
+            let mut runtime = supervisor.runtime.lock().unwrap();
+            runtime.resources.insert(
+                SupervisorResource::Memory,
+                ResourceTracker {
+                    active_since_ms: Some(10),
+                    breach_since_ms: Some(1),
+                    ..ResourceTracker::default()
+                },
+            );
+            runtime.watches.insert(
+                "watch".to_owned(),
+                WatchTracker {
+                    started_at_ms: Some(1),
+                    active: true,
+                    last_notified_at_ms: None,
+                },
+            );
+        }
+
+        supervisor.configure(BackgroundSupervisorConfig {
+            notifications_enabled: true,
+            notification_permission_granted: true,
+            ..BackgroundSupervisorConfig::default()
+        });
+
+        let runtime = supervisor.runtime.lock().unwrap();
+        let resource = runtime.resources.get(&SupervisorResource::Memory).unwrap();
+        assert_eq!(resource.active_since_ms, None);
+        assert_eq!(resource.breach_since_ms, None);
+        let watch = runtime.watches.get("watch").unwrap();
+        assert!(!watch.active);
+        assert_eq!(watch.started_at_ms, None);
     }
 }

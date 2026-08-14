@@ -1,0 +1,27 @@
+.application-center { display: grid; gap: 14px; }
+.application-center__hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(135deg, var(--panel), rgba(99, 168, 255, 0.06)); }
+.application-center__hero > span { display: grid; place-items: center; width: 44px; height: 44px; color: var(--blue); border-radius: 13px; background: var(--blue-soft); }
+.application-center__hero small { color: var(--text-muted); }
+.application-center__hero h1 { margin: 2px 0; font-size: 22px; }
+.application-center__hero p { margin: 0; color: var(--text-muted); font-size: 11px; }
+.application-center__hero nav { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); }
+.application-center__hero nav button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 11px; color: var(--text-muted); border: 0; border-radius: 9px; background: transparent; }
+.application-center__hero nav button.is-active { color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px rgba(99, 168, 255, 0.3); }
+.application-center__activity { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.65fr); gap: 14px; align-items: start; }
+.application-center__identity { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); position: sticky; top: 12px; }
+.application-center__identity > header { display: flex; align-items: center; gap: 10px; padding-bottom: 11px; border-bottom: 1px solid var(--border); }
+.application-center__identity > header > span { width: 40px; height: 40px; }
+.application-center__identity > header div { display: grid; min-width: 0; }
+.application-center__identity > header strong,
+.application-center__identity > header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.application-center__identity > header small,
+.application-center__identity > header span { color: var(--text-muted); font-size: 9px; }
+.application-center__metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.application-center__metrics > span { display: grid; gap: 2px; padding: 9px; border-radius: 10px; background: var(--surface-soft); }
+.application-center__metrics small { color: var(--text-muted); font-size: 9px; }
+.application-center__identity > button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 9px; min-height: 46px; padding: 8px 10px; color: var(--text-soft); text-align: left; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-soft); }
+.application-center__identity > button:hover { border-color: rgba(99, 168, 255, 0.35); background: var(--blue-soft); }
+.application-center__identity > button span { display: grid; }
+.application-center__identity > button small { color: var(--text-muted); font-size: 9px; }
+.application-center__identity footer { display: flex; gap: 6px; color: var(--text-muted); font-size: 9px; line-height: 1.5; }
+@media (max-width: 980px) { .application-center__hero { grid-template-columns: auto 1fr; } .application-center__hero nav { grid-column: 1 / -1; } .application-center__activity { grid-template-columns: 1fr; } .application-center__identity { position: static; } }

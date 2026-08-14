@@ -201,6 +201,7 @@
       "path": "Dateipfade",
       "category": "Zweck"
     },
+    "view": { "label": "Darstellung", "map": "Speicherkarte", "list": "Liste", "search": "Diesen Ordner durchsuchen", "clearSearch": "Suche leeren", "sortSize": "Nach Größe", "sortName": "Nach Name", "descending": "Absteigend", "ascending": "Aufsteigend", "loading": "Index wird gelesen…", "loadFailed": "Liste konnte nicht geladen werden. Erneut versuchen.", "empty": "Keine passenden Elemente" },
     "ariaLabel": "Speicherkarte für {{name}}",
     "back": "Zurück ein Level",
     "breadcrumbs": "Hierarchische Ansicht der Speicherkarte",
@@ -210,7 +211,6 @@
     "selected": "Ausgewählt",
     "grouped": "Gruppierte Kategorie",
     "otherContent": "Weitere Inhalte",
-    "deferredContent": "Details noch nicht geladen",
     "restrictedObjects": "Nicht zugängliche Objekte",
     "allocatedSize": "Auf der Festplatte allokiert",
     "logicalSize": "{{size}} logische Größe",
@@ -220,13 +220,11 @@
       "folder": "Ordner",
       "file": "Datei",
       "aggregate": "Gruppierte kleine Objekte",
-      "deferred": "Ladbare Details",
       "restricted": "Beschränkte Objekte"
     },
     "noDeeperBreakdown": "Eine tiefere Verzeichnisstruktur ist auf dieser Ebene nicht verfügbar.",
     "loadDeeperHint": "Wählen Sie diesen Ordner, um die nächste Ebene aus dem lokalen Index zu öffnen.",
     "otherContentHint": "Diese Gruppe enthält Inhalte, die wegen der Indexkapazität oder der aktuellen Seite nicht einzeln angezeigt werden; sie sind nicht unbedingt klein. Blättern Sie weiter oder öffnen Sie den aktuellen Ordner im Finder.",
-    "deferredContentHint": "Die Ordnergröße ist bekannt, die Verzeichnisdetails sind jedoch noch nicht im lokalen Index gespeichert. Wählen Sie den Eintrag oben, um nur diesen Ordner zu laden, ohne das gesamte Laufwerk erneut zu scannen.",
     "loadingFolder": "Dieser Ordner wird geladen…",
     "loadFailed": "Verzeichnisindex konnte nicht gelesen werden",
     "loadMore": "Weitere 50 Elemente anzeigen",
@@ -269,6 +267,7 @@
     "freshness": {
       "cached": "Zeigt das Ergebnis des vorherigen Scans an",
       "expired": "Dieser Scan ist veraltet; ein erneuter Scan wird empfohlen",
+      "updating": "Der Scan wird aktualisiert; die vorherige Karte bleibt verfügbar",
       "changed": "Dieses Verzeichnis wurde geändert; Größenangaben können ungenau sein",
       "changedShort": "Inhalt wurde geändert",
       "refreshFolder": "{{name}} aktualisieren",

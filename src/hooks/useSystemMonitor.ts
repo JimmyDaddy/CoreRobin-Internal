@@ -63,9 +63,13 @@ export function useSystemMonitor(
   const visibleRef = useRef(visible);
   const pausedRef = useRef(paused);
   const includeApplicationNamesRef = useRef(includeApplicationNames);
+  const refreshIntervalMsRef = useRef(refreshIntervalMs);
+  const hiddenFullSnapshotIntervalMsRef = useRef(hiddenFullSnapshotIntervalMs);
   visibleRef.current = visible;
   pausedRef.current = paused;
   includeApplicationNamesRef.current = includeApplicationNames;
+  refreshIntervalMsRef.current = refreshIntervalMs;
+  hiddenFullSnapshotIntervalMsRef.current = hiddenFullSnapshotIntervalMs;
   const desktop = isDesktopRuntime();
 
   const applySnapshot = useCallback((
@@ -300,20 +304,54 @@ export function useSystemMonitor(
   useEffect(() => {
     if (!desktop) return;
     let disposed = false;
-    const heartbeat = () => {
-      void reportFrontendHeartbeat()
-        .then((status) => {
-          if (!disposed) setSamplerStatus(status);
-        })
-        .catch(() => undefined);
+    let failureCount = 0;
+    let timer: number | null = null;
+    const heartbeat = async () => {
+      try {
+        const status = await reportFrontendHeartbeat();
+        if (disposed) return;
+        failureCount = 0;
+        setSamplerStatus(status);
+      } catch (caughtError) {
+        if (disposed) return;
+        failureCount += 1;
+        if (failureCount >= 3) {
+          setError({
+            code: "sampler_heartbeat_lost",
+            message: normalizeCommandError(caughtError).message,
+          });
+          try {
+            const status = await setSamplerControl({
+              active: visibleRef.current,
+              paused: pausedRef.current,
+              intervalMs: visibleRef.current
+                ? refreshIntervalMsRef.current
+                : null,
+              fullSnapshotIntervalMs: visibleRef.current
+                ? null
+                : hiddenFullSnapshotIntervalMsRef.current,
+            });
+            if (!disposed) {
+              failureCount = 0;
+              setSamplerStatus(status);
+              void refreshSnapshot(true);
+            }
+          } catch {
+            // The next heartbeat retries the same idempotent recovery.
+          }
+        }
+      } finally {
+        if (!disposed) {
+          timer = window.setTimeout(heartbeat, FRONTEND_HEARTBEAT_INTERVAL_MS);
+        }
+      }
     };
-    heartbeat();
-    const interval = window.setInterval(heartbeat, FRONTEND_HEARTBEAT_INTERVAL_MS);
+    void heartbeat();
     return () => {
       disposed = true;
-      window.clearInterval(interval);
+      if (timer !== null) window.clearTimeout(timer);
     };
-  }, [desktop]);
+  }, [desktop, refreshSnapshot]);
 
   return {
     snapshot,

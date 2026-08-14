@@ -153,8 +153,8 @@ export function useResourceAlerts(
     [retentionDays, sessionEvents, storedEvents],
   );
 
-  const clearSaved = useCallback(() => {
-    void storage.clear().catch(() => undefined);
+  const clearSaved = useCallback(async () => {
+    await storage.clear();
   }, [storage]);
 
   return {

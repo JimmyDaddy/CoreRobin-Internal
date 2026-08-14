@@ -21,9 +21,11 @@ import { RobinIcon } from "./RobinIcon";
 
 interface DailySettingsProps {
   settings: AppSettings;
+  launchAtLoginStatus?: "loading" | "ready" | "updating" | "error";
   notificationStatus: DesktopNotificationStatus;
   snapshot: SystemSnapshot;
   onChange: (update: Partial<Omit<AppSettings, "version">>) => void;
+  onLaunchAtLoginChange?: (enabled: boolean) => void;
   updater: AppUpdaterController;
   onOpenNotificationSettings?: () => void;
   onOpenOnboarding: () => void;
@@ -32,10 +34,12 @@ interface DailySettingsProps {
 
 export function DailySettings({
   settings,
+  launchAtLoginStatus = "ready",
   notificationStatus,
   snapshot,
   updater,
   onChange,
+  onLaunchAtLoginChange = (enabled) => onChange({ launchAtLogin: enabled }),
   onOpenNotificationSettings = () => undefined,
   onOpenOnboarding,
   onClearAllData,
@@ -120,9 +124,9 @@ export function DailySettings({
 
         <section>
           <span><Rocket size={19} /></span>
-          <div><strong>{t("daily:settings.launchAtLogin")}</strong><small>{t("daily:settings.launchAtLoginDescription")}</small></div>
+          <div><strong>{t("daily:settings.launchAtLogin")}</strong><small>{t("daily:settings.launchAtLoginDescription")}{launchAtLoginStatus === "ready" ? "" : ` · ${t(launchAtLoginStatus === "error" ? "common:unavailable" : "common:loading")}`}</small></div>
           <label className="daily-settings__switch">
-            <input type="checkbox" role="switch" aria-label={t("daily:settings.launchAtLogin")} checked={settings.launchAtLogin} onChange={(event) => onChange({ launchAtLogin: event.target.checked })} />
+            <input type="checkbox" role="switch" aria-label={t("daily:settings.launchAtLogin")} checked={settings.launchAtLogin} disabled={launchAtLoginStatus === "loading" || launchAtLoginStatus === "updating"} onChange={(event) => onLaunchAtLoginChange(event.target.checked)} />
             <i />
           </label>
         </section>

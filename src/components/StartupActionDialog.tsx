@@ -7,14 +7,12 @@ import type {
   CommandError,
   StartupItem,
   StartupManagementAction,
-  StartupManagementLease,
 } from "../types";
 import { ApplicationAvatar } from "./ApplicationAvatar";
 
 interface StartupActionDialogProps {
   item: StartupItem;
   action: StartupManagementAction;
-  lease: StartupManagementLease | null;
   preparing: boolean;
   submitting: boolean;
   error: CommandError | null;
@@ -25,7 +23,6 @@ interface StartupActionDialogProps {
 export function StartupActionDialog({
   item,
   action,
-  lease,
   preparing,
   submitting,
   error,
@@ -81,6 +78,11 @@ export function StartupActionDialog({
             )}
           </span>
         </p>
+        <dl className="startup-action-dialog__context">
+          <div><dt>{t("startup:actionDialog.owner")}</dt><dd>{item.responsibleApplication ?? item.publisher ?? item.name}</dd></div>
+          <div><dt>{t("startup:actionDialog.source")}</dt><dd>{t(`startup:source.${item.source}`)}</dd></div>
+          <div><dt>{t("startup:actionDialog.effect")}</dt><dd>{t(`startup:actionDialog.${action}.whenDescription`)}</dd></div>
+        </dl>
 
         {preparing ? (
           <p className="startup-action-dialog__status" role="status"><LoaderCircle className="is-spinning" size={14} />{t("startup:actionDialog.preparing")}</p>
@@ -93,7 +95,7 @@ export function StartupActionDialog({
 
         <footer>
           <button ref={cancelButton} type="button" className="button button--secondary" disabled={submitting} onClick={onCancel}>{t("common:cancel")}</button>
-          <button type="button" className="button button--primary" disabled={!lease || preparing || submitting || Boolean(error)} onClick={onConfirm}>
+          <button type="button" className="button button--primary" disabled={preparing || submitting || Boolean(error)} onClick={onConfirm}>
             {submitting ? (
               <>
                 <LoaderCircle className="is-spinning" size={14} />

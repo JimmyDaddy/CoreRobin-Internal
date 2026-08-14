@@ -129,7 +129,14 @@ export interface StartupItemsSnapshot {
   sampledAtMs: number;
   items: StartupItem[];
   unreadableLocationCount: number;
+  scanWarnings?: StartupScanWarning[];
   managementAvailable: boolean;
+}
+
+export interface StartupScanWarning {
+  source: StartupItemSource;
+  issue: "unreadable_location" | "invalid_entry" | "source_unavailable";
+  count: number;
 }
 
 export interface StartupItem {
@@ -467,7 +474,12 @@ export interface CleanupIndexedChildrenRequest {
   directoryId: string;
   cursor: number | null;
   limit?: number | null;
+  query?: string | null;
+  sortBy?: CleanupIndexedSort | null;
+  descending?: boolean | null;
 }
+
+export type CleanupIndexedSort = "size" | "name";
 
 export interface CleanupIndexedChildrenPage {
   items: CleanupNode[];

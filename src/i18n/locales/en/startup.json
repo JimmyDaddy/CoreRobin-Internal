@@ -14,9 +14,17 @@
   "scanning": "Checking…",
   "loadingTitle": "Reading startup locations",
   "loadingDescription": "CoreRobin only reads public startup configuration and never loads or runs the commands inside it.",
+  "scanFailed": "Startup items could not be read right now. Nothing was changed; try again.",
+  "openSettingsFailed": "System Settings could not be opened. Try again, or open Login Items from System Settings.",
   "summary": "Startup summary",
   "reviewCount": "Worth a look",
   "reviewHint": "Third-party items that launch at sign-in",
+  "loginCount": "Open at sign-in",
+  "loginHint": "Apps and helpers launched after sign-in",
+  "backgroundCount": "Background activity",
+  "backgroundHint": "Conditional sync, update, and maintenance helpers",
+  "disabledCount": "Disabled",
+  "disabledHint": "Recoverable items previously turned off",
   "thirdPartyCount": "Third-party items",
   "thirdPartyHint": "Includes conditional background helpers",
   "systemCount": "System items",
@@ -26,6 +34,9 @@
   "filters": "Startup item filters",
   "filter": {
     "review": "Worth a look",
+    "login": "Open at sign-in",
+    "background": "Background activity",
+    "disabled": "Disabled",
     "all": "All",
     "system": "System items"
   },
@@ -41,7 +52,17 @@
   "unreadable": "{{count}} startup locations could not be read due to permissions",
   "actions": {
     "disable": "Disable at sign-in",
-    "enable": "Restore at sign-in"
+    "enable": "Restore at sign-in",
+    "openSettings": "Manage in System Settings"
+  },
+  "showingCount": "Showing {{shown}} of {{total}} items",
+  "showMore": "Show {{count}} more",
+  "completeScan": "All available startup sources were read",
+  "partialScan": "Partial result: {{count}} startup source issues",
+  "scanIssue": {
+    "unreadable_location": "{{count}} location could not be read",
+    "invalid_entry": "{{count}} invalid entry was skipped",
+    "source_unavailable": "The source did not respond"
   },
   "managementStatus": {
     "system": "System item · read-only",
@@ -75,9 +96,18 @@
     "running": "Running now: CPU {{cpu}} · Memory {{memory}}",
     "notMatched": "No currently running app could be matched"
   },
+  "currentUse": {
+    "none": "Not running now",
+    "low": "Current resource use is low",
+    "moderate": "Current resource use is moderate",
+    "high": "Current resource use is high",
+    "running": "Current use: CPU {{cpu}} · Memory {{memory}}",
+    "notMatched": "No matching app is running now"
+  },
   "outcome": {
     "disabled": "Automatic startup for {{name}} is disabled. The running app was not closed.",
-    "enabled": "Automatic startup for {{name}} is restored."
+    "enabled": "Automatic startup for {{name}} is restored.",
+    "undo": "Undo"
   },
   "actionDialog": {
     "disable": {
@@ -97,6 +127,9 @@
     "whenTitle": "The current session does not change immediately",
     "runningTitle": "The running app stays open",
     "runningDescription": "Disabling startup does not quit the current app or interrupt work already in progress.",
+    "owner": "Application",
+    "source": "Startup source",
+    "effect": "When it takes effect",
     "preparing": "Verifying the startup item and file state…",
     "applying": "Updating safely…",
     "errors": {
@@ -119,6 +152,7 @@
   },
   "ownership": {
     "itemCount": "{{count}} items",
+    "moreItems": "{{count}} helper items",
     "modern": "Modern background item",
     "orphaned": "Executable missing",
     "lastRun": "Last reported state: {{status}}",

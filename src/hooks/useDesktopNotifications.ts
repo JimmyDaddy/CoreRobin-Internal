@@ -34,6 +34,8 @@ export function useDesktopNotifications(
   );
   const [delivery, setDelivery] =
     useState<DesktopNotificationDelivery | null>(null);
+  const statusRef = useRef(status);
+  statusRef.current = status;
   const desktop = isDesktopRuntime();
 
   useEffect(() => {
@@ -80,7 +82,13 @@ export function useDesktopNotifications(
     const refreshPermission = () => {
       if (document.visibilityState !== "visible") return;
       void isNotificationPermissionGranted().then((granted) => {
-        if (!disposed) setStatus(granted ? "ready" : "denied");
+        if (disposed) return;
+        if (granted && statusRef.current !== "ready") {
+          for (const event of activeTriggeredAlerts(events)) {
+            seenIds.current.delete(event.id);
+          }
+        }
+        setStatus(granted ? "ready" : "denied");
       });
     };
     window.addEventListener("focus", refreshPermission);
@@ -90,7 +98,7 @@ export function useDesktopNotifications(
       window.removeEventListener("focus", refreshPermission);
       document.removeEventListener("visibilitychange", refreshPermission);
     };
-  }, [enabled]);
+  }, [enabled, events]);
 
   useEffect(() => {
     if (!enabled || !isDesktopRuntime()) return;
@@ -115,8 +123,8 @@ export function useDesktopNotifications(
   }, [enabled, onOpenEvidence]);
 
   useEffect(() => {
-    const unseen = reconcileSeenResourceAlertIds(seenIds.current, events);
     if (!enabled || status !== "ready" || desktop) return;
+    const unseen = reconcileSeenResourceAlertIds(seenIds.current, events);
     const now = Date.now();
     const selected = selectNotificationsWithinDailyBudget(
       unseen.filter((event) => !mutedResources.includes(event.resource)),
@@ -167,6 +175,17 @@ export function useDesktopNotifications(
   };
 
   return { status, delivery, sendTest };
+}
+
+function activeTriggeredAlerts(
+  events: readonly ResourceAlertEvent[],
+): ResourceAlertEvent[] {
+  const active = new Map<ResourceAlertResource, ResourceAlertEvent>();
+  for (const event of events) {
+    if (event.kind === "triggered") active.set(event.resource, event);
+    else active.delete(event.resource);
+  }
+  return [...active.values()];
 }
 
 async function ensureNotificationPermission() {

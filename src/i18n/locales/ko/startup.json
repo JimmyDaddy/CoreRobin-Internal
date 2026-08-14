@@ -14,6 +14,8 @@
   "scanning": "검사 중…",
   "loadingTitle": "시작 항목 읽기",
   "loadingDescription": "CoreRobin는 공개된 시작 구성만 읽으며 그 안의 명령을 불러오거나 실행하지 않습니다.",
+  "scanFailed": "시작 항목을 읽지 못했습니다. 변경된 내용은 없습니다. 다시 시도하세요.",
+  "openSettingsFailed": "시스템 설정을 열지 못했습니다. 다시 시도하거나 로그인 항목을 직접 여세요.",
   "summary": "시작 항목 요약",
   "reviewCount": "확인해 볼 가치가 있습니다",
   "reviewHint": "로그인 시 시작되는 타사 프로그램",
@@ -24,7 +26,9 @@
   "inventory": "시작 시 실행되는 항목 목록",
   "listTitle": "자동으로 시작되는 프로그램 확인",
   "filters": "시작 프로그램 필터 설정",
+  "loginCount": "로그인 시 열기", "loginHint": "로그인 후 실행되는 앱과 도우미", "backgroundCount": "백그라운드 활동", "backgroundHint": "조건부 동기화, 업데이트 및 유지 관리", "disabledCount": "비활성화", "disabledHint": "복구 가능한 비활성화 항목",
   "filter": {
+    "login": "로그인 시 열기", "background": "백그라운드 활동", "disabled": "비활성화",
     "review": "확인 필요",
     "all": "모든 프로그램",
     "system": "시스템 프로그램"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "이 플랫폼에는 CoreRobin가 안전하게 복원할 수 있는 시작 항목 소스가 없으므로 목록은 읽기 전용으로 유지됩니다.",
   "unreadable": "{{count}} 시작 위치를 읽을 수 없습니다 (권한 문제)",
   "actions": {
+    "openSettings": "시스템 설정에서 관리",
     "disable": "로그인 시 비활성화",
     "enable": "로그인 시 복원"
   },
+  "showingCount": "{{total}}개 중 {{shown}}개 표시", "showMore": "{{count}}개 더 표시", "completeScan": "사용 가능한 모든 시작 소스를 읽었습니다", "partialScan": "일부 결과: 시작 소스 문제 {{count}}개", "scanIssue": { "unreadable_location": "{{count}}개 위치를 읽을 수 없음", "invalid_entry": "잘못된 항목 {{count}}개를 건너뜀", "source_unavailable": "소스가 응답하지 않음" },
   "managementStatus": {
     "system": "시스템 항목 · 읽기 전용",
     "protected": "보호된 항목",
@@ -75,11 +81,14 @@
     "running": "현재 실행 중: CPU {{cpu}} · 메모리 {{memory}}",
     "notMatched": "현재 실행 중인 앱을 찾을 수 없음"
   },
+  "currentUse": { "none": "현재 실행 중이 아님", "low": "현재 리소스 사용량 낮음", "moderate": "현재 리소스 사용량 보통", "high": "현재 리소스 사용량 높음", "running": "현재 사용량: CPU {{cpu}} · 메모리 {{memory}}", "notMatched": "일치하는 실행 중 앱이 없음" },
   "outcome": {
+    "undo": "실행 취소",
     "disabled": "{{name}}의 자동 시작이 비활성화되었습니다. 해당 앱은 종료되지 않았습니다.",
     "enabled": "{{name}}의 자동 시작이 다시 활성화되었습니다."
   },
   "actionDialog": {
+    "owner": "애플리케이션", "source": "시작 소스", "effect": "적용 시점",
     "disable": {
       "title": "{{name}}의 자동 시작을 끄시겠습니까?",
       "description": "CoreRobin는 이 사용자 설정 파일을 자체 복구 저장소로 이동시키고 삭제하지 않습니다.",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "도우미 항목 {{count}}개",
     "itemCount_other": "{{count}}개 항목",
     "modern": "최신 백그라운드 항목",
     "orphaned": "실행 파일 없음",

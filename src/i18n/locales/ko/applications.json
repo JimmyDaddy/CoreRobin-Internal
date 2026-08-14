@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "통합 앱 보기", "title": "애플리케이션 센터", "description": "하나의 앱 ID에서 현재 사용량, 시작 동작, 네트워크, 기록 및 제거를 확인합니다.", "tabs": { "label": "애플리케이션 센터 페이지", "activity": "현재 활동", "history": "기록", "manage": "관리 및 제거" }, "selected": "선택한 앱", "localIdentity": "로컬 앱 ID", "startup": "시작 동작", "startupCount": "관련 시작 항목 {{count}}개", "network": "네트워크 활동", "connectionCount": "현재 연결 {{count}}개", "history": "기록", "historySamples": "저장된 샘플 {{count}}개", "manage": "앱 관리", "manageHint": "잔여 파일 확인 또는 제거", "boundary": "안정적인 앱 ID로만 로컬 데이터를 연결하며 명령이나 파일 내용은 저장하지 않습니다." },
   "energy": {
     "eyebrow": "선택적 확장 측정항목",
     "title": "GPU 및 상대 에너지",

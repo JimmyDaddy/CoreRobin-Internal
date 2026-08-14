@@ -16,6 +16,7 @@ use crate::models::{
     StartupItem, StartupItemScope, StartupItemSource, StartupItemsSnapshot, StartupLaunchKind,
     StartupManagementAction, StartupManagementExecutionRequest, StartupManagementLease,
     StartupManagementLeaseRequest, StartupManagementResult, StartupManagementStatus,
+    StartupScanIssue, StartupScanWarning,
 };
 use crate::safe_fs::{BoundFileMove, SafeFileMoveRoot, SafeFileSnapshot};
 
@@ -126,16 +127,12 @@ impl StartupController {
                 "Too many startup confirmations are open. Close one and try again.",
             ));
         }
-        let (items, _) = platform_startup_items(home);
-        let item = items
-            .into_iter()
-            .find(|item| item.id == request.item_id)
-            .ok_or_else(|| {
-                CommandError::new(
-                    "startup_item_unavailable",
-                    "This startup item is no longer available. Refresh the list and try again.",
-                )
-            })?;
+        let item = targeted_startup_item(&request.item_id, home).ok_or_else(|| {
+            CommandError::new(
+                "startup_item_unavailable",
+                "This startup item is no longer available. Refresh the list and try again.",
+            )
+        })?;
         if item.management_status != StartupManagementStatus::Available {
             return Err(CommandError::new(
                 "startup_item_protected",
@@ -234,6 +231,109 @@ impl StartupController {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn targeted_startup_item(item_id: &str, home: &Path) -> Option<StartupItem> {
+    let original = PathBuf::from(item_id.strip_prefix("launch-agent:")?);
+    let user_directory = home.join("Library/LaunchAgents");
+    let scope = if original.parent() == Some(user_directory.as_path()) {
+        StartupItemScope::User
+    } else {
+        StartupItemScope::System
+    };
+    if original.exists() {
+        return macos_startup_item(
+            &original,
+            &original,
+            StartupItemSource::LaunchAgent,
+            scope,
+            false,
+        );
+    }
+    let file_name = original.file_name()?;
+    macos_disabled_directories(home)
+        .into_iter()
+        .find_map(|directory| {
+            let disabled = directory.join(file_name);
+            disabled
+                .exists()
+                .then(|| {
+                    macos_startup_item(
+                        &disabled,
+                        &original,
+                        StartupItemSource::LaunchAgent,
+                        StartupItemScope::User,
+                        true,
+                    )
+                })
+                .flatten()
+        })
+}
+
+#[cfg(target_os = "linux")]
+fn targeted_startup_item(item_id: &str, home: &Path) -> Option<StartupItem> {
+    let original = PathBuf::from(item_id.strip_prefix("desktop-entry:")?);
+    let user_directory = home.join(".config/autostart");
+    let scope = if original.parent() == Some(user_directory.as_path()) {
+        StartupItemScope::User
+    } else {
+        StartupItemScope::System
+    };
+    if original.exists() {
+        return linux_desktop_item(&original, &original, scope, false);
+    }
+    let file_name = original.file_name()?;
+    linux_disabled_directories(home)
+        .into_iter()
+        .find_map(|directory| {
+            let disabled = directory.join(file_name);
+            disabled
+                .exists()
+                .then(|| linux_desktop_item(&disabled, &original, StartupItemScope::User, true))
+                .flatten()
+        })
+}
+
+#[cfg(windows)]
+fn targeted_startup_item(item_id: &str, home: &Path) -> Option<StartupItem> {
+    let original = PathBuf::from(item_id.strip_prefix("startup-folder:")?);
+    let active = original.exists().then(|| original.clone());
+    let disabled = original.file_name().and_then(|file_name| {
+        windows_disabled_directories(home)
+            .into_iter()
+            .map(|directory| directory.join(file_name))
+            .find(|candidate| candidate.exists())
+    });
+    let (source, enabled) = active
+        .map(|path| (path, true))
+        .or_else(|| disabled.map(|path| (path, false)))?;
+    Some(StartupItem {
+        id: item_id.to_owned(),
+        name: original.file_stem()?.to_string_lossy().into_owned(),
+        publisher: None,
+        command: Some(original.to_string_lossy().into_owned()),
+        path: original.to_string_lossy().into_owned(),
+        source: StartupItemSource::StartupFolder,
+        scope: StartupItemScope::User,
+        enabled,
+        system: false,
+        launch_kind: StartupLaunchKind::Login,
+        management_status: StartupManagementStatus::Available,
+        bundle_id: None,
+        team_id: None,
+        signature_status: None,
+        executable_path: Some(source.to_string_lossy().into_owned()),
+        responsible_application: None,
+        last_run_status: None,
+        orphaned: false,
+        modern_background_item: false,
+    })
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+fn targeted_startup_item(_item_id: &str, _home: &Path) -> Option<StartupItem> {
+    None
+}
+
 pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
     let home = home_directory().ok_or_else(|| {
         CommandError::new(
@@ -241,7 +341,8 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
             "CoreRobin could not locate the current user's home directory.",
         )
     })?;
-    let (mut items, unreadable_location_count) = platform_startup_items(&home);
+    let (mut items, scan_warnings) = platform_startup_items(&home);
+    let unreadable_location_count = scan_warnings.iter().map(|warning| warning.count).sum();
     items.sort_by(|left, right| {
         left.system
             .cmp(&right.system)
@@ -255,12 +356,36 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
         sampled_at_ms: now_millis(),
         items,
         unreadable_location_count,
+        scan_warnings,
         management_available,
     })
 }
 
+fn push_startup_warning(
+    warnings: &mut Vec<StartupScanWarning>,
+    source: StartupItemSource,
+    issue: StartupScanIssue,
+    count: usize,
+) {
+    if count == 0 {
+        return;
+    }
+    if let Some(existing) = warnings
+        .iter_mut()
+        .find(|warning| warning.source == source && warning.issue == issue)
+    {
+        existing.count += count;
+    } else {
+        warnings.push(StartupScanWarning {
+            source,
+            issue,
+            count,
+        });
+    }
+}
+
 #[cfg(target_os = "macos")]
-fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
+fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, Vec<StartupScanWarning>) {
     let user_launch_agents = home.join("Library/LaunchAgents");
     let definitions = [
         (
@@ -290,11 +415,24 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
         ),
     ];
     let mut items = Vec::new();
-    let mut unreadable = 0;
+    let mut warnings = Vec::new();
     for (directory, source, scope) in definitions {
         match scan_macos_plists(&directory, &directory, source, scope, false) {
-            Ok(mut found) => items.append(&mut found),
-            Err(()) if directory.exists() => unreadable += 1,
+            Ok((mut found, invalid)) => {
+                items.append(&mut found);
+                push_startup_warning(
+                    &mut warnings,
+                    source,
+                    StartupScanIssue::InvalidEntry,
+                    invalid,
+                );
+            }
+            Err(()) if directory.exists() => push_startup_warning(
+                &mut warnings,
+                source,
+                StartupScanIssue::UnreadableLocation,
+                1,
+            ),
             Err(()) => {}
         }
     }
@@ -306,15 +444,34 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
             StartupItemScope::User,
             true,
         ) {
-            Ok(found) => append_unique_startup_items(&mut items, found),
-            Err(()) if disabled_launch_agents.exists() => unreadable += 1,
+            Ok((found, invalid)) => {
+                append_unique_startup_items(&mut items, found);
+                push_startup_warning(
+                    &mut warnings,
+                    StartupItemSource::LaunchAgent,
+                    StartupScanIssue::InvalidEntry,
+                    invalid,
+                );
+            }
+            Err(()) if disabled_launch_agents.exists() => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::LaunchAgent,
+                StartupScanIssue::UnreadableLocation,
+                1,
+            ),
             Err(()) => {}
         }
     }
-    if let Ok(mut modern_items) = scan_macos_background_tasks() {
-        append_unique_startup_items(&mut items, modern_items.drain(..));
+    match scan_macos_background_tasks() {
+        Ok(mut modern_items) => append_unique_startup_items(&mut items, modern_items.drain(..)),
+        Err(()) => push_startup_warning(
+            &mut warnings,
+            StartupItemSource::BackgroundTask,
+            StartupScanIssue::SourceUnavailable,
+            1,
+        ),
     }
-    (items, unreadable)
+    (items, warnings)
 }
 
 #[cfg(target_os = "macos")]
@@ -324,27 +481,35 @@ fn scan_macos_plists(
     source: StartupItemSource,
     scope: StartupItemScope,
     managed_disabled: bool,
-) -> Result<Vec<StartupItem>, ()> {
+) -> Result<(Vec<StartupItem>, usize), ()> {
     let entries = fs::read_dir(directory).map_err(|_| ())?;
-    Ok(entries
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "plist")
-        })
-        .filter_map(|entry| {
-            let original_path = original_directory.join(entry.file_name());
-            macos_startup_item(
-                &entry.path(),
-                &original_path,
-                source,
-                scope,
-                managed_disabled,
-            )
-        })
-        .collect())
+    let mut items = Vec::new();
+    let mut invalid = 0;
+    for entry in entries {
+        let Ok(entry) = entry else {
+            invalid += 1;
+            continue;
+        };
+        if entry
+            .path()
+            .extension()
+            .is_none_or(|extension| extension != "plist")
+        {
+            continue;
+        }
+        let original_path = original_directory.join(entry.file_name());
+        match macos_startup_item(
+            &entry.path(),
+            &original_path,
+            source,
+            scope,
+            managed_disabled,
+        ) {
+            Some(item) => items.push(item),
+            None => invalid += 1,
+        }
+    }
+    Ok((items, invalid))
 }
 
 #[cfg(target_os = "macos")]
@@ -630,7 +795,7 @@ fn parse_macos_background_tasks(text: &str) -> Vec<StartupItem> {
 }
 
 #[cfg(target_os = "linux")]
-fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
+fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, Vec<StartupScanWarning>) {
     let user_autostart = home.join(".config/autostart");
     let definitions = [
         (user_autostart.clone(), StartupItemScope::User),
@@ -640,11 +805,24 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
         ),
     ];
     let mut items = Vec::new();
-    let mut unreadable = 0;
+    let mut warnings = Vec::new();
     for (directory, scope) in definitions {
         match scan_linux_desktop_entries(&directory, &directory, scope, false) {
-            Ok(mut found) => items.append(&mut found),
-            Err(()) if directory.exists() => unreadable += 1,
+            Ok((mut found, invalid)) => {
+                items.append(&mut found);
+                push_startup_warning(
+                    &mut warnings,
+                    StartupItemSource::DesktopEntry,
+                    StartupScanIssue::InvalidEntry,
+                    invalid,
+                );
+            }
+            Err(()) if directory.exists() => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::DesktopEntry,
+                StartupScanIssue::UnreadableLocation,
+                1,
+            ),
             Err(()) => {}
         }
     }
@@ -655,12 +833,25 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
             StartupItemScope::User,
             true,
         ) {
-            Ok(found) => append_unique_startup_items(&mut items, found),
-            Err(()) if disabled_autostart.exists() => unreadable += 1,
+            Ok((found, invalid)) => {
+                append_unique_startup_items(&mut items, found);
+                push_startup_warning(
+                    &mut warnings,
+                    StartupItemSource::DesktopEntry,
+                    StartupScanIssue::InvalidEntry,
+                    invalid,
+                );
+            }
+            Err(()) if disabled_autostart.exists() => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::DesktopEntry,
+                StartupScanIssue::UnreadableLocation,
+                1,
+            ),
             Err(()) => {}
         }
     }
-    (items, unreadable)
+    (items, warnings)
 }
 
 #[cfg(target_os = "linux")]
@@ -669,21 +860,29 @@ fn scan_linux_desktop_entries(
     original_directory: &Path,
     scope: StartupItemScope,
     managed_disabled: bool,
-) -> Result<Vec<StartupItem>, ()> {
+) -> Result<(Vec<StartupItem>, usize), ()> {
     let entries = fs::read_dir(directory).map_err(|_| ())?;
-    Ok(entries
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "desktop")
-        })
-        .filter_map(|entry| {
-            let original_path = original_directory.join(entry.file_name());
-            linux_desktop_item(&entry.path(), &original_path, scope, managed_disabled)
-        })
-        .collect())
+    let mut items = Vec::new();
+    let mut invalid = 0;
+    for entry in entries {
+        let Ok(entry) = entry else {
+            invalid += 1;
+            continue;
+        };
+        if !entry
+            .path()
+            .extension()
+            .is_some_and(|extension| extension == "desktop")
+        {
+            continue;
+        }
+        let original_path = original_directory.join(entry.file_name());
+        match linux_desktop_item(&entry.path(), &original_path, scope, managed_disabled) {
+            Some(item) => items.push(item),
+            None => invalid += 1,
+        }
+    }
+    Ok((items, invalid))
 }
 
 #[cfg(target_os = "linux")]
@@ -739,7 +938,7 @@ fn linux_desktop_item(
 }
 
 #[cfg(windows)]
-fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
+fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, Vec<StartupScanWarning>) {
     use std::process::Command;
 
     let registry_locations = [
@@ -753,7 +952,7 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
         ),
     ];
     let mut items = Vec::new();
-    let mut unreadable = 0;
+    let mut warnings = Vec::new();
     for (key, scope) in registry_locations {
         match Command::new("reg").args(["query", key]).output() {
             Ok(output) if output.status.success() => {
@@ -790,7 +989,12 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                     });
                 }
             }
-            Ok(_) | Err(_) => unreadable += 1,
+            Ok(_) | Err(_) => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::RegistryRun,
+                StartupScanIssue::SourceUnavailable,
+                1,
+            ),
         }
     }
     let user_startup_directory = env::var_os("APPDATA")
@@ -843,7 +1047,12 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                     }
                 }));
             }
-            Err(_) if directory.exists() => unreadable += 1,
+            Err(_) if directory.exists() => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::StartupFolder,
+                StartupScanIssue::UnreadableLocation,
+                1,
+            ),
             Err(_) => {}
         }
     }
@@ -880,17 +1089,22 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, usize) {
                     });
                     append_unique_startup_items(&mut items, found);
                 }
-                Err(_) if disabled_directory.exists() => unreadable += 1,
+                Err(_) if disabled_directory.exists() => push_startup_warning(
+                    &mut warnings,
+                    StartupItemSource::StartupFolder,
+                    StartupScanIssue::UnreadableLocation,
+                    1,
+                ),
                 Err(_) => {}
             }
         }
     }
-    (items, unreadable)
+    (items, warnings)
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
-fn platform_startup_items(_home: &Path) -> (Vec<StartupItem>, usize) {
-    (Vec::new(), 0)
+fn platform_startup_items(_home: &Path) -> (Vec<StartupItem>, Vec<StartupScanWarning>) {
+    (Vec::new(), Vec::new())
 }
 
 #[cfg(target_os = "macos")]

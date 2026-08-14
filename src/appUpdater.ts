@@ -3,6 +3,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 const UPDATE_TASK_POLL_INTERVAL_MS = 500;
+const UPDATE_TASK_QUERY_RETRY_DELAYS_MS = [750, 1_500, 3_000, 5_000, 10_000];
 
 export interface AppUpdateProgress {
   phase: "downloading" | "installing";
@@ -63,6 +64,7 @@ async function installAppUpdate(
   let snapshot = await invoke<AppUpdateTaskSnapshot>("start_app_update", {
     version,
   });
+  let queryFailureCount = 0;
   while (true) {
     if (snapshot.version !== version) {
       throw new Error("The active app update changed.");
@@ -73,7 +75,17 @@ async function installAppUpdate(
       throw new Error("The app update task did not complete.");
     }
     await delay(UPDATE_TASK_POLL_INTERVAL_MS);
-    snapshot = await getAppUpdateTask();
+    try {
+      snapshot = await getAppUpdateTask();
+      queryFailureCount = 0;
+    } catch (reason) {
+      const retryDelay = UPDATE_TASK_QUERY_RETRY_DELAYS_MS[
+        Math.min(queryFailureCount, UPDATE_TASK_QUERY_RETRY_DELAYS_MS.length - 1)
+      ];
+      queryFailureCount += 1;
+      if (queryFailureCount > UPDATE_TASK_QUERY_RETRY_DELAYS_MS.length) throw reason;
+      await delay(retryDelay);
+    }
   }
 }
 

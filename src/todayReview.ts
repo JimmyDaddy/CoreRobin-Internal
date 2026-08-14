@@ -67,10 +67,12 @@ export function buildTodayReview({
   const resolvedCount = stories.filter(({ status }) => status === "recovered").length;
   const completedActions = actions
     .filter((action) =>
-      action.startedAtMs >= fromMs
-      && action.startedAtMs <= nowMs
+      (action.completedAtMs ?? action.startedAtMs) >= fromMs
+      && (action.completedAtMs ?? action.startedAtMs) <= nowMs
       && action.status !== "running")
-    .sort((left, right) => right.startedAtMs - left.startedAtMs);
+    .sort((left, right) =>
+      (right.completedAtMs ?? right.startedAtMs)
+      - (left.completedAtMs ?? left.startedAtMs));
   const networkEventCount = networkQualityPoints.reduce(
     (count, point) => count + point.events.filter((event) =>
       event.atMs >= fromMs

@@ -105,6 +105,7 @@ export function ApplicationUninstallAssistant({
   const [sourceFilter, setSourceFilter] =
     useState<InstalledApplication["installationSource"] | "all">("all");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const planningRequestIdRef = useRef(0);
   const [plan, setPlan] = useState<ApplicationUninstallPlan | null>(null);
   const [planning, setPlanning] = useState(false);
   const [selectedArtifacts, setSelectedArtifacts] = useState<Set<string>>(new Set());
@@ -178,6 +179,7 @@ export function ApplicationUninstallAssistant({
   }, [refreshInventory]);
 
   useEffect(() => () => {
+    planningRequestIdRef.current += 1;
     const lease = deleteLeaseRef.current;
     if (lease) void releaseCleanupDeleteLease({ leaseId: lease.id });
   }, []);
@@ -247,29 +249,42 @@ export function ApplicationUninstallAssistant({
 
   const selectApplication = async (application: InstalledApplication) => {
     if (removedApplications.has(application.path)) return;
+    const requestId = planningRequestIdRef.current + 1;
+    planningRequestIdRef.current = requestId;
     setSelectedPath(application.path);
     setPlan(null);
     setOutcome(null);
     setNativeOutcome(null);
     setTrashResidualMode(false);
-    if (!application.uninstallable) return;
+    if (!application.uninstallable) {
+      setPlanning(false);
+      return;
+    }
     setPlanning(true);
     setError(null);
     try {
       const next = await getApplicationUninstallPlan(application.path, language);
+      if (planningRequestIdRef.current !== requestId) return;
+      if (next.application.path !== application.path) {
+        throw new Error("application_uninstall_plan_mismatch");
+      }
       setPlan(next);
       setSelectedArtifacts(new Set(next.artifacts.map((artifact) => artifact.path)));
       latestEvidenceAtRef.current = next.sampledAtMs;
     } catch (caughtError) {
-      setError(normalizeCommandError(caughtError));
+      if (planningRequestIdRef.current === requestId) {
+        setError(normalizeCommandError(caughtError));
+      }
     } finally {
-      setPlanning(false);
+      if (planningRequestIdRef.current === requestId) setPlanning(false);
     }
   };
 
   const inspectTrashedApplication = async (
     application: TrashedApplication,
   ) => {
+    const requestId = planningRequestIdRef.current + 1;
+    planningRequestIdRef.current = requestId;
     setSelectedPath(application.path);
     setPlan(null);
     setOutcome(null);
@@ -282,15 +297,21 @@ export function ApplicationUninstallAssistant({
         application.path,
         language,
       );
+      if (planningRequestIdRef.current !== requestId) return;
+      if (next.application.path !== application.path) {
+        throw new Error("application_uninstall_plan_mismatch");
+      }
       setPlan(next);
       setSelectedArtifacts(new Set(
         next.artifacts.map((artifact) => artifact.path),
       ));
       latestEvidenceAtRef.current = next.sampledAtMs;
     } catch (caughtError) {
-      setError(normalizeCommandError(caughtError));
+      if (planningRequestIdRef.current === requestId) {
+        setError(normalizeCommandError(caughtError));
+      }
     } finally {
-      setPlanning(false);
+      if (planningRequestIdRef.current === requestId) setPlanning(false);
     }
   };
 
@@ -376,7 +397,7 @@ export function ApplicationUninstallAssistant({
   };
 
   const openDeleteDialog = async () => {
-    if (!plan) return;
+    if (!plan || plan.application.path !== selectedPath) return;
     const items = plan.artifacts
       .filter((artifact) => selectedArtifacts.has(artifact.path))
       .map((artifact) => artifactToCleanupNode(artifact, t(`applications:uninstall.artifacts.${artifact.kind}`)));
@@ -402,7 +423,8 @@ export function ApplicationUninstallAssistant({
       (deleteMode === "permanent" && !deleteAcknowledged) ||
       deleteSubmitting ||
       deleteModeSwitching ||
-      !plan
+      !plan ||
+      plan.application.path !== selectedPath
     ) return;
     const applicationName = plan.application.name;
     const applicationPath = plan.application.path;
@@ -537,7 +559,12 @@ export function ApplicationUninstallAssistant({
 
   const confirmNativeUninstall = async () => {
     const nativePlan = plan?.nativeUninstall;
-    if (!plan || !nativePlan || nativeSubmitting) return;
+    if (
+      !plan ||
+      !nativePlan ||
+      nativeSubmitting ||
+      plan.application.path !== selectedPath
+    ) return;
     const application = plan.application;
     const actionRecordId = onUserActionStart?.({
       kind: "application_uninstall",

@@ -149,7 +149,7 @@ const MAIN_SURFACE_STARTED_AT = performance.now();
 const MINIMUM_SPLASH_DURATION_MS = 1300;
 
 const CleanupAssistant = lazy(async () => ({ default: (await import("./components/CleanupAssistant")).CleanupAssistant }));
-const ApplicationUninstallAssistant = lazy(async () => ({ default: (await import("./components/ApplicationUninstallAssistant")).ApplicationUninstallAssistant }));
+const ApplicationCenter = lazy(async () => ({ default: (await import("./components/ApplicationCenter")).ApplicationCenter }));
 const ConfirmActionDialog = lazy(async () => ({ default: (await import("./components/ConfirmActionDialog")).ConfirmActionDialog }));
 const DailyApplications = lazy(async () => ({ default: (await import("./components/DailyApplications")).DailyApplications }));
 const DailyGuide = lazy(async () => ({ default: (await import("./components/DailyGuide")).DailyGuide }));
@@ -163,6 +163,7 @@ const HistoryExplorer = lazy(async () => ({ default: (await import("./components
 const FirstRunGuide = lazy(async () => ({ default: (await import("./components/FirstRunGuide")).FirstRunGuide }));
 const GpuEnergyPanel = lazy(async () => ({ default: (await import("./components/GpuEnergyPanel")).GpuEnergyPanel }));
 const GlobalUpdateTask = lazy(async () => ({ default: (await import("./components/GlobalUpdateTask")).GlobalUpdateTask }));
+const GlobalTaskCenter = lazy(async () => ({ default: (await import("./components/GlobalTaskCenter")).GlobalTaskCenter }));
 const NetworkExplorer = lazy(async () => ({ default: (await import("./components/NetworkExplorer")).NetworkExplorer }));
 const PersonalBaselinePanel = lazy(async () => ({ default: (await import("./components/PersonalBaselinePanel")).PersonalBaselinePanel }));
 const ProcessInspector = lazy(async () => ({ default: (await import("./components/ProcessInspector")).ProcessInspector }));
@@ -194,6 +195,8 @@ type SettingsOperationFailure =
       desired: { alwaysOnTop: boolean; show: boolean };
     };
 
+type LaunchAtLoginStatus = "loading" | "ready" | "updating" | "error";
+
 function App() {
   const { t, i18n } = useAppTranslation();
   const [settings, setSettings] = useState<AppSettings>(() =>
@@ -202,8 +205,10 @@ function App() {
   const [onboardingOpen, setOnboardingOpen] = useState(
     () => !hasCompletedOnboarding(),
   );
-  const [launchAtLoginReady, setLaunchAtLoginReady] = useState(false);
+  const [launchAtLoginStatus, setLaunchAtLoginStatus] =
+    useState<LaunchAtLoginStatus>(() => isDesktopRuntime() ? "loading" : "ready");
   const launchAtLoginActualRef = useRef<boolean | null>(null);
+  const launchAtLoginIntentRef = useRef<boolean | null>(null);
   const launchAtLoginEpochRef = useRef(0);
   const dockIconActualRef = useRef<boolean | null>(null);
   const dockIconEpochRef = useRef(0);
@@ -371,7 +376,8 @@ function App() {
   const cleanupScan = useCleanupScan();
   const fileInsights = useFileInsightsScan();
   const startupItems = useStartupItems(
-    activeView === "startup" || dailyIntent === "startup" || dailyIntent === "checkup",
+    activeView === "startup" || activeView === "applications"
+      || dailyIntent === "startup" || dailyIntent === "checkup",
   );
   const {
     snapshot: connectionsSnapshot,
@@ -381,6 +387,7 @@ function App() {
   } = useNetworkConnections(
     activeView === "processes" ||
       activeView === "network" ||
+      activeView === "applications" ||
       (activeView === "overview" && diagnosisExpanded) ||
       dailyIntent === "slow" || dailyIntent === "network" ||
       dailyIntent === "checkup" ||
@@ -458,16 +465,20 @@ function App() {
     cleanupUpdatedAtMs: cleanupScan.snapshot?.sampledAtMs ?? null,
     fileInsightsItemCount: fileInsights.snapshot?.scannedEntryCount ?? 0,
     fileInsightsUpdatedAtMs: fileInsights.snapshot?.sampledAtMs ?? null,
-    onClearResourceHistory: () => {
-      persistentHistory.clear();
-      resourceAlerts.clearSaved();
-      applicationWatchRules.clearSaved();
-      userActions.clearSaved();
-      applicationImpactHistory.clear();
+    onClearResourceHistory: async () => {
+      await Promise.all([
+        persistentHistory.clear(),
+        resourceAlerts.clearSaved(),
+        applicationWatchRules.clearSaved(),
+        userActions.clearSaved(),
+        applicationImpactHistory.clear(),
+      ]);
     },
-    onClearConnectionHistory: () => {
-      connectionHistory.clear();
-      networkQuality.clearHistory();
+    onClearConnectionHistory: async () => {
+      await Promise.all([
+        connectionHistory.clear(),
+        networkQuality.clearHistory(),
+      ]);
     },
     onClearCleanupScan: cleanupScan.clear,
     onClearFileInsights: fileInsights.clear,
@@ -477,6 +488,8 @@ function App() {
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
   const [detailError, setDetailError] = useState<CommandError | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRetryRevision, setDetailRetryRevision] = useState(0);
+  const detailIdentityRef = useRef<string | null>(null);
   const [processPreferences, setProcessPreferences] =
     useState<ProcessExplorerPreferences>(() => ({
       ...loadProcessExplorerPreferences(),
@@ -685,6 +698,14 @@ function App() {
     [],
   );
 
+  const updateLaunchAtLogin = useCallback((desired: boolean) => {
+    launchAtLoginIntentRef.current = desired;
+    setSettings((current) => current.launchAtLogin === desired
+      ? current
+      : { ...current, launchAtLogin: desired });
+    setLaunchAtLoginStatus((current) => current === "loading" ? current : "ready");
+  }, []);
+
   const closeOnboarding = useCallback(() => {
     completeOnboarding();
     setOnboardingOpen(false);
@@ -734,11 +755,12 @@ function App() {
         setSettings((current) => current.launchAtLogin === enabled
           ? current
           : { ...current, launchAtLogin: enabled });
-        setLaunchAtLoginReady(true);
+        setLaunchAtLoginStatus("ready");
       })
       .catch(() => {
         if (!disposed && launchAtLoginEpochRef.current === epoch) {
-          setLaunchAtLoginReady(true);
+          launchAtLoginActualRef.current = null;
+          setLaunchAtLoginStatus("error");
         }
       });
     return () => {
@@ -747,28 +769,53 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isDesktopRuntime() || !launchAtLoginReady) return;
-    const desired = settings.launchAtLogin;
-    if (launchAtLoginActualRef.current === desired) return;
-    const previous = launchAtLoginActualRef.current ?? false;
+    if (
+      !isDesktopRuntime()
+      || launchAtLoginStatus === "loading"
+      || launchAtLoginStatus === "updating"
+    ) return;
+    const explicitDesired = launchAtLoginIntentRef.current;
+    if (launchAtLoginStatus === "error" && explicitDesired === null) return;
+    const desired = explicitDesired ?? settings.launchAtLogin;
+    if (launchAtLoginActualRef.current === desired) {
+      launchAtLoginIntentRef.current = null;
+      return;
+    }
+    const previous = launchAtLoginActualRef.current;
     const epoch = launchAtLoginEpochRef.current + 1;
     launchAtLoginEpochRef.current = epoch;
     launchAtLoginActualRef.current = desired;
+    setLaunchAtLoginStatus("updating");
     setSettingsOperationFailure(null);
     void setLaunchAtLogin(desired)
-      .then(() => setSettingsOperationFailure((current) =>
-        current?.kind === "launchAtLogin" ? null : current
-      ))
+      .then(() => getLaunchAtLogin())
+      .then((verified) => {
+        if (launchAtLoginEpochRef.current !== epoch) return;
+        if (verified !== desired) throw new Error("launch_at_login_verification_failed");
+        launchAtLoginActualRef.current = verified;
+        launchAtLoginIntentRef.current = null;
+        setLaunchAtLoginStatus("ready");
+        setSettingsOperationFailure((current) =>
+          current?.kind === "launchAtLogin" ? null : current
+        );
+        setSettings((current) => current.launchAtLogin === verified
+          ? current
+          : { ...current, launchAtLogin: verified });
+      })
       .catch(() => {
         if (launchAtLoginEpochRef.current !== epoch) return;
         launchAtLoginActualRef.current = previous;
+        launchAtLoginIntentRef.current = null;
+        setLaunchAtLoginStatus("error");
         setSettingsOperationFailure({ kind: "launchAtLogin", desired });
-        setSettings((current) => current.launchAtLogin === desired
-          ? { ...current, launchAtLogin: previous }
-          : current);
+        if (previous !== null) {
+          setSettings((current) => current.launchAtLogin === desired
+            ? { ...current, launchAtLogin: previous }
+            : current);
+        }
       });
   }, [
-    launchAtLoginReady,
+    launchAtLoginStatus,
     settings.launchAtLogin,
     settingsOperationRetryRevision,
   ]);
@@ -845,11 +892,11 @@ function App() {
     if (!failure) return;
     setSettingsOperationFailure(null);
     if (failure.kind === "launchAtLogin") {
-      launchAtLoginActualRef.current = null;
-      setSettings((current) => ({
-        ...current,
-        launchAtLogin: failure.desired,
-      }));
+      launchAtLoginIntentRef.current = failure.desired;
+      setLaunchAtLoginStatus("ready");
+      setSettings((current) => current.launchAtLogin === failure.desired
+        ? current
+        : { ...current, launchAtLogin: failure.desired });
     } else if (failure.kind === "showDockIcon") {
       dockIconActualRef.current = null;
       setSettings((current) => ({
@@ -913,12 +960,15 @@ function App() {
     if (!selectedProcess) {
       setDetail(null);
       setDetailError(null);
+      detailIdentityRef.current = null;
       return;
     }
 
     let cancelled = false;
+    const identity = processIdentity(selectedProcess);
     setDetailLoading(true);
-    setDetail(null);
+    if (detailIdentityRef.current !== identity) setDetail(null);
+    detailIdentityRef.current = identity;
     setDetailError(null);
     void getProcessDetail({
       pid: selectedProcess.pid,
@@ -938,7 +988,12 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedProcess?.birthToken, selectedProcess?.pid, selectedProcess?.startTime]);
+  }, [
+    detailRetryRevision,
+    selectedProcess?.birthToken,
+    selectedProcess?.pid,
+    selectedProcess?.startTime,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1587,6 +1642,15 @@ function App() {
                     {t("cleanup:fileInsights.running")}
                   </button>
                 ) : null}
+                <GlobalTaskCenter
+                  cleanup={cleanupScan}
+                  fileInsights={fileInsights}
+                  startup={startupItems}
+                  updater={updater}
+                  onOpenCleanup={() => navigateDaily("cleanup")}
+                  onOpenStartup={() => navigateDaily("startup")}
+                  onOpenUpdates={() => navigateDaily("settings")}
+                />
                 {isDesktopRuntime() ? <button
                   className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
                   type="button"
@@ -1643,6 +1707,15 @@ function App() {
                 {t("cleanup:fileInsights.running")}
               </button>
             ) : null}
+            <GlobalTaskCenter
+              cleanup={cleanupScan}
+              fileInsights={fileInsights}
+              startup={startupItems}
+              updater={updater}
+              onOpenCleanup={() => setActiveView("cleanup")}
+              onOpenStartup={() => setActiveView("startup")}
+              onOpenUpdates={() => setActiveView("settings")}
+            />
             {isDesktopRuntime() ? <button
               className={`icon-button companion-toggle${companionVisible ? " is-active" : ""}`}
               type="button"
@@ -1784,7 +1857,18 @@ function App() {
                   onRefresh={async () => { await refreshNow(); }}
                 />
               ) : activeView === "applications" ? (
-                <ApplicationUninstallAssistant
+                <ApplicationCenter
+                  applications={activeDiagnosis.applications}
+                  processes={snapshot.processes}
+                  totalMemoryBytes={snapshot.memory.totalBytes}
+                  historyPoints={applicationImpactHistory.points}
+                  historyEnabled={settings.historyPersistenceEnabled && settings.historyApplicationNamesEnabled && settings.applicationImpactHistoryEnabled}
+                  historyStorageStatus={applicationImpactHistory.storageStatus}
+                  onHistoryEnabledChange={(enabled) => updateSettings({ applicationImpactHistoryEnabled: enabled })}
+                  startupSnapshot={startupItems.snapshot}
+                  connectionsSnapshot={connectionsSnapshot}
+                  onOpenStartup={() => navigateDaily("startup")}
+                  onOpenNetwork={() => navigateDaily("network")}
                   trashWatcherEnabled={settings.trashApplicationWatcherEnabled}
                   onTrashWatcherEnabledChange={(trashApplicationWatcherEnabled) =>
                     updateSettings({ trashApplicationWatcherEnabled })}
@@ -1847,10 +1931,12 @@ function App() {
               ) : activeView === "settings" ? (
                 <DailySettings
                   settings={settings}
+                  launchAtLoginStatus={launchAtLoginStatus}
                   notificationStatus={desktopNotifications.status}
                   snapshot={snapshot}
                   updater={updater}
                   onChange={updateSettings}
+                  onLaunchAtLoginChange={updateLaunchAtLogin}
                   onOpenNotificationSettings={openNotificationSettings}
                   onOpenOnboarding={() => setOnboardingOpen(true)}
                   onClearAllData={clearAllProductData}
@@ -2035,7 +2121,18 @@ function App() {
                 onUserActionComplete={userActions.complete}
               />
             ) : activeView === "applications" ? (
-              <ApplicationUninstallAssistant
+              <ApplicationCenter
+                applications={activeDiagnosis.applications}
+                processes={snapshot.processes}
+                totalMemoryBytes={snapshot.memory.totalBytes}
+                historyPoints={applicationImpactHistory.points}
+                historyEnabled={settings.historyPersistenceEnabled && settings.historyApplicationNamesEnabled && settings.applicationImpactHistoryEnabled}
+                historyStorageStatus={applicationImpactHistory.storageStatus}
+                onHistoryEnabledChange={(enabled) => updateSettings({ applicationImpactHistoryEnabled: enabled })}
+                startupSnapshot={startupItems.snapshot}
+                connectionsSnapshot={connectionsSnapshot}
+                onOpenStartup={() => setActiveView("startup")}
+                onOpenNetwork={() => setActiveView("network")}
                 trashWatcherEnabled={settings.trashApplicationWatcherEnabled}
                 onTrashWatcherEnabledChange={(trashApplicationWatcherEnabled) =>
                   updateSettings({ trashApplicationWatcherEnabled })}
@@ -2076,7 +2173,9 @@ function App() {
                 connections={connectionsSnapshot}
                 connectionsError={connectionsError}
                 connectionsLoading={connectionsLoading}
+                connectionsPaused={paused}
                 onRefreshConnections={() => void refreshConnections()}
+                onResumeMonitoring={() => setPaused(false)}
                 connectionRefreshIntervalMs={settings.connectionRefreshIntervalMs}
                 connectionHistoryEnabled={settings.networkConnectionHistoryEnabled}
                 connectionHistoryRetentionDays={settings.networkConnectionHistoryRetentionDays}
@@ -2111,9 +2210,7 @@ function App() {
                 actionRecords={userActions.records}
                 launchAtLogin={settings.launchAtLogin}
                 onRefresh={startupItems.refresh}
-                onEnableLaunchAtLogin={() =>
-                  updateSettings({ launchAtLogin: true })
-                }
+                onEnableLaunchAtLogin={() => updateLaunchAtLogin(true)}
                 onUserActionStart={userActions.start}
                 onUserActionComplete={userActions.complete}
               />
@@ -2171,6 +2268,7 @@ function App() {
             ) : (
               <SettingsExplorer
                 settings={settings}
+                launchAtLoginStatus={launchAtLoginStatus}
                 notificationStatus={desktopNotifications.status}
                 notificationDelivery={notificationDelivery}
                 dataPrivacy={productDataPrivacy}
@@ -2178,6 +2276,7 @@ function App() {
                 snapshot={snapshot}
                 updater={updater}
                 onChange={updateSettings}
+                onLaunchAtLoginChange={updateLaunchAtLogin}
                 onOpenNotificationSettings={openNotificationSettings}
                 onSendTestNotification={desktopNotifications.sendTest}
                 onOpenOnboarding={() => setOnboardingOpen(true)}
@@ -2195,6 +2294,7 @@ function App() {
                 detail={activeDetail}
                 detailError={detailError}
                 detailLoading={detailLoading}
+                onRetryDetail={() => setDetailRetryRevision((current) => current + 1)}
                 history={selectedHistory}
                 capabilities={snapshot.capabilities}
                 preparingAction={preparingAction}

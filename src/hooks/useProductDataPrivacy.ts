@@ -54,8 +54,8 @@ interface ProductDataPrivacyInput {
   cleanupUpdatedAtMs: number | null;
   fileInsightsItemCount: number;
   fileInsightsUpdatedAtMs: number | null;
-  onClearResourceHistory: () => void;
-  onClearConnectionHistory: () => void;
+  onClearResourceHistory: () => Promise<void>;
+  onClearConnectionHistory: () => Promise<void>;
   onClearCleanupScan: () => Promise<void>;
   onClearFileInsights: () => Promise<void>;
 }
@@ -118,8 +118,10 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
           summary.historySegments ?? EMPTY_CACHE_SUMMARY.historySegments,
       });
       setSummaryError(null);
+      return summary;
     } catch (reason) {
       setSummaryError(errorMessage(reason));
+      throw reason;
     }
   }, []);
 
@@ -139,10 +141,10 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
     try {
       switch (category) {
         case "resourceHistory":
-          input.onClearResourceHistory();
+          await input.onClearResourceHistory();
           break;
         case "connectionHistory":
-          input.onClearConnectionHistory();
+          await input.onClearConnectionHistory();
           break;
         case "applicationInventory":
           await clearApplicationInventoryCache();
@@ -160,7 +162,8 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
         }
       }
       setStorageRevision((current) => current + 1);
-      await refresh();
+      const summary = await refresh();
+      verifyCategoryCleared(category, summary);
       setReceipts((current) => ({
         ...current,
         [category]: {
@@ -246,6 +249,37 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
     clearCategory,
     refresh,
   };
+}
+
+function verifyCategoryCleared(
+  category: ProductDataCategory,
+  summary: ProductDataCacheSummary,
+): void {
+  const localBytes = (keys: readonly string[]) => storageByteSize(keys);
+  const failed = (() => {
+    switch (category) {
+      case "resourceHistory":
+        return summary.applicationHistory.byteSize > 0
+          || summary.historySegments.byteSize > 0
+          || localBytes([
+            PERSISTENT_HISTORY_STORAGE_KEY,
+            RESOURCE_ALERT_STORAGE_KEY,
+            APPLICATION_WATCH_HISTORY_STORAGE_KEY,
+            USER_ACTION_HISTORY_STORAGE_KEY,
+          ]) > 0;
+      case "connectionHistory":
+        return localBytes([
+          CONNECTION_HISTORY_STORAGE_KEY,
+          NETWORK_QUALITY_HISTORY_STORAGE_KEY,
+        ]) > 0;
+      case "applicationInventory":
+        return summary.applicationInventory.byteSize > 0;
+      case "scanCaches":
+        return summary.cleanupScan.byteSize > 0
+          || summary.fileInsights.byteSize > 0;
+    }
+  })();
+  if (failed) throw new Error(`product_data_clear_not_verified:${category}`);
 }
 
 export type ProductDataPrivacyController = ReturnType<

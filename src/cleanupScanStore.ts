@@ -1,6 +1,6 @@
 import type { CleanupNode, CleanupScan } from "./types";
 
-export type CleanupSnapshotStatus = "current" | "cached" | "expired";
+export type CleanupSnapshotStatus = "current" | "cached" | "expired" | "updating";
 
 export interface CleanupDeletionTargetSnapshot {
   id?: string;

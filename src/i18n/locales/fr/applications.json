@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "Vue unifiée des applications", "title": "Centre des applications", "description": "Consultez l’utilisation, le démarrage, le réseau, l’historique et la désinstallation sous une même identité.", "tabs": { "label": "Pages du centre des applications", "activity": "Activité actuelle", "history": "Historique", "manage": "Gérer et désinstaller" }, "selected": "Application sélectionnée", "localIdentity": "Identité locale", "startup": "Comportement au démarrage", "startupCount": "{{count}} éléments de démarrage associés", "network": "Activité réseau", "connectionCount": "{{count}} connexions actuelles", "history": "Historique", "historySamples": "{{count}} échantillons enregistrés", "manage": "Gérer l’application", "manageHint": "Vérifier les fichiers résiduels ou désinstaller", "boundary": "Les données locales sont liées uniquement par une identité stable. Les commandes et le contenu des fichiers ne sont jamais enregistrés." },
   "energy": {
     "eyebrow": "Métrique étendue facultative",
     "title": "GPU et énergie relative",

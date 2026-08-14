@@ -1,4 +1,5 @@
 {
+  "center": { "kicker": "統合アプリ表示", "title": "アプリケーションセンター", "description": "1つのアプリ識別情報で現在の使用量、起動、ネットワーク、履歴、アンインストールを確認します。", "tabs": { "label": "アプリケーションセンター", "activity": "現在の動作", "history": "履歴", "manage": "管理と削除" }, "selected": "選択中のアプリ", "localIdentity": "ローカルアプリ識別情報", "startup": "起動時の動作", "startupCount": "関連する起動項目 {{count}} 件", "network": "ネットワーク動作", "connectionCount": "現在の接続 {{count}} 件", "history": "履歴", "historySamples": "保存済みサンプル {{count}} 件", "manage": "アプリを管理", "manageHint": "残留ファイルを確認または削除", "boundary": "安定したアプリ識別情報のみでローカルデータを関連付け、コマンドやファイル内容は保存しません。" },
   "energy": {
     "eyebrow": "オプションの拡張メトリック",
     "title": "GPU と相対エネルギー",

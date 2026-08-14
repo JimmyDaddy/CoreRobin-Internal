@@ -6,6 +6,7 @@ use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, AtomicU64, Ordering},
+    mpsc,
 };
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -1073,9 +1074,14 @@ fn expand_worker_exclusion(path: String) -> PathBuf {
 }
 
 fn start_worker_control(cancelled: Arc<AtomicBool>, completed: Arc<AtomicBool>) {
+    let (ready_tx, ready_rx) = mpsc::sync_channel(0);
     thread::spawn(move || {
         let stdin = io::stdin();
-        for line in stdin.lock().lines() {
+        let stdin = stdin.lock();
+        if ready_tx.send(()).is_err() {
+            return;
+        }
+        for line in stdin.lines() {
             match line {
                 Ok(line) if line.trim() == "cancel" => {
                     cancelled.store(true, Ordering::Relaxed);
@@ -1091,6 +1097,11 @@ fn start_worker_control(cancelled: Arc<AtomicBool>, completed: Arc<AtomicBool>) 
             std::process::exit(0);
         }
     });
+    // Do not begin a potentially long filesystem operation until its parent
+    // liveness channel is actively being watched. Without this handshake, a
+    // heavily loaded process can enter the scan before the control thread is
+    // scheduled, delaying orphan-worker shutdown after the parent disappears.
+    let _ = ready_rx.recv();
 }
 
 fn start_worker_heartbeat(completed: Arc<AtomicBool>) {

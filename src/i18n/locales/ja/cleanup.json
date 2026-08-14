@@ -201,6 +201,7 @@
       "path": "ファイルパス",
       "category": "目的"
     },
+    "view": { "label": "表示形式", "map": "スペースマップ", "list": "リスト", "search": "このフォルダを検索", "clearSearch": "検索をクリア", "sortSize": "サイズ順", "sortName": "名前順", "descending": "降順", "ascending": "昇順", "loading": "索引を読み込み中…", "loadFailed": "リストを読み込めません。再試行してください。", "empty": "一致する項目はありません" },
     "ariaLabel": "スペース サンバースト {{name}}",
     "back": "階層に戻る",
     "breadcrumbs": "ファイルパスの階層構造",
@@ -210,7 +211,6 @@
     "selected": "選択",
     "grouped": "グループ化されたカテゴリ",
     "otherContent": "その他の内容",
-    "deferredContent": "未読み込みの詳細",
     "restrictedObjects": "読み取り不可のオブジェクト",
     "allocatedSize": "ディスク上の割り当てサイズ",
     "logicalSize": "{{size}} 論理的なサイズ",
@@ -220,13 +220,11 @@
       "folder": "フォルダ",
       "file": "ファイル",
       "aggregate": "小さなファイルをまとめて整理",
-      "deferred": "読み込み可能な詳細",
       "restricted": "制限されたファイルのみ"
     },
     "noDeeperBreakdown": "このレベルでは、さらに深い階層への整理はできません。",
     "loadDeeperHint": "このフォルダを選ぶと、ローカル索引から次の階層を開きます。",
     "otherContentHint": "インデックス容量または現在のページのため個別表示されていない内容です。必ずしも小さい項目とは限りません。一覧を続けて表示するか、Finder で現在のフォルダを開いてください。",
-    "deferredContentHint": "フォルダの容量は集計済みですが、詳細なディレクトリ情報はまだローカル索引に保存されていません。上の項目を選ぶと、ディスク全体を再スキャンせずにこのフォルダだけを読み込めます。",
     "loadingFolder": "このフォルダの読み込み中…",
     "loadFailed": "ディレクトリ索引を読み込めませんでした",
     "loadMore": "さらに 50 項目を表示",
@@ -269,6 +267,7 @@
     "freshness": {
       "cached": "以前のスキャン結果を表示",
       "expired": "このスキャンは古いものです。再度のスキャンをお勧めします",
+      "updating": "スキャンを更新中です。前回のマップは引き続き利用できます",
       "changed": "このフォルダが変更されました。サイズの情報が正確でない可能性があります",
       "changedShort": "内容が変更されました",
       "refreshFolder": "{{name}}を更新",

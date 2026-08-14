@@ -14,6 +14,8 @@
   "scanning": "確認中…",
   "loadingTitle": "起動設定の読み込み中",
   "loadingDescription": "CoreRobinは、公開されている起動設定のみを読み取り、その中に含まれるコマンドを実行または起動しません。",
+  "scanFailed": "起動項目を読み取れませんでした。変更は行われていません。もう一度お試しください。",
+  "openSettingsFailed": "システム設定を開けませんでした。再試行するか、システム設定からログイン項目を開いてください。",
   "summary": "起動設定の概要",
   "reviewCount": "確認する価値あり",
   "reviewHint": "ログイン時に起動されるサードパーティ製のアイテム",
@@ -24,7 +26,9 @@
   "inventory": "起動時に実行される項目一覧",
   "listTitle": "自動で起動するものを表示",
   "filters": "起動時に実行される項目のフィルタリング",
+  "loginCount": "ログイン時に開く", "loginHint": "ログイン後に起動するアプリとヘルパー", "backgroundCount": "バックグラウンド動作", "backgroundHint": "条件付きの同期、更新、メンテナンス", "disabledCount": "無効", "disabledHint": "復元可能な無効化済み項目",
   "filter": {
+    "login": "ログイン時に開く", "background": "バックグラウンド動作", "disabled": "無効",
     "review": "確認推奨",
     "all": "すべて",
     "system": "システム関連の項目のみ"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "CoreRobin が安全に復元できる起動ソースは存在しないため、一覧は読み取り専用になります。",
   "unreadable": "{{count}} 起動設定の読み込みに失敗しました。権限が不足している可能性があります。",
   "actions": {
+    "openSettings": "システム設定で管理",
     "disable": "ログイン時に無効化",
     "enable": "ログイン時に復元"
   },
+  "showingCount": "{{total}} 件中 {{shown}} 件を表示", "showMore": "さらに {{count}} 件表示", "completeScan": "利用可能な起動元をすべて読み取りました", "partialScan": "一部のみ取得：起動元に {{count}} 件の問題", "scanIssue": { "unreadable_location": "{{count}} 件の場所を読み取れません", "invalid_entry": "無効な項目 {{count}} 件をスキップしました", "source_unavailable": "起動元が応答しません" },
   "managementStatus": {
     "system": "システム関連のアイテム · 読み取り専用",
     "protected": "保護されたアイテム",
@@ -75,11 +81,14 @@
     "running": "現在実行中：CPU {{cpu}} · メモリ {{memory}}",
     "notMatched": "現在の実行中のアプリケーションを特定できません"
   },
+  "currentUse": { "none": "現在は実行されていません", "low": "現在のリソース使用量は低い", "moderate": "現在のリソース使用量は中程度", "high": "現在のリソース使用量は高い", "running": "現在：CPU {{cpu}}・メモリ {{memory}}", "notMatched": "一致する実行中アプリはありません" },
   "outcome": {
+    "undo": "元に戻す",
     "disabled": "{{name}}の自動起動が無効になっています。アプリケーションは正常に終了していません。",
     "enabled": "{{name}}の自動起動が有効になりました。"
   },
   "actionDialog": {
+    "owner": "アプリケーション", "source": "起動元", "effect": "反映時期",
     "disable": {
       "title": "{{name}}の自動起動を無効にしますか？",
       "description": "CoreRobinは、このユーザー固有の起動ファイルを自身の管理領域に移動し、削除しません。",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "補助項目 {{count}} 件",
     "itemCount_other": "{{count}} 項目",
     "modern": "最新のバックグラウンド項目",
     "orphaned": "実行ファイルがありません",

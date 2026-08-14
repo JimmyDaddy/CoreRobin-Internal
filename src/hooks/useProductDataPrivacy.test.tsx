@@ -36,8 +36,8 @@ beforeEach(() => {
 describe("useProductDataPrivacy", () => {
   it("reports category footprints and retains a per-category clear receipt", async () => {
     window.localStorage.setItem(PERSISTENT_HISTORY_STORAGE_KEY, "history");
-    const clearResource = vi.fn();
-    const clearConnections = vi.fn();
+    const clearResource = vi.fn(async () => undefined);
+    const clearConnections = vi.fn(async () => undefined);
     const clearCleanup = vi.fn(async () => undefined);
     const clearInsights = vi.fn(async () => undefined);
     const { result } = renderHook(() => useProductDataPrivacy({
@@ -78,12 +78,34 @@ describe("useProductDataPrivacy", () => {
       updatedAtMs: 300,
     });
 
+    nativeData.getSummary.mockResolvedValueOnce({
+      cleanupScan: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+      fileInsights: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+      applicationInventory: { byteSize: 400, fileCount: 2, updatedAtMs: 400 },
+      applicationHistory: { byteSize: 500, fileCount: 1, updatedAtMs: 500 },
+      historySegments: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+    });
     await act(async () => {
       expect(await result.current.clearCategory("scanCaches")).toBe(true);
     });
     expect(clearCleanup).toHaveBeenCalledOnce();
     expect(clearInsights).toHaveBeenCalledOnce();
     expect(result.current.receipts.scanCaches.status).toBe("succeeded");
+
+    nativeData.getSummary.mockResolvedValueOnce({
+      cleanupScan: { byteSize: 200, fileCount: 1, updatedAtMs: 200 },
+      fileInsights: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+      applicationInventory: { byteSize: 400, fileCount: 2, updatedAtMs: 400 },
+      applicationHistory: { byteSize: 500, fileCount: 1, updatedAtMs: 500 },
+      historySegments: { byteSize: 0, fileCount: 0, updatedAtMs: null },
+    });
+    await act(async () => {
+      expect(await result.current.clearCategory("scanCaches")).toBe(false);
+    });
+    expect(result.current.receipts.scanCaches).toMatchObject({
+      status: "failed",
+      error: "product_data_clear_not_verified:scanCaches",
+    });
 
     nativeData.clearInventory.mockRejectedValueOnce(new Error("locked"));
     await act(async () => {

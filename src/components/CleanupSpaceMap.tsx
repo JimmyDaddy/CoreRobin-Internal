@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, LoaderCircle, LockKeyhole, Plus, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -122,6 +122,7 @@ function cleanupAvailableDelta(outcome: CleanupDeleteOutcome): number {
 }
 
 type CleanupMapMode = "path" | "category";
+type CleanupPresentation = "map" | "list";
 
 const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
 
@@ -151,6 +152,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   );
   const [pagingDirectoryId, setPagingDirectoryId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
+  const [presentation, setPresentation] = useState<CleanupPresentation>("map");
+  const [listQuery, setListQuery] = useState("");
+  const [listSort, setListSort] = useState<"size" | "name">("size");
+  const [listDescending, setListDescending] = useState(true);
+  const [listItems, setListItems] = useState<CleanupMapNode[]>([]);
+  const [listCursor, setListCursor] = useState<number | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
+  const [listError, setListError] = useState<CommandError | null>(null);
+  const listRequestIdRef = useRef(0);
   const pathRoot = useMemo<CleanupMapNode>(
     () => materializeCleanupNode(snapshot.root, loadedSubtrees),
     [loadedSubtrees, snapshot.root],
@@ -207,8 +218,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     const pathNodes = indexTree(pathRoot, pagedChildren).nodes;
     for (const [id, node] of indexTree(categoryRoot).nodes) pathNodes.set(id, node);
     for (const [id, node] of externalPlanNodes) pathNodes.set(id, node);
+    for (const node of listItems) pathNodes.set(node.id, node);
     return pathNodes;
-  }, [categoryRoot, externalPlanNodes, pagedChildren, pathRoot]);
+  }, [categoryRoot, externalPlanNodes, listItems, pagedChildren, pathRoot]);
   const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
@@ -286,6 +298,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     window.clearTimeout(blockedDropTimerRef.current);
     setBlockedDropNodeId(null);
     setSubtreeError(null);
+    setListItems([]);
+    setListCursor(null);
+    setListError(null);
   }, [snapshot.scanId]);
 
   useEffect(() => {
@@ -401,7 +416,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     () => new Map(arcs.map((arc) => [arc.node.id, arc.node])),
     [arcs],
   );
-  const selected = nodes.get(selectedId) ?? visibleNodes.get(selectedId) ?? focus;
+  const listNodeMap = useMemo(
+    () => new Map(listItems.map((node) => [node.id, node])),
+    [listItems],
+  );
+  const selected = nodes.get(selectedId)
+    ?? visibleNodes.get(selectedId)
+    ?? listNodeMap.get(selectedId)
+    ?? focus;
   const selectedDirectlyPlanned = plannedIds.has(selected.id);
   const selectedCollected = collectedIds.has(selected.id) ||
     isCleanupNodeCoveredByPlan(plannedIds, selected.id, parents);
@@ -509,6 +531,84 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [focus.id]);
 
   useEffect(() => {
+    if (presentation !== "list") return;
+    const requestId = ++listRequestIdRef.current;
+    const timer = window.setTimeout(() => {
+      setListLoading(true);
+      setListError(null);
+      if (!snapshot.indexed || !focus.id.startsWith(`index:${snapshot.scanId}:`)) {
+        const query = listQuery.trim().toLocaleLowerCase();
+        const next = legendChildren
+          .filter((node) => !query || node.name.toLocaleLowerCase().includes(query))
+          .sort((left, right) => {
+            const comparison = listSort === "name"
+              ? left.name.localeCompare(right.name)
+              : left.allocatedSizeBytes - right.allocatedSizeBytes;
+            return listDescending ? -comparison : comparison;
+          });
+        if (requestId === listRequestIdRef.current) {
+          setListItems(next);
+          setListCursor(null);
+          setListLoading(false);
+        }
+        return;
+      }
+      void getCleanupIndexedChildren({
+        scanId: snapshot.scanId,
+        directoryId: focus.id,
+        cursor: null,
+        limit: 60,
+        query: listQuery.trim() || null,
+        sortBy: listSort,
+        descending: listDescending,
+      }).then((page) => {
+        if (requestId !== listRequestIdRef.current) return;
+        setListItems(page.items);
+        setListCursor(page.nextCursor);
+      }).catch((reason) => {
+        if (requestId === listRequestIdRef.current) {
+          setListError(normalizeCommandError(reason));
+        }
+      }).finally(() => {
+        if (requestId === listRequestIdRef.current) setListLoading(false);
+      });
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [
+    focus.id,
+    legendChildren,
+    listDescending,
+    listQuery,
+    listSort,
+    presentation,
+    snapshot.indexed,
+    snapshot.scanId,
+  ]);
+
+  const loadMoreListItems = async () => {
+    if (listCursor === null || listLoadingMore) return;
+    setListLoadingMore(true);
+    setListError(null);
+    try {
+      const page = await getCleanupIndexedChildren({
+        scanId: snapshot.scanId,
+        directoryId: focus.id,
+        cursor: listCursor,
+        limit: 60,
+        query: listQuery.trim() || null,
+        sortBy: listSort,
+        descending: listDescending,
+      });
+      setListItems((current) => [...current, ...page.items]);
+      setListCursor(page.nextCursor);
+    } catch (reason) {
+      setListError(normalizeCommandError(reason));
+    } finally {
+      setListLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
     const revalidate = () => setValidationRevision((current) => current + 1);
     window.addEventListener("focus", revalidate);
     return () => window.removeEventListener("focus", revalidate);
@@ -587,15 +687,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setSubtreeError(null);
     setSelectedId(node.id);
     if (node.kind === "aggregate") {
-      if (
-        node.hasChildren
-        && !refreshingFocus
-        && snapshot.indexed
-        && focus.id.startsWith(`index:${snapshot.scanId}:`)
-        && (focus.kind === "folder" || focus.kind === "restricted")
-      ) {
-        onRefreshDirectory(focus.id);
-      }
       return;
     }
     if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
@@ -1090,13 +1181,23 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             ))}
           </nav>
         </div>
-        <div className="cleanup-map__mode" role="group" aria-label={t("cleanup:map.mode.label")}>
-          <button type="button" className={mapMode === "path" ? "is-active" : undefined} aria-pressed={mapMode === "path"} onClick={() => setMapMode("path")}>
-            {t("cleanup:map.mode.path")}
-          </button>
-          <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => setMapMode("category")}>
-            {t("cleanup:map.mode.category")}
-          </button>
+        <div className="cleanup-map__view-controls">
+          <div className="cleanup-map__mode" role="group" aria-label={t("cleanup:map.mode.label")}>
+            <button type="button" className={mapMode === "path" ? "is-active" : undefined} aria-pressed={mapMode === "path"} onClick={() => setMapMode("path")}>
+              {t("cleanup:map.mode.path")}
+            </button>
+            <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => setMapMode("category")}>
+              {t("cleanup:map.mode.category")}
+            </button>
+          </div>
+          <div className="cleanup-map__presentation" role="group" aria-label={t("cleanup:map.view.label")}>
+            <button type="button" className={presentation === "map" ? "is-active" : undefined} aria-pressed={presentation === "map"} onClick={() => setPresentation("map")}>
+              <PieChart size={13} />{t("cleanup:map.view.map")}
+            </button>
+            <button type="button" className={presentation === "list" ? "is-active" : undefined} aria-pressed={presentation === "list"} onClick={() => setPresentation("list")}>
+              <List size={13} />{t("cleanup:map.view.list")}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1145,42 +1246,116 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 </button>
               </div>
             ) : null}
-            <div className="cleanup-map__surface">
-              <CleanupSunburstCanvas
-                arcs={arcs}
-                hues={hueMap}
-                selectedId={selected.id}
-                changedIds={changedIds}
-                collectedIds={collectedIds}
-                focusKey={focus.id}
-                ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects")) })}
-                onSelect={selectMapNode}
-                onActivate={(node) => {
-                  if (suppressNextClickRef.current) {
-                    suppressNextClickRef.current = false;
-                    return;
-                  }
-                  void drillInto(node);
-                }}
-                onCollect={addToPlan}
-                onPointerDown={beginDrag}
-                onPointerCancel={cancelDragAt}
-              />
-              <button
-                className={`cleanup-map__center-control${focusChanged ? " is-changed" : ""}`}
-                type="button"
-                disabled={!parentId}
-                aria-label={parentId ? t("cleanup:map.centerBack") : undefined}
-                onClick={() => {
-                  const parent = parentId ? nodes.get(parentId) : null;
-                  if (parent) navigateTo(parent);
-                }}
-              >
-                <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</span>
-                <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
-                {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
-              </button>
-            </div>
+            {presentation === "map" ? (
+              <div className="cleanup-map__surface">
+                <CleanupSunburstCanvas
+                  arcs={arcs}
+                  hues={hueMap}
+                  selectedId={selected.id}
+                  changedIds={changedIds}
+                  collectedIds={collectedIds}
+                  focusKey={focus.id}
+                  ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects")) })}
+                  onSelect={selectMapNode}
+                  onActivate={(node) => {
+                    if (suppressNextClickRef.current) {
+                      suppressNextClickRef.current = false;
+                      return;
+                    }
+                    void drillInto(node);
+                  }}
+                  onCollect={addToPlan}
+                  onPointerDown={beginDrag}
+                  onPointerCancel={cancelDragAt}
+                />
+                <button
+                  className={`cleanup-map__center-control${focusChanged ? " is-changed" : ""}`}
+                  type="button"
+                  disabled={!parentId}
+                  aria-label={parentId ? t("cleanup:map.centerBack") : undefined}
+                  onClick={() => {
+                    const parent = parentId ? nodes.get(parentId) : null;
+                    if (parent) navigateTo(parent);
+                  }}
+                >
+                  <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</span>
+                  <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
+                  {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
+                </button>
+              </div>
+            ) : (
+              <div className="cleanup-index-list">
+                <div className="cleanup-index-list__toolbar">
+                  <label>
+                    <Search size={14} />
+                    <input
+                      type="search"
+                      value={listQuery}
+                      onChange={(event) => setListQuery(event.target.value)}
+                      placeholder={t("cleanup:map.view.search")}
+                    />
+                    {listQuery ? (
+                      <button type="button" onClick={() => setListQuery("")} aria-label={t("cleanup:map.view.clearSearch")}>
+                        <X size={13} />
+                      </button>
+                    ) : null}
+                  </label>
+                  <select value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
+                    <option value="size">{t("cleanup:map.view.sortSize")}</option>
+                    <option value="name">{t("cleanup:map.view.sortName")}</option>
+                  </select>
+                  <button type="button" onClick={() => setListDescending((current) => !current)}>
+                    <ArrowDownUp size={14} />
+                    {t(listDescending ? "cleanup:map.view.descending" : "cleanup:map.view.ascending")}
+                  </button>
+                </div>
+                {listLoading ? (
+                  <div className="cleanup-index-list__state" role="status">
+                    <LoaderCircle className="is-spinning" size={18} />{t("cleanup:map.view.loading")}
+                  </div>
+                ) : listError ? (
+                  <div className="cleanup-index-list__state is-error" role="alert">
+                    <AlertTriangle size={18} />{t("cleanup:map.view.loadFailed")}
+                  </div>
+                ) : listItems.length === 0 ? (
+                  <div className="cleanup-index-list__state">
+                    <Search size={18} />{t("cleanup:map.view.empty")}
+                  </div>
+                ) : (
+                  <div className="cleanup-index-list__table" role="table" aria-label={t("cleanup:map.view.list")}>
+                    {listItems.map((node) => {
+                      const protectedNode = cleanupNodeProtection(node) !== null;
+                      const collected = plannedIds.has(node.id);
+                      return (
+                        <div className={selected.id === node.id ? "is-selected" : undefined} role="row" key={node.id}>
+                          <input
+                            type="checkbox"
+                            checked={collected}
+                            disabled={protectedNode || node.kind === "aggregate"}
+                            aria-label={collected
+                              ? t("cleanup:map.removeFromBasket")
+                              : t("cleanup:map.addToBasket")}
+                            onChange={() => collected ? removeFromPlan(node.id) : addToPlan(node)}
+                          />
+                          <button type="button" role="cell" onClick={() => setSelectedId(node.id)} onDoubleClick={() => void drillInto(node)}>
+                            <span>{node.kind === "file" ? <File size={15} /> : <FolderOpen size={15} />}</span>
+                            <span><strong>{nodeDisplayName(node, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong><small>{node.path ?? t(`cleanup:map.types.${node.kind}`)}</small></span>
+                            <b>{formatBytes(node.allocatedSizeBytes)}</b>
+                            {node.hasChildren ? <ChevronRight size={14} /> : <span />}
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {listCursor !== null ? (
+                      <button className="cleanup-index-list__more" type="button" disabled={listLoadingMore} onClick={() => void loadMoreListItems()}>
+                        {listLoadingMore ? <LoaderCircle className="is-spinning" size={14} /> : <Plus size={14} />}
+                        {t("cleanup:map.loadMore")}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div
               className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}`}
@@ -1244,7 +1419,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </span>
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</strong>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
               {mapMode === "path" && selected.path ? (
                 <nav
                   className="cleanup-map__selected-path"
@@ -1361,8 +1536,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               {legendChildren.map((child) => {
                 const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
                 const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
-                const expandableAggregate = child.kind === "aggregate" && child.hasChildren && focus.path !== null;
-                const protectionReason = expandableAggregate ? null : cleanupNodeProtection(child);
+                const protectionReason = cleanupNodeProtection(child);
                 const protectedNode = protectionReason !== null;
                 const protectedDragSource = dragState?.dragging && dragState.nodeId === child.id && dragState.blocked;
                 return (
@@ -1375,7 +1549,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       onMouseEnter={() => setSelectedId(child.id)}
                       onFocus={() => setSelectedId(child.id)}
                       data-draggable={!collected && child.kind !== "aggregate" ? "true" : undefined}
-                      data-drag-policy={expandableAggregate ? "expand" : protectedNode ? "protected" : "collect"}
+                      data-drag-policy={protectedNode ? "protected" : "collect"}
                       data-protection-reason={protectionReason ?? undefined}
                       onPointerDown={(event) => beginDrag(event, child)}
                       onPointerCancel={(event) => cancelDragAt(event.pointerId)}
@@ -1391,22 +1565,15 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                         {protectedNode ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
-                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.deferredContent"), t("cleanup:map.restrictedObjects"))}</strong>
+                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
-                          {child.kind === "aggregate" && child.hasChildren
-                            ? t("cleanup:map.types.deferred")
-                            : t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
+                          {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
                           {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
                           {protectedNode ? ` · ${t("cleanup:map.basket.protectedBadge")}` : ""}
                         </small>
                       </span>
                       <b>
                         {child.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(child.allocatedSizeBytes)}
-                        {expandableAggregate
-                          ? refreshingFocus
-                            ? <LoaderCircle className="is-spinning" size={14} />
-                            : <ChevronRight size={14} />
-                          : null}
                       </b>
                     </button>
                   </li>
@@ -1456,8 +1623,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               ? t("cleanup:map.basket.collectedHint")
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
-                : selected.kind === "aggregate" && selected.hasChildren && focus.path
-                  ? t("cleanup:map.deferredContentHint")
                 : selected.kind === "aggregate" && focus.path
                   ? t("cleanup:map.otherContentHint")
                 : isTrashRootPath(selected.path)
@@ -1581,10 +1746,9 @@ function percentage(value: number, total: number) {
 function nodeDisplayName(
   node: CleanupMapNode,
   aggregateLabel: string,
-  deferredLabel: string,
   restrictedLabel: string,
 ) {
-  if (node.kind === "aggregate") return node.hasChildren ? deferredLabel : aggregateLabel;
+  if (node.kind === "aggregate") return aggregateLabel;
   if (node.kind === "restricted" && node.path === null) return restrictedLabel;
   return node.name;
 }

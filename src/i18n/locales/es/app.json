@@ -1,5 +1,6 @@
 {
   "mainNavigation": "Navegación principal",
+  "tasks": { "kicker": "Trabajo en segundo plano", "title": "Centro de tareas", "activeCount": "{{count}} tareas en curso", "needsAttention": "Una tarea requiere atención", "preparing": "Preparando…", "open": "Volver a la tarea", "retry": "Revisar y reintentar", "empty": "No hay tareas en curso", "emptyHint": "Los escaneos, actualizaciones e inventarios aparecen aquí.", "cleanup": { "title": "Escaneo de espacio", "progress": "{{count}} elementos revisados", "failed": "El escaneo no terminó" }, "folder": { "title": "Actualización de carpeta", "progress": "{{count}} elementos revisados" }, "files": { "title": "Revisión de archivos", "progress": "{{count}} elementos revisados", "failed": "La revisión no terminó" }, "startup": { "title": "Inventario de inicio", "failed": "El inventario no terminó" }, "update": { "installing": "Descargando e instalando la actualización", "ready": "La actualización está lista", "installError": "La instalación no terminó", "restartError": "Es necesario reiniciar la aplicación", "current": "Actualización de CoreRobin" } },
   "monitor": "Monitorización",
   "diagnostics": "Diagnóstico",
   "overview": "Resumen",

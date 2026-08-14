@@ -1,4 +1,11 @@
 {
+  "center": {
+    "kicker": "Unified application view", "title": "Application Center", "description": "See current usage, startup behavior, network activity, history, and uninstall actions under one application identity.",
+    "tabs": { "label": "Application Center pages", "activity": "Current activity", "history": "History", "manage": "Manage & uninstall" },
+    "selected": "Selected application", "localIdentity": "Local application identity", "startup": "Startup behavior", "startupCount": "{{count}} related startup items",
+    "network": "Network activity", "connectionCount": "{{count}} current connections", "history": "History", "historySamples": "{{count}} saved samples",
+    "manage": "Manage application", "manageHint": "Review residual files or uninstall", "boundary": "Local data is linked only by stable application identity. Commands and file contents are never stored."
+  },
   "kicker": "Application summary",
   "overviewTitle": "What has the most impact now",
   "title": "Application resource impact",

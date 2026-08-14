@@ -28,6 +28,34 @@ test("professional overview in English", async ({ page }) => {
   });
 });
 
+test("application center and task center at compact desktop width", async ({ page }) => {
+  await prepareApp(page, "en", "professional", false);
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto("/");
+  await page.locator(".sidebar .nav-group button").filter({ hasText: "Apps" }).click();
+  await expect(page.locator(".application-center")).toBeVisible();
+  await page.locator(".global-task-center__trigger").click();
+  await expect(page.locator(".global-task-center__popover")).toBeVisible();
+  await stabilize(page);
+  await expect(page).toHaveScreenshot("application-center-task-center-en-900.png", {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.02,
+  });
+});
+
+test("startup inventory at compact desktop width", async ({ page }) => {
+  await prepareApp(page, "en", "professional", false);
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto("/");
+  await page.locator(".sidebar .nav-group button").filter({ hasText: "Startup" }).click();
+  await expect(page.locator(".startup-explorer")).toBeVisible();
+  await stabilize(page);
+  await expect(page).toHaveScreenshot("startup-en-900.png", {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.02,
+  });
+});
+
 test("loading, error, empty, complete and chart-gap states", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 900 });
   await page.goto("/visual-regression.html?scenario=states&language=en");

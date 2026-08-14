@@ -14,6 +14,8 @@
   "scanning": "Vérification…",
   "loadingTitle": "Lecture des emplacements de démarrage",
   "loadingDescription": "CoreRobin ne lit que la configuration de démarrage publique et n'exécute jamais les commandes qu'elle contient.",
+  "scanFailed": "Les éléments de démarrage n’ont pas pu être lus. Rien n’a été modifié. Réessayez.",
+  "openSettingsFailed": "Les Réglages Système n’ont pas pu être ouverts. Réessayez ou ouvrez les éléments de connexion manuellement.",
   "summary": "Résumé du démarrage",
   "reviewCount": "À examiner",
   "reviewHint": "Applications tierces qui démarrent à l'authentification",
@@ -24,7 +26,9 @@
   "inventory": "Inventaire des programmes de démarrage",
   "listTitle": "Quels programmes démarrent automatiquement ?",
   "filters": "Filtres pour les programmes de démarrage",
+  "loginCount": "Ouvrir à la connexion", "loginHint": "Applications et assistants lancés après la connexion", "backgroundCount": "Activité en arrière-plan", "backgroundHint": "Synchronisation, mise à jour et maintenance conditionnelles", "disabledCount": "Désactivé", "disabledHint": "Éléments récupérables précédemment désactivés",
   "filter": {
+    "login": "Ouvrir à la connexion", "background": "Activité en arrière-plan", "disabled": "Désactivé",
     "review": "À examiner",
     "all": "Tous",
     "system": "Programmes système"
@@ -40,9 +44,11 @@
   "readOnlyBoundary": "Cette plateforme ne permet pas à CoreRobin de restaurer un fichier de démarrage, ce qui maintient l'inventaire en lecture seule.",
   "unreadable": "{{count}} Impossible de lire les emplacements de démarrage en raison des permissions",
   "actions": {
+    "openSettings": "Gérer dans Réglages Système",
     "disable": "Désactiver au démarrage",
     "enable": "Restaurer au démarrage"
   },
+  "showingCount": "{{shown}} éléments affichés sur {{total}}", "showMore": "Afficher {{count}} de plus", "completeScan": "Toutes les sources de démarrage disponibles ont été lues", "partialScan": "Résultat partiel : {{count}} problèmes de source", "scanIssue": { "unreadable_location": "{{count}} emplacement illisible", "invalid_entry": "{{count}} entrée invalide ignorée", "source_unavailable": "La source ne répond pas" },
   "managementStatus": {
     "system": "Élément système · Lecture seule",
     "protected": "Élément protégé",
@@ -75,11 +81,14 @@
     "running": "En cours : CPU {{cpu}} · Mémoire {{memory}}",
     "notMatched": "Aucune application en cours ne peut être associée"
   },
+  "currentUse": { "none": "Pas en cours d’exécution", "low": "Utilisation actuelle faible", "moderate": "Utilisation actuelle modérée", "high": "Utilisation actuelle élevée", "running": "Utilisation actuelle : CPU {{cpu}} · Mémoire {{memory}}", "notMatched": "Aucune application correspondante active" },
   "outcome": {
+    "undo": "Annuler",
     "disabled": "Le démarrage automatique pour {{name}} est désactivé. L'application en cours n'a pas été fermée.",
     "enabled": "Le démarrage automatique pour {{name}} est rétabli."
   },
   "actionDialog": {
+    "owner": "Application", "source": "Source de démarrage", "effect": "Moment de prise d’effet",
     "disable": {
       "title": "Désactiver le démarrage automatique pour {{name}}?",
       "description": "CoreRobin conserve ce fichier de démarrage spécifique à l'utilisateur dans son propre espace de stockage et ne le supprime pas.",
@@ -157,6 +166,7 @@
     }
   },
   "ownership": {
+    "moreItems": "{{count}} éléments auxiliaires",
     "itemCount_other": "{{count}} élément",
     "modern": "Élément d’arrière-plan moderne",
     "orphaned": "Exécutable manquant",

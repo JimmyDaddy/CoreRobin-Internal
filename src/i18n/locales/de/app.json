@@ -1,5 +1,6 @@
 {
   "mainNavigation": "Hauptnavigation",
+  "tasks": { "kicker": "Hintergrundaufgaben", "title": "Aufgabenzentrale", "activeCount": "{{count}} Aufgaben laufen", "needsAttention": "Eine Aufgabe erfordert Aufmerksamkeit", "preparing": "Wird vorbereitet…", "open": "Zur Aufgabe", "retry": "Prüfen und erneut versuchen", "empty": "Keine laufenden Aufgaben", "emptyHint": "Scans, Updates und Inventare erscheinen hier.", "cleanup": { "title": "Speicherscan", "progress": "{{count}} Elemente geprüft", "failed": "Speicherscan nicht abgeschlossen" }, "folder": { "title": "Ordner aktualisieren", "progress": "{{count}} Elemente geprüft" }, "files": { "title": "Dateiprüfung", "progress": "{{count}} Elemente geprüft", "failed": "Dateiprüfung nicht abgeschlossen" }, "startup": { "title": "Autostart-Inventar", "failed": "Autostart-Inventar nicht abgeschlossen" }, "update": { "installing": "Update wird heruntergeladen und installiert", "ready": "Update ist bereit", "installError": "Update-Installation nicht abgeschlossen", "restartError": "App-Neustart erforderlich", "current": "CoreRobin-Update" } },
   "monitor": "Überwachung",
   "diagnostics": "Diagnose",
   "overview": "Übersicht",
