@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.26",
+  "title": {
+    "zh-CN": "应用中心与更可靠的后台任务",
+    "en": "Application Center and more reliable background tasks"
+  },
+  "items": [
+    {
+      "zh-CN": "磁盘扫描完成后，扫描范围内的所有可读文件夹都会保存在本机索引中；连续打开深层目录、应用包和系统目录时不再临时追加扫描，也不会因为刷新其他文件夹而丢失已经可以浏览的层级。",
+      "en": "After a disk scan completes, every readable folder in the scanned area is kept in the local index. You can open deep folders, app bundles and system directories without extra scans, and refreshing another folder no longer discards levels that were already available."
+    },
+    {
+      "zh-CN": "清理结果新增扇形图与可搜索列表两种浏览方式；列表支持按名称或大小排序、分页和多选加入清理篮。",
+      "en": "Cleanup results now offer both a radial map and a searchable list; the list supports sorting by name or size, pagination and adding multiple items to the cleanup basket."
+    },
+    {
+      "zh-CN": "应用入口整合为应用中心，可在当前影响、历史归因、启动项与网络关联、卸载管理之间直接切换。",
+      "en": "Application tools are now combined in the Application Center, where you can switch directly between current impact, historical attribution, startup and network relationships, and uninstall management."
+    },
+    {
+      "zh-CN": "顶栏新增任务中心，集中显示空间扫描、文件夹刷新、文件检查、启动项读取和应用更新的进度、失败、取消与重试操作。",
+      "en": "A new task center in the top bar keeps disk scans, folder refreshes, file checks, startup inventory and app updates visible in one place, including progress, failures, cancellation and retry actions."
+    },
+    {
+      "zh-CN": "启动项按责任应用归组并区分登录、后台、停用与系统项目；操作只在最终确认时复核当前目标，完成后可直接撤销。",
+      "en": "Startup items are grouped by their responsible app and separated into login, background, disabled and system items. The selected target is rechecked only at final confirmation, and completed changes can be undone directly."
+    },
+    {
+      "zh-CN": "修复后台运行时历史首批数据可能被覆盖、更新检查重试中断、采样失联后不恢复，以及通知权限重新开启后已有异常不再提醒的问题。",
+      "en": "Fixed cases where the first batch of history could be overwritten in the background, update retries could stop, sampling would not recover after losing contact, and existing issues would not be reported after notifications were re-enabled."
+    },
+    {
+      "zh-CN": "进程详情刷新失败时保留上一次可用信息，并提供就地重试，不再清空整个详情面板。",
+      "en": "When process details fail to refresh, the last available information now remains visible with an inline retry instead of clearing the entire details panel."
+    }
+  ]
+}
