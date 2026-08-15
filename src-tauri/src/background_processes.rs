@@ -4,11 +4,13 @@ use std::time::{Duration, Instant};
 
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
+#[cfg(target_os = "macos")]
 use crate::bounded_command;
 use crate::models::{BackgroundProcessState, ProcessKey};
 
 const LIKELY_LEFTOVER_MIN_AGE: Duration = Duration::from_secs(30);
 const LIKELY_LEFTOVER_MIN_SAMPLES: u32 = 3;
+#[cfg(target_os = "macos")]
 const MANAGER_QUERY_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -208,6 +210,7 @@ pub(crate) fn launchd_registered_pids() -> Option<HashSet<u32>> {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn parse_launchctl_list(output: &str) -> HashSet<u32> {
     output
         .lines()
