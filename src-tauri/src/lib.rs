@@ -2,6 +2,7 @@ mod app_update;
 mod application_history;
 mod application_icon;
 mod application_metadata;
+mod background_processes;
 mod background_supervisor;
 mod bounded_command;
 mod cleanup;
@@ -21,7 +22,6 @@ mod monitor;
 mod native_uninstall;
 mod network_connections;
 mod network_quality;
-mod orphan_processes;
 mod private_storage;
 mod process_control;
 mod safe_fs;
@@ -85,13 +85,13 @@ use models::{
     CleanupScanIndexSummary, CleanupScanJobStatus, CleanupScanRequest, FileInsightsProgress,
     FileInsightsScan, GpuEnergySnapshot, NativeApplicationUninstallExecutionRequest,
     NativeApplicationUninstallResult, NetworkConnectionsSnapshot, NetworkHostLookup,
-    NetworkHostLookupRequest, NetworkQualityResult, OrphanKillReport, OrphanKillRequest,
-    OrphanProcess, ProcessActionRequest, ProcessActionResult, ProcessControlLease,
-    ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest, ProcessDetail,
-    ProcessDetailRequest, QuickCleanCategorySummary, QuickCleanProgress, QuickCleanRequest,
-    QuickCleanResult, StartupContext, StartupItemsSnapshot, StartupManagementExecutionRequest,
-    StartupManagementLease, StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest,
-    StartupManagementResult, SystemSnapshot, SystemSummary, TrashedApplication,
+    NetworkHostLookupRequest, NetworkQualityResult, ProcessActionRequest, ProcessActionResult,
+    ProcessControlLease, ProcessControlLeaseReleaseRequest, ProcessControlLeaseRequest,
+    ProcessDetail, ProcessDetailRequest, QuickCleanCategorySummary, QuickCleanProgress,
+    QuickCleanRequest, QuickCleanResult, StartupContext, StartupItemsSnapshot,
+    StartupManagementExecutionRequest, StartupManagementLease,
+    StartupManagementLeaseReleaseRequest, StartupManagementLeaseRequest, StartupManagementResult,
+    SystemSnapshot, SystemSummary, TrashedApplication,
 };
 use monitor::SystemMonitor;
 use network_connections::sample_network_connections;
@@ -106,7 +106,6 @@ use objc2::{MainThreadMarker, sel};
 use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
-use orphan_processes::{kill_orphan_processes, scan_orphan_processes};
 use process_control::ProcessController;
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
@@ -2132,22 +2131,6 @@ async fn get_process_detail(
 }
 
 #[tauri::command]
-async fn scan_orphan_processes_command() -> Result<Vec<OrphanProcess>, CommandError> {
-    tauri::async_runtime::spawn_blocking(scan_orphan_processes)
-        .await
-        .map_err(|error| CommandError::internal(format!("Orphan process scan failed: {error}")))?
-}
-
-#[tauri::command]
-async fn kill_orphan_processes_command(
-    request: OrphanKillRequest,
-) -> Result<OrphanKillReport, CommandError> {
-    tauri::async_runtime::spawn_blocking(move || kill_orphan_processes(&request))
-        .await
-        .map_err(|error| CommandError::internal(format!("Orphan process kill failed: {error}")))?
-}
-
-#[tauri::command]
 async fn get_application_icon(
     state: State<'_, AppState>,
     request: ApplicationIconRequest,
@@ -2507,8 +2490,6 @@ pub fn run() {
             set_companion_expanded,
             configure_companion_window,
             get_process_detail,
-            scan_orphan_processes_command,
-            kill_orphan_processes_command,
             get_application_icon,
             create_process_control_lease,
             release_process_control_lease,

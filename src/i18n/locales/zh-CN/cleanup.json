@@ -96,6 +96,10 @@
       "systemDisk": "系统磁盘"
     }
   },
+  "results": {
+    "moreTitle": "更多扫描结果",
+    "moreDescription": "按用途查看常见位置，或逐项检查大文件。"
+  },
   "categories": {
     "title": "这些空间大多用来做什么"
   },

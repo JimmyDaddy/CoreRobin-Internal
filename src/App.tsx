@@ -168,7 +168,7 @@ const NetworkExplorer = lazy(async () => ({ default: (await import("./components
 const PersonalBaselinePanel = lazy(async () => ({ default: (await import("./components/PersonalBaselinePanel")).PersonalBaselinePanel }));
 const ProcessInspector = lazy(async () => ({ default: (await import("./components/ProcessInspector")).ProcessInspector }));
 const ProcessTable = lazy(async () => ({ default: (await import("./components/ProcessTable")).ProcessTable }));
-const OrphanProcessCard = lazy(async () => ({ default: (await import("./components/OrphanProcessCard")).OrphanProcessCard }));
+const BackgroundProcessCard = lazy(async () => ({ default: (await import("./components/BackgroundProcessCard")).BackgroundProcessCard }));
 const ResourceHistory = lazy(async () => ({ default: (await import("./components/ResourceHistory")).ResourceHistory }));
 const SettingsExplorer = lazy(async () => ({ default: (await import("./components/SettingsExplorer")).SettingsExplorer }));
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
@@ -2062,7 +2062,10 @@ function App() {
               </>
             ) : activeView === "processes" ? (
               <>
-                <OrphanProcessCard />
+                <BackgroundProcessCard
+                  processes={snapshot.processes}
+                  onInspect={selectProcess}
+                />
                 <ProcessTable
                   processes={snapshot.processes}
                   connections={connectionsSnapshot?.connections}
@@ -2091,9 +2094,9 @@ function App() {
                   onFollowSelectionChange={(followSelection) =>
                     updateProcessPreferences({ followSelection })
                   }
-                  orphanOnly={processPreferences.orphanOnly}
-                  onOrphanOnlyChange={(orphanOnly) =>
-                    updateProcessPreferences({ orphanOnly })
+                  residualOnly={processPreferences.residualOnly}
+                  onResidualOnlyChange={(residualOnly) =>
+                    updateProcessPreferences({ residualOnly })
                   }
                   onResetPreferences={() =>
                     setProcessPreferences({

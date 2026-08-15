@@ -186,6 +186,10 @@
       "systemDisk": "系統磁碟"
     }
   },
+  "results": {
+    "moreTitle": "更多掃描結果",
+    "moreDescription": "依用途查看常見位置，或逐項檢查大型檔案。"
+  },
   "categories": {
     "title": "這些空間大多用來做什麼"
   },

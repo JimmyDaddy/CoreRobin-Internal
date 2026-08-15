@@ -102,43 +102,24 @@
     "confirmForce": "Forçar encerramento",
     "confirmRequest": "Solicitar saída"
   },
-  "orphan": {
-    "kicker": "Processos sem gestão",
-    "title": "Processos sem gestão detectados",
-    "summary": "{{count}} processos sem gestão usam {{size}}",
-    "none": "Nenhum processo sem gestão — tudo certo",
-    "view": "Ver e limpar",
+  "background": {
+    "kicker": "Diagnóstico de resíduos em segundo plano",
+    "title": "Possíveis processos residuais em segundo plano",
+    "summary": "{{count}} processos continuam após o fechamento dos apps e usam {{size}}",
+    "view": "Ver",
     "collapse": "Recolher",
-    "refresh": "Detectar de novo",
-    "inspect": "Inspecionar",
-    "end": "Encerrar",
-    "forceEnd": "Forçar",
-    "cleanAll": "Encerrar todos",
-    "confirmAll": "Encerrar os {{count}} processos sem gestão?",
-    "confirmYes": "Encerrar",
-    "confirmMore": " e mais {{count}}",
-    "safety": "Apenas processos seus são listados; cada um é reverificado antes de encerrar",
-    "reportTitle": "Resultado",
-    "filter": "Só sem gestão",
-    "filterTitle": "Mostrar apenas processos cujo pai saiu e que não são gerenciados",
-    "reason": {
-      "parent_exited": "Pai saiu; sem gestor",
-      "parent_missing": "O pai não existe mais"
-    },
-    "status": {
-      "killed": "Encerrado",
-      "forceKilled": "Forçado",
-      "survived": "Ainda ativo",
-      "failed": "Falhou",
-      "skipped": "Ignorado"
-    },
-    "detail": {
-      "command": "Linha de comando",
-      "parent": "Pai original",
-      "reason": "Motivo",
-      "started": "Início",
-      "cpu": "CPU",
-      "status": "Estado"
+    "inspect": "Verificar e tratar",
+    "observed": "observado por {{duration}}",
+    "safety": "Serviços do sistema, XPC e extensões são excluídos. Cada ação exige revisão.",
+    "filter": "Possíveis resíduos",
+    "filterTitle": "Mostrar apenas processos observados várias vezes após o app original encerrar",
+    "detail": { "source": "Origem em segundo plano", "previousParent": "Processo pai anterior" },
+    "state": {
+      "managed": "Gerenciado pelo sistema ou por um app",
+      "unconfirmed": "Origem não confirmada",
+      "likely_leftover": "Possível resíduo",
+      "confirmed_owned_leftover": "Tarefa residual do CoreRobin confirmada",
+      "zombie": "Encerrado; aguardando limpeza do sistema"
     }
   }
 }

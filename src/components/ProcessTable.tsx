@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
-  UserX,
+  CircleDotDashed,
   X,
 } from "lucide-react";
 import {
@@ -75,8 +75,8 @@ interface ProcessTableProps {
   followSelection?: boolean;
   onFollowSelectionChange?: (enabled: boolean) => void;
   onResetPreferences?: () => void;
-  orphanOnly?: boolean;
-  onOrphanOnlyChange?: (enabled: boolean) => void;
+  residualOnly?: boolean;
+  onResidualOnlyChange?: (enabled: boolean) => void;
   compact?: boolean;
 }
 
@@ -117,8 +117,8 @@ export function ProcessTable({
   followSelection = true,
   onFollowSelectionChange,
   onResetPreferences,
-  orphanOnly = false,
-  onOrphanOnlyChange,
+  residualOnly = false,
+  onResidualOnlyChange,
   compact = false,
 }: ProcessTableProps) {
   const { t } = useAppTranslation();
@@ -183,7 +183,7 @@ export function ProcessTable({
             selectedIdentity,
             followSelection,
             projectionContext,
-            orphanOnly,
+            residualOnly,
           )
         : null,
     [
@@ -191,7 +191,7 @@ export function ProcessTable({
       effectiveViewMode,
       expandedIdentities,
       followSelection,
-      orphanOnly,
+      residualOnly,
       processes,
       projectionContext,
       query,
@@ -208,11 +208,11 @@ export function ProcessTable({
         sortKey,
         direction,
         projectionContext,
-        orphanOnly,
+        residualOnly,
       ),
     [
       direction,
-      orphanOnly,
+      residualOnly,
       processes,
       projectionContext,
       query,
@@ -500,11 +500,11 @@ export function ProcessTable({
               <button
                 className="process-tool-button"
                 type="button"
-                aria-pressed={orphanOnly}
-                title={t("process:orphan.filterTitle")}
-                onClick={() => onOrphanOnlyChange?.(!orphanOnly)}
+                aria-pressed={residualOnly}
+                title={t("process:background.filterTitle")}
+                onClick={() => onResidualOnlyChange?.(!residualOnly)}
               >
-                <UserX size={14} />{t("process:orphan.filter")}
+                <CircleDotDashed size={14} />{t("process:background.filter")}
               </button>
               <button
                 className="process-tool-button"

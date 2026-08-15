@@ -87,8 +87,6 @@ pub const ALL_COMMANDS: &[&str] = &[
     "set_companion_expanded",
     "configure_companion_window",
     "get_process_detail",
-    "scan_orphan_processes_command",
-    "kill_orphan_processes_command",
     "get_application_icon",
     "create_process_control_lease",
     "release_process_control_lease",

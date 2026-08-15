@@ -186,6 +186,10 @@
       "systemDisk": "Le disque système"
     }
   },
+  "results": {
+    "moreTitle": "Résultats d’analyse supplémentaires",
+    "moreDescription": "Consultez les emplacements courants par usage ou examinez les fichiers volumineux un par un."
+  },
   "categories": {
     "title": "Utilisation courante de cet espace"
   },

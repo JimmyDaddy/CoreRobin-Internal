@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::background_processes::managed_process_protection_reason;
 use crate::error::CommandError;
 use crate::models::{
     ProcessAction, ProcessActionOutcome, ProcessActionRequest, ProcessActionResult,
@@ -36,7 +37,7 @@ impl ProcessController {
         &mut self,
         request: ProcessControlLeaseRequest,
     ) -> Result<ProcessControlLease, CommandError> {
-        if let Some(reason) = protected_reason(request.key.pid, self.own_pid) {
+        if let Some(reason) = process_protection_reason(request.key.pid, self.own_pid) {
             return Err(CommandError::new("protected_process", reason));
         }
 
@@ -97,7 +98,7 @@ impl ProcessController {
         &mut self,
         request: ProcessActionRequest,
     ) -> Result<ProcessActionResult, CommandError> {
-        if let Some(reason) = protected_reason(request.key.pid, self.own_pid) {
+        if let Some(reason) = process_protection_reason(request.key.pid, self.own_pid) {
             return Err(CommandError::new("protected_process", reason));
         }
 
@@ -115,6 +116,10 @@ impl ProcessController {
             message: action_result_message(request.action, execution, self.capabilities.targeting),
         })
     }
+}
+
+fn process_protection_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
+    protected_reason(pid, own_pid).or_else(|| managed_process_protection_reason(pid))
 }
 
 #[derive(Clone, Copy)]

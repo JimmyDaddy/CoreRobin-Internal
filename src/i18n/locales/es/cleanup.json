@@ -186,6 +186,10 @@
       "systemDisk": "Disco del sistema"
     }
   },
+  "results": {
+    "moreTitle": "Más resultados del análisis",
+    "moreDescription": "Revisa ubicaciones habituales por uso o examina archivos grandes uno por uno."
+  },
   "categories": {
     "title": "Para qué se utiliza este espacio comúnmente"
   },

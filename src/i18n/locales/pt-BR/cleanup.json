@@ -186,6 +186,10 @@
       "systemDisk": "disco do sistema"
     }
   },
+  "results": {
+    "moreTitle": "Mais resultados da verificação",
+    "moreDescription": "Revise locais comuns por finalidade ou examine arquivos grandes individualmente."
+  },
   "categories": {
     "title": "Para que essa área é comumente utilizada"
   },

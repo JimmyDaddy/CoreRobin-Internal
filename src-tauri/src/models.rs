@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const SNAPSHOT_SCHEMA_VERSION: u16 = 7;
+pub const SNAPSHOT_SCHEMA_VERSION: u16 = 8;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1169,69 +1169,20 @@ pub struct ProcessRow {
     pub disk_read_bytes_per_second: Option<u64>,
     pub disk_write_bytes_per_second: Option<u64>,
     pub protected: bool,
-    pub orphaned: bool,
+    pub background_state: Option<BackgroundProcessState>,
+    pub background_observed_seconds: Option<u64>,
+    pub background_previous_parent_pid: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum OrphanReason {
-    ParentExited,
-    ParentMissing,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrphanProcess {
-    pub pid: u32,
-    pub start_time: u64,
-    pub name: String,
-    pub command_line: String,
-    pub parent_pid: Option<u32>,
-    pub parent_name: Option<String>,
-    pub user: String,
-    pub cpu_percent: f32,
-    pub memory_bytes: u64,
-    pub status: String,
-    pub orphan_reason: OrphanReason,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrphanKillTarget {
-    pub pid: u32,
-    pub expected_start_time: u64,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrphanKillRequest {
-    pub targets: Vec<OrphanKillTarget>,
-    pub force: bool,
-}
-
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum OrphanKillStatus {
-    Killed,
-    ForceKilled,
-    Survived,
-    Failed,
-    Skipped,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrphanKillOutcome {
-    pub pid: u32,
-    pub name: String,
-    pub status: OrphanKillStatus,
-    pub message: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrphanKillReport {
-    pub outcomes: Vec<OrphanKillOutcome>,
+pub enum BackgroundProcessState {
+    Managed,
+    Unconfirmed,
+    LikelyLeftover,
+    #[allow(dead_code)] // Reserved for workers backed by a future CoreRobin job provenance record.
+    ConfirmedOwnedLeftover,
+    Zombie,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1278,7 +1229,7 @@ pub struct ProcessControlCapabilities {
     pub lease_ttl_ms: u64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessKey {
     pub pid: u32,

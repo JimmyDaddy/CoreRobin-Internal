@@ -153,6 +153,29 @@ describe("default process inspector selection", () => {
   });
 });
 
+describe("background residual filtering", () => {
+  it("excludes managed, unconfirmed, and zombie processes", () => {
+    const likely = processFixture(1, { backgroundState: "likely_leftover" });
+    const confirmed = processFixture(2, {
+      backgroundState: "confirmed_owned_leftover",
+    });
+    const managed = processFixture(3, { backgroundState: "managed" });
+    const unconfirmed = processFixture(4, { backgroundState: "unconfirmed" });
+    const zombie = processFixture(5, { backgroundState: "zombie" });
+
+    const rows = buildFlatProcessRows(
+      [likely, confirmed, managed, unconfirmed, zombie],
+      "",
+      "name",
+      "ascending",
+      {},
+      true,
+    );
+
+    expect(rows.map((row) => row.process.pid)).toEqual([1, 2]);
+  });
+});
+
 interface ProjectionOptions {
   query?: string;
   sortKey?: ProcessSortKey;
@@ -188,7 +211,7 @@ describe("process explorer preferences", () => {
     expect(parseProcessExplorerPreferences(null)).toEqual(defaults);
     expect(parseProcessExplorerPreferences("{")).toEqual(defaults);
     expect(
-      parseProcessExplorerPreferences(JSON.stringify({ version: 2 })),
+      parseProcessExplorerPreferences(JSON.stringify({ version: 3 })),
     ).toEqual(defaults);
   });
 
@@ -249,6 +272,20 @@ describe("process explorer preferences", () => {
     );
 
     expect(parsed.liveSort).toBe(true);
+  });
+
+  it("migrates the legacy unmanaged-process filter safely", () => {
+    const parsed = parseProcessExplorerPreferences(
+      JSON.stringify({
+        ...defaultProcessExplorerPreferences(),
+        version: 1,
+        residualOnly: undefined,
+        orphanOnly: true,
+      }),
+    );
+
+    expect(parsed.version).toBe(2);
+    expect(parsed.residualOnly).toBe(true);
   });
 
   it("prunes stale expansion identities without matching a reused PID", () => {

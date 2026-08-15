@@ -102,43 +102,24 @@
     "confirmForce": "강제 종료",
     "confirmRequest": "종료 요청"
   },
-  "orphan": {
-    "kicker": "무주 프로세스",
-    "title": "무주 프로세스 감지",
-    "summary": "무주 프로세스 {{count}}개, {{size}} 사용 중",
-    "none": "무주 프로세스가 없습니다",
-    "view": "확인하고 정리",
+  "background": {
+    "kicker": "백그라운드 잔여 진단",
+    "title": "남아 있을 수 있는 백그라운드 프로세스",
+    "summary": "앱 종료 후에도 {{count}}개 프로세스가 실행 중이며 {{size}}를 사용합니다",
+    "view": "보기",
     "collapse": "접기",
-    "refresh": "다시 감지",
-    "inspect": "확인",
-    "end": "종료",
-    "forceEnd": "강제 종료",
-    "cleanAll": "모두 정리",
-    "confirmAll": "무주 프로세스 {{count}}개를 모두 종료할까요?",
-    "confirmYes": "정리하기",
-    "confirmMore": "외 {{count}}개",
-    "safety": "현재 사용자 소유 프로세스만 표시하며, 종료 전에 프로세스를 다시 검증합니다",
-    "reportTitle": "정리 결과",
-    "filter": "무주만 보기",
-    "filterTitle": "부모 프로세스가 종료되어 관리되지 않는 프로세스만 표시",
-    "reason": {
-      "parent_exited": "부모가 종료되어 관리자가 없음",
-      "parent_missing": "부모 프로세스가 없음"
-    },
-    "status": {
-      "killed": "종료됨",
-      "forceKilled": "강제 종료됨",
-      "survived": "종료되지 않음",
-      "failed": "실패",
-      "skipped": "건너뜀"
-    },
-    "detail": {
-      "command": "명령줄",
-      "parent": "원래 부모",
-      "reason": "고아 사유",
-      "started": "시작 시간",
-      "cpu": "CPU",
-      "status": "상태"
+    "inspect": "확인 후 처리",
+    "observed": "{{duration}} 동안 지속",
+    "safety": "시스템 서비스, XPC 서비스, 앱 확장은 제외됩니다. 작업은 항목별 확인이 필요합니다.",
+    "filter": "잔여 후보만",
+    "filterTitle": "원래 앱 종료 후 여러 번 관찰된 프로세스만 표시",
+    "detail": { "source": "백그라운드 출처", "previousParent": "이전 부모 프로세스" },
+    "state": {
+      "managed": "시스템 또는 앱에서 관리",
+      "unconfirmed": "출처 미확인",
+      "likely_leftover": "잔여 가능성",
+      "confirmed_owned_leftover": "확인된 CoreRobin 잔여 작업",
+      "zombie": "종료됨·시스템 회수 대기"
     }
   }
 }

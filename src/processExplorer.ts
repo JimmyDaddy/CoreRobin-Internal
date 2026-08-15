@@ -22,7 +22,7 @@ const MAX_QUERY_LENGTH = 256;
 const MAX_EXPANDED_IDENTITIES = 512;
 
 export interface ProcessExplorerPreferences {
-  version: 1;
+  version: 2;
   viewMode: ProcessViewMode;
   query: string;
   sortKey: ProcessSortKey;
@@ -30,7 +30,7 @@ export interface ProcessExplorerPreferences {
   liveSort: boolean;
   expandedIdentities: string[];
   followSelection: boolean;
-  orphanOnly: boolean;
+  residualOnly: boolean;
 }
 
 export interface VisibleProcessRow {
@@ -79,7 +79,7 @@ export interface ProcessProjectionContext {
 
 export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences {
   return {
-    version: 1,
+    version: 2,
     viewMode: "flat",
     query: "",
     sortKey: "cpu",
@@ -87,7 +87,7 @@ export function defaultProcessExplorerPreferences(): ProcessExplorerPreferences 
     liveSort: false,
     expandedIdentities: [],
     followSelection: true,
-    orphanOnly: false,
+    residualOnly: false,
   };
 }
 
@@ -116,7 +116,9 @@ export function parseProcessExplorerPreferences(
 
   try {
     const value = JSON.parse(serialized) as unknown;
-    if (!isRecord(value) || value.version !== 1) return fallback;
+    if (!isRecord(value) || (value.version !== 1 && value.version !== 2)) {
+      return fallback;
+    }
 
     const expandedIdentities = Array.isArray(value.expandedIdentities)
       ? Array.from(
@@ -132,7 +134,7 @@ export function parseProcessExplorerPreferences(
       : [];
 
     return {
-      version: 1,
+      version: 2,
       viewMode: isProcessViewMode(value.viewMode) ? value.viewMode : fallback.viewMode,
       query:
         typeof value.query === "string"
@@ -151,10 +153,12 @@ export function parseProcessExplorerPreferences(
         typeof value.followSelection === "boolean"
           ? value.followSelection
           : fallback.followSelection,
-      orphanOnly:
-        typeof value.orphanOnly === "boolean"
-          ? value.orphanOnly
-          : fallback.orphanOnly,
+      residualOnly:
+        typeof value.residualOnly === "boolean"
+          ? value.residualOnly
+          : typeof value.orphanOnly === "boolean"
+            ? value.orphanOnly
+            : fallback.residualOnly,
     };
   } catch {
     return fallback;
@@ -218,7 +222,7 @@ export function buildProcessTreeProjection(
   selectedIdentity: string | null,
   followSelection: boolean,
   context: ProcessProjectionContext = {},
-  orphanOnly = false,
+  residualOnly = false,
 ): ProcessTreeProjection {
   const { processByIdentity, parentByIdentity } = buildProcessTreeIndex(processes);
 
@@ -248,18 +252,18 @@ export function buildProcessTreeProjection(
   }
 
   const included = new Set<string>();
-  if (!normalizedQuery && !orphanOnly) {
+  if (!normalizedQuery && !residualOnly) {
     for (const identity of processByIdentity.keys()) included.add(identity);
   } else {
-    const orphanMatches = orphanOnly
+    const residualMatches = residualOnly
       ? new Set(
           [...processByIdentity.entries()]
-            .filter(([, process]) => process.orphaned)
+            .filter(([, process]) => isResidualProcess(process))
             .map(([identity]) => identity),
         )
       : null;
     for (const matchIdentity of queryMatches) {
-      if (!orphanMatches || orphanMatches.has(matchIdentity)) {
+      if (!residualMatches || residualMatches.has(matchIdentity)) {
         addIdentityAndAncestors(matchIdentity, parentByIdentity, included);
       }
     }
@@ -383,13 +387,13 @@ export function buildFlatProcessRows(
   sortKey: ProcessSortKey,
   direction: SortDirection,
   context: ProcessProjectionContext = {},
-  orphanOnly = false,
+  residualOnly = false,
 ): VisibleProcessRow[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return sortProcesses(
     processes.filter(
       (process) =>
-        (!orphanOnly || process.orphaned) &&
+        (!residualOnly || isResidualProcess(process)) &&
         (!normalizedQuery ||
           processMatchesQuery(process, normalizedQuery, context.portsByPid)),
     ),
@@ -405,6 +409,11 @@ export function buildFlatProcessRows(
     expanded: false,
     queryMatch: true,
   }));
+}
+
+export function isResidualProcess(process: ProcessRow): boolean {
+  return process.backgroundState === "likely_leftover"
+    || process.backgroundState === "confirmed_owned_leftover";
 }
 
 export function indexProcessPorts(

@@ -186,6 +186,10 @@
       "systemDisk": "システムドライブ"
     }
   },
+  "results": {
+    "moreTitle": "その他のスキャン結果",
+    "moreDescription": "用途別に一般的な場所を確認するか、大きなファイルを個別に確認します。"
+  },
   "categories": {
     "title": "この領域が通常使用される目的"
   },
