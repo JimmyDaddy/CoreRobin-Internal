@@ -102,43 +102,24 @@
     "confirmForce": "強制終了",
     "confirmRequest": "終了をリクエスト"
   },
-  "orphan": {
-    "kicker": "管理外プロセス",
-    "title": "管理外プロセスを検出",
-    "summary": "管理外プロセス {{count}} 件、{{size}} 使用中",
-    "none": "管理外プロセスはありません",
-    "view": "確認して削除",
+  "background": {
+    "kicker": "バックグラウンド残留診断",
+    "title": "残留している可能性のあるバックグラウンドプロセス",
+    "summary": "アプリ終了後も {{count}} 件のプロセスが動作し、{{size}} を使用しています",
+    "view": "表示",
     "collapse": "閉じる",
-    "refresh": "再検出",
-    "inspect": "確認",
-    "end": "終了",
-    "forceEnd": "強制終了",
-    "cleanAll": "すべて終了",
-    "confirmAll": "管理外プロセス {{count}} 件をすべて終了しますか？",
-    "confirmYes": "終了する",
-    "confirmMore": "ほか {{count}} 件",
-    "safety": "現在のユーザー所有のプロセスのみ表示。終了前にプロセスを再検証します",
-    "reportTitle": "終了結果",
-    "filter": "管理外のみ",
-    "filterTitle": "親プロセスが終了し、管理されていないプロセスのみ表示",
-    "reason": {
-      "parent_exited": "親プロセス終了後、管理者がいない",
-      "parent_missing": "親プロセスが存在しない"
-    },
-    "status": {
-      "killed": "終了",
-      "forceKilled": "強制終了",
-      "survived": "終了せず",
-      "failed": "失敗",
-      "skipped": "スキップ"
-    },
-    "detail": {
-      "command": "コマンドライン",
-      "parent": "元の親プロセス",
-      "reason": "孤児の原因",
-      "started": "開始時刻",
-      "cpu": "CPU",
-      "status": "状態"
+    "inspect": "確認して対処",
+    "observed": "{{duration}} 継続",
+    "safety": "システムサービス、XPC サービス、アプリ拡張は除外されます。操作は個別確認が必要です。",
+    "filter": "残留候補のみ",
+    "filterTitle": "元のアプリ終了後も複数回観測されたプロセスのみ表示",
+    "detail": { "source": "バックグラウンドの由来", "previousParent": "以前の親プロセス" },
+    "state": {
+      "managed": "システムまたはアプリが管理",
+      "unconfirmed": "由来を確認できません",
+      "likely_leftover": "残留の可能性",
+      "confirmed_owned_leftover": "確認済みの CoreRobin 残留タスク",
+      "zombie": "終了済み・システム回収待ち"
     }
   }
 }

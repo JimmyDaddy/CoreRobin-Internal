@@ -12,10 +12,14 @@ use sysinfo::{
     ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind, Users,
 };
 
+use crate::background_processes::{
+    BackgroundProcessTracker, ProcessObservation, is_macos_managed_executable,
+    launchd_registered_pids,
+};
 use crate::error::CommandError;
 use crate::identity::{BirthTokenCache, ensure_birth_token};
 use crate::models::{
-    Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot,
+    BackgroundProcessState, Capabilities, CpuSnapshot, DiskSnapshot, HostSnapshot, MemorySnapshot,
     NetworkInterfaceSnapshot, NetworkSnapshot, ProcessControlCapabilities, ProcessDetail,
     ProcessDetailRequest, ProcessKey, ProcessRow, SNAPSHOT_SCHEMA_VERSION, SystemSnapshot,
     SystemSummary, VolumeSnapshot,
@@ -73,7 +77,8 @@ pub struct SystemMonitor {
     volume_refresh_in_flight: Arc<AtomicBool>,
     last_volume_refresh: Instant,
     application_identities: HashMap<PathBuf, Option<String>>,
-    launchd_pids_cache: Option<(Instant, HashSet<u32>)>,
+    launchd_pids_cache: Option<(Instant, Option<HashSet<u32>>)>,
+    background_process_tracker: BackgroundProcessTracker,
 }
 
 impl SystemMonitor {
@@ -118,6 +123,7 @@ impl SystemMonitor {
             last_volume_refresh: Instant::now(),
             application_identities: HashMap::new(),
             launchd_pids_cache: None,
+            background_process_tracker: BackgroundProcessTracker::default(),
         }
     }
 
@@ -245,31 +251,63 @@ impl SystemMonitor {
         self.application_identities
             .retain(|path, _| executable_paths.contains(path));
 
-        let live_pids = self
+        let own_user_id = self
             .system
-            .processes()
-            .values()
-            .map(|process| process.pid().as_u32())
-            .collect::<HashSet<_>>();
-        let own_pid = sysinfo::get_current_pid()
-            .map(|pid| pid.as_u32())
-            .unwrap_or(u32::MAX);
+            .process(sysinfo::Pid::from_u32(self.own_pid))
+            .and_then(|process| process.user_id().cloned());
         if self
             .launchd_pids_cache
             .as_ref()
             .is_none_or(|(refreshed_at, _)| refreshed_at.elapsed() >= LAUNCHD_CACHE_TTL)
         {
-            self.launchd_pids_cache = Some((
-                Instant::now(),
-                crate::orphan_processes::launchd_registered_pids(),
-            ));
+            self.launchd_pids_cache = Some((Instant::now(), launchd_registered_pids()));
         }
         let launchd_pids = self
             .launchd_pids_cache
             .as_ref()
-            .map(|(_, pids)| pids)
-            .cloned()
-            .unwrap_or_default();
+            .and_then(|(_, pids)| pids.as_ref());
+        let observations = self
+            .system
+            .processes()
+            .values()
+            .map(|process| {
+                let pid = process.pid().as_u32();
+                let parent_pid = process.parent().map(|parent| parent.as_u32());
+                ProcessObservation {
+                    key: process_birth_tokens
+                        .get(&pid)
+                        .cloned()
+                        .flatten()
+                        .map(|birth_token| ProcessKey { pid, birth_token }),
+                    parent_pid,
+                    parent_key: parent_pid.and_then(|parent_pid| {
+                        process_birth_tokens
+                            .get(&parent_pid)
+                            .cloned()
+                            .flatten()
+                            .map(|birth_token| ProcessKey {
+                                pid: parent_pid,
+                                birth_token,
+                            })
+                    }),
+                    current_user_owned: own_user_id
+                        .as_ref()
+                        .is_some_and(|own_user_id| process.user_id() == Some(own_user_id)),
+                    executable: process.exe().map(Path::to_path_buf),
+                    protected: protected_reason(pid, self.own_pid).is_some(),
+                    is_zombie: matches!(
+                        process.status(),
+                        sysinfo::ProcessStatus::Zombie | sysinfo::ProcessStatus::Dead
+                    ),
+                    manager_registered: launchd_pids.is_some_and(|pids| pids.contains(&pid)),
+                }
+            })
+            .collect::<Vec<_>>();
+        let background_assessments = self.background_process_tracker.update(
+            &observations,
+            launchd_pids.is_some(),
+            Instant::now(),
+        );
 
         let mut processes = self
             .system
@@ -278,18 +316,23 @@ impl SystemMonitor {
             .map(|process| {
                 let pid = process.pid().as_u32();
                 let disk_usage = process.disk_usage();
-                let orphaned = pid != own_pid
-                    && match process.parent() {
-                        Some(parent) => {
-                            let parent_pid = parent.as_u32();
-                            (parent_pid == 1 && !launchd_pids.contains(&pid))
-                                || !live_pids.contains(&parent_pid)
-                        }
-                        None => false,
-                    };
+                let process_key = process_birth_tokens
+                    .get(&pid)
+                    .cloned()
+                    .flatten()
+                    .map(|birth_token| ProcessKey { pid, birth_token });
+                let background_assessment = process_key
+                    .as_ref()
+                    .and_then(|key| background_assessments.get(key))
+                    .copied()
+                    .unwrap_or_default();
+                let classification_protected = matches!(
+                    background_assessment.state,
+                    Some(BackgroundProcessState::Managed | BackgroundProcessState::Zombie)
+                );
                 ProcessRow {
                     pid,
-                    birth_token: process_birth_tokens.get(&pid).cloned().flatten(),
+                    birth_token: process_key.map(|key| key.birth_token),
                     parent_pid: process.parent().map(|parent| parent.as_u32()),
                     start_time: process.start_time(),
                     run_time_seconds: process.run_time(),
@@ -310,8 +353,11 @@ impl SystemMonitor {
                         .then(|| bytes_per_second(disk_usage.read_bytes, elapsed_ms)),
                     disk_write_bytes_per_second: (!warming_up)
                         .then(|| bytes_per_second(disk_usage.written_bytes, elapsed_ms)),
-                    protected: protected_reason(pid, self.own_pid).is_some(),
-                    orphaned,
+                    protected: protected_reason(pid, self.own_pid).is_some()
+                        || classification_protected,
+                    background_state: background_assessment.state,
+                    background_observed_seconds: background_assessment.observed_seconds,
+                    background_previous_parent_pid: background_assessment.previous_parent_pid,
                 }
             })
             .collect::<Vec<_>>();
@@ -553,7 +599,6 @@ impl SystemMonitor {
             ));
         }
 
-        let protected_reason = protected_reason(request.pid, self.own_pid);
         let (key, identity_error) = match request.snapshot_birth_token.as_deref() {
             Some(expected) => {
                 let birth_token = ensure_birth_token(request.pid, expected)?;
@@ -573,6 +618,36 @@ impl SystemMonitor {
                 ),
             ),
         };
+        let background_state = key
+            .as_ref()
+            .and_then(|key| self.background_process_tracker.assessment(key))
+            .and_then(|assessment| assessment.state);
+        let protected_reason = protected_reason(request.pid, self.own_pid).or_else(|| {
+            if matches!(
+                process.status(),
+                sysinfo::ProcessStatus::Zombie | sysinfo::ProcessStatus::Dead
+            ) {
+                Some(
+                    "This process has already exited and is waiting for the operating system to reap it.",
+                )
+            } else if matches!(background_state, Some(BackgroundProcessState::Managed))
+                || process.exe().is_some_and(|path| {
+                    is_macos_managed_executable(
+                        path,
+                        process.parent().map(|parent| parent.as_u32()),
+                    )
+                })
+                || self
+                    .launchd_pids_cache
+                    .as_ref()
+                    .and_then(|(_, pids)| pids.as_ref())
+                    .is_some_and(|pids| pids.contains(&request.pid))
+            {
+                Some("This process is managed by macOS or its owning application.")
+            } else {
+                None
+            }
+        });
         let command_line = (!process.cmd().is_empty()).then(|| {
             process
                 .cmd()
@@ -660,6 +735,7 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .with_memory()
         .with_disk_usage()
         .with_user(UpdateKind::OnlyIfNotSet)
+        .with_exe(UpdateKind::OnlyIfNotSet)
         .without_tasks()
 }
 

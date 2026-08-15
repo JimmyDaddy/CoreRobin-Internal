@@ -50,9 +50,6 @@ import type {
   ProcessControlLeaseRequest,
   ProcessDetail,
   ProcessDetailRequest,
-  OrphanKillReport,
-  OrphanKillRequest,
-  OrphanProcess,
   QuickCleanCategory,
   QuickCleanCategorySummary,
   QuickCleanProgress,
@@ -1116,22 +1113,6 @@ export async function executeProcessAction(
     return executeMockProcessAction(request);
   }
   return invoke<ProcessActionResult>("execute_process_action", { request });
-}
-
-export async function scanOrphanProcesses(): Promise<OrphanProcess[]> {
-  if (canUseDevelopmentMock()) {
-    return [];
-  }
-  return invoke<OrphanProcess[]>("scan_orphan_processes_command");
-}
-
-export async function killOrphanProcesses(
-  request: OrphanKillRequest,
-): Promise<OrphanKillReport> {
-  if (canUseDevelopmentMock()) {
-    return { outcomes: [] };
-  }
-  return invoke<OrphanKillReport>("kill_orphan_processes_command", { request });
 }
 
 export async function createProcessControlLease(

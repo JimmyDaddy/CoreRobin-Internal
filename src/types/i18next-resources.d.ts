@@ -733,6 +733,10 @@ export default interface Resources {
     "readOnlyTitle": "先看清楚，再决定是否处理",
     "reclaimableEstimate": "可能可回收空间",
     "restartScan": "重新开始扫描",
+    "results": {
+      "moreDescription": "按用途查看常见位置，或逐项检查大文件。",
+      "moreTitle": "更多扫描结果"
+    },
     "reviewFirst": "逐项确认",
     "safety": {
       "reclaimable": "通常可回收",
@@ -2159,6 +2163,29 @@ export default interface Resources {
   },
   "process": {
     "allProcesses": "所有进程",
+    "background": {
+      "collapse": "收起",
+      "detail": {
+        "previousParent": "此前所属进程",
+        "source": "后台来源"
+      },
+      "filter": "仅看可能残留",
+      "filterTitle": "只显示原应用退出后仍被连续多次观察到的进程",
+      "inspect": "检查并处理",
+      "kicker": "后台残留诊断",
+      "observed": "已持续 {{duration}}",
+      "safety": "系统服务、XPC 服务与应用扩展已排除；处理操作需要逐项核对。",
+      "state": {
+        "confirmed_owned_leftover": "已确认的 CoreRobin 残留任务",
+        "likely_leftover": "可能残留",
+        "managed": "由系统或应用管理",
+        "unconfirmed": "来源尚未确认",
+        "zombie": "已退出，等待系统回收"
+      },
+      "summary": "{{count}} 个进程在原应用退出后仍持续运行，占用 {{size}}",
+      "title": "检测到可能残留的后台进程",
+      "view": "查看"
+    },
     "clearSearch": "清除进程筛选",
     "collapse": "折叠{{name}}",
     "columns": {
@@ -2239,45 +2266,6 @@ export default interface Resources {
     "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
     "matchedPort": "匹配端口 {{port}}",
     "noMatches": "没有匹配的进程",
-    "orphan": {
-      "cleanAll": "一键清理全部",
-      "collapse": "收起",
-      "confirmAll": "确认结束全部 {{count}} 个无主进程？",
-      "confirmMore": "等 {{count}} 个",
-      "confirmYes": "确认清理",
-      "detail": {
-        "command": "命令行",
-        "cpu": "CPU",
-        "parent": "原父进程",
-        "reason": "孤儿原因",
-        "started": "启动时间",
-        "status": "状态"
-      },
-      "end": "结束",
-      "filter": "仅看无主",
-      "filterTitle": "只显示父进程已退出、无人托管的进程",
-      "forceEnd": "强制结束",
-      "inspect": "检查",
-      "kicker": "无主进程",
-      "none": "没有无主进程，一切正常",
-      "reason": {
-        "parent_exited": "父进程已退出，当前无人托管",
-        "parent_missing": "父进程已不存在"
-      },
-      "refresh": "重新检测",
-      "reportTitle": "清理结果",
-      "safety": "只列出当前用户拥有的进程；结束前会再次校验进程身份",
-      "status": {
-        "failed": "失败",
-        "forceKilled": "已强制结束",
-        "killed": "已结束",
-        "skipped": "已跳过",
-        "survived": "未退出"
-      },
-      "summary": "{{count}} 个无主进程，占用 {{size}}",
-      "title": "检测到无主进程",
-      "view": "查看并清理"
-    },
     "protected": "受保护",
     "realtime": "实时采样",
     "resetView": "恢复默认进程视图",

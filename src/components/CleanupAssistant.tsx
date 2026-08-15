@@ -3,6 +3,7 @@ import {
   ArchiveRestore,
   ArrowRight,
   Boxes,
+  ChevronDown,
   Code2,
   Download,
   FileArchive,
@@ -62,7 +63,7 @@ import {
 } from "./CleanupSpaceMap";
 import { FileInsightsExplorer, FileInsightsLauncher } from "./FileInsightsExplorer";
 import { PathActions } from "./PathActions";
-import { QuickCleanLauncher, QuickCleanupPage } from "./QuickCleanupWorkspace";
+import { QuickCleanupPage } from "./QuickCleanupWorkspace";
 import "./CleanupAssistant.css";
 
 const LIMITED_SCAN_PREFERENCE_KEY =
@@ -189,6 +190,9 @@ export function CleanupAssistant({
   )
     ? growthComparison
     : null;
+  const visibleSnapshotStatus = error && snapshotStatus === "current"
+    ? "cached"
+    : snapshotStatus;
   const progressLocation = progress
     ? cleanupProgressLocation(progress.currentPath, t)
     : t("cleanup:progress.locations.personal");
@@ -426,7 +430,7 @@ export function CleanupAssistant({
   }
 
   return (
-    <section className={`panel cleanup-assistant${loading && !snapshot ? " is-scanning" : ""}${pristine ? " is-pristine" : ""}`} aria-labelledby="cleanup-title">
+    <section className={`panel cleanup-assistant${loading ? " is-scanning" : ""}${pristine ? " is-pristine" : ""}`} aria-labelledby="cleanup-title">
       <header className="cleanup-assistant__header">
         <span className="cleanup-assistant__icon" aria-hidden="true">
           <ScanSearch size={20} />
@@ -457,8 +461,6 @@ export function CleanupAssistant({
         ) : null}
       </header>
 
-      <QuickCleanLauncher onOpen={() => setActiveWorkspace("quick")} />
-
       <section className="cleanup-targets" aria-labelledby="cleanup-targets-title">
         <div className="cleanup-targets__heading">
           <div>
@@ -469,89 +471,99 @@ export function CleanupAssistant({
             {targetLabel(selectedTarget, volumes, t)}
           </span>
         </div>
-        <div className="cleanup-targets__choices">
-          <button
-            className={selectedTarget.targetKind === "system_disk" ? "is-selected" : undefined}
-            type="button"
-            disabled={loading}
-            onClick={() => selectTarget({
-              profile: selectedTarget.profile ?? "common_locations",
-              targetKind: "system_disk",
-              targetPath: null,
-            })}
-          >
-            <HardDrive size={15} />
-            <span>{t("cleanup:targets.systemDisk")}</span>
-          </button>
-          {selectableVolumes.map((volume) => (
-            <button
-              className={selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint ? "is-selected" : undefined}
-              key={volume.mountPoint}
-              type="button"
-              disabled={loading}
-              title={volume.mountPoint}
-              onClick={() => selectTarget({
-                profile: "complete",
-                targetKind: "volume",
-                targetPath: volume.mountPoint,
-              })}
-            >
-              <ArchiveRestore size={15} />
-              <span>{volume.name || volume.mountPoint}</span>
-              {volume.removable ? <small>{t("cleanup:targets.removable")}</small> : null}
-            </button>
-          ))}
-          <button
-            className={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath) ? "is-selected" : undefined}
-            type="button"
-            disabled={loading || selectingFolder}
-            onClick={() => void chooseFolder()}
-          >
-            {selectingFolder ? <RefreshCw className="is-spinning" size={15} /> : <FolderOpen size={15} />}
-            <span>{t("cleanup:targets.chooseFolder")}</span>
-          </button>
-        </div>
-        {selectedTarget.targetKind === "system_disk" ? (
-          <div className="cleanup-scan-profile">
-            <div className="cleanup-scan-profile__choices" role="group" aria-label={t("cleanup:profiles.label")}>
+        <div className={`cleanup-targets__body${selectedTarget.targetKind !== "system_disk" ? " is-single" : ""}`}>
+          <div className="cleanup-targets__target-group">
+            <div className="cleanup-targets__choices" role="group" aria-label={t("cleanup:targets.title")}>
               <button
+                className={selectedTarget.targetKind === "system_disk" ? "is-selected" : undefined}
                 type="button"
-                className={selectedTarget.profile !== "complete" ? "is-selected" : undefined}
+                aria-pressed={selectedTarget.targetKind === "system_disk"}
                 disabled={loading}
-                onClick={() => setSelectedTarget((current) => ({
-                  ...current,
-                  profile: "common_locations",
-                }))}
-              >
-                <Sparkles size={15} />
-                <span>
-                  <strong>{t("cleanup:profiles.quick.title")}</strong>
-                  <small>{t("cleanup:profiles.quick.description")}</small>
-                </span>
-                <em>{t("cleanup:profiles.recommended")}</em>
-              </button>
-              <button
-                type="button"
-                className={selectedTarget.profile === "complete" ? "is-selected" : undefined}
-                disabled={loading}
-                onClick={() => setSelectedTarget((current) => ({
-                  ...current,
-                  profile: "complete",
-                }))}
+                onClick={() => selectTarget({
+                  profile: selectedTarget.profile ?? "common_locations",
+                  targetKind: "system_disk",
+                  targetPath: null,
+                })}
               >
                 <HardDrive size={15} />
-                <span>
-                  <strong>{t("cleanup:profiles.complete.title")}</strong>
-                  <small>{t("cleanup:profiles.complete.description")}</small>
-                </span>
+                <span>{t("cleanup:targets.systemDisk")}</span>
+              </button>
+              {selectableVolumes.map((volume) => (
+                <button
+                  className={selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint ? "is-selected" : undefined}
+                  key={volume.mountPoint}
+                  type="button"
+                  aria-pressed={selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint}
+                  disabled={loading}
+                  title={volume.mountPoint}
+                  onClick={() => selectTarget({
+                    profile: "complete",
+                    targetKind: "volume",
+                    targetPath: volume.mountPoint,
+                  })}
+                >
+                  <ArchiveRestore size={15} />
+                  <span>{volume.name || volume.mountPoint}</span>
+                  {volume.removable ? <small>{t("cleanup:targets.removable")}</small> : null}
+                </button>
+              ))}
+              <button
+                className={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath) ? "is-selected" : undefined}
+                type="button"
+                aria-pressed={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath)}
+                disabled={loading || selectingFolder}
+                onClick={() => void chooseFolder()}
+              >
+                {selectingFolder ? <RefreshCw className="is-spinning" size={15} /> : <FolderOpen size={15} />}
+                <span>{t("cleanup:targets.chooseFolder")}</span>
               </button>
             </div>
-            {selectedTarget.profile !== "complete" ? (
-              <div className="cleanup-scan-profile__scope">
-                <span>{t("cleanup:profiles.quick.scopeTitle")}</span>
-                <p>{t("cleanup:profiles.quick.scope")}</p>
+          </div>
+          {selectedTarget.targetKind === "system_disk" ? (
+            <div className="cleanup-scan-profile">
+              <span className="cleanup-scan-profile__label">{t("cleanup:profiles.label")}</span>
+              <div className="cleanup-scan-profile__choices" role="group" aria-label={t("cleanup:profiles.label")}>
+                <button
+                  type="button"
+                  aria-pressed={selectedTarget.profile !== "complete"}
+                  className={selectedTarget.profile !== "complete" ? "is-selected" : undefined}
+                  disabled={loading}
+                  onClick={() => setSelectedTarget((current) => ({
+                    ...current,
+                    profile: "common_locations",
+                  }))}
+                >
+                  <Sparkles size={15} />
+                  <span>
+                    <strong>{t("cleanup:profiles.quick.title")}</strong>
+                    <small>{t("cleanup:profiles.quick.description")}</small>
+                  </span>
+                  <em>{t("cleanup:profiles.recommended")}</em>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={selectedTarget.profile === "complete"}
+                  className={selectedTarget.profile === "complete" ? "is-selected" : undefined}
+                  disabled={loading}
+                  onClick={() => setSelectedTarget((current) => ({
+                    ...current,
+                    profile: "complete",
+                  }))}
+                >
+                  <HardDrive size={15} />
+                  <span>
+                    <strong>{t("cleanup:profiles.complete.title")}</strong>
+                    <small>{t("cleanup:profiles.complete.description")}</small>
+                  </span>
+                </button>
               </div>
-            ) : null}
+            </div>
+          ) : null}
+        </div>
+        {selectedTarget.targetKind === "system_disk" && selectedTarget.profile !== "complete" ? (
+          <div className="cleanup-scan-profile__scope">
+            <span>{t("cleanup:profiles.quick.scopeTitle")}</span>
+            <p>{t("cleanup:profiles.quick.scope")}</p>
           </div>
         ) : null}
         {recentTargets.length > 0 ? (
@@ -562,6 +574,7 @@ export function CleanupAssistant({
                 className={selectedTarget.targetKind === target.targetKind && selectedTarget.targetPath === target.targetPath ? "is-selected" : undefined}
                 key={`${target.targetKind}:${target.targetPath}`}
                 type="button"
+                aria-pressed={selectedTarget.targetKind === target.targetKind && selectedTarget.targetPath === target.targetPath}
                 disabled={loading}
                 title={target.targetPath ?? undefined}
                 onClick={() => selectTarget(target)}
@@ -704,44 +717,22 @@ export function CleanupAssistant({
             </Button>
           </div>
         </section>
-      ) : loading && progress ? (
-        <div className="cleanup-progress" role="status" aria-live="polite">
-          <div className="cleanup-progress__indicator"><i /></div>
-          <div className="cleanup-progress__content">
-            <span><RefreshCw className="is-spinning" size={15} /></span>
-            <div>
-              <strong>
-                {t(
-                  scanStalled
-                    ? "cleanup:progress.stalled"
-                    : scanPaused
-                      ? "cleanup:progress.paused"
-                      : "cleanup:progress.scanningLocation",
-                  { location: progressLocation },
-                )}
-              </strong>
-            </div>
-          </div>
-          <dl>
-            <div><dt>{t("cleanup:progress.entries")}</dt><dd>{progress.scannedEntryCount.toLocaleString(i18n.resolvedLanguage)}</dd></div>
-            <div><dt>{t("cleanup:progress.discovered")}</dt><dd>{formatBytes(progress.discoveredBytes)}</dd></div>
-            <div><dt>{t("cleanup:progress.elapsed")}</dt><dd>{Math.max(0.1, displayedElapsedMs / 1_000).toFixed(1)}s</dd></div>
-          </dl>
-        </div>
       ) : null}
 
-      {scanStalled ? (
-        <div className="cleanup-assistant__error is-recoverable" role="status">
-          <RefreshCw className="is-spinning" size={17} />
-          <div>
-            <strong>{t("cleanup:progress.stalledTitle")}</strong>
-            <span>{t("cleanup:progress.stalledDescription")}</span>
-          </div>
-        </div>
-      ) : null}
-
-      {loading && progress && !snapshot ? (
-        <section className="cleanup-scan-stage" aria-labelledby="cleanup-scan-stage-title">
+      {loading ? (
+        <section
+          className={`cleanup-scan-stage${scanStalled ? " is-stalled" : ""}${scanPaused ? " is-paused" : ""}`}
+          aria-labelledby="cleanup-scan-stage-title"
+        >
+          <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {t(
+              scanStalled
+                ? "cleanup:progress.stalled"
+                : scanPaused
+                  ? "cleanup:progress.paused"
+                  : "cleanup:progress.stageKicker",
+            )}
+          </span>
           <div className="cleanup-scan-orbit" aria-hidden="true">
             <div className="cleanup-scan-orbit__halo" />
             <div className="cleanup-scan-orbit__ring is-outer" />
@@ -752,24 +743,50 @@ export function CleanupAssistant({
             <div className="cleanup-scan-orbit__center">
               <Sparkles size={19} />
               <small>{t("cleanup:progress.foundSpace")}</small>
-              <strong>{formatBytes(progress.discoveredBytes)}</strong>
+              <strong>{formatBytes(progress?.discoveredBytes ?? 0)}</strong>
             </div>
           </div>
 
           <div className="cleanup-scan-stage__story">
-            <h3 id="cleanup-scan-stage-title">{t("cleanup:progress.stageKicker")}</h3>
+            <span className="eyebrow">{t("cleanup:progress.stageKicker")}</span>
+            <h3 id="cleanup-scan-stage-title">
+              {t(
+                scanStalled
+                  ? "cleanup:progress.stalled"
+                  : scanPaused
+                    ? "cleanup:progress.paused"
+                    : "cleanup:progress.scanningLocation",
+                { location: progressLocation },
+              )}
+            </h3>
+            <p>{scanStalled ? t("cleanup:progress.stalledDescription") : t("cleanup:readOnlyDescription")}</p>
+            <dl className="cleanup-scan-stage__metrics">
+              <div>
+                <dt>{t("cleanup:progress.entries")}</dt>
+                <dd>{(progress?.scannedEntryCount ?? 0).toLocaleString(i18n.resolvedLanguage)}</dd>
+              </div>
+              <div>
+                <dt>{t("cleanup:progress.discovered")}</dt>
+                <dd>{formatBytes(progress?.discoveredBytes ?? 0)}</dd>
+              </div>
+              <div>
+                <dt>{t("cleanup:progress.elapsed")}</dt>
+                <dd>{Math.max(0.1, displayedElapsedMs / 1_000).toFixed(1)}s</dd>
+              </div>
+            </dl>
+            <div className="cleanup-scan-stage__progress" aria-hidden="true"><i /></div>
           </div>
         </section>
       ) : null}
 
-      {error ? (
+      {error && !loading ? (
         <div className="cleanup-assistant__error" role="alert">
           <AlertTriangle size={17} />
           <div><strong>{t("cleanup:failed")}</strong><span>{scanErrorMessage}</span></div>
         </div>
       ) : null}
 
-      {snapshot && preferAccessibleScan ? (
+      {snapshot && !loading && preferAccessibleScan ? (
         <div className="cleanup-assistant__limited-notice" role="status">
           <ShieldCheck size={15} />
           <span>{t("cleanup:access.privacy")}</span>
@@ -785,8 +802,8 @@ export function CleanupAssistant({
         </div>
       ) : null}
 
-      {snapshot ? (
-        <>
+      {snapshot && !loading ? (
+        <div className="cleanup-results">
           <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <div className="cleanup-result-overview__primary">
               <span><ArchiveRestore size={18} /></span>
@@ -878,7 +895,7 @@ export function CleanupAssistant({
 
           <CleanupSpaceMap
             snapshot={snapshot}
-            snapshotStatus={snapshotStatus}
+            snapshotStatus={visibleSnapshotStatus}
             command={mapCommand}
             onCommandHandled={(id) => {
               setMapCommand((current) => current?.id === id ? null : current);
@@ -893,95 +910,109 @@ export function CleanupAssistant({
             onUserActionComplete={onUserActionComplete}
           />
 
-          <header className="cleanup-category-summary__heading">
-            <div>
-              <h3>{t("cleanup:categories.title")}</h3>
-            </div>
-          </header>
-          <div className="cleanup-location-grid">
-            {snapshot.locations.map((location) => {
-              const Icon = LOCATION_ICONS[location.kind];
-              return (
-                <article
-                  className={`cleanup-location${!location.available ? " is-unavailable" : ""}`}
-                  key={location.kind}
-                >
-                  <header>
-                    <span><Icon size={16} /></span>
-                    <div>
-                      <strong>{t(`cleanup:locations.${location.kind}.title`)}</strong>
-                      <small>{t(`cleanup:locations.${location.kind}.description`)}</small>
-                    </div>
-                    <em className={`is-${location.safety}`}>
-                      {t(`cleanup:safety.${location.safety}`)}
-                    </em>
-                  </header>
-                  <div className="cleanup-location__value">
-                    <strong>{location.available ? formatBytes(location.sizeBytes) : "—"}</strong>
-                    <span>{location.available ? t("cleanup:itemCount", { count: location.itemCount }) : t("cleanup:unavailable")}</span>
-                  </div>
-                  <code title={location.paths.join("\n")}>
-                    {location.paths[0] ?? t("cleanup:pathUnavailable")}
-                    {location.paths.length > 1 ? t("cleanup:morePaths", { count: location.paths.length - 1 }) : ""}
-                  </code>
-                  {location.available && location.paths[0] ? (
-                    <div className="cleanup-location__actions">
-                      <PathActions path={location.paths[0]} compact />
-                      <button
-                        className="button button--plain"
-                        type="button"
-                        onClick={() => sendMapCommand({
-                          type: "focusLocation",
-                          locationKind: location.kind,
-                        })}
-                      >
-                        <ArrowRight size={13} />
-                        {t("cleanup:map.mode.category")}
-                      </button>
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
-          </div>
-
-          <section className="cleanup-largest" aria-labelledby="cleanup-largest-title">
-            <header>
-              <div>
-                <span className="eyebrow">{t("cleanup:reviewFirst")}</span>
-                <h3 id="cleanup-largest-title">{t("cleanup:largestFiles")}</h3>
-              </div>
-              <span>{t("cleanup:largeFileBoundary")}</span>
-            </header>
-            {snapshot.largestFiles.length > 0 ? (
-              <ol>
-                {snapshot.largestFiles.map((file) => (
-                  <li key={file.path}>
-                    <span><FileArchive size={15} /></span>
-                    <div><strong>{file.name}</strong><code title={file.path}>{file.path}</code></div>
-                    <small>{file.modifiedAtMs === null ? t("common:unknown") : new Date(file.modifiedAtMs).toLocaleDateString(i18n.resolvedLanguage)}</small>
-                    <strong>{formatBytes(file.sizeBytes)}</strong>
-                    <PathActions path={file.path} compact />
-                    <button
-                      className="button button--plain cleanup-largest__collect"
-                      type="button"
-                      onClick={() => sendMapCommand({
-                        type: "addPath",
-                        name: file.name,
-                        path: file.path,
-                        sizeBytes: file.sizeBytes,
-                      })}
+          <details className="cleanup-results__more">
+            <summary>
+              <span>
+                <FolderSearch size={16} />
+                <span>
+                  <strong>{t("cleanup:results.moreTitle")}</strong>
+                  <small>{t("cleanup:results.moreDescription")}</small>
+                </span>
+              </span>
+              <ChevronDown size={16} aria-hidden="true" />
+            </summary>
+            <div className="cleanup-results__more-content">
+              <header className="cleanup-category-summary__heading">
+                <div>
+                  <h3>{t("cleanup:categories.title")}</h3>
+                </div>
+              </header>
+              <div className="cleanup-location-grid">
+                {snapshot.locations.map((location) => {
+                  const Icon = LOCATION_ICONS[location.kind];
+                  return (
+                    <article
+                      className={`cleanup-location${!location.available ? " is-unavailable" : ""}`}
+                      key={location.kind}
                     >
-                      <Plus size={13} />
-                      {t("cleanup:map.basket.title")}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <div className="cleanup-largest__empty">{t("cleanup:noLargeFiles")}</div>
-            )}
-          </section>
+                      <header>
+                        <span><Icon size={16} /></span>
+                        <div>
+                          <strong>{t(`cleanup:locations.${location.kind}.title`)}</strong>
+                          <small>{t(`cleanup:locations.${location.kind}.description`)}</small>
+                        </div>
+                        <em className={`is-${location.safety}`}>
+                          {t(`cleanup:safety.${location.safety}`)}
+                        </em>
+                      </header>
+                      <div className="cleanup-location__value">
+                        <strong>{location.available ? formatBytes(location.sizeBytes) : "—"}</strong>
+                        <span>{location.available ? t("cleanup:itemCount", { count: location.itemCount }) : t("cleanup:unavailable")}</span>
+                      </div>
+                      <code title={location.paths.join("\n")}>
+                        {location.paths[0] ?? t("cleanup:pathUnavailable")}
+                        {location.paths.length > 1 ? t("cleanup:morePaths", { count: location.paths.length - 1 }) : ""}
+                      </code>
+                      {location.available && location.paths[0] ? (
+                        <div className="cleanup-location__actions">
+                          <PathActions path={location.paths[0]} compact />
+                          <button
+                            className="button button--plain"
+                            type="button"
+                            onClick={() => sendMapCommand({
+                              type: "focusLocation",
+                              locationKind: location.kind,
+                            })}
+                          >
+                            <ArrowRight size={13} />
+                            {t("cleanup:map.mode.category")}
+                          </button>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+
+              <section className="cleanup-largest" aria-labelledby="cleanup-largest-title">
+                <header>
+                  <div>
+                    <span className="eyebrow">{t("cleanup:reviewFirst")}</span>
+                    <h3 id="cleanup-largest-title">{t("cleanup:largestFiles")}</h3>
+                  </div>
+                  <span>{t("cleanup:largeFileBoundary")}</span>
+                </header>
+                {snapshot.largestFiles.length > 0 ? (
+                  <ol>
+                    {snapshot.largestFiles.map((file) => (
+                      <li key={file.path}>
+                        <span><FileArchive size={15} /></span>
+                        <div><strong>{file.name}</strong><code title={file.path}>{file.path}</code></div>
+                        <small>{file.modifiedAtMs === null ? t("common:unknown") : new Date(file.modifiedAtMs).toLocaleDateString(i18n.resolvedLanguage)}</small>
+                        <strong>{formatBytes(file.sizeBytes)}</strong>
+                        <PathActions path={file.path} compact />
+                        <button
+                          className="button button--plain cleanup-largest__collect"
+                          type="button"
+                          onClick={() => sendMapCommand({
+                            type: "addPath",
+                            name: file.name,
+                            path: file.path,
+                            sizeBytes: file.sizeBytes,
+                          })}
+                        >
+                          <Plus size={13} />
+                          {t("cleanup:map.basket.title")}
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="cleanup-largest__empty">{t("cleanup:noLargeFiles")}</div>
+                )}
+              </section>
+            </div>
+          </details>
 
           {snapshot.unreadableEntryCount > 0 ? (
             <div className="cleanup-assistant__notice">
@@ -995,7 +1026,7 @@ export function CleanupAssistant({
               </div>
             </div>
           ) : null}
-        </>
+        </div>
       ) : null}
     </section>
   );

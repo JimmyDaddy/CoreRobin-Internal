@@ -170,6 +170,12 @@ describe("cleanup full disk access guide", () => {
   it("turns scan findings into direct map and cleanup-basket actions", async () => {
     renderAssistant(vi.fn(), getMockCleanupScan());
 
+    const moreResults = document.querySelector<HTMLElement>(
+      ".cleanup-results__more > summary",
+    );
+    expect(moreResults).not.toBeNull();
+    fireEvent.click(moreResults!);
+
     const categoryButtons = screen.getAllByRole("button", { name: "用途分类" });
     fireEvent.click(categoryButtons[1]);
     await waitFor(() =>
@@ -181,6 +187,33 @@ describe("cleanup full disk access guide", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "清理篮" })[0]);
     expect(await screen.findByText(/已选择 1 项/)).toBeTruthy();
+  });
+
+  it("shows the animated scan workspace during a rescan with a retained snapshot", () => {
+    renderAssistant(vi.fn(), getMockCleanupScan(), true, {
+      scannedEntryCount: 42,
+      discoveredBytes: 1_024,
+      currentPath: "~/Downloads",
+      elapsedMs: 500,
+    });
+
+    expect(document.querySelector(".cleanup-scan-stage")).not.toBeNull();
+    expect(document.querySelector(".cleanup-scan-orbit")).not.toBeNull();
+    expect(document.querySelector(".cleanup-results")).toBeNull();
+    expect(document.querySelector(".cleanup-scan-stage[aria-live]")).toBeNull();
+    expect(screen.getByRole("status").className).toContain("sr-only");
+    expect(screen.getByText("正在分析下载文件")).toBeTruthy();
+    expect(screen.getByText("42")).toBeTruthy();
+  });
+
+  it("marks a retained result as the previous scan when a rescan fails", () => {
+    renderAssistant(vi.fn(), getMockCleanupScan(), false, null, {
+      code: "cleanup_scan_failed",
+      message: "Scan failed",
+    });
+
+    expect(screen.getByText("Scan failed")).toBeTruthy();
+    expect(screen.getByText("正在显示上次扫描结果")).toBeTruthy();
   });
 
   it("shows a friendly scan location without exposing an internal path prompt", () => {

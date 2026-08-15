@@ -2,6 +2,7 @@ import {
   Activity,
   AlertTriangle,
   CircleHelp,
+  CircleDotDashed,
   CircleStop,
   Clock3,
   FileTerminal,
@@ -91,7 +92,13 @@ export function ProcessInspector({
     );
   }
 
-  const protectedReason = detail?.protectedReason ?? detail?.identityError;
+  const backgroundProtection = selected.backgroundState === "managed"
+    || selected.backgroundState === "zombie"
+    ? t(`process:background.state.${selected.backgroundState}`)
+    : null;
+  const protectedReason = backgroundProtection
+    ?? detail?.protectedReason
+    ?? detail?.identityError;
   const canTerminate = Boolean(detail?.canTerminate && detail.key !== null);
   const displayName = detail?.name ?? selected.name;
   const displayUser = detail?.user ?? selected.user;
@@ -190,6 +197,20 @@ export function ProcessInspector({
             <Clock3 size={15} />
             <span><small>{t("process:inspector.runtime")}</small><strong>{formatDuration(detail.runTimeSeconds)}</strong></span>
           </div>
+          {selected.backgroundState ? (
+            <div>
+              <CircleDotDashed size={15} />
+              <span>
+                <small>{t("process:background.detail.source")}</small>
+                <strong>
+                  {t(`process:background.state.${selected.backgroundState}`)}
+                  {selected.backgroundPreviousParentPid
+                    ? ` · ${t("process:background.detail.previousParent")} PID ${selected.backgroundPreviousParentPid}`
+                    : ""}
+                </strong>
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

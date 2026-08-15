@@ -96,6 +96,10 @@
       "systemDisk": "the system disk"
     }
   },
+  "results": {
+    "moreTitle": "More scan results",
+    "moreDescription": "Review common locations by purpose or inspect large files individually."
+  },
   "categories": {
     "title": "What this space is commonly used for"
   },

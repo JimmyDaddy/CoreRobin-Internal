@@ -186,6 +186,10 @@
       "systemDisk": "der Systemlaufwerk"
     }
   },
+  "results": {
+    "moreTitle": "Weitere Scanergebnisse",
+    "moreDescription": "Häufige Speicherorte nach Zweck prüfen oder große Dateien einzeln ansehen."
+  },
   "categories": {
     "title": "Für welchen Zweck dieser Bereich typischerweise verwendet wird"
   },
