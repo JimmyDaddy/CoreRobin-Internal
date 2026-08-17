@@ -169,6 +169,8 @@
     "stalled": "El escaneo se está recuperando automáticamente",
     "stalledTitle": "Se omitirá una carpeta que no responde",
     "stalledDescription": "CoreRobin omitirá esta ubicación ilegible y continuará desde el progreso guardado. No necesitas reiniciar el escaneo.",
+    "finalizing": "Preparando el mapa de espacio",
+    "finalizingDescription": "Las carpetas ya se escanearon. CoreRobin está organizando el índice y sustituyendo el resultado anterior; en un disco grande puede tardar un poco más.",
     "recoveryFailed": "CoreRobin no pudo continuar tras una o más carpetas ilegibles. Detén el escaneo e inténtalo con una ubicación más pequeña.",
     "entries": "Comprobado",
     "discovered": "Encontrado",

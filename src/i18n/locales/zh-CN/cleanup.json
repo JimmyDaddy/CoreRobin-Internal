@@ -79,6 +79,8 @@
     "stalled": "正在自动恢复扫描",
     "stalledTitle": "正在跳过无响应的文件夹",
     "stalledDescription": "CoreRobin 会跳过当前无法读取的位置，并从已保存的进度继续扫描，无需重新开始。",
+    "finalizing": "正在整理空间地图",
+    "finalizingDescription": "文件夹已经扫描完成。CoreRobin 正在汇总索引并替换上次结果，磁盘内容较多时可能还需要一点时间。",
     "recoveryFailed": "CoreRobin 无法继续跳过一个或多个异常文件夹。你可以停止扫描后改为扫描较小的范围。",
     "entries": "已检查",
     "discovered": "已发现",

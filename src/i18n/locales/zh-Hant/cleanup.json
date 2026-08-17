@@ -169,6 +169,8 @@
     "stalled": "正在自動恢復掃描",
     "stalledTitle": "正在略過沒有回應的資料夾",
     "stalledDescription": "CoreRobin 會略過目前無法讀取的位置，並從已儲存的進度繼續掃描，無需重新開始。",
+    "finalizing": "正在整理空間地圖",
+    "finalizingDescription": "資料夾已掃描完成。CoreRobin 正在彙整索引並取代上次結果，磁碟內容較多時可能還需要一點時間。",
     "recoveryFailed": "CoreRobin 無法繼續略過一個或多個異常資料夾。你可以停止掃描後改為掃描較小的範圍。",
     "entries": "已檢查",
     "discovered": "已發現",

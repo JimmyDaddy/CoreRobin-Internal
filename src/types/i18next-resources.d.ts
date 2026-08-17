@@ -676,6 +676,8 @@ export default interface Resources {
       "discovered": "已发现",
       "elapsed": "已用时",
       "entries": "已检查",
+      "finalizing": "正在整理空间地图",
+      "finalizingDescription": "文件夹已经扫描完成。CoreRobin 正在汇总索引并替换上次结果，磁盘内容较多时可能还需要一点时间。",
       "foundSpace": "已找到的内容",
       "locations": {
         "appCache": "应用缓存",

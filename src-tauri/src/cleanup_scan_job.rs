@@ -36,6 +36,7 @@ const MAX_JOB_FILE_BYTES: u64 = 64 * 1_024 * 1_024;
 #[derive(Debug)]
 struct CleanupScanJobRuntime {
     status: CleanupScanJobStatus,
+    worker_phase: CleanupScanJobPhase,
     child: Option<Arc<Mutex<Child>>>,
     request_path: PathBuf,
     result_path: PathBuf,
@@ -62,6 +63,9 @@ enum CleanupScanWorkerEvent {
     Progress {
         at_ms: u64,
         progress: CleanupScanProgress,
+    },
+    Finalizing {
+        at_ms: u64,
     },
     Activity {
         at_ms: u64,
@@ -227,6 +231,7 @@ impl CleanupScanJobManager {
             })?;
             *active = Some(CleanupScanJobRuntime {
                 status: status.clone(),
+                worker_phase: CleanupScanJobPhase::Preparing,
                 child: Some(Arc::clone(&child)),
                 request_path,
                 result_path,
@@ -446,8 +451,9 @@ impl CleanupScanJobManager {
                             job.status.phase = CleanupScanJobPhase::Paused;
                             job.status.updated_at_ms = now;
                             None
-                        } else if now.saturating_sub(progress_at)
-                            >= AUTO_RECOVER_AFTER.as_millis() as u64
+                        } else if worker_phase_allows_path_recovery(job.worker_phase)
+                            && now.saturating_sub(progress_at)
+                                >= AUTO_RECOVER_AFTER.as_millis() as u64
                         {
                             job.status.phase = CleanupScanJobPhase::Stalled;
                             job.status.updated_at_ms = now;
@@ -605,6 +611,8 @@ impl CleanupScanJobManager {
             } else {
                 let now = now_millis();
                 job.child = Some(Arc::clone(&child));
+                job.worker_phase = CleanupScanJobPhase::Preparing;
+                job.status.phase = CleanupScanJobPhase::Preparing;
                 job.status.updated_at_ms = now;
                 job.status.last_progress_at_ms = Some(now);
                 true
@@ -653,10 +661,8 @@ impl CleanupScanJobManager {
                     job.status.phase,
                     CleanupScanJobPhase::Paused | CleanupScanJobPhase::Stalled
                 );
-                if job.status.phase == CleanupScanJobPhase::Preparing || resumed_without_progress {
-                    job.status.phase = CleanupScanJobPhase::Scanning;
-                }
                 if resumed_without_progress {
+                    job.status.phase = job.worker_phase;
                     job.status.last_progress_at_ms = Some(at_ms);
                 }
                 job.status.updated_at_ms = at_ms;
@@ -664,13 +670,14 @@ impl CleanupScanJobManager {
             }
             CleanupScanWorkerEvent::Activity { at_ms } => {
                 if job.status.phase != CleanupScanJobPhase::Cancelling {
-                    job.status.phase = CleanupScanJobPhase::Scanning;
+                    job.status.phase = job.worker_phase;
                 }
                 job.status.updated_at_ms = at_ms;
                 job.status.last_heartbeat_at_ms = Some(at_ms);
                 job.status.last_progress_at_ms = Some(at_ms);
             }
             CleanupScanWorkerEvent::Progress { at_ms, progress } => {
+                job.worker_phase = CleanupScanJobPhase::Scanning;
                 if job.status.phase != CleanupScanJobPhase::Cancelling {
                     job.status.phase = CleanupScanJobPhase::Scanning;
                 }
@@ -684,6 +691,15 @@ impl CleanupScanJobManager {
                     job.status.last_progress_at_ms = Some(at_ms);
                 }
                 job.status.progress = progress;
+            }
+            CleanupScanWorkerEvent::Finalizing { at_ms } => {
+                job.worker_phase = CleanupScanJobPhase::Finalizing;
+                if job.status.phase != CleanupScanJobPhase::Cancelling {
+                    job.status.phase = CleanupScanJobPhase::Finalizing;
+                }
+                job.status.updated_at_ms = at_ms;
+                job.status.last_heartbeat_at_ms = Some(at_ms);
+                job.status.last_progress_at_ms = Some(at_ms);
             }
             CleanupScanWorkerEvent::Completed { at_ms } => {
                 job.status.phase = CleanupScanJobPhase::Completed;
@@ -824,6 +840,10 @@ fn next_recovery_path(current_path: &str, skipped_paths: &[String]) -> Option<St
         }
         candidate = candidate.parent()?.to_path_buf();
     }
+}
+
+fn worker_phase_allows_path_recovery(phase: CleanupScanJobPhase) -> bool {
+    phase == CleanupScanJobPhase::Scanning
 }
 
 fn application_cache_recovery_scope(path: &Path) -> Option<PathBuf> {
@@ -991,6 +1011,11 @@ fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclus
                 &cancelled,
                 &excluded_paths,
                 &mut emit_progress,
+                &mut || {
+                    emit_worker_event(&CleanupScanWorkerEvent::Finalizing {
+                        at_ms: now_millis(),
+                    });
+                },
             )?,
             CleanupIndexWorkerRequest::RefreshDirectory { request } => refresh_indexed_directory(
                 index_path,
@@ -1000,6 +1025,11 @@ fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclus
                 &cancelled,
                 &excluded_paths,
                 &mut emit_progress,
+                &mut || {
+                    emit_worker_event(&CleanupScanWorkerEvent::Finalizing {
+                        at_ms: now_millis(),
+                    });
+                },
             )?,
         };
         emit_worker_activity();
@@ -1163,6 +1193,11 @@ mod tests {
                 error_code: None,
                 error_message: None,
             },
+            worker_phase: match phase {
+                CleanupScanJobPhase::Preparing => CleanupScanJobPhase::Preparing,
+                CleanupScanJobPhase::Finalizing => CleanupScanJobPhase::Finalizing,
+                _ => CleanupScanJobPhase::Scanning,
+            },
             child: None,
             request_path: PathBuf::from("/fixture/request"),
             result_path: PathBuf::from("/fixture/result"),
@@ -1201,7 +1236,27 @@ mod tests {
         assert!(CleanupScanJobPhase::Completed.is_terminal());
         assert!(CleanupScanJobPhase::Failed.is_terminal());
         assert!(!CleanupScanJobPhase::Scanning.is_terminal());
+        assert!(!CleanupScanJobPhase::Finalizing.is_terminal());
         assert!(!CleanupScanJobPhase::Stalled.is_terminal());
+    }
+
+    #[test]
+    fn heartbeat_does_not_turn_index_preparation_into_directory_scanning() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Preparing);
+        let heartbeat_at = now_millis();
+
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Heartbeat {
+                at_ms: heartbeat_at,
+            },
+        );
+
+        let status = manager.status().unwrap().unwrap();
+        assert_eq!(status.phase, CleanupScanJobPhase::Preparing);
+        assert_eq!(status.last_heartbeat_at_ms, Some(heartbeat_at));
     }
 
     #[test]
@@ -1244,6 +1299,41 @@ mod tests {
             manager.status().unwrap().unwrap().phase,
             CleanupScanJobPhase::Cancelling
         );
+    }
+
+    #[test]
+    fn final_index_work_is_not_treated_as_a_stalled_directory() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Scanning);
+        let finalizing_at = now_millis();
+
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Finalizing {
+                at_ms: finalizing_at,
+            },
+        );
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Heartbeat {
+                at_ms: finalizing_at.saturating_add(1_000),
+            },
+        );
+
+        let status = manager.status().unwrap().unwrap();
+        assert_eq!(status.phase, CleanupScanJobPhase::Finalizing);
+        assert!(!worker_phase_allows_path_recovery(
+            CleanupScanJobPhase::Finalizing
+        ));
+        assert!(!worker_phase_allows_path_recovery(
+            CleanupScanJobPhase::Preparing
+        ));
+        assert!(worker_phase_allows_path_recovery(
+            CleanupScanJobPhase::Scanning
+        ));
     }
 
     #[test]
@@ -1305,6 +1395,7 @@ mod tests {
                 error_code: None,
                 error_message: None,
             },
+            worker_phase: CleanupScanJobPhase::Scanning,
             child: Some(Arc::clone(&child)),
             request_path: PathBuf::from("/fixture/request"),
             result_path: PathBuf::from("/fixture/result"),

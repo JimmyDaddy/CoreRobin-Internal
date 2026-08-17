@@ -169,6 +169,8 @@
     "stalled": "Der Scan wird automatisch fortgesetzt",
     "stalledTitle": "Ein nicht reagierender Ordner wird übersprungen",
     "stalledDescription": "CoreRobin überspringt diesen nicht lesbaren Ort und setzt den Scan ab dem gespeicherten Fortschritt fort. Ein Neustart ist nicht erforderlich.",
+    "finalizing": "Speicherkarte wird vorbereitet",
+    "finalizingDescription": "Die Ordner wurden gescannt. CoreRobin ordnet nun den Index und ersetzt das vorherige Ergebnis; bei großen Datenträgern kann dies etwas länger dauern.",
     "recoveryFailed": "CoreRobin konnte einen oder mehrere nicht lesbare Ordner nicht überspringen. Beenden Sie den Scan und wählen Sie einen kleineren Bereich.",
     "entries": "Überprüft",
     "discovered": "Gefunden",

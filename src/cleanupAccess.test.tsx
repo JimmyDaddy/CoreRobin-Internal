@@ -7,7 +7,12 @@ import { CleanupAssistant } from "./components/CleanupAssistant";
 import type { FileInsightsScanController } from "./hooks/useFileInsightsScan";
 import i18n from "./i18n";
 import { getMockCleanupScan } from "./mockData";
-import type { CleanupScanProgress, CleanupScanTarget, CommandError } from "./types";
+import type {
+  CleanupScanJobPhase,
+  CleanupScanProgress,
+  CleanupScanTarget,
+  CommandError,
+} from "./types";
 
 const EMPTY_FILE_INSIGHTS: FileInsightsScanController = {
   snapshot: null,
@@ -206,6 +211,18 @@ describe("cleanup full disk access guide", () => {
     expect(screen.getByText("42")).toBeTruthy();
   });
 
+  it("explains that a completed traversal is preparing its indexed result", () => {
+    renderAssistant(vi.fn(), null, true, {
+      scannedEntryCount: 8_000_000,
+      discoveredBytes: 800_000_000_000,
+      currentPath: "/",
+      elapsedMs: 480_000,
+    }, null, async () => null, "finalizing");
+
+    expect(screen.getByRole("heading", { name: "正在整理空间地图" })).toBeTruthy();
+    expect(screen.getByText(/文件夹已经扫描完成/)).toBeTruthy();
+  });
+
   it("marks a retained result as the previous scan when a rescan fails", () => {
     renderAssistant(vi.fn(), getMockCleanupScan(), false, null, {
       code: "cleanup_scan_failed",
@@ -248,6 +265,7 @@ function renderAssistant(
   progress: CleanupScanProgress | null = null,
   error: CommandError | null = null,
   onReloadLatestSnapshot: () => Promise<ReturnType<typeof getMockCleanupScan> | null> = async () => null,
+  phase: CleanupScanJobPhase | null = loading ? "scanning" : null,
 ) {
   return render(
     <CleanupAssistant
@@ -255,7 +273,7 @@ function renderAssistant(
       error={error}
       loading={loading}
       cancelling={false}
-      phase={loading ? "scanning" : null}
+      phase={phase}
       progress={progress}
       snapshotStatus="current"
       onScan={onScan}

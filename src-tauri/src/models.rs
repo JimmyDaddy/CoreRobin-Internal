@@ -380,6 +380,7 @@ pub struct CleanupScanRequest {
 pub enum CleanupScanJobPhase {
     Preparing,
     Scanning,
+    Finalizing,
     Paused,
     Cancelling,
     Cancelled,

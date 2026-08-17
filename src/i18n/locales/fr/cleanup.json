@@ -169,6 +169,8 @@
     "stalled": "L’analyse reprend automatiquement",
     "stalledTitle": "Un dossier qui ne répond pas va être ignoré",
     "stalledDescription": "CoreRobin ignore cet emplacement illisible et reprend l’analyse depuis la progression enregistrée. Aucun redémarrage n’est nécessaire.",
+    "finalizing": "Préparation de la carte d’espace",
+    "finalizingDescription": "Les dossiers ont été analysés. CoreRobin organise maintenant l’index et remplace le résultat précédent ; cette étape peut prendre un peu plus de temps sur un disque volumineux.",
     "recoveryFailed": "CoreRobin n’a pas pu dépasser un ou plusieurs dossiers illisibles. Arrêtez l’analyse et choisissez un emplacement plus petit.",
     "entries": "Éléments vérifiés",
     "discovered": "Découvert",

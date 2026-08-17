@@ -131,6 +131,17 @@ describe("cleanup scan lifecycle", () => {
     expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
   });
 
+  it("keeps final index preparation attached without restarting the scan", async () => {
+    cleanupApi.getCleanupScanJob.mockResolvedValue({
+      ...runningJob,
+      phase: "finalizing",
+    });
+    render(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("finalizing")).toBeTruthy());
+    expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
+  });
+
   it("terminates both native workers before clearing the index", async () => {
     cleanupApi.getCleanupScanJob.mockResolvedValue(runningJob);
     cleanupApi.getCleanupDirectoryRefreshJob.mockResolvedValue({
