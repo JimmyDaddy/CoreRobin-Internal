@@ -244,6 +244,7 @@ pub(crate) fn build_indexed_scan(
     cancelled: &AtomicBool,
     excluded_paths: &[PathBuf],
     on_progress: &mut dyn FnMut(CleanupScanProgress),
+    on_finalizing: &mut dyn FnMut(),
 ) -> Result<CleanupScan, CommandError> {
     build_indexed_scan_with_shared_identities(
         request,
@@ -252,6 +253,7 @@ pub(crate) fn build_indexed_scan(
         cancelled,
         excluded_paths,
         on_progress,
+        on_finalizing,
         None,
         MAX_PERSISTED_FILE_DETAILS,
     )
@@ -265,6 +267,7 @@ fn build_indexed_scan_with_shared_identities(
     cancelled: &AtomicBool,
     excluded_paths: &[PathBuf],
     on_progress: &mut dyn FnMut(CleanupScanProgress),
+    on_finalizing: &mut dyn FnMut(),
     shared_seen_files: Option<&Arc<Mutex<HashSet<super::FileIdentity>>>>,
     file_detail_limit: usize,
 ) -> Result<CleanupScan, CommandError> {
@@ -420,6 +423,7 @@ fn build_indexed_scan_with_shared_identities(
     }
 
     ensure_scan_active(cancelled)?;
+    on_finalizing();
     update_root_totals(&connection, scan_id, root_id)?;
     // Keep the worker lease fresh while the final SQLite work runs. The tree
     // has already been collected, but materializing its summaries can still
@@ -682,6 +686,7 @@ fn scan_quick_roots_parallel(
                                     let _ = sender
                                         .send(QuickScanPartEvent::Progress { slot, progress });
                                 },
+                                &mut || {},
                                 Some(&shared_seen_files),
                                 part_file_detail_limit,
                             );
@@ -1122,6 +1127,7 @@ fn escape_like(value: &str) -> String {
         .replace('_', "\\_")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn refresh_indexed_directory(
     index_path: &Path,
     scan_id: &str,
@@ -1130,6 +1136,7 @@ pub(crate) fn refresh_indexed_directory(
     cancelled: &AtomicBool,
     excluded_paths: &[PathBuf],
     on_progress: &mut dyn FnMut(CleanupScanProgress),
+    on_finalizing: &mut dyn FnMut(),
 ) -> Result<CleanupScan, CommandError> {
     #[cfg(target_os = "macos")]
     let _activity = super::CleanupScanActivity::begin();
@@ -1257,6 +1264,7 @@ pub(crate) fn refresh_indexed_directory(
     )?;
     transaction.commit().map_err(index_error)?;
     ensure_scan_active(cancelled)?;
+    on_finalizing();
     let staged_target_id = connection
         .query_row(
             "SELECT id FROM nodes WHERE scan_id = ?1 AND parent_id = ?2 LIMIT 1",
@@ -4565,6 +4573,7 @@ mod tests {
             &AtomicBool::new(false),
             &[],
             &mut |_| {},
+            &mut || {},
         )
         .unwrap()
     }
@@ -4586,10 +4595,38 @@ mod tests {
             &AtomicBool::new(false),
             &[],
             &mut |_| {},
+            &mut || {},
             None,
             node_limit,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn scan_reports_final_index_preparation_separately_from_directory_progress() {
+        let root = tempdir().unwrap();
+        let scan_root = root.path().join("scan-root");
+        fs::create_dir_all(&scan_root).unwrap();
+        fs::write(scan_root.join("file.bin"), vec![1_u8; 64]).unwrap();
+        let index_path = root.path().join("index.sqlite");
+        let mut finalizing = false;
+
+        build_indexed_scan(
+            CleanupScanRequest {
+                profile: CleanupScanProfile::Complete,
+                target_kind: CleanupScanTargetKind::Folder,
+                target_path: Some(scan_root.to_string_lossy().into_owned()),
+            },
+            "finalizing-fixture",
+            &index_path,
+            &AtomicBool::new(false),
+            &[],
+            &mut |_| {},
+            &mut || finalizing = true,
+        )
+        .unwrap();
+
+        assert!(finalizing);
     }
 
     #[test]
@@ -4700,6 +4737,7 @@ mod tests {
             &AtomicBool::new(false),
             &[scan_root],
             &mut |_| {},
+            &mut || {},
         )
         .unwrap_err();
 
@@ -5442,6 +5480,7 @@ mod tests {
             &AtomicBool::new(false),
             &[],
             &mut |_| {},
+            &mut || {},
         )
         .unwrap();
         let downloads_node = scan
@@ -5641,6 +5680,7 @@ mod tests {
             &AtomicBool::new(false),
             &[],
             &mut |_| {},
+            &mut || {},
         )
         .unwrap();
 
@@ -6177,6 +6217,7 @@ mod tests {
             &AtomicBool::new(false),
             &[],
             &mut |_| {},
+            &mut || {},
         )
         .unwrap();
         let after = load_indexed_directory(&index_path, &scan.scan_id, &before.id).unwrap();
@@ -6214,6 +6255,7 @@ mod tests {
                 &cancelled,
                 &[],
                 &mut |_| {},
+                &mut || {},
             )
             .unwrap_err()
             .code,

@@ -442,6 +442,7 @@ export type CleanupScanProfile = "common_locations" | "complete";
 export type CleanupScanJobPhase =
   | "preparing"
   | "scanning"
+  | "finalizing"
   | "paused"
   | "cancelling"
   | "cancelled"

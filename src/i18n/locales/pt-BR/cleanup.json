@@ -169,6 +169,8 @@
     "stalled": "A verificação está se recuperando automaticamente",
     "stalledTitle": "Ignorando uma pasta que não responde",
     "stalledDescription": "O CoreRobin ignorará este local ilegível e continuará a partir do progresso salvo. Não é necessário reiniciar a verificação.",
+    "finalizing": "Preparando o mapa de espaço",
+    "finalizingDescription": "As pastas já foram verificadas. O CoreRobin está organizando o índice e substituindo o resultado anterior; em um disco grande, isso pode levar um pouco mais de tempo.",
     "recoveryFailed": "O CoreRobin não conseguiu continuar após uma ou mais pastas ilegíveis. Interrompa a verificação e escolha um local menor.",
     "entries": "Verificado",
     "discovered": "Encontrado",

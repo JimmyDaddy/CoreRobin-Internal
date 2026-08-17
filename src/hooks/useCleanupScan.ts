@@ -100,6 +100,7 @@ export function useCleanupScan() {
       if (job && (
         job.phase === "preparing"
         || job.phase === "scanning"
+        || job.phase === "finalizing"
         || job.phase === "paused"
         || job.phase === "cancelling"
         || job.phase === "stalled"
@@ -162,6 +163,7 @@ export function useCleanupScan() {
       setLoading(
         status.phase === "preparing"
         || status.phase === "scanning"
+        || status.phase === "finalizing"
         || status.phase === "paused"
         || status.phase === "cancelling"
         || status.phase === "stalled",

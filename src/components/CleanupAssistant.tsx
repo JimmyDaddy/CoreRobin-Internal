@@ -200,6 +200,7 @@ export function CleanupAssistant({
   const applicationBundleUnavailable = scanAccess?.applicationBundleAvailable === false;
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
+  const scanFinalizing = phase === "finalizing";
   const scanErrorMessage = error && (
     error.code === "cleanup_scan_auto_recovery_exhausted"
     || error.code === "cleanup_scan_worker_restart_failed"
@@ -730,7 +731,9 @@ export function CleanupAssistant({
                 ? "cleanup:progress.stalled"
                 : scanPaused
                   ? "cleanup:progress.paused"
-                  : "cleanup:progress.stageKicker",
+                  : scanFinalizing
+                    ? "cleanup:progress.finalizing"
+                    : "cleanup:progress.stageKicker",
             )}
           </span>
           <div className="cleanup-scan-orbit" aria-hidden="true">
@@ -755,11 +758,17 @@ export function CleanupAssistant({
                   ? "cleanup:progress.stalled"
                   : scanPaused
                     ? "cleanup:progress.paused"
-                    : "cleanup:progress.scanningLocation",
+                    : scanFinalizing
+                      ? "cleanup:progress.finalizing"
+                      : "cleanup:progress.scanningLocation",
                 { location: progressLocation },
               )}
             </h3>
-            <p>{scanStalled ? t("cleanup:progress.stalledDescription") : t("cleanup:readOnlyDescription")}</p>
+            <p>{scanStalled
+              ? t("cleanup:progress.stalledDescription")
+              : scanFinalizing
+                ? t("cleanup:progress.finalizingDescription")
+                : t("cleanup:readOnlyDescription")}</p>
             <dl className="cleanup-scan-stage__metrics">
               <div>
                 <dt>{t("cleanup:progress.entries")}</dt>
