@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.28",
+  "title": {
+    "zh-CN": "更可靠的长时间空间扫描",
+    "en": "More reliable long-running space scans"
+  },
+  "items": [
+    {
+      "zh-CN": "修复完整磁盘扫描在文件较多、整理空间地图耗时较长时被误判为异常文件夹并中断的问题；扫描完成文件读取后会明确显示正在整理空间地图，期间仍可取消，并能在切换页面或重新打开窗口后继续显示正确状态。",
+      "en": "Fixed full-disk scans being interrupted when large file sets made space-map finalization look like an unresponsive folder. CoreRobin now clearly shows when it is organizing the space map, keeps the task cancellable, and restores the correct state after navigating away or reopening the window."
+    }
+  ]
+}
