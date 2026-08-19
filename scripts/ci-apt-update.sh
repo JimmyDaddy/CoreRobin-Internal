@@ -8,14 +8,9 @@ apt_options=(
   -o Acquire::https::Timeout=20
 )
 
-if sudo apt-get "${apt_options[@]}" update; then
-  exit 0
-fi
-
-echo "The runner's Azure Ubuntu mirror is unavailable; retrying with the canonical archive mirror." >&2
-
 for source_file in \
   /etc/apt/sources.list \
+  /etc/apt/apt-mirrors.txt \
   /etc/apt/sources.list.d/*.list \
   /etc/apt/sources.list.d/*.sources; do
   if [[ -f "$source_file" ]]; then
@@ -25,4 +20,5 @@ for source_file in \
   fi
 done
 
+echo "Using the canonical Ubuntu archive instead of the runner's latency-sensitive Azure mirror." >&2
 sudo apt-get "${apt_options[@]}" update
