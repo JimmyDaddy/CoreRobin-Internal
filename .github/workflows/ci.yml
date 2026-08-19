@@ -172,6 +172,8 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     timeout-minutes: 15
     steps:
       - name: Require successful change detection
@@ -197,10 +199,6 @@ jobs:
       - name: Install dependencies
         if: needs.changes.result == 'success'
         run: pnpm install --frozen-lockfile
-
-      - name: Install Chromium
-        if: needs.changes.result == 'success'
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Compare UI screenshots
         if: needs.changes.result == 'success'
