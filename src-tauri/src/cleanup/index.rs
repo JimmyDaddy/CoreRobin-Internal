@@ -471,8 +471,6 @@ fn build_indexed_scan_with_shared_identities(
     // result from the previous WebView generation can therefore finish their
     // navigation while the frontend atomically switches to this scan.
     retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
-    reclaim_index_space(&connection)?;
-    checkpoint_index(&connection)?;
     enforce_private_index_permissions(index_path)?;
     load_scan(&connection, index_path, scan_id)
 }
@@ -1301,10 +1299,47 @@ pub(crate) fn refresh_indexed_directory(
     delete_scan(&replacement, &staging_scan_id)?;
     replacement.commit().map_err(index_error)?;
     rebuild_largest_files(&connection, scan_id)?;
-    reclaim_index_space(&connection)?;
-    checkpoint_index(&connection)?;
     enforce_private_index_permissions(index_path)?;
     load_scan(&connection, index_path, scan_id)
+}
+
+/// Reclaims retired scan pages after the result has already been handed back to
+/// the application. This runs in the disposable scan worker: starting another
+/// scan can replace it instead of making the user wait for database housekeeping.
+pub(crate) fn maintain_cleanup_index(index_path: &Path) -> Result<(), CommandError> {
+    if !index_path.is_file() {
+        return Ok(());
+    }
+    let connection = open_index(index_path)?;
+    initialize_schema(&connection)?;
+    let page_size: i64 = connection
+        .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
+        .map_err(index_error)?;
+    let target_pages = i64::try_from(MAX_INDEX_BYTES)
+        .unwrap_or(i64::MAX)
+        .checked_div(page_size.max(1))
+        .unwrap_or(0);
+    reclaim_index_to_target(&connection, target_pages)?;
+    checkpoint_index(&connection)?;
+    enforce_private_index_permissions(index_path)
+}
+
+fn reclaim_index_to_target(connection: &Connection, target_pages: i64) -> Result<(), CommandError> {
+    let page_count = current_page_count(connection)?;
+    let free_pages: i64 = connection
+        .query_row("PRAGMA freelist_count", [], |row| row.get::<_, i64>(0))
+        .map_err(index_error)?;
+    let used_pages = page_count.saturating_sub(free_pages);
+    if free_pages > 0 && page_count > target_pages.max(used_pages) {
+        // With the bundled SQLite build, a bounded incremental_vacuum can
+        // reclaim only one trailing page per statement. Run the complete
+        // incremental pass in the already-published, low-priority worker
+        // instead of looping in the scan completion path.
+        connection
+            .execute_batch("PRAGMA incremental_vacuum;")
+            .map_err(index_error)?;
+    }
+    Ok(())
 }
 
 pub(crate) fn cleanup_index_summary(
@@ -4357,8 +4392,12 @@ fn checkpoint_index(connection: &Connection) -> Result<(), CommandError> {
 }
 
 fn reclaim_index_space(connection: &Connection) -> Result<(), CommandError> {
+    reclaim_index_pages(connection, INDEX_VACUUM_PAGES)
+}
+
+fn reclaim_index_pages(connection: &Connection, pages: usize) -> Result<(), CommandError> {
     connection
-        .execute_batch(&format!("PRAGMA incremental_vacuum({INDEX_VACUUM_PAGES});"))
+        .execute_batch(&format!("PRAGMA incremental_vacuum({pages});"))
         .map_err(index_error)
 }
 
@@ -5416,6 +5455,34 @@ mod tests {
         assert_eq!(auto_vacuum, 2);
         assert_eq!(journal_mode.to_ascii_lowercase(), "wal");
         assert!(seen_files_schema.contains("WITHOUT ROWID"));
+    }
+
+    #[test]
+    fn deferred_index_maintenance_reclaims_free_pages() {
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE maintenance_fixture(payload BLOB);
+                 WITH RECURSIVE counter(value) AS (
+                   SELECT 1 UNION ALL SELECT value + 1 FROM counter WHERE value < 256
+                 )
+                 INSERT INTO maintenance_fixture(payload)
+                 SELECT zeroblob(65536) FROM counter;
+                 DROP TABLE maintenance_fixture;",
+            )
+            .unwrap();
+        let before = current_page_count(&connection).unwrap();
+        let free_before = connection
+            .query_row("PRAGMA freelist_count", [], |row| row.get::<_, i64>(0))
+            .unwrap();
+        assert!(free_before > 0);
+
+        reclaim_index_to_target(&connection, before.saturating_sub(free_before)).unwrap();
+
+        assert!(current_page_count(&connection).unwrap() < before);
     }
 
     #[test]
