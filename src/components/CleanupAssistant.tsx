@@ -206,6 +206,8 @@ export function CleanupAssistant({
     || error.code === "cleanup_scan_worker_restart_failed"
   )
     ? t("cleanup:progress.recoveryFailed")
+    : error?.code === "cleanup_scan_root_stalled"
+      ? t("cleanup:progress.rootStalled")
     : error && (
       error.code === "cleanup_scan_root_unavailable"
       || error.code === "cleanup_scan_target_unavailable"

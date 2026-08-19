@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use crate::cleanup::{build_indexed_scan, discard_indexed_scan, refresh_indexed_directory};
+use crate::cleanup::{
+    build_indexed_scan, discard_indexed_scan, maintain_cleanup_index, refresh_indexed_directory,
+};
 use crate::error::CommandError;
 use crate::models::{
     CleanupDirectoryRefreshRequest, CleanupScan, CleanupScanJobPhase, CleanupScanJobStatus,
@@ -32,6 +34,10 @@ const MAX_BLIND_AUTO_RECOVERIES: usize = 12;
 const RECOVERY_SHARED_ANCESTOR_MIN_COMPONENTS: usize = 4;
 const FORCE_CANCEL_AFTER: Duration = Duration::from_secs(2);
 const MAX_JOB_FILE_BYTES: u64 = 64 * 1_024 * 1_024;
+const FAILURE_DIAGNOSTIC_SCHEMA_VERSION: u8 = 1;
+const MAX_FAILURE_DIAGNOSTIC_BYTES: usize = 64 * 1_024;
+const MAX_FAILURE_DIAGNOSTIC_TEXT_CHARS: usize = 1_024;
+const MAX_FAILURE_DIAGNOSTIC_PATHS: usize = 32;
 
 #[derive(Debug)]
 struct CleanupScanJobRuntime {
@@ -42,10 +48,32 @@ struct CleanupScanJobRuntime {
     result_path: PathBuf,
     index_path: PathBuf,
     exclusions_path: PathBuf,
+    diagnostic_path: PathBuf,
     worker_attempt: u64,
     allow_path_exclusions: bool,
     skipped_paths: Vec<String>,
     cancel_requested_at_ms: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CleanupScanFailureDiagnostic {
+    schema_version: u8,
+    recorded_at_ms: u64,
+    job_id: String,
+    generation: u64,
+    worker_attempt: u64,
+    worker_phase: CleanupScanJobPhase,
+    status_phase: CleanupScanJobPhase,
+    started_at_ms: u64,
+    updated_at_ms: u64,
+    last_heartbeat_at_ms: Option<u64>,
+    last_progress_at_ms: Option<u64>,
+    progress: CleanupScanProgress,
+    target: CleanupScanRequest,
+    skipped_paths: Vec<String>,
+    error_code: Option<String>,
+    error_message: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -191,6 +219,8 @@ impl CleanupScanJobManager {
         let job_id = format!("{job_prefix}-{started_at_ms}-{generation}");
         let request_path = job_directory.join(format!("{job_id}.request.json"));
         let result_path = job_directory.join(format!("{job_id}.result.json"));
+        let diagnostic_path =
+            job_directory.join(format!("{job_prefix}-last-failure.diagnostic.json"));
         let request_bytes = serde_json::to_vec(&worker_request).map_err(|error| {
             CommandError::internal(format!(
                 "Could not encode the cleanup scan request: {error}"
@@ -237,6 +267,7 @@ impl CleanupScanJobManager {
                 result_path,
                 index_path: index_path.to_path_buf(),
                 exclusions_path,
+                diagnostic_path,
                 worker_attempt: 1,
                 allow_path_exclusions,
                 skipped_paths: Vec::new(),
@@ -441,20 +472,13 @@ impl CleanupScanJobManager {
                             .status
                             .last_heartbeat_at_ms
                             .unwrap_or(job.status.started_at_ms);
-                        let progress_at = job
-                            .status
-                            .last_progress_at_ms
-                            .unwrap_or(job.status.started_at_ms);
                         if now.saturating_sub(heartbeat_at)
                             >= HEARTBEAT_MISSING_AFTER.as_millis() as u64
                         {
                             job.status.phase = CleanupScanJobPhase::Paused;
                             job.status.updated_at_ms = now;
                             None
-                        } else if worker_phase_allows_path_recovery(job.worker_phase)
-                            && now.saturating_sub(progress_at)
-                                >= AUTO_RECOVER_AFTER.as_millis() as u64
-                        {
+                        } else if should_attempt_path_recovery(job, now) {
                             job.status.phase = CleanupScanJobPhase::Stalled;
                             job.status.updated_at_ms = now;
                             let recovery_path = if job.allow_path_exclusions {
@@ -485,13 +509,13 @@ impl CleanupScanJobManager {
                                         next_attempt,
                                     })
                             } else {
+                                let (error_code, error_message) =
+                                    path_recovery_failure(&job.status.progress.current_path);
                                 job.status.phase = CleanupScanJobPhase::Failed;
-                                job.status.error_code =
-                                    Some("cleanup_scan_auto_recovery_exhausted".to_owned());
-                                job.status.error_message = Some(
-                                    "CoreRobin could not continue the cleanup scan after repeated filesystem stalls."
-                                        .to_owned(),
-                                );
+                                job.status.updated_at_ms = now;
+                                job.status.error_code = Some(error_code.to_owned());
+                                job.status.error_message = Some(error_message.to_owned());
+                                persist_failure_diagnostic(job);
                                 job.child.take().map(CleanupScanWatchdogAction::Exhausted)
                             }
                         } else {
@@ -562,6 +586,7 @@ impl CleanupScanJobManager {
                 job.status.updated_at_ms = now_millis();
                 job.status.error_code = Some("cleanup_scan_worker_restart_failed".to_owned());
                 job.status.error_message = Some(error.message);
+                persist_failure_diagnostic(job);
             }
             return;
         }
@@ -587,6 +612,7 @@ impl CleanupScanJobManager {
                     job.status.updated_at_ms = now_millis();
                     job.status.error_code = Some("cleanup_scan_worker_restart_failed".to_owned());
                     job.status.error_message = Some(error.message);
+                    persist_failure_diagnostic(job);
                 }
                 return;
             }
@@ -677,9 +703,15 @@ impl CleanupScanJobManager {
                 job.status.last_progress_at_ms = Some(at_ms);
             }
             CleanupScanWorkerEvent::Progress { at_ms, progress } => {
-                job.worker_phase = CleanupScanJobPhase::Scanning;
+                // Progress snapshots update counters, not the semantic phase.
+                // The first snapshot advances preparation into scanning, but a
+                // late/final forced report must never reopen directory recovery
+                // after the worker has entered index finalization.
+                if job.worker_phase == CleanupScanJobPhase::Preparing {
+                    job.worker_phase = CleanupScanJobPhase::Scanning;
+                }
                 if job.status.phase != CleanupScanJobPhase::Cancelling {
-                    job.status.phase = CleanupScanJobPhase::Scanning;
+                    job.status.phase = job.worker_phase;
                 }
                 let made_progress = progress.scanned_entry_count
                     > job.status.progress.scanned_entry_count
@@ -705,6 +737,7 @@ impl CleanupScanJobManager {
                 job.status.phase = CleanupScanJobPhase::Completed;
                 job.status.updated_at_ms = at_ms;
                 job.status.result_available = true;
+                let _ = private_storage::remove(&job.diagnostic_path);
             }
             CleanupScanWorkerEvent::Failed {
                 at_ms,
@@ -719,6 +752,9 @@ impl CleanupScanJobManager {
                 job.status.updated_at_ms = at_ms;
                 job.status.error_code = Some(code);
                 job.status.error_message = Some(message);
+                if job.status.phase == CleanupScanJobPhase::Failed {
+                    persist_failure_diagnostic(job);
+                }
             }
         }
     }
@@ -764,6 +800,7 @@ impl CleanupScanJobManager {
                 } else {
                     stderr.trim().to_owned()
                 });
+                persist_failure_diagnostic(job);
             }
         }
         let _ = private_storage::remove(&job.request_path);
@@ -809,6 +846,62 @@ fn discard_abandoned_scan(index_path: &Path, scan_id: &str) {
     }
 }
 
+fn persist_failure_diagnostic(job: &CleanupScanJobRuntime) {
+    let mut progress = job.status.progress.clone();
+    progress.current_path = truncate_diagnostic_text(&progress.current_path);
+    let mut target = job.status.target.clone();
+    target.target_path = target.target_path.as_deref().map(truncate_diagnostic_text);
+    let diagnostic = CleanupScanFailureDiagnostic {
+        schema_version: FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
+        recorded_at_ms: now_millis(),
+        job_id: job.status.job_id.clone(),
+        generation: job.status.generation,
+        worker_attempt: job.worker_attempt,
+        worker_phase: job.worker_phase,
+        status_phase: job.status.phase,
+        started_at_ms: job.status.started_at_ms,
+        updated_at_ms: job.status.updated_at_ms,
+        last_heartbeat_at_ms: job.status.last_heartbeat_at_ms,
+        last_progress_at_ms: job.status.last_progress_at_ms,
+        progress,
+        target,
+        skipped_paths: job
+            .skipped_paths
+            .iter()
+            .rev()
+            .take(MAX_FAILURE_DIAGNOSTIC_PATHS)
+            .map(|path| truncate_diagnostic_text(path))
+            .collect(),
+        error_code: job.status.error_code.clone(),
+        error_message: job
+            .status
+            .error_message
+            .as_deref()
+            .map(truncate_diagnostic_text),
+    };
+    let result = serde_json::to_vec_pretty(&diagnostic)
+        .map_err(|error| io::Error::other(format!("Could not encode scan diagnostics: {error}")))
+        .and_then(|bytes| {
+            if bytes.len() > MAX_FAILURE_DIAGNOSTIC_BYTES {
+                return Err(io::Error::other(
+                    "Cleanup scan diagnostics exceeded the size limit.",
+                ));
+            }
+            Ok(bytes)
+        })
+        .and_then(|bytes| private_storage::write_atomic(&job.diagnostic_path, &bytes));
+    if let Err(error) = result {
+        eprintln!("Could not save cleanup scan failure diagnostics: {error}");
+    }
+}
+
+fn truncate_diagnostic_text(value: &str) -> String {
+    value
+        .chars()
+        .take(MAX_FAILURE_DIAGNOSTIC_TEXT_CHARS)
+        .collect()
+}
+
 fn next_recovery_path(current_path: &str, skipped_paths: &[String]) -> Option<String> {
     let mut candidate = PathBuf::from(current_path.trim());
     loop {
@@ -842,8 +935,32 @@ fn next_recovery_path(current_path: &str, skipped_paths: &[String]) -> Option<St
     }
 }
 
+fn should_attempt_path_recovery(job: &CleanupScanJobRuntime, now: u64) -> bool {
+    let progress_at = job
+        .status
+        .last_progress_at_ms
+        .unwrap_or(job.status.started_at_ms);
+    worker_phase_allows_path_recovery(job.worker_phase)
+        && now.saturating_sub(progress_at) >= AUTO_RECOVER_AFTER.as_millis() as u64
+}
+
 fn worker_phase_allows_path_recovery(phase: CleanupScanJobPhase) -> bool {
     phase == CleanupScanJobPhase::Scanning
+}
+
+fn path_recovery_failure(current_path: &str) -> (&'static str, &'static str) {
+    let path = Path::new(current_path.trim());
+    if path.has_root() && path.parent().is_none() {
+        (
+            "cleanup_scan_root_stalled",
+            "The selected scan root stopped reporting directory progress.",
+        )
+    } else {
+        (
+            "cleanup_scan_auto_recovery_exhausted",
+            "CoreRobin could not continue the cleanup scan after repeated filesystem stalls.",
+        )
+    }
 }
 
 fn application_cache_recovery_scope(path: &Path) -> Option<PathBuf> {
@@ -1045,14 +1162,36 @@ fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclus
 
     completed.store(true, Ordering::Relaxed);
     match result {
-        Ok(()) => emit_worker_event(&CleanupScanWorkerEvent::Completed {
-            at_ms: now_millis(),
-        }),
+        Ok(()) => {
+            // Publish the usable result before opportunistic database
+            // maintenance. The user can inspect the map immediately, and a
+            // newer scan may safely replace this worker while it compacts.
+            emit_worker_event(&CleanupScanWorkerEvent::Completed {
+                at_ms: now_millis(),
+            });
+            lower_cleanup_maintenance_priority();
+            if let Err(error) = maintain_cleanup_index(index_path) {
+                eprintln!(
+                    "Could not finish background cleanup index maintenance: {}",
+                    error.message
+                );
+            }
+        }
         Err(error) => emit_worker_event(&CleanupScanWorkerEvent::Failed {
             at_ms: now_millis(),
             code: error.code,
             message: error.message,
         }),
+    }
+}
+
+fn lower_cleanup_maintenance_priority() {
+    #[cfg(unix)]
+    unsafe {
+        // This is a disposable worker process and has already delivered its
+        // result. Best-effort niceness prevents compaction from competing with
+        // foreground work; failure leaves the existing priority unchanged.
+        let _ = libc::setpriority(libc::PRIO_PROCESS, 0, 10);
     }
 }
 
@@ -1203,6 +1342,7 @@ mod tests {
             result_path: PathBuf::from("/fixture/result"),
             index_path: PathBuf::from("/fixture/index.sqlite"),
             exclusions_path: PathBuf::from("/fixture/exclusions"),
+            diagnostic_path: PathBuf::from("/fixture/diagnostic.json"),
             worker_attempt: 1,
             allow_path_exclusions: true,
             skipped_paths: Vec::new(),
@@ -1318,13 +1458,33 @@ mod tests {
             "fixture",
             1,
             1,
-            CleanupScanWorkerEvent::Heartbeat {
+            CleanupScanWorkerEvent::Progress {
                 at_ms: finalizing_at.saturating_add(1_000),
+                progress: CleanupScanProgress {
+                    scanned_entry_count: 7_000_000,
+                    discovered_bytes: 590 * 1_024 * 1_024 * 1_024,
+                    current_path: "/".to_owned(),
+                    elapsed_ms: 180_000,
+                },
             },
+        );
+        let watchdog_at =
+            finalizing_at.saturating_add(AUTO_RECOVER_AFTER.as_millis() as u64 + 2_000);
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Heartbeat { at_ms: watchdog_at },
         );
 
         let status = manager.status().unwrap().unwrap();
         assert_eq!(status.phase, CleanupScanJobPhase::Finalizing);
+        assert_eq!(status.progress.current_path, "/");
+        let active = manager.active.lock().unwrap();
+        assert!(!should_attempt_path_recovery(
+            active.as_ref().unwrap(),
+            watchdog_at,
+        ));
         assert!(!worker_phase_allows_path_recovery(
             CleanupScanJobPhase::Finalizing
         ));
@@ -1401,6 +1561,7 @@ mod tests {
             result_path: PathBuf::from("/fixture/result"),
             index_path: PathBuf::from("/fixture/index.sqlite"),
             exclusions_path: PathBuf::from("/fixture/exclusions"),
+            diagnostic_path: PathBuf::from("/fixture/diagnostic.json"),
             worker_attempt: 1,
             allow_path_exclusions: true,
             skipped_paths: Vec::new(),
@@ -1419,7 +1580,7 @@ mod tests {
 
     #[test]
     fn worker_activity_keeps_long_finalization_alive() {
-        let manager = manager_with_phase(CleanupScanJobPhase::Stalled);
+        let manager = manager_with_phase(CleanupScanJobPhase::Finalizing);
         let activity_at = now_millis();
 
         manager.apply_worker_event(
@@ -1430,7 +1591,7 @@ mod tests {
         );
 
         let status = manager.status().unwrap().unwrap();
-        assert_eq!(status.phase, CleanupScanJobPhase::Scanning);
+        assert_eq!(status.phase, CleanupScanJobPhase::Finalizing);
         assert_eq!(status.last_heartbeat_at_ms, Some(activity_at));
         assert_eq!(status.last_progress_at_ms, Some(activity_at));
     }
@@ -1463,6 +1624,11 @@ mod tests {
             Some("~/Library/Caches".to_owned())
         );
         assert_eq!(next_recovery_path("/", &[]), None);
+        assert_eq!(path_recovery_failure("/").0, "cleanup_scan_root_stalled");
+        assert_eq!(
+            path_recovery_failure("~/Library/Caches").0,
+            "cleanup_scan_auto_recovery_exhausted"
+        );
     }
 
     #[test]
@@ -1550,6 +1716,45 @@ mod tests {
                 PathBuf::from("/Volumes/Archive/stalled"),
             ]
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_scan_keeps_a_bounded_private_diagnostic() {
+        let root =
+            std::env::temp_dir().join(format!("core-robin-cleanup-diagnostic-{}", now_millis()));
+        fs::create_dir_all(&root).unwrap();
+        let diagnostic_path = root.join("cleanup-last-failure.diagnostic.json");
+        let manager = manager_with_phase(CleanupScanJobPhase::Scanning);
+        manager
+            .active
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .diagnostic_path = diagnostic_path.clone();
+
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Failed {
+                at_ms: now_millis(),
+                code: "cleanup_scan_fixture_failed".to_owned(),
+                message: "fixture failure".to_owned(),
+            },
+        );
+
+        let bytes = private_storage::read_limited(&diagnostic_path, 64 * 1_024)
+            .unwrap()
+            .unwrap();
+        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(value["schemaVersion"], FAILURE_DIAGNOSTIC_SCHEMA_VERSION);
+        assert_eq!(value["jobId"], "fixture");
+        assert_eq!(value["workerPhase"], "scanning");
+        assert_eq!(value["statusPhase"], "failed");
+        assert_eq!(value["errorCode"], "cleanup_scan_fixture_failed");
+        assert!(bytes.len() < 64 * 1_024);
         fs::remove_dir_all(root).unwrap();
     }
 }

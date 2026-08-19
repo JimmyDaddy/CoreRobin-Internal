@@ -690,7 +690,8 @@ export default interface Resources {
         "trash": "废纸篓"
       },
       "paused": "电脑已休眠，唤醒后将继续扫描",
-      "recoveryFailed": "CoreRobin 无法继续跳过一个或多个异常文件夹。你可以停止扫描后改为扫描较小的范围。",
+      "recoveryFailed": "扫描在自动恢复后仍未继续。你可以重新扫描，或选择较小的范围。",
+      "rootStalled": "系统磁盘扫描长时间没有进展，CoreRobin 已结束本次任务。请重新扫描，或改为扫描指定文件夹。",
       "scanningLocation": "正在分析{{location}}",
       "stageKicker": "空间地图生成中",
       "stalled": "正在自动恢复扫描",

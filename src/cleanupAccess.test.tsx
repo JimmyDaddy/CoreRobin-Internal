@@ -256,6 +256,18 @@ describe("cleanup full disk access guide", () => {
     expect(screen.getByText("所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。")).toBeTruthy();
     expect(screen.queryByText(nativeMessage)).toBeNull();
   });
+
+  it("does not describe a stalled system scan as an abnormal folder", () => {
+    const nativeMessage = "The selected scan root stopped reporting directory progress.";
+    renderAssistant(vi.fn(), null, false, null, {
+      code: "cleanup_scan_root_stalled",
+      message: nativeMessage,
+    });
+
+    expect(screen.getByText(/系统磁盘扫描长时间没有进展/)).toBeTruthy();
+    expect(screen.queryByText(/异常文件夹/)).toBeNull();
+    expect(screen.queryByText(nativeMessage)).toBeNull();
+  });
 });
 
 function renderAssistant(
