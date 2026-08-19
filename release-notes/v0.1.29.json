@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.29",
+  "title": {
+    "zh-CN": "空间扫描结果更可靠",
+    "en": "More reliable space scan results"
+  },
+  "items": [
+    {
+      "zh-CN": "修复完整磁盘扫描在文件读取已经结束后，仍可能被误判为根目录长时间无进展并显示无法继续跳过异常文件夹的问题；空间地图整理期间会保持正确状态，不再错误中断。",
+      "en": "Fixed full-disk scans being incorrectly interrupted after file traversal had already finished, sometimes reporting that CoreRobin could not skip an unresponsive folder. Space-map preparation now remains in the correct state until results are ready."
+    },
+    {
+      "zh-CN": "扫描结果现在会优先完成并展示，本地索引占用整理改到后台进行；大型或长期使用的扫描索引不再拖延结果出现。",
+      "en": "Scan results now finish and appear before local index storage is tidied in the background, so large or long-lived scan indexes no longer delay the result view."
+    }
+  ]
+}
