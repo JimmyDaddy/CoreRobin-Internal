@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.30",
+  "title": {
+    "zh-CN": "更可靠的启动项与磁盘扫描操作",
+    "en": "More reliable startup items and disk scan actions"
+  },
+  "items": [
+    {
+      "zh-CN": "修复启动项操作完成后界面仍显示旧状态的问题；现在会在操作后重新扫描，并明确区分已确认、部分确认和无法确认的结果，必要时可直接打开系统设置继续处理。",
+      "en": "Fixed startup actions leaving the interface on an old state. CoreRobin now rescans after each action, distinguishes confirmed, partially confirmed, and unconfirmed results, and can open system settings when further action is needed."
+    },
+    {
+      "zh-CN": "磁盘扫描结果的空间图和列表选择更稳定：路径较长时悬浮信息不会再撑动布局，列表单击即可进入目录，已加载的目录不会因为导航短暂丢失。",
+      "en": "Made space-map and result-list selection more stable: long paths no longer make the layout jump, a single click opens a folder in the list, and loaded folders remain available while navigating."
+    },
+    {
+      "zh-CN": "扫描结果页现在可快速查看可能可回收空间的分类构成，已完成的扫描会收起不常用的扫描范围设置；汇总分类与受保护内容也有更清楚的提示，降低误操作。",
+      "en": "The result view now opens a category breakdown for potentially reclaimable space, collapses scan-scope settings after a completed scan, and explains aggregate groups and protected content more clearly to reduce accidental actions."
+    }
+  ]
+}
