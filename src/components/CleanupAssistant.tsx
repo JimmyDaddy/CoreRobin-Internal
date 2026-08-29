@@ -162,6 +162,7 @@ export function CleanupAssistant({
   );
   const [recentTargets, setRecentTargets] = useState(loadRecentCleanupTargets);
   const [selectingFolder, setSelectingFolder] = useState(false);
+  const [targetSettingsExpanded, setTargetSettingsExpanded] = useState(false);
   const [mapCommand, setMapCommand] =
     useState<CleanupSpaceMapCommand | null>(null);
   const mapCommandIdRef = useRef(0);
@@ -235,7 +236,12 @@ export function CleanupAssistant({
       targetKind: snapshot.targetKind,
       targetPath: snapshot.targetPath,
     });
+    setTargetSettingsExpanded(false);
   }, [snapshot]);
+
+  const targetSettingsCollapsed = Boolean(
+    snapshot && !loading && !targetSettingsExpanded,
+  );
 
   const startSelectedScan = useCallback(() => {
     if (selectedTarget.targetKind !== "system_disk") {
@@ -464,17 +470,38 @@ export function CleanupAssistant({
         ) : null}
       </header>
 
-      <section className="cleanup-targets" aria-labelledby="cleanup-targets-title">
+      <section className={`cleanup-targets${targetSettingsCollapsed ? " is-collapsed" : ""}`} aria-labelledby="cleanup-targets-title">
         <div className="cleanup-targets__heading">
           <div>
             <span className="eyebrow">{t("cleanup:targets.kicker")}</span>
             <h3 id="cleanup-targets-title">{t("cleanup:targets.title")}</h3>
           </div>
-          <span className="cleanup-targets__current" title={selectedTarget.targetPath ?? undefined}>
-            {targetLabel(selectedTarget, volumes, t)}
-          </span>
+          <div className="cleanup-targets__summary">
+            <span className="cleanup-targets__current" title={selectedTarget.targetPath ?? undefined}>
+              {targetLabel(selectedTarget, volumes, t)}
+            </span>
+            {targetSettingsCollapsed && selectedTarget.targetKind === "system_disk" ? (
+              <span className="cleanup-targets__profile">
+                {t(selectedTarget.profile === "complete"
+                  ? "cleanup:profiles.complete.title"
+                  : "cleanup:profiles.quick.title")}
+              </span>
+            ) : null}
+            {targetSettingsCollapsed ? (
+              <button
+                className="cleanup-targets__edit"
+                type="button"
+                aria-expanded="false"
+                onClick={() => setTargetSettingsExpanded(true)}
+              >
+                <Settings2 size={13} />
+                {t("cleanup:targets.modify")}
+              </button>
+            ) : null}
+          </div>
         </div>
-        <div className={`cleanup-targets__body${selectedTarget.targetKind !== "system_disk" ? " is-single" : ""}`}>
+        {!targetSettingsCollapsed ? <>
+          <div className={`cleanup-targets__body${selectedTarget.targetKind !== "system_disk" ? " is-single" : ""}`}>
           <div className="cleanup-targets__target-group">
             <div className="cleanup-targets__choices" role="group" aria-label={t("cleanup:targets.title")}>
               <button
@@ -562,7 +589,7 @@ export function CleanupAssistant({
               </div>
             </div>
           ) : null}
-        </div>
+          </div>
         {selectedTarget.targetKind === "system_disk" && selectedTarget.profile !== "complete" ? (
           <div className="cleanup-scan-profile__scope">
             <span>{t("cleanup:profiles.quick.scopeTitle")}</span>
@@ -593,6 +620,7 @@ export function CleanupAssistant({
             {t("cleanup:targets.readOnlyNotice")}
           </p>
         ) : null}
+        </> : null}
       </section>
 
       {accessGuideOpen && !loading ? (
@@ -816,14 +844,22 @@ export function CleanupAssistant({
       {snapshot && !loading ? (
         <div className="cleanup-results">
           <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
-            <div className="cleanup-result-overview__primary">
+            <button
+              className="cleanup-result-overview__primary"
+              type="button"
+              disabled={reclaimableBytes <= 0}
+              onClick={() => sendMapCommand({ type: "showReclaimable" })}
+            >
               <span><ArchiveRestore size={18} /></span>
               <div>
                 <small>{t("cleanup:reclaimableEstimate")}</small>
                 <strong>{formatBytes(reclaimableBytes)}</strong>
                 <em>{t("cleanup:estimateBoundary")}</em>
               </div>
-            </div>
+              <span className="cleanup-result-overview__primary-action">
+                {t("cleanup:viewReclaimable")}<ArrowRight size={13} />
+              </span>
+            </button>
 
             <div className="cleanup-result-overview__coverage">
               <strong>

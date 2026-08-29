@@ -148,6 +148,7 @@
     }
   },
   "reclaimableEstimate": "복구 가능한 공간",
+  "viewReclaimable": "세부 내역 보기",
   "estimateBoundary": "캐시 및 쓰레기 관련 추정치이며, 모든 데이터를 삭제하는 권장 사항이 아닙니다.",
   "entriesScanned": "{{count}} 항목 확인",
   "scanDuration": "{{seconds}} 초",
@@ -217,6 +218,10 @@
     "details": "공간 정보",
     "selected": "선택된 항목",
     "grouped": "그룹화된 카테고리",
+    "aggregateBadge": "요약 · 열기",
+    "aggregateHint": "요약 그룹입니다. 열어서 구체적인 폴더를 검토하고 선택하세요.",
+    "reclaimableFilter": "정리 가능한 카테고리만 표시 중",
+    "showAllCategories": "모든 카테고리 보기",
     "otherContent": "기타 콘텐츠",
     "restrictedObjects": "접근이 제한된 객체",
     "allocatedSize": "디스크에 할당된 용량",
@@ -380,6 +385,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "범위 변경",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "oldFileProcessing": {

@@ -62,6 +62,11 @@ Tauri 窗口到 HTML 的映射。预算保存在 `scripts/web-bundle-budgets.jso
 345,000 bytes。新增网络、历史、启动和存储样式已拆为按页面加载的 CSS chunks，主入口
 CSS gzip 仍保持在原有 40,000 bytes 上限内；四个入口的初始加载预算均未放宽。
 
+2026-08-29 的磁盘扫描结果交互迭代增加空间图悬浮摘要、响应式选中态、结果列表下钻、
+可回收分类筛选和折叠式扫描设置。全部 production chunks 实测为 2,406,568 bytes JS 与
+400,209 bytes CSS，总量预算对应调整为 2,420,000 与 405,000 bytes；四个入口各自的
+初始加载预算保持不变。
+
 这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
 [发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI
 wall-clock 数字替代。

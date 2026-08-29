@@ -174,6 +174,68 @@ describe("indexed cleanup navigation", () => {
     ));
   });
 
+  it("opens a folder from the list with one click", async () => {
+    const current = snapshot();
+    const indexed = folder("index:fixture:8", "Large Cache", "/fixture/cache");
+    const nested = file("index:fixture:9", "/fixture/cache/file.bin");
+    cleanupApi.getCleanupIndexedChildren.mockImplementation(
+      async ({ directoryId }: { directoryId: string }) => ({
+        items: directoryId === current.root.id ? [indexed] : [nested],
+        nextCursor: null,
+      }),
+    );
+    cleanupApi.getCleanupIndexedDirectory.mockResolvedValue({
+      ...indexed,
+      children: [nested],
+    });
+
+    const { container } = render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    const row = await screen.findByRole("button", { name: /Large Cache/ });
+    fireEvent.click(row);
+
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
+      scanId: "fixture",
+      directoryId: indexed.id,
+    }));
+    expect(container.querySelector(".cleanup-map__workspace.is-list")).not.toBeNull();
+    expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
+  });
+
+  it("labels category summaries as expandable instead of protected", async () => {
+    const current = snapshot();
+    current.locations = [{
+      kind: "app_cache",
+      paths: ["/fixture/cache"],
+      sizeBytes: 10,
+      itemCount: 1,
+      safety: "reclaimable",
+      available: true,
+      nodes: [folder("index:fixture:8", "Cache", "/fixture/cache")],
+    }];
+
+    const { container } = render(
+      <CleanupSpaceMap
+        snapshot={current}
+        snapshotStatus="current"
+        command={{ id: 1, type: "showReclaimable" }}
+        onDeletionApplied={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Showing potentially reclaimable categories")).toBeTruthy();
+    expect(container.querySelector(".cleanup-map__legend small")?.textContent).toContain("Summary · open");
+    expect(screen.queryByText("Protected")).toBeNull();
+    expect(container.querySelector(".cleanup-map__plan.is-collapsed")).not.toBeNull();
+  });
+
   it("keeps stale data visible and starts an explicit background refresh", async () => {
     const current = snapshot();
     const first = current.root.children[0];

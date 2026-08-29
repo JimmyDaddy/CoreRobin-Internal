@@ -38,6 +38,7 @@
     }
   },
   "reclaimableEstimate": "可能可回收空间",
+  "viewReclaimable": "查看构成",
   "estimateBoundary": "这是缓存与废纸篓的估算值，不代表必须清理。",
   "entriesScanned": "已检查 {{count}} 个项目",
   "scanDuration": "用时 {{seconds}} 秒",
@@ -131,6 +132,10 @@
     "details": "空间明细",
     "selected": "当前选择",
     "grouped": "汇总分类",
+    "aggregateBadge": "汇总 · 展开查看",
+    "aggregateHint": "这里是汇总分组；展开后再核对并选择具体目录。",
+    "reclaimableFilter": "正在查看可能可回收的分类",
+    "showAllCategories": "查看全部分类",
     "otherContent": "其余内容",
     "restrictedObjects": "无法读取的对象",
     "allocatedSize": "实际占用",
@@ -334,6 +339,7 @@
     "chooseFolderTitle": "选择一个要扫描的文件夹",
     "recent": "最近扫描",
     "removable": "可移除",
+    "modify": "修改范围",
     "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。"
   },
   "growth": {

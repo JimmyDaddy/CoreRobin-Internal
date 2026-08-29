@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLEANUP_MAP_MAX_ARCS, type CleanupMapArc } from "../cleanupMap";
@@ -141,5 +141,15 @@ describe("CleanupSunburstCanvas collected overlay", () => {
 
     expect(stroke.mock.calls.length - initialStrokeCount).toBeLessThanOrEqual(650);
     expect(drawImage).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a local size tooltip while an arc is hovered", () => {
+    render(<CleanupSunburstCanvas {...baseProps} collectedIds={new Set()} />);
+
+    const canvas = screen.getByRole("img", { name: "cleanup map" });
+    fireEvent.pointerMove(canvas, { clientX: 210.35, clientY: 140 });
+
+    expect(screen.getByText("Node 0")).toBeTruthy();
+    expect(screen.getByText(/1 B · 0.2%/)).toBeTruthy();
   });
 });

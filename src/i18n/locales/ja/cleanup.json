@@ -148,6 +148,7 @@
     }
   },
   "reclaimableEstimate": "解放できる可能性のある領域",
+  "viewReclaimable": "内訳を表示",
   "estimateBoundary": "これはキャッシュやゴミの推定値であり、すべて削除することをお勧めするものではありません。",
   "entriesScanned": "{{count}} の項目を確認",
   "scanDuration": "{{seconds}} 秒",
@@ -217,6 +218,10 @@
     "details": "ファイル詳細",
     "selected": "選択",
     "grouped": "グループ化されたカテゴリ",
+    "aggregateBadge": "集計 · 開く",
+    "aggregateHint": "これは集計グループです。開いて具体的なフォルダを確認、選択してください。",
+    "reclaimableFilter": "解放できる可能性のあるカテゴリを表示中",
+    "showAllCategories": "すべてのカテゴリを表示",
     "otherContent": "その他の内容",
     "restrictedObjects": "読み取り不可のオブジェクト",
     "allocatedSize": "ディスク上の割り当てサイズ",
@@ -380,6 +385,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "範囲を変更",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "oldFileProcessing": {

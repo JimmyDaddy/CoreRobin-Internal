@@ -93,6 +93,39 @@ test("history export privacy preview at compact width", async ({ page }) => {
   });
 });
 
+test("disk scan result map at compact desktop width", async ({ page }) => {
+  await openCleanupResult(page, 900);
+  await page.locator(".cleanup-result-overview").scrollIntoViewIfNeeded();
+  await stabilize(page);
+  await expect(page).toHaveScreenshot("cleanup-result-map-zh-900.png", {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.025,
+  });
+});
+
+test("disk scan list uses the full result width", async ({ page }) => {
+  await openCleanupResult(page, 1180);
+  await page.getByRole("button", { name: "列表" }).click();
+  await expect(page.locator(".cleanup-map__workspace.is-list")).toBeVisible();
+  await page.locator("#cleanup-space-map").scrollIntoViewIfNeeded();
+  await stabilize(page);
+  await expect(page).toHaveScreenshot("cleanup-result-list-zh-1180.png", {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.025,
+  });
+});
+
+test("reclaimable summary opens an honest category breakdown", async ({ page }) => {
+  await openCleanupResult(page, 900);
+  await page.getByRole("button", { name: /可能可回收空间.*查看构成/ }).click();
+  await expect(page.locator(".cleanup-map__active-filter")).toBeVisible();
+  await stabilize(page);
+  await expect(page).toHaveScreenshot("cleanup-reclaimable-categories-zh-900.png", {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.025,
+  });
+});
+
 async function prepareApp(
   page: Page,
   language: string,
@@ -109,6 +142,16 @@ async function prepareApp(
       reduceMotion,
     }));
   }, { language, experienceMode, reduceMotion });
+}
+
+async function openCleanupResult(page: Page, width: number) {
+  await prepareApp(page, "zh-CN", "simple", false);
+  await page.setViewportSize({ width, height: 1000 });
+  await page.goto("/");
+  await page.locator(".sidebar .nav-group button").filter({ hasText: "磁盘扫描" }).click();
+  await expect(page.locator(".cleanup-assistant")).toBeVisible();
+  await page.getByRole("button", { name: "开始只读扫描" }).click();
+  await expect(page.locator(".cleanup-results")).toBeVisible();
 }
 
 async function stabilize(page: Page) {

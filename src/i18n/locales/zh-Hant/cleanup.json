@@ -148,6 +148,7 @@
     }
   },
   "reclaimableEstimate": "可能可回收空間",
+  "viewReclaimable": "查看構成",
   "estimateBoundary": "這是快取與廢紙簍的估算值，不代表必須清理。",
   "entriesScanned": "已檢查 {{count}} 個專案",
   "scanDuration": "用時 {{seconds}} 秒",
@@ -217,6 +218,10 @@
     "details": "空間明細",
     "selected": "當前選擇",
     "grouped": "彙總分類",
+    "aggregateBadge": "彙總 · 展開查看",
+    "aggregateHint": "這裡是彙總分組；展開後再核對並選擇具體目錄。",
+    "reclaimableFilter": "正在查看可能可回收的分類",
+    "showAllCategories": "查看全部分類",
     "otherContent": "其餘內容",
     "restrictedObjects": "無法讀取的物件",
     "allocatedSize": "實際佔用",
@@ -380,6 +385,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "修改範圍",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "oldFileProcessing": {

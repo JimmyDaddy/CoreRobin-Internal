@@ -540,6 +540,8 @@ export default interface Resources {
     },
     "map": {
       "addToBasket": "加入清理篮",
+      "aggregateBadge": "汇总 · 展开查看",
+      "aggregateHint": "这里是汇总分组；展开后再核对并选择具体目录。",
       "allScanned": "全部扫描结果",
       "allocatedSize": "实际占用",
       "ariaLabel": "{{name}} 的空间扇形图",
@@ -608,6 +610,7 @@ export default interface Resources {
       "otherContentHint": "这里仅汇总当前页未显示或未单独保存的文件；所有子文件夹都已收录，可用“再显示 50 项”继续浏览目录。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
+      "reclaimableFilter": "正在查看可能可回收的分类",
       "refreshFailed": "无法刷新文件夹",
       "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
       "removeFromBasket": "移出清理篮",
@@ -615,6 +618,7 @@ export default interface Resources {
       "restrictedObjects": "无法读取的对象",
       "selected": "当前选择",
       "selectedPath": "当前选择路径",
+      "showAllCategories": "查看全部分类",
       "title": "空间都去了哪里",
       "trashRootProtected": "废纸篓目录本身不会被删除；进入里面选择需要清理的具体内容",
       "types": {
@@ -769,6 +773,7 @@ export default interface Resources {
       "chooseFolder": "选择文件夹",
       "chooseFolderTitle": "选择一个要扫描的文件夹",
       "kicker": "扫描范围",
+      "modify": "修改范围",
       "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。",
       "recent": "最近扫描",
       "removable": "可移除",
@@ -777,7 +782,8 @@ export default interface Resources {
     },
     "title": "磁盘扫描",
     "unavailable": "当前平台不可用",
-    "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。"
+    "unreadable": "有 {{count}} 个位置受权限保护或暂时无法读取，只有这些位置未计入结果。",
+    "viewReclaimable": "查看构成"
   },
   "common": {
     "average": "平均",

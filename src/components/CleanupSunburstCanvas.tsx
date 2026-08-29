@@ -18,6 +18,9 @@ import {
   type CleanupNodeVisual,
 } from "../cleanupMap";
 import { cleanupHatchPattern } from "../cleanupCanvasPatterns";
+import { cleanupNodeProtection } from "../cleanupProtection";
+import { useAppTranslation } from "../i18n/useAppTranslation";
+import { formatBytes } from "../utils";
 
 interface DrawableArc {
   arc: CleanupMapArc;
@@ -31,6 +34,13 @@ interface CollectedLayerCacheEntry {
   layer: HTMLCanvasElement;
   pixelRatio: number;
   themeKey: string;
+}
+
+interface CleanupMapTooltip {
+  alignLeft: boolean;
+  node: CleanupMapNode;
+  x: number;
+  y: number;
 }
 
 interface CleanupSunburstCanvasProps {
@@ -62,6 +72,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   onPointerDown,
   onPointerCancel,
 }: CleanupSunburstCanvasProps) {
+  const { t } = useAppTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef(0);
   const previousArcsRef = useRef<DrawableArc[]>([]);
@@ -69,6 +80,13 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   const hoveredIdRef = useRef<string | null>(null);
   const collectedLayerCacheRef = useRef<CollectedLayerCacheEntry[]>([]);
   const [canvasWidth, setCanvasWidth] = useState(CLEANUP_MAP_SIZE);
+  const [tooltip, setTooltip] = useState<CleanupMapTooltip | null>(null);
+  const firstRingBytes = useMemo(
+    () => arcs
+      .filter((arc) => arc.depth === 1)
+      .reduce((total, arc) => total + arc.node.allocatedSizeBytes, 0),
+    [arcs],
+  );
   const drawableArcs = useMemo(
     () => arcs.map((arc) => ({ arc, visual: cleanupNodeVisual(arc.node, arc.depth, hues) })),
     [arcs, hues],
@@ -171,48 +189,90 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     return hitTestCleanupMap(arcs, point.x, point.y);
   };
 
+  const tooltipProtection = tooltip
+    ? cleanupNodeProtection(tooltip.node)
+    : null;
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="cleanup-map__sunburst"
-      role="img"
-      tabIndex={0}
-      aria-label={ariaLabel}
-      onContextMenu={(event) => event.preventDefault()}
-      onPointerMove={(event) => {
-        const hit = arcAtPointer(event);
-        event.currentTarget.style.cursor = hit ? "pointer" : "default";
-        const nextId = hit?.node.id ?? null;
-        if (hoveredIdRef.current === nextId) return;
-        hoveredIdRef.current = nextId;
-        onSelect(hit?.node ?? null);
-      }}
-      onPointerLeave={() => {
-        hoveredIdRef.current = null;
-        onSelect(null);
-      }}
-      onClick={(event) => {
-        const hit = arcAtPointer(event);
-        if (hit) onActivate(hit.node);
-      }}
-      onKeyDown={(event) => {
-        const selected = arcs.find((arc) => arc.node.id === selectedId)?.node
-          ?? arcs[0]?.node;
-        if (!selected) return;
-        if (event.key === "Enter") {
-          event.preventDefault();
-          onActivate(selected);
-        } else if (event.key === " ") {
-          event.preventDefault();
-          onCollect(selected);
-        }
-      }}
-      onPointerDown={(event) => {
-        const hit = arcAtPointer(event);
-        if (hit) onPointerDown(event, hit.node);
-      }}
-      onLostPointerCapture={(event) => onPointerCancel(event.pointerId)}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="cleanup-map__sunburst"
+        role="img"
+        tabIndex={0}
+        aria-label={ariaLabel}
+        onContextMenu={(event) => event.preventDefault()}
+        onPointerMove={(event) => {
+          const hit = arcAtPointer(event);
+          event.currentTarget.style.cursor = hit ? "pointer" : "default";
+          if (hit) {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const x = Math.max(12, Math.min(bounds.width - 12, event.clientX - bounds.left));
+            const y = Math.max(34, Math.min(bounds.height - 34, event.clientY - bounds.top));
+            setTooltip({
+              alignLeft: x > bounds.width / 2,
+              node: hit.node,
+              x,
+              y,
+            });
+          } else {
+            setTooltip(null);
+          }
+          const nextId = hit?.node.id ?? null;
+          if (hoveredIdRef.current === nextId) return;
+          hoveredIdRef.current = nextId;
+          onSelect(hit?.node ?? null);
+        }}
+        onPointerLeave={() => {
+          hoveredIdRef.current = null;
+          setTooltip(null);
+          onSelect(null);
+        }}
+        onClick={(event) => {
+          const hit = arcAtPointer(event);
+          if (hit) onActivate(hit.node);
+        }}
+        onKeyDown={(event) => {
+          const selected = arcs.find((arc) => arc.node.id === selectedId)?.node
+            ?? arcs[0]?.node;
+          if (!selected) return;
+          if (event.key === "Enter") {
+            event.preventDefault();
+            onActivate(selected);
+          } else if (event.key === " ") {
+            event.preventDefault();
+            onCollect(selected);
+          }
+        }}
+        onPointerDown={(event) => {
+          const hit = arcAtPointer(event);
+          if (hit) onPointerDown(event, hit.node);
+        }}
+        onLostPointerCapture={(event) => onPointerCancel(event.pointerId)}
+      />
+      {tooltip ? (
+        <div
+          className={`cleanup-map__tooltip${tooltip.alignLeft ? " is-left" : ""}`}
+          style={{ left: tooltip.x, top: tooltip.y }}
+          aria-hidden="true"
+        >
+          <strong>{tooltip.node.name}</strong>
+          <span>
+            {formatBytes(tooltip.node.allocatedSizeBytes)}
+            {firstRingBytes > 0
+              ? ` · ${Math.max(0.1, tooltip.node.allocatedSizeBytes / firstRingBytes * 100).toFixed(1)}%`
+              : ""}
+          </span>
+          {tooltipProtection ? (
+            <small className={tooltipProtection === "aggregate" ? "is-aggregate" : "is-protected"}>
+              {t(tooltipProtection === "aggregate"
+                ? "cleanup:map.aggregateBadge"
+                : "cleanup:map.basket.protectedBadge")}
+            </small>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 });
 
