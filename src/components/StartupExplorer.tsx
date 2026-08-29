@@ -91,10 +91,10 @@ export function StartupExplorer({
   const [outcome, setOutcome] = useState<{
     item: StartupItem;
     enabled: boolean;
-    verification: StartupManagementVerification;
-    relatedItemCount: number;
-    unresolvedSourceCount: number;
-    requiresSystemSettings: boolean;
+    status: StartupManagementVerification;
+    relatedCount: number;
+    count: number;
+    needsSettings: boolean;
   } | null>(null);
   const leaseRef = useRef<StartupManagementLease | null>(null);
   const requestIdRef = useRef(0);
@@ -204,8 +204,7 @@ export function StartupExplorer({
           outcome: {
             selectedCount: 1,
             succeededCount: 1,
-            startupStateChanged:
-              fullyVerified && result.enabled === (requestedAction === "enable"),
+            startupStateChanged: fullyVerified,
           },
         });
         actionRecorded = true;
@@ -213,10 +212,10 @@ export function StartupExplorer({
       setOutcome({
         item,
         enabled: result.enabled,
-        verification: result.verification,
-        relatedItemCount: result.relatedItemCount,
-        unresolvedSourceCount: result.unresolvedSourceCount,
-        requiresSystemSettings: result.requiresSystemSettings,
+        status: result.verification,
+        relatedCount: result.relatedItemCount,
+        count: result.relatedItemCount || result.unresolvedSourceCount,
+        needsSettings: result.requiresSystemSettings,
       });
       requestIdRef.current += 1;
       setActionItem(null);
@@ -284,29 +283,29 @@ export function StartupExplorer({
       ) : null}
 
       {outcome ? (
-        <div className={`panel startup-outcome is-${outcome.verification}`} role="status">
-          {outcome.verification === "complete"
+        <div className={`panel startup-outcome is-${outcome.status}`} role="status">
+          {outcome.status === "complete"
             ? <CheckCircle2 size={16} />
             : <AlertTriangle size={16} />}
           <span>{t(
-            outcome.verification === "complete"
+            outcome.status === "complete"
               ? outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled"
-              : outcome.verification === "partial"
-                ? outcome.relatedItemCount > 0
+              : outcome.status === "partial"
+                ? outcome.relatedCount > 0
                   ? outcome.enabled ? "startup:outcome.partialEnabled" : "startup:outcome.partialDisabled"
                   : "startup:outcome.partialUncertain"
                 : "startup:outcome.notConfirmed",
             {
               name: outcome.item.name,
-              count: outcome.relatedItemCount || outcome.unresolvedSourceCount,
+              count: outcome.count,
             },
           )}</span>
-          {outcome.requiresSystemSettings ? (
+          {outcome.needsSettings ? (
             <button className="button button--plain" type="button" onClick={() => void openLoginItemsSettings()}>
               <ExternalLink size={14} />{t("startup:actions.openSettings")}
             </button>
           ) : null}
-          {outcome.verification !== "not_confirmed" ? (
+          {outcome.status !== "not_confirmed" ? (
             <button className="button button--plain" type="button" onClick={undoOutcome}>
               <Undo2 size={14} />{t("startup:outcome.undo")}
             </button>
