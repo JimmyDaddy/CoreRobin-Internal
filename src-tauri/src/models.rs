@@ -188,11 +188,24 @@ pub struct StartupManagementLeaseReleaseRequest {
     pub lease_id: String,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupManagementVerification {
+    Complete,
+    Partial,
+    NotConfirmed,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartupManagementResult {
     pub item_id: String,
     pub enabled: bool,
+    pub verification: StartupManagementVerification,
+    pub related_item_count: usize,
+    pub unresolved_source_count: usize,
+    pub requires_system_settings: bool,
+    pub snapshot: StartupItemsSnapshot,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]

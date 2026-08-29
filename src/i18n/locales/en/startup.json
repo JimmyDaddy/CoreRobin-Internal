@@ -107,6 +107,10 @@
   "outcome": {
     "disabled": "Automatic startup for {{name}} is disabled. The running app was not closed.",
     "enabled": "Automatic startup for {{name}} is restored.",
+    "partialDisabled": "This startup configuration for {{name}} is disabled, but {{count}} related startup sources are still enabled.",
+    "partialEnabled": "This startup configuration for {{name}} is restored, but {{count}} related system states still prevent full verification.",
+    "partialUncertain": "The startup configuration for {{name}} was updated, but {{count}} startup sources could not be checked again.",
+    "notConfirmed": "The startup configuration was updated, but a fresh scan could not confirm the actual startup state for {{name}}.",
     "undo": "Undo"
   },
   "actionDialog": {

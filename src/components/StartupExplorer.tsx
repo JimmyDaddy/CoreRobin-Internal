@@ -37,6 +37,7 @@ import type {
   StartupItemsSnapshot,
   StartupManagementAction,
   StartupManagementLease,
+  StartupManagementVerification,
 } from "../types";
 import type {
   CompleteUserActionInput,
@@ -56,7 +57,7 @@ interface StartupExplorerProps {
   impactMeasurements?: readonly StartupImpactMeasurement[];
   actionRecords?: readonly UserActionRecord[];
   launchAtLogin?: boolean;
-  onRefresh: () => void | Promise<void>;
+  onRefresh: (verifiedSnapshot?: StartupItemsSnapshot) => unknown;
   onEnableLaunchAtLogin?: () => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
@@ -90,6 +91,10 @@ export function StartupExplorer({
   const [outcome, setOutcome] = useState<{
     item: StartupItem;
     enabled: boolean;
+    status: StartupManagementVerification;
+    relatedCount: number;
+    count: number;
+    needsSettings: boolean;
   } | null>(null);
   const leaseRef = useRef<StartupManagementLease | null>(null);
   const requestIdRef = useRef(0);
@@ -187,24 +192,35 @@ export function StartupExplorer({
         leaseId: executionLease.id,
       });
       leaseRef.current = null;
+      const fullyVerified = result.verification === "complete";
       if (actionRecordId) {
         onUserActionComplete?.(actionRecordId, {
-          status: "succeeded",
-          verification: "verified",
+          status: fullyVerified ? "succeeded" : "partial",
+          verification: fullyVerified ? "verified" : "not_confirmed",
           targetCount: 1,
+          failedCount: fullyVerified
+            ? 0
+            : Math.max(1, result.relatedItemCount + result.unresolvedSourceCount),
           outcome: {
             selectedCount: 1,
             succeededCount: 1,
-            startupStateChanged: result.enabled === (requestedAction === "enable"),
+            startupStateChanged: fullyVerified,
           },
         });
         actionRecorded = true;
       }
-      setOutcome({ item, enabled: result.enabled });
+      setOutcome({
+        item,
+        enabled: result.enabled,
+        status: result.verification,
+        relatedCount: result.relatedItemCount,
+        count: result.relatedItemCount || result.unresolvedSourceCount,
+        needsSettings: result.requiresSystemSettings,
+      });
       requestIdRef.current += 1;
       setActionItem(null);
       setAction(null);
-      await onRefresh();
+      await onRefresh(result.snapshot);
     } catch (caughtError) {
       if (actionRecordId && !actionRecorded) {
         onUserActionComplete?.(actionRecordId, {
@@ -245,14 +261,14 @@ export function StartupExplorer({
           <h2 id="startup-title">{t("startup:title")}</h2>
           <p>{t("startup:description")}</p>
         </div>
-        <button className="button button--secondary" type="button" disabled={loading} onClick={onRefresh}>
+        <button className="button button--secondary" type="button" disabled={loading} onClick={() => void onRefresh()}>
           <RefreshCw className={loading ? "is-spinning" : undefined} size={14} />
           {loading ? t("startup:scanning") : t("common:refresh")}
         </button>
       </header> : (
         <header className="startup-guided-header">
           <div><span className="eyebrow">{t("startup:guided.kicker")}</span><h2 id="startup-title">{t("startup:guided.title")}</h2><p>{t("startup:guided.description")}</p></div>
-          <button className="button button--secondary" type="button" disabled={loading} onClick={onRefresh}><RefreshCw className={loading ? "is-spinning" : undefined} size={14} />{loading ? t("startup:scanning") : t("common:refresh")}</button>
+          <button className="button button--secondary" type="button" disabled={loading} onClick={() => void onRefresh()}><RefreshCw className={loading ? "is-spinning" : undefined} size={14} />{loading ? t("startup:scanning") : t("common:refresh")}</button>
         </header>
       )}
 
@@ -260,19 +276,40 @@ export function StartupExplorer({
         <div className="panel startup-error" role="alert">
           <AlertTriangle size={17} />
           <span>{t(pageError ? "startup:openSettingsFailed" : "startup:scanFailed")}</span>
-          <button className="button button--secondary" type="button" onClick={pageError ? () => void openLoginItemsSettings() : onRefresh}>
+          <button className="button button--secondary" type="button" onClick={pageError ? () => void openLoginItemsSettings() : () => void onRefresh()}>
             {pageError ? <ExternalLink size={14} /> : <RefreshCw size={14} />}{t("common:retry")}
           </button>
         </div>
       ) : null}
 
       {outcome ? (
-        <div className="panel startup-outcome" role="status">
-          <CheckCircle2 size={16} />
-          <span>{t(outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled", { name: outcome.item.name })}</span>
-          <button className="button button--plain" type="button" onClick={undoOutcome}>
-            <Undo2 size={14} />{t("startup:outcome.undo")}
-          </button>
+        <div className={`panel startup-outcome is-${outcome.status}`} role="status">
+          {outcome.status === "complete"
+            ? <CheckCircle2 size={16} />
+            : <AlertTriangle size={16} />}
+          <span>{t(
+            outcome.status === "complete"
+              ? outcome.enabled ? "startup:outcome.enabled" : "startup:outcome.disabled"
+              : outcome.status === "partial"
+                ? outcome.relatedCount > 0
+                  ? outcome.enabled ? "startup:outcome.partialEnabled" : "startup:outcome.partialDisabled"
+                  : "startup:outcome.partialUncertain"
+                : "startup:outcome.notConfirmed",
+            {
+              name: outcome.item.name,
+              count: outcome.count,
+            },
+          )}</span>
+          {outcome.needsSettings ? (
+            <button className="button button--plain" type="button" onClick={() => void openLoginItemsSettings()}>
+              <ExternalLink size={14} />{t("startup:actions.openSettings")}
+            </button>
+          ) : null}
+          {outcome.status !== "not_confirmed" ? (
+            <button className="button button--plain" type="button" onClick={undoOutcome}>
+              <Undo2 size={14} />{t("startup:outcome.undo")}
+            </button>
+          ) : null}
           <button type="button" onClick={() => setOutcome(null)}>{t("common:close")}</button>
         </div>
       ) : null}

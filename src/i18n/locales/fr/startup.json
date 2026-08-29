@@ -85,7 +85,11 @@
   "outcome": {
     "undo": "Annuler",
     "disabled": "Le démarrage automatique pour {{name}} est désactivé. L'application en cours n'a pas été fermée.",
-    "enabled": "Le démarrage automatique pour {{name}} est rétabli."
+    "enabled": "Le démarrage automatique pour {{name}} est rétabli.",
+    "partialDisabled": "Cette configuration de démarrage de {{name}} est désactivée, mais {{count}} sources de démarrage associées restent actives.",
+    "partialEnabled": "Cette configuration de démarrage de {{name}} est restaurée, mais {{count}} états système associés empêchent encore une vérification complète.",
+    "partialUncertain": "La configuration de démarrage de {{name}} a été mise à jour, mais {{count}} sources de démarrage n'ont pas pu être revérifiées.",
+    "notConfirmed": "La configuration de démarrage a été mise à jour, mais une nouvelle analyse n'a pas confirmé l'état réel de démarrage de {{name}}."
   },
   "actionDialog": {
     "owner": "Application", "source": "Source de démarrage", "effect": "Moment de prise d’effet",

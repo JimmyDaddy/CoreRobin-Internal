@@ -28,7 +28,7 @@ export function GlobalTaskCenter({
     cancelDirectoryRefresh: () => Promise<void>;
   };
   fileInsights: FileInsightsScanController;
-  startup: { loading: boolean; error: CommandError | null; refresh: () => Promise<void> };
+  startup: { loading: boolean; error: CommandError | null; refresh: () => Promise<unknown> };
   updater: AppUpdaterController;
   onOpenCleanup: () => void;
   onOpenStartup: () => void;

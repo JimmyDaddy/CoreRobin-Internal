@@ -96,7 +96,11 @@
   "outcome": {
     "undo": "Rückgängig",
     "disabled": "Automatische Startup für {{name}} ist deaktiviert. Die laufende Anwendung wurde nicht geschlossen.",
-    "enabled": "Automatische Startup für {{name}} ist wiederhergestellt."
+    "enabled": "Automatische Startup für {{name}} ist wiederhergestellt.",
+    "partialDisabled": "Diese Startkonfiguration für {{name}} ist deaktiviert, aber weitere zugehörige Startquellen sind noch aktiv ({{count}}).",
+    "partialEnabled": "Diese Startkonfiguration für {{name}} ist wiederhergestellt, aber zugehörige Systemzustände verhindern noch die vollständige Bestätigung ({{count}}).",
+    "partialUncertain": "Die Startkonfiguration für {{name}} wurde aktualisiert, aber {{count}} Startquellen konnten nicht erneut geprüft werden.",
+    "notConfirmed": "Die Startkonfiguration wurde aktualisiert, aber der tatsächliche Startzustand von {{name}} konnte bei der erneuten Prüfung nicht bestätigt werden."
   },
   "actionDialog": {
     "owner": "Anwendung", "source": "Startquelle", "effect": "Zeitpunkt der Wirkung",

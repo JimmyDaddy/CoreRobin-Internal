@@ -85,7 +85,11 @@
   "outcome": {
     "undo": "元に戻す",
     "disabled": "{{name}}の自動起動が無効になっています。アプリケーションは正常に終了していません。",
-    "enabled": "{{name}}の自動起動が有効になりました。"
+    "enabled": "{{name}}の自動起動が有効になりました。",
+    "partialDisabled": "{{name}}のこの起動設定は無効になりましたが、関連する{{count}}件の起動元がまだ有効です。",
+    "partialEnabled": "{{name}}のこの起動設定は復元されましたが、関連する{{count}}件のシステム状態により完全な確認ができません。",
+    "partialUncertain": "{{name}}の起動設定は更新されましたが、{{count}}件の起動元を再確認できませんでした。",
+    "notConfirmed": "起動設定は更新されましたが、再スキャンで{{name}}の実際の起動状態を確認できませんでした。"
   },
   "actionDialog": {
     "owner": "アプリケーション", "source": "起動元", "effect": "反映時期",

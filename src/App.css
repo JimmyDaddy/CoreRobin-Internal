@@ -4185,7 +4185,16 @@ code,
 .cleanup-map__selected > span:last-child { align-items: flex-end; }
 .cleanup-map__selected small { color: var(--text-muted); font-size: 12px; }
 .cleanup-map__selected strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.cleanup-map__selected code { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.cleanup-map__selected code {
+  display: block;
+  height: 20px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .cleanup-map__selected.is-collected {
   border-color: rgba(255, 125, 115, 0.38);
   background:

@@ -289,6 +289,12 @@
 .startup-list > footer { display: flex; align-items: center; gap: 7px; padding: 11px 13px; color: var(--green); border-top: 1px solid var(--border); background: rgba(255, 255, 255, 0.01); font-size: 11px; }
 .startup-list > footer em { margin-left: auto; color: var(--amber); font-style: normal; }
 .startup-outcome { display: flex; align-items: center; gap: 8px; padding: 11px 13px; color: var(--green); }
+.startup-outcome.is-partial,
+.startup-outcome.is-not_confirmed {
+  color: var(--amber);
+  border-color: rgba(239, 182, 94, 0.24);
+  background: var(--amber-soft);
+}
 .startup-outcome span { min-width: 0; flex: 1; color: var(--text-soft); font-size: 11px; }
 .startup-outcome button { color: var(--text-muted); background: transparent; font-size: 12px; cursor: pointer; }
 
