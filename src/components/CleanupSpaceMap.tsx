@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -78,6 +78,10 @@ export type CleanupSpaceMapCommand =
     }
   | {
       id: number;
+      type: "showReclaimable";
+    }
+  | {
+      id: number;
       type: "addPath";
       name: string;
       path: string;
@@ -123,6 +127,7 @@ function cleanupAvailableDelta(outcome: CleanupDeleteOutcome): number {
 
 type CleanupMapMode = "path" | "category";
 type CleanupPresentation = "map" | "list";
+type CleanupCategoryScope = "all" | "reclaimable";
 
 const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
 
@@ -152,6 +157,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   );
   const [pagingDirectoryId, setPagingDirectoryId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
+  const [categoryScope, setCategoryScope] = useState<CleanupCategoryScope>("all");
   const [presentation, setPresentation] = useState<CleanupPresentation>("map");
   const [listQuery, setListQuery] = useState("");
   const [listSort, setListSort] = useState<"size" | "name">("size");
@@ -166,50 +172,49 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     () => materializeCleanupNode(snapshot.root, loadedSubtrees),
     [loadedSubtrees, snapshot.root],
   );
-  const categoryRoot = useMemo<CleanupMapNode>(() => ({
-    id: "cleanup-category-root",
-    name: t("cleanup:map.categoryRoot"),
-    path: null,
-    sizeBytes: snapshot.locations.reduce((total, location) => total + location.sizeBytes, 0),
-    logicalSizeBytes: snapshot.locations.reduce(
-      (total, location) => total + location.nodes.reduce((sum, node) => sum + node.logicalSizeBytes, 0),
-      0,
-    ),
-    allocatedSizeBytes: snapshot.locations.reduce((total, location) => total + location.sizeBytes, 0),
-    itemCount: snapshot.locations.reduce((total, location) => total + location.itemCount, 0),
-    safety: "review",
-    kind: "folder",
-    deletionProtected: true,
-    protectionReason: "aggregate",
-    hasChildren: true,
-    children: snapshot.locations
-      .filter((location) => location.available && (
-        location.sizeBytes > 0 || location.nodes.some((node) => node.kind === "restricted")
-      ))
-      .map((location) => {
-        const restrictedOnly = location.sizeBytes === 0 &&
-          location.nodes.some((node) => node.kind === "restricted");
-        return {
-          id: `location:${location.kind}`,
-          name: t(`cleanup:locations.${location.kind}.title`),
-          path: null,
-          sizeBytes: location.sizeBytes,
-          logicalSizeBytes: location.nodes.reduce((total, node) => total + node.logicalSizeBytes, 0),
-          allocatedSizeBytes: location.sizeBytes,
-          itemCount: location.itemCount,
-          safety: location.safety,
-          kind: restrictedOnly ? "restricted" as const : "folder" as const,
-          deletionProtected: true,
-          protectionReason: restrictedOnly ? "restricted" as const : "aggregate" as const,
-          hasChildren: location.nodes.length > 0,
-          children: location.nodes.map((node) => materializeCleanupNode(node, loadedSubtrees)),
-        };
-      })
-      .sort((left, right) => right.sizeBytes - left.sizeBytes),
-  }), [loadedSubtrees, snapshot.locations, t]);
+  const categoryNodes = useMemo<CleanupMapNode[]>(() => snapshot.locations
+    .filter((location) => location.available && (
+      location.sizeBytes > 0 || location.nodes.some((node) => node.kind === "restricted")
+    ))
+    .map((location) => {
+      const restrictedOnly = location.sizeBytes === 0 &&
+        location.nodes.some((node) => node.kind === "restricted");
+      return {
+        id: `location:${location.kind}`,
+        name: t(`cleanup:locations.${location.kind}.title`),
+        path: null,
+        sizeBytes: location.sizeBytes,
+        logicalSizeBytes: location.nodes.reduce((total, node) => total + node.logicalSizeBytes, 0),
+        allocatedSizeBytes: location.sizeBytes,
+        itemCount: location.itemCount,
+        safety: location.safety,
+        kind: restrictedOnly ? "restricted" as const : "folder" as const,
+        deletionProtected: true,
+        protectionReason: restrictedOnly ? "restricted" as const : "aggregate" as const,
+        hasChildren: location.nodes.length > 0,
+        children: location.nodes.map((node) => materializeCleanupNode(node, loadedSubtrees)),
+      };
+    })
+    .sort((left, right) => right.sizeBytes - left.sizeBytes), [loadedSubtrees, snapshot.locations, t]);
+  const categoryRoot = useMemo<CleanupMapNode>(() => cleanupCategoryRoot(
+    "cleanup-category-root",
+    t("cleanup:map.categoryRoot"),
+    categoryNodes,
+    "review",
+  ), [categoryNodes, t]);
+  const reclaimableCategoryRoot = useMemo<CleanupMapNode>(() => cleanupCategoryRoot(
+    "cleanup-category-reclaimable-root",
+    t("cleanup:reclaimableEstimate"),
+    categoryNodes.filter((node) => node.safety === "reclaimable"),
+    "reclaimable",
+  ), [categoryNodes, t]);
   const [externalPlanNodes, setExternalPlanNodes] =
     useState<Map<string, CleanupMapNode>>(() => new Map());
-  const root = mapMode === "path" ? pathRoot : categoryRoot;
+  const root = mapMode === "path"
+    ? pathRoot
+    : categoryScope === "reclaimable"
+      ? reclaimableCategoryRoot
+      : categoryRoot;
   const { nodes, parents, depths } = useMemo(
     () => indexTree(root, pagedChildren),
     [pagedChildren, root],
@@ -217,10 +222,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const planNodes = useMemo(() => {
     const pathNodes = indexTree(pathRoot, pagedChildren).nodes;
     for (const [id, node] of indexTree(categoryRoot).nodes) pathNodes.set(id, node);
+    for (const [id, node] of indexTree(reclaimableCategoryRoot).nodes) pathNodes.set(id, node);
     for (const [id, node] of externalPlanNodes) pathNodes.set(id, node);
     for (const node of listItems) pathNodes.set(node.id, node);
     return pathNodes;
-  }, [categoryRoot, externalPlanNodes, listItems, pagedChildren, pathRoot]);
+  }, [categoryRoot, externalPlanNodes, listItems, pagedChildren, pathRoot, reclaimableCategoryRoot]);
   const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
@@ -247,6 +253,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const dragPreviewFrameRef = useRef(0);
   const blockedDropTimerRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const detailsRef = useRef<HTMLElement | null>(null);
   const suppressNextClickRef = useRef(false);
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const deleteRequestIdRef = useRef(0);
@@ -358,9 +365,15 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     if (command.type === "focusLocation") {
       const locationId = `location:${command.locationKind}`;
       requestedFocusIdRef.current = locationId;
+      setCategoryScope("all");
       setMapMode("category");
       setFocusId(locationId);
       setSelectedId(locationId);
+    } else if (command.type === "showReclaimable") {
+      requestedFocusIdRef.current = "cleanup-category-reclaimable-root";
+      setCategoryScope("reclaimable");
+      setMapMode("category");
+      setPresentation("map");
     } else {
       const nodeId = `quick-path:${command.path}`;
       const node: CleanupMapNode = {
@@ -690,6 +703,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       return;
     }
     if ((node.kind === "folder" || node.kind === "restricted") && node.children.length > 0) {
+      if (!nodes.has(node.id)) {
+        setPagedChildren((current) => {
+          const siblings = current.get(focus.id) ?? [];
+          if (siblings.some((child) => child.id === node.id)) return current;
+          return new Map(current).set(focus.id, [...siblings, node]);
+        });
+      }
       navigateTo(node);
       return;
     }
@@ -711,6 +731,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       if (subtreeRequestIdRef.current !== requestId) return;
       const loaded = subtree as CleanupMapNode;
       retainLoadedSubtree(loaded);
+      if (!nodes.has(loaded.id)) {
+        setPagedChildren((current) => {
+          const siblings = current.get(focus.id) ?? [];
+          if (siblings.some((child) => child.id === loaded.id)) return current;
+          return new Map(current).set(focus.id, [...siblings, loaded]);
+        });
+      }
       navigateTo(loaded);
     } catch (caughtError) {
       if (subtreeRequestIdRef.current === requestId) {
@@ -1186,7 +1213,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             <button type="button" className={mapMode === "path" ? "is-active" : undefined} aria-pressed={mapMode === "path"} onClick={() => setMapMode("path")}>
               {t("cleanup:map.mode.path")}
             </button>
-            <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => setMapMode("category")}>
+            <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => {
+              setCategoryScope("all");
+              setMapMode("category");
+            }}>
               {t("cleanup:map.mode.category")}
             </button>
           </div>
@@ -1201,8 +1231,30 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         </div>
       </header>
 
-      <div className="cleanup-map__workspace">
+      {mapMode === "category" && categoryScope === "reclaimable" ? (
+        <div className="cleanup-map__active-filter" role="status">
+          <Sparkles size={13} />
+          <span>{t("cleanup:map.reclaimableFilter")}</span>
+          <button type="button" onClick={() => setCategoryScope("all")}>
+            {t("cleanup:map.showAllCategories")}
+          </button>
+        </div>
+      ) : null}
+
+      <div className={`cleanup-map__workspace${presentation === "list" ? " is-list" : ""}`}>
         <div className="cleanup-map__visual">
+          <button
+            className="cleanup-map__compact-inspector"
+            type="button"
+            onClick={() => detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
+          >
+            <span>
+              <small>{t("cleanup:map.selected")}</small>
+              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
+            </span>
+            <b>{formatBytes(selected.allocatedSizeBytes)}</b>
+            <ChevronRight size={14} />
+          </button>
           <div className="cleanup-map__canvas" ref={canvasRef}>
             {freshness !== "current" ? (
               <div className={`cleanup-map__freshness is-${freshness}`}>
@@ -1322,22 +1374,23 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     <Search size={18} />{t("cleanup:map.view.empty")}
                   </div>
                 ) : (
-                  <div className="cleanup-index-list__table" role="table" aria-label={t("cleanup:map.view.list")}>
+                  <div className="cleanup-index-list__table" role="list" aria-label={t("cleanup:map.view.list")}>
                     {listItems.map((node) => {
-                      const protectedNode = cleanupNodeProtection(node) !== null;
+                      const protectionReason = cleanupNodeProtection(node);
+                      const unavailableForCollection = protectionReason !== null;
                       const collected = plannedIds.has(node.id);
                       return (
-                        <div className={selected.id === node.id ? "is-selected" : undefined} role="row" key={node.id}>
+                        <div className={selected.id === node.id ? "is-selected" : undefined} role="listitem" key={node.id}>
                           <input
                             type="checkbox"
                             checked={collected}
-                            disabled={protectedNode || node.kind === "aggregate"}
+                            disabled={unavailableForCollection || node.kind === "aggregate"}
                             aria-label={collected
                               ? t("cleanup:map.removeFromBasket")
                               : t("cleanup:map.addToBasket")}
                             onChange={() => collected ? removeFromPlan(node.id) : addToPlan(node)}
                           />
-                          <button type="button" role="cell" onClick={() => setSelectedId(node.id)} onDoubleClick={() => void drillInto(node)}>
+                          <button type="button" onClick={() => void drillInto(node)}>
                             <span>{node.kind === "file" ? <File size={15} /> : <FolderOpen size={15} />}</span>
                             <span><strong>{nodeDisplayName(node, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong><small>{node.path ?? t(`cleanup:map.types.${node.kind}`)}</small></span>
                             <b>{formatBytes(node.allocatedSizeBytes)}</b>
@@ -1358,7 +1411,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             )}
 
             <div
-              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}`}
+              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}${planned.length === 0 && !dragState?.dragging && !deleteOutcome ? " is-collapsed" : ""}`}
               aria-live="polite"
             >
               <span className="cleanup-map__basket-attention" aria-hidden="true"><i /><i /></span>
@@ -1412,10 +1465,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           </div>
         </div>
 
-        <aside className="cleanup-map__details" aria-label={t("cleanup:map.details")}>
+        <aside ref={detailsRef} className="cleanup-map__details" aria-label={t("cleanup:map.details")}>
           <div className={`cleanup-map__selected${selectedCollected ? " is-collected" : ""}`}>
             <span className={`cleanup-map__selected-icon is-${selected.kind}`}>
-              {selected.kind === "file" ? <File size={17} /> : selected.kind === "aggregate" ? <Layers3 size={17} /> : selected.kind === "restricted" ? <LockKeyhole size={17} /> : <FolderOpen size={17} />}
+              {selected.protectionReason === "aggregate" ? <Layers3 size={17} /> : selected.kind === "file" ? <File size={17} /> : selected.kind === "aggregate" ? <Layers3 size={17} /> : selected.kind === "restricted" ? <LockKeyhole size={17} /> : <FolderOpen size={17} />}
             </span>
             <div>
               <small>{t(selectedCollected ? "cleanup:map.basket.collected" : "cleanup:map.selected")}</small>
@@ -1531,13 +1584,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </div>
           ) : null}
 
-          {directChildren.length > 0 ? (
+          {presentation === "list" ? null : directChildren.length > 0 ? (
             <ol className="cleanup-map__legend">
               {legendChildren.map((child) => {
                 const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
                 const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
                 const protectionReason = cleanupNodeProtection(child);
-                const protectedNode = protectionReason !== null;
+                const aggregateGroup = protectionReason === "aggregate";
+                const protectedNode = protectionReason !== null && !aggregateGroup;
                 const protectedDragSource = dragState?.dragging && dragState.nodeId === child.id && dragState.blocked;
                 return (
                   <li key={child.id}>
@@ -1548,10 +1602,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       aria-current={selected.id === child.id ? "true" : undefined}
                       onMouseEnter={() => setSelectedId(child.id)}
                       onFocus={() => setSelectedId(child.id)}
-                      data-draggable={!collected && child.kind !== "aggregate" ? "true" : undefined}
-                      data-drag-policy={protectedNode ? "protected" : "collect"}
+                      data-draggable={!collected && !aggregateGroup && child.kind !== "aggregate" ? "true" : undefined}
+                      data-drag-policy={aggregateGroup ? "drill" : protectedNode ? "protected" : "collect"}
                       data-protection-reason={protectionReason ?? undefined}
-                      onPointerDown={(event) => beginDrag(event, child)}
+                      onPointerDown={aggregateGroup ? undefined : (event) => beginDrag(event, child)}
                       onPointerCancel={(event) => cancelDragAt(event.pointerId)}
                       onClick={() => {
                         if (suppressNextClickRef.current) {
@@ -1562,14 +1616,18 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       }}
                     >
                       <i className={visual.className} style={{ background: visual.swatch }}>
-                        {protectedNode ? <LockKeyhole size={8} /> : null}
+                        {aggregateGroup ? <Layers3 size={8} /> : protectedNode ? <LockKeyhole size={8} /> : null}
                       </i>
                       <span>
                         <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
                         <small>
                           {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
                           {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
-                          {protectedNode ? ` · ${t("cleanup:map.basket.protectedBadge")}` : ""}
+                          {aggregateGroup
+                            ? ` · ${t("cleanup:map.aggregateBadge")}`
+                            : protectedNode
+                              ? ` · ${t("cleanup:map.basket.protectedBadge")}`
+                              : ""}
                         </small>
                       </span>
                       <b>
@@ -1623,6 +1681,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               ? t("cleanup:map.basket.collectedHint")
               : selected.kind === "restricted"
                 ? t("cleanup:map.restrictedHint")
+                : selected.protectionReason === "aggregate" && selected.kind !== "aggregate"
+                  ? t("cleanup:map.aggregateHint")
                 : selected.kind === "aggregate" && focus.path
                   ? t("cleanup:map.otherContentHint")
                 : isTrashRootPath(selected.path)
@@ -1672,6 +1732,29 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     </section>
   );
 });
+
+function cleanupCategoryRoot(
+  id: string,
+  name: string,
+  children: CleanupMapNode[],
+  safety: CleanupMapNode["safety"],
+): CleanupMapNode {
+  return {
+    id,
+    name,
+    path: null,
+    sizeBytes: children.reduce((total, child) => total + child.sizeBytes, 0),
+    logicalSizeBytes: children.reduce((total, child) => total + child.logicalSizeBytes, 0),
+    allocatedSizeBytes: children.reduce((total, child) => total + child.allocatedSizeBytes, 0),
+    itemCount: children.reduce((total, child) => total + child.itemCount, 0),
+    safety,
+    kind: "folder",
+    deletionProtected: true,
+    protectionReason: "aggregate",
+    hasChildren: children.length > 0,
+    children,
+  };
+}
 
 function materializeCleanupNode(
   node: CleanupMapNode,

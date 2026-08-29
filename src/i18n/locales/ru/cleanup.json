@@ -148,6 +148,7 @@
     }
   },
   "reclaimableEstimate": "Возможно освободить место",
+  "viewReclaimable": "Показать состав",
   "estimateBoundary": "Это приблизительная оценка для кэша и мусора, а не рекомендация удалить все.",
   "entriesScanned": "{{count}} элементов проверено",
   "scanDuration": "{{seconds}} сек",
@@ -217,6 +218,10 @@
     "details": "Детали",
     "selected": "Выбранный элемент",
     "grouped": "Группа файлов",
+    "aggregateBadge": "Сводка · открыть",
+    "aggregateHint": "Это сводная группа. Откройте её, чтобы проверить и выбрать конкретные папки.",
+    "reclaimableFilter": "Категории с потенциально освобождаемым местом",
+    "showAllCategories": "Показать все категории",
     "otherContent": "Остальное содержимое",
     "restrictedObjects": "Файлы, к которым нет доступа",
     "allocatedSize": "Размер, занимаемый на диске",
@@ -380,6 +385,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "Изменить область",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "oldFileProcessing": {

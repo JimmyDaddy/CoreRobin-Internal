@@ -37,6 +37,39 @@
   white-space: nowrap;
 }
 
+.cleanup-targets__summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cleanup-targets__profile {
+  padding: 3px 7px;
+  color: var(--blue);
+  border-radius: 999px;
+  background: var(--blue-soft);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cleanup-targets__edit {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 10px;
+}
+.cleanup-targets__edit:hover { color: var(--text); border-color: rgba(99, 168, 255, 0.36); background: var(--blue-soft); }
+.cleanup-targets.is-collapsed { padding-block: 9px; }
+
 .cleanup-targets__body {
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(440px, 1.2fr);
@@ -332,9 +365,21 @@
   min-width: 0;
   align-items: center;
   gap: 10px;
+  margin: -7px;
+  padding: 7px;
+  color: var(--text);
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, box-shadow 140ms ease;
 }
+.cleanup-result-overview__primary:hover:not(:disabled) { background: rgba(86, 207, 147, 0.075); box-shadow: inset 0 0 0 1px rgba(86, 207, 147, 0.12); }
+.cleanup-result-overview__primary:focus-visible { outline: 2px solid rgba(86, 207, 147, 0.52); outline-offset: 1px; }
+.cleanup-result-overview__primary:disabled { cursor: default; opacity: 0.72; }
 
-.cleanup-result-overview__primary > span {
+.cleanup-result-overview__primary > span:first-child {
   display: grid;
   width: 36px;
   height: 36px;
@@ -343,6 +388,17 @@
   color: var(--green);
   border-radius: 11px;
   background: rgba(86, 207, 147, 0.1);
+}
+
+.cleanup-result-overview__primary > .cleanup-result-overview__primary-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .cleanup-result-overview__primary > div,
@@ -505,6 +561,12 @@
 
   .cleanup-targets__current {
     max-width: 100%;
+  }
+
+  .cleanup-targets__summary {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .cleanup-scan-profile__choices {

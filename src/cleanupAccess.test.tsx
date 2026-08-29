@@ -194,6 +194,28 @@ describe("cleanup full disk access guide", () => {
     expect(await screen.findByText(/已选择 1 项/)).toBeTruthy();
   });
 
+  it("collapses scan settings after a result and keeps them editable", () => {
+    renderAssistant(vi.fn(), getMockCleanupScan());
+
+    expect(document.querySelector(".cleanup-targets.is-collapsed")).not.toBeNull();
+    expect(screen.getByText("完整扫描")).toBeTruthy();
+    expect(screen.queryByText("顺序遍历整个系统磁盘，耗时更长")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "修改范围" }));
+
+    expect(document.querySelector(".cleanup-targets.is-collapsed")).toBeNull();
+    expect(screen.getByText("顺序遍历整个系统磁盘，耗时更长")).toBeTruthy();
+  });
+
+  it("opens the reclaimable-space breakdown directly from the result summary", async () => {
+    renderAssistant(vi.fn(), getMockCleanupScan());
+
+    fireEvent.click(screen.getByRole("button", { name: /可能可回收空间.*查看构成/ }));
+
+    expect(await screen.findByText("正在查看可能可回收的分类")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "用途分类", pressed: true })).toBeTruthy();
+  });
+
   it("shows the animated scan workspace during a rescan with a retained snapshot", () => {
     renderAssistant(vi.fn(), getMockCleanupScan(), true, {
       scannedEntryCount: 42,

@@ -148,6 +148,7 @@
     }
   },
   "reclaimableEstimate": "Espace potentiellement récupérable",
+  "viewReclaimable": "Voir le détail",
   "estimateBoundary": "Ceci est une estimation pour les caches et les fichiers temporaires, et non une recommandation de suppression complète.",
   "entriesScanned": "{{count}} éléments vérifiés",
   "scanDuration": "{{seconds}} secondes",
@@ -217,6 +218,10 @@
     "details": "Détails de l'espace",
     "selected": "Sélectionné",
     "grouped": "Catégorie groupée",
+    "aggregateBadge": "Résumé · ouvrir",
+    "aggregateHint": "Il s’agit d’un groupe récapitulatif. Ouvrez-le pour vérifier et sélectionner des dossiers précis.",
+    "reclaimableFilter": "Catégories potentiellement récupérables",
+    "showAllCategories": "Afficher toutes les catégories",
     "otherContent": "Autres contenus",
     "restrictedObjects": "Objets non accessibles",
     "allocatedSize": "Alloué sur le disque",
@@ -380,6 +385,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "Modifier la portée",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "oldFileProcessing": {

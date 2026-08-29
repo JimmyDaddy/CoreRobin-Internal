@@ -76,6 +76,28 @@
   box-shadow: inset 0 0 0 1px rgba(99, 168, 255, 0.3);
 }
 
+.cleanup-map__active-filter {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 15px;
+  color: var(--green);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--green-soft) 70%, transparent);
+  font-size: 11px;
+}
+.cleanup-map__active-filter span { flex: 1; }
+.cleanup-map__active-filter button {
+  padding: 4px 8px;
+  color: var(--text-soft);
+  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 10px;
+}
+.cleanup-map__active-filter button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+
 .cleanup-index-list { display: grid; align-content: start; min-height: 470px; padding: 16px; }
 .cleanup-index-list__toolbar {
   display: grid;
@@ -103,8 +125,8 @@
 .cleanup-index-list__table > div:hover,
 .cleanup-index-list__table > div.is-selected { background: rgba(99, 168, 255, 0.07); }
 .cleanup-index-list__table input { justify-self: center; accent-color: var(--blue); }
-.cleanup-index-list__table [role="cell"] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; padding: 7px 11px 7px 0; color: var(--text-soft); text-align: left; border: 0; background: transparent; }
-.cleanup-index-list__table [role="cell"] > span:nth-child(2) { display: grid; min-width: 0; }
+.cleanup-index-list__table [role="listitem"] > button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; padding: 7px 11px 7px 0; color: var(--text-soft); text-align: left; border: 0; background: transparent; cursor: pointer; }
+.cleanup-index-list__table [role="listitem"] > button > span:nth-child(2) { display: grid; min-width: 0; }
 .cleanup-index-list__table strong,
 .cleanup-index-list__table small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cleanup-index-list__table strong { color: var(--text); font-size: 12px; }

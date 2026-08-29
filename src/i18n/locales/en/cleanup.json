@@ -38,6 +38,7 @@
     }
   },
   "reclaimableEstimate": "Potentially reclaimable space",
+  "viewReclaimable": "View breakdown",
   "estimateBoundary": "This is an estimate for caches and trash, not a recommendation to remove everything.",
   "entriesScanned": "{{count}} items checked",
   "scanDuration": "{{seconds}} sec",
@@ -131,6 +132,10 @@
     "details": "Space details",
     "selected": "Selected",
     "grouped": "Grouped category",
+    "aggregateBadge": "Summary · open",
+    "aggregateHint": "This is a summary group. Open it to review and select specific folders.",
+    "reclaimableFilter": "Showing potentially reclaimable categories",
+    "showAllCategories": "Show all categories",
     "otherContent": "Other content",
     "restrictedObjects": "Unreadable objects",
     "allocatedSize": "allocated on disk",
@@ -334,6 +339,7 @@
     "chooseFolderTitle": "Choose a folder to scan",
     "recent": "Recent",
     "removable": "Removable",
+    "modify": "Change scope",
     "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
   },
   "growth": {
