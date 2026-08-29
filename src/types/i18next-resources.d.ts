@@ -2778,6 +2778,10 @@ export default interface Resources {
     "outcome": {
       "disabled": "已停用 {{name}} 的自动启动；当前应用不会被关闭。",
       "enabled": "已恢复 {{name}} 的自动启动。",
+      "notConfirmed": "启动配置已经更新，但重新扫描后仍无法确认 {{name}} 的实际启动状态。",
+      "partialDisabled": "已停用 {{name}} 的这一项启动配置，但仍有 {{count}} 个相关启动来源处于启用状态。",
+      "partialEnabled": "已恢复 {{name}} 的这一项启动配置，但仍有 {{count}} 个相关系统状态阻止完整确认。",
+      "partialUncertain": "已更新 {{name}} 的启动配置，但仍有 {{count}} 个启动来源暂时无法重新核对。",
       "undo": "撤销"
     },
     "ownership": {

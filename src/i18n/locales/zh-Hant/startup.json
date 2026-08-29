@@ -85,7 +85,11 @@
   "outcome": {
     "undo": "復原",
     "disabled": "已停用 {{name}} 的自動啟動；當前應用不會被關閉。",
-    "enabled": "已恢復 {{name}} 的自動啟動。"
+    "enabled": "已恢復 {{name}} 的自動啟動。",
+    "partialDisabled": "已停用 {{name}} 的這一項啟動設定，但仍有 {{count}} 個相關啟動來源處於啟用狀態。",
+    "partialEnabled": "已恢復 {{name}} 的這一項啟動設定，但仍有 {{count}} 個相關系統狀態阻止完整確認。",
+    "partialUncertain": "已更新 {{name}} 的啟動設定，但仍有 {{count}} 個啟動來源暫時無法重新核對。",
+    "notConfirmed": "啟動設定已經更新，但重新掃描後仍無法確認 {{name}} 的實際啟動狀態。"
   },
   "actionDialog": {
     "owner": "所屬應用", "source": "啟動來源", "effect": "生效時間",

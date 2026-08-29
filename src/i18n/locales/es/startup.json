@@ -85,7 +85,11 @@
   "outcome": {
     "undo": "Deshacer",
     "disabled": "El inicio automático para {{name}} está deshabilitado. La aplicación en ejecución no fue cerrada.",
-    "enabled": "El inicio automático para {{name}} ha sido restaurado."
+    "enabled": "El inicio automático para {{name}} ha sido restaurado.",
+    "partialDisabled": "Esta configuración de inicio de {{name}} está deshabilitada, pero aún hay {{count}} fuentes de inicio relacionadas habilitadas.",
+    "partialEnabled": "Esta configuración de inicio de {{name}} se restauró, pero {{count}} estados relacionados del sistema aún impiden verificarla por completo.",
+    "partialUncertain": "La configuración de inicio de {{name}} se actualizó, pero no fue posible volver a comprobar {{count}} fuentes de inicio.",
+    "notConfirmed": "La configuración de inicio se actualizó, pero un nuevo análisis no pudo confirmar el estado real de inicio de {{name}}."
   },
   "actionDialog": {
     "owner": "Aplicación", "source": "Fuente de inicio", "effect": "Cuándo se aplica",

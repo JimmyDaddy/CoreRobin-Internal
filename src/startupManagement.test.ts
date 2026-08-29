@@ -11,9 +11,13 @@ describe("startup management mock contract", () => {
   it("uses single-use confirmations and preserves a reversible state", () => {
     const itemId = "launch-agent:spotify";
     const disable = createMockStartupManagementLease({ itemId, action: "disable" });
-    expect(executeMockStartupManagement({ leaseId: disable.id })).toEqual({
+    expect(executeMockStartupManagement({ leaseId: disable.id })).toMatchObject({
       itemId,
       enabled: false,
+      verification: "complete",
+      relatedItemCount: 0,
+      unresolvedSourceCount: 0,
+      requiresSystemSettings: false,
     });
     expect(getMockStartupItems().items.find(({ id }) => id === itemId)?.enabled).toBe(false);
     expect(() => executeMockStartupManagement({ leaseId: disable.id })).toThrow();

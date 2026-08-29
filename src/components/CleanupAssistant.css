@@ -754,26 +754,33 @@
 }
 .cleanup-map__selected-path {
   display: flex;
+  height: 20px;
   min-width: 0;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
 }
 
 .cleanup-map__selected-path > span {
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  flex: 0 1 auto;
   gap: 2px;
+  overflow: hidden;
 }
 
 .cleanup-map__selected-path button,
 .cleanup-map__selected-path em {
+  min-width: 0;
   max-width: 150px;
   overflow: hidden;
-  padding: 2px 4px;
+  padding: 0 4px;
   border-radius: 5px;
   color: inherit;
   background: transparent;

@@ -85,7 +85,11 @@
   "outcome": {
     "undo": "Desfazer",
     "disabled": "A inicialização automática para {{name}} está desativada. A aplicação não foi fechada.",
-    "enabled": "A inicialização automática para {{name}} foi restaurada."
+    "enabled": "A inicialização automática para {{name}} foi restaurada.",
+    "partialDisabled": "Esta configuração de inicialização de {{name}} foi desativada, mas {{count}} fontes de inicialização relacionadas continuam ativas.",
+    "partialEnabled": "Esta configuração de inicialização de {{name}} foi restaurada, mas {{count}} estados relacionados do sistema ainda impedem a verificação completa.",
+    "partialUncertain": "A configuração de inicialização de {{name}} foi atualizada, mas {{count}} fontes de inicialização não puderam ser verificadas novamente.",
+    "notConfirmed": "A configuração de inicialização foi atualizada, mas uma nova verificação não confirmou o estado real de inicialização de {{name}}."
   },
   "actionDialog": {
     "owner": "Aplicativo", "source": "Fonte de inicialização", "effect": "Quando entra em vigor",

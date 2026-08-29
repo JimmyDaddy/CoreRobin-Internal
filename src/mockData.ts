@@ -244,7 +244,15 @@ export function executeMockStartupManagement(
   }
   const enabled = lease.action === "enable";
   mockStartupEnabled.set(lease.itemId, enabled);
-  return { itemId: lease.itemId, enabled };
+  return {
+    itemId: lease.itemId,
+    enabled,
+    verification: "complete",
+    relatedItemCount: 0,
+    unresolvedSourceCount: 0,
+    requiresSystemSettings: false,
+    snapshot: getMockStartupItems(),
+  };
 }
 
 function cleanupNode(

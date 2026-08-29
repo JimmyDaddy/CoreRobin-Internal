@@ -124,6 +124,7 @@ export type StartupManagementStatus =
   | "protected"
   | "unsupported";
 export type StartupManagementAction = "disable" | "enable";
+export type StartupManagementVerification = "complete" | "partial" | "not_confirmed";
 
 export interface StartupItemsSnapshot {
   sampledAtMs: number;
@@ -185,6 +186,11 @@ export interface StartupManagementLeaseReleaseRequest {
 export interface StartupManagementResult {
   itemId: string;
   enabled: boolean;
+  verification: StartupManagementVerification;
+  relatedItemCount: number;
+  unresolvedSourceCount: number;
+  requiresSystemSettings: boolean;
+  snapshot: StartupItemsSnapshot;
 }
 
 export interface HostSnapshot {

@@ -74,6 +74,14 @@ describe("startup management confirmation", () => {
     apiMocks.executeStartupManagement.mockResolvedValue({
       itemId: "login-item",
       enabled: false,
+      verification: "complete",
+      relatedItemCount: 0,
+      unresolvedSourceCount: 0,
+      requiresSystemSettings: false,
+      snapshot: {
+        ...snapshot,
+        items: [{ ...snapshot.items[0]!, enabled: false }],
+      },
     });
     const onRefresh = vi.fn(async () => undefined);
 
@@ -101,9 +109,58 @@ describe("startup management confirmation", () => {
       expect(apiMocks.executeStartupManagement).toHaveBeenCalledWith({
         leaseId: executionLease.id,
       });
-      expect(onRefresh).toHaveBeenCalledOnce();
+      expect(onRefresh).toHaveBeenCalledWith(expect.objectContaining({
+        items: [expect.objectContaining({ id: "login-item", enabled: false })],
+      }));
     });
     expect(screen.getByRole("button", { name: "撤销" })).toBeTruthy();
+  });
+
+  it("reports a partial result when another system-managed startup source remains", async () => {
+    apiMocks.createStartupManagementLease.mockResolvedValueOnce(lease("partial"));
+    apiMocks.executeStartupManagement.mockResolvedValueOnce({
+      itemId: "login-item",
+      enabled: false,
+      verification: "partial",
+      relatedItemCount: 1,
+      unresolvedSourceCount: 0,
+      requiresSystemSettings: true,
+      snapshot: {
+        ...snapshot,
+        items: [{ ...snapshot.items[0]!, enabled: false }],
+      },
+    });
+    apiMocks.openSystemSettings.mockResolvedValueOnce(undefined);
+    const onUserActionComplete = vi.fn();
+
+    render(
+      <StartupExplorer
+        variant="guided"
+        snapshot={snapshot}
+        error={null}
+        loading={false}
+        applications={[]}
+        totalMemoryBytes={16_000_000_000}
+        onRefresh={() => undefined}
+        onUserActionStart={() => "startup-action"}
+        onUserActionComplete={onUserActionComplete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "停用开机启动" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认停用自动启动" }));
+
+    expect(await screen.findByText(
+      "已停用 Sample Helper 的这一项启动配置，但仍有 1 个相关启动来源处于启用状态。",
+    )).toBeTruthy();
+    expect(onUserActionComplete).toHaveBeenCalledWith("startup-action", expect.objectContaining({
+      status: "partial",
+      verification: "not_confirmed",
+      failedCount: 1,
+      outcome: expect.objectContaining({ startupStateChanged: false }),
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "前往系统设置管理" }));
+    await waitFor(() => expect(apiMocks.openSystemSettings).toHaveBeenCalledWith("login_items"));
   });
 
   it("does not present unsupported modern background items as guided actions", () => {

@@ -16,7 +16,7 @@ use crate::models::{
     StartupItem, StartupItemScope, StartupItemSource, StartupItemsSnapshot, StartupLaunchKind,
     StartupManagementAction, StartupManagementExecutionRequest, StartupManagementLease,
     StartupManagementLeaseRequest, StartupManagementResult, StartupManagementStatus,
-    StartupScanIssue, StartupScanWarning,
+    StartupManagementVerification, StartupScanIssue, StartupScanWarning,
 };
 use crate::safe_fs::{BoundFileMove, SafeFileMoveRoot, SafeFileSnapshot};
 
@@ -37,6 +37,8 @@ struct StartupLeaseEntry {
     id: String,
     expires_at: Instant,
     item_id: String,
+    item: StartupItem,
+    home: PathBuf,
     action: StartupManagementAction,
     source_fingerprint: FileFingerprint,
     bound_move: BoundFileMove,
@@ -108,9 +110,17 @@ impl StartupController {
             ));
         }
         lease.bound_move.execute().map_err(map_startup_move_error)?;
+        let expected_enabled = lease.action == StartupManagementAction::Enable;
+        let (verification, snapshot) =
+            verify_startup_management(&lease.item, expected_enabled, &lease.home);
         Ok(StartupManagementResult {
             item_id: lease.item_id,
-            enabled: lease.action == StartupManagementAction::Enable,
+            enabled: expected_enabled,
+            verification: verification.status,
+            related_item_count: verification.related_item_count,
+            unresolved_source_count: verification.unresolved_source_count,
+            requires_system_settings: verification.requires_system_settings,
+            snapshot,
         })
     }
 
@@ -217,6 +227,8 @@ impl StartupController {
             id: id.clone(),
             expires_at,
             item_id: item.id.clone(),
+            item: item.clone(),
+            home: home.to_path_buf(),
             action: request.action,
             source_fingerprint,
             bound_move,
@@ -229,6 +241,133 @@ impl StartupController {
             expires_at_ms: now_millis().saturating_add(STARTUP_LEASE_TTL.as_millis() as u64),
         })
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct StartupVerificationResult {
+    status: StartupManagementVerification,
+    related_item_count: usize,
+    unresolved_source_count: usize,
+    requires_system_settings: bool,
+}
+
+fn verify_startup_management(
+    requested_item: &StartupItem,
+    expected_enabled: bool,
+    home: &Path,
+) -> (StartupVerificationResult, StartupItemsSnapshot) {
+    let snapshot = startup_items_snapshot_for_home(home);
+    let result = evaluate_startup_management(requested_item, expected_enabled, &snapshot.items);
+    (
+        apply_startup_scan_warnings(result, &snapshot.scan_warnings),
+        snapshot,
+    )
+}
+
+fn apply_startup_scan_warnings(
+    mut result: StartupVerificationResult,
+    warnings: &[StartupScanWarning],
+) -> StartupVerificationResult {
+    let unresolved_source_count = warnings
+        .iter()
+        .filter(|warning| warning.issue != StartupScanIssue::InvalidEntry)
+        .map(|warning| warning.count)
+        .sum();
+    result.unresolved_source_count = unresolved_source_count;
+    if result.status == StartupManagementVerification::Complete && unresolved_source_count > 0 {
+        result.status = StartupManagementVerification::Partial;
+    }
+    result.requires_system_settings |= warnings.iter().any(|warning| {
+        warning.source == StartupItemSource::BackgroundTask
+            && warning.issue == StartupScanIssue::SourceUnavailable
+    });
+    result
+}
+
+fn evaluate_startup_management(
+    requested_item: &StartupItem,
+    expected_enabled: bool,
+    items: &[StartupItem],
+) -> StartupVerificationResult {
+    let target_confirmed = items
+        .iter()
+        .find(|item| item.id == requested_item.id)
+        .is_some_and(|item| item.enabled == expected_enabled);
+    if !target_confirmed {
+        return StartupVerificationResult {
+            status: StartupManagementVerification::NotConfirmed,
+            related_item_count: 0,
+            unresolved_source_count: 0,
+            requires_system_settings: false,
+        };
+    }
+
+    let conflicting_items = items.iter().filter(|item| {
+        if item.id == requested_item.id
+            || item.system
+            || !startup_items_represent_same_application(requested_item, item)
+        {
+            return false;
+        }
+        if expected_enabled {
+            !item.enabled && item.management_status != StartupManagementStatus::Available
+        } else {
+            item.enabled
+        }
+    });
+    let conflicts = conflicting_items.collect::<Vec<_>>();
+    StartupVerificationResult {
+        status: if conflicts.is_empty() {
+            StartupManagementVerification::Complete
+        } else {
+            StartupManagementVerification::Partial
+        },
+        related_item_count: conflicts.len(),
+        unresolved_source_count: 0,
+        requires_system_settings: conflicts
+            .iter()
+            .any(|item| item.management_status != StartupManagementStatus::Available),
+    }
+}
+
+fn startup_items_represent_same_application(left: &StartupItem, right: &StartupItem) -> bool {
+    if left
+        .bundle_id
+        .as_deref()
+        .zip(right.bundle_id.as_deref())
+        .is_some_and(|(left_bundle, right_bundle)| left_bundle.eq_ignore_ascii_case(right_bundle))
+    {
+        return true;
+    }
+    #[cfg(target_os = "macos")]
+    if left
+        .executable_path
+        .as_deref()
+        .and_then(|path| containing_app_bundle(Path::new(path)))
+        .zip(
+            right
+                .executable_path
+                .as_deref()
+                .and_then(|path| containing_app_bundle(Path::new(path))),
+        )
+        .is_some_and(|(left_app, right_app)| {
+            left_app
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&right_app.to_string_lossy())
+        })
+    {
+        return true;
+    }
+    let left_name = normalize_startup_identity(&left.name);
+    !left_name.is_empty() && left_name == normalize_startup_identity(&right.name)
+}
+
+fn normalize_startup_identity(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 #[cfg(target_os = "macos")]
@@ -341,7 +480,11 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
             "CoreRobin could not locate the current user's home directory.",
         )
     })?;
-    let (mut items, scan_warnings) = platform_startup_items(&home);
+    Ok(startup_items_snapshot_for_home(&home))
+}
+
+fn startup_items_snapshot_for_home(home: &Path) -> StartupItemsSnapshot {
+    let (mut items, scan_warnings) = platform_startup_items(home);
     let unreadable_location_count = scan_warnings.iter().map(|warning| warning.count).sum();
     items.sort_by(|left, right| {
         left.system
@@ -352,13 +495,13 @@ pub fn scan_startup_items() -> Result<StartupItemsSnapshot, CommandError> {
     let management_available = items
         .iter()
         .any(|item| item.management_status == StartupManagementStatus::Available);
-    Ok(StartupItemsSnapshot {
+    StartupItemsSnapshot {
         sampled_at_ms: now_millis(),
         items,
         unreadable_location_count,
         scan_warnings,
         management_available,
-    })
+    }
 }
 
 fn push_startup_warning(
@@ -462,14 +605,17 @@ fn platform_startup_items(home: &Path) -> (Vec<StartupItem>, Vec<StartupScanWarn
             Err(()) => {}
         }
     }
-    match scan_macos_background_tasks() {
-        Ok(mut modern_items) => append_unique_startup_items(&mut items, modern_items.drain(..)),
-        Err(()) => push_startup_warning(
-            &mut warnings,
-            StartupItemSource::BackgroundTask,
-            StartupScanIssue::SourceUnavailable,
-            1,
-        ),
+    #[cfg(not(test))]
+    {
+        match scan_macos_background_tasks() {
+            Ok(mut modern_items) => append_unique_startup_items(&mut items, modern_items.drain(..)),
+            Err(()) => push_startup_warning(
+                &mut warnings,
+                StartupItemSource::BackgroundTask,
+                StartupScanIssue::SourceUnavailable,
+                1,
+            ),
+        }
     }
     (items, warnings)
 }
@@ -697,7 +843,7 @@ fn macos_signature_metadata(app: &Path) -> (Option<String>, Option<String>) {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn scan_macos_background_tasks() -> Result<Vec<StartupItem>, ()> {
     let mut command = Command::new("/usr/bin/sfltool");
     command.arg("dumpbtm");
@@ -1392,14 +1538,15 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     use crate::models::{
-        StartupManagementAction, StartupManagementExecutionRequest, StartupManagementLeaseRequest,
-        StartupManagementStatus,
+        StartupItemSource, StartupManagementAction, StartupManagementExecutionRequest,
+        StartupManagementLeaseRequest, StartupManagementStatus, StartupManagementVerification,
+        StartupScanIssue, StartupScanWarning,
     };
 
     #[cfg(target_os = "macos")]
     use super::{
-        StartupController, macos_disabled_directories, parse_macos_background_tasks,
-        platform_startup_items,
+        StartupController, apply_startup_scan_warnings, evaluate_startup_management,
+        macos_disabled_directories, parse_macos_background_tasks, platform_startup_items,
     };
     use super::{friendly_label, publisher_from_label};
 
@@ -1460,6 +1607,13 @@ Executable Path: /Applications/Example.app/Contents/Library/LoginItems/Helper.ap
             })
             .unwrap();
         assert!(!disabled_result.enabled);
+        assert_eq!(
+            disabled_result.verification,
+            StartupManagementVerification::Complete
+        );
+        assert_eq!(disabled_result.related_item_count, 0);
+        assert_eq!(disabled_result.unresolved_source_count, 0);
+        assert!(!disabled_result.requires_system_settings);
         assert!(!active.exists());
         assert!(
             macos_disabled_directories(&root)[0]
@@ -1513,6 +1667,88 @@ Executable Path: /Applications/Example.app/Contents/Library/LoginItems/Helper.ap
                 .exists()
         );
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn startup_management_reports_related_enabled_sources_as_partial() {
+        let root = test_root("partial-related-source");
+        let active = write_launch_agent(&root, "com.example.primary.plist", "com.example.primary");
+        write_launch_agent(
+            &root,
+            "com.example.secondary.plist",
+            "com.example.secondary",
+        );
+        let mut controller = StartupController::default();
+        let lease = controller
+            .create_lease_for_home(
+                StartupManagementLeaseRequest {
+                    item_id: format!("launch-agent:{}", active.to_string_lossy()),
+                    action: StartupManagementAction::Disable,
+                },
+                &root,
+            )
+            .unwrap();
+
+        let result = controller
+            .execute(StartupManagementExecutionRequest { lease_id: lease.id })
+            .unwrap();
+
+        assert!(!result.enabled);
+        assert_eq!(result.verification, StartupManagementVerification::Partial);
+        assert_eq!(result.related_item_count, 1);
+        assert_eq!(result.unresolved_source_count, 0);
+        assert!(!result.requires_system_settings);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn startup_management_routes_unsupported_related_sources_to_system_settings() {
+        let root = test_root("partial-unsupported-source");
+        let active = write_launch_agent(&root, "com.example.primary.plist", "com.example.primary");
+        let (items, _) = platform_startup_items(&root);
+        let requested = items
+            .into_iter()
+            .find(|item| item.path == active.to_string_lossy())
+            .unwrap();
+        let mut observed = requested.clone();
+        observed.enabled = false;
+        let mut unsupported = requested.clone();
+        unsupported.id = "background-task:com.example.primary".to_owned();
+        unsupported.source = StartupItemSource::BackgroundTask;
+        unsupported.management_status = StartupManagementStatus::Unsupported;
+        unsupported.modern_background_item = true;
+
+        let result = evaluate_startup_management(&requested, false, &[observed, unsupported]);
+
+        assert_eq!(result.status, StartupManagementVerification::Partial);
+        assert_eq!(result.related_item_count, 1);
+        assert_eq!(result.unresolved_source_count, 0);
+        assert!(result.requires_system_settings);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn startup_management_does_not_claim_complete_when_a_source_is_unavailable() {
+        let result = apply_startup_scan_warnings(
+            super::StartupVerificationResult {
+                status: StartupManagementVerification::Complete,
+                related_item_count: 0,
+                unresolved_source_count: 0,
+                requires_system_settings: false,
+            },
+            &[StartupScanWarning {
+                source: StartupItemSource::BackgroundTask,
+                issue: StartupScanIssue::SourceUnavailable,
+                count: 1,
+            }],
+        );
+
+        assert_eq!(result.status, StartupManagementVerification::Partial);
+        assert_eq!(result.unresolved_source_count, 1);
+        assert!(result.requires_system_settings);
     }
 
     #[cfg(target_os = "macos")]

@@ -13,14 +13,22 @@ export function useStartupItems(enabled: boolean) {
   const lastLoadedAtRef = useRef(0);
   enabledRef.current = enabled;
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (verifiedSnapshot?: StartupItemsSnapshot) => {
+    if (verifiedSnapshot) {
+      setSnapshot(verifiedSnapshot);
+      setError(null);
+      lastLoadedAtRef.current = Date.now();
+      return verifiedSnapshot;
+    }
     if (inFlight.current) return;
     inFlight.current = true;
     setLoading(true);
     setError(null);
     try {
-      setSnapshot(await getStartupItems());
+      const nextSnapshot = await getStartupItems();
+      setSnapshot(nextSnapshot);
       lastLoadedAtRef.current = Date.now();
+      return nextSnapshot;
     } catch (caughtError) {
       setError(normalizeCommandError(caughtError));
     } finally {

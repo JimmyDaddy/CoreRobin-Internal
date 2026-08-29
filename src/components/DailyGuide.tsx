@@ -84,7 +84,7 @@ interface DailyGuideProps {
   onOpenNetworkDetails: () => void;
   onOpenIntent: (intent: DailyIntent) => void;
   onOpenIncident: (incident: DailyIncident) => void;
-  onRefreshStartup: () => void | Promise<void>;
+  onRefreshStartup: (verifiedSnapshot?: StartupItemsSnapshot) => unknown;
   onRequestClose: (identity: string, name: string) => void;
   onOpenSystemSettings: (destination: SystemSettingsDestination) => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
