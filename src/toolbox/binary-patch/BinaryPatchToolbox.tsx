@@ -4,10 +4,14 @@ import { classifyPatchError } from "bs-diff-patch-web";
 import {
   applyPatchAndVerify,
   inspectPatchSafely,
+  isPatchTaskCancelled,
+  calculateTransferSavings,
   makePatchManifest,
   manifestJson,
   planPatches,
   generateVerifiedPatch,
+  PATCH_PLANNER_DEADLINE_MS,
+  runWithPatchDeadline,
 } from "./binaryPatchTools";
 import type { ToolId } from "../contracts";
 
@@ -38,6 +42,11 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     setError("");
   };
 
+  const clearDownload = () => {
+    setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return ""; });
+    setDownloadName("");
+  };
+
   const run = async (task: (signal: AbortSignal) => Promise<void>) => {
     if (running) return;
     const controller = new AbortController();
@@ -45,7 +54,13 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     setRunning(true);
     setError("");
     setOutput("");
-    try { await task(controller.signal); } catch (reason) { setError(controller.signal.aborted ? "已请求停止；等待补丁 Worker 确认退出。" : classifyPatchError(reason).message); } finally { controllerRef.current = null; setRunning(false); }
+    clearDownload();
+    try { await runWithPatchDeadline(task, controller.signal, PATCH_PLANNER_DEADLINE_MS); } catch (reason) {
+      if (isPatchTaskCancelled(reason)) {
+        setOutput(JSON.stringify({ state: "cancelled", note: "补丁任务已终止，未生成可下载结果。" }, null, 2));
+        setError("任务已取消（cancelled）；未生成可下载结果。");
+      } else setError(classifyPatchError(reason).message);
+    } finally { controllerRef.current = null; setRunning(false); }
   };
 
   const read = async (file: File | null, role: string, max = MAX_BINARY_BYTES): Promise<Uint8Array> => {
@@ -61,14 +76,13 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   };
 
   const execute = () => {
+    clearDownload();
     if (toolId === "transfer-savings") {
-      const full = Number(window.prompt("完整包大小（字节）", "1000000"));
-      const patchBytes = Number(window.prompt("补丁大小（字节）", "100000"));
-      const count = Number(window.prompt("下载次数", "1"));
-      if ([full, patchBytes, count].some((value) => !Number.isFinite(value) || value < 0)) { setError("大小和次数必须是非负数字。"); return; }
-      const totalFull = full * count;
-      const totalPatch = patchBytes * count;
-      setOutput(JSON.stringify({ fullBytes: totalFull, patchBytes: totalPatch, savedBytes: totalFull - totalPatch, savingsPercent: totalFull === 0 ? null : ((totalFull - totalPatch) / totalFull) * 100 }, null, 2));
+      const fullInput = window.prompt("完整包大小（字节）", "1000000");
+      const patchInput = window.prompt("补丁大小（字节）", "100000");
+      const countInput = window.prompt("下载次数", "1");
+      if (fullInput === null || patchInput === null || countInput === null) return;
+      try { setOutput(JSON.stringify(calculateTransferSavings(Number(fullInput), Number(patchInput), Number(countInput)), null, 2)); } catch (reason) { setError(classifyPatchError(reason).message); }
       return;
     }
     if (toolId === "patch-errors") {
@@ -85,7 +99,14 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       if (toolId === "binary-patch-apply") {
         const applied = await applyPatchAndVerify(await read(baseline, "基线", 16 * 1024 * 1024), await read(patch, "补丁"), expected ? await read(expected, "预期目标") : undefined, signal);
-        setOutput(JSON.stringify(applied.verification ?? { verified: false, state: "unverified_without_expected_target", outputBytes: applied.output.byteLength, note: "只允许另存副本；不能替换源文件。" }, null, 2));
+        if (!applied.verification) {
+          const unverified = { validation: "unverified", state: "unverified_without_expected_target", outputBytes: applied.output.byteLength, note: "未提供预期目标，不能验证输出；只能在明确确认后另存副本，绝不能替换源文件。" };
+          setOutput(JSON.stringify(unverified, null, 2));
+          if (!window.confirm("未提供预期目标，输出为 unverified，无法验证是否正确。确认仅另存此副本吗？")) {
+            setError("未验证结果未获确认，未提供下载。 ");
+            return;
+          }
+        } else setOutput(JSON.stringify(applied.verification, null, 2));
         setDownload(applied.output, "corerobin-restored.bin", "application/octet-stream");
         return;
       }
@@ -112,12 +133,13 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const needs = toolId === "binary-patch-create" ? ["baseline", "target"] : toolId === "binary-patch-apply" ? ["baseline", "patch", "expected (optional)"] : toolId === "binary-patch-inspector" ? ["patch"] : toolId === "integrity-manifest" ? ["baseline", "patch", "target"] : toolId === "patch-planner" ? ["target", "up to 8 baselines"] : [];
 
   return <div className="toolbox-tool-layout binary-patch-toolbox"><div className="toolbox-tool-layout__body">
-    <p className="toolbox-hint">补丁保持二进制；生成后必须逐字节验证，应用无预期目标时只标记 unverified 并只能另存副本。ENDSLEY/BSDIFF43 可生成/应用，BSDIFF40 仅检查。</p>
+    <p className="toolbox-hint">补丁保持二进制；生成后必须逐字节验证。无预期目标的应用结果标记为 unverified，只有明确确认后才能另存副本。ENDSLEY/BSDIFF43 可生成/应用，BSDIFF40 仅检查。</p>
     {needs.map((label) => label === "baseline" ? <FileInput key={label} label="基线" file={baseline} onChange={choose(setBaseline)} /> : label === "target" ? <FileInput key={label} label="目标" file={target} onChange={choose(setTarget)} /> : label === "patch" ? <FileInput key={label} label="补丁" file={patch} onChange={choose(setPatch)} /> : label.startsWith("expected") ? <FileInput key={label} label="预期目标（可选）" file={expected} onChange={choose(setExpected)} optional /> : <FileInput key={label} label="发布基线（最多 8 个）" files={plannerBaselines} onChange={chooseMany} multiple />)}
-    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { setOutput(""); setError(""); }}><Trash2 size={14} />清空</button></div>
+    {toolId === "binary-patch-apply" && !expected ? <p className="toolbox-error" role="alert">未选择预期目标：结果将标记为 unverified，另存前必须再次确认。</p> : null}
+    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { setOutput(""); setError(""); clearDownload(); }}><Trash2 size={14} />清空</button></div>
     {error ? <p className="toolbox-error" role="alert">{error}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
     {downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />另存结果副本</a> : null}
-  </div><div className="toolbox-tool-layout__footer"><span>SDK Worker 使用每任务取消；本页面不覆盖源文件、不执行补丁、不联网。应用/规划仍受角色上限和工作集约束。</span></div></div>;
+  </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；本页面不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
 }
 
 function FileInput({ label, file, files, onChange, multiple, optional }: { label: string; file?: File | null; files?: File[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void; multiple?: boolean; optional?: boolean }) {
