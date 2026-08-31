@@ -560,6 +560,12 @@ impl ToolboxService {
         request: &ExportToolboxOutputRequest,
     ) -> Result<ToolboxOutputExport, CommandError> {
         self.reconcile();
+        if self.clearing {
+            return Err(CommandError::new(
+                "toolbox_clearing",
+                "Toolbox resources are still stopping before reset.",
+            ));
+        }
         validate_output_request(
             &request.request_id,
             &request.job_id,
@@ -780,6 +786,7 @@ impl ToolboxService {
             ));
         }
         self.clearing = true;
+        self.cancel_output_exports();
         let mut released = true;
         for job in self.jobs.values_mut() {
             if !self.inputs.cancel(&job.job_id) {
@@ -796,18 +803,33 @@ impl ToolboxService {
                 "File operations are still stopping; retry clear after release is confirmed.",
             ));
         }
+        if self.has_active_output_exports() {
+            self.clearing = false;
+            self.revision = self.revision.saturating_add(1);
+            return Err(CommandError::new(
+                "release_unconfirmed",
+                "Output exports are still stopping; retry clear after release is confirmed.",
+            ));
+        }
         self.reset_epoch = self.reset_epoch.saturating_add(1);
         self.revision = self.revision.saturating_add(1);
         self.sessions.clear();
         self.jobs.clear();
         self.request_results.clear();
         self.outputs.clear();
-        for cancel in self.output_cancellations.values() {
-            cancel.store(true, Ordering::Release);
-        }
         self.output_cancellations.clear();
         self.clearing = false;
         Ok(self.snapshot())
+    }
+
+    pub fn cancel_output_exports(&self) {
+        for cancel in self.output_cancellations.values() {
+            cancel.store(true, Ordering::Release);
+        }
+    }
+
+    pub fn has_active_output_exports(&self) -> bool {
+        !self.output_cancellations.is_empty()
     }
 
     pub fn inputs_for_job(&self, key: &FileJobKey) -> Result<Arc<ToolboxInputs>, CommandError> {
@@ -1119,6 +1141,61 @@ mod tests {
         let completed = service.complete_output_export(&export, true, None).unwrap();
         assert_eq!(completed.status, JobStatus::Completed);
         assert!(completed.output_token.is_none());
+    }
+
+    #[test]
+    fn clear_waits_for_active_output_export_to_release() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "clear-export-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let ready = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: "clear-export-output".into(),
+                job_id: job.job_id.clone(),
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1, 2, 3],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+        let export = ExportToolboxOutputRequest {
+            request_id: "clear-export-run".into(),
+            job_id: job.job_id.clone(),
+            output_token: ready.output_token.unwrap().token,
+            generation: 1,
+            reset_epoch: 0,
+            path: "/tmp/clear-export.bin".into(),
+        };
+        service.begin_output_export(&export).unwrap();
+
+        let error = service.clear("clear-export", None).unwrap_err();
+        assert_eq!(error.code, "release_unconfirmed");
+        assert!(!service.clearing);
+        assert!(service.has_active_output_exports());
+
+        service
+            .complete_output_export(
+                &export,
+                false,
+                Some(ToolboxError {
+                    code: "cancelled".into(),
+                    message: "The export was cancelled.".into(),
+                    retryable: false,
+                }),
+            )
+            .unwrap();
+        assert!(!service.has_active_output_exports());
+        assert!(service.clear("clear-export-retry", None).is_ok());
     }
 
     #[test]
