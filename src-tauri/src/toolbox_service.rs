@@ -66,6 +66,7 @@ const TOOL_IDS: &[&str] = &[
 ];
 
 const WEB_MANAGED_TOOL_IDS: &[&str] = &[
+    "file-sha256",
     "image-watermark",
     "image-batch-watermark",
     "confidential-watermark",
@@ -84,6 +85,30 @@ const WEB_MANAGED_TOOL_IDS: &[&str] = &[
     "patch-errors",
     "patch-planner",
 ];
+const OUTPUT_TTL_MS: u64 = 10 * 60 * 1_000;
+
+fn is_heavy_tool(tool_id: &str) -> bool {
+    matches!(
+        tool_id,
+        "image-watermark"
+            | "image-batch-watermark"
+            | "confidential-watermark"
+            | "image-recipe"
+            | "image-editor"
+            | "invisible-watermark-write"
+            | "invisible-watermark-check"
+            | "recipient-tracking"
+            | "robustness-lab"
+            | "c2pa-inspector"
+            | "binary-patch-create"
+            | "binary-patch-apply"
+            | "binary-patch-inspector"
+            | "integrity-manifest"
+            | "transfer-savings"
+            | "patch-errors"
+            | "patch-planner"
+    )
+}
 
 #[derive(Default)]
 pub struct ToolboxService {
@@ -224,6 +249,25 @@ impl ToolboxService {
                 "This toolbox provider is not available in the native service yet.",
             ));
         }
+        if is_heavy_tool(&request.tool_id)
+            && self.jobs.values().any(|job| {
+                !matches!(
+                    job.status,
+                    JobStatus::Completed
+                        | JobStatus::Cancelled
+                        | JobStatus::Expired
+                        | JobStatus::Failed
+                ) && self
+                    .sessions
+                    .get(&job.session_id)
+                    .is_some_and(|session| is_heavy_tool(&session.tool_id))
+            })
+        {
+            return Err(CommandError::new(
+                "heavy_job_busy",
+                "Only one image or patch operation can run at a time.",
+            ));
+        }
         if self.jobs.len() >= 64 || self.request_results.len() >= 256 {
             return Err(CommandError::new(
                 "resource_busy",
@@ -318,6 +362,8 @@ impl ToolboxService {
                 job.status = JobStatus::Completed;
                 job.terminal_reason = Some(TerminalReason::Completed);
                 job.error = None;
+                job.output_expires_at_ms =
+                    Some((now_millis().min(u64::MAX as u128) as u64).saturating_add(OUTPUT_TTL_MS));
             } else {
                 job.status = JobStatus::Failed;
                 job.terminal_reason = Some(TerminalReason::Failed);
@@ -456,15 +502,51 @@ impl ToolboxService {
         Ok(Arc::clone(&self.inputs))
     }
 
+    pub fn inputs_for_tool_job(
+        &self,
+        key: &FileJobKey,
+        tool_id: &str,
+    ) -> Result<Arc<ToolboxInputs>, CommandError> {
+        let inputs = self.inputs_for_job(key)?;
+        let job = self.jobs.get(&key.job_id).expect("validated job");
+        if self
+            .sessions
+            .get(&job.session_id)
+            .is_none_or(|session| session.tool_id != tool_id)
+        {
+            return Err(CommandError::new(
+                "invalid_tool_operation",
+                "This operation is not allowed for the selected tool.",
+            ));
+        }
+        Ok(inputs)
+    }
+
     pub fn reconcile(&mut self) {
+        self.reconcile_at(now_millis().min(u64::MAX as u128) as u64);
+    }
+
+    fn reconcile_at(&mut self, now_ms: u64) {
         for job in self.jobs.values_mut() {
-            if job.status == JobStatus::Stopping && self.inputs.cancel(&job.job_id) {
-                job.status = JobStatus::Cancelled;
-                job.terminal_reason = Some(TerminalReason::Cancelled);
-                if let Some(session) = self.sessions.get_mut(&job.session_id) {
-                    session.status = crate::toolbox_contracts::SessionStatus::Ended;
-                    session.terminal_reason = Some(TerminalReason::Cancelled);
+            if job.status == JobStatus::Stopping {
+                if self.inputs.cancel(&job.job_id) {
+                    job.status = JobStatus::Cancelled;
+                    job.terminal_reason = Some(TerminalReason::Cancelled);
+                    if let Some(session) = self.sessions.get_mut(&job.session_id) {
+                        session.status = crate::toolbox_contracts::SessionStatus::Ended;
+                        session.terminal_reason = Some(TerminalReason::Cancelled);
+                    }
+                    self.revision = self.revision.saturating_add(1);
                 }
+            } else if matches!(
+                job.status,
+                JobStatus::Completed | JobStatus::OutputReady | JobStatus::Exporting
+            ) && job
+                .output_expires_at_ms
+                .is_some_and(|expires_at| expires_at <= now_ms)
+            {
+                job.status = JobStatus::Expired;
+                job.terminal_reason = Some(TerminalReason::Expired);
                 self.revision = self.revision.saturating_add(1);
             }
         }
@@ -550,11 +632,54 @@ mod tests {
             })
             .unwrap();
         assert_eq!(completed.status, JobStatus::Completed);
+        assert!(completed.output_expires_at_ms.is_some());
         assert!(service.snapshot().resources.is_empty());
         assert_eq!(
             service.snapshot().sessions[0].status,
             crate::toolbox_contracts::SessionStatus::Ended
         );
+    }
+
+    #[test]
+    fn only_one_heavy_job_can_run_and_expired_outputs_are_terminal() {
+        let mut service = ToolboxService::new();
+        let first = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "heavy-1".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let second_error = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "heavy-2".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "binary-patch-create".into(),
+                session_id: None,
+            })
+            .unwrap_err();
+        assert_eq!(second_error.code, "heavy_job_busy");
+        let finished = service
+            .finish(FinishToolboxJobRequest {
+                request_id: "finish-heavy-1".into(),
+                job_id: first.job_id.clone(),
+                expected_revision: None,
+                succeeded: true,
+                error: None,
+            })
+            .unwrap();
+        let expires_at = finished.output_expires_at_ms.unwrap();
+        service.reconcile_at(expires_at);
+        assert_eq!(service.jobs[&first.job_id].status, JobStatus::Expired);
     }
 
     #[test]
