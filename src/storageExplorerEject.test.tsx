@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ejectRemovableVolume, getStorageHealth, prepareEjectRemovableVolume } from "./api";
+import { ejectRemovableVolume, getStorageHealth } from "./api";
 import { StorageExplorer } from "./components/StorageExplorer";
 import i18n from "./i18n";
 

@@ -11,6 +11,7 @@ import {
   createTextRecipe,
   estimateImageWorksetBytes,
   inspectLocalManifest,
+  inspectLocalFontBytes,
   isAbortError,
   parseRecipeDocument,
   parseRecipientLocators,
@@ -36,6 +37,12 @@ describe("image toolbox contracts", () => {
   it("distinguishes malformed and non-C2PA JSON without network lookup", () => {
     expect(inspectLocalManifest("not-json").status).toBe("malformed");
     expect(inspectLocalManifest(JSON.stringify({ value: true })).status).toBe("not_c2pa");
+  });
+
+  it("requires a matching local font container signature", () => {
+    expect(inspectLocalFontBytes("local.ttf", new Uint8Array([0, 1, 0, 0]))).toBe("font/ttf");
+    expect(inspectLocalFontBytes("local.woff2", new TextEncoder().encode("wOF2"))).toBe("font/woff2");
+    expect(() => inspectLocalFontBytes("local.ttf", new TextEncoder().encode("wOFF"))).toThrow("签名");
   });
 
   it("enforces ZIP input limits before processing and cumulative output limits while processing", () => {

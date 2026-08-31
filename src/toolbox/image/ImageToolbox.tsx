@@ -17,6 +17,7 @@ import {
   IMAGE_MAX_OUTPUT_EDGE,
   assertBatchBudget,
   inspectImageBudget,
+  inspectLocalFontBytes,
   inspectLocalManifest,
   isAbortError,
   LOCAL_MANIFEST_MAX_BYTES,
@@ -168,12 +169,13 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     }
   };
 
-  const selectFont = (selected: File | undefined) => {
+  const selectFont = async (selected: File | undefined) => {
     if (!selected) return;
     try {
       if (selected.size === 0 || selected.size > IMAGE_FONT_MAX_BYTES) throw new Error("本地字体不能超过 4 MiB。");
-      if (!isSupportedLocalFont(selected)) throw new Error("本地字体只支持 TTF、OTF、WOFF 或 WOFF2。");
-      setFontFile(selected);
+      const bytes = new Uint8Array(await selected.arrayBuffer());
+      const mimeType = inspectLocalFontBytes(selected.name, bytes);
+      setFontFile(new File([bytes], selected.name, { type: mimeType, lastModified: selected.lastModified }));
       setWatermarkFont((current) => current.trim() || fontFamilyFromFile(selected.name));
       setError("");
       setNotice(`本地字体“${safeOutputName(selected.name)}”将仅加载到本次隔离图片 Worker。`);
@@ -240,7 +242,8 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           if (!fontToken) throw new Error("需要选择一个本地字体文件。");
           const fontBytes = await readBoundToolboxInput(nativeInputJob, fontToken, controller.signal, IMAGE_FONT_MAX_BYTES);
           const fontBuffer = fontBytes.buffer.slice(fontBytes.byteOffset, fontBytes.byteOffset + fontBytes.byteLength) as ArrayBuffer;
-          const source = new File([fontBuffer], fontToken.displayName, { type: "font/ttf" });
+          const fontMimeType = inspectLocalFontBytes(fontToken.displayName, fontBytes);
+          const source = new File([fontBuffer], fontToken.displayName, { type: fontMimeType });
           resources = { ...resources, font: { family: watermarkFont.trim() || fontFamilyFromFile(fontToken.displayName), source } };
           nativeInputTokens = [...nativeInputTokens, ...fontTokens];
         }
@@ -680,7 +683,6 @@ function imageControl(signal: AbortSignal, onPhase?: (phase: string) => void) {
 
 function safeOutputName(name: string): string { return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80) || "image"; }
 function promptValue(label: string, initial = ""): string | null { const value = window.prompt(label, initial); return value?.trim() || null; }
-function isSupportedLocalFont(file: File): boolean { return /\.(?:ttf|otf|woff2?)$/iu.test(file.name) || /^font\//iu.test(file.type); }
 function fontFamilyFromFile(name: string): string { return name.replace(/\.(?:ttf|otf|woff2?)$/iu, "").replace(/[^\p{L}\p{N} _.-]+/gu, " ").trim().slice(0, 120) || "CoreRobinLocalFont"; }
 
 function resultToZipItem(name: string, result: MarkerResult): { name: string; bytes: ArrayBuffer } {

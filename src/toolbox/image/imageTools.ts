@@ -17,6 +17,8 @@ export const IMAGE_MAX_WORKSET_BYTES = 256 * 1024 * 1024;
 export const IMAGE_MAX_EXPORT_BYTES = 512 * 1024 * 1024;
 export const LOCAL_MANIFEST_MAX_BYTES = 4 * 1024 * 1024;
 
+export type LocalFontMimeType = "font/ttf" | "font/otf" | "font/woff" | "font/woff2";
+
 export interface BatchZipBudget {
   inputFileCount: number;
   inputBytes: number;
@@ -81,6 +83,28 @@ export function estimateImageWorksetBytes(inputBytes: number, sourcePixels: numb
 
 export function assertBatchBudget(files: readonly File[]): void {
   createBatchZipBudget(files);
+}
+
+/** Validate the container signature before handing a selected font to a Worker. */
+export function inspectLocalFontBytes(name: string, bytes: Uint8Array): LocalFontMimeType {
+  if (bytes.byteLength === 0) throw new Error("本地字体不能为空。 ");
+  const extension = name.trim().toLowerCase().match(/\.([a-z0-9]+)$/u)?.[1];
+  const mimeType = extension === "ttf" ? "font/ttf"
+    : extension === "otf" ? "font/otf"
+      : extension === "woff" ? "font/woff"
+        : extension === "woff2" ? "font/woff2"
+          : null;
+  if (!mimeType) throw new Error("本地字体只支持 TTF、OTF、WOFF 或 WOFF2。 ");
+  const signature = String.fromCharCode(...bytes.subarray(0, 4));
+  const isSfnt = (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0)
+    || signature === "OTTO"
+    || signature === "true"
+    || signature === "typ1";
+  const kindMatches = mimeType === "font/woff" ? signature === "wOFF"
+    : mimeType === "font/woff2" ? signature === "wOF2"
+      : isSfnt;
+  if (!kindMatches) throw new Error("本地字体文件签名与扩展名不匹配。 ");
+  return mimeType;
 }
 
 /** Validate the input half of a ZIP job before any image work starts. */
