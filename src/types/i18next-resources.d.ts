@@ -3004,6 +3004,64 @@ export default interface Resources {
       },
       "unavailable": "工具箱历史暂时不可用。"
     },
+    "keyboardCleaning": {
+      "capability": {
+        "available": "可用（{{platform}}）",
+        "label": "能力",
+        "unavailable": "不可用"
+      },
+      "description": "临时阻止误触输入；只有受限 helper 明确确认 hook 有效后才会进入清洁状态。",
+      "duration": "{{count}} 秒",
+      "durationLabel": "清洁时长",
+      "endReasons": {
+        "cancelled": "已取消",
+        "completed": "已完成",
+        "focus_lost": "页面失焦",
+        "hard_deadline": "达到硬截止时间",
+        "heartbeat_lost": "helper 心跳中断",
+        "helper_unavailable": "helper 不可用",
+        "hook_ineffective": "hook 未生效",
+        "hook_unconfirmed": "hook 未确认",
+        "host_exited": "宿主退出",
+        "mouse_activity": "鼠标活动",
+        "permission_revoked": "权限已撤销",
+        "sleeping": "系统睡眠"
+      },
+      "errors": {
+        "codes": {
+          "capability_unavailable": "当前平台不支持键盘清洁能力。",
+          "clock_went_backward": "时钟必须单调递增。",
+          "heartbeat_out_of_order": "helper 心跳序号没有递增。",
+          "invalid_duration": "时长只能选择 30、60 或 120 秒。",
+          "invalid_request_id": "请求标识无效。",
+          "invalid_state": "当前已有键盘清洁任务。",
+          "wrong_request": "helper 事件不属于当前任务。"
+        },
+        "communication": "通信失败",
+        "helper": "受限 helper 未确认：{{reason}}",
+        "start": "键盘清洁任务无法启动。"
+      },
+      "eyebrow": "系统安全 PoC",
+      "footer": "平台能力必须由宿主以最小权限提供；本页面不监听 DOM 键盘事件，真实平台验证必须在隔离测试环境完成。",
+      "hardDeadline": "独立硬截止：{{time}}；helper 必须持续发送心跳，否则 active 状态会被释放。",
+      "noBridge": "尚未接入受限 helper bridge；页面保持不可用，不会模拟激活。",
+      "privacy": "不记录键值、不把键盘内容传给 WebView、不申请全权限 WebView；鼠标活动、失焦、宿主退出、睡眠、撤权或 helper 心跳中断都会释放 hook。",
+      "reason": "原因：{{reason}}",
+      "start": "开始清洁",
+      "status": {
+        "label": "状态"
+      },
+      "statuses": {
+        "active": "清洁中（最多 {{count}} 秒）",
+        "ended": "已结束",
+        "idle": "待机",
+        "preparing": "准备中（3 秒）",
+        "releasing": "正在释放 hook",
+        "unavailable": "不可用"
+      },
+      "stop": "停止",
+      "title": "键盘清洁"
+    },
     "loading": "正在加载工具…",
     "navigation": {
       "back": "返回工具箱"

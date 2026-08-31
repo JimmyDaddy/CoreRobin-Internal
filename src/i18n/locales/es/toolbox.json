@@ -6,5 +6,63 @@
   "toolLayout": { "clear": "Limpiar", "privacy": "Las entradas y resultados solo permanecen en la memoria de esta página; copiar y guardar siempre requieren un clic explícito.", "result": "Resultado", "copyResult": "Copiar resultado" },
   "tools": {
     "keep-awake": { "title": "Mantener activo", "aliases": "evitar suspensión | activo", "description": "Mantiene el equipo activo durante un periodo elegido sin cambiar el plan de energía." }, "process-watch": { "title": "Vigilar salida de proceso", "aliases": "proceso | salida", "description": "Espera a que termine un proceso elegido y te avisa." }, "file-occupancy": { "title": "Uso de archivo", "aliases": "en uso | identificador", "description": "Encuentra qué proceso está usando un archivo." }, "volume-occupancy": { "title": "Uso de unidad externa", "aliases": "unidad | expulsar", "description": "Identifica el uso de un volumen extraíble antes de expulsarlo." }, "keyboard-cleaning": { "title": "Limpieza de teclado", "aliases": "teclado | entrada", "description": "Comprueba de forma segura la entrada de teclado durante la limpieza." }, "schedules": { "title": "Tareas programadas", "aliases": "recordatorio | cron", "description": "Crea reglas locales que solo recuerdan o mantienen activo el equipo por tiempo limitado." }, "network-addresses": { "title": "Direcciones de red", "aliases": "adaptador | IP | MAC", "description": "Muestra direcciones y estado de las interfaces de red locales." }, "ifconfig-parser": { "title": "Analizador ifconfig", "aliases": "red | máscara", "description": "Analiza en esta página texto ifconfig de BSD/Linux pegado." }, "json": { "title": "JSON", "aliases": "formatear | compactar", "description": "Valida estrictamente y conserva el texto numérico y el orden de claves." }, "url": { "title": "URL", "aliases": "codificación porcentual | parámetros", "description": "Codifica, decodifica e inspecciona la estructura de una URL." }, "base64": { "title": "Base64", "aliases": "Base64URL | UTF-8", "description": "Convierte texto dentro de los límites compatibles." }, "time": { "title": "Conversión de tiempo", "aliases": "Unix | ISO | zona horaria", "description": "Convierte tiempo con unidades y zonas horarias explícitas." }, "uuid": { "title": "UUID v4", "aliases": "ID aleatorio", "description": "Genera UUID v4 con una fuente aleatoria segura del sistema." }, "qr-code": { "title": "Código QR", "aliases": "QR | Wi-Fi", "description": "Crea un código QR para texto, URL o Wi-Fi introducido manualmente." }, "text-sha256": { "title": "SHA-256 de texto", "aliases": "hash | resumen", "description": "Calcula SHA-256 de texto en memoria local." }, "file-sha256": { "title": "SHA-256 de archivo", "aliases": "hash de archivo | suma", "description": "Lee en flujo un archivo normal que eliges explícitamente." }, "regex": { "title": "Diagnóstico de regex", "aliases": "RegExp | coincidencia | AST", "description": "Examina expresiones regulares ECMAScript y su estructura." }, "color": { "title": "Conversión de color", "aliases": "HEX | OKLCH | P3", "description": "Convierte formatos de color CSS comunes y avisa de cambios de gama." }, "image-watermark": { "title": "Marca de agua de imagen", "aliases": "logo | PNG | JPEG", "description": "Añade marcas de agua de texto o logo a imágenes locales." }, "image-batch-watermark": { "title": "Marca de agua por lotes", "aliases": "ZIP | lote", "description": "Procesa varias imágenes en orden y exporta un ZIP controlado." }, "confidential-watermark": { "title": "Marca de agua confidencial", "aliases": "interno | preajuste", "description": "Usa un preajuste editable de marca de agua confidencial." }, "image-recipe": { "title": "Creador de recetas", "aliases": "receta | JSON", "description": "Valida, migra y previsualiza recetas de procesamiento de imágenes." }, "image-editor": { "title": "Editor de capas", "aliases": "capas | deshacer", "description": "Edita capas y renderiza recursos locales reales." }, "invisible-watermark-write": { "title": "Escribir marca de agua invisible", "aliases": "localizador | secreto", "description": "Escribe un localizador corto y exporta un registro sin secretos." }, "invisible-watermark-check": { "title": "Comprobar marca de agua invisible", "aliases": "detectar | recuperar", "description": "Comprueba un localizador de Image Marker con el mismo algoritmo." }, "recipient-tracking": { "title": "Paquete de seguimiento de destinatarios", "aliases": "destinatario | distribución", "description": "Genera imágenes distribuidas y una asignación privada." }, "robustness-lab": { "title": "Laboratorio de robustez", "aliases": "JPEG | redimensionar | recortar", "description": "Prueba la recuperación del localizador en condiciones explícitas." }, "c2pa-inspector": { "title": "Inspector C2PA", "aliases": "manifiesto | credenciales", "description": "Inspecciona sin conexión un manifiesto C2PA local incorporado." }, "binary-patch-create": { "title": "Crear parche", "aliases": "BSDIFF43 | diferencia", "description": "Crea y restaura parches binarios verificados." }, "binary-patch-apply": { "title": "Aplicar y verificar", "aliases": "aplicar | verificar", "description": "Aplica un parche sin sobrescribir nunca el archivo fuente." }, "binary-patch-inspector": { "title": "Inspector de parches", "aliases": "cabecera | carga", "description": "Inspecciona el formato y los límites del parche." }, "integrity-manifest": { "title": "Manifiesto de integridad", "aliases": "SHA-256 | manifiesto", "description": "Crea un manifiesto JSON vinculado a resúmenes de archivos." }, "transfer-savings": { "title": "Ahorro de transferencia", "aliases": "tamaño | proporción", "description": "Compara tamaños de transferencia de parches y paquetes completos." }, "patch-errors": { "title": "Guía de códigos de error", "aliases": "BSDIFF | diagnóstico", "description": "Explica códigos de error del SDK oficial de parches." }, "patch-planner": { "title": "Planificador de versiones", "aliases": "varias bases | versión", "description": "Valida cada base y elige un parche o un paquete completo." }
+  },
+  "keyboardCleaning": {
+    "eyebrow": "System safety PoC",
+    "title": "Keyboard cleaning",
+    "description": "Temporarily block accidental input; cleaning starts only after the restricted helper explicitly confirms that the hook is effective.",
+    "privacy": "Key values are never recorded, keyboard content is never sent to the WebView, and the WebView receives no full permissions. Mouse activity, focus loss, host exit, sleep, revoked permission, or a missed helper heartbeat releases the hook.",
+    "durationLabel": "Cleaning duration",
+    "duration": "{{count}} seconds",
+    "start": "Start cleaning",
+    "stop": "Stop",
+    "capability": {
+      "label": "Capability",
+      "available": "Available ({{platform}})",
+      "unavailable": "Unavailable"
+    },
+    "status": {
+      "label": "Status"
+    },
+    "statuses": {
+      "idle": "Ready",
+      "unavailable": "Unavailable",
+      "preparing": "Preparing (3 seconds)",
+      "active": "Cleaning (up to {{count}} seconds)",
+      "releasing": "Releasing hook",
+      "ended": "Ended"
+    },
+    "reason": "Reason: {{reason}}",
+    "endReasons": {
+      "cancelled": "cancelled",
+      "mouse_activity": "mouse activity",
+      "heartbeat_lost": "helper heartbeat lost",
+      "focus_lost": "focus lost",
+      "host_exited": "host exited",
+      "sleeping": "system sleeping",
+      "permission_revoked": "permission revoked",
+      "hook_unconfirmed": "hook not confirmed",
+      "hook_ineffective": "hook ineffective",
+      "hard_deadline": "hard deadline reached",
+      "completed": "completed",
+      "helper_unavailable": "helper unavailable"
+    },
+    "hardDeadline": "Independent hard deadline: {{time}}; the helper must keep sending heartbeats or the active state is released.",
+    "noBridge": "The restricted helper bridge is not connected; this page stays unavailable and never simulates activation.",
+    "footer": "Platform capability must be provided by the host with least privilege; this page does not listen for DOM keyboard events. Real platform validation must use an isolated test environment.",
+    "errors": {
+      "helper": "The restricted helper was not confirmed: {{reason}}",
+      "communication": "communication failed",
+      "start": "Keyboard cleaning could not start.",
+      "codes": {
+        "capability_unavailable": "Keyboard cleaning is unavailable on this platform.",
+        "invalid_duration": "Choose 30, 60, or 120 seconds.",
+        "invalid_request_id": "The request identifier is invalid.",
+        "clock_went_backward": "The clock must move forward monotonically.",
+        "invalid_state": "A keyboard cleaning task is already running.",
+        "wrong_request": "The helper event does not belong to the current task.",
+        "heartbeat_out_of_order": "The helper heartbeat sequence did not increase."
+      }
+    }
   }
 }

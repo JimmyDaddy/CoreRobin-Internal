@@ -114,5 +114,63 @@
     "transfer-savings": { "title": "Transfer savings", "aliases": "size | ratio", "description": "Compare transfer sizes for patches and full packages." },
     "patch-errors": { "title": "Error code guide", "aliases": "BSDIFF | diagnostics", "description": "Explain error codes from the official patch SDK." },
     "patch-planner": { "title": "Release planner", "aliases": "multiple baselines | release", "description": "Validate each baseline and choose a patch or full package." }
+  },
+  "keyboardCleaning": {
+    "eyebrow": "System safety PoC",
+    "title": "Keyboard cleaning",
+    "description": "Temporarily block accidental input; cleaning starts only after the restricted helper explicitly confirms that the hook is effective.",
+    "privacy": "Key values are never recorded, keyboard content is never sent to the WebView, and the WebView receives no full permissions. Mouse activity, focus loss, host exit, sleep, revoked permission, or a missed helper heartbeat releases the hook.",
+    "durationLabel": "Cleaning duration",
+    "duration": "{{count}} seconds",
+    "start": "Start cleaning",
+    "stop": "Stop",
+    "capability": {
+      "label": "Capability",
+      "available": "Available ({{platform}})",
+      "unavailable": "Unavailable"
+    },
+    "status": {
+      "label": "Status"
+    },
+    "statuses": {
+      "idle": "Ready",
+      "unavailable": "Unavailable",
+      "preparing": "Preparing (3 seconds)",
+      "active": "Cleaning (up to {{count}} seconds)",
+      "releasing": "Releasing hook",
+      "ended": "Ended"
+    },
+    "reason": "Reason: {{reason}}",
+    "endReasons": {
+      "cancelled": "cancelled",
+      "mouse_activity": "mouse activity",
+      "heartbeat_lost": "helper heartbeat lost",
+      "focus_lost": "focus lost",
+      "host_exited": "host exited",
+      "sleeping": "system sleeping",
+      "permission_revoked": "permission revoked",
+      "hook_unconfirmed": "hook not confirmed",
+      "hook_ineffective": "hook ineffective",
+      "hard_deadline": "hard deadline reached",
+      "completed": "completed",
+      "helper_unavailable": "helper unavailable"
+    },
+    "hardDeadline": "Independent hard deadline: {{time}}; the helper must keep sending heartbeats or the active state is released.",
+    "noBridge": "The restricted helper bridge is not connected; this page stays unavailable and never simulates activation.",
+    "footer": "Platform capability must be provided by the host with least privilege; this page does not listen for DOM keyboard events. Real platform validation must use an isolated test environment.",
+    "errors": {
+      "helper": "The restricted helper was not confirmed: {{reason}}",
+      "communication": "communication failed",
+      "start": "Keyboard cleaning could not start.",
+      "codes": {
+        "capability_unavailable": "Keyboard cleaning is unavailable on this platform.",
+        "invalid_duration": "Choose 30, 60, or 120 seconds.",
+        "invalid_request_id": "The request identifier is invalid.",
+        "clock_went_backward": "The clock must move forward monotonically.",
+        "invalid_state": "A keyboard cleaning task is already running.",
+        "wrong_request": "The helper event does not belong to the current task.",
+        "heartbeat_out_of_order": "The helper heartbeat sequence did not increase."
+      }
+    }
   }
 }

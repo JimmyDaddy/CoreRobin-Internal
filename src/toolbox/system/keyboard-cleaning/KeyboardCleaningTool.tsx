@@ -1,12 +1,17 @@
 import { CircleAlert, ShieldCheck, Square, Timer } from "lucide-react";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   KeyboardCleaningMachine,
+  KeyboardCleaningError,
   type KeyboardCleaningCapability,
+  type KeyboardCleaningEndReason,
   type KeyboardCleaningEffect,
   type KeyboardCleaningSignal,
   type KeyboardCleaningState,
+  type KeyboardCleaningStatus,
 } from "./keyboardCleaning";
 
 export interface KeyboardCleaningBridge {
@@ -17,10 +22,47 @@ export interface KeyboardCleaningBridge {
 const DEFAULT_CAPABILITY: KeyboardCleaningCapability = {
   state: "unavailable",
   platform: "unknown",
-  reason: "当前没有经过验证的受限键盘 hook 能力。",
+  reason: null,
 };
 
+type ToolboxTFunction = TFunction<"toolbox">;
+
+const STATUS_KEYS = {
+  idle: "keyboardCleaning.statuses.idle",
+  unavailable: "keyboardCleaning.statuses.unavailable",
+  preparing: "keyboardCleaning.statuses.preparing",
+  active: "keyboardCleaning.statuses.active",
+  releasing: "keyboardCleaning.statuses.releasing",
+  ended: "keyboardCleaning.statuses.ended",
+} as const satisfies Record<KeyboardCleaningStatus, string>;
+
+const END_REASON_KEYS = {
+  cancelled: "keyboardCleaning.endReasons.cancelled",
+  mouse_activity: "keyboardCleaning.endReasons.mouse_activity",
+  heartbeat_lost: "keyboardCleaning.endReasons.heartbeat_lost",
+  focus_lost: "keyboardCleaning.endReasons.focus_lost",
+  host_exited: "keyboardCleaning.endReasons.host_exited",
+  sleeping: "keyboardCleaning.endReasons.sleeping",
+  permission_revoked: "keyboardCleaning.endReasons.permission_revoked",
+  hook_unconfirmed: "keyboardCleaning.endReasons.hook_unconfirmed",
+  hook_ineffective: "keyboardCleaning.endReasons.hook_ineffective",
+  hard_deadline: "keyboardCleaning.endReasons.hard_deadline",
+  completed: "keyboardCleaning.endReasons.completed",
+  helper_unavailable: "keyboardCleaning.endReasons.helper_unavailable",
+} as const satisfies Record<KeyboardCleaningEndReason, string>;
+
+const ERROR_KEYS = {
+  capability_unavailable: "keyboardCleaning.errors.codes.capability_unavailable",
+  invalid_duration: "keyboardCleaning.errors.codes.invalid_duration",
+  invalid_request_id: "keyboardCleaning.errors.codes.invalid_request_id",
+  clock_went_backward: "keyboardCleaning.errors.codes.clock_went_backward",
+  invalid_state: "keyboardCleaning.errors.codes.invalid_state",
+  wrong_request: "keyboardCleaning.errors.codes.wrong_request",
+  heartbeat_out_of_order: "keyboardCleaning.errors.codes.heartbeat_out_of_order",
+} as const satisfies Record<KeyboardCleaningError["code"], string>;
+
 export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }: { capability?: KeyboardCleaningCapability; bridge?: KeyboardCleaningBridge }) {
+  const { t } = useTranslation("toolbox");
   const machine = useMemo(() => new KeyboardCleaningMachine(capability), [capability]);
   const [state, setState] = useState<KeyboardCleaningState>(() => machine.snapshot());
   const [durationSeconds, setDurationSeconds] = useState<30 | 60 | 120>(30);
@@ -31,8 +73,8 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
 
   const sendEffects = useCallback((effects: KeyboardCleaningEffect[]) => {
     if (!bridge) return;
-    for (const effect of effects) void bridge.send(effect).catch((reason: unknown) => setError(`受限 helper 未确认：${reason instanceof Error ? reason.message : "通信失败"}`));
-  }, [bridge]);
+    for (const effect of effects) void bridge.send(effect).catch((reason: unknown) => setError(t("keyboardCleaning.errors.helper", { reason: reason instanceof Error ? reason.message : t("keyboardCleaning.errors.communication") })));
+  }, [bridge, t]);
 
   const apply = useCallback((action: Parameters<KeyboardCleaningMachine["dispatch"]>[0]) => {
     try {
@@ -41,9 +83,9 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
       setError("");
       sendEffects(transition.effects);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "键盘清洁任务无法启动。 ");
+      setError(keyboardErrorMessage(reason, t));
     }
-  }, [sendEffects]);
+  }, [sendEffects, t]);
 
   useEffect(() => {
     if (!bridge) return undefined;
@@ -53,10 +95,10 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
         setState(transition.state);
         sendEffects(transition.effects);
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : "helper 事件无效。 ");
+        setError(keyboardErrorMessage(reason, t));
       }
     });
-  }, [bridge, clock, sendEffects]);
+  }, [bridge, clock, sendEffects, t]);
 
   useEffect(() => {
     if (state.status !== "preparing" && state.status !== "active") return undefined;
@@ -77,26 +119,37 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
   }, [clock, sendEffects]);
 
   const canStart = Boolean(bridge) && (state.status === "idle" || state.status === "ended") && capability.state === "available";
-  const statusText = state.status === "unavailable" ? "不可用" : state.status === "preparing" ? "准备中（3 秒）" : state.status === "active" ? `清洁中（最多 ${state.durationSeconds} 秒）` : state.status === "releasing" ? "正在释放 hook" : state.status === "ended" ? "已结束" : "待机";
+  const statusText = state.status === "active"
+    ? t("keyboardCleaning.statuses.active", { count: state.durationSeconds ?? 0 })
+    : t(STATUS_KEYS[state.status]);
+  const capabilityText = capability.state === "available"
+    ? t("keyboardCleaning.capability.available", { platform: capability.platform })
+    : capability.reason ?? t("keyboardCleaning.capability.unavailable");
 
   return <section className="toolbox-tool-layout keyboard-cleaning-tool" aria-labelledby="keyboard-cleaning-title">
     <div className="toolbox-tool-layout__body">
       <header>
-        <span className="toolbox-eyebrow"><ShieldCheck size={14} />系统安全 PoC</span>
-        <h2 id="keyboard-cleaning-title">键盘清洁</h2>
-        <p>临时阻止误触输入；只有受限 helper 明确确认 hook 有效后才会进入清洁状态。</p>
+        <span className="toolbox-eyebrow"><ShieldCheck size={14} />{t("keyboardCleaning.eyebrow")}</span>
+        <h2 id="keyboard-cleaning-title">{t("keyboardCleaning.title")}</h2>
+        <p>{t("keyboardCleaning.description")}</p>
       </header>
-      <p className="toolbox-hint"><CircleAlert size={15} />不记录键值、不把键盘内容传给 WebView、不申请全权限 WebView；鼠标活动、失焦、宿主退出、睡眠、撤权或 helper 心跳中断都会释放。</p>
+      <p className="toolbox-hint"><CircleAlert size={15} />{t("keyboardCleaning.privacy")}</p>
       <div className="toolbox-inline-actions">
-        <label>清洁时长<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>30 秒</option><option value={60}>60 秒</option><option value={120}>120 秒</option></select></label>
-        <button className="button button--primary" type="button" disabled={!canStart} onClick={() => apply({ type: "start", requestId: crypto.randomUUID(), durationSeconds, nowMs: clock() })}><Timer size={14} />开始清洁</button>
-        {(state.status === "preparing" || state.status === "active") ? <button className="button button--secondary" type="button" onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />停止</button> : null}
+        <label>{t("keyboardCleaning.durationLabel")}<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>{t("keyboardCleaning.duration", { count: 30 })}</option><option value={60}>{t("keyboardCleaning.duration", { count: 60 })}</option><option value={120}>{t("keyboardCleaning.duration", { count: 120 })}</option></select></label>
+        <button className="button button--primary" type="button" disabled={!canStart} onClick={() => apply({ type: "start", requestId: crypto.randomUUID(), durationSeconds, nowMs: clock() })}><Timer size={14} />{t("keyboardCleaning.start")}</button>
+        {(state.status === "preparing" || state.status === "active") ? <button className="button button--secondary" type="button" onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />{t("keyboardCleaning.stop")}</button> : null}
       </div>
-      <p className="toolbox-hint" role="status">能力：{capability.state === "available" ? `可用（${capability.platform}）` : capability.reason ?? "不可用"} · 状态：{statusText}{state.endReason ? ` · 原因：${state.endReason}` : ""}</p>
-      {state.status === "active" && state.hardDeadlineMs !== null ? <p className="toolbox-hint">独立硬截止：{new Date(state.hardDeadlineMs).toLocaleTimeString()}；helper 未持续心跳时不会继续保持 active。</p> : null}
+      <p className="toolbox-hint" role="status">{t("keyboardCleaning.capability.label")}: {capabilityText} · {t("keyboardCleaning.status.label")}: {statusText}{state.endReason ? ` · ${t("keyboardCleaning.reason", { reason: t(END_REASON_KEYS[state.endReason]) })}` : ""}</p>
+      {state.status === "active" && state.hardDeadlineMs !== null ? <p className="toolbox-hint">{t("keyboardCleaning.hardDeadline", { time: new Date(state.hardDeadlineMs).toLocaleTimeString() })}</p> : null}
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
-      {!bridge ? <p className="toolbox-hint">尚未接入受限 helper bridge；页面保持不可用，不会模拟激活。</p> : null}
+      {!bridge ? <p className="toolbox-hint">{t("keyboardCleaning.noBridge")}</p> : null}
     </div>
-    <div className="toolbox-tool-layout__footer"><span>平台能力必须由宿主以最小权限提供；本页面不监听 DOM 键盘事件，真实平台验证必须在隔离测试环境完成。</span></div>
+    <div className="toolbox-tool-layout__footer"><span>{t("keyboardCleaning.footer")}</span></div>
   </section>;
+}
+
+function keyboardErrorMessage(reason: unknown, t: ToolboxTFunction): string {
+  if (reason instanceof KeyboardCleaningError) return t(ERROR_KEYS[reason.code]);
+  if (reason instanceof Error) return reason.message;
+  return t("keyboardCleaning.errors.start");
 }
