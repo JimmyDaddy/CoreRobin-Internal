@@ -67,5 +67,113 @@
         "heartbeat_out_of_order": "The helper heartbeat sequence did not increase."
       }
     }
+  },
+  "networkAddresses": {
+    "eyebrow": "System & network",
+    "title": "Local network addresses",
+    "description": "View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.",
+    "refresh": "Refresh on demand",
+    "refreshing": "Refreshing…",
+    "privacy": "IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.",
+    "tabs": {
+      "label": "Network address views",
+      "live": "Local interfaces",
+      "ifconfig": "Paste ifconfig"
+    },
+    "copy": {
+      "all": "Copy all interface summaries",
+      "allLabel": "All interface summaries",
+      "card": "Copy this card",
+      "summarySuffix": "summary",
+      "addressAria": "Copy address {{address}}",
+      "addressLabel": "Address",
+      "parsed": "Copy parsed summary",
+      "parsedLabel": "Parsed summary",
+      "unsupported": "This environment does not support copying. Select the text manually.",
+      "success": "{{label}} copied. It may contain IP, MAC, or interface identifiers and was written to the system clipboard only after your click.",
+      "failure": "Copy failed. The page does not read or retry the system clipboard."
+    },
+    "live": {
+      "sampledAt": "Sampled at {{time}}",
+      "interfaceCount": "{{count}} interfaces",
+      "truncated": "(more than 128; truncated)",
+      "noUniqueIp": "The tool does not choose a supposedly “single true IP”.",
+      "reading": "Reading local interfaces…",
+      "empty": "No interface addresses were returned. An empty result does not prove that the network is unavailable."
+    },
+    "paste": {
+      "placeholder": "Paste macOS/BSD or Linux ifconfig text; parse only, never execute",
+      "inputLabel": "ifconfig text",
+      "parse": "Parse strictly",
+      "limits": "Up to 256 KiB, 128 interfaces, and 64 addresses per interface. Non-contiguous IPv4 masks, invalid IPv4/IPv6 values, invalid zones, and conflicting prefixes are rejected. Unknown lines are counted on the relevant interface card.",
+      "empty": "No interfaces were recognized. Confirm that the pasted text is BSD/Linux ifconfig output."
+    },
+    "interface": {
+      "name": "Interface",
+      "state": "State",
+      "stateValue": "State: {{state}}",
+      "unknownState": "State unknown",
+      "mtu": "MTU",
+      "mac": "MAC",
+      "unknown": "Unknown",
+      "noMac": "Not provided",
+      "addressCountLabel": "Addresses",
+      "truncated": "(truncated)",
+      "unknownLines": "Unknown lines",
+      "noAddress": "No address fields; this does not mean that the interface is unavailable."
+    },
+    "address": {
+      "label": "Address",
+      "mask": "Mask",
+      "network": "Network",
+      "broadcast": "Broadcast",
+      "noBroadcastFormula": "/31 and /32 do not use the broadcast formula",
+      "scope": "scope/zone"
+    },
+    "family": {
+      "ipv4": "IPv4",
+      "ipv6": "IPv6"
+    },
+    "classifications": {
+      "unspecified": "Unspecified",
+      "loopback": "Loopback",
+      "private": "RFC1918 private",
+      "uniqueLocal": "IPv6 ULA",
+      "linkLocal": "Link-local",
+      "multicast": "Multicast",
+      "shared": "Shared address",
+      "documentation": "Documentation example",
+      "ipv4Mapped": "IPv4-mapped",
+      "globalUnicast": "Global unicast (not probed)",
+      "reserved": "Special/reserved"
+    },
+    "explanations": {
+      "ipv4": {
+        "unspecified": "An unspecified address does not represent an address reachable through an interface.",
+        "loopback": "A loopback address is used only within this computer.",
+        "private": "An RFC1918 private address does not confirm network connectivity.",
+        "uniqueLocal": "This classification does not apply to IPv4.",
+        "linkLocal": "An IPv4 link-local address is normally valid only on the local link.",
+        "multicast": "An IPv4 multicast address is not an ordinary unicast host address.",
+        "shared": "A carrier-grade shared address (100.64.0.0/10) is not the public egress address.",
+        "documentation": "A TEST-NET documentation address should not be treated as a real public identity.",
+        "ipv4Mapped": "This classification does not apply to native IPv4 addresses.",
+        "globalUnicast": "This is an IPv4 global unicast range; the public egress and connectivity were not probed.",
+        "reserved": "An IPv4 special or reserved address cannot establish public reachability."
+      },
+      "ipv6": {
+        "unspecified": "An unspecified address does not represent an address reachable through an interface.",
+        "loopback": "A loopback address is used only within this computer.",
+        "private": "This classification does not apply to IPv6 addresses.",
+        "uniqueLocal": "An IPv6 unique-local address (ULA) is not a confirmed public address.",
+        "linkLocal": "An IPv6 link-local address is valid only on the local link; its zone/scope identifies the interface range.",
+        "multicast": "An IPv6 multicast address is not an ordinary unicast host address.",
+        "shared": "This classification does not apply to IPv6 addresses.",
+        "documentation": "An IPv6 documentation address should not be treated as a real public identity.",
+        "ipv4Mapped": "An IPv4-mapped address represents IPv4; it is not an independent IPv6 link.",
+        "globalUnicast": "This is an IPv6 global unicast range; the public egress and connectivity were not probed.",
+        "reserved": "An IPv6 special or reserved address cannot establish public reachability."
+      }
+    }
   }
 }

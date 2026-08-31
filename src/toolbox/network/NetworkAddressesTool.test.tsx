@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NetworkAddressesTool } from "./NetworkAddressesTool";
 import { ToolboxInputError } from "../local/toolboxErrors";
 import type { NetworkAddressesSnapshot } from "./networkTools";
+import i18n from "../../i18n";
 
 afterEach(cleanup);
 
@@ -14,6 +15,10 @@ beforeEach(() => {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
+});
+
+beforeEach(async () => {
+  await i18n.changeLanguage("zh-CN");
 });
 
 it("loads a fresh snapshot and only writes network identifiers after an explicit copy click", async () => {

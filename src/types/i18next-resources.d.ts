@@ -3066,6 +3066,114 @@ export default interface Resources {
     "navigation": {
       "back": "返回工具箱"
     },
+    "networkAddresses": {
+      "address": {
+        "broadcast": "广播",
+        "label": "地址",
+        "mask": "掩码",
+        "network": "网络",
+        "noBroadcastFormula": "/31、/32 不套用广播公式",
+        "scope": "scope/zone"
+      },
+      "classifications": {
+        "documentation": "文档示例",
+        "globalUnicast": "全局单播（未探测）",
+        "ipv4Mapped": "IPv4 映射",
+        "linkLocal": "链路本地",
+        "loopback": "回环",
+        "multicast": "多播",
+        "private": "RFC1918 私网",
+        "reserved": "特殊/保留",
+        "shared": "共享地址",
+        "uniqueLocal": "IPv6 ULA",
+        "unspecified": "未指定"
+      },
+      "copy": {
+        "addressAria": "复制地址 {{address}}",
+        "addressLabel": "地址",
+        "all": "复制全部接口摘要",
+        "allLabel": "全部接口摘要",
+        "card": "复制此卡片",
+        "failure": "复制失败；页面不会读取或重试系统剪贴板。",
+        "parsed": "复制解析摘要",
+        "parsedLabel": "解析摘要",
+        "success": "{{label}}已复制。内容可能包含 IP、MAC 或接口标识，仅在你点击后写入系统剪贴板。",
+        "summarySuffix": "摘要",
+        "unsupported": "当前运行环境不支持复制；请手动选择页面中的文本。"
+      },
+      "description": "按接口查看地址与范围；本工具不会探测公网、查询 DNS、测试连通性或修改网络配置。",
+      "explanations": {
+        "ipv4": {
+          "documentation": "文档示例地址（TEST-NET），不应当作真实公网身份。",
+          "globalUnicast": "IPv4 全局单播范围；未探测公网出口，也未确认连通性。",
+          "ipv4Mapped": "此分类不适用于原生 IPv4 地址。",
+          "linkLocal": "IPv4 链路本地地址，通常只在本地链路有效。",
+          "loopback": "回环地址，只在本机内部使用。",
+          "multicast": "IPv4 多播地址，不是普通单播主机地址。",
+          "private": "RFC1918 私网地址；这里不代表已确认网络连通。",
+          "reserved": "IPv4 特殊/保留地址，不能据此推断公网可达性。",
+          "shared": "运营商级共享地址（100.64.0.0/10），不等同于公网出口。",
+          "uniqueLocal": "此分类不适用于 IPv4。",
+          "unspecified": "未指定地址，不表示可访问的接口地址。"
+        },
+        "ipv6": {
+          "documentation": "IPv6 文档示例地址，不应当作真实公网身份。",
+          "globalUnicast": "IPv6 全局单播范围；未探测公网出口，也未确认连通性。",
+          "ipv4Mapped": "IPv4 映射地址，用于表示 IPv4，不是独立的 IPv6 链路。",
+          "linkLocal": "IPv6 链路本地地址；zone/scope 只说明本地接口范围。",
+          "loopback": "回环地址，只在本机内部使用。",
+          "multicast": "IPv6 多播地址，不是普通单播主机地址。",
+          "private": "此分类不适用于 IPv6 地址。",
+          "reserved": "IPv6 特殊/保留地址，不能据此推断公网可达性。",
+          "shared": "此分类不适用于 IPv6 地址。",
+          "uniqueLocal": "IPv6 唯一本地地址（ULA），不等同于已确认的公网地址。",
+          "unspecified": "未指定地址，不表示可访问的接口地址。"
+        }
+      },
+      "eyebrow": "系统与网络",
+      "family": {
+        "ipv4": "IPv4",
+        "ipv6": "IPv6"
+      },
+      "interface": {
+        "addressCountLabel": "地址数",
+        "mac": "MAC",
+        "mtu": "MTU",
+        "name": "接口",
+        "noAddress": "没有地址字段；这不代表接口不可用。",
+        "noMac": "未提供",
+        "state": "状态",
+        "stateValue": "状态：{{state}}",
+        "truncated": "（已截断）",
+        "unknown": "未知",
+        "unknownLines": "未知行",
+        "unknownState": "状态未知"
+      },
+      "live": {
+        "empty": "没有返回接口地址。空结果不代表网络不可用。",
+        "interfaceCount": "{{count}} 个接口",
+        "noUniqueIp": "这里不选出所谓“唯一真实 IP”。",
+        "reading": "正在读取本机接口…",
+        "sampledAt": "采样时间：{{time}}",
+        "truncated": "（超过 128 个，已截断）"
+      },
+      "paste": {
+        "empty": "没有识别到接口。请确认粘贴的是 BSD/Linux ifconfig 输出。",
+        "inputLabel": "ifconfig 文本",
+        "limits": "最多 256 KiB、128 个接口、每接口 64 个地址；IPv4 非连续掩码、非法 IPv4/IPv6、非法 zone 和冲突前缀会拒绝。未知行会在对应接口卡片中计数。",
+        "parse": "严格解析",
+        "placeholder": "粘贴 macOS/BSD 或 Linux ifconfig 文本；只解析，不执行"
+      },
+      "privacy": "IP、IPv6 zone、MAC、接口名称和粘贴原文只在当前页面内存中处理，不会写入历史、诊断摘要或 URL。复制是受用户点击触发的，并会把网络标识交给系统剪贴板。",
+      "refresh": "按需刷新",
+      "refreshing": "正在刷新…",
+      "tabs": {
+        "ifconfig": "粘贴 ifconfig",
+        "label": "网络地址视图",
+        "live": "本机网卡"
+      },
+      "title": "本机网络地址"
+    },
     "search": {
       "clear": "清空搜索",
       "label": "搜索功能名称",
