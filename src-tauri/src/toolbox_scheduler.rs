@@ -14,7 +14,8 @@ use persist::{
     PersistedSchedulerAction, PersistedSchedulerTrigger, SchedulerStore, SchedulerStoreError,
 };
 use scheduler_core::{
-    CronExpression, CronSearchResult, SearchBudget, parse_time_zone, search_cron,
+    CronExpression, CronSearchResult, LocalCalendarKey, SearchBudget, local_calendar_key_at,
+    parse_time_zone, search_cron,
 };
 
 pub const MAX_SCHEDULE_RULES: usize = 32;
@@ -361,22 +362,24 @@ impl ToolboxScheduler {
                     rule.next_scheduled_at_utc_ms.unwrap_or_default(),
                     rule.action.clone(),
                     rule.trigger.clone(),
+                    rule.time_zone.clone(),
                 )
             })
             .collect::<Vec<_>>();
         let mut intents = Vec::new();
-        for (schedule_id, schedule_revision, scheduled_at_ms, action, trigger) in due {
+        for (schedule_id, schedule_revision, scheduled_at_ms, action, trigger, time_zone) in due {
             // A schedule that was missed while the app was stopped is advanced without
             // dispatch. The one-second grace window is only for an active runtime poll.
             if now_ms.saturating_sub(scheduled_at_ms) > 5_000 {
                 self.advance_persisted_rule(&schedule_id, now_ms)?;
                 continue;
             }
+            let local_key = local_calendar_key_for(&time_zone, scheduled_at_ms)?;
             let intent = PersistedExecutionIntent {
                 schedule_id: schedule_id.clone(),
                 schedule_revision,
                 scheduled_at_utc_ms: scheduled_at_ms,
-                local_key: None,
+                local_key: Some(local_key),
                 epoch,
                 state: PersistedIntentState::Intended,
                 created_at_ms: now_ms,
@@ -747,7 +750,7 @@ impl ToolboxScheduler {
         let Some(store) = self.store.as_mut() else {
             return Ok(());
         };
-        let next = {
+        let (next, processed_local_key) = {
             let rule = store
                 .state()
                 .rules
@@ -756,7 +759,11 @@ impl ToolboxScheduler {
                 .ok_or_else(|| {
                     CommandError::new("schedule_not_found", "The schedule rule no longer exists.")
                 })?;
-            match trigger {
+            let processed_local_key = rule
+                .next_scheduled_at_utc_ms
+                .map(|at_ms| local_calendar_key_for(&rule.time_zone, at_ms))
+                .transpose()?;
+            let next = match trigger {
                 PersistedSchedulerTrigger::Once { .. } => None,
                 PersistedSchedulerTrigger::Daily { hour, minute } => Some(next_for_trigger(
                     &rule.time_zone,
@@ -786,7 +793,8 @@ impl ToolboxScheduler {
                     },
                     now_ms,
                 )?),
-            }
+            };
+            (next, processed_local_key)
         };
         store
             .transact(|state| {
@@ -796,6 +804,7 @@ impl ToolboxScheduler {
                     .find(|rule| rule.schedule_id == schedule_id)
                     .ok_or(SchedulerStoreError::InvalidState)?;
                 rule.last_processed_at_utc_ms = Some(now_ms);
+                rule.last_processed_local_key = processed_local_key.clone();
                 rule.next_scheduled_at_utc_ms = next;
                 if next.is_none() {
                     rule.enabled = false;
@@ -969,6 +978,12 @@ fn next_for_trigger(
             "The schedule has no occurrence in the bounded horizon.",
         )
     })
+}
+
+fn local_calendar_key_for(time_zone: &str, at_ms: u64) -> Result<LocalCalendarKey, CommandError> {
+    let time_zone = parse_time_zone(time_zone).map_err(rule_error)?;
+    let at_utc = utc_from_millis(at_ms)?;
+    Ok(local_calendar_key_at(time_zone, at_utc))
 }
 
 fn persisted_trigger(trigger: &SchedulerTrigger) -> PersistedSchedulerTrigger {
@@ -1363,6 +1378,13 @@ mod tests {
 
         let intents = scheduler.poll_due(NOW_MS + 1_000).expect("poll due rules");
         assert_eq!(intents.len(), 1);
+        let stored_intent = &scheduler.store.as_ref().unwrap().state().intents[0];
+        assert!(stored_intent.local_key.is_some());
+        assert!(
+            scheduler.store.as_ref().unwrap().state().rules[0]
+                .last_processed_local_key
+                .is_some()
+        );
         assert!(
             scheduler
                 .poll_due(NOW_MS + 1_001)

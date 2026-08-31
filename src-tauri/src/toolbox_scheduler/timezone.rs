@@ -66,6 +66,14 @@ pub(crate) fn resolve_local_time(time_zone: Tz, local: NaiveDateTime) -> Option<
     })
 }
 
+pub(crate) fn local_calendar_key_at(time_zone: Tz, at_utc: DateTime<Utc>) -> LocalCalendarKey {
+    LocalCalendarKey::from_naive(
+        time_zone
+            .from_utc_datetime(&at_utc.naive_utc())
+            .naive_local(),
+    )
+}
+
 fn invalid_time_zone() -> SchedulerRuleError {
     SchedulerRuleError {
         code: "invalid_time_zone",

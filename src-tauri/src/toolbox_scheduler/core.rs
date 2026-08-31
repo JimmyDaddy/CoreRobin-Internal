@@ -11,5 +11,5 @@ mod timezone;
 pub(super) use cron::{CronExpression, SchedulerRuleError};
 pub(super) use search::{CronSearchResult, SearchBudget, search_cron};
 pub(super) use timezone::{
-    LocalCalendarKey, ResolvedLocalTime, parse_time_zone, resolve_local_time,
+    LocalCalendarKey, ResolvedLocalTime, local_calendar_key_at, parse_time_zone, resolve_local_time,
 };
