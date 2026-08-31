@@ -156,6 +156,41 @@ describe("batch image ZIP delivery", () => {
     expect(mocks.mark).toHaveBeenCalledTimes(2);
   });
 
+  it("passes explicit text placement, rotation, outline, and tiled layout to the SDK", async () => {
+    const view = render(<ImageToolbox toolId="image-watermark" />);
+    await selectBatchFiles(view.container, ["source.png"]);
+
+    fireEvent.change(screen.getByLabelText("位置"), { target: { value: "topLeft" } });
+    fireEvent.change(screen.getByLabelText("字号"), { target: { value: "36" } });
+    fireEvent.change(screen.getByLabelText("旋转"), { target: { value: "25" } });
+    fireEvent.change(screen.getByLabelText("描边宽度"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("布局"), { target: { value: "tile" } });
+    expect(screen.getByLabelText("位置")).toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
+    await screen.findByRole("img");
+
+    const options = mocks.mark.mock.calls.at(-1)?.[0] as { watermarks: Array<{ position?: unknown; layout?: unknown; style?: Record<string, unknown> }> };
+    expect(options.watermarks[0]).toMatchObject({
+      layout: { type: "tile", gapX: 80, gapY: 80, stagger: true },
+      style: { fontSize: 36, rotate: 25, strokeStyle: { color: "#00000099", width: 3 } },
+    });
+    expect(options.watermarks[0]?.position).toBeUndefined();
+  });
+
+  it("applies the selected confidential preset to the editable watermark", async () => {
+    const view = render(<ImageToolbox toolId="confidential-watermark" />);
+    await selectBatchFiles(view.container, ["source.png"]);
+
+    fireEvent.change(screen.getByLabelText("保密预设"), { target: { value: "draft" } });
+    expect((screen.getByLabelText("文字") as HTMLInputElement).value).toBe("DRAFT · DO NOT DISTRIBUTE");
+    fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
+    await screen.findByRole("img");
+
+    const options = mocks.mark.mock.calls.at(-1)?.[0] as { watermarks: Array<{ text: string; alpha: number; style?: { color?: string } }> };
+    expect(options.watermarks[0]).toMatchObject({ text: "DRAFT · DO NOT DISTRIBUTE", alpha: 0.6, style: { color: "#ff6b6b" } });
+  });
+
   it("terminates the ZIP Worker and rejects its pending item when the user stops", async () => {
     const view = render(<ImageToolbox toolId="image-batch-watermark" />);
     await selectBatchFiles(view.container, ["first.png"]);
