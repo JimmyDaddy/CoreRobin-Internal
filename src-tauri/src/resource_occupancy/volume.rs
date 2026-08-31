@@ -26,6 +26,7 @@ pub(crate) fn scan_blocking(
     request: OccupancyVolumeScanRequest,
     cancellation: OccupancyCancellation,
 ) -> Result<OccupancyScanResult, crate::error::CommandError> {
+    let _active_scan = super::ActiveScanGuard::acquire(&cancellation)?;
     super::validate_request_id(&request.request_id)?;
     let path = validate_volume_target(&request.path)?;
     let path_hint = path

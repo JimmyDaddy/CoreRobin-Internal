@@ -400,6 +400,10 @@ export async function scanToolboxVolumeOccupancy(request: { requestId: string; p
   return invoke<ToolboxOccupancyResult>("scan_toolbox_volume_occupancy", { request });
 }
 
+export function cancelToolboxOccupancy(): Promise<boolean> {
+  return invoke<boolean>("cancel_toolbox_occupancy");
+}
+
 export async function setDockIconVisible(visible: boolean): Promise<void> {
   if (!isDesktopRuntime()) return;
   await invoke<void>("set_dock_icon_visible", { visible });

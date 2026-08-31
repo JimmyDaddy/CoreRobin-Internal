@@ -138,6 +138,7 @@
     "allow-delete-toolbox-schedule",
     "allow-write-toolbox-text-copy",
     "allow-scan-toolbox-file-occupancy",
-    "allow-scan-toolbox-volume-occupancy"
+    "allow-scan-toolbox-volume-occupancy",
+    "allow-cancel-toolbox-occupancy"
   ]
 }

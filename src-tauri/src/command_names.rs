@@ -124,6 +124,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "write_toolbox_text_copy",
     "scan_toolbox_file_occupancy",
     "scan_toolbox_volume_occupancy",
+    "cancel_toolbox_occupancy",
     "start_app_update",
     "get_app_update_task",
 ];

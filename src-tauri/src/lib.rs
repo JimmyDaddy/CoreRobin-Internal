@@ -402,6 +402,7 @@ fn start_health_state_watchdog(store: Arc<HealthStateStore>, app: AppHandle) {
 fn start_toolbox_scheduler_runtime(
     scheduler: Weak<Mutex<ToolboxScheduler>>,
     power: Weak<Mutex<PowerService>>,
+    storage: Weak<Mutex<Option<ToolboxStorage>>>,
     stop: Arc<AtomicBool>,
     app: AppHandle,
 ) {
@@ -427,7 +428,8 @@ fn start_toolbox_scheduler_runtime(
                     Err(_) => break,
                 };
                 for intent in intents {
-                    let outcome = dispatch_toolbox_schedule_intent(&app, &power, &intent);
+                    let outcome =
+                        dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
                     if let Some(scheduler) = scheduler.upgrade()
                         && let Ok(mut scheduler) = scheduler.lock()
                         && let Err(error) =
@@ -444,10 +446,27 @@ fn start_toolbox_scheduler_runtime(
 fn dispatch_toolbox_schedule_intent(
     app: &AppHandle,
     power: &Weak<Mutex<PowerService>>,
+    storage: &Weak<Mutex<Option<ToolboxStorage>>>,
     intent: &SchedulerActionIntent,
 ) -> SchedulerIntentOutcome {
     match &intent.action {
         SchedulerAction::Reminder => {
+            let notifications_enabled = storage
+                .upgrade()
+                .and_then(|storage| {
+                    let storage = storage.lock().ok()?;
+                    Some(
+                        storage
+                            .as_ref()?
+                            .snapshot()
+                            .policy
+                            .notifications_enabled,
+                    )
+                })
+                .unwrap_or(false);
+            if !notifications_enabled {
+                return SchedulerIntentOutcome::Skipped;
+            }
             let delivered = app
                 .notification()
                 .builder()
@@ -2855,6 +2874,12 @@ async fn scan_toolbox_volume_occupancy(
 }
 
 #[tauri::command]
+fn cancel_toolbox_occupancy(window: WebviewWindow) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    Ok(resource_occupancy::cancel_active())
+}
+
+#[tauri::command]
 fn start_app_update(
     window: WebviewWindow,
     app: AppHandle,
@@ -2927,6 +2952,7 @@ pub fn run() {
             start_toolbox_scheduler_runtime(
                 Arc::downgrade(&state.toolbox_scheduler),
                 Arc::downgrade(&state.toolbox_power),
+                Arc::downgrade(&state.toolbox_storage),
                 Arc::clone(&state.toolbox_scheduler_stop),
                 app.handle().clone(),
             );
@@ -3200,6 +3226,7 @@ pub fn run() {
             write_toolbox_text_copy,
             scan_toolbox_file_occupancy,
             scan_toolbox_volume_occupancy,
+            cancel_toolbox_occupancy,
             start_app_update,
             get_app_update_task
         ])

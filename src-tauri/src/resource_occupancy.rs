@@ -3,8 +3,8 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -79,23 +79,57 @@ impl OccupancyCancellation {
     }
 }
 
-#[derive(Debug)]
-struct ActiveScanGuard;
+pub fn cancel_active() -> bool {
+    let Some(slot) = ACTIVE_SCAN.get() else {
+        return false;
+    };
+    let Ok(active) = slot.lock() else {
+        return false;
+    };
+    let Some(token) = active.as_ref() else {
+        return false;
+    };
+    token.store(true, Ordering::Release);
+    true
+}
 
-static ACTIVE_SCAN: AtomicBool = AtomicBool::new(false);
+#[derive(Debug)]
+struct ActiveScanGuard {
+    cancellation: Arc<AtomicBool>,
+}
+
+static ACTIVE_SCAN: OnceLock<Mutex<Option<Arc<AtomicBool>>>> = OnceLock::new();
 
 impl ActiveScanGuard {
-    fn acquire() -> Result<Self, CommandError> {
-        ACTIVE_SCAN
-            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-            .map(|_| Self)
-            .map_err(|_| CommandError::new("busy", "已有占用诊断正在运行；请等待其结束后再重试。"))
+    fn acquire(cancellation: &OccupancyCancellation) -> Result<Self, CommandError> {
+        let slot = ACTIVE_SCAN.get_or_init(|| Mutex::new(None));
+        let mut active = slot
+            .lock()
+            .map_err(|_| CommandError::internal("占用诊断状态不可用。"))?;
+        if active.is_some() {
+            return Err(CommandError::new(
+                "busy",
+                "已有占用诊断正在运行；请等待其结束后再重试。",
+            ));
+        }
+        let token = Arc::clone(&cancellation.cancelled);
+        *active = Some(Arc::clone(&token));
+        Ok(Self {
+            cancellation: token,
+        })
     }
 }
 
 impl Drop for ActiveScanGuard {
     fn drop(&mut self) {
-        ACTIVE_SCAN.store(false, Ordering::Release);
+        if let Some(slot) = ACTIVE_SCAN.get()
+            && let Ok(mut active) = slot.lock()
+            && active
+                .as_ref()
+                .is_some_and(|token| Arc::ptr_eq(token, &self.cancellation))
+        {
+            *active = None;
+        }
     }
 }
 
@@ -150,7 +184,7 @@ fn scan_blocking(
     request: OccupancyScanRequest,
     cancellation: OccupancyCancellation,
 ) -> Result<OccupancyScanResult, CommandError> {
-    let _active_scan = ActiveScanGuard::acquire()?;
+    let _active_scan = ActiveScanGuard::acquire(&cancellation)?;
     validate_request_id(&request.request_id)?;
     let path = validate_target(&request.path)?;
     let path_hint = path
