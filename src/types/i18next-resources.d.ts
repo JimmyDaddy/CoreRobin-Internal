@@ -106,6 +106,7 @@ export default interface Resources {
       "description": "展开 CPU、内存、磁盘、网络和五分钟趋势。",
       "title": "查看实时资源详情"
     },
+    "toolbox": "工具箱",
     "viewEyebrow": {
       "applications": "应用影响",
       "cleanup": "空间清理",
@@ -115,7 +116,8 @@ export default interface Resources {
       "processes": "进程诊断",
       "settings": "偏好设置",
       "startup": "启动项检查",
-      "storage": "存储诊断"
+      "storage": "存储诊断",
+      "toolbox": "工具箱"
     }
   },
   "applications": {
@@ -1174,7 +1176,8 @@ export default interface Resources {
       "settings": "设置",
       "solve": "帮我解决",
       "space": "空间",
-      "today": "电脑状态"
+      "today": "电脑状态",
+      "toolbox": "工具箱"
     },
     "recheck": {
       "already_exited": "应用在操作前已经退出，最新状态已重新读取。",

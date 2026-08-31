@@ -12,6 +12,7 @@
   "network": "网络",
   "startup": "启动项",
   "history": "历史",
+  "toolbox": "工具箱",
   "settings": "设置",
   "soon": "稍后",
   "comingSoon": "即将推出",
@@ -24,6 +25,7 @@
     "network": "网络诊断",
     "startup": "启动项检查",
     "history": "历史分析",
+    "toolbox": "工具箱",
     "settings": "偏好设置"
   },
   "demoData": "浏览器演示数据",

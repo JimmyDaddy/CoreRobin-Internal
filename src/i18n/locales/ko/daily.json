@@ -14,7 +14,8 @@
     "cleanupQuick": "빠른 정리",
     "cleanupScan": "디스크 스캔",
     "records": "오늘 돌아보기",
-    "settings": "설정 관리"
+    "settings": "설정 관리",
+    "toolbox": "도구 상자"
   },
   "topbar": {
     "thisMac": "현재 Mac",

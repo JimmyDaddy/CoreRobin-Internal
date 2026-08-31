@@ -17,6 +17,7 @@ import {
   Sparkles,
   SlidersHorizontal,
   Wand2,
+  Wrench,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -174,6 +175,7 @@ const SettingsExplorer = lazy(async () => ({ default: (await import("./component
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
 const StartupExplorer = lazy(async () => ({ default: (await import("./components/StartupExplorer")).StartupExplorer }));
+const ToolboxPanel = lazy(async () => ({ default: (await import("./toolbox/ToolboxPanel")).ToolboxPanel }));
 
 interface PendingProcessAction {
   source: "process" | "diagnosis" | "restart";
@@ -1500,6 +1502,7 @@ function App() {
             <div className="nav-group daily-nav">
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
               <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
+              <button className={activeView === "toolbox" ? "is-active" : ""} type="button" onClick={() => navigateDaily("toolbox")}><Wrench size={18} />{t("app:toolbox")}</button>
               <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}>
                 <ListTree size={18} />{t("app:applications")}
                 {trashApplicationWatcher.applications.length > 0 ? (
@@ -1566,6 +1569,7 @@ function App() {
               <span className="nav-label">{t("app:diagnostics")}</span>
               <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app:startup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
+              <button className={activeView === "toolbox" ? "is-active" : ""} type="button" onClick={() => setActiveView("toolbox")}><Wrench size={17} />{t("app:toolbox")}</button>
               <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}>
                 <Settings2 size={17} />{t("app:settings")}
                 {updater.availableVersion ? <small className="nav-update-badge">v{updater.availableVersion}</small> : null}
@@ -1622,6 +1626,8 @@ function App() {
                         ? "records"
                         : activeView === "settings"
                           ? "settings"
+                          : activeView === "toolbox"
+                            ? "toolbox"
                           : activeView === "processes" || activeView === "applications"
                             ? "applications"
                             : "today"}`)}</span>
@@ -1778,7 +1784,7 @@ function App() {
         ) : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common:close")}</button></div> : null}
 
-        <div className={`content-layout${dailyMode || activeView === "applications" || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${dailyMode || activeView === "applications" || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "toolbox" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
             <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>}>
             {dailyMode ? (
@@ -1908,6 +1914,8 @@ function App() {
                   onOpenApplications={() => navigateDaily("processes")}
                   recommendedIntent={recommendedDailyIntent}
                 />
+              ) : activeView === "toolbox" ? (
+                <ToolboxPanel onClose={() => navigateDaily("more")} />
               ) : activeView === "history" ? (
                 <DailyRecords
                   alertEvents={resourceAlerts.events}
@@ -2268,6 +2276,8 @@ function App() {
                 }}
                 onOpenUserAction={openUserActionDestination}
               />
+            ) : activeView === "toolbox" ? (
+              <ToolboxPanel onClose={() => setActiveView("overview")} />
             ) : (
               <SettingsExplorer
                 settings={settings}

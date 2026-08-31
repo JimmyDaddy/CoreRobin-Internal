@@ -12,6 +12,7 @@
   "network": "네트워크",
   "startup": "시작",
   "history": "이전 기록",
+  "toolbox": "도구 상자",
   "settings": "설정",
   "soon": "곧",
   "comingSoon": "곧 출시 예정",
@@ -24,6 +25,7 @@
     "network": "네트워크 진단",
     "startup": "시작 프로그램 확인",
     "history": "사용 기록 분석",
+    "toolbox": "도구 상자",
     "settings": "설정"
   },
   "demoData": "브라우저 데모 데이터",

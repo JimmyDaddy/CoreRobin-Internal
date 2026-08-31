@@ -12,6 +12,7 @@
   "network": "ネットワーク接続の状態",
   "startup": "起動時に自動的に開始される項目",
   "history": "履歴",
+  "toolbox": "ツールボックス",
   "settings": "設定",
   "soon": "近日公開",
   "comingSoon": "近日公開",
@@ -24,6 +25,7 @@
     "network": "ネットワーク診断",
     "startup": "起動アプリケーションの確認",
     "history": "履歴分析",
+    "toolbox": "ツールボックス",
     "settings": "設定"
   },
   "demoData": "ブラウザデモデータ",

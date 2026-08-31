@@ -14,7 +14,8 @@
     "cleanupQuick": "Schnelle Bereinigung",
     "cleanupScan": "Festplatten-Scan",
     "records": "Rückblick",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "toolbox": "Werkzeugkasten"
   },
   "topbar": {
     "thisMac": "Dieser Mac",

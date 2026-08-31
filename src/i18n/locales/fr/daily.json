@@ -14,7 +14,8 @@
     "cleanupQuick": "Nettoyage rapide",
     "cleanupScan": "Analyse du disque",
     "records": "Bilan",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "toolbox": "Boîte à outils"
   },
   "topbar": {
     "thisMac": "Cet ordinateur",

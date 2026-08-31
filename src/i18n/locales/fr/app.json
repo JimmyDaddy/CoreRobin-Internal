@@ -12,6 +12,7 @@
   "network": "Réseau",
   "startup": "Démarrage",
   "history": "Historique",
+  "toolbox": "Boîte à outils",
   "settings": "Paramètres",
   "soon": "Bientôt disponible",
   "comingSoon": "En cours de préparation",
@@ -24,6 +25,7 @@
     "network": "Diagnostic réseau",
     "startup": "Vérification des éléments de démarrage",
     "history": "Analyse de l'historique",
+    "toolbox": "Boîte à outils",
     "settings": "Paramètres"
   },
   "demoData": "Données de démonstration du navigateur",

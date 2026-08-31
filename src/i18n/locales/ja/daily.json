@@ -14,7 +14,8 @@
     "cleanupQuick": "クイック削除",
     "cleanupScan": "ディスクスキャン",
     "records": "振り返り",
-    "settings": "設定を変更"
+    "settings": "設定を変更",
+    "toolbox": "ツールボックス"
   },
   "topbar": {
     "thisMac": "このコンピューター",

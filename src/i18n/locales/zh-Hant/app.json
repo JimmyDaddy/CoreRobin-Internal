@@ -12,6 +12,7 @@
   "network": "網路",
   "startup": "啟動項",
   "history": "歷史",
+  "toolbox": "工具箱",
   "settings": "設定",
   "soon": "稍後",
   "comingSoon": "即將推出",
@@ -24,6 +25,7 @@
     "network": "網路診斷",
     "startup": "啟動項檢查",
     "history": "歷史分析",
+    "toolbox": "工具箱",
     "settings": "偏好設定"
   },
   "demoData": "瀏覽器演示資料",
