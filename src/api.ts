@@ -79,6 +79,22 @@ import type {
 import { productPageUrl, type ProductPage } from "./productSupport";
 import { DEFAULT_LANGUAGE, normalizeLanguage, type SupportedLanguage } from "./language";
 export type { ProductPage } from "./productSupport";
+
+export interface ToolboxFileHashProgress {
+  requestId: string;
+  bytesRead: number;
+  totalBytes: number;
+  phase: "hashing" | "completed";
+}
+
+export interface ToolboxFileHashResult {
+  requestId: string;
+  pathHint: string;
+  bytesRead: number;
+  digest: string;
+  generation: number | null;
+  resetEpoch: number | null;
+}
 import type {
   HealthStateSnapshot,
   HealthStateUpdate,
@@ -158,6 +174,22 @@ declare global {
 
 export function isDesktopRuntime(): boolean {
   return typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
+}
+
+export async function hashToolboxFile(
+  request: { requestId: string; path: string; generation?: number; resetEpoch?: number },
+  onProgress: (progress: ToolboxFileHashProgress) => void,
+): Promise<ToolboxFileHashResult> {
+  const progressChannel = new Channel<ToolboxFileHashProgress>(onProgress);
+  return invoke<ToolboxFileHashResult>("start_toolbox_file_hash", { request, onProgress: progressChannel });
+}
+
+export async function cancelToolboxFileHash(): Promise<boolean> {
+  return invoke<boolean>("cancel_toolbox_file_hash");
+}
+
+export async function writeToolboxTextCopy(path: string, content: string): Promise<void> {
+  return invoke<void>("write_toolbox_text_copy", { request: { path, content } });
 }
 
 export async function setDockIconVisible(visible: boolean): Promise<void> {

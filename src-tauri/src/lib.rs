@@ -30,6 +30,9 @@ mod sensors;
 mod startup;
 mod storage_health;
 mod toolbox_contracts;
+mod toolbox_export;
+mod toolbox_file_hash;
+mod toolbox_service;
 mod user_actions;
 
 pub use cleanup::{
@@ -124,6 +127,9 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
+use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
+use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
+use toolbox_service::{CancelToolboxJobRequest, ToolboxService};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
@@ -279,6 +285,8 @@ struct AppState {
     quick_clean: Arc<QuickCleanCoordinator>,
     file_insights: Arc<FileInsightsCoordinator>,
     startup_controller: Arc<Mutex<StartupController>>,
+    toolbox: Arc<Mutex<ToolboxService>>,
+    toolbox_file_hash: Arc<FileHashManager>,
 }
 
 impl AppState {
@@ -303,6 +311,8 @@ impl AppState {
             quick_clean: Arc::new(QuickCleanCoordinator::default()),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
+            toolbox: Arc::new(Mutex::new(ToolboxService::new())),
+            toolbox_file_hash: Arc::new(FileHashManager::default()),
         }
     }
 }
@@ -2219,6 +2229,103 @@ async fn execute_process_action(
 }
 
 #[tauri::command]
+fn get_toolbox_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    contract_version: String,
+) -> Result<ToolboxSnapshot, CommandError> {
+    require_main_window(&window)?;
+    if contract_version != toolbox_contracts::TOOLBOX_CONTRACT_VERSION {
+        return Err(CommandError::new(
+            "contract_mismatch",
+            "The toolbox client and native service use different contract versions.",
+        ));
+    }
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))
+        .map(|service| service.snapshot())
+}
+
+#[tauri::command]
+fn start_toolbox_session(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .start(request)
+}
+
+#[tauri::command]
+fn cancel_toolbox_job(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: CancelToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .cancel(
+            &request.request_id,
+            &request.job_id,
+            request.expected_revision,
+        )
+}
+
+#[tauri::command]
+fn clear_toolbox_data(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: toolbox_contracts::ToolboxRequest,
+) -> Result<ToolboxSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .clear(&request.request_id, request.expected_revision)
+}
+
+#[tauri::command]
+async fn start_toolbox_file_hash(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: FileHashRequest,
+    on_progress: Channel<FileHashProgress>,
+) -> Result<FileHashResult, CommandError> {
+    require_main_window(&window)?;
+    state.toolbox_file_hash.run(request, on_progress).await
+}
+
+#[tauri::command]
+fn cancel_toolbox_file_hash(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    Ok(state.toolbox_file_hash.cancel())
+}
+
+#[tauri::command]
+async fn write_toolbox_text_copy(
+    window: WebviewWindow,
+    request: toolbox_export::TextExportRequest,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || toolbox_export::write_text_copy(request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Export task failed: {error}")))?
+}
+
+#[tauri::command]
 fn start_app_update(
     window: WebviewWindow,
     app: AppHandle,
@@ -2495,6 +2602,13 @@ pub fn run() {
             create_process_control_lease,
             release_process_control_lease,
             execute_process_action,
+            get_toolbox_snapshot,
+            start_toolbox_session,
+            cancel_toolbox_job,
+            clear_toolbox_data,
+            start_toolbox_file_hash,
+            cancel_toolbox_file_hash,
+            write_toolbox_text_copy,
             start_app_update,
             get_app_update_task
         ])
@@ -2754,6 +2868,13 @@ mod security_boundary_tests {
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",
+        "get_toolbox_snapshot",
+        "start_toolbox_session",
+        "cancel_toolbox_job",
+        "clear_toolbox_data",
+        "start_toolbox_file_hash",
+        "cancel_toolbox_file_hash",
+        "write_toolbox_text_copy",
         "start_app_update",
         "get_app_update_task",
         "run_network_quality_check",

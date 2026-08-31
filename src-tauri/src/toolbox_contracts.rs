@@ -3,15 +3,6 @@ use serde::{Deserialize, Serialize};
 pub const TOOLBOX_CONTRACT_VERSION: &str = "toolbox-v1";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub enum ToolCategory {
-    SystemNetwork,
-    TextDevelopment,
-    Image,
-    FilePatch,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SessionStatus {
     Preparing,
@@ -63,6 +54,14 @@ pub struct ToolboxError {
     pub code: String,
     pub message: String,
     pub retryable: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolboxCapability {
+    pub state: String,
+    pub reason: Option<String>,
+    pub platform: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -127,6 +126,7 @@ pub struct ToolboxSnapshot {
     pub sessions: Vec<ToolboxSession>,
     pub resources: Vec<ToolboxResource>,
     pub jobs: Vec<ToolboxJob>,
+    pub capabilities: std::collections::BTreeMap<String, ToolboxCapability>,
 }
 
 #[cfg(test)]
@@ -143,6 +143,7 @@ mod tests {
             sessions: Vec::new(),
             resources: Vec::new(),
             jobs: Vec::new(),
+            capabilities: std::collections::BTreeMap::new(),
         };
         let json = serde_json::to_value(snapshot).unwrap();
         assert_eq!(json["contractVersion"], "toolbox-v1");

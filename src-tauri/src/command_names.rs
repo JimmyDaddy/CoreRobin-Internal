@@ -91,6 +91,13 @@ pub const ALL_COMMANDS: &[&str] = &[
     "create_process_control_lease",
     "release_process_control_lease",
     "execute_process_action",
+    "get_toolbox_snapshot",
+    "start_toolbox_session",
+    "cancel_toolbox_job",
+    "clear_toolbox_data",
+    "start_toolbox_file_hash",
+    "cancel_toolbox_file_hash",
+    "write_toolbox_text_copy",
     "start_app_update",
     "get_app_update_task",
 ];

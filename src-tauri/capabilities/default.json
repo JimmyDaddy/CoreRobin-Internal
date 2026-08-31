@@ -105,6 +105,13 @@
     "allow-release-process-control-lease",
     "allow-execute-process-action",
     "allow-start-app-update",
-    "allow-get-app-update-task"
+    "allow-get-app-update-task",
+    "allow-get-toolbox-snapshot",
+    "allow-start-toolbox-session",
+    "allow-cancel-toolbox-job",
+    "allow-clear-toolbox-data",
+    "allow-start-toolbox-file-hash",
+    "allow-cancel-toolbox-file-hash",
+    "allow-write-toolbox-text-copy"
   ]
 }
