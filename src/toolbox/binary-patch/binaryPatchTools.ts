@@ -52,6 +52,7 @@ export interface PatchPlanItem {
   status: "verified" | "failed";
   patch: Uint8Array | null;
   ratio: number | null;
+  reason: "baseline_read_failed" | "ratio_exceeded" | "patch_generation_failed" | null;
   error: ClassifiedPatchError | null;
 }
 
@@ -77,8 +78,24 @@ export interface PatchPlan {
 
 export interface PatchCollection {
   bytes: Uint8Array;
-  plan: PatchBundle;
+  plan: PatchCollectionPlan;
   filename: typeof PATCH_COLLECTION_FILENAME;
+}
+
+export interface PatchCollectionPlan extends PatchBundle {
+  planning: {
+    results: Array<{
+      baselineName: string;
+      baselineBytes: number | null;
+      baselineSha256: string | null;
+      status: PatchPlanItem["status"];
+      patchBytes: number | null;
+      ratio: number | null;
+      reason: PatchPlanItem["reason"];
+      error: Pick<ClassifiedPatchError, "category" | "code"> | null;
+    }>;
+    excluded: Array<ExcludedPatchPlanItem>;
+  };
 }
 
 export interface TransferSavings {
@@ -218,7 +235,7 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
         assertSizeForRole(baselineData, "baseline");
       } catch (error) {
         if (isPatchTaskCancelled(error)) throw error;
-        results.push({ baselineName: baseline.name, baselineBytes: null, baselineSha256: null, status: "failed", patch: null, ratio: null, error: classifyPatchError(error) });
+        results.push({ baselineName: baseline.name, baselineBytes: null, baselineSha256: null, status: "failed", patch: null, ratio: null, reason: "baseline_read_failed", error: classifyPatchError(error) });
         continue;
       }
       if (knownBaselineBytes === null) loadedBaselineBytes = baselineData.byteLength;
@@ -226,7 +243,7 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
         const result = await generateVerifiedPatch(baselineData, target, plannerSignal);
         const ratio = target.byteLength === 0 ? 0 : result.patch.byteLength / target.byteLength;
         if (ratio > maxPatchRatio) {
-          results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: result.baselineSha256, status: "failed", patch: null, ratio, error: null });
+          results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: result.baselineSha256, status: "failed", patch: null, ratio, reason: "ratio_exceeded", error: null });
           continue;
         }
         const nextArtifactBytes = artifactBytes + result.patch.byteLength;
@@ -239,10 +256,10 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
           continue;
         }
         artifactBytes = nextArtifactBytes;
-        results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: result.baselineSha256, status: "verified", patch: result.patch, ratio, error: null });
+        results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: result.baselineSha256, status: "verified", patch: result.patch, ratio, reason: null, error: null });
       } catch (error) {
         if (isPatchTaskCancelled(error)) throw error;
-        results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: null, status: "failed", patch: null, ratio: null, error: classifyPatchError(error) });
+        results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: null, status: "failed", patch: null, ratio: null, reason: "patch_generation_failed", error: classifyPatchError(error) });
       } finally {
         loadedBaselineBytes = knownBaselineBytes === null ? 0 : knownBaselineBytes;
       }
@@ -313,15 +330,31 @@ export async function createPatchCollection(target: { name: string; data: Uint8A
   }
 
   const bundle = makePatchBundle(targetArtifact, targetArtifact, patches);
-  entries[PATCH_COLLECTION_PLAN_NAME] = strToU8(manifestJson(bundle));
+  const collectionPlan: PatchCollectionPlan = {
+    ...bundle,
+    planning: {
+      results: plan.results.map((item) => ({
+        baselineName: safeArtifactName(item.baselineName),
+        baselineBytes: item.baselineBytes,
+        baselineSha256: item.baselineSha256,
+        status: item.status,
+        patchBytes: item.patch?.byteLength ?? null,
+        ratio: item.ratio,
+        reason: item.reason,
+        error: item.error ? { category: item.error.category, code: item.error.code } : null,
+      })),
+      excluded: plan.excluded.map((item) => ({ ...item, baselineName: safeArtifactName(item.baselineName) })),
+    },
+  };
+  entries[PATCH_COLLECTION_PLAN_NAME] = strToU8(manifestJson(collectionPlan));
   const bytes = zipSync(entries, { level: 6 });
   if (bytes.byteLength > maxCollectionBytes) {
     throw patchError("ERESOURCE", `The final patch collection exceeds the ${maxCollectionBytes} byte safety budget.`);
   }
-  return { bytes, plan: bundle, filename: PATCH_COLLECTION_FILENAME };
+  return { bytes, plan: collectionPlan, filename: PATCH_COLLECTION_FILENAME };
 }
 
-export function manifestJson(manifest: PatchManifest | PatchBundle): string {
+export function manifestJson(manifest: unknown): string {
   return canonicalJson(manifest);
 }
 

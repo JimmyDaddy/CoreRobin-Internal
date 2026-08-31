@@ -66,10 +66,10 @@ describe("binary patch toolbox boundaries", () => {
   it("packages the formal plan, full fallback, and only verified patch artifacts", async () => {
     const collection = await createPatchCollection({ name: "../target.bin", data: new Uint8Array([7, 8, 9]) }, {
       results: [
-        { baselineName: "../old.bin", baselineBytes: 3, baselineSha256: "a".repeat(64), status: "verified", patch: new Uint8Array([1, 2]), ratio: 2 / 3, error: null },
-        { baselineName: "rejected.bin", baselineBytes: 3, baselineSha256: "b".repeat(64), status: "failed", patch: null, ratio: 1, error: null },
+        { baselineName: "../old.bin", baselineBytes: 3, baselineSha256: "a".repeat(64), status: "verified", patch: new Uint8Array([1, 2]), ratio: 2 / 3, reason: null, error: null },
+        { baselineName: "rejected.bin", baselineBytes: 3, baselineSha256: "b".repeat(64), status: "failed", patch: null, ratio: 1, reason: "ratio_exceeded", error: null },
       ],
-      excluded: [],
+      excluded: [{ baselineName: "budget.bin", patchBytes: 3, reason: "artifact_budget" }],
       artifactBytes: 2,
       artifactLimitBytes: 512,
       workingSetBytes: 8,
@@ -85,6 +85,13 @@ describe("binary patch toolbox boundaries", () => {
       target: { name: "target.bin", url: "full/target.bin" },
       full: { name: "target.bin", url: "full/target.bin" },
       patches: [{ baseline: { name: "old.bin" }, patch: { name: "01-old.bin.endsley.patch", url: "patches/01-old.bin.endsley.patch" } }],
+      planning: {
+        results: [
+          { baselineName: "old.bin", status: "verified", patchBytes: 2, reason: null },
+          { baselineName: "rejected.bin", status: "failed", patchBytes: null, reason: "ratio_exceeded" },
+        ],
+        excluded: [{ baselineName: "budget.bin", patchBytes: 3, reason: "artifact_budget" }],
+      },
     });
   });
 
@@ -159,7 +166,7 @@ describe("binary patch toolbox boundaries", () => {
 
   it("reports an oversized lazy baseline as a failed item", async () => {
     const plan = await planPatchesFromSources(new Uint8Array([1]), [{ name: "too-large", load: async () => new Uint8Array(patchInputLimit("baseline") + 1) }]);
-    expect(plan.results[0]).toMatchObject({ baselineName: "too-large", status: "failed", error: { code: "ERESOURCE" } });
+    expect(plan.results[0]).toMatchObject({ baselineName: "too-large", status: "failed", reason: "baseline_read_failed", error: { code: "ERESOURCE" } });
   });
 
   it("rejects unsafe transfer-savings inputs and arithmetic", () => {

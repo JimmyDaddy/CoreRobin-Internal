@@ -6,6 +6,7 @@ import i18n from "../../i18n";
 
 const mocks = vi.hoisted(() => ({
   createObjectUrl: vi.fn(() => "blob:patch-plan"),
+  applyPatchAndVerify: vi.fn(),
   planPatches: vi.fn(),
   planPatchesFromSources: vi.fn(),
   createPatchCollection: vi.fn(),
@@ -38,7 +39,7 @@ vi.mock("../runtime/files", () => ({
 }));
 vi.mock("./binaryPatchTools", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./binaryPatchTools")>();
-  return { ...actual, createPatchCollection: mocks.createPatchCollection, generateVerifiedPatch: mocks.generateVerifiedPatch, planPatches: mocks.planPatches, planPatchesFromSources: mocks.planPatchesFromSources };
+  return { ...actual, applyPatchAndVerify: mocks.applyPatchAndVerify, createPatchCollection: mocks.createPatchCollection, generateVerifiedPatch: mocks.generateVerifiedPatch, planPatches: mocks.planPatches, planPatchesFromSources: mocks.planPatchesFromSources };
 });
 
 import { BinaryPatchToolbox } from "./BinaryPatchToolbox";
@@ -62,8 +63,9 @@ beforeEach(async () => {
     },
   });
   mocks.start.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, outputToken: null, terminalReason: null, error: null });
-  mocks.prepare.mockImplementation(async (_job, role) => [{ token: role === "input" ? "baseline" : "target", displayName: `${role}.bin` }]);
-  mocks.readBound.mockImplementation(async (_job, token) => new Uint8Array(token.token === "baseline" ? [6] : [7]));
+  mocks.prepare.mockImplementation(async (_job, role) => [{ token: role, displayName: `${role}.bin` }]);
+  mocks.readBound.mockImplementation(async (_job, token) => new Uint8Array(token.token === "input" ? [6] : token.token === "patch" ? [8] : [7]));
+  mocks.applyPatchAndVerify.mockResolvedValue({ output: new Uint8Array([7]), verification: { verified: true }, byteExact: true });
   mocks.generateVerifiedPatch.mockResolvedValue({ patch: new Uint8Array([80, 75]), verification: { verified: true }, baselineSha256: "a".repeat(64), targetSha256: "b".repeat(64) });
   mocks.revalidate.mockResolvedValue(undefined);
   mocks.release.mockResolvedValue(undefined);
@@ -124,5 +126,61 @@ it("keeps desktop patch planning lazy across native baseline tokens", async () =
   await screen.findByRole("button", { name: "正式另存结果" });
   expect(mocks.planPatchesFromSources).toHaveBeenCalledOnce();
   expect(mocks.planPatches).not.toHaveBeenCalled();
-  expect(mocks.readBound.mock.calls.map(([, token]) => token.token)).toEqual(["target", "baseline"]);
+  expect(mocks.readBound.mock.calls.map(([, token]) => token.token)).toEqual(["target", "input"]);
+});
+
+it("marks an integrity manifest verified only after a byte-exact replay", async () => {
+  mocks.desktopRuntime = true;
+  render(<BinaryPatchToolbox toolId="integrity-manifest" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成完整性清单" }));
+
+  await screen.findByRole("button", { name: "正式另存结果" });
+  expect(mocks.applyPatchAndVerify).toHaveBeenCalledWith(new Uint8Array([6]), new Uint8Array([8]), new Uint8Array([7]), expect.any(AbortSignal));
+  expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "verified" }));
+  expect(screen.getByText(/replay_byte_exact/)).toBeTruthy();
+});
+
+it("keeps an integrity manifest unverified when replay cannot prove it", async () => {
+  mocks.desktopRuntime = true;
+  mocks.applyPatchAndVerify.mockRejectedValue(Object.assign(new Error("Patch replay failed."), { code: "EVERIFICATION" }));
+  render(<BinaryPatchToolbox toolId="integrity-manifest" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成完整性清单" }));
+
+  await screen.findByRole("button", { name: "正式另存结果" });
+  expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "unverified" }));
+  expect(screen.getByText(/EVERIFICATION/)).toBeTruthy();
+});
+
+it("rejects an oversized web baseline before reading it", async () => {
+  const readBytes = vi.fn();
+  const oversized = { name: "too-large-baseline.bin", size: 16 * 1024 * 1024 + 1, arrayBuffer: readBytes } as unknown as File;
+  const target = new File([new Uint8Array([7])], "target.bin", { type: "application/octet-stream" });
+  const view = render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+  const inputs = view.container.querySelectorAll<HTMLInputElement>('input[type="file"]');
+  fireEvent.change(inputs[0], { target: { files: [oversized] } });
+  fireEvent.change(inputs[1], { target: { files: [target] } });
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+
+  await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+  expect(readBytes).not.toHaveBeenCalled();
+});
+
+it("rejects an oversized web target before reading it", async () => {
+  const readBytes = vi.fn();
+  const baseline = new File([new Uint8Array([6])], "baseline.bin", { type: "application/octet-stream" });
+  const patch = new File([new Uint8Array([8])], "patch.bin", { type: "application/octet-stream" });
+  const oversized = { name: "too-large-target.bin", size: 16 * 1024 * 1024 + 1, arrayBuffer: readBytes } as unknown as File;
+  const view = render(<BinaryPatchToolbox toolId="integrity-manifest" />);
+  const inputs = view.container.querySelectorAll<HTMLInputElement>('input[type="file"]');
+  fireEvent.change(inputs[0], { target: { files: [baseline] } });
+  fireEvent.change(inputs[1], { target: { files: [patch] } });
+  fireEvent.change(inputs[2], { target: { files: [oversized] } });
+
+  fireEvent.click(screen.getByRole("button", { name: "生成完整性清单" }));
+
+  await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+  expect(readBytes).not.toHaveBeenCalled();
 });

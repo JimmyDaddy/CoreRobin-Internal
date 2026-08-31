@@ -13,6 +13,7 @@ import {
   manifestJson,
   planPatches,
   planPatchesFromSources,
+  patchInputLimit,
   generateVerifiedPatch,
   PATCH_PLANNER_DEADLINE_MS,
   runWithPatchDeadline,
@@ -28,7 +29,6 @@ type BinaryInputKind = "baseline" | "target" | "patch" | "expected";
 type BinaryFileInputKind = BinaryInputKind | "plannerBaselines";
 type NativeInputRole = "input" | "target" | "patch" | "expected";
 type ToolboxTFunction = TFunction<"toolbox">;
-const MAX_BINARY_BYTES = 64 * 1024 * 1024;
 
 const NATIVE_INPUT_ROLES = {
   baseline: "input",
@@ -119,7 +119,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       return tokens;
     };
-    const readInput = Object.assign(async (file: File | null, input: BinaryInputKind, max = MAX_BINARY_BYTES, index = 0, signal?: AbortSignal) => {
+    const readInput = Object.assign(async (file: File | null, input: BinaryInputKind, max = patchInputLimit(input), index = 0, signal?: AbortSignal) => {
       const label = binaryInputLabel(input, t);
       const readSignal = signal ?? operationSignal;
       if (!nativeInputJob) return readBrowserInput(file, label, max, readSignal);
@@ -218,7 +218,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     }
   };
 
-  const readBrowserInput = async (file: File | null, role: string, max = MAX_BINARY_BYTES, signal?: AbortSignal): Promise<Uint8Array> => {
+  const readBrowserInput = async (file: File | null, role: string, max: number, signal?: AbortSignal): Promise<Uint8Array> => {
     if (!file) throw new Error(t("binaryPatch.errors.selectFile", { label: role }));
     if (file.size > max) throw new Error(t("binaryPatch.errors.fileTooLarge", { label: role, max: Math.round(max / 1024 / 1024) }));
     signal?.throwIfAborted();
@@ -258,7 +258,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       if (toolId === "binary-patch-apply") {
         const expectedBytes = isDesktopRuntime()
-          ? nativeExpectedRequested ? await readInput(null, "expected", MAX_BINARY_BYTES) : undefined
+          ? nativeExpectedRequested ? await readInput(null, "expected") : undefined
           : expected ? await readInput(expected, "expected") : undefined;
         const applied = await applyPatchAndVerify(await readInput(baseline, "baseline", 16 * 1024 * 1024), await readInput(patch, "patch"), expectedBytes, signal);
         if (!applied.verification) {
@@ -280,11 +280,24 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         const baselineBytes = await readInput(baseline, "baseline");
         const targetBytes = await readInput(target, "target");
         const patchBytes = await readInput(patch, "patch");
-        const manifest = manifestJson(await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name }));
+        let verification: { status: "verified" | "unverified"; method: "replay_byte_exact"; reason?: string };
+        try {
+          const replay = await applyPatchAndVerify(baselineBytes, patchBytes, targetBytes, signal);
+          verification = replay.verification?.verified && replay.byteExact
+            ? { status: "verified", method: "replay_byte_exact" }
+            : { status: "unverified", method: "replay_byte_exact", reason: "REPLAY_MISMATCH" };
+        } catch (reason) {
+          if (isPatchTaskCancelled(reason)) throw reason;
+          verification = { status: "unverified", method: "replay_byte_exact", reason: classifyPatchError(reason).code };
+        }
+        const manifest = manifestJson({
+          ...await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name }),
+          verification,
+        });
         const bytes = new TextEncoder().encode(manifest);
         setOutput(manifest);
         setDownload(bytes, "corerobin-patch-manifest.json", "application/json");
-        return { bytes, filename: "corerobin-patch-manifest.json", validation: "verified" };
+        return { bytes, filename: "corerobin-patch-manifest.json", validation: verification.status };
       }
       if (toolId === "patch-planner") {
         const targetBytes = await readInput(target, "target", 16 * 1024 * 1024);
