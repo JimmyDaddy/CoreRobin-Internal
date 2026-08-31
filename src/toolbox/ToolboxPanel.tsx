@@ -324,7 +324,7 @@ function ScheduleTool() {
         throw new ToolboxInputError("invalid_duration", "保活时长必须是 1 分钟到 12 小时。");
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
-      setSnapshot(await createToolboxSchedule({ requestId: crypto.randomUUID(), title: title || undefined, action, trigger }));
+      setSnapshot(await createToolboxSchedule({ requestId: crypto.randomUUID(), timeZone, title: title || undefined, action, trigger }));
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -370,8 +370,8 @@ function ScheduleTool() {
       {kind === "weekly" ? <label>星期 <select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">周日</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option></select></label> : null}
     </div> : null}
     {actionKind === "keepAwake" ? <label>保活分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
-    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />创建内存规则</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
-    <p className="toolbox-hint">创建前会使用现有 Cron 搜索器计算下一次时间；原生端只接受提醒或 1 分钟至 12 小时的保活意图。当前规则仅存于本次应用运行内，重启即清除，且本最小 provider 尚不会到点执行动作；绝不执行 shell、清理、结束进程或键盘操作。</p>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />创建规则</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
+    <p className="toolbox-hint">创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。</p>
     {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? "未命名"} · {rule.status} · 下次预览 {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>暂停</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>删除</button></div>)}</> : null}
   </ToolLayout>;
 }

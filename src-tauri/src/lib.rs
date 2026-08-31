@@ -137,6 +137,7 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
+use tauri_plugin_notification::NotificationExt;
 use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
 use toolbox_power::{PowerRequest, PowerService, PowerState};
@@ -144,8 +145,9 @@ use toolbox_process_watch::{
     ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
 };
 use toolbox_scheduler::{
-    SchedulerCreateRequest, SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest,
-    SchedulerSnapshot, ToolboxScheduler,
+    SchedulerAction, SchedulerActionIntent, SchedulerCreateRequest, SchedulerIntentOutcome,
+    SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest, SchedulerSnapshot,
+    ToolboxScheduler,
 };
 use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
 use toolbox_storage::{
@@ -312,6 +314,7 @@ struct AppState {
     toolbox_power: Arc<Mutex<PowerService>>,
     toolbox_process_watch: Arc<Mutex<ProcessWatchService>>,
     toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
+    toolbox_scheduler_stop: Arc<AtomicBool>,
     toolbox_storage: Arc<Mutex<Option<ToolboxStorage>>>,
 }
 
@@ -346,6 +349,7 @@ impl AppState {
             toolbox_power,
             toolbox_process_watch: Arc::new(Mutex::new(toolbox_process_watch)),
             toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
+            toolbox_scheduler_stop: Arc::new(AtomicBool::new(false)),
             toolbox_storage: Arc::new(Mutex::new(None)),
         }
     }
@@ -390,6 +394,98 @@ fn start_health_state_watchdog(store: Arc<HealthStateStore>, app: AppHandle) {
             }
         })
         .expect("failed to start the health state watchdog");
+}
+
+fn start_toolbox_scheduler_runtime(
+    scheduler: Weak<Mutex<ToolboxScheduler>>,
+    power: Weak<Mutex<PowerService>>,
+    stop: Arc<AtomicBool>,
+    app: AppHandle,
+) {
+    std::thread::Builder::new()
+        .name("core-robin-toolbox-scheduler".to_owned())
+        .spawn(move || {
+            while !stop.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_secs(1));
+                if stop.load(Ordering::Acquire) {
+                    break;
+                }
+                let Some(scheduler_arc) = scheduler.upgrade() else {
+                    break;
+                };
+                let intents = match scheduler_arc.lock() {
+                    Ok(mut scheduler) => match scheduler.poll_due(now_millis()) {
+                        Ok(intents) => intents,
+                        Err(error) => {
+                            eprintln!("toolbox scheduler poll failed: {error}");
+                            continue;
+                        }
+                    },
+                    Err(_) => break,
+                };
+                for intent in intents {
+                    let outcome = dispatch_toolbox_schedule_intent(&app, &power, &intent);
+                    if let Some(scheduler) = scheduler.upgrade()
+                        && let Ok(mut scheduler) = scheduler.lock()
+                        && let Err(error) =
+                            scheduler.mark_intent_outcome(&intent, outcome, now_millis())
+                    {
+                        eprintln!("toolbox scheduler intent update failed: {error}");
+                    }
+                }
+            }
+        })
+        .expect("failed to start the toolbox scheduler runtime");
+}
+
+fn dispatch_toolbox_schedule_intent(
+    app: &AppHandle,
+    power: &Weak<Mutex<PowerService>>,
+    intent: &SchedulerActionIntent,
+) -> SchedulerIntentOutcome {
+    match &intent.action {
+        SchedulerAction::Reminder => {
+            let body = intent
+                .title
+                .as_deref()
+                .unwrap_or("CoreRobin 定时提醒")
+                .to_owned();
+            let delivered = app
+                .notification()
+                .builder()
+                .title("CoreRobin")
+                .body(body)
+                .show()
+                .is_ok();
+            if delivered {
+                SchedulerIntentOutcome::Submitted
+            } else {
+                SchedulerIntentOutcome::Failed
+            }
+        }
+        SchedulerAction::KeepAwake { duration_minutes } => {
+            let Some(power) = power.upgrade() else {
+                return SchedulerIntentOutcome::Failed;
+            };
+            let result: Result<(), String> = power
+                .lock()
+                .map_err(|_| "power service lock was poisoned".to_owned())
+                .and_then(|mut power| {
+                    power
+                        .start_if_vacant(PowerRequest {
+                            request_id: format!("scheduler:{}", intent.schedule_id),
+                            duration_minutes: u64::from(*duration_minutes),
+                        })
+                        .map(|_| ())
+                        .map_err(|error| error.code)
+                });
+            match result {
+                Ok(()) => SchedulerIntentOutcome::Submitted,
+                Err(code) if code == "keep_awake_busy" => SchedulerIntentOutcome::Skipped,
+                Err(_) => SchedulerIntentOutcome::Failed,
+            }
+        }
+    }
 }
 
 async fn with_monitor<T, F>(
@@ -2515,6 +2611,11 @@ fn clear_toolbox_data(
     storage
         .clear_all_after_stop(previous_epoch, snapshot.reset_epoch)
         .map_err(toolbox_storage_error)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .adopt_reset_epoch(snapshot.reset_epoch)?;
     Ok(snapshot)
 }
 
@@ -2719,17 +2820,42 @@ pub fn run() {
         .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
-            if let Ok(app_data_dir) = app.path().app_data_dir()
-                && let Ok(storage) = ToolboxStorage::open(app_data_dir)
-            {
-                let reset_epoch = storage.reset_epoch();
-                if let Ok(mut toolbox) = state.toolbox.lock() {
-                    toolbox.adopt_reset_epoch(reset_epoch);
+            if let Ok(app_data_dir) = app.path().app_data_dir() {
+                if let Ok(storage) = ToolboxStorage::open(app_data_dir.clone()) {
+                    let reset_epoch = storage.reset_epoch();
+                    if let Ok(mut toolbox) = state.toolbox.lock() {
+                        toolbox.adopt_reset_epoch(reset_epoch);
+                    }
+                    if let Ok(mut slot) = state.toolbox_storage.lock() {
+                        *slot = Some(storage);
+                    }
                 }
-                if let Ok(mut slot) = state.toolbox_storage.lock() {
-                    *slot = Some(storage);
+                match ToolboxScheduler::open(app_data_dir) {
+                    Ok(mut scheduler) => {
+                        let reset_epoch =
+                            state.toolbox_storage.lock().ok().and_then(|storage| {
+                                storage.as_ref().map(ToolboxStorage::reset_epoch)
+                            });
+                        if let Some(reset_epoch) = reset_epoch
+                            && let Err(error) = scheduler.adopt_reset_epoch(reset_epoch)
+                        {
+                            eprintln!("toolbox scheduler reset reconciliation failed: {error}");
+                        }
+                        if let Ok(mut slot) = state.toolbox_scheduler.lock() {
+                            *slot = scheduler;
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("toolbox scheduler persistence unavailable: {error}");
+                    }
                 }
             }
+            start_toolbox_scheduler_runtime(
+                Arc::downgrade(&state.toolbox_scheduler),
+                Arc::downgrade(&state.toolbox_power),
+                Arc::clone(&state.toolbox_scheduler_stop),
+                app.handle().clone(),
+            );
             // Kill scan workers left over from a previous session and remove
             // their stale job files, without blocking startup.
             if let Ok(job_directory) = app
@@ -3007,13 +3133,13 @@ pub fn run() {
             if matches!(event, tauri::RunEvent::Reopen { .. }) {
                 show_main(app);
             }
-            match event {
-                tauri::RunEvent::Exit => {
-                    if let Ok(mut power) = app.state::<AppState>().toolbox_power.lock() {
-                        power.shutdown();
-                    }
+            if let tauri::RunEvent::Exit = event {
+                app.state::<AppState>()
+                    .toolbox_scheduler_stop
+                    .store(true, Ordering::Release);
+                if let Ok(mut power) = app.state::<AppState>().toolbox_power.lock() {
+                    power.shutdown();
                 }
-                _ => {}
             }
         });
 }

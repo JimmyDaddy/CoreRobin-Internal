@@ -116,6 +116,7 @@ export type ToolboxScheduleTrigger =
 
 export interface ToolboxScheduleRule {
   scheduleId: string;
+  timeZone: string;
   title: string | null;
   action: ToolboxScheduleAction;
   trigger: ToolboxScheduleTrigger;
@@ -127,7 +128,7 @@ export interface ToolboxScheduleRule {
 export interface ToolboxScheduleSnapshot {
   revision: number;
   maxRules: number;
-  persistent: false;
+  persistent: boolean;
   restartNotice: string;
   executionNotice: string;
   rules: ToolboxScheduleRule[];
@@ -359,6 +360,7 @@ export function clearToolboxHistory(expectedHistoryRevision?: number): Promise<T
 
 export async function createToolboxSchedule(request: {
   requestId: string;
+  timeZone: string;
   title?: string;
   action: ToolboxScheduleAction;
   trigger: ToolboxScheduleTrigger;

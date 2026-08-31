@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::LocalCalendarKey;
+use super::scheduler_core::LocalCalendarKey;
 
 pub(crate) const SCHEDULE_FILE_NAME: &str = "toolbox-schedules-v1.json";
 const SCHEDULE_SCHEMA_VERSION: u16 = 1;
@@ -21,7 +21,6 @@ pub(crate) struct SchedulerStoreState {
     pub(crate) rules: Vec<PersistedSchedule>,
     pub(crate) intents: Vec<PersistedExecutionIntent>,
 }
-
 impl Default for SchedulerStoreState {
     fn default() -> Self {
         Self {
@@ -104,7 +103,6 @@ pub(crate) enum SchedulerStoreError {
     Serialization,
     Corrupt,
     InvalidState,
-    RevisionConflict { expected: u64, actual: u64 },
 }
 
 impl fmt::Display for SchedulerStoreError {
@@ -115,7 +113,6 @@ impl fmt::Display for SchedulerStoreError {
             Self::Serialization => "private scheduler storage serialization failed",
             Self::Corrupt => "the saved schedule rules are invalid",
             Self::InvalidState => "the scheduler state is invalid",
-            Self::RevisionConflict { .. } => "the schedule revision is stale",
         };
         formatter.write_str(message)
     }
@@ -213,10 +210,6 @@ impl SchedulerStore {
             intent.updated_at_ms = now_ms;
             Ok(())
         })
-    }
-
-    pub(crate) fn remove_file(self) -> Result<(), SchedulerStoreError> {
-        crate::private_storage::remove(&self.path).map_err(|_| SchedulerStoreError::Io)
     }
 }
 
