@@ -14,4 +14,22 @@ describe("color toolbox", () => {
       expect(parseColor(value).source).toBe(value);
     }
   });
+
+  it("detects P3 gamut from the raw conversion before clipping to sRGB", () => {
+    const color = parseColor("color(display-p3 1 0 0)");
+    expect(color.gamutMapped).toBe(true);
+    expect(color.r).toBe(1);
+    expect(color.g).toBe(0);
+    expect(color.b).toBe(0);
+  });
+
+  it("clips out-of-gamut OKLCH conversion results after detecting gamut", () => {
+    const color = parseColor("oklch(0.6 0.4 30)");
+    expect(color.gamutMapped).toBe(true);
+    expect(color.r).toBe(1);
+    expect(color.g).toBeGreaterThanOrEqual(0);
+    expect(color.g).toBeLessThanOrEqual(1);
+    expect(color.b).toBeGreaterThanOrEqual(0);
+    expect(color.b).toBeLessThanOrEqual(1);
+  });
 });

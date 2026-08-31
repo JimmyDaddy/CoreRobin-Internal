@@ -3,7 +3,6 @@ import { utf8ByteLength } from "../local/jsonTools";
 
 const MAX_PATTERN_BYTES = 16 * 1024;
 const MAX_SAMPLE_BYTES = 256 * 1024;
-const MAX_MATCHES = 1_000;
 
 export interface RegexNode {
   id: number;
@@ -36,14 +35,20 @@ export function analyzeRegex(pattern: string, flags = ""): RegexAnalysis {
 }
 
 export async function runRegexInWorker(pattern: string, flags: string, text: string, replacement = ""): Promise<{ matches: RegexMatch[]; replacement: string }> {
+  assertRegexWorkerAvailable();
   if (utf8ByteLength(text) > MAX_SAMPLE_BYTES) throw new ToolboxInputError("regex_text_too_large", "测试文本不能超过 256 KiB。 ");
   const analysis = analyzeRegex(pattern, flags);
   if (!analysis.supported) throw new ToolboxInputError("invalid_regex", analysis.syntaxError ?? "正则语法无效。 ");
-  if (typeof Worker === "undefined") return runRegexLocally(pattern, flags, text, replacement);
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL("./regex.worker.ts", import.meta.url), { type: "module" });
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./regex.worker.ts", import.meta.url), { type: "module" });
+    } catch {
+      reject(new ToolboxInputError("regex_worker_unavailable", "正则执行 Worker 无法启动，已安全禁用正则执行。 "));
+      return;
+    }
     let settled = false;
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       worker.terminate();
       settled = true;
       reject(new ToolboxInputError("regex_timeout", "正则执行超过 2 秒，已停止。 "));
@@ -51,7 +56,7 @@ export async function runRegexInWorker(pattern: string, flags: string, text: str
     const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
-      window.clearTimeout(timeout);
+      globalThis.clearTimeout(timeout);
       worker.terminate();
       callback();
     };
@@ -64,16 +69,8 @@ export async function runRegexInWorker(pattern: string, flags: string, text: str
   });
 }
 
-function runRegexLocally(pattern: string, flags: string, text: string, replacement: string): { matches: RegexMatch[]; replacement: string } {
-  const expression = new RegExp(pattern, flags.includes("g") ? flags : `${flags}g`);
-  const matches: RegexMatch[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = expression.exec(text)) !== null) {
-    matches.push({ index: match.index, text: match[0], groups: { ...(match.groups ?? {}) } });
-    if (matches.length >= MAX_MATCHES) break;
-    if (match[0] === "") expression.lastIndex += 1;
-  }
-  return { matches, replacement: text.replace(new RegExp(pattern, flags), replacement) };
+function assertRegexWorkerAvailable(): void {
+  if (typeof Worker !== "function") throw new ToolboxInputError("regex_worker_unavailable", "当前 WebView 不支持隔离正则 Worker，已安全禁用正则执行。 ");
 }
 
 function buildRegexAst(pattern: string): RegexNode {

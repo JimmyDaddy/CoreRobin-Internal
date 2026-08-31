@@ -34,14 +34,15 @@ export function parseColor(input: string): ColorValue {
     const chroma = Number.parseFloat(match[2]);
     const hue = Number.parseFloat(match[3]) * Math.PI / 180;
     const lab = { l: lightness, a: chroma * Math.cos(hue), b: chroma * Math.sin(hue) };
-    const rgb = oklabToRgb(lab.l, lab.a, lab.b);
-    return { ...rgb, a: alpha(match[4]), source: input, gamutMapped: !inGamut(rgb) };
+    const mapped = mapToSrgb(oklabToRgb(lab.l, lab.a, lab.b));
+    return { ...mapped.rgb, a: alpha(match[4]), source: input, gamutMapped: mapped.gamutMapped };
   }
   match = value.match(/^color\(display-p3\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(?:\s*\/\s*([^\s]+))?\)$/);
   if (match) {
     const p3 = [Number.parseFloat(match[1]), Number.parseFloat(match[2]), Number.parseFloat(match[3])];
-    const rgb = { r: clamp((1.2247 * p3[0] - 0.2249 * p3[1]), 0, 1), g: clamp(-0.042 * p3[0] + 1.042 * p3[1], 0, 1), b: clamp(-0.0196 * p3[0] - 0.0786 * p3[1] + 1.0985 * p3[2], 0, 1) };
-    return { ...rgb, a: alpha(match[4]), source: input, gamutMapped: p3.some((channelValue) => channelValue < 0 || channelValue > 1) };
+    const rawRgb = { r: 1.2247 * p3[0] - 0.2249 * p3[1], g: -0.042 * p3[0] + 1.042 * p3[1], b: -0.0196 * p3[0] - 0.0786 * p3[1] + 1.0985 * p3[2] };
+    const mapped = mapToSrgb(rawRgb);
+    return { ...mapped.rgb, a: alpha(match[4]), source: input, gamutMapped: mapped.gamutMapped };
   }
   throw new ToolboxInputError("invalid_color", "无法识别颜色格式；支持 HEX、RGB、HSL、HSV、OKLCH 和 Display-P3。 ");
 }
@@ -83,6 +84,10 @@ function rgbToOklch(r: number, g: number, b: number): { l: number; c: number; h:
   return { l: lightness, c: Math.sqrt(a * a + labB * labB), h: (Math.atan2(labB, a) * 180 / Math.PI + 360) % 360 };
 }
 function inGamut(color: { r: number; g: number; b: number }): boolean { return [color.r, color.g, color.b].every((value) => value >= 0 && value <= 1); }
+function mapToSrgb(raw: { r: number; g: number; b: number }): { rgb: { r: number; g: number; b: number }; gamutMapped: boolean } {
+  const gamutMapped = !inGamut(raw);
+  return { rgb: gamutMapped ? { r: clamp(raw.r, 0, 1), g: clamp(raw.g, 0, 1), b: clamp(raw.b, 0, 1) } : raw, gamutMapped };
+}
 function clamp(value: number, min: number, max: number): number { return Math.min(max, Math.max(min, value)); }
 function byte(value: number): number { return Math.round(clamp(value, 0, 1) * 255); }
 function byteHex(value: number): string { return byte(value).toString(16).padStart(2, "0"); }

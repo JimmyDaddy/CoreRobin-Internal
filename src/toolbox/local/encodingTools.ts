@@ -70,10 +70,28 @@ export function convertUnixTime(value: string, unit: "seconds" | "milliseconds")
 }
 
 export function convertIsoTime(value: string): { seconds: string; milliseconds: string; utc: string; local: string } {
-  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(value.trim())) throw new ToolboxInputError("timezone_required", "ISO 时间必须明确包含时区。 ");
-  const date = new Date(value);
+  const trimmed = value.trim();
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed)) throw new ToolboxInputError("timezone_required", "ISO 时间必须明确包含时区。 ");
+  assertValidIsoCalendarDate(trimmed);
+  const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) throw new ToolboxInputError("invalid_iso", "ISO 时间格式无效。 ");
   return { seconds: String(Math.floor(date.getTime() / 1000)), milliseconds: String(date.getTime()), utc: date.toISOString(), local: date.toLocaleString() };
+}
+
+function assertValidIsoCalendarDate(value: string): void {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?=[Tt ]|[Zz]|[+-]\d{2}:?\d{2}|$)/);
+  if (!match) return;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const daysInMonth = month === 2
+    ? isLeapYear(year) ? 29 : 28
+    : [4, 6, 9, 11].includes(month) ? 30 : 31;
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth) throw new ToolboxInputError("invalid_iso", "ISO 日期不存在。 ");
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
 export function generateUuidV4(count: number): string[] {

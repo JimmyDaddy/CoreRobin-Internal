@@ -17,4 +17,11 @@ describe("encoding toolbox", () => {
     expect(() => convertIsoTime("2026-08-31T12:00:00")).toThrow();
     expect(convertIsoTime("2026-08-31T12:00:00+08:00").milliseconds).toBe("1788148800000");
   });
+
+  it("rejects nonexistent ISO calendar dates instead of normalizing them", () => {
+    expect(() => convertIsoTime("2026-02-31T12:00:00+08:00")).toThrowError(/ISO 日期不存在/);
+    expect(() => convertIsoTime("2026-02-31Z")).toThrowError(/ISO 日期不存在/);
+    expect(() => convertIsoTime("2025-02-29T12:00:00+08:00")).toThrowError(/ISO 日期不存在/);
+    expect(() => convertIsoTime("2024-02-29T12:00:00+08:00")).not.toThrow();
+  });
 });
