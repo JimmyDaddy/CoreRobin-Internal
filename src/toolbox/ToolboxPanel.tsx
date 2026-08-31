@@ -145,9 +145,9 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
               return <span key={category} className="toolbox-category-tab"><Icon size={14} />{t(CATEGORY_LABEL_KEYS[category])}</span>;
             })}
           </div>
-          {favorites.size > 0 && !query ? <ToolSection title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
+          {favorites.size > 0 && !query ? <ToolSection sectionId="favorites" title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
           {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).map((category) => (
-            <ToolSection key={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
+            <ToolSection key={category} sectionId={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           ))}
           {tools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>{t("empty.title")}</strong><span>{t("empty.description")}</span></div> : null}
           <ToolboxHistoryPanel />
@@ -212,12 +212,13 @@ function HistoryRow({ record }: { record: ToolboxHistoryRecord }) {
   return <div className="toolbox-history-row"><strong>{t(`history.tools.${record.tool}`)}</strong><span>{t(`history.statuses.${record.terminalStatus}`)}</span><small>{new Date(record.completedAtMs).toLocaleString()} · {t("history.notification", { status: t(`history.notifications.${record.notificationStatus}`) })}</small></div>;
 }
 
-function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition) => void; onFavorite: (id: ToolId) => void }) {
+function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }: { sectionId: string; title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition) => void; onFavorite: (id: ToolId) => void }) {
   const { t } = useTranslation("toolbox");
   if (tools.length === 0) return null;
+  const headingId = `toolbox-section-${sectionId}`;
   return (
-    <section className="toolbox-section" aria-labelledby={`toolbox-section-${title}`}>
-      <div className="toolbox-section__title"><h2 id={`toolbox-section-${title}`}>{title}</h2><span>{tools.length}</span></div>
+    <section className="toolbox-section" aria-labelledby={headingId}>
+      <div className="toolbox-section__title"><h2 id={headingId}>{title}</h2><span>{tools.length}</span></div>
       <div className="toolbox-grid">
         {tools.map((tool) => <div className={`toolbox-card toolbox-card--${tool.capability.state}`} key={tool.id}>
           <button className="toolbox-card__open" type="button" disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
