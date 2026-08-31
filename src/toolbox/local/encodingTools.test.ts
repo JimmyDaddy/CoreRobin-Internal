@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { analyzeUrl, convertIsoTime, decodeBase64, encodeBase64 } from "./encodingTools";
+import { ToolboxInputError } from "./toolboxErrors";
+
+function inputError(action: () => unknown): ToolboxInputError {
+  try {
+    action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(ToolboxInputError);
+    return error as ToolboxInputError;
+  }
+  throw new Error("Expected ToolboxInputError");
+}
 
 describe("encoding toolbox", () => {
   it("keeps repeated URL query keys and plus signs literal", () => {
@@ -11,6 +22,15 @@ describe("encoding toolbox", () => {
     const value = "CoreRobin 工具箱 ✓";
     expect(decodeBase64(encodeBase64(value))).toBe(value);
     expect(decodeBase64(encodeBase64(value, true), true)).toBe(value);
+  });
+
+  it("requires canonical padding for standard Base64 but permits unpadded Base64URL", () => {
+    expect(decodeBase64("YQ==")).toBe("a");
+    expect(decodeBase64("YQ", true)).toBe("a");
+
+    for (const value of ["YQ", "YQ=", "YQ===", "Y=Q="]) {
+      expect(inputError(() => decodeBase64(value)).code).toBe("invalid_base64");
+    }
   });
 
   it("requires an explicit ISO timezone", () => {

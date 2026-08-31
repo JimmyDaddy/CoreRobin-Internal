@@ -9,9 +9,29 @@ export interface ColorValue {
   gamutMapped: boolean;
 }
 
-const NAMED: Record<string, string> = { red: "#ff0000", green: "#008000", blue: "#0000ff", white: "#ffffff", black: "#000000", transparent: "#00000000", rebeccapurple: "#663399", orange: "#ffa500", yellow: "#ffff00", cyan: "#00ffff", magenta: "#ff00ff" };
+export const MAX_COLOR_INPUT_BYTES = 4 * 1024;
+
+const NAMED: Readonly<Record<string, string>> = {
+  aliceblue: "#f0f8ff", antiquewhite: "#faebd7", aqua: "#00ffff", aquamarine: "#7fffd4", azure: "#f0ffff", beige: "#f5f5dc", bisque: "#ffe4c4", black: "#000000", blanchedalmond: "#ffebcd", blue: "#0000ff", blueviolet: "#8a2be2", brown: "#a52a2a", burlywood: "#deb887",
+  cadetblue: "#5f9ea0", chartreuse: "#7fff00", chocolate: "#d2691e", coral: "#ff7f50", cornflowerblue: "#6495ed", cornsilk: "#fff8dc", crimson: "#dc143c", cyan: "#00ffff",
+  darkblue: "#00008b", darkcyan: "#008b8b", darkgoldenrod: "#b8860b", darkgray: "#a9a9a9", darkgreen: "#006400", darkgrey: "#a9a9a9", darkkhaki: "#bdb76b", darkmagenta: "#8b008b", darkolivegreen: "#556b2f", darkorange: "#ff8c00", darkorchid: "#9932cc", darkred: "#8b0000", darksalmon: "#e9967a", darkseagreen: "#8fbc8f", darkslateblue: "#483d8b", darkslategray: "#2f4f4f", darkslategrey: "#2f4f4f", darkturquoise: "#00ced1", darkviolet: "#9400d3", deeppink: "#ff1493", deepskyblue: "#00bfff", dimgray: "#696969", dimgrey: "#696969", dodgerblue: "#1e90ff",
+  firebrick: "#b22222", floralwhite: "#fffaf0", forestgreen: "#228b22", fuchsia: "#ff00ff",
+  gainsboro: "#dcdcdc", ghostwhite: "#f8f8ff", gold: "#ffd700", goldenrod: "#daa520", gray: "#808080", green: "#008000", greenyellow: "#adff2f", grey: "#808080",
+  honeydew: "#f0fff0", hotpink: "#ff69b4", indianred: "#cd5c5c", indigo: "#4b0082", ivory: "#fffff0", khaki: "#f0e68c",
+  lavender: "#e6e6fa", lavenderblush: "#fff0f5", lawngreen: "#7cfc00", lemonchiffon: "#fffacd", lightblue: "#add8e6", lightcoral: "#f08080", lightcyan: "#e0ffff", lightgoldenrodyellow: "#fafad2", lightgray: "#d3d3d3", lightgreen: "#90ee90", lightgrey: "#d3d3d3", lightpink: "#ffb6c1", lightsalmon: "#ffa07a", lightseagreen: "#20b2aa", lightskyblue: "#87cefa", lightslategray: "#778899", lightslategrey: "#778899", lightsteelblue: "#b0c4de", lightyellow: "#ffffe0", lime: "#00ff00", limegreen: "#32cd32", linen: "#faf0e6",
+  magenta: "#ff00ff", maroon: "#800000", mediumaquamarine: "#66cdaa", mediumblue: "#0000cd", mediumorchid: "#ba55d3", mediumpurple: "#9370db", mediumseagreen: "#3cb371", mediumslateblue: "#7b68ee", mediumspringgreen: "#00fa9a", mediumturquoise: "#48d1cc", mediumvioletred: "#c71585", midnightblue: "#191970", mintcream: "#f5fffa", mistyrose: "#ffe4e1", moccasin: "#ffe4b5",
+  navajowhite: "#ffdead", navy: "#000080", oldlace: "#fdf5e6", olive: "#808000", olivedrab: "#6b8e23", orange: "#ffa500", orangered: "#ff4500", orchid: "#da70d6",
+  palegoldenrod: "#eee8aa", palegreen: "#98fb98", paleturquoise: "#afeeee", palevioletred: "#db7093", papayawhip: "#ffefd5", peachpuff: "#ffdab9", peru: "#cd853f", pink: "#ffc0cb", plum: "#dda0dd", powderblue: "#b0e0e6", purple: "#800080",
+  rebeccapurple: "#663399", red: "#ff0000", rosybrown: "#bc8f8f", royalblue: "#4169e1",
+  saddlebrown: "#8b4513", salmon: "#fa8072", sandybrown: "#f4a460", seagreen: "#2e8b57", seashell: "#fff5ee", sienna: "#a0522d", silver: "#c0c0c0", skyblue: "#87ceeb", slateblue: "#6a5acd", slategray: "#708090", slategrey: "#708090", snow: "#fffafa", springgreen: "#00ff7f", steelblue: "#4682b4",
+  tan: "#d2b48c", teal: "#008080", thistle: "#d8bfd8", tomato: "#ff6347", transparent: "#00000000", turquoise: "#40e0d0",
+  violet: "#ee82ee", wheat: "#f5deb3", white: "#ffffff", whitesmoke: "#f5f5f5", yellow: "#ffff00", yellowgreen: "#9acd32",
+};
+
+const NUMBER = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?$/i;
 
 export function parseColor(input: string): ColorValue {
+  assertColorInputLimit(input);
   const value = input.trim().toLowerCase();
   const named = NAMED[value];
   if (named) return parseHex(named, input);
@@ -20,28 +40,27 @@ export function parseColor(input: string): ColorValue {
   if (match) return { r: channel(match[1]), g: channel(match[2]), b: channel(match[3]), a: alpha(match[4]), source: input, gamutMapped: false };
   match = value.match(/^hsla?\(\s*([^,]+)\s*,\s*([^,]+)%\s*,\s*([^,]+)%(?:\s*,\s*([^,]+))?\s*\)$/);
   if (match) {
-    const rgb = hslToRgb(Number.parseFloat(match[1]) / 360, Number.parseFloat(match[2]) / 100, Number.parseFloat(match[3]) / 100);
+    const rgb = hslToRgb(hueComponent(match[1]), percentage(match[2], "HSL 饱和度"), percentage(match[3], "HSL 亮度"));
     return { ...rgb, a: alpha(match[4]), source: input, gamutMapped: false };
   }
   match = value.match(/^hsv\(\s*([^,]+)\s*,\s*([^,]+)%\s*,\s*([^,]+)%(?:\s*,\s*([^,]+))?\s*\)$/);
   if (match) {
-    const rgb = hsvToRgb(Number.parseFloat(match[1]) / 360, Number.parseFloat(match[2]) / 100, Number.parseFloat(match[3]) / 100);
+    const rgb = hsvToRgb(hueComponent(match[1]), percentage(match[2], "HSV 饱和度"), percentage(match[3], "HSV 明度"));
     return { ...rgb, a: alpha(match[4]), source: input, gamutMapped: false };
   }
   match = value.match(/^oklch\(\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)(?:\s*\/\s*([^\s]+))?\s*\)$/);
   if (match) {
-    const lightness = Number.parseFloat(match[1]);
-    const chroma = Number.parseFloat(match[2]);
-    const hue = Number.parseFloat(match[3]) * Math.PI / 180;
+    const lightness = normalized(match[1], "OKLCH 亮度");
+    const chroma = boundedNumber(match[2], 0, 0.5, "OKLCH 色度");
+    const hue = hueDegrees(match[3]) * Math.PI / 180;
     const lab = { l: lightness, a: chroma * Math.cos(hue), b: chroma * Math.sin(hue) };
     const mapped = mapToSrgb(oklabToRgb(lab.l, lab.a, lab.b));
     return { ...mapped.rgb, a: alpha(match[4]), source: input, gamutMapped: mapped.gamutMapped };
   }
   match = value.match(/^color\(display-p3\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(?:\s*\/\s*([^\s]+))?\)$/);
   if (match) {
-    const p3 = [Number.parseFloat(match[1]), Number.parseFloat(match[2]), Number.parseFloat(match[3])];
-    const rawRgb = { r: 1.2247 * p3[0] - 0.2249 * p3[1], g: -0.042 * p3[0] + 1.042 * p3[1], b: -0.0196 * p3[0] - 0.0786 * p3[1] + 1.0985 * p3[2] };
-    const mapped = mapToSrgb(rawRgb);
+    const p3 = [normalized(match[1], "Display-P3 红色通道"), normalized(match[2], "Display-P3 绿色通道"), normalized(match[3], "Display-P3 蓝色通道")] as const;
+    const mapped = mapToSrgb(displayP3ToSrgb(p3));
     return { ...mapped.rgb, a: alpha(match[4]), source: input, gamutMapped: mapped.gamutMapped };
   }
   throw new ToolboxInputError("invalid_color", "无法识别颜色格式；支持 HEX、RGB、HSL、HSV、OKLCH 和 Display-P3。 ");
@@ -66,8 +85,16 @@ function parseHex(value: string, source: string): ColorValue {
   const expanded = hex.length < 5 ? [...hex].map((char) => char + char).join("") : hex;
   return { r: Number.parseInt(expanded.slice(0, 2), 16) / 255, g: Number.parseInt(expanded.slice(2, 4), 16) / 255, b: Number.parseInt(expanded.slice(4, 6), 16) / 255, a: expanded.length === 8 ? Number.parseInt(expanded.slice(6, 8), 16) / 255 : 1, source, gamutMapped: false };
 }
-function channel(value: string): number { const numeric = value.trim().endsWith("%") ? Number.parseFloat(value) / 100 : Number.parseFloat(value) / 255; if (!Number.isFinite(numeric)) throw new ToolboxInputError("invalid_color", "RGB 通道值无效。 "); return clamp(numeric, 0, 1); }
-function alpha(value: string | undefined): number { if (!value) return 1; const parsed = value.trim().endsWith("%") ? Number.parseFloat(value) / 100 : Number.parseFloat(value); if (!Number.isFinite(parsed)) throw new ToolboxInputError("invalid_color", "透明度无效。 "); return clamp(parsed, 0, 1); }
+function assertColorInputLimit(value: string): void { if (new TextEncoder().encode(value).byteLength > MAX_COLOR_INPUT_BYTES) throw new ToolboxInputError("input_too_large", "颜色输入不能超过 4 KiB。 "); }
+function invalidColor(message: string): never { throw new ToolboxInputError("invalid_color", message); }
+function numeric(value: string, message: string): number { const trimmed = value.trim(); if (!NUMBER.test(trimmed)) return invalidColor(message); const parsed = Number(trimmed); return Number.isFinite(parsed) ? parsed : invalidColor(message); }
+function boundedNumber(value: string, min: number, max: number, label: string): number { const parsed = numeric(value, `${label}无效。 `); return parsed >= min && parsed <= max ? parsed : invalidColor(`${label}无效。 `); }
+function normalized(value: string, label: string): number { const trimmed = value.trim(); if (trimmed.endsWith("%")) return boundedNumber(trimmed.slice(0, -1), 0, 100, label) / 100; return boundedNumber(trimmed, 0, 1, label); }
+function percentage(value: string, label: string): number { return boundedNumber(value, 0, 100, label) / 100; }
+function hueDegrees(value: string): number { return boundedNumber(value, 0, 360, "色相"); }
+function hueComponent(value: string): number { return hueDegrees(value) / 360; }
+function channel(value: string): number { const trimmed = value.trim(); if (trimmed.endsWith("%")) return boundedNumber(trimmed.slice(0, -1), 0, 100, "RGB 通道值") / 100; return boundedNumber(trimmed, 0, 255, "RGB 通道值") / 255; }
+function alpha(value: string | undefined): number { if (!value) return 1; return normalized(value, "透明度"); }
 function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } { const q = l < .5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; return { r: hue(p, q, h + 1 / 3), g: hue(p, q, h), b: hue(p, q, h - 1 / 3) }; }
 function hue(p: number, q: number, t: number): number { let v = t; if (v < 0) v += 1; if (v > 1) v -= 1; if (v < 1 / 6) return p + (q - p) * 6 * v; if (v < 1 / 2) return q; if (v < 2 / 3) return p + (q - p) * (2 / 3 - v) * 6; return p; }
 function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } { const i = Math.floor(h * 6); const f = h * 6 - i; const p = v * (1 - s); const q = v * (1 - f * s); const t = v * (1 - (1 - f) * s); const [r, g, b] = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6]; return { r, g, b }; }
@@ -83,10 +110,21 @@ function rgbToOklch(r: number, g: number, b: number): { l: number; c: number; h:
   const labB = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
   return { l: lightness, c: Math.sqrt(a * a + labB * labB), h: (Math.atan2(labB, a) * 180 / Math.PI + 360) % 360 };
 }
-function inGamut(color: { r: number; g: number; b: number }): boolean { return [color.r, color.g, color.b].every((value) => value >= 0 && value <= 1); }
+function displayP3ToSrgb([r, g, b]: readonly [number, number, number]): { r: number; g: number; b: number } {
+  const linearP3 = [decodeTransfer(r), decodeTransfer(g), decodeTransfer(b)] as const;
+  const linearSrgb = {
+    r: 1.22474549 * linearP3[0] - 0.22490444 * linearP3[1],
+    g: -0.04205808 * linearP3[0] + 1.042080996 * linearP3[1],
+    b: -0.01964226 * linearP3[0] - 0.07865488 * linearP3[1] + 1.09853716 * linearP3[2],
+  };
+  return { r: encodeTransfer(linearSrgb.r), g: encodeTransfer(linearSrgb.g), b: encodeTransfer(linearSrgb.b) };
+}
+function decodeTransfer(value: number): number { return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; }
+function encodeTransfer(value: number): number { return value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055; }
+function inGamut(color: { r: number; g: number; b: number }): boolean { return [color.r, color.g, color.b].every((value) => value >= -1e-7 && value <= 1 + 1e-7); }
 function mapToSrgb(raw: { r: number; g: number; b: number }): { rgb: { r: number; g: number; b: number }; gamutMapped: boolean } {
   const gamutMapped = !inGamut(raw);
-  return { rgb: gamutMapped ? { r: clamp(raw.r, 0, 1), g: clamp(raw.g, 0, 1), b: clamp(raw.b, 0, 1) } : raw, gamutMapped };
+  return { rgb: { r: clamp(raw.r, 0, 1), g: clamp(raw.g, 0, 1), b: clamp(raw.b, 0, 1) }, gamutMapped };
 }
 function clamp(value: number, min: number, max: number): number { return Math.min(max, Math.max(min, value)); }
 function byte(value: number): number { return Math.round(clamp(value, 0, 1) * 255); }

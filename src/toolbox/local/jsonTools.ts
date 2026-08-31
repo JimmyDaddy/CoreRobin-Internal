@@ -2,6 +2,7 @@ import { ToolboxInputError } from "./toolboxErrors";
 
 export const MAX_TEXT_BYTES = 1024 * 1024;
 export const MAX_JSON_DEPTH = 128;
+export const MAX_JSON_NODES = 200_000;
 
 type JsonNode =
   | { kind: "object"; entries: Array<{ key: string; keyRaw: string; value: JsonNode }> }
@@ -30,13 +31,9 @@ export function analyzeJson(input: string, indent: 2 | 4 = 2): JsonAnalysis {
   assertTextLimit(input);
   const parser = new JsonParser(input);
   const root = parser.parse();
-  const depth = getDepth(root);
-  if (depth > MAX_JSON_DEPTH) {
-    throw new ToolboxInputError("json_too_deep", `JSON 嵌套不能超过 ${MAX_JSON_DEPTH} 层。`);
-  }
   return {
     duplicateKeys: parser.duplicateKeys,
-    depth,
+    depth: parser.maxDepth,
     nodeCount: parser.nodeCount,
     formatted: renderJson(root, indent, 0),
     compact: renderJson(root, 0, 0),
@@ -47,6 +44,7 @@ class JsonParser {
   private index = 0;
   readonly duplicateKeys: string[] = [];
   nodeCount = 0;
+  maxDepth = 0;
 
   constructor(private readonly input: string) {}
 
@@ -58,11 +56,12 @@ class JsonParser {
     return value;
   }
 
-  private parseValue(): JsonNode {
+  private parseValue(depth = 0): JsonNode {
     this.skipWhitespace();
+    this.reserveNode();
     const char = this.input[this.index];
-    if (char === "{") return this.parseObject();
-    if (char === "[") return this.parseArray();
+    if (char === "{") return this.parseObject(depth + 1);
+    if (char === "[") return this.parseArray(depth + 1);
     if (char === '"') return this.parseString("string");
     if (char === "-" || (char >= "0" && char <= "9")) return this.parseNumber();
     if (this.input.startsWith("true", this.index)) return this.parseLiteral("true");
@@ -71,14 +70,15 @@ class JsonParser {
     this.fail("这里不是有效的 JSON 值。");
   }
 
-  private parseObject(): JsonNode {
+  private parseObject(depth: number): JsonNode {
+    this.assertDepth(depth);
     this.index += 1;
     const entries: Array<{ key: string; keyRaw: string; value: JsonNode }> = [];
     const keys = new Set<string>();
     this.skipWhitespace();
     if (this.input[this.index] === "}") {
       this.index += 1;
-      return this.count({ kind: "object", entries });
+      return { kind: "object", entries };
     }
     while (this.index < this.input.length) {
       this.skipWhitespace();
@@ -90,11 +90,11 @@ class JsonParser {
       this.skipWhitespace();
       if (this.input[this.index] !== ":") this.fail("对象键后缺少冒号。");
       this.index += 1;
-      entries.push({ key, keyRaw: keyNode.raw, value: this.parseValue() });
+      entries.push({ key, keyRaw: keyNode.raw, value: this.parseValue(depth) });
       this.skipWhitespace();
       if (this.input[this.index] === "}") {
         this.index += 1;
-        return this.count({ kind: "object", entries });
+        return { kind: "object", entries };
       }
       if (this.input[this.index] !== ",") this.fail("对象成员之间缺少逗号。");
       this.index += 1;
@@ -104,20 +104,21 @@ class JsonParser {
     this.fail("对象没有闭合。");
   }
 
-  private parseArray(): JsonNode {
+  private parseArray(depth: number): JsonNode {
+    this.assertDepth(depth);
     this.index += 1;
     const items: JsonNode[] = [];
     this.skipWhitespace();
     if (this.input[this.index] === "]") {
       this.index += 1;
-      return this.count({ kind: "array", items });
+      return { kind: "array", items };
     }
     while (this.index < this.input.length) {
-      items.push(this.parseValue());
+      items.push(this.parseValue(depth));
       this.skipWhitespace();
       if (this.input[this.index] === "]") {
         this.index += 1;
-        return this.count({ kind: "array", items });
+        return { kind: "array", items };
       }
       if (this.input[this.index] !== ",") this.fail("数组成员之间缺少逗号。");
       this.index += 1;
@@ -154,22 +155,28 @@ class JsonParser {
     const match = this.input.slice(this.index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
     if (!match) this.fail("数字格式无效。", start);
     this.index += match[0].length;
-    return this.count({ kind: "number", raw: match[0] });
+    return { kind: "number", raw: match[0] };
   }
 
   private parseLiteral(literal: "true" | "false" | "null"): JsonNode {
     this.index += literal.length;
-    return this.count({ kind: "literal", raw: literal });
+    return { kind: "literal", raw: literal };
   }
 
   private skipWhitespace(): void {
     while (isJsonWhitespace(this.input[this.index] ?? "")) this.index += 1;
   }
 
-  private count<T extends JsonNode>(node: T): T {
+  private reserveNode(): void {
     this.nodeCount += 1;
-    if (this.nodeCount > 200_000) this.fail("JSON 结构过大。", this.index);
-    return node;
+    if (this.nodeCount > MAX_JSON_NODES) this.fail("JSON 结构过大。", this.index);
+  }
+
+  private assertDepth(depth: number): void {
+    if (depth > MAX_JSON_DEPTH) {
+      throw new ToolboxInputError("json_too_deep", `JSON 嵌套不能超过 ${MAX_JSON_DEPTH} 层。`);
+    }
+    this.maxDepth = Math.max(this.maxDepth, depth);
   }
 
   private fail(message: string, position = this.index): never {
@@ -182,12 +189,6 @@ class JsonParser {
 
 function isJsonWhitespace(char: string): boolean {
   return char === " " || char === "\n" || char === "\r" || char === "\t";
-}
-
-function getDepth(node: JsonNode): number {
-  if (node.kind === "object") return 1 + Math.max(0, ...node.entries.map((entry) => getDepth(entry.value)));
-  if (node.kind === "array") return 1 + Math.max(0, ...node.items.map(getDepth));
-  return 0;
 }
 
 function renderJson(node: JsonNode, indent: number, level: number): string {

@@ -49,15 +49,38 @@ export function encodeBase64(value: string, urlSafe = false): string {
 
 export function decodeBase64(value: string, urlSafe = false): string {
   assertTextLimit(value);
-  const normalized = urlSafe ? value.replace(/-/g, "+").replace(/_/g, "/") : value;
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="))) {
+  const normalized = normalizeBase64(value, urlSafe);
+  let binary: string;
+  try {
+    binary = atob(normalized);
+  } catch {
     throw new ToolboxInputError("invalid_base64", "Base64 字符或 padding 无效。 ");
   }
   try {
-    const binary = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch { throw new ToolboxInputError("invalid_utf8", "Base64 内容不是有效 UTF-8 文本。 "); }
+}
+
+function normalizeBase64(value: string, urlSafe: boolean): string {
+  if (!urlSafe) {
+    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw new ToolboxInputError("invalid_base64", "Base64 字符或 padding 无效。 ");
+    }
+    return value;
+  }
+
+  if (value.includes("=")) {
+    if (!/^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2}==|[A-Za-z0-9_-]{3}=)?$/.test(value)) {
+      throw new ToolboxInputError("invalid_base64", "Base64 字符或 padding 无效。 ");
+    }
+    return value.replace(/-/g, "+").replace(/_/g, "/");
+  }
+  if (!/^[A-Za-z0-9_-]*$/.test(value) || value.length % 4 === 1) {
+    throw new ToolboxInputError("invalid_base64", "Base64 字符或 padding 无效。 ");
+  }
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  return normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
 }
 
 export function convertUnixTime(value: string, unit: "seconds" | "milliseconds"): { utc: string; local: string; epochMilliseconds: number } {
