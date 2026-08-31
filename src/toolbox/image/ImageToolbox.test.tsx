@@ -170,7 +170,7 @@ describe("batch image ZIP delivery", () => {
     fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
     await screen.findByRole("img");
 
-    const options = mocks.mark.mock.calls.at(-1)?.[0] as { watermarks: Array<{ position?: unknown; layout?: unknown; style?: Record<string, unknown> }> };
+    const options = mocks.mark.mock.calls[mocks.mark.mock.calls.length - 1]?.[0] as { watermarks: Array<{ position?: unknown; layout?: unknown; style?: Record<string, unknown> }> };
     expect(options.watermarks[0]).toMatchObject({
       layout: { type: "tile", gapX: 80, gapY: 80, stagger: true },
       style: { fontSize: 36, rotate: 25, strokeStyle: { color: "#00000099", width: 3 } },
@@ -187,7 +187,7 @@ describe("batch image ZIP delivery", () => {
     fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
     await screen.findByRole("img");
 
-    const options = mocks.mark.mock.calls.at(-1)?.[0] as { watermarks: Array<{ text: string; alpha: number; style?: { color?: string } }> };
+    const options = mocks.mark.mock.calls[mocks.mark.mock.calls.length - 1]?.[0] as { watermarks: Array<{ text: string; alpha: number; style?: { color?: string } }> };
     expect(options.watermarks[0]).toMatchObject({ text: "DRAFT · DO NOT DISTRIBUTE", alpha: 0.6, style: { color: "#ff6b6b" } });
   });
 
