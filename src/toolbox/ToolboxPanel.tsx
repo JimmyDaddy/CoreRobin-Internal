@@ -287,53 +287,62 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
 }
 
 function JsonTool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [indent, setIndent] = useState<2 | 4>(2); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [duplicates, setDuplicates] = useState<string[]>([]);
-  const run = () => { try { const result = analyzeJson(input, indent); setOutput(result.formatted); setDuplicates(result.duplicateKeys); setError(""); } catch (reason) { setOutput(""); setError(userFacingError(reason)); } };
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); setError(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder={'{"name":"CoreRobin","count":1}'} /><div className="toolbox-inline-actions"><label>缩进 <select value={indent} onChange={(event) => setIndent(Number(event.target.value) as 2 | 4)}><option value="2">2 空格</option><option value="4">4 空格</option></select></label><button className="button button--primary" type="button" onClick={run}><Play size={14} />校验并格式化</button><button className="button button--secondary" type="button" onClick={() => { try { setOutput(analyzeJson(input, indent).compact); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}>压缩</button></div>{duplicates.length > 0 ? <p className="toolbox-warning"><CircleAlert size={15} />重复键：{duplicates.join(", ")}（保留原文顺序，不擅自合并）</p> : null}<ResultBox value={output} /></ToolLayout>;
+  const run = () => { try { const result = analyzeJson(input, indent); setOutput(result.formatted); setDuplicates(result.duplicateKeys); setError(""); } catch (reason) { setOutput(""); setError(localizedError(reason, t)); } };
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); setError(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder={'{"name":"CoreRobin","count":1}'} /><div className="toolbox-inline-actions"><label>{t("local.json.indent")} <select value={indent} onChange={(event) => setIndent(Number(event.target.value) as 2 | 4)}><option value="2">{t("local.json.spaces", { count: 2 })}</option><option value="4">{t("local.json.spaces", { count: 4 })}</option></select></label><button className="button button--primary" type="button" onClick={run}><Play size={14} />{t("local.json.format")}</button><button className="button button--secondary" type="button" onClick={() => { try { setOutput(analyzeJson(input, indent).compact); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}>{t("local.json.compact")}</button></div>{duplicates.length > 0 ? <p className="toolbox-warning"><CircleAlert size={15} />{t("local.json.duplicate", { keys: duplicates.join(", ") })}</p> : null}<ResultBox value={output} /></ToolLayout>;
 }
 
 function UrlTool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [mode, setMode] = useState<"encode" | "decode" | "inspect">("inspect"); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  const run = () => { try { if (mode === "encode") setOutput(encodeURIComponent(input)); else if (mode === "decode") setOutput(decodeURIComponent(input)); else setOutput(JSON.stringify(analyzeUrl(input), null, 2)); setError(""); } catch (reason) { setError(userFacingError(reason)); } };
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="https://example.test/path?a=1&a=two+words" /><div className="toolbox-inline-actions"><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="inspect">结构查看</option><option value="encode">编码参数</option><option value="decode">解码参数</option></select><button className="button button--primary" type="button" onClick={run}><Play size={14} />执行</button></div><p className="toolbox-hint">参数按原始百分号规则处理，+ 保留为加号；不会打开 URL。</p><ResultBox value={output} /></ToolLayout>;
+  const run = () => { try { if (mode === "encode") setOutput(encodeURIComponent(input)); else if (mode === "decode") setOutput(decodeURIComponent(input)); else setOutput(JSON.stringify(analyzeUrl(input), null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } };
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="https://example.test/path?a=1&a=two+words" /><div className="toolbox-inline-actions"><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="inspect">{t("local.url.inspect")}</option><option value="encode">{t("local.url.encode")}</option><option value="decode">{t("local.url.decode")}</option></select><button className="button button--primary" type="button" onClick={run}><Play size={14} />{t("local.run")}</button></div><p className="toolbox-hint">{t("local.url.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function Base64Tool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [urlSafe, setUrlSafe] = useState(false); const [decode, setDecode] = useState(false); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder={decode ? "SGVsbG8=" : "输入 UTF-8 文本"} /><div className="toolbox-inline-actions"><label><input type="checkbox" checked={decode} onChange={(event) => setDecode(event.target.checked)} />解码</label><label><input type="checkbox" checked={urlSafe} onChange={(event) => setUrlSafe(event.target.checked)} />Base64URL</label><button className="button button--primary" type="button" onClick={() => { try { setOutput(decode ? decodeBase64(input, urlSafe) : encodeBase64(input, urlSafe)); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Play size={14} />转换</button></div><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder={decode ? t("local.base64.encodedPlaceholder") : t("local.base64.textPlaceholder")} /><div className="toolbox-inline-actions"><label><input type="checkbox" checked={decode} onChange={(event) => setDecode(event.target.checked)} />{t("local.base64.decode")}</label><label><input type="checkbox" checked={urlSafe} onChange={(event) => setUrlSafe(event.target.checked)} />{t("local.base64.urlSafe")}</label><button className="button button--primary" type="button" onClick={() => { try { setOutput(decode ? decodeBase64(input, urlSafe) : encodeBase64(input, urlSafe)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Play size={14} />{t("local.convert")}</button></div><ResultBox value={output} /></ToolLayout>;
 }
 
 function TimeTool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [unit, setUnit] = useState<"seconds" | "milliseconds">("seconds"); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Unix 数字或带时区 ISO 时间" /><div className="toolbox-inline-actions"><select value={unit} onChange={(event) => setUnit(event.target.value as typeof unit)}><option value="seconds">Unix 秒</option><option value="milliseconds">Unix 毫秒</option></select><button className="button button--primary" type="button" onClick={() => { try { const value = input.includes("T") ? convertIsoTime(input) : convertUnixTime(input, unit); setOutput(JSON.stringify(value, null, 2)); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Timer size={14} />转换</button></div><p className="toolbox-hint">结果并列显示 UTC 与当前本地时区；不根据位数猜单位。</p><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.time.placeholder")} /><div className="toolbox-inline-actions"><select value={unit} onChange={(event) => setUnit(event.target.value as typeof unit)}><option value="seconds">{t("local.time.seconds")}</option><option value="milliseconds">{t("local.time.milliseconds")}</option></select><button className="button button--primary" type="button" onClick={() => { try { const value = input.includes("T") ? convertIsoTime(input) : convertUnixTime(input, unit); setOutput(JSON.stringify(value, null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Timer size={14} />{t("local.convert")}</button></div><p className="toolbox-hint">{t("local.time.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function UuidTool() {
+  const { t } = useTranslation("toolbox");
   const [count, setCount] = useState("1"); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => setOutput("")}><div className="toolbox-inline-actions"><label>数量 <input type="number" min="1" max="100" value={count} onChange={(event) => setCount(event.target.value)} /></label><button className="button button--primary" type="button" onClick={() => { try { setOutput(generateUuidV4(Number(count)).join("\n")); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Hash size={14} />生成 UUID v4</button></div><p className="toolbox-hint">使用系统安全随机源；UUID 不是密码。</p><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => setOutput("")}><div className="toolbox-inline-actions"><label>{t("local.uuid.count")} <input type="number" min="1" max="100" value={count} onChange={(event) => setCount(event.target.value)} /></label><button className="button button--primary" type="button" onClick={() => { try { setOutput(generateUuidV4(Number(count)).join("\n")); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Hash size={14} />{t("local.uuid.generate")}</button></div><p className="toolbox-hint">{t("local.uuid.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function QrTool() {
+  const { t } = useTranslation("toolbox");
   const [mode, setMode] = useState<"text" | "wifi">("text"); const [text, setText] = useState(""); const [ssid, setSsid] = useState(""); const [password, setPassword] = useState(""); const [security, setSecurity] = useState("WPA"); const [image, setImage] = useState(""); const [error, setError] = useState("");
   const payload = mode === "text" ? text : `WIFI:T:${security};S:${wifiEscape(ssid)};P:${wifiEscape(password)};H:false;;`;
-  return <ToolLayout error={error} onClear={() => { setText(""); setSsid(""); setPassword(""); setImage(""); }}><div className="toolbox-inline-actions"><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="text">文本 / URL</option><option value="wifi">Wi-Fi（手填）</option></select></div>{mode === "text" ? <textarea className="toolbox-input" value={text} onChange={(event) => setText(event.target.value)} placeholder="输入文本或 URL（不会自动打开）" /> : <div className="toolbox-form-grid"><input className="toolbox-input" value={ssid} onChange={(event) => setSsid(event.target.value)} placeholder="SSID" /><input className="toolbox-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="密码（可留空）" /><select className="toolbox-input" value={security} onChange={(event) => setSecurity(event.target.value)}><option value="WPA">WPA/WPA2</option><option value="nopass">开放网络</option></select></div>}<div className="toolbox-inline-actions"><button className="button button--primary" type="button" onClick={() => { if (new TextEncoder().encode(payload).byteLength > 2048) { setError("二维码载荷不能超过 2 KiB。"); return; } void QRCode.toDataURL(payload, { width: 320, margin: 2 }).then(setImage).catch((reason: unknown) => setError(userFacingError(reason))); }}><QrCode size={14} />生成 PNG</button></div>{mode === "wifi" ? <p className="toolbox-warning"><ShieldCheck size={15} />二维码包含 Wi-Fi 凭据，请确认保存位置；CoreRobin 不读取钥匙串。</p> : null}{image ? <div className="toolbox-qr-result"><img src={image} alt="生成的二维码" /><a className="button button--secondary" download="corerobin-qr.png" href={image}><Download size={14} />保存 PNG</a></div> : null}</ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setText(""); setSsid(""); setPassword(""); setImage(""); }}><div className="toolbox-inline-actions"><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="text">{t("local.qr.text")}</option><option value="wifi">{t("local.qr.wifi")}</option></select></div>{mode === "text" ? <textarea className="toolbox-input" value={text} onChange={(event) => setText(event.target.value)} placeholder={t("local.qr.textPlaceholder")} /> : <div className="toolbox-form-grid"><input className="toolbox-input" value={ssid} onChange={(event) => setSsid(event.target.value)} placeholder={t("local.qr.ssid")} /><input className="toolbox-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("local.qr.password")} /><select className="toolbox-input" value={security} onChange={(event) => setSecurity(event.target.value)}><option value="WPA">{t("local.qr.wpa")}</option><option value="nopass">{t("local.qr.open")}</option></select></div>}<div className="toolbox-inline-actions"><button className="button button--primary" type="button" onClick={() => { if (new TextEncoder().encode(payload).byteLength > 2048) { setError(t("local.qr.tooLarge")); return; } void QRCode.toDataURL(payload, { width: 320, margin: 2 }).then(setImage).catch((reason: unknown) => setError(localizedError(reason, t))); }}><QrCode size={14} />{t("local.qr.generate")}</button></div>{mode === "wifi" ? <p className="toolbox-warning"><ShieldCheck size={15} />{t("local.qr.warning")}</p> : null}{image ? <div className="toolbox-qr-result"><img src={image} alt={t("local.qr.alt")} /><a className="button button--secondary" download="corerobin-qr.png" href={image}><Download size={14} />{t("local.qr.save")}</a></div> : null}</ToolLayout>;
 }
 
 function TextHashTool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="输入 UTF-8 文本（最多 1 MiB）" /><button className="button button--primary" type="button" onClick={() => { try { assertTextLimit(input); void crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)).then((digest) => setOutput([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))).catch((reason: unknown) => setError(userFacingError(reason))); } catch (reason) { setError(userFacingError(reason)); } }}><Hash size={14} />计算 SHA-256</button><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.textHash.placeholder")} /><button className="button button--primary" type="button" onClick={() => { try { assertTextLimit(input); void crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)).then((digest) => setOutput([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))).catch((reason: unknown) => setError(localizedError(reason, t))); } catch (reason) { setError(localizedError(reason, t)); } }}><Hash size={14} />{t("local.textHash.compute")}</button><ResultBox value={output} /></ToolLayout>;
 }
 
 
 function OccupancyTool() {
+  const { t } = useTranslation("toolbox");
   const [targetName, setTargetName] = useState(""); const [path, setPath] = useState(""); const [scope, setScope] = useState<"file" | "volume">("file"); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
-  const choose = async (nextScope: "file" | "volume") => { setError(""); if (!isDesktopRuntime()) { setError("占用诊断需要桌面原生运行时。"); return; } const selected = await open({ multiple: false, directory: nextScope === "volume" }); if (typeof selected === "string") { setScope(nextScope); setPath(selected); setTargetName(selected.split(/[\\/]/).filter(Boolean).pop() ?? selected); } };
-  const run = async () => { if (!path) { setError(scope === "file" ? "请先选择一个普通文件。" : "请先选择一个挂载目录。"); return; } setRunning(true); setError(""); setOutput(""); try { const result = scope === "file" ? await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }) : await scanToolboxVolumeOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  const choose = async (nextScope: "file" | "volume") => { setError(""); if (!isDesktopRuntime()) { setError(t("occupancy.desktopOnly")); return; } const selected = await open({ multiple: false, directory: nextScope === "volume" }); if (typeof selected === "string") { setScope(nextScope); setPath(selected); setTargetName(selected.split(/[\\/]/).filter(Boolean).pop() ?? selected); } };
+  const run = async () => { if (!path) { setError(t(scope === "file" ? "occupancy.fileRequired" : "occupancy.volumeRequired")); return; } setRunning(true); setError(""); setOutput(""); try { const result = scope === "file" ? await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }) : await scanToolboxVolumeOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
   const cancel = async () => { try { await cancelToolboxOccupancy(); } catch (reason) { setError(userFacingError(reason)); } };
-  return <ToolLayout error={error} onClear={() => { void cancel(); setTargetName(""); setPath(""); setScope("file"); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose("file")}><FileCheck2 size={15} />选择普通文件</button><button className="button button--secondary" type="button" onClick={() => void choose("volume")}><FileCheck2 size={15} />选择外盘挂载点</button><span>{targetName || "未选择目标"}</span></div><div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run()}><Network size={14} />{running ? "正在诊断…" : scope === "file" ? "查找文件使用者" : "查找外盘使用者"}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancel()}>停止诊断</button> : null}</div><p className="toolbox-hint">文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。</p><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { void cancel(); setTargetName(""); setPath(""); setScope("file"); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose("file")}><FileCheck2 size={15} />{t("occupancy.selectFile")}</button><button className="button button--secondary" type="button" onClick={() => void choose("volume")}><FileCheck2 size={15} />{t("occupancy.selectVolume")}</button><span>{targetName || t("occupancy.noTarget")}</span></div><div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run()}><Network size={14} />{running ? t("occupancy.running") : scope === "file" ? t("occupancy.fileAction") : t("occupancy.volumeAction")}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancel()}>{t("occupancy.stop")}</button> : null}</div><p className="toolbox-hint">{t("occupancy.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function KeepAwakeTool() {
+  const { t } = useTranslation("toolbox");
   const [duration, setDuration] = useState("60"); const [state, setState] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
   useEffect(() => () => { if (isDesktopRuntime()) void cancelToolboxKeepAwake().catch(() => undefined); }, []);
   useEffect(() => {
@@ -355,30 +364,33 @@ function KeepAwakeTool() {
     };
   }, []);
   const start = async () => {
-    if (!isDesktopRuntime()) { setError("限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。"); return; }
+    if (!isDesktopRuntime()) { setError(t("keepAwake.desktopOnly")); return; }
     const durationMinutes = Number(duration);
-    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) { setError("保活时长必须是 1 分钟到 12 小时。"); return; }
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) { setError(t("keepAwake.invalidDuration")); return; }
     setRunning(true); setError("");
     try { setState(JSON.stringify(await startToolboxKeepAwake({ requestId: crypto.randomUUID(), durationMinutes }), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); }
   };
   const stop = async () => { setRunning(true); try { setState(JSON.stringify(await cancelToolboxKeepAwake(), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>时长 <select value={duration} onChange={(event) => setDuration(event.target.value)}><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option><option value="720">12 小时</option></select></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />开始保活</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>停止并释放</button></div><p className="toolbox-hint">只申请临时系统断言，不修改电源计划、不模拟输入；独立截止线程每 15 秒检查并在到期/取消时释放。当前实机证据范围为本机 macOS。</p><ResultBox value={state} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>{t("keepAwake.durationLabel")} <select value={duration} onChange={(event) => setDuration(event.target.value)}><option value="30">{t("keepAwake.minutes", { count: 30 })}</option><option value="60">{t("keepAwake.minutes", { count: 60 })}</option><option value="120">{t("keepAwake.minutes", { count: 120 })}</option><option value="720">{t("keepAwake.hours", { count: 12 })}</option></select></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("keepAwake.start")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>{t("keepAwake.stop")}</button></div><p className="toolbox-hint">{t("keepAwake.hint")}</p><ResultBox value={state} /></ToolLayout>;
 }
 
 function RegexTool() {
+  const { t } = useTranslation("toolbox");
   const [pattern, setPattern] = useState("(?<word>\\w+)"); const [flags, setFlags] = useState("gu"); const [sample, setSample] = useState("CoreRobin 工具箱"); const [replacement, setReplacement] = useState("[$<word>]"); const [analysis, setAnalysis] = useState<RegexAnalysis | null>(null); const [result, setResult] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
-  const run = async () => { setRunning(true); setError(""); try { const next = analyzeRegex(pattern, flags); setAnalysis(next); if (!next.supported) throw new ToolboxInputError("invalid_regex", next.syntaxError ?? "正则语法无效。 "); const value = await runRegexInWorker(pattern, flags, sample, replacement); setResult(JSON.stringify(value, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setAnalysis(null); setResult(""); }}><div className="toolbox-form-grid"><input className="toolbox-input toolbox-input--code" value={pattern} onChange={(event) => setPattern(event.target.value)} aria-label="正则表达式" /><input className="toolbox-input toolbox-input--code" value={flags} onChange={(event) => setFlags(event.target.value)} aria-label="正则 flags" /></div><textarea className="toolbox-input" value={sample} onChange={(event) => setSample(event.target.value)} placeholder="测试文本（最多 256 KiB）" /><input className="toolbox-input" value={replacement} onChange={(event) => setReplacement(event.target.value)} placeholder="文本替换模板，不执行 JavaScript" /><button className="button button--primary" disabled={running} type="button" onClick={() => void run()}><TerminalSquare size={14} />{running ? "正在隔离执行…" : "诊断并匹配"}</button>{analysis ? <div className="toolbox-regex-tree"><strong>结构树（语法关系，不是回溯轨迹）</strong><RegexTree node={analysis.ast} /><ul>{analysis.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : null}<ResultBox value={result} /></ToolLayout>;
+  const run = async () => { setRunning(true); setError(""); try { const next = analyzeRegex(pattern, flags); setAnalysis(next); if (!next.supported) throw new ToolboxInputError("invalid_regex", next.syntaxError ?? t("errors.invalidRegex")); const value = await runRegexInWorker(pattern, flags, sample, replacement); setResult(JSON.stringify(value, null, 2)); } catch (reason) { setError(localizedError(reason, t)); } finally { setRunning(false); } };
+  return <ToolLayout error={error} onClear={() => { setAnalysis(null); setResult(""); }}><div className="toolbox-form-grid"><input className="toolbox-input toolbox-input--code" value={pattern} onChange={(event) => setPattern(event.target.value)} aria-label={t("local.regex.patternLabel")} /><input className="toolbox-input toolbox-input--code" value={flags} onChange={(event) => setFlags(event.target.value)} aria-label={t("local.regex.flagsLabel")} /></div><textarea className="toolbox-input" value={sample} onChange={(event) => setSample(event.target.value)} placeholder={t("local.regex.samplePlaceholder")} /><input className="toolbox-input" value={replacement} onChange={(event) => setReplacement(event.target.value)} placeholder={t("local.regex.replacementPlaceholder")} /><button className="button button--primary" disabled={running} type="button" onClick={() => void run()}><TerminalSquare size={14} />{running ? t("local.regex.running") : t("local.regex.run")}</button>{analysis ? <div className="toolbox-regex-tree"><strong>{t("local.regex.tree")}</strong><RegexTree node={analysis.ast} /><ul>{analysis.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : null}<ResultBox value={result} /></ToolLayout>;
 }
 
 function RegexTree({ node }: { node: RegexAnalysis["ast"] }) { return <details open className="toolbox-regex-node"><summary>{node.kind} · {node.label}</summary>{node.children.map((child) => <RegexTree key={child.id} node={child} />)}</details>; }
 
 function ColorTool() {
+  const { t } = useTranslation("toolbox");
   const [input, setInput] = useState("#f15a43"); const [output, setOutput] = useState<Record<string, string> | null>(null); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(null); }}><div className="toolbox-color-input"><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)" /><span style={{ background: output ? output.hex : input }} /></div><button className="button button--primary" type="button" onClick={() => { try { const color = parseColor(input); setOutput(formatColor(color)); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Wrench size={14} />转换颜色</button>{output ? <ResultBox value={Object.entries(output).map(([key, value]) => `${key}: ${value}`).join("\n")} /> : null}</ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(null); }}><div className="toolbox-color-input"><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.color.placeholder")} /><span style={{ background: output ? output.hex : input }} /></div><button className="button button--primary" type="button" onClick={() => { try { const color = parseColor(input); setOutput(formatColor(color)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Wrench size={14} />{t("local.color.convert")}</button>{output ? <ResultBox value={Object.entries(output).map(([key, value]) => `${key}: ${value}`).join("\n")} /> : null}</ToolLayout>;
 }
 
 function ScheduleTool() {
+  const { t } = useTranslation("toolbox");
   const [kind, setKind] = useState<"once" | "daily" | "weekly" | "cron">("daily");
   const [actionKind, setActionKind] = useState<"reminder" | "keepAwake">("reminder");
   const [title, setTitle] = useState("");
@@ -441,7 +453,7 @@ function ScheduleTool() {
 
   const create = async () => {
     if (!isDesktopRuntime()) {
-      setError("定时规则需要桌面原生运行时；浏览器演示不会保存规则。");
+      setError(t("schedule.desktopOnly"));
       return;
     }
     setRunning(true);
@@ -452,30 +464,30 @@ function ScheduleTool() {
       const numericWeekday = Number(weekday);
       const durationMinutes = Number(duration);
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (!timeZone) throw new ToolboxInputError("time_zone_unavailable", "系统未提供 IANA 时区，无法预览定时规则。");
+      if (!timeZone) throw new ToolboxInputError("time_zone_unavailable", t("schedule.timeZoneUnavailable"));
       let trigger;
       if (kind === "once") {
         const atMs = new Date(onceAt).getTime();
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "once", atUtcMs: atMs } });
-        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("invalid_once_time", "请选择未来 365 天内的有效日期和时间。");
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("invalid_once_time", t("schedule.invalidOnce"));
         trigger = { kind: "once" as const, atMs };
       } else if (kind === "daily") {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "daily", hour: numericHour, minute: numericMinute } });
-        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该规则在搜索范围内没有下一次触发时间。");
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "daily" as const, hour: numericHour, minute: numericMinute, nextRunAtMs };
       } else if (kind === "weekly") {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "weekly", weekday: numericWeekday, hour: numericHour, minute: numericMinute } });
-        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该规则在搜索范围内没有下一次触发时间。");
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "weekly" as const, weekday: numericWeekday, hour: numericHour, minute: numericMinute, nextRunAtMs };
       } else {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "cron", expression: cron } });
-        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该 Cron 在搜索范围内没有下一次触发时间。");
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         trigger = { kind: "cron" as const, expression: cron, nextRunAtMs: preview.occurrenceAtMs[0] };
       }
       if (actionKind === "keepAwake" && (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720)) {
-        throw new ToolboxInputError("invalid_duration", "保活时长必须是 1 分钟到 12 小时。");
+        throw new ToolboxInputError("invalid_duration", t("schedule.invalidDuration"));
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
       const request = { requestId: crypto.randomUUID(), timeZone, title: title || undefined, action, trigger };
@@ -516,25 +528,26 @@ function ScheduleTool() {
 
   return <ToolLayout error={error} onClear={() => { setSnapshot(null); setEditingScheduleId(null); setError(""); }}>
     <div className="toolbox-form-grid">
-      <label>规则 <select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="once">一次性</option><option value="daily">每天</option><option value="weekly">每周</option><option value="cron">Cron 草稿</option></select></label>
-      <label>意图 <select value={actionKind} onChange={(event) => setActionKind(event.target.value as typeof actionKind)}><option value="reminder">提醒</option><option value="keepAwake">限时保活</option></select></label>
-      <input className="toolbox-input" value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder="可选标题（最多 80 字符）" />
+      <label>{t("schedule.rule")} <select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="once">{t("schedule.once")}</option><option value="daily">{t("schedule.daily")}</option><option value="weekly">{t("schedule.weekly")}</option><option value="cron">{t("schedule.cron")}</option></select></label>
+      <label>{t("schedule.intent")} <select value={actionKind} onChange={(event) => setActionKind(event.target.value as typeof actionKind)}><option value="reminder">{t("schedule.reminder")}</option><option value="keepAwake">{t("schedule.keepAwake")}</option></select></label>
+      <input className="toolbox-input" value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder={t("schedule.titlePlaceholder")} />
     </div>
-    {kind === "once" ? <label>触发时间 <input className="toolbox-input" type="datetime-local" value={onceAt} onChange={(event) => setOnceAt(event.target.value)} /></label> : null}
-    {kind === "cron" ? <input className="toolbox-input toolbox-input--code" value={cron} onChange={(event) => setCron(event.target.value)} placeholder="五段 Cron，例如 0 9 * * 1-5" /> : null}
+    {kind === "once" ? <label>{t("schedule.triggerAt")} <input className="toolbox-input" type="datetime-local" value={onceAt} onChange={(event) => setOnceAt(event.target.value)} /></label> : null}
+    {kind === "cron" ? <input className="toolbox-input toolbox-input--code" value={cron} onChange={(event) => setCron(event.target.value)} placeholder={t("schedule.cronPlaceholder")} /> : null}
     {kind === "daily" || kind === "weekly" ? <div className="toolbox-form-grid">
-      <label>小时 <input className="toolbox-input" inputMode="numeric" value={hour} onChange={(event) => setHour(event.target.value)} /></label>
-      <label>分钟 <input className="toolbox-input" inputMode="numeric" value={minute} onChange={(event) => setMinute(event.target.value)} /></label>
-      {kind === "weekly" ? <label>星期 <select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">周日</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option></select></label> : null}
+      <label>{t("schedule.hour")} <input className="toolbox-input" inputMode="numeric" value={hour} onChange={(event) => setHour(event.target.value)} /></label>
+      <label>{t("schedule.minute")} <input className="toolbox-input" inputMode="numeric" value={minute} onChange={(event) => setMinute(event.target.value)} /></label>
+      {kind === "weekly" ? <label>{t("schedule.weekday")} <select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">{t("schedule.weekdays.0")}</option><option value="1">{t("schedule.weekdays.1")}</option><option value="2">{t("schedule.weekdays.2")}</option><option value="3">{t("schedule.weekdays.3")}</option><option value="4">{t("schedule.weekdays.4")}</option><option value="5">{t("schedule.weekdays.5")}</option><option value="6">{t("schedule.weekdays.6")}</option></select></label> : null}
     </div> : null}
-    {actionKind === "keepAwake" ? <label>保活分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
-    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />{editingScheduleId ? "保存修改" : "创建规则"}</button>{editingScheduleId ? <button className="button button--secondary" disabled={running} type="button" onClick={() => setEditingScheduleId(null)}>取消编辑</button> : null}<button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
-    <p className="toolbox-hint">创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。</p>
-    {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? "未命名"} · {rule.status} · 下次预览 {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running} type="button" onClick={() => beginEdit(rule)}>编辑</button><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>暂停</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>删除</button></div>)}</> : null}
+    {actionKind === "keepAwake" ? <label>{t("schedule.keepAwakeMinutes")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />{editingScheduleId ? t("schedule.save") : t("schedule.create")}</button>{editingScheduleId ? <button className="button button--secondary" disabled={running} type="button" onClick={() => setEditingScheduleId(null)}>{t("schedule.cancelEdit")}</button> : null}<button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("schedule.refresh")}</button></div>
+    <p className="toolbox-hint">{t("schedule.hint")}</p>
+    {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? t("schedule.unnamed")} · {rule.status} · {t("schedule.nextPreview")} {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running} type="button" onClick={() => beginEdit(rule)}>{t("schedule.edit")}</button><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>{t("schedule.pause")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>{t("schedule.delete")}</button></div>)}</> : null}
   </ToolLayout>;
 }
 
 function ProcessWatchTool() {
+  const { t } = useTranslation("toolbox");
   const [pid, setPid] = useState("");
   const [birthToken, setBirthToken] = useState("");
   const [duration, setDuration] = useState("240");
@@ -545,7 +558,7 @@ function ProcessWatchTool() {
 
   const refresh = async () => {
     if (!isDesktopRuntime()) {
-      setError("进程退出提醒需要桌面原生运行时。");
+      setError(t("processWatch.desktopOnly"));
       return;
     }
     try {
@@ -560,17 +573,17 @@ function ProcessWatchTool() {
 
   const start = async () => {
     if (!isDesktopRuntime()) {
-      setError("进程退出提醒需要桌面原生运行时。");
+      setError(t("processWatch.desktopOnly"));
       return;
     }
     const numericPid = Number(pid);
     const durationMinutes = Number(duration);
     if (!Number.isInteger(numericPid) || numericPid <= 0 || !birthToken.trim()) {
-      setError("请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。");
+      setError(t("processWatch.identityRequired"));
       return;
     }
     if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) {
-      setError("观察时长必须是 1 分钟到 12 小时。");
+      setError(t("processWatch.invalidDuration"));
       return;
     }
     setRunning(true);
@@ -600,11 +613,11 @@ function ProcessWatchTool() {
   };
 
   return <ToolLayout error={error} onClear={() => { setPid(""); setBirthToken(""); setWatches([]); setKeepAwake(false); setError(""); }}>
-    <div className="toolbox-form-grid"><label>PID <input className="toolbox-input" inputMode="numeric" value={pid} onChange={(event) => setPid(event.target.value)} placeholder="已选进程 PID" /></label><label>birth token <input className="toolbox-input toolbox-input--code" value={birthToken} onChange={(event) => setBirthToken(event.target.value)} placeholder="从进程详情复制，拒绝同名替代" /></label><label>观察分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label></div>
-    <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />观察期间附加限时保活（低电量独立释放）</label>
-    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />开始只读观察</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>刷新状态</button></div>
-    <p className="toolbox-hint">只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。</p>
-    {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {watch.status} · 截止 {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>取消观察</button></div>)}
+    <div className="toolbox-form-grid"><label>{t("processWatch.pid")} <input className="toolbox-input" inputMode="numeric" value={pid} onChange={(event) => setPid(event.target.value)} placeholder={t("processWatch.pidPlaceholder")} /></label><label>{t("processWatch.birthToken")} <input className="toolbox-input toolbox-input--code" value={birthToken} onChange={(event) => setBirthToken(event.target.value)} placeholder={t("processWatch.birthTokenPlaceholder")} /></label><label>{t("processWatch.duration")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label></div>
+    <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />{t("processWatch.keepAwake")}</label>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("processWatch.start")}</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("processWatch.refresh")}</button></div>
+    <p className="toolbox-hint">{t("processWatch.hint")}</p>
+    {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {watch.status} · {t("processWatch.deadline")} {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>{t("processWatch.cancel")}</button></div>)}
   </ToolLayout>;
 }
 
@@ -625,5 +638,40 @@ function ToolIcon({ id }: { id: ToolId }) { if (id.includes("image") || id.inclu
 type ToolboxTFunction = TFunction<"toolbox">;
 function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
 function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason")); }
+const LOCAL_ERROR_KEYS: Record<string, string> = {
+  input_too_large: "errors.inputTooLarge",
+  json_too_deep: "errors.jsonTooDeep",
+  invalid_json: "errors.invalidJson",
+  invalid_percent_encoding: "errors.invalidPercentEncoding",
+  invalid_url: "errors.invalidUrl",
+  invalid_base64: "errors.invalidBase64",
+  invalid_utf8: "errors.invalidUtf8",
+  invalid_timestamp: "errors.invalidTimestamp",
+  timestamp_out_of_range: "errors.timestampOutOfRange",
+  timezone_required: "errors.timezoneRequired",
+  invalid_iso: "errors.invalidIso",
+  invalid_count: "errors.invalidCount",
+  regex_too_large: "errors.regexTooLarge",
+  regex_text_too_large: "errors.regexTextTooLarge",
+  invalid_regex: "errors.invalidRegex",
+  regex_worker_unavailable: "errors.regexWorkerUnavailable",
+  regex_timeout: "errors.regexTimeout",
+  regex_failed: "errors.regexFailed",
+  invalid_color: "errors.invalidColor",
+  time_zone_unavailable: "errors.timeZoneUnavailable",
+  invalid_once_time: "errors.invalidOnceTime",
+  cron_no_occurrence: "errors.cronNoOccurrence",
+  invalid_duration: "errors.invalidDuration",
+};
+function localizedError(error: unknown, t: ToolboxTFunction): string {
+  if (error instanceof ToolboxInputError) {
+    const key = LOCAL_ERROR_KEYS[error.code];
+    const message = key ? t(key as never, { message: error.message }) : error.message;
+    const location = error.line !== null && error.column !== null ? t("errors.location", { line: error.line, column: error.column }) : "";
+    return `${message}${location}`;
+  }
+  if (error instanceof Error) return error.message;
+  return t("errors.generic");
+}
 function wifiEscape(value: string): string { return value.replace(/([\\;,:])/g, "\\$1"); }
 function readFavorites(): Set<ToolId> { try { const parsed: unknown = JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]"); return new Set(Array.isArray(parsed) ? parsed.filter((value): value is ToolId => typeof value === "string") : []); } catch { return new Set(); } }

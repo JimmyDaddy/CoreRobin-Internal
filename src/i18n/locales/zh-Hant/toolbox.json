@@ -1,4 +1,176 @@
-{"title":"工具箱","description":"在本機處理文字、圖片、檔案與系統的小型工作。一般輸入只會留在此頁面。","close":"關閉工具箱","loading":"正在載入工具…","search":{"label":"搜尋功能名稱","placeholder":"搜尋功能名稱、別名或說明…","clear":"清除搜尋"},"categories":{"label":"工具分類","systemNetwork":"系統與網路","textDevelopment":"文字與開發","image":"圖片","filePatch":"檔案與修補程式"},"favorites":{"title":"收藏","add":"將 {{tool}} 加入收藏","remove":"從收藏移除 {{tool}}"},"empty":{"title":"沒有符合的工具","description":"搜尋只會檢查工具名稱、別名與說明，不會查看你的輸入。"},"navigation":{"back":"返回工具箱"},"capability":{"degraded":"受限可用","unavailable":"無法使用","degradedReason":"部分原生整合受到限制，但仍可開啟工具。","unavailableReason":"此平台無法使用原生執行能力。","unavailableTitle":"{{tool}} 目前無法使用","unavailableHint":"此入口會保留在工具箱中，原生能力恢復後即可使用。"},"history":{"title":"最近執行記錄","count":"{{count}} 筆記錄","disabled":"已關閉","disabledDescription":"工具箱記錄已依目前政策關閉；本機工作仍會顯示即時結果。","empty":"目前沒有可顯示的工具箱完成記錄。","refresh":"重新整理記錄","refreshing":"正在重新整理…","privacy":"只顯示最近 20 筆；記錄不包含輸入內容、路徑或密鑰。","unavailable":"工具箱記錄暫時無法使用。","notification":"通知：{{status}}","tools":{"keep-awake":"限時保持喚醒","process-watch":"程序結束監看","file-occupancy":"檔案使用掃描","volume-occupancy":"磁碟區使用掃描","keyboard-cleaning":"鍵盤清潔","network-addresses":"網路位址","ifconfig-parser":"ifconfig 解析器"},"statuses":{"completed":"已完成","cancelled":"已取消","expired":"已過期","failed":"失敗","interrupted":"已中斷","deadline":"已達截止時間","process_exited":"程序已結束","low_battery":"因低電量而釋放","release_unconfirmed":"尚未確認釋放"},"notifications":{"submitted":"已送出","failed":"失敗","unavailable":"無法使用"}},"toolLayout":{"clear":"清除","privacy":"輸入與結果只會保留在此工具頁面的記憶體中；複製與儲存都需要明確點擊。","result":"結果","copyResult":"複製結果"},"tools":{"keep-awake":{"title":"保持喚醒","aliases":"防止睡眠 | 保持啟用","description":"在不變更電源設定的情況下，讓電腦在指定時間內保持啟用。"},"process-watch":{"title":"程序結束監看","aliases":"程序 | 結束","description":"等待指定程序結束並通知你。"},"file-occupancy":{"title":"檔案使用狀況","aliases":"使用中 | 控制代碼","description":"找出正在使用檔案的程序。"},"volume-occupancy":{"title":"外接磁碟使用狀況","aliases":"磁碟 | 推出","description":"在推出可移除磁碟區前確認其使用狀況。"},"keyboard-cleaning":{"title":"鍵盤清潔","aliases":"鍵盤 | 輸入","description":"清潔期間在安全邊界內檢查鍵盤輸入狀態。"},"schedules":{"title":"排程工作","aliases":"提醒 | cron","description":"建立只會提醒你或在限定時間保持電腦喚醒的本機規則。"},"network-addresses":{"title":"網路位址","aliases":"介面卡 | IP | MAC","description":"檢視本機網路介面的位址與狀態。"},"ifconfig-parser":{"title":"ifconfig 解析器","aliases":"網路 | 網路遮罩","description":"在此頁面解析貼上的 BSD/Linux ifconfig 文字。"},"json":{"title":"JSON","aliases":"格式化 | 壓縮","description":"嚴格驗證，同時保留數字文字與鍵順序。"},"url":{"title":"URL","aliases":"百分比編碼 | 參數","description":"編碼、解碼並檢視 URL 結構。"},"base64":{"title":"Base64","aliases":"Base64URL | UTF-8","description":"在支援的限制內轉換文字。"},"time":{"title":"時間轉換","aliases":"Unix | ISO | 時區","description":"使用明確的單位與時區轉換時間。"},"uuid":{"title":"UUID v4","aliases":"隨機 ID","description":"使用系統安全亂數來源產生 UUID v4。"},"qr-code":{"title":"QR 碼","aliases":"QR | Wi-Fi","description":"建立文字、URL 或手動輸入的 Wi-Fi QR 碼。"},"text-sha256":{"title":"文字 SHA-256","aliases":"雜湊 | 摘要","description":"在本機記憶體中計算文字 SHA-256。"},"file-sha256":{"title":"檔案 SHA-256","aliases":"檔案雜湊 | 校驗和","description":"以串流方式讀取你明確選取的一個一般檔案。"},"regex":{"title":"正規表示式診斷","aliases":"RegExp | 比對 | AST","description":"檢查 ECMAScript 正規表示式及其結構。"},"color":{"title":"色彩轉換","aliases":"HEX | OKLCH | P3","description":"轉換常見 CSS 色彩格式並提示色域變化。"},"image-watermark":{"title":"圖片浮水印","aliases":"Logo | PNG | JPEG","description":"為本機圖片加入文字或 Logo 浮水印。"},"image-batch-watermark":{"title":"批次浮水印","aliases":"ZIP | 批次","description":"依序處理多張圖片並匯出受控 ZIP。"},"confidential-watermark":{"title":"機密浮水印","aliases":"內部 | 預設","description":"使用可編輯的機密浮水印預設。"},"image-recipe":{"title":"Recipe 建構器","aliases":"配方 | JSON","description":"驗證、遷移並預覽圖片處理 Recipe。"},"image-editor":{"title":"圖層編輯器","aliases":"圖層 | 復原","description":"編輯圖層並轉譯真正的本機素材。"},"invisible-watermark-write":{"title":"寫入隱形浮水印","aliases":"locator | 秘密","description":"寫入短 locator 並匯出不含秘密的記錄。"},"invisible-watermark-check":{"title":"檢查隱形浮水印","aliases":"偵測 | 復原","description":"使用相同演算法檢查 Image Marker locator。"},"recipient-tracking":{"title":"收件人追蹤套件","aliases":"收件人 | 分發","description":"產生分發圖片與私有對應表。"},"robustness-lab":{"title":"穩健性實驗室","aliases":"JPEG | 縮放 | 裁切","description":"在明確條件下測試 locator 復原。"},"c2pa-inspector":{"title":"C2PA 檢查器","aliases":"manifest | 憑證","description":"離線檢查內嵌的本機 C2PA manifest。"},"binary-patch-create":{"title":"建立修補程式","aliases":"BSDIFF43 | 差異","description":"建立並還原已驗證的二進位修補程式。"},"binary-patch-apply":{"title":"套用並驗證","aliases":"套用 | 驗證","description":"套用修補程式，但絕不覆寫來源檔案。"},"binary-patch-inspector":{"title":"修補程式檢查器","aliases":"標頭 | 載荷","description":"檢查修補程式格式與邊界。"},"integrity-manifest":{"title":"完整性清單","aliases":"SHA-256 | manifest","description":"建立繫結檔案摘要的 JSON manifest。"},"transfer-savings":{"title":"傳輸節省","aliases":"大小 | 比例","description":"比較修補程式與完整套件的傳輸大小。"},"patch-errors":{"title":"錯誤碼指南","aliases":"BSDIFF | 診斷","description":"說明官方修補程式 SDK 的錯誤碼。"},"patch-planner":{"title":"發佈規劃器","aliases":"多個基線 | 發佈","description":"驗證每個基線並選擇修補程式或完整套件。"}},"keyboardCleaning":{"eyebrow":"系統安全 PoC","title":"鍵盤清潔","description":"暫時阻止誤觸輸入；只有受限 helper 明確確認 hook 有效後才會進入清潔狀態。","privacy":"不記錄按鍵值、不會把鍵盤內容傳給 WebView，也不會為 WebView 申請完整權限；滑鼠活動、失焦、宿主結束、睡眠、撤銷權限或 helper 心跳中斷都會釋放 hook。","durationLabel":"清潔時長","duration":"{{count}} 秒","start":"開始清潔","stop":"停止","capability":{"label":"能力","available":"可用（{{platform}}）","unavailable":"無法使用"},"status":{"label":"狀態"},"statuses":{"idle":"待機","unavailable":"無法使用","preparing":"準備中（3 秒）","active":"清潔中（最多 {{count}} 秒）","releasing":"正在釋放 hook","ended":"已結束"},"reason":"原因：{{reason}}","endReasons":{"cancelled":"已取消","mouse_activity":"滑鼠活動","heartbeat_lost":"helper 心跳中斷","focus_lost":"頁面失去焦點","host_exited":"宿主結束","sleeping":"系統睡眠","permission_revoked":"權限已撤銷","hook_unconfirmed":"hook 未確認","hook_ineffective":"hook 未生效","hard_deadline":"已達獨立截止時間","completed":"已完成","helper_unavailable":"helper 無法使用"},"hardDeadline":"獨立硬截止：{{time}}；helper 必須持續傳送心跳，否則 active 狀態會被釋放。","noBridge":"尚未接入受限 helper bridge；頁面保持無法使用，不會模擬啟用。","footer":"平台能力必須由宿主以最小權限提供；本頁面不監聽 DOM 鍵盤事件，真實平台驗證必須在隔離測試環境完成。","errors":{"helper":"受限 helper 尚未確認：{{reason}}","communication":"通訊失敗","start":"鍵盤清潔工作無法啟動。","codes":{"capability_unavailable":"目前平台不支援鍵盤清潔能力。","invalid_duration":"時長只能選擇 30、60 或 120 秒。","invalid_request_id":"要求識別碼無效。","clock_went_backward":"時鐘必須單調遞增。","invalid_state":"目前已有鍵盤清潔工作。","wrong_request":"helper 事件不屬於目前工作。","heartbeat_out_of_order":"helper 心跳序號沒有遞增。"}}},"networkAddresses":{"eyebrow":"System & network","title":"Local network addresses","description":"View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.","refresh":"Refresh on demand","refreshing":"Refreshing…","privacy":"IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.","tabs":{"label":"Network address views","live":"Local interfaces","ifconfig":"Paste ifconfig"},"copy":{"all":"Copy all interface summaries","allLabel":"All interface summaries","card":"Copy this card","summarySuffix":"summary","addressAria":"Copy address {{address}}","addressLabel":"Address","parsed":"Copy parsed summary","parsedLabel":"Parsed summary","unsupported":"This environment does not support copying. Select the text manually.","success":"{{label}} copied. It may contain IP, MAC, or interface identifiers and was written to the system clipboard only after your click.","failure":"Copy failed. The page does not read or retry the system clipboard."},"live":{"sampledAt":"Sampled at {{time}}","interfaceCount":"{{count}} interfaces","truncated":"(more than 128; truncated)","noUniqueIp":"The tool does not choose a supposedly “single true IP”.","reading":"Reading local interfaces…","empty":"No interface addresses were returned. An empty result does not prove that the network is unavailable."},"paste":{"placeholder":"Paste macOS/BSD or Linux ifconfig text; parse only, never execute","inputLabel":"ifconfig text","parse":"Parse strictly","limits":"Up to 256 KiB, 128 interfaces, and 64 addresses per interface. Non-contiguous IPv4 masks, invalid IPv4/IPv6 values, invalid zones, and conflicting prefixes are rejected. Unknown lines are counted on the relevant interface card.","empty":"No interfaces were recognized. Confirm that the pasted text is BSD/Linux ifconfig output."},"interface":{"name":"Interface","state":"State","stateValue":"State: {{state}}","unknownState":"State unknown","mtu":"MTU","mac":"MAC","unknown":"Unknown","noMac":"Not provided","addressCountLabel":"Addresses","truncated":"(truncated)","unknownLines":"Unknown lines","noAddress":"No address fields; this does not mean that the interface is unavailable."},"address":{"label":"Address","mask":"Mask","network":"Network","broadcast":"Broadcast","noBroadcastFormula":"/31 and /32 do not use the broadcast formula","scope":"scope/zone"},"family":{"ipv4":"IPv4","ipv6":"IPv6"},"classifications":{"unspecified":"Unspecified","loopback":"Loopback","private":"RFC1918 private","uniqueLocal":"IPv6 ULA","linkLocal":"Link-local","multicast":"Multicast","shared":"Shared address","documentation":"Documentation example","ipv4Mapped":"IPv4-mapped","globalUnicast":"Global unicast (not probed)","reserved":"Special/reserved"},"explanations":{"ipv4":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"An RFC1918 private address does not confirm network connectivity.","uniqueLocal":"This classification does not apply to IPv4.","linkLocal":"An IPv4 link-local address is normally valid only on the local link.","multicast":"An IPv4 multicast address is not an ordinary unicast host address.","shared":"A carrier-grade shared address (100.64.0.0/10) is not the public egress address.","documentation":"A TEST-NET documentation address should not be treated as a real public identity.","ipv4Mapped":"This classification does not apply to native IPv4 addresses.","globalUnicast":"This is an IPv4 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv4 special or reserved address cannot establish public reachability."},"ipv6":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"This classification does not apply to IPv6 addresses.","uniqueLocal":"An IPv6 unique-local address (ULA) is not a confirmed public address.","linkLocal":"An IPv6 link-local address is valid only on the local link; its zone/scope identifies the interface range.","multicast":"An IPv6 multicast address is not an ordinary unicast host address.","shared":"This classification does not apply to IPv6 addresses.","documentation":"An IPv6 documentation address should not be treated as a real public identity.","ipv4Mapped":"An IPv4-mapped address represents IPv4; it is not an independent IPv6 link.","globalUnicast":"This is an IPv6 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv6 special or reserved address cannot establish public reachability."}}},
+{"title":"工具箱","description":"在本機處理文字、圖片、檔案與系統的小型工作。一般輸入只會留在此頁面。","close":"關閉工具箱","loading":"正在載入工具…","search":{"label":"搜尋功能名稱","placeholder":"搜尋功能名稱、別名或說明…","clear":"清除搜尋"},"categories":{"label":"工具分類","systemNetwork":"系統與網路","textDevelopment":"文字與開發","image":"圖片","filePatch":"檔案與修補程式"},"favorites":{"title":"收藏","add":"將 {{tool}} 加入收藏","remove":"從收藏移除 {{tool}}"},"empty":{"title":"沒有符合的工具","description":"搜尋只會檢查工具名稱、別名與說明，不會查看你的輸入。"},"navigation":{"back":"返回工具箱"},"capability":{"degraded":"受限可用","unavailable":"無法使用","degradedReason":"部分原生整合受到限制，但仍可開啟工具。","unavailableReason":"此平台無法使用原生執行能力。","unavailableTitle":"{{tool}} 目前無法使用","unavailableHint":"此入口會保留在工具箱中，原生能力恢復後即可使用。"},"history":{"title":"最近執行記錄","count":"{{count}} 筆記錄","disabled":"已關閉","disabledDescription":"工具箱記錄已依目前政策關閉；本機工作仍會顯示即時結果。","empty":"目前沒有可顯示的工具箱完成記錄。","refresh":"重新整理記錄","refreshing":"正在重新整理…","privacy":"只顯示最近 20 筆；記錄不包含輸入內容、路徑或密鑰。","unavailable":"工具箱記錄暫時無法使用。","notification":"通知：{{status}}","tools":{"keep-awake":"限時保持喚醒","process-watch":"程序結束監看","file-occupancy":"檔案使用掃描","volume-occupancy":"磁碟區使用掃描","keyboard-cleaning":"鍵盤清潔","network-addresses":"網路位址","ifconfig-parser":"ifconfig 解析器"},"statuses":{"completed":"已完成","cancelled":"已取消","expired":"已過期","failed":"失敗","interrupted":"已中斷","deadline":"已達截止時間","process_exited":"程序已結束","low_battery":"因低電量而釋放","release_unconfirmed":"尚未確認釋放"},"notifications":{"submitted":"已送出","failed":"失敗","unavailable":"無法使用"}},"toolLayout":{"clear":"清除","privacy":"輸入與結果只會保留在此工具頁面的記憶體中；複製與儲存都需要明確點擊。","result":"結果","copyResult":"複製結果"},  "local": {
+    "run": "Run",
+    "convert": "Convert",
+    "json": {
+      "indent": "Indent",
+      "spaces": "{{count}} spaces",
+      "format": "Validate and format",
+      "compact": "Minify",
+      "duplicate": "Duplicate keys: {{keys}} (original order is retained; keys are not merged)."
+    },
+    "url": {
+      "inspect": "Inspect structure",
+      "encode": "Encode parameters",
+      "decode": "Decode parameters",
+      "hint": "Parameters follow the original percent-encoding rules; + remains a plus sign. The URL is never opened."
+    },
+    "base64": {
+      "encodedPlaceholder": "SGVsbG8=",
+      "textPlaceholder": "Enter UTF-8 text",
+      "decode": "Decode",
+      "urlSafe": "Base64URL"
+    },
+    "time": {
+      "placeholder": "Unix number or ISO time with timezone",
+      "seconds": "Unix seconds",
+      "milliseconds": "Unix milliseconds",
+      "hint": "UTC and the current local time zone are shown together; the unit is never guessed from the number of digits."
+    },
+    "uuid": {
+      "count": "Count",
+      "generate": "Generate UUID v4",
+      "hint": "Uses the system secure random source; a UUID is not a password."
+    },
+    "qr": {
+      "text": "Text / URL",
+      "wifi": "Wi-Fi (manual)",
+      "textPlaceholder": "Enter text or a URL (it will not open automatically)",
+      "ssid": "SSID",
+      "password": "Password (optional)",
+      "wpa": "WPA/WPA2",
+      "open": "Open network",
+      "generate": "Generate PNG",
+      "tooLarge": "The QR payload cannot exceed 2 KiB.",
+      "warning": "This QR contains Wi-Fi credentials. Confirm the save location; CoreRobin does not read the keychain.",
+      "alt": "Generated QR code",
+      "save": "Save PNG"
+    },
+    "textHash": {
+      "placeholder": "Enter UTF-8 text (up to 1 MiB)",
+      "compute": "Compute SHA-256"
+    },
+    "regex": {
+      "patternLabel": "Regular expression",
+      "flagsLabel": "Regular expression flags",
+      "samplePlaceholder": "Test text (up to 256 KiB)",
+      "replacementPlaceholder": "Text replacement template; JavaScript is not executed",
+      "running": "Running in an isolated worker…",
+      "run": "Diagnose and match",
+      "tree": "Structure tree (syntax relationships, not a backtracking trace)"
+    },
+    "color": {
+      "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
+      "convert": "Convert color"
+    }
+  },
+  "occupancy": {
+    "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
+    "fileRequired": "Choose an ordinary file first.",
+    "volumeRequired": "Choose a volume mount point first.",
+    "selectFile": "Choose ordinary file",
+    "selectVolume": "Choose external-volume mount point",
+    "noTarget": "No target selected",
+    "running": "Scanning…",
+    "fileAction": "Find file users",
+    "volumeAction": "Find volume users",
+    "stop": "Stop scan",
+    "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
+  },
+  "keepAwake": {
+    "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "durationLabel": "Duration",
+    "minutes": "{{count}} minutes",
+    "hours": "{{count}} hours",
+    "start": "Start keep-awake",
+    "stop": "Stop and release",
+    "hint": "Only a temporary system assertion is requested; power plans and simulated input are not changed. An independent deadline thread checks every 15 seconds and releases at expiry or cancellation. The current real-device evidence is limited to this macOS machine."
+  },
+  "schedule": {
+    "desktopOnly": "Scheduled rules require the desktop native runtime; the browser preview does not save rules.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone, so the rule cannot be previewed.",
+    "invalidOnce": "Choose a valid date and time within the next 365 days.",
+    "noOccurrence": "This rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "rule": "Rule",
+    "once": "Once",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "cron": "Cron draft",
+    "intent": "Intent",
+    "reminder": "Reminder",
+    "keepAwake": "Keep awake",
+    "titlePlaceholder": "Optional title (up to 80 characters)",
+    "triggerAt": "Trigger time",
+    "cronPlaceholder": "Five-field Cron, for example 0 9 * * 1-5",
+    "hour": "Hour",
+    "minute": "Minute",
+    "weekday": "Weekday",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "keepAwakeMinutes": "Keep-awake minutes",
+    "save": "Save changes",
+    "create": "Create rule",
+    "cancelEdit": "Cancel edit",
+    "refresh": "View current rules",
+    "hint": "The native Cron searcher calculates the next occurrence before saving. Rules stay in CoreRobin's private data. At the scheduled time, only a reminder or a 1-minute to 12-hour keep-awake request is emitted; missed times are not replayed, and shell, cleanup, process termination, or keyboard actions are never executed.",
+    "unnamed": "Unnamed",
+    "nextPreview": "Next preview",
+    "edit": "Edit",
+    "pause": "Pause",
+    "delete": "Delete"
+  },
+  "processWatch": {
+    "desktopOnly": "Process exit watch requires the desktop native runtime.",
+    "identityRequired": "Enter the selected process PID and birth token; a same-name process cannot replace a stable identity.",
+    "invalidDuration": "The watch duration must be between 1 minute and 12 hours.",
+    "pid": "PID",
+    "pidPlaceholder": "PID of the selected process",
+    "birthToken": "Birth token",
+    "birthTokenPlaceholder": "Copy from process details; same-name substitution is rejected",
+    "duration": "Watch minutes",
+    "keepAwake": "Add temporary keep-awake during the watch (released independently for low battery)",
+    "start": "Start read-only watch",
+    "refresh": "Refresh status",
+    "hint": "Only the user-selected ProcessKey is observed; termination permission is never requested. Up to 3 watches are allowed, with a default of 4 hours and a 12-hour limit. unknown is retried, PID reuse ends as identity_changed, and child processes, exit codes, or work success are not promised.",
+    "deadline": "Deadline",
+    "cancel": "Cancel watch"
+  },
+  "errors": {
+    "generic": "Processing failed. Check the input and try again.",
+    "inputTooLarge": "The input exceeds the allowed size.",
+    "jsonTooDeep": "JSON nesting exceeds the allowed depth.",
+    "invalidJson": "Invalid JSON: {{message}}",
+    "invalidPercentEncoding": "The URL percent encoding is invalid.",
+    "invalidUrl": "Enter a complete URL; this tool will not open or access it.",
+    "invalidBase64": "The Base64 characters or padding are invalid.",
+    "invalidUtf8": "The Base64 content is not valid UTF-8 text.",
+    "invalidTimestamp": "Unix time must be numeric and its unit must be selected explicitly.",
+    "timestampOutOfRange": "The Unix time is outside the safe range.",
+    "timezoneRequired": "ISO time must include an explicit time zone.",
+    "invalidIso": "The ISO time or date is invalid.",
+    "invalidCount": "The UUID count must be between 1 and 100.",
+    "regexTooLarge": "The regular expression exceeds 16 KiB.",
+    "regexTextTooLarge": "The test text exceeds 256 KiB.",
+    "invalidRegex": "Invalid regular expression: {{message}}",
+    "regexWorkerUnavailable": "The isolated regex worker is unavailable; execution has been disabled safely.",
+    "regexTimeout": "Regex execution exceeded 2 seconds and was stopped.",
+    "regexFailed": "Regex execution failed: {{message}}",
+    "invalidColor": "The color format is invalid. Supported formats are HEX, RGB, HSL, HSV, OKLCH, and Display-P3.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone.",
+    "invalidOnceTime": "Choose a valid future time within 365 days.",
+    "cronNoOccurrence": "The rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The duration must be between 1 minute and 12 hours.",
+    "location": " (line {{line}}, column {{column}})"
+  },
+"tools":{"keep-awake":{"title":"保持喚醒","aliases":"防止睡眠 | 保持啟用","description":"在不變更電源設定的情況下，讓電腦在指定時間內保持啟用。"},"process-watch":{"title":"程序結束監看","aliases":"程序 | 結束","description":"等待指定程序結束並通知你。"},"file-occupancy":{"title":"檔案使用狀況","aliases":"使用中 | 控制代碼","description":"找出正在使用檔案的程序。"},"volume-occupancy":{"title":"外接磁碟使用狀況","aliases":"磁碟 | 推出","description":"在推出可移除磁碟區前確認其使用狀況。"},"keyboard-cleaning":{"title":"鍵盤清潔","aliases":"鍵盤 | 輸入","description":"清潔期間在安全邊界內檢查鍵盤輸入狀態。"},"schedules":{"title":"排程工作","aliases":"提醒 | cron","description":"建立只會提醒你或在限定時間保持電腦喚醒的本機規則。"},"network-addresses":{"title":"網路位址","aliases":"介面卡 | IP | MAC","description":"檢視本機網路介面的位址與狀態。"},"ifconfig-parser":{"title":"ifconfig 解析器","aliases":"網路 | 網路遮罩","description":"在此頁面解析貼上的 BSD/Linux ifconfig 文字。"},"json":{"title":"JSON","aliases":"格式化 | 壓縮","description":"嚴格驗證，同時保留數字文字與鍵順序。"},"url":{"title":"URL","aliases":"百分比編碼 | 參數","description":"編碼、解碼並檢視 URL 結構。"},"base64":{"title":"Base64","aliases":"Base64URL | UTF-8","description":"在支援的限制內轉換文字。"},"time":{"title":"時間轉換","aliases":"Unix | ISO | 時區","description":"使用明確的單位與時區轉換時間。"},"uuid":{"title":"UUID v4","aliases":"隨機 ID","description":"使用系統安全亂數來源產生 UUID v4。"},"qr-code":{"title":"QR 碼","aliases":"QR | Wi-Fi","description":"建立文字、URL 或手動輸入的 Wi-Fi QR 碼。"},"text-sha256":{"title":"文字 SHA-256","aliases":"雜湊 | 摘要","description":"在本機記憶體中計算文字 SHA-256。"},"file-sha256":{"title":"檔案 SHA-256","aliases":"檔案雜湊 | 校驗和","description":"以串流方式讀取你明確選取的一個一般檔案。"},"regex":{"title":"正規表示式診斷","aliases":"RegExp | 比對 | AST","description":"檢查 ECMAScript 正規表示式及其結構。"},"color":{"title":"色彩轉換","aliases":"HEX | OKLCH | P3","description":"轉換常見 CSS 色彩格式並提示色域變化。"},"image-watermark":{"title":"圖片浮水印","aliases":"Logo | PNG | JPEG","description":"為本機圖片加入文字或 Logo 浮水印。"},"image-batch-watermark":{"title":"批次浮水印","aliases":"ZIP | 批次","description":"依序處理多張圖片並匯出受控 ZIP。"},"confidential-watermark":{"title":"機密浮水印","aliases":"內部 | 預設","description":"使用可編輯的機密浮水印預設。"},"image-recipe":{"title":"Recipe 建構器","aliases":"配方 | JSON","description":"驗證、遷移並預覽圖片處理 Recipe。"},"image-editor":{"title":"圖層編輯器","aliases":"圖層 | 復原","description":"編輯圖層並轉譯真正的本機素材。"},"invisible-watermark-write":{"title":"寫入隱形浮水印","aliases":"locator | 秘密","description":"寫入短 locator 並匯出不含秘密的記錄。"},"invisible-watermark-check":{"title":"檢查隱形浮水印","aliases":"偵測 | 復原","description":"使用相同演算法檢查 Image Marker locator。"},"recipient-tracking":{"title":"收件人追蹤套件","aliases":"收件人 | 分發","description":"產生分發圖片與私有對應表。"},"robustness-lab":{"title":"穩健性實驗室","aliases":"JPEG | 縮放 | 裁切","description":"在明確條件下測試 locator 復原。"},"c2pa-inspector":{"title":"C2PA 檢查器","aliases":"manifest | 憑證","description":"離線檢查內嵌的本機 C2PA manifest。"},"binary-patch-create":{"title":"建立修補程式","aliases":"BSDIFF43 | 差異","description":"建立並還原已驗證的二進位修補程式。"},"binary-patch-apply":{"title":"套用並驗證","aliases":"套用 | 驗證","description":"套用修補程式，但絕不覆寫來源檔案。"},"binary-patch-inspector":{"title":"修補程式檢查器","aliases":"標頭 | 載荷","description":"檢查修補程式格式與邊界。"},"integrity-manifest":{"title":"完整性清單","aliases":"SHA-256 | manifest","description":"建立繫結檔案摘要的 JSON manifest。"},"transfer-savings":{"title":"傳輸節省","aliases":"大小 | 比例","description":"比較修補程式與完整套件的傳輸大小。"},"patch-errors":{"title":"錯誤碼指南","aliases":"BSDIFF | 診斷","description":"說明官方修補程式 SDK 的錯誤碼。"},"patch-planner":{"title":"發佈規劃器","aliases":"多個基線 | 發佈","description":"驗證每個基線並選擇修補程式或完整套件。"}},"keyboardCleaning":{"eyebrow":"系統安全 PoC","title":"鍵盤清潔","description":"暫時阻止誤觸輸入；只有受限 helper 明確確認 hook 有效後才會進入清潔狀態。","privacy":"不記錄按鍵值、不會把鍵盤內容傳給 WebView，也不會為 WebView 申請完整權限；滑鼠活動、失焦、宿主結束、睡眠、撤銷權限或 helper 心跳中斷都會釋放 hook。","durationLabel":"清潔時長","duration":"{{count}} 秒","start":"開始清潔","stop":"停止","capability":{"label":"能力","available":"可用（{{platform}}）","unavailable":"無法使用"},"status":{"label":"狀態"},"statuses":{"idle":"待機","unavailable":"無法使用","preparing":"準備中（3 秒）","active":"清潔中（最多 {{count}} 秒）","releasing":"正在釋放 hook","ended":"已結束"},"reason":"原因：{{reason}}","endReasons":{"cancelled":"已取消","mouse_activity":"滑鼠活動","heartbeat_lost":"helper 心跳中斷","focus_lost":"頁面失去焦點","host_exited":"宿主結束","sleeping":"系統睡眠","permission_revoked":"權限已撤銷","hook_unconfirmed":"hook 未確認","hook_ineffective":"hook 未生效","hard_deadline":"已達獨立截止時間","completed":"已完成","helper_unavailable":"helper 無法使用"},"hardDeadline":"獨立硬截止：{{time}}；helper 必須持續傳送心跳，否則 active 狀態會被釋放。","noBridge":"尚未接入受限 helper bridge；頁面保持無法使用，不會模擬啟用。","footer":"平台能力必須由宿主以最小權限提供；本頁面不監聽 DOM 鍵盤事件，真實平台驗證必須在隔離測試環境完成。","errors":{"helper":"受限 helper 尚未確認：{{reason}}","communication":"通訊失敗","start":"鍵盤清潔工作無法啟動。","codes":{"capability_unavailable":"目前平台不支援鍵盤清潔能力。","invalid_duration":"時長只能選擇 30、60 或 120 秒。","invalid_request_id":"要求識別碼無效。","clock_went_backward":"時鐘必須單調遞增。","invalid_state":"目前已有鍵盤清潔工作。","wrong_request":"helper 事件不屬於目前工作。","heartbeat_out_of_order":"helper 心跳序號沒有遞增。"}}},"networkAddresses":{"eyebrow":"System & network","title":"Local network addresses","description":"View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.","refresh":"Refresh on demand","refreshing":"Refreshing…","privacy":"IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.","tabs":{"label":"Network address views","live":"Local interfaces","ifconfig":"Paste ifconfig"},"copy":{"all":"Copy all interface summaries","allLabel":"All interface summaries","card":"Copy this card","summarySuffix":"summary","addressAria":"Copy address {{address}}","addressLabel":"Address","parsed":"Copy parsed summary","parsedLabel":"Parsed summary","unsupported":"This environment does not support copying. Select the text manually.","success":"{{label}} copied. It may contain IP, MAC, or interface identifiers and was written to the system clipboard only after your click.","failure":"Copy failed. The page does not read or retry the system clipboard."},"live":{"sampledAt":"Sampled at {{time}}","interfaceCount":"{{count}} interfaces","truncated":"(more than 128; truncated)","noUniqueIp":"The tool does not choose a supposedly “single true IP”.","reading":"Reading local interfaces…","empty":"No interface addresses were returned. An empty result does not prove that the network is unavailable."},"paste":{"placeholder":"Paste macOS/BSD or Linux ifconfig text; parse only, never execute","inputLabel":"ifconfig text","parse":"Parse strictly","limits":"Up to 256 KiB, 128 interfaces, and 64 addresses per interface. Non-contiguous IPv4 masks, invalid IPv4/IPv6 values, invalid zones, and conflicting prefixes are rejected. Unknown lines are counted on the relevant interface card.","empty":"No interfaces were recognized. Confirm that the pasted text is BSD/Linux ifconfig output."},"interface":{"name":"Interface","state":"State","stateValue":"State: {{state}}","unknownState":"State unknown","mtu":"MTU","mac":"MAC","unknown":"Unknown","noMac":"Not provided","addressCountLabel":"Addresses","truncated":"(truncated)","unknownLines":"Unknown lines","noAddress":"No address fields; this does not mean that the interface is unavailable."},"address":{"label":"Address","mask":"Mask","network":"Network","broadcast":"Broadcast","noBroadcastFormula":"/31 and /32 do not use the broadcast formula","scope":"scope/zone"},"family":{"ipv4":"IPv4","ipv6":"IPv6"},"classifications":{"unspecified":"Unspecified","loopback":"Loopback","private":"RFC1918 private","uniqueLocal":"IPv6 ULA","linkLocal":"Link-local","multicast":"Multicast","shared":"Shared address","documentation":"Documentation example","ipv4Mapped":"IPv4-mapped","globalUnicast":"Global unicast (not probed)","reserved":"Special/reserved"},"explanations":{"ipv4":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"An RFC1918 private address does not confirm network connectivity.","uniqueLocal":"This classification does not apply to IPv4.","linkLocal":"An IPv4 link-local address is normally valid only on the local link.","multicast":"An IPv4 multicast address is not an ordinary unicast host address.","shared":"A carrier-grade shared address (100.64.0.0/10) is not the public egress address.","documentation":"A TEST-NET documentation address should not be treated as a real public identity.","ipv4Mapped":"This classification does not apply to native IPv4 addresses.","globalUnicast":"This is an IPv4 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv4 special or reserved address cannot establish public reachability."},"ipv6":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"This classification does not apply to IPv6 addresses.","uniqueLocal":"An IPv6 unique-local address (ULA) is not a confirmed public address.","linkLocal":"An IPv6 link-local address is valid only on the local link; its zone/scope identifies the interface range.","multicast":"An IPv6 multicast address is not an ordinary unicast host address.","shared":"This classification does not apply to IPv6 addresses.","documentation":"An IPv6 documentation address should not be treated as a real public identity.","ipv4Mapped":"An IPv4-mapped address represents IPv4; it is not an independent IPv6 link.","globalUnicast":"This is an IPv6 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv6 special or reserved address cannot establish public reachability."}}},
   "binaryPatch": {
     "hint": "Patches stay binary and must be verified byte-for-byte after generation. Applying without an expected target is marked unverified and can only be saved as a copy after explicit confirmation. ENDSLEY/BSDIFF43 can be generated and applied; BSDIFF40 is inspection-only.",
     "inputs": {

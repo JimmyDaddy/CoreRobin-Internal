@@ -4,6 +4,178 @@
   "capability": { "degraded": "Disponible con limitaciones", "unavailable": "No disponible", "degradedReason": "Parte de la integración nativa está limitada, pero la herramienta aún puede abrirse.", "unavailableReason": "No hay ejecución nativa disponible en esta plataforma.", "unavailableTitle": "{{tool}} no está disponible ahora", "unavailableHint": "Esta entrada permanece en la caja de herramientas y podrá usarse cuando vuelva la capacidad nativa." },
   "history": { "title": "Actividad reciente", "count": "Registros: {{count}}", "disabled": "Desactivado", "disabledDescription": "El historial de la caja de herramientas está desactivado por la política actual; las tareas locales siguen mostrando resultados inmediatos.", "empty": "Aún no hay registros finales de herramientas para mostrar.", "refresh": "Actualizar historial", "refreshing": "Actualizando…", "privacy": "Solo se muestran los 20 registros más recientes; no incluyen entradas, rutas ni secretos.", "unavailable": "El historial de la caja de herramientas no está disponible temporalmente.", "notification": "Notificación: {{status}}", "tools": { "keep-awake": "Mantener activo temporalmente", "process-watch": "Vigilar salida de proceso", "file-occupancy": "Análisis de uso de archivo", "volume-occupancy": "Análisis de uso de volumen", "keyboard-cleaning": "Limpieza de teclado", "network-addresses": "Direcciones de red", "ifconfig-parser": "Analizador ifconfig" }, "statuses": { "completed": "Completado", "cancelled": "Cancelado", "expired": "Caducado", "failed": "Fallido", "interrupted": "Interrumpido", "deadline": "Plazo alcanzado", "process_exited": "El proceso terminó", "low_battery": "Liberado por batería baja", "release_unconfirmed": "Liberación sin confirmar" }, "notifications": { "submitted": "Enviada", "failed": "Fallida", "unavailable": "No disponible" } },
   "toolLayout": { "clear": "Limpiar", "privacy": "Las entradas y resultados solo permanecen en la memoria de esta página; copiar y guardar siempre requieren un clic explícito.", "result": "Resultado", "copyResult": "Copiar resultado" },
+  "local": {
+    "run": "Run",
+    "convert": "Convert",
+    "json": {
+      "indent": "Indent",
+      "spaces": "{{count}} spaces",
+      "format": "Validate and format",
+      "compact": "Minify",
+      "duplicate": "Duplicate keys: {{keys}} (original order is retained; keys are not merged)."
+    },
+    "url": {
+      "inspect": "Inspect structure",
+      "encode": "Encode parameters",
+      "decode": "Decode parameters",
+      "hint": "Parameters follow the original percent-encoding rules; + remains a plus sign. The URL is never opened."
+    },
+    "base64": {
+      "encodedPlaceholder": "SGVsbG8=",
+      "textPlaceholder": "Enter UTF-8 text",
+      "decode": "Decode",
+      "urlSafe": "Base64URL"
+    },
+    "time": {
+      "placeholder": "Unix number or ISO time with timezone",
+      "seconds": "Unix seconds",
+      "milliseconds": "Unix milliseconds",
+      "hint": "UTC and the current local time zone are shown together; the unit is never guessed from the number of digits."
+    },
+    "uuid": {
+      "count": "Count",
+      "generate": "Generate UUID v4",
+      "hint": "Uses the system secure random source; a UUID is not a password."
+    },
+    "qr": {
+      "text": "Text / URL",
+      "wifi": "Wi-Fi (manual)",
+      "textPlaceholder": "Enter text or a URL (it will not open automatically)",
+      "ssid": "SSID",
+      "password": "Password (optional)",
+      "wpa": "WPA/WPA2",
+      "open": "Open network",
+      "generate": "Generate PNG",
+      "tooLarge": "The QR payload cannot exceed 2 KiB.",
+      "warning": "This QR contains Wi-Fi credentials. Confirm the save location; CoreRobin does not read the keychain.",
+      "alt": "Generated QR code",
+      "save": "Save PNG"
+    },
+    "textHash": {
+      "placeholder": "Enter UTF-8 text (up to 1 MiB)",
+      "compute": "Compute SHA-256"
+    },
+    "regex": {
+      "patternLabel": "Regular expression",
+      "flagsLabel": "Regular expression flags",
+      "samplePlaceholder": "Test text (up to 256 KiB)",
+      "replacementPlaceholder": "Text replacement template; JavaScript is not executed",
+      "running": "Running in an isolated worker…",
+      "run": "Diagnose and match",
+      "tree": "Structure tree (syntax relationships, not a backtracking trace)"
+    },
+    "color": {
+      "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
+      "convert": "Convert color"
+    }
+  },
+  "occupancy": {
+    "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
+    "fileRequired": "Choose an ordinary file first.",
+    "volumeRequired": "Choose a volume mount point first.",
+    "selectFile": "Choose ordinary file",
+    "selectVolume": "Choose external-volume mount point",
+    "noTarget": "No target selected",
+    "running": "Scanning…",
+    "fileAction": "Find file users",
+    "volumeAction": "Find volume users",
+    "stop": "Stop scan",
+    "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
+  },
+  "keepAwake": {
+    "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "durationLabel": "Duration",
+    "minutes": "{{count}} minutes",
+    "hours": "{{count}} hours",
+    "start": "Start keep-awake",
+    "stop": "Stop and release",
+    "hint": "Only a temporary system assertion is requested; power plans and simulated input are not changed. An independent deadline thread checks every 15 seconds and releases at expiry or cancellation. The current real-device evidence is limited to this macOS machine."
+  },
+  "schedule": {
+    "desktopOnly": "Scheduled rules require the desktop native runtime; the browser preview does not save rules.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone, so the rule cannot be previewed.",
+    "invalidOnce": "Choose a valid date and time within the next 365 days.",
+    "noOccurrence": "This rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "rule": "Rule",
+    "once": "Once",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "cron": "Cron draft",
+    "intent": "Intent",
+    "reminder": "Reminder",
+    "keepAwake": "Keep awake",
+    "titlePlaceholder": "Optional title (up to 80 characters)",
+    "triggerAt": "Trigger time",
+    "cronPlaceholder": "Five-field Cron, for example 0 9 * * 1-5",
+    "hour": "Hour",
+    "minute": "Minute",
+    "weekday": "Weekday",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "keepAwakeMinutes": "Keep-awake minutes",
+    "save": "Save changes",
+    "create": "Create rule",
+    "cancelEdit": "Cancel edit",
+    "refresh": "View current rules",
+    "hint": "The native Cron searcher calculates the next occurrence before saving. Rules stay in CoreRobin's private data. At the scheduled time, only a reminder or a 1-minute to 12-hour keep-awake request is emitted; missed times are not replayed, and shell, cleanup, process termination, or keyboard actions are never executed.",
+    "unnamed": "Unnamed",
+    "nextPreview": "Next preview",
+    "edit": "Edit",
+    "pause": "Pause",
+    "delete": "Delete"
+  },
+  "processWatch": {
+    "desktopOnly": "Process exit watch requires the desktop native runtime.",
+    "identityRequired": "Enter the selected process PID and birth token; a same-name process cannot replace a stable identity.",
+    "invalidDuration": "The watch duration must be between 1 minute and 12 hours.",
+    "pid": "PID",
+    "pidPlaceholder": "PID of the selected process",
+    "birthToken": "Birth token",
+    "birthTokenPlaceholder": "Copy from process details; same-name substitution is rejected",
+    "duration": "Watch minutes",
+    "keepAwake": "Add temporary keep-awake during the watch (released independently for low battery)",
+    "start": "Start read-only watch",
+    "refresh": "Refresh status",
+    "hint": "Only the user-selected ProcessKey is observed; termination permission is never requested. Up to 3 watches are allowed, with a default of 4 hours and a 12-hour limit. unknown is retried, PID reuse ends as identity_changed, and child processes, exit codes, or work success are not promised.",
+    "deadline": "Deadline",
+    "cancel": "Cancel watch"
+  },
+  "errors": {
+    "generic": "Processing failed. Check the input and try again.",
+    "inputTooLarge": "The input exceeds the allowed size.",
+    "jsonTooDeep": "JSON nesting exceeds the allowed depth.",
+    "invalidJson": "Invalid JSON: {{message}}",
+    "invalidPercentEncoding": "The URL percent encoding is invalid.",
+    "invalidUrl": "Enter a complete URL; this tool will not open or access it.",
+    "invalidBase64": "The Base64 characters or padding are invalid.",
+    "invalidUtf8": "The Base64 content is not valid UTF-8 text.",
+    "invalidTimestamp": "Unix time must be numeric and its unit must be selected explicitly.",
+    "timestampOutOfRange": "The Unix time is outside the safe range.",
+    "timezoneRequired": "ISO time must include an explicit time zone.",
+    "invalidIso": "The ISO time or date is invalid.",
+    "invalidCount": "The UUID count must be between 1 and 100.",
+    "regexTooLarge": "The regular expression exceeds 16 KiB.",
+    "regexTextTooLarge": "The test text exceeds 256 KiB.",
+    "invalidRegex": "Invalid regular expression: {{message}}",
+    "regexWorkerUnavailable": "The isolated regex worker is unavailable; execution has been disabled safely.",
+    "regexTimeout": "Regex execution exceeded 2 seconds and was stopped.",
+    "regexFailed": "Regex execution failed: {{message}}",
+    "invalidColor": "The color format is invalid. Supported formats are HEX, RGB, HSL, HSV, OKLCH, and Display-P3.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone.",
+    "invalidOnceTime": "Choose a valid future time within 365 days.",
+    "cronNoOccurrence": "The rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The duration must be between 1 minute and 12 hours.",
+    "location": " (line {{line}}, column {{column}})"
+  },
   "tools": {
     "keep-awake": { "title": "Mantener activo", "aliases": "evitar suspensión | activo", "description": "Mantiene el equipo activo durante un periodo elegido sin cambiar el plan de energía." }, "process-watch": { "title": "Vigilar salida de proceso", "aliases": "proceso | salida", "description": "Espera a que termine un proceso elegido y te avisa." }, "file-occupancy": { "title": "Uso de archivo", "aliases": "en uso | identificador", "description": "Encuentra qué proceso está usando un archivo." }, "volume-occupancy": { "title": "Uso de unidad externa", "aliases": "unidad | expulsar", "description": "Identifica el uso de un volumen extraíble antes de expulsarlo." }, "keyboard-cleaning": { "title": "Limpieza de teclado", "aliases": "teclado | entrada", "description": "Comprueba de forma segura la entrada de teclado durante la limpieza." }, "schedules": { "title": "Tareas programadas", "aliases": "recordatorio | cron", "description": "Crea reglas locales que solo recuerdan o mantienen activo el equipo por tiempo limitado." }, "network-addresses": { "title": "Direcciones de red", "aliases": "adaptador | IP | MAC", "description": "Muestra direcciones y estado de las interfaces de red locales." }, "ifconfig-parser": { "title": "Analizador ifconfig", "aliases": "red | máscara", "description": "Analiza en esta página texto ifconfig de BSD/Linux pegado." }, "json": { "title": "JSON", "aliases": "formatear | compactar", "description": "Valida estrictamente y conserva el texto numérico y el orden de claves." }, "url": { "title": "URL", "aliases": "codificación porcentual | parámetros", "description": "Codifica, decodifica e inspecciona la estructura de una URL." }, "base64": { "title": "Base64", "aliases": "Base64URL | UTF-8", "description": "Convierte texto dentro de los límites compatibles." }, "time": { "title": "Conversión de tiempo", "aliases": "Unix | ISO | zona horaria", "description": "Convierte tiempo con unidades y zonas horarias explícitas." }, "uuid": { "title": "UUID v4", "aliases": "ID aleatorio", "description": "Genera UUID v4 con una fuente aleatoria segura del sistema." }, "qr-code": { "title": "Código QR", "aliases": "QR | Wi-Fi", "description": "Crea un código QR para texto, URL o Wi-Fi introducido manualmente." }, "text-sha256": { "title": "SHA-256 de texto", "aliases": "hash | resumen", "description": "Calcula SHA-256 de texto en memoria local." }, "file-sha256": { "title": "SHA-256 de archivo", "aliases": "hash de archivo | suma", "description": "Lee en flujo un archivo normal que eliges explícitamente." }, "regex": { "title": "Diagnóstico de regex", "aliases": "RegExp | coincidencia | AST", "description": "Examina expresiones regulares ECMAScript y su estructura." }, "color": { "title": "Conversión de color", "aliases": "HEX | OKLCH | P3", "description": "Convierte formatos de color CSS comunes y avisa de cambios de gama." }, "image-watermark": { "title": "Marca de agua de imagen", "aliases": "logo | PNG | JPEG", "description": "Añade marcas de agua de texto o logo a imágenes locales." }, "image-batch-watermark": { "title": "Marca de agua por lotes", "aliases": "ZIP | lote", "description": "Procesa varias imágenes en orden y exporta un ZIP controlado." }, "confidential-watermark": { "title": "Marca de agua confidencial", "aliases": "interno | preajuste", "description": "Usa un preajuste editable de marca de agua confidencial." }, "image-recipe": { "title": "Creador de recetas", "aliases": "receta | JSON", "description": "Valida, migra y previsualiza recetas de procesamiento de imágenes." }, "image-editor": { "title": "Editor de capas", "aliases": "capas | deshacer", "description": "Edita capas y renderiza recursos locales reales." }, "invisible-watermark-write": { "title": "Escribir marca de agua invisible", "aliases": "localizador | secreto", "description": "Escribe un localizador corto y exporta un registro sin secretos." }, "invisible-watermark-check": { "title": "Comprobar marca de agua invisible", "aliases": "detectar | recuperar", "description": "Comprueba un localizador de Image Marker con el mismo algoritmo." }, "recipient-tracking": { "title": "Paquete de seguimiento de destinatarios", "aliases": "destinatario | distribución", "description": "Genera imágenes distribuidas y una asignación privada." }, "robustness-lab": { "title": "Laboratorio de robustez", "aliases": "JPEG | redimensionar | recortar", "description": "Prueba la recuperación del localizador en condiciones explícitas." }, "c2pa-inspector": { "title": "Inspector C2PA", "aliases": "manifiesto | credenciales", "description": "Inspecciona sin conexión un manifiesto C2PA local incorporado." }, "binary-patch-create": { "title": "Crear parche", "aliases": "BSDIFF43 | diferencia", "description": "Crea y restaura parches binarios verificados." }, "binary-patch-apply": { "title": "Aplicar y verificar", "aliases": "aplicar | verificar", "description": "Aplica un parche sin sobrescribir nunca el archivo fuente." }, "binary-patch-inspector": { "title": "Inspector de parches", "aliases": "cabecera | carga", "description": "Inspecciona el formato y los límites del parche." }, "integrity-manifest": { "title": "Manifiesto de integridad", "aliases": "SHA-256 | manifiesto", "description": "Crea un manifiesto JSON vinculado a resúmenes de archivos." }, "transfer-savings": { "title": "Ahorro de transferencia", "aliases": "tamaño | proporción", "description": "Compara tamaños de transferencia de parches y paquetes completos." }, "patch-errors": { "title": "Guía de códigos de error", "aliases": "BSDIFF | diagnóstico", "description": "Explica códigos de error del SDK oficial de parches." }, "patch-planner": { "title": "Planificador de versiones", "aliases": "varias bases | versión", "description": "Valida cada base y elige un parche o un paquete completo." }
   },

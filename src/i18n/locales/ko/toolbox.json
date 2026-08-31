@@ -1,4 +1,176 @@
-{"title":"도구 상자","description":"텍스트, 이미지, 파일 및 시스템의 작은 작업을 로컬에서 처리합니다. 일반 입력은 이 페이지에만 남습니다.","close":"도구 상자 닫기","loading":"도구 불러오는 중…","search":{"label":"도구 이름 검색","placeholder":"도구 이름, 별칭 또는 설명 검색…","clear":"검색 지우기"},"categories":{"label":"도구 카테고리","systemNetwork":"시스템 및 네트워크","textDevelopment":"텍스트 및 개발","image":"이미지","filePatch":"파일 및 패치"},"favorites":{"title":"즐겨찾기","add":"{{tool}}을(를) 즐겨찾기에 추가","remove":"즐겨찾기에서 {{tool}} 제거"},"empty":{"title":"일치하는 도구가 없습니다","description":"검색은 도구 이름, 별칭 및 설명만 확인하며 입력 내용은 확인하지 않습니다."},"navigation":{"back":"도구 상자로 돌아가기"},"capability":{"degraded":"제한적으로 사용 가능","unavailable":"사용할 수 없음","degradedReason":"일부 네이티브 연동이 제한되지만 도구는 열 수 있습니다.","unavailableReason":"이 플랫폼에서는 네이티브 실행을 사용할 수 없습니다.","unavailableTitle":"{{tool}}을(를) 현재 사용할 수 없음","unavailableHint":"이 항목은 도구 상자에 남아 있으며 네이티브 기능이 복구되면 사용할 수 있습니다."},"history":{"title":"최근 실행 기록","count":"기록: {{count}}","disabled":"사용 안 함","disabledDescription":"현재 정책에 따라 도구 상자 기록이 비활성화되어도 로컬 작업의 즉시 결과는 계속 표시됩니다.","empty":"표시할 완료된 도구 상자 기록이 아직 없습니다.","refresh":"기록 새로 고침","refreshing":"새로 고치는 중…","privacy":"최근 20개 기록만 표시하며 입력, 경로 또는 비밀 정보를 포함하지 않습니다.","unavailable":"도구 상자 기록을 일시적으로 사용할 수 없습니다.","notification":"알림: {{status}}","tools":{"keep-awake":"시간 제한 절전 방지","process-watch":"프로세스 종료 감시","file-occupancy":"파일 사용 검사","volume-occupancy":"볼륨 사용 검사","keyboard-cleaning":"키보드 정리","network-addresses":"네트워크 주소","ifconfig-parser":"ifconfig 파서"},"statuses":{"completed":"완료","cancelled":"취소됨","expired":"만료됨","failed":"실패","interrupted":"중단됨","deadline":"기한 도달","process_exited":"프로세스 종료","low_battery":"배터리 부족으로 해제됨","release_unconfirmed":"해제 확인 안 됨"},"notifications":{"submitted":"제출됨","failed":"실패","unavailable":"사용할 수 없음"}},"toolLayout":{"clear":"지우기","privacy":"입력과 결과는 이 도구 페이지의 메모리에만 보관됩니다. 복사와 저장은 항상 명시적으로 클릭해야 합니다.","result":"결과","copyResult":"결과 복사"},"tools":{"keep-awake":{"title":"절전 방지","aliases":"절전 방지 | 활성 유지","description":"전원 설정을 바꾸지 않고 선택한 시간 동안 컴퓨터를 활성 상태로 유지합니다."},"process-watch":{"title":"프로세스 종료 감시","aliases":"프로세스 | 종료","description":"선택한 프로세스가 종료될 때까지 기다렸다가 알립니다."},"file-occupancy":{"title":"파일 사용","aliases":"사용 중 | 핸들","description":"파일을 사용 중인 프로세스를 찾습니다."},"volume-occupancy":{"title":"외장 드라이브 사용","aliases":"드라이브 | 추출","description":"이동식 볼륨을 추출하기 전에 사용 중인지 확인합니다."},"keyboard-cleaning":{"title":"키보드 정리","aliases":"키보드 | 입력","description":"정리 중 키보드 입력 상태를 안전하게 확인합니다."},"schedules":{"title":"예약 작업","aliases":"알림 | cron","description":"알림 또는 제한된 시간 동안 활성 유지만 수행하는 로컬 규칙을 만듭니다."},"network-addresses":{"title":"네트워크 주소","aliases":"어댑터 | IP | MAC","description":"로컬 네트워크 인터페이스의 주소와 상태를 표시합니다."},"ifconfig-parser":{"title":"ifconfig 파서","aliases":"네트워크 | 넷마스크","description":"이 페이지에 붙여 넣은 BSD/Linux ifconfig 텍스트를 분석합니다."},"json":{"title":"JSON","aliases":"서식 지정 | 축소","description":"숫자 텍스트와 키 순서를 유지하면서 엄격하게 검증합니다."},"url":{"title":"URL","aliases":"퍼센트 인코딩 | 매개변수","description":"URL 구조를 인코딩, 디코딩 및 검사합니다."},"base64":{"title":"Base64","aliases":"Base64URL | UTF-8","description":"지원되는 한도 내에서 텍스트를 변환합니다."},"time":{"title":"시간 변환","aliases":"Unix | ISO | 시간대","description":"명시적인 단위와 시간대로 시간을 변환합니다."},"uuid":{"title":"UUID v4","aliases":"무작위 ID","description":"시스템 보안 난수 소스로 UUID v4를 생성합니다."},"qr-code":{"title":"QR 코드","aliases":"QR | Wi-Fi","description":"텍스트, URL 또는 직접 입력한 Wi-Fi QR 코드를 만듭니다."},"text-sha256":{"title":"텍스트 SHA-256","aliases":"해시 | 다이제스트","description":"로컬 메모리에서 텍스트 SHA-256을 계산합니다."},"file-sha256":{"title":"파일 SHA-256","aliases":"파일 해시 | 체크섬","description":"명시적으로 선택한 일반 파일 하나를 스트리밍으로 읽습니다."},"regex":{"title":"정규식 진단","aliases":"RegExp | 일치 | AST","description":"ECMAScript 정규식과 그 구조를 검사합니다."},"color":{"title":"색상 변환","aliases":"HEX | OKLCH | P3","description":"일반 CSS 색상 형식을 변환하고 색역 변화를 표시합니다."},"image-watermark":{"title":"이미지 워터마크","aliases":"로고 | PNG | JPEG","description":"로컬 이미지에 텍스트 또는 로고 워터마크를 추가합니다."},"image-batch-watermark":{"title":"일괄 워터마크","aliases":"ZIP | 일괄","description":"여러 이미지를 순서대로 처리하고 제어된 ZIP으로 내보냅니다."},"confidential-watermark":{"title":"기밀 워터마크","aliases":"내부 | 프리셋","description":"편집 가능한 기밀 워터마크 프리셋을 사용합니다."},"image-recipe":{"title":"레시피 빌더","aliases":"레시피 | JSON","description":"이미지 처리 레시피를 검증, 마이그레이션하고 미리 봅니다."},"image-editor":{"title":"레이어 편집기","aliases":"레이어 | 실행 취소","description":"레이어를 편집하고 실제 로컬 리소스를 렌더링합니다."},"invisible-watermark-write":{"title":"보이지 않는 워터마크 쓰기","aliases":"locator | 비밀","description":"짧은 locator를 쓰고 비밀 정보가 없는 기록을 내보냅니다."},"invisible-watermark-check":{"title":"보이지 않는 워터마크 확인","aliases":"감지 | 복구","description":"동일한 알고리즘으로 Image Marker locator를 확인합니다."},"recipient-tracking":{"title":"수신자 추적 패키지","aliases":"수신자 | 배포","description":"배포 이미지와 비공개 매핑을 생성합니다."},"robustness-lab":{"title":"견고성 실험실","aliases":"JPEG | 크기 조정 | 자르기","description":"명시한 조건에서 locator 복구를 테스트합니다."},"c2pa-inspector":{"title":"C2PA 검사기","aliases":"manifest | 자격 증명","description":"내장된 로컬 C2PA manifest를 오프라인으로 검사합니다."},"binary-patch-create":{"title":"패치 만들기","aliases":"BSDIFF43 | 차분","description":"검증된 바이너리 패치를 만들고 복원합니다."},"binary-patch-apply":{"title":"적용 및 검증","aliases":"적용 | 검증","description":"원본 파일을 덮어쓰지 않고 패치를 적용합니다."},"binary-patch-inspector":{"title":"패치 검사기","aliases":"헤더 | 페이로드","description":"패치 형식과 경계를 검사합니다."},"integrity-manifest":{"title":"무결성 매니페스트","aliases":"SHA-256 | manifest","description":"파일 다이제스트에 연결된 JSON manifest를 만듭니다."},"transfer-savings":{"title":"전송 절약","aliases":"크기 | 비율","description":"패치와 전체 패키지의 전송 크기를 비교합니다."},"patch-errors":{"title":"오류 코드 안내","aliases":"BSDIFF | 진단","description":"공식 패치 SDK의 오류 코드를 설명합니다."},"patch-planner":{"title":"릴리스 플래너","aliases":"여러 기준선 | 릴리스","description":"각 기준선을 검증하고 패치 또는 전체 패키지를 선택합니다."}},"keyboardCleaning":{"eyebrow":"System safety PoC","title":"Keyboard cleaning","description":"Temporarily block accidental input; cleaning starts only after the restricted helper explicitly confirms that the hook is effective.","privacy":"Key values are never recorded, keyboard content is never sent to the WebView, and the WebView receives no full permissions. Mouse activity, focus loss, host exit, sleep, revoked permission, or a missed helper heartbeat releases the hook.","durationLabel":"Cleaning duration","duration":"{{count}} seconds","start":"Start cleaning","stop":"Stop","capability":{"label":"Capability","available":"Available ({{platform}})","unavailable":"Unavailable"},"status":{"label":"Status"},"statuses":{"idle":"Ready","unavailable":"Unavailable","preparing":"Preparing (3 seconds)","active":"Cleaning (up to {{count}} seconds)","releasing":"Releasing hook","ended":"Ended"},"reason":"Reason: {{reason}}","endReasons":{"cancelled":"cancelled","mouse_activity":"mouse activity","heartbeat_lost":"helper heartbeat lost","focus_lost":"focus lost","host_exited":"host exited","sleeping":"system sleeping","permission_revoked":"permission revoked","hook_unconfirmed":"hook not confirmed","hook_ineffective":"hook ineffective","hard_deadline":"hard deadline reached","completed":"completed","helper_unavailable":"helper unavailable"},"hardDeadline":"Independent hard deadline: {{time}}; the helper must keep sending heartbeats or the active state is released.","noBridge":"The restricted helper bridge is not connected; this page stays unavailable and never simulates activation.","footer":"Platform capability must be provided by the host with least privilege; this page does not listen for DOM keyboard events. Real platform validation must use an isolated test environment.","errors":{"helper":"The restricted helper was not confirmed: {{reason}}","communication":"communication failed","start":"Keyboard cleaning could not start.","codes":{"capability_unavailable":"Keyboard cleaning is unavailable on this platform.","invalid_duration":"Choose 30, 60, or 120 seconds.","invalid_request_id":"The request identifier is invalid.","clock_went_backward":"The clock must move forward monotonically.","invalid_state":"A keyboard cleaning task is already running.","wrong_request":"The helper event does not belong to the current task.","heartbeat_out_of_order":"The helper heartbeat sequence did not increase."}}},"networkAddresses":{"eyebrow":"System & network","title":"Local network addresses","description":"View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.","refresh":"Refresh on demand","refreshing":"Refreshing…","privacy":"IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.","tabs":{"label":"Network address views","live":"Local interfaces","ifconfig":"Paste ifconfig"},"copy":{"all":"Copy all interface summaries","allLabel":"All interface summaries","card":"Copy this card","summarySuffix":"summary","addressAria":"Copy address {{address}}","addressLabel":"Address","parsed":"Copy parsed summary","parsedLabel":"Parsed summary","unsupported":"This environment does not support copying. Select the text manually.","success":"{{label}} copied. It may contain IP, MAC, or interface identifiers and was written to the system clipboard only after your click.","failure":"Copy failed. The page does not read or retry the system clipboard."},"live":{"sampledAt":"Sampled at {{time}}","interfaceCount":"{{count}} interfaces","truncated":"(more than 128; truncated)","noUniqueIp":"The tool does not choose a supposedly “single true IP”.","reading":"Reading local interfaces…","empty":"No interface addresses were returned. An empty result does not prove that the network is unavailable."},"paste":{"placeholder":"Paste macOS/BSD or Linux ifconfig text; parse only, never execute","inputLabel":"ifconfig text","parse":"Parse strictly","limits":"Up to 256 KiB, 128 interfaces, and 64 addresses per interface. Non-contiguous IPv4 masks, invalid IPv4/IPv6 values, invalid zones, and conflicting prefixes are rejected. Unknown lines are counted on the relevant interface card.","empty":"No interfaces were recognized. Confirm that the pasted text is BSD/Linux ifconfig output."},"interface":{"name":"Interface","state":"State","stateValue":"State: {{state}}","unknownState":"State unknown","mtu":"MTU","mac":"MAC","unknown":"Unknown","noMac":"Not provided","addressCountLabel":"Addresses","truncated":"(truncated)","unknownLines":"Unknown lines","noAddress":"No address fields; this does not mean that the interface is unavailable."},"address":{"label":"Address","mask":"Mask","network":"Network","broadcast":"Broadcast","noBroadcastFormula":"/31 and /32 do not use the broadcast formula","scope":"scope/zone"},"family":{"ipv4":"IPv4","ipv6":"IPv6"},"classifications":{"unspecified":"Unspecified","loopback":"Loopback","private":"RFC1918 private","uniqueLocal":"IPv6 ULA","linkLocal":"Link-local","multicast":"Multicast","shared":"Shared address","documentation":"Documentation example","ipv4Mapped":"IPv4-mapped","globalUnicast":"Global unicast (not probed)","reserved":"Special/reserved"},"explanations":{"ipv4":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"An RFC1918 private address does not confirm network connectivity.","uniqueLocal":"This classification does not apply to IPv4.","linkLocal":"An IPv4 link-local address is normally valid only on the local link.","multicast":"An IPv4 multicast address is not an ordinary unicast host address.","shared":"A carrier-grade shared address (100.64.0.0/10) is not the public egress address.","documentation":"A TEST-NET documentation address should not be treated as a real public identity.","ipv4Mapped":"This classification does not apply to native IPv4 addresses.","globalUnicast":"This is an IPv4 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv4 special or reserved address cannot establish public reachability."},"ipv6":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"This classification does not apply to IPv6 addresses.","uniqueLocal":"An IPv6 unique-local address (ULA) is not a confirmed public address.","linkLocal":"An IPv6 link-local address is valid only on the local link; its zone/scope identifies the interface range.","multicast":"An IPv6 multicast address is not an ordinary unicast host address.","shared":"This classification does not apply to IPv6 addresses.","documentation":"An IPv6 documentation address should not be treated as a real public identity.","ipv4Mapped":"An IPv4-mapped address represents IPv4; it is not an independent IPv6 link.","globalUnicast":"This is an IPv6 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv6 special or reserved address cannot establish public reachability."}}},
+{"title":"도구 상자","description":"텍스트, 이미지, 파일 및 시스템의 작은 작업을 로컬에서 처리합니다. 일반 입력은 이 페이지에만 남습니다.","close":"도구 상자 닫기","loading":"도구 불러오는 중…","search":{"label":"도구 이름 검색","placeholder":"도구 이름, 별칭 또는 설명 검색…","clear":"검색 지우기"},"categories":{"label":"도구 카테고리","systemNetwork":"시스템 및 네트워크","textDevelopment":"텍스트 및 개발","image":"이미지","filePatch":"파일 및 패치"},"favorites":{"title":"즐겨찾기","add":"{{tool}}을(를) 즐겨찾기에 추가","remove":"즐겨찾기에서 {{tool}} 제거"},"empty":{"title":"일치하는 도구가 없습니다","description":"검색은 도구 이름, 별칭 및 설명만 확인하며 입력 내용은 확인하지 않습니다."},"navigation":{"back":"도구 상자로 돌아가기"},"capability":{"degraded":"제한적으로 사용 가능","unavailable":"사용할 수 없음","degradedReason":"일부 네이티브 연동이 제한되지만 도구는 열 수 있습니다.","unavailableReason":"이 플랫폼에서는 네이티브 실행을 사용할 수 없습니다.","unavailableTitle":"{{tool}}을(를) 현재 사용할 수 없음","unavailableHint":"이 항목은 도구 상자에 남아 있으며 네이티브 기능이 복구되면 사용할 수 있습니다."},"history":{"title":"최근 실행 기록","count":"기록: {{count}}","disabled":"사용 안 함","disabledDescription":"현재 정책에 따라 도구 상자 기록이 비활성화되어도 로컬 작업의 즉시 결과는 계속 표시됩니다.","empty":"표시할 완료된 도구 상자 기록이 아직 없습니다.","refresh":"기록 새로 고침","refreshing":"새로 고치는 중…","privacy":"최근 20개 기록만 표시하며 입력, 경로 또는 비밀 정보를 포함하지 않습니다.","unavailable":"도구 상자 기록을 일시적으로 사용할 수 없습니다.","notification":"알림: {{status}}","tools":{"keep-awake":"시간 제한 절전 방지","process-watch":"프로세스 종료 감시","file-occupancy":"파일 사용 검사","volume-occupancy":"볼륨 사용 검사","keyboard-cleaning":"키보드 정리","network-addresses":"네트워크 주소","ifconfig-parser":"ifconfig 파서"},"statuses":{"completed":"완료","cancelled":"취소됨","expired":"만료됨","failed":"실패","interrupted":"중단됨","deadline":"기한 도달","process_exited":"프로세스 종료","low_battery":"배터리 부족으로 해제됨","release_unconfirmed":"해제 확인 안 됨"},"notifications":{"submitted":"제출됨","failed":"실패","unavailable":"사용할 수 없음"}},"toolLayout":{"clear":"지우기","privacy":"입력과 결과는 이 도구 페이지의 메모리에만 보관됩니다. 복사와 저장은 항상 명시적으로 클릭해야 합니다.","result":"결과","copyResult":"결과 복사"},  "local": {
+    "run": "Run",
+    "convert": "Convert",
+    "json": {
+      "indent": "Indent",
+      "spaces": "{{count}} spaces",
+      "format": "Validate and format",
+      "compact": "Minify",
+      "duplicate": "Duplicate keys: {{keys}} (original order is retained; keys are not merged)."
+    },
+    "url": {
+      "inspect": "Inspect structure",
+      "encode": "Encode parameters",
+      "decode": "Decode parameters",
+      "hint": "Parameters follow the original percent-encoding rules; + remains a plus sign. The URL is never opened."
+    },
+    "base64": {
+      "encodedPlaceholder": "SGVsbG8=",
+      "textPlaceholder": "Enter UTF-8 text",
+      "decode": "Decode",
+      "urlSafe": "Base64URL"
+    },
+    "time": {
+      "placeholder": "Unix number or ISO time with timezone",
+      "seconds": "Unix seconds",
+      "milliseconds": "Unix milliseconds",
+      "hint": "UTC and the current local time zone are shown together; the unit is never guessed from the number of digits."
+    },
+    "uuid": {
+      "count": "Count",
+      "generate": "Generate UUID v4",
+      "hint": "Uses the system secure random source; a UUID is not a password."
+    },
+    "qr": {
+      "text": "Text / URL",
+      "wifi": "Wi-Fi (manual)",
+      "textPlaceholder": "Enter text or a URL (it will not open automatically)",
+      "ssid": "SSID",
+      "password": "Password (optional)",
+      "wpa": "WPA/WPA2",
+      "open": "Open network",
+      "generate": "Generate PNG",
+      "tooLarge": "The QR payload cannot exceed 2 KiB.",
+      "warning": "This QR contains Wi-Fi credentials. Confirm the save location; CoreRobin does not read the keychain.",
+      "alt": "Generated QR code",
+      "save": "Save PNG"
+    },
+    "textHash": {
+      "placeholder": "Enter UTF-8 text (up to 1 MiB)",
+      "compute": "Compute SHA-256"
+    },
+    "regex": {
+      "patternLabel": "Regular expression",
+      "flagsLabel": "Regular expression flags",
+      "samplePlaceholder": "Test text (up to 256 KiB)",
+      "replacementPlaceholder": "Text replacement template; JavaScript is not executed",
+      "running": "Running in an isolated worker…",
+      "run": "Diagnose and match",
+      "tree": "Structure tree (syntax relationships, not a backtracking trace)"
+    },
+    "color": {
+      "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
+      "convert": "Convert color"
+    }
+  },
+  "occupancy": {
+    "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
+    "fileRequired": "Choose an ordinary file first.",
+    "volumeRequired": "Choose a volume mount point first.",
+    "selectFile": "Choose ordinary file",
+    "selectVolume": "Choose external-volume mount point",
+    "noTarget": "No target selected",
+    "running": "Scanning…",
+    "fileAction": "Find file users",
+    "volumeAction": "Find volume users",
+    "stop": "Stop scan",
+    "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
+  },
+  "keepAwake": {
+    "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "durationLabel": "Duration",
+    "minutes": "{{count}} minutes",
+    "hours": "{{count}} hours",
+    "start": "Start keep-awake",
+    "stop": "Stop and release",
+    "hint": "Only a temporary system assertion is requested; power plans and simulated input are not changed. An independent deadline thread checks every 15 seconds and releases at expiry or cancellation. The current real-device evidence is limited to this macOS machine."
+  },
+  "schedule": {
+    "desktopOnly": "Scheduled rules require the desktop native runtime; the browser preview does not save rules.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone, so the rule cannot be previewed.",
+    "invalidOnce": "Choose a valid date and time within the next 365 days.",
+    "noOccurrence": "This rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "rule": "Rule",
+    "once": "Once",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "cron": "Cron draft",
+    "intent": "Intent",
+    "reminder": "Reminder",
+    "keepAwake": "Keep awake",
+    "titlePlaceholder": "Optional title (up to 80 characters)",
+    "triggerAt": "Trigger time",
+    "cronPlaceholder": "Five-field Cron, for example 0 9 * * 1-5",
+    "hour": "Hour",
+    "minute": "Minute",
+    "weekday": "Weekday",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "keepAwakeMinutes": "Keep-awake minutes",
+    "save": "Save changes",
+    "create": "Create rule",
+    "cancelEdit": "Cancel edit",
+    "refresh": "View current rules",
+    "hint": "The native Cron searcher calculates the next occurrence before saving. Rules stay in CoreRobin's private data. At the scheduled time, only a reminder or a 1-minute to 12-hour keep-awake request is emitted; missed times are not replayed, and shell, cleanup, process termination, or keyboard actions are never executed.",
+    "unnamed": "Unnamed",
+    "nextPreview": "Next preview",
+    "edit": "Edit",
+    "pause": "Pause",
+    "delete": "Delete"
+  },
+  "processWatch": {
+    "desktopOnly": "Process exit watch requires the desktop native runtime.",
+    "identityRequired": "Enter the selected process PID and birth token; a same-name process cannot replace a stable identity.",
+    "invalidDuration": "The watch duration must be between 1 minute and 12 hours.",
+    "pid": "PID",
+    "pidPlaceholder": "PID of the selected process",
+    "birthToken": "Birth token",
+    "birthTokenPlaceholder": "Copy from process details; same-name substitution is rejected",
+    "duration": "Watch minutes",
+    "keepAwake": "Add temporary keep-awake during the watch (released independently for low battery)",
+    "start": "Start read-only watch",
+    "refresh": "Refresh status",
+    "hint": "Only the user-selected ProcessKey is observed; termination permission is never requested. Up to 3 watches are allowed, with a default of 4 hours and a 12-hour limit. unknown is retried, PID reuse ends as identity_changed, and child processes, exit codes, or work success are not promised.",
+    "deadline": "Deadline",
+    "cancel": "Cancel watch"
+  },
+  "errors": {
+    "generic": "Processing failed. Check the input and try again.",
+    "inputTooLarge": "The input exceeds the allowed size.",
+    "jsonTooDeep": "JSON nesting exceeds the allowed depth.",
+    "invalidJson": "Invalid JSON: {{message}}",
+    "invalidPercentEncoding": "The URL percent encoding is invalid.",
+    "invalidUrl": "Enter a complete URL; this tool will not open or access it.",
+    "invalidBase64": "The Base64 characters or padding are invalid.",
+    "invalidUtf8": "The Base64 content is not valid UTF-8 text.",
+    "invalidTimestamp": "Unix time must be numeric and its unit must be selected explicitly.",
+    "timestampOutOfRange": "The Unix time is outside the safe range.",
+    "timezoneRequired": "ISO time must include an explicit time zone.",
+    "invalidIso": "The ISO time or date is invalid.",
+    "invalidCount": "The UUID count must be between 1 and 100.",
+    "regexTooLarge": "The regular expression exceeds 16 KiB.",
+    "regexTextTooLarge": "The test text exceeds 256 KiB.",
+    "invalidRegex": "Invalid regular expression: {{message}}",
+    "regexWorkerUnavailable": "The isolated regex worker is unavailable; execution has been disabled safely.",
+    "regexTimeout": "Regex execution exceeded 2 seconds and was stopped.",
+    "regexFailed": "Regex execution failed: {{message}}",
+    "invalidColor": "The color format is invalid. Supported formats are HEX, RGB, HSL, HSV, OKLCH, and Display-P3.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone.",
+    "invalidOnceTime": "Choose a valid future time within 365 days.",
+    "cronNoOccurrence": "The rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The duration must be between 1 minute and 12 hours.",
+    "location": " (line {{line}}, column {{column}})"
+  },
+"tools":{"keep-awake":{"title":"절전 방지","aliases":"절전 방지 | 활성 유지","description":"전원 설정을 바꾸지 않고 선택한 시간 동안 컴퓨터를 활성 상태로 유지합니다."},"process-watch":{"title":"프로세스 종료 감시","aliases":"프로세스 | 종료","description":"선택한 프로세스가 종료될 때까지 기다렸다가 알립니다."},"file-occupancy":{"title":"파일 사용","aliases":"사용 중 | 핸들","description":"파일을 사용 중인 프로세스를 찾습니다."},"volume-occupancy":{"title":"외장 드라이브 사용","aliases":"드라이브 | 추출","description":"이동식 볼륨을 추출하기 전에 사용 중인지 확인합니다."},"keyboard-cleaning":{"title":"키보드 정리","aliases":"키보드 | 입력","description":"정리 중 키보드 입력 상태를 안전하게 확인합니다."},"schedules":{"title":"예약 작업","aliases":"알림 | cron","description":"알림 또는 제한된 시간 동안 활성 유지만 수행하는 로컬 규칙을 만듭니다."},"network-addresses":{"title":"네트워크 주소","aliases":"어댑터 | IP | MAC","description":"로컬 네트워크 인터페이스의 주소와 상태를 표시합니다."},"ifconfig-parser":{"title":"ifconfig 파서","aliases":"네트워크 | 넷마스크","description":"이 페이지에 붙여 넣은 BSD/Linux ifconfig 텍스트를 분석합니다."},"json":{"title":"JSON","aliases":"서식 지정 | 축소","description":"숫자 텍스트와 키 순서를 유지하면서 엄격하게 검증합니다."},"url":{"title":"URL","aliases":"퍼센트 인코딩 | 매개변수","description":"URL 구조를 인코딩, 디코딩 및 검사합니다."},"base64":{"title":"Base64","aliases":"Base64URL | UTF-8","description":"지원되는 한도 내에서 텍스트를 변환합니다."},"time":{"title":"시간 변환","aliases":"Unix | ISO | 시간대","description":"명시적인 단위와 시간대로 시간을 변환합니다."},"uuid":{"title":"UUID v4","aliases":"무작위 ID","description":"시스템 보안 난수 소스로 UUID v4를 생성합니다."},"qr-code":{"title":"QR 코드","aliases":"QR | Wi-Fi","description":"텍스트, URL 또는 직접 입력한 Wi-Fi QR 코드를 만듭니다."},"text-sha256":{"title":"텍스트 SHA-256","aliases":"해시 | 다이제스트","description":"로컬 메모리에서 텍스트 SHA-256을 계산합니다."},"file-sha256":{"title":"파일 SHA-256","aliases":"파일 해시 | 체크섬","description":"명시적으로 선택한 일반 파일 하나를 스트리밍으로 읽습니다."},"regex":{"title":"정규식 진단","aliases":"RegExp | 일치 | AST","description":"ECMAScript 정규식과 그 구조를 검사합니다."},"color":{"title":"색상 변환","aliases":"HEX | OKLCH | P3","description":"일반 CSS 색상 형식을 변환하고 색역 변화를 표시합니다."},"image-watermark":{"title":"이미지 워터마크","aliases":"로고 | PNG | JPEG","description":"로컬 이미지에 텍스트 또는 로고 워터마크를 추가합니다."},"image-batch-watermark":{"title":"일괄 워터마크","aliases":"ZIP | 일괄","description":"여러 이미지를 순서대로 처리하고 제어된 ZIP으로 내보냅니다."},"confidential-watermark":{"title":"기밀 워터마크","aliases":"내부 | 프리셋","description":"편집 가능한 기밀 워터마크 프리셋을 사용합니다."},"image-recipe":{"title":"레시피 빌더","aliases":"레시피 | JSON","description":"이미지 처리 레시피를 검증, 마이그레이션하고 미리 봅니다."},"image-editor":{"title":"레이어 편집기","aliases":"레이어 | 실행 취소","description":"레이어를 편집하고 실제 로컬 리소스를 렌더링합니다."},"invisible-watermark-write":{"title":"보이지 않는 워터마크 쓰기","aliases":"locator | 비밀","description":"짧은 locator를 쓰고 비밀 정보가 없는 기록을 내보냅니다."},"invisible-watermark-check":{"title":"보이지 않는 워터마크 확인","aliases":"감지 | 복구","description":"동일한 알고리즘으로 Image Marker locator를 확인합니다."},"recipient-tracking":{"title":"수신자 추적 패키지","aliases":"수신자 | 배포","description":"배포 이미지와 비공개 매핑을 생성합니다."},"robustness-lab":{"title":"견고성 실험실","aliases":"JPEG | 크기 조정 | 자르기","description":"명시한 조건에서 locator 복구를 테스트합니다."},"c2pa-inspector":{"title":"C2PA 검사기","aliases":"manifest | 자격 증명","description":"내장된 로컬 C2PA manifest를 오프라인으로 검사합니다."},"binary-patch-create":{"title":"패치 만들기","aliases":"BSDIFF43 | 차분","description":"검증된 바이너리 패치를 만들고 복원합니다."},"binary-patch-apply":{"title":"적용 및 검증","aliases":"적용 | 검증","description":"원본 파일을 덮어쓰지 않고 패치를 적용합니다."},"binary-patch-inspector":{"title":"패치 검사기","aliases":"헤더 | 페이로드","description":"패치 형식과 경계를 검사합니다."},"integrity-manifest":{"title":"무결성 매니페스트","aliases":"SHA-256 | manifest","description":"파일 다이제스트에 연결된 JSON manifest를 만듭니다."},"transfer-savings":{"title":"전송 절약","aliases":"크기 | 비율","description":"패치와 전체 패키지의 전송 크기를 비교합니다."},"patch-errors":{"title":"오류 코드 안내","aliases":"BSDIFF | 진단","description":"공식 패치 SDK의 오류 코드를 설명합니다."},"patch-planner":{"title":"릴리스 플래너","aliases":"여러 기준선 | 릴리스","description":"각 기준선을 검증하고 패치 또는 전체 패키지를 선택합니다."}},"keyboardCleaning":{"eyebrow":"System safety PoC","title":"Keyboard cleaning","description":"Temporarily block accidental input; cleaning starts only after the restricted helper explicitly confirms that the hook is effective.","privacy":"Key values are never recorded, keyboard content is never sent to the WebView, and the WebView receives no full permissions. Mouse activity, focus loss, host exit, sleep, revoked permission, or a missed helper heartbeat releases the hook.","durationLabel":"Cleaning duration","duration":"{{count}} seconds","start":"Start cleaning","stop":"Stop","capability":{"label":"Capability","available":"Available ({{platform}})","unavailable":"Unavailable"},"status":{"label":"Status"},"statuses":{"idle":"Ready","unavailable":"Unavailable","preparing":"Preparing (3 seconds)","active":"Cleaning (up to {{count}} seconds)","releasing":"Releasing hook","ended":"Ended"},"reason":"Reason: {{reason}}","endReasons":{"cancelled":"cancelled","mouse_activity":"mouse activity","heartbeat_lost":"helper heartbeat lost","focus_lost":"focus lost","host_exited":"host exited","sleeping":"system sleeping","permission_revoked":"permission revoked","hook_unconfirmed":"hook not confirmed","hook_ineffective":"hook ineffective","hard_deadline":"hard deadline reached","completed":"completed","helper_unavailable":"helper unavailable"},"hardDeadline":"Independent hard deadline: {{time}}; the helper must keep sending heartbeats or the active state is released.","noBridge":"The restricted helper bridge is not connected; this page stays unavailable and never simulates activation.","footer":"Platform capability must be provided by the host with least privilege; this page does not listen for DOM keyboard events. Real platform validation must use an isolated test environment.","errors":{"helper":"The restricted helper was not confirmed: {{reason}}","communication":"communication failed","start":"Keyboard cleaning could not start.","codes":{"capability_unavailable":"Keyboard cleaning is unavailable on this platform.","invalid_duration":"Choose 30, 60, or 120 seconds.","invalid_request_id":"The request identifier is invalid.","clock_went_backward":"The clock must move forward monotonically.","invalid_state":"A keyboard cleaning task is already running.","wrong_request":"The helper event does not belong to the current task.","heartbeat_out_of_order":"The helper heartbeat sequence did not increase."}}},"networkAddresses":{"eyebrow":"System & network","title":"Local network addresses","description":"View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.","refresh":"Refresh on demand","refreshing":"Refreshing…","privacy":"IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.","tabs":{"label":"Network address views","live":"Local interfaces","ifconfig":"Paste ifconfig"},"copy":{"all":"Copy all interface summaries","allLabel":"All interface summaries","card":"Copy this card","summarySuffix":"summary","addressAria":"Copy address {{address}}","addressLabel":"Address","parsed":"Copy parsed summary","parsedLabel":"Parsed summary","unsupported":"This environment does not support copying. Select the text manually.","success":"{{label}} copied. It may contain IP, MAC, or interface identifiers and was written to the system clipboard only after your click.","failure":"Copy failed. The page does not read or retry the system clipboard."},"live":{"sampledAt":"Sampled at {{time}}","interfaceCount":"{{count}} interfaces","truncated":"(more than 128; truncated)","noUniqueIp":"The tool does not choose a supposedly “single true IP”.","reading":"Reading local interfaces…","empty":"No interface addresses were returned. An empty result does not prove that the network is unavailable."},"paste":{"placeholder":"Paste macOS/BSD or Linux ifconfig text; parse only, never execute","inputLabel":"ifconfig text","parse":"Parse strictly","limits":"Up to 256 KiB, 128 interfaces, and 64 addresses per interface. Non-contiguous IPv4 masks, invalid IPv4/IPv6 values, invalid zones, and conflicting prefixes are rejected. Unknown lines are counted on the relevant interface card.","empty":"No interfaces were recognized. Confirm that the pasted text is BSD/Linux ifconfig output."},"interface":{"name":"Interface","state":"State","stateValue":"State: {{state}}","unknownState":"State unknown","mtu":"MTU","mac":"MAC","unknown":"Unknown","noMac":"Not provided","addressCountLabel":"Addresses","truncated":"(truncated)","unknownLines":"Unknown lines","noAddress":"No address fields; this does not mean that the interface is unavailable."},"address":{"label":"Address","mask":"Mask","network":"Network","broadcast":"Broadcast","noBroadcastFormula":"/31 and /32 do not use the broadcast formula","scope":"scope/zone"},"family":{"ipv4":"IPv4","ipv6":"IPv6"},"classifications":{"unspecified":"Unspecified","loopback":"Loopback","private":"RFC1918 private","uniqueLocal":"IPv6 ULA","linkLocal":"Link-local","multicast":"Multicast","shared":"Shared address","documentation":"Documentation example","ipv4Mapped":"IPv4-mapped","globalUnicast":"Global unicast (not probed)","reserved":"Special/reserved"},"explanations":{"ipv4":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"An RFC1918 private address does not confirm network connectivity.","uniqueLocal":"This classification does not apply to IPv4.","linkLocal":"An IPv4 link-local address is normally valid only on the local link.","multicast":"An IPv4 multicast address is not an ordinary unicast host address.","shared":"A carrier-grade shared address (100.64.0.0/10) is not the public egress address.","documentation":"A TEST-NET documentation address should not be treated as a real public identity.","ipv4Mapped":"This classification does not apply to native IPv4 addresses.","globalUnicast":"This is an IPv4 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv4 special or reserved address cannot establish public reachability."},"ipv6":{"unspecified":"An unspecified address does not represent an address reachable through an interface.","loopback":"A loopback address is used only within this computer.","private":"This classification does not apply to IPv6 addresses.","uniqueLocal":"An IPv6 unique-local address (ULA) is not a confirmed public address.","linkLocal":"An IPv6 link-local address is valid only on the local link; its zone/scope identifies the interface range.","multicast":"An IPv6 multicast address is not an ordinary unicast host address.","shared":"This classification does not apply to IPv6 addresses.","documentation":"An IPv6 documentation address should not be treated as a real public identity.","ipv4Mapped":"An IPv4-mapped address represents IPv4; it is not an independent IPv6 link.","globalUnicast":"This is an IPv6 global unicast range; the public egress and connectivity were not probed.","reserved":"An IPv6 special or reserved address cannot establish public reachability."}}},
   "binaryPatch": {
     "hint": "Patches stay binary and must be verified byte-for-byte after generation. Applying without an expected target is marked unverified and can only be saved as a copy after explicit confirmation. ENDSLEY/BSDIFF43 can be generated and applied; BSDIFF40 is inspection-only.",
     "inputs": {

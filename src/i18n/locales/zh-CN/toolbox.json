@@ -78,6 +78,178 @@
     "result": "结果",
     "copyResult": "复制结果"
   },
+  "local": {
+    "run": "执行",
+    "convert": "转换",
+    "json": {
+      "indent": "缩进",
+      "spaces": "{{count}} 空格",
+      "format": "校验并格式化",
+      "compact": "压缩",
+      "duplicate": "重复键：{{keys}}（保留原文顺序，不擅自合并）。"
+    },
+    "url": {
+      "inspect": "结构查看",
+      "encode": "编码参数",
+      "decode": "解码参数",
+      "hint": "参数按原始百分号规则处理，+ 保留为加号；不会打开 URL。"
+    },
+    "base64": {
+      "encodedPlaceholder": "SGVsbG8=",
+      "textPlaceholder": "输入 UTF-8 文本",
+      "decode": "解码",
+      "urlSafe": "Base64URL"
+    },
+    "time": {
+      "placeholder": "Unix 数字或带时区 ISO 时间",
+      "seconds": "Unix 秒",
+      "milliseconds": "Unix 毫秒",
+      "hint": "结果并列显示 UTC 与当前本地时区；不根据位数猜单位。"
+    },
+    "uuid": {
+      "count": "数量",
+      "generate": "生成 UUID v4",
+      "hint": "使用系统安全随机源；UUID 不是密码。"
+    },
+    "qr": {
+      "text": "文本 / URL",
+      "wifi": "Wi-Fi（手填）",
+      "textPlaceholder": "输入文本或 URL（不会自动打开）",
+      "ssid": "SSID",
+      "password": "密码（可留空）",
+      "wpa": "WPA/WPA2",
+      "open": "开放网络",
+      "generate": "生成 PNG",
+      "tooLarge": "二维码载荷不能超过 2 KiB。",
+      "warning": "二维码包含 Wi-Fi 凭据，请确认保存位置；CoreRobin 不读取钥匙串。",
+      "alt": "生成的二维码",
+      "save": "保存 PNG"
+    },
+    "textHash": {
+      "placeholder": "输入 UTF-8 文本（最多 1 MiB）",
+      "compute": "计算 SHA-256"
+    },
+    "regex": {
+      "patternLabel": "正则表达式",
+      "flagsLabel": "正则 flags",
+      "samplePlaceholder": "测试文本（最多 256 KiB）",
+      "replacementPlaceholder": "文本替换模板，不执行 JavaScript",
+      "running": "正在隔离执行…",
+      "run": "诊断并匹配",
+      "tree": "结构树（语法关系，不是回溯轨迹）"
+    },
+    "color": {
+      "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
+      "convert": "转换颜色"
+    }
+  },
+  "occupancy": {
+    "desktopOnly": "占用诊断需要桌面原生运行时。",
+    "fileRequired": "请先选择一个普通文件。",
+    "volumeRequired": "请先选择一个挂载目录。",
+    "selectFile": "选择普通文件",
+    "selectVolume": "选择外盘挂载点",
+    "noTarget": "未选择目标",
+    "running": "正在诊断…",
+    "fileAction": "查找文件使用者",
+    "volumeAction": "查找外盘使用者",
+    "stop": "停止诊断",
+    "hint": "文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。"
+  },
+  "keepAwake": {
+    "desktopOnly": "限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。",
+    "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+    "durationLabel": "时长",
+    "minutes": "{{count}} 分钟",
+    "hours": "{{count}} 小时",
+    "start": "开始保活",
+    "stop": "停止并释放",
+    "hint": "只申请临时系统断言，不修改电源计划、不模拟输入；独立截止线程每 15 秒检查并在到期/取消时释放。当前实机证据范围为本机 macOS。"
+  },
+  "schedule": {
+    "desktopOnly": "定时规则需要桌面原生运行时；浏览器演示不会保存规则。",
+    "timeZoneUnavailable": "系统未提供 IANA 时区，无法预览定时规则。",
+    "invalidOnce": "请选择未来 365 天内的有效日期和时间。",
+    "noOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+    "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+    "rule": "规则",
+    "once": "一次性",
+    "daily": "每天",
+    "weekly": "每周",
+    "cron": "Cron 草稿",
+    "intent": "意图",
+    "reminder": "提醒",
+    "keepAwake": "限时保活",
+    "titlePlaceholder": "可选标题（最多 80 字符）",
+    "triggerAt": "触发时间",
+    "cronPlaceholder": "五段 Cron，例如 0 9 * * 1-5",
+    "hour": "小时",
+    "minute": "分钟",
+    "weekday": "星期",
+    "weekdays": {
+      "0": "周日",
+      "1": "周一",
+      "2": "周二",
+      "3": "周三",
+      "4": "周四",
+      "5": "周五",
+      "6": "周六"
+    },
+    "keepAwakeMinutes": "保活分钟",
+    "save": "保存修改",
+    "create": "创建规则",
+    "cancelEdit": "取消编辑",
+    "refresh": "查看当前规则",
+    "hint": "创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。",
+    "unnamed": "未命名",
+    "nextPreview": "下次预览",
+    "edit": "编辑",
+    "pause": "暂停",
+    "delete": "删除"
+  },
+  "processWatch": {
+    "desktopOnly": "进程退出提醒需要桌面原生运行时。",
+    "identityRequired": "请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。",
+    "invalidDuration": "观察时长必须是 1 分钟到 12 小时。",
+    "pid": "PID",
+    "pidPlaceholder": "已选进程 PID",
+    "birthToken": "birth token",
+    "birthTokenPlaceholder": "从进程详情复制，拒绝同名替代",
+    "duration": "观察分钟",
+    "keepAwake": "观察期间附加限时保活（低电量独立释放）",
+    "start": "开始只读观察",
+    "refresh": "刷新状态",
+    "hint": "只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。",
+    "deadline": "截止",
+    "cancel": "取消观察"
+  },
+  "errors": {
+    "generic": "处理失败，请检查输入后重试。",
+    "inputTooLarge": "输入超过允许的大小限制。",
+    "jsonTooDeep": "JSON 嵌套层级超过限制。",
+    "invalidJson": "JSON 无效：{{message}}",
+    "invalidPercentEncoding": "URL 百分号编码无效。",
+    "invalidUrl": "请输入完整 URL；工具不会打开或访问它。",
+    "invalidBase64": "Base64 字符或 padding 无效。",
+    "invalidUtf8": "Base64 内容不是有效 UTF-8 文本。",
+    "invalidTimestamp": "Unix 时间必须是数字，并且单位需要显式选择。",
+    "timestampOutOfRange": "Unix 时间超出安全范围。",
+    "timezoneRequired": "ISO 时间必须明确包含时区。",
+    "invalidIso": "ISO 时间或日期格式无效。",
+    "invalidCount": "UUID 数量必须是 1 到 100。",
+    "regexTooLarge": "正则表达式不能超过 16 KiB。",
+    "regexTextTooLarge": "测试文本不能超过 256 KiB。",
+    "invalidRegex": "正则语法无效：{{message}}",
+    "regexWorkerUnavailable": "正则执行 Worker 无法启动，已安全禁用正则执行。",
+    "regexTimeout": "正则执行超过 2 秒，已停止。",
+    "regexFailed": "正则执行失败：{{message}}",
+    "invalidColor": "颜色格式无效；支持 HEX、RGB、HSL、HSV、OKLCH 和 Display-P3。",
+    "timeZoneUnavailable": "系统未提供 IANA 时区。",
+    "invalidOnceTime": "请选择未来 365 天内的有效时间。",
+    "cronNoOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+    "invalidDuration": "时长必须是 1 分钟到 12 小时。",
+    "location": "（第 {{line}} 行，第 {{column}} 列）"
+  },
   "tools": {
     "keep-awake": { "title": "限时保活", "aliases": "防止休眠 | 保活", "description": "在明确期限内保持空闲状态，不修改系统电源计划。" },
     "process-watch": { "title": "进程退出提醒", "aliases": "进程 | 退出", "description": "等待选定进程退出并提醒。" },

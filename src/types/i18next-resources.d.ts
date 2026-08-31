@@ -3043,6 +3043,33 @@ export default interface Resources {
       "description": "搜索只查找工具名称、别名和说明，不会查看你的输入。",
       "title": "没有匹配的工具"
     },
+    "errors": {
+      "cronNoOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+      "generic": "处理失败，请检查输入后重试。",
+      "inputTooLarge": "输入超过允许的大小限制。",
+      "invalidBase64": "Base64 字符或 padding 无效。",
+      "invalidColor": "颜色格式无效；支持 HEX、RGB、HSL、HSV、OKLCH 和 Display-P3。",
+      "invalidCount": "UUID 数量必须是 1 到 100。",
+      "invalidDuration": "时长必须是 1 分钟到 12 小时。",
+      "invalidIso": "ISO 时间或日期格式无效。",
+      "invalidJson": "JSON 无效：{{message}}",
+      "invalidOnceTime": "请选择未来 365 天内的有效时间。",
+      "invalidPercentEncoding": "URL 百分号编码无效。",
+      "invalidRegex": "正则语法无效：{{message}}",
+      "invalidTimestamp": "Unix 时间必须是数字，并且单位需要显式选择。",
+      "invalidUrl": "请输入完整 URL；工具不会打开或访问它。",
+      "invalidUtf8": "Base64 内容不是有效 UTF-8 文本。",
+      "jsonTooDeep": "JSON 嵌套层级超过限制。",
+      "location": "（第 {{line}} 行，第 {{column}} 列）",
+      "regexFailed": "正则执行失败：{{message}}",
+      "regexTextTooLarge": "测试文本不能超过 256 KiB。",
+      "regexTimeout": "正则执行超过 2 秒，已停止。",
+      "regexTooLarge": "正则表达式不能超过 16 KiB。",
+      "regexWorkerUnavailable": "正则执行 Worker 无法启动，已安全禁用正则执行。",
+      "timeZoneUnavailable": "系统未提供 IANA 时区。",
+      "timestampOutOfRange": "Unix 时间超出安全范围。",
+      "timezoneRequired": "ISO 时间必须明确包含时区。"
+    },
     "favorites": {
       "add": "收藏 {{tool}}",
       "remove": "取消收藏 {{tool}}",
@@ -3256,6 +3283,16 @@ export default interface Resources {
       "unlock": "解锁",
       "unlockLayer": "解锁图层"
     },
+    "keepAwake": {
+      "desktopOnly": "限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。",
+      "durationLabel": "时长",
+      "hint": "只申请临时系统断言，不修改电源计划、不模拟输入；独立截止线程每 15 秒检查并在到期/取消时释放。当前实机证据范围为本机 macOS。",
+      "hours": "{{count}} 小时",
+      "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+      "minutes": "{{count}} 分钟",
+      "start": "开始保活",
+      "stop": "停止并释放"
+    },
     "keyboardCleaning": {
       "capability": {
         "available": "可用（{{platform}}）",
@@ -3315,6 +3352,71 @@ export default interface Resources {
       "title": "键盘清洁"
     },
     "loading": "正在加载工具…",
+    "local": {
+      "base64": {
+        "decode": "解码",
+        "encodedPlaceholder": "SGVsbG8=",
+        "textPlaceholder": "输入 UTF-8 文本",
+        "urlSafe": "Base64URL"
+      },
+      "color": {
+        "convert": "转换颜色",
+        "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)"
+      },
+      "convert": "转换",
+      "json": {
+        "compact": "压缩",
+        "duplicate": "重复键：{{keys}}（保留原文顺序，不擅自合并）。",
+        "format": "校验并格式化",
+        "indent": "缩进",
+        "spaces": "{{count}} 空格"
+      },
+      "qr": {
+        "alt": "生成的二维码",
+        "generate": "生成 PNG",
+        "open": "开放网络",
+        "password": "密码（可留空）",
+        "save": "保存 PNG",
+        "ssid": "SSID",
+        "text": "文本 / URL",
+        "textPlaceholder": "输入文本或 URL（不会自动打开）",
+        "tooLarge": "二维码载荷不能超过 2 KiB。",
+        "warning": "二维码包含 Wi-Fi 凭据，请确认保存位置；CoreRobin 不读取钥匙串。",
+        "wifi": "Wi-Fi（手填）",
+        "wpa": "WPA/WPA2"
+      },
+      "regex": {
+        "flagsLabel": "正则 flags",
+        "patternLabel": "正则表达式",
+        "replacementPlaceholder": "文本替换模板，不执行 JavaScript",
+        "run": "诊断并匹配",
+        "running": "正在隔离执行…",
+        "samplePlaceholder": "测试文本（最多 256 KiB）",
+        "tree": "结构树（语法关系，不是回溯轨迹）"
+      },
+      "run": "执行",
+      "textHash": {
+        "compute": "计算 SHA-256",
+        "placeholder": "输入 UTF-8 文本（最多 1 MiB）"
+      },
+      "time": {
+        "hint": "结果并列显示 UTC 与当前本地时区；不根据位数猜单位。",
+        "milliseconds": "Unix 毫秒",
+        "placeholder": "Unix 数字或带时区 ISO 时间",
+        "seconds": "Unix 秒"
+      },
+      "url": {
+        "decode": "解码参数",
+        "encode": "编码参数",
+        "hint": "参数按原始百分号规则处理，+ 保留为加号；不会打开 URL。",
+        "inspect": "结构查看"
+      },
+      "uuid": {
+        "count": "数量",
+        "generate": "生成 UUID v4",
+        "hint": "使用系统安全随机源；UUID 不是密码。"
+      }
+    },
     "navigation": {
       "back": "返回工具箱"
     },
@@ -3425,6 +3527,76 @@ export default interface Resources {
         "live": "本机网卡"
       },
       "title": "本机网络地址"
+    },
+    "occupancy": {
+      "desktopOnly": "占用诊断需要桌面原生运行时。",
+      "fileAction": "查找文件使用者",
+      "fileRequired": "请先选择一个普通文件。",
+      "hint": "文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。",
+      "noTarget": "未选择目标",
+      "running": "正在诊断…",
+      "selectFile": "选择普通文件",
+      "selectVolume": "选择外盘挂载点",
+      "stop": "停止诊断",
+      "volumeAction": "查找外盘使用者",
+      "volumeRequired": "请先选择一个挂载目录。"
+    },
+    "processWatch": {
+      "birthToken": "birth token",
+      "birthTokenPlaceholder": "从进程详情复制，拒绝同名替代",
+      "cancel": "取消观察",
+      "deadline": "截止",
+      "desktopOnly": "进程退出提醒需要桌面原生运行时。",
+      "duration": "观察分钟",
+      "hint": "只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。",
+      "identityRequired": "请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。",
+      "invalidDuration": "观察时长必须是 1 分钟到 12 小时。",
+      "keepAwake": "观察期间附加限时保活（低电量独立释放）",
+      "pid": "PID",
+      "pidPlaceholder": "已选进程 PID",
+      "refresh": "刷新状态",
+      "start": "开始只读观察"
+    },
+    "schedule": {
+      "cancelEdit": "取消编辑",
+      "create": "创建规则",
+      "cron": "Cron 草稿",
+      "cronPlaceholder": "五段 Cron，例如 0 9 * * 1-5",
+      "daily": "每天",
+      "delete": "删除",
+      "desktopOnly": "定时规则需要桌面原生运行时；浏览器演示不会保存规则。",
+      "edit": "编辑",
+      "hint": "创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。",
+      "hour": "小时",
+      "intent": "意图",
+      "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+      "invalidOnce": "请选择未来 365 天内的有效日期和时间。",
+      "keepAwake": "限时保活",
+      "keepAwakeMinutes": "保活分钟",
+      "minute": "分钟",
+      "nextPreview": "下次预览",
+      "noOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+      "once": "一次性",
+      "pause": "暂停",
+      "refresh": "查看当前规则",
+      "reminder": "提醒",
+      "rule": "规则",
+      "save": "保存修改",
+      "timeZoneUnavailable": "系统未提供 IANA 时区，无法预览定时规则。",
+      "titlePlaceholder": "可选标题（最多 80 字符）",
+      "triggerAt": "触发时间",
+      "unnamed": "未命名",
+      "weekday": "星期",
+      "weekdays": {
+        "0": "周日",
+        "1": "周一",
+        "2": "周二",
+        "3": "周三",
+        "4": "周四",
+        "5": "周五",
+        "6": "周六"
+      },
+      "weekly": "每周"
     },
     "search": {
       "clear": "清空搜索",

@@ -78,6 +78,178 @@
     "result": "Result",
     "copyResult": "Copy result"
   },
+  "local": {
+    "run": "Run",
+    "convert": "Convert",
+    "json": {
+      "indent": "Indent",
+      "spaces": "{{count}} spaces",
+      "format": "Validate and format",
+      "compact": "Minify",
+      "duplicate": "Duplicate keys: {{keys}} (original order is retained; keys are not merged)."
+    },
+    "url": {
+      "inspect": "Inspect structure",
+      "encode": "Encode parameters",
+      "decode": "Decode parameters",
+      "hint": "Parameters follow the original percent-encoding rules; + remains a plus sign. The URL is never opened."
+    },
+    "base64": {
+      "encodedPlaceholder": "SGVsbG8=",
+      "textPlaceholder": "Enter UTF-8 text",
+      "decode": "Decode",
+      "urlSafe": "Base64URL"
+    },
+    "time": {
+      "placeholder": "Unix number or ISO time with timezone",
+      "seconds": "Unix seconds",
+      "milliseconds": "Unix milliseconds",
+      "hint": "UTC and the current local time zone are shown together; the unit is never guessed from the number of digits."
+    },
+    "uuid": {
+      "count": "Count",
+      "generate": "Generate UUID v4",
+      "hint": "Uses the system secure random source; a UUID is not a password."
+    },
+    "qr": {
+      "text": "Text / URL",
+      "wifi": "Wi-Fi (manual)",
+      "textPlaceholder": "Enter text or a URL (it will not open automatically)",
+      "ssid": "SSID",
+      "password": "Password (optional)",
+      "wpa": "WPA/WPA2",
+      "open": "Open network",
+      "generate": "Generate PNG",
+      "tooLarge": "The QR payload cannot exceed 2 KiB.",
+      "warning": "This QR contains Wi-Fi credentials. Confirm the save location; CoreRobin does not read the keychain.",
+      "alt": "Generated QR code",
+      "save": "Save PNG"
+    },
+    "textHash": {
+      "placeholder": "Enter UTF-8 text (up to 1 MiB)",
+      "compute": "Compute SHA-256"
+    },
+    "regex": {
+      "patternLabel": "Regular expression",
+      "flagsLabel": "Regular expression flags",
+      "samplePlaceholder": "Test text (up to 256 KiB)",
+      "replacementPlaceholder": "Text replacement template; JavaScript is not executed",
+      "running": "Running in an isolated worker…",
+      "run": "Diagnose and match",
+      "tree": "Structure tree (syntax relationships, not a backtracking trace)"
+    },
+    "color": {
+      "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
+      "convert": "Convert color"
+    }
+  },
+  "occupancy": {
+    "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
+    "fileRequired": "Choose an ordinary file first.",
+    "volumeRequired": "Choose a volume mount point first.",
+    "selectFile": "Choose ordinary file",
+    "selectVolume": "Choose external-volume mount point",
+    "noTarget": "No target selected",
+    "running": "Scanning…",
+    "fileAction": "Find file users",
+    "volumeAction": "Find volume users",
+    "stop": "Stop scan",
+    "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
+  },
+  "keepAwake": {
+    "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "durationLabel": "Duration",
+    "minutes": "{{count}} minutes",
+    "hours": "{{count}} hours",
+    "start": "Start keep-awake",
+    "stop": "Stop and release",
+    "hint": "Only a temporary system assertion is requested; power plans and simulated input are not changed. An independent deadline thread checks every 15 seconds and releases at expiry or cancellation. The current real-device evidence is limited to this macOS machine."
+  },
+  "schedule": {
+    "desktopOnly": "Scheduled rules require the desktop native runtime; the browser preview does not save rules.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone, so the rule cannot be previewed.",
+    "invalidOnce": "Choose a valid date and time within the next 365 days.",
+    "noOccurrence": "This rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
+    "rule": "Rule",
+    "once": "Once",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "cron": "Cron draft",
+    "intent": "Intent",
+    "reminder": "Reminder",
+    "keepAwake": "Keep awake",
+    "titlePlaceholder": "Optional title (up to 80 characters)",
+    "triggerAt": "Trigger time",
+    "cronPlaceholder": "Five-field Cron, for example 0 9 * * 1-5",
+    "hour": "Hour",
+    "minute": "Minute",
+    "weekday": "Weekday",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "keepAwakeMinutes": "Keep-awake minutes",
+    "save": "Save changes",
+    "create": "Create rule",
+    "cancelEdit": "Cancel edit",
+    "refresh": "View current rules",
+    "hint": "The native Cron searcher calculates the next occurrence before saving. Rules stay in CoreRobin's private data. At the scheduled time, only a reminder or a 1-minute to 12-hour keep-awake request is emitted; missed times are not replayed, and shell, cleanup, process termination, or keyboard actions are never executed.",
+    "unnamed": "Unnamed",
+    "nextPreview": "Next preview",
+    "edit": "Edit",
+    "pause": "Pause",
+    "delete": "Delete"
+  },
+  "processWatch": {
+    "desktopOnly": "Process exit watch requires the desktop native runtime.",
+    "identityRequired": "Enter the selected process PID and birth token; a same-name process cannot replace a stable identity.",
+    "invalidDuration": "The watch duration must be between 1 minute and 12 hours.",
+    "pid": "PID",
+    "pidPlaceholder": "PID of the selected process",
+    "birthToken": "Birth token",
+    "birthTokenPlaceholder": "Copy from process details; same-name substitution is rejected",
+    "duration": "Watch minutes",
+    "keepAwake": "Add temporary keep-awake during the watch (released independently for low battery)",
+    "start": "Start read-only watch",
+    "refresh": "Refresh status",
+    "hint": "Only the user-selected ProcessKey is observed; termination permission is never requested. Up to 3 watches are allowed, with a default of 4 hours and a 12-hour limit. unknown is retried, PID reuse ends as identity_changed, and child processes, exit codes, or work success are not promised.",
+    "deadline": "Deadline",
+    "cancel": "Cancel watch"
+  },
+  "errors": {
+    "generic": "Processing failed. Check the input and try again.",
+    "inputTooLarge": "The input exceeds the allowed size.",
+    "jsonTooDeep": "JSON nesting exceeds the allowed depth.",
+    "invalidJson": "Invalid JSON: {{message}}",
+    "invalidPercentEncoding": "The URL percent encoding is invalid.",
+    "invalidUrl": "Enter a complete URL; this tool will not open or access it.",
+    "invalidBase64": "The Base64 characters or padding are invalid.",
+    "invalidUtf8": "The Base64 content is not valid UTF-8 text.",
+    "invalidTimestamp": "Unix time must be numeric and its unit must be selected explicitly.",
+    "timestampOutOfRange": "The Unix time is outside the safe range.",
+    "timezoneRequired": "ISO time must include an explicit time zone.",
+    "invalidIso": "The ISO time or date is invalid.",
+    "invalidCount": "The UUID count must be between 1 and 100.",
+    "regexTooLarge": "The regular expression exceeds 16 KiB.",
+    "regexTextTooLarge": "The test text exceeds 256 KiB.",
+    "invalidRegex": "Invalid regular expression: {{message}}",
+    "regexWorkerUnavailable": "The isolated regex worker is unavailable; execution has been disabled safely.",
+    "regexTimeout": "Regex execution exceeded 2 seconds and was stopped.",
+    "regexFailed": "Regex execution failed: {{message}}",
+    "invalidColor": "The color format is invalid. Supported formats are HEX, RGB, HSL, HSV, OKLCH, and Display-P3.",
+    "timeZoneUnavailable": "The system did not provide an IANA time zone.",
+    "invalidOnceTime": "Choose a valid future time within 365 days.",
+    "cronNoOccurrence": "The rule has no next occurrence within the search horizon.",
+    "invalidDuration": "The duration must be between 1 minute and 12 hours.",
+    "location": " (line {{line}}, column {{column}})"
+  },
   "tools": {
     "keep-awake": { "title": "Keep awake", "aliases": "prevent sleep | stay awake", "description": "Keep the computer awake for a chosen period without changing power settings." },
     "process-watch": { "title": "Process exit watch", "aliases": "process | exit", "description": "Wait for a chosen process to exit and notify you." },
