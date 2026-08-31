@@ -244,14 +244,13 @@ pub(crate) fn store_volume_action_lease(lease: VolumeActionLease) -> Result<Stri
         !entry.lease.is_expired(now)
             && now.saturating_duration_since(entry.created_at) < Duration::from_secs(30)
     });
-    if store.len() >= MAX_PENDING_VOLUME_ACTION_LEASES {
-        if let Some(oldest) = store
+    if store.len() >= MAX_PENDING_VOLUME_ACTION_LEASES
+        && let Some(oldest) = store
             .iter()
             .min_by_key(|(_, entry)| entry.created_at)
             .map(|(token, _)| token.clone())
-        {
-            store.remove(&oldest);
-        }
+    {
+        store.remove(&oldest);
     }
     store.insert(
         token.clone(),
