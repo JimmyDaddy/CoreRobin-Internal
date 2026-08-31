@@ -22,6 +22,7 @@ mod monitor;
 mod native_uninstall;
 mod network_connections;
 mod network_quality;
+mod power_events;
 mod private_storage;
 mod process_control;
 mod resource_occupancy;
@@ -119,6 +120,7 @@ use objc2::{MainThreadMarker, sel};
 use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
+use power_events::{PowerEventObserver, SYSTEM_WAKE_EVENT};
 use process_control::ProcessController;
 use resource_occupancy::{OccupancyScanRequest, OccupancyScanResult, OccupancyVolumeScanRequest};
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
@@ -3163,6 +3165,7 @@ pub fn run() {
         MacosLauncher::LaunchAgent,
         Some(vec!["--background"]),
     ));
+    let mut power_event_observer = PowerEventObserver::default();
     builder
         .manage(AppState::new(background_launch))
         .manage(AppUpdateTaskManager::default())
@@ -3482,12 +3485,22 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building CoreRobin")
-        .run(|app, event| {
+        .run(move |app, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                let wake_app = app.clone();
+                power_event_observer.install(
+                    Arc::clone(&app.state::<AppState>().toolbox_power),
+                    Arc::new(move || {
+                        let _ = wake_app.emit(SYSTEM_WAKE_EVENT, ());
+                    }),
+                );
+            }
             #[cfg(target_os = "macos")]
             if matches!(event, tauri::RunEvent::Reopen { .. }) {
                 show_main(app);
             }
             if let tauri::RunEvent::Exit = event {
+                power_event_observer.shutdown();
                 app.state::<AppState>()
                     .toolbox_scheduler_stop
                     .store(true, Ordering::Release);

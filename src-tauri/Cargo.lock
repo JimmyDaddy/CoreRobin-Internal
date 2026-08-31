@@ -677,6 +677,7 @@ dependencies = [
 name = "core-robin"
 version = "0.1.30"
 dependencies = [
+ "block2",
  "cap-fs-ext",
  "cap-std",
  "chrono",
