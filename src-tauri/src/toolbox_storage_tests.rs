@@ -294,11 +294,11 @@ mod tests {
             storage.check_reset_epoch(1).is_ok(),
             "new epoch is accepted"
         );
-        assert!(matches!(
+        assert!(
             private_storage::read_limited(&root.path().join(POLICY_FILE_NAME), 256 * 1024)
-                .expect("policy file can be checked"),
-            None
-        ));
+                .expect("policy file can be checked")
+                .is_none()
+        );
 
         let stale_record = storage.record_completion(0, record("late", NOW), NOW);
         assert!(matches!(

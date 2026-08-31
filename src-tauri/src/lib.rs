@@ -428,8 +428,7 @@ fn start_toolbox_scheduler_runtime(
                     Err(_) => break,
                 };
                 for intent in intents {
-                    let outcome =
-                        dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
+                    let outcome = dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
                     if let Some(scheduler) = scheduler.upgrade()
                         && let Ok(mut scheduler) = scheduler.lock()
                         && let Err(error) =
@@ -455,13 +454,7 @@ fn dispatch_toolbox_schedule_intent(
                 .upgrade()
                 .and_then(|storage| {
                     let storage = storage.lock().ok()?;
-                    Some(
-                        storage
-                            .as_ref()?
-                            .snapshot()
-                            .policy
-                            .notifications_enabled,
-                    )
+                    Some(storage.as_ref()?.snapshot().policy.notifications_enabled)
                 })
                 .unwrap_or(false);
             if !notifications_enabled {

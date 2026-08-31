@@ -299,6 +299,23 @@ fn volume_result(
     }
 }
 
+fn cancelled_result(
+    request_id: &str,
+    path_hint: &str,
+    captured_at_ms: u64,
+    message: &str,
+) -> OccupancyScanResult {
+    volume_result(
+        request_id,
+        path_hint,
+        captured_at_ms,
+        "cancelled",
+        Vec::new(),
+        false,
+        message,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,21 +334,4 @@ mod tests {
         std::fs::write(&file, b"fixture").expect("file fixture writes");
         assert!(validate_volume_target(file.to_str().unwrap()).is_err());
     }
-}
-
-fn cancelled_result(
-    request_id: &str,
-    path_hint: &str,
-    captured_at_ms: u64,
-    message: &str,
-) -> OccupancyScanResult {
-    volume_result(
-        request_id,
-        path_hint,
-        captured_at_ms,
-        "cancelled",
-        Vec::new(),
-        false,
-        message,
-    )
 }

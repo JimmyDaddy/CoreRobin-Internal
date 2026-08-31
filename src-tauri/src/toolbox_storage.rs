@@ -540,7 +540,7 @@ impl ToolboxStorage {
 
 #[cfg(test)]
 #[path = "toolbox_storage_tests.rs"]
-mod tests;
+mod storage_tests;
 
 fn load_policy(path: &Path) -> Result<ToolboxPolicy, ToolboxStorageError> {
     let Some(bytes) = private_storage::read_limited(path, MAX_STORAGE_BYTES)
