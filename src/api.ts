@@ -133,6 +133,25 @@ export interface ToolboxScheduleSnapshot {
   rules: ToolboxScheduleRule[];
 }
 
+export type ToolboxSchedulePreviewTrigger =
+  | { kind: "once"; atUtcMs: number }
+  | { kind: "daily"; hour: number; minute: number }
+  | { kind: "weekly"; weekday: number; hour: number; minute: number }
+  | { kind: "cron"; expression: string };
+
+export interface ToolboxSchedulePreviewRequest {
+  timeZone: string;
+  trigger: ToolboxSchedulePreviewTrigger;
+}
+
+export interface ToolboxSchedulePreview {
+  timeZone: string;
+  status: "ready" | "noOccurrenceInHorizon";
+  occurrenceAtMs: number[];
+  horizonEndAtMs: number;
+  truncated: boolean;
+}
+
 export interface ToolboxProcessWatchKey {
   pid: number;
   birthToken: string;
@@ -248,7 +267,7 @@ export function isDesktopRuntime(): boolean {
 }
 
 export async function hashToolboxFile(
-  request: { requestId: string; path: string; generation?: number; resetEpoch?: number },
+  request: { requestId: string; job: import("./toolbox/contracts").ToolboxFileJobKey; token: string },
   onProgress: (progress: ToolboxFileHashProgress) => void,
 ): Promise<ToolboxFileHashResult> {
   const progressChannel = new Channel<ToolboxFileHashProgress>(onProgress);
@@ -277,6 +296,10 @@ export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {
 
 export async function getToolboxScheduleSnapshot(): Promise<ToolboxScheduleSnapshot> {
   return invoke<ToolboxScheduleSnapshot>("get_toolbox_schedule_snapshot");
+}
+
+export function previewToolboxSchedule(request: ToolboxSchedulePreviewRequest): Promise<ToolboxSchedulePreview> {
+  return invoke<ToolboxSchedulePreview>("preview_toolbox_schedule", { request });
 }
 
 export async function createToolboxSchedule(request: {

@@ -125,6 +125,7 @@
     "allow-cancel-toolbox-keep-awake",
     "allow-get-toolbox-keep-awake-state",
     "allow-get-toolbox-schedule-snapshot",
+    "allow-preview-toolbox-schedule",
     "allow-create-toolbox-schedule",
     "allow-pause-toolbox-schedule",
     "allow-delete-toolbox-schedule",

@@ -38,8 +38,10 @@ mod toolbox_inputs;
 mod toolbox_network;
 mod toolbox_power;
 mod toolbox_process_watch;
+#[path = "toolbox_scheduler.rs"]
 mod toolbox_scheduler;
 mod toolbox_service;
+mod toolbox_storage;
 mod user_actions;
 
 pub use cleanup::{
@@ -142,9 +144,11 @@ use toolbox_process_watch::{
     ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
 };
 use toolbox_scheduler::{
-    SchedulerCreateRequest, SchedulerRuleRequest, SchedulerSnapshot, ToolboxScheduler,
+    SchedulerCreateRequest, SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest,
+    SchedulerSnapshot, ToolboxScheduler,
 };
 use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
+use toolbox_storage::ToolboxStorage;
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
@@ -305,6 +309,7 @@ struct AppState {
     toolbox_power: Arc<Mutex<PowerService>>,
     toolbox_process_watch: Arc<Mutex<ProcessWatchService>>,
     toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
+    toolbox_storage: Arc<Mutex<Option<ToolboxStorage>>>,
 }
 
 impl AppState {
@@ -336,6 +341,7 @@ impl AppState {
                 ProcessWatchService::new().expect("failed to start the process watch worker"),
             )),
             toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
+            toolbox_storage: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -2326,7 +2332,10 @@ fn get_toolbox_snapshot(
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))
-        .map(|mut service| { service.reconcile(); service.snapshot() })
+        .map(|mut service| {
+            service.reconcile();
+            service.snapshot()
+        })
 }
 
 #[tauri::command]
@@ -2397,7 +2406,15 @@ async fn start_toolbox_file_hash(
     on_progress: Channel<FileHashProgress>,
 ) -> Result<FileHashResult, CommandError> {
     require_main_window(&window)?;
-    state.toolbox_file_hash.run(request, on_progress).await
+    let inputs = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox service is unavailable."))?
+        .inputs_for_tool_job(&request.job, "file-sha256")?;
+    state
+        .toolbox_file_hash
+        .run(request, inputs, on_progress)
+        .await
 }
 
 #[tauri::command]
@@ -2460,6 +2477,15 @@ fn get_toolbox_schedule_snapshot(
         .lock()
         .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))
         .map(|scheduler| scheduler.snapshot())
+}
+
+#[tauri::command]
+fn preview_toolbox_schedule(
+    window: WebviewWindow,
+    request: SchedulerPreviewRequest,
+) -> Result<SchedulerPreview, CommandError> {
+    require_main_window(&window)?;
+    ToolboxScheduler::preview(request)
 }
 
 #[tauri::command]
@@ -2564,6 +2590,12 @@ pub fn run() {
         .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
+            if let Ok(app_data_dir) = app.path().app_data_dir()
+                && let Ok(storage) = ToolboxStorage::open(app_data_dir)
+                && let Ok(mut slot) = state.toolbox_storage.lock()
+            {
+                *slot = Some(storage);
+            }
             // Kill scan workers left over from a previous session and remove
             // their stale job files, without blocking startup.
             if let Ok(job_directory) = app
@@ -2820,6 +2852,7 @@ pub fn run() {
             cancel_toolbox_keep_awake,
             get_toolbox_keep_awake_state,
             get_toolbox_schedule_snapshot,
+            preview_toolbox_schedule,
             create_toolbox_schedule,
             pause_toolbox_schedule,
             delete_toolbox_schedule,

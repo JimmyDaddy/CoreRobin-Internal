@@ -28,14 +28,14 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxFileHash, cancelToolboxKeepAwake, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, hashToolboxFile, isDesktopRuntime, pauseToolboxSchedule, scanToolboxFileOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
 import { getToolboxNetworkSnapshot } from "./client";
-import { findNextCronOccurrence, parseCron } from "./schedules/scheduleTools";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
@@ -216,12 +216,6 @@ function TextHashTool() {
   return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="输入 UTF-8 文本（最多 1 MiB）" /><button className="button button--primary" type="button" onClick={() => { try { assertTextLimit(input); void crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)).then((digest) => setOutput([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))).catch((reason: unknown) => setError(userFacingError(reason))); } catch (reason) { setError(userFacingError(reason)); } }}><Hash size={14} />计算 SHA-256</button><ResultBox value={output} /></ToolLayout>;
 }
 
-function FileHashTool() {
-  const [fileName, setFileName] = useState(""); const [path, setPath] = useState(""); const [progress, setProgress] = useState(0); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
-  const choose = async () => { setError(""); if (isDesktopRuntime()) { const selected = await open({ multiple: false, directory: false }); if (typeof selected === "string") { setPath(selected); setFileName(selected.split(/[\\/]/).pop() ?? selected); } } else setError("文件 SHA-256 需要在桌面运行时通过原生选择器选择普通文件。"); };
-  const run = async () => { if (!path) { setError("请先选择一个普通文件。"); return; } setRunning(true); setOutput(""); try { const result = await hashToolboxFile({ requestId: crypto.randomUUID(), path }, (event) => setProgress(event.totalBytes ? event.bytesRead / event.totalBytes : 0)); setOutput(result.digest); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setFileName(""); setPath(""); setOutput(""); setProgress(0); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose}><FileCheck2 size={15} />选择普通文件</button><span>{fileName || "未选择文件"}</span></div>{running ? <progress max="1" value={progress} /> : null}<div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Play size={14} />{running ? "正在计算…" : "计算文件 SHA-256"}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancelToolboxFileHash()}>停止</button> : null}</div><p className="toolbox-hint">原生服务使用 1 MiB 流式缓冲，并在开始/结束复验文件身份；文件内容不会进入 WebView。</p><ResultBox value={output} /></ToolLayout>;
-}
 
 function OccupancyTool() {
   const [fileName, setFileName] = useState(""); const [path, setPath] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
@@ -289,17 +283,6 @@ function ScheduleTool() {
     }
   };
 
-  const nextFromCron = (source: string) => {
-    const next = findNextCronOccurrence(parseCron(source), new Date());
-    if (!next.at) {
-      throw new ToolboxInputError(
-        "cron_no_occurrence",
-        next.state === "search_limit" ? "当前搜索预算内未能找到 Cron 的下一次时间。" : "该 Cron 在搜索范围内没有下一次触发时间。",
-      );
-    }
-    return next.at.getTime();
-  };
-
   const create = async () => {
     if (!isDesktopRuntime()) {
       setError("定时规则需要桌面原生运行时；浏览器演示不会保存规则。");
@@ -312,21 +295,28 @@ function ScheduleTool() {
       const numericMinute = Number(minute);
       const numericWeekday = Number(weekday);
       const durationMinutes = Number(duration);
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!timeZone) throw new ToolboxInputError("time_zone_unavailable", "系统未提供 IANA 时区，无法预览定时规则。");
       let trigger;
       if (kind === "once") {
         const atMs = new Date(onceAt).getTime();
-        if (!Number.isFinite(atMs) || atMs <= Date.now() || atMs > Date.now() + 365 * 24 * 60 * 60 * 1_000) {
-          throw new ToolboxInputError("invalid_once_time", "请选择未来 365 天内的有效日期和时间。");
-        }
+        const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "once", atUtcMs: atMs } });
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("invalid_once_time", "请选择未来 365 天内的有效日期和时间。");
         trigger = { kind: "once" as const, atMs };
       } else if (kind === "daily") {
-        const nextRunAtMs = nextFromCron(`${numericMinute} ${numericHour} * * *`);
+        const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "daily", hour: numericHour, minute: numericMinute } });
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该规则在搜索范围内没有下一次触发时间。");
+        const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "daily" as const, hour: numericHour, minute: numericMinute, nextRunAtMs };
       } else if (kind === "weekly") {
-        const nextRunAtMs = nextFromCron(`${numericMinute} ${numericHour} * * ${numericWeekday}`);
+        const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "weekly", weekday: numericWeekday, hour: numericHour, minute: numericMinute } });
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该规则在搜索范围内没有下一次触发时间。");
+        const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "weekly" as const, weekday: numericWeekday, hour: numericHour, minute: numericMinute, nextRunAtMs };
       } else {
-        trigger = { kind: "cron" as const, expression: cron, nextRunAtMs: nextFromCron(cron) };
+        const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "cron", expression: cron } });
+        if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", "该 Cron 在搜索范围内没有下一次触发时间。");
+        trigger = { kind: "cron" as const, expression: cron, nextRunAtMs: preview.occurrenceAtMs[0] };
       }
       if (actionKind === "keepAwake" && (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720)) {
         throw new ToolboxInputError("invalid_duration", "保活时长必须是 1 分钟到 12 小时。");

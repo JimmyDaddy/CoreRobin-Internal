@@ -110,6 +110,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "cancel_toolbox_keep_awake",
     "get_toolbox_keep_awake_state",
     "get_toolbox_schedule_snapshot",
+    "preview_toolbox_schedule",
     "create_toolbox_schedule",
     "pause_toolbox_schedule",
     "delete_toolbox_schedule",
