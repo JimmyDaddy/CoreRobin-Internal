@@ -1,21 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { startDiffBytes, verifyPatch } = vi.hoisted(() => ({
+const { startDiffBytes, startPatchBytes, verifyPatch, inspectPatch } = vi.hoisted(() => ({
   startDiffBytes: vi.fn(),
+  startPatchBytes: vi.fn(),
   verifyPatch: vi.fn(),
+  inspectPatch: vi.fn(),
 }));
 
 vi.mock("bs-diff-patch-web", async (importOriginal) => {
   const actual = await importOriginal<typeof import("bs-diff-patch-web")>();
-  return { ...actual, startDiffBytes, verifyPatch };
+  return { ...actual, startDiffBytes, startPatchBytes, verifyPatch, inspectPatch };
 });
 
 import {
+  applyPatchAndVerify,
   calculateTransferSavings,
   inspectPatchSafely,
   makePatchBundle,
+  makePatchManifest,
   manifestJson,
+  patchInputLimit,
   planPatches,
+  planPatchesFromSources,
   runWithPatchDeadline,
   sha256Hex,
 } from "./binaryPatchTools";
@@ -30,7 +36,11 @@ const verifiedPatch = {
 describe("binary patch toolbox boundaries", () => {
   beforeEach(() => {
     startDiffBytes.mockReset();
+    startPatchBytes.mockReset();
     verifyPatch.mockReset();
+    inspectPatch.mockReset();
+    inspectPatch.mockResolvedValue({ format: "ENDSLEY/BSDIFF43", patchBytes: 24, headerBytes: 24, payloadBytes: 0, declaredTargetBytes: "2000000", valid: true });
+    startPatchBytes.mockImplementation(() => ({ result: Promise.resolve(new Uint8Array(2_000_000)) }));
   });
 
   it("hashes bytes and keeps signing payload as data rather than a signature", async () => {
@@ -38,6 +48,7 @@ describe("binary patch toolbox boundaries", () => {
   });
 
   it("recognizes malformed patch data without treating it as trusted", async () => {
+    inspectPatch.mockResolvedValue({ format: "UNKNOWN", patchBytes: 7, headerBytes: 7, payloadBytes: 0, declaredTargetBytes: null, valid: false, issue: "TRUNCATED_HEADER" });
     const inspection = await inspectPatchSafely(new Uint8Array([69, 78, 68, 83, 76, 69, 89]));
     expect(inspection.valid).toBe(false);
     expect(inspection.issue).toBe("TRUNCATED_HEADER");
@@ -48,6 +59,24 @@ describe("binary patch toolbox boundaries", () => {
     const bundle = makePatchBundle(target, target);
     expect(bundle.patches).toHaveLength(0);
     expect(manifestJson({ version: 1, format: "ENDSLEY/BSDIFF43", baseline: { bytes: 1, sha256: "a".repeat(64) }, patch: { bytes: 2, sha256: "b".repeat(64) }, target: { bytes: 3, sha256: "c".repeat(64) } })).not.toContain("signature");
+  });
+
+  it("keeps role limits explicit and strips path components from manifest names", async () => {
+    expect(patchInputLimit("baseline")).toBe(16 * 1024 * 1024);
+    expect(patchInputLimit("patch")).toBe(64 * 1024 * 1024);
+    await expect(makePatchManifest(new Uint8Array(1), new Uint8Array(2), new Uint8Array(3), { baseline: "../../secret.bin" })).resolves.toMatchObject({ baseline: { name: "secret.bin" } });
+  });
+
+  it("never applies BSDIFF40 data", async () => {
+    inspectPatch.mockResolvedValue({ format: "BSDIFF40", patchBytes: 24, headerBytes: 24, payloadBytes: 0, declaredTargetBytes: null, valid: false, issue: "LEGACY_FORMAT" });
+    await expect(applyPatchAndVerify(new Uint8Array([0]), new Uint8Array(24), new Uint8Array([1]))).rejects.toMatchObject({ code: "EPATCH" });
+    expect(startPatchBytes).not.toHaveBeenCalled();
+  });
+
+  it("requires an independent byte-for-byte replay after SDK verification", async () => {
+    verifyPatch.mockResolvedValue(verifiedPatch);
+    startPatchBytes.mockImplementation(() => ({ result: Promise.resolve(new Uint8Array([2])) }));
+    await expect(applyPatchAndVerify(new Uint8Array([0]), new Uint8Array(24), new Uint8Array([1]))).rejects.toMatchObject({ code: "EVERIFICATION" });
   });
 
   it("terminates cancellation instead of allowing a planner to continue", async () => {
@@ -74,6 +103,25 @@ describe("binary patch toolbox boundaries", () => {
     expect(plan.results.map((item) => item.baselineName)).toEqual(["first"]);
     expect(plan.artifactBytes).toBe(1_000_000);
     expect(plan.excluded).toEqual([{ baselineName: "second", patchBytes: 1_000_000, reason: "artifact_budget" }]);
+  });
+
+  it("loads lazy baselines one at a time and keeps planning serial", async () => {
+    const order: string[] = [];
+    startDiffBytes.mockImplementation(() => ({ result: Promise.resolve(new Uint8Array([9])) }));
+    startPatchBytes.mockImplementation(() => ({ result: Promise.resolve(new Uint8Array([9])) }));
+    verifyPatch.mockResolvedValue(verifiedPatch);
+    const plan = await planPatchesFromSources(new Uint8Array([9]), [
+      { name: "first", load: async () => { order.push("load:first"); return new Uint8Array([1]); } },
+      { name: "second", load: async () => { order.push("load:second"); return new Uint8Array([2]); } },
+    ], 2);
+    expect(order).toEqual(["load:first", "load:second"]);
+    expect(plan.results.map((item) => item.baselineName)).toEqual(["first", "second"]);
+    expect(plan.workingSetBytes).toBe(3);
+  });
+
+  it("reports an oversized lazy baseline as a failed item", async () => {
+    const plan = await planPatchesFromSources(new Uint8Array([1]), [{ name: "too-large", load: async () => new Uint8Array(patchInputLimit("baseline") + 1) }]);
+    expect(plan.results[0]).toMatchObject({ baselineName: "too-large", status: "failed", error: { code: "ERESOURCE" } });
   });
 
   it("rejects unsafe transfer-savings inputs and arithmetic", () => {

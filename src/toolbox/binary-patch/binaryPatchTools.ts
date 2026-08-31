@@ -17,12 +17,22 @@ import {
   type PatchManifest,
 } from "bs-diff-patch-web/toolkit";
 
-const MAX_GENERATE_INPUT_BYTES = 16 * 1024 * 1024;
-const MAX_PATCH_INPUT_BYTES = 64 * 1024 * 1024;
-const MAX_PATCH_OUTPUT_BYTES = 64 * 1024 * 1024;
+export const MAX_GENERATE_INPUT_BYTES = 16 * 1024 * 1024;
+export const MAX_PATCH_INPUT_BYTES = 64 * 1024 * 1024;
+export const MAX_PATCH_OUTPUT_BYTES = 64 * 1024 * 1024;
 export const PATCH_ITEM_DEADLINE_MS = 120_000;
 export const PATCH_PLANNER_DEADLINE_MS = 600_000;
 export const MAX_PLANNER_ARTIFACT_BYTES = 512 * 1024 * 1024;
+export const MAX_PLANNER_WORKING_SET_BYTES = 512 * 1024 * 1024;
+
+export type PatchInputRole = "baseline" | "target" | "patch" | "expected";
+
+export const PATCH_INPUT_LIMITS: Readonly<Record<PatchInputRole, number>> = {
+  baseline: MAX_GENERATE_INPUT_BYTES,
+  target: MAX_GENERATE_INPUT_BYTES,
+  patch: MAX_PATCH_INPUT_BYTES,
+  expected: MAX_PATCH_OUTPUT_BYTES,
+};
 
 export interface VerifiedPatch {
   patch: Uint8Array;
@@ -42,7 +52,12 @@ export interface PatchPlanItem {
 export interface ExcludedPatchPlanItem {
   baselineName: string;
   patchBytes: number;
-  reason: "artifact_budget";
+  reason: "artifact_budget" | "working_set_budget";
+}
+
+export interface PatchBaselineSource {
+  name: string;
+  load: (signal: AbortSignal) => Promise<Uint8Array>;
 }
 
 export interface PatchPlan {
@@ -50,6 +65,8 @@ export interface PatchPlan {
   excluded: ExcludedPatchPlanItem[];
   artifactBytes: number;
   artifactLimitBytes: number;
+  workingSetBytes: number;
+  workingSetLimitBytes: number;
 }
 
 export interface TransferSavings {
@@ -60,8 +77,8 @@ export interface TransferSavings {
 }
 
 export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8Array, signal?: AbortSignal): Promise<VerifiedPatch> {
-  assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
-  assertSize(newData, MAX_GENERATE_INPUT_BYTES, "target");
+  assertSizeForRole(oldData, "baseline");
+  assertSizeForRole(newData, "target");
   return runWithPatchDeadline(async (deadlineSignal) => {
     const diffJob = startDiffBytes(oldData.slice(), newData.slice(), {
       signal: deadlineSignal,
@@ -69,32 +86,44 @@ export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8A
       maxOutputBytes: MAX_PATCH_OUTPUT_BYTES,
     });
     const patch = await diffJob.result;
-    assertSize(patch, MAX_PATCH_OUTPUT_BYTES, "patch");
-    const verification = await verifyPatchBytes(oldData, patch, newData, deadlineSignal);
-    if (!verification.verified) throw new Error("Generated patch did not restore the target byte-for-byte.");
+    assertSizeForRole(patch, "patch");
+    const applied = await applyPatchAndVerify(oldData, patch, newData, deadlineSignal);
+    const verification = applied.verification;
+    if (!verification || !applied.byteExact) throw patchError("EVERIFICATION", "Generated patch did not restore the target byte-for-byte.");
     return { patch, verification, baselineSha256: await sha256Hex(oldData), targetSha256: await sha256Hex(newData) };
   }, signal, PATCH_ITEM_DEADLINE_MS);
 }
 
-export async function applyPatchAndVerify(oldData: Uint8Array, patchData: Uint8Array, expectedData?: Uint8Array, signal?: AbortSignal): Promise<{ output: Uint8Array; verification: PatchVerificationResult | null }> {
-  assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
-  assertSize(patchData, MAX_PATCH_INPUT_BYTES, "patch");
-  if (expectedData) assertSize(expectedData, MAX_PATCH_OUTPUT_BYTES, "target");
+export async function applyPatchAndVerify(oldData: Uint8Array, patchData: Uint8Array, expectedData?: Uint8Array, signal?: AbortSignal): Promise<{ output: Uint8Array; verification: PatchVerificationResult | null; byteExact: boolean }> {
+  assertSizeForRole(oldData, "baseline");
+  assertSizeForRole(patchData, "patch");
+  if (expectedData) assertSizeForRole(expectedData, "expected");
   return runWithPatchDeadline(async (deadlineSignal) => {
+    const metadata = await inspectPatchSafely(patchData);
+    assertSupportedPatch(metadata);
     const job = startPatchBytes(oldData.slice(), patchData.slice(), { signal: deadlineSignal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
     const output = await job.result;
-    if (!expectedData) return { output, verification: null };
-    const verification = await verifyPatchBytes(oldData, patchData, expectedData, deadlineSignal);
-    if (!verification.verified) throw new Error("Patch output did not match the expected target.");
-    return { output, verification };
+    assertSizeForRole(output, "expected");
+    if (!expectedData) return { output, verification: null, byteExact: false };
+    const verification = await verifyPatch(oldData.slice(), patchData.slice(), expectedData.slice(), { signal: deadlineSignal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
+    const byteExact = compareBytes(output, expectedData);
+    if (!verification.verified || !byteExact) throw patchError("EVERIFICATION", "Patch output did not match the expected target byte-for-byte.");
+    return { output, verification, byteExact };
   }, signal, PATCH_ITEM_DEADLINE_MS);
 }
 
 export async function verifyPatchBytes(oldData: Uint8Array, patchData: Uint8Array, expectedData: Uint8Array, signal?: AbortSignal): Promise<PatchVerificationResult> {
-  assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
-  assertSize(patchData, MAX_PATCH_INPUT_BYTES, "patch");
-  assertSize(expectedData, MAX_PATCH_OUTPUT_BYTES, "target");
-  return runWithPatchDeadline((deadlineSignal) => verifyPatch(oldData.slice(), patchData.slice(), expectedData.slice(), { signal: deadlineSignal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES }), signal, PATCH_ITEM_DEADLINE_MS);
+  assertSizeForRole(oldData, "baseline");
+  assertSizeForRole(patchData, "patch");
+  assertSizeForRole(expectedData, "expected");
+  return runWithPatchDeadline(async (deadlineSignal) => {
+    const metadata = await inspectPatchSafely(patchData);
+    assertSupportedPatch(metadata);
+    const verification = await verifyPatch(oldData.slice(), patchData.slice(), expectedData.slice(), { signal: deadlineSignal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
+    const replay = await startPatchBytes(oldData.slice(), patchData.slice(), { signal: deadlineSignal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES }).result;
+    if (!verification.verified || !compareBytes(replay, expectedData)) throw patchError("EVERIFICATION", "Patch replay did not match the expected target byte-for-byte.");
+    return verification;
+  }, signal, PATCH_ITEM_DEADLINE_MS);
 }
 
 export async function runWithPatchDeadline<T>(operation: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal, deadlineMs = PATCH_ITEM_DEADLINE_MS): Promise<T> {
@@ -151,15 +180,38 @@ function cancelledPatchTaskError(): Error & { code: "EABORTED" } {
 
 export async function planPatches(target: Uint8Array, baselines: ReadonlyArray<{ name: string; data: Uint8Array }>, maxPatchRatio = 0.8, signal?: AbortSignal, artifactBudgetBytes = MAX_PLANNER_ARTIFACT_BYTES): Promise<PatchPlan> {
   if (baselines.length > 8) throw new Error("A release plan may contain at most 8 baselines.");
+  assertSizeForRole(target, "target");
+  for (const baseline of baselines) assertSizeForRole(baseline.data, "baseline");
+  return planPatchSources(target, baselines.map((baseline) => ({ name: baseline.name, load: async () => baseline.data })), maxPatchRatio, signal, artifactBudgetBytes, baselines.reduce((total, baseline) => total + baseline.data.byteLength, 0));
+}
+
+export async function planPatchesFromSources(target: Uint8Array, baselines: ReadonlyArray<PatchBaselineSource>, maxPatchRatio = 0.8, signal?: AbortSignal, artifactBudgetBytes = MAX_PLANNER_ARTIFACT_BYTES): Promise<PatchPlan> {
+  if (baselines.length > 8) throw new Error("A release plan may contain at most 8 baselines.");
+  assertSizeForRole(target, "target");
+  return planPatchSources(target, baselines, maxPatchRatio, signal, artifactBudgetBytes, null);
+}
+
+async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<PatchBaselineSource>, maxPatchRatio: number, signal: AbortSignal | undefined, artifactBudgetBytes: number, knownBaselineBytes: number | null): Promise<PatchPlan> {
   if (!Number.isSafeInteger(artifactBudgetBytes) || artifactBudgetBytes < 0 || artifactBudgetBytes > MAX_PLANNER_ARTIFACT_BYTES) throw new Error("Planner artifact budget is invalid.");
-  assertSize(target, MAX_GENERATE_INPUT_BYTES, "target");
+  if (!Number.isFinite(maxPatchRatio) || maxPatchRatio < 0) throw new Error("Patch ratio threshold is invalid.");
   return runWithPatchDeadline(async (plannerSignal) => {
     const results: PatchPlanItem[] = [];
     const excluded: ExcludedPatchPlanItem[] = [];
     let artifactBytes = 0;
+    let loadedBaselineBytes = knownBaselineBytes ?? 0;
     for (const baseline of baselines) {
+      let baselineData: Uint8Array;
       try {
-        const result = await generateVerifiedPatch(baseline.data, target, plannerSignal);
+        baselineData = await baseline.load(plannerSignal);
+        assertSizeForRole(baselineData, "baseline");
+      } catch (error) {
+        if (isPatchTaskCancelled(error)) throw error;
+        results.push({ baselineName: baseline.name, status: "failed", patch: null, ratio: null, error: classifyPatchError(error) });
+        continue;
+      }
+      if (knownBaselineBytes === null) loadedBaselineBytes = baselineData.byteLength;
+      try {
+        const result = await generateVerifiedPatch(baselineData, target, plannerSignal);
         const ratio = target.byteLength === 0 ? 0 : result.patch.byteLength / target.byteLength;
         if (ratio > maxPatchRatio) {
           results.push({ baselineName: baseline.name, status: "failed", patch: null, ratio, error: null });
@@ -170,19 +222,32 @@ export async function planPatches(target: Uint8Array, baselines: ReadonlyArray<{
           excluded.push({ baselineName: baseline.name, patchBytes: result.patch.byteLength, reason: "artifact_budget" });
           continue;
         }
+        if (target.byteLength + loadedBaselineBytes + nextArtifactBytes > MAX_PLANNER_WORKING_SET_BYTES) {
+          excluded.push({ baselineName: baseline.name, patchBytes: result.patch.byteLength, reason: "working_set_budget" });
+          continue;
+        }
         artifactBytes = nextArtifactBytes;
         results.push({ baselineName: baseline.name, status: "verified", patch: result.patch, ratio, error: null });
       } catch (error) {
         if (isPatchTaskCancelled(error)) throw error;
         results.push({ baselineName: baseline.name, status: "failed", patch: null, ratio: null, error: classifyPatchError(error) });
+      } finally {
+        loadedBaselineBytes = knownBaselineBytes === null ? 0 : knownBaselineBytes;
       }
     }
-    return { results, excluded, artifactBytes, artifactLimitBytes: artifactBudgetBytes };
+    return {
+      results,
+      excluded,
+      artifactBytes,
+      artifactLimitBytes: artifactBudgetBytes,
+      workingSetBytes: target.byteLength + (knownBaselineBytes ?? 0) + artifactBytes,
+      workingSetLimitBytes: MAX_PLANNER_WORKING_SET_BYTES,
+    };
   }, signal, PATCH_PLANNER_DEADLINE_MS);
 }
 
 export async function inspectPatchSafely(patchData: Uint8Array): Promise<PatchMetadata> {
-  assertSize(patchData, MAX_PATCH_INPUT_BYTES, "patch");
+  assertSizeForRole(patchData, "patch");
   return inspectPatch(patchData.slice(), { maxInputBytes: MAX_PATCH_INPUT_BYTES });
 }
 
@@ -194,7 +259,10 @@ export async function sha256Hex(data: Uint8Array): Promise<string> {
 }
 
 export async function makePatchManifest(baseline: Uint8Array, patch: Uint8Array, target: Uint8Array, names: { baseline?: string; patch?: string; target?: string } = {}): Promise<PatchManifest> {
-  const artifact = async (data: Uint8Array, name?: string): Promise<PatchArtifact> => ({ bytes: data.byteLength, sha256: await sha256Hex(data), ...(name ? { name } : {}) });
+  assertSizeForRole(baseline, "baseline");
+  assertSizeForRole(patch, "patch");
+  assertSizeForRole(target, "target");
+  const artifact = async (data: Uint8Array, name?: string): Promise<PatchArtifact> => ({ bytes: data.byteLength, sha256: await sha256Hex(data), ...(name ? { name: safeArtifactName(name) } : {}) });
   return createPatchManifest({ baseline: await artifact(baseline, names.baseline), patch: await artifact(patch, names.patch), target: await artifact(target, names.target) });
 }
 
@@ -206,6 +274,40 @@ export function manifestJson(manifest: PatchManifest): string {
   return canonicalJson(manifest);
 }
 
+export function patchInputLimit(role: PatchInputRole): number {
+  return PATCH_INPUT_LIMITS[role];
+}
+
+export function compareBytes(actual: Uint8Array, expected: Uint8Array): boolean {
+  if (actual.byteLength !== expected.byteLength) return false;
+  for (let index = 0; index < actual.byteLength; index += 1) if (actual[index] !== expected[index]) return false;
+  return true;
+}
+
+function assertSizeForRole(data: Uint8Array, role: PatchInputRole): void {
+  assertSize(data, patchInputLimit(role), role);
+}
+
 function assertSize(data: Uint8Array, max: number, role: string): void {
-  if (data.byteLength > max) throw new Error(`${role} exceeds the ${max} byte safety budget.`);
+  if (data.byteLength > max) throw patchError("ERESOURCE", `${role} exceeds the ${max} byte safety budget.`);
+}
+
+function assertSupportedPatch(metadata: PatchMetadata): void {
+  if (metadata.format === "BSDIFF40") throw patchError("EPATCH", "BSDIFF40 is inspect-only; it is never applied by the web tool.");
+  if (metadata.format !== "ENDSLEY/BSDIFF43" || !metadata.valid) throw patchError("EPATCH", "Only a valid ENDSLEY/BSDIFF43 patch may be applied.");
+}
+
+function patchError(code: string, message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
+}
+
+function safeArtifactName(name: string): string {
+  const basename = name.replace(/\\/g, "/").split("/").pop() ?? "artifact";
+  let safe = "";
+  for (const character of basename) {
+    const code = character.charCodeAt(0);
+    safe += code <= 0x1f || code === 0x7f ? "_" : character;
+  }
+  safe = safe.trim();
+  return safe === "." || safe === ".." || safe.length === 0 ? "artifact" : safe;
 }
