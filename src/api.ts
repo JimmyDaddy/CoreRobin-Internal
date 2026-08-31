@@ -152,6 +152,38 @@ export interface ToolboxSchedulePreview {
   truncated: boolean;
 }
 
+export interface ToolboxPolicy {
+  schemaVersion: number;
+  policyRevision: number;
+  globalHistoryEnabled: boolean;
+  toolboxHistoryEnabled: boolean;
+  retentionDays: number;
+  notificationsEnabled: boolean;
+  language: string;
+}
+
+export interface ToolboxStorageSnapshot {
+  policy: ToolboxPolicy;
+  resetEpoch: number;
+  historyRevision: number;
+  activeActivityIds: string[];
+}
+
+export interface ToolboxHistoryRecord {
+  recordId: string;
+  tool: "keep-awake" | "process-watch" | "file-occupancy" | "volume-occupancy" | "keyboard-cleaning" | "network-addresses" | "ifconfig-parser";
+  startedAtMs: number;
+  completedAtMs: number;
+  terminalStatus: "completed" | "cancelled" | "expired" | "failed" | "interrupted" | "deadline" | "process_exited" | "low_battery" | "release_unconfirmed";
+  notificationStatus: "submitted" | "failed" | "unavailable";
+}
+
+export interface ToolboxHistoryPage {
+  records: ToolboxHistoryRecord[];
+  nextCursor: string | null;
+  historyRevision: number;
+}
+
 export interface ToolboxProcessWatchKey {
   pid: number;
   birthToken: string;
@@ -300,6 +332,29 @@ export async function getToolboxScheduleSnapshot(): Promise<ToolboxScheduleSnaps
 
 export function previewToolboxSchedule(request: ToolboxSchedulePreviewRequest): Promise<ToolboxSchedulePreview> {
   return invoke<ToolboxSchedulePreview>("preview_toolbox_schedule", { request });
+}
+
+export function getToolboxStorageSnapshot(): Promise<ToolboxStorageSnapshot> {
+  return invoke<ToolboxStorageSnapshot>("get_toolbox_storage_snapshot");
+}
+
+export function configureToolboxPolicy(request: {
+  expectedPolicyRevision: number;
+  globalHistoryEnabled: boolean;
+  toolboxHistoryEnabled: boolean;
+  retentionDays: number;
+  notificationsEnabled: boolean;
+  language: string;
+}): Promise<ToolboxPolicy> {
+  return invoke<ToolboxPolicy>("configure_toolbox_policy", { request });
+}
+
+export function listToolboxHistory(request: { limit: number; cursor?: string | null }): Promise<ToolboxHistoryPage> {
+  return invoke<ToolboxHistoryPage>("list_toolbox_history", { request });
+}
+
+export function clearToolboxHistory(expectedHistoryRevision?: number): Promise<ToolboxHistoryPage> {
+  return invoke<ToolboxHistoryPage>("clear_toolbox_history", { request: { expectedHistoryRevision } });
 }
 
 export async function createToolboxSchedule(request: {

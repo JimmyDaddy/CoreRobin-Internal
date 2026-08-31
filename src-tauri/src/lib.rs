@@ -148,7 +148,10 @@ use toolbox_scheduler::{
     SchedulerSnapshot, ToolboxScheduler,
 };
 use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
-use toolbox_storage::ToolboxStorage;
+use toolbox_storage::{
+    ToolboxHistoryPage, ToolboxPolicy, ToolboxPolicyConfigureRequest, ToolboxStorage,
+    ToolboxStorageError, ToolboxStorageSnapshot,
+};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
@@ -2384,6 +2387,104 @@ fn finish_toolbox_job(
         .finish(request)
 }
 
+fn toolbox_storage_error(error: ToolboxStorageError) -> CommandError {
+    let code = match error {
+        ToolboxStorageError::PolicyRevisionConflict { .. } => "policy_revision_conflict",
+        ToolboxStorageError::HistoryRevisionConflict { .. } => "history_revision_conflict",
+        ToolboxStorageError::ResetEpochMismatch { .. } => "reset_epoch_conflict",
+        ToolboxStorageError::InvalidCursor => "invalid_cursor",
+        ToolboxStorageError::InvalidPolicy
+        | ToolboxStorageError::InvalidRetentionDays
+        | ToolboxStorageError::UnsupportedLanguage => "invalid_policy",
+        ToolboxStorageError::InvalidRecord
+        | ToolboxStorageError::DuplicateRecord
+        | ToolboxStorageError::ResetEpochMustAdvance => "invalid_storage_request",
+        ToolboxStorageError::InvalidAppDataDir
+        | ToolboxStorageError::Io
+        | ToolboxStorageError::Serialization => "storage_unavailable",
+    };
+    CommandError::new(code, error.to_string())
+}
+
+#[tauri::command]
+fn get_toolbox_storage_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<ToolboxStorageSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_ref()
+        .map(ToolboxStorage::snapshot)
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))
+}
+
+#[tauri::command]
+fn configure_toolbox_policy(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxPolicyConfigureRequest,
+) -> Result<ToolboxPolicy, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .configure_policy(request)
+        .map_err(toolbox_storage_error)
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ToolboxHistoryListRequest {
+    limit: usize,
+    cursor: Option<String>,
+}
+
+#[tauri::command]
+fn list_toolbox_history(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxHistoryListRequest,
+) -> Result<ToolboxHistoryPage, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .list_history(request.limit, request.cursor.as_deref(), now_millis())
+        .map_err(toolbox_storage_error)
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ToolboxHistoryClearRequest {
+    expected_history_revision: Option<u64>,
+}
+
+#[tauri::command]
+fn clear_toolbox_history(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxHistoryClearRequest,
+) -> Result<ToolboxHistoryPage, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .clear_history(request.expected_history_revision)
+        .map_err(toolbox_storage_error)
+}
+
 #[tauri::command]
 fn clear_toolbox_data(
     window: WebviewWindow,
@@ -2391,11 +2492,28 @@ fn clear_toolbox_data(
     request: toolbox_contracts::ToolboxRequest,
 ) -> Result<ToolboxSnapshot, CommandError> {
     require_main_window(&window)?;
-    state
+    let previous_epoch = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .clear(&request.request_id, request.expected_revision)
+        .snapshot()
+        .reset_epoch;
+    let snapshot = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .clear(&request.request_id, request.expected_revision)?;
+    let mut storage = state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?;
+    let storage = storage
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?;
+    storage
+        .clear_all_after_stop(previous_epoch, snapshot.reset_epoch)
+        .map_err(toolbox_storage_error)?;
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -2846,6 +2964,10 @@ pub fn run() {
             cancel_toolbox_job,
             finish_toolbox_job,
             clear_toolbox_data,
+            get_toolbox_storage_snapshot,
+            configure_toolbox_policy,
+            list_toolbox_history,
+            clear_toolbox_history,
             start_toolbox_file_hash,
             cancel_toolbox_file_hash,
             start_toolbox_keep_awake,
@@ -3130,6 +3252,10 @@ mod security_boundary_tests {
         "cancel_toolbox_job",
         "finish_toolbox_job",
         "clear_toolbox_data",
+        "get_toolbox_storage_snapshot",
+        "configure_toolbox_policy",
+        "list_toolbox_history",
+        "clear_toolbox_history",
         "start_toolbox_file_hash",
         "cancel_toolbox_file_hash",
         "start_toolbox_keep_awake",
