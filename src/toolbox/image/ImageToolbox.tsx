@@ -3,13 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ImageFormat,
   Position,
-  createWebMarker,
   type MarkerResult,
 } from "@image-marker/web";
-import invisibleWatermarkWorkerUrl from "@image-marker/web/worker?url";
 import {
   BATCH_MAX_FILES,
   BATCH_MAX_INPUT_BYTES,
+  appendBatchInput,
   appendBatchZipOutput,
   createBatchZipBudget,
   createImageAbortError,
@@ -26,9 +25,13 @@ import {
   requireOneTimeRecipientKey,
   resultLabel,
 } from "./imageTools";
+import { createImageToolRuntime, IMAGE_OPERATION_DEADLINE_MS } from "./imageExecution";
+import { createBrowserImageInputs, createNativeImageInputs, type ImageRunInputs } from "./imageInputs";
 import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
-import { cancelToolboxJob, finishToolboxJob, newToolboxRequest, startToolboxSession } from "../client";
+import { cancelToolboxJob, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
+import { fileJobKey } from "../runtime/files";
+import type { ToolboxFileJobKey, ToolboxInputToken } from "../contracts";
 import "./image.css";
 
 type ImageToolId = Extract<ToolId, "image-watermark" | "image-batch-watermark" | "confidential-watermark" | "image-recipe" | "image-editor" | "invisible-watermark-write" | "invisible-watermark-check" | "recipient-tracking" | "robustness-lab" | "c2pa-inspector">;
@@ -41,20 +44,23 @@ interface RecipientDeliveryState {
 }
 
 export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
-  const marker = useMemo(() => createWebMarker(), []);
+  const runtime = useMemo(() => createImageToolRuntime(), []);
+  const marker = runtime.marker;
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<MarkerResult | null>(null);
   const [zipUrl, setZipUrl] = useState("");
   const [recipientDelivery, setRecipientDelivery] = useState<RecipientDeliveryState | null>(null);
   const cancelRef = useRef<AbortController | null>(null);
   const zipUrlRef = useRef("");
-  const hostExecutorAvailable = marker.capabilities.execution.mode === "host-adapter"
+  const hostExecutorAvailable = runtime.execution.supported
+    && marker.capabilities.execution.mode === "host-adapter"
     && marker.capabilities.execution.supportsTerminationAcknowledgement;
-  const invisibleDetectionWorkerAvailable = typeof Worker === "function" && Boolean(invisibleWatermarkWorkerUrl);
+  const desktopRuntime = isDesktopRuntime();
 
   const releaseOutputs = () => {
     setResult(null);
@@ -73,9 +79,8 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     cancelRef.current?.abort();
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
     zipUrlRef.current = "";
-    void marker.cancel().catch(() => undefined);
-    void marker.dispose();
-  }, [marker]);
+    void runtime.dispose();
+  }, [runtime]);
 
   const selectFiles = async (selected: File[]) => {
     try {
@@ -91,7 +96,7 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     }
   };
 
-  const run = async (task: (signal: AbortSignal) => Promise<void>) => {
+  const run = async (task: (signal: AbortSignal, inputs: ImageRunInputs) => Promise<void>, deadlineMs = IMAGE_OPERATION_DEADLINE_MS) => {
     if (running) return;
     const controller = new AbortController();
     cancelRef.current = controller;
@@ -102,9 +107,30 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     setError("");
     setNotice("");
     let nativeJob: ToolboxJob | null = null;
+    let nativeInputJob: ToolboxFileJobKey | null = null;
+    let nativeInputTokens: ToolboxInputToken[] = [];
+    const releaseNativeInputs = async () => {
+      if (!nativeInputJob || nativeInputTokens.length === 0) return;
+      const tokens = nativeInputTokens;
+      await releaseToolboxInputs(nativeInputJob, tokens.map((token) => token.token));
+      nativeInputTokens = [];
+    };
+    const deadline = window.setTimeout(() => controller.abort(), deadlineMs);
     try {
-      if (isDesktopRuntime()) nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
-      await task(controller.signal);
+      let inputs: ImageRunInputs;
+      if (isDesktopRuntime()) {
+        nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
+        nativeInputJob = fileJobKey(nativeJob);
+        nativeInputTokens = await prepareToolboxInputs(nativeInputJob, "input");
+        if (nativeInputTokens.length === 0) throw new Error("没有选择图片输入。" );
+        inputs = createNativeImageInputs(marker, nativeInputJob, nativeInputTokens, controller.signal);
+      } else {
+        if (files.length === 0) throw new Error("请先选择图片。" );
+        inputs = createBrowserImageInputs(marker, files, controller.signal);
+      }
+      await task(controller.signal, inputs);
+      if (nativeInputJob) await revalidateToolboxInputs(nativeInputJob);
+      await releaseNativeInputs();
       if (nativeJob) await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
     } catch (reason) {
       if (nativeJob) {
@@ -125,27 +151,42 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
         setError(reason instanceof Error ? reason.message : "图片处理失败。");
       }
     } finally {
+      window.clearTimeout(deadline);
+      if (nativeInputTokens.length > 0) {
+        try {
+          await releaseNativeInputs();
+        } catch (releaseReason) {
+          setError(`图片输入资源释放未确认：${releaseReason instanceof Error ? releaseReason.message : "无法释放输入 token"}`);
+        }
+      }
       cancelRef.current = null;
+      setStopping(false);
       setRunning(false);
     }
   };
 
   const stop = async () => {
-    cancelRef.current?.abort();
-    releaseOutputs();
-    await marker.cancel().catch(() => undefined);
+    if (!cancelRef.current || stopping) return;
+    setStopping(true);
+    cancelRef.current.abort();
+    try {
+      await marker.cancel();
+    } catch (reason) {
+      setError(`图片隔离执行器释放未确认：${reason instanceof Error ? reason.message : "无法确认停止"}`);
+    }
   };
 
-  const runVisible = () => void run(async (signal) => {
-    if (files.length === 0) throw new Error("请先选择图片。");
+  const runVisible = () => void run(async (signal, selectedInputs) => {
     const batch = toolId === "image-batch-watermark";
-    const inputs = batch ? files : files.slice(0, 1);
-    let zipBudget = batch ? createBatchZipBudget(inputs) : null;
+    const inputCount = batch ? selectedInputs.count : 1;
+    let zipBudget = batch ? createBatchZipBudget([]) : null;
     const bytes: Array<{ name: string; bytes: ArrayBuffer }> = [];
     let last: MarkerResult | null = null;
     try {
-      for (const [index, file] of inputs.entries()) {
+      for (let index = 0; index < inputCount; index += 1) {
         if (signal.aborted) throw createImageAbortError();
+        const file = await selectedInputs.read(index);
+        if (batch && zipBudget) zipBudget = appendBatchInput(zipBudget, file.size);
         last = await marker.markText({
           backgroundImage: { src: file },
           watermarkTexts: [{
@@ -157,14 +198,14 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
           saveFormat: ImageFormat.png,
           maxSize: IMAGE_MAX_OUTPUT_EDGE,
           filename: safeOutputName(file.name),
-        }, { signal });
+        }, imageControl(signal));
         if (signal.aborted) throw createImageAbortError();
         if (batch && zipBudget) {
           const item = resultToZipItem(`${String(index + 1).padStart(2, "0")}-${safeOutputName(file.name)}.png`, last);
           zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
           bytes.push(item);
         }
-        setProgress((index + 1) / inputs.length);
+        setProgress((index + 1) / inputCount);
       }
       if (batch && zipBudget) {
         const url = await zipResults(bytes, zipBudget.inputBytes, signal);
@@ -181,23 +222,23 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     } finally {
       bytes.length = 0;
     }
-  });
+  }, toolId === "image-batch-watermark" ? 180_000 : IMAGE_OPERATION_DEADLINE_MS);
 
-  const runInvisibleWrite = () => void run(async (signal) => {
-    const file = requireFirstFile(files);
+  const runInvisibleWrite = () => void run(async (signal, inputs) => {
+    const file = await inputs.read(0);
     const payload = promptValue("短 locator（最多 12 UTF-8 字节）", "cr-demo-01");
     const key = promptValue("临时密钥（至少 16 UTF-8 字节；不会保存）", "local-demo-key-2026");
     if (!payload || !key) return;
-    const output = await marker.embedInvisible({ image: { src: file }, payload, key, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, { signal });
+    const output = await marker.embedInvisible({ image: { src: file }, payload, key, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
     setNotice("隐形 locator 已写入当前结果；它不是加密、DRM 或归属证明，密钥不会写入记录。");
   });
 
-  const runInvisibleCheck = () => void run(async (signal) => {
-    const file = requireFirstFile(files);
+  const runInvisibleCheck = () => void run(async (signal, inputs) => {
+    const file = await inputs.read(0);
     const key = promptValue("检测密钥（与写入时相同）", "local-demo-key-2026");
     if (!key) return;
-    if (!invisibleDetectionWorkerAvailable) throw new Error("隐形检测 Dedicated Worker：unavailable（当前平台不支持或未提供 Worker）。");
+    if (!hostExecutorAvailable) throw new Error(runtime.execution.reason ?? "当前 WebView 不支持可终止的图片隔离执行器。" );
     let detected;
     try {
       detected = await marker.detectInvisible({
@@ -206,12 +247,7 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
         strength: "balanced",
         search: "robust",
         maxSize: IMAGE_MAX_OUTPUT_EDGE,
-        worker: {
-          scriptUrl: invisibleWatermarkWorkerUrl,
-          signal,
-          onProgress: ({ phase }) => setProgress(phase === "queued" ? 0.15 : phase === "detecting" ? 0.7 : 1),
-        },
-      }, { signal });
+      }, imageControl(signal, (phase) => setProgress(phase === "queued" ? 0.15 : phase === "detecting" ? 0.7 : 1)));
     } catch (reason) {
       if (signal.aborted) throw createImageAbortError("隐形检测已取消。");
       throw reason;
@@ -219,20 +255,22 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     setNotice(detected.detected ? `检测到 locator：${detected.payload ?? "(空)"}，置信度 ${detected.confidence.toFixed(2)}；正结果不代表图片未被修改。` : "未检测到经过认证的 locator；没有把失败显示为成功。");
   });
 
-  const runRecipe = () => void run(async (signal) => {
-    const file = requireFirstFile(files);
+  const runRecipe = () => void run(async (signal, inputs) => {
+    const file = await inputs.read(0);
     const recipe = parseRecipeDocument(recipeTextFor(toolId));
-    const output = await marker.createRecipe({ layers: recipe.layers, output: recipe.output }).apply({ backgroundImage: { src: file } }, { signal });
+    const output = toolId === "image-editor"
+      ? await runtime.editorAdapter.renderPreview({ recipe, input: { backgroundImage: { src: file } }, control: imageControl(signal) })
+      : await marker.createRecipe({ layers: recipe.layers, output: recipe.output }).apply({ backgroundImage: { src: file } }, imageControl(signal));
     setResult(output);
     setNotice("Recipe 已校验、应用并生成结果；可复制 JSON 作为本地配方，不会自动上传。");
   });
 
-  const runRobustness = () => void run(async (signal) => {
-    const file = requireFirstFile(files);
-    const output = await marker.markText({ backgroundImage: { src: file }, watermarkTexts: [{ text: "ROBUSTNESS-LAB", layout: { type: "tile", gapX: 80, gapY: 80 }, style: { color: "#ffffff", fontSize: 22, rotate: -25 }, alpha: 0.45 }], saveFormat: ImageFormat.jpg, quality: 75, maxSize: IMAGE_MAX_OUTPUT_EDGE }, { signal });
+  const runRobustness = () => void run(async (signal, inputs) => {
+    const file = await inputs.read(0);
+    const output = await marker.markText({ backgroundImage: { src: file }, watermarkTexts: [{ text: "ROBUSTNESS-LAB", layout: { type: "tile", gapX: 80, gapY: 80 }, style: { color: "#ffffff", fontSize: 22, rotate: -25 }, alpha: 0.45 }], saveFormat: ImageFormat.jpg, quality: 75, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
     setNotice("实验输出为约定 JPEG 质量 75；请手动用 95% 缩放/有限裁剪样本复核，不外推任意变换抗性。");
-  });
+  }, 180_000);
 
   const runManifest = () => {
     const raw = promptValue("粘贴本地 C2PA manifest JSON（不联网）", '{"manifests":{}}');
@@ -240,8 +278,8 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     try { setNotice(JSON.stringify(inspectLocalManifest(raw), null, 2)); setError(""); } catch (reason) { setError(reason instanceof Error ? reason.message : "Manifest 解析失败。"); }
   };
 
-  const runRecipient = () => void run(async (signal) => {
-    const file = requireFirstFile(files);
+  const runRecipient = () => void run(async (signal, inputs) => {
+    const file = await inputs.read(0);
     const recipients = promptValue("收件人 locator 列表（逗号分隔，最多 30 个短 ID）", "recipient-a,recipient-b");
     const values = parseRecipientLocators(recipients ?? "");
     const sessionKey = { value: requireOneTimeRecipientKey(promptValue("一次性分发密钥（至少 16 UTF-8 字节；只保留在当前操作内存中）", "")) };
@@ -252,7 +290,7 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
     try {
       for (const [index, value] of values.entries()) {
         if (signal.aborted) throw createImageAbortError("收件人分发已停止。");
-        const output = await marker.embedInvisible({ image: { src: file }, payload: value, key: sessionKey.value, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, { signal });
+        const output = await marker.embedInvisible({ image: { src: file }, payload: value, key: sessionKey.value, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
         if (signal.aborted) throw createImageAbortError("收件人分发已停止。");
         const item = resultToZipItem(`delivery-${String(index + 1).padStart(2, "0")}.png`, output);
         zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
@@ -283,7 +321,7 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
       outputs.length = 0;
       sessionKey.value = "";
     }
-  });
+  }, 180_000);
 
   const action = toolId === "invisible-watermark-write" ? runInvisibleWrite
     : toolId === "invisible-watermark-check" ? runInvisibleCheck
@@ -295,11 +333,12 @@ export function ImageToolbox({ toolId }: { toolId: ImageToolId }) {
 
   return <div className="toolbox-tool-layout image-toolbox">
     <div className="toolbox-tool-layout__body">
-      <div className="image-toolbox__boundary"><ShieldCheck size={18} /><span>本地文件、显式操作、预算受限；不会自动打开 URL。默认 DOM Canvas 不是宿主 Worker，宿主终止确认：{hostExecutorAvailable ? "available" : "unavailable"}；仅隐形检测会使用 SDK 配置的一次性 Dedicated Worker。</span></div>
-      {toolId !== "c2pa-inspector" ? <label className="toolbox-file-pick button button--secondary"><Upload size={15} />选择 PNG / JPEG / WebP<input hidden type="file" accept="image/png,image/jpeg,image/webp" multiple={toolId === "image-batch-watermark"} onChange={(event) => void selectFiles(Array.from(event.target.files ?? []))} /></label> : null}
-      {files.length > 0 ? <p className="toolbox-hint"><FileImage size={14} />已选 {files.length} 张 · 输入上限 {BATCH_MAX_FILES} 张 / {Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024)} MiB · 常规输出最长边 {IMAGE_MAX_OUTPUT_EDGE}px</p> : null}
+      <div className="image-toolbox__boundary"><ShieldCheck size={18} /><span>本地文件、显式操作、预算受限；不会自动打开 URL。完整渲染、编码和隐形处理均在每任务 Dedicated Worker 的 OffscreenCanvas 中执行；停止会终止该 Worker 并等待 SDK 释放确认：{hostExecutorAvailable ? "available" : runtime.execution.reason ?? "unavailable"}。</span></div>
+      {toolId !== "c2pa-inspector" && !desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={15} />选择 PNG / JPEG / WebP<input hidden type="file" accept="image/png,image/jpeg,image/webp" multiple={toolId === "image-batch-watermark"} onChange={(event) => void selectFiles(Array.from(event.target.files ?? []))} /></label> : null}
+      {toolId !== "c2pa-inspector" && desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />开始处理后由原生选择器签发绑定输入 token；页面不会接收真实路径。</p> : null}
+      {files.length > 0 && !desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />已选 {files.length} 张 · 输入上限 {BATCH_MAX_FILES} 张 / {Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024)} MiB · 常规输出最长边 {IMAGE_MAX_OUTPUT_EDGE}px</p> : null}
       {toolId === "image-editor" ? <p className="toolbox-hint">编辑入口使用版本化 Recipe 图层：当前可编辑文字水印、位置、透明度并重新导出；锁定/分组等高级操作由 Recipe JSON 校验器拒绝未知字段。</p> : null}
-      {toolId === "c2pa-inspector" ? <button className="button button--secondary" type="button" onClick={runManifest}>粘贴并检查本地 manifest</button> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || files.length === 0 || (toolId === "invisible-watermark-check" && !invisibleDetectionWorkerAvailable)} onClick={action}><Play size={14} />{running ? "正在处理…" : actionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void stop()}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div>}
+      {toolId === "c2pa-inspector" ? <button className="button button--secondary" type="button" onClick={runManifest}>粘贴并检查本地 manifest</button> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? "正在停止…" : running ? "正在处理…" : actionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div>}
       {running ? <progress max="1" value={progress} /> : null}
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
@@ -321,7 +360,9 @@ function actionLabel(toolId: ImageToolId): string {
 }
 
 function toToolboxError(reason: unknown): ToolboxError {
-  return { code: "web_tool_error", message: reason instanceof Error ? reason.message : "图片工具执行失败。", retryable: false };
+  const rawMessage = reason instanceof Error ? reason.message : "图片工具执行失败。";
+  const message = rawMessage.replace(/(?:[A-Za-z]:)?[\\/][^\s)]+/gu, "本地文件").slice(0, 180);
+  return { code: "image_execution_failed", message, retryable: false };
 }
 
 function watermarkText(toolId: ImageToolId): string {
@@ -329,8 +370,16 @@ function watermarkText(toolId: ImageToolId): string {
 }
 
 function watermarkColor(toolId: ImageToolId): string { return toolId === "confidential-watermark" ? "#ffcf66" : "#ffffff"; }
+
+function imageControl(signal: AbortSignal, onPhase?: (phase: string) => void) {
+  return {
+    signal,
+    timeoutMs: IMAGE_OPERATION_DEADLINE_MS,
+    onProgress: (progress: { phase: string }) => onPhase?.(progress.phase),
+  };
+}
+
 function safeOutputName(name: string): string { return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80) || "image"; }
-function requireFirstFile(files: File[]): File { const file = files[0]; if (!file) throw new Error("请先选择图片。"); return file; }
 function promptValue(label: string, initial = ""): string | null { const value = window.prompt(label, initial); return value?.trim() || null; }
 function recipeTextFor(toolId: ImageToolId): string { return JSON.stringify(createTextRecipe(toolId === "image-editor" ? "可编辑水印" : "© CoreRobin", "#ffffff", 0.84)); }
 

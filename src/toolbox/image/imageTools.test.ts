@@ -3,11 +3,13 @@ import {
   BATCH_MAX_FILES,
   BATCH_MAX_INPUT_BYTES,
   IMAGE_MAX_EXPORT_BYTES,
+  appendBatchInput,
   appendBatchZipOutput,
   createBatchZipBudget,
   createImageAbortError,
   createRecipientZipBudget,
   createTextRecipe,
+  estimateImageWorksetBytes,
   inspectLocalManifest,
   isAbortError,
   parseRecipeDocument,
@@ -38,6 +40,7 @@ describe("image toolbox contracts", () => {
     expect(() => createBatchZipBudget([{ size: BATCH_MAX_INPUT_BYTES + 1 } as File])).toThrow("80 MiB");
     expect(() => appendBatchZipOutput(budget, IMAGE_MAX_EXPORT_BYTES + 1)).toThrow("512 MiB");
     expect(() => appendBatchZipOutput({ ...budget, outputFileCount: BATCH_MAX_FILES }, 1)).toThrow("20");
+    expect(() => appendBatchInput({ ...createBatchZipBudget([]), inputFileCount: BATCH_MAX_FILES }, 1)).toThrow("20");
     expect(() => appendBatchZipOutput({ ...createRecipientZipBudget({ size: 0 } as File), outputFileCount: 30 }, 1)).toThrow("30");
     expect(() => createBatchZipBudget(Array.from({ length: BATCH_MAX_FILES + 1 }, () => ({ size: 0 } as File)))).toThrow("20");
   });
@@ -48,5 +51,11 @@ describe("image toolbox contracts", () => {
     expect(parseRecipientLocators("r-a,r-b")).toEqual(["r-a", "r-b"]);
     expect(() => parseRecipientLocators("duplicate,duplicate")).toThrow("不能重复");
     expect(isAbortError(createImageAbortError())).toBe(true);
+  });
+
+  it("keeps a single decoded image within the 256 MiB execution admission budget", () => {
+    expect(estimateImageWorksetBytes(12 * 1024 * 1024, 16_000_000)).toBeLessThanOrEqual(256 * 1024 * 1024);
+    expect(estimateImageWorksetBytes(12 * 1024 * 1024, 20_000_000)).toBeGreaterThan(256 * 1024 * 1024);
+    expect(parseRecipientLocators(Array.from({ length: 30 }, (_, index) => `r-${index}`).join(","))).toHaveLength(30);
   });
 });

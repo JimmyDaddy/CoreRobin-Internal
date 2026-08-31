@@ -28,6 +28,7 @@ export interface ImageBudget {
   file: File;
   info: MarkerImageInfo;
   pixels: number;
+  estimatedWorksetBytes: number;
 }
 
 export interface LocalManifestInspection {
@@ -51,7 +52,29 @@ export async function inspectImageBudget(marker: WebMarkerInstance, file: File):
   if (!Number.isSafeInteger(pixels) || pixels > IMAGE_MAX_PIXELS) {
     throw new Error("图片解码像素不能超过 1600 万。");
   }
-  return { file, info, pixels };
+  const estimatedWorksetBytes = estimateImageWorksetBytes(file.size, pixels);
+  if (estimatedWorksetBytes > IMAGE_MAX_WORKSET_BYTES) {
+    throw new Error("图片在解码、渲染和编码阶段会超过 256 MiB 工作集预算。");
+  }
+  return { file, info, pixels, estimatedWorksetBytes };
+}
+
+/**
+ * One isolated image task owns a decoded source, canvas/pixel working copies,
+ * bounded 2048px output and its encoded input. This is deliberately a
+ * conservative admission estimate, not a claim that the browser enforces a
+ * process-wide memory limit.
+ */
+export function estimateImageWorksetBytes(inputBytes: number, sourcePixels: number): number {
+  if (!Number.isSafeInteger(inputBytes) || inputBytes < 0 || !Number.isSafeInteger(sourcePixels) || sourcePixels < 1) {
+    throw new Error("图片预算参数无效。");
+  }
+  const sourceRgbaBytes = sourcePixels * 4;
+  const outputPixels = Math.min(sourcePixels, IMAGE_MAX_OUTPUT_EDGE * IMAGE_MAX_OUTPUT_EDGE);
+  const outputRgbaBytes = outputPixels * 4;
+  const estimate = sourceRgbaBytes * 3 + outputRgbaBytes * 3 + inputBytes;
+  if (!Number.isSafeInteger(estimate)) throw new Error("图片工作集预算溢出。");
+  return estimate;
 }
 
 export function assertBatchBudget(files: readonly File[]): void {
@@ -69,6 +92,18 @@ export function createBatchZipBudget(files: readonly File[]): BatchZipBudget {
   };
   assertBatchZipBudget(budget);
   return budget;
+}
+
+/** Add one native-bound input immediately before it is decoded. */
+export function appendBatchInput(budget: BatchZipBudget, byteLength: number): BatchZipBudget {
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw new Error("图片输入大小无效。");
+  const next = {
+    ...budget,
+    inputFileCount: budget.inputFileCount + 1,
+    inputBytes: budget.inputBytes + byteLength,
+  };
+  assertBatchZipBudget(next);
+  return next;
 }
 
 /**
@@ -118,8 +153,8 @@ export function isAbortError(reason: unknown): reason is Error {
 
 export function parseRecipientLocators(source: string): string[] {
   const values = source.split(",").map((value) => value.trim()).filter(Boolean);
-  if (values.length === 0 || values.length > BATCH_MAX_FILES) {
-    throw new Error("收件人最多 20 个，且必须使用短 locator；不要直接写入个人资料。");
+  if (values.length === 0 || values.length > RECIPIENT_MAX_FILES) {
+    throw new Error("收件人最多 30 个，且必须使用短 locator；不要直接写入个人资料。");
   }
   const seen = new Set<string>();
   for (const value of values) {
