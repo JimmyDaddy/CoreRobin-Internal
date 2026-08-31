@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
@@ -128,10 +128,57 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
             <ToolSection key={category} title={CATEGORY_LABELS[category]} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           ))}
           {tools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>没有匹配的工具</strong><span>搜索只查找工具名称、别名和说明，不会查看你的输入。</span></div> : null}
+          <ToolboxHistoryPanel />
         </>
       )}
     </section>
   );
+}
+
+function ToolboxHistoryPanel() {
+  const [page, setPage] = useState<ToolboxHistoryPage | null>(null);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const refresh = async () => {
+    if (!isDesktopRuntime()) return;
+    setLoading(true);
+    try {
+      const storage = await getToolboxStorageSnapshot();
+      setEnabled(storage.policy.toolboxHistoryEnabled);
+      setPage(storage.policy.toolboxHistoryEnabled ? await listToolboxHistory({ limit: 20 }) : null);
+      setError("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "工具箱历史暂时不可用。" );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+  if (!isDesktopRuntime()) return null;
+
+  return <section className="toolbox-section" aria-labelledby="toolbox-history-title">
+    <div className="toolbox-section__title"><h2 id="toolbox-history-title">最近执行历史</h2><span>{page ? `${page.records.length} 条` : enabled === false ? "已关闭" : ""}</span></div>
+    {enabled === false ? <p className="toolbox-hint">工具箱历史记录已按当前策略关闭；本地任务仍会显示即时结果。</p> : null}
+    {error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}
+    {enabled !== false && page?.records.length ? <div className="toolbox-history-list">{page.records.map((record) => <HistoryRow key={record.recordId} record={record} />)}</div> : null}
+    {enabled !== false && page && page.records.length === 0 ? <p className="toolbox-hint">还没有可展示的工具箱终态记录。</p> : null}
+    <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "正在刷新…" : "刷新历史"}</button><span className="toolbox-hint">只显示最近 20 条；记录不包含输入内容、路径或密钥。</span></div>
+  </section>;
+}
+
+function HistoryRow({ record }: { record: ToolboxHistoryRecord }) {
+  return <div className="toolbox-history-row"><strong>{historyToolLabel(record.tool)}</strong><span>{historyStatusLabel(record.terminalStatus)}</span><small>{new Date(record.completedAtMs).toLocaleString()} · 通知：{record.notificationStatus}</small></div>;
+}
+
+function historyToolLabel(tool: ToolboxHistoryRecord["tool"]): string {
+  return { "keep-awake": "限时保活", "process-watch": "进程退出观察", "file-occupancy": "文件占用扫描", "volume-occupancy": "卷占用扫描", "keyboard-cleaning": "键盘清理", "network-addresses": "网络地址", "ifconfig-parser": "ifconfig 解析" }[tool];
+}
+
+function historyStatusLabel(status: ToolboxHistoryRecord["terminalStatus"]): string {
+  return { completed: "已完成", cancelled: "已取消", expired: "已过期", failed: "失败", interrupted: "已中断", deadline: "达到截止时间", process_exited: "进程已退出", low_battery: "低电量释放", release_unconfirmed: "释放未确认" }[status];
 }
 
 function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition) => void; onFavorite: (id: ToolId) => void }) {
