@@ -49,12 +49,13 @@ export function parseColor(input: string): ColorValue {
 export function formatColor(color: ColorValue): Record<string, string> {
   const hsl = rgbToHsl(color.r, color.g, color.b);
   const hsv = rgbToHsv(color.r, color.g, color.b);
+  const oklch = rgbToOklch(color.r, color.g, color.b);
   return {
     hex: `#${rgbHex(color.r, color.g, color.b)}${color.a < 1 ? byteHex(color.a) : ""}`,
     rgb: `rgb(${byte(color.r)} ${byte(color.g)} ${byte(color.b)}${color.a < 1 ? ` / ${round(color.a, 3)}` : ""})`,
     hsl: `hsl(${round(hsl.h * 360, 2)} ${round(hsl.s * 100, 2)}% ${round(hsl.l * 100, 2)}%${color.a < 1 ? ` / ${round(color.a, 3)}` : ""})`,
     hsv: `hsv(${round(hsv.h * 360, 2)} ${round(hsv.s * 100, 2)}% ${round(hsv.v * 100, 2)}%${color.a < 1 ? ` / ${round(color.a, 3)}` : ""})`,
-    oklch: "OKLCH output is shown through the source value; sRGB preview may be gamut-mapped.",
+    oklch: `oklch(${round(oklch.l, 4)} ${round(oklch.c, 4)} ${round(oklch.h, 2)}${color.a < 1 ? ` / ${round(color.a, 3)}` : ""})`,
   };
 }
 
@@ -72,6 +73,15 @@ function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: n
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } { const max = Math.max(r, g, b); const min = Math.min(r, g, b); const l = (max + min) / 2; if (max === min) return { h: 0, s: 0, l }; const d = max - min; const s = l > .5 ? d / (2 - max - min) : d / (max + min); const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; return { h: h / 6, s, l }; }
 function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } { const max = Math.max(r, g, b); const min = Math.min(r, g, b); const d = max - min; if (!d) return { h: 0, s: 0, v: max }; const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; return { h: h / 6, s: d / max, v: max }; }
 function oklabToRgb(l: number, a: number, b: number): { r: number; g: number; b: number } { const l1 = Math.cbrt(l + 0.3963377774 * a + 0.2158037573 * b); const m1 = Math.cbrt(l - 0.1055613458 * a - 0.0638541728 * b); const s1 = Math.cbrt(l - 0.0894841775 * a - 1.291485548 * b); return { r: 4.0767416621 * l1 ** 3 - 3.3077115913 * m1 ** 3 + 0.2309699292 * s1 ** 3, g: -1.2684380046 * l1 ** 3 + 2.6097574011 * m1 ** 3 - 0.3413193965 * s1 ** 3, b: -0.0041960863 * l1 ** 3 - 0.7034186147 * m1 ** 3 + 1.707614701 * s1 ** 3 }; }
+function rgbToOklch(r: number, g: number, b: number): { l: number; c: number; h: number } {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const lightness = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const labB = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return { l: lightness, c: Math.sqrt(a * a + labB * labB), h: (Math.atan2(labB, a) * 180 / Math.PI + 360) % 360 };
+}
 function inGamut(color: { r: number; g: number; b: number }): boolean { return [color.r, color.g, color.b].every((value) => value >= 0 && value <= 1); }
 function clamp(value: number, min: number, max: number): number { return Math.min(max, Math.max(min, value)); }
 function byte(value: number): number { return Math.round(clamp(value, 0, 1) * 255); }
