@@ -19,6 +19,7 @@ import {
   inspectImageBudget,
   inspectLocalManifest,
   isAbortError,
+  LOCAL_MANIFEST_MAX_BYTES,
   parseRecipientLocators,
   requireOneTimeRecipientKey,
   resultLabel,
@@ -31,7 +32,7 @@ import { archiveOutput, markerResultOutput, type ImageOutputDelivery, type Image
 import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
 import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, registerToolboxOutput, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
-import { fileJobKey } from "../runtime/files";
+import { fileJobKey, readBoundToolboxInput } from "../runtime/files";
 import type { ToolboxFileJobKey, ToolboxInputToken } from "../contracts";
 import "./image.css";
 
@@ -58,6 +59,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const runtime = useMemo(() => createImageToolRuntime(), []);
   const marker = runtime.marker;
   const [files, setFiles] = useState<File[]>([]);
+  const [manifestFile, setManifestFile] = useState<File | null>(null);
+  const [manifestReport, setManifestReport] = useState("");
+  const [manifestDownloadUrl, setManifestDownloadUrl] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
@@ -82,6 +86,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const [outputFormat, setOutputFormat] = useState<ImageFormat>(ImageFormat.png);
   const cancelRef = useRef<AbortController | null>(null);
   const zipUrlRef = useRef("");
+  const manifestDownloadUrlRef = useRef("");
   const hostExecutorAvailable = runtime.execution.supported
     && marker.capabilities.execution.mode === "host-adapter"
     && marker.capabilities.execution.supportsTerminationAcknowledgement;
@@ -106,10 +111,19 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     setZipUrl(zipUrlRef.current);
   };
 
+  const publishManifestReport = (report: string) => {
+    if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current);
+    const url = URL.createObjectURL(new Blob([new TextEncoder().encode(report)], { type: "application/json" }));
+    manifestDownloadUrlRef.current = url;
+    setManifestDownloadUrl(url);
+  };
+
   useEffect(() => () => {
     cancelRef.current?.abort();
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
     zipUrlRef.current = "";
+    if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current);
+    manifestDownloadUrlRef.current = "";
     void runtime.dispose();
   }, [runtime]);
   useEffect(() => () => {
@@ -166,6 +180,19 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       setFontFile(null);
       setError(reason instanceof Error ? reason.message : "本地字体不可用。");
     }
+  };
+
+  const selectManifest = (selected: File | undefined) => {
+    if (!selected) return;
+    if (selected.size > LOCAL_MANIFEST_MAX_BYTES) {
+      setManifestFile(null);
+      setError("Manifest 材料不能超过 4 MiB。");
+      return;
+    }
+    setManifestFile(selected);
+    setManifestReport("");
+    setError("");
+    setNotice(`本地 manifest 材料“${safeOutputName(selected.name)}”已选择；不会联网或保存路径。`);
   };
 
   const run = async (task: (signal: AbortSignal, inputs: ImageRunInputs, resources: ImageRunResources) => Promise<ImageOutputPayload | null>, options: ImageRunOptions = {}) => {
@@ -460,11 +487,80 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     return markerResultOutput(output);
   }, { deadlineMs: 180_000 });
 
-  const runManifest = () => {
-    const raw = promptValue("粘贴本地 C2PA manifest JSON（不联网）", '{"manifests":{}}');
-    if (!raw) return;
-    try { setNotice(JSON.stringify(inspectLocalManifest(raw), null, 2)); setError(""); } catch (reason) { setError(reason instanceof Error ? reason.message : "Manifest 解析失败。"); }
-  };
+  const runManifest = () => void (async () => {
+    if (running || nativeOutputRef.current) return;
+    const controller = new AbortController();
+    cancelRef.current = controller;
+    setRunning(true);
+    setStopping(false);
+    setError("");
+    setNotice("");
+    setManifestReport("");
+    if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current);
+    manifestDownloadUrlRef.current = "";
+    setManifestDownloadUrl("");
+    let nativeJob: ToolboxJob | null = null;
+    let nativeInputJob: ToolboxFileJobKey | null = null;
+    let nativeInputTokens: ToolboxInputToken[] = [];
+    try {
+      let file = manifestFile;
+      if (desktopRuntime) {
+        nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
+        nativeInputJob = fileJobKey(nativeJob);
+        nativeInputTokens = await prepareToolboxInputs(nativeInputJob, "manifest");
+        const token = nativeInputTokens[0];
+        if (!token) throw new Error("请选择一个本地 manifest JSON 文件。");
+        const bytes = await readBoundToolboxInput(nativeInputJob, token, controller.signal, LOCAL_MANIFEST_MAX_BYTES);
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+        file = new File([buffer], token.displayName, { type: "application/json" });
+      }
+      if (!file) throw new Error("请选择一个本地 manifest JSON 文件。");
+      if (file.size > LOCAL_MANIFEST_MAX_BYTES) throw new Error("Manifest 材料不能超过 4 MiB。");
+      const report = JSON.stringify(inspectLocalManifest(await file.text()), null, 2);
+      setManifestReport(report);
+      publishManifestReport(report);
+      if (nativeInputJob) await revalidateToolboxInputs(nativeInputJob);
+      if (nativeJob) {
+        const ready = await registerToolboxOutput({
+          ...newToolboxRequest(),
+          jobId: nativeJob.jobId,
+          generation: nativeJob.generation,
+          resetEpoch: nativeJob.resetEpoch,
+          bytes: new TextEncoder().encode(report),
+          validation: "verified",
+        });
+        setPreparedOutput(ready, "corerobin-c2pa-manifest-report.json");
+        setNotice("本地 manifest 摘要已生成；解析与信任状态分开显示，信任仍为 unknown。请在 10 分钟内正式另存报告。");
+      } else {
+        setNotice("本地 manifest 摘要已生成；未联网、未验证签名或信任链。下载的是显式检查报告。");
+      }
+    } catch (reason) {
+      if (nativeJob) {
+        try {
+          if (controller.signal.aborted) {
+            await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
+          } else {
+            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
+          }
+        } catch (lifecycleReason) {
+          setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+        }
+      }
+      if (controller.signal.aborted) setNotice("Manifest 检查已取消；未生成正式报告。");
+      else setError(reason instanceof Error ? reason.message : "Manifest 解析失败。");
+    } finally {
+      if (nativeInputJob && nativeInputTokens.length > 0) {
+        try {
+          await releaseToolboxInputs(nativeInputJob, nativeInputTokens.map((token) => token.token));
+        } catch (releaseReason) {
+          setError(`Manifest 输入资源释放未确认：${releaseReason instanceof Error ? releaseReason.message : "无法释放输入 token"}`);
+        }
+      }
+      cancelRef.current = null;
+      setStopping(false);
+      setRunning(false);
+    }
+  })();
 
   const runRecipient = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
@@ -528,10 +624,11 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       {files.length > 0 && !desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />已选 {files.length} 张 · 输入上限 {BATCH_MAX_FILES} 张 / {Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024)} MiB · 常规输出最长边 {IMAGE_MAX_OUTPUT_EDGE}px</p> : null}
       {toolId === "image-watermark" || toolId === "confidential-watermark" || toolId === "image-batch-watermark" ? <div className="image-watermark-form"><label>文字<input className="toolbox-input" value={watermarkValue} maxLength={4096} disabled={running} onChange={(event) => setWatermarkValue(event.target.value)} /></label><label>字体族<input className="toolbox-input" value={watermarkFont} disabled={running} onChange={(event) => setWatermarkFont(event.target.value)} placeholder="系统已安装字体，例如 PingFang SC" /></label><label>文字方向<select className="toolbox-input" value={watermarkDirection} disabled={running} onChange={(event) => setWatermarkDirection(event.target.value as typeof watermarkDirection)}><option value="auto">自动</option><option value="ltr">从左到右</option><option value="rtl">从右到左</option></select></label><label>文字透明度<input type="range" min="0.1" max="1" step="0.05" value={watermarkAlpha} disabled={running} onChange={(event) => setWatermarkAlpha(Number(event.target.value))} /></label><label>输出格式<select className="toolbox-input" value={outputFormat} disabled={running} onChange={(event) => setOutputFormat(event.target.value as ImageFormat)}><option value={ImageFormat.png}>PNG</option><option value={ImageFormat.jpg}>JPEG</option><option value={ImageFormat.webp}>WebP</option></select></label>{!desktopRuntime ? <><label className="toolbox-file-pick button button--secondary"><Upload size={14} />选择本地 Logo<input hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={running} onChange={(event) => void selectLogo(event.target.files?.[0])} /></label><label className="toolbox-file-pick button button--secondary"><Upload size={14} />选择本地字体<input hidden type="file" accept=".ttf,.otf,.woff,.woff2,font/*" disabled={running} onChange={(event) => selectFont(event.target.files?.[0])} /></label></> : <><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeLogo} disabled={running} onChange={(event) => setRequestNativeLogo(event.target.checked)} />本次操作选择一个本地 Logo</label><p className="toolbox-hint">自选字体文件需要 W02 `font` token；当前可使用系统已安装的字体族。</p></>}{fontFile ? <p className="toolbox-hint">字体：{safeOutputName(fontFile.name)} · 仅本次 Worker 可见，Worker 终止后释放。</p> : null}{logoFile ? <p className="toolbox-hint">Logo：{safeOutputName(logoFile.name)} · 缩放 <input type="number" min="0.01" max="100" step="0.05" value={logoScale} disabled={running} onChange={(event) => setLogoScale(Number(event.target.value))} /> · 旋转 <input type="number" min="0" max="360" value={logoRotation} disabled={running} onChange={(event) => setLogoRotation(Number(event.target.value))} /> · 透明度 <input type="range" min="0.1" max="1" step="0.05" value={logoAlpha} disabled={running} onChange={(event) => setLogoAlpha(Number(event.target.value))} /></p> : null}</div> : null}
       {toolId === "image-recipe" || toolId === "image-editor" ? <ImageRecipeEditor marker={marker} desktopRuntime={desktopRuntime} disabled={running || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onPreview={runRecipeEditor} onError={setError} onNotice={setNotice} deliverOutput={deliverFormalOutput} /> : null}
-      {toolId === "c2pa-inspector" ? <button className="button button--secondary" type="button" onClick={runManifest}>粘贴并检查本地 manifest</button> : toolId === "image-recipe" || toolId === "image-editor" ? <div className="toolbox-inline-actions">{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? "正在停止…" : running ? "正在处理…" : actionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); setLogoFile(null); setFontFile(null); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div>}
+      {toolId === "c2pa-inspector" ? <div className="toolbox-inline-actions">{!desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={14} />选择 manifest JSON<input hidden type="file" accept="application/json,.json,text/json" disabled={running} onChange={(event) => selectManifest(event.target.files?.[0])} /></label> : <span className="toolbox-hint"><FileImage size={14} />开始检查后由原生选择器签发 manifest token。</span>}<button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || (!desktopRuntime && !manifestFile)} onClick={runManifest}><Play size={14} />检查本地 manifest</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setManifestFile(null); setManifestReport(""); if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current); manifestDownloadUrlRef.current = ""; setManifestDownloadUrl(""); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div> : toolId === "image-recipe" || toolId === "image-editor" ? <div className="toolbox-inline-actions">{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? "正在停止…" : running ? "正在处理…" : actionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); setLogoFile(null); setFontFile(null); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div>}
       {running ? <progress max="1" value={progress} /> : null}
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
+      {manifestReport ? <div className="toolbox-output"><pre className="toolbox-notice">{manifestReport}</pre>{manifestDownloadUrl ? <a className="button button--secondary" download="corerobin-c2pa-manifest-report.json" href={manifestDownloadUrl}><Download size={14} />下载检查报告</a> : null}</div> : null}
       {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>交付状态：{recipientDelivery.status} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
       {result ? <div className="image-toolbox__result"><img src={result.uri} alt="本地水印结果预览" /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button></> : null}{deliverFormalOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverFormalOutput(markerResultOutput(result)).then(() => setNotice("图片已交给原生输出 provider；请按 TTL/另存流程完成导出。"), (reason: unknown) => setError(reason instanceof Error ? reason.message : "正式输出交付失败。"))}><Download size={14} />交给正式另存</button> : null}<a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />下载预览副本（非正式导出）</a><span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · 原生输出 ${Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟` : ""}</span></div></div> : null}
       {!result && nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button><span className="toolbox-hint">原生输出 {Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟</span></div> : null}

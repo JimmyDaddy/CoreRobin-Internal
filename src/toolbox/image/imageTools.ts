@@ -15,6 +15,7 @@ export const RECIPIENT_MAX_FILES = 30;
 export const BATCH_MAX_INPUT_BYTES = 80 * 1024 * 1024;
 export const IMAGE_MAX_WORKSET_BYTES = 256 * 1024 * 1024;
 export const IMAGE_MAX_EXPORT_BYTES = 512 * 1024 * 1024;
+export const LOCAL_MANIFEST_MAX_BYTES = 4 * 1024 * 1024;
 
 export interface BatchZipBudget {
   inputFileCount: number;
@@ -33,6 +34,7 @@ export interface ImageBudget {
 
 export interface LocalManifestInspection {
   format: "json" | "unknown";
+  status: "parsed_unverified" | "not_c2pa" | "malformed";
   manifests: number;
   claimGenerator: string | null;
   trust: "unknown";
@@ -202,14 +204,15 @@ export function parseRecipeDocument(source: string): WatermarkRecipeDefinition {
 }
 
 export function inspectLocalManifest(source: string): LocalManifestInspection {
-  if (new TextEncoder().encode(source).byteLength > 256 * 1024) throw new Error("Manifest 材料不能超过 256 KiB。");
+  if (new TextEncoder().encode(source).byteLength > LOCAL_MANIFEST_MAX_BYTES) throw new Error("Manifest 材料不能超过 4 MiB。");
   let value: unknown;
-  try { value = JSON.parse(source); } catch { return { format: "unknown", manifests: 0, claimGenerator: null, trust: "unknown", networkAccessed: false, note: "材料不是 JSON；未判断为 C2PA。" }; }
-  if (!value || typeof value !== "object") return { format: "unknown", manifests: 0, claimGenerator: null, trust: "unknown", networkAccessed: false, note: "材料不是对象；信任状态 unknown。" };
+  try { value = JSON.parse(source); } catch { return { format: "unknown", status: "malformed", manifests: 0, claimGenerator: null, trust: "unknown", networkAccessed: false, note: "材料不是有效 JSON；未判断为 C2PA。" }; }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { format: "unknown", status: "malformed", manifests: 0, claimGenerator: null, trust: "unknown", networkAccessed: false, note: "材料不是 C2PA manifest 对象；信任状态 unknown。" };
   const root = value as Record<string, unknown>;
   const manifests = root.manifests && typeof root.manifests === "object" ? Object.keys(root.manifests as object).length : 0;
   const claimGenerator = typeof root.claim_generator === "string" ? root.claim_generator : null;
-  return { format: manifests > 0 || "c2pa" in root ? "json" : "unknown", manifests, claimGenerator, trust: "unknown", networkAccessed: false, note: "仅解析本地材料；未联网、未验证签名或信任链。" };
+  if (!root.manifests || typeof root.manifests !== "object" || Array.isArray(root.manifests)) return { format: "unknown", status: "not_c2pa", manifests: 0, claimGenerator, trust: "unknown", networkAccessed: false, note: "JSON 中没有 C2PA manifests 对象；未联网、未验证签名或信任链。" };
+  return { format: "json", status: "parsed_unverified", manifests, claimGenerator, trust: "unknown", networkAccessed: false, note: "仅解析本地 manifest 摘要；未联网、未验证签名或信任链。" };
 }
 
 export function dataUrlToBytes(uri: string): Uint8Array {
