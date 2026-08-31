@@ -143,6 +143,7 @@ use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, File
 use toolbox_power::{PowerRequest, PowerService, PowerState};
 use toolbox_process_watch::{
     ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
+    ProcessWatchStatus,
 };
 use toolbox_scheduler::{
     SchedulerAction, SchedulerActionIntent, SchedulerCreateRequest, SchedulerIntentOutcome,
@@ -2676,6 +2677,32 @@ fn clear_toolbox_data(
     request: toolbox_contracts::ToolboxRequest,
 ) -> Result<ToolboxSnapshot, CommandError> {
     require_main_window(&window)?;
+    let watch_ids = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .snapshots()?
+        .into_iter()
+        .filter(|snapshot| {
+            matches!(
+                snapshot.status,
+                ProcessWatchStatus::Running | ProcessWatchStatus::Unknown
+            )
+        })
+        .map(|snapshot| snapshot.watch_id)
+        .collect::<Vec<_>>();
+    for watch_id in watch_ids {
+        state
+            .toolbox_process_watch
+            .lock()
+            .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+            .cancel(watch_id)?;
+    }
+    let _ = state.toolbox_file_hash.cancel();
+    let _ = resource_occupancy::cancel_active();
+    if let Ok(mut power) = state.toolbox_power.lock() {
+        let _ = power.cancel();
+    }
     let previous_epoch = state
         .toolbox
         .lock()
