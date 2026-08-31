@@ -150,7 +150,7 @@ use toolbox_process_watch::{
 use toolbox_scheduler::{
     SchedulerAction, SchedulerActionIntent, SchedulerCreateRequest, SchedulerIntentOutcome,
     SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest, SchedulerSnapshot,
-    ToolboxScheduler,
+    SchedulerUpdateRequest, ToolboxScheduler,
 };
 use toolbox_service::{
     CancelToolboxJobRequest, CancelToolboxOutputRequest, ExportToolboxOutputRequest,
@@ -2998,6 +2998,20 @@ fn create_toolbox_schedule(
 }
 
 #[tauri::command]
+fn update_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerUpdateRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .update(request)
+}
+
+#[tauri::command]
 fn pause_toolbox_schedule(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -3431,6 +3445,7 @@ pub fn run() {
             get_toolbox_schedule_snapshot,
             preview_toolbox_schedule,
             create_toolbox_schedule,
+            update_toolbox_schedule,
             pause_toolbox_schedule,
             delete_toolbox_schedule,
             write_toolbox_text_copy,
@@ -3729,6 +3744,7 @@ mod security_boundary_tests {
         "get_toolbox_keep_awake_state",
         "get_toolbox_schedule_snapshot",
         "create_toolbox_schedule",
+        "update_toolbox_schedule",
         "pause_toolbox_schedule",
         "delete_toolbox_schedule",
         "write_toolbox_text_copy",

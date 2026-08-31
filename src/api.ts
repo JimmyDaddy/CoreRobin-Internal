@@ -368,6 +368,18 @@ export async function createToolboxSchedule(request: {
   return invoke<ToolboxScheduleSnapshot>("create_toolbox_schedule", { request });
 }
 
+export async function updateToolboxSchedule(request: {
+  requestId: string;
+  scheduleId: string;
+  expectedRevision?: number;
+  timeZone: string;
+  title?: string;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+}): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("update_toolbox_schedule", { request });
+}
+
 export async function pauseToolboxSchedule(request: { requestId: string; scheduleId: string }): Promise<ToolboxScheduleSnapshot> {
   return invoke<ToolboxScheduleSnapshot>("pause_toolbox_schedule", { request });
 }

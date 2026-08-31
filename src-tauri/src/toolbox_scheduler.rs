@@ -35,6 +35,19 @@ pub struct SchedulerCreateRequest {
     pub action: SchedulerAction,
     pub trigger: SchedulerTrigger,
 }
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerUpdateRequest {
+    pub request_id: String,
+    pub schedule_id: String,
+    pub expected_revision: Option<u64>,
+    pub time_zone: String,
+    pub title: Option<String>,
+    pub action: SchedulerAction,
+    pub trigger: SchedulerTrigger,
+}
+
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SchedulerRuleRequest {
@@ -305,6 +318,13 @@ impl ToolboxScheduler {
         self.create_at(request, now_millis())
     }
 
+    pub fn update(
+        &mut self,
+        request: SchedulerUpdateRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.update_at(request, now_millis())
+    }
+
     pub fn poll_due(&mut self, now_ms: u64) -> Result<Vec<SchedulerActionIntent>, CommandError> {
         if self.store.is_none() {
             return Ok(Vec::new());
@@ -549,6 +569,94 @@ impl ToolboxScheduler {
         Ok(self.snapshot())
     }
 
+    fn update_at(
+        &mut self,
+        request: SchedulerUpdateRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        validate_schedule_id(&request.schedule_id)?;
+        let title = validate_title(request.title.as_deref())?;
+        validate_action(&request.action)?;
+        parse_time_zone(&request.time_zone).map_err(rule_error)?;
+        let trigger = normalize_trigger(&request.time_zone, request.trigger, now_ms)?;
+
+        if let Some(store) = self.store.as_mut() {
+            let persisted_action = persisted_action(&request.action);
+            let persisted_trigger = persisted_trigger(&trigger);
+            let next_scheduled_at_utc_ms = trigger_next_run(&trigger);
+            let time_zone = request.time_zone.clone();
+            let title = title.clone();
+            let schedule_id = request.schedule_id.clone();
+            let expected_revision = request.expected_revision;
+            store
+                .transact(|state| {
+                    if expected_revision.is_some_and(|expected| expected != state.revision) {
+                        return Err(SchedulerStoreError::RevisionConflict);
+                    }
+                    let revision = state.revision.saturating_add(1);
+                    let Some(rule) = state
+                        .rules
+                        .iter_mut()
+                        .find(|rule| rule.schedule_id == schedule_id)
+                    else {
+                        return Err(SchedulerStoreError::InvalidState);
+                    };
+                    rule.revision = revision;
+                    rule.title = title.clone();
+                    rule.time_zone = time_zone.clone();
+                    rule.action = persisted_action.clone();
+                    rule.trigger = persisted_trigger.clone();
+                    rule.next_scheduled_at_utc_ms = Some(next_scheduled_at_utc_ms);
+                    rule.last_processed_at_utc_ms = None;
+                    rule.last_processed_local_key = None;
+                    rule.updated_at_ms = now_ms;
+                    state.revision = revision;
+                    Ok(())
+                })
+                .map_err(|error| match error {
+                    SchedulerStoreError::InvalidState => CommandError::new(
+                        "schedule_not_found",
+                        "The schedule rule no longer exists.",
+                    ),
+                    SchedulerStoreError::RevisionConflict => CommandError::new(
+                        "revision_conflict",
+                        "The schedule state changed; reload before editing.",
+                    ),
+                    other => storage_error(other),
+                })?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+
+        if request
+            .expected_revision
+            .is_some_and(|expected| expected != self.revision)
+        {
+            return Err(CommandError::new(
+                "revision_conflict",
+                "The schedule state changed; reload before editing.",
+            ));
+        }
+        let Some(rule) = self
+            .rules
+            .iter_mut()
+            .find(|rule| rule.schedule_id == request.schedule_id)
+        else {
+            return Err(CommandError::new(
+                "schedule_not_found",
+                "The schedule rule no longer exists.",
+            ));
+        };
+        rule.title = title;
+        rule.time_zone = request.time_zone;
+        rule.action = request.action;
+        rule.trigger = trigger;
+        rule.updated_at_ms = now_ms;
+        self.revision = self.revision.saturating_add(1);
+        Ok(self.snapshot())
+    }
+
     fn pause_at(
         &mut self,
         request: SchedulerRuleRequest,
@@ -699,6 +807,7 @@ fn storage_error(error: SchedulerStoreError) -> CommandError {
         SchedulerStoreError::InvalidAppDataDir => "invalid_storage",
         SchedulerStoreError::Corrupt => "schedule_storage_corrupt",
         SchedulerStoreError::InvalidState => "invalid_schedule",
+        SchedulerStoreError::RevisionConflict => "revision_conflict",
         SchedulerStoreError::Io | SchedulerStoreError::Serialization => "schedule_storage_error",
     };
     CommandError::new(code, error.to_string())
@@ -1138,6 +1247,74 @@ mod tests {
             })
             .expect("paused rule can be deleted");
         assert!(deleted.rules.is_empty());
+    }
+
+    #[test]
+    fn updates_a_rule_in_place_and_rejects_a_stale_snapshot_revision() {
+        let mut scheduler = ToolboxScheduler::default();
+        let created = scheduler
+            .create_at(reminder_once(NOW_MS + 60_000), NOW_MS)
+            .expect("rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let updated = scheduler
+            .update_at(
+                SchedulerUpdateRequest {
+                    request_id: "request-update".to_owned(),
+                    schedule_id: schedule_id.clone(),
+                    expected_revision: Some(created.revision),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: Some("Updated reminder".to_owned()),
+                    action: SchedulerAction::KeepAwake {
+                        duration_minutes: 5,
+                    },
+                    trigger: SchedulerTrigger::Daily {
+                        hour: 10,
+                        minute: 30,
+                        next_run_at_ms: NOW_MS + ONE_DAY_MS,
+                    },
+                },
+                NOW_MS + 1,
+            )
+            .expect("current rule can be edited");
+
+        assert_eq!(updated.rules.len(), 1);
+        assert_eq!(updated.rules[0].title.as_deref(), Some("Updated reminder"));
+        assert_eq!(
+            updated.rules[0].action,
+            SchedulerAction::KeepAwake {
+                duration_minutes: 5
+            }
+        );
+        assert!(matches!(
+            updated.rules[0].trigger,
+            SchedulerTrigger::Daily {
+                hour: 10,
+                minute: 30,
+                ..
+            }
+        ));
+
+        let stale = scheduler
+            .update_at(
+                SchedulerUpdateRequest {
+                    request_id: "request-stale".to_owned(),
+                    schedule_id,
+                    expected_revision: Some(created.revision),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: Some("Stale".to_owned()),
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Once {
+                        at_ms: NOW_MS + 2 * ONE_DAY_MS,
+                    },
+                },
+                NOW_MS + 2,
+            )
+            .expect_err("stale snapshot must not overwrite a newer edit");
+        assert_eq!(stale.code, "revision_conflict");
+        assert_eq!(
+            scheduler.snapshot().rules[0].title.as_deref(),
+            Some("Updated reminder")
+        );
     }
 
     #[test]

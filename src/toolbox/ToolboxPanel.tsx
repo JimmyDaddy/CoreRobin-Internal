@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
@@ -287,6 +287,7 @@ function ScheduleTool() {
   const [cron, setCron] = useState("*/15 9-17 * * 1-5");
   const [duration, setDuration] = useState("60");
   const [snapshot, setSnapshot] = useState<ToolboxScheduleSnapshot | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
 
@@ -306,6 +307,34 @@ function ScheduleTool() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const beginEdit = (rule: ToolboxScheduleSnapshot["rules"][number]) => {
+    setEditingScheduleId(rule.scheduleId);
+    setTitle(rule.title ?? "");
+    if (rule.action.kind === "keepAwake") {
+      setActionKind("keepAwake");
+      setDuration(String(rule.action.durationMinutes));
+    } else {
+      setActionKind("reminder");
+    }
+    if (rule.trigger.kind === "once") {
+      setKind("once");
+      setOnceAt(localDateTimeInput(new Date(rule.trigger.atMs)));
+    } else if (rule.trigger.kind === "daily") {
+      setKind("daily");
+      setHour(String(rule.trigger.hour));
+      setMinute(String(rule.trigger.minute));
+    } else if (rule.trigger.kind === "weekly") {
+      setKind("weekly");
+      setHour(String(rule.trigger.hour));
+      setMinute(String(rule.trigger.minute));
+      setWeekday(String(rule.trigger.weekday));
+    } else {
+      setKind("cron");
+      setCron(rule.trigger.expression);
+    }
+    setError("");
   };
 
   const create = async () => {
@@ -347,7 +376,11 @@ function ScheduleTool() {
         throw new ToolboxInputError("invalid_duration", "保活时长必须是 1 分钟到 12 小时。");
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
-      setSnapshot(await createToolboxSchedule({ requestId: crypto.randomUUID(), timeZone, title: title || undefined, action, trigger }));
+      const request = { requestId: crypto.randomUUID(), timeZone, title: title || undefined, action, trigger };
+      setSnapshot(editingScheduleId
+        ? await updateToolboxSchedule({ ...request, scheduleId: editingScheduleId, expectedRevision: snapshot?.revision })
+        : await createToolboxSchedule(request));
+      setEditingScheduleId(null);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -379,7 +412,7 @@ function ScheduleTool() {
     }
   };
 
-  return <ToolLayout error={error} onClear={() => { setSnapshot(null); setError(""); }}>
+  return <ToolLayout error={error} onClear={() => { setSnapshot(null); setEditingScheduleId(null); setError(""); }}>
     <div className="toolbox-form-grid">
       <label>规则 <select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="once">一次性</option><option value="daily">每天</option><option value="weekly">每周</option><option value="cron">Cron 草稿</option></select></label>
       <label>意图 <select value={actionKind} onChange={(event) => setActionKind(event.target.value as typeof actionKind)}><option value="reminder">提醒</option><option value="keepAwake">限时保活</option></select></label>
@@ -393,9 +426,9 @@ function ScheduleTool() {
       {kind === "weekly" ? <label>星期 <select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">周日</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option></select></label> : null}
     </div> : null}
     {actionKind === "keepAwake" ? <label>保活分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
-    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />创建规则</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />{editingScheduleId ? "保存修改" : "创建规则"}</button>{editingScheduleId ? <button className="button button--secondary" disabled={running} type="button" onClick={() => setEditingScheduleId(null)}>取消编辑</button> : null}<button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
     <p className="toolbox-hint">创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。</p>
-    {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? "未命名"} · {rule.status} · 下次预览 {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>暂停</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>删除</button></div>)}</> : null}
+    {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? "未命名"} · {rule.status} · 下次预览 {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running} type="button" onClick={() => beginEdit(rule)}>编辑</button><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>暂停</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>删除</button></div>)}</> : null}
   </ToolLayout>;
 }
 

@@ -103,6 +103,7 @@ pub(crate) enum SchedulerStoreError {
     Serialization,
     Corrupt,
     InvalidState,
+    RevisionConflict,
 }
 
 impl fmt::Display for SchedulerStoreError {
@@ -113,6 +114,7 @@ impl fmt::Display for SchedulerStoreError {
             Self::Serialization => "private scheduler storage serialization failed",
             Self::Corrupt => "the saved schedule rules are invalid",
             Self::InvalidState => "the scheduler state is invalid",
+            Self::RevisionConflict => "the scheduler state changed before this update",
         };
         formatter.write_str(message)
     }
