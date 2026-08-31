@@ -3007,8 +3007,14 @@ pub fn run() {
             if matches!(event, tauri::RunEvent::Reopen { .. }) {
                 show_main(app);
             }
-            #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
+            match event {
+                tauri::RunEvent::Exit => {
+                    if let Ok(mut power) = app.state::<AppState>().toolbox_power.lock() {
+                        power.shutdown();
+                    }
+                }
+                _ => {}
+            }
         });
 }
 
