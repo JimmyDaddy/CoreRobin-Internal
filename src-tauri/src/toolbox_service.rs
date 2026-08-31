@@ -444,8 +444,7 @@ impl ToolboxService {
                 job.status = JobStatus::Completed;
                 job.terminal_reason = Some(TerminalReason::Completed);
                 job.error = None;
-                job.output_expires_at_ms =
-                    Some((now_millis().min(u64::MAX as u128) as u64).saturating_add(OUTPUT_TTL_MS));
+                job.output_expires_at_ms = None;
             } else {
                 job.status = JobStatus::Failed;
                 job.terminal_reason = Some(TerminalReason::Failed);
@@ -1057,7 +1056,7 @@ mod tests {
             })
             .unwrap();
         assert_eq!(completed.status, JobStatus::Completed);
-        assert!(completed.output_expires_at_ms.is_some());
+        assert!(completed.output_expires_at_ms.is_none());
         assert!(service.snapshot().resources.is_empty());
         assert_eq!(
             service.snapshot().sessions[0].status,
@@ -1179,7 +1178,7 @@ mod tests {
     }
 
     #[test]
-    fn only_one_heavy_job_can_run_and_expired_outputs_are_terminal() {
+    fn only_one_heavy_job_can_run_and_non_output_jobs_remain_completed() {
         let mut service = ToolboxService::new();
         let first = service
             .start(ToolboxJobRequest {
@@ -1215,9 +1214,69 @@ mod tests {
                 error: None,
             })
             .unwrap();
-        let expires_at = finished.output_expires_at_ms.unwrap();
+        assert!(finished.output_expires_at_ms.is_none());
+        service.reconcile_at(u64::MAX);
+        assert_eq!(service.jobs[&first.job_id].status, JobStatus::Completed);
+    }
+
+    #[test]
+    fn registered_output_expires_and_releases_bytes() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "ttl-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let ready = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: "ttl-output".into(),
+                job_id: job.job_id.clone(),
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+        let expires_at = ready.output_expires_at_ms.unwrap();
         service.reconcile_at(expires_at);
-        assert_eq!(service.jobs[&first.job_id].status, JobStatus::Expired);
+        assert_eq!(service.jobs[&job.job_id].status, JobStatus::Expired);
+        assert!(service.outputs.is_empty());
+    }
+
+    #[test]
+    fn file_hash_completion_does_not_receive_output_ttl() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "hash-ttl-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "file-sha256".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let completed = service
+            .finish(FinishToolboxJobRequest {
+                request_id: "hash-ttl-finish".into(),
+                job_id: job.job_id.clone(),
+                expected_revision: None,
+                succeeded: true,
+                error: None,
+            })
+            .unwrap();
+        assert!(completed.output_expires_at_ms.is_none());
+        service.reconcile_at(u64::MAX);
+        assert_eq!(service.jobs[&job.job_id].status, JobStatus::Completed);
     }
 
     #[test]
