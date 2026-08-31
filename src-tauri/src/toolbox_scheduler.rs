@@ -1,12 +1,20 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use chrono::{TimeZone, Utc};
+
 use crate::error::CommandError;
+
+#[path = "toolbox_scheduler/core.rs"]
+mod scheduler_core;
+
+use scheduler_core::{
+    CronExpression, CronSearchResult, SearchBudget, parse_time_zone, search_cron,
+};
 
 pub const MAX_SCHEDULE_RULES: usize = 32;
 const MAX_REQUEST_ID_BYTES: usize = 128;
 const MAX_SCHEDULE_ID_BYTES: usize = 64;
 const MAX_TITLE_CHARS: usize = 80;
-const MAX_CRON_BYTES: usize = 256;
 const MIN_KEEP_AWAKE_MINUTES: u16 = 1;
 const MAX_KEEP_AWAKE_MINUTES: u16 = 12 * 60;
 const ONE_DAY_MS: u64 = 24 * 60 * 60 * 1_000;
@@ -91,6 +99,41 @@ pub struct SchedulerSnapshot {
     pub rules: Vec<SchedulerRule>,
 }
 
+/// A pure native preview request. This deliberately has no requestId because it cannot persist
+/// or dispatch an action; save/edit requests are separately idempotent mutations.
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerPreviewRequest {
+    pub time_zone: String,
+    pub trigger: SchedulerPreviewTrigger,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SchedulerPreviewTrigger {
+    Once { at_utc_ms: u64 },
+    Daily { hour: u8, minute: u8 },
+    Weekly { weekday: u8, hour: u8, minute: u8 },
+    Cron { expression: String },
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchedulerPreview {
+    pub time_zone: String,
+    pub status: SchedulerPreviewStatus,
+    pub occurrence_at_ms: Vec<u64>,
+    pub horizon_end_at_ms: u64,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SchedulerPreviewStatus {
+    Ready,
+    NoOccurrenceInHorizon,
+}
+
 /// A bounded, process-local schedule-rule provider.
 ///
 /// This deliberately contains no timer, launcher, shell integration, or persistence. It owns
@@ -104,6 +147,94 @@ pub struct ToolboxScheduler {
 }
 
 impl ToolboxScheduler {
+    /// Parse and preview the product rule dialect in an explicit IANA zone. The command wrapper
+    /// is registered by the total controller; this function touches no stored rule or action.
+    pub fn preview(request: SchedulerPreviewRequest) -> Result<SchedulerPreview, CommandError> {
+        Self::preview_at(request, now_millis())
+    }
+
+    fn preview_at(
+        request: SchedulerPreviewRequest,
+        after_ms: u64,
+    ) -> Result<SchedulerPreview, CommandError> {
+        let time_zone = parse_time_zone(&request.time_zone).map_err(rule_error)?;
+        let after_utc = utc_from_millis(after_ms)?;
+
+        let expression = match request.trigger {
+            SchedulerPreviewTrigger::Once { at_utc_ms } => {
+                if at_utc_ms <= after_ms || at_utc_ms > after_ms.saturating_add(MAX_ONCE_AHEAD_MS) {
+                    return Err(CommandError::new(
+                        "invalid_once_time",
+                        "The one-time schedule must be in the next 365 days.",
+                    ));
+                }
+                return Ok(SchedulerPreview {
+                    time_zone: time_zone.to_string(),
+                    status: SchedulerPreviewStatus::Ready,
+                    occurrence_at_ms: vec![at_utc_ms],
+                    horizon_end_at_ms: at_utc_ms,
+                    truncated: false,
+                });
+            }
+            SchedulerPreviewTrigger::Daily { hour, minute } => {
+                validate_time_of_day(hour, minute)?;
+                CronExpression::parse(&format!("{minute} {hour} * * *")).map_err(rule_error)?
+            }
+            SchedulerPreviewTrigger::Weekly {
+                weekday,
+                hour,
+                minute,
+            } => {
+                if weekday > 6 {
+                    return Err(CommandError::new(
+                        "invalid_weekday",
+                        "weekday must use 0 for Sunday through 6 for Saturday.",
+                    ));
+                }
+                validate_time_of_day(hour, minute)?;
+                CronExpression::parse(&format!("{minute} {hour} * * {weekday}"))
+                    .map_err(rule_error)?
+            }
+            SchedulerPreviewTrigger::Cron { expression } => {
+                CronExpression::parse(&expression).map_err(rule_error)?
+            }
+        };
+
+        match search_cron(
+            &expression,
+            time_zone,
+            after_utc,
+            SearchBudget::normal(),
+            || false,
+        ) {
+            CronSearchResult::Occurrences {
+                occurrences,
+                horizon_end_utc,
+                truncated,
+            } => Ok(SchedulerPreview {
+                time_zone: time_zone.to_string(),
+                status: SchedulerPreviewStatus::Ready,
+                occurrence_at_ms: occurrences
+                    .into_iter()
+                    .map(|occurrence| millis_from_utc(occurrence.at_utc))
+                    .collect(),
+                horizon_end_at_ms: millis_from_utc(horizon_end_utc),
+                truncated,
+            }),
+            CronSearchResult::NoOccurrenceInHorizon { horizon_end_utc } => Ok(SchedulerPreview {
+                time_zone: time_zone.to_string(),
+                status: SchedulerPreviewStatus::NoOccurrenceInHorizon,
+                occurrence_at_ms: Vec::new(),
+                horizon_end_at_ms: millis_from_utc(horizon_end_utc),
+                truncated: false,
+            }),
+            CronSearchResult::SearchLimit => Err(CommandError::new(
+                "search_limit",
+                "The Cron search reached its bounded calculation limit; the rule was not enabled.",
+            )),
+        }
+    }
+
     pub fn snapshot(&self) -> SchedulerSnapshot {
         SchedulerSnapshot {
             revision: self.revision,
@@ -206,6 +337,31 @@ impl ToolboxScheduler {
         }
         Ok(self.snapshot())
     }
+}
+
+fn rule_error(error: scheduler_core::SchedulerRuleError) -> CommandError {
+    CommandError::new(error.code, error.message)
+}
+
+fn utc_from_millis(milliseconds: u64) -> Result<chrono::DateTime<Utc>, CommandError> {
+    let milliseconds = i64::try_from(milliseconds).map_err(|_| {
+        CommandError::new(
+            "invalid_time",
+            "The preview start time is outside the supported UTC range.",
+        )
+    })?;
+    Utc.timestamp_millis_opt(milliseconds)
+        .single()
+        .ok_or_else(|| {
+            CommandError::new(
+                "invalid_time",
+                "The preview start time is outside the supported UTC range.",
+            )
+        })
+}
+
+fn millis_from_utc(value: chrono::DateTime<Utc>) -> u64 {
+    u64::try_from(value.timestamp_millis()).unwrap_or(u64::MAX)
 }
 
 fn validate_request_id(request_id: &str) -> Result<(), CommandError> {
@@ -324,84 +480,9 @@ fn validate_next_run(
 }
 
 fn validate_cron_expression(expression: &str) -> Result<(), CommandError> {
-    if expression.is_empty()
-        || expression.len() > MAX_CRON_BYTES
-        || expression.trim() != expression
-        || !expression.is_ascii()
-    {
-        return Err(CommandError::new(
-            "invalid_cron",
-            "Cron must be a non-empty ASCII five-field expression no longer than 256 bytes.",
-        ));
-    }
-    let fields = expression.split_ascii_whitespace().collect::<Vec<_>>();
-    if fields.len() != 5 {
-        return Err(CommandError::new(
-            "invalid_cron",
-            "Only five-field minute hour day-of-month month day-of-week Cron is supported.",
-        ));
-    }
-    validate_cron_field(fields[0], 0, 59, false)?;
-    validate_cron_field(fields[1], 0, 23, false)?;
-    validate_cron_field(fields[2], 1, 31, false)?;
-    validate_cron_field(fields[3], 1, 12, false)?;
-    validate_cron_field(fields[4], 0, 7, true)?;
-    Ok(())
-}
-
-fn validate_cron_field(
-    field: &str,
-    minimum: u8,
-    maximum: u8,
-    allow_sunday_alias: bool,
-) -> Result<(), CommandError> {
-    if field.is_empty() {
-        return Err(invalid_cron_field());
-    }
-    for item in field.split(',') {
-        if item.is_empty() || item.matches('/').count() > 1 {
-            return Err(invalid_cron_field());
-        }
-        let (base, step) = match item.split_once('/') {
-            Some((base, step)) => (base, Some(parse_cron_number(step)?)),
-            None => (item, None),
-        };
-        if step.is_some_and(|value| value == 0) {
-            return Err(invalid_cron_field());
-        }
-        let (start, end) = if base == "*" {
-            (minimum, maximum)
-        } else if let Some((start, end)) = base.split_once('-') {
-            if start.is_empty() || end.is_empty() || end.contains('-') {
-                return Err(invalid_cron_field());
-            }
-            (parse_cron_number(start)?, parse_cron_number(end)?)
-        } else {
-            let value = parse_cron_number(base)?;
-            (value, value)
-        };
-        if start < minimum || end > maximum || end < start {
-            return Err(invalid_cron_field());
-        }
-        if !allow_sunday_alias && (start == 7 || end == 7) {
-            return Err(invalid_cron_field());
-        }
-    }
-    Ok(())
-}
-
-fn parse_cron_number(source: &str) -> Result<u8, CommandError> {
-    if source.is_empty() || !source.bytes().all(|byte| byte.is_ascii_digit()) {
-        return Err(invalid_cron_field());
-    }
-    source.parse::<u8>().map_err(|_| invalid_cron_field())
-}
-
-fn invalid_cron_field() -> CommandError {
-    CommandError::new(
-        "invalid_cron",
-        "Cron fields may use only numbers, *, lists, ranges, and positive steps within their field bounds.",
-    )
+    CronExpression::parse(expression)
+        .map(|_| ())
+        .map_err(rule_error)
 }
 
 fn now_millis() -> u64 {
@@ -526,5 +607,34 @@ mod tests {
             })
             .expect("paused rule can be deleted");
         assert!(deleted.rules.is_empty());
+    }
+
+    #[test]
+    fn native_preview_resolves_the_repeated_dst_minute_once() {
+        let after_ms = millis_from_utc(
+            Utc.with_ymd_and_hms(2024, 11, 3, 4, 0, 0)
+                .single()
+                .expect("valid UTC instant"),
+        );
+        let preview = ToolboxScheduler::preview_at(
+            SchedulerPreviewRequest {
+                time_zone: "America/New_York".to_owned(),
+                trigger: SchedulerPreviewTrigger::Cron {
+                    expression: "30 1 3 11 *".to_owned(),
+                },
+            },
+            after_ms,
+        )
+        .expect("Cron preview succeeds");
+
+        assert_eq!(preview.status, SchedulerPreviewStatus::Ready);
+        assert_eq!(
+            preview.occurrence_at_ms.first().copied(),
+            Some(millis_from_utc(
+                Utc.with_ymd_and_hms(2024, 11, 3, 5, 30, 0)
+                    .single()
+                    .expect("valid earliest fall-back instant"),
+            ))
+        );
     }
 }

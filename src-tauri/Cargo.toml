@@ -25,6 +25,8 @@ glib = { path = "vendor/glib" }
 [dependencies]
 cap-fs-ext = "4.0.2"
 cap-std = "4.0.2"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10.4"
 getrandom = "0.4"
 dns-lookup = "3"
 tauri = { version = "2", features = ["macos-private-api", "image-png", "tray-icon"] }
