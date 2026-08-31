@@ -63,7 +63,7 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
       syncRecipe();
       onError("");
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "编辑操作失败。");
+      onError(reason instanceof Error ? reason.message : t("imageEditor.errors.operationFailed"));
     }
   };
 
@@ -80,24 +80,24 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
 
   const addBrowserAssets = async (files: File[]) => {
     try {
-      if (editor.listAssets().length + files.length > 4) throw new Error("当前编辑会话最多添加 4 个本地图片素材。");
+      if (editor.listAssets().length + files.length > 4) throw new Error(t("imageEditor.errors.assetLimit"));
       for (const file of files) {
         const budget = await inspectImageBudget(marker, file);
         const asset = editor.registerAsset(file, { width: budget.info.width, height: budget.info.height });
         editor.addImageAsset(asset, { x: 64 + editor.listAssets().length * 18, y: 64 + editor.listAssets().length * 18 });
       }
       syncRecipe();
-      onNotice(`${files.length} 个本地素材已加入当前图层；它们不会进入 Recipe JSON。`);
+      onNotice(t("imageEditor.notices.assetsAdded", { count: files.length }));
       onError("");
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "无法添加本地素材。");
+      onError(reason instanceof Error ? reason.message : t("imageEditor.errors.addAssetFailed"));
     }
   };
 
   const importRecipe = () => runEdit(() => {
     const imported = editor.importRecipeJson(recipeText);
     setRecipeText(editor.exportRecipeJson());
-    onNotice(imported.migrated ? "Recipe v1 已迁移为 v2，并完成本地资源校验。" : "Recipe v2 已校验；仅允许当前会话的本地素材引用。");
+    onNotice(t(imported.migrated ? "imageEditor.notices.recipeMigrated" : "imageEditor.notices.recipeValidated"));
   });
 
   const exportRecipe = async () => {
@@ -107,15 +107,15 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
       const payload = recipeOutput(text);
       if (deliverOutput) {
         await deliverOutput(payload);
-        onNotice("Recipe JSON 已交给原生输出 provider；请按其 TTL/另存流程完成导出。");
+        onNotice(t("imageEditor.notices.handedToProvider"));
         return;
       }
       if (temporaryRecipeUrlRef.current) URL.revokeObjectURL(temporaryRecipeUrlRef.current);
       temporaryRecipeUrlRef.current = URL.createObjectURL(payload.blob);
       setTemporaryRecipeUrl(temporaryRecipeUrlRef.current);
-      onNotice("已生成浏览器临时 Recipe 下载；这不是正式 TTL/原子另存导出。");
+      onNotice(t("imageEditor.notices.temporaryDownload"));
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "无法导出 Recipe。");
+      onError(reason instanceof Error ? reason.message : t("imageEditor.errors.exportFailed"));
     }
   };
 
@@ -125,7 +125,7 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
       onPreview(editor, desktopRuntime && nativeLogoRequested);
       setNativeLogoRequested(false);
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "无法准备 Recipe 预览。");
+      onError(reason instanceof Error ? reason.message : t("imageEditor.errors.previewFailed"));
     }
   };
 

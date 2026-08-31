@@ -152,10 +152,10 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       for (const file of selected) inspected.push(await inspectImageBudget(marker, file));
       setFiles(inspected.map((item) => item.file));
       setError("");
-      setNotice(`${inspected.length} 张图片已通过输入预算检查。`);
+      setNotice(t("image.inputAccepted", { count: inspected.length }));
     } catch (reason) {
       setFiles([]);
-      setError(reason instanceof Error ? reason.message : "图片输入不可用。");
+      setError(reason instanceof Error ? reason.message : t("image.inputUnavailable"));
     }
   };
 
@@ -165,26 +165,26 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       await inspectImageBudget(marker, selected);
       setLogoFile(selected);
       setError("");
-      setNotice(`本地 Logo“${safeOutputName(selected.name)}”已通过输入预算检查；不会上传或保存路径。`);
+      setNotice(t("image.logoAccepted", { name: safeOutputName(selected.name) }));
     } catch (reason) {
       setLogoFile(null);
-      setError(reason instanceof Error ? reason.message : "本地 Logo 不可用。");
+      setError(reason instanceof Error ? reason.message : t("image.logoUnavailable"));
     }
   };
 
   const selectFont = async (selected: File | undefined) => {
     if (!selected) return;
     try {
-      if (selected.size === 0 || selected.size > IMAGE_FONT_MAX_BYTES) throw new Error("本地字体不能超过 4 MiB。");
+      if (selected.size === 0 || selected.size > IMAGE_FONT_MAX_BYTES) throw new Error(t("image.fontTooLarge"));
       const bytes = new Uint8Array(await selected.arrayBuffer());
       const mimeType = inspectLocalFontBytes(selected.name, bytes);
       setFontFile(new File([bytes], selected.name, { type: mimeType, lastModified: selected.lastModified }));
       setWatermarkFont((current) => current.trim() || fontFamilyFromFile(selected.name));
       setError("");
-      setNotice(`本地字体“${safeOutputName(selected.name)}”将仅加载到本次隔离图片 Worker。`);
+      setNotice(t("image.fontAccepted", { name: safeOutputName(selected.name) }));
     } catch (reason) {
       setFontFile(null);
-      setError(reason instanceof Error ? reason.message : "本地字体不可用。");
+      setError(reason instanceof Error ? reason.message : t("image.fontUnavailable"));
     }
   };
 
@@ -192,13 +192,13 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     if (!selected) return;
     if (selected.size > LOCAL_MANIFEST_MAX_BYTES) {
       setManifestFile(null);
-      setError("Manifest 材料不能超过 4 MiB。");
+      setError(t("image.manifestTooLarge"));
       return;
     }
     setManifestFile(selected);
     setManifestReport("");
     setError("");
-    setNotice(`本地 manifest 材料“${safeOutputName(selected.name)}”已选择；不会联网或保存路径。`);
+    setNotice(t("image.manifestSelected", { name: safeOutputName(selected.name) }));
   };
 
   const run = async (task: (signal: AbortSignal, inputs: ImageRunInputs, resources: ImageRunResources) => Promise<ImageOutputPayload | null>, options: ImageRunOptions = {}) => {
@@ -228,11 +228,11 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
         nativeInputJob = fileJobKey(nativeJob);
         nativeInputTokens = await prepareToolboxInputs(nativeInputJob, "input");
-        if (nativeInputTokens.length === 0) throw new Error("没有选择图片输入。" );
+        if (nativeInputTokens.length === 0) throw new Error(t("image.noInput"));
         inputs = createNativeImageInputs(marker, nativeInputJob, nativeInputTokens, controller.signal);
         if (options.requestNativeLogo) {
           const logoTokens = await prepareToolboxInputs(nativeInputJob, "logo");
-          if (logoTokens.length !== 1) throw new Error("需要选择一个本地 Logo。" );
+          if (logoTokens.length !== 1) throw new Error(t("image.logoRequired"));
           nativeInputTokens = [...nativeInputTokens, ...logoTokens];
           const nativeLogo = createNativeImageInputs(marker, nativeInputJob, logoTokens, controller.signal);
           const logo = await nativeLogo.read(0);
@@ -242,7 +242,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         if (requestNativeFont && (toolId === "image-watermark" || toolId === "image-batch-watermark" || toolId === "confidential-watermark")) {
           const fontTokens = await prepareToolboxInputs(nativeInputJob, "font");
           const fontToken = fontTokens[0];
-          if (!fontToken) throw new Error("需要选择一个本地字体文件。");
+          if (!fontToken) throw new Error(t("image.fontRequired"));
           const fontBytes = await readBoundToolboxInput(nativeInputJob, fontToken, controller.signal, IMAGE_FONT_MAX_BYTES);
           const fontBuffer = fontBytes.buffer.slice(fontBytes.byteOffset, fontBytes.byteOffset + fontBytes.byteLength) as ArrayBuffer;
           const fontMimeType = inspectLocalFontBytes(fontToken.displayName, fontBytes);
@@ -251,7 +251,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           nativeInputTokens = [...nativeInputTokens, ...fontTokens];
         }
       } else {
-        if (files.length === 0) throw new Error("请先选择图片。" );
+        if (files.length === 0) throw new Error(t("image.selectImageFirst"));
         inputs = createBrowserImageInputs(marker, files, controller.signal);
         resources = {
           ...(logoFile ? { logo: logoFile } : {}),
@@ -271,7 +271,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           validation: "verified",
         });
         setPreparedOutput(ready, formalOutput.filename);
-        setNotice("原生输出已准备完成；请在 10 分钟内选择正式另存，失败可重试，取消会释放临时结果。");
+        setNotice(t("image.nativeOutputReady"));
       } else if (nativeJob) {
         await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
       }
@@ -284,14 +284,14 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
             await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
           }
         } catch (lifecycleReason) {
-          setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+          setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
         }
       }
       if (controller.signal.aborted || isAbortError(reason)) {
         releaseOutputs();
-        setNotice(`图片处理已取消（${isAbortError(reason) ? "AbortError" : "abort signal"}）；已释放当前输出。`);
+        setNotice(t("image.cancelled", { reason: isAbortError(reason) ? "AbortError" : "abort signal" }));
       } else {
-        setError(reason instanceof Error ? reason.message : "图片处理失败。");
+        setError(reason instanceof Error ? reason.message : t("image.processingFailed"));
       }
     } finally {
       window.clearTimeout(deadline);
@@ -299,7 +299,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         try {
           await releaseNativeInputs();
         } catch (releaseReason) {
-          setError(`图片输入资源释放未确认：${releaseReason instanceof Error ? releaseReason.message : "无法释放输入 token"}`);
+          setError(t("image.inputReleaseUnconfirmed", { message: releaseReason instanceof Error ? releaseReason.message : t("image.releaseUnknown") }));
         }
       }
       cancelRef.current = null;
@@ -325,9 +325,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         path: selected,
       });
       setPreparedOutput(null);
-      setNotice("输出已完成原子另存；源文件未被覆盖。");
+      setNotice(t("image.savedAtomically"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "正式输出另存失败；可在 TTL 内重试。");
+      setError(reason instanceof Error ? reason.message : t("image.saveFailed"));
     }
   };
 
@@ -345,14 +345,14 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       });
       setPreparedOutput(null);
       releaseOutputs();
-      setNotice("临时输出已取消并释放。");
+      setNotice(t("image.temporaryCancelled"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "临时输出释放未确认。");
+      setError(reason instanceof Error ? reason.message : t("image.temporaryReleaseUnconfirmed"));
     }
   };
 
   const deliverFormalOutput: ImageOutputDelivery | undefined = externalDeliverOutput ?? (desktopRuntime ? async (payload) => {
-    if (nativeOutputRef.current) throw new Error("已有临时输出待另存，请先完成或取消它。");
+    if (nativeOutputRef.current) throw new Error(t("image.outputPending"));
     const job = await startToolboxSession({ ...newToolboxRequest(), toolId });
     try {
       const ready = await registerToolboxOutput({
@@ -364,12 +364,12 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         validation: "verified",
       });
       setPreparedOutput(ready, payload.filename);
-      setNotice("原生输出已准备完成；请在 10 分钟内选择正式另存，失败可重试，取消会释放临时结果。");
+      setNotice(t("image.nativeOutputReady"));
     } catch (reason) {
       try {
         await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason) });
       } catch (lifecycleReason) {
-        setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+        setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
       }
       throw reason;
     }
@@ -382,7 +382,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     try {
       await marker.cancel();
     } catch (reason) {
-      setError(`图片隔离执行器释放未确认：${reason instanceof Error ? reason.message : "无法确认停止"}`);
+      setError(t("image.executorReleaseUnconfirmed", { message: reason instanceof Error ? reason.message : t("image.releaseUnknown") }));
     }
   };
 
@@ -436,11 +436,11 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           throw createImageAbortError();
         }
         if (!desktopRuntime) publishZip(zipBlob);
-        setNotice(`批量处理完成：${zipBudget.outputFileCount} 张图片按选择顺序写入 ZIP；已执行 20 文件 / 80 MiB 输入 / 512 MiB 输出预算。`);
+        setNotice(t("image.batchComplete", { count: zipBudget.outputFileCount }));
         if (desktopRuntime) return { kind: "archive", filename: "corerobin-watermarks.zip", blob: zipBlob };
       } else {
         setResult(last);
-        setNotice(last ? resultLabel(last) : "处理完成。");
+        setNotice(last ? resultLabel(last) : t("image.processingComplete"));
         return last ? markerResultOutput(last) : null;
       }
       return null;
@@ -456,7 +456,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     if (!payload || !key) return null;
     const output = await marker.embedInvisible({ image: { src: file }, payload, key, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
-    setNotice("隐形 locator 已写入当前结果；它不是加密、DRM 或归属证明，密钥不会写入记录。");
+    setNotice(t("image.invisibleWritten"));
     return markerResultOutput(output);
   });
 
@@ -475,10 +475,12 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         maxSize: IMAGE_MAX_OUTPUT_EDGE,
       }, imageControl(signal, (phase) => setProgress(phase === "queued" ? 0.15 : phase === "detecting" ? 0.7 : 1)));
     } catch (reason) {
-      if (signal.aborted) throw createImageAbortError("隐形检测已取消。");
+      if (signal.aborted) throw createImageAbortError(t("image.invisibleCancelled"));
       throw reason;
     }
-    setNotice(detected.detected ? `检测到 locator：${detected.payload ?? "(空)"}，置信度 ${detected.confidence.toFixed(2)}；正结果不代表图片未被修改。` : "未检测到经过认证的 locator；没有把失败显示为成功。");
+    setNotice(detected.detected
+      ? t("image.invisibleDetected", { payload: detected.payload ?? "(empty)", confidence: detected.confidence.toFixed(2) })
+      : t("image.invisibleNotDetected"));
     return null;
   });
 
@@ -494,7 +496,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       ? await runtime.editorAdapter.renderPreview({ recipe, input: { backgroundImage: { src: file } }, control: imageControl(signal) })
       : await marker.importRecipe(recipe).apply({ backgroundImage: { src: file } }, imageControl(signal));
     setResult(output);
-    setNotice("Recipe 已校验、迁移并由同一个隔离 marker 预览；本地素材不会写入 JSON 或上传。");
+    setNotice(t("image.recipeReady"));
     return markerResultOutput(output);
   }, { requestNativeLogo: nativeLogo });
 
@@ -502,7 +504,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const file = await inputs.read(0);
     const output = await marker.markText({ backgroundImage: { src: file }, watermarkTexts: [{ text: "ROBUSTNESS-LAB", layout: { type: "tile", gapX: 80, gapY: 80 }, style: { color: "#ffffff", fontSize: 22, rotate: -25 }, alpha: 0.45 }], saveFormat: ImageFormat.jpg, quality: 75, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
-    setNotice("实验输出为约定 JPEG 质量 75；请手动用 95% 缩放/有限裁剪样本复核，不外推任意变换抗性。");
+    setNotice(t("image.robustnessNotice"));
     return markerResultOutput(output);
   }, { deadlineMs: 180_000 });
 
@@ -528,13 +530,13 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         nativeInputJob = fileJobKey(nativeJob);
         nativeInputTokens = await prepareToolboxInputs(nativeInputJob, "manifest");
         const token = nativeInputTokens[0];
-        if (!token) throw new Error("请选择一个本地 manifest JSON 文件。");
+        if (!token) throw new Error(t("image.noManifest"));
         const bytes = await readBoundToolboxInput(nativeInputJob, token, controller.signal, LOCAL_MANIFEST_MAX_BYTES);
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
         file = new File([buffer], token.displayName, { type: "application/json" });
       }
-      if (!file) throw new Error("请选择一个本地 manifest JSON 文件。");
-      if (file.size > LOCAL_MANIFEST_MAX_BYTES) throw new Error("Manifest 材料不能超过 4 MiB。");
+      if (!file) throw new Error(t("image.noManifest"));
+      if (file.size > LOCAL_MANIFEST_MAX_BYTES) throw new Error(t("image.manifestTooLarge"));
       const report = JSON.stringify(inspectLocalManifest(await file.text()), null, 2);
       setManifestReport(report);
       publishManifestReport(report);
@@ -549,9 +551,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           validation: "verified",
         });
         setPreparedOutput(ready, "corerobin-c2pa-manifest-report.json");
-        setNotice("本地 manifest 摘要已生成；解析与信任状态分开显示，信任仍为 unknown。请在 10 分钟内正式另存报告。");
+        setNotice(t("image.manifestReadyNative"));
       } else {
-        setNotice("本地 manifest 摘要已生成；未联网、未验证签名或信任链。下载的是显式检查报告。");
+        setNotice(t("image.manifestReadyBrowser"));
       }
     } catch (reason) {
       if (nativeJob) {
@@ -562,17 +564,17 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
             await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
           }
         } catch (lifecycleReason) {
-          setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+          setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
         }
       }
-      if (controller.signal.aborted) setNotice("Manifest 检查已取消；未生成正式报告。");
-      else setError(reason instanceof Error ? reason.message : "Manifest 解析失败。");
+      if (controller.signal.aborted) setNotice(t("image.manifestCancelled"));
+      else setError(reason instanceof Error ? reason.message : t("image.manifestFailed"));
     } finally {
       if (nativeInputJob && nativeInputTokens.length > 0) {
         try {
           await releaseToolboxInputs(nativeInputJob, nativeInputTokens.map((token) => token.token));
         } catch (releaseReason) {
-          setError(`Manifest 输入资源释放未确认：${releaseReason instanceof Error ? releaseReason.message : "无法释放输入 token"}`);
+          setError(t("image.manifestInputReleaseUnconfirmed", { message: releaseReason instanceof Error ? releaseReason.message : t("image.releaseUnknown") }));
         }
       }
       cancelRef.current = null;
@@ -589,26 +591,26 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     let delivered = 0;
     let zipBudget = createRecipientZipBudget(file);
     const zipWriter = createZipWriter(signal, zipBudget.maxOutputFiles);
-    setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: "正在生成本次会话的交付 ZIP。" });
+    setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: t("image.recipientPreparing") });
     try {
       for (const [index, value] of values.entries()) {
-        if (signal.aborted) throw createImageAbortError("收件人分发已停止。");
+        if (signal.aborted) throw createImageAbortError(t("image.recipientStopped"));
         const output = await marker.embedInvisible({ image: { src: file }, payload: value, key: sessionKey.value, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
-        if (signal.aborted) throw createImageAbortError("收件人分发已停止。");
+        if (signal.aborted) throw createImageAbortError(t("image.recipientStopped"));
         const item = resultToZipItem(`delivery-${String(index + 1).padStart(2, "0")}.png`, output);
         zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
         await zipWriter.append(item, zipBudget.inputBytes);
         delivered += 1;
         setProgress(delivered / values.length);
-        setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: "正在生成本次会话的交付 ZIP。" });
+        setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: t("image.recipientPreparing") });
       }
       const zipBlob = await zipWriter.finish();
       if (signal.aborted) {
-        throw createImageAbortError("收件人分发已停止。");
+        throw createImageAbortError(t("image.recipientStopped"));
       }
       if (!desktopRuntime) publishZip(zipBlob);
-      setRecipientDelivery({ status: "ready", requested: values.length, delivered, detail: "交付 ZIP 已就绪；文件按输入顺序编号，locator 映射未持久化。" });
-      setNotice(`交付状态：ready。已生成 ${delivered}/${values.length} 个分发样本；一次性密钥和 locator 映射不会由 CoreRobin 保存。`);
+      setRecipientDelivery({ status: "ready", requested: values.length, delivered, detail: t("image.recipientReady") });
+      setNotice(t("image.recipientNotice", { delivered, requested: values.length }));
       if (desktopRuntime) return { kind: "archive", filename: "corerobin-recipient-delivery.zip", blob: zipBlob };
     } catch (reason) {
       const cancelled = signal.aborted || isAbortError(reason);
@@ -617,7 +619,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         status: cancelled ? "cancelled" : "failed",
         requested: values.length,
         delivered,
-        detail: cancelled ? "操作已取消，未保留部分交付输出。" : reason instanceof Error ? reason.message : "无法生成交付 ZIP。",
+        detail: cancelled ? t("image.recipientCancelled") : reason instanceof Error ? reason.message : t("image.recipientFailed"),
       });
       throw reason;
     } finally {
@@ -648,7 +650,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
       {manifestReport ? <div className="toolbox-output"><pre className="toolbox-notice">{manifestReport}</pre>{manifestDownloadUrl && !desktopRuntime ? <a className="button button--secondary" download="corerobin-c2pa-manifest-report.json" href={manifestDownloadUrl}><Download size={14} />{t("image.downloadReport")}</a> : null}</div> : null}
-      {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>交付状态：{recipientDelivery.status} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
+      {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>{t("image.recipientStatusLabel")}: {t(`image.recipientStatus.${recipientDelivery.status}`)} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
       {result ? <div className="image-toolbox__result"><img src={result.uri} alt={t("image.resultAlt")} /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button></> : null}{deliverFormalOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverFormalOutput(markerResultOutput(result)).then(() => setNotice(t("image.handedToProvider")), (reason: unknown) => setError(reason instanceof Error ? reason.message : t("image.formalDeliveryFailed")))}><Download size={14} />{t("image.deliverFormal")}</button> : null}{!desktopRuntime ? <a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />{t("image.downloadPreview")}</a> : null}<span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · ${t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}` : ""}</span></div></div> : null}
       {!result && nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button><span className="toolbox-hint">{t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}</span></div> : null}
       {zipUrl && !desktopRuntime ? <a className="button button--primary" download="corerobin-watermarks.zip" href={zipUrl}><Download size={14} />{t("image.downloadZip")}</a> : null}
