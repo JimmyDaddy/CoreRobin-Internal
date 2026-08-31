@@ -29,6 +29,7 @@ mod sampler_service;
 mod sensors;
 mod startup;
 mod storage_health;
+mod toolbox_contracts;
 mod user_actions;
 
 pub use cleanup::{
