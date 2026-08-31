@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "../../i18n";
 
 const mocks = vi.hoisted(() => ({
   cancel: vi.fn(),
@@ -67,7 +68,8 @@ class FakeZipWorker {
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await i18n.changeLanguage("zh-CN");
   vi.clearAllMocks();
   FakeZipWorker.instances = [];
   FakeZipWorker.acknowledgeAppendsByDefault = true;

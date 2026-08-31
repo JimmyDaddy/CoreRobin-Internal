@@ -1,5 +1,7 @@
 import { Download, FileCheck2, Play, Square, Trash2 } from "lucide-react";
+import type { TFunction } from "i18next";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { classifyPatchError } from "bs-diff-patch-web";
 import {
   applyPatchAndVerify,
@@ -21,7 +23,18 @@ import { fileJobKey, readBoundToolboxInput } from "../runtime/files";
 import type { ToolboxFileJobKey, ToolboxInputToken } from "../contracts";
 
 type BinaryToolId = Extract<ToolId, "binary-patch-create" | "binary-patch-apply" | "binary-patch-inspector" | "integrity-manifest" | "transfer-savings" | "patch-errors" | "patch-planner">;
+type BinaryInputKind = "baseline" | "target" | "patch" | "expected";
+type BinaryFileInputKind = BinaryInputKind | "plannerBaselines";
+type NativeInputRole = "input" | "target" | "patch" | "expected";
+type ToolboxTFunction = TFunction<"toolbox">;
 const MAX_BINARY_BYTES = 64 * 1024 * 1024;
+
+const NATIVE_INPUT_ROLES = {
+  baseline: "input",
+  target: "target",
+  patch: "patch",
+  expected: "expected",
+} as const satisfies Record<BinaryInputKind, NativeInputRole>;
 
 interface BinaryOutput {
   bytes: Uint8Array;
@@ -30,11 +43,12 @@ interface BinaryOutput {
 }
 
 interface BinaryInputReader {
-  (file: File | null, label: string, max?: number, index?: number): Promise<Uint8Array>;
-  count(label: string): Promise<number>;
+  (file: File | null, input: BinaryInputKind, max?: number, index?: number): Promise<Uint8Array>;
+  count(input: BinaryInputKind): Promise<number>;
 }
 
 export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
+  const { t } = useTranslation("toolbox");
   const [baseline, setBaseline] = useState<File | null>(null);
   const [target, setTarget] = useState<File | null>(null);
   const [patch, setPatch] = useState<File | null>(null);
@@ -71,7 +85,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const choose = (setter: (file: File | null) => void) => (event: ChangeEvent<HTMLInputElement>) => setter(event.target.files?.[0] ?? null);
   const chooseMany = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
-    if (files.length > 8) { setError("发布规划最多接受 8 个基线文件。"); return; }
+    if (files.length > 8) { setError(t("binaryPatch.errors.tooManyBaselines")); return; }
     setPlannerBaselines(files);
     setError("");
   };
@@ -92,10 +106,10 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     let nativeJob: ToolboxJob | null = null;
     let nativeInputJob: ToolboxFileJobKey | null = null;
     let operationSignal = controller.signal;
-    const nativeTokens = new Map<string, ToolboxInputToken[]>();
+    const nativeTokens = new Map<NativeInputRole, ToolboxInputToken[]>();
     const nativeTokenList: ToolboxInputToken[] = [];
-    const ensureNativeTokens = async (label: string): Promise<ToolboxInputToken[]> => {
-      const nativeRole = label === "基线" ? "input" : label === "目标" ? "target" : label === "补丁" ? "patch" : "expected";
+    const ensureNativeTokens = async (input: BinaryInputKind): Promise<ToolboxInputToken[]> => {
+      const nativeRole = NATIVE_INPUT_ROLES[input];
       let tokens = nativeTokens.get(nativeRole);
       if (!tokens) {
         tokens = await prepareToolboxInputs(nativeInputJob!, nativeRole);
@@ -104,14 +118,15 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       return tokens;
     };
-    const readInput = Object.assign(async (file: File | null, role: string, max = MAX_BINARY_BYTES, index = 0) => {
-      if (!nativeInputJob) return readBrowserInput(file, role, max);
-      const tokens = await ensureNativeTokens(role);
+    const readInput = Object.assign(async (file: File | null, input: BinaryInputKind, max = MAX_BINARY_BYTES, index = 0) => {
+      const label = binaryInputLabel(input, t);
+      if (!nativeInputJob) return readBrowserInput(file, label, max);
+      const tokens = await ensureNativeTokens(input);
       const token = tokens[index];
-      if (!token) throw new Error(`原生选择器没有提供${role}。`);
+      if (!token) throw new Error(t("binaryPatch.errors.nativePickerMissing", { label }));
       const bytes = await readBoundToolboxInput(nativeInputJob, token, operationSignal, max);
       return bytes;
-    }, { count: async (label: string) => (nativeInputJob ? (await ensureNativeTokens(label)).length : 0) }) as BinaryInputReader;
+    }, { count: async (input: BinaryInputKind) => (nativeInputJob ? (await ensureNativeTokens(input)).length : 0) }) as BinaryInputReader;
     try {
       if (isDesktopRuntime()) {
         nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
@@ -138,7 +153,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
           validation: formalOutput.validation,
         });
         setPreparedOutput(ready, formalOutput.filename);
-        setOutput((current) => `${current}\n\n原生输出已准备完成；请在 10 分钟内选择正式另存。`);
+        setOutput((current) => `${current}\n\n${t("binaryPatch.notices.nativeOutputReady")}`);
       } else if (nativeJob) {
         await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
       }
@@ -148,22 +163,22 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
           if (isPatchTaskCancelled(reason)) {
             await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
           } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
+            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t("binaryPatch.errors.executionFailed")) });
           }
         } catch (lifecycleReason) {
-          setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+          setError(t("binaryPatch.errors.nativeLifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("binaryPatch.errors.unknownLifecycleState") }));
         }
       }
       if (isPatchTaskCancelled(reason)) {
-        setOutput(JSON.stringify({ state: "cancelled", note: "补丁任务已终止，未生成可下载结果。" }, null, 2));
-        setError("任务已取消（cancelled）；未生成可下载结果。");
+        setOutput(JSON.stringify({ state: "cancelled", note: t("binaryPatch.output.cancelledNote") }, null, 2));
+        setError(t("binaryPatch.errors.cancelled"));
       } else setError(classifyPatchError(reason).message);
     } finally {
       if (nativeInputJob && nativeTokenList.length > 0) {
         try {
           await releaseToolboxInputs(nativeInputJob, nativeTokenList.map((token) => token.token));
         } catch (releaseReason) {
-          setError(`补丁输入资源释放未确认：${releaseReason instanceof Error ? releaseReason.message : "无法释放输入 token"}`);
+          setError(t("binaryPatch.errors.inputReleaseUnconfirmed", { message: releaseReason instanceof Error ? releaseReason.message : t("binaryPatch.errors.unknownReleaseState") }));
         }
       }
       controllerRef.current = null;
@@ -181,9 +196,9 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       if (!selected) return;
       await exportToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch, path: selected });
       setPreparedOutput(null);
-      setNotice("输出已完成原子另存；源文件未被覆盖。");
+      setNotice(t("binaryPatch.notices.savedAtomically"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "正式输出另存失败；可在 TTL 内重试。");
+      setError(reason instanceof Error ? reason.message : t("binaryPatch.errors.saveFailed"));
     }
   };
 
@@ -195,15 +210,15 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       await cancelToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch });
       setPreparedOutput(null);
       clearDownload();
-      setNotice("临时输出已取消并释放。");
+      setNotice(t("binaryPatch.notices.temporaryOutputCancelled"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "临时输出释放未确认。");
+      setError(reason instanceof Error ? reason.message : t("binaryPatch.errors.cancelFailed"));
     }
   };
 
   const readBrowserInput = async (file: File | null, role: string, max = MAX_BINARY_BYTES): Promise<Uint8Array> => {
-    if (!file) throw new Error(`请选择${role}。`);
-    if (file.size > max) throw new Error(`${role}超过 ${Math.round(max / 1024 / 1024)} MiB 安全上限。`);
+    if (!file) throw new Error(t("binaryPatch.errors.selectFile", { label: role }));
+    if (file.size > max) throw new Error(t("binaryPatch.errors.fileTooLarge", { label: role, max: Math.round(max / 1024 / 1024) }));
     return new Uint8Array(await file.arrayBuffer());
   };
 
@@ -217,49 +232,49 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const execute = () => {
     clearDownload();
     if (toolId === "transfer-savings") {
-      const fullInput = window.prompt("完整包大小（字节）", "1000000");
-      const patchInput = window.prompt("补丁大小（字节）", "100000");
-      const countInput = window.prompt("下载次数", "1");
+      const fullInput = window.prompt(t("binaryPatch.prompts.fullSize"), "1000000");
+      const patchInput = window.prompt(t("binaryPatch.prompts.patchSize"), "100000");
+      const countInput = window.prompt(t("binaryPatch.prompts.downloadCount"), "1");
       if (fullInput === null || patchInput === null || countInput === null) return;
       try { setOutput(JSON.stringify(calculateTransferSavings(Number(fullInput), Number(patchInput), Number(countInput)), null, 2)); } catch (reason) { setError(classifyPatchError(reason).message); }
       return;
     }
     if (toolId === "patch-errors") {
-      const classified = classifyPatchError(new Error(window.prompt("输入要解释的补丁错误代码", "EPATCH") ?? "EPATCH"));
+      const classified = classifyPatchError(new Error(window.prompt(t("binaryPatch.prompts.errorCode"), "EPATCH") ?? "EPATCH"));
       setOutput(JSON.stringify(classified, null, 2));
       return;
     }
     void run(async (signal, readInput) => {
       if (toolId === "binary-patch-create") {
-        const result = await generateVerifiedPatch(await readInput(baseline, "基线"), await readInput(target, "目标", 16 * 1024 * 1024), signal);
+        const result = await generateVerifiedPatch(await readInput(baseline, "baseline"), await readInput(target, "target", 16 * 1024 * 1024), signal);
         setOutput(JSON.stringify({ verification: result.verification, baselineSha256: result.baselineSha256, targetSha256: result.targetSha256 }, null, 2));
         setDownload(result.patch, "corerobin.endsley.patch", "application/octet-stream");
         return { bytes: result.patch, filename: "corerobin.endsley.patch", validation: "verified" };
       }
       if (toolId === "binary-patch-apply") {
         const expectedBytes = isDesktopRuntime()
-          ? nativeExpectedRequested ? await readInput(null, "预期目标", MAX_BINARY_BYTES) : undefined
-          : expected ? await readInput(expected, "预期目标") : undefined;
-        const applied = await applyPatchAndVerify(await readInput(baseline, "基线", 16 * 1024 * 1024), await readInput(patch, "补丁"), expectedBytes, signal);
+          ? nativeExpectedRequested ? await readInput(null, "expected", MAX_BINARY_BYTES) : undefined
+          : expected ? await readInput(expected, "expected") : undefined;
+        const applied = await applyPatchAndVerify(await readInput(baseline, "baseline", 16 * 1024 * 1024), await readInput(patch, "patch"), expectedBytes, signal);
         if (!applied.verification) {
-          const unverified = { validation: "unverified", state: "unverified_without_expected_target", outputBytes: applied.output.byteLength, note: "未提供预期目标，不能验证输出；只能在明确确认后另存副本，绝不能替换源文件。" };
+          const unverified = { validation: "unverified", state: "unverified_without_expected_target", outputBytes: applied.output.byteLength, note: t("binaryPatch.output.unverifiedNote") };
           setOutput(JSON.stringify(unverified, null, 2));
-          if (!window.confirm("未提供预期目标，输出为 unverified，无法验证是否正确。确认仅另存此副本吗？")) {
-            setError("未验证结果未获确认，未提供下载。 ");
-            throw new Error("未验证输出未获确认，已取消正式结果。");
+          if (!window.confirm(t("binaryPatch.unverified.confirm"))) {
+            setError(t("binaryPatch.errors.unverifiedNotConfirmed"));
+            throw new Error(t("binaryPatch.errors.unverifiedOutputCancelled"));
           }
         } else setOutput(JSON.stringify(applied.verification, null, 2));
         setDownload(applied.output, "corerobin-restored.bin", "application/octet-stream");
         return { bytes: applied.output, filename: "corerobin-restored.bin", validation: applied.verification ? "verified" : "unverified" };
       }
       if (toolId === "binary-patch-inspector") {
-        setOutput(JSON.stringify(await inspectPatchSafely(await readInput(patch, "补丁")), null, 2));
+        setOutput(JSON.stringify(await inspectPatchSafely(await readInput(patch, "patch")), null, 2));
         return null;
       }
       if (toolId === "integrity-manifest") {
-        const baselineBytes = await readInput(baseline, "基线");
-        const targetBytes = await readInput(target, "目标");
-        const patchBytes = await readInput(patch, "补丁");
+        const baselineBytes = await readInput(baseline, "baseline");
+        const targetBytes = await readInput(target, "target");
+        const patchBytes = await readInput(patch, "patch");
         const manifest = manifestJson(await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name }));
         const bytes = new TextEncoder().encode(manifest);
         setOutput(manifest);
@@ -267,15 +282,15 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         return { bytes, filename: "corerobin-patch-manifest.json", validation: "verified" };
       }
       if (toolId === "patch-planner") {
-        const targetBytes = await readInput(target, "目标", 16 * 1024 * 1024);
+        const targetBytes = await readInput(target, "target", 16 * 1024 * 1024);
         const bases = [];
         if (isDesktopRuntime()) {
-          const baseCount = await readInput.count("基线");
+          const baseCount = await readInput.count("baseline");
           for (let index = 0; index < baseCount; index += 1) {
-            bases.push({ name: `baseline-${index + 1}.bin`, data: await readInput(null, "基线", 16 * 1024 * 1024, index) });
+            bases.push({ name: `baseline-${index + 1}.bin`, data: await readInput(null, "baseline", 16 * 1024 * 1024, index) });
           }
         } else {
-          for (const file of plannerBaselines) bases.push({ name: file.name, data: await readInput(file, "基线", 16 * 1024 * 1024) });
+          for (const file of plannerBaselines) bases.push({ name: file.name, data: await readInput(file, "baseline", 16 * 1024 * 1024) });
         }
         const plan = await planPatches(targetBytes, bases, 0.8, signal);
         const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
@@ -287,26 +302,28 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     });
   };
 
-  const needs = toolId === "binary-patch-create" ? ["baseline", "target"] : toolId === "binary-patch-apply" ? ["baseline", "patch", "expected (optional)"] : toolId === "binary-patch-inspector" ? ["patch"] : toolId === "integrity-manifest" ? ["baseline", "patch", "target"] : toolId === "patch-planner" ? ["target", "up to 8 baselines"] : [];
+  const needs: BinaryFileInputKind[] = toolId === "binary-patch-create" ? ["baseline", "target"] : toolId === "binary-patch-apply" ? ["baseline", "patch", "expected"] : toolId === "binary-patch-inspector" ? ["patch"] : toolId === "integrity-manifest" ? ["baseline", "patch", "target"] : toolId === "patch-planner" ? ["target", "plannerBaselines"] : [];
 
   return <div className="toolbox-tool-layout binary-patch-toolbox"><div className="toolbox-tool-layout__body">
-    <p className="toolbox-hint">补丁保持二进制；生成后必须逐字节验证。无预期目标的应用结果标记为 unverified，只有明确确认后才能另存副本。ENDSLEY/BSDIFF43 可生成/应用，BSDIFF40 仅检查。</p>
-    {needs.map((label) => label === "baseline" ? <FileInput key={label} label="基线" file={baseline} onChange={choose(setBaseline)} desktop={isDesktopRuntime()} /> : label === "target" ? <FileInput key={label} label="目标" file={target} onChange={choose(setTarget)} desktop={isDesktopRuntime()} /> : label === "patch" ? <FileInput key={label} label="补丁" file={patch} onChange={choose(setPatch)} desktop={isDesktopRuntime()} /> : label.startsWith("expected") ? <FileInput key={label} label="预期目标（可选）" file={expected} onChange={choose(setExpected)} optional desktop={isDesktopRuntime()} /> : <FileInput key={label} label="发布基线（最多 8 个）" files={plannerBaselines} onChange={chooseMany} multiple desktop={isDesktopRuntime()} />)}
-    {toolId === "binary-patch-apply" && isDesktopRuntime() ? <label className="toolbox-hint"><input type="checkbox" checked={nativeExpectedRequested} disabled={running} onChange={(event) => setNativeExpectedRequested(event.target.checked)} /> 从原生选择器选择预期目标，以生成 verified 结果</label> : null}
-    {toolId === "binary-patch-apply" && !expected && !nativeExpectedRequested ? <p className="toolbox-error" role="alert">未选择预期目标：结果将标记为 unverified，另存前必须再次确认。</p> : null}
-    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { void cancelNativeOutput(); setOutput(""); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />清空</button></div>
+    <p className="toolbox-hint">{t("binaryPatch.hint")}</p>
+    {needs.map((input) => input === "baseline" ? <FileInput key={input} t={t} label={binaryInputLabel(input, t)} file={baseline} onChange={choose(setBaseline)} desktop={isDesktopRuntime()} /> : input === "target" ? <FileInput key={input} t={t} label={binaryInputLabel(input, t)} file={target} onChange={choose(setTarget)} desktop={isDesktopRuntime()} /> : input === "patch" ? <FileInput key={input} t={t} label={binaryInputLabel(input, t)} file={patch} onChange={choose(setPatch)} desktop={isDesktopRuntime()} /> : input === "expected" ? <FileInput key={input} t={t} label={binaryInputLabel(input, t)} file={expected} onChange={choose(setExpected)} optional desktop={isDesktopRuntime()} /> : <FileInput key={input} t={t} label={binaryInputLabel(input, t)} files={plannerBaselines} onChange={chooseMany} multiple desktop={isDesktopRuntime()} />)}
+    {toolId === "binary-patch-apply" && isDesktopRuntime() ? <label className="toolbox-hint"><input type="checkbox" checked={nativeExpectedRequested} disabled={running} onChange={(event) => setNativeExpectedRequested(event.target.checked)} /> {t("binaryPatch.unverified.nativeExpected")}</label> : null}
+    {toolId === "binary-patch-apply" && !expected && !nativeExpectedRequested ? <p className="toolbox-error" role="alert">{t("binaryPatch.unverified.missingExpected")}</p> : null}
+    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? t("binaryPatch.actions.processing") : binaryActionLabel(toolId, t)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />{t("binaryPatch.actions.stop")}</button> : null}<button className="button button--secondary" type="button" onClick={() => { void cancelNativeOutput(); setOutput(""); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />{t("binaryPatch.actions.clear")}</button></div>
     {error ? <p className="toolbox-error" role="alert">{error}</p> : null}{notice ? <p className="toolbox-hint">{notice}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
-    {nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button><span className="toolbox-hint">原生输出 {Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟</span></div> : null}
-    {!isDesktopRuntime() && downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />{toolId === "patch-planner" ? "下载计划/补丁集合预览（非正式导出）" : "下载预览副本（非正式导出）"}</a> : null}
-  </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；正式输出经过原生 TTL、验证和原子另存，不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
+    {nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("binaryPatch.actions.saveNative")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("binaryPatch.actions.cancelNative")}</button><span className="toolbox-hint">{t("binaryPatch.nativeOutput.ttl", { size: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}</span></div> : null}
+    {!isDesktopRuntime() && downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />{toolId === "patch-planner" ? t("binaryPatch.actions.downloadPlan") : t("binaryPatch.actions.downloadPreview")}</a> : null}
+  </div><div className="toolbox-tool-layout__footer"><span>{t("binaryPatch.footer")}</span></div></div>;
 }
 
-function toToolboxError(reason: unknown): ToolboxError {
-  return { code: "web_tool_error", message: reason instanceof Error ? reason.message : "补丁工具执行失败。", retryable: false };
+function toToolboxError(reason: unknown, fallback: string): ToolboxError {
+  return { code: "web_tool_error", message: reason instanceof Error ? reason.message : fallback, retryable: false };
 }
 
-function FileInput({ label, file, files, onChange, multiple, optional, desktop }: { label: string; file?: File | null; files?: File[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void; multiple?: boolean; optional?: boolean; desktop?: boolean }) {
-  return <label className="toolbox-file-pick button button--secondary"><FileCheck2 size={15} />{label}{desktop ? "（开始时由原生选择器选择）" : file ? `：${file.name}` : files?.length ? `：${files.length} 个` : optional ? "（未选择）" : ""}{desktop ? null : <input hidden type="file" multiple={multiple} onChange={onChange} />}</label>;
+function FileInput({ t, label, file, files, onChange, multiple, optional, desktop }: { t: ToolboxTFunction; label: string; file?: File | null; files?: File[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void; multiple?: boolean; optional?: boolean; desktop?: boolean }) {
+  return <label className="toolbox-file-pick button button--secondary"><FileCheck2 size={15} />{label}{desktop ? t("binaryPatch.fileInput.nativePicker") : file ? t("binaryPatch.fileInput.selected", { filename: file.name }) : files?.length ? t("binaryPatch.fileInput.selectedCount", { count: files.length }) : optional ? t("binaryPatch.fileInput.notSelected") : ""}{desktop ? null : <input hidden type="file" multiple={multiple} onChange={onChange} />}</label>;
 }
 
-function binaryActionLabel(toolId: BinaryToolId): string { return toolId === "binary-patch-create" ? "生成并验证补丁" : toolId === "binary-patch-apply" ? "应用并校验" : toolId === "binary-patch-inspector" ? "检查补丁" : toolId === "integrity-manifest" ? "生成完整性清单" : toolId === "patch-planner" ? "逐基线规划" : "解释错误"; }
+function binaryInputLabel(input: BinaryFileInputKind, t: ToolboxTFunction): string { return input === "baseline" ? t("binaryPatch.inputs.baseline") : input === "target" ? t("binaryPatch.inputs.target") : input === "patch" ? t("binaryPatch.inputs.patch") : input === "expected" ? t("binaryPatch.inputs.expected") : t("binaryPatch.inputs.plannerBaselines"); }
+
+function binaryActionLabel(toolId: BinaryToolId, t: ToolboxTFunction): string { return toolId === "binary-patch-create" ? t("binaryPatch.actions.create") : toolId === "binary-patch-apply" ? t("binaryPatch.actions.apply") : toolId === "binary-patch-inspector" ? t("binaryPatch.actions.inspect") : toolId === "integrity-manifest" ? t("binaryPatch.actions.manifest") : toolId === "patch-planner" ? t("binaryPatch.actions.plan") : t("binaryPatch.actions.explainError"); }

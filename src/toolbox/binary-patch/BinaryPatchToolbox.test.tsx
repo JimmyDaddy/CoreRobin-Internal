@@ -2,6 +2,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import i18n from "../../i18n";
+
 const mocks = vi.hoisted(() => ({
   createObjectUrl: vi.fn(() => "blob:patch-plan"),
   planPatches: vi.fn(),
@@ -40,9 +42,10 @@ vi.mock("./binaryPatchTools", async (importOriginal) => {
 
 import { BinaryPatchToolbox } from "./BinaryPatchToolbox";
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   mocks.desktopRuntime = false;
+  await i18n.changeLanguage("zh-CN");
   vi.stubGlobal("URL", { createObjectURL: mocks.createObjectUrl, revokeObjectURL: vi.fn() });
   mocks.planPatches.mockResolvedValue({ results: [] });
   mocks.createPatchCollection.mockResolvedValue({
@@ -102,4 +105,5 @@ it("keeps desktop patch output on the native TTL and atomic-save path", async ()
     jobId: "job",
     validation: "verified",
   }));
+  expect(mocks.prepare.mock.calls.map(([, role]) => role)).toEqual(["input", "target"]);
 });
