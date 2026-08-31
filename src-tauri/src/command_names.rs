@@ -101,6 +101,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "cancel_toolbox_keep_awake",
     "get_toolbox_keep_awake_state",
     "write_toolbox_text_copy",
+    "scan_toolbox_file_occupancy",
     "start_app_update",
     "get_app_update_task",
 ];

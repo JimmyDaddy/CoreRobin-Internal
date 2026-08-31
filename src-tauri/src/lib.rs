@@ -24,6 +24,7 @@ mod network_connections;
 mod network_quality;
 mod private_storage;
 mod process_control;
+mod resource_occupancy;
 mod safe_fs;
 mod sampler_service;
 mod sensors;
@@ -112,6 +113,7 @@ use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 use process_control::ProcessController;
+use resource_occupancy::{OccupancyScanRequest, OccupancyScanResult};
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
 use storage_health::{StorageHealthSnapshot, inspect_storage_health, validate_mount_points};
@@ -2370,6 +2372,15 @@ async fn write_toolbox_text_copy(
 }
 
 #[tauri::command]
+async fn scan_toolbox_file_occupancy(
+    window: WebviewWindow,
+    request: OccupancyScanRequest,
+) -> Result<OccupancyScanResult, CommandError> {
+    require_main_window(&window)?;
+    resource_occupancy::scan(request).await
+}
+
+#[tauri::command]
 fn start_app_update(
     window: WebviewWindow,
     app: AppHandle,
@@ -2656,6 +2667,7 @@ pub fn run() {
             cancel_toolbox_keep_awake,
             get_toolbox_keep_awake_state,
             write_toolbox_text_copy,
+            scan_toolbox_file_occupancy,
             start_app_update,
             get_app_update_task
         ])
@@ -2925,6 +2937,7 @@ mod security_boundary_tests {
         "cancel_toolbox_keep_awake",
         "get_toolbox_keep_awake_state",
         "write_toolbox_text_copy",
+        "scan_toolbox_file_occupancy",
         "start_app_update",
         "get_app_update_task",
         "run_network_quality_check",

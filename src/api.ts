@@ -103,6 +103,24 @@ export interface ToolboxPowerState {
   platform: string;
   reason: string | null;
 }
+
+export interface ToolboxOccupancyProcess {
+  pid: number;
+  command: string | null;
+  user: string | null;
+  evidenceTypes: string[];
+}
+
+export interface ToolboxOccupancyResult {
+  requestId: string;
+  status: "scoped_complete" | "truncated" | "timed_out" | "target_changed" | "unsupported";
+  pathHint: string;
+  capturedAtMs: number;
+  processes: ToolboxOccupancyProcess[];
+  coverage: string[];
+  truncated: boolean;
+  message: string | null;
+}
 import type {
   HealthStateSnapshot,
   HealthStateUpdate,
@@ -210,6 +228,10 @@ export async function cancelToolboxKeepAwake(): Promise<ToolboxPowerState> {
 
 export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {
   return invoke<ToolboxPowerState>("get_toolbox_keep_awake_state");
+}
+
+export async function scanToolboxFileOccupancy(request: { requestId: string; path: string }): Promise<ToolboxOccupancyResult> {
+  return invoke<ToolboxOccupancyResult>("scan_toolbox_file_occupancy", { request });
 }
 
 export async function setDockIconVisible(visible: boolean): Promise<void> {

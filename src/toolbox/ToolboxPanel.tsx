@@ -27,7 +27,7 @@ import type { ReactNode } from "react";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxFileHash, cancelToolboxKeepAwake, hashToolboxFile, isDesktopRuntime, startToolboxKeepAwake } from "../api";
+import { cancelToolboxFileHash, cancelToolboxKeepAwake, hashToolboxFile, isDesktopRuntime, scanToolboxFileOccupancy, startToolboxKeepAwake } from "../api";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
@@ -143,6 +143,7 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "qr-code": return <QrTool />;
     case "text-sha256": return <TextHashTool />;
     case "file-sha256": return <FileHashTool />;
+    case "file-occupancy": return <OccupancyTool />;
     case "keep-awake": return <KeepAwakeTool />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
@@ -212,6 +213,13 @@ function FileHashTool() {
   const choose = async () => { setError(""); if (isDesktopRuntime()) { const selected = await open({ multiple: false, directory: false }); if (typeof selected === "string") { setPath(selected); setFileName(selected.split(/[\\/]/).pop() ?? selected); } } else setError("文件 SHA-256 需要在桌面运行时通过原生选择器选择普通文件。"); };
   const run = async () => { if (!path) { setError("请先选择一个普通文件。"); return; } setRunning(true); setOutput(""); try { const result = await hashToolboxFile({ requestId: crypto.randomUUID(), path }, (event) => setProgress(event.totalBytes ? event.bytesRead / event.totalBytes : 0)); setOutput(result.digest); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
   return <ToolLayout error={error} onClear={() => { setFileName(""); setPath(""); setOutput(""); setProgress(0); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose}><FileCheck2 size={15} />选择普通文件</button><span>{fileName || "未选择文件"}</span></div>{running ? <progress max="1" value={progress} /> : null}<div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Play size={14} />{running ? "正在计算…" : "计算文件 SHA-256"}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancelToolboxFileHash()}>停止</button> : null}</div><p className="toolbox-hint">原生服务使用 1 MiB 流式缓冲，并在开始/结束复验文件身份；文件内容不会进入 WebView。</p><ResultBox value={output} /></ToolLayout>;
+}
+
+function OccupancyTool() {
+  const [fileName, setFileName] = useState(""); const [path, setPath] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
+  const choose = async () => { setError(""); if (!isDesktopRuntime()) { setError("文件占用诊断需要桌面原生运行时。 "); return; } const selected = await open({ multiple: false, directory: false }); if (typeof selected === "string") { setPath(selected); setFileName(selected.split(/[\\/]/).pop() ?? selected); } };
+  const run = async () => { if (!path) { setError("请先选择一个普通文件。"); return; } setRunning(true); setError(""); setOutput(""); try { const result = await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  return <ToolLayout error={error} onClear={() => { setFileName(""); setPath(""); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose}><FileCheck2 size={15} />选择普通文件</button><span>{fileName || "未选择文件"}</span></div><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Network size={14} />{running ? "正在诊断…" : "查找文件使用者"}</button><p className="toolbox-hint">仅诊断当前文件：macOS 使用固定参数 lsof，Linux 匹配可见 /proc 的 fd/cwd/root；结果带覆盖范围、截断和身份复验状态，不会关闭进程。</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function KeepAwakeTool() {
