@@ -129,11 +129,11 @@ impl Drop for MacPowerEventObserver {
         // removing both tokens prevents callbacks after Tauri has begun exit.
         unsafe {
             if let Some(observer) = self.sleep_observer.take() {
-                let observer: &AnyObject = (&*observer).as_ref();
+                let observer: &AnyObject = (*observer).as_ref();
                 self.notification_center.removeObserver(observer);
             }
             if let Some(observer) = self.wake_observer.take() {
-                let observer: &AnyObject = (&*observer).as_ref();
+                let observer: &AnyObject = (*observer).as_ref();
                 self.notification_center.removeObserver(observer);
             }
         }
