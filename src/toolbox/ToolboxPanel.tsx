@@ -113,7 +113,7 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <section className="toolbox-panel" aria-labelledby="toolbox-title">
+    <section className="toolbox-panel" aria-labelledby={selectedTool ? "toolbox-tool-title" : "toolbox-title"}>
       {selectedTool ? (
         <ToolPage tool={selectedTool} onBack={() => setSelected(null)}>
           {selectedTool.capability.state === "unavailable" ? <UnavailableTool tool={selectedTool} /> : <>
@@ -237,7 +237,7 @@ function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }:
 
 function ToolPage({ tool, onBack, children }: { tool: ToolDefinition; onBack: () => void; children: ReactNode }) {
   const { t } = useTranslation("toolbox");
-  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1>{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
+  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1 id="toolbox-tool-title">{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
 }
 
 function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability }) {

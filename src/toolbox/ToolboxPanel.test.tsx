@@ -115,6 +115,18 @@ it("shows a degraded notice but still opens the tool", async () => {
   expect(screen.getByRole("status").textContent).toContain("降级可用：文件选择集成暂时受限。");
 });
 
+it("keeps the toolbox region labelled when entering a tool page", () => {
+  render(<ToolboxPanel />);
+
+  expect(screen.getByRole("region", { name: "工具箱" }).getAttribute("aria-labelledby")).toBe("toolbox-title");
+
+  fireEvent.click(screen.getByText("JSON").closest("button")!);
+
+  const toolPage = screen.getByRole("region", { name: "JSON" });
+  expect(toolPage.getAttribute("aria-labelledby")).toBe("toolbox-tool-title");
+  expect(screen.getByRole("heading", { name: "JSON" }).id).toBe("toolbox-tool-title");
+});
+
 function unavailable(reason: string) {
   return { state: "unavailable" as const, reason, platform: "macOS" };
 }
