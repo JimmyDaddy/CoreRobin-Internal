@@ -22,7 +22,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -33,13 +33,13 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
-import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
+import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
-import { getToolboxNetworkSnapshot, getToolboxSnapshot, subscribeToolboxEvents } from "./client";
+import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
-import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory } from "./contracts";
+import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
 import "./toolbox.css";
 
 const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
@@ -48,6 +48,7 @@ const NetworkAddressesTool = lazy(async () => ({ default: (await import("./netwo
 const KeyboardCleaningTool = lazy(async () => ({ default: (await import("./system/keyboard-cleaning/KeyboardCleaningTool")).KeyboardCleaningTool }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
+const HISTORY_PAGE_SIZE = 20;
 const CATEGORY_LABEL_KEYS = {
   "system-network": "categories.systemNetwork",
   "text-development": "categories.textDevelopment",
@@ -84,15 +85,49 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
     if (!isDesktopRuntime()) return;
     let mounted = true;
     let unlisten: (() => void) | undefined;
-    void getToolboxSnapshot()
-      .then((snapshot) => { if (mounted) setNativeCapabilities(snapshot.capabilities); })
-      .catch(() => undefined);
-    void subscribeToolboxEvents((event) => {
-      if (mounted && event.type === "snapshot") setNativeCapabilities(event.snapshot.capabilities);
-    }).then((nextUnlisten) => {
-      if (mounted) unlisten = nextUnlisten;
-      else nextUnlisten();
-    }).catch(() => undefined);
+    let currentSnapshot: ToolboxSnapshot | null = null;
+    let initialSnapshotRead = false;
+    const pendingSnapshots: ToolboxSnapshot[] = [];
+    const applySnapshot = (candidate: ToolboxSnapshot) => {
+      const nextSnapshot = selectNewerToolboxSnapshot(currentSnapshot, candidate);
+      if (!mounted || nextSnapshot === null || nextSnapshot === currentSnapshot) return;
+      currentSnapshot = nextSnapshot;
+      setNativeCapabilities(nextSnapshot.capabilities);
+    };
+    const acceptEventSnapshot = (candidate: ToolboxSnapshot) => {
+      if (!initialSnapshotRead) {
+        pendingSnapshots.push(candidate);
+        return;
+      }
+      applySnapshot(candidate);
+    };
+    void (async () => {
+      try {
+        const nextUnlisten = await subscribeToolboxEvents((event) => {
+          if (event.type === "snapshot") acceptEventSnapshot(event.snapshot);
+        });
+        if (!mounted) {
+          nextUnlisten();
+          return;
+        }
+        unlisten = nextUnlisten;
+
+        // Register first so an update cannot fall between the retained read
+        // and the event listener. The retained snapshot is the initial
+        // service-instance baseline; events received before it are replayed
+        // only after that baseline establishes the valid revision sequence.
+        try {
+          applySnapshot(await getToolboxSnapshot());
+        } catch {
+          // Browser-local tools remain available when the native snapshot is unavailable.
+        } finally {
+          initialSnapshotRead = true;
+          for (const snapshot of pendingSnapshots.splice(0)) applySnapshot(snapshot);
+        }
+      } catch {
+        // Browser-local tools remain available when event registration is unavailable.
+      }
+    })();
     return () => {
       mounted = false;
       unlisten?.();
@@ -159,25 +194,29 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
 
 function ToolboxHistoryPanel() {
   const { t } = useTranslation("toolbox");
+  const { t: startupT } = useTranslation("startup");
+  const latestT = useRef(t);
   const [page, setPage] = useState<ToolboxHistoryPage | null>(null);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const refresh = async () => {
+  useEffect(() => { latestT.current = t; }, [t]);
+
+  const refresh = useCallback(async () => {
     if (!isDesktopRuntime()) return;
     setLoading(true);
     try {
       const storage = await getToolboxStorageSnapshot();
       setEnabled(storage.policy.toolboxHistoryEnabled);
-      setPage(storage.policy.toolboxHistoryEnabled ? await listToolboxHistory({ limit: 20 }) : null);
+      setPage(storage.policy.toolboxHistoryEnabled ? await listToolboxHistory({ limit: HISTORY_PAGE_SIZE }) : null);
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("history.unavailable"));
+      setError(reason instanceof Error ? reason.message : latestT.current("history.unavailable"));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -194,7 +233,30 @@ function ToolboxHistoryPanel() {
       disposed = true;
       unlisten?.();
     };
-  }, [t]);
+  }, [refresh]);
+
+  const loadMore = async () => {
+    const cursor = page?.nextCursor;
+    if (!cursor || loading) return;
+    setLoading(true);
+    try {
+      const nextPage = await listToolboxHistory({ limit: HISTORY_PAGE_SIZE, cursor });
+      setPage((current) => {
+        if (!current || current.nextCursor !== cursor || current.historyRevision !== nextPage.historyRevision) return current;
+        const recordIds = new Set(current.records.map((record) => record.recordId));
+        return {
+          ...nextPage,
+          records: [...current.records, ...nextPage.records.filter((record) => !recordIds.has(record.recordId))],
+        };
+      });
+      setError("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("history.unavailable"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isDesktopRuntime()) return null;
 
   return <section className="toolbox-section" aria-labelledby="toolbox-history-title">
@@ -203,7 +265,7 @@ function ToolboxHistoryPanel() {
     {error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}
     {enabled !== false && page?.records.length ? <div className="toolbox-history-list">{page.records.map((record) => <HistoryRow key={record.recordId} record={record} />)}</div> : null}
     {enabled !== false && page && page.records.length === 0 ? <p className="toolbox-hint">{t("history.empty")}</p> : null}
-    <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? t("history.refreshing") : t("history.refresh")}</button><span className="toolbox-hint">{t("history.privacy")}</span></div>
+    <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? t("history.refreshing") : t("history.refresh")}</button>{page?.nextCursor ? <button className="button button--secondary" type="button" disabled={loading} onClick={() => void loadMore()}>{startupT("showMore", { count: HISTORY_PAGE_SIZE })}</button> : null}{!page || page.records.length <= HISTORY_PAGE_SIZE ? <span className="toolbox-hint">{t("history.privacy")}</span> : null}</div>
   </section>;
 }
 
@@ -237,7 +299,9 @@ function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }:
 
 function ToolPage({ tool, onBack, children }: { tool: ToolDefinition; onBack: () => void; children: ReactNode }) {
   const { t } = useTranslation("toolbox");
-  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1 id="toolbox-tool-title">{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus(); }, []);
+  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1 id="toolbox-tool-title" ref={heading} tabIndex={-1}>{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
 }
 
 function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability }) {
@@ -296,7 +360,7 @@ function JsonTool() {
 function UrlTool() {
   const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [mode, setMode] = useState<"encode" | "decode" | "inspect">("inspect"); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  const run = () => { try { if (mode === "encode") setOutput(encodeURIComponent(input)); else if (mode === "decode") setOutput(decodeURIComponent(input)); else setOutput(JSON.stringify(analyzeUrl(input), null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } };
+  const run = () => { try { if (mode === "encode") setOutput(encodeUrlComponent(input)); else if (mode === "decode") setOutput(decodeUrlComponent(input)); else setOutput(JSON.stringify(analyzeUrl(input), null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } };
   return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="https://example.test/path?a=1&a=two+words" /><div className="toolbox-inline-actions"><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="inspect">{t("local.url.inspect")}</option><option value="encode">{t("local.url.encode")}</option><option value="decode">{t("local.url.decode")}</option></select><button className="button button--primary" type="button" onClick={run}><Play size={14} />{t("local.run")}</button></div><p className="toolbox-hint">{t("local.url.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
@@ -309,7 +373,7 @@ function Base64Tool() {
 function TimeTool() {
   const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [unit, setUnit] = useState<"seconds" | "milliseconds">("seconds"); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.time.placeholder")} /><div className="toolbox-inline-actions"><select value={unit} onChange={(event) => setUnit(event.target.value as typeof unit)}><option value="seconds">{t("local.time.seconds")}</option><option value="milliseconds">{t("local.time.milliseconds")}</option></select><button className="button button--primary" type="button" onClick={() => { try { const value = input.includes("T") ? convertIsoTime(input) : convertUnixTime(input, unit); setOutput(JSON.stringify(value, null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Timer size={14} />{t("local.convert")}</button></div><p className="toolbox-hint">{t("local.time.hint")}</p><ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.time.placeholder")} /><div className="toolbox-inline-actions"><select value={unit} onChange={(event) => setUnit(event.target.value as typeof unit)}><option value="seconds">{t("local.time.seconds")}</option><option value="milliseconds">{t("local.time.milliseconds")}</option></select><button className="button button--primary" type="button" onClick={() => { try { const trimmed = input.trim(); const value = /[Tt]|[Zz]|^\d{4}-\d{2}-\d{2}/.test(trimmed) ? convertIsoTime(input) : convertUnixTime(input, unit); setOutput(JSON.stringify(value, null, 2)); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}><Timer size={14} />{t("local.convert")}</button></div><p className="toolbox-hint">{t("local.time.hint")}</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function UuidTool() {
@@ -327,8 +391,24 @@ function QrTool() {
 
 function TextHashTool() {
   const { t } = useTranslation("toolbox");
-  const [input, setInput] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.textHash.placeholder")} /><button className="button button--primary" type="button" onClick={() => { try { assertTextLimit(input); void crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)).then((digest) => setOutput([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))).catch((reason: unknown) => setError(localizedError(reason, t))); } catch (reason) { setError(localizedError(reason, t)); } }}><Hash size={14} />{t("local.textHash.compute")}</button><ResultBox value={output} /></ToolLayout>;
+  const [input, setInput] = useState(""); const [expectedDigest, setExpectedDigest] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState("");
+  const computeGeneration = useRef(0);
+  const normalizedExpectedDigest = expectedDigest.trim().toLowerCase();
+  const comparison = output && normalizedExpectedDigest ? output === normalizedExpectedDigest : null;
+  const compute = () => {
+    try {
+      assertTextLimit(input);
+      const generation = ++computeGeneration.current;
+      void crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)).then((digest) => {
+        if (generation !== computeGeneration.current) return;
+        setOutput([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""));
+        setError("");
+      }).catch((reason: unknown) => {
+        if (generation === computeGeneration.current) setError(localizedError(reason, t));
+      });
+    } catch (reason) { setError(localizedError(reason, t)); }
+  };
+  return <ToolLayout error={error} onClear={() => { computeGeneration.current += 1; setInput(""); setExpectedDigest(""); setOutput(""); setError(""); }}><textarea className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={t("local.textHash.placeholder")} /><div className="toolbox-inline-actions"><input className="toolbox-input toolbox-input--code" value={expectedDigest} onChange={(event) => setExpectedDigest(event.target.value)} placeholder={"0".repeat(64)} aria-label={t("binaryPatch.inputs.expected")} aria-invalid={comparison === false || undefined} autoCapitalize="none" spellCheck={false} />{comparison !== null ? <span className={comparison ? "toolbox-hint" : "toolbox-warning"} role="status" data-comparison={comparison ? "match" : "mismatch"} aria-label={t("binaryPatch.inputs.expected")}>{comparison ? <ShieldCheck size={16} aria-hidden="true" /> : <CircleAlert size={16} aria-hidden="true" />}</span> : null}</div><button className="button button--primary" type="button" onClick={compute}><Hash size={14} />{t("local.textHash.compute")}</button><ResultBox value={output} /></ToolLayout>;
 }
 
 
@@ -371,7 +451,7 @@ function KeepAwakeTool() {
     try { setState(JSON.stringify(await startToolboxKeepAwake({ requestId: crypto.randomUUID(), durationMinutes }), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); }
   };
   const stop = async () => { setRunning(true); try { setState(JSON.stringify(await cancelToolboxKeepAwake(), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>{t("keepAwake.durationLabel")} <select value={duration} onChange={(event) => setDuration(event.target.value)}><option value="30">{t("keepAwake.minutes", { count: 30 })}</option><option value="60">{t("keepAwake.minutes", { count: 60 })}</option><option value="120">{t("keepAwake.minutes", { count: 120 })}</option><option value="720">{t("keepAwake.hours", { count: 12 })}</option></select></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("keepAwake.start")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>{t("keepAwake.stop")}</button></div><p className="toolbox-hint">{t("keepAwake.hint")}</p><ResultBox value={state} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>{t("keepAwake.durationLabel")} <input className="toolbox-input" type="number" min="1" max="720" step="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("keepAwake.start")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>{t("keepAwake.stop")}</button></div><p className="toolbox-hint">{t("keepAwake.hint")}</p><ResultBox value={state} /></ToolLayout>;
 }
 
 function RegexTool() {

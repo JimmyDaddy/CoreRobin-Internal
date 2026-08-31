@@ -27,6 +27,23 @@ export async function getToolboxSnapshot(): Promise<ToolboxSnapshot> {
   return invoke<ToolboxSnapshot>("get_toolbox_snapshot", { contractVersion: TOOLBOX_CONTRACT_VERSION });
 }
 
+/**
+ * Keep the newest snapshot from the same native-service lifetime.
+ *
+ * A service instance establishes the revision sequence.  Accepting a higher
+ * revision from a different instance would let a delayed event from an older
+ * service overwrite the state that the current page is using.
+ */
+export function selectNewerToolboxSnapshot(
+  current: ToolboxSnapshot | null,
+  candidate: ToolboxSnapshot | null,
+): ToolboxSnapshot | null {
+  if (candidate === null) return current;
+  if (current === null) return candidate;
+  if (candidate.serviceInstanceId !== current.serviceInstanceId) return current;
+  return candidate.revision >= current.revision ? candidate : current;
+}
+
 export function getToolboxNetworkSnapshot(): Promise<NetworkAddressesSnapshot> {
   return invoke("get_toolbox_network_snapshot");
 }
