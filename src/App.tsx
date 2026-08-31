@@ -109,6 +109,7 @@ import {
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { UserActionKind } from "./userActionHistory";
 import type { ProductDataClearResult } from "./productDataClear";
+import { clearToolboxData, newToolboxRequest } from "./toolbox/client";
 import {
   applyAppAppearance,
   loadAppSettings,
@@ -715,19 +716,33 @@ function App() {
 
   const clearAllProductData = useCallback(async () => {
     const categories = [
-        "resourceHistory",
-        "connectionHistory",
-        "applicationInventory",
-        "scanCaches",
-      ] as const;
-    const outcomes = await Promise.all(
-      categories.map((category) => productDataPrivacy.clearCategory(category)),
-    );
+      "resourceHistory",
+      "connectionHistory",
+      "applicationInventory",
+      "scanCaches",
+    ] as const;
+    const [outcomes, toolboxOutcome] = await Promise.all([
+      Promise.all(
+        categories.map((category) => productDataPrivacy.clearCategory(category)),
+      ),
+      (async () => {
+        if (!isDesktopRuntime()) return true;
+        try {
+          const snapshot = await clearToolboxData(newToolboxRequest());
+          return snapshot.sessions.length === 0
+            && snapshot.resources.length === 0
+            && snapshot.jobs.length === 0;
+        } catch {
+          return false;
+        }
+      })(),
+    ]);
     const results: ProductDataClearResult[] = categories.map((scope, index) => ({
       scope,
       status: outcomes[index] ? "succeeded" : "failed",
     }));
-    if (outcomes.some((succeeded) => !succeeded)) {
+    results.push({ scope: "toolbox", status: toolboxOutcome ? "succeeded" : "failed" });
+    if (outcomes.some((succeeded) => !succeeded) || !toolboxOutcome) {
       return [
         ...results,
         { scope: "preferences", status: "skipped" },

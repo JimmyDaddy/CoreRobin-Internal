@@ -94,6 +94,7 @@ export function ClearProductDataAction({
             <ul className="clear-product-data-dialog__scope">
               <li>{t("settings:about.clearScope.history")}</li>
               <li>{t("settings:about.clearScope.scans")}</li>
+              <li>{t("settings:dataPrivacy.caches.title")}</li>
               <li>{t("settings:about.clearScope.preferences")}</li>
             </ul>
             {failed ? (
@@ -108,7 +109,9 @@ export function ClearProductDataAction({
                     <span>
                       {result.scope === "preferences"
                         ? t("settings:about.clearScope.preferences")
-                        : t(`settings:dataPrivacy.categories.${result.scope}.title`)}
+                        : result.scope === "toolbox"
+                          ? t("settings:dataPrivacy.caches.title")
+                          : t(`settings:dataPrivacy.categories.${result.scope}.title`)}
                     </span>
                     <strong>
                       {t(`settings:dataPrivacy.result.${result.status}`)}
