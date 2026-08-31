@@ -24,33 +24,61 @@ export interface RegexMatch {
   groups: Record<string, string | undefined>;
 }
 
+interface RegexWorkerResponse {
+  ok: boolean;
+  value?: { matches: RegexMatch[]; replacement: string };
+  analysis?: RegexAnalysis;
+  code?: string;
+  error?: string;
+}
+
+const pendingAnalyses = new Map<string, Set<RegexAnalysis>>();
+
+/**
+ * Prepares a view model for the synchronous toolbox surface. The actual parse,
+ * syntax check, and AST construction happen in the terminable Worker started by
+ * runRegexInWorker; completing that operation updates this object in place.
+ */
 export function analyzeRegex(pattern: string, flags = ""): RegexAnalysis {
   if (utf8ByteLength(pattern) > MAX_PATTERN_BYTES) throw new ToolboxInputError("regex_too_large", "正则表达式不能超过 16 KiB。 ");
-  let syntaxError: string | null = null;
-  try { new RegExp(pattern, flags); } catch (error) { syntaxError = error instanceof Error ? error.message : "正则语法无效。"; }
-  const warnings: string[] = [];
-  if (/\([^?]*\+[^)]*\)[+*{]/.test(pattern) || /\([^?]*\*[^)]*\)[+*{]/.test(pattern)) warnings.push("检测到嵌套重复，可能带来回溯开销；这不是 ReDoS 安全证明。 ");
-  if (/(?:^|[^\\])(?:\^|\$)?\([^)]*\|[^)]*\)/.test(pattern)) warnings.push("分支结构已标记；图形解释语法关系，不代表引擎逐步回溯轨迹。 ");
-  return { supported: syntaxError === null, syntaxError, ast: buildRegexAst(pattern), warnings };
+  const analysis: RegexAnalysis = {
+    supported: true,
+    syntaxError: null,
+    ast: { id: 1, kind: "root", label: "正则表达式", children: [] },
+    warnings: [],
+  };
+  const key = analysisKey(pattern, flags);
+  const waiting = pendingAnalyses.get(key) ?? new Set<RegexAnalysis>();
+  waiting.add(analysis);
+  pendingAnalyses.set(key, waiting);
+  return analysis;
 }
 
 export async function runRegexInWorker(pattern: string, flags: string, text: string, replacement = ""): Promise<{ matches: RegexMatch[]; replacement: string }> {
-  assertRegexWorkerAvailable();
-  if (utf8ByteLength(text) > MAX_SAMPLE_BYTES) throw new ToolboxInputError("regex_text_too_large", "测试文本不能超过 256 KiB。 ");
-  const analysis = analyzeRegex(pattern, flags);
-  if (!analysis.supported) throw new ToolboxInputError("invalid_regex", analysis.syntaxError ?? "正则语法无效。 ");
+  try {
+    assertRegexWorkerAvailable();
+    if (utf8ByteLength(text) > MAX_SAMPLE_BYTES) throw new ToolboxInputError("regex_text_too_large", "测试文本不能超过 256 KiB。 ");
+  } catch (error) {
+    discardPendingAnalysis(pattern, flags);
+    throw error;
+  }
+
   return new Promise((resolve, reject) => {
     let worker: Worker;
     try {
       worker = new Worker(new URL("./regex.worker.ts", import.meta.url), { type: "module" });
     } catch {
+      discardPendingAnalysis(pattern, flags);
       reject(new ToolboxInputError("regex_worker_unavailable", "正则执行 Worker 无法启动，已安全禁用正则执行。 "));
       return;
     }
+
     let settled = false;
     const timeout = globalThis.setTimeout(() => {
-      worker.terminate();
+      if (settled) return;
       settled = true;
+      worker.terminate();
+      discardPendingAnalysis(pattern, flags);
       reject(new ToolboxInputError("regex_timeout", "正则执行超过 2 秒，已停止。 "));
     }, 2_000);
     const finish = (callback: () => void) => {
@@ -60,11 +88,18 @@ export async function runRegexInWorker(pattern: string, flags: string, text: str
       worker.terminate();
       callback();
     };
-    worker.onmessage = (event: MessageEvent<{ ok: boolean; value?: { matches: RegexMatch[]; replacement: string }; error?: string }>) => {
-      if (event.data.ok && event.data.value) finish(() => resolve(event.data.value!));
-      else finish(() => reject(new ToolboxInputError("regex_failed", event.data.error ?? "正则执行失败。 ")));
+
+    worker.onmessage = (event: MessageEvent<RegexWorkerResponse>) => {
+      const response = event.data;
+      if (response.analysis) settlePendingAnalysis(pattern, flags, response.analysis);
+      else discardPendingAnalysis(pattern, flags);
+      if (response.ok && response.value) finish(() => resolve(response.value!));
+      else finish(() => reject(new ToolboxInputError(response.code ?? "regex_failed", response.error ?? "正则执行失败。 ")));
     };
-    worker.onerror = () => finish(() => reject(new ToolboxInputError("regex_failed", "正则执行线程不可用。 ")));
+    worker.onerror = () => finish(() => {
+      discardPendingAnalysis(pattern, flags);
+      reject(new ToolboxInputError("regex_failed", "正则执行线程不可用。 "));
+    });
     worker.postMessage({ pattern, flags, text, replacement });
   });
 }
@@ -73,51 +108,22 @@ function assertRegexWorkerAvailable(): void {
   if (typeof Worker !== "function") throw new ToolboxInputError("regex_worker_unavailable", "当前 WebView 不支持隔离正则 Worker，已安全禁用正则执行。 ");
 }
 
-function buildRegexAst(pattern: string): RegexNode {
-  let nextId = 1;
-  const root: RegexNode = { id: nextId++, kind: "root", label: "正则表达式", children: [] };
-  const stack: RegexNode[] = [root];
-  for (let index = 0; index < pattern.length && nextId <= 2_001; index += 1) {
-    const char = pattern[index];
-    const parent = stack[stack.length - 1];
-    if (char === "\\") {
-      const node = { id: nextId++, kind: "escape" as const, label: pattern.slice(index, index + 2), children: [] };
-      parent.children.push(node);
-      index += 1;
-    } else if (char === "(") {
-      const node = { id: nextId++, kind: "group" as const, label: pattern.slice(index, pattern[index + 1] === "?" ? index + 4 : index + 1), children: [] };
-      parent.children.push(node);
-      stack.push(node);
-    } else if (char === ")") {
-      if (stack.length > 1) stack.pop();
-    } else if (char === "[") {
-      const end = findClosing(pattern, index, "]");
-      const node = { id: nextId++, kind: "character-class" as const, label: pattern.slice(index, end + 1), children: [] };
-      parent.children.push(node);
-      if (end > index) index = end;
-    } else if (char === "|") {
-      parent.children.push({ id: nextId++, kind: "alternation", label: "分支 |", children: [] });
-    } else if (char === "*" || char === "+" || char === "?" || char === "{") {
-      const node = { id: nextId++, kind: "quantifier" as const, label: readQuantifier(pattern, index), children: [] };
-      parent.children.push(node);
-      if (char === "{") {
-        const end = findClosing(pattern, index, "}");
-        if (end > index) index = end;
-      }
-    } else {
-      parent.children.push({ id: nextId++, kind: "literal", label: char, children: [] });
-    }
+function analysisKey(pattern: string, flags: string): string {
+  return `${flags.length}:${flags}${pattern}`;
+}
+
+function settlePendingAnalysis(pattern: string, flags: string, next: RegexAnalysis): void {
+  const key = analysisKey(pattern, flags);
+  const waiting = pendingAnalyses.get(key);
+  pendingAnalyses.delete(key);
+  for (const analysis of waiting ?? []) {
+    analysis.supported = next.supported;
+    analysis.syntaxError = next.syntaxError;
+    analysis.ast = next.ast;
+    analysis.warnings = next.warnings;
   }
-  return root;
 }
 
-function findClosing(value: string, start: number, closing: string): number {
-  for (let index = start + 1; index < value.length; index += 1) if (value[index] === closing && value[index - 1] !== "\\") return index;
-  return start;
-}
-
-function readQuantifier(value: string, start: number): string {
-  if (value[start] !== "{") return value[start];
-  const end = findClosing(value, start, "}");
-  return end > start ? value.slice(start, end + 1) : value[start];
+function discardPendingAnalysis(pattern: string, flags: string): void {
+  pendingAnalyses.delete(analysisKey(pattern, flags));
 }
