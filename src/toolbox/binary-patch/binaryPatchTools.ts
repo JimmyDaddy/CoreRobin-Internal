@@ -105,6 +105,30 @@ export interface TransferSavings {
   savingsPercent: number | null;
 }
 
+/**
+ * Estimate the planner's peak live byte set, including the input arrays held by
+ * the caller and the copies made around the diff/patch/verification workers.
+ * `artifactBytes` includes the candidate patch when evaluating a result.
+ */
+export function estimatePlannerWorkingSetBytes(targetBytes: number, residentBaselineBytes: number, currentBaselineBytes: number, patchBytes: number, artifactBytes: number): number {
+  const values = [targetBytes, residentBaselineBytes, currentBaselineBytes, patchBytes, artifactBytes];
+  if (!values.every((value) => Number.isSafeInteger(value) && value >= 0)) throw new Error("Planner working-set sizes must be non-negative safe integers.");
+  const terms = [
+    targetBytes,
+    residentBaselineBytes,
+    artifactBytes,
+    targetBytes * 3,
+    currentBaselineBytes * 2,
+    patchBytes * 2,
+  ];
+  let total = 0;
+  for (const term of terms) {
+    if (!Number.isSafeInteger(term) || total > Number.MAX_SAFE_INTEGER - term) return Number.MAX_SAFE_INTEGER;
+    total += term;
+  }
+  return total;
+}
+
 export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8Array, signal?: AbortSignal): Promise<VerifiedPatch> {
   assertSizeForRole(oldData, "baseline");
   assertSizeForRole(newData, "target");
@@ -227,7 +251,7 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
     const results: PatchPlanItem[] = [];
     const excluded: ExcludedPatchPlanItem[] = [];
     let artifactBytes = 0;
-    let loadedBaselineBytes = knownBaselineBytes ?? 0;
+    let peakWorkingSetBytes = estimatePlannerWorkingSetBytes(target.byteLength, knownBaselineBytes ?? 0, 0, 0, artifactBytes);
     for (const baseline of baselines) {
       let baselineData: Uint8Array;
       try {
@@ -238,20 +262,23 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
         results.push({ baselineName: baseline.name, baselineBytes: null, baselineSha256: null, status: "failed", patch: null, ratio: null, reason: "baseline_read_failed", error: classifyPatchError(error) });
         continue;
       }
-      if (knownBaselineBytes === null) loadedBaselineBytes = baselineData.byteLength;
+      const residentBaselineBytes = knownBaselineBytes ?? baselineData.byteLength;
+      peakWorkingSetBytes = Math.max(peakWorkingSetBytes, estimatePlannerWorkingSetBytes(target.byteLength, residentBaselineBytes, baselineData.byteLength, 0, artifactBytes));
       try {
         const result = await generateVerifiedPatch(baselineData, target, plannerSignal);
         const ratio = target.byteLength === 0 ? 0 : result.patch.byteLength / target.byteLength;
+        const nextArtifactBytes = artifactBytes + result.patch.byteLength;
+        const observedWorkingSetBytes = estimatePlannerWorkingSetBytes(target.byteLength, residentBaselineBytes, baselineData.byteLength, result.patch.byteLength, Number.isSafeInteger(nextArtifactBytes) ? nextArtifactBytes : Number.MAX_SAFE_INTEGER);
+        peakWorkingSetBytes = Math.max(peakWorkingSetBytes, observedWorkingSetBytes);
         if (ratio > maxPatchRatio) {
           results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: result.baselineSha256, status: "failed", patch: null, ratio, reason: "ratio_exceeded", error: null });
           continue;
         }
-        const nextArtifactBytes = artifactBytes + result.patch.byteLength;
         if (!Number.isSafeInteger(nextArtifactBytes) || nextArtifactBytes > artifactBudgetBytes) {
           excluded.push({ baselineName: baseline.name, patchBytes: result.patch.byteLength, reason: "artifact_budget" });
           continue;
         }
-        if (target.byteLength + loadedBaselineBytes + nextArtifactBytes > MAX_PLANNER_WORKING_SET_BYTES) {
+        if (observedWorkingSetBytes > MAX_PLANNER_WORKING_SET_BYTES) {
           excluded.push({ baselineName: baseline.name, patchBytes: result.patch.byteLength, reason: "working_set_budget" });
           continue;
         }
@@ -260,8 +287,6 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
       } catch (error) {
         if (isPatchTaskCancelled(error)) throw error;
         results.push({ baselineName: baseline.name, baselineBytes: baselineData.byteLength, baselineSha256: null, status: "failed", patch: null, ratio: null, reason: "patch_generation_failed", error: classifyPatchError(error) });
-      } finally {
-        loadedBaselineBytes = knownBaselineBytes === null ? 0 : knownBaselineBytes;
       }
     }
     return {
@@ -269,7 +294,7 @@ async function planPatchSources(target: Uint8Array, baselines: ReadonlyArray<Pat
       excluded,
       artifactBytes,
       artifactLimitBytes: artifactBudgetBytes,
-      workingSetBytes: target.byteLength + (knownBaselineBytes ?? 0) + artifactBytes,
+      workingSetBytes: peakWorkingSetBytes,
       workingSetLimitBytes: MAX_PLANNER_WORKING_SET_BYTES,
     };
   }, signal, PATCH_PLANNER_DEADLINE_MS);

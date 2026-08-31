@@ -17,6 +17,7 @@ import {
   applyPatchAndVerify,
   calculateTransferSavings,
   createPatchCollection,
+  estimatePlannerWorkingSetBytes,
   inspectPatchSafely,
   makePatchBundle,
   makePatchManifest,
@@ -47,6 +48,11 @@ describe("binary patch toolbox boundaries", () => {
 
   it("hashes bytes and keeps signing payload as data rather than a signature", async () => {
     expect(await sha256Hex(new TextEncoder().encode("abc"))).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  });
+
+  it("accounts for resident inputs and worker copies in the planner peak", () => {
+    expect(estimatePlannerWorkingSetBytes(10, 20, 5, 7, 9)).toBe(10 + 20 + 9 + 30 + 10 + 14);
+    expect(() => estimatePlannerWorkingSetBytes(-1, 0, 0, 0, 0)).toThrow("working-set");
   });
 
   it("recognizes malformed patch data without treating it as trusted", async () => {
@@ -161,7 +167,7 @@ describe("binary patch toolbox boundaries", () => {
     ], 2);
     expect(order).toEqual(["load:first", "load:second"]);
     expect(plan.results.map((item) => item.baselineName)).toEqual(["first", "second"]);
-    expect(plan.workingSetBytes).toBe(3);
+    expect(plan.workingSetBytes).toBe(11);
   });
 
   it("reports an oversized lazy baseline as a failed item", async () => {
