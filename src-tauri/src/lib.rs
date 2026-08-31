@@ -17,6 +17,12 @@ mod health_state;
 mod history_export;
 mod history_storage;
 mod identity;
+// The safety controller and wire protocol are compiled and tested now, while
+// the signed platform helper adapter remains an explicitly unavailable
+// capability. Keep its intentionally uncalled production API visible to the
+// future adapter without weakening test-time lint coverage.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) mod keyboard_cleaning;
 mod models;
 mod monitor;
 mod native_uninstall;

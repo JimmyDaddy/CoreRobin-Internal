@@ -5,13 +5,13 @@
 //! adapter. The WebView never receives keyboard input: only lifecycle facts
 //! and opaque heartbeat sequence numbers cross this boundary.
 
+use serde::{Deserialize, Serialize};
+
 mod helper_protocol;
 
-pub use helper_protocol::{
-    HeartbeatSignal, HelperCapability, HelperCommand, HelperLifecycleReason, HelperSignal,
-    HelperStopReason, HookEffectiveness, HookFailure, HookIneffectiveSignal, LifecycleSignal,
-    PROTOCOL_VERSION, ProtocolError, ReadySignal, ReleasedSignal, StartCommand, StopCommand,
-    decode_signal, encode_command, encode_signal,
+use helper_protocol::{
+    HelperCapability, HelperCommand, HelperLifecycleReason, HelperSignal, HelperStopReason,
+    HookEffectiveness, PROTOCOL_VERSION,
 };
 
 pub const PREPARATION_WINDOW_MS: u64 = 3_000;
@@ -634,8 +634,6 @@ impl From<HelperLifecycleReason> for EndReason {
         }
     }
 }
-
-use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 #[path = "tests.rs"]
