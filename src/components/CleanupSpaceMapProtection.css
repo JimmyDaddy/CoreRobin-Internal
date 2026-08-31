@@ -98,12 +98,19 @@
 }
 .cleanup-map__active-filter button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
 
-.cleanup-index-list { display: grid; align-content: start; min-height: 470px; padding: 16px; }
+.cleanup-index-list {
+  --cleanup-list-size-width: 104px;
+  --cleanup-list-share-width: 96px;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+  padding: 6px 0 12px;
+}
 .cleanup-index-list__toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  grid-template-columns: 36px minmax(140px, 1fr) auto auto;
   gap: 8px;
-  margin-bottom: 12px;
 }
 .cleanup-index-list__toolbar label,
 .cleanup-index-list__toolbar select,
@@ -111,33 +118,96 @@
   min-height: 36px;
   color: var(--text-soft);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-soft);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  font-size: 12px;
 }
-.cleanup-index-list__toolbar label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 0 10px; }
-.cleanup-index-list__toolbar input { min-width: 0; color: var(--text); border: 0; outline: 0; background: transparent; }
+.cleanup-index-list__toolbar label { display: grid; min-width: 0; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 10px; }
+.cleanup-index-list__toolbar label:focus-within { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-soft); }
+.cleanup-index-list__toolbar input { width: 100%; min-width: 0; color: var(--text); border: 0; outline: 0; background: transparent; font: inherit; }
+.cleanup-index-list__toolbar input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .cleanup-index-list__toolbar label button { display: grid; place-items: center; padding: 3px; color: var(--text-muted); border: 0; background: transparent; }
 .cleanup-index-list__toolbar select { padding: 0 28px 0 10px; }
-.cleanup-index-list__toolbar > button { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; }
-.cleanup-index-list__table { display: grid; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; }
-.cleanup-index-list__table > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; min-height: 48px; border-bottom: 1px solid var(--border); }
-.cleanup-index-list__table > div:last-of-type { border-bottom: 0; }
-.cleanup-index-list__table > div:hover,
-.cleanup-index-list__table > div.is-selected { background: rgba(99, 168, 255, 0.07); }
-.cleanup-index-list__table input { justify-self: center; accent-color: var(--blue); }
-.cleanup-index-list__table [role="listitem"] > button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; padding: 7px 11px 7px 0; color: var(--text-soft); text-align: left; border: 0; background: transparent; cursor: pointer; }
-.cleanup-index-list__table [role="listitem"] > button > span:nth-child(2) { display: grid; min-width: 0; }
-.cleanup-index-list__table strong,
-.cleanup-index-list__table small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cleanup-index-list__table strong { color: var(--text); font-size: 12px; }
-.cleanup-index-list__table small { margin-top: 2px; color: var(--text-muted); font-size: 9px; }
-.cleanup-index-list__table b { color: var(--text-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
-.cleanup-index-list__state { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 300px; color: var(--text-muted); }
-.cleanup-index-list__state.is-error { color: var(--red); }
-.cleanup-index-list__more { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; color: var(--blue); border: 0; border-top: 1px solid var(--border); background: var(--surface-soft); }
+.cleanup-index-list__toolbar > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; white-space: nowrap; }
+.cleanup-index-list__toolbar > button:disabled { opacity: 0.4; }
+.cleanup-index-list__toolbar > button:hover:not(:disabled) { color: var(--blue); border-color: var(--blue); }
+.cleanup-index-list__summary { display: flex; min-width: 0; justify-content: space-between; align-items: center; gap: 12px; padding: 0 2px; color: var(--text-muted); font-size: 12px; }
+.cleanup-index-list__summary > span { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.cleanup-index-list__summary svg { flex-shrink: 0; }
+.cleanup-index-list__summary strong { overflow: hidden; color: var(--text-soft); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.cleanup-index-list__summary b { flex-shrink: 0; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.cleanup-index-list__frame { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.cleanup-index-list__columns {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cleanup-list-size-width) var(--cleanup-list-share-width);
+  gap: 12px;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 38px 0 78px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-soft);
+  font-size: 11px;
+}
+.cleanup-index-list__columns > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cleanup-index-list__columns > span:not(:first-child) { text-align: right; }
+.cleanup-index-list__viewport { height: clamp(320px, 44vh, 520px); overflow-y: auto; scrollbar-gutter: stable; overscroll-behavior-y: contain; }
+.cleanup-index-list__table { display: grid; align-content: start; }
+.cleanup-index-list__row { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; min-height: 60px; border-bottom: 1px solid var(--border); }
+.cleanup-index-list__row:hover { background: rgba(99, 168, 255, 0.035); }
+.cleanup-index-list__row.is-selected { background: var(--blue-soft); box-shadow: inset 2px 0 0 var(--blue); }
+.cleanup-index-list__row.is-collected { background: color-mix(in srgb, var(--green-soft) 60%, transparent); }
+.cleanup-index-list__row > input { width: 15px; height: 15px; justify-self: center; accent-color: var(--blue); }
+.cleanup-index-list__row > input:disabled { opacity: 0.4; }
+.cleanup-index-list__row > button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) var(--cleanup-list-size-width) var(--cleanup-list-share-width) 14px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 12px 8px 0;
+  color: var(--text-soft);
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.cleanup-index-list__row > button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: 6px; }
+.cleanup-index-list__icon { display: grid; width: 32px; height: 32px; place-items: center; color: var(--blue); border-radius: 8px; background: var(--blue-soft); }
+.cleanup-index-list__icon.is-file { color: var(--text-muted); background: var(--panel-soft); }
+.cleanup-index-list__icon.is-aggregate { color: var(--text-muted); background: var(--panel-soft); }
+.cleanup-index-list__icon.is-restricted { color: var(--amber); background: var(--amber-soft); }
+.cleanup-index-list__name { display: grid; min-width: 0; gap: 4px; }
+.cleanup-index-list__name strong,
+.cleanup-index-list__name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cleanup-index-list__name strong { color: var(--text); font-size: 13px; font-weight: 600; }
+.cleanup-index-list__name small { color: var(--text-muted); font-size: 11px; }
+.cleanup-index-list__row b { color: var(--text-soft); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.cleanup-index-list__share { display: grid; gap: 6px; color: var(--text-muted); text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+.cleanup-index-list__share > i { display: block; height: 3px; overflow: hidden; border-radius: 4px; background: var(--border); }
+.cleanup-index-list__share > i > i { display: block; height: 100%; border-radius: inherit; background: var(--blue); opacity: 0.65; }
+.cleanup-index-list__chevron { color: var(--text-muted); }
+.cleanup-index-list__state { display: flex; height: calc(100% - 36px); align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 24px; color: var(--text-muted); font-size: 12px; }
+.cleanup-index-list__state.is-error { color: var(--danger); }
+.cleanup-index-list__footer { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 12px; color: var(--text-muted); border-top: 1px solid var(--border); background: var(--panel-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cleanup-index-list__more { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 4px 10px; color: var(--blue); border: 1px solid var(--border); border-radius: 6px; background: var(--blue-soft); font-size: 11px; }
+.cleanup-index-list__more:disabled { opacity: 0.6; }
+.cleanup-index-list__page-error { display: flex; align-items: center; gap: 7px; color: var(--danger); font-size: 12px; }
+.cleanup-map__workspace.is-list .cleanup-map__freshness,
+.cleanup-map__workspace.is-list .cleanup-map__refresh-progress { position: static; max-width: 100%; margin: 4px 0 12px; transform: none; }
+.cleanup-map__workspace.is-list .cleanup-map__canvas { padding-bottom: 0; }
 
 @media (max-width: 960px) {
   .cleanup-map__view-controls { justify-content: flex-start; }
-  .cleanup-index-list__toolbar { grid-template-columns: 1fr 1fr; }
-  .cleanup-index-list__toolbar label { grid-column: 1 / -1; }
+  .cleanup-index-list { --cleanup-list-size-width: 88px; --cleanup-list-share-width: 88px; }
+}
+
+@media (max-width: 720px) {
+  .cleanup-index-list__toolbar { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .cleanup-index-list__toolbar label { grid-column: 2 / -1; }
+  .cleanup-index-list__toolbar select { grid-column: 2; }
 }

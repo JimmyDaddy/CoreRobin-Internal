@@ -3,7 +3,10 @@ import {
   ArchiveRestore,
   ArrowRight,
   Boxes,
+  Check,
   ChevronDown,
+  ChevronUp,
+  Clock3,
   Code2,
   Download,
   FileArchive,
@@ -45,6 +48,7 @@ import type {
   CleanupScanJobStatus,
   CleanupScanJobPhase,
   CleanupScanProgress,
+  CleanupScanProfile,
   CleanupScanTarget,
   CommandError,
   VolumeSnapshot,
@@ -162,7 +166,10 @@ export function CleanupAssistant({
   );
   const [recentTargets, setRecentTargets] = useState(loadRecentCleanupTargets);
   const [selectingFolder, setSelectingFolder] = useState(false);
+  const [folderSelectionError, setFolderSelectionError] = useState<CommandError | null>(null);
   const [targetSettingsExpanded, setTargetSettingsExpanded] = useState(false);
+  const lastConfiguredScanIdRef = useRef(snapshot?.scanId);
+  const systemProfileRef = useRef<CleanupScanProfile>(selectedTarget.targetKind === "system_disk" ? selectedTarget.profile ?? "common_locations" : "common_locations");
   const [mapCommand, setMapCommand] =
     useState<CleanupSpaceMapCommand | null>(null);
   const mapCommandIdRef = useRef(0);
@@ -230,18 +237,27 @@ export function CleanupAssistant({
   }, [onReloadLatestSnapshot]);
 
   useEffect(() => {
-    if (!snapshot) return;
+    if (!snapshot || snapshot.scanId === lastConfiguredScanIdRef.current) return;
+    lastConfiguredScanIdRef.current = snapshot.scanId;
     setSelectedTarget({
       profile: snapshot.profile,
       targetKind: snapshot.targetKind,
       targetPath: snapshot.targetPath,
     });
+    if (snapshot.targetKind === "system_disk") systemProfileRef.current = snapshot.profile;
+    setFolderSelectionError(null);
     setTargetSettingsExpanded(false);
   }, [snapshot]);
 
   const targetSettingsCollapsed = Boolean(
     snapshot && !loading && !targetSettingsExpanded,
   );
+  const targetControlsBusy = loading || checkingAccess || selectingFolder;
+  const targetChanged = Boolean(snapshot && !loading && (
+    snapshot.targetKind !== selectedTarget.targetKind
+    || (selectedTarget.targetKind !== "system_disk" && snapshot.targetPath !== selectedTarget.targetPath)
+    || snapshot.profile !== selectedTarget.profile
+  ));
 
   const startSelectedScan = useCallback(() => {
     if (selectedTarget.targetKind !== "system_disk") {
@@ -311,6 +327,7 @@ export function CleanupAssistant({
       onCancel();
       return;
     }
+    if (selectingFolder || checkingAccess) return;
     if (selectedTarget.targetKind === "system_disk") {
       void checkScanAccess(true, preferAccessibleScan);
       return;
@@ -355,14 +372,16 @@ export function CleanupAssistant({
   };
 
   const chooseFolder = async () => {
-    if (selectingFolder || loading) return;
+    if (targetControlsBusy) return;
     setSelectingFolder(true);
-    setAccessError(null);
+    setFolderSelectionError(null);
+    setWaitingForAccess(false);
     try {
       const selected = await open({
         directory: true,
         multiple: false,
         title: t("cleanup:targets.chooseFolderTitle"),
+        ...(selectedTarget.targetKind === "folder" && selectedTarget.targetPath ? { defaultPath: selectedTarget.targetPath } : {}),
       });
       if (typeof selected !== "string" || selected.length === 0) return;
       const target: CleanupScanTarget = {
@@ -370,21 +389,29 @@ export function CleanupAssistant({
         targetKind: "folder",
         targetPath: selected,
       };
+      if (selectedTarget.targetKind === "system_disk") systemProfileRef.current = selectedTarget.profile ?? "common_locations";
       setSelectedTarget(target);
+      setAccessGuideOpen(false);
+      setAccessError(null);
       setRecentTargets(saveRecentCleanupTarget(target));
     } catch (caughtError) {
-      setAccessError(normalizeCommandError(caughtError));
+      setFolderSelectionError(normalizeCommandError(caughtError));
     } finally {
       setSelectingFolder(false);
     }
   };
 
   const selectTarget = (target: CleanupScanTarget) => {
-    if (loading) return;
+    if (targetControlsBusy) return;
+    if (selectedTarget.targetKind === "system_disk") systemProfileRef.current = selectedTarget.profile ?? "common_locations";
+    setFolderSelectionError(null);
+    setAccessGuideOpen(false);
+    setWaitingForAccess(false);
+    setAccessError(null);
     setSelectedTarget({
       ...target,
       profile: target.targetKind === "system_disk"
-        ? target.profile ?? selectedTarget.profile ?? "common_locations"
+        ? target.profile ?? systemProfileRef.current
         : "complete",
     });
   };
@@ -453,7 +480,7 @@ export function CleanupAssistant({
           <button
             className={`button ${loading ? "button--secondary" : "button--primary"} cleanup-assistant__scan`}
             type="button"
-            disabled={cancelling || checkingAccess}
+            disabled={cancelling || checkingAccess || selectingFolder}
             onClick={requestScan}
           >
             {loading
@@ -463,7 +490,7 @@ export function CleanupAssistant({
               ? t("cleanup:access.checking")
               : loading
                 ? cancelling ? t("cleanup:cancelling") : t("cleanup:cancelScan")
-                : snapshot
+                : snapshot && !targetChanged
                   ? t("cleanup:scanAgain")
                   : t("cleanup:startScan")}
           </button>
@@ -478,45 +505,48 @@ export function CleanupAssistant({
           </div>
           <div className="cleanup-targets__summary">
             <span className="cleanup-targets__current" title={selectedTarget.targetPath ?? undefined}>
-              {targetLabel(selectedTarget, volumes, t)}
+              {selectedTarget.targetKind === "folder" ? targetBasename(selectedTarget.targetPath) : targetLabel(selectedTarget, volumes, t)}
             </span>
-            {targetSettingsCollapsed && selectedTarget.targetKind === "system_disk" ? (
+            {targetSettingsCollapsed ? (
               <span className="cleanup-targets__profile">
                 {t(selectedTarget.profile === "complete"
                   ? "cleanup:profiles.complete.title"
                   : "cleanup:profiles.quick.title")}
               </span>
             ) : null}
-            {targetSettingsCollapsed ? (
+            {targetChanged ? <span className="cleanup-targets__pending">{t("cleanup:targets.pending")}</span> : null}
+            {snapshot && !loading ? (
               <button
                 className="cleanup-targets__edit"
                 type="button"
-                aria-expanded="false"
-                onClick={() => setTargetSettingsExpanded(true)}
+                aria-expanded={!targetSettingsCollapsed}
+                aria-controls="cleanup-target-options"
+                disabled={targetControlsBusy}
+                onClick={() => setTargetSettingsExpanded((current) => !current)}
               >
-                <Settings2 size={13} />
-                {t("cleanup:targets.modify")}
+                {targetSettingsCollapsed ? <Settings2 size={13} /> : <ChevronUp size={13} />}
+                {t(targetSettingsCollapsed ? "cleanup:targets.modify" : "cleanup:targets.collapse")}
               </button>
             ) : null}
           </div>
         </div>
-        {!targetSettingsCollapsed ? <>
-          <div className={`cleanup-targets__body${selectedTarget.targetKind !== "system_disk" ? " is-single" : ""}`}>
+        {!targetSettingsCollapsed ? <div id="cleanup-target-options" className="cleanup-targets__options">
+          <div className="cleanup-targets__body">
           <div className="cleanup-targets__target-group">
             <div className="cleanup-targets__choices" role="group" aria-label={t("cleanup:targets.title")}>
               <button
                 className={selectedTarget.targetKind === "system_disk" ? "is-selected" : undefined}
                 type="button"
                 aria-pressed={selectedTarget.targetKind === "system_disk"}
-                disabled={loading}
+                disabled={targetControlsBusy}
                 onClick={() => selectTarget({
-                  profile: selectedTarget.profile ?? "common_locations",
                   targetKind: "system_disk",
                   targetPath: null,
                 })}
               >
-                <HardDrive size={15} />
-                <span>{t("cleanup:targets.systemDisk")}</span>
+                <span className="cleanup-targets__choice-icon"><HardDrive size={20} /></span>
+                <span className="cleanup-targets__choice-copy"><strong>{t("cleanup:targets.systemDisk")}</strong><small title={t("cleanup:targets.systemDescription")}>{t("cleanup:targets.systemDescription")}</small></span>
+                <span className="cleanup-targets__choice-check" aria-hidden="true">{selectedTarget.targetKind === "system_disk" ? <Check size={12} /> : null}</span>
               </button>
               {selectableVolumes.map((volume) => (
                 <button
@@ -524,7 +554,7 @@ export function CleanupAssistant({
                   key={volume.mountPoint}
                   type="button"
                   aria-pressed={selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint}
-                  disabled={loading}
+                  disabled={targetControlsBusy}
                   title={volume.mountPoint}
                   onClick={() => selectTarget({
                     profile: "complete",
@@ -532,22 +562,32 @@ export function CleanupAssistant({
                     targetPath: volume.mountPoint,
                   })}
                 >
-                  <ArchiveRestore size={15} />
-                  <span>{volume.name || volume.mountPoint}</span>
-                  {volume.removable ? <small>{t("cleanup:targets.removable")}</small> : null}
+                  <span className="cleanup-targets__choice-icon"><ArchiveRestore size={20} /></span>
+                  <span className="cleanup-targets__choice-copy"><strong>{volume.name || volume.mountPoint}</strong><small title={volume.mountPoint}>{volume.removable ? `${t("cleanup:targets.removable")} · ` : ""}{volume.mountPoint}</small></span>
+                  <span className="cleanup-targets__choice-check" aria-hidden="true">{selectedTarget.targetKind === "volume" && selectedTarget.targetPath === volume.mountPoint ? <Check size={12} /> : null}</span>
                 </button>
               ))}
               <button
-                className={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath) ? "is-selected" : undefined}
+                className={selectedTarget.targetKind === "folder" ? "is-selected" : undefined}
                 type="button"
-                aria-pressed={selectedTarget.targetKind === "folder" && !recentTargets.some((target) => target.targetPath === selectedTarget.targetPath)}
-                disabled={loading || selectingFolder}
+                aria-pressed={selectedTarget.targetKind === "folder"}
+                aria-label={t("cleanup:targets.chooseFolder")}
+                disabled={targetControlsBusy}
                 onClick={() => void chooseFolder()}
               >
-                {selectingFolder ? <RefreshCw className="is-spinning" size={15} /> : <FolderOpen size={15} />}
-                <span>{t("cleanup:targets.chooseFolder")}</span>
+                <span className="cleanup-targets__choice-icon">{selectingFolder ? <RefreshCw className="is-spinning" size={20} /> : <FolderOpen size={20} />}</span>
+                <span className="cleanup-targets__choice-copy"><strong>{t("cleanup:targets.chooseFolder")}</strong><small title={t("cleanup:targets.folderDescription")}>{t(selectingFolder ? "cleanup:targets.choosingFolder" : selectedTarget.targetKind === "folder" ? "cleanup:targets.changeFolder" : "cleanup:targets.folderDescription")}</small></span>
+                <span className="cleanup-targets__choice-check" aria-hidden="true">{selectedTarget.targetKind === "folder" ? <Check size={12} /> : <Plus size={12} />}</span>
               </button>
             </div>
+            {selectedTarget.targetKind !== "system_disk" ? (
+              <div className="cleanup-targets__selected-path" role="status">
+                {selectedTarget.targetKind === "folder" ? <FolderOpen size={16} /> : <HardDrive size={16} />}
+                <span><strong>{targetBasename(selectedTarget.targetPath)}</strong><small title={selectedTarget.targetPath ?? undefined}>{selectedTarget.targetPath}</small></span>
+                <span className="cleanup-targets__profile">{t("cleanup:profiles.complete.title")}</span>
+              </div>
+            ) : null}
+            {folderSelectionError ? <div className="cleanup-targets__error" role="alert"><AlertTriangle size={15} /><span>{t("cleanup:targets.folderFailed")}</span><button type="button" disabled={targetControlsBusy} onClick={() => void chooseFolder()}>{t("common:retry")}</button></div> : null}
           </div>
           {selectedTarget.targetKind === "system_disk" ? (
             <div className="cleanup-scan-profile">
@@ -557,34 +597,35 @@ export function CleanupAssistant({
                   type="button"
                   aria-pressed={selectedTarget.profile !== "complete"}
                   className={selectedTarget.profile !== "complete" ? "is-selected" : undefined}
-                  disabled={loading}
+                  disabled={targetControlsBusy}
                   onClick={() => setSelectedTarget((current) => ({
                     ...current,
                     profile: "common_locations",
                   }))}
                 >
-                  <Sparkles size={15} />
+                  <Sparkles size={18} />
                   <span>
-                    <strong>{t("cleanup:profiles.quick.title")}</strong>
+                    <strong>{t("cleanup:profiles.quick.title")}<em>{t("cleanup:profiles.recommended")}</em></strong>
                     <small>{t("cleanup:profiles.quick.description")}</small>
                   </span>
-                  <em>{t("cleanup:profiles.recommended")}</em>
+                  <span className="cleanup-targets__choice-check" aria-hidden="true">{selectedTarget.profile !== "complete" ? <Check size={12} /> : null}</span>
                 </button>
                 <button
                   type="button"
                   aria-pressed={selectedTarget.profile === "complete"}
                   className={selectedTarget.profile === "complete" ? "is-selected" : undefined}
-                  disabled={loading}
+                  disabled={targetControlsBusy}
                   onClick={() => setSelectedTarget((current) => ({
                     ...current,
                     profile: "complete",
                   }))}
                 >
-                  <HardDrive size={15} />
+                  <HardDrive size={18} />
                   <span>
                     <strong>{t("cleanup:profiles.complete.title")}</strong>
                     <small>{t("cleanup:profiles.complete.description")}</small>
                   </span>
+                  <span className="cleanup-targets__choice-check" aria-hidden="true">{selectedTarget.profile === "complete" ? <Check size={12} /> : null}</span>
                 </button>
               </div>
             </div>
@@ -598,18 +639,20 @@ export function CleanupAssistant({
         ) : null}
         {recentTargets.length > 0 ? (
           <div className="cleanup-targets__recent">
-            <span>{t("cleanup:targets.recent")}</span>
+            <span><Clock3 size={12} />{t("cleanup:targets.recent")}</span>
             {recentTargets.map((target) => (
               <button
                 className={selectedTarget.targetKind === target.targetKind && selectedTarget.targetPath === target.targetPath ? "is-selected" : undefined}
                 key={`${target.targetKind}:${target.targetPath}`}
                 type="button"
+                aria-label={`${targetBasename(target.targetPath)} ${target.targetPath ?? ""}`}
                 aria-pressed={selectedTarget.targetKind === target.targetKind && selectedTarget.targetPath === target.targetPath}
-                disabled={loading}
+                disabled={targetControlsBusy}
                 title={target.targetPath ?? undefined}
                 onClick={() => selectTarget(target)}
               >
-                {targetBasename(target.targetPath)}
+                {target.targetKind === "folder" ? <FolderOpen size={14} /> : <HardDrive size={14} />}
+                <span><strong>{targetBasename(target.targetPath)}</strong><small>{target.targetPath}</small></span>
               </button>
             ))}
           </div>
@@ -620,7 +663,7 @@ export function CleanupAssistant({
             {t("cleanup:targets.readOnlyNotice")}
           </p>
         ) : null}
-        </> : null}
+        </div> : null}
       </section>
 
       {accessGuideOpen && !loading ? (
@@ -740,7 +783,7 @@ export function CleanupAssistant({
             <Button
               variant="primary"
               className="cleanup-empty-state__action"
-              disabled={checkingAccess}
+              disabled={checkingAccess || selectingFolder}
               onClick={requestScan}
             >
               {checkingAccess ? <RefreshCw className="is-spinning" size={16} /> : <ScanSearch size={16} />}
@@ -1123,7 +1166,7 @@ function targetLabel(
 
 function targetBasename(path: string | null): string {
   if (!path) return "";
-  const segments = path.split("/").filter(Boolean);
+  const segments = path.split(/[\\/]/).filter(Boolean);
   return segments[segments.length - 1] ?? path;
 }
 

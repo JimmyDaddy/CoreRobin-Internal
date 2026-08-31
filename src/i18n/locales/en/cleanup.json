@@ -108,6 +108,13 @@
     "title": "What this space is commonly used for"
   },
   "map": {
+    "list": {
+      "name": "Name",
+      "share": "Folder share",
+      "sort": "Sort list",
+      "shown": "{{count}} shown",
+      "loadMore": "Load more"
+    },
     "title": "Where the space went",
     "back": "Back one level",
     "description": "Sector area represents allocated disk space. Related hues belong to one folder branch; gray sectors are files.",
@@ -202,6 +209,26 @@
       "refreshFolder": "Refresh {{name}}",
       "refreshingFolder": "Refreshing {{name}}…"
     }
+  },
+  "settlement": {
+    "status": {
+      "success": "Cleanup complete",
+      "partial": "Partially complete",
+      "cancelled": "Cleanup stopped",
+      "failed": "Cleanup did not complete",
+      "empty": "No items processed"
+    },
+    "movedLabel": "Moved to Trash",
+    "availableLabel": "Increase in available space",
+    "processedLabel": "Space processed",
+    "completed": "Completed: {{count}}",
+    "processed": "Processed {{size}}",
+    "failed": "Not completed: {{count}}",
+    "trashNote": "Items remain recoverable in Trash. Moving them does not mean disk space has been freed.",
+    "unmeasuredNote": "Processed size is not the same as freed space. Available-space measurements were not obtained.",
+    "pendingNote": "Snapshots, open files, or delayed system reclamation may affect available space.",
+    "measuredNote": "Measured change in available space before and after the operation; other apps may also affect it.",
+    "viewResult": "View results"
   },
   "deleteDialog": {
     "title": "Review the cleanup basket",
@@ -337,10 +364,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "Recent locations",
     "removable": "Removable",
     "modify": "Change scope",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "Collapse",
+    "pending": "Not scanned yet",
+    "systemDescription": "Common locations or the whole system disk",
+    "folderDescription": "Focus on a folder and its subfolders",
+    "choosingFolder": "Choosing a folder…",
+    "changeFolder": "Selected · Click to change folder",
+    "folderFailed": "Could not open the folder picker. Try again.",
+    "readOnlyNotice": "Only the selected location and its subfolders are checked. Scanning does not change files."
   },
   "growth": {
     "title": "Space change since the last scan",

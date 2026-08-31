@@ -595,6 +595,13 @@ export default interface Resources {
       },
       "grouped": "汇总分类",
       "includedByParent": "已随上级文件夹加入",
+      "list": {
+        "loadMore": "加载更多",
+        "name": "名称",
+        "share": "当前目录占比",
+        "shown": "已显示 {{count}} 项",
+        "sort": "列表排序"
+      },
       "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
       "loadFailed": "无法读取目录索引",
       "loadMore": "再显示 50 项",
@@ -756,6 +763,26 @@ export default interface Resources {
       "targetUnavailable": "所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。"
     },
     "scanning": "扫描中…",
+    "settlement": {
+      "availableLabel": "可用空间增加",
+      "completed": "已完成 {{count}} 项",
+      "failed": "{{count}} 项未完成",
+      "measuredNote": "操作前后测得的可用空间差值，也可能受其他应用影响。",
+      "movedLabel": "已移到废纸篓",
+      "pendingNote": "可用空间可能受快照、文件占用或系统回收延迟影响。",
+      "processed": "已处理 {{size}}",
+      "processedLabel": "已处理空间",
+      "status": {
+        "cancelled": "清理已停止",
+        "empty": "没有处理内容",
+        "failed": "清理未完成",
+        "partial": "部分完成",
+        "success": "清理完成"
+      },
+      "trashNote": "内容仍在废纸篓中，可恢复；清空前不代表磁盘空间已释放。",
+      "unmeasuredNote": "已处理大小不等于实际释放空间；本次未取得可用空间变化。",
+      "viewResult": "查看结算"
+    },
     "snapshot": {
       "cached": {
         "description": "无需重新等待即可继续查看；切换目录只读取本机索引，不会访问文件系统。",
@@ -770,13 +797,20 @@ export default interface Resources {
     },
     "startScan": "开始只读扫描",
     "targets": {
+      "changeFolder": "已选定 · 点击更换文件夹",
       "chooseFolder": "选择文件夹",
       "chooseFolderTitle": "选择一个要扫描的文件夹",
+      "choosingFolder": "正在选择文件夹…",
+      "collapse": "收起",
+      "folderDescription": "聚焦一个文件夹及其子目录",
+      "folderFailed": "无法打开文件夹选择器，请重试。",
       "kicker": "扫描范围",
       "modify": "修改范围",
-      "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。",
-      "recent": "最近扫描",
+      "pending": "待扫描",
+      "readOnlyNotice": "仅检查所选位置及子目录；扫描不会修改文件。",
+      "recent": "最近位置",
       "removable": "可移除",
+      "systemDescription": "常用位置或整个系统磁盘",
       "systemDisk": "系统磁盘",
       "title": "选择要扫描的位置"
     },

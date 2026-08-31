@@ -6,6 +6,7 @@ import type { CleanupMapNode } from "../cleanupMap";
 import { cleanupLeaseCanExecute } from "../cleanupDeleteFreshness";
 import type { CleanupDeleteLease, CleanupDeleteMode, CleanupDeleteProgress, CommandError } from "../types";
 import { formatBytes } from "../utils";
+import { CleanupProcessing } from "./CleanupProcessing";
 
 interface CleanupDeleteDialogProps {
   title?: string;
@@ -20,7 +21,7 @@ interface CleanupDeleteDialogProps {
   error: CommandError | null;
   mode: CleanupDeleteMode;
   deleteAcknowledged: boolean;
-  progressVariant?: "default" | "application";
+  progressVariant?: "default" | "application" | "basket";
   onModeChange: (mode: CleanupDeleteMode) => void;
   onDeleteAcknowledgedChange: (checked: boolean) => void;
   onCancel: () => void;
@@ -52,6 +53,7 @@ export function CleanupDeleteDialog({
 }: CleanupDeleteDialogProps) {
   const { t } = useAppTranslation();
   const cancelButton = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLElement>(null);
   const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const changedPaths = new Set(lease?.changedPaths ?? []);
   const canConfirm =
@@ -71,6 +73,16 @@ export function CleanupDeleteDialog({
   useEffect(() => {
     cancelButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab" && progressVariant === "basket") {
+        const controls = dialog.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)");
+        if (controls?.length) {
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
+        return;
+      }
       if (event.key !== "Escape") return;
       if (submitting) {
         if (!cancelling) onCancelExecution();
@@ -80,12 +92,13 @@ export function CleanupDeleteDialog({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cancelling, onCancel, onCancelExecution, submitting]);
+  }, [cancelling, onCancel, onCancelExecution, progressVariant, submitting]);
 
   return (
-    <div className="dialog-backdrop" role="presentation" onMouseDown={submitting ? undefined : onCancel}>
+    <div className={`dialog-backdrop${progressVariant === "basket" ? " cleanup-basket-backdrop" : ""}`} role="presentation" onMouseDown={submitting ? undefined : onCancel}>
       <section
-        className={`cleanup-delete-dialog is-${mode}`}
+        ref={dialog}
+        className={`cleanup-delete-dialog is-${mode}${progressVariant === "basket" ? " is-basket" : ""}`}
         role="alertdialog"
         aria-modal="true"
         aria-busy={preparing || modeSwitching || submitting}
@@ -97,7 +110,7 @@ export function CleanupDeleteDialog({
             {mode === "trash" ? <ArchiveRestore size={20} /> : <ShieldAlert size={20} />}
           </span>
           <div>
-            <h2 id="cleanup-delete-title">{title ?? t("cleanup:deleteDialog.title")}</h2>
+            <h2 id="cleanup-delete-title">{progressVariant === "basket" && submitting ? t("cleanup:map.basket.title") : title ?? t("cleanup:deleteDialog.title")}</h2>
             <p>{description ?? t("cleanup:deleteDialog.description")}</p>
           </div>
           <button className="icon-button" type="button" aria-label={t("common:cancel")} disabled={submitting} onClick={onCancel}>
@@ -134,6 +147,7 @@ export function CleanupDeleteDialog({
           </fieldset>
         ) : null}
 
+        {!(submitting && progressVariant === "basket") ? <>
         <div className="cleanup-delete-dialog__summary">
           <span><strong>{items.length}</strong>{t("cleanup:deleteDialog.itemUnit")}</span>
           <span><strong>{formatBytes(totalBytes)}</strong>{t("cleanup:deleteDialog.estimatedSize")}</span>
@@ -158,8 +172,11 @@ export function CleanupDeleteDialog({
             </li>
           ))}
         </ol>
+        </> : null}
 
-        {submitting ? (
+        {submitting && progressVariant === "basket" ? (
+          <CleanupProcessing progress={progress} mode={mode} cancelling={cancelling} targetCount={items.length} />
+        ) : submitting ? (
           <div className={`cleanup-delete-dialog__progress${progressVariant === "application" ? " is-application" : ""}${cancelling ? " is-cancelling" : ""}`} role="status" aria-live="polite">
             {progressVariant === "application" && !cancelling ? (
               <span className={`cleanup-delete-dialog__app-progress-mark is-${mode}`} aria-hidden="true">

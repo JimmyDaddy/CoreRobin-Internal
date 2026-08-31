@@ -108,6 +108,13 @@
     "title": "这些空间大多用来做什么"
   },
   "map": {
+    "list": {
+      "name": "名称",
+      "share": "当前目录占比",
+      "sort": "列表排序",
+      "shown": "已显示 {{count}} 项",
+      "loadMore": "加载更多"
+    },
     "title": "空间都去了哪里",
     "back": "返回上一级",
     "description": "扇形面积按磁盘实际占用计算；同色系表示同一目录分支，灰色表示文件。",
@@ -202,6 +209,26 @@
       "refreshFolder": "刷新 {{name}}",
       "refreshingFolder": "正在刷新 {{name}}…"
     }
+  },
+  "settlement": {
+    "status": {
+      "success": "清理完成",
+      "partial": "部分完成",
+      "cancelled": "清理已停止",
+      "failed": "清理未完成",
+      "empty": "没有处理内容"
+    },
+    "movedLabel": "已移到废纸篓",
+    "availableLabel": "可用空间增加",
+    "processedLabel": "已处理空间",
+    "completed": "已完成 {{count}} 项",
+    "processed": "已处理 {{size}}",
+    "failed": "{{count}} 项未完成",
+    "trashNote": "内容仍在废纸篓中，可恢复；清空前不代表磁盘空间已释放。",
+    "unmeasuredNote": "已处理大小不等于实际释放空间；本次未取得可用空间变化。",
+    "pendingNote": "可用空间可能受快照、文件占用或系统回收延迟影响。",
+    "measuredNote": "操作前后测得的可用空间差值，也可能受其他应用影响。",
+    "viewResult": "查看结算"
   },
   "deleteDialog": {
     "title": "检查清理篮中的内容",
@@ -337,10 +364,17 @@
     "systemDisk": "系统磁盘",
     "chooseFolder": "选择文件夹",
     "chooseFolderTitle": "选择一个要扫描的文件夹",
-    "recent": "最近扫描",
+    "recent": "最近位置",
     "removable": "可移除",
     "modify": "修改范围",
-    "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。"
+    "collapse": "收起",
+    "pending": "待扫描",
+    "systemDescription": "常用位置或整个系统磁盘",
+    "folderDescription": "聚焦一个文件夹及其子目录",
+    "choosingFolder": "正在选择文件夹…",
+    "changeFolder": "已选定 · 点击更换文件夹",
+    "folderFailed": "无法打开文件夹选择器，请重试。",
+    "readOnlyNotice": "仅检查所选位置及子目录；扫描不会修改文件。"
   },
   "growth": {
     "title": "较上次扫描的空间变化",

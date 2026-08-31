@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, ArrowLeft, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
@@ -41,7 +41,8 @@ import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "../storageMigration";
-import type { CleanupDeleteFailure, CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CleanupScanJobStatus, CommandError } from "../types";
+import type { CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CleanupScanJobStatus, CommandError } from "../types";
+import { cleanupAvailableDelta, cleanupOutcomeStatus, type CleanupDeleteOutcome } from "../cleanupOutcome";
 import type {
   CompleteUserActionInput,
   StartUserActionInput,
@@ -49,6 +50,7 @@ import type {
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
+import { CleanupSettlementDialog } from "./CleanupSettlementDialog";
 import { PathActions } from "./PathActions";
 import "./CleanupSpaceMapProtection.css";
 
@@ -102,34 +104,12 @@ interface CleanupDragState {
   protectionReason: CleanupProtectionReason | null;
 }
 
-interface CleanupDeleteOutcome {
-  deletedCount: number;
-  deletedBytes: number;
-  selectedLogicalBytes: number;
-  selectedAllocatedBytes: number;
-  availableBytesBefore: number | null;
-  availableBytesAfter: number | null;
-  mode: CleanupDeleteMode;
-  failed: CleanupDeleteFailure[];
-  cancelled: boolean;
-}
-
-function cleanupAvailableDelta(outcome: CleanupDeleteOutcome): number {
-  if (
-    outcome.availableBytesBefore === null
-    || outcome.availableBytesAfter === null
-  ) return 0;
-  return Math.max(
-    0,
-    outcome.availableBytesAfter - outcome.availableBytesBefore,
-  );
-}
-
 type CleanupMapMode = "path" | "category";
 type CleanupPresentation = "map" | "list";
 type CleanupCategoryScope = "all" | "reclaimable";
 
 const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
+const EMPTY_CLEANUP_NODES: CleanupMapNode[] = [];
 
 export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   snapshot,
@@ -167,6 +147,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [listLoading, setListLoading] = useState(false);
   const [listLoadingMore, setListLoadingMore] = useState(false);
   const [listError, setListError] = useState<CommandError | null>(null);
+  const [listResultKey, setListResultKey] = useState<string | null>(null);
+  const [listRetryRevision, setListRetryRevision] = useState(0);
   const listRequestIdRef = useRef(0);
   const pathRoot = useMemo<CleanupMapNode>(
     () => materializeCleanupNode(snapshot.root, loadedSubtrees),
@@ -247,6 +229,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [deleteMode, setDeleteMode] = useState<CleanupDeleteMode>("trash");
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
   const [deleteOutcome, setDeleteOutcome] = useState<CleanupDeleteOutcome | null>(null);
+  const [settlementOpen, setSettlementOpen] = useState(false);
+  const [settlementCelebrate, setSettlementCelebrate] = useState(true);
+  const settlementButtonRef = useRef<HTMLButtonElement>(null);
+  const closeSettlement = useCallback(() => {
+    setSettlementOpen(false);
+    settlementButtonRef.current?.focus();
+  }, []);
   const [subtreeError, setSubtreeError] = useState<CommandError | null>(null);
   const dragStateRef = useRef<CleanupDragState | null>(null);
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -299,6 +288,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setChangedIds(new Set());
     setDeleteOutcome(null);
     setDeleteProgress(null);
+    setSettlementOpen(false);
     setDeleteCancelling(false);
     dragStateRef.current = null;
     setDragState(null);
@@ -444,7 +434,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     () => [...focus.children].sort((left, right) => right.allocatedSizeBytes - left.allocatedSizeBytes || left.name.localeCompare(right.name)),
     [focus],
   );
-  const extraChildren = pagedChildren.get(focus.id) ?? [];
+  const extraChildren = pagedChildren.get(focus.id) ?? EMPTY_CLEANUP_NODES;
   const legendChildren = useMemo(() => {
     const loadedLogicalBytes = extraChildren.reduce(
       (total, child) => total + child.logicalSizeBytes,
@@ -543,15 +533,25 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     setSelectedId((current) => current === nextId ? current : nextId);
   }, [focus.id]);
 
+  // Native queries depend on the scan/directory, not on the map's materialized arrays.
+  const localListChildren = snapshot.indexed && focus.id.startsWith(`index:${snapshot.scanId}:`)
+    ? null
+    : legendChildren;
+  const listRequestKey = JSON.stringify([
+    snapshot.scanId, snapshot.sampledAtMs, focus.id, listQuery.trim(), listSort, listDescending,
+  ]);
+  const listPending = listLoading || listResultKey !== listRequestKey;
+
   useEffect(() => {
     if (presentation !== "list") return;
     const requestId = ++listRequestIdRef.current;
+    setListLoading(true);
+    setListLoadingMore(false);
+    setListError(null);
     const timer = window.setTimeout(() => {
-      setListLoading(true);
-      setListError(null);
-      if (!snapshot.indexed || !focus.id.startsWith(`index:${snapshot.scanId}:`)) {
+      if (localListChildren !== null) {
         const query = listQuery.trim().toLocaleLowerCase();
-        const next = legendChildren
+        const next = localListChildren
           .filter((node) => !query || node.name.toLocaleLowerCase().includes(query))
           .sort((left, right) => {
             const comparison = listSort === "name"
@@ -562,6 +562,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         if (requestId === listRequestIdRef.current) {
           setListItems(next);
           setListCursor(null);
+          setListResultKey(listRequestKey);
           setListLoading(false);
         }
         return;
@@ -578,28 +579,38 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         if (requestId !== listRequestIdRef.current) return;
         setListItems(page.items);
         setListCursor(page.nextCursor);
+        setListResultKey(listRequestKey);
       }).catch((reason) => {
         if (requestId === listRequestIdRef.current) {
+          setListItems([]);
+          setListCursor(null);
+          setListResultKey(listRequestKey);
           setListError(normalizeCommandError(reason));
         }
       }).finally(() => {
         if (requestId === listRequestIdRef.current) setListLoading(false);
       });
     }, 180);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      // Also invalidate requests that are already in flight, including pagination.
+      listRequestIdRef.current += 1;
+    };
   }, [
     focus.id,
-    legendChildren,
+    localListChildren,
     listDescending,
     listQuery,
+    listRequestKey,
+    listRetryRevision,
     listSort,
     presentation,
-    snapshot.indexed,
     snapshot.scanId,
   ]);
 
   const loadMoreListItems = async () => {
-    if (listCursor === null || listLoadingMore) return;
+    if (listCursor === null || listPending || listLoadingMore) return;
+    const requestId = listRequestIdRef.current;
     setListLoadingMore(true);
     setListError(null);
     try {
@@ -612,12 +623,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         sortBy: listSort,
         descending: listDescending,
       });
+      if (requestId !== listRequestIdRef.current) return;
       setListItems((current) => [...current, ...page.items]);
       setListCursor(page.nextCursor);
     } catch (reason) {
-      setListError(normalizeCommandError(reason));
+      if (requestId === listRequestIdRef.current) setListError(normalizeCommandError(reason));
     } finally {
-      setListLoadingMore(false);
+      if (requestId === listRequestIdRef.current) setListLoadingMore(false);
     }
   };
 
@@ -1017,6 +1029,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
   const openDeleteDialog = async () => {
     if (planned.length === 0 || !snapshot.deletionAvailable) return;
+    setSettlementOpen(false);
     const items = [...planned];
     const initialMode: CleanupDeleteMode = items.some((item) => isInsideTrashPath(item.path))
       ? "permanent"
@@ -1154,6 +1167,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       }
       await onDeletionApplied(deletionTargets, uncertainPaths.size > 0);
       closeDeleteDialog();
+      setSettlementCelebrate(true);
+      setSettlementOpen(true);
     } catch (caughtError) {
       if (actionRecordId && !actionRecorded) {
         onUserActionComplete?.(actionRecordId, {
@@ -1338,6 +1353,19 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             ) : (
               <div className="cleanup-index-list">
                 <div className="cleanup-index-list__toolbar">
+                  <button
+                    type="button"
+                    className="cleanup-index-list__back"
+                    disabled={!parentId}
+                    aria-label={t("cleanup:map.back")}
+                    title={t("cleanup:map.back")}
+                    onClick={() => {
+                      const parent = parentId ? nodes.get(parentId) : null;
+                      if (parent) navigateTo(parent);
+                    }}
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
                   <label>
                     <Search size={14} />
                     <input
@@ -1345,6 +1373,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       value={listQuery}
                       onChange={(event) => setListQuery(event.target.value)}
                       placeholder={t("cleanup:map.view.search")}
+                      aria-label={t("cleanup:map.view.search")}
                     />
                     {listQuery ? (
                       <button type="button" onClick={() => setListQuery("")} aria-label={t("cleanup:map.view.clearSearch")}>
@@ -1352,7 +1381,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       </button>
                     ) : null}
                   </label>
-                  <select value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
+                  <select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
                     <option value="size">{t("cleanup:map.view.sortSize")}</option>
                     <option value="name">{t("cleanup:map.view.sortName")}</option>
                   </select>
@@ -1361,82 +1390,119 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     {t(listDescending ? "cleanup:map.view.descending" : "cleanup:map.view.ascending")}
                   </button>
                 </div>
-                {listLoading ? (
-                  <div className="cleanup-index-list__state" role="status">
-                    <LoaderCircle className="is-spinning" size={18} />{t("cleanup:map.view.loading")}
+                <div className="cleanup-index-list__summary">
+                  <span title={focus.path ?? focus.name}><FolderOpen size={14} /><strong>{focus.name}</strong></span>
+                  <b>{formatBytes(focus.allocatedSizeBytes)}</b>
+                </div>
+                <div className="cleanup-index-list__frame" aria-busy={listPending || listLoadingMore}>
+                  <div className="cleanup-index-list__viewport">
+                    <div className="cleanup-index-list__columns" aria-hidden="true">
+                      <span>{t("cleanup:map.list.name")}</span>
+                      <span>{t("cleanup:map.allocatedSize")}</span>
+                      <span>{t("cleanup:map.list.share")}</span>
+                    </div>
+                    {listPending ? (
+                      <div className="cleanup-index-list__state" role="status">
+                        <LoaderCircle className="is-spinning" size={18} />{t("cleanup:map.view.loading")}
+                      </div>
+                    ) : listError && listItems.length === 0 ? (
+                      <div className="cleanup-index-list__state is-error" role="alert">
+                        <AlertTriangle size={18} />{t("cleanup:map.view.loadFailed")}
+                        <button type="button" className="button button--secondary" onClick={() => setListRetryRevision((current) => current + 1)}>
+                          <RefreshCw size={14} />{t("common:retry")}
+                        </button>
+                      </div>
+                    ) : listItems.length === 0 ? (
+                      <div className="cleanup-index-list__state">
+                        <Search size={18} />{t("cleanup:map.view.empty")}
+                      </div>
+                    ) : (
+                      <div className="cleanup-index-list__table" role="list" aria-label={t("cleanup:map.view.list")}>
+                        {listItems.map((node) => {
+                          const protectionReason = cleanupNodeProtection(node);
+                          const unavailableForCollection = protectionReason !== null;
+                          const collected = plannedIds.has(node.id);
+                          const includedByParent = !collected && (
+                            isCleanupNodeCoveredByPlan(plannedIds, focus.id, parents)
+                            || isCleanupNodeCoveredByPlan(plannedIds, node.id, parents)
+                          );
+                          const name = nodeDisplayName(node, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"));
+                          const share = node.kind === "restricted" || focus.allocatedSizeBytes === 0
+                            ? null
+                            : Math.min(100, node.allocatedSizeBytes / focus.allocatedSizeBytes * 100);
+                          return (
+                            <div className={`cleanup-index-list__row${selected.id === node.id ? " is-selected" : ""}${collected || includedByParent ? " is-collected" : ""}`} role="listitem" key={node.id}>
+                              <input
+                                type="checkbox"
+                                checked={collected || includedByParent}
+                                disabled={unavailableForCollection || includedByParent || node.kind === "aggregate"}
+                                aria-label={`${includedByParent
+                                  ? t("cleanup:map.includedByParent")
+                                  : collected
+                                  ? t("cleanup:map.removeFromBasket")
+                                  : t("cleanup:map.addToBasket")}: ${name}`}
+                                title={includedByParent ? t("cleanup:map.includedByParent") : unavailableForCollection ? t("cleanup:map.basket.protectedBadge") : undefined}
+                                onChange={() => collected ? removeFromPlan(node.id) : addToPlan(node)}
+                              />
+                              <button type="button" title={node.path ?? name} aria-current={selected.id === node.id ? "true" : undefined} onClick={() => void drillInto(node)}>
+                                <span className={`cleanup-index-list__icon is-${node.kind}`} aria-hidden="true">
+                                  {node.kind === "restricted" ? <LockKeyhole size={17} /> : node.kind === "aggregate" ? <Layers3 size={17} /> : node.kind === "file" ? <File size={17} /> : <FolderOpen size={17} />}
+                                </span>
+                                <span className="cleanup-index-list__name">
+                                  <strong>{name}</strong>
+                                  <small>{t(`cleanup:map.types.${node.kind}`)}{node.path ? ` · ${node.path}` : ""}</small>
+                                </span>
+                                <b>{node.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(node.allocatedSizeBytes)}</b>
+                                <span className="cleanup-index-list__share">
+                                  <span>{share === null ? "—" : percentage(node.allocatedSizeBytes, focus.allocatedSizeBytes)}</span>
+                                  <i aria-hidden="true"><i style={{ width: `${share ?? 0}%` }} /></i>
+                                </span>
+                                {node.hasChildren && node.kind !== "aggregate" ? <ChevronRight className="cleanup-index-list__chevron" size={14} /> : <span />}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ) : listError ? (
-                  <div className="cleanup-index-list__state is-error" role="alert">
-                    <AlertTriangle size={18} />{t("cleanup:map.view.loadFailed")}
-                  </div>
-                ) : listItems.length === 0 ? (
-                  <div className="cleanup-index-list__state">
-                    <Search size={18} />{t("cleanup:map.view.empty")}
-                  </div>
-                ) : (
-                  <div className="cleanup-index-list__table" role="list" aria-label={t("cleanup:map.view.list")}>
-                    {listItems.map((node) => {
-                      const protectionReason = cleanupNodeProtection(node);
-                      const unavailableForCollection = protectionReason !== null;
-                      const collected = plannedIds.has(node.id);
-                      return (
-                        <div className={selected.id === node.id ? "is-selected" : undefined} role="listitem" key={node.id}>
-                          <input
-                            type="checkbox"
-                            checked={collected}
-                            disabled={unavailableForCollection || node.kind === "aggregate"}
-                            aria-label={collected
-                              ? t("cleanup:map.removeFromBasket")
-                              : t("cleanup:map.addToBasket")}
-                            onChange={() => collected ? removeFromPlan(node.id) : addToPlan(node)}
-                          />
-                          <button type="button" onClick={() => void drillInto(node)}>
-                            <span>{node.kind === "file" ? <File size={15} /> : <FolderOpen size={15} />}</span>
-                            <span><strong>{nodeDisplayName(node, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong><small>{node.path ?? t(`cleanup:map.types.${node.kind}`)}</small></span>
-                            <b>{formatBytes(node.allocatedSizeBytes)}</b>
-                            {node.hasChildren ? <ChevronRight size={14} /> : <span />}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {listCursor !== null ? (
+                  <div className="cleanup-index-list__footer">
+                    <span>{listPending ? "—" : t("cleanup:map.list.shown", { count: listItems.length })}</span>
+                    {!listPending && listCursor !== null ? (
                       <button className="cleanup-index-list__more" type="button" disabled={listLoadingMore} onClick={() => void loadMoreListItems()}>
-                        {listLoadingMore ? <LoaderCircle className="is-spinning" size={14} /> : <Plus size={14} />}
-                        {t("cleanup:map.loadMore")}
+                        {listLoadingMore ? <LoaderCircle className="is-spinning" size={14} /> : listError ? <RefreshCw size={14} /> : <Plus size={14} />}
+                        {t(listError ? "common:retry" : "cleanup:map.list.loadMore")}
                       </button>
                     ) : null}
                   </div>
-                )}
+                </div>
+                {!listPending && listError && listItems.length > 0 ? (
+                  <div className="cleanup-index-list__page-error" role="alert"><AlertTriangle size={14} />{t("cleanup:map.view.loadFailed")}</div>
+                ) : null}
               </div>
             )}
 
             <div
-              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? " has-outcome" : ""}${planned.length === 0 && !dragState?.dragging && !deleteOutcome ? " is-collapsed" : ""}`}
+              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}${planned.length === 0 && !dragState?.dragging && !deleteOutcome ? " is-collapsed" : ""}`}
               aria-live="polite"
             >
               <span className="cleanup-map__basket-attention" aria-hidden="true"><i /><i /></span>
               <span className="cleanup-map__basket-icon" aria-hidden="true">
-                {protectedInteraction ? <LockKeyhole size={20} /> : <Trash2 size={20} />}
+                {protectedInteraction ? <LockKeyhole size={20} /> : deleteOutcome ? cleanupOutcomeStatus(deleteOutcome) === "success" ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} /> : <Trash2 size={20} />}
               </span>
               <div className="cleanup-map__basket-copy">
                 <small>{protectedInteraction
                   ? t("cleanup:map.basket.protectedTitle")
+                  : deleteOutcome
+                    ? t(`cleanup:settlement.status.${cleanupOutcomeStatus(deleteOutcome)}`)
                   : dragState?.overDropzone
                     ? t("cleanup:map.basket.release")
                     : t("cleanup:map.basket.title")}</small>
                 <strong>{protectedInteraction
                   ? t("cleanup:map.basket.protectedMessage")
+                  : deleteOutcome
+                    ? t("cleanup:settlement.processed", { size: formatBytes(deleteOutcome.deletedBytes) })
                   : planned.length > 0
                     ? t("cleanup:map.planSummary", { count: planned.length, size: formatBytes(plannedBytes) })
-                    : deleteOutcome
-                    ? t(
-                        deleteOutcome.cancelled
-                          ? "cleanup:map.basket.cancelled"
-                          : deleteOutcome.failed.length > 0
-                            ? "cleanup:map.basket.partial"
-                            : "cleanup:map.basket.completed",
-                        { deletedCount: deleteOutcome.deletedCount, failedCount: deleteOutcome.failed.length },
-                      )
                     : t("cleanup:map.basket.empty")}</strong>
                 {planned.length > 0 ? (
                   <div className="cleanup-map__basket-items">
@@ -1448,8 +1514,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   </div>
                 ) : null}
               </div>
-              {planned.length > 0 ? (
-                <>
+              {deleteOutcome || planned.length > 0 ? (
+                <div className="cleanup-map__basket-actions">
+                  {deleteOutcome ? <button ref={settlementButtonRef} className="cleanup-map__basket-result" type="button" onClick={() => {
+                    setSettlementCelebrate(false);
+                    setSettlementOpen(true);
+                  }}>{t("cleanup:settlement.viewResult")}<ChevronRight size={13} /></button> : null}
+                  {planned.length > 0 ? <>
                   <button className="cleanup-map__basket-clear" type="button" onClick={() => setPlannedIds(new Set())}>
                     {t("cleanup:map.basket.clear")}
                   </button>
@@ -1459,7 +1530,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       ? t("cleanup:map.chooseDeleteMethod")
                       : t("cleanup:map.deletionUnavailable")}
                   </button>
-                </>
+                  </> : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -1718,6 +1790,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           progress={deleteProgress}
           error={deleteError}
           mode={deleteMode}
+          progressVariant="basket"
           deleteAcknowledged={deleteAcknowledged}
           onModeChange={(mode) => void changeDeleteMode(mode)}
           onDeleteAcknowledgedChange={setDeleteAcknowledged}
@@ -1728,6 +1801,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           }}
           onConfirm={() => void confirmCleanup()}
         />
+      ) : null}
+      {settlementOpen && deleteOutcome ? (
+        <CleanupSettlementDialog outcome={deleteOutcome} celebrate={settlementCelebrate} onClose={closeSettlement} />
       ) : null}
     </section>
   );

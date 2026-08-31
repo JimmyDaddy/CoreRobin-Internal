@@ -198,6 +198,13 @@
     "title": "この領域が通常使用される目的"
   },
   "map": {
+    "list": {
+      "name": "名前",
+      "share": "フォルダ内の割合",
+      "sort": "リストの並べ替え",
+      "shown": "{{count}} 件を表示",
+      "loadMore": "さらに読み込む"
+    },
     "title": "この領域の場所",
     "description": "セクターは割り当てられたディスクスペースを表します。関連する色合いは1つのフォルダ階層に属し、灰色はファイルです。",
     "descriptionPath": "システムドライブ全体を横断する実際のパスを示しています。各リングは次のディレクトリレベルであり、セクターは割り当てられたディスクスペースを表します。",
@@ -288,6 +295,26 @@
     "removeFromBasket": "クリーンアップバスケットから外す",
     "includedByParent": "親フォルダに含まれています",
     "addToBasket": "クリーンアップバスケットに追加"
+  },
+  "settlement": {
+    "status": {
+      "success": "クリーンアップ完了",
+      "partial": "一部完了",
+      "cancelled": "クリーンアップを停止しました",
+      "failed": "クリーンアップ未完了",
+      "empty": "処理された項目はありません"
+    },
+    "movedLabel": "ゴミ箱に移動済み",
+    "availableLabel": "空き容量の増加",
+    "processedLabel": "処理済みの容量",
+    "completed": "完了：{{count}} 件",
+    "processed": "処理済み：{{size}}",
+    "failed": "未完了：{{count}} 件",
+    "trashNote": "項目はゴミ箱から復元できます。移動しただけではディスク容量が解放されたとは限りません。",
+    "unmeasuredNote": "処理済み容量は実際の解放容量とは異なります。今回は空き容量の変化を取得できませんでした。",
+    "pendingNote": "スナップショット、開いているファイル、システムの回収遅延が空き容量に影響する場合があります。",
+    "measuredNote": "操作前後で測定した空き容量の差です。他のアプリの影響も受ける場合があります。",
+    "viewResult": "結果を見る"
   },
   "deleteDialog": {
     "title": "クリーンアップバスケットを確認",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "最近の場所",
     "removable": "Removable",
     "modify": "範囲を変更",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "折りたたむ",
+    "pending": "未スキャン",
+    "systemDescription": "よく使う場所またはシステムディスク全体",
+    "folderDescription": "フォルダとその配下を集中的に確認",
+    "choosingFolder": "フォルダを選択中…",
+    "changeFolder": "選択済み · クリックして変更",
+    "folderFailed": "フォルダ選択画面を開けませんでした。再試行してください。",
+    "readOnlyNotice": "選択した場所とその配下のみを確認します。スキャンでファイルは変更されません。"
   },
   "oldFileProcessing": {
     "selectFile": "{{name}} をクリーンアップ確認に選択",

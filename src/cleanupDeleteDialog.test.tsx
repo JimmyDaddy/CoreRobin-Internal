@@ -69,6 +69,17 @@ describe("cleanup deletion dialog freshness", () => {
     expect((screen.getByRole("radio", { name: /直接删除/ }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText("正在重新核对路径与文件状态…")).toBeNull();
   });
+
+  it("keeps cancellation available during the basket animation", () => {
+    const onCancelExecution = vi.fn();
+    const { container } = renderDialog(lease(true), { submitting: true, progressVariant: "basket", onCancelExecution });
+    expect(container.querySelector(".cleanup-activity.is-working")).not.toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "停止删除" }));
+    fireEvent.click(screen.getByRole("button", { name: "停止删除" }));
+    expect(onCancelExecution).toHaveBeenCalledOnce();
+  });
 });
 
 function lease(executable: boolean, mode: CleanupDeleteLease["mode"] = "permanent"): CleanupDeleteLease {

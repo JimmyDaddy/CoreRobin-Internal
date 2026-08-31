@@ -198,6 +198,13 @@
     "title": "Para que essa área é comumente utilizada"
   },
   "map": {
+    "list": {
+      "name": "Nome",
+      "share": "% da pasta",
+      "sort": "Ordenar lista",
+      "shown": "Exibidos: {{count}}",
+      "loadMore": "Carregar mais"
+    },
     "title": "Onde os dados estão localizados",
     "description": "A área representa o espaço em disco alocado. As cores relacionadas pertencem a uma subpasta; as áreas cinzentas são arquivos.",
     "descriptionPath": "Mostra o caminho real no disco do sistema: cada anel representa o próximo nível de diretório, e a área representa o espaço em disco alocado.",
@@ -288,6 +295,26 @@
     "removeFromBasket": "Remover da cesta de limpeza",
     "includedByParent": "Incluído por uma pasta superior",
     "addToBasket": "Adicionar à cesta de limpeza"
+  },
+  "settlement": {
+    "status": {
+      "success": "Limpeza concluída",
+      "partial": "Parcialmente concluída",
+      "cancelled": "Limpeza interrompida",
+      "failed": "Limpeza não concluída",
+      "empty": "Nenhum item processado"
+    },
+    "movedLabel": "Movido para a Lixeira",
+    "availableLabel": "Aumento do espaço disponível",
+    "processedLabel": "Espaço processado",
+    "completed": "Concluídos: {{count}}",
+    "processed": "{{size}} processados",
+    "failed": "Não concluídos: {{count}}",
+    "trashNote": "Os itens continuam recuperáveis na Lixeira. Movê-los não significa que o espaço foi liberado.",
+    "unmeasuredNote": "O tamanho processado não é igual ao espaço liberado. Não foram obtidas medições de espaço disponível.",
+    "pendingNote": "Snapshots, arquivos abertos ou atrasos na recuperação pelo sistema podem afetar o espaço disponível.",
+    "measuredNote": "Diferença medida antes e depois da operação; outros aplicativos também podem influenciá-la.",
+    "viewResult": "Ver resultado"
   },
   "deleteDialog": {
     "title": "Revisar a cesta de limpeza",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "Locais recentes",
     "removable": "Removable",
     "modify": "Alterar escopo",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "Recolher",
+    "pending": "Ainda não verificado",
+    "systemDescription": "Locais comuns ou todo o disco do sistema",
+    "folderDescription": "Focar em uma pasta e suas subpastas",
+    "choosingFolder": "Selecionando pasta…",
+    "changeFolder": "Selecionada · Clique para alterar",
+    "folderFailed": "Não foi possível abrir o seletor de pastas. Tente novamente.",
+    "readOnlyNotice": "Somente o local escolhido e suas subpastas são verificados. A verificação não altera arquivos."
   },
   "oldFileProcessing": {
     "selectFile": "Selecionar {{name}} para revisar a limpeza",
