@@ -12,6 +12,7 @@ import {
   makePatchManifest,
   manifestJson,
   planPatches,
+  planPatchesFromSources,
   generateVerifiedPatch,
   PATCH_PLANNER_DEADLINE_MS,
   runWithPatchDeadline,
@@ -43,7 +44,7 @@ interface BinaryOutput {
 }
 
 interface BinaryInputReader {
-  (file: File | null, input: BinaryInputKind, max?: number, index?: number): Promise<Uint8Array>;
+  (file: File | null, input: BinaryInputKind, max?: number, index?: number, signal?: AbortSignal): Promise<Uint8Array>;
   count(input: BinaryInputKind): Promise<number>;
 }
 
@@ -118,13 +119,14 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       return tokens;
     };
-    const readInput = Object.assign(async (file: File | null, input: BinaryInputKind, max = MAX_BINARY_BYTES, index = 0) => {
+    const readInput = Object.assign(async (file: File | null, input: BinaryInputKind, max = MAX_BINARY_BYTES, index = 0, signal?: AbortSignal) => {
       const label = binaryInputLabel(input, t);
-      if (!nativeInputJob) return readBrowserInput(file, label, max);
+      const readSignal = signal ?? operationSignal;
+      if (!nativeInputJob) return readBrowserInput(file, label, max, readSignal);
       const tokens = await ensureNativeTokens(input);
       const token = tokens[index];
       if (!token) throw new Error(t("binaryPatch.errors.nativePickerMissing", { label }));
-      const bytes = await readBoundToolboxInput(nativeInputJob, token, operationSignal, max);
+      const bytes = await readBoundToolboxInput(nativeInputJob, token, readSignal, max);
       return bytes;
     }, { count: async (input: BinaryInputKind) => (nativeInputJob ? (await ensureNativeTokens(input)).length : 0) }) as BinaryInputReader;
     try {
@@ -216,10 +218,13 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     }
   };
 
-  const readBrowserInput = async (file: File | null, role: string, max = MAX_BINARY_BYTES): Promise<Uint8Array> => {
+  const readBrowserInput = async (file: File | null, role: string, max = MAX_BINARY_BYTES, signal?: AbortSignal): Promise<Uint8Array> => {
     if (!file) throw new Error(t("binaryPatch.errors.selectFile", { label: role }));
     if (file.size > max) throw new Error(t("binaryPatch.errors.fileTooLarge", { label: role, max: Math.round(max / 1024 / 1024) }));
-    return new Uint8Array(await file.arrayBuffer());
+    signal?.throwIfAborted();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    signal?.throwIfAborted();
+    return bytes;
   };
 
   const setDownload = (bytes: Uint8Array, name: string, mime: string) => {
@@ -283,20 +288,25 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       }
       if (toolId === "patch-planner") {
         const targetBytes = await readInput(target, "target", 16 * 1024 * 1024);
-        const bases = [];
         if (isDesktopRuntime()) {
           const baseCount = await readInput.count("baseline");
-          for (let index = 0; index < baseCount; index += 1) {
-            bases.push({ name: `baseline-${index + 1}.bin`, data: await readInput(null, "baseline", 16 * 1024 * 1024, index) });
-          }
+          const sources = Array.from({ length: baseCount }, (_, index) => ({
+            name: `baseline-${index + 1}.bin`,
+            load: (sourceSignal: AbortSignal) => readInput(null, "baseline", 16 * 1024 * 1024, index, sourceSignal),
+          }));
+          const plan = await planPatchesFromSources(targetBytes, sources, 0.8, signal);
+          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
+          setOutput(manifestJson(collection.plan));
+          return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
         } else {
+          const bases = [];
           for (const file of plannerBaselines) bases.push({ name: file.name, data: await readInput(file, "baseline", 16 * 1024 * 1024) });
+          const plan = await planPatches(targetBytes, bases, 0.8, signal);
+          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
+          setOutput(manifestJson(collection.plan));
+          setDownload(collection.bytes, collection.filename, "application/zip");
+          return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
         }
-        const plan = await planPatches(targetBytes, bases, 0.8, signal);
-        const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
-        setOutput(manifestJson(collection.plan));
-        setDownload(collection.bytes, collection.filename, "application/zip");
-        return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
       }
       return null;
     });

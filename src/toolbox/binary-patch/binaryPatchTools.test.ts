@@ -88,6 +88,17 @@ describe("binary patch toolbox boundaries", () => {
     });
   });
 
+  it("rejects a final collection that exceeds its total byte budget", async () => {
+    await expect(createPatchCollection({ name: "target.bin", data: new Uint8Array([7, 8, 9]) }, {
+      results: [],
+      excluded: [],
+      artifactBytes: 0,
+      artifactLimitBytes: 512,
+      workingSetBytes: 3,
+      workingSetLimitBytes: 512,
+    }, 2)).rejects.toMatchObject({ code: "ERESOURCE" });
+  });
+
   it("keeps role limits explicit and strips path components from manifest names", async () => {
     expect(patchInputLimit("baseline")).toBe(16 * 1024 * 1024);
     expect(patchInputLimit("patch")).toBe(64 * 1024 * 1024);

@@ -25,6 +25,7 @@ export const PATCH_ITEM_DEADLINE_MS = 120_000;
 export const PATCH_PLANNER_DEADLINE_MS = 600_000;
 export const MAX_PLANNER_ARTIFACT_BYTES = 512 * 1024 * 1024;
 export const MAX_PLANNER_WORKING_SET_BYTES = 512 * 1024 * 1024;
+export const MAX_PATCH_COLLECTION_BYTES = 512 * 1024 * 1024;
 export const PATCH_COLLECTION_FILENAME = "corerobin-patch-collection.zip";
 export const PATCH_COLLECTION_PLAN_NAME = "patch-plan.json";
 
@@ -281,7 +282,10 @@ export function makePatchBundle(target: PatchArtifact, full: PatchArtifact, patc
   return createPatchBundle({ target, full, patches });
 }
 
-export async function createPatchCollection(target: { name: string; data: Uint8Array }, plan: PatchPlan): Promise<PatchCollection> {
+export async function createPatchCollection(target: { name: string; data: Uint8Array }, plan: PatchPlan, maxCollectionBytes = MAX_PATCH_COLLECTION_BYTES): Promise<PatchCollection> {
+  if (!Number.isSafeInteger(maxCollectionBytes) || maxCollectionBytes <= 0 || maxCollectionBytes > MAX_PATCH_COLLECTION_BYTES) {
+    throw new Error("Patch collection budget is invalid.");
+  }
   assertSizeForRole(target.data, "target");
   const targetName = safeArtifactName(target.name);
   const fullPath = `full/${targetName}`;
@@ -310,7 +314,11 @@ export async function createPatchCollection(target: { name: string; data: Uint8A
 
   const bundle = makePatchBundle(targetArtifact, targetArtifact, patches);
   entries[PATCH_COLLECTION_PLAN_NAME] = strToU8(manifestJson(bundle));
-  return { bytes: zipSync(entries, { level: 6 }), plan: bundle, filename: PATCH_COLLECTION_FILENAME };
+  const bytes = zipSync(entries, { level: 6 });
+  if (bytes.byteLength > maxCollectionBytes) {
+    throw patchError("ERESOURCE", `The final patch collection exceeds the ${maxCollectionBytes} byte safety budget.`);
+  }
+  return { bytes, plan: bundle, filename: PATCH_COLLECTION_FILENAME };
 }
 
 export function manifestJson(manifest: PatchManifest | PatchBundle): string {

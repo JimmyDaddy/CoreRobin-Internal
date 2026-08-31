@@ -7,6 +7,7 @@ import i18n from "../../i18n";
 const mocks = vi.hoisted(() => ({
   createObjectUrl: vi.fn(() => "blob:patch-plan"),
   planPatches: vi.fn(),
+  planPatchesFromSources: vi.fn(),
   createPatchCollection: vi.fn(),
   desktopRuntime: false,
   generateVerifiedPatch: vi.fn(),
@@ -37,7 +38,7 @@ vi.mock("../runtime/files", () => ({
 }));
 vi.mock("./binaryPatchTools", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./binaryPatchTools")>();
-  return { ...actual, createPatchCollection: mocks.createPatchCollection, generateVerifiedPatch: mocks.generateVerifiedPatch, planPatches: mocks.planPatches };
+  return { ...actual, createPatchCollection: mocks.createPatchCollection, generateVerifiedPatch: mocks.generateVerifiedPatch, planPatches: mocks.planPatches, planPatchesFromSources: mocks.planPatchesFromSources };
 });
 
 import { BinaryPatchToolbox } from "./BinaryPatchToolbox";
@@ -48,6 +49,7 @@ beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
   vi.stubGlobal("URL", { createObjectURL: mocks.createObjectUrl, revokeObjectURL: vi.fn() });
   mocks.planPatches.mockResolvedValue({ results: [] });
+  mocks.planPatchesFromSources.mockResolvedValue({ results: [] });
   mocks.createPatchCollection.mockResolvedValue({
     bytes: new Uint8Array([80, 75]),
     filename: "corerobin-patch-collection.zip",
@@ -106,4 +108,21 @@ it("keeps desktop patch output on the native TTL and atomic-save path", async ()
     validation: "verified",
   }));
   expect(mocks.prepare.mock.calls.map(([, role]) => role)).toEqual(["input", "target"]);
+});
+
+it("keeps desktop patch planning lazy across native baseline tokens", async () => {
+  mocks.desktopRuntime = true;
+  mocks.planPatchesFromSources.mockImplementation(async (_target, sources) => {
+    expect(sources).toHaveLength(1);
+    await expect(sources[0].load(new AbortController().signal)).resolves.toEqual(new Uint8Array([6]));
+    return { results: [] };
+  });
+  render(<BinaryPatchToolbox toolId="patch-planner" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "逐基线规划" }));
+
+  await screen.findByRole("button", { name: "正式另存结果" });
+  expect(mocks.planPatchesFromSources).toHaveBeenCalledOnce();
+  expect(mocks.planPatches).not.toHaveBeenCalled();
+  expect(mocks.readBound.mock.calls.map(([, token]) => token.token)).toEqual(["target", "baseline"]);
 });
