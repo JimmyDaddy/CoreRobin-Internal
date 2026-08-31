@@ -49,7 +49,8 @@
 当前 production 构建不再依赖手工抄录上述历史数字。`pnpm verify:web-bundle` 会从
 `dist/.vite/manifest.json` 递归计算四个入口的初始 JS/CSS 原始与 gzip 字节数，同时检查
 Tauri 窗口到 HTML 的映射。预算保存在 `scripts/web-bundle-budgets.json`，CI 和 Release
-都会执行；动态 chunks 的原始字节总量也有独立上限。
+都会执行；总量通过递归枚举 `dist` 的实际 JS/CSS 文件计算，包含 manifest 未列出的
+独立 Worker，并按输出路径去重。缺失的 manifest 资源或符号链接产物会使校验失败。
 
 2026-07-28 的数据可信度迭代加入隐私中心分类回执、文件洞察增量复核和网络质量
 1/24 小时聚合历史后，全部 production JS chunks 为 1,902,019 bytes。总量预算从
@@ -71,6 +72,23 @@ CSS gzip 仍保持在原有 40,000 bytes 上限内；四个入口的初始加载
 实际可用空间变化与十种语言文案。全部 production chunks 实测约为 2,431 KB JS 与
 419 KB CSS；总量预算对应调整为 2,450,000 与 425,000 bytes，四个入口的初始加载预算
 不变。没有新增动画依赖；视觉预览夹具不进入生产构建，减少动态效果时不运行处理与结算动画。
+
+2026-08-31 的工具箱迭代经用户明确授权调整总量预算，同时将图片和二进制补丁工具拆为
+独立按需模块；打开工具箱列表不再静态加载这两个页面及其 SDK。生产 manifest 的工具箱
+静态 JS 依赖合计由 250,000 降至 147,801 bytes（约 -41%，包含可复用的共享 chunks，
+不等于网络实际新增下载量）；工具箱页面自身 chunk 由 186,127 降至 78,644 bytes。
+
+原校验只累计 manifest，漏计 178,301 bytes 的独立 Worker（BSDIFF、ZIP、正则）。本次
+修正后完整生产 JS 为 2,818,259 bytes，CSS 为 428,916 bytes；总量预算分别调整为
+3,000,000 和 450,000 bytes，保留约 6% / 5% 上限余量。分包主要减少打开轻工具时的
+加载量，不声称减少完整安装资源：相对于分包前的真实总量，JS 增加 2,776 bytes，CSS
+增加 1 byte。四个 WebView 入口的原始/gzip 预算均未放宽；本次调整也不改变图片/补丁的
+运行时内存、文件大小、并发、超时或临时文件预算。
+
+本次验证：全量 Vitest 129 files / 590 tests、lint、typecheck、production build、
+`verify:web-bundle`。新增夹具覆盖独立 Worker/CSS 的总量统计与超限失败、共享资源去重、
+首屏独立预算、缺失 manifest 资源和符号链接；页面测试覆盖按需加载、等待提示和返回操作。
+本次没有重跑 Rust、视觉截图或三平台实机内存测试。
 
 这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
 [发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI

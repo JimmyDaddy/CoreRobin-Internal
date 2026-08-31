@@ -22,8 +22,9 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
@@ -35,11 +36,12 @@ import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/rege
 import { formatColor, parseColor } from "./color/colorTools";
 import { parseIfconfig } from "./network/networkTools";
 import { findNextCronOccurrence, parseCron } from "./schedules/scheduleTools";
-import { ImageToolbox } from "./image/ImageToolbox";
-import { BinaryPatchToolbox } from "./binary-patch/BinaryPatchToolbox";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
+
+const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
+const BinaryPatchToolbox = lazy(async () => ({ default: (await import("./binary-patch/BinaryPatchToolbox")).BinaryPatchToolbox }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
 const CATEGORY_LABELS: Record<ToolboxCategory, string> = {
@@ -56,6 +58,7 @@ const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
 };
 
 export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
+  const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ToolId | null>(null);
   const [favorites, setFavorites] = useState<Set<ToolId>>(() => readFavorites());
@@ -75,7 +78,9 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
     <section className="toolbox-panel" aria-labelledby="toolbox-title">
       {selectedTool ? (
         <ToolPage tool={selectedTool} onBack={() => setSelected(null)}>
-          <ToolContent toolId={selectedTool.id} />
+          <Suspense fallback={<div className="surface-loading" role="status">{t("loading")}</div>}>
+            <ToolContent toolId={selectedTool.id} />
+          </Suspense>
         </ToolPage>
       ) : (
         <>

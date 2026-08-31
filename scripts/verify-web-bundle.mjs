@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -65,7 +65,12 @@ for (const [entry, budget] of Object.entries(budgets.entries)) {
 }
 
 const allOutputFiles = new Set(
-  Object.values(manifest).flatMap((record) => [record.file, ...(record.css ?? []), ...(record.assets ?? [])]),
+  [
+    ...Object.values(manifest).flatMap((record) => [record.file, ...(record.css ?? []), ...(record.assets ?? [])]),
+    // Vite's manifest omits standalone Worker chunks. The total budget must cover
+    // every emitted script/stylesheet, not just the module graph known to HTML.
+    ...await collectEmittedFiles(),
+  ],
 );
 const totals = { javascriptBytes: 0, cssBytes: 0 };
 for (const relativePath of allOutputFiles) {
@@ -77,6 +82,19 @@ assertBudget("all production chunks", totals, budgets.totals);
 
 console.log(JSON.stringify({ schemaVersion: budgets.schemaVersion, entries: report, totals }, null, 2));
 console.log("Verified four production WebView entries, Tauri window mapping, and bundle budgets.");
+
+async function collectEmittedFiles(directory = "") {
+  const files = [];
+  for (const entry of await readdir(safeDistPath(directory), { withFileTypes: true })) {
+    const relativePath = directory ? `${directory}/${entry.name}` : entry.name;
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Build output must not contain symbolic links: ${relativePath}`);
+    }
+    if (entry.isDirectory()) files.push(...await collectEmittedFiles(relativePath));
+    else if (entry.isFile()) files.push(relativePath);
+  }
+  return files;
+}
 
 function collectInitialFiles(entry) {
   const files = new Set();
