@@ -380,6 +380,7 @@ function ProcessWatchTool() {
   const [pid, setPid] = useState("");
   const [birthToken, setBirthToken] = useState("");
   const [duration, setDuration] = useState("240");
+  const [keepAwake, setKeepAwake] = useState(false);
   const [watches, setWatches] = useState<ToolboxProcessWatchSnapshot[]>([]);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
@@ -417,7 +418,7 @@ function ProcessWatchTool() {
     setRunning(true);
     setError("");
     try {
-      await startToolboxProcessWatch({ key: { pid: numericPid, birthToken: birthToken.trim() }, durationMinutes });
+      await startToolboxProcessWatch({ key: { pid: numericPid, birthToken: birthToken.trim() }, durationMinutes, keepAwake });
       setBirthToken("");
       await refresh();
     } catch (reason) {
@@ -440,8 +441,9 @@ function ProcessWatchTool() {
     }
   };
 
-  return <ToolLayout error={error} onClear={() => { setPid(""); setBirthToken(""); setWatches([]); setError(""); }}>
+  return <ToolLayout error={error} onClear={() => { setPid(""); setBirthToken(""); setWatches([]); setKeepAwake(false); setError(""); }}>
     <div className="toolbox-form-grid"><label>PID <input className="toolbox-input" inputMode="numeric" value={pid} onChange={(event) => setPid(event.target.value)} placeholder="已选进程 PID" /></label><label>birth token <input className="toolbox-input toolbox-input--code" value={birthToken} onChange={(event) => setBirthToken(event.target.value)} placeholder="从进程详情复制，拒绝同名替代" /></label><label>观察分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label></div>
+    <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />观察期间附加限时保活（低电量独立释放）</label>
     <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />开始只读观察</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>刷新状态</button></div>
     <p className="toolbox-hint">只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。</p>
     {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {watch.status} · 截止 {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>取消观察</button></div>)}

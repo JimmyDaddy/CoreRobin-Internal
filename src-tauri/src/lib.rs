@@ -321,6 +321,9 @@ impl AppState {
         let process_control_capabilities = process_controller.capabilities();
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
+        let toolbox_power = Arc::new(Mutex::new(PowerService::new()));
+        let toolbox_process_watch = ProcessWatchService::with_power_service(Arc::clone(&toolbox_power))
+            .expect("failed to start the process watch worker");
         let monitor = Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities)));
         let sampler = Arc::new(SamplerService::new(Arc::clone(&monitor)));
         Self {
@@ -339,10 +342,8 @@ impl AppState {
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
             toolbox: Arc::new(Mutex::new(ToolboxService::new())),
             toolbox_file_hash: Arc::new(FileHashManager::default()),
-            toolbox_power: Arc::new(Mutex::new(PowerService::new())),
-            toolbox_process_watch: Arc::new(Mutex::new(
-                ProcessWatchService::new().expect("failed to start the process watch worker"),
-            )),
+            toolbox_power,
+            toolbox_process_watch: Arc::new(Mutex::new(toolbox_process_watch)),
             toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
             toolbox_storage: Arc::new(Mutex::new(None)),
         }

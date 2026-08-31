@@ -377,6 +377,7 @@ export async function deleteToolboxSchedule(request: { requestId: string; schedu
 export async function startToolboxProcessWatch(request: {
   key: ToolboxProcessWatchKey;
   durationMinutes: number;
+  keepAwake?: boolean;
 }): Promise<ToolboxProcessWatchSnapshot> {
   return invoke<ToolboxProcessWatchSnapshot>("start_toolbox_process_watch", { request });
 }
