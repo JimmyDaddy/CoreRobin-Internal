@@ -2940,6 +2940,264 @@ export default interface Resources {
     "waitingProcessIo": "正在等待进程磁盘活动基线…",
     "writePeak": "写入峰值"
   },
+  "toolbox": {
+    "capability": {
+      "degraded": "降级可用",
+      "degradedReason": "部分原生集成受限，但工具仍可打开。",
+      "unavailable": "不可用",
+      "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。",
+      "unavailableReason": "当前平台没有可用的原生执行能力。",
+      "unavailableTitle": "{{tool}} 当前不可用"
+    },
+    "categories": {
+      "filePatch": "文件与补丁",
+      "image": "图片",
+      "label": "工具分类",
+      "systemNetwork": "系统与网络",
+      "textDevelopment": "文本与开发"
+    },
+    "close": "关闭工具箱",
+    "description": "在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。",
+    "empty": {
+      "description": "搜索只查找工具名称、别名和说明，不会查看你的输入。",
+      "title": "没有匹配的工具"
+    },
+    "favorites": {
+      "add": "收藏 {{tool}}",
+      "remove": "取消收藏 {{tool}}",
+      "title": "收藏"
+    },
+    "history": {
+      "count": "{{count}} 条",
+      "disabled": "已关闭",
+      "disabledDescription": "工具箱历史记录已按当前策略关闭；本地任务仍会显示即时结果。",
+      "empty": "还没有可展示的工具箱终态记录。",
+      "notification": "通知：{{status}}",
+      "notifications": {
+        "failed": "失败",
+        "submitted": "已提交",
+        "unavailable": "不可用"
+      },
+      "privacy": "只显示最近 20 条；记录不包含输入内容、路径或密钥。",
+      "refresh": "刷新历史",
+      "refreshing": "正在刷新…",
+      "statuses": {
+        "cancelled": "已取消",
+        "completed": "已完成",
+        "deadline": "达到截止时间",
+        "expired": "已过期",
+        "failed": "失败",
+        "interrupted": "已中断",
+        "low_battery": "低电量释放",
+        "process_exited": "进程已退出",
+        "release_unconfirmed": "释放未确认"
+      },
+      "title": "最近执行历史",
+      "tools": {
+        "file-occupancy": "文件占用扫描",
+        "ifconfig-parser": "ifconfig 解析",
+        "keep-awake": "限时保活",
+        "keyboard-cleaning": "键盘清理",
+        "network-addresses": "网络地址",
+        "process-watch": "进程退出观察",
+        "volume-occupancy": "卷占用扫描"
+      },
+      "unavailable": "工具箱历史暂时不可用。"
+    },
+    "loading": "正在加载工具…",
+    "navigation": {
+      "back": "返回工具箱"
+    },
+    "search": {
+      "clear": "清空搜索",
+      "label": "搜索功能名称",
+      "placeholder": "搜索功能名称、别名或说明…"
+    },
+    "title": "工具箱",
+    "toolLayout": {
+      "clear": "清空",
+      "copyResult": "复制结果",
+      "privacy": "输入与结果只保留在当前工具页内存；复制和保存都需要明确点击。",
+      "result": "结果"
+    },
+    "tools": {
+      "base64": {
+        "aliases": "Base64URL | UTF-8",
+        "description": "转换规定范围内的文本。",
+        "title": "Base64"
+      },
+      "binary-patch-apply": {
+        "aliases": "应用 | 校验",
+        "description": "应用补丁但绝不覆盖源文件。",
+        "title": "应用与验证"
+      },
+      "binary-patch-create": {
+        "aliases": "BSDIFF43 | 差分",
+        "description": "生成并还原验证二进制补丁。",
+        "title": "生成补丁"
+      },
+      "binary-patch-inspector": {
+        "aliases": "头部 | 载荷",
+        "description": "检查补丁格式和边界。",
+        "title": "补丁检查器"
+      },
+      "c2pa-inspector": {
+        "aliases": "manifest | 凭据",
+        "description": "离线查看本地嵌入的 C2PA manifest。",
+        "title": "C2PA 检查器"
+      },
+      "color": {
+        "aliases": "HEX | OKLCH | P3",
+        "description": "转换常见 CSS 颜色格式并提示色域变化。",
+        "title": "颜色转换"
+      },
+      "confidential-watermark": {
+        "aliases": "内部 | 预设",
+        "description": "使用可编辑的保密水印预设。",
+        "title": "保密水印"
+      },
+      "file-occupancy": {
+        "aliases": "占用 | 句柄",
+        "description": "诊断谁正在使用文件。",
+        "title": "文件使用者"
+      },
+      "file-sha256": {
+        "aliases": "文件 hash | 校验",
+        "description": "流式读取用户主动选择的单个普通文件。",
+        "title": "文件 SHA-256"
+      },
+      "ifconfig-parser": {
+        "aliases": "网络 | 掩码",
+        "description": "在页面内解析粘贴的 BSD/Linux ifconfig 文本。",
+        "title": "ifconfig 解析"
+      },
+      "image-batch-watermark": {
+        "aliases": "ZIP | 批处理",
+        "description": "顺序处理多张图片并导出受控 ZIP。",
+        "title": "批量水印"
+      },
+      "image-editor": {
+        "aliases": "图层 | 撤销",
+        "description": "编辑图层并渲染真实本地素材。",
+        "title": "图层编辑器"
+      },
+      "image-recipe": {
+        "aliases": "配方 | JSON",
+        "description": "校验、迁移和预览图片处理 Recipe。",
+        "title": "Recipe 构建器"
+      },
+      "image-watermark": {
+        "aliases": "Logo | PNG | JPEG",
+        "description": "给本地图片添加文字或 Logo 水印。",
+        "title": "图片水印"
+      },
+      "integrity-manifest": {
+        "aliases": "SHA-256 | 清单",
+        "description": "生成绑定文件摘要的 JSON 清单。",
+        "title": "完整性清单"
+      },
+      "invisible-watermark-check": {
+        "aliases": "检测 | 恢复",
+        "description": "用相同算法检查 Image Marker locator。",
+        "title": "隐形水印检测"
+      },
+      "invisible-watermark-write": {
+        "aliases": "locator | 密钥",
+        "description": "写入短 locator 并导出不含密钥的记录。",
+        "title": "隐形水印写入"
+      },
+      "json": {
+        "aliases": "格式化 | 压缩",
+        "description": "严格校验并保留数字文本和键顺序。",
+        "title": "JSON"
+      },
+      "keep-awake": {
+        "aliases": "防止休眠 | 保活",
+        "description": "在明确期限内保持空闲状态，不修改系统电源计划。",
+        "title": "限时保活"
+      },
+      "keyboard-cleaning": {
+        "aliases": "键盘 | 输入",
+        "description": "在安全边界内检查键盘输入状态。",
+        "title": "键盘清洁"
+      },
+      "network-addresses": {
+        "aliases": "网卡 | IP | MAC",
+        "description": "查看本机网络接口地址和状态。",
+        "title": "本机地址"
+      },
+      "patch-errors": {
+        "aliases": "BSDIFF | 诊断",
+        "description": "解释正式补丁 SDK 的错误码。",
+        "title": "错误码解释"
+      },
+      "patch-planner": {
+        "aliases": "多基线 | 发布",
+        "description": "逐个基线验证并选择补丁或完整包。",
+        "title": "发布规划器"
+      },
+      "process-watch": {
+        "aliases": "进程 | 退出",
+        "description": "等待选定进程退出并提醒。",
+        "title": "进程退出提醒"
+      },
+      "qr-code": {
+        "aliases": "QR | Wi-Fi",
+        "description": "生成文本、URL 或手填 Wi-Fi 二维码。",
+        "title": "二维码"
+      },
+      "recipient-tracking": {
+        "aliases": "收件人 | 分发",
+        "description": "生成分发图片和私有映射。",
+        "title": "收件人追踪包"
+      },
+      "regex": {
+        "aliases": "RegExp | 匹配 | AST",
+        "description": "诊断 ECMAScript 正则并查看结构。",
+        "title": "正则诊断"
+      },
+      "robustness-lab": {
+        "aliases": "JPEG | 缩放 | 裁剪",
+        "description": "在明确条件下测试 locator 恢复。",
+        "title": "稳健性实验室"
+      },
+      "schedules": {
+        "aliases": "提醒 | cron",
+        "description": "创建只执行提醒或限时保活的本地规则。",
+        "title": "定时任务"
+      },
+      "text-sha256": {
+        "aliases": "hash | 摘要",
+        "description": "在本机内存中计算文本 SHA-256。",
+        "title": "文本 SHA-256"
+      },
+      "time": {
+        "aliases": "Unix | ISO | 时区",
+        "description": "在显式单位和时区之间转换时间。",
+        "title": "时间转换"
+      },
+      "transfer-savings": {
+        "aliases": "大小 | 比例",
+        "description": "计算补丁与完整包的传输差异。",
+        "title": "传输节省"
+      },
+      "url": {
+        "aliases": "百分号 | 参数",
+        "description": "编码、解码和查看 URL 结构。",
+        "title": "URL"
+      },
+      "uuid": {
+        "aliases": "随机 ID",
+        "description": "使用系统安全随机源生成 UUID v4。",
+        "title": "UUID v4"
+      },
+      "volume-occupancy": {
+        "aliases": "磁盘 | 推出",
+        "description": "诊断可移动卷占用并在确认后推出。",
+        "title": "外盘使用者"
+      }
+    }
+  },
   "tray": {
     "available": "可用空间",
     "cleanup": "空间清理",

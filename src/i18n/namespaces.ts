@@ -13,6 +13,7 @@ export const MAIN_NAMESPACES = [
   "network",
   "history",
   "format",
+  "toolbox",
 ] as const;
 
 const AUXILIARY_ONLY_NAMESPACES = [

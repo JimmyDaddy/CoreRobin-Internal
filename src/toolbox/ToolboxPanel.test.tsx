@@ -10,7 +10,32 @@ const modules = vi.hoisted(() => {
   return { imageLoaded: vi.fn(), patchLoaded: vi.fn(), getToolboxSnapshot: vi.fn(), imageReady, releaseImage };
 });
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: () => "正在加载" }) }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        title: "工具箱",
+        description: "在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。",
+        loading: "正在加载",
+        "categories.label": "工具分类",
+        "categories.systemNetwork": "系统与网络",
+        "categories.textDevelopment": "文本与开发",
+        "categories.image": "图片",
+        "categories.filePatch": "文件与补丁",
+        "capability.degraded": "降级可用",
+        "capability.unavailable": "不可用",
+        "navigation.back": "返回工具箱",
+        "tools.image-watermark.title": "图片水印",
+        "tools.file-sha256.title": "文件 SHA-256",
+        "tools.keyboard-cleaning.title": "键盘清洁",
+        "tools.json.title": "JSON",
+        "tools.binary-patch-create.title": "生成补丁",
+      };
+      const template = translations[key] ?? key;
+      return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values?.[name] ?? `{${name}}`));
+    },
+  }),
+}));
 vi.mock("../api", () => ({ isDesktopRuntime: () => true }));
 vi.mock("./client", () => ({
   getToolboxNetworkSnapshot: vi.fn(),

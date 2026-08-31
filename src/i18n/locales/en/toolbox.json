@@ -1,0 +1,118 @@
+{
+  "title": "Toolbox",
+  "description": "Handle small text, image, file, and system tasks locally. Ordinary input stays on this page.",
+  "close": "Close toolbox",
+  "loading": "Loading tool…",
+  "search": {
+    "label": "Search tool names",
+    "placeholder": "Search tool names, aliases, or descriptions…",
+    "clear": "Clear search"
+  },
+  "categories": {
+    "label": "Tool categories",
+    "systemNetwork": "System & network",
+    "textDevelopment": "Text & development",
+    "image": "Images",
+    "filePatch": "Files & patches"
+  },
+  "favorites": {
+    "title": "Favorites",
+    "add": "Add {{tool}} to favorites",
+    "remove": "Remove {{tool}} from favorites"
+  },
+  "empty": {
+    "title": "No matching tools",
+    "description": "Search only checks tool names, aliases, and descriptions. It never examines your input."
+  },
+  "navigation": {
+    "back": "Back to toolbox"
+  },
+  "capability": {
+    "degraded": "Available with limitations",
+    "unavailable": "Unavailable",
+    "degradedReason": "Some native integration is limited, but the tool can still open.",
+    "unavailableReason": "Native execution is not available on this platform.",
+    "unavailableTitle": "{{tool}} is currently unavailable",
+    "unavailableHint": "This entry stays in the toolbox and can be used when native capability returns."
+  },
+  "history": {
+    "title": "Recent activity",
+    "count": "Records: {{count}}",
+    "disabled": "Disabled",
+    "disabledDescription": "Toolbox history is disabled by the current policy; local tasks still show their immediate results.",
+    "empty": "There are no completed toolbox records to show yet.",
+    "refresh": "Refresh history",
+    "refreshing": "Refreshing…",
+    "privacy": "Only the 20 most recent records are shown; records do not include input, paths, or secrets.",
+    "unavailable": "Toolbox history is temporarily unavailable.",
+    "notification": "Notification: {{status}}",
+    "tools": {
+      "keep-awake": "Timed keep awake",
+      "process-watch": "Process exit watch",
+      "file-occupancy": "File usage scan",
+      "volume-occupancy": "Volume usage scan",
+      "keyboard-cleaning": "Keyboard cleaning",
+      "network-addresses": "Network addresses",
+      "ifconfig-parser": "ifconfig parser"
+    },
+    "statuses": {
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "expired": "Expired",
+      "failed": "Failed",
+      "interrupted": "Interrupted",
+      "deadline": "Deadline reached",
+      "process_exited": "Process exited",
+      "low_battery": "Released for low battery",
+      "release_unconfirmed": "Release not confirmed"
+    },
+    "notifications": {
+      "submitted": "Submitted",
+      "failed": "Failed",
+      "unavailable": "Unavailable"
+    }
+  },
+  "toolLayout": {
+    "clear": "Clear",
+    "privacy": "Inputs and results stay only in this tool page's memory; copying and saving always require an explicit click.",
+    "result": "Result",
+    "copyResult": "Copy result"
+  },
+  "tools": {
+    "keep-awake": { "title": "Keep awake", "aliases": "prevent sleep | stay awake", "description": "Keep the computer awake for a chosen period without changing power settings." },
+    "process-watch": { "title": "Process exit watch", "aliases": "process | exit", "description": "Wait for a chosen process to exit and notify you." },
+    "file-occupancy": { "title": "File usage", "aliases": "in use | handle", "description": "Find which process is using a file." },
+    "volume-occupancy": { "title": "External drive usage", "aliases": "drive | eject", "description": "Identify use of a removable volume before ejecting it." },
+    "keyboard-cleaning": { "title": "Keyboard cleaning", "aliases": "keyboard | input", "description": "Check keyboard input safely while cleaning." },
+    "schedules": { "title": "Scheduled tasks", "aliases": "reminder | cron", "description": "Create local rules that only remind you or keep the computer awake for a limited time." },
+    "network-addresses": { "title": "Network addresses", "aliases": "adapter | IP | MAC", "description": "View local network interface addresses and status." },
+    "ifconfig-parser": { "title": "ifconfig parser", "aliases": "network | netmask", "description": "Parse pasted BSD/Linux ifconfig text in this page." },
+    "json": { "title": "JSON", "aliases": "format | minify", "description": "Validate strictly while preserving number text and key order." },
+    "url": { "title": "URL", "aliases": "percent encoding | parameters", "description": "Encode, decode, and inspect URL structure." },
+    "base64": { "title": "Base64", "aliases": "Base64URL | UTF-8", "description": "Convert text within the supported limits." },
+    "time": { "title": "Time conversion", "aliases": "Unix | ISO | timezone", "description": "Convert time with explicit units and time zones." },
+    "uuid": { "title": "UUID v4", "aliases": "random ID", "description": "Generate UUID v4 with a system-secure random source." },
+    "qr-code": { "title": "QR code", "aliases": "QR | Wi-Fi", "description": "Create a text, URL, or manually entered Wi-Fi QR code." },
+    "text-sha256": { "title": "Text SHA-256", "aliases": "hash | digest", "description": "Calculate a text SHA-256 in local memory." },
+    "file-sha256": { "title": "File SHA-256", "aliases": "file hash | checksum", "description": "Stream one ordinary file you explicitly choose." },
+    "regex": { "title": "Regex diagnostics", "aliases": "RegExp | match | AST", "description": "Inspect ECMAScript regular expressions and their structure." },
+    "color": { "title": "Color conversion", "aliases": "HEX | OKLCH | P3", "description": "Convert common CSS color formats and flag gamut changes." },
+    "image-watermark": { "title": "Image watermark", "aliases": "logo | PNG | JPEG", "description": "Add text or logo watermarks to local images." },
+    "image-batch-watermark": { "title": "Batch watermark", "aliases": "ZIP | batch", "description": "Process multiple images in order and export a controlled ZIP." },
+    "confidential-watermark": { "title": "Confidential watermark", "aliases": "internal | preset", "description": "Use an editable confidential-watermark preset." },
+    "image-recipe": { "title": "Recipe builder", "aliases": "recipe | JSON", "description": "Validate, migrate, and preview image-processing recipes." },
+    "image-editor": { "title": "Layer editor", "aliases": "layers | undo", "description": "Edit layers and render real local assets." },
+    "invisible-watermark-write": { "title": "Write invisible watermark", "aliases": "locator | secret", "description": "Write a short locator and export a record without secrets." },
+    "invisible-watermark-check": { "title": "Check invisible watermark", "aliases": "detect | recover", "description": "Check an Image Marker locator with the same algorithm." },
+    "recipient-tracking": { "title": "Recipient tracking package", "aliases": "recipient | distribution", "description": "Generate distributed images and a private mapping." },
+    "robustness-lab": { "title": "Robustness lab", "aliases": "JPEG | resize | crop", "description": "Test locator recovery under explicit conditions." },
+    "c2pa-inspector": { "title": "C2PA inspector", "aliases": "manifest | credentials", "description": "Inspect an embedded local C2PA manifest offline." },
+    "binary-patch-create": { "title": "Create patch", "aliases": "BSDIFF43 | diff", "description": "Create and restore verified binary patches." },
+    "binary-patch-apply": { "title": "Apply and verify", "aliases": "apply | verify", "description": "Apply a patch without ever overwriting the source file." },
+    "binary-patch-inspector": { "title": "Patch inspector", "aliases": "header | payload", "description": "Inspect patch format and boundaries." },
+    "integrity-manifest": { "title": "Integrity manifest", "aliases": "SHA-256 | manifest", "description": "Create a JSON manifest bound to file digests." },
+    "transfer-savings": { "title": "Transfer savings", "aliases": "size | ratio", "description": "Compare transfer sizes for patches and full packages." },
+    "patch-errors": { "title": "Error code guide", "aliases": "BSDIFF | diagnostics", "description": "Explain error codes from the official patch SDK." },
+    "patch-planner": { "title": "Release planner", "aliases": "multiple baselines | release", "description": "Validate each baseline and choose a patch or full package." }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "title": "工具箱",
+  "description": "在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。",
+  "close": "关闭工具箱",
+  "loading": "正在加载工具…",
+  "search": {
+    "label": "搜索功能名称",
+    "placeholder": "搜索功能名称、别名或说明…",
+    "clear": "清空搜索"
+  },
+  "categories": {
+    "label": "工具分类",
+    "systemNetwork": "系统与网络",
+    "textDevelopment": "文本与开发",
+    "image": "图片",
+    "filePatch": "文件与补丁"
+  },
+  "favorites": {
+    "title": "收藏",
+    "add": "收藏 {{tool}}",
+    "remove": "取消收藏 {{tool}}"
+  },
+  "empty": {
+    "title": "没有匹配的工具",
+    "description": "搜索只查找工具名称、别名和说明，不会查看你的输入。"
+  },
+  "navigation": {
+    "back": "返回工具箱"
+  },
+  "capability": {
+    "degraded": "降级可用",
+    "unavailable": "不可用",
+    "degradedReason": "部分原生集成受限，但工具仍可打开。",
+    "unavailableReason": "当前平台没有可用的原生执行能力。",
+    "unavailableTitle": "{{tool}} 当前不可用",
+    "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。"
+  },
+  "history": {
+    "title": "最近执行历史",
+    "count": "{{count}} 条",
+    "disabled": "已关闭",
+    "disabledDescription": "工具箱历史记录已按当前策略关闭；本地任务仍会显示即时结果。",
+    "empty": "还没有可展示的工具箱终态记录。",
+    "refresh": "刷新历史",
+    "refreshing": "正在刷新…",
+    "privacy": "只显示最近 20 条；记录不包含输入内容、路径或密钥。",
+    "unavailable": "工具箱历史暂时不可用。",
+    "notification": "通知：{{status}}",
+    "tools": {
+      "keep-awake": "限时保活",
+      "process-watch": "进程退出观察",
+      "file-occupancy": "文件占用扫描",
+      "volume-occupancy": "卷占用扫描",
+      "keyboard-cleaning": "键盘清理",
+      "network-addresses": "网络地址",
+      "ifconfig-parser": "ifconfig 解析"
+    },
+    "statuses": {
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "expired": "已过期",
+      "failed": "失败",
+      "interrupted": "已中断",
+      "deadline": "达到截止时间",
+      "process_exited": "进程已退出",
+      "low_battery": "低电量释放",
+      "release_unconfirmed": "释放未确认"
+    },
+    "notifications": {
+      "submitted": "已提交",
+      "failed": "失败",
+      "unavailable": "不可用"
+    }
+  },
+  "toolLayout": {
+    "clear": "清空",
+    "privacy": "输入与结果只保留在当前工具页内存；复制和保存都需要明确点击。",
+    "result": "结果",
+    "copyResult": "复制结果"
+  },
+  "tools": {
+    "keep-awake": { "title": "限时保活", "aliases": "防止休眠 | 保活", "description": "在明确期限内保持空闲状态，不修改系统电源计划。" },
+    "process-watch": { "title": "进程退出提醒", "aliases": "进程 | 退出", "description": "等待选定进程退出并提醒。" },
+    "file-occupancy": { "title": "文件使用者", "aliases": "占用 | 句柄", "description": "诊断谁正在使用文件。" },
+    "volume-occupancy": { "title": "外盘使用者", "aliases": "磁盘 | 推出", "description": "诊断可移动卷占用并在确认后推出。" },
+    "keyboard-cleaning": { "title": "键盘清洁", "aliases": "键盘 | 输入", "description": "在安全边界内检查键盘输入状态。" },
+    "schedules": { "title": "定时任务", "aliases": "提醒 | cron", "description": "创建只执行提醒或限时保活的本地规则。" },
+    "network-addresses": { "title": "本机地址", "aliases": "网卡 | IP | MAC", "description": "查看本机网络接口地址和状态。" },
+    "ifconfig-parser": { "title": "ifconfig 解析", "aliases": "网络 | 掩码", "description": "在页面内解析粘贴的 BSD/Linux ifconfig 文本。" },
+    "json": { "title": "JSON", "aliases": "格式化 | 压缩", "description": "严格校验并保留数字文本和键顺序。" },
+    "url": { "title": "URL", "aliases": "百分号 | 参数", "description": "编码、解码和查看 URL 结构。" },
+    "base64": { "title": "Base64", "aliases": "Base64URL | UTF-8", "description": "转换规定范围内的文本。" },
+    "time": { "title": "时间转换", "aliases": "Unix | ISO | 时区", "description": "在显式单位和时区之间转换时间。" },
+    "uuid": { "title": "UUID v4", "aliases": "随机 ID", "description": "使用系统安全随机源生成 UUID v4。" },
+    "qr-code": { "title": "二维码", "aliases": "QR | Wi-Fi", "description": "生成文本、URL 或手填 Wi-Fi 二维码。" },
+    "text-sha256": { "title": "文本 SHA-256", "aliases": "hash | 摘要", "description": "在本机内存中计算文本 SHA-256。" },
+    "file-sha256": { "title": "文件 SHA-256", "aliases": "文件 hash | 校验", "description": "流式读取用户主动选择的单个普通文件。" },
+    "regex": { "title": "正则诊断", "aliases": "RegExp | 匹配 | AST", "description": "诊断 ECMAScript 正则并查看结构。" },
+    "color": { "title": "颜色转换", "aliases": "HEX | OKLCH | P3", "description": "转换常见 CSS 颜色格式并提示色域变化。" },
+    "image-watermark": { "title": "图片水印", "aliases": "Logo | PNG | JPEG", "description": "给本地图片添加文字或 Logo 水印。" },
+    "image-batch-watermark": { "title": "批量水印", "aliases": "ZIP | 批处理", "description": "顺序处理多张图片并导出受控 ZIP。" },
+    "confidential-watermark": { "title": "保密水印", "aliases": "内部 | 预设", "description": "使用可编辑的保密水印预设。" },
+    "image-recipe": { "title": "Recipe 构建器", "aliases": "配方 | JSON", "description": "校验、迁移和预览图片处理 Recipe。" },
+    "image-editor": { "title": "图层编辑器", "aliases": "图层 | 撤销", "description": "编辑图层并渲染真实本地素材。" },
+    "invisible-watermark-write": { "title": "隐形水印写入", "aliases": "locator | 密钥", "description": "写入短 locator 并导出不含密钥的记录。" },
+    "invisible-watermark-check": { "title": "隐形水印检测", "aliases": "检测 | 恢复", "description": "用相同算法检查 Image Marker locator。" },
+    "recipient-tracking": { "title": "收件人追踪包", "aliases": "收件人 | 分发", "description": "生成分发图片和私有映射。" },
+    "robustness-lab": { "title": "稳健性实验室", "aliases": "JPEG | 缩放 | 裁剪", "description": "在明确条件下测试 locator 恢复。" },
+    "c2pa-inspector": { "title": "C2PA 检查器", "aliases": "manifest | 凭据", "description": "离线查看本地嵌入的 C2PA manifest。" },
+    "binary-patch-create": { "title": "生成补丁", "aliases": "BSDIFF43 | 差分", "description": "生成并还原验证二进制补丁。" },
+    "binary-patch-apply": { "title": "应用与验证", "aliases": "应用 | 校验", "description": "应用补丁但绝不覆盖源文件。" },
+    "binary-patch-inspector": { "title": "补丁检查器", "aliases": "头部 | 载荷", "description": "检查补丁格式和边界。" },
+    "integrity-manifest": { "title": "完整性清单", "aliases": "SHA-256 | 清单", "description": "生成绑定文件摘要的 JSON 清单。" },
+    "transfer-savings": { "title": "传输节省", "aliases": "大小 | 比例", "description": "计算补丁与完整包的传输差异。" },
+    "patch-errors": { "title": "错误码解释", "aliases": "BSDIFF | 诊断", "description": "解释正式补丁 SDK 的错误码。" },
+    "patch-planner": { "title": "发布规划器", "aliases": "多基线 | 发布", "description": "逐个基线验证并选择补丁或完整包。" }
+  }
+}

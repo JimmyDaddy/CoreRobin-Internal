@@ -21,6 +21,21 @@ export const LOCAL_BROWSER_TOOL_IDS: readonly ToolId[] = [
 
 const localBrowserToolIds = new Set<ToolId>(LOCAL_BROWSER_TOOL_IDS);
 
+export type ToolboxToolTranslationField = "title" | "description" | "aliases";
+export type ToolboxToolTranslator = (
+  id: ToolId,
+  field: ToolboxToolTranslationField,
+) => string;
+export type ToolboxToolTranslationKey =
+  `tools.${ToolId}.${ToolboxToolTranslationField}`;
+
+export function toolboxToolTranslationKey(
+  id: ToolId,
+  field: ToolboxToolTranslationField,
+): ToolboxToolTranslationKey {
+  return `tools.${id}.${field}`;
+}
+
 const definitions = ([
   ["system-network", "keep-awake", "限时保活", ["防止休眠", "保活"], "在明确期限内保持空闲状态，不修改系统电源计划"],
   ["system-network", "process-watch", "进程退出提醒", ["进程", "退出"], "等待选定进程退出并提醒"],
@@ -72,21 +87,43 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = definitions;
 export function getToolDefinition(
   id: ToolId,
   nativeCapabilities?: Partial<Record<ToolId, ToolboxCapability>>,
+  translate?: ToolboxToolTranslator,
 ): ToolDefinition {
   const definition = TOOL_DEFINITIONS.find((candidate) => candidate.id === id);
   if (!definition) throw new Error(`Unknown toolbox tool: ${id}`);
-  return withNativeCapability(definition, nativeCapabilities?.[id]);
+  return withNativeCapability(
+    localizeToolDefinition(definition, translate),
+    nativeCapabilities?.[id],
+  );
 }
 
 export function searchTools(
   query: string,
   nativeCapabilities?: Partial<Record<ToolId, ToolboxCapability>>,
+  translate?: ToolboxToolTranslator,
 ): ToolDefinition[] {
   const needle = query.trim().toLocaleLowerCase();
   return TOOL_DEFINITIONS
+    .map((tool) => localizeToolDefinition(tool, translate))
     .filter((tool) => !needle || [tool.title, tool.description, ...tool.aliases]
       .some((value) => value.toLocaleLowerCase().includes(needle)))
     .map((tool) => withNativeCapability(tool, nativeCapabilities?.[tool.id]));
+}
+
+function localizeToolDefinition(
+  tool: ToolDefinition,
+  translate?: ToolboxToolTranslator,
+): ToolDefinition {
+  if (!translate) return tool;
+  return {
+    ...tool,
+    title: translate(tool.id, "title"),
+    description: translate(tool.id, "description"),
+    aliases: translate(tool.id, "aliases")
+      .split("|")
+      .map((alias) => alias.trim())
+      .filter(Boolean),
+  };
 }
 
 function withNativeCapability(tool: ToolDefinition, nativeCapability?: ToolboxCapability): ToolDefinition {

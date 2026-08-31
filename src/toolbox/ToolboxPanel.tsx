@@ -22,9 +22,10 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
@@ -37,7 +38,7 @@ import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
 import { getToolboxNetworkSnapshot, getToolboxSnapshot, subscribeToolboxEvents } from "./client";
-import { getToolDefinition, searchTools } from "./registry";
+import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
 
@@ -47,12 +48,12 @@ const NetworkAddressesTool = lazy(async () => ({ default: (await import("./netwo
 const KeyboardCleaningTool = lazy(async () => ({ default: (await import("./system/keyboard-cleaning/KeyboardCleaningTool")).KeyboardCleaningTool }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
-const CATEGORY_LABELS: Record<ToolboxCategory, string> = {
-  "system-network": "系统与网络",
-  "text-development": "文本与开发",
-  image: "图片",
-  "file-patch": "文件与补丁",
-};
+const CATEGORY_LABEL_KEYS = {
+  "system-network": "categories.systemNetwork",
+  "text-development": "categories.textDevelopment",
+  image: "categories.image",
+  "file-patch": "categories.filePatch",
+} as const satisfies Record<ToolboxCategory, string>;
 const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
   "system-network": Network,
   "text-development": Code2,
@@ -61,13 +62,23 @@ const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
 };
 
 export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("toolbox");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ToolId | null>(null);
   const [favorites, setFavorites] = useState<Set<ToolId>>(() => readFavorites());
   const [nativeCapabilities, setNativeCapabilities] = useState<Partial<Record<ToolId, ToolboxCapability>>>();
-  const tools = useMemo(() => searchTools(query, nativeCapabilities), [query, nativeCapabilities]);
-  const selectedTool = selected ? getToolDefinition(selected, nativeCapabilities) : null;
+  const translateTool = useCallback(
+    (id: ToolId, field: "title" | "description" | "aliases") =>
+      t(toolboxToolTranslationKey(id, field)),
+    [t],
+  );
+  const tools = useMemo(
+    () => searchTools(query, nativeCapabilities, translateTool),
+    [query, nativeCapabilities, translateTool],
+  );
+  const selectedTool = selected
+    ? getToolDefinition(selected, nativeCapabilities, translateTool)
+    : null;
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -117,28 +128,28 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
           <header className="toolbox-panel__header">
             <div>
               <span className="toolbox-eyebrow"><Sparkles size={14} />CoreRobin</span>
-              <h1 id="toolbox-title">工具箱</h1>
-              <p>在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。</p>
+              <h1 id="toolbox-title">{t("title")}</h1>
+              <p>{t("description")}</p>
             </div>
-            {onClose ? <button className="icon-button" type="button" aria-label="关闭工具箱" onClick={onClose}><X size={18} /></button> : null}
+            {onClose ? <button className="icon-button" type="button" aria-label={t("close")} onClick={onClose}><X size={18} /></button> : null}
           </header>
           <label className="toolbox-search">
             <Search size={16} />
-            <span className="sr-only">搜索功能名称</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索功能名称、别名或说明…" />
-            {query ? <button type="button" aria-label="清空搜索" onClick={() => setQuery("")}><X size={14} /></button> : null}
+            <span className="sr-only">{t("search.label")}</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search.placeholder")} />
+            {query ? <button type="button" aria-label={t("search.clear")} onClick={() => setQuery("")}><X size={14} /></button> : null}
           </label>
-          <div className="toolbox-category-tabs" role="group" aria-label="工具分类">
-            {(Object.keys(CATEGORY_LABELS) as ToolboxCategory[]).map((category) => {
+          <div className="toolbox-category-tabs" role="group" aria-label={t("categories.label")}>
+            {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).map((category) => {
               const Icon = CATEGORY_ICONS[category];
-              return <span key={category} className="toolbox-category-tab"><Icon size={14} />{CATEGORY_LABELS[category]}</span>;
+              return <span key={category} className="toolbox-category-tab"><Icon size={14} />{t(CATEGORY_LABEL_KEYS[category])}</span>;
             })}
           </div>
-          {favorites.size > 0 && !query ? <ToolSection title="收藏" tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
-          {(Object.keys(CATEGORY_LABELS) as ToolboxCategory[]).map((category) => (
-            <ToolSection key={category} title={CATEGORY_LABELS[category]} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
+          {favorites.size > 0 && !query ? <ToolSection title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
+          {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).map((category) => (
+            <ToolSection key={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           ))}
-          {tools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>没有匹配的工具</strong><span>搜索只查找工具名称、别名和说明，不会查看你的输入。</span></div> : null}
+          {tools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>{t("empty.title")}</strong><span>{t("empty.description")}</span></div> : null}
           <ToolboxHistoryPanel />
         </>
       )}
@@ -147,6 +158,7 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
 }
 
 function ToolboxHistoryPanel() {
+  const { t } = useTranslation("toolbox");
   const [page, setPage] = useState<ToolboxHistoryPage | null>(null);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -161,7 +173,7 @@ function ToolboxHistoryPanel() {
       setPage(storage.policy.toolboxHistoryEnabled ? await listToolboxHistory({ limit: 20 }) : null);
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "工具箱历史暂时不可用。" );
+      setError(reason instanceof Error ? reason.message : t("history.unavailable"));
     } finally {
       setLoading(false);
     }
@@ -182,32 +194,26 @@ function ToolboxHistoryPanel() {
       disposed = true;
       unlisten?.();
     };
-  }, []);
+  }, [t]);
   if (!isDesktopRuntime()) return null;
 
   return <section className="toolbox-section" aria-labelledby="toolbox-history-title">
-    <div className="toolbox-section__title"><h2 id="toolbox-history-title">最近执行历史</h2><span>{page ? `${page.records.length} 条` : enabled === false ? "已关闭" : ""}</span></div>
-    {enabled === false ? <p className="toolbox-hint">工具箱历史记录已按当前策略关闭；本地任务仍会显示即时结果。</p> : null}
+    <div className="toolbox-section__title"><h2 id="toolbox-history-title">{t("history.title")}</h2><span>{page ? t("history.count", { count: page.records.length }) : enabled === false ? t("history.disabled") : ""}</span></div>
+    {enabled === false ? <p className="toolbox-hint">{t("history.disabledDescription")}</p> : null}
     {error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}
     {enabled !== false && page?.records.length ? <div className="toolbox-history-list">{page.records.map((record) => <HistoryRow key={record.recordId} record={record} />)}</div> : null}
-    {enabled !== false && page && page.records.length === 0 ? <p className="toolbox-hint">还没有可展示的工具箱终态记录。</p> : null}
-    <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "正在刷新…" : "刷新历史"}</button><span className="toolbox-hint">只显示最近 20 条；记录不包含输入内容、路径或密钥。</span></div>
+    {enabled !== false && page && page.records.length === 0 ? <p className="toolbox-hint">{t("history.empty")}</p> : null}
+    <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? t("history.refreshing") : t("history.refresh")}</button><span className="toolbox-hint">{t("history.privacy")}</span></div>
   </section>;
 }
 
 function HistoryRow({ record }: { record: ToolboxHistoryRecord }) {
-  return <div className="toolbox-history-row"><strong>{historyToolLabel(record.tool)}</strong><span>{historyStatusLabel(record.terminalStatus)}</span><small>{new Date(record.completedAtMs).toLocaleString()} · 通知：{record.notificationStatus}</small></div>;
-}
-
-function historyToolLabel(tool: ToolboxHistoryRecord["tool"]): string {
-  return { "keep-awake": "限时保活", "process-watch": "进程退出观察", "file-occupancy": "文件占用扫描", "volume-occupancy": "卷占用扫描", "keyboard-cleaning": "键盘清理", "network-addresses": "网络地址", "ifconfig-parser": "ifconfig 解析" }[tool];
-}
-
-function historyStatusLabel(status: ToolboxHistoryRecord["terminalStatus"]): string {
-  return { completed: "已完成", cancelled: "已取消", expired: "已过期", failed: "失败", interrupted: "已中断", deadline: "达到截止时间", process_exited: "进程已退出", low_battery: "低电量释放", release_unconfirmed: "释放未确认" }[status];
+  const { t } = useTranslation("toolbox");
+  return <div className="toolbox-history-row"><strong>{t(`history.tools.${record.tool}`)}</strong><span>{t(`history.statuses.${record.terminalStatus}`)}</span><small>{new Date(record.completedAtMs).toLocaleString()} · {t("history.notification", { status: t(`history.notifications.${record.notificationStatus}`) })}</small></div>;
 }
 
 function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition) => void; onFavorite: (id: ToolId) => void }) {
+  const { t } = useTranslation("toolbox");
   if (tools.length === 0) return null;
   return (
     <section className="toolbox-section" aria-labelledby={`toolbox-section-${title}`}>
@@ -216,10 +222,10 @@ function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: s
         {tools.map((tool) => <div className={`toolbox-card toolbox-card--${tool.capability.state}`} key={tool.id}>
           <button className="toolbox-card__open" type="button" disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
             <span className="toolbox-card__icon"><ToolIcon id={tool.id} /></span>
-            <span className="toolbox-card__content"><strong>{tool.title}</strong><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability">{capabilityLabel(tool.capability)}：{capabilityReason(tool.capability)}</small> : null}</span>
+            <span className="toolbox-card__content"><strong>{tool.title}</strong><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability">{capabilityLabel(t, tool.capability)}：{capabilityReason(t, tool.capability)}</small> : null}</span>
           </button>
           <span className="toolbox-card__actions">
-            <button type="button" className={`toolbox-favorite${favorites.has(tool.id) ? " is-active" : ""}`} aria-label={favorites.has(tool.id) ? `取消收藏 ${tool.title}` : `收藏 ${tool.title}`} onClick={() => onFavorite(tool.id)}><Heart size={14} fill={favorites.has(tool.id) ? "currentColor" : "none"} /></button>
+            <button type="button" className={`toolbox-favorite${favorites.has(tool.id) ? " is-active" : ""}`} aria-label={favorites.has(tool.id) ? t("favorites.remove", { tool: tool.title }) : t("favorites.add", { tool: tool.title })} onClick={() => onFavorite(tool.id)}><Heart size={14} fill={favorites.has(tool.id) ? "currentColor" : "none"} /></button>
             <ChevronRight size={16} aria-hidden="true" />
           </span>
         </div>)}
@@ -229,12 +235,14 @@ function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: s
 }
 
 function ToolPage({ tool, onBack, children }: { tool: ToolDefinition; onBack: () => void; children: ReactNode }) {
-  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />返回工具箱</button><div><span className="toolbox-eyebrow">{CATEGORY_LABELS[tool.category]}</span><h1>{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
+  const { t } = useTranslation("toolbox");
+  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1>{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
 }
 
 function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability }) {
+  const { t } = useTranslation("toolbox");
   if (capability.state === "available") return null;
-  return <p className={`toolbox-capability-notice toolbox-capability-notice--${capability.state}`} role="status"><CircleAlert size={16} /><span><strong>{capabilityLabel(capability)}</strong>：{capabilityReason(capability)}</span></p>;
+  return <p className={`toolbox-capability-notice toolbox-capability-notice--${capability.state}`} role="status"><CircleAlert size={16} /><span><strong>{capabilityLabel(t, capability)}</strong>：{capabilityReason(t, capability)}</span></p>;
 }
 
 function ToolContent({ toolId }: { toolId: ToolId }) {
@@ -605,15 +613,16 @@ function localDateTimeInput(value: Date): string {
 }
 
 
-function UnavailableTool({ tool }: { tool: ToolDefinition }) { return <div className="toolbox-unavailable"><CircleAlert size={24} /><strong>{tool.title}当前不可用</strong><p>{capabilityReason(tool.capability)}</p><p>此入口会保留在工具箱中；原生能力恢复后可直接使用。</p></div>; }
+function UnavailableTool({ tool }: { tool: ToolDefinition }) { const { t } = useTranslation("toolbox"); return <div className="toolbox-unavailable"><CircleAlert size={24} /><strong>{t("capability.unavailableTitle", { tool: tool.title })}</strong><p>{capabilityReason(t, tool.capability)}</p><p>{t("capability.unavailableHint")}</p></div>; }
 
-function ToolLayout({ error, onClear, children }: { error?: string; onClear: () => void; children: ReactNode }) { return <div className="toolbox-tool-layout"><div className="toolbox-tool-layout__body">{children}</div>{error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}<div className="toolbox-tool-layout__footer"><button className="button button--secondary" type="button" onClick={onClear}>清空</button><span>输入与结果只保留在当前工具页内存；复制和保存都需要明确点击。</span></div></div>; }
+function ToolLayout({ error, onClear, children }: { error?: string; onClear: () => void; children: ReactNode }) { const { t } = useTranslation("toolbox"); return <div className="toolbox-tool-layout"><div className="toolbox-tool-layout__body">{children}</div>{error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}<div className="toolbox-tool-layout__footer"><button className="button button--secondary" type="button" onClick={onClear}>{t("toolLayout.clear")}</button><span>{t("toolLayout.privacy")}</span></div></div>; }
 
-function ResultBox({ value }: { value: string }) { if (!value) return null; return <div className="toolbox-result"><div className="toolbox-result__header"><strong>结果</strong><button className="icon-button" type="button" aria-label="复制结果" onClick={() => void navigator.clipboard?.writeText(value)}><Copy size={14} /></button></div><pre>{value}</pre></div>; }
+function ResultBox({ value }: { value: string }) { const { t } = useTranslation("toolbox"); if (!value) return null; return <div className="toolbox-result"><div className="toolbox-result__header"><strong>{t("toolLayout.result")}</strong><button className="icon-button" type="button" aria-label={t("toolLayout.copyResult")} onClick={() => void navigator.clipboard?.writeText(value)}><Copy size={14} /></button></div><pre>{value}</pre></div>; }
 
 function ToolIcon({ id }: { id: ToolId }) { if (id.includes("image") || id.includes("watermark") || id === "c2pa-inspector" || id === "robustness-lab") return <FileImage size={18} />; if (id.includes("patch") || id === "integrity-manifest" || id === "transfer-savings") return <FileKey2 size={18} />; if (id.includes("sha")) return <Hash size={18} />; if (id === "qr-code") return <QrCode size={18} />; if (id.includes("network") || id.includes("occupancy")) return <Network size={18} />; if (id.includes("keep") || id.includes("schedule") || id === "time") return <Timer size={18} />; return <Wrench size={18} />; }
 
-function capabilityLabel(capability: ToolboxCapability): string { return capability.state === "degraded" ? "降级可用" : "不可用"; }
-function capabilityReason(capability: ToolboxCapability): string { return capability.reason ?? (capability.state === "degraded" ? "部分原生集成受限，但工具仍可打开。" : "当前平台没有可用的原生执行能力。"); }
+type ToolboxTFunction = TFunction<"toolbox">;
+function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
+function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason")); }
 function wifiEscape(value: string): string { return value.replace(/([\\;,:])/g, "\\$1"); }
 function readFavorites(): Set<ToolId> { try { const parsed: unknown = JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]"); return new Set(Array.isArray(parsed) ? parsed.filter((value): value is ToolId => typeof value === "string") : []); } catch { return new Set(); } }
