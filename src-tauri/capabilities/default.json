@@ -115,6 +115,7 @@
     "allow-start-toolbox-keep-awake",
     "allow-cancel-toolbox-keep-awake",
     "allow-get-toolbox-keep-awake-state",
-    "allow-write-toolbox-text-copy"
+    "allow-write-toolbox-text-copy",
+    "allow-scan-toolbox-file-occupancy"
   ]
 }
