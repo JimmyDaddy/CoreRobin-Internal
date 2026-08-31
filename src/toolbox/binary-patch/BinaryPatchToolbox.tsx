@@ -13,7 +13,9 @@ import {
   PATCH_PLANNER_DEADLINE_MS,
   runWithPatchDeadline,
 } from "./binaryPatchTools";
-import type { ToolId } from "../contracts";
+import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
+import { cancelToolboxJob, finishToolboxJob, newToolboxRequest, startToolboxSession } from "../client";
+import { isDesktopRuntime } from "../../api";
 
 type BinaryToolId = Extract<ToolId, "binary-patch-create" | "binary-patch-apply" | "binary-patch-inspector" | "integrity-manifest" | "transfer-savings" | "patch-errors" | "patch-planner">;
 const MAX_BINARY_BYTES = 64 * 1024 * 1024;
@@ -55,7 +57,23 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     setError("");
     setOutput("");
     clearDownload();
-    try { await runWithPatchDeadline(task, controller.signal, PATCH_PLANNER_DEADLINE_MS); } catch (reason) {
+    let nativeJob: ToolboxJob | null = null;
+    try {
+      if (isDesktopRuntime()) nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
+      await runWithPatchDeadline(task, controller.signal, PATCH_PLANNER_DEADLINE_MS);
+      if (nativeJob) await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
+    } catch (reason) {
+      if (nativeJob) {
+        try {
+          if (isPatchTaskCancelled(reason)) {
+            await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
+          } else {
+            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
+          }
+        } catch (lifecycleReason) {
+          setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+        }
+      }
       if (isPatchTaskCancelled(reason)) {
         setOutput(JSON.stringify({ state: "cancelled", note: "补丁任务已终止，未生成可下载结果。" }, null, 2));
         setError("任务已取消（cancelled）；未生成可下载结果。");
@@ -140,6 +158,10 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     {error ? <p className="toolbox-error" role="alert">{error}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
     {downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />另存结果副本</a> : null}
   </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；本页面不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
+}
+
+function toToolboxError(reason: unknown): ToolboxError {
+  return { code: "web_tool_error", message: reason instanceof Error ? reason.message : "补丁工具执行失败。", retryable: false };
 }
 
 function FileInput({ label, file, files, onChange, multiple, optional }: { label: string; file?: File | null; files?: File[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void; multiple?: boolean; optional?: boolean }) {
