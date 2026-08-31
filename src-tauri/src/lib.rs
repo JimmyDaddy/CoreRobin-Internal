@@ -1559,7 +1559,6 @@ async fn eject_removable_volume(
     mount_point: String,
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
-    let verified_mount_point = mount_point.clone();
     let removable = state
         .sampler
         .latest_or_sample()
@@ -1567,21 +1566,47 @@ async fn eject_removable_volume(
         .disk
         .volumes
         .into_iter()
-        .any(|volume| volume.removable && volume.mount_point == verified_mount_point);
+        .any(|volume| volume.removable && volume.mount_point == mount_point);
     if !removable {
         return Err(CommandError::new(
             "volume_not_removable",
             "This volume is no longer available as a removable volume.",
         ));
     }
+
+    // The storage screen's second button press is the explicit user
+    // confirmation. A fresh native scan still has to prove that the selected
+    // mount is clean and unchanged immediately before any eject provider is
+    // called. The action lease never crosses into the WebView.
+    let scan = resource_occupancy::scan_volume_for_action(OccupancyVolumeScanRequest {
+        request_id: format!("eject-{}-{}", now_millis(), mount_point.len()),
+        path: mount_point.clone(),
+    })
+    .await?;
+    let Some(action_lease) = scan.action_lease else {
+        let message = if scan.result.processes.is_empty() {
+            scan.result
+                .message
+                .unwrap_or_else(|| "外盘占用诊断未完成；不会继续推出操作。".to_owned())
+        } else {
+            "检测到进程仍在使用该卷；请关闭相关文件后重新确认。".to_owned()
+        };
+        return Err(CommandError::new("volume_action_not_safe", message));
+    };
+    let verified_mount_point = resource_occupancy::confirm_volume_action(action_lease, true)?;
+    let verified_mount_point = verified_mount_point
+        .to_str()
+        .ok_or_else(|| CommandError::new("invalid_volume_target", "卷挂载点不是有效文本。"))?
+        .to_owned();
     tauri::async_runtime::spawn_blocking({
-        let mount_point = mount_point.clone();
+        let mount_point = verified_mount_point.clone();
         move || user_actions::eject_removable_volume(&mount_point)
     })
     .await
     .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))??;
+    let monitor_mount_point = verified_mount_point;
     with_monitor(Arc::clone(&state.monitor), move |monitor| {
-        monitor.record_volume_ejected(&mount_point);
+        monitor.record_volume_ejected(&monitor_mount_point);
         monitor.request_volume_catalog_refresh();
         Ok(())
     })

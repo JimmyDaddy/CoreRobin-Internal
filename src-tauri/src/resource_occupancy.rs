@@ -152,6 +152,8 @@ pub struct OccupancyVolumeScanRequest {
 #[path = "resource_occupancy/volume.rs"]
 mod volume;
 
+use self::volume::{VolumeActionLease, VolumeScanForAction};
+
 pub async fn scan(request: OccupancyScanRequest) -> Result<OccupancyScanResult, CommandError> {
     scan_with_cancellation(request, OccupancyCancellation::new()).await
 }
@@ -178,6 +180,39 @@ pub async fn scan_volume_with_cancellation(
     tauri::async_runtime::spawn_blocking(move || volume::scan_blocking(request, cancellation))
         .await
         .map_err(|error| CommandError::internal(format!("Volume occupancy task failed: {error}")))?
+}
+
+/// Runs a removable-volume probe and, only when its final state is safe for a
+/// later destructive action, returns an opaque, single-use action lease.
+///
+/// The lease intentionally stays native-only. Callers must keep it out of the
+/// WebView and call [`confirm_volume_action`] only after a fresh user
+/// confirmation. This module never ejects or unmounts a volume itself.
+pub(crate) async fn scan_volume_for_action(
+    request: OccupancyVolumeScanRequest,
+) -> Result<VolumeScanForAction, CommandError> {
+    scan_volume_for_action_with_cancellation(request, OccupancyCancellation::new()).await
+}
+
+pub(crate) async fn scan_volume_for_action_with_cancellation(
+    request: OccupancyVolumeScanRequest,
+    cancellation: OccupancyCancellation,
+) -> Result<VolumeScanForAction, CommandError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        volume::scan_blocking_for_action(request, cancellation)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Volume occupancy task failed: {error}")))?
+}
+
+/// Consumes a scan-issued volume lease after an explicit second confirmation.
+/// The returned path is re-bound to the same mount identity immediately before
+/// a caller invokes an existing destructive platform action.
+pub(crate) fn confirm_volume_action(
+    lease: VolumeActionLease,
+    second_confirmation: bool,
+) -> Result<PathBuf, CommandError> {
+    lease.confirm(second_confirmation)
 }
 
 fn scan_blocking(
