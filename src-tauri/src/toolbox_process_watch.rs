@@ -139,6 +139,7 @@ pub struct ProcessWatchService {
 }
 
 impl ProcessWatchService {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self, CommandError> {
         Self::with_reader_and_timing_and_power(
             Arc::new(read_birth_token),
