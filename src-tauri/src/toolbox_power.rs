@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -9,6 +9,7 @@ const MINUTES_MIN: u64 = 1;
 const MINUTES_MAX: u64 = 12 * 60;
 const LOW_BATTERY_PERCENT: u8 = 15;
 const POWER_CHECK_INTERVAL: Duration = Duration::from_secs(15);
+const MAX_PENDING_COMPLETIONS: usize = 16;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,16 +92,40 @@ enum BatteryState {
 #[derive(Clone)]
 struct PowerDemand {
     request_id: String,
+    started_at_ms: u64,
     deadline: Duration,
     deadline_at_ms: u64,
 }
 
-#[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DemandOwner {
     Independent,
     Scheduler,
     ProcessWatch(u64),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PowerCompletionStatus {
+    Cancelled,
+    Expired,
+    LowBattery,
+    Failed,
+    Interrupted,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PowerCompletionOwner {
+    Independent,
+    Scheduler,
+    ProcessWatch(u64),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PowerCompletion {
+    pub request_id: String,
+    pub started_at_ms: u64,
+    pub owner: PowerCompletionOwner,
+    pub status: PowerCompletionStatus,
 }
 
 struct PowerBook {
@@ -113,6 +138,7 @@ struct PowerBook {
     reason: Option<String>,
     battery_protection: BatteryProtection,
     closed: bool,
+    completions: VecDeque<PowerCompletion>,
 }
 
 impl Default for PowerBook {
@@ -127,6 +153,7 @@ impl Default for PowerBook {
             reason: None,
             battery_protection: BatteryProtection::Unknown,
             closed: false,
+            completions: VecDeque::new(),
         }
     }
 }
@@ -176,16 +203,26 @@ impl PowerBook {
             .independent
             .as_ref()
             .is_some_and(|demand| demand.deadline <= now)
+            && let Some(demand) = self.independent.take()
         {
-            self.independent = None;
+            self.retain_completion(
+                demand,
+                DemandOwner::Independent,
+                PowerCompletionStatus::Expired,
+            );
             expired = true;
         }
         if self
             .scheduler
             .as_ref()
             .is_some_and(|demand| demand.deadline <= now)
+            && let Some(demand) = self.scheduler.take()
         {
-            self.scheduler = None;
+            self.retain_completion(
+                demand,
+                DemandOwner::Scheduler,
+                PowerCompletionStatus::Expired,
+            );
             expired = true;
         }
         let expired_watch_ids = self
@@ -194,7 +231,13 @@ impl PowerBook {
             .filter_map(|(watch_id, demand)| (demand.deadline <= now).then_some(*watch_id))
             .collect::<Vec<_>>();
         for watch_id in expired_watch_ids {
-            self.process_watches.remove(&watch_id);
+            if let Some(demand) = self.process_watches.remove(&watch_id) {
+                self.retain_completion(
+                    demand,
+                    DemandOwner::ProcessWatch(watch_id),
+                    PowerCompletionStatus::Expired,
+                );
+            }
             self.process_statuses
                 .insert(watch_id, ProcessWatchPowerStatus::Expired);
             expired = true;
@@ -205,24 +248,48 @@ impl PowerBook {
     }
 
     fn end_for_low_battery(&mut self) {
-        self.independent = None;
-        self.scheduler = None;
-        for watch_id in self.process_watches.keys().copied().collect::<Vec<_>>() {
+        if let Some(demand) = self.independent.take() {
+            self.retain_completion(
+                demand,
+                DemandOwner::Independent,
+                PowerCompletionStatus::LowBattery,
+            );
+        }
+        if let Some(demand) = self.scheduler.take() {
+            self.retain_completion(
+                demand,
+                DemandOwner::Scheduler,
+                PowerCompletionStatus::LowBattery,
+            );
+        }
+        for (watch_id, demand) in std::mem::take(&mut self.process_watches) {
+            self.retain_completion(
+                demand,
+                DemandOwner::ProcessWatch(watch_id),
+                PowerCompletionStatus::LowBattery,
+            );
             self.process_statuses
                 .insert(watch_id, ProcessWatchPowerStatus::LowBatteryEnded);
         }
-        self.process_watches.clear();
         self.reason = Some("low_battery".to_owned());
     }
 
     fn end_all(&mut self, reason: &str) {
-        self.independent = None;
-        self.scheduler = None;
-        for watch_id in self.process_watches.keys().copied().collect::<Vec<_>>() {
+        let status = match reason {
+            "system_sleep" | "application_exit" => PowerCompletionStatus::Interrupted,
+            _ => PowerCompletionStatus::Failed,
+        };
+        if let Some(demand) = self.independent.take() {
+            self.retain_completion(demand, DemandOwner::Independent, status);
+        }
+        if let Some(demand) = self.scheduler.take() {
+            self.retain_completion(demand, DemandOwner::Scheduler, status);
+        }
+        for (watch_id, demand) in std::mem::take(&mut self.process_watches) {
+            self.retain_completion(demand, DemandOwner::ProcessWatch(watch_id), status);
             self.process_statuses
                 .insert(watch_id, ProcessWatchPowerStatus::Cancelled);
         }
-        self.process_watches.clear();
         self.reason = Some(reason.to_owned());
     }
 
@@ -240,14 +307,57 @@ impl PowerBook {
 
     fn remove_demand(&mut self, owner: DemandOwner) {
         match owner {
-            DemandOwner::Independent => self.independent = None,
-            DemandOwner::Scheduler => self.scheduler = None,
+            DemandOwner::Independent => {
+                if let Some(demand) = self.independent.take() {
+                    self.retain_completion(
+                        demand,
+                        DemandOwner::Independent,
+                        PowerCompletionStatus::Failed,
+                    );
+                }
+            }
+            DemandOwner::Scheduler => {
+                if let Some(demand) = self.scheduler.take() {
+                    self.retain_completion(
+                        demand,
+                        DemandOwner::Scheduler,
+                        PowerCompletionStatus::Failed,
+                    );
+                }
+            }
             DemandOwner::ProcessWatch(watch_id) => {
-                self.process_watches.remove(&watch_id);
+                if let Some(demand) = self.process_watches.remove(&watch_id) {
+                    self.retain_completion(
+                        demand,
+                        DemandOwner::ProcessWatch(watch_id),
+                        PowerCompletionStatus::Failed,
+                    );
+                }
                 self.process_statuses
                     .insert(watch_id, ProcessWatchPowerStatus::Unavailable);
             }
         }
+    }
+
+    fn retain_completion(
+        &mut self,
+        demand: PowerDemand,
+        owner: DemandOwner,
+        status: PowerCompletionStatus,
+    ) {
+        while self.completions.len() >= MAX_PENDING_COMPLETIONS {
+            self.completions.pop_front();
+        }
+        self.completions.push_back(PowerCompletion {
+            request_id: demand.request_id,
+            started_at_ms: demand.started_at_ms,
+            owner: match owner {
+                DemandOwner::Independent => PowerCompletionOwner::Independent,
+                DemandOwner::Scheduler => PowerCompletionOwner::Scheduler,
+                DemandOwner::ProcessWatch(watch_id) => PowerCompletionOwner::ProcessWatch(watch_id),
+            },
+            status,
+        });
     }
 
     fn snapshot(&self) -> PowerState {
@@ -390,6 +500,14 @@ impl PowerService {
         self.lock_book().snapshot()
     }
 
+    /// Drains power-demand terminal events exactly once. The application layer
+    /// owns persistence and notification policy; the power worker only emits a
+    /// bounded, privacy-safe completion record.
+    pub fn take_completions(&self) -> Vec<PowerCompletion> {
+        let mut book = self.lock_book();
+        book.completions.drain(..).collect()
+    }
+
     /// Starts or updates the one independent keep-awake slot without touching
     /// process-watch or scheduler demands.
     pub fn start(&mut self, request: PowerRequest) -> Result<PowerState, CommandError> {
@@ -497,7 +615,12 @@ impl PowerService {
     /// reports that fact instead of falsely claiming it was released.
     pub fn cancel(&mut self) -> PowerState {
         let mut book = self.lock_book();
-        if book.independent.take().is_some() {
+        if let Some(demand) = book.independent.take() {
+            book.retain_completion(
+                demand,
+                DemandOwner::Independent,
+                PowerCompletionStatus::Cancelled,
+            );
             book.reason = Some(if book.has_demands() {
                 "other_keep_awake_demands_active".to_owned()
             } else {
@@ -688,6 +811,7 @@ fn demand_for(request: &PowerRequest, now: Duration) -> PowerDemand {
     let duration = Duration::from_secs(request.duration_minutes.saturating_mul(60));
     PowerDemand {
         request_id: request.request_id.clone(),
+        started_at_ms: now_millis(),
         deadline: now.saturating_add(duration),
         deadline_at_ms: now_millis()
             .saturating_add(duration.as_millis().min(u64::MAX as u128) as u64),
@@ -1353,6 +1477,22 @@ mod tests {
     }
 
     #[test]
+    fn cancelling_a_demand_emits_one_privacy_safe_completion() {
+        let backend = MockBackend::new(BatteryState::Unavailable);
+        let mut service = service_with_backend(backend);
+        service.start(request("independent", 60)).unwrap();
+
+        service.cancel();
+
+        let completions = service.take_completions();
+        assert_eq!(completions.len(), 1);
+        assert_eq!(completions[0].request_id, "independent");
+        assert_eq!(completions[0].owner, PowerCompletionOwner::Independent);
+        assert_eq!(completions[0].status, PowerCompletionStatus::Cancelled);
+        assert!(service.take_completions().is_empty());
+    }
+
+    #[test]
     fn low_battery_releases_all_power_demands_but_records_process_attachment_state() {
         let backend = MockBackend::new(BatteryState::Unavailable);
         let mut service = service_with_backend(backend.clone());
@@ -1370,6 +1510,13 @@ mod tests {
         assert_eq!(
             service.process_watch_power_status(7),
             Some(ProcessWatchPowerStatus::LowBatteryEnded)
+        );
+        let completions = service.take_completions();
+        assert_eq!(completions.len(), 2);
+        assert!(
+            completions
+                .iter()
+                .all(|completion| { completion.status == PowerCompletionStatus::LowBattery })
         );
         assert_eq!(backend.releases.load(Ordering::SeqCst), 1);
     }

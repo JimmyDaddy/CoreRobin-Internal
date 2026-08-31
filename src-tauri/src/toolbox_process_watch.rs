@@ -13,6 +13,7 @@ pub const MAX_ACTIVE_PROCESS_WATCHES: usize = 3;
 
 /// One service owns one polling worker, regardless of the number of watches.
 const MAX_RETAINED_TERMINAL_WATCHES: usize = MAX_ACTIVE_PROCESS_WATCHES;
+const MAX_PENDING_COMPLETIONS: usize = MAX_ACTIVE_PROCESS_WATCHES * 2;
 const MIN_DURATION_MINUTES: u64 = 1;
 const MAX_DURATION_MINUTES: u64 = 12 * 60;
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
@@ -128,6 +129,12 @@ pub struct ProcessWatchSnapshot {
 pub struct ProcessWatchStart {
     pub snapshot: ProcessWatchSnapshot,
 }
+
+/// A terminal watch snapshot waiting for the application coordinator to
+/// publish a privacy-safe history record. Keeping this queue in the service
+/// means a background worker can finish a watch without calling storage or a
+/// Tauri command while holding its state lock.
+pub type ProcessWatchCompletion = ProcessWatchSnapshot;
 
 /// A bounded, read-only process observation service.
 ///
@@ -261,6 +268,17 @@ impl ProcessWatchService {
             .lock()
             .map_err(|_| CommandError::internal("Process watch state is unavailable."))?;
         Ok(state.snapshots())
+    }
+
+    /// Drains terminal snapshots exactly once. Callers may map the snapshot
+    /// to their own history/event contract; this service never writes storage.
+    pub fn take_completions(&self) -> Result<Vec<ProcessWatchCompletion>, CommandError> {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .map_err(|_| CommandError::internal("Process watch state is unavailable."))?;
+        Ok(state.completions.drain(..).collect())
     }
 
     #[cfg(test)]
@@ -438,6 +456,7 @@ struct ActiveWatch {
 struct WatchBook {
     active: Vec<ActiveWatch>,
     terminal: VecDeque<ProcessWatchSnapshot>,
+    completions: VecDeque<ProcessWatchCompletion>,
     next_watch_id: u64,
     shutdown: bool,
 }
@@ -477,6 +496,7 @@ impl WatchBook {
 
         if status.is_terminal() {
             self.retain_terminal(snapshot.clone());
+            self.retain_completion(snapshot.clone());
         } else {
             self.active.push(ActiveWatch {
                 next_check_at: next_check_at(started_at, status, timing),
@@ -642,6 +662,7 @@ impl WatchBook {
         }
         let snapshot = entry.snapshot;
         self.retain_terminal(snapshot.clone());
+        self.retain_completion(snapshot.clone());
         snapshot
     }
 
@@ -650,6 +671,13 @@ impl WatchBook {
             self.terminal.pop_front();
         }
         self.terminal.push_back(snapshot);
+    }
+
+    fn retain_completion(&mut self, snapshot: ProcessWatchCompletion) {
+        while self.completions.len() >= MAX_PENDING_COMPLETIONS {
+            self.completions.pop_front();
+        }
+        self.completions.push_back(snapshot);
     }
 }
 
@@ -1188,6 +1216,21 @@ mod tests {
         assert_eq!(first.status, ProcessWatchStatus::Cancelled);
         assert_eq!(second, first);
         assert_eq!(service.active_count().unwrap(), 0);
+    }
+
+    #[test]
+    fn terminal_watch_completion_is_drained_once_for_history_projection() {
+        let service = service_with_reader(|_| {
+            Err(CommandError::new("process_exited", "the process is gone"))
+        });
+        let started = service.start(request(7, "birth", 1)).unwrap();
+        assert_eq!(started.snapshot.status, ProcessWatchStatus::Exited);
+
+        let first = service.take_completions().unwrap();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].watch_id, started.snapshot.watch_id);
+        assert_eq!(first[0].status, ProcessWatchStatus::Exited);
+        assert!(service.take_completions().unwrap().is_empty());
     }
 
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]

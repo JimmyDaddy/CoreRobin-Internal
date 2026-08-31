@@ -126,6 +126,27 @@ const WEB_MANAGED_TOOL_IDS: &[&str] = &[
     "patch-errors",
     "patch-planner",
 ];
+const LOCAL_TOOL_IDS: &[&str] = &[
+    "json",
+    "url",
+    "base64",
+    "time",
+    "uuid",
+    "qr-code",
+    "text-sha256",
+    "regex",
+    "color",
+    "ifconfig-parser",
+];
+const NATIVE_TOOL_IDS: &[&str] = &[
+    "file-sha256",
+    "keep-awake",
+    "process-watch",
+    "file-occupancy",
+    "volume-occupancy",
+    "schedules",
+    "network-addresses",
+];
 const OUTPUT_TTL_MS: u64 = 10 * 60 * 1_000;
 const MAX_OUTPUT_BYTES: usize = 512 * 1024 * 1024;
 
@@ -180,20 +201,24 @@ impl ToolboxService {
         let capabilities = TOOL_IDS
             .iter()
             .map(|id| {
+                let (state, reason) = if LOCAL_TOOL_IDS.contains(id) || NATIVE_TOOL_IDS.contains(id) {
+                    ("available", None)
+                } else if WEB_MANAGED_TOOL_IDS.contains(id) {
+                    (
+                        "degraded",
+                        Some("Web Worker provider is bounded, but some native input/output integration remains limited."),
+                    )
+                } else {
+                    (
+                        "unavailable",
+                        Some("This tool requires a restricted native helper that is not registered."),
+                    )
+                };
                 (
                     (*id).to_owned(),
                     ToolboxCapability {
-                        state: if WEB_MANAGED_TOOL_IDS.contains(id) {
-                            "degraded"
-                        } else {
-                            "unavailable"
-                        }
-                        .to_owned(),
-                        reason: if WEB_MANAGED_TOOL_IDS.contains(id) {
-                            Some("Web Worker provider is bounded but native file/job export integration is still limited.".to_owned())
-                        } else {
-                            Some("Tool implementation is not registered yet.".to_owned())
-                        },
+                        state: state.to_owned(),
+                        reason: reason.map(str::to_owned),
                         platform: None,
                     },
                 )
@@ -918,6 +943,18 @@ mod tests {
             })
             .unwrap_err();
         assert_eq!(error.code, "tool_unavailable");
+    }
+
+    #[test]
+    fn snapshot_distinguishes_local_native_degraded_and_unavailable_tools() {
+        let service = ToolboxService::new();
+        let capabilities = service.snapshot().capabilities;
+
+        assert_eq!(capabilities["json"].state, "available");
+        assert_eq!(capabilities["file-sha256"].state, "available");
+        assert_eq!(capabilities["image-watermark"].state, "degraded");
+        assert_eq!(capabilities["keyboard-cleaning"].state, "unavailable");
+        assert!(capabilities["keyboard-cleaning"].reason.is_some());
     }
 
     #[test]

@@ -140,7 +140,9 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use tauri_plugin_notification::NotificationExt;
 use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
-use toolbox_power::{PowerRequest, PowerService, PowerState};
+use toolbox_power::{
+    PowerCompletionOwner, PowerCompletionStatus, PowerRequest, PowerService, PowerState,
+};
 use toolbox_process_watch::{
     ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
     ProcessWatchStatus,
@@ -155,8 +157,9 @@ use toolbox_service::{
     FinishToolboxJobRequest, RegisterToolboxOutputRequest, ToolboxService,
 };
 use toolbox_storage::{
-    ToolboxHistoryPage, ToolboxPolicy, ToolboxPolicyConfigureRequest, ToolboxStorage,
-    ToolboxStorageError, ToolboxStorageSnapshot,
+    ToolboxCompletionRecord, ToolboxHistoryPage, ToolboxNotificationStatus, ToolboxPolicy,
+    ToolboxPolicyConfigureRequest, ToolboxStorage, ToolboxStorageError, ToolboxStorageSnapshot,
+    ToolboxSystemTool, ToolboxTerminalStatus,
 };
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
@@ -365,6 +368,145 @@ fn now_millis() -> u64 {
         .unwrap_or_default()
         .as_millis()
         .min(u64::MAX as u128) as u64
+}
+
+fn record_toolbox_completion(
+    state: &AppState,
+    record_id: String,
+    tool: ToolboxSystemTool,
+    started_at_ms: u64,
+    terminal_status: ToolboxTerminalStatus,
+    notification_status: ToolboxNotificationStatus,
+) {
+    let Ok(mut storage_slot) = state.toolbox_storage.lock() else {
+        eprintln!("toolbox history lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    let reset_epoch = storage.reset_epoch();
+    let record = ToolboxCompletionRecord {
+        record_id,
+        tool,
+        started_at_ms,
+        completed_at_ms: now_millis().max(started_at_ms),
+        terminal_status,
+        notification_status,
+    };
+    if let Err(error) = storage.record_completion(reset_epoch, record, now_millis()) {
+        eprintln!("toolbox history record was not stored: {error}");
+    }
+}
+
+fn process_watch_terminal_status(status: ProcessWatchStatus) -> Option<ToolboxTerminalStatus> {
+    Some(match status {
+        ProcessWatchStatus::Exited => ToolboxTerminalStatus::ProcessExited,
+        ProcessWatchStatus::IdentityChanged | ProcessWatchStatus::Interrupted => {
+            ToolboxTerminalStatus::Interrupted
+        }
+        ProcessWatchStatus::Expired => ToolboxTerminalStatus::Expired,
+        ProcessWatchStatus::Cancelled => ToolboxTerminalStatus::Cancelled,
+        ProcessWatchStatus::Running | ProcessWatchStatus::Unknown => return None,
+    })
+}
+
+fn history_record_id(prefix: &str, request_id: &str) -> String {
+    let suffix = request_id
+        .bytes()
+        .map(|byte| {
+            if byte.is_ascii_alphanumeric() || b"._:-".contains(&byte) {
+                byte as char
+            } else {
+                '_'
+            }
+        })
+        .take(96)
+        .collect::<String>();
+    format!("{prefix}-{suffix}")
+}
+
+fn occupancy_terminal_status(status: &str) -> ToolboxTerminalStatus {
+    match status {
+        "scoped_complete" => ToolboxTerminalStatus::Completed,
+        "cancelled" => ToolboxTerminalStatus::Cancelled,
+        "timed_out" => ToolboxTerminalStatus::Deadline,
+        _ => ToolboxTerminalStatus::Failed,
+    }
+}
+
+fn power_completion_terminal_status(status: PowerCompletionStatus) -> ToolboxTerminalStatus {
+    match status {
+        PowerCompletionStatus::Cancelled => ToolboxTerminalStatus::Cancelled,
+        PowerCompletionStatus::Expired => ToolboxTerminalStatus::Expired,
+        PowerCompletionStatus::LowBattery => ToolboxTerminalStatus::LowBattery,
+        PowerCompletionStatus::Failed => ToolboxTerminalStatus::Failed,
+        PowerCompletionStatus::Interrupted => ToolboxTerminalStatus::Interrupted,
+    }
+}
+
+fn drain_power_completions(state: &AppState) {
+    let completions = match state.toolbox_power.lock() {
+        Ok(power) => power.take_completions(),
+        Err(_) => {
+            eprintln!("toolbox power state lock was poisoned");
+            return;
+        }
+    };
+    for completion in completions {
+        let record_id = match completion.owner {
+            PowerCompletionOwner::Independent => {
+                history_record_id("keep-awake", &completion.request_id)
+            }
+            PowerCompletionOwner::Scheduler => {
+                history_record_id("keep-awake-schedule", &completion.request_id)
+            }
+            PowerCompletionOwner::ProcessWatch(watch_id) => {
+                format!("process-watch-{watch_id}-keep-awake")
+            }
+        };
+        record_toolbox_completion(
+            state,
+            record_id,
+            ToolboxSystemTool::KeepAwake,
+            completion.started_at_ms,
+            power_completion_terminal_status(completion.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+}
+
+fn drain_process_watch_completions(state: &AppState) {
+    let completions = match state.toolbox_process_watch.lock() {
+        Ok(service) => service.take_completions(),
+        Err(_) => {
+            eprintln!("process watch state lock was poisoned");
+            return;
+        }
+    };
+    let Ok(completions) = completions else {
+        return;
+    };
+    let now = Instant::now();
+    let now_ms = now_millis();
+    for snapshot in completions {
+        let Some(terminal_status) = process_watch_terminal_status(snapshot.status) else {
+            continue;
+        };
+        let started_at_ms = if snapshot.started_at >= now {
+            now_ms.saturating_add(snapshot.started_at.duration_since(now).as_millis() as u64)
+        } else {
+            now_ms.saturating_sub(now.duration_since(snapshot.started_at).as_millis() as u64)
+        };
+        record_toolbox_completion(
+            state,
+            format!("process-watch-{}", snapshot.watch_id),
+            ToolboxSystemTool::ProcessWatch,
+            started_at_ms,
+            terminal_status,
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
 }
 
 fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
@@ -2336,12 +2478,14 @@ fn start_toolbox_process_watch(
     request: ProcessWatchRequest,
 ) -> Result<ProcessWatchSnapshotView, CommandError> {
     require_main_window(&window)?;
+    drain_process_watch_completions(&state);
     let snapshot = state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .start(request)?
         .snapshot;
+    drain_process_watch_completions(&state);
     Ok(ProcessWatchSnapshotView::from_snapshot(
         &snapshot,
         Instant::now(),
@@ -2355,11 +2499,13 @@ fn get_toolbox_process_watches(
     state: State<'_, AppState>,
 ) -> Result<Vec<ProcessWatchSnapshotView>, CommandError> {
     require_main_window(&window)?;
+    drain_process_watch_completions(&state);
     let snapshots = state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .snapshots()?;
+    drain_process_watch_completions(&state);
     let now = Instant::now();
     let now_ms = now_millis();
     Ok(snapshots
@@ -2375,11 +2521,13 @@ fn cancel_toolbox_process_watch(
     request: ProcessWatchCancelRequest,
 ) -> Result<Option<ProcessWatchSnapshotView>, CommandError> {
     require_main_window(&window)?;
+    drain_process_watch_completions(&state);
     let snapshot = state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .cancel(request.watch_id)?;
+    drain_process_watch_completions(&state);
     let now = Instant::now();
     let now_ms = now_millis();
     Ok(snapshot
@@ -2434,6 +2582,8 @@ fn get_toolbox_snapshot(
     contract_version: String,
 ) -> Result<ToolboxSnapshot, CommandError> {
     require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(&state);
     if contract_version != toolbox_contracts::TOOLBOX_CONTRACT_VERSION {
         return Err(CommandError::new(
             "contract_mismatch",
@@ -2597,6 +2747,8 @@ fn get_toolbox_storage_snapshot(
     state: State<'_, AppState>,
 ) -> Result<ToolboxStorageSnapshot, CommandError> {
     require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(&state);
     state
         .toolbox_storage
         .lock()
@@ -2637,6 +2789,8 @@ fn list_toolbox_history(
     request: ToolboxHistoryListRequest,
 ) -> Result<ToolboxHistoryPage, CommandError> {
     require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(&state);
     state
         .toolbox_storage
         .lock()
@@ -2767,11 +2921,14 @@ fn start_toolbox_keep_awake(
     request: PowerRequest,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
-    state
+    drain_power_completions(&state);
+    let result = state
         .toolbox_power
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
-        .start(request)
+        .start(request);
+    drain_power_completions(&state);
+    result
 }
 
 #[tauri::command]
@@ -2780,11 +2937,14 @@ fn cancel_toolbox_keep_awake(
     state: State<'_, AppState>,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
-    Ok(state
+    drain_power_completions(&state);
+    let result = state
         .toolbox_power
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
-        .cancel())
+        .cancel();
+    drain_power_completions(&state);
+    Ok(result)
 }
 
 #[tauri::command]
@@ -2793,6 +2953,7 @@ fn get_toolbox_keep_awake_state(
     state: State<'_, AppState>,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
+    drain_power_completions(&state);
     Ok(state
         .toolbox_power
         .lock()
@@ -2881,7 +3042,23 @@ async fn scan_toolbox_file_occupancy(
     request: OccupancyScanRequest,
 ) -> Result<OccupancyScanResult, CommandError> {
     require_main_window(&window)?;
-    resource_occupancy::scan(request).await
+    let request_id = request.request_id.clone();
+    let started_at_ms = now_millis();
+    let result = resource_occupancy::scan(request).await;
+    if let Ok(outcome) = &result {
+        // This read-only diagnostic has no native notification path; the
+        // history record still preserves its terminal outcome when history
+        // is explicitly enabled.
+        record_toolbox_completion(
+            &window.state::<AppState>(),
+            history_record_id("occupancy-file", &request_id),
+            ToolboxSystemTool::FileOccupancy,
+            started_at_ms,
+            occupancy_terminal_status(&outcome.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+    result
 }
 
 #[tauri::command]
@@ -2890,7 +3067,20 @@ async fn scan_toolbox_volume_occupancy(
     request: OccupancyVolumeScanRequest,
 ) -> Result<OccupancyScanResult, CommandError> {
     require_main_window(&window)?;
-    resource_occupancy::scan_volume(request).await
+    let request_id = request.request_id.clone();
+    let started_at_ms = now_millis();
+    let result = resource_occupancy::scan_volume(request).await;
+    if let Ok(outcome) = &result {
+        record_toolbox_completion(
+            &window.state::<AppState>(),
+            history_record_id("occupancy-volume", &request_id),
+            ToolboxSystemTool::VolumeOccupancy,
+            started_at_ms,
+            occupancy_terminal_status(&outcome.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+    result
 }
 
 #[tauri::command]
