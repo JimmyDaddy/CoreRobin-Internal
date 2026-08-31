@@ -112,6 +112,9 @@
     "allow-clear-toolbox-data",
     "allow-start-toolbox-file-hash",
     "allow-cancel-toolbox-file-hash",
+    "allow-start-toolbox-keep-awake",
+    "allow-cancel-toolbox-keep-awake",
+    "allow-get-toolbox-keep-awake-state",
     "allow-write-toolbox-text-copy"
   ]
 }

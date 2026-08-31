@@ -32,6 +32,7 @@ mod storage_health;
 mod toolbox_contracts;
 mod toolbox_export;
 mod toolbox_file_hash;
+mod toolbox_power;
 mod toolbox_service;
 mod user_actions;
 
@@ -129,6 +130,7 @@ use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWind
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
+use toolbox_power::{PowerRequest, PowerService, PowerState};
 use toolbox_service::{CancelToolboxJobRequest, ToolboxService};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
@@ -287,6 +289,7 @@ struct AppState {
     startup_controller: Arc<Mutex<StartupController>>,
     toolbox: Arc<Mutex<ToolboxService>>,
     toolbox_file_hash: Arc<FileHashManager>,
+    toolbox_power: Arc<Mutex<PowerService>>,
 }
 
 impl AppState {
@@ -313,6 +316,7 @@ impl AppState {
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
             toolbox: Arc::new(Mutex::new(ToolboxService::new())),
             toolbox_file_hash: Arc::new(FileHashManager::default()),
+            toolbox_power: Arc::new(Mutex::new(PowerService::new())),
         }
     }
 }
@@ -2315,6 +2319,46 @@ fn cancel_toolbox_file_hash(
 }
 
 #[tauri::command]
+fn start_toolbox_keep_awake(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: PowerRequest,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .start(request)
+}
+
+#[tauri::command]
+fn cancel_toolbox_keep_awake(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    Ok(state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .cancel())
+}
+
+#[tauri::command]
+fn get_toolbox_keep_awake_state(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    Ok(state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .snapshot())
+}
+
+#[tauri::command]
 async fn write_toolbox_text_copy(
     window: WebviewWindow,
     request: toolbox_export::TextExportRequest,
@@ -2608,6 +2652,9 @@ pub fn run() {
             clear_toolbox_data,
             start_toolbox_file_hash,
             cancel_toolbox_file_hash,
+            start_toolbox_keep_awake,
+            cancel_toolbox_keep_awake,
+            get_toolbox_keep_awake_state,
             write_toolbox_text_copy,
             start_app_update,
             get_app_update_task
@@ -2874,6 +2921,9 @@ mod security_boundary_tests {
         "clear_toolbox_data",
         "start_toolbox_file_hash",
         "cancel_toolbox_file_hash",
+        "start_toolbox_keep_awake",
+        "cancel_toolbox_keep_awake",
+        "get_toolbox_keep_awake_state",
         "write_toolbox_text_copy",
         "start_app_update",
         "get_app_update_task",

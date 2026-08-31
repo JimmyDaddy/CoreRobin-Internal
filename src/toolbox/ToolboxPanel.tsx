@@ -22,12 +22,12 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { hashToolboxFile, isDesktopRuntime, cancelToolboxFileHash } from "../api";
+import { cancelToolboxFileHash, cancelToolboxKeepAwake, hashToolboxFile, isDesktopRuntime, startToolboxKeepAwake } from "../api";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
@@ -143,6 +143,7 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "qr-code": return <QrTool />;
     case "text-sha256": return <TextHashTool />;
     case "file-sha256": return <FileHashTool />;
+    case "keep-awake": return <KeepAwakeTool />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
     case "ifconfig-parser": return <IfconfigTool />;
@@ -211,6 +212,20 @@ function FileHashTool() {
   const choose = async () => { setError(""); if (isDesktopRuntime()) { const selected = await open({ multiple: false, directory: false }); if (typeof selected === "string") { setPath(selected); setFileName(selected.split(/[\\/]/).pop() ?? selected); } } else setError("文件 SHA-256 需要在桌面运行时通过原生选择器选择普通文件。"); };
   const run = async () => { if (!path) { setError("请先选择一个普通文件。"); return; } setRunning(true); setOutput(""); try { const result = await hashToolboxFile({ requestId: crypto.randomUUID(), path }, (event) => setProgress(event.totalBytes ? event.bytesRead / event.totalBytes : 0)); setOutput(result.digest); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
   return <ToolLayout error={error} onClear={() => { setFileName(""); setPath(""); setOutput(""); setProgress(0); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose}><FileCheck2 size={15} />选择普通文件</button><span>{fileName || "未选择文件"}</span></div>{running ? <progress max="1" value={progress} /> : null}<div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Play size={14} />{running ? "正在计算…" : "计算文件 SHA-256"}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancelToolboxFileHash()}>停止</button> : null}</div><p className="toolbox-hint">原生服务使用 1 MiB 流式缓冲，并在开始/结束复验文件身份；文件内容不会进入 WebView。</p><ResultBox value={output} /></ToolLayout>;
+}
+
+function KeepAwakeTool() {
+  const [duration, setDuration] = useState("60"); const [state, setState] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
+  useEffect(() => () => { if (isDesktopRuntime()) void cancelToolboxKeepAwake().catch(() => undefined); }, []);
+  const start = async () => {
+    if (!isDesktopRuntime()) { setError("限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。"); return; }
+    const durationMinutes = Number(duration);
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) { setError("保活时长必须是 1 分钟到 12 小时。"); return; }
+    setRunning(true); setError("");
+    try { setState(JSON.stringify(await startToolboxKeepAwake({ requestId: crypto.randomUUID(), durationMinutes }), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); }
+  };
+  const stop = async () => { setRunning(true); try { setState(JSON.stringify(await cancelToolboxKeepAwake(), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>时长 <select value={duration} onChange={(event) => setDuration(event.target.value)}><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option><option value="720">12 小时</option></select></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start}><Timer size={14} />开始保活</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop}>停止并释放</button></div><p className="toolbox-hint">只申请临时系统断言，不修改电源计划、不模拟输入；独立截止线程每 15 秒检查并在到期/取消时释放。低电量和 Windows/Linux 后端必须在对应平台实机复核。</p><ResultBox value={state} /></ToolLayout>;
 }
 
 function RegexTool() {

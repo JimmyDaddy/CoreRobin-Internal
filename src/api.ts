@@ -95,6 +95,14 @@ export interface ToolboxFileHashResult {
   generation: number | null;
   resetEpoch: number | null;
 }
+
+export interface ToolboxPowerState {
+  status: "inactive" | "active" | "cancelled";
+  requestId: string | null;
+  expiresAtMs: number | null;
+  platform: string;
+  reason: string | null;
+}
 import type {
   HealthStateSnapshot,
   HealthStateUpdate,
@@ -190,6 +198,18 @@ export async function cancelToolboxFileHash(): Promise<boolean> {
 
 export async function writeToolboxTextCopy(path: string, content: string): Promise<void> {
   return invoke<void>("write_toolbox_text_copy", { request: { path, content } });
+}
+
+export async function startToolboxKeepAwake(request: { requestId: string; durationMinutes: number }): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("start_toolbox_keep_awake", { request });
+}
+
+export async function cancelToolboxKeepAwake(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("cancel_toolbox_keep_awake");
+}
+
+export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("get_toolbox_keep_awake_state");
 }
 
 export async function setDockIconVisible(visible: boolean): Promise<void> {
