@@ -465,6 +465,14 @@ impl ToolboxService {
         &mut self,
         request: RegisterToolboxOutputRequest,
     ) -> Result<ToolboxJob, CommandError> {
+        self.register_output_with_budget(request, MAX_OUTPUT_BYTES)
+    }
+
+    fn register_output_with_budget(
+        &mut self,
+        request: RegisterToolboxOutputRequest,
+        max_output_bytes: usize,
+    ) -> Result<ToolboxJob, CommandError> {
         self.reconcile();
         validate_output_request(
             &request.request_id,
@@ -478,10 +486,30 @@ impl ToolboxService {
                 "A formal output must contain at least one byte.",
             ));
         }
-        if request.bytes.len() > MAX_OUTPUT_BYTES {
+        if request.bytes.len() > max_output_bytes {
             return Err(CommandError::new(
                 "output_too_large",
                 "The prepared output exceeds the 512 MiB temporary budget.",
+            ));
+        }
+        let retained_output_bytes = self
+            .outputs
+            .values()
+            .map(Vec::len)
+            .try_fold(0_usize, usize::checked_add)
+            .ok_or_else(|| {
+                CommandError::new(
+                    "output_too_large",
+                    "The global temporary output budget could not be calculated safely.",
+                )
+            })?;
+        if retained_output_bytes
+            .checked_add(request.bytes.len())
+            .is_none_or(|bytes| bytes > max_output_bytes)
+        {
+            return Err(CommandError::new(
+                "output_budget_exhausted",
+                "The global 512 MiB temporary output budget is in use; export or cancel an existing output first.",
             ));
         }
         if request.validation == OutputValidation::Failed {
@@ -1065,6 +1093,62 @@ mod tests {
         let completed = service.complete_output_export(&export, true, None).unwrap();
         assert_eq!(completed.status, JobStatus::Completed);
         assert!(completed.output_token.is_none());
+    }
+
+    #[test]
+    fn output_registration_enforces_the_global_temporary_budget() {
+        let mut service = ToolboxService::new();
+        let first = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "output-budget-start-1".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let output_budget = 3;
+        service
+            .register_output_with_budget(
+                RegisterToolboxOutputRequest {
+                    request_id: "output-budget-register-1".into(),
+                    job_id: first.job_id,
+                    generation: 1,
+                    reset_epoch: 0,
+                    bytes: vec![7_u8; output_budget],
+                    validation: OutputValidation::Verified,
+                },
+                output_budget,
+            )
+            .unwrap();
+        service.seed_job(ToolboxJob {
+            job_id: "output-budget-job-2".into(),
+            session_id: "output-budget-session-2".into(),
+            status: JobStatus::Running,
+            generation: 1,
+            reset_epoch: 0,
+            output_expires_at_ms: None,
+            output_token: None,
+            terminal_reason: None,
+            error: None,
+        });
+        let error = service
+            .register_output_with_budget(
+                RegisterToolboxOutputRequest {
+                    request_id: "output-budget-register-2".into(),
+                    job_id: "output-budget-job-2".into(),
+                    generation: 1,
+                    reset_epoch: 0,
+                    bytes: vec![8],
+                    validation: OutputValidation::Verified,
+                },
+                output_budget,
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "output_budget_exhausted");
     }
 
     #[test]
