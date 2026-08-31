@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use crate::error::CommandError;
 use crate::identity::read_birth_token;
 use crate::models::ProcessKey;
+use crate::toolbox_power::{PowerRequest, PowerService, ProcessWatchPowerStatus};
 
 /// The maximum number of selected process instances observed by one service.
 pub const MAX_ACTIVE_PROCESS_WATCHES: usize = 3;
@@ -23,6 +24,8 @@ const UNKNOWN_RETRY_INTERVAL: Duration = Duration::from_secs(30);
 pub struct ProcessWatchRequest {
     pub key: ProcessKey,
     pub duration_minutes: u64,
+    #[serde(default)]
+    pub keep_awake: bool,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -40,6 +43,7 @@ pub struct ProcessWatchSnapshotView {
     pub started_at_ms: u64,
     pub deadline_at_ms: u64,
     pub last_checked_at_ms: u64,
+    pub keep_awake_status: ProcessWatchKeepAwakeStatus,
 }
 
 impl ProcessWatchSnapshotView {
@@ -51,6 +55,7 @@ impl ProcessWatchSnapshotView {
             started_at_ms: project_instant(snapshot.started_at, now, now_ms),
             deadline_at_ms: project_instant(snapshot.deadline, now, now_ms),
             last_checked_at_ms: project_instant(snapshot.last_checked_at, now, now_ms),
+            keep_awake_status: snapshot.keep_awake_status,
         }
     }
 }
@@ -74,6 +79,7 @@ pub enum ProcessWatchStatus {
     Exited,
     Unknown,
     IdentityChanged,
+    Interrupted,
     Expired,
     Cancelled,
 }
@@ -82,9 +88,25 @@ impl ProcessWatchStatus {
     fn is_terminal(self) -> bool {
         matches!(
             self,
-            Self::Exited | Self::IdentityChanged | Self::Expired | Self::Cancelled
+            Self::Exited
+                | Self::IdentityChanged
+                | Self::Interrupted
+                | Self::Expired
+                | Self::Cancelled
         )
     }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessWatchKeepAwakeStatus {
+    NotRequested,
+    Active,
+    LowBatteryEnded,
+    Expired,
+    Cancelled,
+    Unavailable,
 }
 
 /// A service-owned watch snapshot. Times are monotonic and are intended for
@@ -97,6 +119,8 @@ pub struct ProcessWatchSnapshot {
     pub started_at: Instant,
     pub deadline: Instant,
     pub last_checked_at: Instant,
+    pub keep_awake_requested: bool,
+    pub keep_awake_status: ProcessWatchKeepAwakeStatus,
 }
 
 /// The result of creating a watch. A repeated `ProcessKey` returns the active
@@ -116,12 +140,28 @@ pub struct ProcessWatchService {
 
 impl ProcessWatchService {
     pub fn new() -> Result<Self, CommandError> {
-        Self::with_reader_and_timing(
+        Self::with_reader_and_timing_and_power(
             Arc::new(read_birth_token),
             WatchTiming {
                 poll_interval: POLL_INTERVAL,
                 unknown_retry_interval: UNKNOWN_RETRY_INTERVAL,
             },
+            None,
+        )
+    }
+
+    /// Uses the same PowerService instance as the independent keep-awake slot.
+    /// AppState owns the wiring so this module does not construct a second
+    /// platform assertion or depend on a Tauri command handler.
+    #[allow(dead_code)]
+    pub fn with_power_service(power: Arc<Mutex<PowerService>>) -> Result<Self, CommandError> {
+        Self::with_reader_and_timing_and_power(
+            Arc::new(read_birth_token),
+            WatchTiming {
+                poll_interval: POLL_INTERVAL,
+                unknown_retry_interval: UNKNOWN_RETRY_INTERVAL,
+            },
+            Some(Arc::new(PowerServiceWatchAttachment { power })),
         )
     }
 
@@ -129,6 +169,8 @@ impl ProcessWatchService {
     /// The selected identity is checked before insertion and every later poll.
     pub fn start(&self, request: ProcessWatchRequest) -> Result<ProcessWatchStart, CommandError> {
         validate_request(&request)?;
+        let keep_awake_requested = request.keep_awake;
+        let duration_minutes = request.duration_minutes;
 
         {
             let state = self
@@ -187,12 +229,14 @@ impl ProcessWatchService {
             state.insert(
                 request.key,
                 initial_status,
+                keep_awake_requested,
                 started_at,
                 deadline,
                 self.shared.timing,
             )
         };
 
+        let snapshot = self.attach_keep_awake(snapshot, duration_minutes)?;
         self.shared.wake.notify_one();
         Ok(self.start_result(snapshot))
     }
@@ -236,9 +280,17 @@ impl ProcessWatchService {
 
     /// Stops the one polling worker. Dropping the service also calls this.
     pub fn shutdown(&mut self) {
-        if let Ok(mut state) = self.shared.state.lock() {
+        let active = if let Ok(mut state) = self.shared.state.lock() {
             state.shutdown = true;
-        }
+            state
+                .active
+                .iter()
+                .map(|entry| entry.snapshot.clone())
+                .collect()
+        } else {
+            Vec::new()
+        };
+        detach_process_power(&self.shared, &active);
         self.shared.wake.notify_all();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
@@ -249,12 +301,38 @@ impl ProcessWatchService {
         ProcessWatchStart { snapshot }
     }
 
-    fn with_reader_and_timing(
+    fn attach_keep_awake(
+        &self,
+        snapshot: ProcessWatchSnapshot,
+        duration_minutes: u64,
+    ) -> Result<ProcessWatchSnapshot, CommandError> {
+        if !snapshot.keep_awake_requested || snapshot.status.is_terminal() {
+            return Ok(snapshot);
+        }
+        let status = self
+            .shared
+            .power
+            .as_ref()
+            .map(|power| power.attach(snapshot.watch_id, duration_minutes))
+            .unwrap_or(ProcessWatchKeepAwakeStatus::Unavailable);
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .map_err(|_| CommandError::internal("Process watch state is unavailable."))?;
+        Ok(state
+            .set_keep_awake_status(snapshot.watch_id, status)
+            .unwrap_or(snapshot))
+    }
+
+    fn with_reader_and_timing_and_power(
         read_birth_token: Arc<BirthTokenReader>,
         timing: WatchTiming,
+        power: Option<Arc<dyn ProcessWatchPowerAttachment>>,
     ) -> Result<Self, CommandError> {
         let shared = Arc::new(Shared {
             read_birth_token,
+            power,
             timing,
             state: Mutex::new(WatchBook::default()),
             wake: Condvar::new(),
@@ -282,8 +360,62 @@ impl Drop for ProcessWatchService {
 
 type BirthTokenReader = dyn Fn(u32) -> Result<String, CommandError> + Send + Sync;
 
+trait ProcessWatchPowerAttachment: Send + Sync {
+    fn attach(&self, watch_id: u64, duration_minutes: u64) -> ProcessWatchKeepAwakeStatus;
+    fn detach(&self, watch_id: u64);
+    fn status(&self, watch_id: u64) -> Option<ProcessWatchKeepAwakeStatus>;
+}
+
+#[allow(dead_code)]
+struct PowerServiceWatchAttachment {
+    power: Arc<Mutex<PowerService>>,
+}
+
+impl ProcessWatchPowerAttachment for PowerServiceWatchAttachment {
+    fn attach(&self, watch_id: u64, duration_minutes: u64) -> ProcessWatchKeepAwakeStatus {
+        let Ok(mut power) = self.power.lock() else {
+            return ProcessWatchKeepAwakeStatus::Unavailable;
+        };
+        match power.attach_process_watch(
+            watch_id,
+            PowerRequest {
+                request_id: format!("process-watch-{watch_id}"),
+                duration_minutes,
+            },
+        ) {
+            Ok(_) => ProcessWatchKeepAwakeStatus::Active,
+            Err(_) => ProcessWatchKeepAwakeStatus::Unavailable,
+        }
+    }
+
+    fn detach(&self, watch_id: u64) {
+        if let Ok(mut power) = self.power.lock() {
+            power.detach_process_watch(watch_id);
+        }
+    }
+
+    fn status(&self, watch_id: u64) -> Option<ProcessWatchKeepAwakeStatus> {
+        let power = self.power.lock().ok()?;
+        power
+            .process_watch_power_status(watch_id)
+            .map(map_power_status)
+    }
+}
+
+#[allow(dead_code)]
+fn map_power_status(status: ProcessWatchPowerStatus) -> ProcessWatchKeepAwakeStatus {
+    match status {
+        ProcessWatchPowerStatus::Active => ProcessWatchKeepAwakeStatus::Active,
+        ProcessWatchPowerStatus::LowBatteryEnded => ProcessWatchKeepAwakeStatus::LowBatteryEnded,
+        ProcessWatchPowerStatus::Expired => ProcessWatchKeepAwakeStatus::Expired,
+        ProcessWatchPowerStatus::Cancelled => ProcessWatchKeepAwakeStatus::Cancelled,
+        ProcessWatchPowerStatus::Unavailable => ProcessWatchKeepAwakeStatus::Unavailable,
+    }
+}
+
 struct Shared {
     read_birth_token: Arc<BirthTokenReader>,
+    power: Option<Arc<dyn ProcessWatchPowerAttachment>>,
     timing: WatchTiming,
     state: Mutex<WatchBook>,
     wake: Condvar,
@@ -298,6 +430,7 @@ struct WatchTiming {
 struct ActiveWatch {
     snapshot: ProcessWatchSnapshot,
     next_check_at: Instant,
+    unknown_since: Option<Instant>,
 }
 
 #[derive(Default)]
@@ -320,6 +453,7 @@ impl WatchBook {
         &mut self,
         key: ProcessKey,
         status: ProcessWatchStatus,
+        keep_awake_requested: bool,
         started_at: Instant,
         deadline: Instant,
         timing: WatchTiming,
@@ -332,6 +466,12 @@ impl WatchBook {
             started_at,
             deadline,
             last_checked_at: started_at,
+            keep_awake_requested,
+            keep_awake_status: if keep_awake_requested {
+                ProcessWatchKeepAwakeStatus::Unavailable
+            } else {
+                ProcessWatchKeepAwakeStatus::NotRequested
+            },
         };
 
         if status.is_terminal() {
@@ -339,6 +479,7 @@ impl WatchBook {
         } else {
             self.active.push(ActiveWatch {
                 next_check_at: next_check_at(started_at, status, timing),
+                unknown_since: (status == ProcessWatchStatus::Unknown).then_some(started_at),
                 snapshot: snapshot.clone(),
             });
         }
@@ -370,15 +511,17 @@ impl WatchBook {
         snapshots
     }
 
-    fn expire_due(&mut self, now: Instant) {
+    fn expire_due(&mut self, now: Instant) -> Vec<ProcessWatchSnapshot> {
+        let mut finished = Vec::new();
         let mut index = 0;
         while index < self.active.len() {
             if self.active[index].snapshot.deadline <= now {
-                self.finish_at(index, ProcessWatchStatus::Expired, now);
+                finished.push(self.finish_at(index, ProcessWatchStatus::Expired, now));
             } else {
                 index += 1;
             }
         }
+        finished
     }
 
     fn due_watch_ids(&self, now: Instant) -> Vec<u64> {
@@ -396,30 +539,64 @@ impl WatchBook {
             .map(|entry| entry.snapshot.key.clone())
     }
 
+    fn set_keep_awake_status(
+        &mut self,
+        watch_id: u64,
+        keep_awake_status: ProcessWatchKeepAwakeStatus,
+    ) -> Option<ProcessWatchSnapshot> {
+        self.active
+            .iter_mut()
+            .find(|entry| entry.snapshot.watch_id == watch_id)
+            .map(|entry| {
+                entry.snapshot.keep_awake_status = keep_awake_status;
+                entry.snapshot.clone()
+            })
+            .or_else(|| {
+                self.terminal
+                    .iter()
+                    .find(|snapshot| snapshot.watch_id == watch_id)
+                    .cloned()
+            })
+    }
+
     fn apply_check(
         &mut self,
         watch_id: u64,
         status: ProcessWatchStatus,
+        keep_awake_status: Option<ProcessWatchKeepAwakeStatus>,
         checked_at: Instant,
         timing: WatchTiming,
-    ) {
-        let Some(index) = self
+    ) -> Option<ProcessWatchSnapshot> {
+        let index = self
             .active
             .iter()
-            .position(|entry| entry.snapshot.watch_id == watch_id)
-        else {
-            return;
-        };
+            .position(|entry| entry.snapshot.watch_id == watch_id)?;
 
+        if let Some(keep_awake_status) = keep_awake_status {
+            self.active[index].snapshot.keep_awake_status = keep_awake_status;
+        }
         if self.active[index].snapshot.deadline <= checked_at {
-            self.finish_at(index, ProcessWatchStatus::Expired, checked_at);
+            Some(self.finish_at(index, ProcessWatchStatus::Expired, checked_at))
         } else if status.is_terminal() {
-            self.finish_at(index, status, checked_at);
+            Some(self.finish_at(index, status, checked_at))
         } else {
             let entry = &mut self.active[index];
             entry.snapshot.status = status;
             entry.snapshot.last_checked_at = checked_at;
+            if status == ProcessWatchStatus::Unknown {
+                let unknown_since = entry.unknown_since.get_or_insert(checked_at);
+                if checked_at.duration_since(*unknown_since) >= timing.unknown_retry_interval {
+                    return Some(self.finish_at(
+                        index,
+                        ProcessWatchStatus::Interrupted,
+                        checked_at,
+                    ));
+                }
+            } else {
+                entry.unknown_since = None;
+            }
             entry.next_check_at = next_check_at(checked_at, status, timing);
+            None
         }
     }
 
@@ -453,6 +630,15 @@ impl WatchBook {
         let mut entry = self.active.remove(index);
         entry.snapshot.status = status;
         entry.snapshot.last_checked_at = finished_at;
+        if entry.snapshot.keep_awake_requested
+            && entry.snapshot.keep_awake_status == ProcessWatchKeepAwakeStatus::Active
+        {
+            entry.snapshot.keep_awake_status = if status == ProcessWatchStatus::Expired {
+                ProcessWatchKeepAwakeStatus::Expired
+            } else {
+                ProcessWatchKeepAwakeStatus::Cancelled
+            };
+        }
         let snapshot = entry.snapshot;
         self.retain_terminal(snapshot.clone());
         snapshot
@@ -552,6 +738,7 @@ fn next_check_at(checked_at: Instant, status: ProcessWatchStatus, timing: WatchT
         ProcessWatchStatus::Running => timing.poll_interval,
         ProcessWatchStatus::Exited
         | ProcessWatchStatus::IdentityChanged
+        | ProcessWatchStatus::Interrupted
         | ProcessWatchStatus::Expired
         | ProcessWatchStatus::Cancelled => return checked_at,
     };
@@ -567,31 +754,61 @@ fn cancel_watch(
         .lock()
         .map_err(|_| CommandError::internal("Process watch state is unavailable."))?
         .cancel(watch_id, Instant::now());
+    if let Some(snapshot) = snapshot.as_ref() {
+        detach_process_power(shared, std::slice::from_ref(snapshot));
+    }
     shared.wake.notify_one();
     Ok(snapshot)
 }
 
+fn detach_process_power(shared: &Shared, snapshots: &[ProcessWatchSnapshot]) {
+    let Some(power) = shared.power.as_ref() else {
+        return;
+    };
+    for snapshot in snapshots {
+        if snapshot.keep_awake_requested {
+            power.detach(snapshot.watch_id);
+        }
+    }
+}
+
 fn worker_loop(shared: Arc<Shared>) {
     loop {
-        let due_watch_ids = {
+        let (expired, due_watch_ids) = {
             let mut state = lock_for_worker(&shared);
             if state.shutdown {
                 return;
             }
-            state.expire_due(Instant::now());
-            state.due_watch_ids(Instant::now())
+            let now = Instant::now();
+            let expired = state.expire_due(now);
+            (expired, state.due_watch_ids(now))
         };
+        detach_process_power(&shared, &expired);
 
         for watch_id in due_watch_ids {
             let Some(key) = lock_for_worker(&shared).key_for(watch_id) else {
                 continue;
             };
             let status = classify_observation(&key, (shared.read_birth_token)(key.pid));
+            let keep_awake_status = shared
+                .power
+                .as_ref()
+                .and_then(|power| power.status(watch_id));
             let mut state = lock_for_worker(&shared);
             if state.shutdown {
                 return;
             }
-            state.apply_check(watch_id, status, Instant::now(), shared.timing);
+            let finished = state.apply_check(
+                watch_id,
+                status,
+                keep_awake_status,
+                Instant::now(),
+                shared.timing,
+            );
+            drop(state);
+            if let Some(snapshot) = finished {
+                detach_process_power(&shared, std::slice::from_ref(&snapshot));
+            }
         }
 
         let state = lock_for_worker(&shared);
@@ -659,13 +876,66 @@ mod tests {
         ProcessWatchRequest {
             key: key(pid, token),
             duration_minutes,
+            keep_awake: false,
         }
     }
 
     fn service_with_reader(
         reader: impl Fn(u32) -> Result<String, CommandError> + Send + Sync + 'static,
     ) -> ProcessWatchService {
-        ProcessWatchService::with_reader_and_timing(Arc::new(reader), FAST_TIMING).unwrap()
+        ProcessWatchService::with_reader_and_timing_and_power(Arc::new(reader), FAST_TIMING, None)
+            .unwrap()
+    }
+
+    struct MockPowerAttachment {
+        attached: Mutex<Vec<u64>>,
+        detached: Mutex<Vec<u64>>,
+        status: Mutex<ProcessWatchKeepAwakeStatus>,
+    }
+
+    impl Default for MockPowerAttachment {
+        fn default() -> Self {
+            Self {
+                attached: Mutex::new(Vec::new()),
+                detached: Mutex::new(Vec::new()),
+                status: Mutex::new(ProcessWatchKeepAwakeStatus::NotRequested),
+            }
+        }
+    }
+
+    impl ProcessWatchPowerAttachment for MockPowerAttachment {
+        fn attach(&self, watch_id: u64, _duration_minutes: u64) -> ProcessWatchKeepAwakeStatus {
+            self.attached.lock().unwrap().push(watch_id);
+            *self.status.lock().unwrap()
+        }
+
+        fn detach(&self, watch_id: u64) {
+            self.detached.lock().unwrap().push(watch_id);
+        }
+
+        fn status(&self, _watch_id: u64) -> Option<ProcessWatchKeepAwakeStatus> {
+            Some(*self.status.lock().unwrap())
+        }
+    }
+
+    fn service_with_power(
+        reader: impl Fn(u32) -> Result<String, CommandError> + Send + Sync + 'static,
+        power: Arc<MockPowerAttachment>,
+    ) -> ProcessWatchService {
+        ProcessWatchService::with_reader_and_timing_and_power(
+            Arc::new(reader),
+            FAST_TIMING,
+            Some(power),
+        )
+        .unwrap()
+    }
+
+    fn keep_awake_request(pid: u32, token: &str, duration_minutes: u64) -> ProcessWatchRequest {
+        ProcessWatchRequest {
+            key: key(pid, token),
+            duration_minutes,
+            keep_awake: true,
+        }
     }
 
     fn wait_for_status(
@@ -824,12 +1094,74 @@ mod tests {
     }
 
     #[test]
+    fn unknown_identity_for_the_full_retry_window_interrupts_the_watch() {
+        let pid = std::process::id();
+        let service =
+            service_with_reader(|_| Err(CommandError::new("identity_unavailable", "unavailable")));
+        let started = service.start(request(pid, "birth", 1)).unwrap();
+
+        let interrupted = wait_for_status(
+            &service,
+            started.snapshot.watch_id,
+            ProcessWatchStatus::Interrupted,
+        );
+
+        assert_eq!(interrupted.key, key(pid, "birth"));
+        assert_eq!(service.active_count().unwrap(), 0);
+    }
+
+    #[test]
+    fn attached_keep_awake_is_released_when_its_watch_is_cancelled() {
+        let power = Arc::new(MockPowerAttachment {
+            status: Mutex::new(ProcessWatchKeepAwakeStatus::Active),
+            ..Default::default()
+        });
+        let service = service_with_power(|_| Ok("birth".to_owned()), Arc::clone(&power));
+        let started = service.start(keep_awake_request(7, "birth", 60)).unwrap();
+
+        assert_eq!(
+            started.snapshot.keep_awake_status,
+            ProcessWatchKeepAwakeStatus::Active
+        );
+        assert_eq!(
+            *power.attached.lock().unwrap(),
+            vec![started.snapshot.watch_id]
+        );
+
+        let cancelled = service.cancel(started.snapshot.watch_id).unwrap().unwrap();
+
+        assert_eq!(cancelled.status, ProcessWatchStatus::Cancelled);
+        assert_eq!(
+            *power.detached.lock().unwrap(),
+            vec![started.snapshot.watch_id]
+        );
+    }
+
+    #[test]
+    fn low_battery_ends_only_the_attached_keep_awake_demand() {
+        let power = Arc::new(MockPowerAttachment {
+            status: Mutex::new(ProcessWatchKeepAwakeStatus::LowBatteryEnded),
+            ..Default::default()
+        });
+        let service = service_with_power(|_| Ok("birth".to_owned()), Arc::clone(&power));
+        let started = service.start(keep_awake_request(7, "birth", 60)).unwrap();
+
+        assert_eq!(
+            started.snapshot.keep_awake_status,
+            ProcessWatchKeepAwakeStatus::LowBatteryEnded
+        );
+        assert_eq!(started.snapshot.status, ProcessWatchStatus::Running);
+        assert_eq!(service.active_count().unwrap(), 1);
+    }
+
+    #[test]
     fn expiry_wins_after_its_deadline_without_reading_or_controlling_the_process() {
         let now = Instant::now();
         let mut book = WatchBook::default();
         let snapshot = book.insert(
             key(7, "birth"),
             ProcessWatchStatus::Running,
+            false,
             now - Duration::from_secs(61),
             now - Duration::from_secs(1),
             FAST_TIMING,
