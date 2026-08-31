@@ -11,9 +11,18 @@ export const IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 export const IMAGE_MAX_PIXELS = 16_000_000;
 export const IMAGE_MAX_OUTPUT_EDGE = 2048;
 export const BATCH_MAX_FILES = 20;
+export const RECIPIENT_MAX_FILES = 30;
 export const BATCH_MAX_INPUT_BYTES = 80 * 1024 * 1024;
 export const IMAGE_MAX_WORKSET_BYTES = 256 * 1024 * 1024;
 export const IMAGE_MAX_EXPORT_BYTES = 512 * 1024 * 1024;
+
+export interface BatchZipBudget {
+  inputFileCount: number;
+  inputBytes: number;
+  outputFileCount: number;
+  outputBytes: number;
+  maxOutputFiles: number;
+}
 
 export interface ImageBudget {
   file: File;
@@ -46,9 +55,87 @@ export async function inspectImageBudget(marker: WebMarkerInstance, file: File):
 }
 
 export function assertBatchBudget(files: readonly File[]): void {
-  if (files.length > BATCH_MAX_FILES) throw new Error("批量处理最多选择 20 张图片。");
-  const total = files.reduce((sum, file) => sum + file.size, 0);
-  if (total > BATCH_MAX_INPUT_BYTES) throw new Error("批量输入总大小不能超过 80 MiB。");
+  createBatchZipBudget(files);
+}
+
+/** Validate the input half of a ZIP job before any image work starts. */
+export function createBatchZipBudget(files: readonly File[]): BatchZipBudget {
+  const budget = {
+    inputFileCount: files.length,
+    inputBytes: files.reduce((sum, file) => sum + file.size, 0),
+    outputFileCount: 0,
+    outputBytes: 0,
+    maxOutputFiles: BATCH_MAX_FILES,
+  };
+  assertBatchZipBudget(budget);
+  return budget;
+}
+
+/**
+ * Add one encoded output while enforcing all ZIP limits again. This prevents a
+ * lossy source image from expanding beyond the export cap after preflight.
+ */
+export function appendBatchZipOutput(budget: BatchZipBudget, byteLength: number): BatchZipBudget {
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw new Error("图片输出大小无效。");
+  const next = {
+    ...budget,
+    outputFileCount: budget.outputFileCount + 1,
+    outputBytes: budget.outputBytes + byteLength,
+  };
+  assertBatchZipBudget(next);
+  return next;
+}
+
+export function createRecipientZipBudget(file: File): BatchZipBudget {
+  const budget = {
+    inputFileCount: 1,
+    inputBytes: file.size,
+    outputFileCount: 0,
+    outputBytes: 0,
+    maxOutputFiles: RECIPIENT_MAX_FILES,
+  };
+  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw new Error("批量输入总大小不能超过 80 MiB。");
+  return budget;
+}
+
+export function assertBatchZipBudget(budget: BatchZipBudget): void {
+  if (budget.inputFileCount > BATCH_MAX_FILES || budget.outputFileCount > budget.maxOutputFiles) {
+    throw new Error(`批量 ZIP 最多包含 20 个输入和 ${budget.maxOutputFiles} 个输出文件。`);
+  }
+  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw new Error("批量输入总大小不能超过 80 MiB。");
+  if (budget.outputBytes > IMAGE_MAX_EXPORT_BYTES) throw new Error("批量 ZIP 累计输出不能超过 512 MiB。");
+}
+
+export function createImageAbortError(message = "图片处理已停止。"): Error {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
+export function isAbortError(reason: unknown): reason is Error {
+  return reason instanceof Error && reason.name === "AbortError";
+}
+
+export function parseRecipientLocators(source: string): string[] {
+  const values = source.split(",").map((value) => value.trim()).filter(Boolean);
+  if (values.length === 0 || values.length > BATCH_MAX_FILES) {
+    throw new Error("收件人最多 20 个，且必须使用短 locator；不要直接写入个人资料。");
+  }
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (new TextEncoder().encode(value).byteLength > 12) throw new Error("每个收件人 locator 不能超过 12 UTF-8 字节。");
+    if (seen.has(value)) throw new Error("收件人 locator 不能重复。");
+    seen.add(value);
+  }
+  return values;
+}
+
+/** Accept a key only from the current interaction; callers must not persist it. */
+export function requireOneTimeRecipientKey(value: string | null): string {
+  const key = value?.trim() ?? "";
+  if (!key) throw new Error("需要一次性分发密钥；它只保留在当前操作内存中。");
+  if (new TextEncoder().encode(key).byteLength < 16) throw new Error("一次性分发密钥至少需要 16 UTF-8 字节。");
+  return key;
 }
 
 export function createTextRecipe(text: string, color: string, alpha: number): WatermarkRecipeDefinition {
