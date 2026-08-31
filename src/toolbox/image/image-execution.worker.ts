@@ -32,6 +32,11 @@ interface WorkerCanvasResources {
   dispose(): void;
 }
 
+interface WorkerFontResource {
+  family: string;
+  source: Blob;
+}
+
 self.onmessage = (event: MessageEvent<ExecuteMessage>) => {
   const message = event.data;
   if (message.type !== "execute") return;
@@ -50,21 +55,45 @@ async function execute(request: ExecuteMessage): Promise<unknown> {
   const canvasResources = createWorkerCanvasResources();
   const marker = createWebMarker({ resources: canvasResources.resources });
   try {
-    const value = await runOperation(marker, request.operation, request.options);
+    const prepared = await prepareWorkerOptions(request.options);
+    const value = await runOperation(marker, request.operation, prepared);
     if (request.resultKind === "marker-result") {
       const markerResult = value as MarkerResult;
-      const output = readOutputOptions(request.options);
+      const output = readOutputOptions(prepared);
       const blob = await canvasResources.exportLatestCanvas(output.saveFormat, output.quality);
       return { ...markerResult, uri: await blobToDataUrl(blob), output: "data-url" };
     }
     if (request.resultKind === "blob") {
-      const output = readOutputOptions(request.options);
+      const output = readOutputOptions(prepared);
       return canvasResources.exportLatestCanvas(output.saveFormat, output.quality);
     }
     return value;
   } finally {
     await marker.dispose();
     canvasResources.dispose();
+  }
+}
+
+async function prepareWorkerOptions(value: unknown): Promise<unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const options = { ...(value as Record<string, unknown>) };
+  const fonts = options.corerobinFonts;
+  delete options.corerobinFonts;
+  if (fonts !== undefined) await loadLocalFonts(fonts);
+  return options;
+}
+
+async function loadLocalFonts(value: unknown): Promise<void> {
+  if (!Array.isArray(value)) throw new Error("本地字体资源无效。");
+  if (typeof FontFace !== "function") throw new Error("当前 WebView 不支持隔离 Worker 本地字体加载。");
+  const fontSet = (self as unknown as { fonts?: { add(face: FontFace): unknown } }).fonts;
+  if (!fontSet) throw new Error("当前 WebView 不支持隔离 Worker 字体集合。");
+  for (const candidate of value) {
+    const font = candidate as Partial<WorkerFontResource>;
+    if (typeof font.family !== "string" || !(font.source instanceof Blob)) throw new Error("本地字体资源无效。");
+    const face = new FontFace(font.family, await font.source.arrayBuffer());
+    await face.load();
+    fontSet.add(face);
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WebMarkerExecutionRequest } from "@image-marker/web";
 
-import { createImageExecutionAdapter, createImageToolRuntime } from "./imageExecution";
+import { createImageExecutionAdapter, createImageToolRuntime, withLocalImageFonts } from "./imageExecution";
 
 class FakeImageWorker {
   readonly postMessage = vi.fn();
@@ -69,6 +69,34 @@ describe("isolated image execution adapter", () => {
 
     await expect(task.result).rejects.toThrow("本地文件");
     expect(createWorker).not.toHaveBeenCalled();
+  });
+
+  it("keeps local font bytes inside the task Worker and rejects remote image layers", async () => {
+    const worker = new FakeImageWorker();
+    const adapter = createImageExecutionAdapter({ availability: supported, createWorker: () => worker });
+    const task = adapter.start({
+      ...markTextRequest("task-font"),
+      operation: "mark",
+      options: withLocalImageFonts({
+        backgroundImage: { src: new Blob(["image"], { type: "image/png" }) },
+        watermarks: [{ type: "text", text: "字体测试" }],
+      }, [{ family: "LocalFont", source: new Blob(["font"], { type: "font/woff2" }) }]),
+    } as WebMarkerExecutionRequest);
+
+    const options = worker.postMessage.mock.calls[0]?.[0] as { options: { corerobinFonts?: unknown } };
+    expect(options.options.corerobinFonts).toHaveLength(1);
+    await task.terminate?.({ reason: "cancel", taskId: "task-font" });
+    await expect(task.result).rejects.toMatchObject({ name: "AbortError" });
+
+    const rejected = adapter.start({
+      ...markTextRequest("task-remote-layer"),
+      operation: "mark",
+      options: {
+        backgroundImage: { src: new Blob(["image"], { type: "image/png" }) },
+        watermarks: [{ type: "image", src: "https://example.invalid/logo.png" }],
+      },
+    } as WebMarkerExecutionRequest);
+    await expect(rejected.result).rejects.toThrow("Logo 图片");
   });
 
   it("keeps SDK-generated undefined recipe fields serializable", async () => {

@@ -11,6 +11,8 @@ import { createWebEditorAdapter } from "@image-marker/web/editor-adapter";
 import type { ImageMarkerEditorRenderAdapter } from "@image-marker/web/headless";
 
 export const IMAGE_OPERATION_DEADLINE_MS = 30_000;
+export const IMAGE_FONT_MAX_BYTES = 4 * 1024 * 1024;
+const IMAGE_FONT_RESOURCE_KEY = "corerobinFonts";
 
 type WorkerMessage =
   | { type: "result"; taskId: string; value: unknown }
@@ -31,6 +33,18 @@ export interface ImageExecutionAdapterOptions {
   createWorker?: () => ImageExecutionWorker;
   availability?: ImageExecutionAvailability;
   deadlineMs?: number;
+}
+
+export interface LocalImageFontResource {
+  family: string;
+  source: Blob;
+}
+
+/** Attach explicitly selected font bytes to one isolated task, never to IPC. */
+export function withLocalImageFonts<Options extends object>(options: Options, fonts: readonly LocalImageFontResource[]): Options {
+  if (fonts.length === 0) return options;
+  for (const font of fonts) assertLocalFont(font);
+  return { ...options, [IMAGE_FONT_RESOURCE_KEY]: fonts };
 }
 
 export interface ImageToolRuntime {
@@ -226,6 +240,19 @@ function assertExecutionInput(request: WebMarkerExecutionRequest): void {
   if (Array.isArray(watermarkImages)) {
     for (const watermark of watermarkImages) assertLocalSource(readSource(watermark), "Logo 图片");
   }
+  const watermarks = record.watermarks;
+  if (Array.isArray(watermarks)) {
+    for (const watermark of watermarks) {
+      if (watermark && typeof watermark === "object" && (watermark as { type?: unknown }).type === "image") {
+        assertLocalSource(readSource(watermark), "Logo 图片");
+      }
+    }
+  }
+  const fonts = record[IMAGE_FONT_RESOURCE_KEY];
+  if (fonts !== undefined) {
+    if (!Array.isArray(fonts)) throw new Error("本地字体资源无效。");
+    for (const font of fonts) assertLocalFont(font);
+  }
 }
 
 function readSource(value: unknown): unknown {
@@ -240,6 +267,15 @@ function assertLocalSource(source: unknown, label: string): void {
   }
   if (typeof source === "string" && /^data:image\/(?:png|jpeg|webp);base64,/iu.test(source)) return;
   throw new Error(`${label}必须是当前操作明确选择的 PNG、JPEG 或 WebP 本地文件。`);
+}
+
+function assertLocalFont(value: unknown): asserts value is LocalImageFontResource {
+  if (!value || typeof value !== "object") throw new Error("本地字体资源无效。");
+  const font = value as Partial<LocalImageFontResource>;
+  if (typeof font.family !== "string" || !font.family.trim() || font.family.length > 120) throw new Error("本地字体名称无效。");
+  if (!(font.source instanceof Blob) || font.source.size === 0 || font.source.size > IMAGE_FONT_MAX_BYTES) {
+    throw new Error("本地字体必须是当前操作选择且不超过 4 MiB 的文件。");
+  }
 }
 
 function sanitizeExecutionOptions(value: unknown): unknown {
