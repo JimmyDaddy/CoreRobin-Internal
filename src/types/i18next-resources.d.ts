@@ -2960,6 +2960,16 @@ export default interface Resources {
       "errors": {
         "cancelFailed": "临时输出释放未确认。",
         "cancelled": "任务已取消（cancelled）；未生成可下载结果。",
+        "classified": {
+          "aborted": "补丁任务已取消。",
+          "destination": "输出目标无效。",
+          "invalidArgument": "补丁请求无效。",
+          "invalidPatch": "补丁格式或内容无效。",
+          "resource": "补丁输入或输出超出安全预算。",
+          "runtime": "补丁操作失败（{{code}}）。",
+          "unsupported": "不支持此补丁操作。",
+          "verification": "补丁输出校验失败。"
+        },
         "executionFailed": "补丁工具执行失败。",
         "fileTooLarge": "{{label}}超过 {{max}} MiB 安全上限。",
         "inputReleaseUnconfirmed": "补丁输入资源释放未确认：{{message}}",

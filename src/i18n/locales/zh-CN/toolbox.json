@@ -475,7 +475,17 @@
       "selectFile": "请选择{{label}}。",
       "fileTooLarge": "{{label}}超过 {{max}} MiB 安全上限。",
       "unverifiedNotConfirmed": "未验证结果未获确认，未提供下载。",
-      "unverifiedOutputCancelled": "未验证输出未获确认，已取消正式结果。"
+      "unverifiedOutputCancelled": "未验证输出未获确认，已取消正式结果。",
+      "classified": {
+        "aborted": "补丁任务已取消。",
+        "resource": "补丁输入或输出超出安全预算。",
+        "invalidArgument": "补丁请求无效。",
+        "invalidPatch": "补丁格式或内容无效。",
+        "verification": "补丁输出校验失败。",
+        "destination": "输出目标无效。",
+        "unsupported": "不支持此补丁操作。",
+        "runtime": "补丁操作失败（{{code}}）。"
+      }
     },
     "notices": {
       "nativeOutputReady": "原生输出已准备完成；请在 10 分钟内选择正式另存。",

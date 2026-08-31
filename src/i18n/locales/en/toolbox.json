@@ -475,7 +475,17 @@
       "selectFile": "Choose {{label}}.",
       "fileTooLarge": "{{label}} exceeds the {{max}} MiB safety limit.",
       "unverifiedNotConfirmed": "The unverified result was not confirmed; no download is available.",
-      "unverifiedOutputCancelled": "The unverified output was not confirmed; the formal result was cancelled."
+      "unverifiedOutputCancelled": "The unverified output was not confirmed; the formal result was cancelled.",
+      "classified": {
+        "aborted": "Patch task was cancelled.",
+        "resource": "Patch input or output exceeds the safety budget.",
+        "invalidArgument": "The patch request is invalid.",
+        "invalidPatch": "The patch format or contents are invalid.",
+        "verification": "Patch output verification failed.",
+        "destination": "The output destination is invalid.",
+        "unsupported": "This patch operation is unsupported.",
+        "runtime": "The patch operation failed ({{code}})."
+      }
     },
     "notices": {
       "nativeOutputReady": "Native output is ready. Choose a formal save location within 10 minutes.",

@@ -172,7 +172,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       if (isPatchTaskCancelled(reason)) {
         setOutput(JSON.stringify({ state: "cancelled", note: t("binaryPatch.output.cancelledNote") }, null, 2));
         setError(t("binaryPatch.errors.cancelled"));
-      } else setError(classifyPatchError(reason).message);
+      } else setError(localizedPatchError(reason, t));
     } finally {
       if (nativeInputJob && nativeTokenList.length > 0) {
         try {
@@ -236,7 +236,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       const patchInput = window.prompt(t("binaryPatch.prompts.patchSize"), "100000");
       const countInput = window.prompt(t("binaryPatch.prompts.downloadCount"), "1");
       if (fullInput === null || patchInput === null || countInput === null) return;
-      try { setOutput(JSON.stringify(calculateTransferSavings(Number(fullInput), Number(patchInput), Number(countInput)), null, 2)); } catch (reason) { setError(classifyPatchError(reason).message); }
+      try { setOutput(JSON.stringify(calculateTransferSavings(Number(fullInput), Number(patchInput), Number(countInput)), null, 2)); } catch (reason) { setError(localizedPatchError(reason, t)); }
       return;
     }
     if (toolId === "patch-errors") {
@@ -327,3 +327,17 @@ function FileInput({ t, label, file, files, onChange, multiple, optional, deskto
 function binaryInputLabel(input: BinaryFileInputKind, t: ToolboxTFunction): string { return input === "baseline" ? t("binaryPatch.inputs.baseline") : input === "target" ? t("binaryPatch.inputs.target") : input === "patch" ? t("binaryPatch.inputs.patch") : input === "expected" ? t("binaryPatch.inputs.expected") : t("binaryPatch.inputs.plannerBaselines"); }
 
 function binaryActionLabel(toolId: BinaryToolId, t: ToolboxTFunction): string { return toolId === "binary-patch-create" ? t("binaryPatch.actions.create") : toolId === "binary-patch-apply" ? t("binaryPatch.actions.apply") : toolId === "binary-patch-inspector" ? t("binaryPatch.actions.inspect") : toolId === "integrity-manifest" ? t("binaryPatch.actions.manifest") : toolId === "patch-planner" ? t("binaryPatch.actions.plan") : t("binaryPatch.actions.explainError"); }
+
+function localizedPatchError(reason: unknown, t: ToolboxTFunction): string {
+  const classified = classifyPatchError(reason);
+  const key = classified.category === "ABORTED" ? "binaryPatch.errors.classified.aborted"
+    : classified.category === "RESOURCE" ? "binaryPatch.errors.classified.resource"
+      : classified.category === "INVALID_ARGUMENT" ? "binaryPatch.errors.classified.invalidArgument"
+        : classified.category === "INVALID_PATCH" ? "binaryPatch.errors.classified.invalidPatch"
+          : classified.category === "VERIFICATION" ? "binaryPatch.errors.classified.verification"
+            : classified.category === "DESTINATION" ? "binaryPatch.errors.classified.destination"
+              : classified.category === "UNSUPPORTED" ? "binaryPatch.errors.classified.unsupported"
+                : "binaryPatch.errors.classified.runtime";
+  const message = t(key, { code: classified.code });
+  return classified.category === "RUNTIME" ? message : `${message} [${classified.code}]`;
+}
