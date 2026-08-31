@@ -4,6 +4,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   TOOLBOX_CONTRACT_VERSION,
   type ToolboxEvent,
+  type ToolboxError,
   type ToolboxJob,
   type ToolboxJobRequest,
   type ToolboxRequest,
@@ -29,6 +30,10 @@ export async function cancelToolboxJob(request: ToolboxRequest & { jobId: string
   return invoke<ToolboxJob>("cancel_toolbox_job", { request });
 }
 
+export async function finishToolboxJob(request: ToolboxRequest & { jobId: string; succeeded: boolean; error?: ToolboxError | null }): Promise<ToolboxJob> {
+  return invoke<ToolboxJob>("finish_toolbox_job", { request });
+}
+
 export async function clearToolboxData(request: ToolboxRequest): Promise<ToolboxSnapshot> {
   return invoke<ToolboxSnapshot>("clear_toolbox_data", { request });
 }
@@ -42,4 +47,3 @@ export async function subscribeToolboxEvents(
 export function isToolboxTool(value: string): value is ToolId {
   return value.length > 0;
 }
-

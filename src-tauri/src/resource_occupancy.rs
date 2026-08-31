@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use std::time::{Duration, Instant};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
 
@@ -9,7 +12,9 @@ use crate::error::CommandError;
 const MAX_PROCESSES: usize = 4_096;
 #[cfg(target_os = "linux")]
 const MAX_REFERENCES: usize = 65_536;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 const MAX_RESULTS: usize = 300;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 const SCAN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Debug, serde::Deserialize)]

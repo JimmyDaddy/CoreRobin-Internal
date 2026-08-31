@@ -133,7 +133,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
 use toolbox_power::{PowerRequest, PowerService, PowerState};
-use toolbox_service::{CancelToolboxJobRequest, ToolboxService};
+use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
@@ -2287,6 +2287,20 @@ fn cancel_toolbox_job(
 }
 
 #[tauri::command]
+fn finish_toolbox_job(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: FinishToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .finish(request)
+}
+
+#[tauri::command]
 fn clear_toolbox_data(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -2660,6 +2674,7 @@ pub fn run() {
             get_toolbox_snapshot,
             start_toolbox_session,
             cancel_toolbox_job,
+            finish_toolbox_job,
             clear_toolbox_data,
             start_toolbox_file_hash,
             cancel_toolbox_file_hash,
@@ -2930,6 +2945,7 @@ mod security_boundary_tests {
         "get_toolbox_snapshot",
         "start_toolbox_session",
         "cancel_toolbox_job",
+        "finish_toolbox_job",
         "clear_toolbox_data",
         "start_toolbox_file_hash",
         "cancel_toolbox_file_hash",

@@ -94,6 +94,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "get_toolbox_snapshot",
     "start_toolbox_session",
     "cancel_toolbox_job",
+    "finish_toolbox_job",
     "clear_toolbox_data",
     "start_toolbox_file_hash",
     "cancel_toolbox_file_hash",

@@ -109,6 +109,7 @@
     "allow-get-toolbox-snapshot",
     "allow-start-toolbox-session",
     "allow-cancel-toolbox-job",
+    "allow-finish-toolbox-job",
     "allow-clear-toolbox-data",
     "allow-start-toolbox-file-hash",
     "allow-cancel-toolbox-file-hash",
