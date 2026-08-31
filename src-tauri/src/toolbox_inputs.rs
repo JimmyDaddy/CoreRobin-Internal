@@ -78,7 +78,7 @@ impl Identity {
 
 pub(crate) struct BoundInput {
     parent: Dir,
-    parent_path: PathBuf,
+    selected_parent: PathBuf,
     parent_identity: (u64, u64),
     name: OsString,
     file: Mutex<File>,
@@ -133,7 +133,7 @@ impl BoundInput {
         }
         let bound = Self {
             parent,
-            parent_path,
+            selected_parent: path.parent().expect("validated parent").to_path_buf(),
             parent_identity: (
                 MetadataExt::dev(&parent_metadata),
                 MetadataExt::ino(&parent_metadata),
@@ -155,8 +155,8 @@ impl BoundInput {
     }
 
     pub(crate) fn revalidate(&self) -> Result<(), CommandError> {
-        let current_parent =
-            Dir::open_ambient_dir(&self.parent_path, ambient_authority()).map_err(|_| changed())?;
+        let current_parent = Dir::open_ambient_dir(&self.selected_parent, ambient_authority())
+            .map_err(|_| changed())?;
         let metadata = current_parent.dir_metadata().map_err(|_| changed())?;
         if (MetadataExt::dev(&metadata), MetadataExt::ino(&metadata)) != self.parent_identity {
             return Err(changed());
@@ -237,6 +237,28 @@ impl Operation {
 impl Drop for Operation {
     fn drop(&mut self) {
         self.0.operations.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+/// Holds admission for a complete native streaming operation, including time
+/// spent hashing a chunk. Cancellation cannot claim release between reads.
+pub struct InputReader {
+    operation: Operation,
+    file: Arc<BoundInput>,
+    token: InputToken,
+}
+
+impl InputReader {
+    pub fn metadata(&self) -> &InputToken {
+        &self.token
+    }
+    pub fn read(&self, offset: u64, length: usize) -> Result<Vec<u8>, CommandError> {
+        self.file
+            .read_chunk(offset, length, &self.operation.0.cancelled)
+    }
+    pub fn revalidate(&self) -> Result<(), CommandError> {
+        check_cancel(&self.operation.0.cancelled)?;
+        self.file.revalidate()
     }
 }
 
@@ -387,16 +409,23 @@ impl ToolboxInputs {
         offset: u64,
         length: usize,
     ) -> Result<Vec<u8>, CommandError> {
+        self.reader(key, token)?.read(offset, length)
+    }
+
+    pub fn reader(&self, key: &FileJobKey, token: &str) -> Result<InputReader, CommandError> {
         let operation = Operation::acquire(self.job(key)?)?;
-        let file = operation
-            .0
-            .inputs
-            .lock()
-            .map_err(|_| unavailable())?
-            .get(token)
-            .map(|input| Arc::clone(&input.file))
-            .ok_or_else(|| error("invalid_token", "This input token is no longer valid."))?;
-        file.read_chunk(offset, length, &operation.0.cancelled)
+        let (file, token) = {
+            let inputs = operation.0.inputs.lock().map_err(|_| unavailable())?;
+            let input = inputs
+                .get(token)
+                .ok_or_else(|| error("invalid_token", "This input token is no longer valid."))?;
+            (Arc::clone(&input.file), input.token.clone())
+        };
+        Ok(InputReader {
+            operation,
+            file,
+            token,
+        })
     }
 
     pub fn release(&self, key: &FileJobKey, tokens: &[String]) -> Result<(), CommandError> {

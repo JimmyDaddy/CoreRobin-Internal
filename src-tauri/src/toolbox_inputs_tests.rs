@@ -186,7 +186,9 @@ fn rejects_directory_and_unselected_or_released_tokens() {
         store.read(&key, &token.token, 0, 1).unwrap(),
         Vec::<u8>::new()
     );
-    store.release(&key, std::slice::from_ref(&token.token)).unwrap();
+    store
+        .release(&key, std::slice::from_ref(&token.token))
+        .unwrap();
     assert_eq!(
         store.read(&key, &token.token, 0, 1).unwrap_err().code,
         "invalid_token"
@@ -215,5 +217,30 @@ fn rejects_links_and_special_files_without_following_them() {
             .unwrap_err()
             .code,
         "file_not_regular"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn detects_retargeting_of_a_selected_parent_alias() {
+    let dir = tempfile::tempdir().unwrap();
+    let original = dir.path().join("original");
+    let replacement = dir.path().join("replacement");
+    let selected = dir.path().join("selected");
+    std::fs::create_dir(&original).unwrap();
+    std::fs::create_dir(&replacement).unwrap();
+    std::fs::write(original.join("file"), b"first").unwrap();
+    std::fs::write(replacement.join("file"), b"other").unwrap();
+    std::os::unix::fs::symlink(&original, &selected).unwrap();
+    let (store, key) = registered("file-sha256");
+    let token = store
+        .prepare(&key, InputRole::Input, &[selected.join("file")])
+        .unwrap()
+        .remove(0);
+    std::fs::remove_file(&selected).unwrap();
+    std::os::unix::fs::symlink(&replacement, &selected).unwrap();
+    assert_eq!(
+        store.read(&key, &token.token, 0, 1).unwrap_err().code,
+        "file_changed"
     );
 }
