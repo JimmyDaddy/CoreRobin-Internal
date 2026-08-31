@@ -120,7 +120,7 @@ use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 use process_control::ProcessController;
-use resource_occupancy::{OccupancyScanRequest, OccupancyScanResult};
+use resource_occupancy::{OccupancyScanRequest, OccupancyScanResult, OccupancyVolumeScanRequest};
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
 use storage_health::{StorageHealthSnapshot, inspect_storage_health, validate_mount_points};
@@ -322,8 +322,9 @@ impl AppState {
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
         let toolbox_power = Arc::new(Mutex::new(PowerService::new()));
-        let toolbox_process_watch = ProcessWatchService::with_power_service(Arc::clone(&toolbox_power))
-            .expect("failed to start the process watch worker");
+        let toolbox_process_watch =
+            ProcessWatchService::with_power_service(Arc::clone(&toolbox_power))
+                .expect("failed to start the process watch worker");
         let monitor = Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities)));
         let sampler = Arc::new(SamplerService::new(Arc::clone(&monitor)));
         Self {
@@ -2670,6 +2671,15 @@ async fn scan_toolbox_file_occupancy(
 }
 
 #[tauri::command]
+async fn scan_toolbox_volume_occupancy(
+    window: WebviewWindow,
+    request: OccupancyVolumeScanRequest,
+) -> Result<OccupancyScanResult, CommandError> {
+    require_main_window(&window)?;
+    resource_occupancy::scan_volume(request).await
+}
+
+#[tauri::command]
 fn start_app_update(
     window: WebviewWindow,
     app: AppHandle,
@@ -2986,6 +2996,7 @@ pub fn run() {
             delete_toolbox_schedule,
             write_toolbox_text_copy,
             scan_toolbox_file_occupancy,
+            scan_toolbox_volume_occupancy,
             start_app_update,
             get_app_update_task
         ])
@@ -3273,6 +3284,7 @@ mod security_boundary_tests {
         "delete_toolbox_schedule",
         "write_toolbox_text_copy",
         "scan_toolbox_file_occupancy",
+        "scan_toolbox_volume_occupancy",
         "start_app_update",
         "get_app_update_task",
         "run_network_quality_check",

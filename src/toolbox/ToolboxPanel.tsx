@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, isDesktopRuntime, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
@@ -220,10 +220,10 @@ function TextHashTool() {
 
 
 function OccupancyTool() {
-  const [fileName, setFileName] = useState(""); const [path, setPath] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
-  const choose = async () => { setError(""); if (!isDesktopRuntime()) { setError("文件占用诊断需要桌面原生运行时。 "); return; } const selected = await open({ multiple: false, directory: false }); if (typeof selected === "string") { setPath(selected); setFileName(selected.split(/[\\/]/).pop() ?? selected); } };
-  const run = async () => { if (!path) { setError("请先选择一个普通文件。"); return; } setRunning(true); setError(""); setOutput(""); try { const result = await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setFileName(""); setPath(""); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose}><FileCheck2 size={15} />选择普通文件</button><span>{fileName || "未选择文件"}</span></div><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Network size={14} />{running ? "正在诊断…" : "查找文件使用者"}</button><p className="toolbox-hint">仅诊断当前文件：macOS 使用固定参数 lsof，Linux 匹配可见 /proc 的 fd/cwd/root；结果带覆盖范围、截断和身份复验状态，不会关闭进程。</p><ResultBox value={output} /></ToolLayout>;
+  const [targetName, setTargetName] = useState(""); const [path, setPath] = useState(""); const [scope, setScope] = useState<"file" | "volume">("file"); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
+  const choose = async (nextScope: "file" | "volume") => { setError(""); if (!isDesktopRuntime()) { setError("占用诊断需要桌面原生运行时。"); return; } const selected = await open({ multiple: false, directory: nextScope === "volume" }); if (typeof selected === "string") { setScope(nextScope); setPath(selected); setTargetName(selected.split(/[\\/]/).filter(Boolean).pop() ?? selected); } };
+  const run = async () => { if (!path) { setError(scope === "file" ? "请先选择一个普通文件。" : "请先选择一个挂载目录。"); return; } setRunning(true); setError(""); setOutput(""); try { const result = scope === "file" ? await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }) : await scanToolboxVolumeOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  return <ToolLayout error={error} onClear={() => { setTargetName(""); setPath(""); setScope("file"); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose("file")}><FileCheck2 size={15} />选择普通文件</button><button className="button button--secondary" type="button" onClick={() => void choose("volume")}><FileCheck2 size={15} />选择外盘挂载点</button><span>{targetName || "未选择目标"}</span></div><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run}><Network size={14} />{running ? "正在诊断…" : scope === "file" ? "查找文件使用者" : "查找外盘使用者"}</button><p className="toolbox-hint">文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。</p><ResultBox value={output} /></ToolLayout>;
 }
 
 function KeepAwakeTool() {

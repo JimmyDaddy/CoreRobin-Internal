@@ -394,6 +394,10 @@ export async function scanToolboxFileOccupancy(request: { requestId: string; pat
   return invoke<ToolboxOccupancyResult>("scan_toolbox_file_occupancy", { request });
 }
 
+export async function scanToolboxVolumeOccupancy(request: { requestId: string; path: string }): Promise<ToolboxOccupancyResult> {
+  return invoke<ToolboxOccupancyResult>("scan_toolbox_volume_occupancy", { request });
+}
+
 export async function setDockIconVisible(visible: boolean): Promise<void> {
   if (!isDesktopRuntime()) return;
   await invoke<void>("set_dock_icon_visible", { visible });
