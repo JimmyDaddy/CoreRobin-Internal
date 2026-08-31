@@ -99,6 +99,14 @@ pub enum ToolboxSystemTool {
     IfconfigParser,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ToolboxActiveActivity {
+    pub activity_id: String,
+    pub tool: ToolboxSystemTool,
+    pub started_at_ms: u64,
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolboxTerminalStatus {
@@ -151,6 +159,8 @@ struct PersistedToolboxState {
     reset_epoch: u64,
     history_revision: u64,
     active_activity_ids: Vec<String>,
+    #[serde(default)]
+    active_activities: Vec<ToolboxActiveActivity>,
     history: Vec<ToolboxCompletionRecord>,
 }
 
@@ -161,6 +171,7 @@ impl Default for PersistedToolboxState {
             reset_epoch: 0,
             history_revision: 0,
             active_activity_ids: Vec::new(),
+            active_activities: Vec::new(),
             history: Vec::new(),
         }
     }
@@ -426,6 +437,125 @@ impl ToolboxStorage {
         Ok(())
     }
 
+    pub fn begin_active_activity(
+        &mut self,
+        expected_reset_epoch: u64,
+        activity_id: String,
+        tool: ToolboxSystemTool,
+        started_at_ms: u64,
+    ) -> Result<(), ToolboxStorageError> {
+        self.check_reset_epoch(expected_reset_epoch)?;
+        validate_opaque_id(&activity_id)?;
+        if let Some(existing) = self
+            .state
+            .active_activities
+            .iter()
+            .find(|activity| activity.activity_id == activity_id)
+        {
+            if existing.tool == tool && existing.started_at_ms == started_at_ms {
+                return Ok(());
+            }
+            return Err(ToolboxStorageError::InvalidRecord);
+        }
+        let mut candidate_state = self.state.clone();
+        candidate_state
+            .active_activities
+            .push(ToolboxActiveActivity {
+                activity_id: activity_id.clone(),
+                tool,
+                started_at_ms,
+            });
+        if !candidate_state
+            .active_activity_ids
+            .iter()
+            .any(|existing| existing == &activity_id)
+        {
+            candidate_state.active_activity_ids.push(activity_id);
+        }
+        validate_activity_ids(&candidate_state.active_activity_ids)?;
+        validate_active_activities(&candidate_state.active_activities)?;
+        self.persist_state(&candidate_state)?;
+        self.state = candidate_state;
+        Ok(())
+    }
+
+    pub fn end_active_activity(
+        &mut self,
+        expected_reset_epoch: u64,
+        activity_id: &str,
+    ) -> Result<(), ToolboxStorageError> {
+        self.check_reset_epoch(expected_reset_epoch)?;
+        validate_opaque_id(activity_id)?;
+        let mut candidate_state = self.state.clone();
+        candidate_state
+            .active_activities
+            .retain(|activity| activity.activity_id != activity_id);
+        candidate_state
+            .active_activity_ids
+            .retain(|existing| existing != activity_id);
+        if candidate_state == self.state {
+            return Ok(());
+        }
+        self.persist_state(&candidate_state)?;
+        self.state = candidate_state;
+        Ok(())
+    }
+
+    /// Convert durable activity markers to terminal interrupted history before
+    /// any temporary runtime service is allowed to start. No activity is
+    /// resumed, and legacy untyped markers are discarded without inventing a
+    /// tool or process identity.
+    pub fn recover_interrupted_activities(
+        &mut self,
+        now_ms: u64,
+    ) -> Result<usize, ToolboxStorageError> {
+        if self.state.active_activity_ids.is_empty() && self.state.active_activities.is_empty() {
+            return Ok(0);
+        }
+        let activities = self.state.active_activities.clone();
+        let mut candidate_state = self.state.clone();
+        candidate_state.active_activity_ids.clear();
+        candidate_state.active_activities.clear();
+        let mut history_changed = false;
+        if self.policy.history_enabled() {
+            history_changed = prune_history(
+                &mut candidate_state.history,
+                now_ms,
+                self.policy.retention_days,
+            );
+            for activity in &activities {
+                let record_id = format!("interrupted-{}", activity.activity_id)
+                    .chars()
+                    .take(128)
+                    .collect::<String>();
+                if candidate_state
+                    .history
+                    .iter()
+                    .any(|record| record.record_id == record_id)
+                {
+                    continue;
+                }
+                candidate_state.history.push(ToolboxCompletionRecord {
+                    record_id,
+                    tool: activity.tool,
+                    started_at_ms: activity.started_at_ms,
+                    completed_at_ms: now_ms.max(activity.started_at_ms),
+                    terminal_status: ToolboxTerminalStatus::Interrupted,
+                    notification_status: ToolboxNotificationStatus::Unavailable,
+                });
+                history_changed = true;
+            }
+            sort_history(&mut candidate_state.history);
+            candidate_state.history.truncate(MAX_HISTORY_ENTRIES);
+        }
+        if history_changed {
+            candidate_state.history_revision = next_revision(self.state.history_revision)?;
+        }
+        self.persist_state(&candidate_state)?;
+        self.state = candidate_state;
+        Ok(activities.len())
+    }
+
     pub fn list_history(
         &mut self,
         limit: usize,
@@ -577,11 +707,24 @@ fn sanitize_state(state: &mut PersistedToolboxState) -> Result<(), ToolboxStorag
         return Err(ToolboxStorageError::InvalidPolicy);
     }
     validate_activity_ids(&state.active_activity_ids)?;
+    validate_active_activities(&state.active_activities)?;
     for record in &state.history {
         record.validate()?;
     }
     sort_history(&mut state.history);
     state.history.truncate(MAX_HISTORY_ENTRIES);
+    Ok(())
+}
+
+fn validate_active_activities(
+    activities: &[ToolboxActiveActivity],
+) -> Result<(), ToolboxStorageError> {
+    if activities.len() > MAX_ACTIVE_ACTIVITY_IDS {
+        return Err(ToolboxStorageError::InvalidRecord);
+    }
+    for activity in activities {
+        validate_opaque_id(&activity.activity_id)?;
+    }
     Ok(())
 }
 

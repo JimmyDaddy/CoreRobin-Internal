@@ -415,6 +415,41 @@ fn record_toolbox_completion(
     }
 }
 
+fn begin_toolbox_activity(
+    storage_slot: &Mutex<Option<ToolboxStorage>>,
+    expected_reset_epoch: u64,
+    activity_id: String,
+    tool: ToolboxSystemTool,
+    started_at_ms: u64,
+) {
+    let Ok(mut storage_slot) = storage_slot.lock() else {
+        eprintln!("toolbox activity lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    if let Err(error) =
+        storage.begin_active_activity(expected_reset_epoch, activity_id, tool, started_at_ms)
+    {
+        eprintln!("toolbox activity marker was not stored: {error}");
+    }
+}
+
+fn end_toolbox_activity(storage_slot: &Mutex<Option<ToolboxStorage>>, activity_id: &str) {
+    let Ok(mut storage_slot) = storage_slot.lock() else {
+        eprintln!("toolbox activity lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    let reset_epoch = storage.reset_epoch();
+    if let Err(error) = storage.end_active_activity(reset_epoch, activity_id) {
+        eprintln!("toolbox activity marker was not cleared: {error}");
+    }
+}
+
 fn process_watch_terminal_status(status: ProcessWatchStatus) -> Option<ToolboxTerminalStatus> {
     Some(match status {
         ProcessWatchStatus::Exited => ToolboxTerminalStatus::ProcessExited,
@@ -481,6 +516,12 @@ fn drain_power_completions(state: &AppState) {
                 format!("process-watch-{watch_id}-keep-awake")
             }
         };
+        if matches!(
+            completion.owner,
+            PowerCompletionOwner::Independent | PowerCompletionOwner::Scheduler
+        ) {
+            end_toolbox_activity(&state.toolbox_storage, &record_id);
+        }
         record_toolbox_completion(
             state,
             record_id,
@@ -509,6 +550,10 @@ fn drain_process_watch_completions(state: &AppState) {
         let Some(terminal_status) = process_watch_terminal_status(snapshot.status) else {
             continue;
         };
+        end_toolbox_activity(
+            &state.toolbox_storage,
+            &history_record_id("process-watch", &snapshot.watch_id.to_string()),
+        );
         let started_at_ms = if snapshot.started_at >= now {
             now_ms.saturating_add(snapshot.started_at.duration_since(now).as_millis() as u64)
         } else {
@@ -682,20 +727,35 @@ fn dispatch_toolbox_schedule_intent(
             let Some(power) = power.upgrade() else {
                 return SchedulerIntentOutcome::Failed;
             };
+            let request_id = format!("scheduler:{}", intent.schedule_id);
             let result: Result<(), String> = power
                 .lock()
                 .map_err(|_| "power service lock was poisoned".to_owned())
                 .and_then(|mut power| {
                     power
                         .start_if_vacant(PowerRequest {
-                            request_id: format!("scheduler:{}", intent.schedule_id),
+                            request_id: request_id.clone(),
                             duration_minutes: u64::from(*duration_minutes),
                         })
                         .map(|_| ())
                         .map_err(|error| error.code)
                 });
             match result {
-                Ok(()) => SchedulerIntentOutcome::Submitted,
+                Ok(()) => {
+                    if let Some(storage) = storage.upgrade()
+                        && let Ok(mut storage) = storage.lock()
+                        && let Some(storage) = storage.as_mut()
+                        && let Err(error) = storage.begin_active_activity(
+                            intent.epoch,
+                            history_record_id("keep-awake-schedule", &request_id),
+                            ToolboxSystemTool::KeepAwake,
+                            now_millis(),
+                        )
+                    {
+                        eprintln!("scheduled toolbox activity marker was not stored: {error}");
+                    }
+                    SchedulerIntentOutcome::Submitted
+                }
                 Err(code) if code == "keep_awake_busy" => SchedulerIntentOutcome::Skipped,
                 Err(_) => SchedulerIntentOutcome::Failed,
             }
@@ -2604,6 +2664,12 @@ fn start_toolbox_process_watch(
 ) -> Result<ProcessWatchSnapshotView, CommandError> {
     require_main_window(&window)?;
     drain_process_watch_completions(&state);
+    let expected_reset_epoch = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .snapshot()
+        .reset_epoch;
     let snapshot = state
         .toolbox_process_watch
         .lock()
@@ -2611,11 +2677,17 @@ fn start_toolbox_process_watch(
         .start(request)?
         .snapshot;
     drain_process_watch_completions(&state);
-    Ok(ProcessWatchSnapshotView::from_snapshot(
-        &snapshot,
-        Instant::now(),
-        now_millis(),
-    ))
+    let now = Instant::now();
+    let now_ms = now_millis();
+    let view = ProcessWatchSnapshotView::from_snapshot(&snapshot, now, now_ms);
+    begin_toolbox_activity(
+        &state.toolbox_storage,
+        expected_reset_epoch,
+        history_record_id("process-watch", &snapshot.watch_id.to_string()),
+        ToolboxSystemTool::ProcessWatch,
+        view.started_at_ms,
+    );
+    Ok(view)
 }
 
 #[tauri::command]
@@ -3081,11 +3153,28 @@ fn start_toolbox_keep_awake(
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
     drain_power_completions(&state);
+    let expected_reset_epoch = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .snapshot()
+        .reset_epoch;
+    let activity_id = history_record_id("keep-awake", &request.request_id);
+    let started_at_ms = now_millis();
     let result = state
         .toolbox_power
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
         .start(request);
+    if result.is_ok() {
+        begin_toolbox_activity(
+            &state.toolbox_storage,
+            expected_reset_epoch,
+            activity_id,
+            ToolboxSystemTool::KeepAwake,
+            started_at_ms,
+        );
+    }
     drain_power_completions(&state);
     result
 }
@@ -3304,7 +3393,16 @@ pub fn run() {
         .setup(|app| {
             let state = app.state::<AppState>();
             if let Ok(app_data_dir) = app.path().app_data_dir() {
-                if let Ok(storage) = ToolboxStorage::open(app_data_dir.clone()) {
+                if let Ok(mut storage) = ToolboxStorage::open(app_data_dir.clone()) {
+                    match storage.recover_interrupted_activities(now_millis()) {
+                        Ok(recovered) if recovered > 0 => {
+                            eprintln!("recovered {recovered} interrupted toolbox activities");
+                        }
+                        Ok(_) => {}
+                        Err(error) => {
+                            eprintln!("toolbox activity recovery failed: {error}");
+                        }
+                    }
                     let reset_epoch = storage.reset_epoch();
                     if let Ok(mut toolbox) = state.toolbox.lock() {
                         toolbox.adopt_reset_epoch(reset_epoch);

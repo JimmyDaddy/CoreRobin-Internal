@@ -208,6 +208,36 @@ mod tests {
     }
 
     #[test]
+    fn startup_recovery_converts_typed_active_activities_to_interrupted_history() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let mut storage = enabled_storage(root.path());
+        storage
+            .begin_active_activity(
+                0,
+                "process-watch-7".to_owned(),
+                ToolboxSystemTool::ProcessWatch,
+                NOW - 100,
+            )
+            .expect("activity marker writes");
+        assert_eq!(storage.active_activity_ids(), &["process-watch-7"]);
+
+        assert_eq!(
+            storage
+                .recover_interrupted_activities(NOW)
+                .expect("startup recovery succeeds"),
+            1
+        );
+        assert!(storage.active_activity_ids().is_empty());
+        let records = list_all(&mut storage);
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].tool, ToolboxSystemTool::ProcessWatch);
+        assert_eq!(
+            records[0].terminal_status,
+            ToolboxTerminalStatus::Interrupted
+        );
+    }
+
+    #[test]
     fn cursor_is_bound_to_history_revision_and_clear_invalidates_it() {
         let root = tempfile::tempdir().expect("tempdir");
         let mut storage = enabled_storage(root.path());
