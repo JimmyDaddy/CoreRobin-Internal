@@ -143,7 +143,7 @@ export interface ToolboxInputToken {
   sessionId: string;
   generation: number;
   resetEpoch: number;
-  role: "input" | "target" | "expected" | "logo" | "patch" | "manifest";
+  role: "input" | "target" | "expected" | "logo" | "font" | "patch" | "manifest";
   displayName: string;
   byteLength: number;
   fileIdentity?: {

@@ -33,6 +33,7 @@ pub enum InputRole {
     Target,
     Expected,
     Logo,
+    Font,
     Patch,
     Manifest,
 }
@@ -529,6 +530,9 @@ pub fn role_budget(tool: &str, role: InputRole) -> Result<(u64, usize, u64), Com
             | "image-recipe",
             Logo,
         ) => (12 * MIB, 1, 12 * MIB),
+        ("image-watermark" | "image-batch-watermark" | "confidential-watermark", Font) => {
+            (4 * MIB, 1, 4 * MIB)
+        }
         ("image-recipe" | "c2pa-inspector", Manifest) => (4 * MIB, 1, 4 * MIB),
         _ => {
             return Err(error(
