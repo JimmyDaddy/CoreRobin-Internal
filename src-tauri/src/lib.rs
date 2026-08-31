@@ -30,9 +30,12 @@ mod sampler_service;
 mod sensors;
 mod startup;
 mod storage_health;
+mod toolbox_commands;
 mod toolbox_contracts;
 mod toolbox_export;
 mod toolbox_file_hash;
+mod toolbox_inputs;
+mod toolbox_network;
 mod toolbox_power;
 mod toolbox_process_watch;
 mod toolbox_scheduler;
@@ -2323,7 +2326,7 @@ fn get_toolbox_snapshot(
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))
-        .map(|service| service.snapshot())
+        .map(|mut service| { service.reconcile(); service.snapshot() })
 }
 
 #[tauri::command]
@@ -2802,6 +2805,11 @@ pub fn run() {
             release_process_control_lease,
             execute_process_action,
             get_toolbox_snapshot,
+            toolbox_commands::prepare_toolbox_inputs,
+            toolbox_commands::read_toolbox_input,
+            toolbox_commands::release_toolbox_inputs,
+            toolbox_commands::revalidate_toolbox_inputs,
+            toolbox_commands::get_toolbox_network_snapshot,
             start_toolbox_session,
             cancel_toolbox_job,
             finish_toolbox_job,
@@ -3080,6 +3088,11 @@ mod security_boundary_tests {
         "release_process_control_lease",
         "execute_process_action",
         "get_toolbox_snapshot",
+        "prepare_toolbox_inputs",
+        "read_toolbox_input",
+        "release_toolbox_inputs",
+        "revalidate_toolbox_inputs",
+        "get_toolbox_network_snapshot",
         "start_toolbox_session",
         "cancel_toolbox_job",
         "finish_toolbox_job",
@@ -3145,6 +3158,7 @@ mod security_boundary_tests {
             .split(',')
             .map(str::trim)
             .filter(|command| !command.is_empty())
+            .map(|command| command.rsplit("::").next().unwrap_or(command))
             .collect::<BTreeSet<_>>();
         let declared = ALL_COMMANDS.iter().copied().collect::<BTreeSet<_>>();
 

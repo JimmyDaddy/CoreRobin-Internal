@@ -136,8 +136,12 @@ export interface ToolboxJobRequest extends ToolboxRequest {
 
 export interface ToolboxInputToken {
   token: string;
+  jobId: string;
   sessionId: string;
-  role: "input" | "expected" | "logo" | "output" | "patch" | "manifest";
+  generation: number;
+  resetEpoch: number;
+  role: "input" | "target" | "expected" | "logo" | "patch" | "manifest";
+  displayName: string;
   byteLength: number;
   fileIdentity?: {
     pathHint: string;
@@ -145,6 +149,13 @@ export interface ToolboxInputToken {
     modifiedAtMs: number | null;
     identity: string;
   };
+}
+
+/** Additive file protocol v1. Every IO request is bound to the owning job. */
+export interface ToolboxFileJobKey {
+  jobId: string;
+  generation: number;
+  resetEpoch: number;
 }
 
 export interface ToolboxOutputToken {
@@ -199,4 +210,3 @@ export function isTerminalSessionStatus(status: SessionStatus): boolean {
 export function acceptsRevision(snapshot: ToolboxSnapshot, event: Pick<ToolboxEvent & { type: "job_changed" }, "revision" | "serviceInstanceId">): boolean {
   return event.serviceInstanceId === snapshot.serviceInstanceId && event.revision >= snapshot.revision;
 }
-

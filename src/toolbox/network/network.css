@@ -1,0 +1,33 @@
+.network-addresses-tool { display: grid; gap: 16px; max-width: 980px; }
+.network-addresses-tool__intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.network-addresses-tool__intro h2 { margin: 4px 0 6px; font-size: 22px; letter-spacing: -.03em; }
+.network-addresses-tool__intro p { max-width: 700px; margin: 0; color: var(--text-secondary); line-height: 1.55; }
+.network-addresses-tool__privacy { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--border)); border-radius: 10px; background: var(--amber-soft); color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.network-addresses-tool__tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
+.network-addresses-tool__tabs button { padding: 9px 12px; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); font-size: 13px; }
+.network-addresses-tool__tabs button.is-active { border-bottom-color: var(--blue); color: var(--text-primary); }
+.network-addresses-tool__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.network-addresses-tool__cards { display: grid; gap: 12px; }
+.network-addresses-tool__empty, .network-address-card__empty { margin: 0; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 12px; color: var(--text-muted); font-size: 13px; }
+.network-addresses-tool__paste { display: grid; gap: 12px; }
+.network-addresses-tool__copy-status { margin: 0; padding: 9px 11px; border-radius: 9px; background: var(--blue-soft); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.network-address-card { display: grid; gap: 13px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.network-address-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.network-address-card__header h3 { margin: 0 0 4px; font-size: 16px; }
+.network-address-card__header span { color: var(--text-muted); font-size: 12px; }
+.network-address-card__meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; color: var(--text-secondary); font-size: 12px; }
+.network-address-card__meta div { display: inline-flex; gap: 6px; }
+.network-address-card__meta dt { color: var(--text-muted); }
+.network-address-card__meta dd { margin: 0; font-family: "SFMono-Regular", Consolas, monospace; }
+.network-address-card__addresses { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.network-address-row { padding-top: 10px; border-top: 1px solid var(--border); }
+.network-address-row__top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.network-address-row__top code { min-width: 0; overflow-wrap: anywhere; color: var(--text-primary); font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; }
+.network-address-row__top .icon-button { margin-left: auto; }
+.network-address-row__classification { flex: 0 0 auto; padding: 3px 7px; border-radius: 999px; background: var(--surface-soft); color: var(--text-secondary); font-size: 10px; }
+.network-address-row__classification.is-private, .network-address-row__classification.is-unique-local { background: var(--blue-soft); color: var(--blue); }
+.network-address-row__classification.is-link-local, .network-address-row__classification.is-shared { background: var(--amber-soft); color: var(--amber); }
+.network-address-row__classification.is-multicast, .network-address-row__classification.is-reserved { background: var(--danger-soft); color: var(--danger); }
+.network-address-row__details { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 7px; color: var(--text-muted); font-size: 11px; }
+.network-address-row p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+@media (max-width: 700px) { .network-addresses-tool__intro, .network-address-card__header { flex-direction: column; } .network-address-row__top { align-items: flex-start; flex-wrap: wrap; } .network-address-row__top .icon-button { margin-left: 0; } }

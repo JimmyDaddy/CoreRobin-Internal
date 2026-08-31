@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { NetworkAddressesSnapshot } from "./network/networkTools";
 
 import {
   TOOLBOX_CONTRACT_VERSION,
@@ -10,6 +11,8 @@ import {
   type ToolboxRequest,
   type ToolboxSnapshot,
   type ToolId,
+  type ToolboxInputToken,
+  type ToolboxFileJobKey,
 } from "./contracts";
 
 export const TOOLBOX_EVENT = "core-robin:toolbox-event";
@@ -22,8 +25,33 @@ export async function getToolboxSnapshot(): Promise<ToolboxSnapshot> {
   return invoke<ToolboxSnapshot>("get_toolbox_snapshot", { contractVersion: TOOLBOX_CONTRACT_VERSION });
 }
 
+export function getToolboxNetworkSnapshot(): Promise<NetworkAddressesSnapshot> {
+  return invoke("get_toolbox_network_snapshot");
+}
+
 export async function startToolboxSession(request: ToolboxJobRequest): Promise<ToolboxJob> {
-  return invoke<ToolboxJob>("start_toolbox_session", { request });
+  const snapshot = await getToolboxSnapshot();
+  return invoke<ToolboxJob>("start_toolbox_session", { request: {
+    ...request,
+    generation: request.generation ?? 0,
+    resetEpoch: request.resetEpoch ?? snapshot.resetEpoch,
+  } });
+}
+
+export function prepareToolboxInputs(job: ToolboxFileJobKey, role: ToolboxInputToken["role"]): Promise<ToolboxInputToken[]> {
+  return invoke("prepare_toolbox_inputs", { request: { job, role } });
+}
+
+export function readToolboxInput(job: ToolboxFileJobKey, token: string, offset: number, length: number): Promise<ArrayBuffer> {
+  return invoke("read_toolbox_input", { request: { job, token, offset, length } });
+}
+
+export function releaseToolboxInputs(job: ToolboxFileJobKey, tokens: string[]): Promise<void> {
+  return invoke("release_toolbox_inputs", { request: { job, tokens } });
+}
+
+export function revalidateToolboxInputs(job: ToolboxFileJobKey): Promise<void> {
+  return invoke("revalidate_toolbox_inputs", { job });
 }
 
 export async function cancelToolboxJob(request: ToolboxRequest & { jobId: string }): Promise<ToolboxJob> {

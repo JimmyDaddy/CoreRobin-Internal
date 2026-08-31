@@ -34,7 +34,7 @@ import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
-import { parseIfconfig } from "./network/networkTools";
+import { getToolboxNetworkSnapshot } from "./client";
 import { findNextCronOccurrence, parseCron } from "./schedules/scheduleTools";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCategory } from "./contracts";
@@ -42,6 +42,7 @@ import "./toolbox.css";
 
 const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
 const BinaryPatchToolbox = lazy(async () => ({ default: (await import("./binary-patch/BinaryPatchToolbox")).BinaryPatchToolbox }));
+const NetworkAddressesTool = lazy(async () => ({ default: (await import("./network/NetworkAddressesTool")).NetworkAddressesTool }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
 const CATEGORY_LABELS: Record<ToolboxCategory, string> = {
@@ -153,7 +154,8 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "process-watch": return <ProcessWatchTool />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
-    case "ifconfig-parser": return <IfconfigTool />;
+    case "network-addresses": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} />;
+    case "ifconfig-parser": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} initialView="ifconfig" />;
     case "schedules": return <ScheduleTool />;
     case "image-watermark":
     case "image-batch-watermark":
@@ -253,11 +255,6 @@ function RegexTree({ node }: { node: RegexAnalysis["ast"] }) { return <details o
 function ColorTool() {
   const [input, setInput] = useState("#f15a43"); const [output, setOutput] = useState<Record<string, string> | null>(null); const [error, setError] = useState("");
   return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(null); }}><div className="toolbox-color-input"><input className="toolbox-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)" /><span style={{ background: output ? output.hex : input }} /></div><button className="button button--primary" type="button" onClick={() => { try { const color = parseColor(input); setOutput(formatColor(color)); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Wrench size={14} />转换颜色</button>{output ? <ResultBox value={Object.entries(output).map(([key, value]) => `${key}: ${value}`).join("\n")} /> : null}</ToolLayout>;
-}
-
-function IfconfigTool() {
-  const [input, setInput] = useState(""); const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="粘贴 BSD/Linux ifconfig 文本；只解析，不执行" /><button className="button button--primary" type="button" onClick={() => { try { setOutput(JSON.stringify(parseIfconfig(input), null, 2)); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Network size={14} />解析地址</button><ResultBox value={output} /></ToolLayout>;
 }
 
 function ScheduleTool() {
