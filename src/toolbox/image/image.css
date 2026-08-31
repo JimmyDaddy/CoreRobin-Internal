@@ -1,0 +1,6 @@
+.image-toolbox { max-width: 1000px; }
+.image-toolbox__boundary { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--border)); border-radius: 12px; background: var(--blue-soft); color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.image-toolbox__boundary svg { flex: 0 0 auto; color: var(--blue); }
+.image-toolbox__result { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.image-toolbox__result img { display: block; max-width: min(100%, 720px); max-height: 520px; margin: 0 auto; object-fit: contain; border-radius: 8px; background: repeating-conic-gradient(#eee 0 25%, #ddd 0 50%) 50% / 16px 16px; }
+.toolbox-notice { max-height: 220px; overflow: auto; margin: 0; padding: 12px; border-radius: 10px; background: var(--surface-soft); color: var(--text-secondary); white-space: pre-wrap; }

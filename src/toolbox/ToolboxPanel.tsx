@@ -36,6 +36,7 @@ import { formatColor, parseColor } from "./color/colorTools";
 import { parseIfconfig } from "./network/networkTools";
 import { findNextCronOccurrence, parseCron, type CronSchedule } from "./schedules/scheduleTools";
 import { inspectPatchSafely } from "./binary-patch/binaryPatchTools";
+import { ImageToolbox } from "./image/ImageToolbox";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
@@ -148,6 +149,16 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "schedules": return <ScheduleTool />;
     case "binary-patch-inspector": return <PatchInspectorTool />;
     case "transfer-savings": return <TransferSavingsTool />;
+    case "image-watermark":
+    case "image-batch-watermark":
+    case "confidential-watermark":
+    case "image-recipe":
+    case "image-editor":
+    case "invisible-watermark-write":
+    case "invisible-watermark-check":
+    case "recipient-tracking":
+    case "robustness-lab":
+    case "c2pa-inspector": return <ImageToolbox toolId={toolId} />;
     default: return <UnavailableTool toolId={toolId} />;
   }
 }
