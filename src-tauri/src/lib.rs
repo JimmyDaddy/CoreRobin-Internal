@@ -1555,11 +1555,11 @@ fn resolve_user_path(window: WebviewWindow, path: String) -> Result<String, Comm
 }
 
 #[tauri::command]
-async fn eject_removable_volume(
+async fn prepare_eject_removable_volume(
     window: WebviewWindow,
     state: State<'_, AppState>,
     mount_point: String,
-) -> Result<(), CommandError> {
+) -> Result<String, CommandError> {
     require_main_window(&window)?;
     let removable = state
         .sampler
@@ -1576,10 +1576,6 @@ async fn eject_removable_volume(
         ));
     }
 
-    // The storage screen's second button press is the explicit user
-    // confirmation. A fresh native scan still has to prove that the selected
-    // mount is clean and unchanged immediately before any eject provider is
-    // called. The action lease never crosses into the WebView.
     let scan = resource_occupancy::scan_volume_for_action(OccupancyVolumeScanRequest {
         request_id: format!("eject-{}-{}", now_millis(), mount_point.len()),
         path: mount_point.clone(),
@@ -1595,11 +1591,38 @@ async fn eject_removable_volume(
         };
         return Err(CommandError::new("volume_action_not_safe", message));
     };
-    let verified_mount_point = resource_occupancy::confirm_volume_action(action_lease, true)?;
+    resource_occupancy::store_volume_action_lease(action_lease)
+}
+
+#[tauri::command]
+async fn eject_removable_volume(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    confirmation_id: String,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    // The first command has already performed the bounded scan. The second
+    // button press only consumes the native lease, which re-checks the exact
+    // mount identity immediately before invoking the platform eject provider.
+    let verified_mount_point = resource_occupancy::confirm_stored_volume_action(&confirmation_id)?;
     let verified_mount_point = verified_mount_point
         .to_str()
         .ok_or_else(|| CommandError::new("invalid_volume_target", "卷挂载点不是有效文本。"))?
         .to_owned();
+    let removable = state
+        .sampler
+        .latest_or_sample()
+        .map_err(CommandError::internal)?
+        .disk
+        .volumes
+        .into_iter()
+        .any(|volume| volume.removable && volume.mount_point == verified_mount_point);
+    if !removable {
+        return Err(CommandError::new(
+            "volume_not_removable",
+            "This volume is no longer available as a removable volume.",
+        ));
+    }
     tauri::async_runtime::spawn_blocking({
         let mount_point = verified_mount_point.clone();
         move || user_actions::eject_removable_volume(&mount_point)
@@ -3411,6 +3434,7 @@ pub fn run() {
             reveal_path,
             preview_path,
             resolve_user_path,
+            prepare_eject_removable_volume,
             eject_removable_volume,
             get_storage_health,
             open_disk_utility,
@@ -3727,6 +3751,7 @@ mod security_boundary_tests {
         "reveal_path",
         "preview_path",
         "resolve_user_path",
+        "prepare_eject_removable_volume",
         "eject_removable_volume",
         "get_storage_health",
         "open_disk_utility",

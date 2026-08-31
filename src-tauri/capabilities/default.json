@@ -70,6 +70,7 @@
     "allow-reveal-path",
     "allow-preview-path",
     "allow-resolve-user-path",
+    "allow-prepare-eject-removable-volume",
     "allow-eject-removable-volume",
     "allow-get-storage-health",
     "allow-open-disk-utility",

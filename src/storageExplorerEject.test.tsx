@@ -3,12 +3,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ejectRemovableVolume, getStorageHealth } from "./api";
+import { ejectRemovableVolume, getStorageHealth, prepareEjectRemovableVolume } from "./api";
 import { StorageExplorer } from "./components/StorageExplorer";
 import i18n from "./i18n";
 
 vi.mock("./api", () => ({
   ejectRemovableVolume: vi.fn(async () => undefined),
+  prepareEjectRemovableVolume: vi.fn(async () => "confirmation-1"),
   getStorageHealth: vi.fn(async () => ({ sampledAtMs: 1_000, devices: [] })),
   openDiskUtility: vi.fn(async () => undefined),
 }));
@@ -78,10 +79,10 @@ describe("removable volume actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "推出" }));
     expect(ejectRemovableVolume).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "确认推出" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认推出" }));
 
     await waitFor(() =>
-      expect(ejectRemovableVolume).toHaveBeenCalledWith("/Volumes/Backup"),
+      expect(ejectRemovableVolume).toHaveBeenCalledWith("confirmation-1"),
     );
     expect(onVolumeEjected).toHaveBeenCalledOnce();
     expect(await screen.findByText("已安全推出 Backup。")).toBeTruthy();
@@ -115,7 +116,7 @@ describe("removable volume actions", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "推出" }));
-    fireEvent.click(screen.getByRole("button", { name: "确认推出" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认推出" }));
 
     expect(await screen.findByText("已安全推出 Backup。")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();

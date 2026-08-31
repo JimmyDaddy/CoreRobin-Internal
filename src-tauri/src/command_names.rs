@@ -57,6 +57,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "reveal_path",
     "preview_path",
     "resolve_user_path",
+    "prepare_eject_removable_volume",
     "eject_removable_volume",
     "get_storage_health",
     "open_disk_utility",

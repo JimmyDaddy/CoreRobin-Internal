@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -26,6 +27,7 @@ const MAX_COMMAND_OUTPUT: usize = 8 * 1024 * 1024;
 #[cfg(target_os = "linux")]
 const MAX_PROC_MAPS_BYTES: usize = 2 * 1024 * 1024;
 const MAX_REQUEST_ID_BYTES: usize = 128;
+const MAX_PENDING_VOLUME_ACTION_LEASES: usize = 32;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -213,6 +215,75 @@ pub(crate) fn confirm_volume_action(
     second_confirmation: bool,
 ) -> Result<PathBuf, CommandError> {
     lease.confirm(second_confirmation)
+}
+
+struct StoredVolumeActionLease {
+    lease: VolumeActionLease,
+    created_at: Instant,
+}
+
+static VOLUME_ACTION_LEASES: OnceLock<Mutex<HashMap<String, StoredVolumeActionLease>>> =
+    OnceLock::new();
+
+/// Stores the native lease behind an opaque identifier. Only the identifier
+/// crosses the WebView boundary; the mount path and identity stay native-only.
+pub(crate) fn store_volume_action_lease(lease: VolumeActionLease) -> Result<String, CommandError> {
+    let mut token_bytes = [0_u8; 16];
+    getrandom::fill(&mut token_bytes)
+        .map_err(|error| CommandError::internal(format!("无法创建卷操作确认令牌：{error}")))?;
+    let token = token_bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let now = Instant::now();
+    let store = VOLUME_ACTION_LEASES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut store = store
+        .lock()
+        .map_err(|_| CommandError::internal("卷操作确认状态不可用。"))?;
+    store.retain(|_, entry| {
+        !entry.lease.is_expired(now)
+            && now.saturating_duration_since(entry.created_at) < Duration::from_secs(30)
+    });
+    if store.len() >= MAX_PENDING_VOLUME_ACTION_LEASES {
+        if let Some(oldest) = store
+            .iter()
+            .min_by_key(|(_, entry)| entry.created_at)
+            .map(|(token, _)| token.clone())
+        {
+            store.remove(&oldest);
+        }
+    }
+    store.insert(
+        token.clone(),
+        StoredVolumeActionLease {
+            lease,
+            created_at: now,
+        },
+    );
+    Ok(token)
+}
+
+/// Consumes a previously stored lease. A token is single-use even when the
+/// identity or expiry check rejects the action.
+pub(crate) fn confirm_stored_volume_action(token: &str) -> Result<PathBuf, CommandError> {
+    if token.trim().is_empty() || token.len() > MAX_REQUEST_ID_BYTES {
+        return Err(CommandError::new(
+            "invalid_volume_action_lease",
+            "卷操作确认令牌无效；请重新扫描并确认。",
+        ));
+    }
+    let store = VOLUME_ACTION_LEASES.get_or_init(|| Mutex::new(HashMap::new()));
+    let stored = store
+        .lock()
+        .map_err(|_| CommandError::internal("卷操作确认状态不可用。"))?
+        .remove(token)
+        .ok_or_else(|| {
+            CommandError::new(
+                "volume_action_lease_unavailable",
+                "卷操作确认已失效；请重新扫描并确认当前挂载状态。",
+            )
+        })?;
+    confirm_volume_action(stored.lease, true)
 }
 
 fn scan_blocking(

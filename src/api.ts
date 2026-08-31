@@ -792,9 +792,14 @@ export async function resolveUserPath(path: string): Promise<string> {
   return invoke<string>("resolve_user_path", { path });
 }
 
-export async function ejectRemovableVolume(mountPoint: string): Promise<void> {
+export async function prepareEjectRemovableVolume(mountPoint: string): Promise<string> {
+  if (canUseDevelopmentMock()) return "development-eject-confirmation";
+  return invoke<string>("prepare_eject_removable_volume", { mountPoint });
+}
+
+export async function ejectRemovableVolume(confirmationId: string): Promise<void> {
   if (canUseDevelopmentMock()) return;
-  return invoke<void>("eject_removable_volume", { mountPoint });
+  return invoke<void>("eject_removable_volume", { confirmationId });
 }
 
 export async function getStorageHealth(

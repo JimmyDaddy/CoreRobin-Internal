@@ -75,6 +75,10 @@ impl VolumeActionLease {
         }
         Ok(self.mount_point)
     }
+
+    pub(crate) fn is_expired(&self, now: Instant) -> bool {
+        self.expires_at <= now
+    }
 }
 
 pub(crate) fn scan_blocking(
