@@ -311,6 +311,13 @@ impl ToolboxScheduler {
         }
     }
 
+    pub fn epoch(&self) -> u64 {
+        self.store
+            .as_ref()
+            .map(|store| store.state().epoch)
+            .unwrap_or_default()
+    }
+
     pub fn create(
         &mut self,
         request: SchedulerCreateRequest,

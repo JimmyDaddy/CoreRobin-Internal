@@ -324,6 +324,7 @@ struct AppState {
     toolbox_file_hash: Arc<FileHashManager>,
     toolbox_power: Arc<Mutex<PowerService>>,
     toolbox_process_watch: Arc<Mutex<ProcessWatchService>>,
+    toolbox_scheduler_dispatch_lock: Arc<Mutex<()>>,
     toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
     toolbox_scheduler_stop: Arc<AtomicBool>,
     toolbox_storage: Arc<Mutex<Option<ToolboxStorage>>>,
@@ -359,6 +360,7 @@ impl AppState {
             toolbox_file_hash: Arc::new(FileHashManager::default()),
             toolbox_power,
             toolbox_process_watch: Arc::new(Mutex::new(toolbox_process_watch)),
+            toolbox_scheduler_dispatch_lock: Arc::new(Mutex::new(())),
             toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
             toolbox_scheduler_stop: Arc::new(AtomicBool::new(false)),
             toolbox_storage: Arc::new(Mutex::new(None)),
@@ -560,6 +562,7 @@ fn start_toolbox_scheduler_runtime(
     scheduler: Weak<Mutex<ToolboxScheduler>>,
     power: Weak<Mutex<PowerService>>,
     storage: Weak<Mutex<Option<ToolboxStorage>>>,
+    dispatch_lock: Arc<Mutex<()>>,
     stop: Arc<AtomicBool>,
     app: AppHandle,
 ) {
@@ -585,6 +588,16 @@ fn start_toolbox_scheduler_runtime(
                     Err(_) => break,
                 };
                 for intent in intents {
+                    let Ok(dispatch_guard) = dispatch_lock.lock() else {
+                        break;
+                    };
+                    let current_epoch = scheduler.upgrade().and_then(|scheduler| {
+                        scheduler.lock().ok().map(|scheduler| scheduler.epoch())
+                    });
+                    if current_epoch != Some(intent.epoch) {
+                        drop(dispatch_guard);
+                        continue;
+                    }
                     let outcome = dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
                     if let Some(scheduler) = scheduler.upgrade()
                         && let Ok(mut scheduler) = scheduler.lock()
@@ -593,6 +606,7 @@ fn start_toolbox_scheduler_runtime(
                     {
                         eprintln!("toolbox scheduler intent update failed: {error}");
                     }
+                    drop(dispatch_guard);
                 }
             }
         })
@@ -2922,6 +2936,10 @@ fn clear_toolbox_data(
     request: toolbox_contracts::ToolboxRequest,
 ) -> Result<ToolboxSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let watch_ids = state
         .toolbox_process_watch
         .lock()
@@ -3270,6 +3288,7 @@ pub fn run() {
                 Arc::downgrade(&state.toolbox_scheduler),
                 Arc::downgrade(&state.toolbox_power),
                 Arc::downgrade(&state.toolbox_storage),
+                Arc::clone(&state.toolbox_scheduler_dispatch_lock),
                 Arc::clone(&state.toolbox_scheduler_stop),
                 app.handle().clone(),
             );
