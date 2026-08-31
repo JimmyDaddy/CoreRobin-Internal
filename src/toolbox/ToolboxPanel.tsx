@@ -35,8 +35,8 @@ import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/rege
 import { formatColor, parseColor } from "./color/colorTools";
 import { parseIfconfig } from "./network/networkTools";
 import { findNextCronOccurrence, parseCron, type CronSchedule } from "./schedules/scheduleTools";
-import { inspectPatchSafely } from "./binary-patch/binaryPatchTools";
 import { ImageToolbox } from "./image/ImageToolbox";
+import { BinaryPatchToolbox } from "./binary-patch/BinaryPatchToolbox";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
@@ -147,8 +147,6 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "color": return <ColorTool />;
     case "ifconfig-parser": return <IfconfigTool />;
     case "schedules": return <ScheduleTool />;
-    case "binary-patch-inspector": return <PatchInspectorTool />;
-    case "transfer-savings": return <TransferSavingsTool />;
     case "image-watermark":
     case "image-batch-watermark":
     case "confidential-watermark":
@@ -159,6 +157,13 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "recipient-tracking":
     case "robustness-lab":
     case "c2pa-inspector": return <ImageToolbox toolId={toolId} />;
+    case "binary-patch-create":
+    case "binary-patch-apply":
+    case "binary-patch-inspector":
+    case "integrity-manifest":
+    case "transfer-savings":
+    case "patch-errors":
+    case "patch-planner": return <BinaryPatchToolbox toolId={toolId} />;
     default: return <UnavailableTool toolId={toolId} />;
   }
 }
@@ -231,15 +236,6 @@ function ScheduleTool() {
   return <ToolLayout error={error} onClear={() => { setOutput(""); setSchedule(null); }}><input className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="五段 Cron，例如 0 9 * * 1-5" /><button className="button button--primary" type="button" onClick={() => { try { const parsed = parseCron(input); setSchedule(parsed); const next = findNextCronOccurrence(parsed, new Date()); setOutput(next.at ? next.at.toString() : next.state); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Timer size={14} />解释并查找下一次</button>{schedule ? <p className="toolbox-hint">只允许提醒和限时保活，不执行 shell、清理、kill 或键盘锁。</p> : null}<ResultBox value={output} /></ToolLayout>;
 }
 
-function PatchInspectorTool() {
-  const [output, setOutput] = useState(""); const [error, setError] = useState("");
-  return <ToolLayout error={error} onClear={() => setOutput("")}><label className="toolbox-file-pick button button--secondary"><FileKey2 size={15} />选择补丁<input hidden type="file" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; void file.arrayBuffer().then((buffer) => inspectPatchSafely(new Uint8Array(buffer))).then((result) => setOutput(JSON.stringify(result, null, 2))).catch((reason: unknown) => setError(userFacingError(reason))); }} /></label><p className="toolbox-hint">BSDIFF40 只识别和解释，不会应用；头部可读不等于载荷完整或可信。</p><ResultBox value={output} /></ToolLayout>;
-}
-
-function TransferSavingsTool() {
-  const [full, setFull] = useState("100"); const [patch, setPatch] = useState("20"); const [downloads, setDownloads] = useState("1"); const [output, setOutput] = useState("");
-  return <ToolLayout onClear={() => setOutput("")}><div className="toolbox-form-grid"><input className="toolbox-input" type="number" value={full} onChange={(event) => setFull(event.target.value)} placeholder="完整包大小" /><input className="toolbox-input" type="number" value={patch} onChange={(event) => setPatch(event.target.value)} placeholder="补丁大小" /><input className="toolbox-input" type="number" value={downloads} onChange={(event) => setDownloads(event.target.value)} placeholder="下载次数" /></div><button className="button button--primary" type="button" onClick={() => { const fullBytes = Number(full); const patchBytes = Number(patch); const count = Number(downloads); const fullTotal = fullBytes * count; const patchTotal = patchBytes * count; setOutput(JSON.stringify({ fullBytes: fullTotal, patchBytes: patchTotal, savedBytes: fullTotal - patchTotal, savingsPercent: fullTotal ? ((fullTotal - patchTotal) / fullTotal) * 100 : null }, null, 2)); }}>计算</button><ResultBox value={output} /></ToolLayout>;
-}
 
 function UnavailableTool({ toolId }: { toolId: ToolId }) { return <div className="toolbox-unavailable"><CircleAlert size={24} /><strong>{getToolDefinition(toolId).title}尚未完成原生/执行器接线</strong><p>此入口已纳入工具箱契约；在对应 provider、停止确认和真实平台验收完成前，不显示“成功”结果。</p></div>; }
 

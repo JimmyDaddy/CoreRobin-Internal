@@ -55,5 +55,6 @@ textarea.toolbox-input { min-height: 150px; resize: vertical; }
 .toolbox-regex-tree > strong { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }
 .toolbox-regex-node { margin: 4px 0 4px 12px; color: var(--text-secondary); font-size: 12px; }
 .toolbox-regex-tree ul { margin: 12px 0 0; padding-left: 18px; color: var(--amber); font-size: 12px; }
+.toolbox-result__pre { max-height: 320px; overflow: auto; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
 @media (max-width: 700px) { .toolbox-grid, .toolbox-form-grid { grid-template-columns: 1fr; } .toolbox-panel { padding: 20px 14px 36px; } .toolbox-tool-page__header { flex-direction: column; } .toolbox-tool-page__header > div, .toolbox-tool-page__header > button { order: initial; } .toolbox-tool-layout__footer { align-items: flex-start; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { .toolbox-card { transition: none; } }

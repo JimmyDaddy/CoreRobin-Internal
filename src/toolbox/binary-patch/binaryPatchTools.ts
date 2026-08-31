@@ -36,37 +36,38 @@ export interface PatchPlanItem {
   error: ClassifiedPatchError | null;
 }
 
-export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8Array): Promise<VerifiedPatch> {
+export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8Array, signal?: AbortSignal): Promise<VerifiedPatch> {
   assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
   assertSize(newData, MAX_GENERATE_INPUT_BYTES, "target");
   const diffJob = startDiffBytes(oldData.slice(), newData.slice(), {
+    signal,
     maxInputBytes: MAX_GENERATE_INPUT_BYTES,
     maxOutputBytes: MAX_PATCH_OUTPUT_BYTES,
   });
   const patch = await diffJob.result;
   assertSize(patch, MAX_PATCH_OUTPUT_BYTES, "patch");
-  const verification = await verifyPatchBytes(oldData, patch, newData);
+  const verification = await verifyPatchBytes(oldData, patch, newData, signal);
   if (!verification.verified) throw new Error("Generated patch did not restore the target byte-for-byte.");
   return { patch, verification, baselineSha256: await sha256Hex(oldData), targetSha256: await sha256Hex(newData) };
 }
 
-export async function applyPatchAndVerify(oldData: Uint8Array, patchData: Uint8Array, expectedData?: Uint8Array): Promise<{ output: Uint8Array; verification: PatchVerificationResult | null }> {
+export async function applyPatchAndVerify(oldData: Uint8Array, patchData: Uint8Array, expectedData?: Uint8Array, signal?: AbortSignal): Promise<{ output: Uint8Array; verification: PatchVerificationResult | null }> {
   assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
   assertSize(patchData, MAX_PATCH_INPUT_BYTES, "patch");
   if (expectedData) assertSize(expectedData, MAX_PATCH_OUTPUT_BYTES, "target");
-  const job = startPatchBytes(oldData.slice(), patchData.slice(), { maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
+  const job = startPatchBytes(oldData.slice(), patchData.slice(), { signal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
   const output = await job.result;
   if (!expectedData) return { output, verification: null };
-  const verification = await verifyPatchBytes(oldData, patchData, expectedData);
+  const verification = await verifyPatchBytes(oldData, patchData, expectedData, signal);
   if (!verification.verified) throw new Error("Patch output did not match the expected target.");
   return { output, verification };
 }
 
-export async function verifyPatchBytes(oldData: Uint8Array, patchData: Uint8Array, expectedData: Uint8Array): Promise<PatchVerificationResult> {
+export async function verifyPatchBytes(oldData: Uint8Array, patchData: Uint8Array, expectedData: Uint8Array, signal?: AbortSignal): Promise<PatchVerificationResult> {
   assertSize(oldData, MAX_GENERATE_INPUT_BYTES, "baseline");
   assertSize(patchData, MAX_PATCH_INPUT_BYTES, "patch");
   assertSize(expectedData, MAX_PATCH_OUTPUT_BYTES, "target");
-  return verifyPatch(oldData.slice(), patchData.slice(), expectedData.slice(), { maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
+  return verifyPatch(oldData.slice(), patchData.slice(), expectedData.slice(), { signal, maxInputBytes: MAX_PATCH_INPUT_BYTES, maxOutputBytes: MAX_PATCH_OUTPUT_BYTES });
 }
 
 export async function inspectPatchSafely(patchData: Uint8Array): Promise<PatchMetadata> {
@@ -94,13 +95,13 @@ export function manifestJson(manifest: PatchManifest): string {
   return canonicalJson(manifest);
 }
 
-export async function planPatches(target: Uint8Array, baselines: ReadonlyArray<{ name: string; data: Uint8Array }>, maxPatchRatio = 0.8): Promise<PatchPlanItem[]> {
+export async function planPatches(target: Uint8Array, baselines: ReadonlyArray<{ name: string; data: Uint8Array }>, maxPatchRatio = 0.8, signal?: AbortSignal): Promise<PatchPlanItem[]> {
   if (baselines.length > 8) throw new Error("A release plan may contain at most 8 baselines.");
   assertSize(target, MAX_GENERATE_INPUT_BYTES, "target");
   const results: PatchPlanItem[] = [];
   for (const baseline of baselines) {
     try {
-      const result = await generateVerifiedPatch(baseline.data, target);
+      const result = await generateVerifiedPatch(baseline.data, target, signal);
       results.push({ baselineName: baseline.name, status: "verified", patch: result.patch, ratio: target.byteLength === 0 ? 0 : result.patch.byteLength / target.byteLength, error: null });
       const latest = results[results.length - 1];
       if (latest.ratio !== null && latest.ratio > maxPatchRatio) latest.status = "failed";
