@@ -47,7 +47,7 @@ vi.mock("./imageExecution", () => ({
   transformImageInWorker: mocks.transformImage,
   withLocalImageFonts: (options: unknown) => options,
 }));
-vi.mock("./imageInputs", () => ({ createBrowserImageInputs: mocks.createBrowserInputs, createNativeImageInputs: vi.fn() }));
+vi.mock("./imageInputs", () => ({ createBrowserImageInputs: mocks.createBrowserInputs, createNativeImageInputs: vi.fn(), imageMimeType: vi.fn(() => "application/octet-stream"), strictImageMimeType: vi.fn(() => "application/octet-stream") }));
 
 import { ImageToolbox } from "./ImageToolbox";
 

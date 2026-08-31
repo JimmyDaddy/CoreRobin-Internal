@@ -41,6 +41,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@contentauth/c2pa-web": "0.13.1",
     "@image-marker/web": "0.1.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.2",

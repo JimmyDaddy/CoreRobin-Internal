@@ -10,7 +10,6 @@ import {
   createRecipientZipBudget,
   createTextRecipe,
   estimateImageWorksetBytes,
-  inspectLocalManifest,
   inspectLocalFontBytes,
   isAbortError,
   parseRecipeDocument,
@@ -24,19 +23,6 @@ describe("image toolbox contracts", () => {
     const parsed = parseRecipeDocument(JSON.stringify(recipe));
     expect(parsed.schemaVersion).toBe(2);
     expect(parsed.layers).toHaveLength(1);
-  });
-
-  it("does not treat a local manifest as trusted", () => {
-    const result = inspectLocalManifest(JSON.stringify({ manifests: { abc: {} }, claim_generator: "local" }));
-    expect(result.status).toBe("parsed_unverified");
-    expect(result.manifests).toBe(1);
-    expect(result.trust).toBe("unknown");
-    expect(result.networkAccessed).toBe(false);
-  });
-
-  it("distinguishes malformed and non-C2PA JSON without network lookup", () => {
-    expect(inspectLocalManifest("not-json").status).toBe("malformed");
-    expect(inspectLocalManifest(JSON.stringify({ value: true })).status).toBe("not_c2pa");
   });
 
   it("requires a matching local font container signature", () => {

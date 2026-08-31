@@ -551,7 +551,8 @@ pub fn role_budget(tool: &str, role: InputRole) -> Result<(u64, usize, u64), Com
         ("image-watermark" | "image-batch-watermark" | "confidential-watermark", Font) => {
             (4 * MIB, 1, 4 * MIB)
         }
-        ("image-recipe" | "c2pa-inspector", Manifest) => (4 * MIB, 1, 4 * MIB),
+        ("image-recipe", Manifest) => (4 * MIB, 1, 4 * MIB),
+        ("c2pa-inspector", Manifest) => (12 * MIB, 1, 12 * MIB),
         _ => {
             return Err(error(
                 "invalid_input_role",

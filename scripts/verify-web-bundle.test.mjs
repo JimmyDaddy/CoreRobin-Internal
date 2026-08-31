@@ -69,6 +69,30 @@ describe("production WebView bundle verification", () => {
     expect(verify).toThrow(/index.html javascriptBytes.*over its 510000 byte budget/);
   });
 
+  it("accounts for lazy C2PA JavaScript and WASM separately from the general total", async () => {
+    const c2pa = "assets/c2pa-reader.js";
+    const wasm = "assets/c2pa-reader.wasm";
+    const manifest = JSON.parse(await readFile(join(distRoot, ".vite/manifest.json"), "utf8"));
+    manifest.c2pa = { file: c2pa, src: "node_modules/.pnpm/@contentauth/c2pa-web/dist/index.js", assets: [wasm] };
+    await writeFile(join(distRoot, c2pa), "/* c2pa */");
+    await writeFile(join(distRoot, wasm), "wasm");
+    await writeFile(join(distRoot, ".vite/manifest.json"), JSON.stringify(manifest));
+
+    const output = verify();
+    const report = JSON.parse(output.slice(0, output.lastIndexOf("}") + 1));
+    expect(report.c2pa).toEqual({ javascriptBytes: "/* c2pa */".length, wasmBytes: "wasm".length });
+    expect(report.totals.javascriptBytes).toBe(4 * "/* entry */".length + "/* shared */".length + "/* lazy */".length);
+  });
+
+  it("rejects an oversized lazy C2PA asset", async () => {
+    const c2pa = "assets/c2pa-reader.js";
+    const manifest = JSON.parse(await readFile(join(distRoot, ".vite/manifest.json"), "utf8"));
+    manifest.c2pa = { file: c2pa, src: "node_modules/.pnpm/@contentauth/c2pa-web/dist/index.js" };
+    await writeFile(join(distRoot, c2pa), Buffer.alloc(budgets.c2pa.javascriptBytes + 1));
+    await writeFile(join(distRoot, ".vite/manifest.json"), JSON.stringify(manifest));
+    expect(verify).toThrow(new RegExp(`C2PA lazy assets javascriptBytes.*over its ${budgets.c2pa.javascriptBytes} byte budget`));
+  });
+
   it("still rejects missing manifest assets", async () => {
     await rm(join(distRoot, "assets/lazy.js"));
     expect(verify).toThrow(/ENOENT/);

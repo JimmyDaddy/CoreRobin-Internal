@@ -29,5 +29,9 @@
   "totals": {
     "javascriptBytes": 3400000,
     "cssBytes": 450000
+  },
+  "c2pa": {
+    "javascriptBytes": 75000,
+    "wasmBytes": 10000000
   }
 }

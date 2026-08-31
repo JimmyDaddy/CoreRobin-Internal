@@ -52,3 +52,11 @@ export function imageMimeType(bytes: Uint8Array, name: string): "image/png" | "i
   if (/\.webp$/iu.test(name)) return "image/webp";
   return "application/octet-stream";
 }
+
+/** C2PA must not accept a renamed or extension-only input as an image. */
+export function strictImageMimeType(bytes: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | "application/octet-stream" {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length >= 12 && String.fromCharCode(...bytes.subarray(0, 4)) === "RIFF" && String.fromCharCode(...bytes.subarray(8, 12)) === "WEBP") return "image/webp";
+  return "application/octet-stream";
+}
