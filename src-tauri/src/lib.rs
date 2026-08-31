@@ -34,6 +34,8 @@ mod toolbox_contracts;
 mod toolbox_export;
 mod toolbox_file_hash;
 mod toolbox_power;
+mod toolbox_process_watch;
+mod toolbox_scheduler;
 mod toolbox_service;
 mod user_actions;
 
@@ -133,6 +135,12 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
 use toolbox_power::{PowerRequest, PowerService, PowerState};
+use toolbox_process_watch::{
+    ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
+};
+use toolbox_scheduler::{
+    SchedulerCreateRequest, SchedulerRuleRequest, SchedulerSnapshot, ToolboxScheduler,
+};
 use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
@@ -292,6 +300,8 @@ struct AppState {
     toolbox: Arc<Mutex<ToolboxService>>,
     toolbox_file_hash: Arc<FileHashManager>,
     toolbox_power: Arc<Mutex<PowerService>>,
+    toolbox_process_watch: Arc<Mutex<ProcessWatchService>>,
+    toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
 }
 
 impl AppState {
@@ -319,6 +329,10 @@ impl AppState {
             toolbox: Arc::new(Mutex::new(ToolboxService::new())),
             toolbox_file_hash: Arc::new(FileHashManager::default()),
             toolbox_power: Arc::new(Mutex::new(PowerService::new())),
+            toolbox_process_watch: Arc::new(Mutex::new(
+                ProcessWatchService::new().expect("failed to start the process watch worker"),
+            )),
+            toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
         }
     }
 }
@@ -2195,6 +2209,64 @@ enum ApplicationIconSource {
 }
 
 #[tauri::command]
+fn start_toolbox_process_watch(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ProcessWatchRequest,
+) -> Result<ProcessWatchSnapshotView, CommandError> {
+    require_main_window(&window)?;
+    let snapshot = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .start(request)?
+        .snapshot;
+    Ok(ProcessWatchSnapshotView::from_snapshot(
+        &snapshot,
+        Instant::now(),
+        now_millis(),
+    ))
+}
+
+#[tauri::command]
+fn get_toolbox_process_watches(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<Vec<ProcessWatchSnapshotView>, CommandError> {
+    require_main_window(&window)?;
+    let snapshots = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .snapshots()?;
+    let now = Instant::now();
+    let now_ms = now_millis();
+    Ok(snapshots
+        .iter()
+        .map(|snapshot| ProcessWatchSnapshotView::from_snapshot(snapshot, now, now_ms))
+        .collect())
+}
+
+#[tauri::command]
+fn cancel_toolbox_process_watch(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ProcessWatchCancelRequest,
+) -> Result<Option<ProcessWatchSnapshotView>, CommandError> {
+    require_main_window(&window)?;
+    let snapshot = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .cancel(request.watch_id)?;
+    let now = Instant::now();
+    let now_ms = now_millis();
+    Ok(snapshot
+        .as_ref()
+        .map(|snapshot| ProcessWatchSnapshotView::from_snapshot(snapshot, now, now_ms)))
+}
+
+#[tauri::command]
 async fn create_process_control_lease(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -2372,6 +2444,61 @@ fn get_toolbox_keep_awake_state(
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
         .snapshot())
+}
+
+#[tauri::command]
+fn get_toolbox_schedule_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))
+        .map(|scheduler| scheduler.snapshot())
+}
+
+#[tauri::command]
+fn create_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerCreateRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .create(request)
+}
+
+#[tauri::command]
+fn pause_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .pause(request)
+}
+
+#[tauri::command]
+fn delete_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .delete(request)
 }
 
 #[tauri::command]
@@ -2668,6 +2795,9 @@ pub fn run() {
             configure_companion_window,
             get_process_detail,
             get_application_icon,
+            start_toolbox_process_watch,
+            get_toolbox_process_watches,
+            cancel_toolbox_process_watch,
             create_process_control_lease,
             release_process_control_lease,
             execute_process_action,
@@ -2681,6 +2811,10 @@ pub fn run() {
             start_toolbox_keep_awake,
             cancel_toolbox_keep_awake,
             get_toolbox_keep_awake_state,
+            get_toolbox_schedule_snapshot,
+            create_toolbox_schedule,
+            pause_toolbox_schedule,
+            delete_toolbox_schedule,
             write_toolbox_text_copy,
             scan_toolbox_file_occupancy,
             start_app_update,
@@ -2939,6 +3073,9 @@ mod security_boundary_tests {
         "set_dock_icon_visible",
         "get_launch_at_login",
         "set_launch_at_login",
+        "start_toolbox_process_watch",
+        "get_toolbox_process_watches",
+        "cancel_toolbox_process_watch",
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",
@@ -2952,6 +3089,10 @@ mod security_boundary_tests {
         "start_toolbox_keep_awake",
         "cancel_toolbox_keep_awake",
         "get_toolbox_keep_awake_state",
+        "get_toolbox_schedule_snapshot",
+        "create_toolbox_schedule",
+        "pause_toolbox_schedule",
+        "delete_toolbox_schedule",
         "write_toolbox_text_copy",
         "scan_toolbox_file_occupancy",
         "start_app_update",

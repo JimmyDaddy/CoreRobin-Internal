@@ -101,6 +101,9 @@
     "allow-configure-companion-window",
     "allow-get-process-detail",
     "allow-get-application-icon",
+    "allow-start-toolbox-process-watch",
+    "allow-get-toolbox-process-watches",
+    "allow-cancel-toolbox-process-watch",
     "allow-create-process-control-lease",
     "allow-release-process-control-lease",
     "allow-execute-process-action",
@@ -116,6 +119,10 @@
     "allow-start-toolbox-keep-awake",
     "allow-cancel-toolbox-keep-awake",
     "allow-get-toolbox-keep-awake-state",
+    "allow-get-toolbox-schedule-snapshot",
+    "allow-create-toolbox-schedule",
+    "allow-pause-toolbox-schedule",
+    "allow-delete-toolbox-schedule",
     "allow-write-toolbox-text-copy",
     "allow-scan-toolbox-file-occupancy"
   ]

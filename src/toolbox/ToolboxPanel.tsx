@@ -27,14 +27,14 @@ import type { ReactNode } from "react";
 import QRCode from "qrcode";
 
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxFileHash, cancelToolboxKeepAwake, hashToolboxFile, isDesktopRuntime, scanToolboxFileOccupancy, startToolboxKeepAwake } from "../api";
+import { cancelToolboxFileHash, cancelToolboxKeepAwake, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxProcessWatches, getToolboxScheduleSnapshot, hashToolboxFile, isDesktopRuntime, pauseToolboxSchedule, scanToolboxFileOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64, generateUuidV4 } from "./local/encodingTools";
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
 import { parseIfconfig } from "./network/networkTools";
-import { findNextCronOccurrence, parseCron, type CronSchedule } from "./schedules/scheduleTools";
+import { findNextCronOccurrence, parseCron } from "./schedules/scheduleTools";
 import { ImageToolbox } from "./image/ImageToolbox";
 import { BinaryPatchToolbox } from "./binary-patch/BinaryPatchToolbox";
 import { getToolDefinition, searchTools } from "./registry";
@@ -145,6 +145,7 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "file-sha256": return <FileHashTool />;
     case "file-occupancy": return <OccupancyTool />;
     case "keep-awake": return <KeepAwakeTool />;
+    case "process-watch": return <ProcessWatchTool />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
     case "ifconfig-parser": return <IfconfigTool />;
@@ -255,8 +256,207 @@ function IfconfigTool() {
 }
 
 function ScheduleTool() {
-  const [input, setInput] = useState("*/15 9-17 * * 1-5"); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [schedule, setSchedule] = useState<CronSchedule | null>(null);
-  return <ToolLayout error={error} onClear={() => { setOutput(""); setSchedule(null); }}><input className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder="五段 Cron，例如 0 9 * * 1-5" /><button className="button button--primary" type="button" onClick={() => { try { const parsed = parseCron(input); setSchedule(parsed); const next = findNextCronOccurrence(parsed, new Date()); setOutput(next.at ? next.at.toString() : next.state); setError(""); } catch (reason) { setError(userFacingError(reason)); } }}><Timer size={14} />解释并查找下一次</button>{schedule ? <p className="toolbox-hint">只允许提醒和限时保活，不执行 shell、清理、kill 或键盘锁。</p> : null}<ResultBox value={output} /></ToolLayout>;
+  const [kind, setKind] = useState<"once" | "daily" | "weekly" | "cron">("daily");
+  const [actionKind, setActionKind] = useState<"reminder" | "keepAwake">("reminder");
+  const [title, setTitle] = useState("");
+  const [onceAt, setOnceAt] = useState(() => localDateTimeInput(new Date(Date.now() + 60 * 60 * 1_000)));
+  const [hour, setHour] = useState("9");
+  const [minute, setMinute] = useState("0");
+  const [weekday, setWeekday] = useState("1");
+  const [cron, setCron] = useState("*/15 9-17 * * 1-5");
+  const [duration, setDuration] = useState("60");
+  const [snapshot, setSnapshot] = useState<ToolboxScheduleSnapshot | null>(null);
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    void getToolboxScheduleSnapshot().then(setSnapshot).catch((reason) => setError(userFacingError(reason)));
+  }, []);
+
+  const refresh = async () => {
+    if (!isDesktopRuntime()) return;
+    setRunning(true);
+    setError("");
+    try {
+      setSnapshot(await getToolboxScheduleSnapshot());
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const nextFromCron = (source: string) => {
+    const next = findNextCronOccurrence(parseCron(source), new Date());
+    if (!next.at) {
+      throw new ToolboxInputError(
+        "cron_no_occurrence",
+        next.state === "search_limit" ? "当前搜索预算内未能找到 Cron 的下一次时间。" : "该 Cron 在搜索范围内没有下一次触发时间。",
+      );
+    }
+    return next.at.getTime();
+  };
+
+  const create = async () => {
+    if (!isDesktopRuntime()) {
+      setError("定时规则需要桌面原生运行时；浏览器演示不会保存规则。");
+      return;
+    }
+    setRunning(true);
+    setError("");
+    try {
+      const numericHour = Number(hour);
+      const numericMinute = Number(minute);
+      const numericWeekday = Number(weekday);
+      const durationMinutes = Number(duration);
+      let trigger;
+      if (kind === "once") {
+        const atMs = new Date(onceAt).getTime();
+        if (!Number.isFinite(atMs) || atMs <= Date.now() || atMs > Date.now() + 365 * 24 * 60 * 60 * 1_000) {
+          throw new ToolboxInputError("invalid_once_time", "请选择未来 365 天内的有效日期和时间。");
+        }
+        trigger = { kind: "once" as const, atMs };
+      } else if (kind === "daily") {
+        const nextRunAtMs = nextFromCron(`${numericMinute} ${numericHour} * * *`);
+        trigger = { kind: "daily" as const, hour: numericHour, minute: numericMinute, nextRunAtMs };
+      } else if (kind === "weekly") {
+        const nextRunAtMs = nextFromCron(`${numericMinute} ${numericHour} * * ${numericWeekday}`);
+        trigger = { kind: "weekly" as const, weekday: numericWeekday, hour: numericHour, minute: numericMinute, nextRunAtMs };
+      } else {
+        trigger = { kind: "cron" as const, expression: cron, nextRunAtMs: nextFromCron(cron) };
+      }
+      if (actionKind === "keepAwake" && (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720)) {
+        throw new ToolboxInputError("invalid_duration", "保活时长必须是 1 分钟到 12 小时。");
+      }
+      const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
+      setSnapshot(await createToolboxSchedule({ requestId: crypto.randomUUID(), title: title || undefined, action, trigger }));
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const pause = async (scheduleId: string) => {
+    setRunning(true);
+    setError("");
+    try {
+      setSnapshot(await pauseToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId }));
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const remove = async (scheduleId: string) => {
+    setRunning(true);
+    setError("");
+    try {
+      setSnapshot(await deleteToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId }));
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return <ToolLayout error={error} onClear={() => { setSnapshot(null); setError(""); }}>
+    <div className="toolbox-form-grid">
+      <label>规则 <select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="once">一次性</option><option value="daily">每天</option><option value="weekly">每周</option><option value="cron">Cron 草稿</option></select></label>
+      <label>意图 <select value={actionKind} onChange={(event) => setActionKind(event.target.value as typeof actionKind)}><option value="reminder">提醒</option><option value="keepAwake">限时保活</option></select></label>
+      <input className="toolbox-input" value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder="可选标题（最多 80 字符）" />
+    </div>
+    {kind === "once" ? <label>触发时间 <input className="toolbox-input" type="datetime-local" value={onceAt} onChange={(event) => setOnceAt(event.target.value)} /></label> : null}
+    {kind === "cron" ? <input className="toolbox-input toolbox-input--code" value={cron} onChange={(event) => setCron(event.target.value)} placeholder="五段 Cron，例如 0 9 * * 1-5" /> : null}
+    {kind === "daily" || kind === "weekly" ? <div className="toolbox-form-grid">
+      <label>小时 <input className="toolbox-input" inputMode="numeric" value={hour} onChange={(event) => setHour(event.target.value)} /></label>
+      <label>分钟 <input className="toolbox-input" inputMode="numeric" value={minute} onChange={(event) => setMinute(event.target.value)} /></label>
+      {kind === "weekly" ? <label>星期 <select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="0">周日</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option></select></label> : null}
+    </div> : null}
+    {actionKind === "keepAwake" ? <label>保活分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />创建内存规则</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>查看当前规则</button></div>
+    <p className="toolbox-hint">创建前会使用现有 Cron 搜索器计算下一次时间；原生端只接受提醒或 1 分钟至 12 小时的保活意图。当前规则仅存于本次应用运行内，重启即清除，且本最小 provider 尚不会到点执行动作；绝不执行 shell、清理、结束进程或键盘操作。</p>
+    {snapshot ? <><p className="toolbox-hint">{snapshot.restartNotice} {snapshot.executionNotice}</p>{snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? "未命名"} · {rule.status} · 下次预览 {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>暂停</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>删除</button></div>)}</> : null}
+  </ToolLayout>;
+}
+
+function ProcessWatchTool() {
+  const [pid, setPid] = useState("");
+  const [birthToken, setBirthToken] = useState("");
+  const [duration, setDuration] = useState("240");
+  const [watches, setWatches] = useState<ToolboxProcessWatchSnapshot[]>([]);
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+
+  const refresh = async () => {
+    if (!isDesktopRuntime()) {
+      setError("进程退出提醒需要桌面原生运行时。");
+      return;
+    }
+    try {
+      setWatches(await getToolboxProcessWatches());
+      setError("");
+    } catch (reason) {
+      setError(userFacingError(reason));
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+
+  const start = async () => {
+    if (!isDesktopRuntime()) {
+      setError("进程退出提醒需要桌面原生运行时。");
+      return;
+    }
+    const numericPid = Number(pid);
+    const durationMinutes = Number(duration);
+    if (!Number.isInteger(numericPid) || numericPid <= 0 || !birthToken.trim()) {
+      setError("请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。");
+      return;
+    }
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) {
+      setError("观察时长必须是 1 分钟到 12 小时。");
+      return;
+    }
+    setRunning(true);
+    setError("");
+    try {
+      await startToolboxProcessWatch({ key: { pid: numericPid, birthToken: birthToken.trim() }, durationMinutes });
+      setBirthToken("");
+      await refresh();
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const cancel = async (watchId: number) => {
+    setRunning(true);
+    setError("");
+    try {
+      await cancelToolboxProcessWatch({ watchId });
+      await refresh();
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return <ToolLayout error={error} onClear={() => { setPid(""); setBirthToken(""); setWatches([]); setError(""); }}>
+    <div className="toolbox-form-grid"><label>PID <input className="toolbox-input" inputMode="numeric" value={pid} onChange={(event) => setPid(event.target.value)} placeholder="已选进程 PID" /></label><label>birth token <input className="toolbox-input toolbox-input--code" value={birthToken} onChange={(event) => setBirthToken(event.target.value)} placeholder="从进程详情复制，拒绝同名替代" /></label><label>观察分钟 <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label></div>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />开始只读观察</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>刷新状态</button></div>
+    <p className="toolbox-hint">只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。</p>
+    {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {watch.status} · 截止 {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>取消观察</button></div>)}
+  </ToolLayout>;
+}
+
+function localDateTimeInput(value: Date): string {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 

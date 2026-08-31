@@ -104,6 +104,51 @@ export interface ToolboxPowerState {
   reason: string | null;
 }
 
+export type ToolboxScheduleAction =
+  | { kind: "reminder" }
+  | { kind: "keepAwake"; durationMinutes: number };
+
+export type ToolboxScheduleTrigger =
+  | { kind: "once"; atMs: number }
+  | { kind: "daily"; hour: number; minute: number; nextRunAtMs: number }
+  | { kind: "weekly"; weekday: number; hour: number; minute: number; nextRunAtMs: number }
+  | { kind: "cron"; expression: string; nextRunAtMs: number };
+
+export interface ToolboxScheduleRule {
+  scheduleId: string;
+  title: string | null;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+  status: "scheduled" | "paused";
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+export interface ToolboxScheduleSnapshot {
+  revision: number;
+  maxRules: number;
+  persistent: false;
+  restartNotice: string;
+  executionNotice: string;
+  rules: ToolboxScheduleRule[];
+}
+
+export interface ToolboxProcessWatchKey {
+  pid: number;
+  birthToken: string;
+}
+
+export type ToolboxProcessWatchStatus = "running" | "exited" | "unknown" | "identity_changed" | "expired" | "cancelled";
+
+export interface ToolboxProcessWatchSnapshot {
+  watchId: number;
+  key: ToolboxProcessWatchKey;
+  status: ToolboxProcessWatchStatus;
+  startedAtMs: number;
+  deadlineAtMs: number;
+  lastCheckedAtMs: number;
+}
+
 export interface ToolboxOccupancyProcess {
   pid: number;
   command: string | null;
@@ -228,6 +273,42 @@ export async function cancelToolboxKeepAwake(): Promise<ToolboxPowerState> {
 
 export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {
   return invoke<ToolboxPowerState>("get_toolbox_keep_awake_state");
+}
+
+export async function getToolboxScheduleSnapshot(): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("get_toolbox_schedule_snapshot");
+}
+
+export async function createToolboxSchedule(request: {
+  requestId: string;
+  title?: string;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+}): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("create_toolbox_schedule", { request });
+}
+
+export async function pauseToolboxSchedule(request: { requestId: string; scheduleId: string }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("pause_toolbox_schedule", { request });
+}
+
+export async function deleteToolboxSchedule(request: { requestId: string; scheduleId: string }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("delete_toolbox_schedule", { request });
+}
+
+export async function startToolboxProcessWatch(request: {
+  key: ToolboxProcessWatchKey;
+  durationMinutes: number;
+}): Promise<ToolboxProcessWatchSnapshot> {
+  return invoke<ToolboxProcessWatchSnapshot>("start_toolbox_process_watch", { request });
+}
+
+export async function getToolboxProcessWatches(): Promise<ToolboxProcessWatchSnapshot[]> {
+  return invoke<ToolboxProcessWatchSnapshot[]>("get_toolbox_process_watches");
+}
+
+export async function cancelToolboxProcessWatch(request: { watchId: number }): Promise<ToolboxProcessWatchSnapshot | null> {
+  return invoke<ToolboxProcessWatchSnapshot | null>("cancel_toolbox_process_watch", { request });
 }
 
 export async function scanToolboxFileOccupancy(request: { requestId: string; path: string }): Promise<ToolboxOccupancyResult> {
