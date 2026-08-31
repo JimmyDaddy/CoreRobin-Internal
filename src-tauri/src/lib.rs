@@ -2710,9 +2710,14 @@ pub fn run() {
             let state = app.state::<AppState>();
             if let Ok(app_data_dir) = app.path().app_data_dir()
                 && let Ok(storage) = ToolboxStorage::open(app_data_dir)
-                && let Ok(mut slot) = state.toolbox_storage.lock()
             {
-                *slot = Some(storage);
+                let reset_epoch = storage.reset_epoch();
+                if let Ok(mut toolbox) = state.toolbox.lock() {
+                    toolbox.adopt_reset_epoch(reset_epoch);
+                }
+                if let Ok(mut slot) = state.toolbox_storage.lock() {
+                    *slot = Some(storage);
+                }
             }
             // Kill scan workers left over from a previous session and remove
             // their stale job files, without blocking startup.

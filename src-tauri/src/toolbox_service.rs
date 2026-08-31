@@ -185,6 +185,12 @@ impl ToolboxService {
         }
     }
 
+    /// Restore only the durable reset epoch during native startup. Runtime
+    /// sessions and jobs are intentionally never restored from disk.
+    pub fn adopt_reset_epoch(&mut self, reset_epoch: u64) {
+        self.reset_epoch = reset_epoch;
+    }
+
     pub fn start(&mut self, request: ToolboxJobRequest) -> Result<ToolboxJob, CommandError> {
         self.reconcile();
         if self.clearing {
