@@ -134,6 +134,7 @@
     "allow-get-toolbox-schedule-snapshot",
     "allow-preview-toolbox-schedule",
     "allow-create-toolbox-schedule",
+    "allow-update-toolbox-schedule",
     "allow-pause-toolbox-schedule",
     "allow-delete-toolbox-schedule",
     "allow-write-toolbox-text-copy",
