@@ -875,11 +875,12 @@ impl ToolboxService {
         Ok(inputs)
     }
 
-    pub fn reconcile(&mut self) {
-        self.reconcile_at(now_millis().min(u64::MAX as u128) as u64);
+    pub fn reconcile(&mut self) -> bool {
+        self.reconcile_at(now_millis().min(u64::MAX as u128) as u64)
     }
 
-    fn reconcile_at(&mut self, now_ms: u64) {
+    fn reconcile_at(&mut self, now_ms: u64) -> bool {
+        let mut changed = false;
         let mut expired_outputs = Vec::new();
         for job in self.jobs.values_mut() {
             if job.status == JobStatus::Stopping {
@@ -891,6 +892,7 @@ impl ToolboxService {
                         session.terminal_reason = Some(TerminalReason::Cancelled);
                     }
                     self.revision = self.revision.saturating_add(1);
+                    changed = true;
                 }
             } else if matches!(
                 job.status,
@@ -910,6 +912,7 @@ impl ToolboxService {
                     session.terminal_reason = job.terminal_reason.clone();
                 }
                 self.revision = self.revision.saturating_add(1);
+                changed = true;
             }
         }
         for (job_id, token) in expired_outputs {
@@ -918,6 +921,7 @@ impl ToolboxService {
                 cancel.store(true, Ordering::Release);
             }
         }
+        changed
     }
 
     #[cfg(test)]

@@ -558,6 +558,40 @@ fn start_health_state_watchdog(store: Arc<HealthStateStore>, app: AppHandle) {
         .expect("failed to start the health state watchdog");
 }
 
+fn start_toolbox_reaper(
+    toolbox: Weak<Mutex<ToolboxService>>,
+    stop: Arc<AtomicBool>,
+    app: AppHandle,
+) {
+    std::thread::Builder::new()
+        .name("core-robin-toolbox-reaper".to_owned())
+        .spawn(move || {
+            while !stop.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_secs(1));
+                if stop.load(Ordering::Acquire) {
+                    break;
+                }
+                let Some(toolbox) = toolbox.upgrade() else {
+                    break;
+                };
+                let snapshot = match toolbox.lock() {
+                    Ok(mut service) => {
+                        if service.reconcile() {
+                            Some(service.snapshot())
+                        } else {
+                            None
+                        }
+                    }
+                    Err(_) => break,
+                };
+                if let Some(snapshot) = snapshot {
+                    let _ = app.emit(TOOLBOX_EVENT, ToolboxEvent::Snapshot { snapshot });
+                }
+            }
+        })
+        .expect("failed to start the toolbox reaper");
+}
+
 fn start_toolbox_scheduler_runtime(
     scheduler: Weak<Mutex<ToolboxScheduler>>,
     power: Weak<Mutex<PowerService>>,
@@ -3289,6 +3323,11 @@ pub fn run() {
                 Arc::downgrade(&state.toolbox_power),
                 Arc::downgrade(&state.toolbox_storage),
                 Arc::clone(&state.toolbox_scheduler_dispatch_lock),
+                Arc::clone(&state.toolbox_scheduler_stop),
+                app.handle().clone(),
+            );
+            start_toolbox_reaper(
+                Arc::downgrade(&state.toolbox),
                 Arc::clone(&state.toolbox_scheduler_stop),
                 app.handle().clone(),
             );
