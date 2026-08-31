@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import type { WebMarkerInstance } from "@image-marker/web";
 import type { EditorAlignment, EditorSize, EditorState } from "@image-marker/web/headless";
 
-import { LocalImageEditor } from "./imageEditor";
+import { LOCAL_EDITOR_ASSET_KIND, LocalImageEditor } from "./imageEditor";
 import { recipeOutput, type ImageOutputDelivery } from "./imageOutput";
 import { inspectImageBudget } from "./imageTools";
 
@@ -43,6 +43,70 @@ interface ImageRecipeEditorProps {
   onError: (message: string) => void;
   onNotice: (message: string) => void;
   deliverOutput?: ImageOutputDelivery;
+}
+
+interface LocalAssetReference {
+  id: string;
+  name: string;
+}
+
+function localAssetReferences(recipeJson: string): LocalAssetReference[] {
+  const recipe: unknown = JSON.parse(recipeJson);
+  if (!recipe || typeof recipe !== "object" || !Array.isArray((recipe as { layers?: unknown }).layers)) return [];
+
+  const references = new Map<string, LocalAssetReference>();
+  for (const layer of (recipe as { layers: unknown[] }).layers) {
+    if (!layer || typeof layer !== "object") continue;
+    const source = (layer as { src?: unknown }).src;
+    if (!source || typeof source !== "object") continue;
+    const reference = source as { kind?: unknown; id?: unknown; name?: unknown };
+    if (reference.kind !== LOCAL_EDITOR_ASSET_KIND || typeof reference.id !== "string" || typeof reference.name !== "string") continue;
+    references.set(reference.id, { id: reference.id, name: reference.name });
+  }
+  return [...references.values()];
+}
+
+/**
+ * Produces an inert SDK usage example. It only serializes the current Recipe;
+ * it never invokes the SDK, reads a file, or resolves a network resource.
+ */
+export function buildRecipeCallCode(recipeJson: string): string {
+  const assetEntries = localAssetReferences(recipeJson)
+    .map(({ id, name }) => `  [${JSON.stringify(id)}, undefined], // Assign the user-selected File for ${JSON.stringify(name)}.`)
+    .join("\n");
+  const localAssets = assetEntries ? `new Map([\n${assetEntries}\n])` : "new Map()";
+
+  return `import { createWebMarker } from "@image-marker/web";
+
+// This copied example is inert: CoreRobin has not run it or accessed the network.
+// Keep every input as a File explicitly selected by the user; never substitute a URL.
+const recipe = ${recipeJson};
+const localAssets = ${localAssets};
+
+function hydrateLocalAssets(document) {
+  return {
+    ...document,
+    layers: document.layers.map((layer) => {
+      const reference = layer.type === "image" ? layer.src : undefined;
+      if (!reference || typeof reference !== "object" || reference.kind !== "${LOCAL_EDITOR_ASSET_KIND}") return layer;
+      const file = localAssets.get(reference.id);
+      if (!file) throw new Error(\`Select the local file for \${reference.name ?? reference.id} before applying this Recipe.\`);
+      return { ...layer, src: file };
+    }),
+  };
+}
+
+export async function applyRecipeToLocalImage(inputFile) {
+  const marker = createWebMarker();
+  try {
+    return await marker.importRecipe(hydrateLocalAssets(recipe)).apply({
+      backgroundImage: { src: inputFile },
+    });
+  } finally {
+    await marker.dispose();
+  }
+}
+`;
 }
 
 /** Real SDK-controller surface; it contains no demo background or remote asset source. */
@@ -99,6 +163,16 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
     setRecipeText(editor.exportRecipeJson());
     onNotice(t(imported.migrated ? "imageEditor.notices.recipeMigrated" : "imageEditor.notices.recipeValidated"));
   });
+
+  const copyCallCode = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(buildRecipeCallCode(recipeText));
+      onNotice(t("imageEditor.copyCallCodeSuccess"));
+    } catch {
+      onError(t("imageEditor.copyCallCodeFailure"));
+    }
+  };
 
   const exportRecipe = async () => {
     try {
@@ -179,7 +253,7 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
     <div className="image-editor__section">
       <div className="image-editor__recipe-heading"><h3>{t("imageEditor.recipe")}</h3><span>{t("imageEditor.recipeHint")}</span></div>
       <textarea className="toolbox-input image-editor__recipe" value={recipeText} spellCheck={false} disabled={disabled} onChange={(event) => setRecipeText(event.target.value)} aria-label={t("imageEditor.recipeAria")} />
-      <div className="image-editor__toolbar"><button className="button button--secondary" type="button" disabled={disabled} onClick={importRecipe}>{t("imageEditor.importRecipe")}</button><button className="button button--secondary" type="button" disabled={disabled} onClick={() => void navigator.clipboard?.writeText(recipeText).then(() => onNotice(t("imageEditor.copySuccess")), () => onError(t("imageEditor.copyFailure")))}><Copy size={14} />{t("imageEditor.copyJson")}</button><button className="button button--secondary" type="button" disabled={disabled} onClick={() => void exportRecipe()}><FileImage size={14} />{t("imageEditor.exportRecipe")}</button>{temporaryRecipeUrl ? <a className="button button--secondary" href={temporaryRecipeUrl} download="corerobin-recipe.json">{t("imageEditor.downloadRecipe")}</a> : null}<button className="button button--primary" type="button" disabled={disabled} onClick={preview}>{t("imageEditor.preview")}</button></div>
+      <div className="image-editor__toolbar"><button className="button button--secondary" type="button" disabled={disabled} onClick={importRecipe}>{t("imageEditor.importRecipe")}</button><button className="button button--secondary" type="button" disabled={disabled} onClick={() => void navigator.clipboard?.writeText(recipeText).then(() => onNotice(t("imageEditor.copySuccess")), () => onError(t("imageEditor.copyFailure")))}><Copy size={14} />{t("imageEditor.copyJson")}</button><button className="button button--secondary" type="button" disabled={disabled} onClick={() => void copyCallCode()}><Copy size={14} />{t("imageEditor.copyCallCode")}</button><button className="button button--secondary" type="button" disabled={disabled} onClick={() => void exportRecipe()}><FileImage size={14} />{t("imageEditor.exportRecipe")}</button>{temporaryRecipeUrl ? <a className="button button--secondary" href={temporaryRecipeUrl} download="corerobin-recipe.json">{t("imageEditor.downloadRecipe")}</a> : null}<button className="button button--primary" type="button" disabled={disabled} onClick={preview}>{t("imageEditor.preview")}</button></div>
     </div>
   </section>;
 }

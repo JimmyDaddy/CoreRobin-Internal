@@ -58,6 +58,25 @@ interface ImageRunOptions {
   requestNativeLogo?: boolean;
 }
 
+type WatermarkLayoutMode = "single" | "tile";
+type ConfidentialPresetId = keyof typeof CONFIDENTIAL_PRESETS;
+
+const CONFIDENTIAL_PRESETS = {
+  confidential: { text: "CONFIDENTIAL · INTERNAL", color: "#ffcf66", alpha: 0.72 },
+  internal: { text: "INTERNAL USE ONLY", color: "#ff9f43", alpha: 0.68 },
+  draft: { text: "DRAFT · DO NOT DISTRIBUTE", color: "#ff6b6b", alpha: 0.6 },
+} as const;
+
+const WATERMARK_POSITIONS: Position[] = [
+  Position.topLeft,
+  Position.topCenter,
+  Position.topRight,
+  Position.center,
+  Position.bottomLeft,
+  Position.bottomCenter,
+  Position.bottomRight,
+];
+
 export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: { toolId: ImageToolId; deliverOutput?: ImageOutputDelivery }) {
   const { t } = useTranslation("toolbox");
   const runtime = useMemo(() => createImageToolRuntime(), []);
@@ -75,17 +94,30 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const [zipUrl, setZipUrl] = useState("");
   const [recipientDelivery, setRecipientDelivery] = useState<RecipientDeliveryState | null>(null);
   const [robustnessReport, setRobustnessReport] = useState("");
+  const [operationReport, setOperationReport] = useState("");
+  const [operationReportUrl, setOperationReportUrl] = useState("");
+  const [operationReportName, setOperationReportName] = useState("corerobin-tool-report.json");
   const [nativeOutput, setNativeOutput] = useState<ToolboxJob | null>(null);
   const nativeOutputRef = useRef<ToolboxJob | null>(null);
   const [nativeOutputName, setNativeOutputName] = useState("");
+  const [nativeReportOutput, setNativeReportOutput] = useState<ToolboxJob | null>(null);
+  const nativeReportOutputRef = useRef<ToolboxJob | null>(null);
+  const [nativeReportOutputName, setNativeReportOutputName] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [fontFile, setFontFile] = useState<File | null>(null);
   const [requestNativeLogo, setRequestNativeLogo] = useState(false);
   const [requestNativeFont, setRequestNativeFont] = useState(false);
   const [watermarkValue, setWatermarkValue] = useState(() => watermarkText(toolId));
+  const [confidentialPreset, setConfidentialPreset] = useState<ConfidentialPresetId>("confidential");
   const [watermarkFont, setWatermarkFont] = useState("");
   const [watermarkDirection, setWatermarkDirection] = useState<"auto" | "ltr" | "rtl">("auto");
   const [watermarkAlpha, setWatermarkAlpha] = useState(toolId === "confidential-watermark" ? 0.72 : 0.84);
+  const [watermarkColorValue, setWatermarkColorValue] = useState(() => watermarkColor(toolId));
+  const [watermarkPosition, setWatermarkPosition] = useState<Position>(Position.bottomRight);
+  const [watermarkFontSize, setWatermarkFontSize] = useState(28);
+  const [watermarkRotation, setWatermarkRotation] = useState(0);
+  const [watermarkOutlineWidth, setWatermarkOutlineWidth] = useState(0);
+  const [watermarkLayout, setWatermarkLayout] = useState<WatermarkLayoutMode>("single");
   const [logoScale, setLogoScale] = useState(0.2);
   const [logoRotation, setLogoRotation] = useState(0);
   const [logoAlpha, setLogoAlpha] = useState(1);
@@ -93,6 +125,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const cancelRef = useRef<AbortController | null>(null);
   const zipUrlRef = useRef("");
   const manifestDownloadUrlRef = useRef("");
+  const operationReportUrlRef = useRef("");
   const hostExecutorAvailable = runtime.execution.supported
     && marker.capabilities.execution.mode === "host-adapter"
     && marker.capabilities.execution.supportsTerminationAcknowledgement;
@@ -107,6 +140,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const releaseOutputs = () => {
     setResult(null);
     setRobustnessReport("");
+    clearOperationReport();
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
     zipUrlRef.current = "";
     setZipUrl("");
@@ -125,6 +159,23 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     setManifestDownloadUrl(url);
   };
 
+  const publishOperationReport = (report: string, filename: string) => {
+    if (operationReportUrlRef.current) URL.revokeObjectURL(operationReportUrlRef.current);
+    const url = URL.createObjectURL(new Blob([report], { type: "application/json" }));
+    operationReportUrlRef.current = url;
+    setOperationReport(report);
+    setOperationReportName(filename);
+    setOperationReportUrl(url);
+  };
+
+  const clearOperationReport = () => {
+    if (operationReportUrlRef.current) URL.revokeObjectURL(operationReportUrlRef.current);
+    operationReportUrlRef.current = "";
+    setOperationReport("");
+    setOperationReportName("corerobin-tool-report.json");
+    setOperationReportUrl("");
+  };
+
   useEffect(() => () => {
     cancelRef.current?.abort();
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
@@ -133,6 +184,20 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     manifestDownloadUrlRef.current = "";
     void runtime.dispose();
   }, [runtime]);
+  useEffect(() => () => {
+    if (operationReportUrlRef.current) URL.revokeObjectURL(operationReportUrlRef.current);
+    const job = nativeReportOutputRef.current;
+    const output = job?.outputToken;
+    if (job && output) {
+      void cancelToolboxOutput({
+        requestId: crypto.randomUUID(),
+        jobId: job.jobId,
+        outputToken: output.token,
+        generation: job.generation,
+        resetEpoch: job.resetEpoch,
+      });
+    }
+  }, []);
   useEffect(() => () => {
     const job = nativeOutputRef.current;
     const output = job?.outputToken;
@@ -204,7 +269,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   };
 
   const run = async (task: (signal: AbortSignal, inputs: ImageRunInputs, resources: ImageRunResources) => Promise<ImageOutputPayload | null>, options: ImageRunOptions = {}) => {
-    if (running || nativeOutputRef.current) return;
+    if (running || nativeOutputRef.current || nativeReportOutputRef.current) return;
     const controller = new AbortController();
     cancelRef.current = controller;
     releaseOutputs();
@@ -333,6 +398,81 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     }
   };
 
+  const prepareNativeReport = async () => {
+    if (!operationReport || nativeReportOutputRef.current) return;
+    let job: ToolboxJob | null = null;
+    try {
+      job = await startToolboxSession({ ...newToolboxRequest(), toolId });
+      const ready = await registerToolboxOutput({
+        ...newToolboxRequest(),
+        jobId: job.jobId,
+        generation: job.generation,
+        resetEpoch: job.resetEpoch,
+        bytes: new TextEncoder().encode(operationReport),
+        validation: "verified",
+      });
+      nativeReportOutputRef.current = ready;
+      setNativeReportOutput(ready);
+      setNativeReportOutputName(operationReportName);
+      setNotice(t("image.reportOutputReady"));
+    } catch (reason) {
+      if (job) {
+        try {
+          await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason) });
+        } catch (lifecycleReason) {
+          setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
+        }
+      }
+      setError(reason instanceof Error ? reason.message : t("image.formalDeliveryFailed"));
+    }
+  };
+
+  const saveNativeReport = async () => {
+    const job = nativeReportOutputRef.current;
+    const output = job?.outputToken;
+    if (!job || !output) return;
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const selected = await save({ defaultPath: nativeReportOutputName || operationReportName });
+      if (!selected) return;
+      await exportToolboxOutput({
+        requestId: crypto.randomUUID(),
+        jobId: job.jobId,
+        outputToken: output.token,
+        generation: job.generation,
+        resetEpoch: job.resetEpoch,
+        path: selected,
+      });
+      nativeReportOutputRef.current = null;
+      setNativeReportOutput(null);
+      setNativeReportOutputName("");
+      setNotice(t("image.savedAtomically"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("image.saveFailed"));
+    }
+  };
+
+  const cancelNativeReport = async () => {
+    const job = nativeReportOutputRef.current;
+    const output = job?.outputToken;
+    if (!job || !output) return;
+    try {
+      await cancelToolboxOutput({
+        requestId: crypto.randomUUID(),
+        jobId: job.jobId,
+        outputToken: output.token,
+        generation: job.generation,
+        resetEpoch: job.resetEpoch,
+      });
+      nativeReportOutputRef.current = null;
+      setNativeReportOutput(null);
+      setNativeReportOutputName("");
+      setNotice(t("image.temporaryCancelled"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("image.temporaryReleaseUnconfirmed"));
+    }
+  };
+
   const cancelNativeOutput = async () => {
     const job = nativeOutputRef.current;
     const output = job?.outputToken;
@@ -402,9 +542,11 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         const textLayer = {
           type: "text" as const,
           text: watermarkValue.trim() || watermarkText(toolId),
-          position: { position: Position.bottomRight, X: 24, Y: 24 },
           alpha: watermarkAlpha,
-          style: { color: watermarkColor(toolId), fontName: watermarkFont.trim() || undefined, direction: watermarkDirection, fontSize: 28, shadowStyle: { dx: 1, dy: 1, radius: 2, color: "#00000088" } },
+          ...(watermarkLayout === "single"
+            ? { position: { position: watermarkPosition, X: 24, Y: 24 }, layout: { type: "single" as const } }
+            : { layout: { type: "tile" as const, gapX: 80, gapY: 80, stagger: true } }),
+          style: { color: watermarkColorValue, fontName: watermarkFont.trim() || undefined, direction: watermarkDirection, fontSize: watermarkFontSize, rotate: watermarkRotation, strokeStyle: watermarkOutlineWidth > 0 ? { color: "#00000099", width: watermarkOutlineWidth } : null, shadowStyle: { dx: 1, dy: 1, radius: 2, color: "#00000088" } },
         };
         const logoLayer = resources.logo ? [{
           type: "image" as const,
@@ -424,7 +566,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         const output = await marker.mark(resources.font ? withLocalImageFonts(markOptions, [resources.font]) : markOptions, imageControl(signal));
         if (signal.aborted) throw createImageAbortError();
         if (batch && zipBudget && zipWriter) {
-          const item = resultToZipItem(`${String(index + 1).padStart(2, "0")}-${safeOutputName(file.name)}.png`, output);
+          const item = resultToZipItem(`${String(index + 1).padStart(2, "0")}-${safeOutputName(file.name)}.${formatExtension(outputFormat)}`, output);
           zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
           await zipWriter.append(item, zipBudget.inputBytes);
         } else {
@@ -455,9 +597,18 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const file = await inputs.read(0);
     const payload = promptValue("短 locator（最多 12 UTF-8 字节）", "cr-demo-01");
     const key = promptValue("临时密钥（至少 16 UTF-8 字节；不会保存）", "local-demo-key-2026");
-    if (!payload || !key) return null;
+    if (!payload || !key) throw createImageAbortError(t("image.invisibleCancelled"));
+    assertInvisibleLocator(payload);
+    assertInvisibleKey(key);
     const output = await marker.embedInvisible({ image: { src: file }, payload, key, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
+    publishOperationReport(JSON.stringify({
+      algorithm: "dct-qim-v1",
+      operation: "embedInvisible",
+      payload,
+      strength: "balanced",
+      keyStored: false,
+    }, null, 2), "corerobin-invisible-watermark-record.json");
     setNotice(t("image.invisibleWritten"));
     return markerResultOutput(output);
   });
@@ -465,7 +616,8 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const runInvisibleCheck = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
     const key = promptValue("检测密钥（与写入时相同）", "local-demo-key-2026");
-    if (!key) return null;
+    if (!key) throw createImageAbortError(t("image.invisibleCancelled"));
+    assertInvisibleKey(key);
     if (!hostExecutorAvailable) throw new Error(runtime.execution.reason ?? "当前 WebView 不支持可终止的图片隔离执行器。" );
     let detected;
     try {
@@ -483,6 +635,17 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     setNotice(detected.detected
       ? t("image.invisibleDetected", { payload: detected.payload ?? "(empty)", confidence: detected.confidence.toFixed(2) })
       : t("image.invisibleNotDetected"));
+    publishOperationReport(JSON.stringify({
+      algorithm: detected.algorithm,
+      operation: "detectInvisible",
+      detected: detected.detected,
+      payload: detected.payload ?? null,
+      strength: "balanced",
+      confidence: detected.confidence,
+      bitErrorRate: detected.bitErrorRate ?? null,
+      scale: detected.scale ?? null,
+      keyStored: false,
+    }, null, 2), "corerobin-invisible-watermark-detection.json");
     return null;
   });
 
@@ -518,7 +681,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const embeddedBuffer = embeddedBytes.buffer.slice(embeddedBytes.byteOffset, embeddedBytes.byteOffset + embeddedBytes.byteLength) as ArrayBuffer;
     const embeddedBlob = new Blob([embeddedBuffer], { type: "image/png" });
     const cases = [
+      { id: "original", request: null },
       { id: "jpeg-quality-75", request: { mode: "jpeg-quality" as const, quality: 75 } },
+      { id: "jpeg-quality-95", request: { mode: "jpeg-quality" as const, quality: 95 } },
       { id: "scale-95-percent", request: { mode: "scale" as const, scale: 0.95 } },
       { id: "limited-crop-4-percent", request: { mode: "crop" as const, cropRatio: 0.04 } },
     ];
@@ -526,7 +691,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     for (const [index, sample] of cases.entries()) {
       signal.throwIfAborted();
       try {
-        const transformed = await transformImageInWorker(embeddedBlob, sample.request, signal);
+        const transformed = sample.request
+          ? await transformImageInWorker(embeddedBlob, sample.request, signal)
+          : embeddedBlob;
         const detected = await marker.detectInvisible({
           image: { src: transformed },
           key,
@@ -547,20 +714,22 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       }
       setProgress((index + 1) / cases.length);
     }
-    setRobustnessReport(JSON.stringify({
+    const report = JSON.stringify({
       algorithm: "dct-qim-v1",
       strength: "robust",
       locator: payload,
       keyStored: false,
       cases: results,
-    }, null, 2));
+    }, null, 2);
+    setRobustnessReport(report);
+    publishOperationReport(report, "corerobin-robustness-report.json");
     setResult(embedded);
     setNotice(t("image.robustnessNotice"));
     return markerResultOutput(embedded);
   }, { deadlineMs: 180_000 });
 
   const runManifest = () => void (async () => {
-    if (running || nativeOutputRef.current) return;
+    if (running || nativeOutputRef.current || nativeReportOutputRef.current) return;
     const controller = new AbortController();
     cancelRef.current = controller;
     setRunning(true);
@@ -637,9 +806,12 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const runRecipient = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
     const recipients = promptValue("收件人 locator 列表（逗号分隔，最多 30 个短 ID）", "recipient-a,recipient-b");
-    const values = parseRecipientLocators(recipients ?? "");
+    if (recipients === null) throw createImageAbortError(t("image.recipientCancelled"));
+    const values = parseRecipientLocators(recipients);
+    if (!window.confirm(t("image.recipientSensitiveWarning"))) throw createImageAbortError(t("image.recipientCancelled"));
     const sessionKey = { value: requireOneTimeRecipientKey(promptValue("一次性分发密钥（至少 16 UTF-8 字节；只保留在当前操作内存中）", "")) };
     let delivered = 0;
+    const mapping: Array<{ recipient: string; filename: string; locator: string }> = [];
     let zipBudget = createRecipientZipBudget(file);
     const zipWriter = createZipWriter(signal, zipBudget.maxOutputFiles);
     setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: t("image.recipientPreparing") });
@@ -652,6 +824,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
         await zipWriter.append(item, zipBudget.inputBytes);
         delivered += 1;
+        mapping.push({ recipient: value, filename: item.name, locator: value });
         setProgress(delivered / values.length);
         setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: t("image.recipientPreparing") });
       }
@@ -660,6 +833,13 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         throw createImageAbortError(t("image.recipientStopped"));
       }
       if (!desktopRuntime) publishZip(zipBlob);
+      publishOperationReport(JSON.stringify({
+        schemaVersion: 1,
+        algorithm: "dct-qim-v1",
+        operation: "recipient-tracking",
+        keyStored: false,
+        entries: mapping,
+      }, null, 2), "corerobin-recipient-mapping.json");
       setRecipientDelivery({ status: "ready", requested: values.length, delivered, detail: t("image.recipientReady") });
       setNotice(t("image.recipientNotice", { delivered, requested: values.length }));
       if (desktopRuntime) return { kind: "archive", filename: "corerobin-recipient-delivery.zip", blob: zipBlob };
@@ -694,14 +874,15 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       {toolId !== "c2pa-inspector" && !desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={15} />{t("image.selectInput")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" multiple={toolId === "image-batch-watermark"} onChange={(event) => void selectFiles(Array.from(event.target.files ?? []))} /></label> : null}
       {toolId !== "c2pa-inspector" && desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />{t("image.nativeInputHint")}</p> : null}
       {files.length > 0 && !desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />{t("image.selectedInputSummary", { count: files.length, maxFiles: BATCH_MAX_FILES, maxInputMiB: Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024), maxEdge: IMAGE_MAX_OUTPUT_EDGE })}</p> : null}
-      {toolId === "image-watermark" || toolId === "confidential-watermark" || toolId === "image-batch-watermark" ? <div className="image-watermark-form"><label>{t("image.text")}<input className="toolbox-input" value={watermarkValue} maxLength={4096} disabled={running} onChange={(event) => setWatermarkValue(event.target.value)} /></label><label>{t("image.fontFamily")}<input className="toolbox-input" value={watermarkFont} disabled={running} onChange={(event) => setWatermarkFont(event.target.value)} placeholder={t("image.fontPlaceholder")} /></label><label>{t("image.direction")}<select className="toolbox-input" value={watermarkDirection} disabled={running} onChange={(event) => setWatermarkDirection(event.target.value as typeof watermarkDirection)}><option value="auto">{t("image.directionAuto")}</option><option value="ltr">{t("image.directionLtr")}</option><option value="rtl">{t("image.directionRtl")}</option></select></label><label>{t("image.opacity")}<input type="range" min="0.1" max="1" step="0.05" value={watermarkAlpha} disabled={running} onChange={(event) => setWatermarkAlpha(Number(event.target.value))} /></label><label>{t("image.outputFormat")}<select className="toolbox-input" value={outputFormat} disabled={running} onChange={(event) => setOutputFormat(event.target.value as ImageFormat)}><option value={ImageFormat.png}>PNG</option><option value={ImageFormat.jpg}>JPEG</option><option value={ImageFormat.webp}>WebP</option></select></label>{!desktopRuntime ? <><label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectLogo")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={running} onChange={(event) => void selectLogo(event.target.files?.[0])} /></label><label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectFont")}<input hidden type="file" accept=".ttf,.otf,.woff,.woff2,font/*" disabled={running} onChange={(event) => selectFont(event.target.files?.[0])} /></label></> : <><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeLogo} disabled={running} onChange={(event) => setRequestNativeLogo(event.target.checked)} />{t("image.nativeLogo")}</label><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeFont} disabled={running} onChange={(event) => setRequestNativeFont(event.target.checked)} />{t("image.nativeFont")}</label><p className="toolbox-hint">{t("image.nativeFontHint")}</p></>}{fontFile ? <p className="toolbox-hint">{t("image.fontSummary", { name: safeOutputName(fontFile.name) })}</p> : null}{logoFile ? <p className="toolbox-hint">{t("image.logoSummary", { name: safeOutputName(logoFile.name) })} <input type="number" min="0.01" max="100" step="0.05" value={logoScale} disabled={running} onChange={(event) => setLogoScale(Number(event.target.value))} /> · {t("image.rotation")} <input type="number" min="0" max="360" value={logoRotation} disabled={running} onChange={(event) => setLogoRotation(Number(event.target.value))} /> · {t("image.opacity")} <input type="range" min="0.1" max="1" step="0.05" value={logoAlpha} disabled={running} onChange={(event) => setLogoAlpha(Number(event.target.value))} /></p> : null}</div> : null}
+      {toolId === "image-watermark" || toolId === "confidential-watermark" || toolId === "image-batch-watermark" ? <div className="image-watermark-form">{toolId === "confidential-watermark" ? <label>{t("image.preset")}<select className="toolbox-input" value={confidentialPreset} disabled={running} onChange={(event) => { const presetId = event.target.value as ConfidentialPresetId; const preset = CONFIDENTIAL_PRESETS[presetId]; setConfidentialPreset(presetId); setWatermarkValue(preset.text); setWatermarkColorValue(preset.color); setWatermarkAlpha(preset.alpha); }}><option value="confidential">{t("image.presetConfidential")}</option><option value="internal">{t("image.presetInternal")}</option><option value="draft">{t("image.presetDraft")}</option></select></label> : null}<label>{t("image.text")}<input className="toolbox-input" value={watermarkValue} maxLength={4096} disabled={running} onChange={(event) => setWatermarkValue(event.target.value)} /></label><label>{t("image.fontFamily")}<input className="toolbox-input" value={watermarkFont} disabled={running} onChange={(event) => setWatermarkFont(event.target.value)} placeholder={t("image.fontPlaceholder")} /></label><label>{t("image.direction")}<select className="toolbox-input" value={watermarkDirection} disabled={running} onChange={(event) => setWatermarkDirection(event.target.value as typeof watermarkDirection)}><option value="auto">{t("image.directionAuto")}</option><option value="ltr">{t("image.directionLtr")}</option><option value="rtl">{t("image.directionRtl")}</option></select></label><label>{t("image.position")}<select className="toolbox-input" value={watermarkPosition} disabled={running || watermarkLayout === "tile"} onChange={(event) => setWatermarkPosition(event.target.value as Position)}>{WATERMARK_POSITIONS.map((position) => <option key={position} value={position}>{positionLabel(position, t)}</option>)}</select></label><label>{t("image.fontSize")}<input type="number" min="8" max="256" step="1" value={watermarkFontSize} disabled={running} onChange={(event) => setWatermarkFontSize(Number(event.target.value))} /></label><label>{t("image.rotation")}<input type="number" min="-180" max="180" step="1" value={watermarkRotation} disabled={running} onChange={(event) => setWatermarkRotation(Number(event.target.value))} /></label><label>{t("image.outline")}<input type="number" min="0" max="16" step="1" value={watermarkOutlineWidth} disabled={running} onChange={(event) => setWatermarkOutlineWidth(Number(event.target.value))} /></label><label>{t("image.layout")}<select className="toolbox-input" value={watermarkLayout} disabled={running} onChange={(event) => setWatermarkLayout(event.target.value as WatermarkLayoutMode)}><option value="single">{t("image.layoutSingle")}</option><option value="tile">{t("image.layoutTile")}</option></select></label><label>{t("image.opacity")}<input type="range" min="0.1" max="1" step="0.05" value={watermarkAlpha} disabled={running} onChange={(event) => setWatermarkAlpha(Number(event.target.value))} /></label><label>{t("image.outputFormat")}<select className="toolbox-input" value={outputFormat} disabled={running} onChange={(event) => setOutputFormat(event.target.value as ImageFormat)}><option value={ImageFormat.png}>PNG</option><option value={ImageFormat.jpg}>JPEG</option><option value={ImageFormat.webp}>WebP</option></select></label>{!desktopRuntime ? <><label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectLogo")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={running} onChange={(event) => void selectLogo(event.target.files?.[0])} /></label><label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectFont")}<input hidden type="file" accept=".ttf,.otf,.woff,.woff2,font/*" disabled={running} onChange={(event) => selectFont(event.target.files?.[0])} /></label></> : <><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeLogo} disabled={running} onChange={(event) => setRequestNativeLogo(event.target.checked)} />{t("image.nativeLogo")}</label><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeFont} disabled={running} onChange={(event) => setRequestNativeFont(event.target.checked)} />{t("image.nativeFont")}</label><p className="toolbox-hint">{t("image.nativeFontHint")}</p></>}{fontFile ? <p className="toolbox-hint">{t("image.fontSummary", { name: safeOutputName(fontFile.name) })}</p> : null}{logoFile ? <p className="toolbox-hint">{t("image.logoSummary", { name: safeOutputName(logoFile.name) })} <input type="number" min="0.01" max="100" step="0.05" value={logoScale} disabled={running} onChange={(event) => setLogoScale(Number(event.target.value))} /> · {t("image.rotation")} <input type="number" min="0" max="360" value={logoRotation} disabled={running} onChange={(event) => setLogoRotation(Number(event.target.value))} /> · {t("image.opacity")} <input type="range" min="0.1" max="1" step="0.05" value={logoAlpha} disabled={running} onChange={(event) => setLogoAlpha(Number(event.target.value))} /></p> : null}</div> : null}
       {toolId === "image-recipe" || toolId === "image-editor" ? <ImageRecipeEditor marker={marker} desktopRuntime={desktopRuntime} disabled={running || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onPreview={runRecipeEditor} onError={setError} onNotice={setNotice} deliverOutput={deliverFormalOutput} /> : null}
-      {toolId === "c2pa-inspector" ? <div className="toolbox-inline-actions">{!desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectManifest")}<input hidden type="file" accept="application/json,.json,text/json" disabled={running} onChange={(event) => selectManifest(event.target.files?.[0])} /></label> : <span className="toolbox-hint"><FileImage size={14} />{t("image.nativeManifestHint")}</span>}<button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || (!desktopRuntime && !manifestFile)} onClick={runManifest}><Play size={14} />{t("image.inspectManifest")}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setManifestFile(null); setManifestReport(""); if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current); manifestDownloadUrlRef.current = ""; setManifestDownloadUrl(""); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div> : toolId === "image-recipe" || toolId === "image-editor" ? <div className="toolbox-inline-actions">{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? t("image.stopping") : running ? t("image.processing") : actionLabel(toolId, t)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); setLogoFile(null); setFontFile(null); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div>}
+      {toolId === "c2pa-inspector" ? <div className="toolbox-inline-actions">{!desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={14} />{t("image.selectManifest")}<input hidden type="file" accept="application/json,.json,text/json" disabled={running} onChange={(event) => selectManifest(event.target.files?.[0])} /></label> : <span className="toolbox-hint"><FileImage size={14} />{t("image.nativeManifestHint")}</span>}<button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || Boolean(nativeReportOutput) || (!desktopRuntime && !manifestFile)} onClick={runManifest}><Play size={14} />{t("image.inspectManifest")}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); void cancelNativeReport(); setManifestFile(null); setManifestReport(""); clearOperationReport(); if (manifestDownloadUrlRef.current) URL.revokeObjectURL(manifestDownloadUrlRef.current); manifestDownloadUrlRef.current = ""; setManifestDownloadUrl(""); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div> : toolId === "image-recipe" || toolId === "image-editor" ? <div className="toolbox-inline-actions">{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); void cancelNativeReport(); setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || Boolean(nativeReportOutput) || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? t("image.stopping") : running ? t("image.processing") : actionLabel(toolId, t)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? t("image.stopping") : t("image.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); void cancelNativeReport(); setFiles([]); setLogoFile(null); setFontFile(null); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />{t("image.clear")}</button></div>}
       {running ? <progress max="1" value={progress} /> : null}
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
       {manifestReport ? <div className="toolbox-output"><pre className="toolbox-notice">{manifestReport}</pre>{manifestDownloadUrl && !desktopRuntime ? <a className="button button--secondary" download="corerobin-c2pa-manifest-report.json" href={manifestDownloadUrl}><Download size={14} />{t("image.downloadReport")}</a> : null}</div> : null}
       {robustnessReport ? <div className="toolbox-output"><pre className="toolbox-notice">{robustnessReport}</pre></div> : null}
+      {operationReport ? <div className="toolbox-output"><pre className="toolbox-notice">{operationReport}</pre>{desktopRuntime ? nativeReportOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeReport()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeReport()}>{t("image.cancelTemporary")}</button></div> : <button className="button button--secondary" type="button" onClick={() => void prepareNativeReport()}><Download size={14} />{t("image.saveFormal")}</button> : operationReportUrl ? <a className="button button--secondary" download={operationReportName} href={operationReportUrl}><Download size={14} />{t("image.downloadReport")}</a> : null}</div> : null}
       {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>{t("image.recipientStatusLabel")}: {t(`image.recipientStatus.${recipientDelivery.status}`)} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
       {result ? <div className="image-toolbox__result"><img src={result.uri} alt={t("image.resultAlt")} /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button></> : null}{deliverFormalOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverFormalOutput(markerResultOutput(result)).then(() => setNotice(t("image.handedToProvider")), (reason: unknown) => setError(reason instanceof Error ? reason.message : t("image.formalDeliveryFailed")))}><Download size={14} />{t("image.deliverFormal")}</button> : null}{!desktopRuntime ? <a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />{t("image.downloadPreview")}</a> : null}<span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · ${t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}` : ""}</span></div></div> : null}
       {!result && nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button><span className="toolbox-hint">{t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}</span></div> : null}
@@ -732,12 +913,37 @@ function watermarkText(toolId: ImageToolId): string {
 
 function watermarkColor(toolId: ImageToolId): string { return toolId === "confidential-watermark" ? "#ffcf66" : "#ffffff"; }
 
+function formatExtension(format: ImageFormat): "png" | "jpg" | "webp" {
+  if (format === ImageFormat.jpg) return "jpg";
+  if (format === ImageFormat.webp) return "webp";
+  return "png";
+}
+
+function positionLabel(position: Position, t: TFunction<"toolbox">): string {
+  if (position === Position.topLeft) return t("image.positionTopLeft");
+  if (position === Position.topCenter) return t("image.positionTopCenter");
+  if (position === Position.topRight) return t("image.positionTopRight");
+  if (position === Position.center) return t("image.positionCenter");
+  if (position === Position.bottomLeft) return t("image.positionBottomLeft");
+  if (position === Position.bottomCenter) return t("image.positionBottomCenter");
+  return t("image.positionBottomRight");
+}
+
 function imageControl(signal: AbortSignal, onPhase?: (phase: string) => void) {
   return {
     signal,
     timeoutMs: IMAGE_OPERATION_DEADLINE_MS,
     onProgress: (progress: { phase: string }) => onPhase?.(progress.phase),
   };
+}
+
+function assertInvisibleLocator(value: string): void {
+  const bytes = new TextEncoder().encode(value);
+  if (bytes.byteLength === 0 || bytes.byteLength > 12) throw new Error("短 locator 必须是 1 到 12 个 UTF-8 字节。");
+}
+
+function assertInvisibleKey(value: string): void {
+  if (new TextEncoder().encode(value).byteLength < 16) throw new Error("隐形水印密钥至少需要 16 个 UTF-8 字节。");
 }
 
 function safeOutputName(name: string): string { return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80) || "image"; }

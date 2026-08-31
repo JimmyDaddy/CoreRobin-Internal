@@ -17,7 +17,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@image-marker/web", () => ({
   ImageFormat: { png: "png", jpg: "jpg", webp: "webp" },
-  Position: { bottomRight: "bottomRight", topRight: "topRight" },
+  Position: {
+    topLeft: "topLeft", topCenter: "topCenter", topRight: "topRight", center: "center",
+    bottomLeft: "bottomLeft", bottomCenter: "bottomCenter", bottomRight: "bottomRight",
+  },
 }));
 vi.mock("../../api", () => ({ isDesktopRuntime: () => false }));
 vi.mock("../client", () => ({
@@ -175,6 +178,7 @@ describe("batch image ZIP delivery", () => {
     const view = render(<ImageToolbox toolId="recipient-tracking" />);
     await selectBatchFiles(view.container, ["source.png"]);
 
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "生成分发样本" }));
     await screen.findByRole("link", { name: "下载预览 ZIP（非正式导出）" });
 
@@ -191,13 +195,15 @@ describe("batch image ZIP delivery", () => {
     await selectBatchFiles(view.container, ["source.png"]);
 
     fireEvent.click(screen.getByRole("button", { name: "生成实验样本" }));
-    await screen.findByText(/jpeg-quality-75/);
+    await screen.findAllByText(/jpeg-quality-75/);
 
     expect(mocks.embedInvisible).toHaveBeenCalledOnce();
-    expect(mocks.transformImage).toHaveBeenCalledTimes(3);
-    expect(mocks.transformImage.mock.calls.map(([, request]) => request.mode)).toEqual(["jpeg-quality", "scale", "crop"]);
-    expect(mocks.detectInvisible).toHaveBeenCalledTimes(3);
-    expect(screen.getByText(/scale-95-percent/)).toBeTruthy();
-    expect(screen.getByText(/limited-crop-4-percent/)).toBeTruthy();
+    expect(mocks.transformImage).toHaveBeenCalledTimes(4);
+    expect(mocks.transformImage.mock.calls.map(([, request]) => request.mode)).toEqual(["jpeg-quality", "jpeg-quality", "scale", "crop"]);
+    expect(mocks.detectInvisible).toHaveBeenCalledTimes(5);
+    expect(screen.getAllByText(/original/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/jpeg-quality-95/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/scale-95-percent/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/limited-crop-4-percent/)).not.toHaveLength(0);
   });
 });
