@@ -114,23 +114,23 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
 
       <p className="network-addresses-tool__privacy"><CircleAlert size={15} />IP、IPv6 zone、MAC、接口名称和粘贴原文只在当前页面内存中处理，不会写入历史、诊断摘要或 URL。复制是受用户点击触发的，并会把网络标识交给系统剪贴板。</p>
       <div className="network-addresses-tool__tabs" role="tablist" aria-label="网络地址视图">
-        <button type="button" role="tab" aria-selected={view === "live"} className={view === "live" ? "is-active" : ""} onClick={() => setView("live")}>本机网卡</button>
-        <button type="button" role="tab" aria-selected={view === "ifconfig"} className={view === "ifconfig" ? "is-active" : ""} onClick={() => setView("ifconfig")}>粘贴 ifconfig</button>
+        <button id="network-addresses-tab-live" type="button" role="tab" aria-selected={view === "live"} aria-controls="network-addresses-panel-live" className={view === "live" ? "is-active" : ""} onClick={() => setView("live")}>本机网卡</button>
+        <button id="network-addresses-tab-ifconfig" type="button" role="tab" aria-selected={view === "ifconfig"} aria-controls="network-addresses-panel-ifconfig" className={view === "ifconfig" ? "is-active" : ""} onClick={() => setView("ifconfig")}>粘贴 ifconfig</button>
       </div>
 
       {error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}
       {copyStatus ? <p className="network-addresses-tool__copy-status" role="status">{copyStatus}</p> : null}
 
       {view === "live" ? (
-        <>
+        <div id="network-addresses-panel-live" role="tabpanel" aria-labelledby="network-addresses-tab-live" tabIndex={0}>
           {snapshot ? <p className="toolbox-hint">采样时间：{new Date(snapshot.sampledAtMs).toLocaleString()} · {interfaces.length} 个接口{snapshot.interfacesTruncated ? "（超过 128 个，已截断）" : ""} · 这里不选出所谓“唯一真实 IP”。</p> : null}
           {interfaces.length > 0 ? <div className="network-addresses-tool__actions"><button className="button button--secondary" type="button" onClick={() => void copyText(liveSummary, "全部接口摘要")}><Copy size={14} />复制全部接口摘要</button></div> : null}
           <div className="network-addresses-tool__cards">
             {interfaces.length > 0 ? interfaces.map((item) => <InterfaceCard key={item.name} item={item} onCopy={copyText} />) : <p className="network-addresses-tool__empty">{loading ? "正在读取本机接口…" : "没有返回接口地址。空结果不代表网络不可用。"}</p>}
           </div>
-        </>
+        </div>
       ) : (
-        <div className="network-addresses-tool__paste">
+        <div id="network-addresses-panel-ifconfig" role="tabpanel" aria-labelledby="network-addresses-tab-ifconfig" tabIndex={0} className="network-addresses-tool__paste">
           <textarea className="toolbox-input toolbox-input--code" value={ifconfigInput} onChange={(event) => setIfconfigInput(event.target.value)} placeholder="粘贴 macOS/BSD 或 Linux ifconfig 文本；只解析，不执行" aria-label="ifconfig 文本" />
           <div className="network-addresses-tool__actions"><button className="button button--primary" type="button" onClick={parsePastedIfconfig}><Network size={14} />严格解析</button>{ifconfigInterfaces ? <button className="button button--secondary" type="button" onClick={() => void copyText(ifconfigInterfaces.map(interfaceSummary).join("\n\n"), "解析摘要")}><Copy size={14} />复制解析摘要</button> : null}</div>
           <p className="toolbox-hint">最多 256 KiB、128 个接口、每接口 64 个地址；IPv4 非连续掩码、非法 IPv4/IPv6、非法 zone 和冲突前缀会拒绝。未知行会在对应接口卡片中计数。</p>

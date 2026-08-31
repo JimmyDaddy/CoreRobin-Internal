@@ -141,11 +141,11 @@ export function ImageRecipeEditor({ marker, desktopRuntime, disabled, onPreview,
     <div className="image-editor__grid">
       <div className="image-editor__section">
         <h3>图层</h3>
-        <div className="image-editor__layers" role="listbox" aria-label="图层列表" aria-multiselectable="true">
+        <div className="image-editor__layers" role="list" aria-label="图层列表">
           {state.recipe.layers.length === 0 ? <p className="toolbox-hint">尚无图层。添加文字或本地素材后即可选择和编辑。</p> : state.recipe.layers.map((layer, index) => {
             const selected = state.selectedLayerIds.includes(layer.id);
-            return <div className={`image-editor__layer ${selected ? "is-selected" : ""}`} key={layer.id} role="option" aria-selected={selected}>
-              <button className="image-editor__layer-select" type="button" disabled={disabled} onClick={(event) => runEdit(() => editor.select(layer.id, event.shiftKey || event.metaKey || event.ctrlKey ? "toggle" : "replace"))}>
+            return <div className={`image-editor__layer ${selected ? "is-selected" : ""}`} key={layer.id} role="listitem">
+              <button className="image-editor__layer-select" type="button" aria-pressed={selected} disabled={disabled} onClick={(event) => runEdit(() => editor.select(layer.id, event.shiftKey || event.metaKey || event.ctrlKey ? "toggle" : "replace"))}>
                 <span>{index + 1}. {layer.name ?? (layer.type === "text" ? layer.text.slice(0, 24) : "本地图片")}</span><small>{layer.type === "text" ? "文字" : "素材"}</small>
               </button>
               <button className="icon-button" type="button" aria-label={layer.visible === false ? "显示图层" : "隐藏图层"} disabled={disabled} onClick={() => runEdit(() => editor.controller.setLayerVisible(layer.id, layer.visible === false))}>{layer.visible === false ? <EyeOff size={14} /> : <Eye size={14} />}</button>

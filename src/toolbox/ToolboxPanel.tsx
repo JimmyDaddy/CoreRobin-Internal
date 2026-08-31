@@ -128,7 +128,7 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索功能名称、别名或说明…" />
             {query ? <button type="button" aria-label="清空搜索" onClick={() => setQuery("")}><X size={14} /></button> : null}
           </label>
-          <div className="toolbox-category-tabs" role="tablist" aria-label="工具分类">
+          <div className="toolbox-category-tabs" role="group" aria-label="工具分类">
             {(Object.keys(CATEGORY_LABELS) as ToolboxCategory[]).map((category) => {
               const Icon = CATEGORY_ICONS[category];
               return <span key={category} className="toolbox-category-tab"><Icon size={14} />{CATEGORY_LABELS[category]}</span>;
@@ -213,14 +213,16 @@ function ToolSection({ title, tools, favorites, onOpen, onFavorite }: { title: s
     <section className="toolbox-section" aria-labelledby={`toolbox-section-${title}`}>
       <div className="toolbox-section__title"><h2 id={`toolbox-section-${title}`}>{title}</h2><span>{tools.length}</span></div>
       <div className="toolbox-grid">
-        {tools.map((tool) => <button className={`toolbox-card toolbox-card--${tool.capability.state}`} type="button" key={tool.id} disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
-          <span className="toolbox-card__icon"><ToolIcon id={tool.id} /></span>
-          <span className="toolbox-card__content"><strong>{tool.title}</strong><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability">{capabilityLabel(tool.capability)}：{capabilityReason(tool.capability)}</small> : null}</span>
+        {tools.map((tool) => <div className={`toolbox-card toolbox-card--${tool.capability.state}`} key={tool.id}>
+          <button className="toolbox-card__open" type="button" disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
+            <span className="toolbox-card__icon"><ToolIcon id={tool.id} /></span>
+            <span className="toolbox-card__content"><strong>{tool.title}</strong><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability">{capabilityLabel(tool.capability)}：{capabilityReason(tool.capability)}</small> : null}</span>
+          </button>
           <span className="toolbox-card__actions">
-            <span role="button" tabIndex={0} className={`toolbox-favorite${favorites.has(tool.id) ? " is-active" : ""}`} aria-label={favorites.has(tool.id) ? `取消收藏 ${tool.title}` : `收藏 ${tool.title}`} onClick={(event) => { event.stopPropagation(); onFavorite(tool.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onFavorite(tool.id); } }}><Heart size={14} fill={favorites.has(tool.id) ? "currentColor" : "none"} /></span>
-            <ChevronRight size={16} />
+            <button type="button" className={`toolbox-favorite${favorites.has(tool.id) ? " is-active" : ""}`} aria-label={favorites.has(tool.id) ? `取消收藏 ${tool.title}` : `收藏 ${tool.title}`} onClick={() => onFavorite(tool.id)}><Heart size={14} fill={favorites.has(tool.id) ? "currentColor" : "none"} /></button>
+            <ChevronRight size={16} aria-hidden="true" />
           </span>
-        </button>)}
+        </div>)}
       </div>
     </section>
   );
