@@ -12,6 +12,8 @@
 
 ## 工程与产品记录
 
+- [CoreRobin 工具箱 v1：系统工具与本地工具实施方案](toolbox-v1.md)（两款 Web SDK 已发布并完成定向消费验证；工具箱仍待实施）
+- [image-marker Web SDK worker 原始需求与 Prompt](worker-prompts/image-marker-web-sdk.md)、[bs-diff-patch Web SDK worker 原始需求与 Prompt](worker-prompts/bs-diff-patch-web-sdk.md)（历史交接记录，已被发布结果取代，不重复派发、不公开同步）
 - [日常问题生命周期](daily-incident-lifecycle.md)
 - [国际化说明](i18n.md)
 - [新手体验路线图](novice-experience-roadmap.md)（规划记录，实施时需重新核对）
