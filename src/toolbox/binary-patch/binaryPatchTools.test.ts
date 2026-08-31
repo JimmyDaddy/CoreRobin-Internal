@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { strFromU8, unzipSync } from "fflate";
 
 const { startDiffBytes, startPatchBytes, verifyPatch, inspectPatch } = vi.hoisted(() => ({
   startDiffBytes: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("bs-diff-patch-web", async (importOriginal) => {
 import {
   applyPatchAndVerify,
   calculateTransferSavings,
+  createPatchCollection,
   inspectPatchSafely,
   makePatchBundle,
   makePatchManifest,
@@ -59,6 +61,31 @@ describe("binary patch toolbox boundaries", () => {
     const bundle = makePatchBundle(target, target);
     expect(bundle.patches).toHaveLength(0);
     expect(manifestJson({ version: 1, format: "ENDSLEY/BSDIFF43", baseline: { bytes: 1, sha256: "a".repeat(64) }, patch: { bytes: 2, sha256: "b".repeat(64) }, target: { bytes: 3, sha256: "c".repeat(64) } })).not.toContain("signature");
+  });
+
+  it("packages the formal plan, full fallback, and only verified patch artifacts", async () => {
+    const collection = await createPatchCollection({ name: "../target.bin", data: new Uint8Array([7, 8, 9]) }, {
+      results: [
+        { baselineName: "../old.bin", baselineBytes: 3, baselineSha256: "a".repeat(64), status: "verified", patch: new Uint8Array([1, 2]), ratio: 2 / 3, error: null },
+        { baselineName: "rejected.bin", baselineBytes: 3, baselineSha256: "b".repeat(64), status: "failed", patch: null, ratio: 1, error: null },
+      ],
+      excluded: [],
+      artifactBytes: 2,
+      artifactLimitBytes: 512,
+      workingSetBytes: 8,
+      workingSetLimitBytes: 512,
+    });
+
+    const archive = unzipSync(collection.bytes);
+    expect(collection.filename).toBe("corerobin-patch-collection.zip");
+    expect(Object.keys(archive).sort()).toEqual(["full/target.bin", "patch-plan.json", "patches/01-old.bin.endsley.patch"]);
+    expect([...archive["full/target.bin"]]).toEqual([7, 8, 9]);
+    expect([...archive["patches/01-old.bin.endsley.patch"]]).toEqual([1, 2]);
+    expect(JSON.parse(strFromU8(archive["patch-plan.json"]))).toMatchObject({
+      target: { name: "target.bin", url: "full/target.bin" },
+      full: { name: "target.bin", url: "full/target.bin" },
+      patches: [{ baseline: { name: "old.bin" }, patch: { name: "01-old.bin.endsley.patch", url: "patches/01-old.bin.endsley.patch" } }],
+    });
   });
 
   it("keeps role limits explicit and strips path components from manifest names", async () => {

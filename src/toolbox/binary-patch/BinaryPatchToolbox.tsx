@@ -6,6 +6,7 @@ import {
   inspectPatchSafely,
   isPatchTaskCancelled,
   calculateTransferSavings,
+  createPatchCollection,
   makePatchManifest,
   manifestJson,
   planPatches,
@@ -207,6 +208,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   };
 
   const setDownload = (bytes: Uint8Array, name: string, mime: string) => {
+    if (isDesktopRuntime()) return;
     const copy = bytes.slice();
     setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(new Blob([copy.buffer as ArrayBuffer], { type: mime })); });
     setDownloadName(name);
@@ -275,8 +277,11 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         } else {
           for (const file of plannerBaselines) bases.push({ name: file.name, data: await readInput(file, "基线", 16 * 1024 * 1024) });
         }
-        setOutput(JSON.stringify(await planPatches(targetBytes, bases, 0.8, signal), (_key, value) => value instanceof Uint8Array ? `[${value.byteLength} bytes]` : value, 2));
-        return null;
+        const plan = await planPatches(targetBytes, bases, 0.8, signal);
+        const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
+        setOutput(manifestJson(collection.plan));
+        setDownload(collection.bytes, collection.filename, "application/zip");
+        return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
       }
       return null;
     });
@@ -292,7 +297,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { void cancelNativeOutput(); setOutput(""); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />清空</button></div>
     {error ? <p className="toolbox-error" role="alert">{error}</p> : null}{notice ? <p className="toolbox-hint">{notice}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
     {nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button><span className="toolbox-hint">原生输出 {Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟</span></div> : null}
-    {downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />下载预览副本（非正式导出）</a> : null}
+    {!isDesktopRuntime() && downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />{toolId === "patch-planner" ? "下载计划/补丁集合预览（非正式导出）" : "下载预览副本（非正式导出）"}</a> : null}
   </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；正式输出经过原生 TTL、验证和原子另存，不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
 }
 
