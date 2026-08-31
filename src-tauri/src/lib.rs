@@ -140,7 +140,9 @@ use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWind
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use tauri_plugin_notification::NotificationExt;
-use toolbox_contracts::{ToolboxJob, ToolboxJobRequest, ToolboxSnapshot};
+use toolbox_contracts::{
+    TOOLBOX_EVENT, ToolboxEvent, ToolboxJob, ToolboxJobRequest, ToolboxSnapshot,
+};
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
 use toolbox_power::{
     PowerCompletionOwner, PowerCompletionStatus, PowerRequest, PowerService, PowerState,
@@ -370,6 +372,16 @@ fn now_millis() -> u64 {
         .unwrap_or_default()
         .as_millis()
         .min(u64::MAX as u128) as u64
+}
+
+pub(crate) fn emit_toolbox_snapshot(app: &AppHandle, state: &AppState) {
+    let snapshot = state.toolbox.lock().ok().map(|mut service| {
+        service.reconcile();
+        service.snapshot()
+    });
+    if let Some(snapshot) = snapshot {
+        let _ = app.emit(TOOLBOX_EVENT, ToolboxEvent::Snapshot { snapshot });
+    }
 }
 
 fn record_toolbox_completion(
@@ -2653,25 +2665,31 @@ fn get_toolbox_snapshot(
 #[tauri::command]
 fn start_toolbox_session(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: ToolboxJobRequest,
 ) -> Result<ToolboxJob, CommandError> {
     require_main_window(&window)?;
-    state
+    let result = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .start(request)
+        .start(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 #[tauri::command]
 fn cancel_toolbox_job(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: CancelToolboxJobRequest,
 ) -> Result<ToolboxJob, CommandError> {
     require_main_window(&window)?;
-    state
+    let result = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
@@ -2679,40 +2697,55 @@ fn cancel_toolbox_job(
             &request.request_id,
             &request.job_id,
             request.expected_revision,
-        )
+        );
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 #[tauri::command]
 fn finish_toolbox_job(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: FinishToolboxJobRequest,
 ) -> Result<ToolboxJob, CommandError> {
     require_main_window(&window)?;
-    state
+    let result = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .finish(request)
+        .finish(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 #[tauri::command]
 fn register_toolbox_output(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: RegisterToolboxOutputRequest,
 ) -> Result<ToolboxJob, CommandError> {
     require_main_window(&window)?;
-    state
+    let result = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .register_output(request)
+        .register_output(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 #[tauri::command]
 async fn export_toolbox_output(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: ExportToolboxOutputRequest,
 ) -> Result<ToolboxJob, CommandError> {
@@ -2722,6 +2755,7 @@ async fn export_toolbox_output(
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
         .begin_output_export(&request)?;
+    emit_toolbox_snapshot(&app, &state);
     let target = std::path::PathBuf::from(&request.path);
     let byte_length = output.bytes.len() as u64;
     let cancel = Arc::clone(&output.cancel);
@@ -2749,6 +2783,7 @@ async fn export_toolbox_output(
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
         .complete_output_export(&request, copy_result.is_ok(), error)?;
+    emit_toolbox_snapshot(&app, &state);
     match copy_result {
         Ok(()) => Ok(completed),
         Err(error) => {
@@ -2761,15 +2796,20 @@ async fn export_toolbox_output(
 #[tauri::command]
 fn cancel_toolbox_output(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: CancelToolboxOutputRequest,
 ) -> Result<bool, CommandError> {
     require_main_window(&window)?;
-    state
+    let result = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .cancel_output(request)
+        .cancel_output(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 fn toolbox_storage_error(error: ToolboxStorageError) -> CommandError {
@@ -2877,6 +2917,7 @@ fn clear_toolbox_history(
 #[tauri::command]
 fn clear_toolbox_data(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: toolbox_contracts::ToolboxRequest,
 ) -> Result<ToolboxSnapshot, CommandError> {
@@ -2933,6 +2974,7 @@ fn clear_toolbox_data(
         .lock()
         .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
         .adopt_reset_epoch(snapshot.reset_epoch)?;
+    emit_toolbox_snapshot(&app, &state);
     Ok(snapshot)
 }
 

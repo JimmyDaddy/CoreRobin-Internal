@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub const TOOLBOX_CONTRACT_VERSION: &str = "toolbox-v1";
+pub const TOOLBOX_EVENT: &str = "core-robin:toolbox-event";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -150,6 +151,12 @@ pub struct ToolboxSnapshot {
     pub capabilities: std::collections::BTreeMap<String, ToolboxCapability>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ToolboxEvent {
+    Snapshot { snapshot: ToolboxSnapshot },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,9 +173,13 @@ mod tests {
             jobs: Vec::new(),
             capabilities: std::collections::BTreeMap::new(),
         };
-        let json = serde_json::to_value(snapshot).unwrap();
+        let json = serde_json::to_value(&snapshot).unwrap();
         assert_eq!(json["contractVersion"], "toolbox-v1");
         assert_eq!(json["serviceInstanceId"], "instance");
         assert_eq!(json["resetEpoch"], 1);
+
+        let event = serde_json::to_value(ToolboxEvent::Snapshot { snapshot }).unwrap();
+        assert_eq!(event["type"], "snapshot");
+        assert_eq!(event["snapshot"]["contractVersion"], "toolbox-v1");
     }
 }

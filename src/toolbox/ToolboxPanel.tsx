@@ -36,7 +36,7 @@ import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, encodeBase64
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
-import { getToolboxNetworkSnapshot, getToolboxSnapshot } from "./client";
+import { getToolboxNetworkSnapshot, getToolboxSnapshot, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory } from "./contracts";
 import "./toolbox.css";
@@ -72,10 +72,20 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (!isDesktopRuntime()) return;
     let mounted = true;
+    let unlisten: (() => void) | undefined;
     void getToolboxSnapshot()
       .then((snapshot) => { if (mounted) setNativeCapabilities(snapshot.capabilities); })
       .catch(() => undefined);
-    return () => { mounted = false; };
+    void subscribeToolboxEvents((event) => {
+      if (mounted && event.type === "snapshot") setNativeCapabilities(event.snapshot.capabilities);
+    }).then((nextUnlisten) => {
+      if (mounted) unlisten = nextUnlisten;
+      else nextUnlisten();
+    }).catch(() => undefined);
+    return () => {
+      mounted = false;
+      unlisten?.();
+    };
   }, []);
 
   const toggleFavorite = (id: ToolId) => {

@@ -52,9 +52,10 @@ pub async fn prepare_toolbox_inputs(
         .lock()
         .map_err(|_| unavailable())?
         .inputs_for_job(&request.job)?;
-    tauri::async_runtime::spawn_blocking(move || {
+    let dialog_app = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
         inputs.select(&request.job, request.role, || {
-            let Some(selected) = app.dialog().file().blocking_pick_files() else {
+            let Some(selected) = dialog_app.dialog().file().blocking_pick_files() else {
                 return Ok(Vec::new());
             };
             selected
@@ -68,7 +69,9 @@ pub async fn prepare_toolbox_inputs(
         })
     })
     .await
-    .map_err(|_| unavailable())?
+    .map_err(|_| unavailable())??;
+    crate::emit_toolbox_snapshot(&app, &state);
+    Ok(result)
 }
 
 #[tauri::command]
@@ -100,6 +103,7 @@ pub async fn read_toolbox_input(
 #[tauri::command]
 pub fn release_toolbox_inputs(
     window: WebviewWindow,
+    app: AppHandle,
     state: State<'_, AppState>,
     request: ReleaseInputsRequest,
 ) -> Result<(), CommandError> {
@@ -115,7 +119,11 @@ pub fn release_toolbox_inputs(
         .lock()
         .map_err(|_| unavailable())?
         .inputs_for_job(&request.job)?;
-    inputs.release(&request.job, &request.tokens)
+    let result = inputs.release(&request.job, &request.tokens);
+    if result.is_ok() {
+        crate::emit_toolbox_snapshot(&app, &state);
+    }
+    result
 }
 
 #[tauri::command]

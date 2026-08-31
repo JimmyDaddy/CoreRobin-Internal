@@ -15,6 +15,7 @@ vi.mock("../api", () => ({ isDesktopRuntime: () => true }));
 vi.mock("./client", () => ({
   getToolboxNetworkSnapshot: vi.fn(),
   getToolboxSnapshot: modules.getToolboxSnapshot,
+  subscribeToolboxEvents: vi.fn().mockResolvedValue(() => undefined),
 }));
 vi.mock("./image/ImageToolbox", async () => {
   modules.imageLoaded();
