@@ -494,6 +494,24 @@ impl ToolboxInputs {
             job.cancelled.load(Ordering::Acquire),
         ))
     }
+
+    #[cfg(test)]
+    pub fn hold_operation_for_test(&self, job_id: &str) {
+        if let Ok(jobs) = self.jobs.lock()
+            && let Some(job) = jobs.get(job_id)
+        {
+            job.operations.fetch_add(1, Ordering::AcqRel);
+        }
+    }
+
+    #[cfg(test)]
+    pub fn release_operation_for_test(&self, job_id: &str) {
+        if let Ok(jobs) = self.jobs.lock()
+            && let Some(job) = jobs.get(job_id)
+        {
+            job.operations.fetch_sub(1, Ordering::AcqRel);
+        }
+    }
 }
 
 pub fn role_budget(tool: &str, role: InputRole) -> Result<(u64, usize, u64), CommandError> {

@@ -790,6 +790,7 @@ impl ToolboxService {
             }
         }
         if !released {
+            self.clearing = false;
             self.revision = self.revision.saturating_add(1);
             return Err(CommandError::new(
                 "release_unconfirmed",
@@ -1001,6 +1002,32 @@ mod tests {
         });
         let snapshot = service.clear("clear-1", Some(0)).unwrap();
         assert_eq!(snapshot.reset_epoch, 1);
+        assert!(snapshot.jobs.is_empty());
+    }
+
+    #[test]
+    fn failed_clear_remains_retryable_after_input_release() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "clear-retry-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        service.inputs.hold_operation_for_test(&job.job_id);
+
+        let error = service.clear("clear-retry-1", None).unwrap_err();
+        assert_eq!(error.code, "release_unconfirmed");
+        assert!(!service.clearing);
+
+        service.inputs.release_operation_for_test(&job.job_id);
+        let snapshot = service.clear("clear-retry-2", None).unwrap();
         assert!(snapshot.jobs.is_empty());
     }
 
