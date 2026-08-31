@@ -655,21 +655,21 @@ fn dispatch_toolbox_schedule_intent(
 ) -> SchedulerIntentOutcome {
     match &intent.action {
         SchedulerAction::Reminder => {
-            let notifications_enabled = storage
-                .upgrade()
-                .and_then(|storage| {
-                    let storage = storage.lock().ok()?;
-                    Some(storage.as_ref()?.snapshot().policy.notifications_enabled)
-                })
-                .unwrap_or(false);
-            if !notifications_enabled {
+            let policy = storage.upgrade().and_then(|storage| {
+                let storage = storage.lock().ok()?;
+                Some(storage.as_ref()?.snapshot().policy)
+            });
+            let Some(policy) = policy else {
+                return SchedulerIntentOutcome::Skipped;
+            };
+            if !policy.notifications_enabled {
                 return SchedulerIntentOutcome::Skipped;
             }
             let delivered = app
                 .notification()
                 .builder()
                 .title("CoreRobin")
-                .body("CoreRobin 定时提醒")
+                .body(scheduled_reminder_body(&policy.language))
                 .show()
                 .is_ok();
             if delivered {
@@ -700,6 +700,21 @@ fn dispatch_toolbox_schedule_intent(
                 Err(_) => SchedulerIntentOutcome::Failed,
             }
         }
+    }
+}
+
+fn scheduled_reminder_body(language: &str) -> &'static str {
+    match language {
+        "zh-CN" => "CoreRobin 定时提醒",
+        "zh-Hant" => "CoreRobin 定時提醒",
+        "ja" => "CoreRobin スケジュール通知",
+        "de" => "CoreRobin – geplante Erinnerung",
+        "fr" => "CoreRobin – rappel planifié",
+        "es" => "CoreRobin – recordatorio programado",
+        "pt-BR" => "CoreRobin – lembrete agendado",
+        "ko" => "CoreRobin 예약 알림",
+        "ru" => "CoreRobin — запланированное напоминание",
+        _ => "CoreRobin scheduled reminder",
     }
 }
 
