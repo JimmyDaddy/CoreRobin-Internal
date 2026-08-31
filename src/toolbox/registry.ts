@@ -2,6 +2,25 @@ import type { ToolDefinition, ToolboxCapability, ToolboxCategory, ToolId } from 
 
 const available: ToolboxCapability = { state: "available", reason: null, platform: null };
 
+/**
+ * These tools execute entirely in the WebView. A native snapshot can report
+ * that its helper is unavailable without changing their actual capability.
+ */
+export const LOCAL_BROWSER_TOOL_IDS: readonly ToolId[] = [
+  "json",
+  "url",
+  "base64",
+  "time",
+  "uuid",
+  "qr-code",
+  "text-sha256",
+  "regex",
+  "color",
+  "ifconfig-parser",
+];
+
+const localBrowserToolIds = new Set<ToolId>(LOCAL_BROWSER_TOOL_IDS);
+
 const definitions = ([
   ["system-network", "keep-awake", "限时保活", ["防止休眠", "保活"], "在明确期限内保持空闲状态，不修改系统电源计划"],
   ["system-network", "process-watch", "进程退出提醒", ["进程", "退出"], "等待选定进程退出并提醒"],
@@ -50,15 +69,29 @@ const definitions = ([
 
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = definitions;
 
-export function getToolDefinition(id: ToolId): ToolDefinition {
+export function getToolDefinition(
+  id: ToolId,
+  nativeCapabilities?: Partial<Record<ToolId, ToolboxCapability>>,
+): ToolDefinition {
   const definition = TOOL_DEFINITIONS.find((candidate) => candidate.id === id);
   if (!definition) throw new Error(`Unknown toolbox tool: ${id}`);
-  return definition;
+  return withNativeCapability(definition, nativeCapabilities?.[id]);
 }
 
-export function searchTools(query: string): ToolDefinition[] {
+export function searchTools(
+  query: string,
+  nativeCapabilities?: Partial<Record<ToolId, ToolboxCapability>>,
+): ToolDefinition[] {
   const needle = query.trim().toLocaleLowerCase();
-  if (!needle) return [...TOOL_DEFINITIONS];
-  return TOOL_DEFINITIONS.filter((tool) => [tool.title, tool.description, ...tool.aliases]
-    .some((value) => value.toLocaleLowerCase().includes(needle)));
+  return TOOL_DEFINITIONS
+    .filter((tool) => !needle || [tool.title, tool.description, ...tool.aliases]
+      .some((value) => value.toLocaleLowerCase().includes(needle)))
+    .map((tool) => withNativeCapability(tool, nativeCapabilities?.[tool.id]));
+}
+
+function withNativeCapability(tool: ToolDefinition, nativeCapability?: ToolboxCapability): ToolDefinition {
+  return {
+    ...tool,
+    capability: localBrowserToolIds.has(tool.id) ? available : nativeCapability ?? tool.capability,
+  };
 }

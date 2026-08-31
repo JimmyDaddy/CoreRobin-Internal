@@ -6,7 +6,7 @@ import {
   isTerminalJobStatus,
   isTerminalSessionStatus,
 } from "./contracts";
-import { TOOL_DEFINITIONS, searchTools } from "./registry";
+import { getToolDefinition, TOOL_DEFINITIONS, searchTools } from "./registry";
 
 describe("toolbox contract", () => {
   it("freezes the complete tool id inventory without duplicate ids", () => {
@@ -18,6 +18,13 @@ describe("toolbox contract", () => {
   it("matches only user-facing metadata, never a tool input", () => {
     expect(searchTools("BSDIFF").map((tool) => tool.id)).toContain("binary-patch-create");
     expect(searchTools("secret input that is not a title")).toHaveLength(0);
+  });
+
+  it("does not let a native helper label disable browser-local tools", () => {
+    const staleNativeCapability = { state: "unavailable" as const, reason: "Native helper missing.", platform: "macOS" };
+    expect(getToolDefinition("json", { json: staleNativeCapability }).capability.state).toBe("available");
+    expect(getToolDefinition("ifconfig-parser", { "ifconfig-parser": staleNativeCapability }).capability.state).toBe("available");
+    expect(getToolDefinition("keyboard-cleaning", { "keyboard-cleaning": staleNativeCapability }).capability).toEqual(staleNativeCapability);
   });
 
   it("rejects stale service revisions and identifies terminal states", () => {
