@@ -3,7 +3,7 @@ import type { MarkerResult } from "@image-marker/web";
 import { dataUrlToBytes } from "./imageTools";
 
 export interface ImageOutputPayload {
-  kind: "image" | "recipe";
+  kind: "image" | "recipe" | "archive";
   filename: string;
   blob: Blob;
 }
@@ -27,6 +27,10 @@ export function markerResultOutput(result: MarkerResult, fallbackName = "corerob
 
 export function recipeOutput(source: string, filename = "corerobin-recipe.json"): ImageOutputPayload {
   return { kind: "recipe", filename, blob: new Blob([source], { type: "application/json" }) };
+}
+
+export function archiveOutput(bytes: ArrayBuffer, filename = "corerobin-watermarks.zip"): ImageOutputPayload {
+  return { kind: "archive", filename, blob: new Blob([bytes], { type: "application/zip" }) };
 }
 
 export function previewObjectUrl(payload: ImageOutputPayload): string {

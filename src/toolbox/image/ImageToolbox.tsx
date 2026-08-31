@@ -27,7 +27,7 @@ import { createImageToolRuntime, IMAGE_FONT_MAX_BYTES, IMAGE_OPERATION_DEADLINE_
 import { createBrowserImageInputs, createNativeImageInputs, type ImageRunInputs } from "./imageInputs";
 import { ImageRecipeEditor } from "./ImageRecipeEditor";
 import type { LocalImageEditor } from "./imageEditor";
-import { markerResultOutput, type ImageOutputDelivery, type ImageOutputPayload } from "./imageOutput";
+import { archiveOutput, markerResultOutput, type ImageOutputDelivery, type ImageOutputPayload } from "./imageOutput";
 import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
 import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, registerToolboxOutput, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
@@ -54,7 +54,7 @@ interface ImageRunOptions {
   requestNativeLogo?: boolean;
 }
 
-export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; deliverOutput?: ImageOutputDelivery }) {
+export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: { toolId: ImageToolId; deliverOutput?: ImageOutputDelivery }) {
   const runtime = useMemo(() => createImageToolRuntime(), []);
   const marker = runtime.marker;
   const [files, setFiles] = useState<File[]>([]);
@@ -100,10 +100,10 @@ export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; d
     setZipUrl("");
   };
 
-  const publishZip = (url: string) => {
+  const publishZip = (bytes: ArrayBuffer) => {
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
-    zipUrlRef.current = url;
-    setZipUrl(url);
+    zipUrlRef.current = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+    setZipUrl(zipUrlRef.current);
   };
 
   useEffect(() => () => {
@@ -307,6 +307,30 @@ export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; d
     }
   };
 
+  const deliverFormalOutput: ImageOutputDelivery | undefined = externalDeliverOutput ?? (desktopRuntime ? async (payload) => {
+    if (nativeOutputRef.current) throw new Error("已有临时输出待另存，请先完成或取消它。");
+    const job = await startToolboxSession({ ...newToolboxRequest(), toolId });
+    try {
+      const ready = await registerToolboxOutput({
+        ...newToolboxRequest(),
+        jobId: job.jobId,
+        generation: job.generation,
+        resetEpoch: job.resetEpoch,
+        bytes: new Uint8Array(await payload.blob.arrayBuffer()),
+        validation: "verified",
+      });
+      setPreparedOutput(ready, payload.filename);
+      setNotice("原生输出已准备完成；请在 10 分钟内选择正式另存，失败可重试，取消会释放临时结果。");
+    } catch (reason) {
+      try {
+        await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason) });
+      } catch (lifecycleReason) {
+        setError(`原生任务生命周期未确认：${lifecycleReason instanceof Error ? lifecycleReason.message : "无法更新任务状态"}`);
+      }
+      throw reason;
+    }
+  } : undefined);
+
   const stop = async () => {
     if (!cancelRef.current || stopping) return;
     setStopping(true);
@@ -361,13 +385,13 @@ export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; d
         setProgress((index + 1) / inputCount);
       }
       if (batch && zipBudget) {
-        const url = await zipResults(bytes, zipBudget.inputBytes, signal);
+        const zipBytes = await zipResults(bytes, zipBudget.inputBytes, signal);
         if (signal.aborted) {
-          URL.revokeObjectURL(url);
           throw createImageAbortError();
         }
-        publishZip(url);
+        publishZip(zipBytes);
         setNotice(`批量处理完成：${bytes.length} 张图片按选择顺序写入 ZIP；已执行 20 文件 / 80 MiB 输入 / 512 MiB 输出预算。`);
+        if (desktopRuntime) return archiveOutput(zipBytes);
       } else {
         setResult(last);
         setNotice(last ? resultLabel(last) : "处理完成。");
@@ -463,14 +487,14 @@ export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; d
         setProgress(delivered / values.length);
         setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: "正在生成本次会话的交付 ZIP。" });
       }
-      const url = await zipResults(outputs, zipBudget.inputBytes, signal, zipBudget.maxOutputFiles);
+      const zipBytes = await zipResults(outputs, zipBudget.inputBytes, signal, zipBudget.maxOutputFiles);
       if (signal.aborted) {
-        URL.revokeObjectURL(url);
         throw createImageAbortError("收件人分发已停止。");
       }
-      publishZip(url);
+      publishZip(zipBytes);
       setRecipientDelivery({ status: "ready", requested: values.length, delivered, detail: "交付 ZIP 已就绪；文件按输入顺序编号，locator 映射未持久化。" });
       setNotice(`交付状态：ready。已生成 ${delivered}/${values.length} 个分发样本；一次性密钥和 locator 映射不会由 CoreRobin 保存。`);
+      if (desktopRuntime) return archiveOutput(zipBytes, "corerobin-recipient-delivery.zip");
     } catch (reason) {
       const cancelled = signal.aborted || isAbortError(reason);
       releaseOutputs();
@@ -503,13 +527,14 @@ export function ImageToolbox({ toolId, deliverOutput }: { toolId: ImageToolId; d
       {toolId !== "c2pa-inspector" && desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />开始处理后由原生选择器签发绑定输入 token；页面不会接收真实路径。</p> : null}
       {files.length > 0 && !desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />已选 {files.length} 张 · 输入上限 {BATCH_MAX_FILES} 张 / {Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024)} MiB · 常规输出最长边 {IMAGE_MAX_OUTPUT_EDGE}px</p> : null}
       {toolId === "image-watermark" || toolId === "confidential-watermark" || toolId === "image-batch-watermark" ? <div className="image-watermark-form"><label>文字<input className="toolbox-input" value={watermarkValue} maxLength={4096} disabled={running} onChange={(event) => setWatermarkValue(event.target.value)} /></label><label>字体族<input className="toolbox-input" value={watermarkFont} disabled={running} onChange={(event) => setWatermarkFont(event.target.value)} placeholder="系统已安装字体，例如 PingFang SC" /></label><label>文字方向<select className="toolbox-input" value={watermarkDirection} disabled={running} onChange={(event) => setWatermarkDirection(event.target.value as typeof watermarkDirection)}><option value="auto">自动</option><option value="ltr">从左到右</option><option value="rtl">从右到左</option></select></label><label>文字透明度<input type="range" min="0.1" max="1" step="0.05" value={watermarkAlpha} disabled={running} onChange={(event) => setWatermarkAlpha(Number(event.target.value))} /></label><label>输出格式<select className="toolbox-input" value={outputFormat} disabled={running} onChange={(event) => setOutputFormat(event.target.value as ImageFormat)}><option value={ImageFormat.png}>PNG</option><option value={ImageFormat.jpg}>JPEG</option><option value={ImageFormat.webp}>WebP</option></select></label>{!desktopRuntime ? <><label className="toolbox-file-pick button button--secondary"><Upload size={14} />选择本地 Logo<input hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={running} onChange={(event) => void selectLogo(event.target.files?.[0])} /></label><label className="toolbox-file-pick button button--secondary"><Upload size={14} />选择本地字体<input hidden type="file" accept=".ttf,.otf,.woff,.woff2,font/*" disabled={running} onChange={(event) => selectFont(event.target.files?.[0])} /></label></> : <><label className="image-editor__native-asset"><input type="checkbox" checked={requestNativeLogo} disabled={running} onChange={(event) => setRequestNativeLogo(event.target.checked)} />本次操作选择一个本地 Logo</label><p className="toolbox-hint">自选字体文件需要 W02 `font` token；当前可使用系统已安装的字体族。</p></>}{fontFile ? <p className="toolbox-hint">字体：{safeOutputName(fontFile.name)} · 仅本次 Worker 可见，Worker 终止后释放。</p> : null}{logoFile ? <p className="toolbox-hint">Logo：{safeOutputName(logoFile.name)} · 缩放 <input type="number" min="0.01" max="100" step="0.05" value={logoScale} disabled={running} onChange={(event) => setLogoScale(Number(event.target.value))} /> · 旋转 <input type="number" min="0" max="360" value={logoRotation} disabled={running} onChange={(event) => setLogoRotation(Number(event.target.value))} /> · 透明度 <input type="range" min="0.1" max="1" step="0.05" value={logoAlpha} disabled={running} onChange={(event) => setLogoAlpha(Number(event.target.value))} /></p> : null}</div> : null}
-      {toolId === "image-recipe" || toolId === "image-editor" ? <ImageRecipeEditor marker={marker} desktopRuntime={desktopRuntime} disabled={running || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onPreview={runRecipeEditor} onError={setError} onNotice={setNotice} deliverOutput={deliverOutput} /> : null}
+      {toolId === "image-recipe" || toolId === "image-editor" ? <ImageRecipeEditor marker={marker} desktopRuntime={desktopRuntime} disabled={running || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onPreview={runRecipeEditor} onError={setError} onNotice={setNotice} deliverOutput={deliverFormalOutput} /> : null}
       {toolId === "c2pa-inspector" ? <button className="button button--secondary" type="button" onClick={runManifest}>粘贴并检查本地 manifest</button> : toolId === "image-recipe" || toolId === "image-editor" ? <div className="toolbox-inline-actions">{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div> : <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput) || !hostExecutorAvailable || (!desktopRuntime && files.length === 0)} onClick={action}><Play size={14} />{stopping ? "正在停止…" : running ? "正在处理…" : actionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" disabled={stopping} onClick={() => void stop()}><Square size={14} />{stopping ? "正在停止…" : "停止"}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { void cancelNativeOutput(); setFiles([]); setLogoFile(null); setFontFile(null); releaseOutputs(); setRecipientDelivery(null); setNotice(""); setError(""); }}><RotateCcw size={14} />清空</button></div>}
       {running ? <progress max="1" value={progress} /> : null}
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
       {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>交付状态：{recipientDelivery.status} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
-      {result ? <div className="image-toolbox__result"><img src={result.uri} alt="本地水印结果预览" /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button></> : null}{deliverOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverOutput(markerResultOutput(result)).then(() => setNotice("图片已交给原生输出 provider；请按 TTL/另存流程完成导出。"), (reason: unknown) => setError(reason instanceof Error ? reason.message : "正式输出交付失败。"))}><Download size={14} />交给正式另存</button> : null}<a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />下载预览副本（非正式导出）</a><span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · 原生输出 ${Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟` : ""}</span></div></div> : null}
+      {result ? <div className="image-toolbox__result"><img src={result.uri} alt="本地水印结果预览" /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button></> : null}{deliverFormalOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverFormalOutput(markerResultOutput(result)).then(() => setNotice("图片已交给原生输出 provider；请按 TTL/另存流程完成导出。"), (reason: unknown) => setError(reason instanceof Error ? reason.message : "正式输出交付失败。"))}><Download size={14} />交给正式另存</button> : null}<a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />下载预览副本（非正式导出）</a><span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · 原生输出 ${Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟` : ""}</span></div></div> : null}
+      {!result && nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button><span className="toolbox-hint">原生输出 {Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟</span></div> : null}
       {zipUrl ? <a className="button button--primary" download="corerobin-watermarks.zip" href={zipUrl}><Download size={14} />下载预览 ZIP（非正式导出）</a> : null}
     </div>
     <div className="toolbox-tool-layout__footer"><span>图片输入仅在当前页面内存处理；输出会去除源 EXIF/GPS 等元数据，不承诺保留 ICC 或旧 C2PA 签名。</span></div>
@@ -555,7 +580,7 @@ function resultToZipItem(name: string, result: MarkerResult): { name: string; by
   return { name, bytes: encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength) as ArrayBuffer };
 }
 
-async function zipResults(items: Array<{ name: string; bytes: ArrayBuffer }>, inputBytes: number, signal: AbortSignal, maxOutputFiles = BATCH_MAX_FILES): Promise<string> {
+async function zipResults(items: Array<{ name: string; bytes: ArrayBuffer }>, inputBytes: number, signal: AbortSignal, maxOutputFiles = BATCH_MAX_FILES): Promise<ArrayBuffer> {
   if (signal.aborted) throw createImageAbortError("ZIP 生成已停止。");
   return new Promise((resolve, reject) => {
     let worker: Worker;
@@ -572,14 +597,13 @@ async function zipResults(items: Array<{ name: string; bytes: ArrayBuffer }>, in
       cleanup();
       reject(reason);
     };
-    const complete = (url: string) => {
+    const complete = (bytes: ArrayBuffer) => {
       if (settled) {
-        URL.revokeObjectURL(url);
         return;
       }
       settled = true;
       cleanup();
-      resolve(url);
+      resolve(bytes);
     };
     const abort = () => fail(createImageAbortError("ZIP 生成已停止。"));
     try {
@@ -599,7 +623,7 @@ async function zipResults(items: Array<{ name: string; bytes: ArrayBuffer }>, in
         return;
       }
       try {
-        complete(URL.createObjectURL(new Blob([event.data.bytes], { type: "application/zip" })));
+        complete(event.data.bytes);
       } catch (reason) {
         fail(reason instanceof Error ? reason : new Error("无法创建 ZIP 下载输出。"));
       }
