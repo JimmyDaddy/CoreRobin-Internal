@@ -90,6 +90,10 @@ CSS gzip 仍保持在原有 40,000 bytes 上限内；四个入口的初始加载
 首屏独立预算、缺失 manifest 资源和符号链接；页面测试覆盖按需加载、等待提示和返回操作。
 本次没有重跑 Rust、视觉截图或三平台实机内存测试。
 
+2026-09-01 的工具箱生命周期、C2PA sidecar 与桌面字体 token 接线后，最终生产产物为
+2,990,030 bytes JS 与 436,655 bytes CSS，仍低于当前 3,000,000 / 450,000 bytes
+总量预算；本次实机范围只要求 macOS，Windows/Linux 不做实机验证但保留跨平台实现。
+
 这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
 [发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI
 wall-clock 数字替代。
