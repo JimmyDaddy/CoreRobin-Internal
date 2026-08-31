@@ -513,11 +513,13 @@ impl ToolboxStorage {
             return Err(ToolboxStorageError::ResetEpochMustAdvance);
         }
 
-        let mut candidate_state = PersistedToolboxState::default();
-        candidate_state.reset_epoch = next_reset_epoch;
         // A reset must invalidate cursors from the old state even when the
         // default history revision was zero.
-        candidate_state.history_revision = next_revision(self.state.history_revision)?;
+        let candidate_state = PersistedToolboxState {
+            reset_epoch: next_reset_epoch,
+            history_revision: next_revision(self.state.history_revision)?,
+            ..PersistedToolboxState::default()
+        };
         self.persist_state(&candidate_state)?;
 
         // An absent policy file is the durable default.  Removing it after
