@@ -258,8 +258,11 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         const baselineBytes = await readInput(baseline, "基线");
         const targetBytes = await readInput(target, "目标");
         const patchBytes = await readInput(patch, "补丁");
-        setOutput(manifestJson(await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name })));
-        return null;
+        const manifest = manifestJson(await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name }));
+        const bytes = new TextEncoder().encode(manifest);
+        setOutput(manifest);
+        setDownload(bytes, "corerobin-patch-manifest.json", "application/json");
+        return { bytes, filename: "corerobin-patch-manifest.json", validation: "verified" };
       }
       if (toolId === "patch-planner") {
         const targetBytes = await readInput(target, "目标", 16 * 1024 * 1024);
