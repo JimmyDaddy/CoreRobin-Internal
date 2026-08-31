@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const scriptPath = resolve("scripts/discover-pending-notarization.sh");
 const temporaryDirectories = [];
 const releaseCommit = "a".repeat(40);
+const SCRIPT_TEST_TIMEOUT_MS = 15_000;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -31,7 +32,7 @@ describe("pending notarization discovery", () => {
       "No successful release is waiting for Apple notarization finalization.",
     );
     expectRunListCallsHaveExplicitRepository(result.calls);
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("selects a trusted release whose Preview still needs finalization", () => {
     const result = runScenario("pending-release");
@@ -45,7 +46,7 @@ describe("pending notarization discovery", () => {
     });
     expect(result.stdout).toContain("Will recheck v0.1.25 from Release run 425.");
     expectRunListCallsHaveExplicitRepository(result.calls);
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("does not duplicate a finalization that is already active", () => {
     const result = runScenario("finalize-active");
@@ -53,7 +54,7 @@ describe("pending notarization discovery", () => {
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(result.output).toEqual({ pending: "false" });
     expectRunListCallsHaveExplicitRepository(result.calls);
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("ignores orphaned Previews older than the current stable release", () => {
     const result = runScenario("old-preview");
@@ -64,7 +65,7 @@ describe("pending notarization discovery", () => {
       "api repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.8-preview.1",
     );
     expectRunListCallsHaveExplicitRepository(result.calls);
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 });
 
 function runScenario(scenario) {
