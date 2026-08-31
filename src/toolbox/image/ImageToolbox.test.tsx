@@ -8,9 +8,11 @@ const mocks = vi.hoisted(() => ({
   createBrowserInputs: vi.fn(),
   createObjectUrl: vi.fn(() => "blob:zip"),
   createRuntime: vi.fn(),
+  detectInvisible: vi.fn(),
   embedInvisible: vi.fn(),
   getImageInfo: vi.fn(),
   mark: vi.fn(),
+  transformImage: vi.fn(),
 }));
 
 vi.mock("@image-marker/web", () => ({
@@ -39,6 +41,7 @@ vi.mock("./imageExecution", () => ({
   createImageToolRuntime: mocks.createRuntime,
   IMAGE_FONT_MAX_BYTES: 4 * 1024 * 1024,
   IMAGE_OPERATION_DEADLINE_MS: 30_000,
+  transformImageInWorker: mocks.transformImage,
   withLocalImageFonts: (options: unknown) => options,
 }));
 vi.mock("./imageInputs", () => ({ createBrowserImageInputs: mocks.createBrowserInputs, createNativeImageInputs: vi.fn() }));
@@ -94,11 +97,14 @@ beforeEach(async () => {
     durationMs: 1,
     metadata: { policy: "stripped" },
   });
+  mocks.detectInvisible.mockResolvedValue({ detected: true, confidence: 0.91, scale: 1, algorithm: "dct-qim-v1" });
+  mocks.transformImage.mockResolvedValue(new Blob(["transformed"], { type: "image/png" }));
   mocks.cancel.mockResolvedValue(undefined);
   mocks.createRuntime.mockReturnValue({
     marker: {
       capabilities: { execution: { mode: "host-adapter", supportsTerminationAcknowledgement: true } },
       cancel: mocks.cancel,
+      detectInvisible: mocks.detectInvisible,
       embedInvisible: mocks.embedInvisible,
       getImageInfo: mocks.getImageInfo,
       mark: mocks.mark,
@@ -178,5 +184,20 @@ describe("batch image ZIP delivery", () => {
     expect(appendCalls.map(([message]) => (message as unknown as { item: { name: string } }).item.name)).toEqual(["delivery-01.png", "delivery-02.png"]);
     expect(mocks.embedInvisible).toHaveBeenCalledTimes(2);
     expect(prompt).toHaveBeenCalledTimes(2);
+  });
+
+  it("runs each declared robustness sample and shows a bounded report", async () => {
+    const view = render(<ImageToolbox toolId="robustness-lab" />);
+    await selectBatchFiles(view.container, ["source.png"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "生成实验样本" }));
+    await screen.findByText(/jpeg-quality-75/);
+
+    expect(mocks.embedInvisible).toHaveBeenCalledOnce();
+    expect(mocks.transformImage).toHaveBeenCalledTimes(3);
+    expect(mocks.transformImage.mock.calls.map(([, request]) => request.mode)).toEqual(["jpeg-quality", "scale", "crop"]);
+    expect(mocks.detectInvisible).toHaveBeenCalledTimes(3);
+    expect(screen.getByText(/scale-95-percent/)).toBeTruthy();
+    expect(screen.getByText(/limited-crop-4-percent/)).toBeTruthy();
   });
 });

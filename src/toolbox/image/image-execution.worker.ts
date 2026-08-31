@@ -11,6 +11,16 @@ interface ExecuteMessage {
   options: unknown;
 }
 
+interface TransformMessage {
+  type: "transform";
+  taskId: string;
+  source: Blob;
+  mode: "jpeg-quality" | "scale" | "crop";
+  quality?: number;
+  scale?: number;
+  cropRatio?: number;
+}
+
 interface OffscreenCanvasWithEncoding extends OffscreenCanvas {
   toDataURL(type?: string, quality?: number): string;
   toBlob(callback: (blob: Blob | null) => void, type?: string, quality?: number): void;
@@ -37,9 +47,15 @@ interface WorkerFontResource {
   source: Blob;
 }
 
-self.onmessage = (event: MessageEvent<ExecuteMessage>) => {
+self.onmessage = (event: MessageEvent<ExecuteMessage | TransformMessage>) => {
   const message = event.data;
-  if (message.type !== "execute") return;
+  if (message.type === "transform") {
+    void executeTransform(message).then(
+      (blob) => self.postMessage({ type: "transform-result", taskId: message.taskId, blob }),
+      (error) => self.postMessage({ type: "transform-error", taskId: message.taskId, error: safeWorkerError(error) }),
+    );
+    return;
+  }
   void execute(message).then(
     (value) => self.postMessage({ type: "result", taskId: message.taskId, value }),
     (error) => self.postMessage({
@@ -50,6 +66,51 @@ self.onmessage = (event: MessageEvent<ExecuteMessage>) => {
     }),
   );
 };
+
+async function executeTransform(request: TransformMessage): Promise<Blob> {
+  const bitmap = await createImageBitmap(request.source, { imageOrientation: "from-image" });
+  let canvas: OffscreenCanvas | null = null;
+  try {
+    const sourceWidth = bitmap.width;
+    const sourceHeight = bitmap.height;
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceCropWidth = sourceWidth;
+    let sourceCropHeight = sourceHeight;
+    let outputWidth = sourceWidth;
+    let outputHeight = sourceHeight;
+    if (request.mode === "scale") {
+      outputWidth = Math.max(1, Math.round(sourceWidth * (request.scale ?? 0.95)));
+      outputHeight = Math.max(1, Math.round(sourceHeight * (request.scale ?? 0.95)));
+    } else if (request.mode === "crop") {
+      const ratio = request.cropRatio ?? 0.04;
+      sourceX = Math.floor(sourceWidth * ratio);
+      sourceY = Math.floor(sourceHeight * ratio);
+      sourceCropWidth = sourceWidth - sourceX * 2;
+      sourceCropHeight = sourceHeight - sourceY * 2;
+      if (sourceCropWidth < 128 || sourceCropHeight < 88) throw new Error("裁剪后图片低于隐形 locator 的最小尺寸。");
+      outputWidth = sourceCropWidth;
+      outputHeight = sourceCropHeight;
+    }
+    canvas = new OffscreenCanvas(outputWidth, outputHeight);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("图片变换无法建立 2D Canvas。");
+    context.drawImage(bitmap, sourceX, sourceY, sourceCropWidth, sourceCropHeight, 0, 0, outputWidth, outputHeight);
+    const quality = request.quality ?? 75;
+    const blob = await canvas.convertToBlob({
+      type: request.mode === "jpeg-quality" ? "image/jpeg" : "image/png",
+      quality: request.mode === "jpeg-quality" ? quality / 100 : undefined,
+    });
+    if (!blob.size) throw new Error("图片变换没有生成输出。");
+    return blob;
+  } finally {
+    bitmap.close();
+    if (canvas) {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+  }
+}
 
 async function execute(request: ExecuteMessage): Promise<unknown> {
   const canvasResources = createWorkerCanvasResources();

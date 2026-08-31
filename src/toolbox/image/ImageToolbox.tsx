@@ -27,7 +27,7 @@ import {
   requireOneTimeRecipientKey,
   resultLabel,
 } from "./imageTools";
-import { createImageToolRuntime, IMAGE_FONT_MAX_BYTES, IMAGE_OPERATION_DEADLINE_MS, withLocalImageFonts, type LocalImageFontResource } from "./imageExecution";
+import { createImageToolRuntime, IMAGE_FONT_MAX_BYTES, IMAGE_OPERATION_DEADLINE_MS, transformImageInWorker, withLocalImageFonts, type LocalImageFontResource } from "./imageExecution";
 import { createBrowserImageInputs, createNativeImageInputs, type ImageRunInputs } from "./imageInputs";
 import { ImageRecipeEditor } from "./ImageRecipeEditor";
 import type { LocalImageEditor } from "./imageEditor";
@@ -74,6 +74,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
   const [result, setResult] = useState<MarkerResult | null>(null);
   const [zipUrl, setZipUrl] = useState("");
   const [recipientDelivery, setRecipientDelivery] = useState<RecipientDeliveryState | null>(null);
+  const [robustnessReport, setRobustnessReport] = useState("");
   const [nativeOutput, setNativeOutput] = useState<ToolboxJob | null>(null);
   const nativeOutputRef = useRef<ToolboxJob | null>(null);
   const [nativeOutputName, setNativeOutputName] = useState("");
@@ -105,6 +106,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   const releaseOutputs = () => {
     setResult(null);
+    setRobustnessReport("");
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
     zipUrlRef.current = "";
     setZipUrl("");
@@ -502,10 +504,59 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   const runRobustness = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
-    const output = await marker.markText({ backgroundImage: { src: file }, watermarkTexts: [{ text: "ROBUSTNESS-LAB", layout: { type: "tile", gapX: 80, gapY: 80 }, style: { color: "#ffffff", fontSize: 22, rotate: -25 }, alpha: 0.45 }], saveFormat: ImageFormat.jpg, quality: 75, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
-    setResult(output);
+    const payload = `rb-${crypto.randomUUID().replace(/-/gu, "").slice(0, 8)}`;
+    const key = crypto.randomUUID().replace(/-/gu, "");
+    const embedded = await marker.embedInvisible({
+      image: { src: file },
+      payload,
+      key,
+      strength: "robust",
+      saveFormat: ImageFormat.png,
+      maxSize: IMAGE_MAX_OUTPUT_EDGE,
+    }, imageControl(signal));
+    const embeddedBytes = dataUrlToBytes(embedded.uri);
+    const embeddedBuffer = embeddedBytes.buffer.slice(embeddedBytes.byteOffset, embeddedBytes.byteOffset + embeddedBytes.byteLength) as ArrayBuffer;
+    const embeddedBlob = new Blob([embeddedBuffer], { type: "image/png" });
+    const cases = [
+      { id: "jpeg-quality-75", request: { mode: "jpeg-quality" as const, quality: 75 } },
+      { id: "scale-95-percent", request: { mode: "scale" as const, scale: 0.95 } },
+      { id: "limited-crop-4-percent", request: { mode: "crop" as const, cropRatio: 0.04 } },
+    ];
+    const results: Array<Record<string, unknown>> = [];
+    for (const [index, sample] of cases.entries()) {
+      signal.throwIfAborted();
+      try {
+        const transformed = await transformImageInWorker(embeddedBlob, sample.request, signal);
+        const detected = await marker.detectInvisible({
+          image: { src: transformed },
+          key,
+          strength: "robust",
+          search: "robust",
+          maxSize: IMAGE_MAX_OUTPUT_EDGE,
+        }, imageControl(signal, (phase) => setProgress(Math.min(0.95, (index + (phase === "complete" ? 1 : 0.5)) / cases.length))));
+        results.push({
+          id: sample.id,
+          detected: detected.detected,
+          confidence: Number(detected.confidence.toFixed(4)),
+          scale: detected.scale ?? null,
+          outputBytes: transformed.size,
+        });
+      } catch (reason) {
+        if (signal.aborted || isAbortError(reason)) throw reason;
+        results.push({ id: sample.id, detected: false, error: "sample_failed" });
+      }
+      setProgress((index + 1) / cases.length);
+    }
+    setRobustnessReport(JSON.stringify({
+      algorithm: "dct-qim-v1",
+      strength: "robust",
+      locator: payload,
+      keyStored: false,
+      cases: results,
+    }, null, 2));
+    setResult(embedded);
     setNotice(t("image.robustnessNotice"));
-    return markerResultOutput(output);
+    return markerResultOutput(embedded);
   }, { deadlineMs: 180_000 });
 
   const runManifest = () => void (async () => {
@@ -650,6 +701,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
       {notice ? <pre className="toolbox-notice">{notice}</pre> : null}
       {manifestReport ? <div className="toolbox-output"><pre className="toolbox-notice">{manifestReport}</pre>{manifestDownloadUrl && !desktopRuntime ? <a className="button button--secondary" download="corerobin-c2pa-manifest-report.json" href={manifestDownloadUrl}><Download size={14} />{t("image.downloadReport")}</a> : null}</div> : null}
+      {robustnessReport ? <div className="toolbox-output"><pre className="toolbox-notice">{robustnessReport}</pre></div> : null}
       {toolId === "recipient-tracking" && recipientDelivery ? <p className={recipientDelivery.status === "ready" ? "toolbox-hint" : "toolbox-error"} role={recipientDelivery.status === "ready" ? undefined : "alert"}>{t("image.recipientStatusLabel")}: {t(`image.recipientStatus.${recipientDelivery.status}`)} · {recipientDelivery.delivered}/{recipientDelivery.requested} · {recipientDelivery.detail}</p> : null}
       {result ? <div className="image-toolbox__result"><img src={result.uri} alt={t("image.resultAlt")} /><div className="toolbox-inline-actions">{nativeOutput?.outputToken ? <><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button></> : null}{deliverFormalOutput ? <button className="button button--secondary" type="button" onClick={() => void deliverFormalOutput(markerResultOutput(result)).then(() => setNotice(t("image.handedToProvider")), (reason: unknown) => setError(reason instanceof Error ? reason.message : t("image.formalDeliveryFailed")))}><Download size={14} />{t("image.deliverFormal")}</button> : null}{!desktopRuntime ? <a className="button button--secondary" download={result.filename ?? "corerobin-watermarked.png"} href={result.uri}><Download size={14} />{t("image.downloadPreview")}</a> : null}<span className="toolbox-hint">{resultLabel(result)}{nativeOutput?.outputToken ? ` · ${t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}` : ""}</span></div></div> : null}
       {!result && nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("image.saveFormal")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("image.cancelTemporary")}</button><span className="toolbox-hint">{t("image.nativeOutputSummary", { sizeKiB: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}</span></div> : null}

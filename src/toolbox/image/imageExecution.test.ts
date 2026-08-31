@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WebMarkerExecutionRequest } from "@image-marker/web";
 
-import { createImageExecutionAdapter, createImageToolRuntime, withLocalImageFonts } from "./imageExecution";
+import { createImageExecutionAdapter, createImageToolRuntime, transformImageInWorker, withLocalImageFonts } from "./imageExecution";
 
 class FakeImageWorker {
   readonly postMessage = vi.fn();
@@ -139,5 +139,35 @@ describe("isolated image execution adapter", () => {
     workers[0]?.emit({ type: "result", taskId: message.taskId, value: { uri: "data:image/png;base64,AA==" } });
     await expect(result).resolves.toMatchObject({ uri: "data:image/png;base64,AA==" });
     await runtime.dispose();
+  });
+
+  it("runs robustness transforms in a task-owned Worker and releases it after output", async () => {
+    const worker = new FakeImageWorker();
+    const result = transformImageInWorker(
+      new Blob(["image"], { type: "image/png" }),
+      { mode: "scale", scale: 0.95 },
+      new AbortController().signal,
+      { availability: supported, createWorker: () => worker },
+    );
+    const message = worker.postMessage.mock.calls[0]?.[0] as { taskId: string; type: string; signal?: unknown };
+    expect(message).toMatchObject({ type: "transform", mode: "scale", scale: 0.95 });
+    expect(message.signal).toBeUndefined();
+    worker.emit({ type: "transform-result", taskId: message.taskId, blob: new Blob(["result"], { type: "image/png" }) });
+    await expect(result).resolves.toBeInstanceOf(Blob);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it("terminates a robustness transform when its control signal aborts", async () => {
+    const worker = new FakeImageWorker();
+    const controller = new AbortController();
+    const result = transformImageInWorker(
+      new Blob(["image"], { type: "image/png" }),
+      { mode: "jpeg-quality", quality: 75 },
+      controller.signal,
+      { availability: supported, createWorker: () => worker },
+    );
+    controller.abort();
+    await expect(result).rejects.toMatchObject({ name: "AbortError" });
+    expect(worker.terminate).toHaveBeenCalledOnce();
   });
 });

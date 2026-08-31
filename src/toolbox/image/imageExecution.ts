@@ -19,9 +19,22 @@ type WorkerMessage =
   | { type: "error"; taskId: string; code: "unsupported" | "invalid_input" | "execution_failed"; message: string };
 
 interface ImageExecutionWorker extends Pick<Worker, "postMessage" | "terminate"> {
-  onmessage: ((event: MessageEvent<WorkerMessage>) => void) | null;
+  onmessage: ((event: MessageEvent<unknown>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
   onmessageerror: ((event: MessageEvent<unknown>) => void) | null;
+}
+
+export type ImageTransformMode = "jpeg-quality" | "scale" | "crop";
+
+export interface ImageTransformRequest {
+  mode: ImageTransformMode;
+  quality?: number;
+  scale?: number;
+  cropRatio?: number;
+}
+
+export interface ImageTransformAdapterOptions extends Pick<ImageExecutionAdapterOptions, "createWorker" | "availability"> {
+  deadlineMs?: number;
 }
 
 export interface ImageExecutionAvailability {
@@ -152,7 +165,7 @@ export function createImageExecutionAdapter(options: ImageExecutionAdapterOption
       };
 
       worker.onmessage = (event) => {
-        const message = event.data;
+        const message = event.data as WorkerMessage;
         if (settled || terminated || message.taskId !== request.taskId) return;
         if (message.type === "result") {
           settled = true;
@@ -186,6 +199,123 @@ export function createImageExecutionAdapter(options: ImageExecutionAdapterOption
       return { result, terminate, dispose };
     },
   };
+}
+
+/**
+ * Run a bounded, non-SDK pixel transform in the same task-owned Worker model.
+ * The robustness lab uses this for its declared JPEG/scale/crop cases; using a
+ * second Worker keeps canvas operations out of the page while preserving a
+ * real terminate acknowledgement for cancellation.
+ */
+export function transformImageInWorker(
+  source: Blob,
+  request: ImageTransformRequest,
+  signal: AbortSignal,
+  options: ImageTransformAdapterOptions = {},
+): Promise<Blob> {
+  const availability = options.availability ?? getImageExecutionAvailability();
+  if (!availability.supported) return Promise.reject(new Error(availability.reason ?? "图片受限执行器不可用。"));
+  validateImageTransform(source, request);
+  if (signal.aborted) return Promise.reject(createImageTransformAbortError());
+
+  let worker: ImageExecutionWorker;
+  try {
+    worker = (options.createWorker ?? (() => new Worker(new URL("./image-execution.worker.ts", import.meta.url), { type: "module" })))();
+  } catch (error) {
+    return Promise.reject(new Error(`图片变换 Worker 无法启动：${safeErrorMessage(error)}`));
+  }
+
+  const taskId = crypto.randomUUID();
+  const deadlineMs = options.deadlineMs ?? 60_000;
+  let settled = false;
+  let released = false;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let resolveResult: (value: Blob) => void = () => undefined;
+  let rejectResult: (reason: Error) => void = () => undefined;
+  const result = new Promise<Blob>((resolve, reject) => {
+    resolveResult = resolve;
+    rejectResult = reject;
+  });
+
+  const releaseWorker = () => {
+    if (released) return;
+    released = true;
+    try {
+      worker.terminate();
+    } catch {
+      // A terminated transform Worker has no additional application-owned resources.
+    }
+  };
+  const cleanup = () => {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    worker.onmessage = null;
+    worker.onerror = null;
+    worker.onmessageerror = null;
+    signal.removeEventListener("abort", abort);
+  };
+  const fail = (reason: Error) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    releaseWorker();
+    rejectResult(reason);
+  };
+  const finish = (value: Blob) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    releaseWorker();
+    resolveResult(value);
+  };
+  const abort = () => fail(createImageTransformAbortError());
+
+  worker.onmessage = (event) => {
+    const message = event.data as { type?: unknown; taskId?: unknown; blob?: unknown; error?: unknown };
+    if (message.taskId !== taskId || settled) return;
+    if (message.type === "transform-result" && message.blob instanceof Blob) {
+      finish(message.blob);
+    } else {
+      fail(new Error(typeof message.error === "string" ? message.error : "图片变换失败。"));
+    }
+  };
+  worker.onerror = () => fail(new Error("图片变换 Worker 意外退出。"));
+  worker.onmessageerror = () => fail(new Error("图片变换 Worker 返回了无效结果。"));
+  signal.addEventListener("abort", abort, { once: true });
+  if (deadlineMs > 0) timeout = setTimeout(() => fail(new Error("图片稳健性样本超过单项 60 秒上限。")), deadlineMs);
+
+  try {
+    worker.postMessage({ type: "transform", taskId, source, ...request });
+  } catch (error) {
+    fail(new Error(`图片变换请求无法传入隔离 Worker：${safeErrorMessage(error)}`));
+  }
+  return result;
+}
+
+/**
+ * The signal is a control-plane input only; it is never serialized into the
+ * Worker. Aborting it terminates the transform Worker before the result settles.
+ */
+export function createImageTransformAbortError(): Error {
+  const error = new Error("图片稳健性样本已停止。");
+  error.name = "AbortError";
+  return error;
+}
+
+function validateImageTransform(source: Blob, request: ImageTransformRequest): void {
+  if (!(source instanceof Blob) || source.size > 12 * 1024 * 1024) throw new Error("图片变换输入必须是 12 MiB 以内的本地 Blob。");
+  if (request.mode === "jpeg-quality") {
+    const quality = request.quality;
+    if (typeof quality !== "number" || !Number.isInteger(quality) || quality < 1 || quality > 100) throw new Error("JPEG 样本质量必须是 1 到 100 的整数。");
+    return;
+  }
+  if (request.mode === "scale") {
+    if (typeof request.scale !== "number" || !Number.isFinite(request.scale) || request.scale <= 0 || request.scale > 1) throw new Error("缩放样本比例必须大于 0 且不超过 1。");
+    return;
+  }
+  if (typeof request.cropRatio !== "number" || !Number.isFinite(request.cropRatio) || request.cropRatio < 0 || request.cropRatio > 0.2) throw new Error("裁剪样本比例必须在 0 到 20% 之间。");
 }
 
 /**
