@@ -29,7 +29,7 @@ import { createImageToolRuntime, IMAGE_FONT_MAX_BYTES, IMAGE_OPERATION_DEADLINE_
 import { createBrowserImageInputs, createNativeImageInputs, type ImageRunInputs } from "./imageInputs";
 import { ImageRecipeEditor } from "./ImageRecipeEditor";
 import type { LocalImageEditor } from "./imageEditor";
-import { archiveOutput, markerResultOutput, type ImageOutputDelivery, type ImageOutputPayload } from "./imageOutput";
+import { markerResultOutput, type ImageOutputDelivery, type ImageOutputPayload } from "./imageOutput";
 import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
 import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, registerToolboxOutput, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
@@ -107,9 +107,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     setZipUrl("");
   };
 
-  const publishZip = (bytes: ArrayBuffer) => {
+  const publishZip = (blob: Blob) => {
     if (zipUrlRef.current) URL.revokeObjectURL(zipUrlRef.current);
-    zipUrlRef.current = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+    zipUrlRef.current = URL.createObjectURL(blob);
     setZipUrl(zipUrlRef.current);
   };
 
@@ -387,7 +387,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const batch = toolId === "image-batch-watermark";
     const inputCount = batch ? selectedInputs.count : 1;
     let zipBudget = batch ? createBatchZipBudget([]) : null;
-    const bytes: Array<{ name: string; bytes: ArrayBuffer }> = [];
+    const zipWriter = batch ? createZipWriter(signal, BATCH_MAX_FILES) : null;
     let last: MarkerResult | null = null;
     try {
       for (let index = 0; index < inputCount; index += 1) {
@@ -416,23 +416,25 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           maxSize: IMAGE_MAX_OUTPUT_EDGE,
           filename: safeOutputName(file.name),
         };
-        last = await marker.mark(resources.font ? withLocalImageFonts(markOptions, [resources.font]) : markOptions, imageControl(signal));
+        const output = await marker.mark(resources.font ? withLocalImageFonts(markOptions, [resources.font]) : markOptions, imageControl(signal));
         if (signal.aborted) throw createImageAbortError();
-        if (batch && zipBudget) {
-          const item = resultToZipItem(`${String(index + 1).padStart(2, "0")}-${safeOutputName(file.name)}.png`, last);
+        if (batch && zipBudget && zipWriter) {
+          const item = resultToZipItem(`${String(index + 1).padStart(2, "0")}-${safeOutputName(file.name)}.png`, output);
           zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
-          bytes.push(item);
+          await zipWriter.append(item, zipBudget.inputBytes);
+        } else {
+          last = output;
         }
         setProgress((index + 1) / inputCount);
       }
-      if (batch && zipBudget) {
-        const zipBytes = await zipResults(bytes, zipBudget.inputBytes, signal);
+      if (batch && zipBudget && zipWriter) {
+        const zipBlob = await zipWriter.finish();
         if (signal.aborted) {
           throw createImageAbortError();
         }
-        if (!desktopRuntime) publishZip(zipBytes);
-        setNotice(`批量处理完成：${bytes.length} 张图片按选择顺序写入 ZIP；已执行 20 文件 / 80 MiB 输入 / 512 MiB 输出预算。`);
-        if (desktopRuntime) return archiveOutput(zipBytes);
+        if (!desktopRuntime) publishZip(zipBlob);
+        setNotice(`批量处理完成：${zipBudget.outputFileCount} 张图片按选择顺序写入 ZIP；已执行 20 文件 / 80 MiB 输入 / 512 MiB 输出预算。`);
+        if (desktopRuntime) return { kind: "archive", filename: "corerobin-watermarks.zip", blob: zipBlob };
       } else {
         setResult(last);
         setNotice(last ? resultLabel(last) : "处理完成。");
@@ -440,7 +442,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       }
       return null;
     } finally {
-      bytes.length = 0;
+      zipWriter?.dispose();
     }
   }, { deadlineMs: toolId === "image-batch-watermark" ? 180_000 : IMAGE_OPERATION_DEADLINE_MS, requestNativeLogo: desktopRuntime && requestNativeLogo });
 
@@ -583,7 +585,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const sessionKey = { value: requireOneTimeRecipientKey(promptValue("一次性分发密钥（至少 16 UTF-8 字节；只保留在当前操作内存中）", "")) };
     let delivered = 0;
     let zipBudget = createRecipientZipBudget(file);
-    const outputs: Array<{ name: string; bytes: ArrayBuffer }> = [];
+    const zipWriter = createZipWriter(signal, zipBudget.maxOutputFiles);
     setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: "正在生成本次会话的交付 ZIP。" });
     try {
       for (const [index, value] of values.entries()) {
@@ -592,19 +594,19 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
         if (signal.aborted) throw createImageAbortError("收件人分发已停止。");
         const item = resultToZipItem(`delivery-${String(index + 1).padStart(2, "0")}.png`, output);
         zipBudget = appendBatchZipOutput(zipBudget, item.bytes.byteLength);
-        outputs.push(item);
+        await zipWriter.append(item, zipBudget.inputBytes);
         delivered += 1;
         setProgress(delivered / values.length);
         setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: "正在生成本次会话的交付 ZIP。" });
       }
-      const zipBytes = await zipResults(outputs, zipBudget.inputBytes, signal, zipBudget.maxOutputFiles);
+      const zipBlob = await zipWriter.finish();
       if (signal.aborted) {
         throw createImageAbortError("收件人分发已停止。");
       }
-      if (!desktopRuntime) publishZip(zipBytes);
+      if (!desktopRuntime) publishZip(zipBlob);
       setRecipientDelivery({ status: "ready", requested: values.length, delivered, detail: "交付 ZIP 已就绪；文件按输入顺序编号，locator 映射未持久化。" });
       setNotice(`交付状态：ready。已生成 ${delivered}/${values.length} 个分发样本；一次性密钥和 locator 映射不会由 CoreRobin 保存。`);
-      if (desktopRuntime) return archiveOutput(zipBytes, "corerobin-recipient-delivery.zip");
+      if (desktopRuntime) return { kind: "archive", filename: "corerobin-recipient-delivery.zip", blob: zipBlob };
     } catch (reason) {
       const cancelled = signal.aborted || isAbortError(reason);
       releaseOutputs();
@@ -616,7 +618,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       });
       throw reason;
     } finally {
-      outputs.length = 0;
+      zipWriter.dispose();
       sessionKey.value = "";
     }
     return null;
@@ -687,58 +689,136 @@ function fontFamilyFromFile(name: string): string { return name.replace(/\.(?:tt
 
 function resultToZipItem(name: string, result: MarkerResult): { name: string; bytes: ArrayBuffer } {
   const encoded = dataUrlToBytes(result.uri);
-  return { name, bytes: encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength) as ArrayBuffer };
+  return { name, bytes: encoded.buffer as ArrayBuffer };
 }
 
-async function zipResults(items: Array<{ name: string; bytes: ArrayBuffer }>, inputBytes: number, signal: AbortSignal, maxOutputFiles = BATCH_MAX_FILES): Promise<ArrayBuffer> {
+interface ZipItem {
+  name: string;
+  bytes: ArrayBuffer;
+}
+
+interface ZipWriter {
+  append(item: ZipItem, inputBytes: number): Promise<void>;
+  finish(): Promise<Blob>;
+  dispose(): void;
+}
+
+type ZipWorkerReply = {
+  type: "appended";
+  id: number;
+} | {
+  type: "complete";
+  blob: Blob;
+} | {
+  type: "error";
+  error?: string;
+};
+
+type ZipWorkerPending = {
+  kind: "append";
+  id: number;
+  resolve: () => void;
+  reject: (reason: Error) => void;
+} | {
+  kind: "finish";
+  resolve: (blob: Blob) => void;
+  reject: (reason: Error) => void;
+};
+
+function createZipWriter(signal: AbortSignal, maxOutputFiles: number): ZipWriter {
   if (signal.aborted) throw createImageAbortError("ZIP 生成已停止。");
-  return new Promise((resolve, reject) => {
-    let worker: Worker;
-    let settled = false;
-    const cleanup = () => {
-      worker.onmessage = null;
-      worker.onerror = null;
-      signal.removeEventListener("abort", abort);
-      worker.terminate();
-    };
-    const fail = (reason: Error) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(reason);
-    };
-    const complete = (bytes: ArrayBuffer) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(bytes);
-    };
-    const abort = () => fail(createImageAbortError("ZIP 生成已停止。"));
-    try {
-      worker = new Worker(new URL("./zip.worker.ts", import.meta.url), { type: "module" });
-    } catch (reason) {
-      reject(reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。"));
+  let worker: Worker;
+  try {
+    worker = new Worker(new URL("./zip.worker.ts", import.meta.url), { type: "module" });
+  } catch (reason) {
+    throw reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。");
+  }
+
+  let closed = false;
+  let nextId = 1;
+  let pending: ZipWorkerPending | null = null;
+  const cleanup = () => {
+    worker.onmessage = null;
+    worker.onerror = null;
+    signal.removeEventListener("abort", abort);
+    worker.terminate();
+  };
+  const fail = (reason: Error) => {
+    if (closed) return;
+    closed = true;
+    const current = pending;
+    pending = null;
+    cleanup();
+    current?.reject(reason);
+  };
+  const abort = () => fail(createImageAbortError("ZIP 生成已停止。"));
+  const complete = (blob: Blob) => {
+    if (closed) return;
+    if (!pending || pending.kind !== "finish") {
+      fail(new Error("ZIP Worker 返回了无效的完成状态。"));
       return;
     }
-    signal.addEventListener("abort", abort, { once: true });
-    worker.onmessage = (event: MessageEvent<{ ok: boolean; bytes?: ArrayBuffer; error?: string }>) => {
-      if (!event.data.ok || !event.data.bytes) {
-        fail(new Error(event.data.error ?? "ZIP 生成失败。"));
-        return;
-      }
-      if (signal.aborted) {
-        fail(createImageAbortError("ZIP 生成已停止。"));
-        return;
-      }
-      try {
-        complete(event.data.bytes);
-      } catch (reason) {
-        fail(reason instanceof Error ? reason : new Error("无法创建 ZIP 下载输出。"));
-      }
-    };
-    worker.onerror = () => fail(new Error("ZIP Worker 无法启动。"));
-    worker.postMessage({ items, inputBytes, maxOutputFiles }, items.map((item) => item.bytes));
-  });
+    closed = true;
+    const current = pending;
+    pending = null;
+    cleanup();
+    current.resolve(blob);
+  };
+
+  signal.addEventListener("abort", abort, { once: true });
+  worker.onmessage = (event: MessageEvent<ZipWorkerReply>) => {
+    const reply = event.data;
+    if (reply.type === "error") {
+      fail(new Error(reply.error ?? "ZIP 生成失败。"));
+    } else if (reply.type === "complete") {
+      complete(reply.blob);
+    } else if (!pending || pending.kind !== "append" || pending.id !== reply.id) {
+      fail(new Error("ZIP Worker 返回了无效的分块状态。"));
+    } else {
+      const current = pending;
+      pending = null;
+      current.resolve();
+    }
+  };
+  worker.onerror = () => fail(new Error("ZIP Worker 无法启动。"));
+  try {
+    worker.postMessage({ type: "start", maxOutputFiles });
+  } catch (reason) {
+    fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。"));
+    throw reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。");
+  }
+
+  return {
+    append(item, inputBytes) {
+      if (signal.aborted) return Promise.reject(createImageAbortError("ZIP 生成已停止。"));
+      if (closed) return Promise.reject(new Error("ZIP 生成已结束。"));
+      if (pending) return Promise.reject(new Error("ZIP Worker 正在处理前一项输出。"));
+      const id = nextId;
+      nextId += 1;
+      return new Promise((resolve, reject) => {
+        pending = { kind: "append", id, resolve, reject };
+        try {
+          worker.postMessage({ type: "append", id, inputBytes, item }, [item.bytes]);
+        } catch (reason) {
+          fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法接收输出。"));
+        }
+      });
+    },
+    finish() {
+      if (signal.aborted) return Promise.reject(createImageAbortError("ZIP 生成已停止。"));
+      if (closed) return Promise.reject(new Error("ZIP 生成已结束。"));
+      if (pending) return Promise.reject(new Error("ZIP Worker 正在处理前一项输出。"));
+      return new Promise((resolve, reject) => {
+        pending = { kind: "finish", resolve, reject };
+        try {
+          worker.postMessage({ type: "finish" });
+        } catch (reason) {
+          fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法完成归档。"));
+        }
+      });
+    },
+    dispose() {
+      fail(new Error("ZIP 生成已释放。"));
+    },
+  };
 }
