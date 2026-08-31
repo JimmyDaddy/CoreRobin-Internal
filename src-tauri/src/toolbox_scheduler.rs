@@ -108,7 +108,6 @@ pub struct SchedulerSnapshot {
 pub struct SchedulerActionIntent {
     pub schedule_id: String,
     pub schedule_revision: u64,
-    pub title: Option<String>,
     pub action: SchedulerAction,
     pub scheduled_at_ms: u64,
     pub epoch: u64,
@@ -333,14 +332,13 @@ impl ToolboxScheduler {
                     rule.schedule_id.clone(),
                     rule.revision,
                     rule.next_scheduled_at_utc_ms.unwrap_or_default(),
-                    rule.title.clone(),
                     rule.action.clone(),
                     rule.trigger.clone(),
                 )
             })
             .collect::<Vec<_>>();
         let mut intents = Vec::new();
-        for (schedule_id, schedule_revision, scheduled_at_ms, title, action, trigger) in due {
+        for (schedule_id, schedule_revision, scheduled_at_ms, action, trigger) in due {
             // A schedule that was missed while the app was stopped is advanced without
             // dispatch. The one-second grace window is only for an active runtime poll.
             if now_ms.saturating_sub(scheduled_at_ms) > 5_000 {
@@ -371,7 +369,6 @@ impl ToolboxScheduler {
             intents.push(SchedulerActionIntent {
                 schedule_id,
                 schedule_revision,
-                title,
                 action: public_action(&action),
                 scheduled_at_ms,
                 epoch,
@@ -1182,7 +1179,6 @@ mod tests {
 
         let intents = scheduler.poll_due(NOW_MS + 1_000).expect("poll due rules");
         assert_eq!(intents.len(), 1);
-        assert_eq!(intents[0].title.as_deref(), Some("Lunch reminder"));
         assert!(
             scheduler
                 .poll_due(NOW_MS + 1_001)

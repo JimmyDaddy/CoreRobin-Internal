@@ -149,7 +149,10 @@ use toolbox_scheduler::{
     SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest, SchedulerSnapshot,
     ToolboxScheduler,
 };
-use toolbox_service::{CancelToolboxJobRequest, FinishToolboxJobRequest, ToolboxService};
+use toolbox_service::{
+    CancelToolboxJobRequest, CancelToolboxOutputRequest, ExportToolboxOutputRequest,
+    FinishToolboxJobRequest, RegisterToolboxOutputRequest, ToolboxService,
+};
 use toolbox_storage::{
     ToolboxHistoryPage, ToolboxPolicy, ToolboxPolicyConfigureRequest, ToolboxStorage,
     ToolboxStorageError, ToolboxStorageSnapshot,
@@ -445,16 +448,11 @@ fn dispatch_toolbox_schedule_intent(
 ) -> SchedulerIntentOutcome {
     match &intent.action {
         SchedulerAction::Reminder => {
-            let body = intent
-                .title
-                .as_deref()
-                .unwrap_or("CoreRobin 定时提醒")
-                .to_owned();
             let delivered = app
                 .notification()
                 .builder()
                 .title("CoreRobin")
-                .body(body)
+                .body("CoreRobin 定时提醒")
                 .show()
                 .is_ok();
             if delivered {
@@ -2485,6 +2483,82 @@ fn finish_toolbox_job(
         .finish(request)
 }
 
+#[tauri::command]
+fn register_toolbox_output(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: RegisterToolboxOutputRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .register_output(request)
+}
+
+#[tauri::command]
+async fn export_toolbox_output(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ExportToolboxOutputRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let output = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .begin_output_export(&request)?;
+    let target = std::path::PathBuf::from(&request.path);
+    let byte_length = output.bytes.len() as u64;
+    let cancel = Arc::clone(&output.cancel);
+    let copy_result = tauri::async_runtime::spawn_blocking(move || {
+        toolbox_export::write_reader_copy(
+            &target,
+            &mut std::io::Cursor::new(output.bytes),
+            byte_length,
+            cancel.as_ref(),
+            || Ok(()),
+        )
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Export task failed: {error}")))?;
+    let error = copy_result
+        .as_ref()
+        .err()
+        .map(|error| crate::toolbox_contracts::ToolboxError {
+            code: error.code.clone(),
+            message: error.message.clone(),
+            retryable: !matches!(error.code.as_str(), "cancelled" | "output_changed"),
+        });
+    let completed = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .complete_output_export(&request, copy_result.is_ok(), error)?;
+    match copy_result {
+        Ok(()) => Ok(completed),
+        Err(error) => {
+            let _ = completed;
+            Err(error)
+        }
+    }
+}
+
+#[tauri::command]
+fn cancel_toolbox_output(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: CancelToolboxOutputRequest,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .cancel_output(request)
+}
+
 fn toolbox_storage_error(error: ToolboxStorageError) -> CommandError {
     let code = match error {
         ToolboxStorageError::PolicyRevisionConflict { .. } => "policy_revision_conflict",
@@ -3105,6 +3179,9 @@ pub fn run() {
             start_toolbox_session,
             cancel_toolbox_job,
             finish_toolbox_job,
+            register_toolbox_output,
+            export_toolbox_output,
+            cancel_toolbox_output,
             clear_toolbox_data,
             get_toolbox_storage_snapshot,
             configure_toolbox_policy,

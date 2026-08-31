@@ -13,6 +13,8 @@ import {
   type ToolId,
   type ToolboxInputToken,
   type ToolboxFileJobKey,
+  type ToolboxOutputToken,
+  type OutputValidation,
 } from "./contracts";
 
 export const TOOLBOX_EVENT = "core-robin:toolbox-event";
@@ -60,6 +62,37 @@ export async function cancelToolboxJob(request: ToolboxRequest & { jobId: string
 
 export async function finishToolboxJob(request: ToolboxRequest & { jobId: string; succeeded: boolean; error?: ToolboxError | null }): Promise<ToolboxJob> {
   return invoke<ToolboxJob>("finish_toolbox_job", { request });
+}
+
+export async function registerToolboxOutput(request: ToolboxRequest & {
+  jobId: string;
+  generation: number;
+  resetEpoch: number;
+  bytes: Uint8Array;
+  validation: OutputValidation;
+}): Promise<ToolboxJob> {
+  return invoke<ToolboxJob>("register_toolbox_output", { request });
+}
+
+export async function exportToolboxOutput(request: {
+  requestId: string;
+  jobId: string;
+  outputToken: ToolboxOutputToken["token"];
+  generation: number;
+  resetEpoch: number;
+  path: string;
+}): Promise<ToolboxJob> {
+  return invoke<ToolboxJob>("export_toolbox_output", { request });
+}
+
+export async function cancelToolboxOutput(request: {
+  requestId: string;
+  jobId: string;
+  outputToken: ToolboxOutputToken["token"];
+  generation: number;
+  resetEpoch: number;
+}): Promise<boolean> {
+  return invoke<boolean>("cancel_toolbox_output", { request });
 }
 
 export async function clearToolboxData(request: ToolboxRequest): Promise<ToolboxSnapshot> {

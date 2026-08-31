@@ -1,11 +1,15 @@
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
 use crate::toolbox_contracts::{
-    JobStatus, TOOLBOX_CONTRACT_VERSION, TerminalReason, ToolboxCapability, ToolboxJob,
-    ToolboxJobRequest, ToolboxResource, ToolboxSession, ToolboxSnapshot,
+    JobStatus, OutputValidation, TOOLBOX_CONTRACT_VERSION, TerminalReason, ToolboxCapability,
+    ToolboxError, ToolboxJob, ToolboxJobRequest, ToolboxOutputToken, ToolboxResource,
+    ToolboxSession, ToolboxSnapshot,
 };
 use crate::toolbox_inputs::{FileJobKey, ToolboxInputs, opaque_id};
 
@@ -25,6 +29,43 @@ pub struct FinishToolboxJobRequest {
     pub expected_revision: Option<u64>,
     pub succeeded: bool,
     pub error: Option<crate::toolbox_contracts::ToolboxError>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RegisterToolboxOutputRequest {
+    pub request_id: String,
+    pub job_id: String,
+    pub generation: u64,
+    pub reset_epoch: u64,
+    pub bytes: Vec<u8>,
+    pub validation: OutputValidation,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExportToolboxOutputRequest {
+    pub request_id: String,
+    pub job_id: String,
+    pub output_token: String,
+    pub generation: u64,
+    pub reset_epoch: u64,
+    pub path: String,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CancelToolboxOutputRequest {
+    pub request_id: String,
+    pub job_id: String,
+    pub output_token: String,
+    pub generation: u64,
+    pub reset_epoch: u64,
+}
+
+pub(crate) struct ToolboxOutputExport {
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) cancel: Arc<AtomicBool>,
 }
 
 const TOOL_IDS: &[&str] = &[
@@ -86,6 +127,7 @@ const WEB_MANAGED_TOOL_IDS: &[&str] = &[
     "patch-planner",
 ];
 const OUTPUT_TTL_MS: u64 = 10 * 60 * 1_000;
+const MAX_OUTPUT_BYTES: usize = 512 * 1024 * 1024;
 
 fn is_heavy_tool(tool_id: &str) -> bool {
     matches!(
@@ -118,6 +160,8 @@ pub struct ToolboxService {
     sessions: HashMap<String, ToolboxSession>,
     jobs: HashMap<String, ToolboxJob>,
     request_results: HashMap<String, ToolboxJob>,
+    outputs: HashMap<String, Vec<u8>>,
+    output_cancellations: HashMap<String, Arc<AtomicBool>>,
     inputs: Arc<ToolboxInputs>,
     clearing: bool,
 }
@@ -323,6 +367,7 @@ impl ToolboxService {
             generation,
             reset_epoch: self.reset_epoch,
             output_expires_at_ms: None,
+            output_token: None,
             terminal_reason: None,
             error: None,
         };
@@ -354,6 +399,12 @@ impl ToolboxService {
                 "The toolbox job no longer exists.",
             ));
         };
+        if matches!(job.status, JobStatus::OutputReady | JobStatus::Exporting) {
+            return Err(CommandError::new(
+                "output_pending",
+                "The job has a prepared output; export it or cancel it before finishing.",
+            ));
+        }
         if !matches!(
             job.status,
             JobStatus::Completed | JobStatus::Cancelled | JobStatus::Expired | JobStatus::Failed
@@ -383,6 +434,222 @@ impl ToolboxService {
         }
         self.request_results.insert(request.request_id, job.clone());
         Ok(job.clone())
+    }
+
+    pub fn register_output(
+        &mut self,
+        request: RegisterToolboxOutputRequest,
+    ) -> Result<ToolboxJob, CommandError> {
+        self.reconcile();
+        validate_output_request(
+            &request.request_id,
+            &request.job_id,
+            request.generation,
+            request.reset_epoch,
+        )?;
+        if request.bytes.is_empty() {
+            return Err(CommandError::new(
+                "empty_output",
+                "A formal output must contain at least one byte.",
+            ));
+        }
+        if request.bytes.len() > MAX_OUTPUT_BYTES {
+            return Err(CommandError::new(
+                "output_too_large",
+                "The prepared output exceeds the 512 MiB temporary budget.",
+            ));
+        }
+        if request.validation == OutputValidation::Failed {
+            return Err(CommandError::new(
+                "output_unverified",
+                "A failed validation cannot become a formal output.",
+            ));
+        }
+        let Some(job) = self.jobs.get_mut(&request.job_id) else {
+            return Err(CommandError::new(
+                "job_not_found",
+                "The toolbox job no longer exists.",
+            ));
+        };
+        validate_job_identity(job, request.generation, request.reset_epoch)?;
+        if job.status != JobStatus::Running {
+            return Err(CommandError::new(
+                "job_not_running",
+                "Only a running job can publish a prepared output.",
+            ));
+        }
+        let token = opaque_id()?;
+        let expires_at_ms =
+            (now_millis().min(u64::MAX as u128) as u64).saturating_add(OUTPUT_TTL_MS);
+        let output_token = ToolboxOutputToken {
+            token: token.clone(),
+            job_id: request.job_id.clone(),
+            generation: request.generation,
+            reset_epoch: request.reset_epoch,
+            byte_length: request.bytes.len() as u64,
+            expires_at_ms,
+            validation: request.validation,
+        };
+        job.status = JobStatus::OutputReady;
+        job.output_expires_at_ms = Some(expires_at_ms);
+        job.output_token = Some(output_token);
+        job.terminal_reason = None;
+        job.error = None;
+        self.outputs.insert(token, request.bytes);
+        self.revision = self.revision.saturating_add(1);
+        let snapshot = job.clone();
+        self.request_results
+            .insert(request.request_id, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    pub(crate) fn begin_output_export(
+        &mut self,
+        request: &ExportToolboxOutputRequest,
+    ) -> Result<ToolboxOutputExport, CommandError> {
+        self.reconcile();
+        validate_output_request(
+            &request.request_id,
+            &request.job_id,
+            request.generation,
+            request.reset_epoch,
+        )?;
+        let Some(job) = self.jobs.get_mut(&request.job_id) else {
+            return Err(CommandError::new(
+                "job_not_found",
+                "The toolbox job no longer exists.",
+            ));
+        };
+        validate_job_identity(job, request.generation, request.reset_epoch)?;
+        if job.status != JobStatus::OutputReady {
+            return Err(CommandError::new(
+                "output_not_ready",
+                "The toolbox output is not ready for export.",
+            ));
+        }
+        if job
+            .output_token
+            .as_ref()
+            .is_none_or(|output| output.token != request.output_token)
+        {
+            return Err(CommandError::new(
+                "invalid_output_token",
+                "The output token does not belong to this job.",
+            ));
+        }
+        let bytes = self
+            .outputs
+            .get(&request.output_token)
+            .cloned()
+            .ok_or_else(|| {
+                CommandError::new(
+                    "output_expired",
+                    "The prepared output is no longer available.",
+                )
+            })?;
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.output_cancellations
+            .insert(request.job_id.clone(), Arc::clone(&cancel));
+        job.status = JobStatus::Exporting;
+        self.revision = self.revision.saturating_add(1);
+        Ok(ToolboxOutputExport { bytes, cancel })
+    }
+
+    pub(crate) fn complete_output_export(
+        &mut self,
+        request: &ExportToolboxOutputRequest,
+        succeeded: bool,
+        error: Option<ToolboxError>,
+    ) -> Result<ToolboxJob, CommandError> {
+        let Some(job) = self.jobs.get_mut(&request.job_id) else {
+            return Err(CommandError::new(
+                "job_not_found",
+                "The toolbox job no longer exists.",
+            ));
+        };
+        validate_job_identity(job, request.generation, request.reset_epoch)?;
+        if job.status != JobStatus::Exporting
+            || job
+                .output_token
+                .as_ref()
+                .is_none_or(|output| output.token != request.output_token)
+        {
+            return Err(CommandError::new(
+                "output_not_exporting",
+                "The toolbox output is no longer being exported.",
+            ));
+        }
+        self.output_cancellations.remove(&request.job_id);
+        if succeeded {
+            self.outputs.remove(&request.output_token);
+            job.status = JobStatus::Completed;
+            job.output_token = None;
+            job.output_expires_at_ms = None;
+            job.terminal_reason = Some(TerminalReason::Completed);
+            job.error = None;
+            if let Some(session) = self.sessions.get_mut(&job.session_id) {
+                session.status = crate::toolbox_contracts::SessionStatus::Ended;
+                session.terminal_reason = job.terminal_reason.clone();
+            }
+        } else {
+            job.status = JobStatus::OutputReady;
+            job.error = error;
+        }
+        self.revision = self.revision.saturating_add(1);
+        let snapshot = job.clone();
+        self.request_results
+            .insert(request.request_id.clone(), snapshot.clone());
+        Ok(snapshot)
+    }
+
+    pub fn cancel_output(
+        &mut self,
+        request: CancelToolboxOutputRequest,
+    ) -> Result<bool, CommandError> {
+        validate_output_request(
+            &request.request_id,
+            &request.job_id,
+            request.generation,
+            request.reset_epoch,
+        )?;
+        let Some(job) = self.jobs.get_mut(&request.job_id) else {
+            return Err(CommandError::new(
+                "job_not_found",
+                "The toolbox job no longer exists.",
+            ));
+        };
+        validate_job_identity(job, request.generation, request.reset_epoch)?;
+        if job
+            .output_token
+            .as_ref()
+            .is_none_or(|output| output.token != request.output_token)
+        {
+            return Err(CommandError::new(
+                "invalid_output_token",
+                "The output token does not belong to this job.",
+            ));
+        }
+        if job.status == JobStatus::Exporting {
+            if let Some(cancel) = self.output_cancellations.get(&request.job_id) {
+                cancel.store(true, Ordering::Release);
+                return Ok(true);
+            }
+            return Ok(false);
+        }
+        if job.status != JobStatus::OutputReady {
+            return Ok(false);
+        }
+        self.outputs.remove(&request.output_token);
+        job.output_token = None;
+        job.output_expires_at_ms = None;
+        job.status = JobStatus::Cancelled;
+        job.terminal_reason = Some(TerminalReason::Cancelled);
+        if let Some(session) = self.sessions.get_mut(&job.session_id) {
+            session.status = crate::toolbox_contracts::SessionStatus::Ended;
+            session.terminal_reason = job.terminal_reason.clone();
+        }
+        self.revision = self.revision.saturating_add(1);
+        Ok(true)
     }
 
     pub fn cancel(
@@ -481,6 +748,11 @@ impl ToolboxService {
         self.sessions.clear();
         self.jobs.clear();
         self.request_results.clear();
+        self.outputs.clear();
+        for cancel in self.output_cancellations.values() {
+            cancel.store(true, Ordering::Release);
+        }
+        self.output_cancellations.clear();
         self.clearing = false;
         Ok(self.snapshot())
     }
@@ -533,6 +805,7 @@ impl ToolboxService {
     }
 
     fn reconcile_at(&mut self, now_ms: u64) {
+        let mut expired_outputs = Vec::new();
         for job in self.jobs.values_mut() {
             if job.status == JobStatus::Stopping {
                 if self.inputs.cancel(&job.job_id) {
@@ -553,7 +826,21 @@ impl ToolboxService {
             {
                 job.status = JobStatus::Expired;
                 job.terminal_reason = Some(TerminalReason::Expired);
+                if let Some(output) = job.output_token.take() {
+                    expired_outputs.push((job.job_id.clone(), output.token));
+                }
+                job.output_expires_at_ms = None;
+                if let Some(session) = self.sessions.get_mut(&job.session_id) {
+                    session.status = crate::toolbox_contracts::SessionStatus::Ended;
+                    session.terminal_reason = job.terminal_reason.clone();
+                }
                 self.revision = self.revision.saturating_add(1);
+            }
+        }
+        for (job_id, token) in expired_outputs {
+            self.outputs.remove(&token);
+            if let Some(cancel) = self.output_cancellations.remove(&job_id) {
+                cancel.store(true, Ordering::Release);
             }
         }
     }
@@ -562,6 +849,45 @@ impl ToolboxService {
     fn seed_job(&mut self, job: ToolboxJob) {
         self.jobs.insert(job.job_id.clone(), job);
     }
+}
+
+fn validate_output_request(
+    request_id: &str,
+    job_id: &str,
+    generation: u64,
+    reset_epoch: u64,
+) -> Result<(), CommandError> {
+    if request_id.trim().is_empty()
+        || request_id.len() > 128
+        || job_id.trim().is_empty()
+        || job_id.len() > 128
+    {
+        return Err(CommandError::new(
+            "invalid_request",
+            "requestId and jobId are required.",
+        ));
+    }
+    if generation > u64::MAX / 2 || reset_epoch > u64::MAX / 2 {
+        return Err(CommandError::new(
+            "invalid_request",
+            "The job generation or reset epoch is invalid.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_job_identity(
+    job: &ToolboxJob,
+    generation: u64,
+    reset_epoch: u64,
+) -> Result<(), CommandError> {
+    if job.generation != generation || job.reset_epoch != reset_epoch {
+        return Err(CommandError::new(
+            "stale_job",
+            "The toolbox job belongs to an earlier page or reset.",
+        ));
+    }
+    Ok(())
 }
 
 fn now_millis() -> u128 {
@@ -604,6 +930,7 @@ mod tests {
             generation: 1,
             reset_epoch: 0,
             output_expires_at_ms: None,
+            output_token: None,
             terminal_reason: None,
             error: None,
         });
@@ -644,6 +971,63 @@ mod tests {
             service.snapshot().sessions[0].status,
             crate::toolbox_contracts::SessionStatus::Ended
         );
+    }
+
+    #[test]
+    fn output_moves_through_ready_exporting_and_retryable_failure() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "output-start".into(),
+                    expected_revision: None,
+                    generation: Some(4),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let ready = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: "output-register".into(),
+                job_id: job.job_id.clone(),
+                generation: 4,
+                reset_epoch: 0,
+                bytes: vec![1, 2, 3],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+        assert_eq!(ready.status, JobStatus::OutputReady);
+        let output_token = ready.output_token.as_ref().unwrap().token.clone();
+        let export = ExportToolboxOutputRequest {
+            request_id: "output-export".into(),
+            job_id: job.job_id.clone(),
+            output_token: output_token.clone(),
+            generation: 4,
+            reset_epoch: 0,
+            path: "/tmp/output.bin".into(),
+        };
+        assert_eq!(
+            service.begin_output_export(&export).unwrap().bytes,
+            vec![1, 2, 3]
+        );
+        let failed = service
+            .complete_output_export(
+                &export,
+                false,
+                Some(ToolboxError {
+                    code: "target_exists".into(),
+                    message: "destination exists".into(),
+                    retryable: true,
+                }),
+            )
+            .unwrap();
+        assert_eq!(failed.status, JobStatus::OutputReady);
+        assert!(service.begin_output_export(&export).is_ok());
+        let completed = service.complete_output_export(&export, true, None).unwrap();
+        assert_eq!(completed.status, JobStatus::Completed);
+        assert!(completed.output_token.is_none());
     }
 
     #[test]

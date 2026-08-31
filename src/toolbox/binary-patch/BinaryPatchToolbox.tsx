@@ -14,11 +14,17 @@ import {
   runWithPatchDeadline,
 } from "./binaryPatchTools";
 import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
-import { cancelToolboxJob, finishToolboxJob, newToolboxRequest, startToolboxSession } from "../client";
+import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, registerToolboxOutput, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
 
 type BinaryToolId = Extract<ToolId, "binary-patch-create" | "binary-patch-apply" | "binary-patch-inspector" | "integrity-manifest" | "transfer-savings" | "patch-errors" | "patch-planner">;
 const MAX_BINARY_BYTES = 64 * 1024 * 1024;
+
+interface BinaryOutput {
+  bytes: Uint8Array;
+  filename: string;
+  validation: "verified" | "unverified";
+}
 
 export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const [baseline, setBaseline] = useState<File | null>(null);
@@ -30,10 +36,27 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const [downloadUrl, setDownloadUrl] = useState("");
   const [downloadName, setDownloadName] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [running, setRunning] = useState(false);
+  const [nativeOutput, setNativeOutput] = useState<ToolboxJob | null>(null);
+  const nativeOutputRef = useRef<ToolboxJob | null>(null);
+  const [nativeOutputName, setNativeOutputName] = useState("");
   const controllerRef = useRef<AbortController | null>(null);
 
+  const setPreparedOutput = (job: ToolboxJob | null, filename = "") => {
+    nativeOutputRef.current = job;
+    setNativeOutput(job);
+    setNativeOutputName(filename);
+  };
+
   useEffect(() => () => { controllerRef.current?.abort(); }, []);
+  useEffect(() => () => {
+    const job = nativeOutputRef.current;
+    const output = job?.outputToken;
+    if (job && output) {
+      void cancelToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch });
+    }
+  }, []);
   useEffect(() => () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl); }, [downloadUrl]);
 
   const choose = (setter: (file: File | null) => void) => (event: ChangeEvent<HTMLInputElement>) => setter(event.target.files?.[0] ?? null);
@@ -49,8 +72,8 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     setDownloadName("");
   };
 
-  const run = async (task: (signal: AbortSignal) => Promise<void>) => {
-    if (running) return;
+  const run = async (task: (signal: AbortSignal) => Promise<BinaryOutput | null>) => {
+    if (running || nativeOutputRef.current) return;
     const controller = new AbortController();
     controllerRef.current = controller;
     setRunning(true);
@@ -60,8 +83,21 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     let nativeJob: ToolboxJob | null = null;
     try {
       if (isDesktopRuntime()) nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
-      await runWithPatchDeadline(task, controller.signal, PATCH_PLANNER_DEADLINE_MS);
-      if (nativeJob) await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
+      const formalOutput = await runWithPatchDeadline(task, controller.signal, PATCH_PLANNER_DEADLINE_MS);
+      if (nativeJob && formalOutput) {
+        const ready = await registerToolboxOutput({
+          ...newToolboxRequest(),
+          jobId: nativeJob.jobId,
+          generation: nativeJob.generation,
+          resetEpoch: nativeJob.resetEpoch,
+          bytes: formalOutput.bytes,
+          validation: formalOutput.validation,
+        });
+        setPreparedOutput(ready, formalOutput.filename);
+        setOutput((current) => `${current}\n\n原生输出已准备完成；请在 10 分钟内选择正式另存。`);
+      } else if (nativeJob) {
+        await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
+      }
     } catch (reason) {
       if (nativeJob) {
         try {
@@ -79,6 +115,36 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         setError("任务已取消（cancelled）；未生成可下载结果。");
       } else setError(classifyPatchError(reason).message);
     } finally { controllerRef.current = null; setRunning(false); }
+  };
+
+  const saveNativeOutput = async () => {
+    const job = nativeOutputRef.current;
+    const output = job?.outputToken;
+    if (!job || !output) return;
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const selected = await save({ defaultPath: nativeOutputName || "corerobin-output.bin" });
+      if (!selected) return;
+      await exportToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch, path: selected });
+      setPreparedOutput(null);
+      setNotice("输出已完成原子另存；源文件未被覆盖。");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "正式输出另存失败；可在 TTL 内重试。");
+    }
+  };
+
+  const cancelNativeOutput = async () => {
+    const job = nativeOutputRef.current;
+    const output = job?.outputToken;
+    if (!job || !output) return;
+    try {
+      await cancelToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch });
+      setPreparedOutput(null);
+      clearDownload();
+      setNotice("临时输出已取消并释放。");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "临时输出释放未确认。");
+    }
   };
 
   const read = async (file: File | null, role: string, max = MAX_BINARY_BYTES): Promise<Uint8Array> => {
@@ -113,7 +179,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         const result = await generateVerifiedPatch(await read(baseline, "基线"), await read(target, "目标", 16 * 1024 * 1024), signal);
         setOutput(JSON.stringify({ verification: result.verification, baselineSha256: result.baselineSha256, targetSha256: result.targetSha256 }, null, 2));
         setDownload(result.patch, "corerobin.endsley.patch", "application/octet-stream");
-        return;
+        return { bytes: result.patch, filename: "corerobin.endsley.patch", validation: "verified" };
       }
       if (toolId === "binary-patch-apply") {
         const applied = await applyPatchAndVerify(await read(baseline, "基线", 16 * 1024 * 1024), await read(patch, "补丁"), expected ? await read(expected, "预期目标") : undefined, signal);
@@ -122,29 +188,31 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
           setOutput(JSON.stringify(unverified, null, 2));
           if (!window.confirm("未提供预期目标，输出为 unverified，无法验证是否正确。确认仅另存此副本吗？")) {
             setError("未验证结果未获确认，未提供下载。 ");
-            return;
+            throw new Error("未验证输出未获确认，已取消正式结果。");
           }
         } else setOutput(JSON.stringify(applied.verification, null, 2));
         setDownload(applied.output, "corerobin-restored.bin", "application/octet-stream");
-        return;
+        return { bytes: applied.output, filename: "corerobin-restored.bin", validation: applied.verification ? "verified" : "unverified" };
       }
       if (toolId === "binary-patch-inspector") {
         setOutput(JSON.stringify(await inspectPatchSafely(await read(patch, "补丁")), null, 2));
-        return;
+        return null;
       }
       if (toolId === "integrity-manifest") {
         const baselineBytes = await read(baseline, "基线");
         const targetBytes = await read(target, "目标");
         const patchBytes = await read(patch, "补丁");
         setOutput(manifestJson(await makePatchManifest(baselineBytes, patchBytes, targetBytes, { baseline: baseline?.name, patch: patch?.name, target: target?.name })));
-        return;
+        return null;
       }
       if (toolId === "patch-planner") {
         const targetBytes = await read(target, "目标", 16 * 1024 * 1024);
         const bases = [];
         for (const file of plannerBaselines) bases.push({ name: file.name, data: await read(file, "基线", 16 * 1024 * 1024) });
         setOutput(JSON.stringify(await planPatches(targetBytes, bases, 0.8, signal), (_key, value) => value instanceof Uint8Array ? `[${value.byteLength} bytes]` : value, 2));
+        return null;
       }
+      return null;
     });
   };
 
@@ -154,10 +222,11 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     <p className="toolbox-hint">补丁保持二进制；生成后必须逐字节验证。无预期目标的应用结果标记为 unverified，只有明确确认后才能另存副本。ENDSLEY/BSDIFF43 可生成/应用，BSDIFF40 仅检查。</p>
     {needs.map((label) => label === "baseline" ? <FileInput key={label} label="基线" file={baseline} onChange={choose(setBaseline)} /> : label === "target" ? <FileInput key={label} label="目标" file={target} onChange={choose(setTarget)} /> : label === "patch" ? <FileInput key={label} label="补丁" file={patch} onChange={choose(setPatch)} /> : label.startsWith("expected") ? <FileInput key={label} label="预期目标（可选）" file={expected} onChange={choose(setExpected)} optional /> : <FileInput key={label} label="发布基线（最多 8 个）" files={plannerBaselines} onChange={chooseMany} multiple />)}
     {toolId === "binary-patch-apply" && !expected ? <p className="toolbox-error" role="alert">未选择预期目标：结果将标记为 unverified，另存前必须再次确认。</p> : null}
-    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { setOutput(""); setError(""); clearDownload(); }}><Trash2 size={14} />清空</button></div>
-    {error ? <p className="toolbox-error" role="alert">{error}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
-    {downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />另存结果副本</a> : null}
-  </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；本页面不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
+    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? "正在处理…" : binaryActionLabel(toolId)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />停止</button> : null}<button className="button button--secondary" type="button" onClick={() => { void cancelNativeOutput(); setOutput(""); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />清空</button></div>
+    {error ? <p className="toolbox-error" role="alert">{error}</p> : null}{notice ? <p className="toolbox-hint">{notice}</p> : null}<pre className="toolbox-result__pre">{output}</pre>
+    {nativeOutput?.outputToken ? <div className="toolbox-inline-actions"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />正式另存结果</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>取消临时输出</button><span className="toolbox-hint">原生输出 {Math.ceil(nativeOutput.outputToken.byteLength / 1024)} KiB，剩余约 10 分钟</span></div> : null}
+    {downloadUrl ? <a className="button button--secondary" download={downloadName} href={downloadUrl}><Download size={14} />下载预览副本（非正式导出）</a> : null}
+  </div><div className="toolbox-tool-layout__footer"><span>BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的取消 deadline；正式输出经过原生 TTL、验证和原子另存，不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。</span></div></div>;
 }
 
 function toToolboxError(reason: unknown): ToolboxError {

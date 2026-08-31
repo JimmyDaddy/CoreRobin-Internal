@@ -35,6 +35,14 @@ pub enum JobStatus {
     Failed,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputValidation {
+    Unverified,
+    Verified,
+    Failed,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TerminalReason {
@@ -112,8 +120,21 @@ pub struct ToolboxJob {
     pub generation: u64,
     pub reset_epoch: u64,
     pub output_expires_at_ms: Option<u64>,
+    pub output_token: Option<ToolboxOutputToken>,
     pub terminal_reason: Option<TerminalReason>,
     pub error: Option<ToolboxError>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolboxOutputToken {
+    pub token: String,
+    pub job_id: String,
+    pub generation: u64,
+    pub reset_epoch: u64,
+    pub byte_length: u64,
+    pub expires_at_ms: u64,
+    pub validation: OutputValidation,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]

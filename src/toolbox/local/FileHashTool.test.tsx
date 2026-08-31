@@ -14,7 +14,7 @@ vi.mock("../client", () => ({
 }));
 import { FileHashTool } from "./FileHashTool";
 
-const job: ToolboxJob = { jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, terminalReason: null, error: null };
+const job: ToolboxJob = { jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, outputToken: null, terminalReason: null, error: null };
 
 beforeEach(() => {
   vi.clearAllMocks();

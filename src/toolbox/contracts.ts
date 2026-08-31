@@ -60,6 +60,8 @@ export type JobStatus =
   | "expired"
   | "failed";
 
+export type OutputValidation = "unverified" | "verified" | "failed";
+
 export type TerminalReason =
   | "completed"
   | "cancelled"
@@ -107,6 +109,7 @@ export interface ToolboxJob {
   generation: number;
   resetEpoch: number;
   outputExpiresAtMs: number | null;
+  outputToken: ToolboxOutputToken | null;
   terminalReason: TerminalReason | null;
   error: ToolboxError | null;
 }
@@ -165,7 +168,7 @@ export interface ToolboxOutputToken {
   resetEpoch: number;
   byteLength: number;
   expiresAtMs: number;
-  validation: "unverified" | "verified" | "failed";
+  validation: OutputValidation;
 }
 
 export interface ToolboxProgress {
