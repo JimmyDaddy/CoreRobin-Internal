@@ -43,6 +43,7 @@ import "./toolbox.css";
 const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
 const BinaryPatchToolbox = lazy(async () => ({ default: (await import("./binary-patch/BinaryPatchToolbox")).BinaryPatchToolbox }));
 const NetworkAddressesTool = lazy(async () => ({ default: (await import("./network/NetworkAddressesTool")).NetworkAddressesTool }));
+const KeyboardCleaningTool = lazy(async () => ({ default: (await import("./system/keyboard-cleaning/KeyboardCleaningTool")).KeyboardCleaningTool }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
 const CATEGORY_LABELS: Record<ToolboxCategory, string> = {
@@ -152,6 +153,7 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "file-occupancy": return <OccupancyTool />;
     case "keep-awake": return <KeepAwakeTool />;
     case "process-watch": return <ProcessWatchTool />;
+    case "keyboard-cleaning": return <KeyboardCleaningTool />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
     case "network-addresses": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} />;
