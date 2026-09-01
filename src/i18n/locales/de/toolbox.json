@@ -4,7 +4,7 @@
   "categories": { "label": "Toolkategorien", "systemNetwork": "System & Netzwerk", "textDevelopment": "Text & Entwicklung", "image": "Bilder", "filePatch": "Dateien & Patches" },
   "favorites": { "title": "Favoriten", "add": "{{tool}} zu Favoriten hinzufügen", "remove": "{{tool}} aus Favoriten entfernen" },
   "empty": { "title": "Keine passenden Tools", "description": "Die Suche prüft nur Toolnamen, Aliase und Beschreibungen. Deine Eingabe wird nicht gelesen." }, "navigation": { "back": "Zum Werkzeugkasten" },
-  "capability": { "degraded": "Eingeschränkt verfügbar", "unavailable": "Nicht verfügbar", "degradedReason": "Ein Teil der nativen Integration ist eingeschränkt, das Tool kann aber geöffnet werden.", "unavailableReason": "Auf dieser Plattform ist keine native Ausführung verfügbar.", "unavailableTitle": "{{tool}} ist derzeit nicht verfügbar", "unavailableHint": "Dieser Eintrag bleibt im Werkzeugkasten und kann genutzt werden, sobald die native Fähigkeit wieder verfügbar ist." },
+  "capability": { "degraded": "Eingeschränkt verfügbar", "unavailable": "Nicht verfügbar", "degradedReason": "Ein Teil der nativen Integration ist eingeschränkt, das Tool kann aber geöffnet werden.", "unavailableReason": "Auf dieser Plattform ist keine native Ausführung verfügbar.", "unavailableTitle": "{{tool}} ist derzeit nicht verfügbar", "unavailableHint": "Dieser Eintrag bleibt im Werkzeugkasten und kann genutzt werden, sobald die native Fähigkeit wieder verfügbar ist.","restrictedHelperUnavailable":"Dieses Tool benötigt einen eingeschränkten nativen Helper, der auf dieser Plattform nicht verfügbar ist."},
   "history": { "title": "Letzte Ausführungen", "count": "Einträge: {{count}}", "disabled": "Deaktiviert", "disabledDescription": "Der Werkzeugkasten-Verlauf ist durch die aktuelle Richtlinie deaktiviert; lokale Aufgaben zeigen weiterhin sofortige Ergebnisse.", "empty": "Es gibt noch keine abgeschlossenen Werkzeugkasten-Einträge.", "refresh": "Verlauf aktualisieren", "refreshing": "Wird aktualisiert…", "privacy": "Es werden nur die letzten 20 Einträge gezeigt; sie enthalten keine Eingaben, Pfade oder Geheimnisse.", "unavailable": "Der Werkzeugkasten-Verlauf ist vorübergehend nicht verfügbar.", "notification": "Benachrichtigung: {{status}}", "tools": { "keep-awake": "Zeitlich begrenztes Wachhalten", "process-watch": "Prozessende überwachen", "file-occupancy": "Dateibelegung prüfen", "volume-occupancy": "Datenträgerbelegung prüfen", "keyboard-cleaning": "Tastaturreinigung", "network-addresses": "Netzwerkadressen", "ifconfig-parser": "ifconfig-Parser" }, "statuses": { "completed": "Abgeschlossen", "cancelled": "Abgebrochen", "expired": "Abgelaufen", "failed": "Fehlgeschlagen", "interrupted": "Unterbrochen", "deadline": "Frist erreicht", "process_exited": "Prozess beendet", "low_battery": "Bei niedrigem Akkustand freigegeben", "release_unconfirmed": "Freigabe nicht bestätigt" }, "notifications": { "submitted": "Übermittelt", "failed": "Fehlgeschlagen", "unavailable": "Nicht verfügbar" } },
   "toolLayout": { "clear": "Leeren", "privacy": "Eingaben und Ergebnisse bleiben nur im Speicher dieser Toolseite; Kopieren und Speichern benötigen immer einen ausdrücklichen Klick.", "result": "Ergebnis", "copyResult": "Ergebnis kopieren" },
   "local": {
@@ -690,6 +690,24 @@
       "localAssetRequired": "Choose a local image asset.",
       "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
       "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
+    }
+  },
+  "overview": {
+    "title": "Übersicht des Werkzeugkastens",
+    "label": "Übersicht des Werkzeugkastens",
+    "tools": "Tools",
+    "available": "Verfügbar",
+    "favorites": "Favoriten",
+    "toolCount": "{{count}} Tools",
+    "availableCount": "{{count}} verfügbar",
+    "favoriteCount": "{{count}} Favoriten",
+    "allCategories": "Alle Kategorien",
+    "filterHint": "Tools nach Kategorie oder Suche filtern",
+    "filteredCount": "{{count}} passende Tools",
+    "restrictedNativeHelperUnavailable": {
+      "title": "Eingeschränkter nativer Helper nicht verfügbar",
+      "description": "Einige Systemtools sind nicht verfügbar, weil diese Plattform keinen eingeschränkten nativen Helper bereitstellt.",
+      "hint": "Es wurde keine Aktion ausgeführt. Diese Tools bleiben nicht verfügbar, bis der Helper bereitsteht."
     }
   }
 

@@ -95,6 +95,21 @@ it("turns a browser release plan into a downloadable formal patch collection", a
   expect(download.getAttribute("href")).toBe("blob:patch-plan");
 });
 
+it("renders only the actual offset-aligned binary changes from selected inputs", async () => {
+  const baseline = new File([new Uint8Array([0x01, 0x02])], "baseline.bin", { type: "application/octet-stream" });
+  const target = new File([new Uint8Array([0x01, 0x03, 0x04])], "target.bin", { type: "application/octet-stream" });
+  const view = render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+  const inputs = view.container.querySelectorAll<HTMLInputElement>('input[type="file"]');
+  fireEvent.change(inputs[0], { target: { files: [baseline] } });
+  fireEvent.change(inputs[1], { target: { files: [target] } });
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+
+  expect(await screen.findAllByText("0x00000000")).toHaveLength(2);
+  expect(screen.getByText("01 02")).toBeTruthy();
+  expect(screen.getByText("01 03 04")).toBeTruthy();
+});
+
 it("keeps desktop patch output on the native TTL and atomic-save path", async () => {
   mocks.desktopRuntime = true;
   render(<BinaryPatchToolbox toolId="binary-patch-create" />);

@@ -1,7 +1,7 @@
 {
   "title": "Caja de herramientas", "description": "Gestiona localmente pequeñas tareas de texto, imagen, archivos y sistema. Las entradas normales permanecen en esta página.", "close": "Cerrar caja de herramientas", "loading": "Cargando herramienta…",
   "search": { "label": "Buscar nombres de herramientas", "placeholder": "Buscar nombres, alias o descripciones…", "clear": "Limpiar búsqueda" }, "categories": { "label": "Categorías de herramientas", "systemNetwork": "Sistema y red", "textDevelopment": "Texto y desarrollo", "image": "Imágenes", "filePatch": "Archivos y parches" }, "favorites": { "title": "Favoritos", "add": "Añadir {{tool}} a favoritos", "remove": "Quitar {{tool}} de favoritos" }, "empty": { "title": "No hay herramientas coincidentes", "description": "La búsqueda solo revisa nombres, alias y descripciones; nunca examina tu entrada." }, "navigation": { "back": "Volver a la caja de herramientas" },
-  "capability": { "degraded": "Disponible con limitaciones", "unavailable": "No disponible", "degradedReason": "Parte de la integración nativa está limitada, pero la herramienta aún puede abrirse.", "unavailableReason": "No hay ejecución nativa disponible en esta plataforma.", "unavailableTitle": "{{tool}} no está disponible ahora", "unavailableHint": "Esta entrada permanece en la caja de herramientas y podrá usarse cuando vuelva la capacidad nativa." },
+  "capability": { "degraded": "Disponible con limitaciones", "unavailable": "No disponible", "degradedReason": "Parte de la integración nativa está limitada, pero la herramienta aún puede abrirse.", "unavailableReason": "No hay ejecución nativa disponible en esta plataforma.", "unavailableTitle": "{{tool}} no está disponible ahora", "unavailableHint": "Esta entrada permanece en la caja de herramientas y podrá usarse cuando vuelva la capacidad nativa.","restrictedHelperUnavailable":"Esta herramienta requiere un helper nativo restringido que no está disponible en esta plataforma."},
   "history": { "title": "Actividad reciente", "count": "Registros: {{count}}", "disabled": "Desactivado", "disabledDescription": "El historial de la caja de herramientas está desactivado por la política actual; las tareas locales siguen mostrando resultados inmediatos.", "empty": "Aún no hay registros finales de herramientas para mostrar.", "refresh": "Actualizar historial", "refreshing": "Actualizando…", "privacy": "Solo se muestran los 20 registros más recientes; no incluyen entradas, rutas ni secretos.", "unavailable": "El historial de la caja de herramientas no está disponible temporalmente.", "notification": "Notificación: {{status}}", "tools": { "keep-awake": "Mantener activo temporalmente", "process-watch": "Vigilar salida de proceso", "file-occupancy": "Análisis de uso de archivo", "volume-occupancy": "Análisis de uso de volumen", "keyboard-cleaning": "Limpieza de teclado", "network-addresses": "Direcciones de red", "ifconfig-parser": "Analizador ifconfig" }, "statuses": { "completed": "Completado", "cancelled": "Cancelado", "expired": "Caducado", "failed": "Fallido", "interrupted": "Interrumpido", "deadline": "Plazo alcanzado", "process_exited": "El proceso terminó", "low_battery": "Liberado por batería baja", "release_unconfirmed": "Liberación sin confirmar" }, "notifications": { "submitted": "Enviada", "failed": "Fallida", "unavailable": "No disponible" } },
   "toolLayout": { "clear": "Limpiar", "privacy": "Las entradas y resultados solo permanecen en la memoria de esta página; copiar y guardar siempre requieren un clic explícito.", "result": "Resultado", "copyResult": "Copiar resultado" },
   "local": {
@@ -687,6 +687,24 @@
       "localAssetRequired": "Choose a local image asset.",
       "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
       "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
+    }
+  },
+  "overview": {
+    "title": "Resumen de la caja de herramientas",
+    "label": "Resumen de la caja de herramientas",
+    "tools": "Herramientas",
+    "available": "Disponibles",
+    "favorites": "Favoritos",
+    "toolCount": "{{count}} herramientas",
+    "availableCount": "{{count}} disponibles",
+    "favoriteCount": "{{count}} favoritos",
+    "allCategories": "Todas las categorías",
+    "filterHint": "Filtrar herramientas por categoría o búsqueda",
+    "filteredCount": "{{count}} herramientas coincidentes",
+    "restrictedNativeHelperUnavailable": {
+      "title": "El helper nativo restringido no está disponible",
+      "description": "Algunas herramientas del sistema no están disponibles porque esta plataforma no proporciona el helper nativo restringido.",
+      "hint": "No se ha realizado ninguna acción. Estas herramientas seguirán sin estar disponibles hasta que el helper vuelva a estar disponible."
     }
   }
 

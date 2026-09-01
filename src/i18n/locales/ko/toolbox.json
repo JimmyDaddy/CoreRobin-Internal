@@ -1,4 +1,4 @@
-{"title":"도구 상자","description":"텍스트, 이미지, 파일 및 시스템의 작은 작업을 로컬에서 처리합니다. 일반 입력은 이 페이지에만 남습니다.","close":"도구 상자 닫기","loading":"도구 불러오는 중…","search":{"label":"도구 이름 검색","placeholder":"도구 이름, 별칭 또는 설명 검색…","clear":"검색 지우기"},"categories":{"label":"도구 카테고리","systemNetwork":"시스템 및 네트워크","textDevelopment":"텍스트 및 개발","image":"이미지","filePatch":"파일 및 패치"},"favorites":{"title":"즐겨찾기","add":"{{tool}}을(를) 즐겨찾기에 추가","remove":"즐겨찾기에서 {{tool}} 제거"},"empty":{"title":"일치하는 도구가 없습니다","description":"검색은 도구 이름, 별칭 및 설명만 확인하며 입력 내용은 확인하지 않습니다."},"navigation":{"back":"도구 상자로 돌아가기"},"capability":{"degraded":"제한적으로 사용 가능","unavailable":"사용할 수 없음","degradedReason":"일부 네이티브 연동이 제한되지만 도구는 열 수 있습니다.","unavailableReason":"이 플랫폼에서는 네이티브 실행을 사용할 수 없습니다.","unavailableTitle":"{{tool}}을(를) 현재 사용할 수 없음","unavailableHint":"이 항목은 도구 상자에 남아 있으며 네이티브 기능이 복구되면 사용할 수 있습니다."},"history":{"title":"최근 실행 기록","count":"기록: {{count}}","disabled":"사용 안 함","disabledDescription":"현재 정책에 따라 도구 상자 기록이 비활성화되어도 로컬 작업의 즉시 결과는 계속 표시됩니다.","empty":"표시할 완료된 도구 상자 기록이 아직 없습니다.","refresh":"기록 새로 고침","refreshing":"새로 고치는 중…","privacy":"최근 20개 기록만 표시하며 입력, 경로 또는 비밀 정보를 포함하지 않습니다.","unavailable":"도구 상자 기록을 일시적으로 사용할 수 없습니다.","notification":"알림: {{status}}","tools":{"keep-awake":"시간 제한 절전 방지","process-watch":"프로세스 종료 감시","file-occupancy":"파일 사용 검사","volume-occupancy":"볼륨 사용 검사","keyboard-cleaning":"키보드 정리","network-addresses":"네트워크 주소","ifconfig-parser":"ifconfig 파서"},"statuses":{"completed":"완료","cancelled":"취소됨","expired":"만료됨","failed":"실패","interrupted":"중단됨","deadline":"기한 도달","process_exited":"프로세스 종료","low_battery":"배터리 부족으로 해제됨","release_unconfirmed":"해제 확인 안 됨"},"notifications":{"submitted":"제출됨","failed":"실패","unavailable":"사용할 수 없음"}},"toolLayout":{"clear":"지우기","privacy":"입력과 결과는 이 도구 페이지의 메모리에만 보관됩니다. 복사와 저장은 항상 명시적으로 클릭해야 합니다.","result":"결과","copyResult":"결과 복사"},  "local": {
+{"title":"도구 상자","description":"텍스트, 이미지, 파일 및 시스템의 작은 작업을 로컬에서 처리합니다. 일반 입력은 이 페이지에만 남습니다.","close":"도구 상자 닫기","loading":"도구 불러오는 중…","search":{"label":"도구 이름 검색","placeholder":"도구 이름, 별칭 또는 설명 검색…","clear":"검색 지우기"},"categories":{"label":"도구 카테고리","systemNetwork":"시스템 및 네트워크","textDevelopment":"텍스트 및 개발","image":"이미지","filePatch":"파일 및 패치"},"favorites":{"title":"즐겨찾기","add":"{{tool}}을(를) 즐겨찾기에 추가","remove":"즐겨찾기에서 {{tool}} 제거"},"empty":{"title":"일치하는 도구가 없습니다","description":"검색은 도구 이름, 별칭 및 설명만 확인하며 입력 내용은 확인하지 않습니다."},"navigation":{"back":"도구 상자로 돌아가기"},"capability":{"degraded":"제한적으로 사용 가능","unavailable":"사용할 수 없음","degradedReason":"일부 네이티브 연동이 제한되지만 도구는 열 수 있습니다.","unavailableReason":"이 플랫폼에서는 네이티브 실행을 사용할 수 없습니다.","unavailableTitle":"{{tool}}을(를) 현재 사용할 수 없음","unavailableHint":"이 항목은 도구 상자에 남아 있으며 네이티브 기능이 복구되면 사용할 수 있습니다.","restrictedHelperUnavailable":"이 도구에는 제한된 네이티브 도우미가 필요하지만 이 플랫폼에서는 사용할 수 없습니다."},"history":{"title":"최근 실행 기록","count":"기록: {{count}}","disabled":"사용 안 함","disabledDescription":"현재 정책에 따라 도구 상자 기록이 비활성화되어도 로컬 작업의 즉시 결과는 계속 표시됩니다.","empty":"표시할 완료된 도구 상자 기록이 아직 없습니다.","refresh":"기록 새로 고침","refreshing":"새로 고치는 중…","privacy":"최근 20개 기록만 표시하며 입력, 경로 또는 비밀 정보를 포함하지 않습니다.","unavailable":"도구 상자 기록을 일시적으로 사용할 수 없습니다.","notification":"알림: {{status}}","tools":{"keep-awake":"시간 제한 절전 방지","process-watch":"프로세스 종료 감시","file-occupancy":"파일 사용 검사","volume-occupancy":"볼륨 사용 검사","keyboard-cleaning":"키보드 정리","network-addresses":"네트워크 주소","ifconfig-parser":"ifconfig 파서"},"statuses":{"completed":"완료","cancelled":"취소됨","expired":"만료됨","failed":"실패","interrupted":"중단됨","deadline":"기한 도달","process_exited":"프로세스 종료","low_battery":"배터리 부족으로 해제됨","release_unconfirmed":"해제 확인 안 됨"},"notifications":{"submitted":"제출됨","failed":"실패","unavailable":"사용할 수 없음"}},"toolLayout":{"clear":"지우기","privacy":"입력과 결과는 이 도구 페이지의 메모리에만 보관됩니다. 복사와 저장은 항상 명시적으로 클릭해야 합니다.","result":"결과","copyResult":"결과 복사"},  "local": {
     "run": "Run",
     "convert": "Convert",
     "json": {
@@ -513,6 +513,24 @@
       "localAssetRequired": "Choose a local image asset.",
       "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
       "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
+    }
+  },
+  "overview": {
+    "title": "도구 상자 개요",
+    "label": "도구 상자 개요",
+    "tools": "도구",
+    "available": "사용 가능",
+    "favorites": "즐겨찾기",
+    "toolCount": "도구 {{count}}개",
+    "availableCount": "사용 가능한 도구 {{count}}개",
+    "favoriteCount": "즐겨찾기 {{count}}개",
+    "allCategories": "모든 카테고리",
+    "filterHint": "카테고리 또는 검색으로 도구 필터링",
+    "filteredCount": "일치하는 도구 {{count}}개",
+    "restrictedNativeHelperUnavailable": {
+      "title": "제한된 네이티브 도우미를 사용할 수 없음",
+      "description": "이 플랫폼에서 제한된 네이티브 도우미를 제공하지 않아 일부 시스템 도구를 사용할 수 없습니다.",
+      "hint": "아무 작업도 수행되지 않았습니다. 도우미를 사용할 수 있게 될 때까지 이 도구들은 계속 사용할 수 없습니다."
     }
   }
 

@@ -140,6 +140,24 @@ async function selectBatchFiles(container: HTMLElement, names = ["first.png", "s
   await screen.findByText(new RegExp(`已选 ${files.length} 张`));
 }
 
+describe("image toolbox presentation states", () => {
+  it("communicates empty input, selected input, and the labelled preview result", async () => {
+    const view = render(<ImageToolbox toolId="image-watermark" />);
+
+    expect(screen.getByRole("status").textContent).toContain("没有选择图片输入");
+    const inputStage = view.container.querySelector<HTMLElement>(".image-toolbox__input-stage");
+    expect(inputStage?.getAttribute("data-has-input")).toBe("false");
+
+    await selectBatchFiles(view.container, ["source.png"]);
+    expect(inputStage?.getAttribute("data-has-input")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
+    const preview = await screen.findByRole("region", { name: "结果" });
+    expect(preview.querySelector(".image-toolbox__result-header")?.textContent).toContain("PNG");
+    expect(preview.querySelector("img")?.getAttribute("alt")).toBe("本地水印结果预览");
+  });
+});
+
 describe("batch image ZIP delivery", () => {
   it("transfers each completed watermark to the ZIP Worker before processing the next item", async () => {
     const view = render(<ImageToolbox toolId="image-batch-watermark" />);

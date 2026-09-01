@@ -1,4 +1,4 @@
-{"title":"ツールボックス","description":"テキスト、画像、ファイル、システムの小さな作業をローカルで処理します。通常の入力はこのページに留まります。","close":"ツールボックスを閉じる","loading":"ツールを読み込み中…","search":{"label":"ツール名を検索","placeholder":"ツール名、別名、説明を検索…","clear":"検索をクリア"},"categories":{"label":"ツールのカテゴリ","systemNetwork":"システムとネットワーク","textDevelopment":"テキストと開発","image":"画像","filePatch":"ファイルとパッチ"},"favorites":{"title":"お気に入り","add":"{{tool}}をお気に入りに追加","remove":"{{tool}}をお気に入りから削除"},"empty":{"title":"一致するツールがありません","description":"検索対象はツール名、別名、説明だけです。入力内容は調べません。"},"navigation":{"back":"ツールボックスに戻る"},"capability":{"degraded":"制限付きで利用可能","unavailable":"利用不可","degradedReason":"ネイティブ連携の一部に制限がありますが、ツールは開けます。","unavailableReason":"このプラットフォームではネイティブ実行を利用できません。","unavailableTitle":"{{tool}}は現在利用できません","unavailableHint":"この項目はツールボックスに残り、ネイティブ機能が戻れば利用できます。"},"history":{"title":"最近の実行履歴","count":"記録：{{count}}","disabled":"無効","disabledDescription":"現在のポリシーでツールボックスの履歴は無効です。ローカル作業の即時結果は引き続き表示されます。","empty":"表示できる完了済みのツール記録はまだありません。","refresh":"履歴を更新","refreshing":"更新中…","privacy":"最新20件だけを表示します。入力、パス、秘密情報は記録しません。","unavailable":"ツールボックスの履歴は一時的に利用できません。","notification":"通知：{{status}}","tools":{"keep-awake":"時間制限付きスリープ防止","process-watch":"プロセス終了監視","file-occupancy":"ファイル使用状況","volume-occupancy":"ボリューム使用状況","keyboard-cleaning":"キーボードクリーニング","network-addresses":"ネットワークアドレス","ifconfig-parser":"ifconfig解析"},"statuses":{"completed":"完了","cancelled":"キャンセル済み","expired":"期限切れ","failed":"失敗","interrupted":"中断","deadline":"期限到達","process_exited":"プロセス終了","low_battery":"低バッテリーで解放","release_unconfirmed":"解放未確認"},"notifications":{"submitted":"送信済み","failed":"失敗","unavailable":"利用不可"}},"toolLayout":{"clear":"クリア","privacy":"入力と結果はこのツールページのメモリにのみ保持されます。コピーと保存には明示的なクリックが必要です。","result":"結果","copyResult":"結果をコピー"},  "local": {
+{"title":"ツールボックス","description":"テキスト、画像、ファイル、システムの小さな作業をローカルで処理します。通常の入力はこのページに留まります。","close":"ツールボックスを閉じる","loading":"ツールを読み込み中…","search":{"label":"ツール名を検索","placeholder":"ツール名、別名、説明を検索…","clear":"検索をクリア"},"categories":{"label":"ツールのカテゴリ","systemNetwork":"システムとネットワーク","textDevelopment":"テキストと開発","image":"画像","filePatch":"ファイルとパッチ"},"favorites":{"title":"お気に入り","add":"{{tool}}をお気に入りに追加","remove":"{{tool}}をお気に入りから削除"},"empty":{"title":"一致するツールがありません","description":"検索対象はツール名、別名、説明だけです。入力内容は調べません。"},"navigation":{"back":"ツールボックスに戻る"},"capability":{"degraded":"制限付きで利用可能","unavailable":"利用不可","degradedReason":"ネイティブ連携の一部に制限がありますが、ツールは開けます。","unavailableReason":"このプラットフォームではネイティブ実行を利用できません。","unavailableTitle":"{{tool}}は現在利用できません","unavailableHint":"この項目はツールボックスに残り、ネイティブ機能が戻れば利用できます。","restrictedHelperUnavailable":"このツールには制限付きネイティブヘルパーが必要ですが、このプラットフォームでは利用できません。"},"history":{"title":"最近の実行履歴","count":"記録：{{count}}","disabled":"無効","disabledDescription":"現在のポリシーでツールボックスの履歴は無効です。ローカル作業の即時結果は引き続き表示されます。","empty":"表示できる完了済みのツール記録はまだありません。","refresh":"履歴を更新","refreshing":"更新中…","privacy":"最新20件だけを表示します。入力、パス、秘密情報は記録しません。","unavailable":"ツールボックスの履歴は一時的に利用できません。","notification":"通知：{{status}}","tools":{"keep-awake":"時間制限付きスリープ防止","process-watch":"プロセス終了監視","file-occupancy":"ファイル使用状況","volume-occupancy":"ボリューム使用状況","keyboard-cleaning":"キーボードクリーニング","network-addresses":"ネットワークアドレス","ifconfig-parser":"ifconfig解析"},"statuses":{"completed":"完了","cancelled":"キャンセル済み","expired":"期限切れ","failed":"失敗","interrupted":"中断","deadline":"期限到達","process_exited":"プロセス終了","low_battery":"低バッテリーで解放","release_unconfirmed":"解放未確認"},"notifications":{"submitted":"送信済み","failed":"失敗","unavailable":"利用不可"}},"toolLayout":{"clear":"クリア","privacy":"入力と結果はこのツールページのメモリにのみ保持されます。コピーと保存には明示的なクリックが必要です。","result":"結果","copyResult":"結果をコピー"},  "local": {
     "run": "Run",
     "convert": "Convert",
     "json": {
@@ -513,6 +513,24 @@
       "localAssetRequired": "Choose a local image asset.",
       "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
       "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
+    }
+  },
+  "overview": {
+    "title": "ツールボックスの概要",
+    "label": "ツールボックスの概要",
+    "tools": "ツール",
+    "available": "利用可能",
+    "favorites": "お気に入り",
+    "toolCount": "ツール {{count}} 件",
+    "availableCount": "利用可能 {{count}} 件",
+    "favoriteCount": "お気に入り {{count}} 件",
+    "allCategories": "すべてのカテゴリ",
+    "filterHint": "カテゴリまたは検索でツールを絞り込む",
+    "filteredCount": "一致するツール {{count}} 件",
+    "restrictedNativeHelperUnavailable": {
+      "title": "制限付きネイティブヘルパーを利用できません",
+      "description": "このプラットフォームでは制限付きネイティブヘルパーが提供されないため、一部のシステムツールを利用できません。",
+      "hint": "操作は実行されていません。ヘルパーが利用可能になるまで、これらのツールは利用できないままです。"
     }
   }
 

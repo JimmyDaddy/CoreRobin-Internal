@@ -3032,6 +3032,7 @@ export default interface Resources {
     "capability": {
       "degraded": "降级可用",
       "degradedReason": "部分原生集成受限，但工具仍可打开。",
+      "restrictedHelperUnavailable": "此工具需要受限原生 helper，但当前平台无法提供。",
       "unavailable": "不可用",
       "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。",
       "unavailableReason": "当前平台没有可用的原生执行能力。",
@@ -3704,6 +3705,24 @@ export default interface Resources {
       "stop": "停止诊断",
       "volumeAction": "查找外盘使用者",
       "volumeRequired": "请先选择一个挂载目录。"
+    },
+    "overview": {
+      "allCategories": "全部分类",
+      "available": "可用",
+      "availableCount": "可用 {{count}} 个",
+      "favoriteCount": "收藏 {{count}} 个",
+      "favorites": "收藏",
+      "filterHint": "按分类或搜索筛选工具",
+      "filteredCount": "匹配工具 {{count}} 个",
+      "label": "工具箱概览",
+      "restrictedNativeHelperUnavailable": {
+        "description": "当前平台未提供受限原生 helper，部分系统工具暂不可用。",
+        "hint": "未执行任何操作；helper 可用后，这些工具才会恢复。",
+        "title": "受限原生 helper 不可用"
+      },
+      "title": "工具箱概览",
+      "toolCount": "工具 {{count}} 个",
+      "tools": "工具"
     },
     "processWatch": {
       "birthToken": "birth token",

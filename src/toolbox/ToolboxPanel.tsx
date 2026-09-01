@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
   CircleAlert,
   Code2,
@@ -8,6 +9,7 @@ import {
   FileCheck2,
   FileImage,
   FileKey2,
+  Filter,
   Hash,
   Heart,
   Image as ImageIcon,
@@ -23,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import QRCode from "qrcode";
@@ -66,6 +68,7 @@ const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
 export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
   const { t } = useTranslation("toolbox");
   const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<ToolboxCategory | null>(null);
   const [selected, setSelected] = useState<ToolId | null>(null);
   const [favorites, setFavorites] = useState<Set<ToolId>>(() => readFavorites());
   const [nativeCapabilities, setNativeCapabilities] = useState<Partial<Record<ToolId, ToolboxCapability>>>();
@@ -77,6 +80,10 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
   const tools = useMemo(
     () => searchTools(query, nativeCapabilities, translateTool),
     [query, nativeCapabilities, translateTool],
+  );
+  const visibleTools = useMemo(
+    () => activeCategory ? tools.filter((tool) => tool.category === activeCategory) : tools,
+    [activeCategory, tools],
   );
   const selectedTool = selected
     ? getToolDefinition(selected, nativeCapabilities, translateTool)
@@ -162,12 +169,19 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
       ) : (
         <>
           <header className="toolbox-panel__header">
-            <div>
+            <div className="toolbox-panel__header-main">
               <span className="toolbox-eyebrow"><Sparkles size={14} />CoreRobin</span>
               <h1 id="toolbox-title">{t("title")}</h1>
               <p>{t("description")}</p>
             </div>
-            {onClose ? <button className="icon-button" type="button" aria-label={t("close")} onClick={onClose}><X size={18} /></button> : null}
+            <div className="toolbox-panel__header-side">
+              <div className="toolbox-overview-stats" aria-label={t("overview.title")}>
+                <span><strong>{tools.length}</strong><small>{t("overview.toolCount", { count: tools.length })}</small></span>
+                <span><strong>{tools.filter((tool) => tool.capability.state === "available").length}</strong><small>{t("overview.availableCount", { count: tools.filter((tool) => tool.capability.state === "available").length })}</small></span>
+                <span><strong>{favorites.size}</strong><small>{t("overview.favoriteCount", { count: favorites.size })}</small></span>
+              </div>
+              {onClose ? <button className="icon-button" type="button" aria-label={t("close")} onClick={onClose}><X size={18} /></button> : null}
+            </div>
           </header>
           <label className="toolbox-search">
             <Search size={16} />
@@ -176,16 +190,18 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
             {query ? <button type="button" aria-label={t("search.clear")} onClick={() => setQuery("")}><X size={14} /></button> : null}
           </label>
           <div className="toolbox-category-tabs" role="group" aria-label={t("categories.label")}>
+            <button type="button" className={`toolbox-category-tab${activeCategory === null ? " is-active" : ""}`} aria-pressed={activeCategory === null} onClick={() => setActiveCategory(null)}><Filter size={14} />{t("overview.allCategories")}</button>
             {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).map((category) => {
               const Icon = CATEGORY_ICONS[category];
-              return <span key={category} className="toolbox-category-tab"><Icon size={14} />{t(CATEGORY_LABEL_KEYS[category])}</span>;
+              const active = activeCategory === category;
+              return <button key={category} type="button" className={`toolbox-category-tab${active ? " is-active" : ""}`} aria-pressed={active} onClick={() => setActiveCategory(active ? null : category)}><Icon size={14} />{t(CATEGORY_LABEL_KEYS[category])}</button>;
             })}
           </div>
-          {favorites.size > 0 && !query ? <ToolSection sectionId="favorites" title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
-          {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).map((category) => (
-            <ToolSection key={category} sectionId={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={tools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
+          {favorites.size > 0 && !query && activeCategory === null ? <ToolSection sectionId="favorites" title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
+          {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).filter((category) => activeCategory === null || activeCategory === category).map((category) => (
+            <ToolSection key={category} sectionId={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={visibleTools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           ))}
-          {tools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>{t("empty.title")}</strong><span>{t("empty.description")}</span></div> : null}
+          {visibleTools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>{t("empty.title")}</strong><span>{t("empty.description")}</span></div> : null}
           <ToolboxHistoryPanel />
         </>
       )}
@@ -283,16 +299,16 @@ function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }:
     <section className="toolbox-section" aria-labelledby={headingId}>
       <div className="toolbox-section__title"><h2 id={headingId}>{title}</h2><span>{tools.length}</span></div>
       <div className="toolbox-grid">
-        {tools.map((tool) => <div className={`toolbox-card toolbox-card--${tool.capability.state}`} key={tool.id}>
+        {tools.map((tool, index) => <article className={`toolbox-card toolbox-card--${tool.capability.state} toolbox-card--${tool.category}`} key={tool.id} style={{ "--toolbox-card-index": index } as CSSProperties}>
           <button className="toolbox-card__open" type="button" disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
             <span className="toolbox-card__icon"><ToolIcon id={tool.id} /></span>
-            <span className="toolbox-card__content"><strong>{tool.title}</strong><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability">{capabilityLabel(t, tool.capability)}：{capabilityReason(t, tool.capability)}</small> : null}</span>
+            <span className="toolbox-card__content"><span className="toolbox-card__title"><strong>{tool.title}</strong>{tool.capability.state === "available" ? <CheckCircle2 size={14} aria-label={t("overview.availableCount", { count: 1 })} /> : null}</span><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability"><span>{capabilityLabel(t, tool.capability)}：</span>{capabilityReason(t, tool.capability)}</small> : null}</span>
           </button>
           <span className="toolbox-card__actions">
             <button type="button" className={`toolbox-favorite${favorites.has(tool.id) ? " is-active" : ""}`} aria-label={favorites.has(tool.id) ? t("favorites.remove", { tool: tool.title }) : t("favorites.add", { tool: tool.title })} onClick={() => onFavorite(tool.id)}><Heart size={14} fill={favorites.has(tool.id) ? "currentColor" : "none"} /></button>
             <ChevronRight size={16} aria-hidden="true" />
           </span>
-        </div>)}
+        </article>)}
       </div>
     </section>
   );
@@ -302,7 +318,7 @@ function ToolPage({ tool, onBack, children }: { tool: ToolDefinition; onBack: ()
   const { t } = useTranslation("toolbox");
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
-  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1 id="toolbox-tool-title" ref={heading} tabIndex={-1}>{tool.title}</h1><p>{tool.description}</p></div></header>{children}</div>;
+  return <div className="toolbox-tool-page"><header className="toolbox-tool-page__header"><button className="button button--secondary" type="button" onClick={onBack}><ArrowLeft size={15} />{t("navigation.back")}</button><div className="toolbox-tool-page__identity"><span className="toolbox-tool-page__icon"><ToolIcon id={tool.id} /></span><div><span className="toolbox-eyebrow">{t(CATEGORY_LABEL_KEYS[tool.category])}</span><h1 id="toolbox-tool-title" ref={heading} tabIndex={-1}>{tool.title}</h1><p>{tool.description}</p></div></div></header>{children}</div>;
 }
 
 function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability }) {
@@ -728,13 +744,43 @@ function UnavailableTool({ tool }: { tool: ToolDefinition }) { const { t } = use
 
 function ToolLayout({ error, onClear, children }: { error?: string; onClear: () => void; children: ReactNode }) { const { t } = useTranslation("toolbox"); return <div className="toolbox-tool-layout"><div className="toolbox-tool-layout__body">{children}</div>{error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}<div className="toolbox-tool-layout__footer"><button className="button button--secondary" type="button" onClick={onClear}>{t("toolLayout.clear")}</button><span>{t("toolLayout.privacy")}</span></div></div>; }
 
-function ResultBox({ value }: { value: string }) { const { t } = useTranslation("toolbox"); if (!value) return null; return <div className="toolbox-result"><div className="toolbox-result__header"><strong>{t("toolLayout.result")}</strong><button className="icon-button" type="button" aria-label={t("toolLayout.copyResult")} onClick={() => void navigator.clipboard?.writeText(value)}><Copy size={14} /></button></div><pre>{value}</pre></div>; }
+function ResultBox({ value }: { value: string }) { const { t } = useTranslation("toolbox"); if (!value) return null; return <div className="toolbox-result" aria-live="polite"><div className="toolbox-result__header"><strong>{t("toolLayout.result")}</strong><button className="icon-button" type="button" aria-label={t("toolLayout.copyResult")} onClick={() => void navigator.clipboard?.writeText(value)}><Copy size={14} /></button></div><CodePreview value={value} /></div>; }
+
+function CodePreview({ value }: { value: string }) {
+  const isJson = looksLikeJson(value);
+  const lines = value.split("\n");
+  return <pre className={`toolbox-code-preview${isJson ? " toolbox-code-preview--json" : ""}`}><code>{isJson ? lines.map((line, index) => <span className="toolbox-code-line" key={`${index}-${line}`}><span className="toolbox-code-line__number" aria-hidden="true">{index + 1}</span><span>{highlightJsonLine(line)}</span>{index < lines.length - 1 ? "\n" : null}</span>) : value}</code></pre>;
+}
+
+function looksLikeJson(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+  try { JSON.parse(trimmed); return true; } catch { return false; }
+}
+
+function highlightJsonLine(line: string): ReactNode[] {
+  const token = /("(?:\\.|[^"\\])*")|(-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(\b(?:true|false|null)\b)|([{}\[\],:])/g;
+  const result: ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = token.exec(line)) !== null) {
+    if (match.index > cursor) result.push(line.slice(cursor, match.index));
+    const kind = match[1] ? /^\s*:/.test(line.slice(match.index + match[0].length)) ? "key" : "string" : match[2] ? "number" : match[3] ? "literal" : "punctuation";
+    result.push(<span className={`toolbox-code-token toolbox-code-token--${kind}`} key={`${match.index}-${match[0]}`}>{match[0]}</span>);
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < line.length) result.push(line.slice(cursor));
+  return result;
+}
 
 function ToolIcon({ id }: { id: ToolId }) { if (id.includes("image") || id.includes("watermark") || id === "c2pa-inspector" || id === "robustness-lab") return <FileImage size={18} />; if (id.includes("patch") || id === "integrity-manifest" || id === "transfer-savings") return <FileKey2 size={18} />; if (id.includes("sha")) return <Hash size={18} />; if (id === "qr-code") return <QrCode size={18} />; if (id.includes("network") || id.includes("occupancy")) return <Network size={18} />; if (id.includes("keep") || id.includes("schedule") || id === "time") return <Timer size={18} />; return <Wrench size={18} />; }
 
 type ToolboxTFunction = TFunction<"toolbox">;
 function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
-function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason")); }
+function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string {
+  if (capability.reason === "This tool requires a restricted native helper that is not registered.") return t("overview.restrictedNativeHelperUnavailable.description");
+  return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason"));
+}
 const LOCAL_ERROR_KEYS: Record<string, string> = {
   input_too_large: "errors.inputTooLarge",
   json_too_deep: "errors.jsonTooDeep",

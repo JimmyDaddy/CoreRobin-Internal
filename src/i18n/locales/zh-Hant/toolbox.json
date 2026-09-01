@@ -1,4 +1,4 @@
-{"title":"工具箱","description":"在本機處理文字、圖片、檔案與系統的小型工作。一般輸入只會留在此頁面。","close":"關閉工具箱","loading":"正在載入工具…","search":{"label":"搜尋功能名稱","placeholder":"搜尋功能名稱、別名或說明…","clear":"清除搜尋"},"categories":{"label":"工具分類","systemNetwork":"系統與網路","textDevelopment":"文字與開發","image":"圖片","filePatch":"檔案與修補程式"},"favorites":{"title":"收藏","add":"將 {{tool}} 加入收藏","remove":"從收藏移除 {{tool}}"},"empty":{"title":"沒有符合的工具","description":"搜尋只會檢查工具名稱、別名與說明，不會查看你的輸入。"},"navigation":{"back":"返回工具箱"},"capability":{"degraded":"受限可用","unavailable":"無法使用","degradedReason":"部分原生整合受到限制，但仍可開啟工具。","unavailableReason":"此平台無法使用原生執行能力。","unavailableTitle":"{{tool}} 目前無法使用","unavailableHint":"此入口會保留在工具箱中，原生能力恢復後即可使用。"},"history":{"title":"最近執行記錄","count":"{{count}} 筆記錄","disabled":"已關閉","disabledDescription":"工具箱記錄已依目前政策關閉；本機工作仍會顯示即時結果。","empty":"目前沒有可顯示的工具箱完成記錄。","refresh":"重新整理記錄","refreshing":"正在重新整理…","privacy":"只顯示最近 20 筆；記錄不包含輸入內容、路徑或密鑰。","unavailable":"工具箱記錄暫時無法使用。","notification":"通知：{{status}}","tools":{"keep-awake":"限時保持喚醒","process-watch":"程序結束監看","file-occupancy":"檔案使用掃描","volume-occupancy":"磁碟區使用掃描","keyboard-cleaning":"鍵盤清潔","network-addresses":"網路位址","ifconfig-parser":"ifconfig 解析器"},"statuses":{"completed":"已完成","cancelled":"已取消","expired":"已過期","failed":"失敗","interrupted":"已中斷","deadline":"已達截止時間","process_exited":"程序已結束","low_battery":"因低電量而釋放","release_unconfirmed":"尚未確認釋放"},"notifications":{"submitted":"已送出","failed":"失敗","unavailable":"無法使用"}},"toolLayout":{"clear":"清除","privacy":"輸入與結果只會保留在此工具頁面的記憶體中；複製與儲存都需要明確點擊。","result":"結果","copyResult":"複製結果"},  "local": {
+{"title":"工具箱","description":"在本機處理文字、圖片、檔案與系統的小型工作。一般輸入只會留在此頁面。","close":"關閉工具箱","loading":"正在載入工具…","search":{"label":"搜尋功能名稱","placeholder":"搜尋功能名稱、別名或說明…","clear":"清除搜尋"},"categories":{"label":"工具分類","systemNetwork":"系統與網路","textDevelopment":"文字與開發","image":"圖片","filePatch":"檔案與修補程式"},"favorites":{"title":"收藏","add":"將 {{tool}} 加入收藏","remove":"從收藏移除 {{tool}}"},"empty":{"title":"沒有符合的工具","description":"搜尋只會檢查工具名稱、別名與說明，不會查看你的輸入。"},"navigation":{"back":"返回工具箱"},"capability":{"degraded":"受限可用","unavailable":"無法使用","degradedReason":"部分原生整合受到限制，但仍可開啟工具。","unavailableReason":"此平台無法使用原生執行能力。","unavailableTitle":"{{tool}} 目前無法使用","unavailableHint":"此入口會保留在工具箱中，原生能力恢復後即可使用。","restrictedHelperUnavailable":"此工具需要受限原生 helper，但目前平台無法提供。"},"history":{"title":"最近執行記錄","count":"{{count}} 筆記錄","disabled":"已關閉","disabledDescription":"工具箱記錄已依目前政策關閉；本機工作仍會顯示即時結果。","empty":"目前沒有可顯示的工具箱完成記錄。","refresh":"重新整理記錄","refreshing":"正在重新整理…","privacy":"只顯示最近 20 筆；記錄不包含輸入內容、路徑或密鑰。","unavailable":"工具箱記錄暫時無法使用。","notification":"通知：{{status}}","tools":{"keep-awake":"限時保持喚醒","process-watch":"程序結束監看","file-occupancy":"檔案使用掃描","volume-occupancy":"磁碟區使用掃描","keyboard-cleaning":"鍵盤清潔","network-addresses":"網路位址","ifconfig-parser":"ifconfig 解析器"},"statuses":{"completed":"已完成","cancelled":"已取消","expired":"已過期","failed":"失敗","interrupted":"已中斷","deadline":"已達截止時間","process_exited":"程序已結束","low_battery":"因低電量而釋放","release_unconfirmed":"尚未確認釋放"},"notifications":{"submitted":"已送出","failed":"失敗","unavailable":"無法使用"}},"toolLayout":{"clear":"清除","privacy":"輸入與結果只會保留在此工具頁面的記憶體中；複製與儲存都需要明確點擊。","result":"結果","copyResult":"複製結果"},  "local": {
     "run": "Run",
     "convert": "Convert",
     "json": {
@@ -513,6 +513,24 @@
       "localAssetRequired": "Choose a local image asset.",
       "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
       "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
+    }
+  },
+  "overview": {
+    "title": "工具箱總覽",
+    "label": "工具箱總覽",
+    "tools": "工具",
+    "available": "可用",
+    "favorites": "收藏",
+    "toolCount": "工具 {{count}} 個",
+    "availableCount": "可用 {{count}} 個",
+    "favoriteCount": "收藏 {{count}} 個",
+    "allCategories": "全部分類",
+    "filterHint": "按分類或搜尋篩選工具",
+    "filteredCount": "符合的工具 {{count}} 個",
+    "restrictedNativeHelperUnavailable": {
+      "title": "受限原生 helper 無法使用",
+      "description": "此平台未提供受限原生 helper，部分系統工具暫時無法使用。",
+      "hint": "未執行任何操作；helper 可用後，這些工具才會恢復。"
     }
   }
 

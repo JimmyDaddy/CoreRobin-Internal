@@ -21,6 +21,11 @@ const i18n = vi.hoisted(() => ({
       "categories.textDevelopment": "文本与开发",
       "categories.image": "图片",
       "categories.filePatch": "文件与补丁",
+      "overview.title": "工具箱概览",
+      "overview.toolCount": "工具 {count} 个",
+      "overview.availableCount": "可用 {count} 个",
+      "overview.favoriteCount": "收藏 {count} 个",
+      "overview.allCategories": "全部分类",
       "capability.degraded": "降级可用",
       "capability.unavailable": "不可用",
       "navigation.back": "返回工具箱",
@@ -35,6 +40,10 @@ const i18n = vi.hoisted(() => ({
       "tools.time.title": "时间转换",
       "local.textHash.placeholder": "输入文本",
       "local.textHash.compute": "计算 SHA-256",
+      "local.json.indent": "缩进",
+      "local.json.spaces": "{count} 空格",
+      "local.json.format": "校验并格式化",
+      "local.json.compact": "压缩",
       "local.time.placeholder": "Unix 时间或带时区的 ISO 时间",
       "local.convert": "转换",
       "local.run": "运行",
@@ -135,6 +144,22 @@ it("loads image and patch modules only on demand while retaining the page naviga
   fireEvent.click(screen.getByText("生成补丁").closest("button")!);
   expect((await screen.findByTestId("patch-tool")).textContent).toBe("binary-patch-create");
   expect(modules.patchLoaded).toHaveBeenCalledOnce();
+});
+
+it("filters cards by category and renders structured JSON output", () => {
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  expect(screen.getByText("JSON")).toBeTruthy();
+  expect(screen.queryByText("图片水印")).toBeNull();
+
+  fireEvent.click(screen.getByText("JSON").closest("button")!);
+  fireEvent.change(screen.getByPlaceholderText('{"name":"CoreRobin","count":1}'), { target: { value: '{"name":"CoreRobin","count":1}' } });
+  fireEvent.click(screen.getByRole("button", { name: "校验并格式化" }));
+
+  expect(document.querySelector(".toolbox-code-line__number")?.textContent).toBe("1");
+  expect(document.querySelector(".toolbox-code-token--key")?.textContent).toBe('"name"');
+  expect(document.querySelector(".toolbox-code-token--number")?.textContent).toBe("1");
 });
 
 it("keeps browser-local tools available even when an older native snapshot marks them unavailable", async () => {

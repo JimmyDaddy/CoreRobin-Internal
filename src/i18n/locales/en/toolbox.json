@@ -32,6 +32,7 @@
     "unavailable": "Unavailable",
     "degradedReason": "Some native integration is limited, but the tool can still open.",
     "unavailableReason": "Native execution is not available on this platform.",
+    "restrictedHelperUnavailable": "This tool requires a restricted native helper, which is not available on this platform.",
     "unavailableTitle": "{{tool}} is currently unavailable",
     "unavailableHint": "This entry stays in the toolbox and can be used when native capability returns."
   },
@@ -868,5 +869,23 @@
       "notSelected": " (not selected)"
     },
     "footer": "The BSDIFF43 SDK Worker uses a cancellable deadline of 120 seconds per item and 600 seconds overall. Formal output passes through native TTL, verification, and atomic save; it never overwrites source files, executes patches, or uses the network. Planned artifacts total at most 512 MiB."
+  },
+  "overview": {
+    "title": "Toolbox overview",
+    "label": "Toolbox overview",
+    "tools": "Tools",
+    "available": "Available",
+    "favorites": "Favorites",
+    "toolCount": "{{count}} tools",
+    "availableCount": "{{count}} available",
+    "favoriteCount": "{{count}} favorites",
+    "allCategories": "All categories",
+    "filterHint": "Filter tools by category or search",
+    "filteredCount": "{{count}} matching tools",
+    "restrictedNativeHelperUnavailable": {
+      "title": "Restricted native helper unavailable",
+      "description": "Some system tools are unavailable because this platform does not provide the restricted native helper.",
+      "hint": "No action was taken. These tools will remain unavailable until the helper is available."
+    }
   }
 }
