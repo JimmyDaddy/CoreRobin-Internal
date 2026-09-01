@@ -1,7 +1,7 @@
 {
   "name": "core-robin-desktop",
   "private": true,
-  "version": "0.1.30",
+  "version": "0.1.31",
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
@@ -41,14 +41,19 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@contentauth/c2pa-web": "0.13.1",
+    "@image-marker/web": "0.1.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.2",
     "@tauri-apps/plugin-notification": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
+    "bs-diff-patch-web": "0.5.0",
+    "fflate": "0.8.2",
     "i18next": "^26.3.6",
     "i18next-resources-to-backend": "^1.2.2",
     "lucide-react": "^1.27.0",
+    "qrcode": "1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.11"
@@ -58,6 +63,7 @@
     "@playwright/test": "1.58.2",
     "@tauri-apps/cli": "^2",
     "@testing-library/react": "^16.3.2",
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.4",

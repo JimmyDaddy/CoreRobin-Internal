@@ -7,6 +7,7 @@ export type ActiveView =
   | "network"
   | "startup"
   | "history"
+  | "toolbox"
   | "settings"
   | "more";
 
@@ -19,6 +20,7 @@ export const PROFESSIONAL_VIEW_EYEBROW = {
   network: "app:viewEyebrow.network",
   startup: "app:viewEyebrow.startup",
   history: "app:viewEyebrow.history",
+  toolbox: "app:viewEyebrow.toolbox",
   settings: "app:viewEyebrow.settings",
   more: "app:viewEyebrow.overview",
 } as const satisfies Record<ActiveView, string>;
@@ -32,6 +34,7 @@ const ACTIVE_VIEWS = new Set<ActiveView>([
   "network",
   "startup",
   "history",
+  "toolbox",
   "settings",
   "more",
 ]);

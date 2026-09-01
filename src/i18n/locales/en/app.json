@@ -12,6 +12,7 @@
   "network": "Network",
   "startup": "Startup",
   "history": "History",
+  "toolbox": "Toolbox",
   "settings": "Settings",
   "soon": "Soon",
   "comingSoon": "Coming soon",
@@ -24,6 +25,7 @@
     "network": "Network diagnostics",
     "startup": "Startup item review",
     "history": "History analysis",
+    "toolbox": "Toolbox",
     "settings": "Preferences"
   },
   "demoData": "Browser demo data",

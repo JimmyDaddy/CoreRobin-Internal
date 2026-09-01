@@ -198,6 +198,13 @@
     "title": "이 공간을 주로 사용하는 목적"
   },
   "map": {
+    "list": {
+      "name": "이름",
+      "share": "폴더 내 비율",
+      "sort": "목록 정렬",
+      "shown": "{{count}}개 표시됨",
+      "loadMore": "더 불러오기"
+    },
     "title": "공간의 위치",
     "description": "섹터 영역은 할당된 디스크 공간을 나타냅니다. 관련된 색상은 하나의 폴더 브랜치에 속하며, 회색 섹터는 파일입니다.",
     "descriptionPath": "시스템 디스크 전체를 따라 실제 경로가 표시됩니다. 각 원은 다음 디렉토리 레벨이며, 섹터 영역은 할당된 디스크 공간을 나타냅니다.",
@@ -288,6 +295,26 @@
     "removeFromBasket": "정리 바구니에서 제거",
     "includedByParent": "상위 폴더에 포함됨",
     "addToBasket": "정리 바구니에 추가"
+  },
+  "settlement": {
+    "status": {
+      "success": "정리 완료",
+      "partial": "일부 완료",
+      "cancelled": "정리 중지됨",
+      "failed": "정리 미완료",
+      "empty": "처리된 항목 없음"
+    },
+    "movedLabel": "휴지통으로 이동됨",
+    "availableLabel": "사용 가능 공간 증가",
+    "processedLabel": "처리된 공간",
+    "completed": "완료: {{count}}개",
+    "processed": "처리됨: {{size}}",
+    "failed": "미완료: {{count}}개",
+    "trashNote": "항목은 휴지통에서 복원할 수 있습니다. 이동만으로 디스크 공간이 확보된 것은 아닙니다.",
+    "unmeasuredNote": "처리된 크기와 확보된 공간은 다릅니다. 사용 가능 공간의 변화를 측정하지 못했습니다.",
+    "pendingNote": "스냅샷, 열린 파일 또는 시스템 회수 지연이 사용 가능 공간에 영향을 줄 수 있습니다.",
+    "measuredNote": "작업 전후에 측정한 사용 가능 공간의 차이이며 다른 앱의 영향도 받을 수 있습니다.",
+    "viewResult": "결과 보기"
   },
   "deleteDialog": {
     "title": "정리 바구니 확인",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "최근 위치",
     "removable": "Removable",
     "modify": "범위 변경",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "접기",
+    "pending": "검사 전",
+    "systemDescription": "자주 쓰는 위치 또는 전체 시스템 디스크",
+    "folderDescription": "폴더와 하위 폴더를 집중 확인",
+    "choosingFolder": "폴더 선택 중…",
+    "changeFolder": "선택됨 · 클릭하여 폴더 변경",
+    "folderFailed": "폴더 선택기를 열 수 없습니다. 다시 시도하세요.",
+    "readOnlyNotice": "선택한 위치와 하위 폴더만 확인합니다. 검사 중 파일은 변경되지 않습니다."
   },
   "oldFileProcessing": {
     "selectFile": "{{name}}을(를) 정리 검토 대상으로 선택",

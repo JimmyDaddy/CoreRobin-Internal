@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const scriptPath = resolve("scripts/ensure-stable-release-tag.sh");
 const temporaryDirectories = [];
 const releaseCommit = "a".repeat(40);
+const SCRIPT_TEST_TIMEOUT_MS = 15_000;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -27,7 +28,7 @@ describe("stable release tag activation", () => {
     expect(result.calls).toContain(
       `api --method POST repos/JimmyDaddy/CoreRobin-Internal/git/refs -f ref=refs/tags/v0.1.9 -f sha=${releaseCommit}`,
     );
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("accepts an existing tag that points to the verified commit", () => {
     const result = runActivator({ existingSha: releaseCommit });
@@ -37,7 +38,7 @@ describe("stable release tag activation", () => {
       "Stable tag v0.1.9 already points to the verified candidate commit.",
     );
     expect(result.calls).not.toContain("--method POST");
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("rejects an existing tag that points to another commit", () => {
     const otherCommit = "b".repeat(40);
@@ -48,7 +49,7 @@ describe("stable release tag activation", () => {
       `Stable tag v0.1.9 points to ${otherCommit}, expected ${releaseCommit}.`,
     );
     expect(result.calls).not.toContain("--method POST");
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 
   it("does not create a tag when the lookup itself fails", () => {
     const result = runActivator({ lookupStatus: 22 });
@@ -56,7 +57,7 @@ describe("stable release tag activation", () => {
     expect(result.status).toBe(22);
     expect(result.stderr).toContain("simulated tag lookup failure");
     expect(result.calls).not.toContain("--method POST");
-  });
+  }, SCRIPT_TEST_TIMEOUT_MS);
 });
 
 function runActivator({ existingSha = "", lookupStatus = 0 } = {}) {

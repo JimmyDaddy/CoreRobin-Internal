@@ -14,7 +14,8 @@
     "cleanupQuick": "Quick Cleanup",
     "cleanupScan": "Disk Scan",
     "records": "Review",
-    "settings": "Settings"
+    "settings": "Settings",
+    "toolbox": "Toolbox"
   },
   "topbar": {
     "thisMac": "This Mac",

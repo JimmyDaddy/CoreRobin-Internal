@@ -198,6 +198,13 @@
     "title": "Für welchen Zweck dieser Bereich typischerweise verwendet wird"
   },
   "map": {
+    "list": {
+      "name": "Name",
+      "share": "Ordneranteil",
+      "sort": "Liste sortieren",
+      "shown": "{{count}} angezeigt",
+      "loadMore": "Mehr laden"
+    },
     "title": "Wo sich der Bereich befindet",
     "description": "Der Sektorbereich stellt den zugewiesenen Festplattenspeicher dar. Zuordnungen zu Farben gehören zu einem Ordnerverzweig; graue Sektoren sind Dateien.",
     "descriptionPath": "Zeigt den realen Pfad über das Systemlaufwerk an: jeder Ring ist das nächste Verzeichnis, und der Sektorbereich stellt den zugewiesenen Festplattenspeicher dar.",
@@ -288,6 +295,26 @@
     "removeFromBasket": "Aus dem Bereinigungskorb entfernen",
     "includedByParent": "Im übergeordneten Ordner enthalten",
     "addToBasket": "Zum Bereinigungskorb hinzufügen"
+  },
+  "settlement": {
+    "status": {
+      "success": "Bereinigung abgeschlossen",
+      "partial": "Teilweise abgeschlossen",
+      "cancelled": "Bereinigung gestoppt",
+      "failed": "Bereinigung nicht abgeschlossen",
+      "empty": "Keine Einträge verarbeitet"
+    },
+    "movedLabel": "In den Papierkorb verschoben",
+    "availableLabel": "Zunahme des freien Speichers",
+    "processedLabel": "Verarbeiteter Speicher",
+    "completed": "Abgeschlossen: {{count}}",
+    "processed": "{{size}} verarbeitet",
+    "failed": "Nicht abgeschlossen: {{count}}",
+    "trashNote": "Die Einträge bleiben im Papierkorb wiederherstellbar. Das Verschieben gibt nicht unbedingt Speicher frei.",
+    "unmeasuredNote": "Verarbeitete Größe ist nicht gleich freigegebener Speicher. Messwerte zum freien Speicher fehlen.",
+    "pendingNote": "Snapshots, offene Dateien oder eine verzögerte Freigabe können den freien Speicher beeinflussen.",
+    "measuredNote": "Gemessene Änderung vor und nach dem Vorgang; andere Apps können sie ebenfalls beeinflussen.",
+    "viewResult": "Ergebnis ansehen"
   },
   "deleteDialog": {
     "title": "Aufräumkorb prüfen",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "Letzte Speicherorte",
     "removable": "Removable",
     "modify": "Bereich ändern",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "Einklappen",
+    "pending": "Noch nicht gescannt",
+    "systemDescription": "Häufige Speicherorte oder das gesamte Systemlaufwerk",
+    "folderDescription": "Einen Ordner und seine Unterordner prüfen",
+    "choosingFolder": "Ordner wird ausgewählt…",
+    "changeFolder": "Ausgewählt · Klicken zum Ändern",
+    "folderFailed": "Die Ordnerauswahl konnte nicht geöffnet werden. Erneut versuchen.",
+    "readOnlyNotice": "Nur der gewählte Speicherort und seine Unterordner werden geprüft. Der Scan verändert keine Dateien."
   },
   "oldFileProcessing": {
     "selectFile": "{{name}} zur Bereinigungsprüfung auswählen",

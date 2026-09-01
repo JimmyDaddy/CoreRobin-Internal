@@ -198,6 +198,13 @@
     "title": "Utilisation courante de cet espace"
   },
   "map": {
+    "list": {
+      "name": "Nom",
+      "share": "% du dossier",
+      "sort": "Trier la liste",
+      "shown": "Affichés : {{count}}",
+      "loadMore": "Charger plus"
+    },
     "title": "Emplacement de l'espace",
     "description": "La zone représente l'espace disque alloué. Les couleurs correspondantes appartiennent à une branche de dossiers ; les secteurs gris représentent des fichiers.",
     "descriptionPath": "Affiché par le chemin réel sur le disque système : chaque anneau représente le niveau de répertoire suivant, et la zone représente l'espace disque alloué.",
@@ -288,6 +295,26 @@
     "removeFromBasket": "Retirer du panier de nettoyage",
     "includedByParent": "Inclus dans un dossier parent",
     "addToBasket": "Ajouter au panier de nettoyage"
+  },
+  "settlement": {
+    "status": {
+      "success": "Nettoyage terminé",
+      "partial": "Partiellement terminé",
+      "cancelled": "Nettoyage arrêté",
+      "failed": "Nettoyage non terminé",
+      "empty": "Aucun élément traité"
+    },
+    "movedLabel": "Déplacé dans la corbeille",
+    "availableLabel": "Gain d’espace disponible",
+    "processedLabel": "Espace traité",
+    "completed": "Terminés : {{count}}",
+    "processed": "{{size}} traités",
+    "failed": "Non terminés : {{count}}",
+    "trashNote": "Les éléments restent récupérables dans la corbeille. Les déplacer ne signifie pas que l’espace disque est libéré.",
+    "unmeasuredNote": "La taille traitée ne correspond pas forcément à l’espace libéré. Aucune mesure d’espace disponible n’a été obtenue.",
+    "pendingNote": "Les instantanés, fichiers ouverts ou délais de récupération du système peuvent affecter l’espace disponible.",
+    "measuredNote": "Différence mesurée avant et après l’opération ; d’autres applications peuvent aussi l’influencer.",
+    "viewResult": "Voir le résultat"
   },
   "deleteDialog": {
     "title": "Vérifier le panier de nettoyage",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "Emplacements récents",
     "removable": "Removable",
     "modify": "Modifier la portée",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "Réduire",
+    "pending": "Pas encore analysé",
+    "systemDescription": "Emplacements courants ou tout le disque système",
+    "folderDescription": "Cibler un dossier et ses sous-dossiers",
+    "choosingFolder": "Sélection du dossier…",
+    "changeFolder": "Sélectionné · Cliquer pour changer",
+    "folderFailed": "Impossible d’ouvrir le sélecteur de dossier. Réessayez.",
+    "readOnlyNotice": "Seuls l’emplacement choisi et ses sous-dossiers sont analysés. Aucun fichier n’est modifié."
   },
   "oldFileProcessing": {
     "selectFile": "Sélectionner {{name}} pour la révision du nettoyage",

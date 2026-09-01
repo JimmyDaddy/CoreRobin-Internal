@@ -12,6 +12,7 @@
   "network": "Netzwerk",
   "startup": "Start",
   "history": "Anwendungs-Historie",
+  "toolbox": "Werkzeugkasten",
   "settings": "Einstellungen",
   "soon": "Bald verfügbar",
   "comingSoon": "In Kürze verfügbar",
@@ -24,6 +25,7 @@
     "network": "Netzwerkdiagnose",
     "startup": "Überprüfung gestarteter Anwendungen",
     "history": "Analyse der Verlaufsinformationen",
+    "toolbox": "Werkzeugkasten",
     "settings": "Einstellungen"
   },
   "demoData": "Browser-Demonstrationdaten",

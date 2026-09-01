@@ -68,6 +68,7 @@
     "binding": "Ziel wird geprüft…",
     "requestClose": "Beenden...",
     "restart": "App neu starten",
+    "watchExit": "Beim Beenden benachrichtigen",
     "forceKill": "Prozess zwangsweise beenden…"
   },
   "history": {

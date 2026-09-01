@@ -17,6 +17,7 @@ import {
   Sparkles,
   SlidersHorizontal,
   Wand2,
+  Wrench,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -39,9 +40,11 @@ import {
 
 import {
   canRelaunchApplication,
+  configureToolboxPolicy,
   createProcessControlLease,
   executeProcessAction,
   getSystemSnapshot,
+  getToolboxStorageSnapshot,
   getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
@@ -108,6 +111,7 @@ import {
 import type { ResourceAlertResource } from "./resourceAlerts";
 import type { UserActionKind } from "./userActionHistory";
 import type { ProductDataClearResult } from "./productDataClear";
+import { clearToolboxData, newToolboxRequest } from "./toolbox/client";
 import {
   applyAppAppearance,
   loadAppSettings,
@@ -174,6 +178,7 @@ const SettingsExplorer = lazy(async () => ({ default: (await import("./component
 const SmartDiagnosis = lazy(() => import("./components/SmartDiagnosis"));
 const StorageExplorer = lazy(async () => ({ default: (await import("./components/StorageExplorer")).StorageExplorer }));
 const StartupExplorer = lazy(async () => ({ default: (await import("./components/StartupExplorer")).StartupExplorer }));
+const ToolboxPanel = lazy(async () => ({ default: (await import("./toolbox/ToolboxPanel")).ToolboxPanel }));
 
 interface PendingProcessAction {
   source: "process" | "diagnosis" | "restart";
@@ -221,6 +226,8 @@ function App() {
     useState<SettingsOperationFailure | null>(null);
   const [settingsOperationRetryRevision, setSettingsOperationRetryRevision] =
     useState(0);
+  const toolboxPolicySyncQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const toolboxPolicySignatureRef = useRef<string | null>(null);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
@@ -255,6 +262,8 @@ function App() {
     settings.historyApplicationNamesEnabled,
   );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [toolboxProcessWatchTarget, setToolboxProcessWatchTarget] =
+    useState<ProcessRow | null>(null);
   const [cleanupWorkspace, setCleanupWorkspace] = useState<"space" | "quick">("space");
   const [cleanupWorkspaceRequest, setCleanupWorkspaceRequest] = useState<{
     workspace: "space" | "quick";
@@ -713,19 +722,33 @@ function App() {
 
   const clearAllProductData = useCallback(async () => {
     const categories = [
-        "resourceHistory",
-        "connectionHistory",
-        "applicationInventory",
-        "scanCaches",
-      ] as const;
-    const outcomes = await Promise.all(
-      categories.map((category) => productDataPrivacy.clearCategory(category)),
-    );
+      "resourceHistory",
+      "connectionHistory",
+      "applicationInventory",
+      "scanCaches",
+    ] as const;
+    const [outcomes, toolboxOutcome] = await Promise.all([
+      Promise.all(
+        categories.map((category) => productDataPrivacy.clearCategory(category)),
+      ),
+      (async () => {
+        if (!isDesktopRuntime()) return true;
+        try {
+          const snapshot = await clearToolboxData(newToolboxRequest());
+          return snapshot.sessions.length === 0
+            && snapshot.resources.length === 0
+            && snapshot.jobs.length === 0;
+        } catch {
+          return false;
+        }
+      })(),
+    ]);
     const results: ProductDataClearResult[] = categories.map((scope, index) => ({
       scope,
       status: outcomes[index] ? "succeeded" : "failed",
     }));
-    if (outcomes.some((succeeded) => !succeeded)) {
+    results.push({ scope: "toolbox", status: toolboxOutcome ? "succeeded" : "failed" });
+    if (outcomes.some((succeeded) => !succeeded) || !toolboxOutcome) {
       return [
         ...results,
         { scope: "preferences", status: "skipped" },
@@ -824,6 +847,66 @@ function App() {
     saveAppSettings(settings);
     applyAppAppearance(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    const desired = {
+      globalHistoryEnabled: settings.historyPersistenceEnabled,
+      toolboxHistoryEnabled:
+        settings.historyPersistenceEnabled && settings.toolboxHistoryEnabled,
+      retentionDays: Math.min(7, settings.historyRetentionDays),
+      notificationsEnabled: settings.desktopNotificationsEnabled,
+      language: normalizeLanguage(settings.language),
+    };
+    const signature = JSON.stringify(desired);
+    if (toolboxPolicySignatureRef.current === signature) return;
+
+    let disposed = false;
+    const sync = async () => {
+      if (toolboxPolicySignatureRef.current === signature) return;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const current = await getToolboxStorageSnapshot();
+        const policy = current.policy;
+        if (
+          policy.globalHistoryEnabled === desired.globalHistoryEnabled
+          && policy.toolboxHistoryEnabled === desired.toolboxHistoryEnabled
+          && policy.retentionDays === desired.retentionDays
+          && policy.notificationsEnabled === desired.notificationsEnabled
+          && policy.language === desired.language
+        ) {
+          if (!disposed) toolboxPolicySignatureRef.current = signature;
+          return;
+        }
+        try {
+          await configureToolboxPolicy({
+            expectedPolicyRevision: policy.policyRevision,
+            ...desired,
+          });
+          if (!disposed) toolboxPolicySignatureRef.current = signature;
+          return;
+        } catch (caughtError) {
+          const normalized = normalizeCommandError(caughtError);
+          if (normalized.code !== "policy_revision_conflict" || attempt === 1) {
+            throw caughtError;
+          }
+        }
+      }
+    };
+
+    const queued = toolboxPolicySyncQueueRef.current.then(sync, sync);
+    toolboxPolicySyncQueueRef.current = queued.catch((caughtError) => {
+      if (!disposed) setNotice(normalizeCommandError(caughtError).message);
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [
+    settings.desktopNotificationsEnabled,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+    settings.language,
+    settings.toolboxHistoryEnabled,
+  ]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -1500,6 +1583,7 @@ function App() {
             <div className="nav-group daily-nav">
               <button className={activeView === "overview" ? "is-active" : ""} type="button" onClick={() => navigateDaily("overview")}><House size={18} />{t("daily:nav.today")}</button>
               <button className={activeView === "more" || activeView === "processes" || activeView === "storage" ? "is-active" : ""} type="button" onClick={() => navigateDaily("more")}><CircleHelp size={18} />{t("daily:nav.solve")}</button>
+              <button className={activeView === "toolbox" ? "is-active" : ""} type="button" onClick={() => navigateDaily("toolbox")}><Wrench size={18} />{t("app:toolbox")}</button>
               <button className={activeView === "applications" ? "is-active" : ""} type="button" onClick={() => navigateDaily("applications")}>
                 <ListTree size={18} />{t("app:applications")}
                 {trashApplicationWatcher.applications.length > 0 ? (
@@ -1566,6 +1650,7 @@ function App() {
               <span className="nav-label">{t("app:diagnostics")}</span>
               <button className={activeView === "startup" ? "is-active" : ""} type="button" onClick={() => setActiveView("startup")}><Rocket size={17} />{t("app:startup")}</button>
               <button className={activeView === "history" ? "is-active" : ""} type="button" onClick={() => setActiveView("history")}><History size={17} />{t("app:history")}{resourceAlerts.activeAlerts.length > 0 ? <small className="nav-alert-badge" aria-label={t("history:alerts.active", { count: resourceAlerts.activeAlerts.length })}>{resourceAlerts.activeAlerts.length}</small> : null}</button>
+              <button className={activeView === "toolbox" ? "is-active" : ""} type="button" onClick={() => setActiveView("toolbox")}><Wrench size={17} />{t("app:toolbox")}</button>
               <button className={activeView === "settings" ? "is-active" : ""} type="button" onClick={() => setActiveView("settings")}>
                 <Settings2 size={17} />{t("app:settings")}
                 {updater.availableVersion ? <small className="nav-update-badge">v{updater.availableVersion}</small> : null}
@@ -1622,6 +1707,8 @@ function App() {
                         ? "records"
                         : activeView === "settings"
                           ? "settings"
+                          : activeView === "toolbox"
+                            ? "toolbox"
                           : activeView === "processes" || activeView === "applications"
                             ? "applications"
                             : "today"}`)}</span>
@@ -1778,7 +1865,7 @@ function App() {
         ) : null}
         {notice ? <div className="global-notice" role="status">{notice}<button type="button" onClick={() => setNotice(null)}>{t("common:close")}</button></div> : null}
 
-        <div className={`content-layout${dailyMode || activeView === "applications" || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "settings" ? " content-layout--wide" : ""}`}>
+        <div className={`content-layout${dailyMode || activeView === "applications" || activeView === "cleanup" || activeView === "network" || activeView === "startup" || activeView === "history" || activeView === "toolbox" || activeView === "settings" ? " content-layout--wide" : ""}`}>
           <main className="main-content" ref={mainContentRef}>
             <Suspense fallback={<div className="surface-loading"><span className="live-status-dot" />{t("common:loading")}</div>}>
             {dailyMode ? (
@@ -1908,6 +1995,8 @@ function App() {
                   onOpenApplications={() => navigateDaily("processes")}
                   recommendedIntent={recommendedDailyIntent}
                 />
+              ) : activeView === "toolbox" ? (
+                <ToolboxPanel onClose={() => navigateDaily("more")} onOpenProcessInspector={() => navigateDaily("processes")} />
               ) : activeView === "history" ? (
                 <DailyRecords
                   alertEvents={resourceAlerts.events}
@@ -2268,6 +2357,18 @@ function App() {
                 }}
                 onOpenUserAction={openUserActionDestination}
               />
+            ) : activeView === "toolbox" ? (
+              <ToolboxPanel
+                initialProcessWatchTarget={toolboxProcessWatchTarget}
+                onOpenProcessInspector={() => {
+                  setToolboxProcessWatchTarget(null);
+                  setActiveView("processes");
+                }}
+                onClose={() => {
+                  setToolboxProcessWatchTarget(null);
+                  setActiveView("overview");
+                }}
+              />
             ) : (
               <SettingsExplorer
                 settings={settings}
@@ -2305,6 +2406,12 @@ function App() {
                 onRestart={() => {
                   if (selectedIdentity && activeDetail) {
                     void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
+                  }
+                }}
+                onStartProcessWatch={() => {
+                  if (selectedProcess?.birthToken) {
+                    setToolboxProcessWatchTarget(selectedProcess);
+                    setActiveView("toolbox");
                   }
                 }}
               />

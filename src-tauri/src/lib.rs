@@ -17,18 +17,40 @@ mod health_state;
 mod history_export;
 mod history_storage;
 mod identity;
+// The safety controller and wire protocol are compiled and tested alongside
+// the parent-side adapter. Some controller entry points remain test-oriented;
+// keep them visible without weakening test-time lint coverage.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) mod keyboard_cleaning;
+mod keyboard_cleaning_adapter;
 mod models;
 mod monitor;
 mod native_uninstall;
 mod network_connections;
 mod network_quality;
+mod power_events;
 mod private_storage;
 mod process_control;
+mod resource_occupancy;
 mod safe_fs;
 mod sampler_service;
 mod sensors;
 mod startup;
 mod storage_health;
+mod toolbox_commands;
+mod toolbox_contracts;
+mod toolbox_export;
+mod toolbox_file_hash;
+mod toolbox_inputs;
+mod toolbox_network;
+mod toolbox_power;
+mod toolbox_process_watch;
+#[path = "toolbox_scheduler.rs"]
+mod toolbox_scheduler;
+#[cfg(target_os = "macos")]
+mod toolbox_screen_color;
+mod toolbox_service;
+mod toolbox_storage;
 mod user_actions;
 
 pub use cleanup::{
@@ -36,6 +58,11 @@ pub use cleanup::{
 };
 pub fn maybe_run_cleanup_scan_worker() -> bool {
     cleanup_scan_job::maybe_run_worker()
+}
+
+/// Runs the restricted helper child mode before Tauri initializes any UI.
+pub fn run_keyboard_helper() -> i32 {
+    keyboard_cleaning::run_helper()
 }
 
 use std::sync::{
@@ -75,6 +102,8 @@ use history_storage::{
     clear_all as clear_all_history_segments, load as load_history_segment,
     save as save_history_segment, summary as history_storage_summary,
 };
+use keyboard_cleaning::{HeartbeatCommand, HelperStopReason, StartCommand, StopCommand};
+use keyboard_cleaning_adapter::KeyboardCleaningAdapter;
 use models::{
     ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
@@ -106,7 +135,9 @@ use objc2::{MainThreadMarker, sel};
 use objc2_app_kit::{
     NSApplication, NSEvent, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
+use power_events::{PowerEventObserver, SYSTEM_WAKE_EVENT};
 use process_control::ProcessController;
+use resource_occupancy::{OccupancyScanRequest, OccupancyScanResult, OccupancyVolumeScanRequest};
 use sampler_service::{SamplerControl, SamplerService, SamplerStatus};
 use startup::{StartupController, scan_startup_items};
 use storage_health::{StorageHealthSnapshot, inspect_storage_health, validate_mount_points};
@@ -123,6 +154,33 @@ use tauri::{
 use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWindowExt};
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
+use tauri_plugin_notification::NotificationExt;
+use toolbox_contracts::{
+    TOOLBOX_ACTIVITY_EVENT, TOOLBOX_EVENT, ToolboxEvent, ToolboxJob, ToolboxJobRequest,
+    ToolboxSnapshot,
+};
+use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
+use toolbox_power::{
+    PowerCompletionOwner, PowerCompletionStatus, PowerRequest, PowerService, PowerState,
+};
+use toolbox_process_watch::{
+    ProcessWatchCancelRequest, ProcessWatchKeepAwakeStatus, ProcessWatchRequest,
+    ProcessWatchService, ProcessWatchSnapshotView, ProcessWatchStatus,
+};
+use toolbox_scheduler::{
+    SchedulerAction, SchedulerActionIntent, SchedulerCreateRequest, SchedulerIntentOutcome,
+    SchedulerPreview, SchedulerPreviewRequest, SchedulerRuleRequest, SchedulerSnapshot,
+    SchedulerUpdateRequest, ToolboxScheduler,
+};
+use toolbox_service::{
+    CancelToolboxJobRequest, CancelToolboxOutputRequest, ExportToolboxOutputRequest,
+    FinishToolboxJobRequest, RegisterToolboxOutputRequest, ToolboxService,
+};
+use toolbox_storage::{
+    ToolboxCompletionRecord, ToolboxHistoryPage, ToolboxNotificationStatus, ToolboxPolicy,
+    ToolboxPolicyConfigureRequest, ToolboxStorage, ToolboxStorageError, ToolboxStorageSnapshot,
+    ToolboxSystemTool, ToolboxTerminalStatus,
+};
 use user_actions::{ProductLanguage, ProductPage, SystemSettingsDestination};
 
 #[cfg(target_os = "macos")]
@@ -263,6 +321,17 @@ fn require_tray_window(window: &WebviewWindow) -> Result<(), CommandError> {
     require_tray_window_label(window.label())
 }
 
+fn keyboard_cleaning_stop_is_emergency(label: &str) -> Result<bool, CommandError> {
+    match label {
+        "main" => Ok(false),
+        "tray" | "companion" => Ok(true),
+        _ => Err(CommandError::new(
+            "window_not_authorized",
+            "This operation is available only from a trusted CoreRobin window.",
+        )),
+    }
+}
+
 #[derive(Clone)]
 struct AppState {
     background_launch: bool,
@@ -278,6 +347,15 @@ struct AppState {
     quick_clean: Arc<QuickCleanCoordinator>,
     file_insights: Arc<FileInsightsCoordinator>,
     startup_controller: Arc<Mutex<StartupController>>,
+    toolbox: Arc<Mutex<ToolboxService>>,
+    toolbox_file_hash: Arc<FileHashManager>,
+    toolbox_power: Arc<Mutex<PowerService>>,
+    toolbox_process_watch: Arc<Mutex<ProcessWatchService>>,
+    toolbox_scheduler_dispatch_lock: Arc<Mutex<()>>,
+    toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
+    toolbox_scheduler_stop: Arc<AtomicBool>,
+    toolbox_storage: Arc<Mutex<Option<ToolboxStorage>>>,
+    keyboard_cleaning: Arc<Mutex<KeyboardCleaningAdapter>>,
 }
 
 impl AppState {
@@ -286,6 +364,12 @@ impl AppState {
         let process_control_capabilities = process_controller.capabilities();
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
+        let toolbox_power = Arc::new(Mutex::new(PowerService::new()));
+        let keyboard_cleaning = KeyboardCleaningAdapter::new();
+        let keyboard_capability = keyboard_cleaning.capability();
+        let toolbox_process_watch =
+            ProcessWatchService::with_power_service(Arc::clone(&toolbox_power))
+                .expect("failed to start the process watch worker");
         let monitor = Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities)));
         let sampler = Arc::new(SamplerService::new(Arc::clone(&monitor)));
         Self {
@@ -302,6 +386,17 @@ impl AppState {
             quick_clean: Arc::new(QuickCleanCoordinator::default()),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
+            toolbox: Arc::new(Mutex::new(ToolboxService::with_keyboard_capability(
+                keyboard_capability,
+            ))),
+            toolbox_file_hash: Arc::new(FileHashManager::default()),
+            toolbox_power,
+            toolbox_process_watch: Arc::new(Mutex::new(toolbox_process_watch)),
+            toolbox_scheduler_dispatch_lock: Arc::new(Mutex::new(())),
+            toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
+            toolbox_scheduler_stop: Arc::new(AtomicBool::new(false)),
+            toolbox_storage: Arc::new(Mutex::new(None)),
+            keyboard_cleaning: Arc::new(Mutex::new(keyboard_cleaning)),
         }
     }
 }
@@ -312,6 +407,289 @@ fn now_millis() -> u64 {
         .unwrap_or_default()
         .as_millis()
         .min(u64::MAX as u128) as u64
+}
+
+pub(crate) fn emit_toolbox_snapshot(app: &AppHandle, state: &AppState) {
+    let snapshot = state.toolbox.lock().ok().map(|mut service| {
+        service.reconcile();
+        service.snapshot()
+    });
+    if let Some(snapshot) = snapshot {
+        let _ = app.emit(TOOLBOX_EVENT, ToolboxEvent::Snapshot { snapshot });
+    }
+}
+
+fn record_toolbox_completion(
+    state: &AppState,
+    record_id: String,
+    tool: ToolboxSystemTool,
+    started_at_ms: u64,
+    terminal_status: ToolboxTerminalStatus,
+    notification_status: ToolboxNotificationStatus,
+) {
+    let Ok(mut storage_slot) = state.toolbox_storage.lock() else {
+        eprintln!("toolbox history lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    let reset_epoch = storage.reset_epoch();
+    let record = ToolboxCompletionRecord {
+        record_id,
+        tool,
+        started_at_ms,
+        completed_at_ms: now_millis().max(started_at_ms),
+        terminal_status,
+        notification_status,
+    };
+    if let Err(error) = storage.record_completion(reset_epoch, record, now_millis()) {
+        eprintln!("toolbox history record was not stored: {error}");
+    }
+}
+
+fn begin_toolbox_activity(
+    storage_slot: &Mutex<Option<ToolboxStorage>>,
+    expected_reset_epoch: u64,
+    activity_id: String,
+    tool: ToolboxSystemTool,
+    started_at_ms: u64,
+) {
+    let Ok(mut storage_slot) = storage_slot.lock() else {
+        eprintln!("toolbox activity lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    if let Err(error) =
+        storage.begin_active_activity(expected_reset_epoch, activity_id, tool, started_at_ms)
+    {
+        eprintln!("toolbox activity marker was not stored: {error}");
+    }
+}
+
+fn end_toolbox_activity(storage_slot: &Mutex<Option<ToolboxStorage>>, activity_id: &str) {
+    let Ok(mut storage_slot) = storage_slot.lock() else {
+        eprintln!("toolbox activity lock was poisoned");
+        return;
+    };
+    let Some(storage) = storage_slot.as_mut() else {
+        return;
+    };
+    let reset_epoch = storage.reset_epoch();
+    if let Err(error) = storage.end_active_activity(reset_epoch, activity_id) {
+        eprintln!("toolbox activity marker was not cleared: {error}");
+    }
+}
+
+fn process_watch_terminal_status(status: ProcessWatchStatus) -> Option<ToolboxTerminalStatus> {
+    Some(match status {
+        ProcessWatchStatus::Exited => ToolboxTerminalStatus::ProcessExited,
+        ProcessWatchStatus::IdentityChanged | ProcessWatchStatus::Interrupted => {
+            ToolboxTerminalStatus::Interrupted
+        }
+        ProcessWatchStatus::Expired => ToolboxTerminalStatus::Expired,
+        ProcessWatchStatus::Cancelled => ToolboxTerminalStatus::Cancelled,
+        ProcessWatchStatus::Running | ProcessWatchStatus::Unknown => return None,
+    })
+}
+
+fn history_record_id(prefix: &str, request_id: &str) -> String {
+    let suffix = request_id
+        .bytes()
+        .map(|byte| {
+            if byte.is_ascii_alphanumeric() || b"._:-".contains(&byte) {
+                byte as char
+            } else {
+                '_'
+            }
+        })
+        .take(96)
+        .collect::<String>();
+    format!("{prefix}-{suffix}")
+}
+
+fn occupancy_terminal_status(status: &str) -> ToolboxTerminalStatus {
+    match status {
+        "scoped_complete" => ToolboxTerminalStatus::Completed,
+        "cancelled" => ToolboxTerminalStatus::Cancelled,
+        "timed_out" => ToolboxTerminalStatus::Deadline,
+        _ => ToolboxTerminalStatus::Failed,
+    }
+}
+
+fn power_completion_terminal_status(status: PowerCompletionStatus) -> ToolboxTerminalStatus {
+    match status {
+        PowerCompletionStatus::Cancelled => ToolboxTerminalStatus::Cancelled,
+        PowerCompletionStatus::Expired => ToolboxTerminalStatus::Expired,
+        PowerCompletionStatus::LowBattery => ToolboxTerminalStatus::LowBattery,
+        PowerCompletionStatus::Failed => ToolboxTerminalStatus::Failed,
+        PowerCompletionStatus::Interrupted => ToolboxTerminalStatus::Interrupted,
+    }
+}
+
+fn drain_power_completions(state: &AppState) {
+    // Completion projection shares the global-clear barrier. If clear wins,
+    // it drains the stopped services before this function can write history;
+    // if projection wins, clear removes the record immediately afterwards.
+    let _clear_barrier = match state.toolbox_scheduler_dispatch_lock.lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            eprintln!("toolbox clear barrier lock was poisoned");
+            return;
+        }
+    };
+    drain_power_completions_locked(state);
+}
+
+fn drain_power_completions_locked(state: &AppState) {
+    let completions = match state.toolbox_power.lock() {
+        Ok(power) => power.take_completions(),
+        Err(_) => {
+            eprintln!("toolbox power state lock was poisoned");
+            return;
+        }
+    };
+    for completion in completions {
+        let record_id = match completion.owner {
+            PowerCompletionOwner::Independent => {
+                history_record_id("keep-awake", &completion.request_id)
+            }
+            PowerCompletionOwner::Scheduler => {
+                history_record_id("keep-awake-schedule", &completion.request_id)
+            }
+            PowerCompletionOwner::ProcessWatch(watch_id) => {
+                format!("process-watch-{watch_id}-keep-awake")
+            }
+        };
+        if matches!(
+            completion.owner,
+            PowerCompletionOwner::Independent | PowerCompletionOwner::Scheduler
+        ) {
+            end_toolbox_activity(&state.toolbox_storage, &record_id);
+        }
+        record_toolbox_completion(
+            state,
+            record_id,
+            ToolboxSystemTool::KeepAwake,
+            completion.started_at_ms,
+            power_completion_terminal_status(completion.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+}
+
+fn drain_process_watch_completions(app: &AppHandle, state: &AppState) {
+    // Keep a completion already taken by the reaper from being projected after
+    // global clear. The process-watch reset itself stops and joins its worker.
+    let _clear_barrier = match state.toolbox_scheduler_dispatch_lock.lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            eprintln!("toolbox clear barrier lock was poisoned");
+            return;
+        }
+    };
+    drain_process_watch_completions_locked(app, state);
+}
+
+fn drain_process_watch_completions_locked(app: &AppHandle, state: &AppState) {
+    let completions = match state.toolbox_process_watch.lock() {
+        Ok(service) => service.take_completions(),
+        Err(_) => {
+            eprintln!("process watch state lock was poisoned");
+            return;
+        }
+    };
+    let Ok(completions) = completions else {
+        return;
+    };
+    let now = Instant::now();
+    let now_ms = now_millis();
+    for snapshot in completions {
+        let Some(terminal_status) = process_watch_terminal_status(snapshot.status) else {
+            continue;
+        };
+        end_toolbox_activity(
+            &state.toolbox_storage,
+            &history_record_id("process-watch", &snapshot.watch_id.to_string()),
+        );
+        let started_at_ms = if snapshot.started_at >= now {
+            now_ms.saturating_add(snapshot.started_at.duration_since(now).as_millis() as u64)
+        } else {
+            now_ms.saturating_sub(now.duration_since(snapshot.started_at).as_millis() as u64)
+        };
+        let notification_status = if snapshot.status == ProcessWatchStatus::Exited {
+            notify_process_exit(app, state, snapshot.key.pid)
+        } else {
+            ToolboxNotificationStatus::Unavailable
+        };
+        record_toolbox_completion(
+            state,
+            format!("process-watch-{}", snapshot.watch_id),
+            ToolboxSystemTool::ProcessWatch,
+            started_at_ms,
+            terminal_status,
+            notification_status,
+        );
+    }
+}
+
+fn notify_process_exit(app: &AppHandle, state: &AppState, pid: u32) -> ToolboxNotificationStatus {
+    let policy = state
+        .toolbox_storage
+        .lock()
+        .ok()
+        .and_then(|storage| storage.as_ref().map(|storage| storage.snapshot().policy));
+    let Some(policy) = policy else {
+        return ToolboxNotificationStatus::Unavailable;
+    };
+    if !policy.notifications_enabled {
+        return ToolboxNotificationStatus::Unavailable;
+    }
+    match app
+        .notification()
+        .builder()
+        .title(process_watch_notification_title(&policy.language))
+        .body(process_watch_notification_body(&policy.language, pid))
+        .show()
+    {
+        Ok(()) => ToolboxNotificationStatus::Submitted,
+        Err(error) => {
+            eprintln!("process-watch notification was not delivered: {error}");
+            ToolboxNotificationStatus::Failed
+        }
+    }
+}
+
+fn process_watch_notification_title(language: &str) -> &'static str {
+    match language {
+        "zh-CN" => "进程退出提醒",
+        "zh-Hant" => "程序結束提醒",
+        "ja" => "プロセス終了通知",
+        "de" => "Prozess beendet",
+        "fr" => "Processus terminé",
+        "es" => "Proceso finalizado",
+        "pt-BR" => "Processo encerrado",
+        "ko" => "프로세스 종료 알림",
+        "ru" => "Процесс завершён",
+        _ => "Process exited",
+    }
+}
+
+fn process_watch_notification_body(language: &str, pid: u32) -> String {
+    match language {
+        "zh-CN" => format!("PID {pid} 已退出。"),
+        "zh-Hant" => format!("PID {pid} 已結束。"),
+        "ja" => format!("PID {pid} が終了しました。"),
+        "de" => format!("PID {pid} wurde beendet."),
+        "fr" => format!("Le PID {pid} s’est terminé."),
+        "es" => format!("El PID {pid} ha finalizado."),
+        "pt-BR" => format!("O PID {pid} foi encerrado."),
+        "ko" => format!("PID {pid} 프로세스가 종료되었습니다."),
+        "ru" => format!("Процесс с PID {pid} завершён."),
+        _ => format!("Process PID {pid} exited."),
+    }
 }
 
 fn start_lease_reaper(controller: Weak<Mutex<ProcessController>>) {
@@ -345,6 +723,222 @@ fn start_health_state_watchdog(store: Arc<HealthStateStore>, app: AppHandle) {
             }
         })
         .expect("failed to start the health state watchdog");
+}
+
+fn start_toolbox_reaper(
+    toolbox: Weak<Mutex<ToolboxService>>,
+    stop: Arc<AtomicBool>,
+    app: AppHandle,
+) {
+    std::thread::Builder::new()
+        .name("core-robin-toolbox-reaper".to_owned())
+        .spawn(move || {
+            let mut previous_activity = None;
+            while !stop.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_secs(1));
+                if stop.load(Ordering::Acquire) {
+                    break;
+                }
+                let Some(toolbox) = toolbox.upgrade() else {
+                    break;
+                };
+                let snapshot = match toolbox.lock() {
+                    Ok(mut service) => {
+                        if service.reconcile() {
+                            Some(service.snapshot())
+                        } else {
+                            None
+                        }
+                    }
+                    Err(_) => break,
+                };
+                if let Some(snapshot) = snapshot {
+                    let _ = app.emit(TOOLBOX_EVENT, ToolboxEvent::Snapshot { snapshot });
+                }
+                let state = app.state::<AppState>();
+                let current_activity = toolbox_activity_fingerprint(&state);
+                drain_power_completions(&state);
+                drain_process_watch_completions(&app, &state);
+                if current_activity.is_some() && current_activity != previous_activity {
+                    let _ = app.emit(TOOLBOX_ACTIVITY_EVENT, ());
+                }
+                previous_activity = current_activity;
+            }
+        })
+        .expect("failed to start the toolbox reaper");
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ToolboxActivityFingerprint {
+    power: PowerState,
+    process_watches: Vec<(u64, ProcessWatchStatus, ProcessWatchKeepAwakeStatus)>,
+    scheduler_revision: u64,
+}
+
+fn toolbox_activity_fingerprint(state: &AppState) -> Option<ToolboxActivityFingerprint> {
+    let power = state.toolbox_power.lock().ok()?.snapshot();
+    let scheduler_revision = state.toolbox_scheduler.lock().ok()?.snapshot().revision;
+    let mut process_watches = state
+        .toolbox_process_watch
+        .lock()
+        .ok()?
+        .snapshots()
+        .ok()?
+        .into_iter()
+        .map(|snapshot| {
+            (
+                snapshot.watch_id,
+                snapshot.status,
+                snapshot.keep_awake_status,
+            )
+        })
+        .collect::<Vec<_>>();
+    process_watches.sort_by_key(|(watch_id, _, _)| *watch_id);
+    Some(ToolboxActivityFingerprint {
+        power,
+        process_watches,
+        scheduler_revision,
+    })
+}
+
+fn start_toolbox_scheduler_runtime(
+    scheduler: Weak<Mutex<ToolboxScheduler>>,
+    power: Weak<Mutex<PowerService>>,
+    storage: Weak<Mutex<Option<ToolboxStorage>>>,
+    dispatch_lock: Arc<Mutex<()>>,
+    stop: Arc<AtomicBool>,
+    app: AppHandle,
+) {
+    std::thread::Builder::new()
+        .name("core-robin-toolbox-scheduler".to_owned())
+        .spawn(move || {
+            while !stop.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_secs(1));
+                if stop.load(Ordering::Acquire) {
+                    break;
+                }
+                let Ok(dispatch_guard) = dispatch_lock.lock() else {
+                    break;
+                };
+                let Some(scheduler_arc) = scheduler.upgrade() else {
+                    break;
+                };
+                let intents = match scheduler_arc.lock() {
+                    Ok(mut scheduler) => match scheduler.poll_due(now_millis()) {
+                        Ok(intents) => intents,
+                        Err(error) => {
+                            eprintln!("toolbox scheduler poll failed: {error}");
+                            continue;
+                        }
+                    },
+                    Err(_) => break,
+                };
+                for intent in intents {
+                    let current_epoch = scheduler.upgrade().and_then(|scheduler| {
+                        scheduler.lock().ok().map(|scheduler| scheduler.epoch())
+                    });
+                    if current_epoch != Some(intent.epoch) {
+                        continue;
+                    }
+                    let outcome = dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
+                    if let Some(scheduler) = scheduler.upgrade()
+                        && let Ok(mut scheduler) = scheduler.lock()
+                        && let Err(error) =
+                            scheduler.mark_intent_outcome(&intent, outcome, now_millis())
+                    {
+                        eprintln!("toolbox scheduler intent update failed: {error}");
+                    }
+                }
+                drop(dispatch_guard);
+            }
+        })
+        .expect("failed to start the toolbox scheduler runtime");
+}
+
+fn dispatch_toolbox_schedule_intent(
+    app: &AppHandle,
+    power: &Weak<Mutex<PowerService>>,
+    storage: &Weak<Mutex<Option<ToolboxStorage>>>,
+    intent: &SchedulerActionIntent,
+) -> SchedulerIntentOutcome {
+    match &intent.action {
+        SchedulerAction::Reminder => {
+            let policy = storage.upgrade().and_then(|storage| {
+                let storage = storage.lock().ok()?;
+                Some(storage.as_ref()?.snapshot().policy)
+            });
+            let Some(policy) = policy else {
+                return SchedulerIntentOutcome::Skipped;
+            };
+            if !policy.notifications_enabled {
+                return SchedulerIntentOutcome::Skipped;
+            }
+            let delivered = app
+                .notification()
+                .builder()
+                .title("CoreRobin")
+                .body(scheduled_reminder_body(&policy.language))
+                .show()
+                .is_ok();
+            if delivered {
+                SchedulerIntentOutcome::Submitted
+            } else {
+                SchedulerIntentOutcome::Failed
+            }
+        }
+        SchedulerAction::KeepAwake { duration_minutes } => {
+            let Some(power) = power.upgrade() else {
+                return SchedulerIntentOutcome::Failed;
+            };
+            let request_id = format!("scheduler:{}", intent.schedule_id);
+            let result: Result<(), String> = power
+                .lock()
+                .map_err(|_| "power service lock was poisoned".to_owned())
+                .and_then(|mut power| {
+                    power
+                        .start_if_vacant(PowerRequest {
+                            request_id: request_id.clone(),
+                            duration_minutes: u64::from(*duration_minutes),
+                        })
+                        .map(|_| ())
+                        .map_err(|error| error.code)
+                });
+            match result {
+                Ok(()) => {
+                    if let Some(storage) = storage.upgrade()
+                        && let Ok(mut storage) = storage.lock()
+                        && let Some(storage) = storage.as_mut()
+                        && let Err(error) = storage.begin_active_activity(
+                            intent.epoch,
+                            history_record_id("keep-awake-schedule", &request_id),
+                            ToolboxSystemTool::KeepAwake,
+                            now_millis(),
+                        )
+                    {
+                        eprintln!("scheduled toolbox activity marker was not stored: {error}");
+                    }
+                    SchedulerIntentOutcome::Submitted
+                }
+                Err(code) if code == "keep_awake_busy" => SchedulerIntentOutcome::Skipped,
+                Err(_) => SchedulerIntentOutcome::Failed,
+            }
+        }
+    }
+}
+
+fn scheduled_reminder_body(language: &str) -> &'static str {
+    match language {
+        "zh-CN" => "CoreRobin 定时提醒",
+        "zh-Hant" => "CoreRobin 定時提醒",
+        "ja" => "CoreRobin スケジュール通知",
+        "de" => "CoreRobin – geplante Erinnerung",
+        "fr" => "CoreRobin – rappel planifié",
+        "es" => "CoreRobin – recordatorio programado",
+        "pt-BR" => "CoreRobin – lembrete agendado",
+        "ko" => "CoreRobin 예약 알림",
+        "ru" => "CoreRobin — запланированное напоминание",
+        _ => "CoreRobin scheduled reminder",
+    }
 }
 
 async fn with_monitor<T, F>(
@@ -1259,13 +1853,60 @@ fn resolve_user_path(window: WebviewWindow, path: String) -> Result<String, Comm
 }
 
 #[tauri::command]
-async fn eject_removable_volume(
+async fn prepare_eject_removable_volume(
     window: WebviewWindow,
     state: State<'_, AppState>,
     mount_point: String,
+) -> Result<String, CommandError> {
+    require_main_window(&window)?;
+    let removable = state
+        .sampler
+        .latest_or_sample()
+        .map_err(CommandError::internal)?
+        .disk
+        .volumes
+        .into_iter()
+        .any(|volume| volume.removable && volume.mount_point == mount_point);
+    if !removable {
+        return Err(CommandError::new(
+            "volume_not_removable",
+            "This volume is no longer available as a removable volume.",
+        ));
+    }
+
+    let scan = resource_occupancy::scan_volume_for_action(OccupancyVolumeScanRequest {
+        request_id: format!("eject-{}-{}", now_millis(), mount_point.len()),
+        path: mount_point.clone(),
+    })
+    .await?;
+    let Some(action_lease) = scan.action_lease else {
+        let message = if scan.result.processes.is_empty() {
+            scan.result
+                .message
+                .unwrap_or_else(|| "外盘占用诊断未完成；不会继续推出操作。".to_owned())
+        } else {
+            "检测到进程仍在使用该卷；请关闭相关文件后重新确认。".to_owned()
+        };
+        return Err(CommandError::new("volume_action_not_safe", message));
+    };
+    resource_occupancy::store_volume_action_lease(action_lease)
+}
+
+#[tauri::command]
+async fn eject_removable_volume(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    confirmation_id: String,
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
-    let verified_mount_point = mount_point.clone();
+    // The first command has already performed the bounded scan. The second
+    // button press only consumes the native lease, which re-checks the exact
+    // mount identity immediately before invoking the platform eject provider.
+    let verified_mount_point = resource_occupancy::confirm_stored_volume_action(&confirmation_id)?;
+    let verified_mount_point = verified_mount_point
+        .to_str()
+        .ok_or_else(|| CommandError::new("invalid_volume_target", "卷挂载点不是有效文本。"))?
+        .to_owned();
     let removable = state
         .sampler
         .latest_or_sample()
@@ -1281,13 +1922,14 @@ async fn eject_removable_volume(
         ));
     }
     tauri::async_runtime::spawn_blocking({
-        let mount_point = mount_point.clone();
+        let mount_point = verified_mount_point.clone();
         move || user_actions::eject_removable_volume(&mount_point)
     })
     .await
     .map_err(|error| CommandError::internal(format!("Volume ejection task failed: {error}")))??;
+    let monitor_mount_point = verified_mount_point;
     with_monitor(Arc::clone(&state.monitor), move |monitor| {
-        monitor.record_volume_ejected(&mount_point);
+        monitor.record_volume_ejected(&monitor_mount_point);
         monitor.request_volume_catalog_refresh();
         Ok(())
     })
@@ -2178,6 +2820,94 @@ enum ApplicationIconSource {
 }
 
 #[tauri::command]
+fn start_toolbox_process_watch(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ProcessWatchRequest,
+) -> Result<ProcessWatchSnapshotView, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let expected_reset_epoch = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .snapshot()
+        .reset_epoch;
+    let snapshot = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .start(request)?
+        .snapshot;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let now = Instant::now();
+    let now_ms = now_millis();
+    let view = ProcessWatchSnapshotView::from_snapshot(&snapshot, now, now_ms);
+    begin_toolbox_activity(
+        &state.toolbox_storage,
+        expected_reset_epoch,
+        history_record_id("process-watch", &snapshot.watch_id.to_string()),
+        ToolboxSystemTool::ProcessWatch,
+        view.started_at_ms,
+    );
+    Ok(view)
+}
+
+#[tauri::command]
+fn get_toolbox_process_watches(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<Vec<ProcessWatchSnapshotView>, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let snapshots = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .snapshots()?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let now = Instant::now();
+    let now_ms = now_millis();
+    Ok(snapshots
+        .iter()
+        .map(|snapshot| ProcessWatchSnapshotView::from_snapshot(snapshot, now, now_ms))
+        .collect())
+}
+
+#[tauri::command]
+fn cancel_toolbox_process_watch(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ProcessWatchCancelRequest,
+) -> Result<Option<ProcessWatchSnapshotView>, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let snapshot = state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .cancel(request.watch_id)?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
+    let now = Instant::now();
+    let now_ms = now_millis();
+    Ok(snapshot
+        .as_ref()
+        .map(|snapshot| ProcessWatchSnapshotView::from_snapshot(snapshot, now, now_ms)))
+}
+
+#[tauri::command]
 async fn create_process_control_lease(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -2218,6 +2948,668 @@ async fn execute_process_action(
 }
 
 #[tauri::command]
+fn get_toolbox_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    contract_version: String,
+) -> Result<ToolboxSnapshot, CommandError> {
+    require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
+    if contract_version != toolbox_contracts::TOOLBOX_CONTRACT_VERSION {
+        return Err(CommandError::new(
+            "contract_mismatch",
+            "The toolbox client and native service use different contract versions.",
+        ));
+    }
+    state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))
+        .map(|mut service| {
+            service.reconcile();
+            service.snapshot()
+        })
+}
+
+#[tauri::command]
+fn start_toolbox_session(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: ToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .start(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
+}
+
+#[tauri::command]
+fn cancel_toolbox_job(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: CancelToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .cancel(
+            &request.request_id,
+            &request.job_id,
+            request.expected_revision,
+        );
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
+}
+
+#[tauri::command]
+fn finish_toolbox_job(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: FinishToolboxJobRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .finish(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
+}
+
+#[tauri::command]
+fn register_toolbox_output(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: RegisterToolboxOutputRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .register_output(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
+}
+
+#[tauri::command]
+async fn export_toolbox_output(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: ExportToolboxOutputRequest,
+) -> Result<ToolboxJob, CommandError> {
+    require_main_window(&window)?;
+    let output = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .begin_output_export(&request)?;
+    emit_toolbox_snapshot(&app, &state);
+    let target = std::path::PathBuf::from(&request.path);
+    let byte_length = output.bytes.len() as u64;
+    let cancel = Arc::clone(&output.cancel);
+    let copy_result = tauri::async_runtime::spawn_blocking(move || {
+        toolbox_export::write_reader_copy(
+            &target,
+            &mut std::io::Cursor::new(output.bytes),
+            byte_length,
+            cancel.as_ref(),
+            || Ok(()),
+        )
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("Export task failed: {error}")))?;
+    let error = copy_result
+        .as_ref()
+        .err()
+        .map(|error| crate::toolbox_contracts::ToolboxError {
+            code: error.code.clone(),
+            message: error.message.clone(),
+            retryable: !matches!(error.code.as_str(), "cancelled" | "output_changed"),
+        });
+    let completed = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .complete_output_export(&request, copy_result.is_ok(), error)?;
+    emit_toolbox_snapshot(&app, &state);
+    match copy_result {
+        Ok(()) => Ok(completed),
+        Err(error) => {
+            let _ = completed;
+            Err(error)
+        }
+    }
+}
+
+#[tauri::command]
+fn cancel_toolbox_output(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: CancelToolboxOutputRequest,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .cancel_output(request);
+    if result.is_ok() {
+        emit_toolbox_snapshot(&app, &state);
+    }
+    result
+}
+
+fn toolbox_storage_error(error: ToolboxStorageError) -> CommandError {
+    let code = match error {
+        ToolboxStorageError::PolicyRevisionConflict { .. } => "policy_revision_conflict",
+        ToolboxStorageError::HistoryRevisionConflict { .. } => "history_revision_conflict",
+        ToolboxStorageError::ResetEpochMismatch { .. } => "reset_epoch_conflict",
+        ToolboxStorageError::InvalidCursor => "invalid_cursor",
+        ToolboxStorageError::InvalidPolicy
+        | ToolboxStorageError::InvalidRetentionDays
+        | ToolboxStorageError::UnsupportedLanguage => "invalid_policy",
+        ToolboxStorageError::InvalidRecord
+        | ToolboxStorageError::DuplicateRecord
+        | ToolboxStorageError::ResetEpochMustAdvance => "invalid_storage_request",
+        ToolboxStorageError::InvalidAppDataDir
+        | ToolboxStorageError::Io
+        | ToolboxStorageError::Serialization => "storage_unavailable",
+    };
+    CommandError::new(code, error.to_string())
+}
+
+#[tauri::command]
+fn get_toolbox_storage_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<ToolboxStorageSnapshot, CommandError> {
+    require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_ref()
+        .map(ToolboxStorage::snapshot)
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))
+}
+
+#[tauri::command]
+fn configure_toolbox_policy(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxPolicyConfigureRequest,
+) -> Result<ToolboxPolicy, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .configure_policy(request)
+        .map_err(toolbox_storage_error)
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ToolboxHistoryListRequest {
+    limit: usize,
+    cursor: Option<String>,
+}
+
+#[tauri::command]
+fn list_toolbox_history(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxHistoryListRequest,
+) -> Result<ToolboxHistoryPage, CommandError> {
+    require_main_window(&window)?;
+    drain_power_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .list_history(request.limit, request.cursor.as_deref(), now_millis())
+        .map_err(toolbox_storage_error)
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ToolboxHistoryClearRequest {
+    expected_history_revision: Option<u64>,
+}
+
+#[tauri::command]
+fn clear_toolbox_history(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: ToolboxHistoryClearRequest,
+) -> Result<ToolboxHistoryPage, CommandError> {
+    require_main_window(&window)?;
+    state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?
+        .clear_history(request.expected_history_revision)
+        .map_err(toolbox_storage_error)
+}
+
+#[tauri::command]
+fn clear_toolbox_data(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: toolbox_contracts::ToolboxRequest,
+) -> Result<ToolboxSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    // The keyboard helper is intentionally outside the ToolboxService state,
+    // so include it in the same clear barrier before advancing reset_epoch.
+    // A stop command keeps the helper's own release-confirmation protocol in
+    // charge of restoring the input hook.
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .stop_for_reason(HelperStopReason::Cancelled)?;
+    // Reset joins the old polling worker before this barrier may advance. It
+    // releases attached keep-awake demands and discards retained snapshots,
+    // pending completions, and selected process identities as one operation.
+    state
+        .toolbox_process_watch
+        .lock()
+        .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
+        .reset()?;
+    let _ = state.toolbox_file_hash.cancel();
+    let _ = resource_occupancy::cancel_active();
+    state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .clear_all();
+    let snapshot = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .clear(&request.request_id, request.expected_revision)?;
+    // Once ToolboxService has advanced its epoch, no scheduler action or
+    // mutation may proceed until the other durable stores have committed the
+    // same reset. If a write fails, the scheduler remains fail-closed and the
+    // next clear retry can finish the same barrier.
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .begin_reset();
+    let mut storage = state
+        .toolbox_storage
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox storage lock was poisoned."))?;
+    let storage = storage
+        .as_mut()
+        .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?;
+    let storage_epoch = storage.reset_epoch();
+    storage
+        .clear_all_after_stop(storage_epoch, snapshot.reset_epoch)
+        .map_err(toolbox_storage_error)?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .complete_reset(snapshot.reset_epoch)?;
+    emit_toolbox_snapshot(&app, &state);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+async fn start_toolbox_file_hash(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: FileHashRequest,
+    on_progress: Channel<FileHashProgress>,
+) -> Result<FileHashResult, CommandError> {
+    require_main_window(&window)?;
+    let inputs = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox service is unavailable."))?
+        .inputs_for_tool_job(&request.job, "file-sha256")?;
+    state
+        .toolbox_file_hash
+        .run(request, inputs, on_progress)
+        .await
+}
+
+#[tauri::command]
+fn cancel_toolbox_file_hash(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    Ok(state.toolbox_file_hash.cancel())
+}
+
+#[tauri::command]
+fn start_toolbox_keep_awake(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: PowerRequest,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_power_completions_locked(&state);
+    let expected_reset_epoch = state
+        .toolbox
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
+        .snapshot()
+        .reset_epoch;
+    let activity_id = history_record_id("keep-awake", &request.request_id);
+    let started_at_ms = now_millis();
+    let result = state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .start(request);
+    if result.is_ok() {
+        begin_toolbox_activity(
+            &state.toolbox_storage,
+            expected_reset_epoch,
+            activity_id,
+            ToolboxSystemTool::KeepAwake,
+            started_at_ms,
+        );
+    }
+    drain_power_completions_locked(&state);
+    result
+}
+
+#[tauri::command]
+fn cancel_toolbox_keep_awake(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_power_completions_locked(&state);
+    let result = state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .cancel();
+    drain_power_completions_locked(&state);
+    Ok(result)
+}
+
+#[tauri::command]
+fn retry_toolbox_keep_awake_release(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let result = state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .retry_release()?;
+    drain_power_completions_locked(&state);
+    Ok(result)
+}
+
+#[tauri::command]
+fn get_toolbox_keep_awake_state(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    drain_power_completions(&state);
+    Ok(state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .snapshot())
+}
+
+#[tauri::command]
+fn get_toolbox_schedule_snapshot(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))
+        .map(|scheduler| scheduler.snapshot())
+}
+
+fn require_persistent_scheduler(scheduler: &ToolboxScheduler) -> Result<(), CommandError> {
+    if scheduler.snapshot().persistent {
+        Ok(())
+    } else {
+        Err(CommandError::new(
+            "schedule_storage_error",
+            "定时规则存储不可用；为避免重启后丢失，暂不接受新的规则变更。",
+        ))
+    }
+}
+
+#[tauri::command]
+fn preview_toolbox_schedule(
+    window: WebviewWindow,
+    request: SchedulerPreviewRequest,
+) -> Result<SchedulerPreview, CommandError> {
+    require_main_window(&window)?;
+    ToolboxScheduler::preview(request)
+}
+
+#[tauri::command]
+fn create_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerCreateRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.create(request)
+}
+
+#[tauri::command]
+fn update_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerUpdateRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.update(request)
+}
+
+#[tauri::command]
+fn pause_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.pause(request)
+}
+
+#[tauri::command]
+fn resume_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.resume(request)
+}
+
+#[tauri::command]
+fn delete_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.delete(request)
+}
+
+#[tauri::command]
+async fn write_toolbox_text_copy(
+    window: WebviewWindow,
+    request: toolbox_export::TextExportRequest,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || toolbox_export::write_text_copy(request))
+        .await
+        .map_err(|error| CommandError::internal(format!("Export task failed: {error}")))?
+}
+
+#[tauri::command]
+async fn scan_toolbox_file_occupancy(
+    window: WebviewWindow,
+    request: OccupancyScanRequest,
+) -> Result<OccupancyScanResult, CommandError> {
+    require_main_window(&window)?;
+    let request_id = request.request_id.clone();
+    let started_at_ms = now_millis();
+    let result = resource_occupancy::scan(request).await;
+    if let Ok(outcome) = &result {
+        // This read-only diagnostic has no native notification path; the
+        // history record still preserves its terminal outcome when history
+        // is explicitly enabled.
+        record_toolbox_completion(
+            &window.state::<AppState>(),
+            history_record_id("occupancy-file", &request_id),
+            ToolboxSystemTool::FileOccupancy,
+            started_at_ms,
+            occupancy_terminal_status(&outcome.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+    result
+}
+
+#[tauri::command]
+async fn scan_toolbox_volume_occupancy(
+    window: WebviewWindow,
+    request: OccupancyVolumeScanRequest,
+) -> Result<OccupancyScanResult, CommandError> {
+    require_main_window(&window)?;
+    let request_id = request.request_id.clone();
+    let started_at_ms = now_millis();
+    let result = resource_occupancy::scan_volume(request).await;
+    if let Ok(outcome) = &result {
+        record_toolbox_completion(
+            &window.state::<AppState>(),
+            history_record_id("occupancy-volume", &request_id),
+            ToolboxSystemTool::VolumeOccupancy,
+            started_at_ms,
+            occupancy_terminal_status(&outcome.status),
+            ToolboxNotificationStatus::Unavailable,
+        );
+    }
+    result
+}
+
+#[tauri::command]
+fn cancel_toolbox_occupancy(window: WebviewWindow) -> Result<bool, CommandError> {
+    require_main_window(&window)?;
+    Ok(resource_occupancy::cancel_active())
+}
+
+#[tauri::command]
 fn start_app_update(
     window: WebviewWindow,
     app: AppHandle,
@@ -2237,6 +3629,70 @@ fn get_app_update_task(
     state.snapshot()
 }
 
+#[tauri::command]
+fn start_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: StartCommand,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    if !window.is_visible().unwrap_or(false) || !window.is_focused().unwrap_or(false) {
+        return Err(CommandError::new(
+            "keyboard_cleaning_window_not_foreground",
+            "Keyboard cleaning can start only while the main window is visible and focused.",
+        ));
+    }
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .start(window.app_handle(), request)
+}
+
+#[tauri::command]
+fn heartbeat_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: HeartbeatCommand,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    let mut keyboard_cleaning = state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?;
+    if !window.is_visible().unwrap_or(false) || !window.is_focused().unwrap_or(false) {
+        let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+        return Err(CommandError::new(
+            "keyboard_cleaning_window_not_foreground",
+            "Keyboard cleaning stopped because the main window is no longer visible and focused.",
+        ));
+    }
+    keyboard_cleaning.heartbeat(request)
+}
+
+#[tauri::command]
+fn stop_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: Option<StopCommand>,
+) -> Result<(), CommandError> {
+    let emergency = keyboard_cleaning_stop_is_emergency(window.label())?;
+    let mut keyboard_cleaning = state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?;
+    if emergency {
+        keyboard_cleaning.stop_for_reason(HelperStopReason::Cancelled)
+    } else {
+        keyboard_cleaning.stop(request.ok_or_else(|| {
+            CommandError::new(
+                "keyboard_cleaning_invalid_request",
+                "The main window must identify the keyboard cleaning session to stop.",
+            )
+        })?)
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let background_launch = std::env::args_os().any(|argument| argument == "--background");
@@ -2252,11 +3708,67 @@ pub fn run() {
         MacosLauncher::LaunchAgent,
         Some(vec!["--background"]),
     ));
+    #[cfg(target_os = "macos")]
+    let mut power_event_observer = PowerEventObserver::default();
+    #[cfg(not(target_os = "macos"))]
+    let mut power_event_observer = PowerEventObserver;
     builder
         .manage(AppState::new(background_launch))
         .manage(AppUpdateTaskManager::default())
         .setup(|app| {
             let state = app.state::<AppState>();
+            if let Ok(app_data_dir) = app.path().app_data_dir() {
+                if let Ok(mut storage) = ToolboxStorage::open(app_data_dir.clone()) {
+                    match storage.recover_interrupted_activities(now_millis()) {
+                        Ok(recovered) if recovered > 0 => {
+                            eprintln!("recovered {recovered} interrupted toolbox activities");
+                        }
+                        Ok(_) => {}
+                        Err(error) => {
+                            eprintln!("toolbox activity recovery failed: {error}");
+                        }
+                    }
+                    let reset_epoch = storage.reset_epoch();
+                    if let Ok(mut toolbox) = state.toolbox.lock() {
+                        toolbox.adopt_reset_epoch(reset_epoch);
+                    }
+                    if let Ok(mut slot) = state.toolbox_storage.lock() {
+                        *slot = Some(storage);
+                    }
+                }
+                match ToolboxScheduler::open(app_data_dir) {
+                    Ok(mut scheduler) => {
+                        let reset_epoch =
+                            state.toolbox_storage.lock().ok().and_then(|storage| {
+                                storage.as_ref().map(ToolboxStorage::reset_epoch)
+                            });
+                        if let Some(reset_epoch) = reset_epoch
+                            && let Err(error) = scheduler.adopt_reset_epoch(reset_epoch)
+                        {
+                            eprintln!("toolbox scheduler reset reconciliation failed: {error}");
+                        }
+                        if let Ok(mut slot) = state.toolbox_scheduler.lock() {
+                            *slot = scheduler;
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("toolbox scheduler persistence unavailable: {error}");
+                    }
+                }
+            }
+            start_toolbox_scheduler_runtime(
+                Arc::downgrade(&state.toolbox_scheduler),
+                Arc::downgrade(&state.toolbox_power),
+                Arc::downgrade(&state.toolbox_storage),
+                Arc::clone(&state.toolbox_scheduler_dispatch_lock),
+                Arc::clone(&state.toolbox_scheduler_stop),
+                app.handle().clone(),
+            );
+            start_toolbox_reaper(
+                Arc::downgrade(&state.toolbox),
+                Arc::clone(&state.toolbox_scheduler_stop),
+                app.handle().clone(),
+            );
             // Kill scan workers left over from a previous session and remove
             // their stale job files, without blocking startup.
             if let Ok(job_directory) = app
@@ -2392,8 +3904,20 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main"
+                && matches!(event, WindowEvent::Focused(false))
+                && let Ok(mut keyboard_cleaning) =
+                    window.state::<AppState>().keyboard_cleaning.lock()
+            {
+                let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+            }
+            if window.label() == "main"
                 && let WindowEvent::CloseRequested { api, .. } = event
             {
+                if let Ok(mut keyboard_cleaning) =
+                    window.state::<AppState>().keyboard_cleaning.lock()
+                {
+                    let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+                }
                 api.prevent_close();
                 let _ = window.hide();
                 let _ = window
@@ -2460,6 +3984,7 @@ pub fn run() {
             reveal_path,
             preview_path,
             resolve_user_path,
+            prepare_eject_removable_volume,
             eject_removable_volume,
             get_storage_health,
             open_disk_utility,
@@ -2491,21 +4016,90 @@ pub fn run() {
             configure_companion_window,
             get_process_detail,
             get_application_icon,
+            start_toolbox_process_watch,
+            get_toolbox_process_watches,
+            cancel_toolbox_process_watch,
             create_process_control_lease,
             release_process_control_lease,
             execute_process_action,
+            get_toolbox_snapshot,
+            toolbox_commands::prepare_toolbox_inputs,
+            toolbox_commands::read_toolbox_input,
+            toolbox_commands::release_toolbox_inputs,
+            toolbox_commands::revalidate_toolbox_inputs,
+            toolbox_commands::get_toolbox_network_snapshot,
+            toolbox_commands::pick_toolbox_screen_color,
+            start_toolbox_session,
+            cancel_toolbox_job,
+            finish_toolbox_job,
+            register_toolbox_output,
+            export_toolbox_output,
+            cancel_toolbox_output,
+            clear_toolbox_data,
+            get_toolbox_storage_snapshot,
+            configure_toolbox_policy,
+            list_toolbox_history,
+            clear_toolbox_history,
+            start_toolbox_file_hash,
+            cancel_toolbox_file_hash,
+            start_toolbox_keep_awake,
+            cancel_toolbox_keep_awake,
+            retry_toolbox_keep_awake_release,
+            get_toolbox_keep_awake_state,
+            get_toolbox_schedule_snapshot,
+            preview_toolbox_schedule,
+            create_toolbox_schedule,
+            update_toolbox_schedule,
+            pause_toolbox_schedule,
+            resume_toolbox_schedule,
+            delete_toolbox_schedule,
+            write_toolbox_text_copy,
+            scan_toolbox_file_occupancy,
+            scan_toolbox_volume_occupancy,
+            cancel_toolbox_occupancy,
             start_app_update,
-            get_app_update_task
+            get_app_update_task,
+            start_keyboard_cleaning,
+            heartbeat_keyboard_cleaning,
+            stop_keyboard_cleaning
         ])
         .build(tauri::generate_context!())
         .expect("error while building CoreRobin")
-        .run(|app, event| {
+        .run(move |app, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                let wake_app = app.clone();
+                let sleep_app = app.clone();
+                power_event_observer.install(
+                    Arc::clone(&app.state::<AppState>().toolbox_power),
+                    Arc::new(move || {
+                        let _ = wake_app.emit(SYSTEM_WAKE_EVENT, ());
+                    }),
+                    Arc::new(move || {
+                        if let Ok(mut keyboard_cleaning) =
+                            sleep_app.state::<AppState>().keyboard_cleaning.lock()
+                        {
+                            let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::Sleeping);
+                        }
+                    }),
+                );
+            }
             #[cfg(target_os = "macos")]
             if matches!(event, tauri::RunEvent::Reopen { .. }) {
                 show_main(app);
             }
-            #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
+            if let tauri::RunEvent::Exit = event {
+                power_event_observer.shutdown();
+                if let Ok(mut keyboard_cleaning) = app.state::<AppState>().keyboard_cleaning.lock()
+                {
+                    keyboard_cleaning.shutdown();
+                }
+                app.state::<AppState>()
+                    .toolbox_scheduler_stop
+                    .store(true, Ordering::Release);
+                if let Ok(mut power) = app.state::<AppState>().toolbox_power.lock() {
+                    power.shutdown();
+                }
+            }
         });
 }
 
@@ -2713,7 +4307,8 @@ mod security_boundary_tests {
     use serde_json::Value;
 
     use super::{
-        command_names::ALL_COMMANDS, require_main_window_label, require_tray_window_label,
+        command_names::ALL_COMMANDS, keyboard_cleaning_stop_is_emergency,
+        require_main_window_label, require_tray_window_label,
     };
 
     const PROTECTED_COMMANDS: &[&str] = &[
@@ -2725,6 +4320,7 @@ mod security_boundary_tests {
         "reveal_path",
         "preview_path",
         "resolve_user_path",
+        "prepare_eject_removable_volume",
         "eject_removable_volume",
         "get_storage_health",
         "open_disk_utility",
@@ -2750,9 +4346,48 @@ mod security_boundary_tests {
         "set_dock_icon_visible",
         "get_launch_at_login",
         "set_launch_at_login",
+        "start_toolbox_process_watch",
+        "get_toolbox_process_watches",
+        "cancel_toolbox_process_watch",
         "create_process_control_lease",
         "release_process_control_lease",
         "execute_process_action",
+        "get_toolbox_snapshot",
+        "prepare_toolbox_inputs",
+        "read_toolbox_input",
+        "release_toolbox_inputs",
+        "revalidate_toolbox_inputs",
+        "get_toolbox_network_snapshot",
+        "pick_toolbox_screen_color",
+        "start_toolbox_session",
+        "cancel_toolbox_job",
+        "finish_toolbox_job",
+        "register_toolbox_output",
+        "export_toolbox_output",
+        "cancel_toolbox_output",
+        "clear_toolbox_data",
+        "get_toolbox_storage_snapshot",
+        "configure_toolbox_policy",
+        "list_toolbox_history",
+        "clear_toolbox_history",
+        "start_toolbox_file_hash",
+        "cancel_toolbox_file_hash",
+        "start_toolbox_keep_awake",
+        "cancel_toolbox_keep_awake",
+        "retry_toolbox_keep_awake_release",
+        "get_toolbox_keep_awake_state",
+        "get_toolbox_schedule_snapshot",
+        "create_toolbox_schedule",
+        "update_toolbox_schedule",
+        "pause_toolbox_schedule",
+        "resume_toolbox_schedule",
+        "delete_toolbox_schedule",
+        "write_toolbox_text_copy",
+        "scan_toolbox_file_occupancy",
+        "scan_toolbox_volume_occupancy",
+        "cancel_toolbox_occupancy",
+        "start_keyboard_cleaning",
+        "heartbeat_keyboard_cleaning",
         "start_app_update",
         "get_app_update_task",
         "run_network_quality_check",
@@ -2803,6 +4438,7 @@ mod security_boundary_tests {
             .split(',')
             .map(str::trim)
             .filter(|command| !command.is_empty())
+            .map(|command| command.rsplit("::").next().unwrap_or(command))
             .collect::<BTreeSet<_>>();
         let declared = ALL_COMMANDS.iter().copied().collect::<BTreeSet<_>>();
 
@@ -2861,6 +4497,9 @@ mod security_boundary_tests {
         }
         assert!(!tray_permissions.contains("core:default"));
         assert!(!companion_permissions.contains("core:default"));
+        let emergency_stop = allow_permission("stop_keyboard_cleaning");
+        assert!(tray_permissions.contains(&emergency_stop));
+        assert!(companion_permissions.contains(&emergency_stop));
     }
 
     #[test]
@@ -2910,6 +4549,18 @@ mod security_boundary_tests {
         assert!(require_tray_window_label("tray").is_ok());
         for label in ["main", "companion", "splashscreen", "unexpected"] {
             let error = require_tray_window_label(label).expect_err("window must be rejected");
+            assert_eq!(error.code, "window_not_authorized");
+        }
+    }
+
+    #[test]
+    fn keyboard_cleaning_stop_guard_is_main_scoped_or_stop_only_emergency() {
+        assert!(!keyboard_cleaning_stop_is_emergency("main").unwrap());
+        assert!(keyboard_cleaning_stop_is_emergency("tray").unwrap());
+        assert!(keyboard_cleaning_stop_is_emergency("companion").unwrap());
+        for label in ["splashscreen", "unexpected"] {
+            let error =
+                keyboard_cleaning_stop_is_emergency(label).expect_err("window must be rejected");
             assert_eq!(error.code, "window_not_authorized");
         }
     }

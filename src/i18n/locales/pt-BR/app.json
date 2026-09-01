@@ -12,6 +12,7 @@
   "network": "Rede",
   "startup": "Inicialização",
   "history": "Histórico",
+  "toolbox": "Caixa de ferramentas",
   "settings": "Configurações",
   "soon": "Em breve",
   "comingSoon": "Disponível em breve",
@@ -24,6 +25,7 @@
     "network": "Diagnóstico de rede",
     "startup": "Revisão de itens de inicialização",
     "history": "Análise do histórico",
+    "toolbox": "Caixa de ferramentas",
     "settings": "Configurações"
   },
   "demoData": "Dados de demonstração do navegador",

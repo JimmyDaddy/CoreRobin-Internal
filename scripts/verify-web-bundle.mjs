@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -31,6 +31,7 @@ for (const [label, entry] of expectedWindows) {
 }
 
 const report = {};
+const c2paFiles = collectC2paFiles();
 for (const [entry, budget] of Object.entries(budgets.entries)) {
   const record = manifest[entry];
   if (!record?.isEntry) throw new Error(`Missing production manifest entry: ${entry}`);
@@ -44,6 +45,9 @@ for (const [entry, budget] of Object.entries(budgets.entries)) {
   }
 
   const files = collectInitialFiles(entry);
+  if (files.some((file) => c2paFiles.has(file))) {
+    throw new Error(`${entry} must not eagerly load the C2PA reader assets.`);
+  }
   const measurements = {
     javascriptBytes: 0,
     javascriptGzipBytes: 0,
@@ -64,19 +68,61 @@ for (const [entry, budget] of Object.entries(budgets.entries)) {
   report[entry] = { ...measurements, initialFiles: files.length };
 }
 
+const c2pa = await measureC2paFiles(c2paFiles);
+assertBudget("C2PA lazy assets", c2pa, budgets.c2pa);
+
 const allOutputFiles = new Set(
-  Object.values(manifest).flatMap((record) => [record.file, ...(record.css ?? []), ...(record.assets ?? [])]),
+  [
+    ...Object.values(manifest).flatMap((record) => [record.file, ...(record.css ?? []), ...(record.assets ?? [])]),
+    // Vite's manifest omits standalone Worker chunks. The total budget must cover
+    // every emitted script/stylesheet, not just the module graph known to HTML.
+    ...await collectEmittedFiles(),
+  ],
 );
 const totals = { javascriptBytes: 0, cssBytes: 0 };
 for (const relativePath of allOutputFiles) {
+  if (c2paFiles.has(relativePath)) continue;
   const size = (await stat(safeDistPath(relativePath))).size;
   if (relativePath.endsWith(".js")) totals.javascriptBytes += size;
   if (relativePath.endsWith(".css")) totals.cssBytes += size;
 }
 assertBudget("all production chunks", totals, budgets.totals);
 
-console.log(JSON.stringify({ schemaVersion: budgets.schemaVersion, entries: report, totals }, null, 2));
+console.log(JSON.stringify({ schemaVersion: budgets.schemaVersion, entries: report, c2pa, totals }, null, 2));
 console.log("Verified four production WebView entries, Tauri window mapping, and bundle budgets.");
+
+function collectC2paFiles() {
+  const files = new Set();
+  for (const record of Object.values(manifest)) {
+    if (typeof record.src !== "string" || !record.src.includes("/@contentauth/c2pa-web/")) continue;
+    files.add(record.file);
+    for (const asset of record.assets ?? []) files.add(asset);
+  }
+  return files;
+}
+
+async function measureC2paFiles(files) {
+  const measurements = { javascriptBytes: 0, wasmBytes: 0 };
+  for (const relativePath of files) {
+    const size = (await stat(safeDistPath(relativePath))).size;
+    if (relativePath.endsWith(".js")) measurements.javascriptBytes += size;
+    if (relativePath.endsWith(".wasm")) measurements.wasmBytes += size;
+  }
+  return measurements;
+}
+
+async function collectEmittedFiles(directory = "") {
+  const files = [];
+  for (const entry of await readdir(safeDistPath(directory), { withFileTypes: true })) {
+    const relativePath = directory ? `${directory}/${entry.name}` : entry.name;
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Build output must not contain symbolic links: ${relativePath}`);
+    }
+    if (entry.isDirectory()) files.push(...await collectEmittedFiles(relativePath));
+    else if (entry.isFile()) files.push(relativePath);
+  }
+  return files;
+}
 
 function collectInitialFiles(entry) {
   const files = new Set();

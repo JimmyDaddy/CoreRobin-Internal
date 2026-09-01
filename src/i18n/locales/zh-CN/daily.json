@@ -14,7 +14,8 @@
     "cleanupQuick": "快速清理",
     "cleanupScan": "磁盘扫描",
     "records": "回顾",
-    "settings": "设置"
+    "settings": "设置",
+    "toolbox": "工具箱"
   },
   "topbar": {
     "thisMac": "这台 Mac",

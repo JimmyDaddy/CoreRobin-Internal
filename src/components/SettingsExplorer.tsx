@@ -588,6 +588,24 @@ export function SettingsExplorer({
               />
               <span>{t("settings:notifications.enable")}</span>
             </label>
+            <label
+              className="settings-switch"
+              title={t("settings:notifications.toolboxHistoryDescription")}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                disabled={!settings.historyPersistenceEnabled}
+                checked={
+                  settings.historyPersistenceEnabled
+                  && settings.toolboxHistoryEnabled
+                }
+                onChange={(event) =>
+                  onChange({ toolboxHistoryEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings:notifications.toolboxHistory")}</span>
+            </label>
             <small className={`is-${notificationStatus}`}>
               <i />{t(`settings:notifications.status.${notificationStatus}`)}
             </small>

@@ -13,6 +13,9 @@ import { TimeSeriesChart } from "./components/TimeSeriesChart";
 import { TodayReview } from "./components/TodayReview";
 import { WeeklyReview } from "./components/WeeklyReview";
 import { HistoryExportPanel } from "./components/HistoryExportPanel";
+import { CleanupDeleteDialog } from "./components/CleanupDeleteDialog";
+import { CleanupSettlementDialog } from "./components/CleanupSettlementDialog";
+import type { CleanupDeleteOutcome } from "./cleanupOutcome";
 import "./components/HistoryExplorer.css";
 import type { HistoryPoint } from "./types";
 import type { UserActionRecord } from "./userActionHistory";
@@ -33,9 +36,56 @@ function VisualRegressionHarness() {
   }, [language]);
 
   if (!ready) return null;
+  if (scenario === "cleanup-animation") return <CleanupAnimationScenario />;
   if (scenario === "review") return <ReviewScenario />;
   if (scenario === "export") return <ExportScenario />;
   return <StateScenario />;
+}
+
+function CleanupAnimationScenario() {
+  const query = new URLSearchParams(window.location.search);
+  const [stage, setStage] = useState(query.get("stage") ?? "working");
+  const mode = query.get("mode") === "trash" ? "trash" : "permanent";
+  const outcome: CleanupDeleteOutcome = {
+    deletedCount: stage === "failed" ? 0 : 12,
+    deletedBytes: stage === "failed" ? 0 : 10.2 * 1024 ** 3,
+    selectedLogicalBytes: 11 * 1024 ** 3,
+    selectedAllocatedBytes: 10.2 * 1024 ** 3,
+    availableBytesBefore: 50 * 1024 ** 3,
+    availableBytesAfter: (stage === "failed" ? 50 : 58.4) * 1024 ** 3,
+    mode,
+    cancelled: stage === "cancelled",
+    failed: stage === "partial" || stage === "failed" ? [{ path: "/Users/demo/Library/Caches/busy-file", message: "File is in use" }] : [],
+  };
+  return (
+    <main className="visual-harness">
+      <header><small>CoreRobin · motion preview</small><h1>清理篮动画预览</h1><p>仅使用演示数据，不会读取或删除文件。</p></header>
+      <div className="visual-harness__buttons panel">
+        {(["working", "success", "partial", "cancelled", "failed"] as const).map((state) => (
+          <Button key={state} variant="secondary" onClick={() => setStage(state)}>{state}</Button>
+        ))}
+      </div>
+      {stage === "working" ? <CleanupDeleteDialog
+        items={[]}
+        lease={null}
+        preparing={false}
+        modeSwitching={false}
+        submitting
+        cancelling={false}
+        progress={{ phase: mode === "trash" ? "moving_to_trash" : "deleting", processedEntryCount: 2680, totalEntryCount: 4000, completedTargetCount: 8, totalTargetCount: 12, currentPath: "/Users/demo/Library/Caches/com.example.app/CacheStorage/data", deletedBytes: 6.8 * 1024 ** 3 }}
+        error={null}
+        mode={mode}
+        deleteAcknowledged
+        progressVariant="basket"
+        onModeChange={() => undefined}
+        onDeleteAcknowledgedChange={() => undefined}
+        onCancel={() => setStage("closed")}
+        onCancelExecution={() => setStage("cancelled")}
+        onRefresh={() => undefined}
+        onConfirm={() => undefined}
+      /> : stage !== "closed" ? <CleanupSettlementDialog outcome={outcome} onClose={() => setStage("closed")} /> : null}
+    </main>
+  );
 }
 
 function StateScenario() {

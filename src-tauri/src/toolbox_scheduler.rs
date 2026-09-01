@@ -1,0 +1,2346 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use chrono::{TimeZone, Utc};
+
+use crate::error::CommandError;
+
+#[path = "toolbox_scheduler/persist.rs"]
+mod persist;
+#[path = "toolbox_scheduler/core.rs"]
+mod scheduler_core;
+
+use persist::{
+    IntentWrite, MAX_MUTATION_RECEIPTS, PersistedExecutionIntent, PersistedIntentState,
+    PersistedMutationReceipt, PersistedSchedule, PersistedSchedulerAction,
+    PersistedSchedulerTrigger, SchedulerMutation, SchedulerStore, SchedulerStoreError,
+};
+use scheduler_core::{
+    CronExpression, CronSearchResult, LocalCalendarKey, SearchBudget, local_calendar_key_at,
+    parse_time_zone, search_cron,
+};
+
+pub const MAX_SCHEDULE_RULES: usize = 32;
+const MAX_REQUEST_ID_BYTES: usize = 128;
+const MAX_SCHEDULE_ID_BYTES: usize = 64;
+const MAX_TITLE_CHARS: usize = 80;
+pub(super) const MIN_KEEP_AWAKE_MINUTES: u16 = 1;
+pub(super) const MAX_KEEP_AWAKE_MINUTES: u16 = 12 * 60;
+const ONE_DAY_MS: u64 = 24 * 60 * 60 * 1_000;
+const MAX_ONCE_AHEAD_MS: u64 = 365 * ONE_DAY_MS;
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerCreateRequest {
+    pub request_id: String,
+    pub time_zone: String,
+    pub title: Option<String>,
+    pub action: SchedulerAction,
+    pub trigger: SchedulerTrigger,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerUpdateRequest {
+    pub request_id: String,
+    pub schedule_id: String,
+    pub expected_revision: Option<u64>,
+    pub time_zone: String,
+    pub title: Option<String>,
+    pub action: SchedulerAction,
+    pub trigger: SchedulerTrigger,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerRuleRequest {
+    pub request_id: String,
+    pub schedule_id: String,
+    pub expected_revision: Option<u64>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SchedulerAction {
+    Reminder,
+    KeepAwake { duration_minutes: u16 },
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SchedulerTrigger {
+    Once {
+        at_ms: u64,
+    },
+    Daily {
+        hour: u8,
+        minute: u8,
+        next_run_at_ms: u64,
+    },
+    Weekly {
+        weekday: u8,
+        hour: u8,
+        minute: u8,
+        next_run_at_ms: u64,
+    },
+    Cron {
+        expression: String,
+        next_run_at_ms: u64,
+    },
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchedulerRule {
+    pub schedule_id: String,
+    pub time_zone: String,
+    pub title: Option<String>,
+    pub action: SchedulerAction,
+    pub trigger: SchedulerTrigger,
+    pub status: SchedulerRuleStatus,
+    pub created_at_ms: u64,
+    pub updated_at_ms: u64,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SchedulerRuleStatus {
+    Scheduled,
+    Paused,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchedulerSnapshot {
+    pub revision: u64,
+    pub max_rules: usize,
+    pub persistent: bool,
+    pub restart_notice: String,
+    pub execution_notice: String,
+    pub rules: Vec<SchedulerRule>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchedulerActionIntent {
+    pub schedule_id: String,
+    pub schedule_revision: u64,
+    pub action: SchedulerAction,
+    pub scheduled_at_ms: u64,
+    pub epoch: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SchedulerIntentOutcome {
+    Submitted,
+    Skipped,
+    Failed,
+}
+
+/// A pure native preview request. This deliberately has no requestId because it cannot persist
+/// or dispatch an action; save/edit requests are separately idempotent mutations.
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SchedulerPreviewRequest {
+    pub time_zone: String,
+    pub trigger: SchedulerPreviewTrigger,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SchedulerPreviewTrigger {
+    Once { at_utc_ms: u64 },
+    Daily { hour: u8, minute: u8 },
+    Weekly { weekday: u8, hour: u8, minute: u8 },
+    Cron { expression: String },
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchedulerPreview {
+    pub time_zone: String,
+    pub status: SchedulerPreviewStatus,
+    pub occurrence_at_ms: Vec<u64>,
+    pub horizon_end_at_ms: u64,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SchedulerPreviewStatus {
+    Ready,
+    NoOccurrenceInHorizon,
+}
+
+/// A bounded native schedule provider. Persistent instances load only the
+/// scheduler's private rule file; the caller owns the timer and action executor.
+#[derive(Default)]
+pub struct ToolboxScheduler {
+    revision: u64,
+    next_rule_id: u64,
+    rules: Vec<SchedulerRule>,
+    mutation_receipts: Vec<PersistedMutationReceipt>,
+    store: Option<SchedulerStore>,
+    dispatch_blocked: bool,
+}
+
+impl ToolboxScheduler {
+    pub fn open(app_data_dir: impl Into<std::path::PathBuf>) -> Result<Self, CommandError> {
+        let store = SchedulerStore::open(app_data_dir).map_err(storage_error)?;
+        let mut scheduler = Self {
+            revision: store.state().revision,
+            next_rule_id: store.state().next_rule_sequence,
+            rules: Vec::new(),
+            mutation_receipts: Vec::new(),
+            store: Some(store),
+            dispatch_blocked: false,
+        };
+        scheduler.reload_from_store()?;
+        Ok(scheduler)
+    }
+
+    fn reload_from_store(&mut self) -> Result<(), CommandError> {
+        let Some(store) = self.store.as_ref() else {
+            return Ok(());
+        };
+        self.revision = store.state().revision;
+        self.next_rule_id = store.state().next_rule_sequence;
+        self.rules = store
+            .state()
+            .rules
+            .iter()
+            .map(public_rule)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
+    }
+
+    /// Parse and preview the product rule dialect in an explicit IANA zone. The command wrapper
+    /// is registered by the total controller; this function touches no stored rule or action.
+    pub fn preview(request: SchedulerPreviewRequest) -> Result<SchedulerPreview, CommandError> {
+        Self::preview_at(request, now_millis())
+    }
+
+    fn preview_at(
+        request: SchedulerPreviewRequest,
+        after_ms: u64,
+    ) -> Result<SchedulerPreview, CommandError> {
+        let time_zone = parse_time_zone(&request.time_zone).map_err(rule_error)?;
+        let after_utc = utc_from_millis(after_ms)?;
+
+        let expression = match request.trigger {
+            SchedulerPreviewTrigger::Once { at_utc_ms } => {
+                if at_utc_ms <= after_ms || at_utc_ms > after_ms.saturating_add(MAX_ONCE_AHEAD_MS) {
+                    return Err(CommandError::new(
+                        "invalid_once_time",
+                        "The one-time schedule must be in the next 365 days.",
+                    ));
+                }
+                return Ok(SchedulerPreview {
+                    time_zone: time_zone.to_string(),
+                    status: SchedulerPreviewStatus::Ready,
+                    occurrence_at_ms: vec![at_utc_ms],
+                    horizon_end_at_ms: at_utc_ms,
+                    truncated: false,
+                });
+            }
+            SchedulerPreviewTrigger::Daily { hour, minute } => {
+                validate_time_of_day(hour, minute)?;
+                CronExpression::parse(&format!("{minute} {hour} * * *")).map_err(rule_error)?
+            }
+            SchedulerPreviewTrigger::Weekly {
+                weekday,
+                hour,
+                minute,
+            } => {
+                if weekday > 6 {
+                    return Err(CommandError::new(
+                        "invalid_weekday",
+                        "weekday must use 0 for Sunday through 6 for Saturday.",
+                    ));
+                }
+                validate_time_of_day(hour, minute)?;
+                CronExpression::parse(&format!("{minute} {hour} * * {weekday}"))
+                    .map_err(rule_error)?
+            }
+            SchedulerPreviewTrigger::Cron { expression } => {
+                CronExpression::parse(&expression).map_err(rule_error)?
+            }
+        };
+
+        match search_cron(
+            &expression,
+            time_zone,
+            after_utc,
+            SearchBudget::normal(),
+            || false,
+        ) {
+            CronSearchResult::Occurrences {
+                occurrences,
+                horizon_end_utc,
+                truncated,
+            } => Ok(SchedulerPreview {
+                time_zone: time_zone.to_string(),
+                status: SchedulerPreviewStatus::Ready,
+                occurrence_at_ms: occurrences
+                    .into_iter()
+                    .map(|occurrence| millis_from_utc(occurrence.at_utc))
+                    .collect(),
+                horizon_end_at_ms: millis_from_utc(horizon_end_utc),
+                truncated,
+            }),
+            CronSearchResult::NoOccurrenceInHorizon { horizon_end_utc } => Ok(SchedulerPreview {
+                time_zone: time_zone.to_string(),
+                status: SchedulerPreviewStatus::NoOccurrenceInHorizon,
+                occurrence_at_ms: Vec::new(),
+                horizon_end_at_ms: millis_from_utc(horizon_end_utc),
+                truncated: false,
+            }),
+            CronSearchResult::SearchLimit => Err(CommandError::new(
+                "search_limit",
+                "The Cron search reached its bounded calculation limit; the rule was not enabled.",
+            )),
+        }
+    }
+
+    pub fn snapshot(&self) -> SchedulerSnapshot {
+        SchedulerSnapshot {
+            revision: self.revision,
+            max_rules: MAX_SCHEDULE_RULES,
+            persistent: self.store.is_some(),
+            restart_notice: if self.store.is_some() {
+                "Rules are stored in private app data; temporary action state is not restored."
+            } else {
+                "Rules are stored only in memory and are cleared when CoreRobin restarts."
+            }
+            .to_owned(),
+            execution_notice: "Native scheduling records an action intent before emitting a reminder or requesting a bounded keep-awake action; missed actions are not replayed."
+                .to_owned(),
+            rules: self.rules.clone(),
+        }
+    }
+
+    fn mutation_acknowledged(
+        &self,
+        request_id: &str,
+        mutation: &SchedulerMutation,
+    ) -> Result<Option<SchedulerSnapshot>, CommandError> {
+        if let Some(store) = self.store.as_ref() {
+            return store
+                .mutation_acknowledged(request_id, mutation)
+                .map_err(storage_error);
+        }
+        let Some(receipt) = self
+            .mutation_receipts
+            .iter()
+            .find(|receipt| receipt.request_id == request_id)
+        else {
+            return Ok(None);
+        };
+        if receipt.mutation != *mutation {
+            return Err(storage_error(SchedulerStoreError::RequestIdConflict));
+        }
+        Ok(Some(receipt.acknowledged_snapshot.clone()))
+    }
+
+    fn record_memory_mutation(
+        &mut self,
+        request_id: String,
+        mutation: SchedulerMutation,
+        now_ms: u64,
+        acknowledged_snapshot: SchedulerSnapshot,
+    ) {
+        self.mutation_receipts.push(PersistedMutationReceipt {
+            request_id,
+            mutation,
+            epoch: 0,
+            acknowledged_revision: self.revision,
+            acknowledged_at_ms: now_ms,
+            acknowledged_snapshot,
+        });
+        let retained_start = self
+            .mutation_receipts
+            .len()
+            .saturating_sub(MAX_MUTATION_RECEIPTS);
+        if retained_start > 0 {
+            self.mutation_receipts.drain(0..retained_start);
+        }
+    }
+
+    pub fn epoch(&self) -> u64 {
+        self.store
+            .as_ref()
+            .map(|store| store.state().epoch)
+            .unwrap_or_default()
+    }
+
+    pub fn create(
+        &mut self,
+        request: SchedulerCreateRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.create_at(request, now_millis())
+    }
+
+    pub fn update(
+        &mut self,
+        request: SchedulerUpdateRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.update_at(request, now_millis())
+    }
+
+    pub fn poll_due(&mut self, now_ms: u64) -> Result<Vec<SchedulerActionIntent>, CommandError> {
+        if self.store.is_none() || self.dispatch_blocked {
+            return Ok(Vec::new());
+        }
+        let epoch = self
+            .store
+            .as_ref()
+            .map(|store| store.state().epoch)
+            .unwrap_or_default();
+        let due = self
+            .store
+            .as_ref()
+            .expect("persistent scheduler store")
+            .state()
+            .rules
+            .iter()
+            .filter(|rule| {
+                rule.enabled
+                    && rule
+                        .next_scheduled_at_utc_ms
+                        .is_some_and(|scheduled| scheduled <= now_ms)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut intents = Vec::new();
+        for rule in due {
+            let schedule_id = rule.schedule_id.clone();
+            let schedule_revision = rule.revision;
+            let scheduled_at_ms = rule.next_scheduled_at_utc_ms.unwrap_or_default();
+            let action = rule.action.clone();
+            let trigger = rule.trigger.clone();
+            let time_zone = rule.time_zone.clone();
+            if persist::validate_rule_for_activation(&rule).is_err() {
+                self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                continue;
+            }
+            // A schedule that was missed while the app was stopped is advanced without
+            // dispatch. The one-second grace window is only for an active runtime poll.
+            if now_ms.saturating_sub(scheduled_at_ms) > 5_000 {
+                if self.advance_persisted_rule(&schedule_id, now_ms).is_err() {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                }
+                continue;
+            }
+            let local_key = match local_calendar_key_for(&time_zone, scheduled_at_ms) {
+                Ok(local_key) => local_key,
+                Err(_) => {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                    continue;
+                }
+            };
+            let intent = PersistedExecutionIntent {
+                schedule_id: schedule_id.clone(),
+                schedule_revision,
+                scheduled_at_utc_ms: scheduled_at_ms,
+                local_key: Some(local_key),
+                epoch,
+                state: PersistedIntentState::Intended,
+                created_at_ms: now_ms,
+                updated_at_ms: now_ms,
+            };
+            let intent_write = match self
+                .store
+                .as_mut()
+                .expect("persistent scheduler store")
+                .record_intent(intent, now_ms)
+            {
+                Ok(intent_write) => intent_write,
+                Err(_) => {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                    continue;
+                }
+            };
+            if intent_write == IntentWrite::AlreadyRecorded {
+                if self.advance_persisted_rule(&schedule_id, now_ms).is_err() {
+                    self.fail_closed_persisted_rule(
+                        &schedule_id,
+                        Some((schedule_revision, scheduled_at_ms, epoch)),
+                        now_ms,
+                    )?;
+                }
+                continue;
+            }
+            if self
+                .advance_persisted_rule_with_trigger(&schedule_id, now_ms, &trigger)
+                .is_err()
+            {
+                self.fail_closed_persisted_rule(
+                    &schedule_id,
+                    Some((schedule_revision, scheduled_at_ms, epoch)),
+                    now_ms,
+                )?;
+                continue;
+            }
+            intents.push(SchedulerActionIntent {
+                schedule_id,
+                schedule_revision,
+                action: public_action(&action),
+                scheduled_at_ms,
+                epoch,
+            });
+        }
+        self.reload_from_store()?;
+        Ok(intents)
+    }
+
+    fn fail_closed_persisted_rule(
+        &mut self,
+        schedule_id: &str,
+        intent: Option<(u64, u64, u64)>,
+        now_ms: u64,
+    ) -> Result<(), CommandError> {
+        self.store
+            .as_mut()
+            .expect("persistent scheduler store")
+            .fail_closed_rule(schedule_id, intent, now_ms)
+            .map_err(storage_error)
+    }
+
+    pub fn mark_intent_outcome(
+        &mut self,
+        intent: &SchedulerActionIntent,
+        outcome: SchedulerIntentOutcome,
+        now_ms: u64,
+    ) -> Result<(), CommandError> {
+        let Some(store) = self.store.as_mut() else {
+            return Ok(());
+        };
+        let state = match outcome {
+            SchedulerIntentOutcome::Submitted => PersistedIntentState::Submitted,
+            SchedulerIntentOutcome::Skipped => PersistedIntentState::Skipped,
+            SchedulerIntentOutcome::Failed => PersistedIntentState::Failed,
+        };
+        store
+            .mark_intent(
+                &intent.schedule_id,
+                intent.schedule_revision,
+                intent.scheduled_at_ms,
+                intent.epoch,
+                state,
+                now_ms,
+            )
+            .map_err(storage_error)
+    }
+
+    pub fn adopt_reset_epoch(&mut self, reset_epoch: u64) -> Result<(), CommandError> {
+        let Some(store) = self.store.as_mut() else {
+            return Ok(());
+        };
+        if reset_epoch < store.state().epoch {
+            return Err(CommandError::new(
+                "reset_epoch_conflict",
+                "The scheduler reset epoch is newer than toolbox storage.",
+            ));
+        }
+        if reset_epoch == store.state().epoch {
+            return Ok(());
+        }
+        store
+            .transact(|state| {
+                state.epoch = reset_epoch;
+                state.rules.clear();
+                state.intents.clear();
+                state.revision = state.revision.saturating_add(1);
+                Ok(())
+            })
+            .map_err(storage_error)?;
+        self.reload_from_store()
+    }
+
+    /// Blocks scheduler mutations and action polling while the cross-module
+    /// toolbox clear barrier is committing its new reset epoch.
+    pub fn begin_reset(&mut self) {
+        self.dispatch_blocked = true;
+    }
+
+    pub fn complete_reset(&mut self, reset_epoch: u64) -> Result<(), CommandError> {
+        self.adopt_reset_epoch(reset_epoch)?;
+        self.dispatch_blocked = false;
+        Ok(())
+    }
+
+    pub fn pause(
+        &mut self,
+        request: SchedulerRuleRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.pause_at(request, now_millis())
+    }
+
+    pub fn delete(
+        &mut self,
+        request: SchedulerRuleRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.delete_at(request, now_millis())
+    }
+
+    fn delete_at(
+        &mut self,
+        request: SchedulerRuleRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        let mutation = SchedulerMutation::Delete {
+            schedule_id: request.schedule_id.clone(),
+            expected_revision: request.expected_revision,
+        };
+        if let Some(snapshot) = self.mutation_acknowledged(&request.request_id, &mutation)? {
+            return Ok(snapshot);
+        }
+        validate_schedule_id(&request.schedule_id)?;
+        if let Some(store) = self.store.as_mut() {
+            let schedule_id = request.schedule_id.clone();
+            let expected_revision = request.expected_revision;
+            let request_id = request.request_id.clone();
+            store
+                .apply_mutation(
+                    &request_id,
+                    mutation,
+                    now_ms,
+                    |state| {
+                        if expected_revision.is_some_and(|expected| expected != state.revision) {
+                            return Err(SchedulerStoreError::RevisionConflict);
+                        }
+                        let Some(index) = state
+                            .rules
+                            .iter()
+                            .position(|rule| rule.schedule_id == schedule_id)
+                        else {
+                            return Err(SchedulerStoreError::InvalidState);
+                        };
+                        state.rules.remove(index);
+                        state.revision = state.revision.saturating_add(1);
+                        Ok(())
+                    },
+                    persistent_snapshot,
+                )
+                .map_err(|error| match error {
+                    SchedulerStoreError::InvalidState => CommandError::new(
+                        "schedule_not_found",
+                        "The schedule rule no longer exists.",
+                    ),
+                    SchedulerStoreError::RevisionConflict => CommandError::new(
+                        "revision_conflict",
+                        "The schedule state changed; reload before deleting.",
+                    ),
+                    SchedulerStoreError::RequestIdConflict => CommandError::new(
+                        "request_id_conflict",
+                        "requestId was already used for a different scheduler mutation.",
+                    ),
+                    other => storage_error(other),
+                })?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+        if request
+            .expected_revision
+            .is_some_and(|expected| expected != self.revision)
+        {
+            return Err(CommandError::new(
+                "revision_conflict",
+                "The schedule state changed; reload before deleting.",
+            ));
+        }
+        let Some(index) = self
+            .rules
+            .iter()
+            .position(|rule| rule.schedule_id == request.schedule_id)
+        else {
+            return Err(CommandError::new(
+                "schedule_not_found",
+                "The schedule rule no longer exists.",
+            ));
+        };
+        self.rules.remove(index);
+        self.revision = self.revision.saturating_add(1);
+        let snapshot = self.snapshot();
+        self.record_memory_mutation(request.request_id, mutation, now_ms, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    fn create_at(
+        &mut self,
+        request: SchedulerCreateRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        let mutation = SchedulerMutation::Create {
+            time_zone: request.time_zone.clone(),
+            title: request.title.clone(),
+            action: request.action.clone(),
+            trigger: request.trigger.clone(),
+        };
+        if let Some(snapshot) = self.mutation_acknowledged(&request.request_id, &mutation)? {
+            return Ok(snapshot);
+        }
+        if self.rules.len() >= MAX_SCHEDULE_RULES {
+            return Err(CommandError::new(
+                "schedule_limit_reached",
+                format!("At most {MAX_SCHEDULE_RULES} schedule rules can be kept in memory."),
+            ));
+        }
+        let title = validate_title(request.title.as_deref())?;
+        validate_action(&request.action)?;
+        let _time_zone = parse_time_zone(&request.time_zone).map_err(rule_error)?;
+        let trigger = normalize_trigger(&request.time_zone, request.trigger, now_ms)?;
+
+        let schedule_id = format!("schedule-{}", self.next_rule_id.saturating_add(1));
+        if let Some(store) = self.store.as_mut() {
+            let request_id = request.request_id.clone();
+            let action = request.action.clone();
+            let time_zone = request.time_zone.clone();
+            let persisted_trigger = persisted_trigger(&trigger);
+            let persisted_action = persisted_action(&action);
+            let persisted_title = title.clone();
+            let next_scheduled_at_utc_ms = trigger_next_run(&trigger);
+            store
+                .apply_mutation(
+                    &request_id,
+                    mutation,
+                    now_ms,
+                    |state| {
+                        if state.rules.len() >= MAX_SCHEDULE_RULES {
+                            return Err(SchedulerStoreError::InvalidState);
+                        }
+                        let revision = state.revision.saturating_add(1);
+                        state.revision = revision;
+                        state.next_rule_sequence = state.next_rule_sequence.saturating_add(1);
+                        state.rules.push(PersistedSchedule {
+                            schedule_id: schedule_id.clone(),
+                            revision,
+                            title: persisted_title.clone(),
+                            time_zone: time_zone.clone(),
+                            action: persisted_action.clone(),
+                            trigger: persisted_trigger.clone(),
+                            enabled: true,
+                            next_scheduled_at_utc_ms: Some(next_scheduled_at_utc_ms),
+                            last_processed_at_utc_ms: None,
+                            last_processed_local_key: None,
+                            created_at_ms: now_ms,
+                            updated_at_ms: now_ms,
+                        });
+                        Ok(())
+                    },
+                    persistent_snapshot,
+                )
+                .map_err(storage_error)?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+        self.next_rule_id = self.next_rule_id.saturating_add(1);
+        self.revision = self.revision.saturating_add(1);
+        self.rules.push(SchedulerRule {
+            schedule_id,
+            time_zone: request.time_zone,
+            title,
+            action: request.action,
+            trigger,
+            status: SchedulerRuleStatus::Scheduled,
+            created_at_ms: now_ms,
+            updated_at_ms: now_ms,
+        });
+        let snapshot = self.snapshot();
+        self.record_memory_mutation(request.request_id, mutation, now_ms, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    fn update_at(
+        &mut self,
+        request: SchedulerUpdateRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        let mutation = SchedulerMutation::Update {
+            schedule_id: request.schedule_id.clone(),
+            expected_revision: request.expected_revision,
+            time_zone: request.time_zone.clone(),
+            title: request.title.clone(),
+            action: request.action.clone(),
+            trigger: request.trigger.clone(),
+        };
+        if let Some(snapshot) = self.mutation_acknowledged(&request.request_id, &mutation)? {
+            return Ok(snapshot);
+        }
+        validate_schedule_id(&request.schedule_id)?;
+        let title = validate_title(request.title.as_deref())?;
+        validate_action(&request.action)?;
+        parse_time_zone(&request.time_zone).map_err(rule_error)?;
+        let trigger = normalize_trigger(&request.time_zone, request.trigger, now_ms)?;
+
+        if let Some(store) = self.store.as_mut() {
+            let persisted_action = persisted_action(&request.action);
+            let persisted_trigger = persisted_trigger(&trigger);
+            let next_scheduled_at_utc_ms = trigger_next_run(&trigger);
+            let time_zone = request.time_zone.clone();
+            let title = title.clone();
+            let schedule_id = request.schedule_id.clone();
+            let expected_revision = request.expected_revision;
+            let request_id = request.request_id.clone();
+            store
+                .apply_mutation(
+                    &request_id,
+                    mutation,
+                    now_ms,
+                    |state| {
+                        if expected_revision.is_some_and(|expected| expected != state.revision) {
+                            return Err(SchedulerStoreError::RevisionConflict);
+                        }
+                        let revision = state.revision.saturating_add(1);
+                        let Some(rule) = state
+                            .rules
+                            .iter_mut()
+                            .find(|rule| rule.schedule_id == schedule_id)
+                        else {
+                            return Err(SchedulerStoreError::InvalidState);
+                        };
+                        rule.revision = revision;
+                        rule.title = title.clone();
+                        rule.time_zone = time_zone.clone();
+                        rule.action = persisted_action.clone();
+                        rule.trigger = persisted_trigger.clone();
+                        rule.next_scheduled_at_utc_ms = Some(next_scheduled_at_utc_ms);
+                        rule.last_processed_at_utc_ms = None;
+                        rule.last_processed_local_key = None;
+                        rule.updated_at_ms = now_ms;
+                        state.revision = revision;
+                        Ok(())
+                    },
+                    persistent_snapshot,
+                )
+                .map_err(|error| match error {
+                    SchedulerStoreError::InvalidState => CommandError::new(
+                        "schedule_not_found",
+                        "The schedule rule no longer exists.",
+                    ),
+                    SchedulerStoreError::RevisionConflict => CommandError::new(
+                        "revision_conflict",
+                        "The schedule state changed; reload before editing.",
+                    ),
+                    SchedulerStoreError::RequestIdConflict => CommandError::new(
+                        "request_id_conflict",
+                        "requestId was already used for a different scheduler mutation.",
+                    ),
+                    other => storage_error(other),
+                })?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+
+        if request
+            .expected_revision
+            .is_some_and(|expected| expected != self.revision)
+        {
+            return Err(CommandError::new(
+                "revision_conflict",
+                "The schedule state changed; reload before editing.",
+            ));
+        }
+        let Some(rule) = self
+            .rules
+            .iter_mut()
+            .find(|rule| rule.schedule_id == request.schedule_id)
+        else {
+            return Err(CommandError::new(
+                "schedule_not_found",
+                "The schedule rule no longer exists.",
+            ));
+        };
+        rule.title = title;
+        rule.time_zone = request.time_zone;
+        rule.action = request.action;
+        rule.trigger = trigger;
+        rule.updated_at_ms = now_ms;
+        self.revision = self.revision.saturating_add(1);
+        let snapshot = self.snapshot();
+        self.record_memory_mutation(request.request_id, mutation, now_ms, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    fn pause_at(
+        &mut self,
+        request: SchedulerRuleRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        let mutation = SchedulerMutation::Pause {
+            schedule_id: request.schedule_id.clone(),
+            expected_revision: request.expected_revision,
+        };
+        if let Some(snapshot) = self.mutation_acknowledged(&request.request_id, &mutation)? {
+            return Ok(snapshot);
+        }
+        validate_schedule_id(&request.schedule_id)?;
+        if let Some(store) = self.store.as_mut() {
+            let schedule_id = request.schedule_id.clone();
+            let expected_revision = request.expected_revision;
+            let request_id = request.request_id.clone();
+            store
+                .apply_mutation(
+                    &request_id,
+                    mutation,
+                    now_ms,
+                    |state| {
+                        if expected_revision.is_some_and(|expected| expected != state.revision) {
+                            return Err(SchedulerStoreError::RevisionConflict);
+                        }
+                        let Some(rule) = state
+                            .rules
+                            .iter_mut()
+                            .find(|rule| rule.schedule_id == schedule_id)
+                        else {
+                            return Err(SchedulerStoreError::InvalidState);
+                        };
+                        if rule.enabled {
+                            let revision = state.revision.saturating_add(1);
+                            rule.enabled = false;
+                            rule.revision = revision;
+                            rule.updated_at_ms = now_ms;
+                            state.revision = revision;
+                        }
+                        Ok(())
+                    },
+                    persistent_snapshot,
+                )
+                .map_err(|error| match error {
+                    SchedulerStoreError::InvalidState => CommandError::new(
+                        "schedule_not_found",
+                        "The schedule rule no longer exists.",
+                    ),
+                    SchedulerStoreError::RevisionConflict => CommandError::new(
+                        "revision_conflict",
+                        "The schedule state changed; reload before pausing.",
+                    ),
+                    SchedulerStoreError::RequestIdConflict => CommandError::new(
+                        "request_id_conflict",
+                        "requestId was already used for a different scheduler mutation.",
+                    ),
+                    other => storage_error(other),
+                })?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+        if request
+            .expected_revision
+            .is_some_and(|expected| expected != self.revision)
+        {
+            return Err(CommandError::new(
+                "revision_conflict",
+                "The schedule state changed; reload before pausing.",
+            ));
+        }
+        let Some(rule) = self
+            .rules
+            .iter_mut()
+            .find(|rule| rule.schedule_id == request.schedule_id)
+        else {
+            return Err(CommandError::new(
+                "schedule_not_found",
+                "The schedule rule no longer exists.",
+            ));
+        };
+        if rule.status != SchedulerRuleStatus::Paused {
+            rule.status = SchedulerRuleStatus::Paused;
+            rule.updated_at_ms = now_ms;
+            self.revision = self.revision.saturating_add(1);
+        }
+        let snapshot = self.snapshot();
+        self.record_memory_mutation(request.request_id, mutation, now_ms, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    /// Re-enable a paused rule only after its next occurrence has been recomputed. The recovered
+    /// next run, enabled flag, revision, and mutation receipt share one persistent transaction.
+    pub fn resume(
+        &mut self,
+        request: SchedulerRuleRequest,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        self.resume_at(request, now_millis())
+    }
+
+    fn resume_at(
+        &mut self,
+        request: SchedulerRuleRequest,
+        now_ms: u64,
+    ) -> Result<SchedulerSnapshot, CommandError> {
+        validate_request_id(&request.request_id)?;
+        let mutation = SchedulerMutation::Resume {
+            schedule_id: request.schedule_id.clone(),
+            expected_revision: request.expected_revision,
+        };
+        if let Some(snapshot) = self.mutation_acknowledged(&request.request_id, &mutation)? {
+            return Ok(snapshot);
+        }
+        validate_schedule_id(&request.schedule_id)?;
+
+        if let Some(store) = self.store.as_mut() {
+            if request
+                .expected_revision
+                .is_some_and(|expected| expected != store.state().revision)
+            {
+                return Err(CommandError::new(
+                    "revision_conflict",
+                    "The schedule state changed; reload before resuming.",
+                ));
+            }
+            let rule = store
+                .state()
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == request.schedule_id)
+                .cloned()
+                .ok_or_else(|| {
+                    CommandError::new("schedule_not_found", "The schedule rule no longer exists.")
+                })?;
+            if rule.enabled {
+                return Err(CommandError::new(
+                    "schedule_not_paused",
+                    "The schedule rule is already active.",
+                ));
+            }
+            let next_scheduled_at_utc_ms = resume_persisted_trigger(&rule, now_ms)?;
+            let schedule_id = request.schedule_id.clone();
+            let expected_revision = request.expected_revision;
+            let request_id = request.request_id.clone();
+            store
+                .apply_mutation(
+                    &request_id,
+                    mutation,
+                    now_ms,
+                    |state| {
+                        if expected_revision.is_some_and(|expected| expected != state.revision) {
+                            return Err(SchedulerStoreError::RevisionConflict);
+                        }
+                        let Some(rule) = state
+                            .rules
+                            .iter_mut()
+                            .find(|rule| rule.schedule_id == schedule_id)
+                        else {
+                            return Err(SchedulerStoreError::InvalidState);
+                        };
+                        if rule.enabled {
+                            return Err(SchedulerStoreError::InvalidState);
+                        }
+                        let revision = state.revision.saturating_add(1);
+                        rule.enabled = true;
+                        rule.revision = revision;
+                        rule.next_scheduled_at_utc_ms = Some(next_scheduled_at_utc_ms);
+                        rule.updated_at_ms = now_ms;
+                        state.revision = revision;
+                        Ok(())
+                    },
+                    persistent_snapshot,
+                )
+                .map_err(|error| match error {
+                    SchedulerStoreError::InvalidState => CommandError::new(
+                        "schedule_not_paused",
+                        "The schedule rule is no longer paused; reload before resuming.",
+                    ),
+                    SchedulerStoreError::RevisionConflict => CommandError::new(
+                        "revision_conflict",
+                        "The schedule state changed; reload before resuming.",
+                    ),
+                    SchedulerStoreError::RequestIdConflict => CommandError::new(
+                        "request_id_conflict",
+                        "requestId was already used for a different scheduler mutation.",
+                    ),
+                    other => storage_error(other),
+                })?;
+            self.reload_from_store()?;
+            return Ok(self.snapshot());
+        }
+
+        if request
+            .expected_revision
+            .is_some_and(|expected| expected != self.revision)
+        {
+            return Err(CommandError::new(
+                "revision_conflict",
+                "The schedule state changed; reload before resuming.",
+            ));
+        }
+        let Some(index) = self
+            .rules
+            .iter()
+            .position(|rule| rule.schedule_id == request.schedule_id)
+        else {
+            return Err(CommandError::new(
+                "schedule_not_found",
+                "The schedule rule no longer exists.",
+            ));
+        };
+        if self.rules[index].status != SchedulerRuleStatus::Paused {
+            return Err(CommandError::new(
+                "schedule_not_paused",
+                "The schedule rule is already active.",
+            ));
+        }
+        let trigger = resume_public_trigger(
+            &self.rules[index].time_zone,
+            self.rules[index].trigger.clone(),
+            now_ms,
+        )?;
+        self.rules[index].trigger = trigger;
+        self.rules[index].status = SchedulerRuleStatus::Scheduled;
+        self.rules[index].updated_at_ms = now_ms;
+        self.revision = self.revision.saturating_add(1);
+        let snapshot = self.snapshot();
+        self.record_memory_mutation(request.request_id, mutation, now_ms, snapshot.clone());
+        Ok(snapshot)
+    }
+
+    fn advance_persisted_rule(
+        &mut self,
+        schedule_id: &str,
+        now_ms: u64,
+    ) -> Result<(), CommandError> {
+        let trigger = self
+            .store
+            .as_ref()
+            .and_then(|store| {
+                store
+                    .state()
+                    .rules
+                    .iter()
+                    .find(|rule| rule.schedule_id == schedule_id)
+                    .map(|rule| rule.trigger.clone())
+            })
+            .ok_or_else(|| {
+                CommandError::new("schedule_not_found", "The schedule rule no longer exists.")
+            })?;
+        self.advance_persisted_rule_with_trigger(schedule_id, now_ms, &trigger)
+    }
+
+    fn advance_persisted_rule_with_trigger(
+        &mut self,
+        schedule_id: &str,
+        now_ms: u64,
+        trigger: &PersistedSchedulerTrigger,
+    ) -> Result<(), CommandError> {
+        let Some(store) = self.store.as_mut() else {
+            return Ok(());
+        };
+        let (next, processed_local_key) = {
+            let rule = store
+                .state()
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == schedule_id)
+                .ok_or_else(|| {
+                    CommandError::new("schedule_not_found", "The schedule rule no longer exists.")
+                })?;
+            let processed_local_key = rule
+                .next_scheduled_at_utc_ms
+                .map(|at_ms| local_calendar_key_for(&rule.time_zone, at_ms))
+                .transpose()?;
+            let next = match trigger {
+                PersistedSchedulerTrigger::Once { .. } => None,
+                PersistedSchedulerTrigger::Daily { hour, minute } => Some(next_for_trigger(
+                    &rule.time_zone,
+                    SchedulerPreviewTrigger::Daily {
+                        hour: *hour,
+                        minute: *minute,
+                    },
+                    now_ms,
+                )?),
+                PersistedSchedulerTrigger::Weekly {
+                    weekday,
+                    hour,
+                    minute,
+                } => Some(next_for_trigger(
+                    &rule.time_zone,
+                    SchedulerPreviewTrigger::Weekly {
+                        weekday: *weekday,
+                        hour: *hour,
+                        minute: *minute,
+                    },
+                    now_ms,
+                )?),
+                PersistedSchedulerTrigger::Cron { expression } => Some(next_for_trigger(
+                    &rule.time_zone,
+                    SchedulerPreviewTrigger::Cron {
+                        expression: expression.clone(),
+                    },
+                    now_ms,
+                )?),
+            };
+            (next, processed_local_key)
+        };
+        store
+            .transact(|state| {
+                let rule = state
+                    .rules
+                    .iter_mut()
+                    .find(|rule| rule.schedule_id == schedule_id)
+                    .ok_or(SchedulerStoreError::InvalidState)?;
+                rule.last_processed_at_utc_ms = Some(now_ms);
+                rule.last_processed_local_key = processed_local_key.clone();
+                rule.next_scheduled_at_utc_ms = next;
+                if next.is_none() {
+                    rule.enabled = false;
+                }
+                rule.updated_at_ms = now_ms;
+                state.revision = state.revision.saturating_add(1);
+                Ok(())
+            })
+            .map_err(storage_error)?;
+        Ok(())
+    }
+}
+
+fn storage_error(error: SchedulerStoreError) -> CommandError {
+    let code = match error {
+        SchedulerStoreError::InvalidAppDataDir => "invalid_storage",
+        SchedulerStoreError::Corrupt => "schedule_storage_corrupt",
+        SchedulerStoreError::InvalidState => "invalid_schedule",
+        SchedulerStoreError::RevisionConflict => "revision_conflict",
+        SchedulerStoreError::RequestIdConflict => "request_id_conflict",
+        SchedulerStoreError::StaleMutation => "stale_schedule_request",
+        SchedulerStoreError::Io | SchedulerStoreError::Serialization => "schedule_storage_error",
+    };
+    CommandError::new(code, error.to_string())
+}
+
+fn persistent_snapshot(
+    state: &persist::SchedulerStoreState,
+) -> Result<SchedulerSnapshot, SchedulerStoreError> {
+    let rules = state
+        .rules
+        .iter()
+        .map(public_rule)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| SchedulerStoreError::InvalidState)?;
+    Ok(SchedulerSnapshot {
+        revision: state.revision,
+        max_rules: MAX_SCHEDULE_RULES,
+        persistent: true,
+        restart_notice:
+            "Rules are stored in private app data; temporary action state is not restored."
+                .to_owned(),
+        execution_notice: "Native scheduling records an action intent before emitting a reminder or requesting a bounded keep-awake action; missed actions are not replayed."
+            .to_owned(),
+        rules,
+    })
+}
+
+fn public_rule(rule: &PersistedSchedule) -> Result<SchedulerRule, CommandError> {
+    let trigger = match &rule.trigger {
+        PersistedSchedulerTrigger::Once { at_utc_ms } => {
+            SchedulerTrigger::Once { at_ms: *at_utc_ms }
+        }
+        PersistedSchedulerTrigger::Daily { hour, minute } => SchedulerTrigger::Daily {
+            hour: *hour,
+            minute: *minute,
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
+        },
+        PersistedSchedulerTrigger::Weekly {
+            weekday,
+            hour,
+            minute,
+        } => SchedulerTrigger::Weekly {
+            weekday: *weekday,
+            hour: *hour,
+            minute: *minute,
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
+        },
+        PersistedSchedulerTrigger::Cron { expression } => SchedulerTrigger::Cron {
+            expression: expression.clone(),
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
+        },
+    };
+    let action = match &rule.action {
+        PersistedSchedulerAction::Reminder => SchedulerAction::Reminder,
+        PersistedSchedulerAction::KeepAwake { duration_minutes } => SchedulerAction::KeepAwake {
+            duration_minutes: *duration_minutes,
+        },
+    };
+    Ok(SchedulerRule {
+        schedule_id: rule.schedule_id.clone(),
+        time_zone: rule.time_zone.clone(),
+        title: rule.title.clone(),
+        action,
+        trigger,
+        status: if rule.enabled {
+            SchedulerRuleStatus::Scheduled
+        } else {
+            SchedulerRuleStatus::Paused
+        },
+        created_at_ms: rule.created_at_ms,
+        updated_at_ms: rule.updated_at_ms,
+    })
+}
+
+fn normalize_trigger(
+    time_zone: &str,
+    trigger: SchedulerTrigger,
+    now_ms: u64,
+) -> Result<SchedulerTrigger, CommandError> {
+    match trigger {
+        SchedulerTrigger::Once { at_ms } => {
+            validate_next_run(at_ms, now_ms, MAX_ONCE_AHEAD_MS, "once")?;
+            Ok(SchedulerTrigger::Once { at_ms })
+        }
+        SchedulerTrigger::Daily { hour, minute, .. } => {
+            validate_time_of_day(hour, minute)?;
+            let next_run_at_ms = next_for_trigger(
+                time_zone,
+                SchedulerPreviewTrigger::Daily { hour, minute },
+                now_ms,
+            )?;
+            Ok(SchedulerTrigger::Daily {
+                hour,
+                minute,
+                next_run_at_ms,
+            })
+        }
+        SchedulerTrigger::Weekly {
+            weekday,
+            hour,
+            minute,
+            ..
+        } => {
+            if weekday > 6 {
+                return Err(CommandError::new(
+                    "invalid_weekday",
+                    "weekday must use 0 for Sunday through 6 for Saturday.",
+                ));
+            }
+            validate_time_of_day(hour, minute)?;
+            let next_run_at_ms = next_for_trigger(
+                time_zone,
+                SchedulerPreviewTrigger::Weekly {
+                    weekday,
+                    hour,
+                    minute,
+                },
+                now_ms,
+            )?;
+            Ok(SchedulerTrigger::Weekly {
+                weekday,
+                hour,
+                minute,
+                next_run_at_ms,
+            })
+        }
+        SchedulerTrigger::Cron { expression, .. } => {
+            validate_cron_expression(&expression)?;
+            let next_run_at_ms = next_for_trigger(
+                time_zone,
+                SchedulerPreviewTrigger::Cron {
+                    expression: expression.clone(),
+                },
+                now_ms,
+            )?;
+            Ok(SchedulerTrigger::Cron {
+                expression,
+                next_run_at_ms,
+            })
+        }
+    }
+}
+
+fn next_for_trigger(
+    time_zone: &str,
+    trigger: SchedulerPreviewTrigger,
+    after_ms: u64,
+) -> Result<u64, CommandError> {
+    let preview = ToolboxScheduler::preview_at(
+        SchedulerPreviewRequest {
+            time_zone: time_zone.to_owned(),
+            trigger,
+        },
+        after_ms,
+    )?;
+    preview.occurrence_at_ms.first().copied().ok_or_else(|| {
+        CommandError::new(
+            "no_occurrence",
+            "The schedule has no occurrence in the bounded horizon.",
+        )
+    })
+}
+
+fn resume_persisted_trigger(rule: &PersistedSchedule, now_ms: u64) -> Result<u64, CommandError> {
+    persist::validate_rule_definition(rule).map_err(storage_error)?;
+    match &rule.trigger {
+        PersistedSchedulerTrigger::Once { at_utc_ms } => {
+            if *at_utc_ms <= now_ms {
+                return Err(CommandError::new(
+                    "schedule_expired",
+                    "A completed one-time schedule cannot be resumed.",
+                ));
+            }
+            Ok(*at_utc_ms)
+        }
+        PersistedSchedulerTrigger::Daily { hour, minute } => next_for_trigger(
+            &rule.time_zone,
+            SchedulerPreviewTrigger::Daily {
+                hour: *hour,
+                minute: *minute,
+            },
+            now_ms,
+        ),
+        PersistedSchedulerTrigger::Weekly {
+            weekday,
+            hour,
+            minute,
+        } => next_for_trigger(
+            &rule.time_zone,
+            SchedulerPreviewTrigger::Weekly {
+                weekday: *weekday,
+                hour: *hour,
+                minute: *minute,
+            },
+            now_ms,
+        ),
+        PersistedSchedulerTrigger::Cron { expression } => next_for_trigger(
+            &rule.time_zone,
+            SchedulerPreviewTrigger::Cron {
+                expression: expression.clone(),
+            },
+            now_ms,
+        ),
+    }
+}
+
+fn resume_public_trigger(
+    time_zone: &str,
+    trigger: SchedulerTrigger,
+    now_ms: u64,
+) -> Result<SchedulerTrigger, CommandError> {
+    if let SchedulerTrigger::Once { at_ms } = &trigger
+        && *at_ms <= now_ms
+    {
+        return Err(CommandError::new(
+            "schedule_expired",
+            "A completed one-time schedule cannot be resumed.",
+        ));
+    }
+    normalize_trigger(time_zone, trigger, now_ms)
+}
+
+fn local_calendar_key_for(time_zone: &str, at_ms: u64) -> Result<LocalCalendarKey, CommandError> {
+    let time_zone = parse_time_zone(time_zone).map_err(rule_error)?;
+    let at_utc = utc_from_millis(at_ms)?;
+    Ok(local_calendar_key_at(time_zone, at_utc))
+}
+
+fn persisted_trigger(trigger: &SchedulerTrigger) -> PersistedSchedulerTrigger {
+    match trigger {
+        SchedulerTrigger::Once { at_ms } => PersistedSchedulerTrigger::Once { at_utc_ms: *at_ms },
+        SchedulerTrigger::Daily { hour, minute, .. } => PersistedSchedulerTrigger::Daily {
+            hour: *hour,
+            minute: *minute,
+        },
+        SchedulerTrigger::Weekly {
+            weekday,
+            hour,
+            minute,
+            ..
+        } => PersistedSchedulerTrigger::Weekly {
+            weekday: *weekday,
+            hour: *hour,
+            minute: *minute,
+        },
+        SchedulerTrigger::Cron { expression, .. } => PersistedSchedulerTrigger::Cron {
+            expression: expression.clone(),
+        },
+    }
+}
+
+fn persisted_action(action: &SchedulerAction) -> PersistedSchedulerAction {
+    match action {
+        SchedulerAction::Reminder => PersistedSchedulerAction::Reminder,
+        SchedulerAction::KeepAwake { duration_minutes } => PersistedSchedulerAction::KeepAwake {
+            duration_minutes: *duration_minutes,
+        },
+    }
+}
+
+fn public_action(action: &PersistedSchedulerAction) -> SchedulerAction {
+    match action {
+        PersistedSchedulerAction::Reminder => SchedulerAction::Reminder,
+        PersistedSchedulerAction::KeepAwake { duration_minutes } => SchedulerAction::KeepAwake {
+            duration_minutes: *duration_minutes,
+        },
+    }
+}
+
+fn trigger_next_run(trigger: &SchedulerTrigger) -> u64 {
+    match trigger {
+        SchedulerTrigger::Once { at_ms } => *at_ms,
+        SchedulerTrigger::Daily { next_run_at_ms, .. }
+        | SchedulerTrigger::Weekly { next_run_at_ms, .. }
+        | SchedulerTrigger::Cron { next_run_at_ms, .. } => *next_run_at_ms,
+    }
+}
+
+fn rule_error(error: scheduler_core::SchedulerRuleError) -> CommandError {
+    CommandError::new(error.code, error.message)
+}
+
+fn utc_from_millis(milliseconds: u64) -> Result<chrono::DateTime<Utc>, CommandError> {
+    let milliseconds = i64::try_from(milliseconds).map_err(|_| {
+        CommandError::new(
+            "invalid_time",
+            "The preview start time is outside the supported UTC range.",
+        )
+    })?;
+    Utc.timestamp_millis_opt(milliseconds)
+        .single()
+        .ok_or_else(|| {
+            CommandError::new(
+                "invalid_time",
+                "The preview start time is outside the supported UTC range.",
+            )
+        })
+}
+
+fn millis_from_utc(value: chrono::DateTime<Utc>) -> u64 {
+    u64::try_from(value.timestamp_millis()).unwrap_or(u64::MAX)
+}
+
+fn validate_request_id(request_id: &str) -> Result<(), CommandError> {
+    if request_id.trim().is_empty() || request_id.len() > MAX_REQUEST_ID_BYTES {
+        return Err(CommandError::new(
+            "invalid_request",
+            "requestId must be a non-empty value no longer than 128 bytes.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_schedule_id(schedule_id: &str) -> Result<(), CommandError> {
+    if schedule_id.trim().is_empty() || schedule_id.len() > MAX_SCHEDULE_ID_BYTES {
+        return Err(CommandError::new(
+            "invalid_schedule_id",
+            "scheduleId must be a non-empty value no longer than 64 bytes.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_title(title: Option<&str>) -> Result<Option<String>, CommandError> {
+    let Some(title) = title else {
+        return Ok(None);
+    };
+    let title = title.trim();
+    if title.is_empty() {
+        return Ok(None);
+    }
+    if title.chars().count() > MAX_TITLE_CHARS || title.chars().any(char::is_control) {
+        return Err(CommandError::new(
+            "invalid_title",
+            "Schedule titles must contain at most 80 non-control characters.",
+        ));
+    }
+    Ok(Some(title.to_owned()))
+}
+
+fn validate_action(action: &SchedulerAction) -> Result<(), CommandError> {
+    match action {
+        SchedulerAction::Reminder => Ok(()),
+        SchedulerAction::KeepAwake { duration_minutes }
+            if (MIN_KEEP_AWAKE_MINUTES..=MAX_KEEP_AWAKE_MINUTES).contains(duration_minutes) =>
+        {
+            Ok(())
+        }
+        SchedulerAction::KeepAwake { .. } => Err(CommandError::new(
+            "invalid_duration",
+            "Timed keep-awake intents must be between 1 minute and 12 hours.",
+        )),
+    }
+}
+
+fn validate_time_of_day(hour: u8, minute: u8) -> Result<(), CommandError> {
+    if hour > 23 || minute > 59 {
+        return Err(CommandError::new(
+            "invalid_time_of_day",
+            "Scheduled hour must be 0-23 and minute must be 0-59.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_next_run(
+    next_run_at_ms: u64,
+    now_ms: u64,
+    maximum_ahead_ms: u64,
+    trigger_kind: &str,
+) -> Result<(), CommandError> {
+    if next_run_at_ms <= now_ms || next_run_at_ms > now_ms.saturating_add(maximum_ahead_ms) {
+        return Err(CommandError::new(
+            "invalid_next_run",
+            format!("The {trigger_kind} nextRunAtMs must be a bounded future time."),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_cron_expression(expression: &str) -> Result<(), CommandError> {
+    CronExpression::parse(expression)
+        .map(|_| ())
+        .map_err(rule_error)
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use serde_json::json;
+
+    use super::*;
+
+    const NOW_MS: u64 = 1_000_000;
+
+    fn reminder_once(at_ms: u64) -> SchedulerCreateRequest {
+        SchedulerCreateRequest {
+            request_id: "request-1".to_owned(),
+            time_zone: "Etc/UTC".to_owned(),
+            title: Some("Lunch reminder".to_owned()),
+            action: SchedulerAction::Reminder,
+            trigger: SchedulerTrigger::Once { at_ms },
+        }
+    }
+
+    fn rule_request(
+        request_id: &str,
+        schedule_id: &str,
+        expected_revision: Option<u64>,
+    ) -> SchedulerRuleRequest {
+        SchedulerRuleRequest {
+            request_id: request_id.to_owned(),
+            schedule_id: schedule_id.to_owned(),
+            expected_revision,
+        }
+    }
+
+    #[test]
+    fn keeps_only_bounded_memory_rules_and_marks_restart_behavior() {
+        let mut scheduler = ToolboxScheduler::default();
+        let snapshot = scheduler
+            .create_at(reminder_once(NOW_MS + 60_000), NOW_MS)
+            .expect("valid rule is accepted");
+
+        assert!(!snapshot.persistent);
+        assert!(snapshot.restart_notice.contains("cleared"));
+        assert!(snapshot.execution_notice.contains("missed actions"));
+        assert_eq!(snapshot.max_rules, MAX_SCHEDULE_RULES);
+        assert_eq!(snapshot.rules[0].status, SchedulerRuleStatus::Scheduled);
+        assert_eq!(snapshot.rules[0].title.as_deref(), Some("Lunch reminder"));
+    }
+
+    #[test]
+    fn rejects_command_like_cron_before_mutating_state() {
+        let mut scheduler = ToolboxScheduler::default();
+        let error = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "request-2".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Cron {
+                        expression: "0 0 * * * rm -rf /".to_owned(),
+                        next_run_at_ms: NOW_MS + ONE_DAY_MS,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect_err("six-field command payload is rejected");
+
+        assert_eq!(error.code, "invalid_cron");
+        assert!(scheduler.snapshot().rules.is_empty());
+    }
+
+    #[test]
+    fn validates_white_list_action_bounds_and_rule_limit() {
+        let mut scheduler = ToolboxScheduler::default();
+        let invalid = scheduler.create_at(
+            SchedulerCreateRequest {
+                request_id: "request-3".to_owned(),
+                time_zone: "Etc/UTC".to_owned(),
+                title: None,
+                action: SchedulerAction::KeepAwake {
+                    duration_minutes: MAX_KEEP_AWAKE_MINUTES + 1,
+                },
+                trigger: SchedulerTrigger::Daily {
+                    hour: 9,
+                    minute: 0,
+                    next_run_at_ms: NOW_MS + ONE_DAY_MS,
+                },
+            },
+            NOW_MS,
+        );
+        assert_eq!(
+            invalid.expect_err("duration is limited").code,
+            "invalid_duration"
+        );
+
+        for number in 0..MAX_SCHEDULE_RULES {
+            let mut request = reminder_once(NOW_MS + 60_000);
+            request.request_id = format!("request-{number}");
+            scheduler
+                .create_at(request, NOW_MS)
+                .expect("rule inside fixed limit is accepted");
+        }
+        let mut beyond_limit = reminder_once(NOW_MS + 60_000);
+        beyond_limit.request_id = "request-over-limit".to_owned();
+        let error = scheduler
+            .create_at(beyond_limit, NOW_MS)
+            .expect_err("rule beyond fixed limit is rejected");
+        assert_eq!(error.code, "schedule_limit_reached");
+    }
+
+    #[test]
+    fn pauses_then_deletes_a_rule_without_any_execution_path() {
+        let mut scheduler = ToolboxScheduler::default();
+        let created = scheduler
+            .create_at(reminder_once(NOW_MS + 60_000), NOW_MS)
+            .expect("rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+
+        let paused = scheduler
+            .pause_at(
+                SchedulerRuleRequest {
+                    request_id: "request-pause".to_owned(),
+                    schedule_id: schedule_id.clone(),
+                    expected_revision: Some(created.revision),
+                },
+                NOW_MS + 1,
+            )
+            .expect("created rule can be paused");
+        assert_eq!(paused.rules[0].status, SchedulerRuleStatus::Paused);
+
+        let deleted = scheduler
+            .delete(SchedulerRuleRequest {
+                request_id: "request-delete".to_owned(),
+                schedule_id,
+                expected_revision: Some(paused.revision),
+            })
+            .expect("paused rule can be deleted");
+        assert!(deleted.rules.is_empty());
+    }
+
+    #[test]
+    fn pause_delete_and_resume_reject_stale_snapshot_revisions() {
+        let mut scheduler = ToolboxScheduler::default();
+        let created = scheduler
+            .create_at(reminder_once(NOW_MS + 60_000), NOW_MS)
+            .expect("rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let paused = scheduler
+            .pause_at(
+                rule_request("pause-current", &schedule_id, Some(created.revision)),
+                NOW_MS + 1,
+            )
+            .expect("current schedule can be paused");
+
+        let stale_pause = scheduler
+            .pause_at(
+                rule_request("pause-stale", &schedule_id, Some(created.revision)),
+                NOW_MS + 2,
+            )
+            .expect_err("stale pause cannot overwrite newer scheduler state");
+        assert_eq!(stale_pause.code, "revision_conflict");
+
+        let stale_delete = scheduler
+            .delete_at(
+                rule_request("delete-stale", &schedule_id, Some(created.revision)),
+                NOW_MS + 3,
+            )
+            .expect_err("stale delete cannot remove the paused rule");
+        assert_eq!(stale_delete.code, "revision_conflict");
+
+        let stale_resume = scheduler
+            .resume_at(
+                rule_request("resume-stale", &schedule_id, Some(created.revision)),
+                NOW_MS + 4,
+            )
+            .expect_err("stale resume cannot overwrite newer scheduler state");
+        assert_eq!(stale_resume.code, "revision_conflict");
+        assert_eq!(scheduler.snapshot(), paused);
+
+        let resumed = scheduler
+            .resume_at(
+                rule_request("resume-current", &schedule_id, Some(paused.revision)),
+                NOW_MS + 5,
+            )
+            .expect("current paused schedule can be resumed");
+        assert_eq!(resumed.rules[0].status, SchedulerRuleStatus::Scheduled);
+    }
+
+    #[test]
+    fn mutation_request_ids_ack_retries_and_reject_reuse_for_other_mutations() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let create_request = reminder_once(NOW_MS + 60_000);
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let created = scheduler
+            .create_at(create_request.clone(), NOW_MS)
+            .expect("create is accepted");
+        assert_eq!(
+            scheduler
+                .create_at(create_request.clone(), NOW_MS + 120_000)
+                .expect("accepted create is acknowledged even after its occurrence passed"),
+            created
+        );
+        let mut conflicting_create = create_request.clone();
+        conflicting_create.title = Some("Different create".to_owned());
+        assert_eq!(
+            scheduler
+                .create_at(conflicting_create, NOW_MS)
+                .expect_err("request id cannot identify another create")
+                .code,
+            "request_id_conflict"
+        );
+        drop(scheduler);
+
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("reopen scheduler");
+        assert_eq!(
+            scheduler
+                .create_at(create_request.clone(), NOW_MS + 120_000)
+                .expect("durable receipt acknowledges a retry after restart"),
+            created
+        );
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let update_request = SchedulerUpdateRequest {
+            request_id: "update-retry".to_owned(),
+            schedule_id: schedule_id.clone(),
+            expected_revision: Some(created.revision),
+            time_zone: "Etc/UTC".to_owned(),
+            title: Some("Updated reminder".to_owned()),
+            action: SchedulerAction::Reminder,
+            trigger: SchedulerTrigger::Once {
+                at_ms: NOW_MS + 180_000,
+            },
+        };
+        let updated = scheduler
+            .update_at(update_request.clone(), NOW_MS + 1)
+            .expect("update is accepted");
+        assert_eq!(
+            scheduler
+                .create_at(create_request, NOW_MS + 2)
+                .expect("create acknowledgement remains stable after a later update"),
+            created
+        );
+        assert_eq!(
+            scheduler
+                .update_at(update_request.clone(), NOW_MS + 2)
+                .expect("matching update retry is acknowledged"),
+            updated
+        );
+        let mut conflicting_update = update_request.clone();
+        conflicting_update.title = Some("Different update".to_owned());
+        assert_eq!(
+            scheduler
+                .update_at(conflicting_update, NOW_MS + 2)
+                .expect_err("request id cannot identify another update")
+                .code,
+            "request_id_conflict"
+        );
+
+        let pause_request = rule_request("pause-retry", &schedule_id, Some(updated.revision));
+        let paused = scheduler
+            .pause_at(pause_request.clone(), NOW_MS + 3)
+            .expect("pause is accepted");
+        assert_eq!(
+            scheduler
+                .pause_at(pause_request.clone(), NOW_MS + 4)
+                .expect("matching pause retry is acknowledged"),
+            paused
+        );
+        assert_eq!(
+            scheduler
+                .pause_at(
+                    rule_request("pause-retry", &schedule_id, Some(paused.revision)),
+                    NOW_MS + 4,
+                )
+                .expect_err("request id cannot identify another pause")
+                .code,
+            "request_id_conflict"
+        );
+
+        let resume_request = rule_request("resume-retry", &schedule_id, Some(paused.revision));
+        let resumed = scheduler
+            .resume_at(resume_request.clone(), NOW_MS + 5)
+            .expect("resume is accepted");
+        assert_eq!(
+            scheduler
+                .resume_at(resume_request.clone(), NOW_MS + 6)
+                .expect("matching resume retry is acknowledged"),
+            resumed
+        );
+        assert_eq!(
+            scheduler
+                .resume_at(
+                    rule_request("resume-retry", &schedule_id, Some(resumed.revision)),
+                    NOW_MS + 6,
+                )
+                .expect_err("request id cannot identify another resume")
+                .code,
+            "request_id_conflict"
+        );
+
+        let delete_request = rule_request("delete-retry", &schedule_id, Some(resumed.revision));
+        let deleted = scheduler
+            .delete_at(delete_request.clone(), NOW_MS + 7)
+            .expect("delete is accepted");
+        assert_eq!(
+            scheduler
+                .delete_at(delete_request.clone(), NOW_MS + 8)
+                .expect("matching delete retry is acknowledged"),
+            deleted
+        );
+        assert_eq!(
+            scheduler
+                .delete_at(
+                    rule_request("delete-retry", &schedule_id, Some(deleted.revision)),
+                    NOW_MS + 8,
+                )
+                .expect_err("request id cannot identify another delete")
+                .code,
+            "request_id_conflict"
+        );
+    }
+
+    #[test]
+    fn resume_persists_the_recomputed_next_run_with_the_enabled_state() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let created = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "create-daily".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Daily {
+                        hour: 10,
+                        minute: 30,
+                        next_run_at_ms: NOW_MS + 1,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect("daily rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let paused = scheduler
+            .pause_at(
+                rule_request("pause-daily", &schedule_id, Some(created.revision)),
+                NOW_MS + 1,
+            )
+            .expect("daily rule is paused");
+        let resumed = scheduler
+            .resume_at(
+                rule_request("resume-daily", &schedule_id, Some(paused.revision)),
+                NOW_MS + 2,
+            )
+            .expect("daily rule is resumed");
+
+        let persisted = &scheduler
+            .store
+            .as_ref()
+            .expect("persistent store")
+            .state()
+            .rules[0];
+        assert!(persisted.enabled);
+        assert_eq!(persisted.revision, resumed.revision);
+        assert!(
+            persisted
+                .next_scheduled_at_utc_ms
+                .is_some_and(|next| next > NOW_MS + 2)
+        );
+        drop(scheduler);
+
+        let reopened = ToolboxScheduler::open(directory.path()).expect("reopen scheduler");
+        assert_eq!(reopened.snapshot(), resumed);
+    }
+
+    #[test]
+    fn refuses_to_resume_an_expired_one_time_rule_without_mutating_it() {
+        let mut scheduler = ToolboxScheduler::default();
+        let created = scheduler
+            .create_at(reminder_once(NOW_MS + 10), NOW_MS)
+            .expect("rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let paused = scheduler
+            .pause_at(
+                rule_request("pause-once", &schedule_id, Some(created.revision)),
+                NOW_MS + 1,
+            )
+            .expect("rule is paused");
+
+        let error = scheduler
+            .resume_at(
+                rule_request("resume-expired", &schedule_id, Some(paused.revision)),
+                NOW_MS + 11,
+            )
+            .expect_err("expired one-time rule cannot be silently re-enabled");
+        assert_eq!(error.code, "schedule_expired");
+        assert_eq!(scheduler.snapshot(), paused);
+    }
+
+    #[test]
+    fn updates_a_rule_in_place_and_rejects_a_stale_snapshot_revision() {
+        let mut scheduler = ToolboxScheduler::default();
+        let created = scheduler
+            .create_at(reminder_once(NOW_MS + 60_000), NOW_MS)
+            .expect("rule is created");
+        let schedule_id = created.rules[0].schedule_id.clone();
+        let updated = scheduler
+            .update_at(
+                SchedulerUpdateRequest {
+                    request_id: "request-update".to_owned(),
+                    schedule_id: schedule_id.clone(),
+                    expected_revision: Some(created.revision),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: Some("Updated reminder".to_owned()),
+                    action: SchedulerAction::KeepAwake {
+                        duration_minutes: 5,
+                    },
+                    trigger: SchedulerTrigger::Daily {
+                        hour: 10,
+                        minute: 30,
+                        next_run_at_ms: NOW_MS + ONE_DAY_MS,
+                    },
+                },
+                NOW_MS + 1,
+            )
+            .expect("current rule can be edited");
+
+        assert_eq!(updated.rules.len(), 1);
+        assert_eq!(updated.rules[0].title.as_deref(), Some("Updated reminder"));
+        assert_eq!(
+            updated.rules[0].action,
+            SchedulerAction::KeepAwake {
+                duration_minutes: 5
+            }
+        );
+        assert!(matches!(
+            updated.rules[0].trigger,
+            SchedulerTrigger::Daily {
+                hour: 10,
+                minute: 30,
+                ..
+            }
+        ));
+
+        let stale = scheduler
+            .update_at(
+                SchedulerUpdateRequest {
+                    request_id: "request-stale".to_owned(),
+                    schedule_id,
+                    expected_revision: Some(created.revision),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: Some("Stale".to_owned()),
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Once {
+                        at_ms: NOW_MS + 2 * ONE_DAY_MS,
+                    },
+                },
+                NOW_MS + 2,
+            )
+            .expect_err("stale snapshot must not overwrite a newer edit");
+        assert_eq!(stale.code, "revision_conflict");
+        assert_eq!(
+            scheduler.snapshot().rules[0].title.as_deref(),
+            Some("Updated reminder")
+        );
+    }
+
+    #[test]
+    fn native_preview_resolves_the_repeated_dst_minute_once() {
+        let after_ms = millis_from_utc(
+            Utc.with_ymd_and_hms(2024, 11, 3, 4, 0, 0)
+                .single()
+                .expect("valid UTC instant"),
+        );
+        let preview = ToolboxScheduler::preview_at(
+            SchedulerPreviewRequest {
+                time_zone: "America/New_York".to_owned(),
+                trigger: SchedulerPreviewTrigger::Cron {
+                    expression: "30 1 3 11 *".to_owned(),
+                },
+            },
+            after_ms,
+        )
+        .expect("Cron preview succeeds");
+
+        assert_eq!(preview.status, SchedulerPreviewStatus::Ready);
+        assert_eq!(
+            preview.occurrence_at_ms.first().copied(),
+            Some(millis_from_utc(
+                Utc.with_ymd_and_hms(2024, 11, 3, 5, 30, 0)
+                    .single()
+                    .expect("valid earliest fall-back instant"),
+            ))
+        );
+    }
+
+    #[test]
+    fn persistent_scheduler_records_due_intents_before_dispatch() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        scheduler
+            .create_at(reminder_once(NOW_MS + 1_000), NOW_MS)
+            .expect("save one-time rule");
+
+        let intents = scheduler.poll_due(NOW_MS + 1_000).expect("poll due rules");
+        assert_eq!(intents.len(), 1);
+        let stored_intent = &scheduler.store.as_ref().unwrap().state().intents[0];
+        assert!(stored_intent.local_key.is_some());
+        assert!(
+            scheduler.store.as_ref().unwrap().state().rules[0]
+                .last_processed_local_key
+                .is_some()
+        );
+        assert!(
+            scheduler
+                .poll_due(NOW_MS + 1_001)
+                .expect("deduplicate advanced rule")
+                .is_empty()
+        );
+
+        scheduler
+            .mark_intent_outcome(
+                &intents[0],
+                SchedulerIntentOutcome::Submitted,
+                NOW_MS + 1_002,
+            )
+            .expect("record delivery outcome");
+        drop(scheduler);
+
+        let reopened = ToolboxScheduler::open(directory.path()).expect("reopen scheduler");
+        let snapshot = reopened.snapshot();
+        assert_eq!(snapshot.rules.len(), 1);
+        assert_eq!(snapshot.rules[0].status, SchedulerRuleStatus::Paused);
+    }
+
+    #[test]
+    fn loading_a_bad_rule_pauses_only_that_rule_and_keeps_other_due_rules_runnable() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let invalid = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "create-cron".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Cron {
+                        expression: "* * * * *".to_owned(),
+                        next_run_at_ms: NOW_MS + 1_000,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect("save valid Cron before corrupting its private fixture");
+        let valid = scheduler
+            .create_at(reminder_once(NOW_MS + 1_000), NOW_MS)
+            .expect("save valid one-time rule");
+        let invalid_id = invalid.rules[0].schedule_id.clone();
+        let valid_id = valid.rules[1].schedule_id.clone();
+        let revision_before_recovery = valid.revision;
+        drop(scheduler);
+
+        let path = directory.path().join(persist::SCHEDULE_FILE_NAME);
+        let mut state: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).expect("read private test state"))
+                .expect("decode private test state");
+        state["rules"][0]["trigger"] = json!({ "kind": "cron", "expression": "not a Cron" });
+        state["rules"][0]["nextScheduledAtUtcMs"] = json!(NOW_MS + 1_000);
+        state["rules"][0]["lastProcessedAtUtcMs"] = json!(NOW_MS - 100);
+        state["rules"][0]["lastProcessedLocalKey"] = json!({
+            "year": 1970,
+            "month": 1,
+            "day": 1,
+            "hour": 0,
+            "minute": 16
+        });
+        fs::write(
+            &path,
+            serde_json::to_vec(&state).expect("encode private test state"),
+        )
+        .expect("write private test state");
+
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("recover scheduler");
+        let recovered = scheduler.snapshot();
+        assert!(recovered.revision > revision_before_recovery);
+        assert_eq!(recovered.rules.len(), 2);
+        assert_eq!(
+            recovered
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == invalid_id)
+                .expect("bad rule remains visible")
+                .status,
+            SchedulerRuleStatus::Paused
+        );
+        assert_eq!(
+            recovered
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == valid_id)
+                .expect("valid rule remains visible")
+                .status,
+            SchedulerRuleStatus::Scheduled
+        );
+
+        let intents = scheduler
+            .poll_due(NOW_MS + 1_000)
+            .expect("paused bad rule cannot block valid due rule");
+        assert_eq!(intents.len(), 1);
+        assert_eq!(intents[0].schedule_id, valid_id);
+        let bad_rule = scheduler
+            .store
+            .as_ref()
+            .expect("persistent store")
+            .state()
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == invalid_id)
+            .expect("bad rule remains persisted");
+        assert!(!bad_rule.enabled);
+        assert_eq!(bad_rule.last_processed_at_utc_ms, Some(NOW_MS - 100));
+        assert!(bad_rule.last_processed_local_key.is_some());
+    }
+
+    #[test]
+    fn failed_recalculation_marks_its_intent_failed_without_blocking_another_due_rule() {
+        let recalculation_at = millis_from_utc(
+            Utc.with_ymd_and_hms(2096, 3, 1, 0, 0, 0)
+                .single()
+                .expect("valid UTC test instant"),
+        );
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let sparse = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "create-sparse-cron".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Cron {
+                        expression: "0 0 29 2 *".to_owned(),
+                        next_run_at_ms: NOW_MS + 1_000,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect("save sparse but valid Cron rule");
+        let valid = scheduler
+            .create_at(reminder_once(NOW_MS + 1_000), NOW_MS)
+            .expect("save valid one-time rule");
+        let sparse_id = sparse.rules[0].schedule_id.clone();
+        let valid_id = valid.rules[1].schedule_id.clone();
+        let revision_before_poll = valid.revision;
+        drop(scheduler);
+
+        let path = directory.path().join(persist::SCHEDULE_FILE_NAME);
+        let mut state: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).expect("read private test state"))
+                .expect("decode private test state");
+        state["rules"][0]["nextScheduledAtUtcMs"] = json!(recalculation_at);
+        state["rules"][0]["lastProcessedAtUtcMs"] = json!(NOW_MS);
+        state["rules"][0]["lastProcessedLocalKey"] = json!({
+            "year": 1970,
+            "month": 1,
+            "day": 1,
+            "hour": 0,
+            "minute": 16
+        });
+        state["rules"][1]["trigger"]["at_utc_ms"] = json!(recalculation_at);
+        state["rules"][1]["nextScheduledAtUtcMs"] = json!(recalculation_at);
+        fs::write(
+            &path,
+            serde_json::to_vec(&state).expect("encode private test state"),
+        )
+        .expect("write private test state");
+
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open test state");
+        let intents = scheduler
+            .poll_due(recalculation_at)
+            .expect("recalculation failure is isolated per rule");
+        assert_eq!(intents.len(), 1);
+        assert_eq!(intents[0].schedule_id, valid_id);
+        let state = scheduler.store.as_ref().expect("persistent store").state();
+        assert!(state.revision >= revision_before_poll.saturating_add(2));
+        let sparse_rule = state
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == sparse_id)
+            .expect("sparse rule remains visible");
+        assert!(!sparse_rule.enabled);
+        assert_eq!(sparse_rule.last_processed_at_utc_ms, Some(NOW_MS));
+        assert!(sparse_rule.last_processed_local_key.is_some());
+        assert_eq!(
+            state
+                .intents
+                .iter()
+                .find(|intent| intent.schedule_id == sparse_id)
+                .expect("failed recalculation intent is preserved")
+                .state,
+            PersistedIntentState::Failed
+        );
+        assert!(
+            scheduler
+                .poll_due(recalculation_at + 1)
+                .expect("failed rule stays fail-closed")
+                .is_empty()
+        );
+        drop(scheduler);
+
+        let reopened = ToolboxScheduler::open(directory.path()).expect("reopen durable failure");
+        let persisted_sparse = reopened
+            .store
+            .as_ref()
+            .expect("persistent store")
+            .state()
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == sparse_id)
+            .expect("bad rule is durable");
+        assert!(!persisted_sparse.enabled);
+    }
+
+    #[test]
+    fn adopting_a_new_reset_epoch_clears_persistent_rules() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let create_request = reminder_once(NOW_MS + 1_000);
+        scheduler
+            .create_at(create_request.clone(), NOW_MS)
+            .expect("save one-time rule");
+
+        scheduler
+            .adopt_reset_epoch(1)
+            .expect("advance the reset epoch");
+        assert!(scheduler.snapshot().rules.is_empty());
+        assert_eq!(
+            scheduler
+                .create_at(create_request, NOW_MS + 1)
+                .expect_err("a pre-reset mutation cannot be silently acknowledged")
+                .code,
+            "stale_schedule_request"
+        );
+        drop(scheduler);
+
+        let reopened = ToolboxScheduler::open(directory.path()).expect("reopen scheduler");
+        assert!(reopened.snapshot().rules.is_empty());
+    }
+}

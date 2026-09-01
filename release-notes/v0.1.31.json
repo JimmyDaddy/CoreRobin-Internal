@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.31",
+  "title": {
+    "zh-CN": "工具箱新增屏幕吸管取色",
+    "en": "Add a screen eyedropper to the Toolbox"
+  },
+  "items": [
+    {
+      "zh-CN": "视觉取色器新增“从屏幕取色”，在 macOS 10.15 及更高版本中可以直接从屏幕任意位置取色，并将结果同步到 HEX、RGB、HSL、HSV 和 OKLCH 格式。",
+      "en": "The visual color picker now includes a screen eyedropper on macOS 10.15 and later. Pick a color from anywhere on the screen and keep HEX, RGB, HSL, HSV, and OKLCH outputs in sync."
+    }
+  ]
+}

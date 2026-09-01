@@ -198,6 +198,13 @@
     "title": "這些空間大多用來做什麼"
   },
   "map": {
+    "list": {
+      "name": "名稱",
+      "share": "目前資料夾占比",
+      "sort": "列表排序",
+      "shown": "已顯示 {{count}} 項",
+      "loadMore": "載入更多"
+    },
     "title": "空間都去了哪裡",
     "description": "扇形面積按磁碟實際佔用計算；同色系表示同一目錄分支，灰色表示檔案。",
     "descriptionPath": "按系統磁碟的真實檔案路徑展示：每一圈對應下一層目錄，色塊面積表示磁碟實際佔用。",
@@ -288,6 +295,26 @@
     "removeFromBasket": "從清理籃移除",
     "includedByParent": "已包含在父資料夾中",
     "addToBasket": "加入清理籃"
+  },
+  "settlement": {
+    "status": {
+      "success": "清理完成",
+      "partial": "部分完成",
+      "cancelled": "清理已停止",
+      "failed": "清理未完成",
+      "empty": "沒有處理內容"
+    },
+    "movedLabel": "已移至垃圾桶",
+    "availableLabel": "可用空間增加",
+    "processedLabel": "已處理空間",
+    "completed": "已完成 {{count}} 項",
+    "processed": "已處理 {{size}}",
+    "failed": "{{count}} 項未完成",
+    "trashNote": "內容仍在垃圾桶中，可復原；清空前不代表磁碟空間已釋放。",
+    "unmeasuredNote": "已處理大小不等於實際釋放空間；本次未取得可用空間變化。",
+    "pendingNote": "可用空間可能受快照、檔案占用或系統回收延遲影響。",
+    "measuredNote": "操作前後測得的可用空間差值，也可能受其他應用程式影響。",
+    "viewResult": "查看結果"
   },
   "deleteDialog": {
     "title": "檢查清理籃中的內容",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "最近位置",
     "removable": "Removable",
     "modify": "修改範圍",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "收合",
+    "pending": "待掃描",
+    "systemDescription": "常用位置或整個系統磁碟",
+    "folderDescription": "聚焦一個資料夾及其子目錄",
+    "choosingFolder": "正在選擇資料夾…",
+    "changeFolder": "已選定 · 點擊更換資料夾",
+    "folderFailed": "無法開啟資料夾選擇器，請重試。",
+    "readOnlyNotice": "僅檢查所選位置及子目錄；掃描不會修改檔案。"
   },
   "oldFileProcessing": {
     "selectFile": "選擇 {{name}} 進入清理檢查",

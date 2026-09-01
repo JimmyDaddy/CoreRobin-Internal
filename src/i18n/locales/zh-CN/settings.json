@@ -109,6 +109,8 @@
     "title": "桌面提醒",
     "description": "只提醒持续高负荷、真实内存压力和磁盘空间不足；问题稳定恢复后会再告知一次。",
     "enable": "允许克制提醒",
+    "toolboxHistory": "保存工具箱任务历史",
+    "toolboxHistoryDescription": "只保存工具箱任务的最小终态，按保留期自动清理。",
     "openSettings": "打开系统通知设置",
     "categories": "允许提醒的类别",
     "resources": {

@@ -198,6 +198,13 @@
     "title": "Para qué se utiliza este espacio comúnmente"
   },
   "map": {
+    "list": {
+      "name": "Nombre",
+      "share": "% de carpeta",
+      "sort": "Ordenar lista",
+      "shown": "Mostrados: {{count}}",
+      "loadMore": "Cargar más"
+    },
     "title": "Dónde se encuentra el espacio",
     "description": "El área de sector representa el espacio en disco asignado. Los colores relacionados pertenecen a una rama de carpeta; los sectores grises son archivos.",
     "descriptionPath": "Mostrado por la ruta real en todo el disco del sistema: cada anillo es el siguiente nivel de directorio, y el área de sector representa el espacio en disco asignado.",
@@ -288,6 +295,26 @@
     "removeFromBasket": "Quitar de la cesta de limpieza",
     "includedByParent": "Incluido por una carpeta superior",
     "addToBasket": "Añadir a la cesta de limpieza"
+  },
+  "settlement": {
+    "status": {
+      "success": "Limpieza completada",
+      "partial": "Completada parcialmente",
+      "cancelled": "Limpieza detenida",
+      "failed": "Limpieza no completada",
+      "empty": "No se procesó ningún elemento"
+    },
+    "movedLabel": "Movido a la papelera",
+    "availableLabel": "Aumento del espacio disponible",
+    "processedLabel": "Espacio procesado",
+    "completed": "Completados: {{count}}",
+    "processed": "{{size}} procesados",
+    "failed": "Sin completar: {{count}}",
+    "trashNote": "Los elementos siguen siendo recuperables en la papelera. Moverlos no significa haber liberado espacio.",
+    "unmeasuredNote": "El tamaño procesado no equivale al espacio liberado. No se obtuvieron mediciones del espacio disponible.",
+    "pendingNote": "Las instantáneas, los archivos abiertos o la recuperación demorada del sistema pueden afectar al espacio disponible.",
+    "measuredNote": "Cambio medido antes y después de la operación; otras aplicaciones también pueden influir.",
+    "viewResult": "Ver resultado"
   },
   "deleteDialog": {
     "title": "Revisar la cesta de limpieza",
@@ -383,10 +410,17 @@
     "systemDisk": "System disk",
     "chooseFolder": "Choose folder",
     "chooseFolderTitle": "Choose a folder to scan",
-    "recent": "Recent",
+    "recent": "Ubicaciones recientes",
     "removable": "Removable",
     "modify": "Cambiar alcance",
-    "readOnlyNotice": "External volumes and folders are scanned read-only; file actions still use the existing reviewed cleanup basket."
+    "collapse": "Contraer",
+    "pending": "Sin analizar",
+    "systemDescription": "Ubicaciones habituales o todo el disco del sistema",
+    "folderDescription": "Centrarse en una carpeta y sus subcarpetas",
+    "choosingFolder": "Seleccionando carpeta…",
+    "changeFolder": "Seleccionada · Pulsa para cambiar",
+    "folderFailed": "No se pudo abrir el selector de carpetas. Inténtalo de nuevo.",
+    "readOnlyNotice": "Solo se comprueban la ubicación elegida y sus subcarpetas. El análisis no modifica archivos."
   },
   "oldFileProcessing": {
     "selectFile": "Seleccionar {{name}} para revisar la limpieza",

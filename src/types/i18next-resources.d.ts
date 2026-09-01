@@ -106,6 +106,7 @@ export default interface Resources {
       "description": "展开 CPU、内存、磁盘、网络和五分钟趋势。",
       "title": "查看实时资源详情"
     },
+    "toolbox": "工具箱",
     "viewEyebrow": {
       "applications": "应用影响",
       "cleanup": "空间清理",
@@ -115,7 +116,8 @@ export default interface Resources {
       "processes": "进程诊断",
       "settings": "偏好设置",
       "startup": "启动项检查",
-      "storage": "存储诊断"
+      "storage": "存储诊断",
+      "toolbox": "工具箱"
     }
   },
   "applications": {
@@ -595,6 +597,13 @@ export default interface Resources {
       },
       "grouped": "汇总分类",
       "includedByParent": "已随上级文件夹加入",
+      "list": {
+        "loadMore": "加载更多",
+        "name": "名称",
+        "share": "当前目录占比",
+        "shown": "已显示 {{count}} 项",
+        "sort": "列表排序"
+      },
       "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
       "loadFailed": "无法读取目录索引",
       "loadMore": "再显示 50 项",
@@ -756,6 +765,26 @@ export default interface Resources {
       "targetUnavailable": "所选位置当前无法读取。请确认它仍然存在且可访问，然后重试。"
     },
     "scanning": "扫描中…",
+    "settlement": {
+      "availableLabel": "可用空间增加",
+      "completed": "已完成 {{count}} 项",
+      "failed": "{{count}} 项未完成",
+      "measuredNote": "操作前后测得的可用空间差值，也可能受其他应用影响。",
+      "movedLabel": "已移到废纸篓",
+      "pendingNote": "可用空间可能受快照、文件占用或系统回收延迟影响。",
+      "processed": "已处理 {{size}}",
+      "processedLabel": "已处理空间",
+      "status": {
+        "cancelled": "清理已停止",
+        "empty": "没有处理内容",
+        "failed": "清理未完成",
+        "partial": "部分完成",
+        "success": "清理完成"
+      },
+      "trashNote": "内容仍在废纸篓中，可恢复；清空前不代表磁盘空间已释放。",
+      "unmeasuredNote": "已处理大小不等于实际释放空间；本次未取得可用空间变化。",
+      "viewResult": "查看结算"
+    },
     "snapshot": {
       "cached": {
         "description": "无需重新等待即可继续查看；切换目录只读取本机索引，不会访问文件系统。",
@@ -770,13 +799,20 @@ export default interface Resources {
     },
     "startScan": "开始只读扫描",
     "targets": {
+      "changeFolder": "已选定 · 点击更换文件夹",
       "chooseFolder": "选择文件夹",
       "chooseFolderTitle": "选择一个要扫描的文件夹",
+      "choosingFolder": "正在选择文件夹…",
+      "collapse": "收起",
+      "folderDescription": "聚焦一个文件夹及其子目录",
+      "folderFailed": "无法打开文件夹选择器，请重试。",
       "kicker": "扫描范围",
       "modify": "修改范围",
-      "readOnlyNotice": "外置卷和文件夹仅做只读扫描；文件处理仍复用现有的清理篮确认流程。",
-      "recent": "最近扫描",
+      "pending": "待扫描",
+      "readOnlyNotice": "仅检查所选位置及子目录；扫描不会修改文件。",
+      "recent": "最近位置",
       "removable": "可移除",
+      "systemDescription": "常用位置或整个系统磁盘",
       "systemDisk": "系统磁盘",
       "title": "选择要扫描的位置"
     },
@@ -1140,7 +1176,8 @@ export default interface Resources {
       "settings": "设置",
       "solve": "帮我解决",
       "space": "空间",
-      "today": "电脑状态"
+      "today": "电脑状态",
+      "toolbox": "工具箱"
     },
     "recheck": {
       "already_exited": "应用在操作前已经退出，最新状态已重新读取。",
@@ -2269,7 +2306,8 @@ export default interface Resources {
       "stableHandle": "CoreRobin 会锁定你选择的进程，并在执行前再次确认它没有变化。",
       "unavailableControl": "此平台暂不支持安全的进程控制。",
       "userStatus": "用户 / 状态",
-      "verifying": "正在核验进程身份…"
+      "verifying": "正在核验进程身份…",
+      "watchExit": "退出时提醒"
     },
     "liveSort": "实时排序",
     "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
@@ -2491,7 +2529,9 @@ export default interface Resources {
         "unavailable": "仅桌面应用可用"
       },
       "test": "发送测试提醒",
-      "title": "桌面提醒"
+      "title": "桌面提醒",
+      "toolboxHistory": "保存工具箱任务历史",
+      "toolboxHistoryDescription": "只保存工具箱任务的最小终态，按保留期自动清理。"
     },
     "onboarding": {
       "back": "上一步",
@@ -2902,6 +2942,1100 @@ export default interface Resources {
     "volumes": "卷",
     "waitingProcessIo": "正在等待进程磁盘活动基线…",
     "writePeak": "写入峰值"
+  },
+  "toolbox": {
+    "binaryPatch": {
+      "actions": {
+        "apply": "应用并校验",
+        "cancelNative": "取消临时输出",
+        "clear": "清空",
+        "create": "生成并验证补丁",
+        "downloadPlan": "下载计划/补丁集合预览（非正式导出）",
+        "downloadPreview": "下载预览副本（非正式导出）",
+        "explainError": "解释错误",
+        "inspect": "检查补丁",
+        "manifest": "生成完整性清单",
+        "plan": "逐基线规划",
+        "processing": "正在处理…",
+        "saveNative": "正式另存结果",
+        "stop": "停止"
+      },
+      "errors": {
+        "cancelFailed": "临时输出释放未确认。",
+        "cancelled": "任务已取消（cancelled）；未生成可下载结果。",
+        "classified": {
+          "aborted": "补丁任务已取消。",
+          "destination": "输出目标无效。",
+          "invalidArgument": "补丁请求无效。",
+          "invalidPatch": "补丁格式或内容无效。",
+          "resource": "补丁输入或输出超出安全预算。",
+          "runtime": "补丁操作失败（{{code}}）。",
+          "unsupported": "不支持此补丁操作。",
+          "verification": "补丁输出校验失败。"
+        },
+        "executionFailed": "补丁工具执行失败。",
+        "fileTooLarge": "{{label}}超过 {{max}} MiB 安全上限。",
+        "inputReleaseUnconfirmed": "补丁输入资源释放未确认：{{message}}",
+        "nativeLifecycleUnconfirmed": "原生任务生命周期未确认：{{message}}",
+        "nativePickerMissing": "原生选择器没有提供{{label}}。",
+        "saveFailed": "正式输出另存失败；可在 TTL 内重试。",
+        "selectFile": "请选择{{label}}。",
+        "tooManyBaselines": "发布规划最多接受 8 个基线文件。",
+        "unknownLifecycleState": "无法更新任务状态",
+        "unknownReleaseState": "无法释放输入 token",
+        "unverifiedNotConfirmed": "未验证结果未获确认，未提供下载。",
+        "unverifiedOutputCancelled": "未验证输出未获确认，已取消正式结果。"
+      },
+      "fileInput": {
+        "nativePicker": "（开始时由原生选择器选择）",
+        "notSelected": "（未选择）",
+        "selected": "：{{filename}}",
+        "selectedCount": "：{{count}} 个"
+      },
+      "footer": "BSDIFF43 SDK Worker 使用每项 120 秒、整次最多 600 秒的可取消 deadline；正式输出经过原生 TTL、验证和原子另存，不覆盖源文件、不执行补丁、不联网。规划累计产物最多 512 MiB。",
+      "hint": "补丁始终按二进制处理；生成后必须逐字节校验。未提供预期目标时，应用结果会标记为 unverified，且只能在明确确认后另存副本。ENDSLEY/BSDIFF43 支持生成和应用，BSDIFF40 仅供检查。",
+      "inputs": {
+        "baseline": "基线",
+        "expected": "预期目标（可选）",
+        "patch": "补丁",
+        "plannerBaselines": "发布基线（最多 8 个）",
+        "target": "目标"
+      },
+      "nativeOutput": {
+        "ttl": "原生输出 {{size}} KiB，剩余约 10 分钟"
+      },
+      "notices": {
+        "nativeOutputReady": "原生输出已准备完成；请在 10 分钟内选择正式另存。",
+        "savedAtomically": "输出已完成原子另存；源文件未被覆盖。",
+        "temporaryOutputCancelled": "临时输出已取消并释放。"
+      },
+      "output": {
+        "cancelledNote": "补丁任务已终止，未生成可下载结果。",
+        "unverifiedNote": "未提供预期目标，不能验证输出；只能在明确确认后另存副本，绝不能替换源文件。"
+      },
+      "prompts": {
+        "downloadCount": "下载次数",
+        "errorCode": "输入要解释的补丁错误代码",
+        "fullSize": "完整包大小（字节）",
+        "patchSize": "补丁大小（字节）"
+      },
+      "unverified": {
+        "confirm": "未提供预期目标，输出为 unverified，无法验证是否正确。确认仅另存此副本吗？",
+        "missingExpected": "未选择预期目标：结果将标记为 unverified，另存前必须再次确认。",
+        "nativeExpected": "从原生选择器选择预期目标，以生成 verified 结果"
+      }
+    },
+    "c2paNotes": {
+      "notFound": "图片内没有嵌入的 C2PA manifest。",
+      "unsupportedFormat": "当前图片格式不在 C2PA reader 支持范围内。",
+      "validationInvalid": "已读取图片内嵌 manifest，但 C2PA 校验报告包含失败项。解析、校验和信任状态分开显示；未联网，信任状态为 unknown。",
+      "validationUnknown": "已读取图片内嵌 manifest，但 SDK 没有给出完整校验状态。未联网或加载信任材料，信任状态为 unknown。",
+      "validationValid": "已读取图片内嵌 manifest 并完成本地结构和密码学校验。未联网或加载信任材料，信任状态为 unknown。"
+    },
+    "capability": {
+      "degraded": "降级可用",
+      "degradedReason": "部分原生集成受限，但工具仍可打开。",
+      "restrictedHelperUnavailable": "此工具需要受限原生 helper，但当前平台无法提供。",
+      "unavailable": "不可用",
+      "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。",
+      "unavailableReason": "当前平台没有可用的原生执行能力。",
+      "unavailableTitle": "{{tool}} 当前不可用"
+    },
+    "categories": {
+      "filePatch": "文件与补丁",
+      "image": "图片",
+      "label": "工具分类",
+      "systemNetwork": "系统与网络",
+      "textDevelopment": "文本与开发"
+    },
+    "close": "关闭工具箱",
+    "description": "在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。",
+    "empty": {
+      "description": "搜索只查找工具名称、别名和说明，不会查看你的输入。",
+      "title": "没有匹配的工具"
+    },
+    "errors": {
+      "cronNoOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+      "generic": "处理失败，请检查输入后重试。",
+      "inputTooLarge": "输入超过允许的大小限制。",
+      "invalidBase64": "Base64 字符或 padding 无效。",
+      "invalidColor": "颜色格式无效；支持 HEX、RGB、HSL、HSV、OKLCH 和 Display-P3。",
+      "invalidCount": "UUID 数量必须是 1 到 100。",
+      "invalidDuration": "时长必须是 1 分钟到 12 小时。",
+      "invalidIso": "ISO 时间或日期格式无效。",
+      "invalidJson": "JSON 无效：{{message}}",
+      "invalidOnceTime": "请选择未来 365 天内的有效时间。",
+      "invalidPercentEncoding": "URL 百分号编码无效。",
+      "invalidRegex": "正则语法无效：{{message}}",
+      "invalidTimestamp": "Unix 时间必须是数字，并且单位需要显式选择。",
+      "invalidUrl": "请输入完整 URL；工具不会打开或访问它。",
+      "invalidUtf8": "Base64 内容不是有效 UTF-8 文本。",
+      "jsonTooDeep": "JSON 嵌套层级超过限制。",
+      "location": "（第 {{line}} 行，第 {{column}} 列）",
+      "regexFailed": "正则执行失败：{{message}}",
+      "regexTextTooLarge": "测试文本不能超过 256 KiB。",
+      "regexTimeout": "正则执行超过 2 秒，已停止。",
+      "regexTooLarge": "正则表达式不能超过 16 KiB。",
+      "regexWorkerUnavailable": "正则执行 Worker 无法启动，已安全禁用正则执行。",
+      "timeZoneUnavailable": "系统未提供 IANA 时区。",
+      "timestampOutOfRange": "Unix 时间超出安全范围。",
+      "timezoneRequired": "ISO 时间必须明确包含时区。"
+    },
+    "favorites": {
+      "add": "收藏 {{tool}}",
+      "remove": "取消收藏 {{tool}}",
+      "title": "收藏"
+    },
+    "fileHash": {
+      "chooseAndCompute": "选择文件并计算",
+      "clear": "清空",
+      "clipboardFailed": "无法写入剪贴板，请手动复制摘要。",
+      "copy": "复制 SHA-256",
+      "desktopOnly": "文件 SHA-256 需要桌面原生运行时。",
+      "hint": "使用原生选择器与身份绑定 token。内容仅在原生服务内以 1 MiB 分块读取，开始、每块和结束均复验；离页停止，不写入历史。",
+      "jobIncomplete": "文件任务未完成，结果已丢弃。",
+      "progressLabel": "文件读取进度",
+      "releaseUnconfirmed": "文件资源释放尚未确认，请重试停止。",
+      "running": "正在计算…",
+      "stop": "停止",
+      "stopping": "正在停止…"
+    },
+    "history": {
+      "count": "{{count}} 条",
+      "disabled": "已关闭",
+      "disabledDescription": "工具箱历史记录已按当前策略关闭；本地任务仍会显示即时结果。",
+      "empty": "还没有可展示的工具箱终态记录。",
+      "notification": "通知：{{status}}",
+      "notifications": {
+        "failed": "失败",
+        "submitted": "已提交",
+        "unavailable": "不可用"
+      },
+      "privacy": "只显示最近 20 条；记录不包含输入内容、路径或密钥。",
+      "refresh": "刷新历史",
+      "refreshing": "正在刷新…",
+      "statuses": {
+        "cancelled": "已取消",
+        "completed": "已完成",
+        "deadline": "达到截止时间",
+        "expired": "已过期",
+        "failed": "失败",
+        "interrupted": "已中断",
+        "low_battery": "低电量释放",
+        "process_exited": "进程已退出",
+        "release_unconfirmed": "释放未确认"
+      },
+      "title": "最近执行历史",
+      "tools": {
+        "file-occupancy": "文件占用扫描",
+        "ifconfig-parser": "ifconfig 解析",
+        "keep-awake": "限时保活",
+        "keyboard-cleaning": "键盘清理",
+        "network-addresses": "网络地址",
+        "process-watch": "进程退出观察",
+        "volume-occupancy": "卷占用扫描"
+      },
+      "unavailable": "工具箱历史暂时不可用。"
+    },
+    "image": {
+      "actions": {
+        "batch": "批量处理并打包",
+        "invisibleCheck": "检测隐形 locator",
+        "invisibleWrite": "写入隐形 locator",
+        "recipe": "校验并应用 Recipe",
+        "recipient": "生成分发样本",
+        "robustness": "生成实验样本",
+        "watermark": "添加文字水印"
+      },
+      "batchComplete": "批量处理完成：{{count}} 张图片按选择顺序写入 ZIP；已执行 20 文件 / 80 MiB 输入 / 512 MiB 输出预算。",
+      "boundary": "本地文件、显式操作、预算受限；不会自动打开 URL。完整渲染、编码和隐形处理均在每任务 Dedicated Worker 的 OffscreenCanvas 中执行；停止会终止 Worker 并等待 SDK 释放确认：{{executor}}。",
+      "cancelTemporary": "取消临时输出",
+      "cancellationReason": {
+        "abortError": "操作已中止",
+        "abortSignal": "已收到取消信号"
+      },
+      "cancelled": "图片处理已取消（{{reason}}）；已释放当前输出。",
+      "clear": "清空",
+      "deliverFormal": "交给正式另存",
+      "direction": "文字方向",
+      "directionAuto": "自动",
+      "directionLtr": "从左到右",
+      "directionRtl": "从右到左",
+      "downloadPreview": "下载预览副本（非正式导出）",
+      "downloadReport": "下载检查报告",
+      "downloadZip": "下载预览 ZIP（非正式导出）",
+      "emptyLocator": "（空）",
+      "errors": {
+        "c2paInputInvalid": "C2PA 图片输入必须是 {{maxMiB}} MiB 以内的本地文件。",
+        "c2paInspectionCancelled": "C2PA manifest 检查已停止。",
+        "c2paMalformed": "C2PA 无法解析这张图片。",
+        "cropInvalid": "裁剪比例必须在 0 到 20% 之间。",
+        "dedicatedWorkerUnavailable": "当前 WebView 不支持 Dedicated Worker。",
+        "executionDeadlineExceeded": "图片操作超过 30 秒执行上限，已终止。",
+        "executionOptionsCallbacks": "图片操作参数不能包含回调函数。",
+        "executionOptionsNonPlain": "图片操作参数只能包含普通数据和本地 Blob。",
+        "executionOptionsUnsafe": "图片操作参数无法安全传输。",
+        "executorTerminated": "图片隔离执行器已终止并释放资源。",
+        "executorUnavailable": "图片隔离执行器不可用。",
+        "imageBudgetInvalid": "图片预算参数无效。",
+        "imagePixelLimit": "图片解码像素不能超过 {{maxPixels}} 百万。",
+        "imageTooLarge": "图片不能超过 {{maxMiB}} MiB。",
+        "imageWorksetLimit": "图片解码、渲染和编码会超过 {{maxMiB}} MiB 工作集预算。",
+        "imageWorksetOverflow": "图片工作集预算溢出。",
+        "inputByteLengthInvalid": "图片输入大小无效。",
+        "invalidExecutionInput": "图片操作输入无效。",
+        "jpegQualityInvalid": "JPEG 样本质量必须是 1 到 100 的整数。",
+        "labels": {
+          "background": "背景图片",
+          "input": "图片输入",
+          "logo": "Logo 图片"
+        },
+        "localDataUrlRequired": "图片结果必须是本地 data URL。",
+        "localFontEmpty": "本地字体不能为空。",
+        "localFontInvalid": "本地字体资源无效。",
+        "localFontNameInvalid": "本地字体名称无效。",
+        "localFontSignatureMismatch": "本地字体文件签名与扩展名不匹配。",
+        "localFontTooLarge": "本次操作的本地字体必须是不超过 {{maxMiB}} MiB 的文件。",
+        "localFontUnsupported": "本地字体只支持 TTF、OTF、WOFF 或 WOFF2。",
+        "localSourceInvalid": "{{label}}必须是本次操作明确选择的 PNG、JPEG 或 WebP 本地文件。",
+        "localSourceTooLarge": "{{label}}不能超过 {{maxMiB}} MiB。",
+        "offscreenCanvasUnavailable": "当前 WebView 不支持 OffscreenCanvas 隔离渲染。",
+        "outputByteLengthInvalid": "图片输出大小无效。",
+        "processingCancelled": "图片处理已停止。",
+        "recipeJsonInvalid": "Recipe JSON 格式无效。",
+        "recipeTextRequired": "Recipe 文字不能为空。",
+        "recipeTextTooLong": "Recipe 文字不能超过 {{maxKiB}} KiB。",
+        "recipeTooLarge": "Recipe JSON 不能超过 {{maxKiB}} KiB。",
+        "recipeValidationFailed": "Recipe 校验失败。",
+        "recipientKeyRequired": "需要一次性分发密钥；它只保留在当前操作内存中。",
+        "recipientKeyTooShort": "一次性分发密钥至少需要 {{minBytes}} 个 UTF-8 字节。",
+        "recipientLocatorDuplicate": "收件人 locator 不能重复。",
+        "recipientLocatorListInvalid": "请输入 1–{{maxFiles}} 个不重复的短 locator，且不要包含个人资料。",
+        "recipientLocatorTooLong": "每个收件人 locator 不能超过 {{maxBytes}} 个 UTF-8 字节。",
+        "scaleInvalid": "缩放比例必须大于 0 且不超过 1。",
+        "transformCancelled": "图片变换已停止。",
+        "transformDeadlineExceeded": "图片变换超过了时间上限。",
+        "transformFailed": "图片变换失败。",
+        "transformInputInvalid": "图片变换必须使用不超过 12 MiB 的本地图片 Blob。",
+        "transformWorkerExited": "图片变换 Worker 意外退出。",
+        "transformWorkerInvalidResult": "图片变换 Worker 返回了无效结果。",
+        "transformWorkerRequestFailed": "图片变换请求无法传入隔离 Worker。",
+        "transformWorkerStartFailed": "图片变换 Worker 无法启动。",
+        "unsupportedImageFormat": "只支持 PNG、JPEG 和 WebP 图片。",
+        "workerExecutionFailed": "图片隔离操作失败。",
+        "workerExited": "图片隔离 Worker 意外退出。",
+        "workerImageDecodeUnavailable": "当前 WebView 不支持在 Worker 内解码图片。",
+        "workerInvalidInput": "隔离 Worker 拒绝了图片输入。",
+        "workerInvalidResult": "图片隔离 Worker 返回了无效结果。",
+        "workerRequestFailed": "图片请求无法传入隔离 Worker。",
+        "workerStartFailed": "图片隔离 Worker 无法启动。",
+        "workerUnsupported": "隔离 Worker 不支持此图片操作。",
+        "zipFileLimitExceeded": "批量 ZIP 最多包含 {{maxInputFiles}} 个输入和 {{maxOutputFiles}} 个输出文件。",
+        "zipInputBudgetExceeded": "批量图片输入不能超过 {{maxMiB}} MiB。",
+        "zipOutputBudgetExceeded": "批量 ZIP 输出不能超过 {{maxMiB}} MiB。"
+      },
+      "executorAvailable": "可用",
+      "executorReleaseUnconfirmed": "图片隔离执行器释放未确认：{{message}}",
+      "executorUnavailable": "图片隔离执行器不可用",
+      "fontAccepted": "本地字体“{{name}}”将仅加载到本次隔离图片 Worker。",
+      "fontFamily": "字体族",
+      "fontPlaceholder": "系统已安装字体，例如 PingFang SC",
+      "fontRequired": "需要选择一个本地字体文件。",
+      "fontSize": "字号",
+      "fontSummary": "字体：{{name}} · 仅本次 Worker 可见，Worker 终止后释放。",
+      "fontTooLarge": "本地字体不能为空且不能超过 4 MiB。",
+      "fontUnavailable": "本地字体不可用。",
+      "footer": "图片输入仅在当前页面内存处理；输出会去除源 EXIF/GPS 等元数据，不承诺保留 ICC 或旧 C2PA 签名。",
+      "formalDeliveryFailed": "正式输出交付失败。",
+      "handedToProvider": "图片已交给原生输出 provider；请按 TTL/另存流程完成导出。",
+      "inputAccepted": "{{count}} 张图片已通过输入预算检查。",
+      "inputReleaseUnconfirmed": "图片输入资源释放未确认：{{message}}",
+      "inputUnavailable": "图片输入不可用。",
+      "inspectManifest": "检查本地 C2PA 元数据",
+      "invisibleCancelled": "隐形检测已取消。",
+      "invisibleDetected": "检测到 locator：{{payload}}，置信度 {{confidence}}；正结果不代表图片未被修改。",
+      "invisibleDetectionKeyPrompt": "检测密钥（与写入时相同；不会保存）",
+      "invisibleKeyInvalid": "隐形水印密钥至少需要 16 个 UTF-8 字节。",
+      "invisibleKeyPrompt": "临时密钥（至少 16 个 UTF-8 字节；不会保存）",
+      "invisibleLocatorInvalid": "短 locator 必须是 1 到 12 个 UTF-8 字节。",
+      "invisibleLocatorPrompt": "短 locator（1–12 个 UTF-8 字节；不提供默认值）",
+      "invisibleNotDetected": "未检测到经过认证的 locator；没有把失败显示为成功。",
+      "invisibleWritten": "隐形 locator 已写入当前结果；它不是加密、DRM 或归属证明，密钥不会写入记录。",
+      "layout": "布局",
+      "layoutSingle": "单个",
+      "layoutTile": "平铺",
+      "lifecycleUnconfirmed": "原生任务生命周期未确认：{{message}}",
+      "lifecycleUnknown": "无法更新任务状态",
+      "localFileRedaction": "本地文件",
+      "logoAccepted": "本地 Logo“{{name}}”已通过输入预算检查；不会上传或保存路径。",
+      "logoRequired": "需要选择一个本地 Logo。",
+      "logoSummary": "Logo：{{name}} · 缩放",
+      "logoUnavailable": "本地 Logo 不可用。",
+      "manifestCancelled": "C2PA 检查已取消；未生成正式报告。",
+      "manifestFailed": "C2PA 图片解析失败。",
+      "manifestInputReleaseUnconfirmed": "C2PA 图片输入资源释放未确认：{{message}}",
+      "manifestReadyBrowser": "本地 C2PA 摘要已生成；未联网、未验证签名或信任链。下载的是显式检查报告。",
+      "manifestReadyNative": "本地 C2PA 摘要已生成；解析与信任状态分开显示，信任仍为 unknown。请在 10 分钟内正式另存报告。",
+      "manifestSelected": "本地 C2PA 图片“{{name}}”已选择；不会联网或保存路径。",
+      "manifestTooLarge": "图片输入不能超过 12 MiB。",
+      "nativeFont": "本次操作选择一个本地字体",
+      "nativeFontHint": "桌面端本地字体通过 W02 绑定 token 读取，仅在本次隔离 Worker 内存中使用。",
+      "nativeInputHint": "开始处理后由原生选择器签发绑定输入 token；页面不会接收真实路径。",
+      "nativeLogo": "本次操作选择一个本地 Logo",
+      "nativeManifestHint": "桌面端开始检查后通过绑定 token 读取本地图片。",
+      "nativeOutputReady": "原生输出已准备完成；请在 10 分钟内选择正式另存，失败可重试，取消会释放临时结果。",
+      "nativeOutputSummary": "原生输出 {{sizeKiB}} KiB，剩余约 10 分钟",
+      "noInput": "没有选择图片输入。",
+      "noManifest": "请选择一个本地 manifest JSON 文件。",
+      "opacity": "透明度",
+      "outline": "描边宽度",
+      "outputFormat": "输出格式",
+      "outputPending": "已有临时输出待另存，请先完成或取消它。",
+      "position": "位置",
+      "positionBottomCenter": "下中",
+      "positionBottomLeft": "左下",
+      "positionBottomRight": "右下",
+      "positionCenter": "居中",
+      "positionTopCenter": "上中",
+      "positionTopLeft": "左上",
+      "positionTopRight": "右上",
+      "preset": "保密预设",
+      "presetConfidential": "保密 · 内部",
+      "presetDraft": "草稿 · 禁止分发",
+      "presetInternal": "仅限内部",
+      "processing": "正在处理…",
+      "processingComplete": "处理完成。",
+      "processingFailed": "图片处理失败。",
+      "recipeReady": "Recipe 已校验、迁移并由同一个隔离 marker 预览；本地素材不会写入 JSON 或上传。",
+      "recipientCancelled": "操作已取消，未保留部分交付输出。",
+      "recipientFailed": "无法生成交付 ZIP。",
+      "recipientKeyInvalid": "一次性分发密钥至少需要 16 个 UTF-8 字节。",
+      "recipientKeyPrompt": "一次性分发密钥（至少 16 个 UTF-8 字节；只保留在当前操作内存中）",
+      "recipientLocatorsInvalid": "请输入 1–30 个不重复的 locator，每项不超过 12 个 UTF-8 字节，且不要包含个人资料。",
+      "recipientLocatorsPrompt": "收件人 locator 列表（逗号分隔，1–30 个短 ID；不要填写个人资料）",
+      "recipientNotice": "交付状态：ready。已生成 {{delivered}}/{{requested}} 个分发样本；一次性密钥和 locator 映射不会由 CoreRobin 保存。",
+      "recipientPreparing": "正在生成本次会话的交付 ZIP。",
+      "recipientReady": "交付 ZIP 已就绪；文件按输入顺序编号，locator 映射未持久化。",
+      "recipientSensitiveWarning": "收件人 locator、文件名和映射可能暴露身份；映射将单独生成。确认继续？",
+      "recipientStatus": {
+        "cancelled": "已取消",
+        "failed": "失败",
+        "preparing": "准备中",
+        "ready": "就绪"
+      },
+      "recipientStatusLabel": "交付状态",
+      "recipientStopped": "收件人分发已停止。",
+      "releaseUnknown": "无法释放输入 token",
+      "reportOutputReady": "报告输出已准备完成；请在 10 分钟内选择正式另存。",
+      "resultAlt": "本地水印结果预览",
+      "robustnessNotice": "实验输出为约定 JPEG 质量 75；请手动用 95% 缩放/有限裁剪样本复核，不外推任意变换抗性。",
+      "rotation": "旋转",
+      "saveFailed": "正式输出另存失败；可在 TTL 内重试。",
+      "saveFormal": "正式另存结果",
+      "savedAtomically": "输出已完成原子另存；源文件未被覆盖。",
+      "selectFont": "选择本地字体",
+      "selectImageFirst": "请先选择图片。",
+      "selectInput": "选择 PNG / JPEG / WebP",
+      "selectLogo": "选择本地 Logo",
+      "selectManifest": "选择本地 C2PA 图片",
+      "selectedInputSummary": "已选 {{count}} 张图片 · 输入上限 {{maxFiles}} 个 / {{maxInputMiB}} MiB · 常规输出最长边 {{maxEdge}}px",
+      "stop": "停止",
+      "stopping": "正在停止…",
+      "temporaryCancelled": "临时输出已取消并释放。",
+      "temporaryReleaseUnconfirmed": "临时输出释放未确认。",
+      "text": "文字",
+      "zipErrors": {
+        "appendAfterFinish": "ZIP 开始收尾后不能继续添加文件。",
+        "appendFailed": "ZIP Worker 无法接收输出。",
+        "closed": "ZIP 生成已结束。",
+        "failed": "ZIP 生成失败。",
+        "finishAlreadyStarted": "ZIP 收尾已经开始。",
+        "finishFailed": "ZIP Worker 无法完成归档。",
+        "inputBudgetExceeded": "合计输入大小超过 80 MiB 上限。",
+        "inputBytesRegressed": "上报的输入大小不能小于之前的值。",
+        "invalidChunk": "ZIP Worker 返回了无效的分块状态。",
+        "invalidComplete": "ZIP Worker 返回了无效的完成状态。",
+        "notInitialized": "ZIP Worker 尚未初始化。",
+        "outputBudgetExceeded": "ZIP 输出大小超过 512 MiB 上限。",
+        "outputFileLimitExceeded": "ZIP 输出文件数超过允许上限。",
+        "pending": "ZIP Worker 正在处理前一项输出。",
+        "released": "ZIP 生成已释放。",
+        "stopped": "ZIP 生成已停止。",
+        "workerStartFailed": "ZIP Worker 无法启动。"
+      }
+    },
+    "imageEditor": {
+      "addAsset": "添加本地素材",
+      "addText": "添加文字",
+      "align": "对齐 {{direction}}",
+      "alignment": "对齐选中图层",
+      "alignmentHint": "对齐（至少两个图层）",
+      "ariaLabel": "图片图层编辑器",
+      "asset": "素材",
+      "copyCallCode": "复制调用代码",
+      "copyCallCodeFailure": "无法复制 Recipe 调用代码。",
+      "copyCallCodeSuccess": "Recipe 调用代码已复制；示例没有执行，也没有访问网络。",
+      "copyFailure": "无法复制 Recipe JSON。",
+      "copyJson": "复制 JSON",
+      "copySuccess": "Recipe JSON 已复制；复制内容不会执行。",
+      "description": "图层状态由同一个隔离 marker 的 headless editor controller 管理。Recipe 只保存文字、变换和本地素材引用，不保存路径或远程 URL。",
+      "downloadRecipe": "下载临时 JSON（非正式导出）",
+      "duplicate": "复制",
+      "emptyLayers": "尚无图层。添加文字或本地素材后即可选择和编辑。",
+      "errors": {
+        "addAssetFailed": "无法添加本地素材。",
+        "alignRequiresTwo": "至少选择两个图层后才能对齐。",
+        "assetLimit": "当前编辑会话最多添加 4 个本地图片素材。",
+        "assetReselectionRequired": "Recipe 需要本地素材“{{name}}”，请在当前会话重新选择后再导入。",
+        "assetUnavailable": "本地素材只在当前编辑会话可用，请重新选择该素材。",
+        "exportAssetUnavailable": "图层素材不是当前会话中明确选择的本地图片，不能导出 Recipe。",
+        "exportFailed": "无法导出 Recipe。",
+        "externalAssetForbidden": "Recipe 图片图层只能引用当前会话中明确选择的本地素材；已拒绝 URL、data URL 和未知资源。",
+        "groupRequiresTwo": "至少选择两个图层后才能分组。",
+        "localAssetRequired": "请选择一个本地图片素材。",
+        "localAssetTooLarge": "本地素材不能超过 12 MiB。",
+        "localAssetUnsupported": "本地素材只支持 PNG、JPEG 和 WebP。",
+        "noLayers": "请先添加文字或本地素材图层。",
+        "noSelection": "请先选择一个图层。",
+        "operationFailed": "编辑操作失败。",
+        "previewFailed": "无法准备 Recipe 预览。",
+        "recipeJsonInvalid": "Recipe JSON 格式无效。",
+        "recipeTooLarge": "Recipe JSON 不能超过 64 KiB。",
+        "recipeValidationFailed": "Recipe 校验失败：{{message}}",
+        "textEmpty": "文字图层不能为空。",
+        "textTooLong": "文字图层不能超过 4 KiB。"
+      },
+      "exportRecipe": "生成 Recipe 交付",
+      "group": "分组",
+      "heading": "可操作图层编辑器",
+      "hide": "隐藏",
+      "hideLayer": "隐藏图层",
+      "historyAria": "编辑历史和图层操作",
+      "importRecipe": "校验并导入",
+      "layerList": "图层列表",
+      "layers": "图层",
+      "localImage": "本地图片",
+      "lock": "锁定",
+      "lockLayer": "锁定图层",
+      "lowerLayer": "下移层级",
+      "moveDown": "向下移动",
+      "moveLeft": "向左移动",
+      "moveRight": "向右移动",
+      "moveUp": "向上移动",
+      "nativeAsset": "下次预览时从原生选择器选择一个本地 Logo 素材",
+      "noSelection": "选择单个图层后，可移动、缩放、旋转和调整层级。",
+      "notices": {
+        "assetsAdded": "{{count}} 个本地素材已加入当前图层；它们不会进入 Recipe JSON。",
+        "handedToProvider": "Recipe JSON 已交给原生输出 provider；请按其 TTL/另存流程完成导出。",
+        "recipeMigrated": "Recipe v1 已迁移为 v2，并完成本地资源校验。",
+        "recipeValidated": "Recipe v2 已校验；仅允许当前会话的本地素材引用。",
+        "temporaryDownload": "已生成浏览器临时 Recipe 下载；这不是正式 TTL/原子另存导出。"
+      },
+      "preview": "校验并预览",
+      "raiseLayer": "上移层级",
+      "recipe": "Recipe JSON",
+      "recipeAria": "Recipe JSON 编辑器",
+      "recipeHint": "64 KiB 上限 · v1 自动迁移至 v2 · 禁止 URL / data URL / 路径",
+      "redo": "重做",
+      "rotation": "旋转",
+      "scale": "缩放",
+      "selectAll": "全选图层",
+      "selectedLayer": "选中图层",
+      "show": "显示",
+      "showLayer": "显示图层",
+      "textContent": "文字内容",
+      "textLayer": "文字",
+      "textPlaceholder": "输入文字图层",
+      "undo": "撤销",
+      "ungroup": "取消分组",
+      "unlock": "解锁",
+      "unlockLayer": "解锁图层"
+    },
+    "keepAwake": {
+      "desktopOnly": "限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。",
+      "durationLabel": "时长",
+      "hint": "只申请临时系统断言，不修改电源计划、不模拟输入；独立截止线程每 15 秒检查并在到期/取消时释放。当前实机证据范围为本机 macOS。",
+      "hours": "{{count}} 小时",
+      "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+      "minutes": "{{count}} 分钟",
+      "retryRelease": "重试释放",
+      "start": "开始保活",
+      "stop": "停止并释放"
+    },
+    "keyboardCleaning": {
+      "capability": {
+        "available": "可用（{{platform}}）",
+        "label": "能力",
+        "unavailable": "不可用"
+      },
+      "description": "临时阻止误触输入；只有受限 helper 明确确认 hook 有效后才会进入清洁状态。",
+      "duration": "{{count}} 秒",
+      "durationLabel": "清洁时长",
+      "endReasons": {
+        "cancelled": "已取消",
+        "completed": "已完成",
+        "focus_lost": "页面失焦",
+        "hard_deadline": "达到硬截止时间",
+        "heartbeat_lost": "helper 心跳中断",
+        "helper_unavailable": "helper 不可用",
+        "hook_ineffective": "hook 未生效",
+        "hook_unconfirmed": "hook 未确认",
+        "host_exited": "宿主退出",
+        "mouse_activity": "鼠标活动",
+        "permission_revoked": "权限已撤销",
+        "sleeping": "系统睡眠"
+      },
+      "errors": {
+        "codes": {
+          "capability_unavailable": "当前平台不支持键盘清洁能力。",
+          "clock_went_backward": "时钟必须单调递增。",
+          "heartbeat_out_of_order": "helper 心跳序号没有递增。",
+          "invalid_duration": "时长只能选择 30、60 或 120 秒。",
+          "invalid_request_id": "请求标识无效。",
+          "invalid_state": "当前已有键盘清洁任务。",
+          "wrong_request": "helper 事件不属于当前任务。"
+        },
+        "communication": "通信失败",
+        "helper": "受限 helper 未确认：{{reason}}",
+        "start": "键盘清洁任务无法启动。"
+      },
+      "eyebrow": "系统安全 PoC",
+      "footer": "平台能力必须由宿主以最小权限提供；本页面不监听 DOM 键盘事件，真实平台验证必须在隔离测试环境完成。",
+      "hardDeadline": "独立硬截止：{{time}}；helper 必须持续发送心跳，否则 active 状态会被释放。",
+      "noBridge": "尚未接入受限 helper bridge；页面保持不可用，不会模拟激活。",
+      "privacy": "不记录键值、不把键盘内容传给 WebView、不申请全权限 WebView；鼠标活动、失焦、宿主退出、睡眠、撤权或 helper 心跳中断都会释放 hook。",
+      "reason": "原因：{{reason}}",
+      "start": "开始清洁",
+      "status": {
+        "label": "状态"
+      },
+      "statuses": {
+        "active": "清洁中（最多 {{count}} 秒）",
+        "ended": "已结束",
+        "idle": "待机",
+        "preparing": "准备中（3 秒）",
+        "releasing": "正在释放 hook",
+        "unavailable": "不可用"
+      },
+      "stop": "停止",
+      "title": "键盘清洁"
+    },
+    "loading": "正在加载工具…",
+    "local": {
+      "base64": {
+        "decode": "解码",
+        "encodedPlaceholder": "SGVsbG8=",
+        "textPlaceholder": "输入 UTF-8 文本",
+        "urlSafe": "Base64URL"
+      },
+      "color": {
+        "convert": "转换颜色",
+        "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)"
+      },
+      "colorPicker": {
+        "accessibilityEyebrow": "可访问性",
+        "alpha": "透明度",
+        "applied": "颜色已应用",
+        "apply": "应用颜色",
+        "contrast": "对比度",
+        "contrastFail": "低于 AA",
+        "contrastPass": "通过 AA",
+        "copied": "已复制 {{format}}",
+        "copy": "复制 {{format}}",
+        "copyFailed": "当前环境不支持复制。",
+        "currentColor": "当前颜色",
+        "darkBackground": "深色背景",
+        "eyebrow": "可视化编辑",
+        "formats": "颜色格式",
+        "gamutMapped": "已映射到 sRGB",
+        "hue": "色相",
+        "inputLabel": "颜色值",
+        "inputPlaceholder": "#5b8def / rgb(...) / hsl(...) / oklch(...)",
+        "invalid": "颜色格式无效，请检查输入后重试。",
+        "lightBackground": "浅色背景",
+        "nativeInput": "系统颜色",
+        "outputEyebrow": "输出",
+        "pickFromScreen": "从屏幕取色",
+        "preview": "预览",
+        "privacy": "颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。",
+        "reset": "重置颜色",
+        "saturationValue": "饱和度与明度",
+        "screenFailed": "屏幕取色失败，请重试。",
+        "screenUnavailable": "当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。",
+        "srgb": "sRGB 色域",
+        "title": "视觉取色器"
+      },
+      "convert": "转换",
+      "json": {
+        "compact": "压缩",
+        "duplicate": "重复键：{{keys}}（保留原文顺序，不擅自合并）。",
+        "format": "校验并格式化",
+        "indent": "缩进",
+        "spaces": "{{count}} 空格"
+      },
+      "qr": {
+        "alt": "生成的二维码",
+        "generate": "生成 PNG",
+        "open": "开放网络",
+        "password": "密码（可留空）",
+        "save": "保存 PNG",
+        "ssid": "SSID",
+        "text": "文本 / URL",
+        "textPlaceholder": "输入文本或 URL（不会自动打开）",
+        "tooLarge": "二维码载荷不能超过 2 KiB。",
+        "warning": "二维码包含 Wi-Fi 凭据，请确认保存位置；CoreRobin 不读取钥匙串。",
+        "wifi": "Wi-Fi（手填）",
+        "wpa": "WPA/WPA2"
+      },
+      "regex": {
+        "flagsLabel": "正则 flags",
+        "patternLabel": "正则表达式",
+        "replacementPlaceholder": "文本替换模板，不执行 JavaScript",
+        "run": "诊断并匹配",
+        "running": "正在隔离执行…",
+        "samplePlaceholder": "测试文本（最多 256 KiB）",
+        "tree": "结构树（语法关系，不是回溯轨迹）"
+      },
+      "run": "执行",
+      "textHash": {
+        "compute": "计算 SHA-256",
+        "placeholder": "输入 UTF-8 文本（最多 1 MiB）"
+      },
+      "time": {
+        "hint": "结果并列显示 UTC 与当前本地时区；不根据位数猜单位。",
+        "milliseconds": "Unix 毫秒",
+        "placeholder": "Unix 数字或带时区 ISO 时间",
+        "seconds": "Unix 秒"
+      },
+      "url": {
+        "decode": "解码参数",
+        "encode": "编码参数",
+        "hint": "参数按原始百分号规则处理，+ 保留为加号；不会打开 URL。",
+        "inspect": "结构查看"
+      },
+      "uuid": {
+        "count": "数量",
+        "generate": "生成 UUID v4",
+        "hint": "使用系统安全随机源；UUID 不是密码。"
+      }
+    },
+    "navigation": {
+      "back": "返回工具箱"
+    },
+    "networkAddresses": {
+      "address": {
+        "broadcast": "广播",
+        "label": "地址",
+        "mask": "掩码",
+        "network": "网络",
+        "noBroadcastFormula": "/31、/32 不套用广播公式",
+        "scope": "scope/zone"
+      },
+      "classifications": {
+        "documentation": "文档示例",
+        "globalUnicast": "全局单播（未探测）",
+        "ipv4Mapped": "IPv4 映射",
+        "linkLocal": "链路本地",
+        "loopback": "回环",
+        "multicast": "多播",
+        "private": "RFC1918 私网",
+        "reserved": "特殊/保留",
+        "shared": "共享地址",
+        "uniqueLocal": "IPv6 ULA",
+        "unspecified": "未指定"
+      },
+      "copy": {
+        "addressAria": "复制地址 {{address}}",
+        "addressLabel": "地址",
+        "all": "复制全部接口摘要",
+        "allLabel": "全部接口摘要",
+        "card": "复制此卡片",
+        "failure": "复制失败；页面不会读取或重试系统剪贴板。",
+        "parsed": "复制解析摘要",
+        "parsedLabel": "解析摘要",
+        "success": "{{label}}已复制。内容可能包含 IP、MAC 或接口标识，仅在你点击后写入系统剪贴板。",
+        "summarySuffix": "摘要",
+        "unsupported": "当前运行环境不支持复制；请手动选择页面中的文本。"
+      },
+      "description": "按接口查看地址与范围；本工具不会探测公网、查询 DNS、测试连通性或修改网络配置。",
+      "explanations": {
+        "ipv4": {
+          "documentation": "文档示例地址（TEST-NET），不应当作真实公网身份。",
+          "globalUnicast": "IPv4 全局单播范围；未探测公网出口，也未确认连通性。",
+          "ipv4Mapped": "此分类不适用于原生 IPv4 地址。",
+          "linkLocal": "IPv4 链路本地地址，通常只在本地链路有效。",
+          "loopback": "回环地址，只在本机内部使用。",
+          "multicast": "IPv4 多播地址，不是普通单播主机地址。",
+          "private": "RFC1918 私网地址；这里不代表已确认网络连通。",
+          "reserved": "IPv4 特殊/保留地址，不能据此推断公网可达性。",
+          "shared": "运营商级共享地址（100.64.0.0/10），不等同于公网出口。",
+          "uniqueLocal": "此分类不适用于 IPv4。",
+          "unspecified": "未指定地址，不表示可访问的接口地址。"
+        },
+        "ipv6": {
+          "documentation": "IPv6 文档示例地址，不应当作真实公网身份。",
+          "globalUnicast": "IPv6 全局单播范围；未探测公网出口，也未确认连通性。",
+          "ipv4Mapped": "IPv4 映射地址，用于表示 IPv4，不是独立的 IPv6 链路。",
+          "linkLocal": "IPv6 链路本地地址；zone/scope 只说明本地接口范围。",
+          "loopback": "回环地址，只在本机内部使用。",
+          "multicast": "IPv6 多播地址，不是普通单播主机地址。",
+          "private": "此分类不适用于 IPv6 地址。",
+          "reserved": "IPv6 特殊/保留地址，不能据此推断公网可达性。",
+          "shared": "此分类不适用于 IPv6 地址。",
+          "uniqueLocal": "IPv6 唯一本地地址（ULA），不等同于已确认的公网地址。",
+          "unspecified": "未指定地址，不表示可访问的接口地址。"
+        }
+      },
+      "eyebrow": "系统与网络",
+      "family": {
+        "ipv4": "IPv4",
+        "ipv6": "IPv6"
+      },
+      "interface": {
+        "addressCountLabel": "地址数",
+        "mac": "MAC",
+        "mtu": "MTU",
+        "name": "接口",
+        "noAddress": "没有地址字段；这不代表接口不可用。",
+        "noMac": "未提供",
+        "state": "状态",
+        "stateValue": "状态：{{state}}",
+        "truncated": "（已截断）",
+        "unknown": "未知",
+        "unknownLines": "未知行",
+        "unknownState": "状态未知"
+      },
+      "live": {
+        "empty": "没有返回接口地址。空结果不代表网络不可用。",
+        "interfaceCount": "{{count}} 个接口",
+        "noUniqueIp": "这里不选出所谓“唯一真实 IP”。",
+        "reading": "正在读取本机接口…",
+        "sampledAt": "采样时间：{{time}}",
+        "truncated": "（超过 128 个，已截断）"
+      },
+      "paste": {
+        "empty": "没有识别到接口。请确认粘贴的是 BSD/Linux ifconfig 输出。",
+        "inputLabel": "ifconfig 文本",
+        "limits": "最多 256 KiB、128 个接口、每接口 64 个地址；IPv4 非连续掩码、非法 IPv4/IPv6、非法 zone 和冲突前缀会拒绝。未知行会在对应接口卡片中计数。",
+        "parse": "严格解析",
+        "placeholder": "粘贴 macOS/BSD 或 Linux ifconfig 文本；只解析，不执行"
+      },
+      "privacy": "IP、IPv6 zone、MAC、接口名称和粘贴原文只在当前页面内存中处理，不会写入历史、诊断摘要或 URL。复制是受用户点击触发的，并会把网络标识交给系统剪贴板。",
+      "refresh": "按需刷新",
+      "refreshing": "正在刷新…",
+      "tabs": {
+        "ifconfig": "粘贴 ifconfig",
+        "label": "网络地址视图",
+        "live": "本机网卡"
+      },
+      "title": "本机网络地址"
+    },
+    "occupancy": {
+      "confirmEject": "推出外盘",
+      "desktopOnly": "占用诊断需要桌面原生运行时。",
+      "ejecting": "正在确认…",
+      "fileAction": "查找文件使用者",
+      "fileRequired": "请先选择一个普通文件。",
+      "hint": "文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。",
+      "noTarget": "未选择目标",
+      "prepareEject": "检查后准备推出",
+      "running": "正在诊断…",
+      "selectFile": "选择普通文件",
+      "selectVolume": "选择外盘挂载点",
+      "stop": "停止诊断",
+      "volumeAction": "查找外盘使用者",
+      "volumeRequired": "请先选择一个挂载目录。"
+    },
+    "overview": {
+      "allCategories": "全部分类",
+      "available": "可用",
+      "availableCount": "可用 {{count}} 个",
+      "favoriteCount": "收藏 {{count}} 个",
+      "favorites": "收藏",
+      "filterHint": "按分类或搜索筛选工具",
+      "filteredCount": "匹配工具 {{count}} 个",
+      "label": "工具箱概览",
+      "restrictedNativeHelperUnavailable": {
+        "description": "当前平台未提供受限原生 helper，部分系统工具暂不可用。",
+        "hint": "未执行任何操作；helper 可用后，这些工具才会恢复。",
+        "title": "受限原生 helper 不可用"
+      },
+      "title": "工具箱概览",
+      "toolCount": "工具 {{count}} 个",
+      "tools": "工具"
+    },
+    "processWatch": {
+      "birthToken": "birth token",
+      "birthTokenPlaceholder": "从进程详情复制，拒绝同名替代",
+      "cancel": "取消观察",
+      "deadline": "截止",
+      "desktopOnly": "进程退出提醒需要桌面原生运行时。",
+      "duration": "观察分钟",
+      "hint": "只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。",
+      "identityRequired": "请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。",
+      "invalidDuration": "观察时长必须是 1 分钟到 12 小时。",
+      "keepAwake": "观察期间附加限时保活（低电量独立释放）",
+      "keepAwakeStatus": {
+        "active": "保活中",
+        "cancelled": "保活已取消",
+        "expired": "保活已到期",
+        "lowBatteryEnded": "低电量已释放保活",
+        "notRequested": "未请求保活",
+        "unavailable": "保活不可用"
+      },
+      "openInspector": "打开进程详情",
+      "pid": "PID",
+      "pidPlaceholder": "已选进程 PID",
+      "refresh": "刷新状态",
+      "start": "开始只读观察",
+      "status": {
+        "cancelled": "观察已取消",
+        "exited": "进程已退出",
+        "expired": "观察已到期",
+        "identityChanged": "进程身份已变化",
+        "interrupted": "观察已中断",
+        "running": "观察中",
+        "unknown": "正在确认"
+      }
+    },
+    "schedule": {
+      "cancelEdit": "取消编辑",
+      "create": "创建规则",
+      "cron": "Cron 草稿",
+      "cronPlaceholder": "五段 Cron，例如 0 9 * * 1-5",
+      "daily": "每天",
+      "delete": "删除",
+      "desktopOnly": "定时规则需要桌面原生运行时；浏览器演示不会保存规则。",
+      "edit": "编辑",
+      "hint": "创建前会使用原生 Cron 搜索器计算下一次时间；规则保存在 CoreRobin 私有数据中。到点只会发出提醒或请求 1 分钟至 12 小时的限时保活；错过的时间不会补发，绝不执行 shell、清理、结束进程或键盘操作。",
+      "hour": "小时",
+      "intent": "意图",
+      "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
+      "invalidOnce": "请选择未来 365 天内的有效日期和时间。",
+      "keepAwake": "限时保活",
+      "keepAwakeMinutes": "保活分钟",
+      "minute": "分钟",
+      "nextPreview": "下次预览",
+      "noOccurrence": "该规则在搜索范围内没有下一次触发时间。",
+      "once": "一次性",
+      "pause": "暂停",
+      "refresh": "查看当前规则",
+      "reminder": "提醒",
+      "resume": "恢复",
+      "rule": "规则",
+      "save": "保存修改",
+      "statusPaused": "已暂停",
+      "statusScheduled": "已排程",
+      "timeZoneUnavailable": "系统未提供 IANA 时区，无法预览定时规则。",
+      "titlePlaceholder": "可选标题（最多 80 字符）",
+      "triggerAt": "触发时间",
+      "unnamed": "未命名",
+      "weekday": "星期",
+      "weekdays": {
+        "0": "周日",
+        "1": "周一",
+        "2": "周二",
+        "3": "周三",
+        "4": "周四",
+        "5": "周五",
+        "6": "周六"
+      },
+      "weekly": "每周"
+    },
+    "search": {
+      "clear": "清空搜索",
+      "label": "搜索功能名称",
+      "placeholder": "搜索功能名称、别名或说明…"
+    },
+    "title": "工具箱",
+    "toolLayout": {
+      "clear": "清空",
+      "copyResult": "复制结果",
+      "privacy": "输入与结果只保留在当前工具页内存；复制和保存都需要明确点击。",
+      "result": "结果"
+    },
+    "tools": {
+      "base64": {
+        "aliases": "Base64URL | UTF-8",
+        "description": "转换规定范围内的文本。",
+        "title": "Base64"
+      },
+      "binary-patch-apply": {
+        "aliases": "应用 | 校验",
+        "description": "应用补丁但绝不覆盖源文件。",
+        "title": "应用与验证"
+      },
+      "binary-patch-create": {
+        "aliases": "BSDIFF43 | 差分",
+        "description": "生成并还原验证二进制补丁。",
+        "title": "生成补丁"
+      },
+      "binary-patch-inspector": {
+        "aliases": "头部 | 载荷",
+        "description": "检查补丁格式和边界。",
+        "title": "补丁检查器"
+      },
+      "c2pa-inspector": {
+        "aliases": "manifest | 凭据",
+        "description": "离线查看本地嵌入的 C2PA manifest。",
+        "title": "C2PA 检查器"
+      },
+      "color": {
+        "aliases": "HEX | OKLCH | P3",
+        "description": "转换常见 CSS 颜色格式并提示色域变化。",
+        "title": "颜色转换"
+      },
+      "color-picker": {
+        "aliases": "吸管 | HEX | 对比度",
+        "description": "可视化调整颜色并复制常用颜色格式。",
+        "title": "视觉取色器"
+      },
+      "confidential-watermark": {
+        "aliases": "内部 | 预设",
+        "description": "使用可编辑的保密水印预设。",
+        "title": "保密水印"
+      },
+      "file-occupancy": {
+        "aliases": "占用 | 句柄",
+        "description": "诊断谁正在使用文件。",
+        "title": "文件使用者"
+      },
+      "file-sha256": {
+        "aliases": "文件 hash | 校验",
+        "description": "流式读取用户主动选择的单个普通文件。",
+        "title": "文件 SHA-256"
+      },
+      "ifconfig-parser": {
+        "aliases": "网络 | 掩码",
+        "description": "在页面内解析粘贴的 BSD/Linux ifconfig 文本。",
+        "title": "ifconfig 解析"
+      },
+      "image-batch-watermark": {
+        "aliases": "ZIP | 批处理",
+        "description": "顺序处理多张图片并导出受控 ZIP。",
+        "title": "批量水印"
+      },
+      "image-editor": {
+        "aliases": "图层 | 撤销",
+        "description": "编辑图层并渲染真实本地素材。",
+        "title": "图层编辑器"
+      },
+      "image-recipe": {
+        "aliases": "配方 | JSON",
+        "description": "校验、迁移和预览图片处理 Recipe。",
+        "title": "Recipe 构建器"
+      },
+      "image-watermark": {
+        "aliases": "Logo | PNG | JPEG",
+        "description": "给本地图片添加文字或 Logo 水印。",
+        "title": "图片水印"
+      },
+      "integrity-manifest": {
+        "aliases": "SHA-256 | 清单",
+        "description": "生成绑定文件摘要的 JSON 清单。",
+        "title": "完整性清单"
+      },
+      "invisible-watermark-check": {
+        "aliases": "检测 | 恢复",
+        "description": "用相同算法检查 Image Marker locator。",
+        "title": "隐形水印检测"
+      },
+      "invisible-watermark-write": {
+        "aliases": "locator | 密钥",
+        "description": "写入短 locator 并导出不含密钥的记录。",
+        "title": "隐形水印写入"
+      },
+      "json": {
+        "aliases": "格式化 | 压缩",
+        "description": "严格校验并保留数字文本和键顺序。",
+        "title": "JSON"
+      },
+      "keep-awake": {
+        "aliases": "防止休眠 | 保活",
+        "description": "在明确期限内保持空闲状态，不修改系统电源计划。",
+        "title": "限时保活"
+      },
+      "keyboard-cleaning": {
+        "aliases": "键盘 | 输入",
+        "description": "在安全边界内检查键盘输入状态。",
+        "title": "键盘清洁"
+      },
+      "network-addresses": {
+        "aliases": "网卡 | IP | MAC",
+        "description": "查看本机网络接口地址和状态。",
+        "title": "本机地址"
+      },
+      "patch-errors": {
+        "aliases": "BSDIFF | 诊断",
+        "description": "解释正式补丁 SDK 的错误码。",
+        "title": "错误码解释"
+      },
+      "patch-planner": {
+        "aliases": "多基线 | 发布",
+        "description": "逐个基线验证并选择补丁或完整包。",
+        "title": "发布规划器"
+      },
+      "process-watch": {
+        "aliases": "进程 | 退出",
+        "description": "等待选定进程退出并提醒。",
+        "title": "进程退出提醒"
+      },
+      "qr-code": {
+        "aliases": "QR | Wi-Fi",
+        "description": "生成文本、URL 或手填 Wi-Fi 二维码。",
+        "title": "二维码"
+      },
+      "recipient-tracking": {
+        "aliases": "收件人 | 分发",
+        "description": "生成分发图片和私有映射。",
+        "title": "收件人追踪包"
+      },
+      "regex": {
+        "aliases": "RegExp | 匹配 | AST",
+        "description": "诊断 ECMAScript 正则并查看结构。",
+        "title": "正则诊断"
+      },
+      "robustness-lab": {
+        "aliases": "JPEG | 缩放 | 裁剪",
+        "description": "在明确条件下测试 locator 恢复。",
+        "title": "稳健性实验室"
+      },
+      "schedules": {
+        "aliases": "提醒 | cron",
+        "description": "创建只执行提醒或限时保活的本地规则。",
+        "title": "定时任务"
+      },
+      "text-sha256": {
+        "aliases": "hash | 摘要",
+        "description": "在本机内存中计算文本 SHA-256。",
+        "title": "文本 SHA-256"
+      },
+      "time": {
+        "aliases": "Unix | ISO | 时区",
+        "description": "在显式单位和时区之间转换时间。",
+        "title": "时间转换"
+      },
+      "transfer-savings": {
+        "aliases": "大小 | 比例",
+        "description": "计算补丁与完整包的传输差异。",
+        "title": "传输节省"
+      },
+      "url": {
+        "aliases": "百分号 | 参数",
+        "description": "编码、解码和查看 URL 结构。",
+        "title": "URL"
+      },
+      "uuid": {
+        "aliases": "随机 ID",
+        "description": "使用系统安全随机源生成 UUID v4。",
+        "title": "UUID v4"
+      },
+      "volume-occupancy": {
+        "aliases": "磁盘 | 推出",
+        "description": "诊断可移动卷占用并在确认后推出。",
+        "title": "外盘使用者"
+      }
+    }
   },
   "tray": {
     "available": "可用空间",

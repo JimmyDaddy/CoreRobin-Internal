@@ -158,6 +158,8 @@
     "title": "Notificações do desktop",
     "description": "Apenas cargas pesadas, pressão real de memória e baixo espaço em disco interrompem o status. O CoreRobin segue após a recuperação estável do problema.",
     "enable": "Habilitar alertas moderados",
+    "toolboxHistory": "Salvar histórico de tarefas da caixa de ferramentas",
+    "toolboxHistoryDescription": "Salva apenas resultados mínimos da caixa de ferramentas e os remove conforme o período de retenção.",
     "openSettings": "Abrir ajustes de notificações",
     "categories": "Categorias de alertas permitidas",
     "resources": {

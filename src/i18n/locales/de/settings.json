@@ -158,6 +158,8 @@
     "title": "Desktop-Benachrichtigungen",
     "description": "Nur anhaltende hohe Last, tatsächlicher Speicherbedarf und geringer Festplattenspeicher stören Sie. CoreRobin informiert Sie nach der stabilen Wiederherstellung einmal.",
     "enable": "Eingeschränkte Benachrichtigungen zulassen",
+    "toolboxHistory": "Toolbox-Aufgabenverlauf speichern",
+    "toolboxHistoryDescription": "Nur minimale Toolbox-Ergebnisse speichern und nach der Aufbewahrungsdauer löschen.",
     "openSettings": "Mitteilungseinstellungen öffnen",
     "categories": "Erlaubte Benachrichtigungskategorien",
     "resources": {

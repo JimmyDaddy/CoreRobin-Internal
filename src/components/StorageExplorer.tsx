@@ -21,6 +21,7 @@ import {
   ejectRemovableVolume,
   getStorageHealth,
   openDiskUtility,
+  prepareEjectRemovableVolume,
 } from "../api";
 
 import {
@@ -81,6 +82,8 @@ export function StorageExplorer({
 }: StorageExplorerProps) {
   const { t } = useAppTranslation();
   const [confirmingMountPoint, setConfirmingMountPoint] = useState<string | null>(null);
+  const [ejectConfirmationId, setEjectConfirmationId] = useState<string | null>(null);
+  const [preparingMountPoint, setPreparingMountPoint] = useState<string | null>(null);
   const [ejectingMountPoint, setEjectingMountPoint] = useState<string | null>(null);
   const [ejectNotice, setEjectNotice] = useState<string | null>(null);
   const [ejectError, setEjectError] = useState<string | null>(null);
@@ -175,7 +178,10 @@ export function StorageExplorer({
     setEjectError(null);
     setEjectNotice(null);
     try {
-      await ejectRemovableVolume(mountPoint);
+      if (!ejectConfirmationId) {
+        throw new Error("volume_action_lease_unavailable");
+      }
+      await ejectRemovableVolume(ejectConfirmationId);
       if (actionId) {
         onUserActionComplete?.(actionId, {
           status: "succeeded",
@@ -221,6 +227,25 @@ export function StorageExplorer({
       await onVolumeEjected?.();
     } catch {
       // The next scheduled monitor sample will reconcile the visible list.
+    }
+  };
+  const prepareVolumeEject = async (mountPoint: string) => {
+    setPreparingMountPoint(mountPoint);
+    setEjectError(null);
+    setEjectNotice(null);
+    try {
+      const confirmationId = await prepareEjectRemovableVolume(mountPoint);
+      setEjectConfirmationId(confirmationId);
+      setConfirmingMountPoint(mountPoint);
+    } catch (caughtError) {
+      const error = normalizeCommandError(caughtError);
+      setEjectError(t(
+        error.code === "volume_not_removable"
+          ? "storage:eject.noLongerRemovable"
+          : "storage:eject.failed",
+      ));
+    } finally {
+      setPreparingMountPoint(null);
     }
   };
 
@@ -332,7 +357,7 @@ export function StorageExplorer({
                           <button
                             className="button button--secondary volume-eject-confirm"
                             type="button"
-                            disabled={ejectingMountPoint !== null}
+                            disabled={ejectingMountPoint !== null || preparingMountPoint !== null}
                             onClick={() => void ejectVolume(volume.mountPoint, volume.name)}
                           >
                             {ejectingMountPoint === volume.mountPoint
@@ -348,7 +373,10 @@ export function StorageExplorer({
                             disabled={ejectingMountPoint !== null}
                             aria-label={t("common:cancel")}
                             title={t("common:cancel")}
-                            onClick={() => setConfirmingMountPoint(null)}
+                            onClick={() => {
+                              setConfirmingMountPoint(null);
+                              setEjectConfirmationId(null);
+                            }}
                           >
                             <X size={13} />
                           </button>
@@ -357,11 +385,11 @@ export function StorageExplorer({
                         <button
                           className="button button--secondary volume-eject"
                           type="button"
-                          disabled={ejectingMountPoint !== null}
+                          disabled={ejectingMountPoint !== null || preparingMountPoint !== null}
                           onClick={() => {
                             setEjectError(null);
                             setEjectNotice(null);
-                            setConfirmingMountPoint(volume.mountPoint);
+                            void prepareVolumeEject(volume.mountPoint);
                           }}
                         >
                           <Unplug size={13} />{t("storage:eject.action")}

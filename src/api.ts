@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import {
   createMockCleanupDeleteLease,
@@ -80,6 +81,181 @@ import { productPageUrl, type ProductPage } from "./productSupport";
 import { DEFAULT_LANGUAGE, normalizeLanguage, type SupportedLanguage } from "./language";
 export type { ProductPage } from "./productSupport";
 import type {
+  KeyboardCleaningHeartbeatCommand,
+  KeyboardCleaningSignal,
+  KeyboardCleaningStartCommand,
+  KeyboardCleaningStopCommand,
+} from "./toolbox/system/keyboard-cleaning/keyboardCleaning";
+
+export interface ToolboxFileHashProgress {
+  requestId: string;
+  bytesRead: number;
+  totalBytes: number;
+  phase: "hashing" | "completed";
+}
+
+export interface ToolboxFileHashResult {
+  requestId: string;
+  pathHint: string;
+  bytesRead: number;
+  digest: string;
+  generation: number | null;
+  resetEpoch: number | null;
+}
+
+export interface ToolboxPowerState {
+  status: "inactive" | "active" | "stopping" | "cancelled";
+  requestId: string | null;
+  expiresAtMs: number | null;
+  platform: string;
+  reason: string | null;
+  resourceStatus: "active" | "releasing" | "released" | "release_unconfirmed";
+  releaseConfirmed: boolean;
+  batteryProtection: "checking" | "available" | "unavailable" | "not_active";
+  activeDemandCount: number;
+}
+
+export type ToolboxScheduleAction =
+  | { kind: "reminder" }
+  | { kind: "keepAwake"; durationMinutes: number };
+
+export type ToolboxScheduleTrigger =
+  | { kind: "once"; atMs: number }
+  | { kind: "daily"; hour: number; minute: number; nextRunAtMs: number }
+  | { kind: "weekly"; weekday: number; hour: number; minute: number; nextRunAtMs: number }
+  | { kind: "cron"; expression: string; nextRunAtMs: number };
+
+export interface ToolboxScheduleRule {
+  scheduleId: string;
+  timeZone: string;
+  title: string | null;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+  status: "scheduled" | "paused";
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+export interface ToolboxScheduleSnapshot {
+  revision: number;
+  maxRules: number;
+  persistent: boolean;
+  restartNotice: string;
+  executionNotice: string;
+  rules: ToolboxScheduleRule[];
+}
+
+export type ToolboxSchedulePreviewTrigger =
+  | { kind: "once"; atUtcMs: number }
+  | { kind: "daily"; hour: number; minute: number }
+  | { kind: "weekly"; weekday: number; hour: number; minute: number }
+  | { kind: "cron"; expression: string };
+
+export interface ToolboxSchedulePreviewRequest {
+  timeZone: string;
+  trigger: ToolboxSchedulePreviewTrigger;
+}
+
+export interface ToolboxSchedulePreview {
+  timeZone: string;
+  status: "ready" | "noOccurrenceInHorizon";
+  occurrenceAtMs: number[];
+  horizonEndAtMs: number;
+  truncated: boolean;
+}
+
+export interface ToolboxPolicy {
+  schemaVersion: number;
+  policyRevision: number;
+  globalHistoryEnabled: boolean;
+  toolboxHistoryEnabled: boolean;
+  retentionDays: number;
+  notificationsEnabled: boolean;
+  language: string;
+}
+
+export interface ToolboxStorageSnapshot {
+  policy: ToolboxPolicy;
+  resetEpoch: number;
+  historyRevision: number;
+  activeActivityIds: string[];
+}
+
+export interface ToolboxHistoryRecord {
+  recordId: string;
+  tool: "keep-awake" | "process-watch" | "file-occupancy" | "volume-occupancy" | "keyboard-cleaning" | "network-addresses" | "ifconfig-parser";
+  startedAtMs: number;
+  completedAtMs: number;
+  terminalStatus: "completed" | "cancelled" | "expired" | "failed" | "interrupted" | "deadline" | "process_exited" | "low_battery" | "release_unconfirmed";
+  notificationStatus: "submitted" | "failed" | "unavailable";
+}
+
+export interface ToolboxHistoryPage {
+  records: ToolboxHistoryRecord[];
+  nextCursor: string | null;
+  historyRevision: number;
+}
+
+export interface ToolboxProcessWatchKey {
+  pid: number;
+  birthToken: string;
+}
+
+export type ToolboxProcessWatchStatus = "running" | "exited" | "unknown" | "identity_changed" | "interrupted" | "expired" | "cancelled";
+export type ToolboxProcessWatchKeepAwakeStatus = "not_requested" | "active" | "low_battery_ended" | "expired" | "cancelled" | "unavailable";
+
+export interface ToolboxProcessWatchSnapshot {
+  watchId: number;
+  key: ToolboxProcessWatchKey;
+  status: ToolboxProcessWatchStatus;
+  startedAtMs: number;
+  deadlineAtMs: number;
+  lastCheckedAtMs: number;
+  keepAwakeStatus: ToolboxProcessWatchKeepAwakeStatus;
+}
+
+export interface ToolboxOccupancyProcess {
+  pid: number;
+  command: string | null;
+  user: string | null;
+  evidenceTypes: string[];
+}
+
+export interface ToolboxOccupancyResult {
+  requestId: string;
+  status: "scoped_complete" | "partial" | "truncated" | "timed_out" | "target_changed" | "unsupported";
+  pathHint: string;
+  capturedAtMs: number;
+  processes: ToolboxOccupancyProcess[];
+  coverage: string[];
+  truncated: boolean;
+  message: string | null;
+}
+
+export const KEYBOARD_CLEANING_EVENT = "core-robin:keyboard-cleaning";
+
+export function startKeyboardCleaning(request: KeyboardCleaningStartCommand): Promise<void> {
+  return invoke("start_keyboard_cleaning", { request });
+}
+
+export function stopKeyboardCleaning(request: KeyboardCleaningStopCommand): Promise<void> {
+  return invoke("stop_keyboard_cleaning", { request });
+}
+
+export function emergencyStopKeyboardCleaning(): Promise<void> {
+  return invoke("stop_keyboard_cleaning", { request: null });
+}
+
+export function heartbeatKeyboardCleaning(request: KeyboardCleaningHeartbeatCommand): Promise<void> {
+  return invoke("heartbeat_keyboard_cleaning", { request });
+}
+
+export function subscribeKeyboardCleaning(
+  callback: (signal: KeyboardCleaningSignal) => void,
+): Promise<UnlistenFn> {
+  return listen<KeyboardCleaningSignal>(KEYBOARD_CLEANING_EVENT, (event) => callback(event.payload));
+}
+import type {
   HealthStateSnapshot,
   HealthStateUpdate,
 } from "./healthState";
@@ -158,6 +334,141 @@ declare global {
 
 export function isDesktopRuntime(): boolean {
   return typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
+}
+
+export function isMacOSDesktopRuntime(): boolean {
+  if (!isDesktopRuntime() || typeof navigator === "undefined") return false;
+  const platform = navigator.platform.trim().toLowerCase();
+  return platform ? platform.startsWith("mac") : /Macintosh|Mac OS X/i.test(navigator.userAgent);
+}
+
+export function pickToolboxScreenColor(): Promise<string | null> {
+  return invoke<string | null>("pick_toolbox_screen_color");
+}
+
+export async function hashToolboxFile(
+  request: { requestId: string; job: import("./toolbox/contracts").ToolboxFileJobKey; token: string },
+  onProgress: (progress: ToolboxFileHashProgress) => void,
+): Promise<ToolboxFileHashResult> {
+  const progressChannel = new Channel<ToolboxFileHashProgress>(onProgress);
+  return invoke<ToolboxFileHashResult>("start_toolbox_file_hash", { request, onProgress: progressChannel });
+}
+
+export async function cancelToolboxFileHash(): Promise<boolean> {
+  return invoke<boolean>("cancel_toolbox_file_hash");
+}
+
+export async function writeToolboxTextCopy(path: string, content: string): Promise<void> {
+  return invoke<void>("write_toolbox_text_copy", { request: { path, content } });
+}
+
+export async function startToolboxKeepAwake(request: { requestId: string; durationMinutes: number }): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("start_toolbox_keep_awake", { request });
+}
+
+export async function cancelToolboxKeepAwake(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("cancel_toolbox_keep_awake");
+}
+
+export async function retryToolboxKeepAwakeRelease(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("retry_toolbox_keep_awake_release");
+}
+
+export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("get_toolbox_keep_awake_state");
+}
+
+export async function getToolboxScheduleSnapshot(): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("get_toolbox_schedule_snapshot");
+}
+
+export function previewToolboxSchedule(request: ToolboxSchedulePreviewRequest): Promise<ToolboxSchedulePreview> {
+  return invoke<ToolboxSchedulePreview>("preview_toolbox_schedule", { request });
+}
+
+export function getToolboxStorageSnapshot(): Promise<ToolboxStorageSnapshot> {
+  return invoke<ToolboxStorageSnapshot>("get_toolbox_storage_snapshot");
+}
+
+export function configureToolboxPolicy(request: {
+  expectedPolicyRevision: number;
+  globalHistoryEnabled: boolean;
+  toolboxHistoryEnabled: boolean;
+  retentionDays: number;
+  notificationsEnabled: boolean;
+  language: string;
+}): Promise<ToolboxPolicy> {
+  return invoke<ToolboxPolicy>("configure_toolbox_policy", { request });
+}
+
+export function listToolboxHistory(request: { limit: number; cursor?: string | null }): Promise<ToolboxHistoryPage> {
+  return invoke<ToolboxHistoryPage>("list_toolbox_history", { request });
+}
+
+export function clearToolboxHistory(expectedHistoryRevision?: number): Promise<ToolboxHistoryPage> {
+  return invoke<ToolboxHistoryPage>("clear_toolbox_history", { request: { expectedHistoryRevision } });
+}
+
+export async function createToolboxSchedule(request: {
+  requestId: string;
+  timeZone: string;
+  title?: string;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+}): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("create_toolbox_schedule", { request });
+}
+
+export async function updateToolboxSchedule(request: {
+  requestId: string;
+  scheduleId: string;
+  expectedRevision?: number;
+  timeZone: string;
+  title?: string;
+  action: ToolboxScheduleAction;
+  trigger: ToolboxScheduleTrigger;
+}): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("update_toolbox_schedule", { request });
+}
+
+export async function pauseToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("pause_toolbox_schedule", { request });
+}
+
+export async function resumeToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("resume_toolbox_schedule", { request });
+}
+
+export async function deleteToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("delete_toolbox_schedule", { request });
+}
+
+export async function startToolboxProcessWatch(request: {
+  key: ToolboxProcessWatchKey;
+  durationMinutes: number;
+  keepAwake?: boolean;
+}): Promise<ToolboxProcessWatchSnapshot> {
+  return invoke<ToolboxProcessWatchSnapshot>("start_toolbox_process_watch", { request });
+}
+
+export async function getToolboxProcessWatches(): Promise<ToolboxProcessWatchSnapshot[]> {
+  return invoke<ToolboxProcessWatchSnapshot[]>("get_toolbox_process_watches");
+}
+
+export async function cancelToolboxProcessWatch(request: { watchId: number }): Promise<ToolboxProcessWatchSnapshot | null> {
+  return invoke<ToolboxProcessWatchSnapshot | null>("cancel_toolbox_process_watch", { request });
+}
+
+export async function scanToolboxFileOccupancy(request: { requestId: string; path: string }): Promise<ToolboxOccupancyResult> {
+  return invoke<ToolboxOccupancyResult>("scan_toolbox_file_occupancy", { request });
+}
+
+export async function scanToolboxVolumeOccupancy(request: { requestId: string; path: string }): Promise<ToolboxOccupancyResult> {
+  return invoke<ToolboxOccupancyResult>("scan_toolbox_volume_occupancy", { request });
+}
+
+export function cancelToolboxOccupancy(): Promise<boolean> {
+  return invoke<boolean>("cancel_toolbox_occupancy");
 }
 
 export async function setDockIconVisible(visible: boolean): Promise<void> {
@@ -536,9 +847,14 @@ export async function resolveUserPath(path: string): Promise<string> {
   return invoke<string>("resolve_user_path", { path });
 }
 
-export async function ejectRemovableVolume(mountPoint: string): Promise<void> {
+export async function prepareEjectRemovableVolume(mountPoint: string): Promise<string> {
+  if (canUseDevelopmentMock()) return "development-eject-confirmation";
+  return invoke<string>("prepare_eject_removable_volume", { mountPoint });
+}
+
+export async function ejectRemovableVolume(confirmationId: string): Promise<void> {
   if (canUseDevelopmentMock()) return;
-  return invoke<void>("eject_removable_volume", { mountPoint });
+  return invoke<void>("eject_removable_volume", { confirmationId });
 }
 
 export async function getStorageHealth(

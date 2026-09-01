@@ -14,7 +14,8 @@
     "cleanupQuick": "Быстрая очистка",
     "cleanupScan": "Сканирование диска",
     "records": "Итоги",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "toolbox": "Инструменты"
   },
   "topbar": {
     "thisMac": "Этот компьютер",

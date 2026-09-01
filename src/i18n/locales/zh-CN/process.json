@@ -68,6 +68,7 @@
     "binding": "正在确认目标…",
     "requestClose": "请求结束",
     "restart": "重新启动应用",
+    "watchExit": "退出时提醒",
     "forceKill": "强制结束…"
   },
   "history": {

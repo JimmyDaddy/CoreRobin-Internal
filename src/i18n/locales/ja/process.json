@@ -68,6 +68,7 @@
     "binding": "対象を確認中…",
     "requestClose": "終了リクエスト",
     "restart": "アプリを再起動",
+    "watchExit": "終了時に通知",
     "forceKill": "強制終了..."
   },
   "history": {

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CleanupSpaceMap } from "./components/CleanupSpaceMap";
@@ -26,7 +26,10 @@ vi.mock("./components/CleanupDeleteDialog", () => ({
   CleanupDeleteDialog: () => null,
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 beforeEach(async () => {
   Object.values(cleanupApi).forEach((mock) => mock.mockReset());
@@ -209,6 +212,135 @@ describe("indexed cleanup navigation", () => {
     expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
   });
 
+  it("keeps an indexed list settled across renders instead of repeatedly reloading", async () => {
+    vi.useFakeTimers();
+    const current = snapshot();
+    const indexed = file("index:fixture:8", "/fixture/file.bin");
+    cleanupApi.getCleanupIndexedChildren.mockImplementation(async () => ({
+      items: [{ ...indexed }],
+      nextCursor: null,
+    }));
+    const { container, rerender } = render(
+      <CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    fireEvent.click(screen.getByRole("button", { name: /Visible file/ }));
+    rerender(
+      <CleanupSpaceMap snapshot={{ ...current, root: { ...current.root } }} snapshotStatus="current" onDeletionApplied={vi.fn()} />,
+    );
+    for (let frame = 0; frame < 5; frame += 1) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    }
+
+    expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenCalledTimes(1);
+    expect(container.querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(screen.queryByText("Reading the index…")).toBeNull();
+  });
+
+  it("does not append an old directory page after navigating into a folder", async () => {
+    vi.useFakeTimers();
+    const current = snapshot();
+    const nested = file("index:fixture:9", "/fixture/cache/current.bin");
+    const indexed = { ...folder("index:fixture:8", "Large Cache", "/fixture/cache"), children: [nested] };
+    const oldPage = deferred<{ items: CleanupNode[]; nextCursor: number | null }>();
+    cleanupApi.getCleanupIndexedChildren.mockImplementation(
+      async ({ directoryId, cursor }: { directoryId: string; cursor: number | null }) => {
+        if (cursor !== null) return oldPage.promise;
+        return { items: directoryId === current.root.id ? [indexed] : [nested], nextCursor: directoryId === current.root.id ? 60 : null };
+      },
+    );
+    const { container } = render(
+      <CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    fireEvent.click(screen.getByRole("button", { name: /Large Cache/ }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    await act(async () => { oldPage.resolve({ items: [file("index:fixture:10", "/fixture/old-page.bin")], nextCursor: 120 }); });
+
+    expect(container.querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /Visible file/ }).getAttribute("title")).toBe(nested.path);
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+    expect(screen.queryByText("Reading the index…")).toBeNull();
+  });
+
+  it("keeps loaded rows available when pagination fails and retries that page", async () => {
+    vi.useFakeTimers();
+    cleanupApi.getCleanupIndexedChildren
+      .mockResolvedValueOnce({ items: [file("index:fixture:8", "/fixture/first.bin")], nextCursor: 60 })
+      .mockRejectedValueOnce(new Error("Index temporarily unavailable"))
+      .mockResolvedValueOnce({ items: [file("index:fixture:9", "/fixture/second.bin")], nextCursor: null });
+    const { container } = render(
+      <CleanupSpaceMap snapshot={snapshot()} snapshotStatus="current" onDeletionApplied={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Load more" })); });
+    expect(container.querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toContain("Could not load the list");
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Retry" })); });
+
+    expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 60 }));
+    expect(container.querySelectorAll('[role="listitem"]')).toHaveLength(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("retries an initial index failure without changing the query", async () => {
+    vi.useFakeTimers();
+    cleanupApi.getCleanupIndexedChildren
+      .mockRejectedValueOnce(new Error("Index temporarily unavailable"))
+      .mockResolvedValueOnce({ items: [file("index:fixture:8", "/fixture/file.bin")], nextCursor: null });
+    render(<CleanupSpaceMap snapshot={snapshot()} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    expect(screen.queryByText("No matching items in this folder")).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+
+    expect(screen.getByRole("button", { name: /Visible file/ })).toBeTruthy();
+    expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads the list when the same scan receives a refreshed index snapshot", async () => {
+    vi.useFakeTimers();
+    const current = snapshot();
+    const { rerender } = render(
+      <CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    cleanupApi.getCleanupIndexedChildren.mockResolvedValue({
+      items: [file("index:fixture:8", "/fixture/refreshed.bin")], nextCursor: null,
+    });
+    rerender(<CleanupSpaceMap snapshot={{ ...current, sampledAtMs: 2_000 }} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+
+    expect(cleanupApi.getCleanupIndexedChildren).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: /Visible file/ }).getAttribute("title")).toBe("/fixture/refreshed.bin");
+  });
+
+  it("keeps the non-indexed list stable after selecting an item", async () => {
+    vi.useFakeTimers();
+    const current = snapshot();
+    current.indexed = false;
+    current.root.children = [file("file", "/fixture/file.bin")];
+    render(<CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    fireEvent.click(screen.getByRole("button", { name: /Visible file/ }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+
+    expect(cleanupApi.getCleanupIndexedChildren).not.toHaveBeenCalled();
+    expect(screen.queryByText("Reading the index…")).toBeNull();
+    expect(screen.getByRole("listitem").textContent).toContain("Visible file");
+  });
+
   it("labels category summaries as expandable instead of protected", async () => {
     const current = snapshot();
     current.locations = [{
@@ -360,6 +492,12 @@ function folder(id: string, name: string, path: string, hasChildren = true): Cle
     hasChildren,
     children: [],
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => { resolve = complete; });
+  return { promise, resolve };
 }
 
 function file(id: string, path: string): CleanupNode {

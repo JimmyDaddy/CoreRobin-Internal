@@ -11,6 +11,7 @@ import {
   OctagonX,
   RotateCw,
   ShieldCheck,
+  Timer,
   UserRound,
   XCircle,
 } from "lucide-react";
@@ -49,6 +50,7 @@ interface ProcessInspectorProps {
   onAction: (action: ProcessAction) => void;
   onRestart: () => void;
   onRetryDetail: () => void;
+  onStartProcessWatch: () => void;
 }
 
 export function ProcessInspector({
@@ -63,6 +65,7 @@ export function ProcessInspector({
   onAction,
   onRestart,
   onRetryDetail,
+  onStartProcessWatch,
 }: ProcessInspectorProps) {
   const { t } = useAppTranslation();
   if (selectionMissing) {
@@ -234,6 +237,17 @@ export function ProcessInspector({
         >
           <ActionGuidanceIcon size={15} />
         </button>
+        <Button
+          variant="secondary"
+          className="process-action-button"
+          disabled={!selected.birthToken}
+          aria-label={t("process:inspector.watchExit")}
+          title={t("process:inspector.watchExit")}
+          data-tooltip={t("process:inspector.watchExit")}
+          onClick={onStartProcessWatch}
+        >
+          <Timer size={16} />
+        </Button>
         <Button
           variant="secondary"
           className="process-action-button"
