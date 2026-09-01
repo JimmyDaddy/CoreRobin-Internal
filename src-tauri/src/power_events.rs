@@ -105,6 +105,8 @@ impl MacPowerEventObserver {
         let notification_center = workspace.notificationCenter();
 
         let sleep_power = Arc::clone(&power);
+        let screens_sleep_power = Arc::clone(&power);
+        let session_resign_power = Arc::clone(&power);
         let sleep_keyboard = Arc::clone(&on_sleep);
         let screens_sleep_keyboard = Arc::clone(&on_sleep);
         let session_resign_keyboard = Arc::clone(&on_sleep);
@@ -124,7 +126,10 @@ impl MacPowerEventObserver {
                 Some(NSWorkspaceScreensDidSleepNotification),
                 None,
                 None,
-                &RcBlock::new(move |_| screens_sleep_keyboard.as_ref()()),
+                &RcBlock::new(move |_| {
+                    release_keep_awake_for_system_sleep(&screens_sleep_power);
+                    screens_sleep_keyboard.as_ref()();
+                }),
             )
         };
         let session_resign_observer = unsafe {
@@ -132,7 +137,10 @@ impl MacPowerEventObserver {
                 Some(NSWorkspaceSessionDidResignActiveNotification),
                 None,
                 None,
-                &RcBlock::new(move |_| session_resign_keyboard.as_ref()()),
+                &RcBlock::new(move |_| {
+                    release_keep_awake_for_system_sleep(&session_resign_power);
+                    session_resign_keyboard.as_ref()();
+                }),
             )
         };
         let wake_observer = unsafe {

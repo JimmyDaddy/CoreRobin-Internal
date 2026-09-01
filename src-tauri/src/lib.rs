@@ -3131,6 +3131,15 @@ fn clear_toolbox_data(
         .toolbox_scheduler_dispatch_lock
         .lock()
         .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    // The keyboard helper is intentionally outside the ToolboxService state,
+    // so include it in the same clear barrier before advancing reset_epoch.
+    // A stop command keeps the helper's own release-confirmation protocol in
+    // charge of restoring the input hook.
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .stop_for_reason(HelperStopReason::Cancelled)?;
     let watch_ids = state
         .toolbox_process_watch
         .lock()
