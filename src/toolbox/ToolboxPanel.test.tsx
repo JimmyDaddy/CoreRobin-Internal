@@ -53,7 +53,9 @@ const i18n = vi.hoisted(() => ({
       "local.run": "运行",
       "local.colorPicker.title": "视觉取色器",
       "local.colorPicker.pickFromScreen": "从屏幕取色",
+      "local.colorPicker.screenUnavailable": "当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。",
       "local.colorPicker.screenFailed": "屏幕取色失败，请重试。",
+      "local.colorPicker.applied": "颜色已应用",
       "local.colorPicker.inputLabel": "颜色值",
       "local.colorPicker.apply": "应用颜色",
       "local.colorPicker.formats": "颜色格式",
@@ -96,6 +98,7 @@ const modules = vi.hoisted(() => {
     prepareEjectRemovableVolume: vi.fn(),
     ejectRemovableVolume: vi.fn(),
     pickToolboxScreenColor: vi.fn(),
+    macOSDesktopRuntime: true,
     imageReady,
     releaseImage,
     snapshotListener: null as ((event: { type: "snapshot"; snapshot: TestSnapshot }) => void) | null,
@@ -108,6 +111,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn().mockResolvedValue(() => undefined) }));
 vi.mock("../api", () => ({
   isDesktopRuntime: () => true,
+  isMacOSDesktopRuntime: () => modules.macOSDesktopRuntime,
   getToolboxStorageSnapshot: modules.getToolboxStorageSnapshot,
   listToolboxHistory: modules.listToolboxHistory,
   startToolboxKeepAwake: modules.startToolboxKeepAwake,
@@ -142,6 +146,8 @@ vi.mock("./binary-patch/BinaryPatchToolbox", () => {
 });
 
 beforeEach(() => {
+  delete (window as Window & { EyeDropper?: unknown }).EyeDropper;
+  modules.macOSDesktopRuntime = true;
   modules.snapshotListener = null;
   modules.getToolboxSnapshot.mockResolvedValue(toolboxSnapshot());
   modules.subscribeToolboxEvents.mockImplementation(async (callback) => {
@@ -164,6 +170,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  delete (window as Window & { EyeDropper?: unknown }).EyeDropper;
   vi.clearAllMocks();
 });
 
@@ -234,6 +241,46 @@ it("keeps the current color when the native sampler is cancelled", async () => {
   await waitFor(() => expect(modules.pickToolboxScreenColor).toHaveBeenCalledOnce());
   expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#5b8def");
   expect(screen.queryByText("屏幕取色失败，请重试。")).toBeNull();
+});
+
+it("uses browser EyeDropper outside macOS desktop and clears success after AbortError cancellation", async () => {
+  modules.macOSDesktopRuntime = false;
+  const openEyeDropper = vi.fn()
+    .mockResolvedValueOnce({ sRGBHex: "#123456" })
+    .mockRejectedValueOnce(new DOMException("cancelled", "AbortError"));
+  (window as Window & { EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper = class {
+    open = openEyeDropper;
+  };
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+  const pickButton = screen.getByRole("button", { name: "从屏幕取色" });
+  fireEvent.click(pickButton);
+
+  await waitFor(() => expect(openEyeDropper).toHaveBeenCalledOnce());
+  await waitFor(() => expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#123456"));
+  expect(screen.getByText("颜色已应用")).toBeTruthy();
+  expect(modules.pickToolboxScreenColor).not.toHaveBeenCalled();
+
+  fireEvent.click(pickButton);
+  await waitFor(() => expect(openEyeDropper).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect((pickButton as HTMLButtonElement).disabled).toBe(false));
+  expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#123456");
+  expect(screen.queryByText("颜色已应用")).toBeNull();
+  expect(screen.queryByText("屏幕取色失败，请重试。")).toBeNull();
+});
+
+it("does not expose the native sampler on non-macOS desktop runtimes", () => {
+  modules.macOSDesktopRuntime = false;
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+
+  expect(screen.queryByRole("button", { name: "从屏幕取色" })).toBeNull();
+  expect(screen.getByText("当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。")).toBeTruthy();
+  expect(modules.pickToolboxScreenColor).not.toHaveBeenCalled();
 });
 
 it("reports native sampler failures and prevents duplicate picks while busy", async () => {

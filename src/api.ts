@@ -336,6 +336,12 @@ export function isDesktopRuntime(): boolean {
   return typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
 }
 
+export function isMacOSDesktopRuntime(): boolean {
+  if (!isDesktopRuntime() || typeof navigator === "undefined") return false;
+  const platform = navigator.platform.trim().toLowerCase();
+  return platform ? platform.startsWith("mac") : /Macintosh|Mac OS X/i.test(navigator.userAgent);
+}
+
 export function pickToolboxScreenColor(): Promise<string | null> {
   return invoke<string | null>("pick_toolbox_screen_color");
 }

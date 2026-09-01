@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { isDesktopRuntime, pickToolboxScreenColor } from "../../api";
+import { isMacOSDesktopRuntime, pickToolboxScreenColor } from "../../api";
 import { colorFromHsv, colorToHsv, contrastRatio, formatColor, parseColor, type ColorValue } from "./colorTools";
 import "./colorPicker.css";
 
@@ -28,7 +28,7 @@ export function ColorPickerTool() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eyeDropper] = useState(() => detectEyeDropper());
-  const [desktopRuntime] = useState(() => isDesktopRuntime());
+  const [nativeScreenPicker] = useState(() => isMacOSDesktopRuntime());
   const [pickingFromScreen, setPickingFromScreen] = useState(false);
   const formats = useMemo(() => formatColor(color), [color]);
   const hsv = colorToHsv(color);
@@ -92,13 +92,14 @@ export function ColorPickerTool() {
   };
 
   const pickFromScreen = async () => {
-    if (!eyeDropper && !desktopRuntime) return;
+    if (!eyeDropper && !nativeScreenPicker) return;
     setPickingFromScreen(true);
     setError("");
+    setNotice("");
     try {
       const sampledHex = eyeDropper
         ? (await new eyeDropper().open()).sRGBHex
-        : desktopRuntime
+        : nativeScreenPicker
           ? await pickToolboxScreenColor()
           : null;
       if (sampledHex) {
@@ -166,7 +167,7 @@ export function ColorPickerTool() {
             </div>
 
             <div className="color-picker__actions">
-              {eyeDropper || desktopRuntime ? <button className="button button--secondary" disabled={pickingFromScreen} type="button" aria-busy={pickingFromScreen} onClick={() => void pickFromScreen()}><Pipette size={15} />{t("local.colorPicker.pickFromScreen")}</button> : <span className="color-picker__fallback"><Pipette size={14} />{t("local.colorPicker.screenUnavailable")}</span>}
+              {eyeDropper || nativeScreenPicker ? <button className="button button--secondary" disabled={pickingFromScreen} type="button" aria-busy={pickingFromScreen} onClick={() => void pickFromScreen()}><Pipette size={15} />{t("local.colorPicker.pickFromScreen")}</button> : <span className="color-picker__fallback"><Pipette size={14} />{t("local.colorPicker.screenUnavailable")}</span>}
             </div>
           </div>
 
