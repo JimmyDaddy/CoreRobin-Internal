@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { isDesktopRuntime } from "../../api";
 import { userFacingError, ToolboxInputError } from "../local/toolboxErrors";
 import {
   parseIfconfig,
@@ -105,7 +106,9 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
       if (generation !== requestGeneration.current) return;
       setSnapshot(null);
       setInterfaces([]);
-      setError(userFacingError(reason));
+      setError(!isDesktopRuntime() || reason instanceof TypeError && /invoke/.test(reason.message)
+        ? t("capability.unavailableReason")
+        : userFacingError(reason));
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }

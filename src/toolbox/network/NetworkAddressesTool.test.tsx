@@ -64,6 +64,14 @@ it("shows an accessible loading workspace before the native snapshot resolves", 
   expect(screen.getByText("没有返回接口地址。空结果不代表网络不可用。")).toBeTruthy();
 });
 
+it("localizes a missing native bridge instead of exposing the invoke error", async () => {
+  const loadSnapshot = vi.fn(async () => { throw new TypeError("Cannot read properties of undefined (reading 'invoke')"); });
+  render(<NetworkAddressesTool loadSnapshot={loadSnapshot} />);
+
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("原生执行能力"));
+  expect(screen.getByRole("alert").textContent).not.toContain("invoke");
+});
+
 it("keeps tabs keyboard-accessible with roving tab focus", async () => {
   const loadSnapshot = vi.fn(async () => ({ sampledAtMs: Date.now(), interfaces: [] }));
   render(<NetworkAddressesTool loadSnapshot={loadSnapshot} />);
