@@ -77,13 +77,29 @@ type ScheduleMutationPayload = {
   trigger?: ToolboxScheduleTrigger;
 };
 type PendingScheduleMutation = { requestId: string; payload: ScheduleMutationPayload };
+const DETERMINISTIC_SCHEDULE_ERROR_CODES = new Set([
+  "invalid_schedule",
+  "invalid_schedule_id",
+  "invalid_cron",
+  "invalid_trigger",
+  "invalid_time_zone",
+  "time_zone_unavailable",
+  "cron_no_occurrence",
+  "invalid_duration",
+  "schedule_not_found",
+  "revision_conflict",
+  "request_id_conflict",
+  "stale_schedule_request",
+]);
 
 export function ToolboxPanel({
   onClose,
   initialProcessWatchTarget,
+  onOpenProcessInspector,
 }: {
   onClose?: () => void;
   initialProcessWatchTarget?: ToolboxProcessWatchTarget | null;
+  onOpenProcessInspector?: () => void;
 }) {
   const { t } = useTranslation("toolbox");
   const [query, setQuery] = useState("");
@@ -203,6 +219,7 @@ export function ToolboxPanel({
                 toolId={selectedTool.id}
                 capability={selectedTool.capability}
                 processWatchTarget={initialProcessWatchTarget}
+                onOpenProcessInspector={onOpenProcessInspector}
               />
             </Suspense>
           </>}
@@ -372,10 +389,12 @@ function ToolContent({
   toolId,
   capability,
   processWatchTarget,
+  onOpenProcessInspector,
 }: {
   toolId: ToolId;
   capability: ToolboxCapability;
   processWatchTarget?: ToolboxProcessWatchTarget | null;
+  onOpenProcessInspector?: () => void;
 }) {
   const { t } = useTranslation("toolbox");
   switch (toolId) {
@@ -390,7 +409,7 @@ function ToolContent({
     case "file-occupancy": return <OccupancyTool initialScope="file" />;
     case "volume-occupancy": return <OccupancyTool initialScope="volume" />;
     case "keep-awake": return <KeepAwakeTool />;
-    case "process-watch": return <ProcessWatchTool initialTarget={processWatchTarget} />;
+    case "process-watch": return <ProcessWatchTool initialTarget={processWatchTarget} onOpenProcessInspector={onOpenProcessInspector} />;
     case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability, t)} />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
@@ -650,6 +669,19 @@ function ScheduleTool() {
     pendingMutations.current.delete(mutationKey);
     persistPendingScheduleMutations(pendingMutations.current);
   };
+  const handleMutationFailure = async (mutationKey: string, reason: unknown) => {
+    setError(userFacingError(reason));
+    if (!isDeterministicScheduleFailure(reason)) return;
+    settleMutation(mutationKey);
+    const code = commandErrorCode(reason);
+    if (code === "revision_conflict" || code === "schedule_not_found") {
+      try {
+        setSnapshot(await getToolboxScheduleSnapshot());
+      } catch {
+        // Keep the original command error visible when the refresh is unavailable.
+      }
+    }
+  };
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -720,6 +752,7 @@ function ScheduleTool() {
     }
     setRunning(true);
     setError("");
+    let mutationKey: string | null = null;
     try {
       const numericHour = Number(hour);
       const numericMinute = Number(minute);
@@ -757,7 +790,7 @@ function ScheduleTool() {
         throw new ToolboxInputError("invalid_duration", t("schedule.invalidDuration"));
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
-      const mutationKey = JSON.stringify({
+      mutationKey = JSON.stringify({
         operation: editingScheduleId ? "update" : "create",
         scheduleId: editingScheduleId,
         timeZone,
@@ -796,7 +829,8 @@ function ScheduleTool() {
       settleMutation(mutationKey);
       setEditingScheduleId(null);
     } catch (reason) {
-      setError(userFacingError(reason));
+      if (mutationKey) await handleMutationFailure(mutationKey, reason);
+      else setError(userFacingError(reason));
     } finally {
       setRunning(false);
     }
@@ -815,7 +849,7 @@ function ScheduleTool() {
       }));
       settleMutation(mutationKey);
     } catch (reason) {
-      setError(userFacingError(reason));
+      await handleMutationFailure(mutationKey, reason);
     } finally {
       setRunning(false);
     }
@@ -834,7 +868,7 @@ function ScheduleTool() {
       }));
       settleMutation(mutationKey);
     } catch (reason) {
-      setError(userFacingError(reason));
+      await handleMutationFailure(mutationKey, reason);
     } finally {
       setRunning(false);
     }
@@ -853,7 +887,7 @@ function ScheduleTool() {
       }));
       settleMutation(mutationKey);
     } catch (reason) {
-      setError(userFacingError(reason));
+      await handleMutationFailure(mutationKey, reason);
     } finally {
       setRunning(false);
     }
@@ -879,7 +913,7 @@ function ScheduleTool() {
   </ToolLayout>;
 }
 
-function ProcessWatchTool({ initialTarget }: { initialTarget?: ToolboxProcessWatchTarget | null }) {
+function ProcessWatchTool({ initialTarget, onOpenProcessInspector }: { initialTarget?: ToolboxProcessWatchTarget | null; onOpenProcessInspector?: () => void }) {
   const { t } = useTranslation("toolbox");
   const [pid, setPid] = useState("");
   const [birthToken, setBirthToken] = useState("");
@@ -971,7 +1005,7 @@ function ProcessWatchTool({ initialTarget }: { initialTarget?: ToolboxProcessWat
       <div className="toolbox-readonly-field"><span>{t("processWatch.pid")}</span><strong>{pid || "—"}</strong>{initialTarget?.name ? <small>{initialTarget.name} · PID {pid}</small> : null}</div>
       <label>{t("processWatch.duration")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
     </div>
-    {!initialTarget?.birthToken ? <p className="toolbox-warning" role="status"><CircleAlert size={15} />{t("processWatch.identityRequired")}</p> : null}
+    {!initialTarget?.birthToken ? <div className="toolbox-warning" role="status"><CircleAlert size={15} /><span>{t("processWatch.identityRequired")}</span>{onOpenProcessInspector ? <button className="button button--secondary" type="button" onClick={onOpenProcessInspector}>{t("processWatch.openInspector")}</button> : null}</div> : null}
     <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />{t("processWatch.keepAwake")}</label>
     <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !birthToken} type="button" onClick={() => void start()}><Timer size={14} />{t("processWatch.start")}</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("processWatch.refresh")}</button></div>
     <p className="toolbox-hint">{t("processWatch.hint")}</p>
@@ -1007,6 +1041,25 @@ function persistPendingScheduleMutations(mutations: Map<string, PendingScheduleM
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function commandErrorCode(error: unknown): string | null {
+  if (isRecord(error) && typeof error.code === "string") return error.code;
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : null;
+  if (!message) return null;
+  try {
+    const parsed: unknown = JSON.parse(message);
+    if (isRecord(parsed) && typeof parsed.code === "string") return parsed.code;
+  } catch {
+    // Tauri may serialize command errors as `code: message` text.
+  }
+  const prefix = message.split(":", 1)[0]?.trim();
+  return prefix && /^[a-z][a-z0-9_]*$/.test(prefix) ? prefix : null;
+}
+
+function isDeterministicScheduleFailure(error: unknown): boolean {
+  const code = commandErrorCode(error);
+  return code !== null && DETERMINISTIC_SCHEDULE_ERROR_CODES.has(code);
 }
 
 

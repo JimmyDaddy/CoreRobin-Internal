@@ -151,6 +151,7 @@
   "processWatch": {
     "desktopOnly": "Process exit watch requires the desktop native runtime.",
     "identityRequired": "Enter the selected process PID and birth token; a same-name process cannot replace a stable identity.",
+    "openInspector": "プロセス詳細を開く",
     "invalidDuration": "The watch duration must be between 1 minute and 12 hours.",
     "pid": "PID",
     "pidPlaceholder": "PID of the selected process",

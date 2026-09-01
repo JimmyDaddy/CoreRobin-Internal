@@ -232,6 +232,7 @@
   "processWatch": {
     "desktopOnly": "进程退出提醒需要桌面原生运行时。",
     "identityRequired": "请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。",
+    "openInspector": "打开进程详情",
     "invalidDuration": "观察时长必须是 1 分钟到 12 小时。",
     "pid": "PID",
     "pidPlaceholder": "已选进程 PID",

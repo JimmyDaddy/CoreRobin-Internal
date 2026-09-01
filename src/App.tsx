@@ -1932,7 +1932,7 @@ function App() {
                   recommendedIntent={recommendedDailyIntent}
                 />
               ) : activeView === "toolbox" ? (
-                <ToolboxPanel onClose={() => navigateDaily("more")} />
+                <ToolboxPanel onClose={() => navigateDaily("more")} onOpenProcessInspector={() => navigateDaily("processes")} />
               ) : activeView === "history" ? (
                 <DailyRecords
                   alertEvents={resourceAlerts.events}
@@ -2296,6 +2296,10 @@ function App() {
             ) : activeView === "toolbox" ? (
               <ToolboxPanel
                 initialProcessWatchTarget={toolboxProcessWatchTarget}
+                onOpenProcessInspector={() => {
+                  setToolboxProcessWatchTarget(null);
+                  setActiveView("processes");
+                }}
                 onClose={() => {
                   setToolboxProcessWatchTarget(null);
                   setActiveView("overview");

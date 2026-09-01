@@ -5,6 +5,7 @@
 .binary-patch-toolbox__hint svg { flex: 0 0 auto; margin-top: 2px; color: var(--blue); }
 .binary-patch-toolbox__input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
 .binary-patch-toolbox__file { justify-content: flex-start; min-width: 0; min-height: 68px; padding: 11px 12px; border-radius: 12px; text-align: left; transition: border-color 180ms ease, background 180ms ease, transform 180ms ease; }
+.binary-patch-toolbox__file--native { border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface)); cursor: default; }
 .binary-patch-toolbox__file:not(:has(input)):not(:disabled) { cursor: default; }
 .binary-patch-toolbox__file:has(input):not(:disabled):hover { border-color: color-mix(in srgb, var(--blue) 56%, var(--border)); background: color-mix(in srgb, var(--blue-soft) 68%, var(--surface)); transform: translateY(-1px); }
 .binary-patch-toolbox__file-icon, .binary-patch-toolbox__result-icon { display: grid; flex: 0 0 auto; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--blue-soft); color: var(--blue); }

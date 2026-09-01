@@ -44,6 +44,7 @@ interface BinaryOutput {
   bytes: Uint8Array;
   filename: string;
   validation: "verified" | "unverified";
+  copyOnlyConfirmed?: boolean;
 }
 
 interface BinaryInputReader {
@@ -67,7 +68,7 @@ interface PendingNativeCleanup {
   outcome: "cancelled" | "deadline" | "failed";
 }
 
-async function registerVerifiedNativeOutput(job: ToolboxJob, output: BinaryOutput, signal: AbortSignal): Promise<ToolboxJob> {
+async function registerNativeOutput(job: ToolboxJob, output: BinaryOutput, signal: AbortSignal): Promise<ToolboxJob> {
   let registered: ToolboxJob | null = null;
   let cancellation: Promise<void> | null = null;
   const cancelRegisteredOutput = () => {
@@ -93,7 +94,7 @@ async function registerVerifiedNativeOutput(job: ToolboxJob, output: BinaryOutpu
       generation: job.generation,
       resetEpoch: job.resetEpoch,
       bytes: output.bytes,
-      validation: "verified",
+      validation: output.validation,
     });
     registered = ready;
     if (signal.aborted) {
@@ -241,10 +242,10 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
           signal.throwIfAborted();
         }
         if (nativeJob && formalOutput) {
-          if (formalOutput.validation !== "verified") {
+          if (formalOutput.validation !== "verified" && !formalOutput.copyOnlyConfirmed) {
             throw new Error(t("binaryPatch.errors.unverifiedOutputCancelled"));
           }
-          const ready = await registerVerifiedNativeOutput(nativeJob, formalOutput, signal);
+          const ready = await registerNativeOutput(nativeJob, formalOutput, signal);
           signal.throwIfAborted();
           setPreparedOutput(ready, formalOutput.filename);
           setOutput((current) => `${current}\n\n${t("binaryPatch.notices.nativeOutputReady")}`);
@@ -393,7 +394,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
           }
         } else setOutput(JSON.stringify({ outputBytes: applied.output.byteLength, verification: applied.verification }, null, 2));
         setDownload(applied.output, "corerobin-restored.bin", "application/octet-stream");
-        return { bytes: applied.output, filename: "corerobin-restored.bin", validation: applied.verification ? "verified" : "unverified" };
+        return { bytes: applied.output, filename: "corerobin-restored.bin", validation: applied.verification ? "verified" : "unverified", copyOnlyConfirmed: !applied.verification };
       }
       if (toolId === "binary-patch-inspector") {
         setOutput(JSON.stringify(await inspectPatchSafely(await readInput(patch, "patch")), null, 2));
@@ -486,7 +487,10 @@ function FileInput({ t, label, file, files, onChange, multiple, optional, deskto
         : optional
           ? t("binaryPatch.fileInput.notSelected")
           : "";
-  return <label className="toolbox-file-pick button button--secondary binary-patch-toolbox__file"><span className="binary-patch-toolbox__file-icon"><FileCheck2 size={16} /></span><span className="binary-patch-toolbox__file-copy"><strong>{label}</strong><small>{selected}</small></span>{desktop ? null : <input hidden type="file" multiple={multiple} onChange={onChange} />}</label>;
+  if (desktop) {
+    return <div className="toolbox-file-pick binary-patch-toolbox__file binary-patch-toolbox__file--native" aria-label={label}><span className="binary-patch-toolbox__file-icon"><FileCheck2 size={16} /></span><span className="binary-patch-toolbox__file-copy"><strong>{label}</strong><small>{selected}</small></span></div>;
+  }
+  return <label className="toolbox-file-pick button button--secondary binary-patch-toolbox__file"><span className="binary-patch-toolbox__file-icon"><FileCheck2 size={16} /></span><span className="binary-patch-toolbox__file-copy"><strong>{label}</strong><small>{selected}</small></span><input hidden type="file" multiple={multiple} onChange={onChange} /></label>;
 }
 
 function BinaryPatchResult({ output, title, baselineLabel, targetLabel, byteDiff }: { output: string; title: string; baselineLabel: string; targetLabel: string; byteDiff: BinaryDiffPreview | null }) {

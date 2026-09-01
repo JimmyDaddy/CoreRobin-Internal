@@ -3748,6 +3748,7 @@ export default interface Resources {
         "notRequested": "未请求保活",
         "unavailable": "保活不可用"
       },
+      "openInspector": "打开进程详情",
       "pid": "PID",
       "pidPlaceholder": "已选进程 PID",
       "refresh": "刷新状态",

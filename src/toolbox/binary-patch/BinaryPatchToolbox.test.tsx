@@ -135,6 +135,19 @@ it("keeps desktop patch output on the native TTL and atomic-save path", async ()
   expect(mocks.prepare.mock.calls.map(([, role]) => role)).toEqual(["input", "target"]);
 });
 
+it("keeps an explicitly confirmed unverified desktop result on the copy-only native path", async () => {
+  mocks.desktopRuntime = true;
+  mocks.applyPatchAndVerify.mockResolvedValue({ output: new Uint8Array([7]), verification: null, byteExact: false });
+  vi.stubGlobal("confirm", vi.fn(() => true));
+  render(<BinaryPatchToolbox toolId="binary-patch-apply" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "应用并校验" }));
+
+  expect(await screen.findByRole("button", { name: "正式另存结果" })).toBeTruthy();
+  expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "unverified" }));
+  expect(mocks.finish).not.toHaveBeenCalledWith(expect.objectContaining({ succeeded: false }));
+});
+
 it("keeps desktop patch planning lazy across native baseline tokens", async () => {
   mocks.desktopRuntime = true;
   mocks.planPatchesFromSources.mockImplementation(async (_target, sources) => {

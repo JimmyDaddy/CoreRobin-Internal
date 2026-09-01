@@ -18,6 +18,27 @@ export function userFacingError(error: unknown): string {
       : "";
     return `${error.message}${location}`;
   }
+  const command = readCommandError(error);
+  if (command) return command.message;
   if (error instanceof Error) return error.message;
   return "处理失败，请检查输入后重试。";
+}
+
+function readCommandError(error: unknown): { code: string; message: string } | null {
+  if (typeof error === "object" && error !== null && !Array.isArray(error)) {
+    const record = error as Record<string, unknown>;
+    if (typeof record.code === "string" && typeof record.message === "string") return { code: record.code, message: record.message };
+  }
+  const serialized = error instanceof Error ? error.message : typeof error === "string" ? error : null;
+  if (!serialized) return null;
+  try {
+    const parsed: unknown = JSON.parse(serialized);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      if (typeof record.code === "string" && typeof record.message === "string") return { code: record.code, message: record.message };
+    }
+  } catch {
+    // Fall through to ordinary Error/string handling.
+  }
+  return null;
 }
