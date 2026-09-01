@@ -75,7 +75,8 @@
     "createUpdaterArtifacts": true,
     "targets": "all",
     "macOS": {
-      "hardenedRuntime": true
+      "hardenedRuntime": true,
+      "minimumSystemVersion": "10.15"
     },
     "resources": {
       "infoplist/**/*": "./"

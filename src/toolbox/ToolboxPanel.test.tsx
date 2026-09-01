@@ -230,6 +230,23 @@ it("opens the visual color picker with synchronized formats and contrast panels"
   await waitFor(() => expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#00ff00"));
 });
 
+it("prefers the macOS native sampler when browser EyeDropper is also available", async () => {
+  const openEyeDropper = vi.fn().mockResolvedValue({ sRGBHex: "#123456" });
+  (window as Window & { EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper = class {
+    open = openEyeDropper;
+  };
+  modules.pickToolboxScreenColor.mockResolvedValueOnce("#fedcba");
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+  fireEvent.click(screen.getByRole("button", { name: "从屏幕取色" }));
+
+  await waitFor(() => expect(modules.pickToolboxScreenColor).toHaveBeenCalledOnce());
+  expect(openEyeDropper).not.toHaveBeenCalled();
+  expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#fedcba");
+});
+
 it("keeps the current color when the native sampler is cancelled", async () => {
   modules.pickToolboxScreenColor.mockResolvedValueOnce(null);
   render(<ToolboxPanel />);

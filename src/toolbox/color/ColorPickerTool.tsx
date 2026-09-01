@@ -97,10 +97,10 @@ export function ColorPickerTool() {
     setError("");
     setNotice("");
     try {
-      const sampledHex = eyeDropper
-        ? (await new eyeDropper().open()).sRGBHex
-        : nativeScreenPicker
-          ? await pickToolboxScreenColor()
+      const sampledHex = nativeScreenPicker
+        ? await pickToolboxScreenColor()
+        : eyeDropper
+          ? (await new eyeDropper().open()).sRGBHex
           : null;
       if (sampledHex) {
         applyColor(parseColor(sampledHex));
