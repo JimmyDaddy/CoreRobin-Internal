@@ -52,6 +52,8 @@ const i18n = vi.hoisted(() => ({
       "keepAwake.durationLabel": "时长",
       "keepAwake.start": "开始保活",
       "keepAwake.stop": "停止并释放",
+      "processWatch.identityRequired": "请先从进程详情选择一个进程",
+      "processWatch.openInspector": "打开进程详情",
       "occupancy.selectFile": "选择普通文件",
       "occupancy.selectVolume": "选择外盘挂载点",
       "binaryPatch.inputs.expected": "期望摘要",
@@ -77,6 +79,7 @@ const modules = vi.hoisted(() => {
     listToolboxHistory: vi.fn(),
     startToolboxKeepAwake: vi.fn(),
     cancelToolboxKeepAwake: vi.fn(),
+    getToolboxProcessWatches: vi.fn(),
     cancelToolboxOccupancy: vi.fn(),
     scanToolboxFileOccupancy: vi.fn(),
     scanToolboxVolumeOccupancy: vi.fn(),
@@ -98,6 +101,7 @@ vi.mock("../api", () => ({
   listToolboxHistory: modules.listToolboxHistory,
   startToolboxKeepAwake: modules.startToolboxKeepAwake,
   cancelToolboxKeepAwake: modules.cancelToolboxKeepAwake,
+  getToolboxProcessWatches: modules.getToolboxProcessWatches,
   cancelToolboxOccupancy: modules.cancelToolboxOccupancy,
   scanToolboxFileOccupancy: modules.scanToolboxFileOccupancy,
   scanToolboxVolumeOccupancy: modules.scanToolboxVolumeOccupancy,
@@ -137,6 +141,7 @@ beforeEach(() => {
   modules.listToolboxHistory.mockResolvedValue(historyPage());
   modules.startToolboxKeepAwake.mockResolvedValue({ status: "active" });
   modules.cancelToolboxKeepAwake.mockResolvedValue({ status: "cancelled" });
+  modules.getToolboxProcessWatches.mockResolvedValue([]);
   modules.cancelToolboxOccupancy.mockResolvedValue(false);
   modules.scanToolboxFileOccupancy.mockResolvedValue({ status: "scoped_complete", processes: [] });
   modules.scanToolboxVolumeOccupancy.mockResolvedValue({ status: "scoped_complete", processes: [] });
@@ -330,6 +335,17 @@ it("accepts any explicit keep-awake duration from 1 through 720 minutes", async 
   fireEvent.click(screen.getByRole("button", { name: "开始保活" }));
 
   await waitFor(() => expect(modules.startToolboxKeepAwake).toHaveBeenCalledWith(expect.objectContaining({ durationMinutes: 17 })));
+});
+
+it("offers a safe route from the standalone process watch page to process details", async () => {
+  const onOpenProcessInspector = vi.fn();
+  render(<ToolboxPanel onOpenProcessInspector={onOpenProcessInspector} />);
+  fireEvent.click(screen.getByText("tools.process-watch.title").closest("button")!);
+
+  const openInspector = await screen.findByRole("button", { name: "打开进程详情" });
+  fireEvent.click(openInspector);
+
+  expect(onOpenProcessInspector).toHaveBeenCalledOnce();
 });
 
 function unavailable(reason: string) {
