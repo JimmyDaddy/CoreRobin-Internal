@@ -16,6 +16,7 @@
     "allow-get-health-state",
     "allow-show-main-window",
     "allow-hide-companion-window",
-    "allow-set-companion-expanded"
+    "allow-set-companion-expanded",
+    "allow-stop-keyboard-cleaning"
   ]
 }

@@ -122,6 +122,7 @@ pub struct LifecycleSignal {
 #[serde(rename_all = "snake_case")]
 pub enum HelperLifecycleReason {
     MouseActivity,
+    HeartbeatLost,
     FocusLost,
     HostExited,
     Sleeping,

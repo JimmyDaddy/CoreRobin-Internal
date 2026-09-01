@@ -76,6 +76,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "檔案 SHA-256 需要桌面原生執行環境。",
+    "releaseUnconfirmed": "檔案資源的釋放尚未確認，請重試停止。",
+    "jobIncomplete": "檔案工作未完成，結果已捨棄。",
+    "running": "正在計算…",
+    "chooseAndCompute": "選擇檔案並計算",
+    "stopping": "正在停止…",
+    "stop": "停止",
+    "clear": "清除",
+    "progressLabel": "檔案讀取進度",
+    "hint": "使用原生選擇器與綁定身分的權杖。內容僅在原生服務中以 1 MiB 分塊讀取，並在開始、每個分塊與結束時重新驗證；離開頁面即停止，且不寫入歷史記錄。",
+    "clipboardFailed": "無法寫入剪貼簿，請手動複製摘要。",
+    "copy": "複製 SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -255,6 +269,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "短 locator（1–12 個 UTF-8 位元組；不提供預設值）",
+    "invisibleKeyPrompt": "暫時密鑰（至少 16 個 UTF-8 位元組；不會儲存）",
+    "invisibleDetectionKeyPrompt": "偵測密鑰（與寫入時相同；不會儲存）",
+    "invisibleLocatorInvalid": "短 locator 必須介於 1 到 12 個 UTF-8 位元組。",
+    "invisibleKeyInvalid": "隱形浮水印密鑰至少需要 16 個 UTF-8 位元組。",
+    "recipientLocatorsPrompt": "收件者 locator 清單（以逗號分隔，1–30 個短 ID；請勿輸入個人資料）",
+    "recipientKeyPrompt": "一次性分發密鑰（至少 16 個 UTF-8 位元組；僅保留於此次操作的記憶體中）",
+    "recipientLocatorsInvalid": "請輸入 1–30 個不重複的 locator，每項不超過 12 個 UTF-8 位元組，且不包含個人資料。",
+    "recipientKeyInvalid": "一次性分發密鑰至少需要 16 個 UTF-8 位元組。",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

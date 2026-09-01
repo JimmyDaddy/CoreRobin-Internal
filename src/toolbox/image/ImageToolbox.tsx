@@ -594,11 +594,11 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   const runInvisibleWrite = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
-    const payload = promptValue("短 locator（最多 12 UTF-8 字节）", "cr-demo-01");
-    const key = promptValue("临时密钥（至少 16 UTF-8 字节；不会保存）", "local-demo-key-2026");
+    const payload = promptValue(t("image.invisibleLocatorPrompt"));
+    const key = promptValue(t("image.invisibleKeyPrompt"));
     if (!payload || !key) throw createImageAbortError(t("image.invisibleCancelled"));
-    assertInvisibleLocator(payload);
-    assertInvisibleKey(key);
+    assertInvisibleLocator(payload, t("image.invisibleLocatorInvalid"));
+    assertInvisibleKey(key, t("image.invisibleKeyInvalid"));
     const output = await marker.embedInvisible({ image: { src: file }, payload, key, strength: "balanced", saveFormat: ImageFormat.png, maxSize: IMAGE_MAX_OUTPUT_EDGE }, imageControl(signal));
     setResult(output);
     publishOperationReport(JSON.stringify({
@@ -614,9 +614,9 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   const runInvisibleCheck = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
-    const key = promptValue("检测密钥（与写入时相同）", "local-demo-key-2026");
+    const key = promptValue(t("image.invisibleDetectionKeyPrompt"));
     if (!key) throw createImageAbortError(t("image.invisibleCancelled"));
-    assertInvisibleKey(key);
+    assertInvisibleKey(key, t("image.invisibleKeyInvalid"));
     if (!hostExecutorAvailable) throw new Error(runtime.execution.reason ?? "当前 WebView 不支持可终止的图片隔离执行器。" );
     let detected;
     try {
@@ -806,11 +806,24 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   const runRecipient = () => void run(async (signal, inputs) => {
     const file = await inputs.read(0);
-    const recipients = promptValue("收件人 locator 列表（逗号分隔，最多 30 个短 ID）", "recipient-a,recipient-b");
+    const recipients = promptValue(t("image.recipientLocatorsPrompt"));
     if (recipients === null) throw createImageAbortError(t("image.recipientCancelled"));
-    const values = parseRecipientLocators(recipients);
+    let values: string[];
+    try {
+      values = parseRecipientLocators(recipients);
+    } catch {
+      throw new Error(t("image.recipientLocatorsInvalid"));
+    }
     if (!window.confirm(t("image.recipientSensitiveWarning"))) throw createImageAbortError(t("image.recipientCancelled"));
-    const sessionKey = { value: requireOneTimeRecipientKey(promptValue("一次性分发密钥（至少 16 UTF-8 字节；只保留在当前操作内存中）", "")) };
+    const recipientKey = promptValue(t("image.recipientKeyPrompt"));
+    if (recipientKey === null) throw createImageAbortError(t("image.recipientCancelled"));
+    let validatedRecipientKey: string;
+    try {
+      validatedRecipientKey = requireOneTimeRecipientKey(recipientKey);
+    } catch {
+      throw new Error(t("image.recipientKeyInvalid"));
+    }
+    const sessionKey = { value: validatedRecipientKey };
     let delivered = 0;
     const mapping: Array<{ recipient: string; filename: string; locator: string }> = [];
     let zipBudget = createRecipientZipBudget(file);
@@ -938,13 +951,13 @@ function imageControl(signal: AbortSignal, onPhase?: (phase: string) => void) {
   };
 }
 
-function assertInvisibleLocator(value: string): void {
+function assertInvisibleLocator(value: string, message: string): void {
   const bytes = new TextEncoder().encode(value);
-  if (bytes.byteLength === 0 || bytes.byteLength > 12) throw new Error("短 locator 必须是 1 到 12 个 UTF-8 字节。");
+  if (bytes.byteLength === 0 || bytes.byteLength > 12) throw new Error(message);
 }
 
-function assertInvisibleKey(value: string): void {
-  if (new TextEncoder().encode(value).byteLength < 16) throw new Error("隐形水印密钥至少需要 16 个 UTF-8 字节。");
+function assertInvisibleKey(value: string, message: string): void {
+  if (new TextEncoder().encode(value).byteLength < 16) throw new Error(message);
 }
 
 function safeOutputName(name: string): string { return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80) || "image"; }

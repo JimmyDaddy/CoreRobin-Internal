@@ -156,6 +156,20 @@
     "stop": "停止诊断",
     "hint": "文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。"
   },
+  "fileHash": {
+    "desktopOnly": "文件 SHA-256 需要桌面原生运行时。",
+    "releaseUnconfirmed": "文件资源释放尚未确认，请重试停止。",
+    "jobIncomplete": "文件任务未完成，结果已丢弃。",
+    "running": "正在计算…",
+    "chooseAndCompute": "选择文件并计算",
+    "stopping": "正在停止…",
+    "stop": "停止",
+    "clear": "清空",
+    "progressLabel": "文件读取进度",
+    "hint": "使用原生选择器与身份绑定 token。内容仅在原生服务内以 1 MiB 分块读取，开始、每块和结束均复验；离页停止，不写入历史。",
+    "clipboardFailed": "无法写入剪贴板，请手动复制摘要。",
+    "copy": "复制 SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "限时保活需要桌面原生运行时；浏览器演示不会修改电源状态。",
     "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
@@ -454,6 +468,15 @@
     }
   }
   ,"image": {
+    "invisibleLocatorPrompt": "短 locator（1–12 个 UTF-8 字节；不提供默认值）",
+    "invisibleKeyPrompt": "临时密钥（至少 16 个 UTF-8 字节；不会保存）",
+    "invisibleDetectionKeyPrompt": "检测密钥（与写入时相同；不会保存）",
+    "invisibleLocatorInvalid": "短 locator 必须是 1 到 12 个 UTF-8 字节。",
+    "invisibleKeyInvalid": "隐形水印密钥至少需要 16 个 UTF-8 字节。",
+    "recipientLocatorsPrompt": "收件人 locator 列表（逗号分隔，1–30 个短 ID；不要填写个人资料）",
+    "recipientKeyPrompt": "一次性分发密钥（至少 16 个 UTF-8 字节；只保留在当前操作内存中）",
+    "recipientLocatorsInvalid": "请输入 1–30 个不重复的 locator，每项不超过 12 个 UTF-8 字节，且不要包含个人资料。",
+    "recipientKeyInvalid": "一次性分发密钥至少需要 16 个 UTF-8 字节。",
     "boundary": "本地文件、显式操作、预算受限；不会自动打开 URL。完整渲染、编码和隐形处理均在每任务 Dedicated Worker 的 OffscreenCanvas 中执行；停止会终止 Worker 并等待 SDK 释放确认：{{executor}}。",
     "selectInput": "选择 PNG / JPEG / WebP",
     "nativeInputHint": "开始处理后由原生选择器签发绑定输入 token；页面不会接收真实路径。",

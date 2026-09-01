@@ -213,7 +213,7 @@ fn release_must_be_acknowledged_and_unconfirmed_release_is_not_active() {
             now_ms: 3_002,
         })
         .expect("unconfirmed release should be terminal");
-    assert_eq!(transition.snapshot.status, Status::Ended);
+    assert_eq!(transition.snapshot.status, Status::Releasing);
     assert!(!transition.snapshot.release_confirmed);
     assert_ne!(transition.snapshot.status, Status::Active);
 }

@@ -51,7 +51,7 @@ describe("keyboard cleaning safety state machine", () => {
   });
 
   it("releases on mouse, focus, host, sleep, permission, and heartbeat loss", () => {
-    for (const type of ["mouse_activity", "focus_lost", "host_exited", "sleeping", "permission_revoked"] as const) {
+    for (const type of ["mouse_activity", "heartbeat_lost", "focus_lost", "host_exited", "sleeping", "permission_revoked"] as const) {
       const machine = new KeyboardCleaningMachine(available);
       start(machine);
       confirm(machine);
@@ -65,6 +65,23 @@ describe("keyboard cleaning safety state machine", () => {
     heartbeat.dispatch({ type: "tick", nowMs: PREPARATION_WINDOW_MS });
     heartbeat.applySignal({ type: "heartbeat", payload: { protocolVersion: KEYBOARD_CLEANING_PROTOCOL_VERSION, requestId: "request-1", sequence: 1 } }, PREPARATION_WINDOW_MS + 1);
     expect(heartbeat.dispatch({ type: "tick", nowMs: PREPARATION_WINDOW_MS + 1 + HEARTBEAT_GRACE_MS }).state.status).toBe("releasing");
+  });
+
+  it("rejects stale lifecycle signals and keeps unconfirmed release visible", () => {
+    const machine = new KeyboardCleaningMachine(available);
+    start(machine);
+    confirm(machine);
+    machine.dispatch({ type: "tick", nowMs: PREPARATION_WINDOW_MS });
+    expect(() => machine.applySignal({
+      type: "lifecycle",
+      payload: {
+        protocolVersion: KEYBOARD_CLEANING_PROTOCOL_VERSION,
+        requestId: "stale-request",
+        reason: "focus_lost",
+      },
+    }, PREPARATION_WINDOW_MS + 1)).toThrow(/不属于当前任务/);
+    machine.dispatch({ type: "cancel", nowMs: PREPARATION_WINDOW_MS + 2 });
+    expect(machine.dispatch({ type: "release_unconfirmed", requestId: "request-1", nowMs: PREPARATION_WINDOW_MS + 3 }).state.status).toBe("releasing");
   });
 
   it("enforces selectable duration and the independent hard ceiling", () => {

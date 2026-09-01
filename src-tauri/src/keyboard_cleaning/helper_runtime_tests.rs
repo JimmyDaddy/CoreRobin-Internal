@@ -1,7 +1,7 @@
 use super::super::helper_protocol::encode_command;
 use super::*;
 use std::collections::VecDeque;
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 fn start_command() -> HelperCommand {
     HelperCommand::Start(StartCommand {
@@ -103,6 +103,7 @@ fn test_timing() -> RuntimeTiming {
     RuntimeTiming {
         control_poll_interval: Duration::from_millis(1),
         heartbeat_interval: Duration::from_millis(5),
+        host_heartbeat_grace: Duration::from_millis(50),
         hard_limit: Duration::from_millis(500),
     }
 }
@@ -220,6 +221,65 @@ fn stdin_eof_reports_host_exit_before_release() {
     ));
 }
 
+struct HoldOpenInput {
+    bytes: Cursor<Vec<u8>>,
+    hold_for: Duration,
+    held: bool,
+}
+
+impl Read for HoldOpenInput {
+    fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+        let read = self.bytes.read(output)?;
+        if read > 0 {
+            return Ok(read);
+        }
+        if !self.held {
+            self.held = true;
+            std::thread::sleep(self.hold_for);
+        }
+        Ok(0)
+    }
+}
+
+#[test]
+fn missing_host_heartbeat_releases_before_the_hard_limit() {
+    let mut start = Vec::new();
+    start.extend(encode_command(&start_command()).unwrap());
+    start.push(b'\n');
+    let mut output = Vec::new();
+    let exit = run_with_io(
+        HoldOpenInput {
+            bytes: Cursor::new(start),
+            hold_for: Duration::from_millis(100),
+            held: false,
+        },
+        &mut output,
+        FakeBackend::with_notices([]),
+        RuntimeTiming {
+            control_poll_interval: Duration::from_millis(1),
+            heartbeat_interval: Duration::from_millis(5),
+            host_heartbeat_grace: Duration::from_millis(10),
+            hard_limit: Duration::from_millis(500),
+        },
+    );
+    assert_eq!(exit, 0);
+    let signals = signals(output);
+    assert!(signals.iter().any(|signal| matches!(
+        signal,
+        HelperSignal::Lifecycle(LifecycleSignal {
+            reason: HelperLifecycleReason::HeartbeatLost,
+            ..
+        })
+    )));
+    assert!(matches!(
+        signals.last(),
+        Some(HelperSignal::Released(ReleasedSignal {
+            confirmed: true,
+            ..
+        }))
+    ));
+}
+
 #[test]
 fn hard_cutoff_reports_ineffective_then_releases() {
     let mut output = Vec::new();
@@ -230,6 +290,7 @@ fn hard_cutoff_reports_ineffective_then_releases() {
         RuntimeTiming {
             control_poll_interval: Duration::from_millis(1),
             heartbeat_interval: Duration::from_secs(1),
+            host_heartbeat_grace: Duration::from_millis(500),
             hard_limit: Duration::ZERO,
         },
     );
@@ -275,15 +336,15 @@ fn unavailable_platform_signals_capability_unavailable_and_never_installs_a_tap(
     ));
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(all(target_os = "macos", feature = "keyboard-cleaning-validated")))]
 #[test]
-fn non_macos_build_is_explicitly_unavailable() {
+fn ordinary_build_is_explicitly_unavailable() {
     assert_eq!(helper_capability(), Capability::Unavailable);
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "keyboard-cleaning-validated"))]
 #[test]
-fn macos_build_exposes_a_runtime_capability_without_installing_a_tap() {
+fn validated_macos_build_exposes_a_runtime_capability_without_installing_a_tap() {
     assert_eq!(helper_capability(), Capability::Available);
 }
 

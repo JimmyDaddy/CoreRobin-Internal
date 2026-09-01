@@ -79,7 +79,8 @@ use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObjectProtocol, ProtocolObject};
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{
-    NSWorkspace, NSWorkspaceDidWakeNotification, NSWorkspaceWillSleepNotification,
+    NSWorkspace, NSWorkspaceDidWakeNotification, NSWorkspaceScreensDidSleepNotification,
+    NSWorkspaceSessionDidResignActiveNotification, NSWorkspaceWillSleepNotification,
 };
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSNotificationCenter;
@@ -88,6 +89,8 @@ use objc2_foundation::NSNotificationCenter;
 struct MacPowerEventObserver {
     notification_center: Retained<NSNotificationCenter>,
     sleep_observer: Option<Retained<ProtocolObject<dyn NSObjectProtocol>>>,
+    screens_sleep_observer: Option<Retained<ProtocolObject<dyn NSObjectProtocol>>>,
+    session_resign_observer: Option<Retained<ProtocolObject<dyn NSObjectProtocol>>>,
     wake_observer: Option<Retained<ProtocolObject<dyn NSObjectProtocol>>>,
 }
 
@@ -103,6 +106,8 @@ impl MacPowerEventObserver {
 
         let sleep_power = Arc::clone(&power);
         let sleep_keyboard = Arc::clone(&on_sleep);
+        let screens_sleep_keyboard = Arc::clone(&on_sleep);
+        let session_resign_keyboard = Arc::clone(&on_sleep);
         let sleep_observer = unsafe {
             notification_center.addObserverForName_object_queue_usingBlock(
                 Some(NSWorkspaceWillSleepNotification),
@@ -112,6 +117,22 @@ impl MacPowerEventObserver {
                     release_keep_awake_for_system_sleep(&sleep_power);
                     sleep_keyboard.as_ref()();
                 }),
+            )
+        };
+        let screens_sleep_observer = unsafe {
+            notification_center.addObserverForName_object_queue_usingBlock(
+                Some(NSWorkspaceScreensDidSleepNotification),
+                None,
+                None,
+                &RcBlock::new(move |_| screens_sleep_keyboard.as_ref()()),
+            )
+        };
+        let session_resign_observer = unsafe {
+            notification_center.addObserverForName_object_queue_usingBlock(
+                Some(NSWorkspaceSessionDidResignActiveNotification),
+                None,
+                None,
+                &RcBlock::new(move |_| session_resign_keyboard.as_ref()()),
             )
         };
         let wake_observer = unsafe {
@@ -126,6 +147,8 @@ impl MacPowerEventObserver {
         Self {
             notification_center,
             sleep_observer: Some(sleep_observer),
+            screens_sleep_observer: Some(screens_sleep_observer),
+            session_resign_observer: Some(session_resign_observer),
             wake_observer: Some(wake_observer),
         }
     }
@@ -138,6 +161,14 @@ impl Drop for MacPowerEventObserver {
         // removing both tokens prevents callbacks after Tauri has begun exit.
         unsafe {
             if let Some(observer) = self.sleep_observer.take() {
+                let observer: &AnyObject = (*observer).as_ref();
+                self.notification_center.removeObserver(observer);
+            }
+            if let Some(observer) = self.screens_sleep_observer.take() {
+                let observer: &AnyObject = (*observer).as_ref();
+                self.notification_center.removeObserver(observer);
+            }
+            if let Some(observer) = self.session_resign_observer.take() {
                 let observer: &AnyObject = (*observer).as_ref();
                 self.notification_center.removeObserver(observer);
             }
@@ -183,5 +214,13 @@ mod tests {
     fn macos_observer_has_a_safe_empty_lifecycle() {
         let mut observer = PowerEventObserver::default();
         observer.shutdown();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_observer_covers_sleeping_screens_and_inactive_sessions() {
+        let source = include_str!("power_events.rs");
+        assert!(source.contains("NSWorkspaceScreensDidSleepNotification"));
+        assert!(source.contains("NSWorkspaceSessionDidResignActiveNotification"));
     }
 }

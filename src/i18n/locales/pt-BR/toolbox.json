@@ -76,6 +76,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "O SHA-256 de arquivos requer o ambiente nativo para desktop.",
+    "releaseUnconfirmed": "A liberação do recurso de arquivo ainda não foi confirmada. Tente interromper novamente.",
+    "jobIncomplete": "A tarefa de arquivo não foi concluída, portanto o resultado foi descartado.",
+    "running": "Calculando…",
+    "chooseAndCompute": "Escolher arquivo e calcular",
+    "stopping": "Interrompendo…",
+    "stop": "Interromper",
+    "clear": "Limpar",
+    "progressLabel": "Progresso da leitura do arquivo",
+    "hint": "O seletor nativo emite um token vinculado à identidade do arquivo. O serviço nativo lê blocos de 1 MiB e revalida o arquivo antes, durante e depois da leitura; sair da página interrompe a tarefa e nenhuma entrada é gravada no histórico.",
+    "clipboardFailed": "Não foi possível gravar na área de transferência. Copie o resumo manualmente.",
+    "copy": "Copiar SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -255,6 +269,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "Localizador curto (1–12 bytes UTF-8; sem valor padrão)",
+    "invisibleKeyPrompt": "Chave temporária (pelo menos 16 bytes UTF-8; nunca é salva)",
+    "invisibleDetectionKeyPrompt": "Chave de detecção (a mesma usada na gravação; nunca é salva)",
+    "invisibleLocatorInvalid": "O localizador curto deve ter entre 1 e 12 bytes UTF-8.",
+    "invisibleKeyInvalid": "A chave da marca-d’água invisível deve ter pelo menos 16 bytes UTF-8.",
+    "recipientLocatorsPrompt": "Localizadores de destinatários separados por vírgulas (1–30 IDs curtos; não informe dados pessoais)",
+    "recipientKeyPrompt": "Chave de distribuição de uso único (pelo menos 16 bytes UTF-8; mantida na memória somente nesta operação)",
+    "recipientLocatorsInvalid": "Informe de 1 a 30 localizadores únicos, com no máximo 12 bytes UTF-8 cada e sem dados pessoais.",
+    "recipientKeyInvalid": "A chave de distribuição de uso único deve ter pelo menos 16 bytes UTF-8.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

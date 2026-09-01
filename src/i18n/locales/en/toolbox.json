@@ -156,6 +156,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "File SHA-256 requires the desktop native runtime.",
+    "releaseUnconfirmed": "Release of the file resource has not been confirmed. Try stopping again.",
+    "jobIncomplete": "The file task did not complete, so its result was discarded.",
+    "running": "Computing…",
+    "chooseAndCompute": "Choose file and compute",
+    "stopping": "Stopping…",
+    "stop": "Stop",
+    "clear": "Clear",
+    "progressLabel": "File read progress",
+    "hint": "The native picker issues an identity-bound token. The native service reads 1 MiB chunks and revalidates the file before, during, and after reading; leaving the page stops the task, and no input is written to history.",
+    "clipboardFailed": "Could not write to the clipboard. Copy the digest manually.",
+    "copy": "Copy SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -454,6 +468,15 @@
     }
   }
   ,"image": {
+    "invisibleLocatorPrompt": "Short locator (1–12 UTF-8 bytes; no default is supplied)",
+    "invisibleKeyPrompt": "Temporary key (at least 16 UTF-8 bytes; never saved)",
+    "invisibleDetectionKeyPrompt": "Detection key (the same key used when writing; never saved)",
+    "invisibleLocatorInvalid": "The short locator must be between 1 and 12 UTF-8 bytes.",
+    "invisibleKeyInvalid": "The invisible-watermark key must be at least 16 UTF-8 bytes.",
+    "recipientLocatorsPrompt": "Comma-separated recipient locators (1–30 short IDs; do not enter personal data)",
+    "recipientKeyPrompt": "One-time delivery key (at least 16 UTF-8 bytes; kept only for this operation)",
+    "recipientLocatorsInvalid": "Enter 1–30 unique locators, each no more than 12 UTF-8 bytes, without personal data.",
+    "recipientKeyInvalid": "The one-time delivery key must be at least 16 UTF-8 bytes.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

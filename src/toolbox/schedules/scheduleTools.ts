@@ -1,11 +1,11 @@
 import { ToolboxInputError } from "../local/toolboxErrors";
 
 /**
- * This browser module only parses and previews a cron expression. It neither
- * persists a rule nor dispatches an action; those guarantees belong to the
- * native scheduler described in the Toolbox v1 contract.
+ * This browser module only parses and previews a cron expression. The
+ * execution-state marker identifies the native scheduler as the source of
+ * truth for persistence, DST handling, and dispatch.
  */
-export const SCHEDULE_EXECUTION_STATE = "preview_only_native_scheduler_unavailable" as const;
+export const SCHEDULE_EXECUTION_STATE = "native_scheduler" as const;
 
 export const CRON_SEARCH_HORIZON_YEARS = 5;
 export const MAX_CRON_PREVIEW_OCCURRENCES = 10;

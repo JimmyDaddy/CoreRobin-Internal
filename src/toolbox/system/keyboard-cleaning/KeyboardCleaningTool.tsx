@@ -88,10 +88,11 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
   const effectiveBridge = bridge ?? (isDesktopRuntime() ? NATIVE_BRIDGE : undefined);
   const machine = useMemo(() => new KeyboardCleaningMachine(capability), [capability]);
   const [state, setState] = useState<KeyboardCleaningState>(() => machine.snapshot());
-  const [durationSeconds, setDurationSeconds] = useState<30 | 60 | 120>(30);
+  const [durationSeconds, setDurationSeconds] = useState<30 | 60 | 120>(60);
   const [error, setError] = useState("");
   const clock = useCallback(() => Date.now(), []);
   const machineRef = useRef(machine);
+  const heartbeatSequenceRef = useRef<{ requestId: string | null; sequence: number }>({ requestId: null, sequence: 0 });
   machineRef.current = machine;
 
   useEffect(() => {
@@ -136,13 +137,15 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
 
   useEffect(() => {
     if (!effectiveBridge || (state.status !== "preparing" && state.status !== "active") || !state.requestId) return undefined;
-    let sequence = 0;
     const sendHeartbeat = () => {
-      sequence += 1;
+      if (heartbeatSequenceRef.current.requestId !== state.requestId) {
+        heartbeatSequenceRef.current = { requestId: state.requestId, sequence: 0 };
+      }
+      heartbeatSequenceRef.current.sequence += 1;
       const request: KeyboardCleaningHeartbeatCommand = {
         protocolVersion: "keyboard-cleaning-helper-v1",
         requestId: state.requestId!,
-        sequence,
+        sequence: heartbeatSequenceRef.current.sequence,
       };
       void effectiveBridge.send({ type: "heartbeat_helper", command: { type: "heartbeat", payload: request } }).catch((reason: unknown) => {
         setError(t("keyboardCleaning.errors.helper", { reason: reason instanceof Error ? reason.message : t("keyboardCleaning.errors.communication") }));
@@ -174,6 +177,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
     : capability.reason ?? t("keyboardCleaning.capability.unavailable");
 
   const cleaning = state.status === "preparing" || state.status === "active";
+  const maskVisible = cleaning || state.status === "releasing";
   return <>
     <section className="toolbox-tool-layout keyboard-cleaning-tool" aria-labelledby="keyboard-cleaning-title">
       <div className="toolbox-tool-layout__body">
@@ -195,11 +199,11 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
       </div>
       <div className="toolbox-tool-layout__footer"><span>{t("keyboardCleaning.footer")}</span></div>
     </section>
-    {cleaning ? <div className="keyboard-cleaning-mask" role="status" aria-live="polite">
+    {maskVisible ? <div className="keyboard-cleaning-mask" role="status" aria-live="polite">
       <div className="keyboard-cleaning-mask__content">
         <ShieldCheck size={24} />
         <strong>{statusText}</strong>
-        <button className="button button--primary" type="button" onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />{t("keyboardCleaning.stop")}</button>
+        <button className="button button--primary" type="button" disabled={!cleaning} onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />{t("keyboardCleaning.stop")}</button>
       </div>
     </div> : null}
   </>;

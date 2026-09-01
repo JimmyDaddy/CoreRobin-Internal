@@ -82,6 +82,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "El cálculo SHA-256 de archivos requiere el entorno nativo de escritorio.",
+    "releaseUnconfirmed": "Aún no se ha confirmado la liberación del recurso de archivo. Intenta detenerlo de nuevo.",
+    "jobIncomplete": "La tarea de archivo no terminó, por lo que se descartó el resultado.",
+    "running": "Calculando…",
+    "chooseAndCompute": "Elegir archivo y calcular",
+    "stopping": "Deteniendo…",
+    "stop": "Detener",
+    "clear": "Limpiar",
+    "progressLabel": "Progreso de lectura del archivo",
+    "hint": "El selector nativo emite un token vinculado a la identidad del archivo. El servicio nativo lee bloques de 1 MiB y vuelve a validar el archivo antes, durante y después de la lectura; salir de la página detiene la tarea y la entrada no se guarda en el historial.",
+    "clipboardFailed": "No se pudo escribir en el portapapeles. Copia el resumen manualmente.",
+    "copy": "Copiar SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -429,6 +443,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "Localizador corto (1–12 bytes UTF-8; sin valor predeterminado)",
+    "invisibleKeyPrompt": "Clave temporal (al menos 16 bytes UTF-8; nunca se guarda)",
+    "invisibleDetectionKeyPrompt": "Clave de detección (la misma usada al escribir; nunca se guarda)",
+    "invisibleLocatorInvalid": "El localizador corto debe tener entre 1 y 12 bytes UTF-8.",
+    "invisibleKeyInvalid": "La clave de la marca de agua invisible debe tener al menos 16 bytes UTF-8.",
+    "recipientLocatorsPrompt": "Localizadores de destinatarios separados por comas (1–30 ID cortos; no introduzcas datos personales)",
+    "recipientKeyPrompt": "Clave de distribución de un solo uso (al menos 16 bytes UTF-8; solo en memoria durante esta operación)",
+    "recipientLocatorsInvalid": "Introduce entre 1 y 30 localizadores únicos, de hasta 12 bytes UTF-8 cada uno y sin datos personales.",
+    "recipientKeyInvalid": "La clave de distribución de un solo uso debe tener al menos 16 bytes UTF-8.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

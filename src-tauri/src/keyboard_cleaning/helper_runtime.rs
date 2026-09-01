@@ -27,18 +27,19 @@ const REQUEST_ID_MAX_BYTES: usize = 128;
 const INPUT_QUEUE_CAPACITY: usize = 2;
 const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(25);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
+const HOST_HEARTBEAT_GRACE: Duration = Duration::from_secs(3);
 const HELPER_HARD_LIMIT: Duration = Duration::from_millis(HARD_LIMIT_MS);
 
 /// Returns the build-time helper capability without attempting to install an
-/// event tap. A macOS build can still fail closed at runtime when accessibility
-/// permission is absent or CoreGraphics refuses the tap.
+/// event tap. Ordinary builds remain disabled until an explicitly gated,
+/// signed macOS build has passed the permission and abnormal-release matrix.
 pub const fn helper_capability() -> Capability {
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", feature = "keyboard-cleaning-validated"))]
     {
         Capability::Available
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(all(target_os = "macos", feature = "keyboard-cleaning-validated")))]
     {
         Capability::Unavailable
     }
@@ -50,6 +51,9 @@ pub const fn helper_capability() -> Capability {
 /// application process must opt into it only after detecting
 /// `--keyboard-helper`, before it starts Tauri or any other UI runtime.
 pub fn run_helper() -> i32 {
+    if !helper_capability().is_available() || !trusted_parent_process() {
+        return 1;
+    }
     run_with_io(
         std::io::stdin(),
         std::io::stdout(),
@@ -74,6 +78,7 @@ where
 struct RuntimeTiming {
     control_poll_interval: Duration,
     heartbeat_interval: Duration,
+    host_heartbeat_grace: Duration,
     hard_limit: Duration,
 }
 
@@ -82,6 +87,7 @@ impl RuntimeTiming {
         Self {
             control_poll_interval: CONTROL_POLL_INTERVAL,
             heartbeat_interval: HEARTBEAT_INTERVAL,
+            host_heartbeat_grace: HOST_HEARTBEAT_GRACE,
             hard_limit: HELPER_HARD_LIMIT,
         }
     }
@@ -154,6 +160,7 @@ impl<B: TapBackend> HelperRuntime<B> {
         let mut next_heartbeat = Instant::now();
         let mut sequence = 0_u64;
         let mut last_host_heartbeat = 0_u64;
+        let mut last_host_heartbeat_at = Instant::now();
         let exit_result = loop {
             let now = Instant::now();
             let heartbeat_wait = next_heartbeat.saturating_duration_since(now);
@@ -204,6 +211,7 @@ impl<B: TapBackend> HelperRuntime<B> {
                         && heartbeat.sequence > last_host_heartbeat =>
                 {
                     last_host_heartbeat = heartbeat.sequence;
+                    last_host_heartbeat_at = Instant::now();
                 }
                 Ok(InputMessage::Disconnected) => {
                     emit_lifecycle(&mut output, &request_id, HelperLifecycleReason::HostExited)?;
@@ -211,6 +219,15 @@ impl<B: TapBackend> HelperRuntime<B> {
                 }
                 Ok(InputMessage::Command(_)) | Err(TryRecvError::Disconnected) => break Err(()),
                 Err(TryRecvError::Empty) => {}
+            }
+
+            if last_host_heartbeat_at.elapsed() >= self.timing.host_heartbeat_grace {
+                emit_lifecycle(
+                    &mut output,
+                    &request_id,
+                    HelperLifecycleReason::HeartbeatLost,
+                )?;
+                break Ok(());
             }
         };
 
@@ -221,6 +238,40 @@ impl<B: TapBackend> HelperRuntime<B> {
         emit_released(&mut output, &request_id, true)?;
         exit_result
     }
+}
+
+#[cfg(target_os = "macos")]
+fn trusted_parent_process() -> bool {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+    use std::path::PathBuf;
+
+    let Ok(current_executable) = std::env::current_exe().and_then(std::fs::canonicalize) else {
+        return false;
+    };
+    let parent_pid = unsafe { libc::getppid() };
+    if parent_pid <= 1 {
+        return false;
+    }
+    let mut buffer = Vec::<u8>::with_capacity(libc::PROC_PIDPATHINFO_MAXSIZE as usize);
+    let length = unsafe {
+        libc::proc_pidpath(
+            parent_pid,
+            buffer.as_mut_ptr().cast(),
+            libc::PROC_PIDPATHINFO_MAXSIZE as u32,
+        )
+    };
+    if length <= 0 {
+        return false;
+    }
+    unsafe { buffer.set_len(length as usize) };
+    let parent_executable = PathBuf::from(OsString::from_vec(buffer));
+    std::fs::canonicalize(parent_executable).is_ok_and(|path| path == current_executable)
+}
+
+#[cfg(not(target_os = "macos"))]
+const fn trusted_parent_process() -> bool {
+    false
 }
 
 fn valid_start(start: &StartCommand) -> bool {
@@ -400,11 +451,19 @@ impl InstalledTap for UnavailableTap {
 #[cfg(target_os = "macos")]
 mod macos {
     use super::*;
+    use core_foundation::base::TCFType;
+    use core_foundation::mach_port::CFMachPortRef;
     use core_foundation::runloop::{CFRunLoop, CFRunLoopSource, kCFRunLoopCommonModes};
     use core_graphics::event::{
         CGEventTap, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventType,
         CallbackResult,
     };
+
+    #[link(name = "CoreGraphics", kind = "framework")]
+    unsafe extern "C" {
+        #[link_name = "CGEventTapIsEnabled"]
+        fn cg_event_tap_is_enabled(tap: CFMachPortRef) -> bool;
+    }
 
     pub(super) struct MacTap {
         run_loop: CFRunLoop,
@@ -434,6 +493,10 @@ mod macos {
             let run_loop = CFRunLoop::get_current();
             run_loop.add_source(&source, unsafe { kCFRunLoopCommonModes });
             tap.enable();
+            if !unsafe { cg_event_tap_is_enabled(tap.mach_port().as_concrete_TypeRef()) } {
+                run_loop.remove_source(&source, unsafe { kCFRunLoopCommonModes });
+                return Err(HookFailure::PermissionRevoked);
+            }
             Ok(MacTap {
                 run_loop,
                 source,

@@ -19,7 +19,7 @@ export type KeyboardCleaningStatus = "idle" | "unavailable" | "preparing" | "act
 export type KeyboardCleaningHookStatus = "unconfirmed" | "confirmed" | "ineffective";
 export type KeyboardCleaningHookEffectiveness = "confirmed" | "unconfirmed" | "silently_ineffective";
 export type KeyboardCleaningHookFailure = "capability_unavailable" | "permission_revoked" | "host_disconnected" | "hook_stopped" | "hook_not_confirmed";
-export type KeyboardCleaningLifecycleReason = "mouse_activity" | "focus_lost" | "host_exited" | "sleeping" | "permission_revoked";
+export type KeyboardCleaningLifecycleReason = "mouse_activity" | "heartbeat_lost" | "focus_lost" | "host_exited" | "sleeping" | "permission_revoked";
 export type KeyboardCleaningEndReason =
   | "cancelled"
   | "mouse_activity"
@@ -61,6 +61,7 @@ export type KeyboardCleaningEvent =
   | { type: "heartbeat"; requestId: string; sequence: number; nowMs: number }
   | { type: "hook_ineffective"; requestId: string; nowMs: number }
   | { type: "mouse_activity"; nowMs: number }
+  | { type: "heartbeat_lost"; nowMs: number }
   | { type: "focus_lost"; nowMs: number }
   | { type: "host_exited"; nowMs: number }
   | { type: "sleeping"; nowMs: number }
@@ -187,6 +188,7 @@ export class KeyboardCleaningMachine {
       case "heartbeat": this.heartbeat(event); break;
       case "hook_ineffective": this.hookIneffective(event, effects); break;
       case "mouse_activity": this.release("mouse_activity", effects); break;
+      case "heartbeat_lost": this.release("heartbeat_lost", effects); break;
       case "focus_lost": this.release("focus_lost", effects); break;
       case "host_exited": this.release("host_exited", effects); break;
       case "sleeping": this.release("sleeping", effects); break;
@@ -212,7 +214,8 @@ export class KeyboardCleaningMachine {
       case "released":
         return this.dispatch({ type: signal.payload.confirmed ? "release_confirmed" : "release_unconfirmed", requestId: signal.payload.requestId, nowMs });
       case "lifecycle":
-        return this.dispatch({ type: signal.payload.reason === "mouse_activity" ? "mouse_activity" : signal.payload.reason, nowMs });
+        this.ensureRequest(signal.payload.requestId);
+        return this.dispatch({ type: signal.payload.reason, nowMs });
     }
   }
 
@@ -291,7 +294,7 @@ export class KeyboardCleaningMachine {
     this.ensureRequest(event.requestId);
     if (this.status !== "releasing" || !this.session) return;
     this.session.releaseConfirmed = confirmed;
-    this.status = "ended";
+    if (confirmed) this.status = "ended";
   }
 
   private ensureRequest(requestId: string): void {

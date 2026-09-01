@@ -85,6 +85,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "Datei-SHA-256 erfordert die native Desktop-Laufzeit.",
+    "releaseUnconfirmed": "Die Freigabe der Dateiressource wurde noch nicht bestätigt. Versuchen Sie erneut, den Vorgang zu stoppen.",
+    "jobIncomplete": "Der Dateivorgang wurde nicht abgeschlossen; das Ergebnis wurde verworfen.",
+    "running": "Wird berechnet…",
+    "chooseAndCompute": "Datei auswählen und berechnen",
+    "stopping": "Wird gestoppt…",
+    "stop": "Stoppen",
+    "clear": "Leeren",
+    "progressLabel": "Fortschritt beim Lesen der Datei",
+    "hint": "Die native Dateiauswahl erstellt ein an die Dateiidentität gebundenes Token. Der native Dienst liest Blöcke von 1 MiB und prüft die Datei vor, während und nach dem Lesen erneut; beim Verlassen der Seite wird der Vorgang gestoppt, und Eingaben werden nicht im Verlauf gespeichert.",
+    "clipboardFailed": "Die Zwischenablage konnte nicht beschrieben werden. Kopieren Sie die Prüfsumme manuell.",
+    "copy": "SHA-256 kopieren"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -432,6 +446,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "Kurzer Locator (1–12 UTF-8-Bytes; kein Vorgabewert)",
+    "invisibleKeyPrompt": "Temporärer Schlüssel (mindestens 16 UTF-8-Bytes; wird nicht gespeichert)",
+    "invisibleDetectionKeyPrompt": "Prüfschlüssel (derselbe wie beim Schreiben; wird nicht gespeichert)",
+    "invisibleLocatorInvalid": "Der kurze Locator muss 1 bis 12 UTF-8-Bytes lang sein.",
+    "invisibleKeyInvalid": "Der Schlüssel für das unsichtbare Wasserzeichen muss mindestens 16 UTF-8-Bytes lang sein.",
+    "recipientLocatorsPrompt": "Kommagetrennte Empfänger-Locators (1–30 kurze IDs; keine personenbezogenen Daten)",
+    "recipientKeyPrompt": "Einmaliger Verteilungsschlüssel (mindestens 16 UTF-8-Bytes; nur für diesen Vorgang im Speicher)",
+    "recipientLocatorsInvalid": "Geben Sie 1–30 eindeutige Locators mit jeweils höchstens 12 UTF-8-Bytes und ohne personenbezogene Daten ein.",
+    "recipientKeyInvalid": "Der einmalige Verteilungsschlüssel muss mindestens 16 UTF-8-Bytes lang sein.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

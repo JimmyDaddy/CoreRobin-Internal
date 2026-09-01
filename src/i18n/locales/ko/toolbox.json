@@ -76,6 +76,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "파일 SHA-256 계산에는 데스크톱 네이티브 런타임이 필요합니다.",
+    "releaseUnconfirmed": "파일 리소스 해제가 아직 확인되지 않았습니다. 다시 중지해 주세요.",
+    "jobIncomplete": "파일 작업이 완료되지 않아 결과를 폐기했습니다.",
+    "running": "계산 중…",
+    "chooseAndCompute": "파일 선택 및 계산",
+    "stopping": "중지 중…",
+    "stop": "중지",
+    "clear": "지우기",
+    "progressLabel": "파일 읽기 진행률",
+    "hint": "네이티브 파일 선택기가 파일 식별 정보에 연결된 토큰을 발급합니다. 네이티브 서비스는 1 MiB 단위로 읽고 읽기 전·도중·후에 파일을 다시 검증합니다. 페이지를 벗어나면 작업이 중지되며 입력은 기록에 저장되지 않습니다.",
+    "clipboardFailed": "클립보드에 쓸 수 없습니다. 다이제스트를 직접 복사해 주세요.",
+    "copy": "SHA-256 복사"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -255,6 +269,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "짧은 locator(UTF-8 1~12바이트, 기본값 없음)",
+    "invisibleKeyPrompt": "임시 키(UTF-8 16바이트 이상, 저장되지 않음)",
+    "invisibleDetectionKeyPrompt": "검출 키(기록할 때 사용한 동일한 키, 저장되지 않음)",
+    "invisibleLocatorInvalid": "짧은 locator는 UTF-8 1~12바이트여야 합니다.",
+    "invisibleKeyInvalid": "보이지 않는 워터마크 키는 UTF-8 16바이트 이상이어야 합니다.",
+    "recipientLocatorsPrompt": "수신자 locator 목록(쉼표로 구분한 짧은 ID 1~30개, 개인정보 입력 금지)",
+    "recipientKeyPrompt": "일회용 배포 키(UTF-8 16바이트 이상, 이 작업 중에만 메모리에 유지)",
+    "recipientLocatorsInvalid": "중복되지 않는 locator를 1~30개 입력하세요. 각 항목은 UTF-8 12바이트 이하여야 하며 개인정보를 포함하면 안 됩니다.",
+    "recipientKeyInvalid": "일회용 배포 키는 UTF-8 16바이트 이상이어야 합니다.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

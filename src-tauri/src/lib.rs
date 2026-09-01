@@ -318,6 +318,17 @@ fn require_tray_window(window: &WebviewWindow) -> Result<(), CommandError> {
     require_tray_window_label(window.label())
 }
 
+fn keyboard_cleaning_stop_is_emergency(label: &str) -> Result<bool, CommandError> {
+    match label {
+        "main" => Ok(false),
+        "tray" | "companion" => Ok(true),
+        _ => Err(CommandError::new(
+            "window_not_authorized",
+            "This operation is available only from a trusted CoreRobin window.",
+        )),
+    }
+}
+
 #[derive(Clone)]
 struct AppState {
     background_launch: bool,
@@ -3417,25 +3428,41 @@ fn heartbeat_keyboard_cleaning(
     request: HeartbeatCommand,
 ) -> Result<(), CommandError> {
     require_main_window(&window)?;
-    state
+    let mut keyboard_cleaning = state
         .keyboard_cleaning
         .lock()
-        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
-        .heartbeat(request)
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?;
+    if !window.is_visible().unwrap_or(false) || !window.is_focused().unwrap_or(false) {
+        let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+        return Err(CommandError::new(
+            "keyboard_cleaning_window_not_foreground",
+            "Keyboard cleaning stopped because the main window is no longer visible and focused.",
+        ));
+    }
+    keyboard_cleaning.heartbeat(request)
 }
 
 #[tauri::command]
 fn stop_keyboard_cleaning(
     window: WebviewWindow,
     state: State<'_, AppState>,
-    request: StopCommand,
+    request: Option<StopCommand>,
 ) -> Result<(), CommandError> {
-    require_main_window(&window)?;
-    state
+    let emergency = keyboard_cleaning_stop_is_emergency(window.label())?;
+    let mut keyboard_cleaning = state
         .keyboard_cleaning
         .lock()
-        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
-        .stop(request)
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?;
+    if emergency {
+        keyboard_cleaning.stop_for_reason(HelperStopReason::Cancelled)
+    } else {
+        keyboard_cleaning.stop(request.ok_or_else(|| {
+            CommandError::new(
+                "keyboard_cleaning_invalid_request",
+                "The main window must identify the keyboard cleaning session to stop.",
+            )
+        })?)
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -3655,6 +3682,11 @@ pub fn run() {
             if window.label() == "main"
                 && let WindowEvent::CloseRequested { api, .. } = event
             {
+                if let Ok(mut keyboard_cleaning) =
+                    window.state::<AppState>().keyboard_cleaning.lock()
+                {
+                    let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+                }
                 api.prevent_close();
                 let _ = window.hide();
                 let _ = window
@@ -4041,7 +4073,8 @@ mod security_boundary_tests {
     use serde_json::Value;
 
     use super::{
-        command_names::ALL_COMMANDS, require_main_window_label, require_tray_window_label,
+        command_names::ALL_COMMANDS, keyboard_cleaning_stop_is_emergency,
+        require_main_window_label, require_tray_window_label,
     };
 
     const PROTECTED_COMMANDS: &[&str] = &[
@@ -4116,6 +4149,8 @@ mod security_boundary_tests {
         "scan_toolbox_file_occupancy",
         "scan_toolbox_volume_occupancy",
         "cancel_toolbox_occupancy",
+        "start_keyboard_cleaning",
+        "heartbeat_keyboard_cleaning",
         "start_app_update",
         "get_app_update_task",
         "run_network_quality_check",
@@ -4225,6 +4260,9 @@ mod security_boundary_tests {
         }
         assert!(!tray_permissions.contains("core:default"));
         assert!(!companion_permissions.contains("core:default"));
+        let emergency_stop = allow_permission("stop_keyboard_cleaning");
+        assert!(tray_permissions.contains(&emergency_stop));
+        assert!(companion_permissions.contains(&emergency_stop));
     }
 
     #[test]
@@ -4274,6 +4312,18 @@ mod security_boundary_tests {
         assert!(require_tray_window_label("tray").is_ok());
         for label in ["main", "companion", "splashscreen", "unexpected"] {
             let error = require_tray_window_label(label).expect_err("window must be rejected");
+            assert_eq!(error.code, "window_not_authorized");
+        }
+    }
+
+    #[test]
+    fn keyboard_cleaning_stop_guard_is_main_scoped_or_stop_only_emergency() {
+        assert!(!keyboard_cleaning_stop_is_emergency("main").unwrap());
+        assert!(keyboard_cleaning_stop_is_emergency("tray").unwrap());
+        assert!(keyboard_cleaning_stop_is_emergency("companion").unwrap());
+        for label in ["splashscreen", "unexpected"] {
+            let error =
+                keyboard_cleaning_stop_is_emergency(label).expect_err("window must be rejected");
             assert_eq!(error.code, "window_not_authorized");
         }
     }

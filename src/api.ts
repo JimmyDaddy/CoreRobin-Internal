@@ -236,6 +236,10 @@ export function stopKeyboardCleaning(request: KeyboardCleaningStopCommand): Prom
   return invoke("stop_keyboard_cleaning", { request });
 }
 
+export function emergencyStopKeyboardCleaning(): Promise<void> {
+  return invoke("stop_keyboard_cleaning", { request: null });
+}
+
 export function heartbeatKeyboardCleaning(request: KeyboardCleaningHeartbeatCommand): Promise<void> {
   return invoke("heartbeat_keyboard_cleaning", { request });
 }

@@ -91,7 +91,11 @@ impl KeyboardCleaningAdapter {
         };
 
         let request_id = request.request_id.clone();
-        spawn_signal_reader(app.clone(), stdout, request_id.clone());
+        if let Err(error) = spawn_signal_reader(app.clone(), stdout, request_id.clone()) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
         let mut session = ChildSession {
             child,
             stdin,
@@ -246,7 +250,11 @@ fn write_command(stdin: &mut ChildStdin, command: HelperCommand) -> Result<(), C
     })
 }
 
-fn spawn_signal_reader(app: AppHandle, stdout: impl io::Read + Send + 'static, request_id: String) {
+fn spawn_signal_reader(
+    app: AppHandle,
+    stdout: impl io::Read + Send + 'static,
+    request_id: String,
+) -> Result<(), CommandError> {
     thread::Builder::new()
         .name("core-robin-keyboard-helper-reader".to_owned())
         .spawn(move || {
@@ -275,7 +283,12 @@ fn spawn_signal_reader(app: AppHandle, stdout: impl io::Read + Send + 'static, r
                 }
             }
         })
-        .ok();
+        .map(|_| ())
+        .map_err(|error| {
+            CommandError::internal(format!(
+                "keyboard helper signal reader could not start: {error}"
+            ))
+        })
 }
 
 fn emit_disconnect(app: &AppHandle, request_id: &str, released: &AtomicBool) {
@@ -316,7 +329,7 @@ fn read_frame<R: BufRead>(reader: &mut R) -> Result<Option<Vec<u8>>, ()> {
             return Err(());
         }
         frame.extend_from_slice(&buffer[..consumed]);
-        reader.consume(consumed);
+        reader.consume(consumed + usize::from(newline.is_some()));
         if newline.is_some() {
             return Ok(Some(frame));
         }
@@ -348,5 +361,13 @@ mod tests {
         assert!(read_frame(&mut BufReader::new(&b"{}"[..])).is_err());
         let oversized = vec![b'a'; MAX_FRAME_BYTES + 2];
         assert!(read_frame(&mut BufReader::new(&oversized[..])).is_err());
+    }
+
+    #[test]
+    fn parent_frame_reader_consumes_delimiters_between_signals() {
+        let mut reader = BufReader::new(&b"first\nsecond\n"[..]);
+        assert_eq!(read_frame(&mut reader), Ok(Some(b"first".to_vec())));
+        assert_eq!(read_frame(&mut reader), Ok(Some(b"second".to_vec())));
+        assert_eq!(read_frame(&mut reader), Ok(None));
     }
 }

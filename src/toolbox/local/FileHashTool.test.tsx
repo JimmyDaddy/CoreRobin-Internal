@@ -4,6 +4,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ToolboxJob } from "../contracts";
 
 const mocks = vi.hoisted(() => ({ start: vi.fn(), prepare: vi.fn(), cancel: vi.fn(), finish: vi.fn(), hash: vi.fn() }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => ({
+      "fileHash.chooseAndCompute": "选择文件并计算",
+      "fileHash.stop": "停止",
+      "fileHash.stopping": "正在停止…",
+    }[key] ?? key),
+  }),
+}));
 vi.mock("../../api", () => ({ isDesktopRuntime: () => true, hashToolboxFile: mocks.hash }));
 vi.mock("../client", () => ({
   newToolboxRequest: () => ({ requestId: "request" }),

@@ -76,6 +76,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "Le calcul SHA-256 d’un fichier nécessite l’environnement natif de bureau.",
+    "releaseUnconfirmed": "La libération de la ressource fichier n’est pas encore confirmée. Réessayez de l’arrêter.",
+    "jobIncomplete": "La tâche de fichier n’a pas abouti ; son résultat a été ignoré.",
+    "running": "Calcul en cours…",
+    "chooseAndCompute": "Choisir un fichier et calculer",
+    "stopping": "Arrêt en cours…",
+    "stop": "Arrêter",
+    "clear": "Effacer",
+    "progressLabel": "Progression de la lecture du fichier",
+    "hint": "Le sélecteur natif émet un jeton lié à l’identité du fichier. Le service natif lit des blocs de 1 Mio et revalide le fichier avant, pendant et après la lecture ; quitter la page arrête la tâche et aucune entrée n’est enregistrée dans l’historique.",
+    "clipboardFailed": "Impossible d’écrire dans le presse-papiers. Copiez l’empreinte manuellement.",
+    "copy": "Copier le SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -255,6 +269,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "Locator court (1 à 12 octets UTF-8 ; aucune valeur par défaut)",
+    "invisibleKeyPrompt": "Clé temporaire (au moins 16 octets UTF-8 ; jamais enregistrée)",
+    "invisibleDetectionKeyPrompt": "Clé de détection (identique à celle utilisée à l’écriture ; jamais enregistrée)",
+    "invisibleLocatorInvalid": "Le locator court doit contenir entre 1 et 12 octets UTF-8.",
+    "invisibleKeyInvalid": "La clé du filigrane invisible doit contenir au moins 16 octets UTF-8.",
+    "recipientLocatorsPrompt": "Locators des destinataires séparés par des virgules (1 à 30 identifiants courts ; aucune donnée personnelle)",
+    "recipientKeyPrompt": "Clé de distribution à usage unique (au moins 16 octets UTF-8 ; conservée en mémoire uniquement pour cette opération)",
+    "recipientLocatorsInvalid": "Saisissez 1 à 30 locators uniques, de 12 octets UTF-8 maximum chacun, sans donnée personnelle.",
+    "recipientKeyInvalid": "La clé de distribution à usage unique doit contenir au moins 16 octets UTF-8.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

@@ -76,6 +76,20 @@
     "stop": "Stop scan",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
+  "fileHash": {
+    "desktopOnly": "Для вычисления SHA-256 файла требуется нативная среда настольного приложения.",
+    "releaseUnconfirmed": "Освобождение файлового ресурса ещё не подтверждено. Повторите остановку.",
+    "jobIncomplete": "Операция с файлом не завершилась, поэтому результат был отброшен.",
+    "running": "Вычисление…",
+    "chooseAndCompute": "Выбрать файл и вычислить",
+    "stopping": "Остановка…",
+    "stop": "Остановить",
+    "clear": "Очистить",
+    "progressLabel": "Ход чтения файла",
+    "hint": "Нативный диалог выбора создаёт токен, привязанный к идентичности файла. Нативная служба читает блоками по 1 МиБ и повторно проверяет файл до, во время и после чтения; при уходе со страницы операция останавливается, а входные данные не сохраняются в истории.",
+    "clipboardFailed": "Не удалось записать в буфер обмена. Скопируйте дайджест вручную.",
+    "copy": "Копировать SHA-256"
+  },
   "keepAwake": {
     "desktopOnly": "Keep-awake requires the desktop native runtime; the browser preview does not change power state.",
     "invalidDuration": "The keep-awake duration must be between 1 minute and 12 hours.",
@@ -255,6 +269,15 @@
 ,
 
   "image": {
+    "invisibleLocatorPrompt": "Короткий locator (1–12 байт UTF-8; значение по умолчанию не задано)",
+    "invisibleKeyPrompt": "Временный ключ (не менее 16 байт UTF-8; не сохраняется)",
+    "invisibleDetectionKeyPrompt": "Ключ обнаружения (тот же, что использовался при записи; не сохраняется)",
+    "invisibleLocatorInvalid": "Короткий locator должен занимать от 1 до 12 байт UTF-8.",
+    "invisibleKeyInvalid": "Ключ невидимого водяного знака должен занимать не менее 16 байт UTF-8.",
+    "recipientLocatorsPrompt": "Locators получателей через запятую (1–30 коротких ID; не вводите персональные данные)",
+    "recipientKeyPrompt": "Одноразовый ключ распространения (не менее 16 байт UTF-8; хранится в памяти только во время этой операции)",
+    "recipientLocatorsInvalid": "Введите от 1 до 30 уникальных locators длиной не более 12 байт UTF-8 каждый, без персональных данных.",
+    "recipientKeyInvalid": "Одноразовый ключ распространения должен занимать не менее 16 байт UTF-8.",
     "boundary": "Local files, explicit actions, and bounded budgets; URLs are never opened automatically. Rendering, encoding, and invisible operations run in a dedicated Worker with OffscreenCanvas; stopping terminates the Worker and waits for SDK release acknowledgement: {{executor}}.",
     "selectInput": "Choose PNG / JPEG / WebP",
     "nativeInputHint": "A bound input token is issued by the native picker when processing starts; the page never receives the real path.",

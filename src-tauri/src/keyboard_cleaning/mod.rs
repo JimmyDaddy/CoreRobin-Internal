@@ -554,7 +554,9 @@ impl Controller {
         if let Some(session) = self.session.as_mut() {
             session.release_confirmed = confirmed;
         }
-        self.status = Status::Ended;
+        if confirmed {
+            self.status = Status::Ended;
+        }
         Ok(())
     }
 
@@ -633,6 +635,7 @@ impl From<HelperLifecycleReason> for EndReason {
     fn from(reason: HelperLifecycleReason) -> Self {
         match reason {
             HelperLifecycleReason::MouseActivity => Self::MouseActivity,
+            HelperLifecycleReason::HeartbeatLost => Self::HeartbeatLost,
             HelperLifecycleReason::FocusLost => Self::FocusLost,
             HelperLifecycleReason::HostExited => Self::HostExited,
             HelperLifecycleReason::Sleeping => Self::Sleeping,

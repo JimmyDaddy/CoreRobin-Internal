@@ -11,6 +11,7 @@
     "allow-get-health-state",
     "allow-show-main-window",
     "allow-quit-application",
-    "allow-toggle-companion-window"
+    "allow-toggle-companion-window",
+    "allow-stop-keyboard-cleaning"
   ]
 }
