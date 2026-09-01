@@ -29,17 +29,27 @@ const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(25);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 const HOST_HEARTBEAT_GRACE: Duration = Duration::from_secs(3);
 const HELPER_HARD_LIMIT: Duration = Duration::from_millis(HARD_LIMIT_MS);
+#[cfg(target_os = "windows")]
+const WINDOWS_MAX_MESSAGES_PER_PUMP: usize = 256;
 
 /// Returns the build-time helper capability without attempting to install an
-/// event tap. Ordinary builds remain disabled until an explicitly gated,
-/// signed macOS build has passed the permission and abnormal-release matrix.
+/// event hook. Ordinary builds remain disabled until an explicitly gated,
+/// signed platform build has passed the permission and abnormal-release matrix.
 pub const fn helper_capability() -> Capability {
     #[cfg(all(target_os = "macos", feature = "keyboard-cleaning-validated"))]
     {
         Capability::Available
     }
 
-    #[cfg(not(all(target_os = "macos", feature = "keyboard-cleaning-validated")))]
+    #[cfg(all(target_os = "windows", feature = "keyboard-cleaning-validated-windows"))]
+    {
+        Capability::Available
+    }
+
+    #[cfg(not(any(
+        all(target_os = "macos", feature = "keyboard-cleaning-validated"),
+        all(target_os = "windows", feature = "keyboard-cleaning-validated-windows")
+    )))]
     {
         Capability::Unavailable
     }
@@ -152,7 +162,9 @@ impl<B: TapBackend> HelperRuntime<B> {
             }
             Err(failure) => {
                 emit_hook_ineffective(&mut output, &request_id, failure)?;
-                return emit_released(&mut output, &request_id, true);
+                let release_confirmed = !matches!(failure, HookFailure::HookNotConfirmed);
+                emit_released(&mut output, &request_id, release_confirmed)?;
+                return if release_confirmed { Ok(()) } else { Err(()) };
             }
         };
 
@@ -180,6 +192,11 @@ impl<B: TapBackend> HelperRuntime<B> {
                     emit_hook_ineffective(&mut output, &request_id, HookFailure::HookStopped)?;
                     break Ok(());
                 }
+            }
+
+            if !tap.verify_effectiveness(callback_state.as_ref()) {
+                emit_hook_ineffective(&mut output, &request_id, HookFailure::HookStopped)?;
+                break Ok(());
             }
 
             if Instant::now() >= deadline {
@@ -234,8 +251,11 @@ impl<B: TapBackend> HelperRuntime<B> {
         // Consuming the tap invalidates its Mach port after its run-loop source
         // has been removed. Only then may `Released { confirmed: true }` be
         // emitted.
-        tap.release();
-        emit_released(&mut output, &request_id, true)?;
+        let release_confirmed = tap.release();
+        emit_released(&mut output, &request_id, release_confirmed)?;
+        if !release_confirmed {
+            return Err(());
+        }
         exit_result
     }
 }
@@ -269,7 +289,86 @@ fn trusted_parent_process() -> bool {
     std::fs::canonicalize(parent_executable).is_ok_and(|path| path == current_executable)
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+fn trusted_parent_process() -> bool {
+    windows_parent_is_same_executable()
+}
+
+#[cfg(target_os = "windows")]
+fn windows_parent_is_same_executable() -> bool {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcessId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        QueryFullProcessImageNameW,
+    };
+
+    fn process_image_path(pid: u32) -> Option<Vec<u16>> {
+        let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+        if handle.is_null() {
+            return None;
+        }
+
+        let mut buffer = vec![0_u16; 32_768];
+        let mut length = buffer.len() as u32;
+        let result =
+            unsafe { QueryFullProcessImageNameW(handle, 0, buffer.as_mut_ptr(), &mut length) };
+        unsafe {
+            CloseHandle(handle);
+        }
+        if result == 0 || length == 0 {
+            return None;
+        }
+        buffer.truncate(length as usize);
+        Some(buffer)
+    }
+
+    fn parent_pid(pid: u32) -> Option<u32> {
+        let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+        if snapshot == INVALID_HANDLE_VALUE {
+            return None;
+        }
+
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut result = None;
+        if unsafe { Process32FirstW(snapshot, &mut entry) } != 0 {
+            loop {
+                if entry.th32ProcessID == pid {
+                    result = Some(entry.th32ParentProcessID);
+                    break;
+                }
+                if unsafe { Process32NextW(snapshot, &mut entry) } == 0 {
+                    break;
+                }
+            }
+        }
+        unsafe {
+            CloseHandle(snapshot);
+        }
+        result
+    }
+
+    let current_pid = unsafe { GetCurrentProcessId() };
+    let Some(parent_pid) = parent_pid(current_pid).filter(|pid| *pid > 1) else {
+        return false;
+    };
+    let Some(current_path) = process_image_path(current_pid) else {
+        return false;
+    };
+    let Some(parent_path) = process_image_path(parent_pid) else {
+        return false;
+    };
+    String::from_utf16_lossy(&current_path)
+        .eq_ignore_ascii_case(&String::from_utf16_lossy(&parent_path))
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 const fn trusted_parent_process() -> bool {
     false
 }
@@ -395,6 +494,8 @@ enum CallbackNotice {
 #[derive(Default)]
 struct CallbackState {
     notice: AtomicU8,
+    input_events: std::sync::atomic::AtomicU64,
+    keyboard_events: std::sync::atomic::AtomicU64,
 }
 
 impl CallbackState {
@@ -414,6 +515,18 @@ impl CallbackState {
             _ => CallbackNotice::None,
         }
     }
+
+    fn record_keyboard_event(&self) {
+        self.keyboard_events.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_input_event(&self) {
+        self.input_events.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn input_event_count(&self) -> u64 {
+        self.input_events.load(Ordering::Acquire)
+    }
 }
 
 trait TapBackend {
@@ -424,12 +537,15 @@ trait TapBackend {
 
 trait InstalledTap {
     fn pump(&mut self, wait: Duration);
-    fn release(self);
+    fn verify_effectiveness(&mut self, _callback_state: &CallbackState) -> bool {
+        true
+    }
+    fn release(self) -> bool;
 }
 
 struct PlatformTapBackend;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 impl TapBackend for PlatformTapBackend {
     type Tap = UnavailableTap;
 
@@ -438,14 +554,16 @@ impl TapBackend for PlatformTapBackend {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 struct UnavailableTap;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 impl InstalledTap for UnavailableTap {
     fn pump(&mut self, _wait: Duration) {}
 
-    fn release(self) {}
+    fn release(self) -> bool {
+        true
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -510,11 +628,12 @@ mod macos {
             CFRunLoop::run_in_mode(unsafe { kCFRunLoopCommonModes }, wait, true);
         }
 
-        fn release(self) {
+        fn release(self) -> bool {
             self.run_loop
                 .remove_source(&self.source, unsafe { kCFRunLoopCommonModes });
             // `self` drops next, invalidating the CFMachPort before the caller
             // can send a confirmed release acknowledgement.
+            true
         }
     }
 
@@ -572,6 +691,170 @@ mod macos {
                 | CGEventType::OtherMouseUp
                 | CGEventType::OtherMouseDragged
         )
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod windows {
+    use super::*;
+    use std::sync::OnceLock;
+    use windows_sys::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
+    use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        CallNextHookEx, DispatchMessageW, HC_ACTION, HHOOK, MSG, PM_REMOVE, PeekMessageW,
+        SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP,
+        WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
+    };
+
+    static CALLBACK_STATE: OnceLock<Arc<CallbackState>> = OnceLock::new();
+
+    pub(super) struct WindowsTap {
+        keyboard_hook: HHOOK,
+        mouse_hook: HHOOK,
+        last_input_tick: u32,
+        callback_event_count: u64,
+    }
+
+    impl TapBackend for PlatformTapBackend {
+        type Tap = WindowsTap;
+
+        fn install(
+            &mut self,
+            callback_state: Arc<CallbackState>,
+        ) -> Result<Self::Tap, HookFailure> {
+            let Some(last_input_tick) = last_input_tick() else {
+                return Err(HookFailure::HookStopped);
+            };
+            if CALLBACK_STATE.set(callback_state).is_err() {
+                return Err(HookFailure::HookStopped);
+            }
+
+            let module: HINSTANCE = unsafe { GetModuleHandleW(std::ptr::null()) };
+            if module.is_null() {
+                return Err(HookFailure::PermissionRevoked);
+            }
+            let keyboard_hook =
+                unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_callback), module, 0) };
+            if keyboard_hook.is_null() {
+                return Err(HookFailure::PermissionRevoked);
+            }
+            let mouse_hook =
+                unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_callback), module, 0) };
+            if mouse_hook.is_null() {
+                let keyboard_released = unsafe { UnhookWindowsHookEx(keyboard_hook) != 0 };
+                return Err(if keyboard_released {
+                    HookFailure::PermissionRevoked
+                } else {
+                    HookFailure::HookNotConfirmed
+                });
+            }
+
+            Ok(WindowsTap {
+                keyboard_hook,
+                mouse_hook,
+                last_input_tick,
+                callback_event_count: 0,
+            })
+        }
+    }
+
+    impl InstalledTap for WindowsTap {
+        fn pump(&mut self, wait: Duration) {
+            let deadline = Instant::now() + wait;
+            let mut processed_messages = 0;
+            loop {
+                if Instant::now() >= deadline {
+                    return;
+                }
+                let mut message = MSG::default();
+                let mut had_message = false;
+                while processed_messages < WINDOWS_MAX_MESSAGES_PER_PUMP
+                    && Instant::now() < deadline
+                    && unsafe { PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_REMOVE) }
+                        != 0
+                {
+                    processed_messages += 1;
+                    had_message = true;
+                    if message.message == WM_QUIT {
+                        if let Some(state) = CALLBACK_STATE.get() {
+                            state.record(CallbackNotice::TapDisabled);
+                        }
+                    } else {
+                        unsafe {
+                            DispatchMessageW(&message);
+                        }
+                    }
+                }
+
+                if had_message || Instant::now() >= deadline {
+                    return;
+                }
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return;
+                }
+                thread::sleep(remaining.min(Duration::from_millis(1)));
+            }
+        }
+
+        fn verify_effectiveness(&mut self, callback_state: &CallbackState) -> bool {
+            let Some(current_input_tick) = last_input_tick() else {
+                return false;
+            };
+            let current_callback_events = callback_state.input_event_count();
+            let input_changed = current_input_tick != self.last_input_tick;
+            let callback_seen = current_callback_events != self.callback_event_count;
+            if input_changed && !callback_seen {
+                return false;
+            }
+            self.last_input_tick = current_input_tick;
+            self.callback_event_count = current_callback_events;
+            true
+        }
+
+        fn release(self) -> bool {
+            let keyboard_released = unsafe { UnhookWindowsHookEx(self.keyboard_hook) != 0 };
+            let mouse_released = unsafe { UnhookWindowsHookEx(self.mouse_hook) != 0 };
+            keyboard_released && mouse_released
+        }
+    }
+
+    fn last_input_tick() -> Option<u32> {
+        let mut info = LASTINPUTINFO {
+            cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+            dwTime: 0,
+        };
+        (unsafe { GetLastInputInfo(&mut info) } != 0).then_some(info.dwTime)
+    }
+
+    pub(super) fn is_keyboard_message(message: u32) -> bool {
+        matches!(message, WM_KEYDOWN | WM_KEYUP | WM_SYSKEYDOWN | WM_SYSKEYUP)
+    }
+
+    unsafe extern "system" fn keyboard_callback(
+        code: i32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        if code == HC_ACTION as i32 && is_keyboard_message(wparam as u32) {
+            if let Some(state) = CALLBACK_STATE.get() {
+                state.record_input_event();
+                state.record_keyboard_event();
+            }
+            return 1;
+        }
+        unsafe { CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam) }
+    }
+
+    unsafe extern "system" fn mouse_callback(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        if code == HC_ACTION as i32 {
+            if let Some(state) = CALLBACK_STATE.get() {
+                state.record_input_event();
+                state.record(CallbackNotice::MouseActivity);
+            }
+        }
+        unsafe { CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam) }
     }
 }
 

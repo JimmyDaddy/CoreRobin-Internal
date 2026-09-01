@@ -90,12 +90,13 @@ impl InstalledTap for FakeTap {
         }
     }
 
-    fn release(mut self) {
+    fn release(mut self) -> bool {
         self.released = true;
         assert!(
             self.released,
             "release acknowledgement must follow tap release"
         );
+        true
     }
 }
 
@@ -188,6 +189,28 @@ fn disabled_tap_and_permission_failure_are_both_fail_closed() {
             }),
             HelperSignal::Released(ReleasedSignal {
                 confirmed: true,
+                ..
+            })
+        ]
+    ));
+
+    let mut unconfirmed_output = Vec::new();
+    let unconfirmed_exit = run_with_io(
+        frames(&[start_command()]),
+        &mut unconfirmed_output,
+        FakeBackend::failing(HookFailure::HookNotConfirmed),
+        test_timing(),
+    );
+    assert_eq!(unconfirmed_exit, 1);
+    assert!(matches!(
+        signals(unconfirmed_output).as_slice(),
+        [
+            HelperSignal::HookIneffective(HookIneffectiveSignal {
+                failure: HookFailure::HookNotConfirmed,
+                ..
+            }),
+            HelperSignal::Released(ReleasedSignal {
+                confirmed: false,
                 ..
             })
         ]
@@ -336,7 +359,10 @@ fn unavailable_platform_signals_capability_unavailable_and_never_installs_a_tap(
     ));
 }
 
-#[cfg(not(all(target_os = "macos", feature = "keyboard-cleaning-validated")))]
+#[cfg(not(any(
+    all(target_os = "macos", feature = "keyboard-cleaning-validated"),
+    all(target_os = "windows", feature = "keyboard-cleaning-validated-windows")
+)))]
 #[test]
 fn ordinary_build_is_explicitly_unavailable() {
     assert_eq!(helper_capability(), Capability::Unavailable);
@@ -346,6 +372,26 @@ fn ordinary_build_is_explicitly_unavailable() {
 #[test]
 fn validated_macos_build_exposes_a_runtime_capability_without_installing_a_tap() {
     assert_eq!(helper_capability(), Capability::Available);
+}
+
+#[cfg(all(target_os = "windows", feature = "keyboard-cleaning-validated-windows"))]
+#[test]
+fn validated_windows_build_exposes_a_runtime_capability_without_installing_a_hook() {
+    assert_eq!(helper_capability(), Capability::Available);
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn windows_keyboard_filter_only_classifies_keyboard_messages() {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        WM_KEYDOWN, WM_KEYUP, WM_MOUSEMOVE, WM_SYSKEYDOWN, WM_SYSKEYUP,
+    };
+
+    assert!(super::windows::is_keyboard_message(WM_KEYDOWN));
+    assert!(super::windows::is_keyboard_message(WM_KEYUP));
+    assert!(super::windows::is_keyboard_message(WM_SYSKEYDOWN));
+    assert!(super::windows::is_keyboard_message(WM_SYSKEYUP));
+    assert!(!super::windows::is_keyboard_message(WM_MOUSEMOVE));
 }
 
 #[cfg(target_os = "macos")]
