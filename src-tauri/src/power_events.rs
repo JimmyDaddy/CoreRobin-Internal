@@ -60,6 +60,7 @@ impl PowerEventObserver {
 /// transition. The PowerService worker releases the native assertion after
 /// being signalled; no filesystem, storage, scan, or wake-restart work occurs
 /// on the NSWorkspace notification stack.
+#[cfg(target_os = "macos")]
 fn release_keep_awake_for_system_sleep(power: &Arc<Mutex<PowerService>>) {
     let mut power = power
         .lock()
@@ -67,6 +68,7 @@ fn release_keep_awake_for_system_sleep(power: &Arc<Mutex<PowerService>>) {
     let _ = power.handle_system_sleep();
 }
 
+#[cfg(target_os = "macos")]
 fn notify_system_wake(on_wake: &dyn Fn()) {
     on_wake();
 }
@@ -194,6 +196,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn sleep_handler_routes_to_the_existing_power_service() {
         let power = Arc::new(Mutex::new(PowerService::new()));
@@ -205,6 +208,7 @@ mod tests {
         assert_eq!(state.reason.as_deref(), Some("system_sleep"));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn wake_handler_only_invokes_the_lightweight_notifier() {
         let notifications = Arc::new(AtomicUsize::new(0));

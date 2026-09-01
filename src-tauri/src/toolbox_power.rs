@@ -83,6 +83,7 @@ impl BatteryProtection {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum BatteryState {
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
     Discharging(u8),
     #[cfg(windows)]
     NotDischarging,
@@ -421,7 +422,7 @@ impl PowerBackend for NativePowerBackend {
         #[cfg(target_os = "linux")]
         {
             let _ = timeout;
-            return Err(CommandError::new(
+            Err(CommandError::new(
                 "power_backend_requires_logind",
                 "A Portal or logind idle-inhibitor backend must be configured for this Linux build.",
             ));

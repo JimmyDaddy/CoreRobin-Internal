@@ -3708,7 +3708,10 @@ pub fn run() {
         MacosLauncher::LaunchAgent,
         Some(vec!["--background"]),
     ));
+    #[cfg(target_os = "macos")]
     let mut power_event_observer = PowerEventObserver::default();
+    #[cfg(not(target_os = "macos"))]
+    let mut power_event_observer = PowerEventObserver;
     builder
         .manage(AppState::new(background_launch))
         .manage(AppUpdateTaskManager::default())

@@ -22,7 +22,7 @@ const MAX_RESULTS: usize = 300;
 const FILE_SCAN_TIMEOUT: Duration = Duration::from_secs(10);
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 const VOLUME_SCAN_TIMEOUT: Duration = Duration::from_secs(15);
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(target_os = "macos")]
 const MAX_COMMAND_OUTPUT: usize = 8 * 1024 * 1024;
 #[cfg(target_os = "linux")]
 const MAX_PROC_MAPS_BYTES: usize = 2 * 1024 * 1024;
