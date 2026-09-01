@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub const TOOLBOX_CONTRACT_VERSION: &str = "toolbox-v1";
 pub const TOOLBOX_EVENT: &str = "core-robin:toolbox-event";
+pub const TOOLBOX_ACTIVITY_EVENT: &str = "core-robin:toolbox-activity";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

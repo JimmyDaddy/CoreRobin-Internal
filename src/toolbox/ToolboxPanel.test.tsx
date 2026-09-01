@@ -68,6 +68,7 @@ const modules = vi.hoisted(() => {
     patchLoaded: vi.fn(),
     getToolboxSnapshot: vi.fn(),
     subscribeToolboxEvents: vi.fn(),
+    subscribeToolboxActivity: vi.fn(),
     getToolboxStorageSnapshot: vi.fn(),
     listToolboxHistory: vi.fn(),
     startToolboxKeepAwake: vi.fn(),
@@ -98,6 +99,7 @@ vi.mock("./client", () => ({
     return candidate;
   },
   subscribeToolboxEvents: modules.subscribeToolboxEvents,
+  subscribeToolboxActivity: modules.subscribeToolboxActivity,
 }));
 vi.mock("./image/ImageToolbox", async () => {
   modules.imageLoaded();
@@ -116,6 +118,7 @@ beforeEach(() => {
     modules.snapshotListener = callback;
     return () => undefined;
   });
+  modules.subscribeToolboxActivity.mockImplementation(async () => () => undefined);
   modules.getToolboxStorageSnapshot.mockResolvedValue({ policy: { toolboxHistoryEnabled: true } });
   modules.listToolboxHistory.mockResolvedValue(historyPage());
   modules.startToolboxKeepAwake.mockResolvedValue({ status: "active" });

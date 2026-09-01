@@ -18,6 +18,7 @@ import {
 } from "./contracts";
 
 export const TOOLBOX_EVENT = "core-robin:toolbox-event";
+export const TOOLBOX_ACTIVITY_EVENT = "core-robin:toolbox-activity";
 
 export function newToolboxRequest(requestId = crypto.randomUUID()): ToolboxRequest {
   return { requestId };
@@ -120,6 +121,16 @@ export async function subscribeToolboxEvents(
   callback: (event: ToolboxEvent) => void,
 ): Promise<UnlistenFn> {
   return listen<ToolboxEvent>(TOOLBOX_EVENT, (event) => callback(event.payload));
+}
+
+/**
+ * Native keep-awake and process-watch workers outlive the page command that
+ * created them. This lightweight signal lets their detail views refresh after
+ * a background terminal transition without carrying process or power data in
+ * the cross-window toolbox snapshot.
+ */
+export async function subscribeToolboxActivity(callback: () => void): Promise<UnlistenFn> {
+  return listen(TOOLBOX_ACTIVITY_EVENT, () => callback());
 }
 
 export function isToolboxTool(value: string): value is ToolId {

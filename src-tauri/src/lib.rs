@@ -154,15 +154,16 @@ use tauri_nspanel::{ManagerExt as PanelManagerExt, WebviewWindowExt as PanelWind
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use tauri_plugin_notification::NotificationExt;
 use toolbox_contracts::{
-    TOOLBOX_EVENT, ToolboxEvent, ToolboxJob, ToolboxJobRequest, ToolboxSnapshot,
+    TOOLBOX_ACTIVITY_EVENT, TOOLBOX_EVENT, ToolboxEvent, ToolboxJob, ToolboxJobRequest,
+    ToolboxSnapshot,
 };
 use toolbox_file_hash::{FileHashManager, FileHashProgress, FileHashRequest, FileHashResult};
 use toolbox_power::{
     PowerCompletionOwner, PowerCompletionStatus, PowerRequest, PowerService, PowerState,
 };
 use toolbox_process_watch::{
-    ProcessWatchCancelRequest, ProcessWatchRequest, ProcessWatchService, ProcessWatchSnapshotView,
-    ProcessWatchStatus,
+    ProcessWatchCancelRequest, ProcessWatchKeepAwakeStatus, ProcessWatchRequest,
+    ProcessWatchService, ProcessWatchSnapshotView, ProcessWatchStatus,
 };
 use toolbox_scheduler::{
     SchedulerAction, SchedulerActionIntent, SchedulerCreateRequest, SchedulerIntentOutcome,
@@ -641,6 +642,7 @@ fn start_toolbox_reaper(
     std::thread::Builder::new()
         .name("core-robin-toolbox-reaper".to_owned())
         .spawn(move || {
+            let mut previous_activity = None;
             while !stop.load(Ordering::Acquire) {
                 std::thread::sleep(Duration::from_secs(1));
                 if stop.load(Ordering::Acquire) {
@@ -662,9 +664,47 @@ fn start_toolbox_reaper(
                 if let Some(snapshot) = snapshot {
                     let _ = app.emit(TOOLBOX_EVENT, ToolboxEvent::Snapshot { snapshot });
                 }
+                let state = app.state::<AppState>();
+                let current_activity = toolbox_activity_fingerprint(&state);
+                drain_power_completions(&state);
+                drain_process_watch_completions(&state);
+                if current_activity.is_some() && current_activity != previous_activity {
+                    let _ = app.emit(TOOLBOX_ACTIVITY_EVENT, ());
+                }
+                previous_activity = current_activity;
             }
         })
         .expect("failed to start the toolbox reaper");
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ToolboxActivityFingerprint {
+    power: PowerState,
+    process_watches: Vec<(u64, ProcessWatchStatus, ProcessWatchKeepAwakeStatus)>,
+}
+
+fn toolbox_activity_fingerprint(state: &AppState) -> Option<ToolboxActivityFingerprint> {
+    let power = state.toolbox_power.lock().ok()?.snapshot();
+    let mut process_watches = state
+        .toolbox_process_watch
+        .lock()
+        .ok()?
+        .snapshots()
+        .ok()?
+        .into_iter()
+        .map(|snapshot| {
+            (
+                snapshot.watch_id,
+                snapshot.status,
+                snapshot.keep_awake_status,
+            )
+        })
+        .collect::<Vec<_>>();
+    process_watches.sort_by_key(|(watch_id, _, _)| *watch_id);
+    Some(ToolboxActivityFingerprint {
+        power,
+        process_watches,
+    })
 }
 
 fn start_toolbox_scheduler_runtime(

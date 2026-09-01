@@ -39,7 +39,7 @@ import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlCom
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
-import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxEvents } from "./client";
+import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxActivity, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
 import type { KeyboardCleaningCapability } from "./system/keyboard-cleaning/keyboardCleaning";
@@ -479,18 +479,27 @@ function KeepAwakeTool() {
     if (!isDesktopRuntime()) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    void listen("system-wake", () => {
-      if (disposed) return;
+    const refresh = () => {
       void getToolboxKeepAwakeState()
         .then((next) => { if (!disposed) setState(JSON.stringify(next, null, 2)); })
         .catch((reason) => { if (!disposed) setError(userFacingError(reason)); });
+    };
+    void listen("system-wake", () => {
+      if (disposed) return;
+      refresh();
     }).then((nextUnlisten) => {
       if (disposed) nextUnlisten();
       else unlisten = nextUnlisten;
     }).catch(() => undefined);
+    let unlistenActivity: (() => void) | undefined;
+    void subscribeToolboxActivity(refresh).then((nextUnlisten) => {
+      if (disposed) nextUnlisten();
+      else unlistenActivity = nextUnlisten;
+    }).catch(() => undefined);
     return () => {
       disposed = true;
       unlisten?.();
+      unlistenActivity?.();
     };
   }, []);
   const start = async () => {
@@ -699,7 +708,22 @@ function ProcessWatchTool() {
     }
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    void refresh();
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void subscribeToolboxActivity(() => {
+      if (!disposed) void refresh();
+    }).then((nextUnlisten) => {
+      if (disposed) nextUnlisten();
+      else unlisten = nextUnlisten;
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   const start = async () => {
     if (!isDesktopRuntime()) {
