@@ -92,12 +92,12 @@ export function FileHashTool() {
     }
   };
 
-  return <section className="toolbox-tool-layout" aria-label={t("tools.file-sha256.title")}>
-    <div className="toolbox-inline-actions"><button className="button button--primary" type="button" disabled={running} onClick={() => void run()}><FileCheck2 size={15} />{running ? t("fileHash.running") : t("fileHash.chooseAndCompute")}</button>{running ? <button className="button button--secondary" type="button" onClick={cancel}><Square size={14} />{stopping ? t("fileHash.stopping") : t("fileHash.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { setFileName(""); setOutput(""); setError(""); setProgress(0); }}>{t("fileHash.clear")}</button></div>
-    {fileName ? <p>{fileName}</p> : null}
-    {running ? <progress aria-label={t("fileHash.progressLabel")} max="1" value={progress} /> : null}
-    {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
-    <p className="toolbox-hint">{t("fileHash.hint")}</p>
-    {output ? <div className="toolbox-result"><pre>{output}</pre><button className="button button--secondary" type="button" onClick={() => { void navigator.clipboard.writeText(output).catch(() => setError(t("fileHash.clipboardFailed"))); }}><Copy size={14} />{t("fileHash.copy")}</button></div> : null}
+  return <section className="toolbox-tool-layout file-hash-tool" aria-label={t("tools.file-sha256.title")}>
+    <div className="toolbox-inline-actions file-hash-tool__actions"><button className="button button--primary" type="button" disabled={running} onClick={() => void run()}><FileCheck2 size={15} />{running ? t("fileHash.running") : t("fileHash.chooseAndCompute")}</button>{running ? <button className="button button--secondary" type="button" onClick={cancel}><Square size={14} />{stopping ? t("fileHash.stopping") : t("fileHash.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={running} onClick={() => { setFileName(""); setOutput(""); setError(""); setProgress(0); }}>{t("fileHash.clear")}</button></div>
+    {fileName ? <div className="file-hash-tool__selected"><FileCheck2 size={16} /><span><small>SHA-256</small><strong title={fileName}>{fileName}</strong></span></div> : null}
+    {running ? <div className="file-hash-tool__progress"><progress aria-label={t("fileHash.progressLabel")} max="1" value={progress} /><span>{Math.round(progress * 100)}%</span></div> : null}
+    {error ? <p className="toolbox-error file-hash-tool__error" role="alert">{error}</p> : null}
+    <p className="toolbox-hint file-hash-tool__hint">{t("fileHash.hint")}</p>
+    {output ? <div className="toolbox-result file-hash-tool__result"><div className="file-hash-tool__result-header"><span><FileCheck2 size={15} /><strong>SHA-256</strong></span><button className="button button--secondary" type="button" onClick={() => { void navigator.clipboard.writeText(output).catch(() => setError(t("fileHash.clipboardFailed"))); }}><Copy size={14} />{t("fileHash.copy")}</button></div><code>{output}</code></div> : null}
   </section>;
 }

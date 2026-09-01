@@ -328,6 +328,7 @@ function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability })
 }
 
 function ToolContent({ toolId, capability }: { toolId: ToolId; capability: ToolboxCapability }) {
+  const { t } = useTranslation("toolbox");
   switch (toolId) {
     case "json": return <JsonTool />;
     case "url": return <UrlTool />;
@@ -340,7 +341,7 @@ function ToolContent({ toolId, capability }: { toolId: ToolId; capability: Toolb
     case "file-occupancy": return <OccupancyTool />;
     case "keep-awake": return <KeepAwakeTool />;
     case "process-watch": return <ProcessWatchTool />;
-    case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability)} />;
+    case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability, t)} />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
     case "network-addresses": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} />;
@@ -367,7 +368,7 @@ function ToolContent({ toolId, capability }: { toolId: ToolId; capability: Toolb
   }
 }
 
-function toKeyboardCleaningCapability(capability: ToolboxCapability): KeyboardCleaningCapability {
+function toKeyboardCleaningCapability(capability: ToolboxCapability, t: ToolboxTFunction): KeyboardCleaningCapability {
   if (!isDesktopRuntime()) {
     return {
       state: "unavailable",
@@ -379,7 +380,9 @@ function toKeyboardCleaningCapability(capability: ToolboxCapability): KeyboardCl
   return {
     state: capability.state === "available" ? "available" : "unavailable",
     platform: platform === "macos" || platform === "windows" || platform === "linux" ? platform : "unknown",
-    reason: capability.reason,
+    reason: capability.reason === "This tool requires a restricted native helper that is not registered."
+      ? t("overview.restrictedNativeHelperUnavailable.description")
+      : capability.reason,
   };
 }
 
@@ -759,7 +762,7 @@ function looksLikeJson(value: string): boolean {
 }
 
 function highlightJsonLine(line: string): ReactNode[] {
-  const token = /("(?:\\.|[^"\\])*")|(-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(\b(?:true|false|null)\b)|([{}\[\],:])/g;
+  const token = /("(?:\\.|[^"\\])*")|(-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(\b(?:true|false|null)\b)|(\{|\}|\[|\]|,|:)/g;
   const result: ReactNode[] = [];
   let cursor = 0;
   let match: RegExpExecArray | null;

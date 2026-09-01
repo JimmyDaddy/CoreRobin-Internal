@@ -181,19 +181,21 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
   return <>
     <section className="toolbox-tool-layout keyboard-cleaning-tool" aria-labelledby="keyboard-cleaning-title">
       <div className="toolbox-tool-layout__body">
-        <header>
+        <header className="keyboard-cleaning-tool__header">
           <span className="toolbox-eyebrow"><ShieldCheck size={14} />{t("keyboardCleaning.eyebrow")}</span>
           <h2 id="keyboard-cleaning-title">{t("keyboardCleaning.title")}</h2>
           <p>{t("keyboardCleaning.description")}</p>
         </header>
-        <p className="toolbox-hint"><CircleAlert size={15} />{t("keyboardCleaning.privacy")}</p>
-        <div className="toolbox-inline-actions">
+        <p className="toolbox-hint keyboard-cleaning-tool__privacy"><CircleAlert size={15} />{t("keyboardCleaning.privacy")}</p>
+        <div className="toolbox-inline-actions keyboard-cleaning-tool__actions">
           <label>{t("keyboardCleaning.durationLabel")}<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>{t("keyboardCleaning.duration", { count: 30 })}</option><option value={60}>{t("keyboardCleaning.duration", { count: 60 })}</option><option value={120}>{t("keyboardCleaning.duration", { count: 120 })}</option></select></label>
           <button className="button button--primary" type="button" disabled={!canStart} onClick={() => apply({ type: "start", requestId: crypto.randomUUID(), durationSeconds, nowMs: clock() })}><Timer size={14} />{t("keyboardCleaning.start")}</button>
           {cleaning ? <button className="button button--secondary" type="button" onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />{t("keyboardCleaning.stop")}</button> : null}
         </div>
-        <p className="toolbox-hint" role="status">{t("keyboardCleaning.capability.label")}: {capabilityText} · {t("keyboardCleaning.status.label")}: {statusText}{state.endReason ? ` · ${t("keyboardCleaning.reason", { reason: t(END_REASON_KEYS[state.endReason]) })}` : ""}</p>
-        {state.status === "active" && state.hardDeadlineMs !== null ? <p className="toolbox-hint">{t("keyboardCleaning.hardDeadline", { time: new Date(state.hardDeadlineMs).toLocaleTimeString() })}</p> : null}
+        <div className="keyboard-cleaning-tool__status" data-state={state.status}>
+          <p className="toolbox-hint" role="status"><span className="keyboard-cleaning-tool__status-dot" aria-hidden="true" /> <span><strong>{t("keyboardCleaning.status.label")}: {statusText}</strong><br />{t("keyboardCleaning.capability.label")}: {capabilityText}{state.endReason ? ` · ${t("keyboardCleaning.reason", { reason: t(END_REASON_KEYS[state.endReason]) })}` : ""}</span></p>
+          {state.status === "active" && state.hardDeadlineMs !== null ? <p className="toolbox-hint">{t("keyboardCleaning.hardDeadline", { time: new Date(state.hardDeadlineMs).toLocaleTimeString() })}</p> : null}
+        </div>
         {error ? <p className="toolbox-error" role="alert">{error}</p> : null}
         {!effectiveBridge ? <p className="toolbox-hint">{t("keyboardCleaning.noBridge")}</p> : null}
       </div>

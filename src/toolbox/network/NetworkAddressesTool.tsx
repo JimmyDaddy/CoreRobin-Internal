@@ -1,6 +1,6 @@
-import { CircleAlert, Copy, Network, RefreshCw } from "lucide-react";
+import { CircleAlert, CircleCheck, Copy, Network, RefreshCw } from "lucide-react";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { userFacingError, ToolboxInputError } from "../local/toolboxErrors";
@@ -20,6 +20,7 @@ export interface NetworkAddressesToolProps {
   initialView?: "live" | "ifconfig";
 }
 
+type NetworkAddressesView = "live" | "ifconfig";
 type ToolboxTFunction = TFunction<"toolbox">;
 
 const CLASSIFICATION_KEYS = {
@@ -72,7 +73,9 @@ const EXPLANATION_KEYS = {
 
 export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: NetworkAddressesToolProps) {
   const { t } = useTranslation("toolbox");
-  const [view, setView] = useState<"live" | "ifconfig">(initialView);
+  const [view, setView] = useState<NetworkAddressesView>(initialView);
+  const liveTabRef = useRef<HTMLButtonElement>(null);
+  const ifconfigTabRef = useRef<HTMLButtonElement>(null);
   const requestGeneration = useRef(0);
   const [snapshot, setSnapshot] = useState<NetworkAddressesSnapshot | null>(null);
   const [interfaces, setInterfaces] = useState<ParsedInterface[]>([]);
@@ -138,6 +141,15 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
     }
   };
 
+  const selectView = (nextView: NetworkAddressesView) => setView(nextView);
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextView = event.key === "ArrowRight" || event.key === "End" ? "ifconfig" : "live";
+    selectView(nextView);
+    (nextView === "live" ? liveTabRef : ifconfigTabRef).current?.focus();
+  };
+
   const liveSummary = useMemo(() => interfaces.map((item) => interfaceSummary(item, t)).join("\n\n"), [interfaces, t]);
 
   return (
@@ -148,54 +160,129 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
           <h2 id="network-addresses-title">{t("networkAddresses.title")}</h2>
           <p>{t("networkAddresses.description")}</p>
         </div>
-        {view === "live" ? <button className="button button--secondary" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={14} />{loading ? t("networkAddresses.refreshing") : t("networkAddresses.refresh")}</button> : null}
+        {view === "live" ? (
+          <button className="button button--secondary" type="button" onClick={() => void refresh()} disabled={loading}>
+            <RefreshCw className={loading ? "is-spinning" : undefined} size={14} />
+            {loading ? t("networkAddresses.refreshing") : t("networkAddresses.refresh")}
+          </button>
+        ) : null}
       </header>
 
       <p className="network-addresses-tool__privacy"><CircleAlert size={15} />{t("networkAddresses.privacy")}</p>
-      <div className="network-addresses-tool__tabs" role="tablist" aria-label={t("networkAddresses.tabs.label")}>
-        <button id="network-addresses-tab-live" type="button" role="tab" aria-selected={view === "live"} aria-controls="network-addresses-panel-live" className={view === "live" ? "is-active" : ""} onClick={() => setView("live")}>{t("networkAddresses.tabs.live")}</button>
-        <button id="network-addresses-tab-ifconfig" type="button" role="tab" aria-selected={view === "ifconfig"} aria-controls="network-addresses-panel-ifconfig" className={view === "ifconfig" ? "is-active" : ""} onClick={() => setView("ifconfig")}>{t("networkAddresses.tabs.ifconfig")}</button>
+      <div className="network-addresses-tool__tabs" role="tablist" aria-label={t("networkAddresses.tabs.label")} aria-orientation="horizontal">
+        <button ref={liveTabRef} id="network-addresses-tab-live" type="button" role="tab" aria-selected={view === "live"} aria-controls="network-addresses-panel-live" tabIndex={view === "live" ? 0 : -1} className={view === "live" ? "is-active" : ""} onClick={() => selectView("live")} onKeyDown={handleTabKeyDown}>{t("networkAddresses.tabs.live")}</button>
+        <button ref={ifconfigTabRef} id="network-addresses-tab-ifconfig" type="button" role="tab" aria-selected={view === "ifconfig"} aria-controls="network-addresses-panel-ifconfig" tabIndex={view === "ifconfig" ? 0 : -1} className={view === "ifconfig" ? "is-active" : ""} onClick={() => selectView("ifconfig")} onKeyDown={handleTabKeyDown}>{t("networkAddresses.tabs.ifconfig")}</button>
       </div>
 
       {error ? <p className="toolbox-error" role="alert"><CircleAlert size={15} />{error}</p> : null}
-      {copyStatus ? <p className="network-addresses-tool__copy-status" role="status">{copyStatus}</p> : null}
+      {copyStatus ? <p className="network-addresses-tool__copy-status" role="status" aria-live="polite"><CircleCheck size={16} />{copyStatus}</p> : null}
 
       {view === "live" ? (
-        <div id="network-addresses-panel-live" role="tabpanel" aria-labelledby="network-addresses-tab-live" tabIndex={0}>
-          {snapshot ? <p className="toolbox-hint">{t("networkAddresses.live.sampledAt", { time: new Date(snapshot.sampledAtMs).toLocaleString() })} · {t("networkAddresses.live.interfaceCount", { count: interfaces.length })}{snapshot.interfacesTruncated ? ` ${t("networkAddresses.live.truncated")}` : ""} · {t("networkAddresses.live.noUniqueIp")}</p> : null}
-          {interfaces.length > 0 ? <div className="network-addresses-tool__actions"><button className="button button--secondary" type="button" onClick={() => void copyText(liveSummary, t("networkAddresses.copy.allLabel"))}><Copy size={14} />{t("networkAddresses.copy.all")}</button></div> : null}
-          <div className="network-addresses-tool__cards">
-            {interfaces.length > 0 ? interfaces.map((item) => <InterfaceCard key={item.name} item={item} onCopy={copyText} t={t} />) : <p className="network-addresses-tool__empty">{loading ? t("networkAddresses.live.reading") : t("networkAddresses.live.empty")}</p>}
-          </div>
+        <div id="network-addresses-panel-live" role="tabpanel" aria-labelledby="network-addresses-tab-live" tabIndex={0} className="network-addresses-tool__workspace" aria-busy={loading}>
+          {snapshot ? <LiveStatusSummary snapshot={snapshot} interfaceCount={interfaces.length} t={t} /> : null}
+          {loading ? <LoadingState t={t} /> : null}
+          {!loading && snapshot && interfaces.length === 0 ? <EmptyState message={t("networkAddresses.live.empty")} /> : null}
+          {!loading && interfaces.length > 0 ? (
+            <div className="network-addresses-tool__result-bar">
+              <p className="toolbox-hint">{t("networkAddresses.live.noUniqueIp")}</p>
+              <button className="button button--secondary" type="button" onClick={() => void copyText(liveSummary, t("networkAddresses.copy.allLabel"))}><Copy size={14} />{t("networkAddresses.copy.all")}</button>
+            </div>
+          ) : null}
+          {!loading && interfaces.length > 0 ? <InterfaceCards interfaces={interfaces} onCopy={copyText} t={t} /> : null}
         </div>
       ) : (
         <div id="network-addresses-panel-ifconfig" role="tabpanel" aria-labelledby="network-addresses-tab-ifconfig" tabIndex={0} className="network-addresses-tool__paste">
-          <textarea className="toolbox-input toolbox-input--code" value={ifconfigInput} onChange={(event) => setIfconfigInput(event.target.value)} placeholder={t("networkAddresses.paste.placeholder")} aria-label={t("networkAddresses.paste.inputLabel")} />
-          <div className="network-addresses-tool__actions"><button className="button button--primary" type="button" onClick={parsePastedIfconfig}><Network size={14} />{t("networkAddresses.paste.parse")}</button>{ifconfigInterfaces ? <button className="button button--secondary" type="button" onClick={() => void copyText(ifconfigInterfaces.map((item) => interfaceSummary(item, t)).join("\n\n"), t("networkAddresses.copy.parsedLabel"))}><Copy size={14} />{t("networkAddresses.copy.parsed")}</button> : null}</div>
-          <p className="toolbox-hint">{t("networkAddresses.paste.limits")}</p>
-          {ifconfigInterfaces ? <div className="network-addresses-tool__cards">{ifconfigInterfaces.length > 0 ? ifconfigInterfaces.map((item) => <InterfaceCard key={item.name} item={item} onCopy={copyText} t={t} />) : <p className="network-addresses-tool__empty">{t("networkAddresses.paste.empty")}</p>}</div> : null}
+          <div className="network-addresses-tool__paste-input">
+            <textarea className="toolbox-input toolbox-input--code" value={ifconfigInput} onChange={(event) => setIfconfigInput(event.target.value)} placeholder={t("networkAddresses.paste.placeholder")} aria-label={t("networkAddresses.paste.inputLabel")} />
+            <p className="toolbox-hint">{t("networkAddresses.paste.limits")}</p>
+          </div>
+          <div className="network-addresses-tool__actions">
+            <button className="button button--primary" type="button" onClick={parsePastedIfconfig}><Network size={14} />{t("networkAddresses.paste.parse")}</button>
+            {ifconfigInterfaces ? <button className="button button--secondary" type="button" onClick={() => void copyText(ifconfigInterfaces.map((item) => interfaceSummary(item, t)).join("\n\n"), t("networkAddresses.copy.parsedLabel"))}><Copy size={14} />{t("networkAddresses.copy.parsed")}</button> : null}
+          </div>
+          {ifconfigInterfaces ? (ifconfigInterfaces.length > 0 ? <InterfaceCards interfaces={ifconfigInterfaces} onCopy={copyText} t={t} /> : <EmptyState message={t("networkAddresses.paste.empty")} />) : null}
         </div>
       )}
     </section>
   );
 }
 
-function InterfaceCard({ item, onCopy, t }: { item: ParsedInterface; onCopy: (text: string, label: string) => Promise<void>; t: ToolboxTFunction }) {
+function LiveStatusSummary({ snapshot, interfaceCount, t }: { snapshot: NetworkAddressesSnapshot; interfaceCount: number; t: ToolboxTFunction }) {
   return (
-    <article className="network-address-card">
+    <section className="network-addresses-tool__summary" aria-label={t("networkAddresses.tabs.live")}>
+      <div className="network-addresses-tool__summary-status"><span aria-hidden="true" /><p>{t("networkAddresses.live.sampledAt", { time: new Date(snapshot.sampledAtMs).toLocaleString() })}</p></div>
+      <div className="network-addresses-tool__summary-metrics">
+        <strong>{t("networkAddresses.live.interfaceCount", { count: interfaceCount })}</strong>
+        {snapshot.interfacesTruncated ? <span>{t("networkAddresses.live.truncated")}</span> : null}
+      </div>
+    </section>
+  );
+}
+
+function LoadingState({ t }: { t: ToolboxTFunction }) {
+  return (
+    <div className="network-addresses-tool__loading" role="status" aria-live="polite">
+      <RefreshCw className="is-spinning" size={17} aria-hidden="true" />
+      <span>{t("networkAddresses.live.reading")}</span>
+      <span className="network-addresses-tool__loading-lines" aria-hidden="true"><i /><i /><i /></span>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return <div className="network-addresses-tool__empty"><Network size={19} aria-hidden="true" /><p>{message}</p></div>;
+}
+
+function InterfaceCards({ interfaces, onCopy, t }: { interfaces: ParsedInterface[]; onCopy: (text: string, label: string) => Promise<void>; t: ToolboxTFunction }) {
+  return <div className="network-addresses-tool__cards">{interfaces.map((item, index) => <InterfaceCard key={item.name} item={item} index={index} onCopy={onCopy} t={t} />)}</div>;
+}
+
+function InterfaceCard({ item, index, onCopy, t }: { item: ParsedInterface; index: number; onCopy: (text: string, label: string) => Promise<void>; t: ToolboxTFunction }) {
+  const stateTone = item.state?.toLowerCase() === "up" ? "up" : item.state?.toLowerCase() === "down" ? "down" : "unknown";
+  return (
+    <article className="network-address-card" style={{ "--network-address-card-index": index } as CSSProperties}>
       <header className="network-address-card__header">
-        <div><h3>{item.name}</h3><span>{item.state ? t("networkAddresses.interface.stateValue", { state: item.state }) : t("networkAddresses.interface.unknownState")}</span></div>
+        <div>
+          <p className="network-address-card__eyebrow">{t("networkAddresses.interface.name")}</p>
+          <h3>{item.name}</h3>
+          <span className={`network-address-card__state is-${stateTone}`}><i aria-hidden="true" />{item.state ? t("networkAddresses.interface.stateValue", { state: item.state }) : t("networkAddresses.interface.unknownState")}</span>
+        </div>
         <button className="button button--secondary" type="button" onClick={() => void onCopy(interfaceSummary(item, t), `${item.name} ${t("networkAddresses.copy.summarySuffix")}`)}><Copy size={14} />{t("networkAddresses.copy.card")}</button>
       </header>
-      <dl className="network-address-card__meta"><div><dt>{t("networkAddresses.interface.mtu")}</dt><dd>{item.mtu ?? t("networkAddresses.interface.unknown")}</dd></div><div><dt>{t("networkAddresses.interface.mac")}</dt><dd>{item.mac ?? t("networkAddresses.interface.noMac")}</dd></div><div><dt>{t("networkAddresses.interface.addressCountLabel")}</dt><dd>{item.addresses.length}{item.addressesTruncated ? ` ${t("networkAddresses.interface.truncated")}` : ""}</dd></div>{item.unknownLines > 0 ? <div><dt>{t("networkAddresses.interface.unknownLines")}</dt><dd>{item.unknownLines}</dd></div> : null}</dl>
-      {item.addresses.length > 0 ? <ul className="network-address-card__addresses">{item.addresses.map((address) => <AddressRow key={`${address.family}-${address.address}-${address.prefix ?? "none"}-${address.scope ?? ""}`} address={address} onCopy={onCopy} t={t} />)}</ul> : <p className="network-address-card__empty">{t("networkAddresses.interface.noAddress")}</p>}
+      <dl className="network-address-card__meta">
+        <div><dt>{t("networkAddresses.interface.mtu")}</dt><dd>{item.mtu ?? t("networkAddresses.interface.unknown")}</dd></div>
+        <div><dt>{t("networkAddresses.interface.mac")}</dt><dd>{item.mac ?? t("networkAddresses.interface.noMac")}</dd></div>
+        <div><dt>{t("networkAddresses.interface.addressCountLabel")}</dt><dd>{item.addresses.length}{item.addressesTruncated ? ` ${t("networkAddresses.interface.truncated")}` : ""}</dd></div>
+        {item.unknownLines > 0 ? <div><dt>{t("networkAddresses.interface.unknownLines")}</dt><dd>{item.unknownLines}</dd></div> : null}
+      </dl>
+      {item.addresses.length > 0 ? <ul className="network-address-card__addresses" aria-label={t("networkAddresses.interface.addressCountLabel")}>{item.addresses.map((address) => <AddressRow key={`${address.family}-${address.address}-${address.prefix ?? "none"}-${address.scope ?? ""}`} address={address} onCopy={onCopy} t={t} />)}</ul> : <p className="network-address-card__empty">{t("networkAddresses.interface.noAddress")}</p>}
     </article>
   );
 }
 
 function AddressRow({ address, onCopy, t }: { address: ParsedAddress; onCopy: (text: string, label: string) => Promise<void>; t: ToolboxTFunction }) {
-  const display = `${address.address}${address.scope ? `%${address.scope}` : ""}${address.prefix === null ? "" : `/${address.prefix}`}`;
-  return <li className="network-address-row"><div className="network-address-row__top"><code>{display}</code><span className={`network-address-row__classification is-${address.classification}`}>{t(CLASSIFICATION_KEYS[address.classification])}</span><button className="icon-button" type="button" aria-label={t("networkAddresses.copy.addressAria", { address: display })} onClick={() => void onCopy(display, t("networkAddresses.copy.addressLabel"))}><Copy size={14} /></button></div><div className="network-address-row__details"><span>{t(FAMILY_KEYS[address.family])}</span>{address.mask ? <span>{t("networkAddresses.address.mask")} {address.mask}</span> : null}{address.network ? <span>{t("networkAddresses.address.network")} {address.network}</span> : null}{address.broadcast ? <span>{t("networkAddresses.address.broadcast")} {address.broadcast}</span> : address.family === "ipv4" && address.prefix !== null ? <span>{t("networkAddresses.address.noBroadcastFormula")}</span> : null}{address.scope ? <span>{t("networkAddresses.address.scope")} {address.scope}</span> : null}</div><p>{t(EXPLANATION_KEYS[address.family][address.classification])}</p></li>;
+  const display = addressDisplay(address);
+  return (
+    <li className="network-address-row">
+      <div className="network-address-row__top">
+        <code>{display}</code>
+        <span className="network-address-row__family">{t(FAMILY_KEYS[address.family])}</span>
+        <span className={`network-address-row__classification is-${address.classification}`}>{t(CLASSIFICATION_KEYS[address.classification])}</span>
+        <button className="icon-button" type="button" aria-label={t("networkAddresses.copy.addressAria", { address: display })} onClick={() => void onCopy(display, t("networkAddresses.copy.addressLabel"))}><Copy size={14} /></button>
+      </div>
+      <div className="network-address-row__details">
+        {address.mask ? <span>{t("networkAddresses.address.mask")} {address.mask}</span> : null}
+        {address.network ? <span>{t("networkAddresses.address.network")} {address.network}</span> : null}
+        {address.broadcast ? <span>{t("networkAddresses.address.broadcast")} {address.broadcast}</span> : address.family === "ipv4" && address.prefix !== null ? <span>{t("networkAddresses.address.noBroadcastFormula")}</span> : null}
+        {address.scope ? <span>{t("networkAddresses.address.scope")} {address.scope}</span> : null}
+      </div>
+      <p>{t(EXPLANATION_KEYS[address.family][address.classification])}</p>
+    </li>
+  );
+}
+
+function addressDisplay(address: ParsedAddress): string {
+  return `${address.address}${address.scope ? `%${address.scope}` : ""}${address.prefix === null ? "" : `/${address.prefix}`}`;
 }
 
 function interfaceSummary(item: ParsedInterface, t: ToolboxTFunction): string {
@@ -205,6 +292,6 @@ function interfaceSummary(item: ParsedInterface, t: ToolboxTFunction): string {
     `${t("networkAddresses.interface.mtu")}: ${item.mtu ?? t("networkAddresses.interface.unknown")}`,
     `${t("networkAddresses.interface.mac")}: ${item.mac ?? t("networkAddresses.interface.noMac")}`,
   ];
-  for (const address of item.addresses) lines.push(`${t("networkAddresses.address.label")}: ${address.address}${address.scope ? `%${address.scope}` : ""}${address.prefix === null ? "" : `/${address.prefix}`} · ${t(CLASSIFICATION_KEYS[address.classification])}${address.network ? ` · ${t("networkAddresses.address.network")} ${address.network}` : ""}`);
+  for (const address of item.addresses) lines.push(`${t("networkAddresses.address.label")}: ${addressDisplay(address)} · ${t(CLASSIFICATION_KEYS[address.classification])}${address.network ? ` · ${t("networkAddresses.address.network")} ${address.network}` : ""}`);
   return lines.join("\n");
 }
