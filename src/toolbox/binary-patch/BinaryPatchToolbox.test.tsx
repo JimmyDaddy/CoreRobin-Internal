@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import i18n from "../../i18n";
+import type { ToolboxJob } from "../contracts";
 
 const mocks = vi.hoisted(() => ({
   createObjectUrl: vi.fn(() => "blob:patch-plan"),
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   planPatchesFromSources: vi.fn(),
   createPatchCollection: vi.fn(),
   cancel: vi.fn(),
+  cancelOutput: vi.fn(),
   desktopRuntime: false,
   finish: vi.fn(),
   generateVerifiedPatch: vi.fn(),
@@ -25,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../api", () => ({ isDesktopRuntime: () => mocks.desktopRuntime }));
 vi.mock("../client", () => ({
   cancelToolboxJob: mocks.cancel,
-  cancelToolboxOutput: vi.fn(),
+  cancelToolboxOutput: mocks.cancelOutput,
   exportToolboxOutput: vi.fn(),
   finishToolboxJob: mocks.finish,
   newToolboxRequest: () => ({ requestId: "request" }),
@@ -66,6 +68,7 @@ beforeEach(async () => {
   });
   mocks.start.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, outputToken: null, terminalReason: null, error: null });
   mocks.cancel.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
+  mocks.cancelOutput.mockResolvedValue(undefined);
   mocks.finish.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "failed", outputExpiresAtMs: null, outputToken: null, terminalReason: "failed", error: null });
   mocks.prepare.mockImplementation(async (_job, role) => [{ token: role, displayName: `${role}.bin` }]);
   mocks.readBound.mockImplementation(async (_job, token) => new Uint8Array(token.token === "input" ? [6] : token.token === "patch" ? [8] : [7]));
@@ -94,7 +97,7 @@ it("turns a browser release plan into a downloadable formal patch collection", a
   const download = await screen.findByRole("link", { name: "下载计划/补丁集合预览（非正式导出）" });
   await waitFor(() => expect(mocks.createPatchCollection).toHaveBeenCalledOnce());
   expect(mocks.planPatches).toHaveBeenCalledWith(new Uint8Array([7]), [{ name: "baseline.bin", data: new Uint8Array([6]) }], 0.8, expect.any(AbortSignal));
-  expect(mocks.createPatchCollection).toHaveBeenCalledWith({ name: "target.bin", data: new Uint8Array([7]) }, { results: [] });
+  expect(mocks.createPatchCollection).toHaveBeenCalledWith({ name: "target.bin", data: new Uint8Array([7]) }, { results: [] }, undefined, expect.any(AbortSignal));
   expect(download.getAttribute("download")).toBe("corerobin-patch-collection.zip");
   expect(download.getAttribute("href")).toBe("blob:patch-plan");
 });
@@ -128,6 +131,7 @@ it("keeps desktop patch output on the native TTL and atomic-save path", async ()
     jobId: "job",
     validation: "verified",
   }));
+  expect(mocks.revalidate.mock.invocationCallOrder[0]).toBeLessThan(mocks.register.mock.invocationCallOrder[0]);
   expect(mocks.prepare.mock.calls.map(([, role]) => role)).toEqual(["input", "target"]);
 });
 
@@ -161,16 +165,43 @@ it("marks an integrity manifest verified only after a byte-exact replay", async 
   expect(screen.getByText(/replay_byte_exact/)).toBeTruthy();
 });
 
-it("keeps an integrity manifest unverified when replay cannot prove it", async () => {
+it("does not register an integrity manifest as a formal output when replay cannot prove it", async () => {
   mocks.desktopRuntime = true;
   mocks.applyPatchAndVerify.mockRejectedValue(Object.assign(new Error("Patch replay failed."), { code: "EVERIFICATION" }));
   render(<BinaryPatchToolbox toolId="integrity-manifest" />);
 
   fireEvent.click(screen.getByRole("button", { name: "生成完整性清单" }));
 
-  await screen.findByRole("button", { name: "正式另存结果" });
-  expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "unverified" }));
-  expect(screen.getByText(/EVERIFICATION/)).toBeTruthy();
+  await waitFor(() => expect(mocks.finish).toHaveBeenCalledWith(expect.objectContaining({ succeeded: false })));
+  expect(mocks.register).not.toHaveBeenCalled();
+  expect(screen.getAllByText(/EVERIFICATION/).length).toBeGreaterThan(0);
+});
+
+it("does not register a formal output after native input revalidation fails", async () => {
+  mocks.desktopRuntime = true;
+  mocks.revalidate.mockRejectedValueOnce(new Error("source changed"));
+  render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+
+  await waitFor(() => expect(mocks.finish).toHaveBeenCalledWith(expect.objectContaining({ succeeded: false })));
+  expect(mocks.register).not.toHaveBeenCalled();
+});
+
+it("revokes a native output that finishes registration after cancellation", async () => {
+  mocks.desktopRuntime = true;
+  let resolveRegistration!: (job: ToolboxJob) => void;
+  mocks.register.mockImplementationOnce(() => new Promise<ToolboxJob>((resolve) => { resolveRegistration = resolve; }));
+  render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+  await waitFor(() => expect(mocks.register).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "停止" }));
+  resolveRegistration({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "output_ready", outputExpiresAtMs: 99, outputToken: { token: "output", jobId: "job", generation: 1, resetEpoch: 3, byteLength: 2, expiresAtMs: 99, validation: "verified" }, terminalReason: null, error: null });
+
+  await waitFor(() => expect(mocks.cancelOutput).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job", outputToken: "output" })));
+  expect(mocks.cancel).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job" }));
+  expect(screen.queryByRole("button", { name: "正式另存结果" })).toBeNull();
 });
 
 it("does not report a second input release after a terminal native failure already released ownership", async () => {

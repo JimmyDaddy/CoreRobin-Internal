@@ -68,6 +68,7 @@
     "binding": "Confirming target…",
     "requestClose": "Request exit",
     "restart": "Restart app",
+    "watchExit": "Notify when it exits",
     "forceKill": "Force quit…"
   },
   "history": {

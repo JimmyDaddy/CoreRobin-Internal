@@ -130,6 +130,9 @@ textarea.toolbox-input { min-height: 150px; resize: vertical; }
 .toolbox-tool-layout__body { gap: 16px; }
 .toolbox-input, .toolbox-inline-actions select, .toolbox-inline-actions input[type=number], .toolbox-inline-actions > select { transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
 .toolbox-form-grid label { display: grid; gap: 7px; min-width: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
+.toolbox-readonly-field { display: grid; gap: 7px; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--surface) 78%, var(--blue) 6%); color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
+.toolbox-readonly-field strong { color: var(--text-primary); font-family: var(--font-mono); font-size: 14px; }
+.toolbox-readonly-field small { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
 .toolbox-form-grid select { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; outline: 0; background: var(--surface); color: var(--text-primary); }
 .toolbox-checkbox { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; }
 .toolbox-checkbox input, .toolbox-inline-actions input[type="checkbox"] { accent-color: var(--blue); }

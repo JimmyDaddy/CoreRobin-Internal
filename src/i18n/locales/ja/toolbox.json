@@ -101,6 +101,7 @@
     "hours": "{{count}} hours",
     "start": "Start keep-awake",
     "stop": "Stop and release",
+    "retryRelease": "解放を再試行",
     "hint": "Only a temporary system assertion is requested; power plans and simulated input are not changed. An independent deadline thread checks every 15 seconds and releases at expiry or cancellation. The current real-device evidence is limited to this macOS machine."
   },
   "schedule": {

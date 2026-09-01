@@ -68,6 +68,7 @@
     "binding": "Confirmando objetivo…",
     "requestClose": "Solicitar cierre",
     "restart": "Reiniciar aplicación",
+    "watchExit": "Avisar al salir",
     "forceKill": "Cerrar forzosamente…"
   },
   "history": {

@@ -32,7 +32,7 @@ import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxProcessWatchStatus, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, retryToolboxKeepAwakeRelease, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxPowerState, type ToolboxProcessWatchSnapshot, type ToolboxProcessWatchStatus, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
@@ -42,6 +42,7 @@ import { formatColor, parseColor } from "./color/colorTools";
 import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxActivity, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
+import type { ProcessRow } from "../types";
 import type { KeyboardCleaningCapability } from "./system/keyboard-cleaning/keyboardCleaning";
 import "./toolbox.css";
 
@@ -51,6 +52,7 @@ const NetworkAddressesTool = lazy(async () => ({ default: (await import("./netwo
 const KeyboardCleaningTool = lazy(async () => ({ default: (await import("./system/keyboard-cleaning/KeyboardCleaningTool")).KeyboardCleaningTool }));
 
 const FAVORITES_KEY = "core-robin.toolbox.favorite-tool-ids.v1";
+const PENDING_SCHEDULE_MUTATIONS_KEY = "core-robin.toolbox.pending-schedule-mutations.v1";
 const HISTORY_PAGE_SIZE = 20;
 const CATEGORY_LABEL_KEYS = {
   "system-network": "categories.systemNetwork",
@@ -65,7 +67,15 @@ const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
   "file-patch": FileKey2,
 };
 
-export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
+type ToolboxProcessWatchTarget = Pick<ProcessRow, "pid" | "birthToken" | "name" | "startTime">;
+
+export function ToolboxPanel({
+  onClose,
+  initialProcessWatchTarget,
+}: {
+  onClose?: () => void;
+  initialProcessWatchTarget?: ToolboxProcessWatchTarget | null;
+}) {
   const { t } = useTranslation("toolbox");
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<ToolboxCategory | null>(null);
@@ -176,7 +186,11 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
           {selectedTool.capability.state === "unavailable" ? <UnavailableTool tool={selectedTool} /> : <>
             <ToolCapabilityNotice capability={selectedTool.capability} />
             <Suspense fallback={<div className="surface-loading" role="status">{t("loading")}</div>}>
-              <ToolContent toolId={selectedTool.id} capability={selectedTool.capability} />
+              <ToolContent
+                toolId={selectedTool.id}
+                capability={selectedTool.capability}
+                processWatchTarget={initialProcessWatchTarget}
+              />
             </Suspense>
           </>}
         </ToolPage>
@@ -341,7 +355,15 @@ function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability })
   return <p className={`toolbox-capability-notice toolbox-capability-notice--${capability.state}`} role="status"><CircleAlert size={16} /><span><strong>{capabilityLabel(t, capability)}</strong>：{capabilityReason(t, capability)}</span></p>;
 }
 
-function ToolContent({ toolId, capability }: { toolId: ToolId; capability: ToolboxCapability }) {
+function ToolContent({
+  toolId,
+  capability,
+  processWatchTarget,
+}: {
+  toolId: ToolId;
+  capability: ToolboxCapability;
+  processWatchTarget?: ToolboxProcessWatchTarget | null;
+}) {
   const { t } = useTranslation("toolbox");
   switch (toolId) {
     case "json": return <JsonTool />;
@@ -355,7 +377,7 @@ function ToolContent({ toolId, capability }: { toolId: ToolId; capability: Toolb
     case "file-occupancy": return <OccupancyTool initialScope="file" />;
     case "volume-occupancy": return <OccupancyTool initialScope="volume" />;
     case "keep-awake": return <KeepAwakeTool />;
-    case "process-watch": return <ProcessWatchTool />;
+    case "process-watch": return <ProcessWatchTool initialTarget={processWatchTarget} />;
     case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability, t)} />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
@@ -530,7 +552,7 @@ function OccupancyTool({ initialScope = "file" }: { initialScope?: "file" | "vol
 
 function KeepAwakeTool() {
   const { t } = useTranslation("toolbox");
-  const [duration, setDuration] = useState("60"); const [state, setState] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
+  const [duration, setDuration] = useState("60"); const [state, setState] = useState<ToolboxPowerState | null>(null); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
   useEffect(() => () => { if (isDesktopRuntime()) void cancelToolboxKeepAwake().catch(() => undefined); }, []);
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -538,7 +560,7 @@ function KeepAwakeTool() {
     let unlisten: (() => void) | undefined;
     const refresh = () => {
       void getToolboxKeepAwakeState()
-        .then((next) => { if (!disposed) setState(JSON.stringify(next, null, 2)); })
+        .then((next) => { if (!disposed) setState(next); })
         .catch((reason) => { if (!disposed) setError(userFacingError(reason)); });
     };
     void listen("system-wake", () => {
@@ -564,10 +586,11 @@ function KeepAwakeTool() {
     const durationMinutes = Number(duration);
     if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720) { setError(t("keepAwake.invalidDuration")); return; }
     setRunning(true); setError("");
-    try { setState(JSON.stringify(await startToolboxKeepAwake({ requestId: crypto.randomUUID(), durationMinutes }), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); }
+    try { setState(await startToolboxKeepAwake({ requestId: crypto.randomUUID(), durationMinutes })); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); }
   };
-  const stop = async () => { setRunning(true); try { setState(JSON.stringify(await cancelToolboxKeepAwake(), null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
-  return <ToolLayout error={error} onClear={() => { setState(""); setError(""); }}><div className="toolbox-inline-actions"><label>{t("keepAwake.durationLabel")} <input className="toolbox-input" type="number" min="1" max="720" step="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("keepAwake.start")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>{t("keepAwake.stop")}</button></div><p className="toolbox-hint">{t("keepAwake.hint")}</p><ResultBox value={state} /></ToolLayout>;
+  const stop = async () => { setRunning(true); try { setState(await cancelToolboxKeepAwake()); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  const retryRelease = async () => { setRunning(true); try { setState(await retryToolboxKeepAwakeRelease()); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  return <ToolLayout error={error} onClear={() => { setState(null); setError(""); }}><div className="toolbox-inline-actions"><label>{t("keepAwake.durationLabel")} <input className="toolbox-input" type="number" min="1" max="720" step="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("keepAwake.start")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void stop()}>{t("keepAwake.stop")}</button>{state?.resourceStatus === "release_unconfirmed" ? <button className="button button--danger-ghost" disabled={running} type="button" onClick={() => void retryRelease()}>{t("keepAwake.retryRelease")}</button> : null}</div><p className="toolbox-hint">{t("keepAwake.hint")}</p><ResultBox value={state ? JSON.stringify(state, null, 2) : ""} /></ToolLayout>;
 }
 
 function RegexTool() {
@@ -600,6 +623,18 @@ function ScheduleTool() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
+  const pendingMutationIds = useRef<Map<string, string>>(readPendingScheduleMutations());
+
+  const requestIdFor = (signature: string) => {
+    const current = pendingMutationIds.current.get(signature) ?? crypto.randomUUID();
+    pendingMutationIds.current.set(signature, current);
+    persistPendingScheduleMutations(pendingMutationIds.current);
+    return current;
+  };
+  const settleMutation = (signature: string) => {
+    pendingMutationIds.current.delete(signature);
+    persistPendingScheduleMutations(pendingMutationIds.current);
+  };
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -702,10 +737,13 @@ function ScheduleTool() {
         throw new ToolboxInputError("invalid_duration", t("schedule.invalidDuration"));
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
-      const request = { requestId: crypto.randomUUID(), timeZone, title: title || undefined, action, trigger };
+      const mutation = { operation: editingScheduleId ? "update" : "create", scheduleId: editingScheduleId, timeZone, title: title || undefined, action, trigger };
+      const signature = JSON.stringify(mutation);
+      const request = { requestId: requestIdFor(signature), timeZone, title: title || undefined, action, trigger };
       setSnapshot(editingScheduleId
         ? await updateToolboxSchedule({ ...request, scheduleId: editingScheduleId, expectedRevision: snapshot?.revision })
         : await createToolboxSchedule(request));
+      settleMutation(signature);
       setEditingScheduleId(null);
     } catch (reason) {
       setError(userFacingError(reason));
@@ -717,8 +755,10 @@ function ScheduleTool() {
   const pause = async (scheduleId: string) => {
     setRunning(true);
     setError("");
+    const signature = JSON.stringify({ operation: "pause", scheduleId, expectedRevision: snapshot?.revision });
     try {
-      setSnapshot(await pauseToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
+      setSnapshot(await pauseToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
+      settleMutation(signature);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -729,8 +769,10 @@ function ScheduleTool() {
   const resume = async (scheduleId: string) => {
     setRunning(true);
     setError("");
+    const signature = JSON.stringify({ operation: "resume", scheduleId, expectedRevision: snapshot?.revision });
     try {
-      setSnapshot(await resumeToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
+      setSnapshot(await resumeToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
+      settleMutation(signature);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -741,8 +783,10 @@ function ScheduleTool() {
   const remove = async (scheduleId: string) => {
     setRunning(true);
     setError("");
+    const signature = JSON.stringify({ operation: "delete", scheduleId, expectedRevision: snapshot?.revision });
     try {
-      setSnapshot(await deleteToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
+      setSnapshot(await deleteToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
+      settleMutation(signature);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -770,7 +814,7 @@ function ScheduleTool() {
   </ToolLayout>;
 }
 
-function ProcessWatchTool() {
+function ProcessWatchTool({ initialTarget }: { initialTarget?: ToolboxProcessWatchTarget | null }) {
   const { t } = useTranslation("toolbox");
   const [pid, setPid] = useState("");
   const [birthToken, setBirthToken] = useState("");
@@ -779,6 +823,12 @@ function ProcessWatchTool() {
   const [watches, setWatches] = useState<ToolboxProcessWatchSnapshot[]>([]);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    if (!initialTarget?.birthToken) return;
+    setPid(String(initialTarget.pid));
+    setBirthToken(initialTarget.birthToken);
+  }, [initialTarget]);
 
   const refresh = async () => {
     if (!isDesktopRuntime()) {
@@ -852,9 +902,13 @@ function ProcessWatchTool() {
   };
 
   return <ToolLayout error={error} onClear={() => { setPid(""); setBirthToken(""); setWatches([]); setKeepAwake(false); setError(""); }}>
-    <div className="toolbox-form-grid"><label>{t("processWatch.pid")} <input className="toolbox-input" inputMode="numeric" value={pid} onChange={(event) => setPid(event.target.value)} placeholder={t("processWatch.pidPlaceholder")} /></label><label>{t("processWatch.birthToken")} <input className="toolbox-input toolbox-input--code" value={birthToken} onChange={(event) => setBirthToken(event.target.value)} placeholder={t("processWatch.birthTokenPlaceholder")} /></label><label>{t("processWatch.duration")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label></div>
+    <div className="toolbox-form-grid">
+      <div className="toolbox-readonly-field"><span>{t("processWatch.pid")}</span><strong>{pid || "—"}</strong>{initialTarget?.name ? <small>{initialTarget.name} · PID {pid}</small> : null}</div>
+      <label>{t("processWatch.duration")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
+    </div>
+    {!initialTarget?.birthToken ? <p className="toolbox-warning" role="status"><CircleAlert size={15} />{t("processWatch.identityRequired")}</p> : null}
     <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />{t("processWatch.keepAwake")}</label>
-    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("processWatch.start")}</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("processWatch.refresh")}</button></div>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !birthToken} type="button" onClick={() => void start()}><Timer size={14} />{t("processWatch.start")}</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("processWatch.refresh")}</button></div>
     <p className="toolbox-hint">{t("processWatch.hint")}</p>
     {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {t(PROCESS_WATCH_STATUS_KEYS[watch.status] as never)}{watch.keepAwakeStatus !== "not_requested" ? ` · ${t(KEEP_AWAKE_STATUS_KEYS[watch.keepAwakeStatus] as never)}` : ""} · {t("processWatch.deadline")} {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "interrupted", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>{t("processWatch.cancel")}</button></div>)}
   </ToolLayout>;
@@ -863,6 +917,26 @@ function ProcessWatchTool() {
 function localDateTimeInput(value: Date): string {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function readPendingScheduleMutations(): Map<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(PENDING_SCHEDULE_MUTATIONS_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return new Map();
+    return new Map(parsed.filter((entry): entry is [string, string] =>
+      Array.isArray(entry) && entry.length === 2 && typeof entry[0] === "string" && typeof entry[1] === "string",
+    ).slice(-8));
+  } catch {
+    return new Map();
+  }
+}
+
+function persistPendingScheduleMutations(mutations: Map<string, string>): void {
+  try {
+    sessionStorage.setItem(PENDING_SCHEDULE_MUTATIONS_KEY, JSON.stringify([...mutations.entries()].slice(-8)));
+  } catch {
+    // Retry identity is best effort when storage is unavailable.
+  }
 }
 
 

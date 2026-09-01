@@ -16,7 +16,7 @@ import {
   type PatchBundle,
   type PatchManifest,
 } from "bs-diff-patch-web/toolkit";
-import { strToU8, zipSync } from "fflate";
+import { strToU8, Zip, ZipPassThrough } from "fflate";
 
 export const MAX_GENERATE_INPUT_BYTES = 16 * 1024 * 1024;
 export const MAX_PATCH_INPUT_BYTES = 64 * 1024 * 1024;
@@ -28,6 +28,7 @@ export const MAX_PLANNER_WORKING_SET_BYTES = 512 * 1024 * 1024;
 export const MAX_PATCH_COLLECTION_BYTES = 512 * 1024 * 1024;
 export const PATCH_COLLECTION_FILENAME = "corerobin-patch-collection.zip";
 export const PATCH_COLLECTION_PLAN_NAME = "patch-plan.json";
+const PATCH_COLLECTION_STREAM_CHUNK_BYTES = 1024 * 1024;
 
 export type PatchInputRole = "baseline" | "target" | "patch" | "expected";
 export type PatchDeadlineToolId = "binary-patch-create" | "binary-patch-apply" | "binary-patch-inspector" | "integrity-manifest" | "transfer-savings" | "patch-errors" | "patch-planner";
@@ -132,6 +133,20 @@ export function estimatePlannerWorkingSetBytes(targetBytes: number, residentBase
     total += term;
   }
   return total;
+}
+
+/**
+ * A patch collection keeps its source artifacts resident while the streaming
+ * ZIP chunks are waiting to be assembled into the single output buffer that
+ * the native output-token API accepts. Count all three byte sets before
+ * creating the archive so the final join cannot push the WebView over the
+ * product working-set limit.
+ */
+export function estimatePatchCollectionWorkingSetBytes(sourceBytes: number, archiveBytes: number): number {
+  if (![sourceBytes, archiveBytes].every((value) => Number.isSafeInteger(value) && value >= 0)) {
+    throw new Error("Patch collection working-set sizes must be non-negative safe integers.");
+  }
+  return safeByteSum([sourceBytes, archiveBytes, archiveBytes]);
 }
 
 export async function generateVerifiedPatch(oldData: Uint8Array, newData: Uint8Array, signal?: AbortSignal): Promise<VerifiedPatch> {
@@ -349,10 +364,11 @@ export function makePatchBundle(target: PatchArtifact, full: PatchArtifact, patc
   return createPatchBundle({ target, full, patches });
 }
 
-export async function createPatchCollection(target: { name: string; data: Uint8Array }, plan: PatchPlan, maxCollectionBytes = MAX_PATCH_COLLECTION_BYTES): Promise<PatchCollection> {
+export async function createPatchCollection(target: { name: string; data: Uint8Array }, plan: PatchPlan, maxCollectionBytes = MAX_PATCH_COLLECTION_BYTES, signal?: AbortSignal): Promise<PatchCollection> {
   if (!Number.isSafeInteger(maxCollectionBytes) || maxCollectionBytes <= 0 || maxCollectionBytes > MAX_PATCH_COLLECTION_BYTES) {
     throw new Error("Patch collection budget is invalid.");
   }
+  throwIfAborted(signal);
   assertSizeForRole(target.data, "target");
   const targetName = safeArtifactName(target.name);
   const fullPath = `full/${targetName}`;
@@ -363,14 +379,15 @@ export async function createPatchCollection(target: { name: string; data: Uint8A
     url: fullPath,
   };
   const patches: PatchBundle["patches"] = [];
-  const entries: Record<string, Uint8Array> = { [fullPath]: target.data.slice() };
+  const entries: PatchCollectionEntry[] = [{ path: fullPath, data: target.data }];
 
   for (const [index, item] of plan.results.entries()) {
+    throwIfAborted(signal);
     if (item.status !== "verified" || !item.patch || item.baselineBytes === null || item.baselineSha256 === null) continue;
     const baselineName = safeArtifactName(item.baselineName);
     const patchName = `${String(index + 1).padStart(2, "0")}-${baselineName}.endsley.patch`;
     const patchPath = `patches/${patchName}`;
-    entries[patchPath] = item.patch.slice();
+    entries.push({ path: patchPath, data: item.patch });
     patches.push({
       format: "ENDSLEY/BSDIFF43",
       baseline: { bytes: item.baselineBytes, sha256: item.baselineSha256, name: baselineName },
@@ -396,11 +413,17 @@ export async function createPatchCollection(target: { name: string; data: Uint8A
       excluded: plan.excluded.map((item) => ({ ...item, baselineName: safeArtifactName(item.baselineName) })),
     },
   };
-  entries[PATCH_COLLECTION_PLAN_NAME] = strToU8(manifestJson(collectionPlan));
-  const bytes = zipSync(entries, { level: 6 });
-  if (bytes.byteLength > maxCollectionBytes) {
-    throw patchError("ERESOURCE", `The final patch collection exceeds the ${maxCollectionBytes} byte safety budget.`);
+  throwIfAborted(signal);
+  entries.push({ path: PATCH_COLLECTION_PLAN_NAME, data: strToU8(manifestJson(collectionPlan)) });
+  const archiveBytes = estimateStoredZipBytes(entries);
+  if (archiveBytes > maxCollectionBytes) throw patchError("ERESOURCE", `The final patch collection exceeds the ${maxCollectionBytes} byte safety budget.`);
+  const sourceBytes = safeByteSum(entries.map((entry) => entry.data.byteLength));
+  const workingSetBytes = estimatePatchCollectionWorkingSetBytes(sourceBytes, archiveBytes);
+  if (workingSetBytes > MAX_PLANNER_WORKING_SET_BYTES) {
+    throw patchError("ERESOURCE", `The patch collection would require ${workingSetBytes} bytes, exceeding the ${MAX_PLANNER_WORKING_SET_BYTES} byte working-set safety budget.`);
   }
+  const bytes = await createStoredPatchCollection(entries, archiveBytes, signal);
+  throwIfAborted(signal);
   return { bytes, plan: collectionPlan, filename: PATCH_COLLECTION_FILENAME };
 }
 
@@ -433,6 +456,143 @@ function assertSupportedPatch(metadata: PatchMetadata): void {
 
 function patchError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
+}
+
+interface PatchCollectionEntry {
+  path: string;
+  data: Uint8Array;
+}
+
+function estimateStoredZipBytes(entries: ReadonlyArray<PatchCollectionEntry>): number {
+  let total = 22; // End of central directory.
+  for (const entry of entries) {
+    const filenameBytes = strToU8(entry.path).byteLength;
+    // Local header + data descriptor + central directory header, plus the
+    // filename in both headers. ZipPassThrough stores exactly these bytes.
+    total = safeByteSum([total, entry.data.byteLength, 92, filenameBytes, filenameBytes]);
+  }
+  return total;
+}
+
+async function createStoredPatchCollection(entries: ReadonlyArray<PatchCollectionEntry>, expectedBytes: number, signal?: AbortSignal): Promise<Uint8Array> {
+  throwIfAborted(signal);
+  return new Promise<Uint8Array>((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    const archive = new Zip((error, chunk, final) => {
+      if (settled) return;
+      if (error) {
+        finish(error);
+        return;
+      }
+      if (!chunk) {
+        finish(patchError("EARCHIVE", "Patch collection streaming returned an empty ZIP chunk."));
+        return;
+      }
+      chunks.push(chunk);
+      if (final) void complete();
+    });
+    let settled = false;
+    let activeEntryReject: ((reason: unknown) => void) | null = null;
+    const abort = () => finish(cancelledPatchTaskError());
+    const finish = (reason: unknown) => {
+      if (settled) return;
+      settled = true;
+      archive.terminate();
+      activeEntryReject?.(reason);
+      signal?.removeEventListener("abort", abort);
+      reject(reason);
+    };
+    const complete = async () => {
+      if (settled) return;
+      try {
+        throwIfAborted(signal);
+        const bytes = await joinZipChunks(chunks, expectedBytes, signal);
+        if (bytes.byteLength !== expectedBytes) throw patchError("EARCHIVE", "Patch collection byte accounting did not match the streamed archive.");
+        if (settled) return;
+        settled = true;
+        signal?.removeEventListener("abort", abort);
+        resolve(bytes);
+      } catch (error) {
+        finish(error);
+      }
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    void (async () => {
+      try {
+        for (const entry of entries) {
+          throwIfAborted(signal);
+          const file = new ZipPassThrough(entry.path);
+          archive.add(file);
+          let resolveEntry: () => void = () => undefined;
+          const entryCompleted = new Promise<void>((resolve, rejectEntry) => {
+            activeEntryReject = rejectEntry;
+            const ondata = file.ondata;
+            file.ondata = (error, data, final) => {
+              ondata(error, data, final);
+              if (error) rejectEntry(error);
+              else if (final) resolveEntry();
+            };
+            resolveEntry = resolve;
+          });
+          for (let offset = 0; offset < entry.data.byteLength; offset += PATCH_COLLECTION_STREAM_CHUNK_BYTES) {
+            if (settled) return;
+            throwIfAborted(signal);
+            const end = Math.min(offset + PATCH_COLLECTION_STREAM_CHUNK_BYTES, entry.data.byteLength);
+            file.push(entry.data.subarray(offset, end), end === entry.data.byteLength);
+            if (end < entry.data.byteLength) await yieldToEventLoop(signal);
+          }
+          if (entry.data.byteLength === 0) file.push(entry.data, true);
+          await entryCompleted;
+          activeEntryReject = null;
+          await yieldToEventLoop(signal);
+        }
+        throwIfAborted(signal);
+        archive.end();
+      } catch (error) {
+        finish(error);
+      }
+    })();
+  });
+}
+
+async function joinZipChunks(chunks: ReadonlyArray<Uint8Array>, expectedBytes: number, signal?: AbortSignal): Promise<Uint8Array> {
+  const bytes = new Uint8Array(expectedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    for (let chunkOffset = 0; chunkOffset < chunk.byteLength; chunkOffset += PATCH_COLLECTION_STREAM_CHUNK_BYTES) {
+      throwIfAborted(signal);
+      const end = Math.min(chunkOffset + PATCH_COLLECTION_STREAM_CHUNK_BYTES, chunk.byteLength);
+      bytes.set(chunk.subarray(chunkOffset, end), offset);
+      offset += end - chunkOffset;
+      await yieldToEventLoop(signal);
+    }
+  }
+  return bytes;
+}
+
+async function yieldToEventLoop(signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal);
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  throwIfAborted(signal);
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  signal?.throwIfAborted();
+}
+
+function safeByteSum(values: ReadonlyArray<number>): number {
+  let total = 0;
+  for (const value of values) {
+    if (!Number.isSafeInteger(value) || value < 0 || total > Number.MAX_SAFE_INTEGER - value) {
+      throw patchError("ERESOURCE", "Patch collection size exceeds the safe byte range.");
+    }
+    total += value;
+  }
+  return total;
 }
 
 function safeArtifactName(name: string): string {

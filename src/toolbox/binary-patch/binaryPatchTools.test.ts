@@ -17,6 +17,7 @@ import {
   applyPatchAndVerify,
   calculateTransferSavings,
   createPatchCollection,
+  estimatePatchCollectionWorkingSetBytes,
   estimatePlannerWorkingSetBytes,
   inspectPatchSafely,
   makePatchBundle,
@@ -54,6 +55,12 @@ describe("binary patch toolbox boundaries", () => {
   it("accounts for resident inputs and worker copies in the planner peak", () => {
     expect(estimatePlannerWorkingSetBytes(10, 20, 5, 7, 9)).toBe(10 + 20 + 9 + 30 + 10 + 14);
     expect(() => estimatePlannerWorkingSetBytes(-1, 0, 0, 0, 0)).toThrow("working-set");
+  });
+
+  it("reserves both streamed ZIP chunks and the final output buffer before collection allocation", () => {
+    expect(estimatePatchCollectionWorkingSetBytes(10, 20)).toBe(50);
+    expect(estimatePatchCollectionWorkingSetBytes(200 * 1024 * 1024, 200 * 1024 * 1024)).toBeGreaterThan(512 * 1024 * 1024);
+    expect(() => estimatePatchCollectionWorkingSetBytes(-1, 0)).toThrow("working-set");
   });
 
   it("recognizes malformed patch data without treating it as trusted", async () => {
@@ -111,6 +118,19 @@ describe("binary patch toolbox boundaries", () => {
       workingSetBytes: 3,
       workingSetLimitBytes: 512,
     }, 2)).rejects.toMatchObject({ code: "ERESOURCE" });
+  });
+
+  it("stops collection streaming before creating an archive when cancelled", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(createPatchCollection({ name: "target.bin", data: new Uint8Array([7, 8, 9]) }, {
+      results: [],
+      excluded: [],
+      artifactBytes: 0,
+      artifactLimitBytes: 512,
+      workingSetBytes: 3,
+      workingSetLimitBytes: 512,
+    }, 512, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("keeps role limits explicit and strips path components from manifest names", async () => {

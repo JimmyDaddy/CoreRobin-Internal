@@ -68,6 +68,7 @@
     "binding": "正在確認目標…",
     "requestClose": "請求結束",
     "restart": "重新啟動應用",
+    "watchExit": "結束時提醒",
     "forceKill": "強制結束…"
   },
   "history": {

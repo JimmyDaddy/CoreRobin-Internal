@@ -258,6 +258,8 @@ function App() {
     settings.historyApplicationNamesEnabled,
   );
   const [activeView, setActiveView] = useState<ActiveView>("overview");
+  const [toolboxProcessWatchTarget, setToolboxProcessWatchTarget] =
+    useState<ProcessRow | null>(null);
   const [cleanupWorkspace, setCleanupWorkspace] = useState<"space" | "quick">("space");
   const [cleanupWorkspaceRequest, setCleanupWorkspaceRequest] = useState<{
     workspace: "space" | "quick";
@@ -2292,7 +2294,13 @@ function App() {
                 onOpenUserAction={openUserActionDestination}
               />
             ) : activeView === "toolbox" ? (
-              <ToolboxPanel onClose={() => setActiveView("overview")} />
+              <ToolboxPanel
+                initialProcessWatchTarget={toolboxProcessWatchTarget}
+                onClose={() => {
+                  setToolboxProcessWatchTarget(null);
+                  setActiveView("overview");
+                }}
+              />
             ) : (
               <SettingsExplorer
                 settings={settings}
@@ -2330,6 +2338,12 @@ function App() {
                 onRestart={() => {
                   if (selectedIdentity && activeDetail) {
                     void beginDiagnosisRequestClose(selectedIdentity, activeDetail.name, undefined, true);
+                  }
+                }}
+                onStartProcessWatch={() => {
+                  if (selectedProcess?.birthToken) {
+                    setToolboxProcessWatchTarget(selectedProcess);
+                    setActiveView("toolbox");
                   }
                 }}
               />

@@ -104,11 +104,15 @@ export interface ToolboxFileHashResult {
 }
 
 export interface ToolboxPowerState {
-  status: "inactive" | "active" | "cancelled";
+  status: "inactive" | "active" | "stopping" | "cancelled";
   requestId: string | null;
   expiresAtMs: number | null;
   platform: string;
   reason: string | null;
+  resourceStatus: "active" | "releasing" | "released" | "release_unconfirmed";
+  releaseConfirmed: boolean;
+  batteryProtection: "checking" | "available" | "unavailable" | "not_active";
+  activeDemandCount: number;
 }
 
 export type ToolboxScheduleAction =
@@ -354,6 +358,10 @@ export async function startToolboxKeepAwake(request: { requestId: string; durati
 
 export async function cancelToolboxKeepAwake(): Promise<ToolboxPowerState> {
   return invoke<ToolboxPowerState>("cancel_toolbox_keep_awake");
+}
+
+export async function retryToolboxKeepAwakeRelease(): Promise<ToolboxPowerState> {
+  return invoke<ToolboxPowerState>("retry_toolbox_keep_awake_release");
 }
 
 export async function getToolboxKeepAwakeState(): Promise<ToolboxPowerState> {

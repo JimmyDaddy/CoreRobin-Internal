@@ -2306,7 +2306,8 @@ export default interface Resources {
       "stableHandle": "CoreRobin 会锁定你选择的进程，并在执行前再次确认它没有变化。",
       "unavailableControl": "此平台暂不支持安全的进程控制。",
       "userStatus": "用户 / 状态",
-      "verifying": "正在核验进程身份…"
+      "verifying": "正在核验进程身份…",
+      "watchExit": "退出时提醒"
     },
     "liveSort": "实时排序",
     "liveSortTitle": "开启后，列表会随实时指标变化自动重新排序",
@@ -3455,6 +3456,7 @@ export default interface Resources {
       "hours": "{{count}} 小时",
       "invalidDuration": "保活时长必须是 1 分钟到 12 小时。",
       "minutes": "{{count}} 分钟",
+      "retryRelease": "重试释放",
       "start": "开始保活",
       "stop": "停止并释放"
     },

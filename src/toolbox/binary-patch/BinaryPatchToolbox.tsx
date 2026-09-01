@@ -67,6 +67,45 @@ interface PendingNativeCleanup {
   outcome: "cancelled" | "deadline" | "failed";
 }
 
+async function registerVerifiedNativeOutput(job: ToolboxJob, output: BinaryOutput, signal: AbortSignal): Promise<ToolboxJob> {
+  let registered: ToolboxJob | null = null;
+  let cancellation: Promise<void> | null = null;
+  const cancelRegisteredOutput = () => {
+    const ready = registered;
+    const nativeOutput = ready?.outputToken;
+    if (!nativeOutput) return Promise.resolve();
+    cancellation ??= cancelToolboxOutput({
+      requestId: crypto.randomUUID(),
+      jobId: ready.jobId,
+      outputToken: nativeOutput.token,
+      generation: ready.generation,
+      resetEpoch: ready.resetEpoch,
+    }).then(() => undefined);
+    return cancellation;
+  };
+  const abortRegistration = () => { void cancelRegisteredOutput().catch(() => undefined); };
+  signal.addEventListener("abort", abortRegistration, { once: true });
+  try {
+    signal.throwIfAborted();
+    const ready = await registerToolboxOutput({
+      ...newToolboxRequest(),
+      jobId: job.jobId,
+      generation: job.generation,
+      resetEpoch: job.resetEpoch,
+      bytes: output.bytes,
+      validation: "verified",
+    });
+    registered = ready;
+    if (signal.aborted) {
+      await cancelRegisteredOutput();
+      signal.throwIfAborted();
+    }
+    return ready;
+  } finally {
+    signal.removeEventListener("abort", abortRegistration);
+  }
+}
+
 export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const { t } = useTranslation("toolbox");
   const [baseline, setBaseline] = useState<File | null>(null);
@@ -188,34 +227,43 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         nativeJob = await startToolboxSession({ ...newToolboxRequest(), toolId });
         nativeInputJob = fileJobKey(nativeJob);
       }
-      const formalOutput = await runWithPatchDeadline((signal) => {
+      await runWithPatchDeadline(async (signal) => {
         operationSignal = signal;
-        return task(signal, readInput);
-      }, controller.signal, patchDeadlineForTool(toolId));
-      if (nativeInputJob) {
-        await revalidateToolboxInputs(nativeInputJob);
-        if (nativeTokenList.length > 0) {
-          await releaseToolboxInputs(nativeInputJob, nativeTokenList.map((token) => token.token));
-          nativeTokenList.length = 0;
+        const formalOutput = await task(signal, readInput);
+        signal.throwIfAborted();
+        if (nativeInputJob) {
+          await revalidateToolboxInputs(nativeInputJob);
+          signal.throwIfAborted();
+          if (nativeTokenList.length > 0) {
+            await releaseToolboxInputs(nativeInputJob, nativeTokenList.map((token) => token.token));
+            nativeTokenList.length = 0;
+          }
+          signal.throwIfAborted();
         }
-      }
-      if (nativeJob && formalOutput) {
-        const ready = await registerToolboxOutput({
-          ...newToolboxRequest(),
-          jobId: nativeJob.jobId,
-          generation: nativeJob.generation,
-          resetEpoch: nativeJob.resetEpoch,
-          bytes: formalOutput.bytes,
-          validation: formalOutput.validation,
-        });
-        setPreparedOutput(ready, formalOutput.filename);
-        setOutput((current) => `${current}\n\n${t("binaryPatch.notices.nativeOutputReady")}`);
-      } else if (nativeJob) {
-        await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
-      }
+        if (nativeJob && formalOutput) {
+          if (formalOutput.validation !== "verified") {
+            throw new Error(t("binaryPatch.errors.unverifiedOutputCancelled"));
+          }
+          const ready = await registerVerifiedNativeOutput(nativeJob, formalOutput, signal);
+          signal.throwIfAborted();
+          setPreparedOutput(ready, formalOutput.filename);
+          setOutput((current) => `${current}\n\n${t("binaryPatch.notices.nativeOutputReady")}`);
+        } else if (nativeJob) {
+          signal.throwIfAborted();
+          await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
+          signal.throwIfAborted();
+        }
+        return formalOutput;
+      }, controller.signal, patchDeadlineForTool(toolId));
     } catch (reason) {
       const cancelled = isPatchTaskCancelled(reason);
       const timedOut = isPatchTaskTimedOut(reason);
+      if (cancelled || timedOut) {
+        clearDownload();
+        setByteDiff(null);
+        setPreparedOutput(null);
+        setOutput("");
+      }
       let lifecycleJob: ToolboxJob | null = null;
       let lifecycleUnconfirmed = false;
       if (nativeJob) {
@@ -384,14 +432,14 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
             load: (sourceSignal: AbortSignal) => readInput(null, "baseline", 16 * 1024 * 1024, index, sourceSignal),
           }));
           const plan = await planPatchesFromSources(targetBytes, sources, 0.8, signal);
-          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
+          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan, undefined, signal);
           setOutput(manifestJson(collection.plan));
           return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
         } else {
           const bases = [];
           for (const file of plannerBaselines) bases.push({ name: file.name, data: await readInput(file, "baseline", 16 * 1024 * 1024) });
           const plan = await planPatches(targetBytes, bases, 0.8, signal);
-          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan);
+          const collection = await createPatchCollection({ name: target?.name ?? "target.bin", data: targetBytes }, plan, undefined, signal);
           setOutput(manifestJson(collection.plan));
           setDownload(collection.bytes, collection.filename, "application/zip");
           return { bytes: collection.bytes, filename: collection.filename, validation: "verified" };
