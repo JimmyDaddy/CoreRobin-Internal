@@ -142,6 +142,9 @@
     "nextPreview": "Next preview",
     "edit": "Edit",
     "pause": "Pause",
+    "resume": "Возобновить",
+    "statusScheduled": "Запланировано",
+    "statusPaused": "Приостановлено",
     "delete": "Delete"
   },
   "processWatch": {

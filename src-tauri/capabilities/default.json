@@ -137,6 +137,7 @@
     "allow-create-toolbox-schedule",
     "allow-update-toolbox-schedule",
     "allow-pause-toolbox-schedule",
+    "allow-resume-toolbox-schedule",
     "allow-delete-toolbox-schedule",
     "allow-write-toolbox-text-copy",
     "allow-scan-toolbox-file-occupancy",

@@ -32,7 +32,7 @@ import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
@@ -619,6 +619,22 @@ function ScheduleTool() {
     }
   };
 
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void subscribeToolboxActivity(() => {
+      if (!disposed) void refresh();
+    }).then((nextUnlisten) => {
+      if (disposed) nextUnlisten();
+      else unlisten = nextUnlisten;
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
   const beginEdit = (rule: ToolboxScheduleSnapshot["rules"][number]) => {
     setEditingScheduleId(rule.scheduleId);
     setTitle(rule.title ?? "");
@@ -702,7 +718,19 @@ function ScheduleTool() {
     setRunning(true);
     setError("");
     try {
-      setSnapshot(await pauseToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId }));
+      setSnapshot(await pauseToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
+    } catch (reason) {
+      setError(userFacingError(reason));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const resume = async (scheduleId: string) => {
+    setRunning(true);
+    setError("");
+    try {
+      setSnapshot(await resumeToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -714,7 +742,7 @@ function ScheduleTool() {
     setRunning(true);
     setError("");
     try {
-      setSnapshot(await deleteToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId }));
+      setSnapshot(await deleteToolboxSchedule({ requestId: crypto.randomUUID(), scheduleId, expectedRevision: snapshot?.revision }));
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -738,7 +766,7 @@ function ScheduleTool() {
     {actionKind === "keepAwake" ? <label>{t("schedule.keepAwakeMinutes")} <input className="toolbox-input" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label> : null}
     <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void create()}><Timer size={14} />{editingScheduleId ? t("schedule.save") : t("schedule.create")}</button>{editingScheduleId ? <button className="button button--secondary" disabled={running} type="button" onClick={() => setEditingScheduleId(null)}>{t("schedule.cancelEdit")}</button> : null}<button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("schedule.refresh")}</button></div>
     <p className="toolbox-hint">{t("schedule.hint")}</p>
-    {snapshot ? snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? t("schedule.unnamed")} · {rule.status} · {t("schedule.nextPreview")} {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running} type="button" onClick={() => beginEdit(rule)}>{t("schedule.edit")}</button><button className="button button--secondary" disabled={running || rule.status === "paused"} type="button" onClick={() => void pause(rule.scheduleId)}>{t("schedule.pause")}</button><button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>{t("schedule.delete")}</button></div>) : null}
+    {snapshot ? snapshot.rules.map((rule) => <div className="toolbox-inline-actions" key={rule.scheduleId}><code>{rule.scheduleId}</code><span>{rule.title ?? t("schedule.unnamed")} · {rule.status === "paused" ? t("schedule.statusPaused") : t("schedule.statusScheduled")} · {t("schedule.nextPreview")} {new Date("atMs" in rule.trigger ? rule.trigger.atMs : rule.trigger.nextRunAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running} type="button" onClick={() => beginEdit(rule)}>{t("schedule.edit")}</button>{rule.status === "paused" ? <button className="button button--secondary" disabled={running} type="button" onClick={() => void resume(rule.scheduleId)}>{t("schedule.resume")}</button> : <button className="button button--secondary" disabled={running} type="button" onClick={() => void pause(rule.scheduleId)}>{t("schedule.pause")}</button>}<button className="button button--secondary" disabled={running} type="button" onClick={() => void remove(rule.scheduleId)}>{t("schedule.delete")}</button></div>) : null}
   </ToolLayout>;
 }
 

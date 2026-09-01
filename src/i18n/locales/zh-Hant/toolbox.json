@@ -142,6 +142,9 @@
     "nextPreview": "Next preview",
     "edit": "Edit",
     "pause": "Pause",
+    "resume": "恢復",
+    "statusScheduled": "已排程",
+    "statusPaused": "已暫停",
     "delete": "Delete"
   },
   "processWatch": {

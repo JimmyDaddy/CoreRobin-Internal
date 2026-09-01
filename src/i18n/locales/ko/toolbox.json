@@ -142,6 +142,9 @@
     "nextPreview": "Next preview",
     "edit": "Edit",
     "pause": "Pause",
+    "resume": "재개",
+    "statusScheduled": "예약됨",
+    "statusPaused": "일시 중지됨",
     "delete": "Delete"
   },
   "processWatch": {

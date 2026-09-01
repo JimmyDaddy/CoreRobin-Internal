@@ -681,10 +681,12 @@ fn start_toolbox_reaper(
 struct ToolboxActivityFingerprint {
     power: PowerState,
     process_watches: Vec<(u64, ProcessWatchStatus, ProcessWatchKeepAwakeStatus)>,
+    scheduler_revision: u64,
 }
 
 fn toolbox_activity_fingerprint(state: &AppState) -> Option<ToolboxActivityFingerprint> {
     let power = state.toolbox_power.lock().ok()?.snapshot();
+    let scheduler_revision = state.toolbox_scheduler.lock().ok()?.snapshot().revision;
     let mut process_watches = state
         .toolbox_process_watch
         .lock()
@@ -704,6 +706,7 @@ fn toolbox_activity_fingerprint(state: &AppState) -> Option<ToolboxActivityFinge
     Some(ToolboxActivityFingerprint {
         power,
         process_watches,
+        scheduler_revision,
     })
 }
 
@@ -3301,6 +3304,17 @@ fn get_toolbox_schedule_snapshot(
         .map(|scheduler| scheduler.snapshot())
 }
 
+fn require_persistent_scheduler(scheduler: &ToolboxScheduler) -> Result<(), CommandError> {
+    if scheduler.snapshot().persistent {
+        Ok(())
+    } else {
+        Err(CommandError::new(
+            "schedule_storage_error",
+            "定时规则存储不可用；为避免重启后丢失，暂不接受新的规则变更。",
+        ))
+    }
+}
+
 #[tauri::command]
 fn preview_toolbox_schedule(
     window: WebviewWindow,
@@ -3317,11 +3331,12 @@ fn create_toolbox_schedule(
     request: SchedulerCreateRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
-    state
+    let mut scheduler = state
         .toolbox_scheduler
         .lock()
-        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
-        .create(request)
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.create(request)
 }
 
 #[tauri::command]
@@ -3331,11 +3346,12 @@ fn update_toolbox_schedule(
     request: SchedulerUpdateRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
-    state
+    let mut scheduler = state
         .toolbox_scheduler
         .lock()
-        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
-        .update(request)
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.update(request)
 }
 
 #[tauri::command]
@@ -3345,11 +3361,27 @@ fn pause_toolbox_schedule(
     request: SchedulerRuleRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
-    state
+    let mut scheduler = state
         .toolbox_scheduler
         .lock()
-        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
-        .pause(request)
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.pause(request)
+}
+
+#[tauri::command]
+fn resume_toolbox_schedule(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: SchedulerRuleRequest,
+) -> Result<SchedulerSnapshot, CommandError> {
+    require_main_window(&window)?;
+    let mut scheduler = state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.resume(request)
 }
 
 #[tauri::command]
@@ -3359,11 +3391,12 @@ fn delete_toolbox_schedule(
     request: SchedulerRuleRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
-    state
+    let mut scheduler = state
         .toolbox_scheduler
         .lock()
-        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
-        .delete(request)
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?;
+    require_persistent_scheduler(&scheduler)?;
+    scheduler.delete(request)
 }
 
 #[tauri::command]
@@ -3867,6 +3900,7 @@ pub fn run() {
             create_toolbox_schedule,
             update_toolbox_schedule,
             pause_toolbox_schedule,
+            resume_toolbox_schedule,
             delete_toolbox_schedule,
             write_toolbox_text_copy,
             scan_toolbox_file_occupancy,
@@ -4193,6 +4227,7 @@ mod security_boundary_tests {
         "create_toolbox_schedule",
         "update_toolbox_schedule",
         "pause_toolbox_schedule",
+        "resume_toolbox_schedule",
         "delete_toolbox_schedule",
         "write_toolbox_text_copy",
         "scan_toolbox_file_occupancy",

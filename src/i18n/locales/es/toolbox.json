@@ -148,6 +148,9 @@
     "nextPreview": "Next preview",
     "edit": "Edit",
     "pause": "Pause",
+    "resume": "Reanudar",
+    "statusScheduled": "Programada",
+    "statusPaused": "En pausa",
     "delete": "Delete"
   },
   "processWatch": {

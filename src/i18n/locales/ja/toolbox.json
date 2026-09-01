@@ -142,6 +142,9 @@
     "nextPreview": "Next preview",
     "edit": "Edit",
     "pause": "Pause",
+    "resume": "再開",
+    "statusScheduled": "スケジュール済み",
+    "statusPaused": "一時停止中",
     "delete": "Delete"
   },
   "processWatch": {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-resume-toolbox-schedule"
+description = "Enables the resume_toolbox_schedule command without any pre-configured scope."
+commands.allow = ["resume_toolbox_schedule"]
+
+[[permission]]
+identifier = "deny-resume-toolbox-schedule"
+description = "Denies the resume_toolbox_schedule command without any pre-configured scope."
+commands.deny = ["resume_toolbox_schedule"]

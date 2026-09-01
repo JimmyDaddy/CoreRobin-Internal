@@ -411,11 +411,15 @@ export async function updateToolboxSchedule(request: {
   return invoke<ToolboxScheduleSnapshot>("update_toolbox_schedule", { request });
 }
 
-export async function pauseToolboxSchedule(request: { requestId: string; scheduleId: string }): Promise<ToolboxScheduleSnapshot> {
+export async function pauseToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
   return invoke<ToolboxScheduleSnapshot>("pause_toolbox_schedule", { request });
 }
 
-export async function deleteToolboxSchedule(request: { requestId: string; scheduleId: string }): Promise<ToolboxScheduleSnapshot> {
+export async function resumeToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
+  return invoke<ToolboxScheduleSnapshot>("resume_toolbox_schedule", { request });
+}
+
+export async function deleteToolboxSchedule(request: { requestId: string; scheduleId: string; expectedRevision?: number }): Promise<ToolboxScheduleSnapshot> {
   return invoke<ToolboxScheduleSnapshot>("delete_toolbox_schedule", { request });
 }
 

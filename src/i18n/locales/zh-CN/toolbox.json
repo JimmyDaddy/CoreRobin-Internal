@@ -223,6 +223,9 @@
     "nextPreview": "下次预览",
     "edit": "编辑",
     "pause": "暂停",
+    "resume": "恢复",
+    "statusScheduled": "已排程",
+    "statusPaused": "已暂停",
     "delete": "删除"
   },
   "processWatch": {

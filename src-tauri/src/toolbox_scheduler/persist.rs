@@ -4,12 +4,14 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::scheduler_core::LocalCalendarKey;
+use super::{SchedulerAction, SchedulerSnapshot, SchedulerTrigger};
 
 pub(crate) const SCHEDULE_FILE_NAME: &str = "toolbox-schedules-v1.json";
 const SCHEDULE_SCHEMA_VERSION: u16 = 1;
 const MAX_SCHEDULE_STORAGE_BYTES: u64 = 256 * 1024;
 const MAX_RETAINED_INTENTS: usize = 256;
 const MAX_SCHEDULE_RULES: usize = 32;
+pub(crate) const MAX_MUTATION_RECEIPTS: usize = 8;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -20,6 +22,10 @@ pub(crate) struct SchedulerStoreState {
     pub(crate) next_rule_sequence: u64,
     pub(crate) rules: Vec<PersistedSchedule>,
     pub(crate) intents: Vec<PersistedExecutionIntent>,
+    /// This field is absent from files created before mutation retries were durable. Keeping a
+    /// default makes those v1 files readable without changing their schema version.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) mutation_receipts: Vec<PersistedMutationReceipt>,
 }
 impl Default for SchedulerStoreState {
     fn default() -> Self {
@@ -30,8 +36,58 @@ impl Default for SchedulerStoreState {
             next_rule_sequence: 0,
             rules: Vec::new(),
             intents: Vec::new(),
+            mutation_receipts: Vec::new(),
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) enum SchedulerMutation {
+    Create {
+        time_zone: String,
+        title: Option<String>,
+        action: SchedulerAction,
+        trigger: SchedulerTrigger,
+    },
+    Update {
+        schedule_id: String,
+        expected_revision: Option<u64>,
+        time_zone: String,
+        title: Option<String>,
+        action: SchedulerAction,
+        trigger: SchedulerTrigger,
+    },
+    Pause {
+        schedule_id: String,
+        expected_revision: Option<u64>,
+    },
+    Resume {
+        schedule_id: String,
+        expected_revision: Option<u64>,
+    },
+    Delete {
+        schedule_id: String,
+        expected_revision: Option<u64>,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PersistedMutationReceipt {
+    pub(crate) request_id: String,
+    pub(crate) mutation: SchedulerMutation,
+    #[serde(default)]
+    pub(crate) epoch: u64,
+    pub(crate) acknowledged_revision: u64,
+    pub(crate) acknowledged_at_ms: u64,
+    pub(crate) acknowledged_snapshot: SchedulerSnapshot,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum MutationWrite<T> {
+    Written(T),
+    AlreadyAcknowledged { snapshot: SchedulerSnapshot },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -104,6 +160,8 @@ pub(crate) enum SchedulerStoreError {
     Corrupt,
     InvalidState,
     RevisionConflict,
+    RequestIdConflict,
+    StaleMutation,
 }
 
 impl fmt::Display for SchedulerStoreError {
@@ -115,6 +173,10 @@ impl fmt::Display for SchedulerStoreError {
             Self::Corrupt => "the saved schedule rules are invalid",
             Self::InvalidState => "the scheduler state is invalid",
             Self::RevisionConflict => "the scheduler state changed before this update",
+            Self::RequestIdConflict => {
+                "requestId was already used for a different scheduler mutation"
+            }
+            Self::StaleMutation => "requestId belongs to a scheduler state that was reset",
         };
         formatter.write_str(message)
     }
@@ -158,6 +220,81 @@ impl SchedulerStore {
         write_state(&self.path, &candidate)?;
         self.state = candidate;
         Ok(result)
+    }
+
+    /// Return a prior mutation acknowledgement before validating time-sensitive input. A retry
+    /// of an already-accepted request must remain safe even when its original occurrence is now
+    /// in the past.
+    pub(crate) fn mutation_acknowledged(
+        &self,
+        request_id: &str,
+        mutation: &SchedulerMutation,
+    ) -> Result<Option<SchedulerSnapshot>, SchedulerStoreError> {
+        let Some(receipt) = self
+            .state
+            .mutation_receipts
+            .iter()
+            .find(|receipt| receipt.request_id == request_id)
+        else {
+            return Ok(None);
+        };
+        if receipt.epoch != self.state.epoch {
+            return Err(SchedulerStoreError::StaleMutation);
+        }
+        if receipt.mutation != *mutation {
+            return Err(SchedulerStoreError::RequestIdConflict);
+        }
+        Ok(Some(receipt.acknowledged_snapshot.clone()))
+    }
+
+    /// Apply a scheduler mutation and retain its acknowledgement in the same durable write. A
+    /// matching requestId is a retry, while reusing the id for another mutation fails closed.
+    pub(crate) fn apply_mutation<T>(
+        &mut self,
+        request_id: &str,
+        mutation: SchedulerMutation,
+        now_ms: u64,
+        operation: impl FnOnce(&mut SchedulerStoreState) -> Result<T, SchedulerStoreError>,
+        acknowledgement: impl FnOnce(
+            &SchedulerStoreState,
+        ) -> Result<SchedulerSnapshot, SchedulerStoreError>,
+    ) -> Result<MutationWrite<T>, SchedulerStoreError> {
+        self.transact(|state| {
+            if let Some(receipt) = state
+                .mutation_receipts
+                .iter()
+                .find(|receipt| receipt.request_id == request_id)
+            {
+                if receipt.epoch != state.epoch {
+                    return Err(SchedulerStoreError::StaleMutation);
+                }
+                if receipt.mutation != mutation {
+                    return Err(SchedulerStoreError::RequestIdConflict);
+                }
+                return Ok(MutationWrite::AlreadyAcknowledged {
+                    snapshot: receipt.acknowledged_snapshot.clone(),
+                });
+            }
+
+            let result = operation(state)?;
+            let acknowledged_snapshot = acknowledgement(state)?;
+            state.mutation_receipts.push(PersistedMutationReceipt {
+                request_id: request_id.to_owned(),
+                mutation,
+                epoch: state.epoch,
+                acknowledged_revision: state.revision,
+                acknowledged_at_ms: now_ms,
+                acknowledged_snapshot,
+            });
+            let retained_start = state
+                .mutation_receipts
+                .len()
+                .saturating_sub(MAX_MUTATION_RECEIPTS);
+            if retained_start > 0 {
+                state.mutation_receipts.drain(0..retained_start);
+            }
+            Ok(MutationWrite::Written(result))
+        })
     }
 
     pub(crate) fn record_intent(
@@ -244,6 +381,7 @@ fn validate_state(state: &SchedulerStoreState) -> Result<(), SchedulerStoreError
     if state.schema_version != SCHEDULE_SCHEMA_VERSION
         || state.rules.len() > MAX_SCHEDULE_RULES
         || state.intents.len() > MAX_RETAINED_INTENTS
+        || state.mutation_receipts.len() > MAX_MUTATION_RECEIPTS
     {
         return Err(SchedulerStoreError::InvalidState);
     }
@@ -259,6 +397,13 @@ fn validate_state(state: &SchedulerStoreState) -> Result<(), SchedulerStoreError
         {
             return Err(SchedulerStoreError::InvalidState);
         }
+    }
+    if state
+        .mutation_receipts
+        .iter()
+        .any(|receipt| receipt.request_id.trim().is_empty() || receipt.request_id.len() > 128)
+    {
+        return Err(SchedulerStoreError::InvalidState);
     }
     Ok(())
 }
@@ -306,6 +451,23 @@ mod tests {
             reopened.state().intents[0].state,
             PersistedIntentState::Intended
         );
+    }
+
+    #[test]
+    fn reads_existing_v1_state_without_mutation_receipts() {
+        let directory = tempdir().expect("private test directory");
+        let path = directory.path().join(SCHEDULE_FILE_NAME);
+        let legacy = serde_json::to_value(SchedulerStoreState::default())
+            .expect("serialize legacy v1 state");
+        assert!(legacy.get("mutationReceipts").is_none());
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&legacy).expect("encode legacy v1 state"),
+        )
+        .expect("own test fixture");
+
+        let store = SchedulerStore::open(directory.path()).expect("read legacy v1 state");
+        assert!(store.state().mutation_receipts.is_empty());
     }
 
     #[test]

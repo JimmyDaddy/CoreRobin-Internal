@@ -122,6 +122,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "create_toolbox_schedule",
     "update_toolbox_schedule",
     "pause_toolbox_schedule",
+    "resume_toolbox_schedule",
     "delete_toolbox_schedule",
     "write_toolbox_text_copy",
     "scan_toolbox_file_occupancy",
