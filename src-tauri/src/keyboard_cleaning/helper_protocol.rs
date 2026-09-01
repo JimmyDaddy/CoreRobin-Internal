@@ -71,6 +71,14 @@ pub struct StopCommand {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HeartbeatCommand {
+    pub protocol_version: String,
+    pub request_id: String,
+    pub sequence: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ReadySignal {
     pub protocol_version: String,
     pub request_id: String,
@@ -125,6 +133,7 @@ pub enum HelperLifecycleReason {
 pub enum HelperCommand {
     Start(StartCommand),
     Stop(StopCommand),
+    Heartbeat(HeartbeatCommand),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -141,6 +150,7 @@ pub enum HelperSignal {
 pub enum ProtocolError {
     FrameTooLarge,
     UnexpectedLineBreak,
+    MissingLineBreak,
     InvalidEnvelope,
     InvalidJson,
 }
@@ -150,6 +160,7 @@ impl std::fmt::Display for ProtocolError {
         formatter.write_str(match self {
             Self::FrameTooLarge => "helper frame exceeds the bounded protocol size",
             Self::UnexpectedLineBreak => "helper frame must be a single line",
+            Self::MissingLineBreak => "helper frame must end with a newline delimiter",
             Self::InvalidEnvelope => "helper frame has an unexpected envelope",
             Self::InvalidJson => "helper frame is not valid JSON",
         })
@@ -167,6 +178,12 @@ pub fn encode_signal(signal: &HelperSignal) -> Result<Vec<u8>, ProtocolError> {
 }
 
 pub fn decode_signal(frame: &[u8]) -> Result<HelperSignal, ProtocolError> {
+    validate_frame(frame)?;
+    validate_envelope(frame)?;
+    serde_json::from_slice(frame).map_err(|_| ProtocolError::InvalidJson)
+}
+
+pub fn decode_command(frame: &[u8]) -> Result<HelperCommand, ProtocolError> {
     validate_frame(frame)?;
     validate_envelope(frame)?;
     serde_json::from_slice(frame).map_err(|_| ProtocolError::InvalidJson)

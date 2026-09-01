@@ -40,6 +40,7 @@ import { formatColor, parseColor } from "./color/colorTools";
 import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
+import type { KeyboardCleaningCapability } from "./system/keyboard-cleaning/keyboardCleaning";
 import "./toolbox.css";
 
 const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
@@ -154,7 +155,7 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
           {selectedTool.capability.state === "unavailable" ? <UnavailableTool tool={selectedTool} /> : <>
             <ToolCapabilityNotice capability={selectedTool.capability} />
             <Suspense fallback={<div className="surface-loading" role="status">{t("loading")}</div>}>
-              <ToolContent toolId={selectedTool.id} />
+              <ToolContent toolId={selectedTool.id} capability={selectedTool.capability} />
             </Suspense>
           </>}
         </ToolPage>
@@ -310,7 +311,7 @@ function ToolCapabilityNotice({ capability }: { capability: ToolboxCapability })
   return <p className={`toolbox-capability-notice toolbox-capability-notice--${capability.state}`} role="status"><CircleAlert size={16} /><span><strong>{capabilityLabel(t, capability)}</strong>：{capabilityReason(t, capability)}</span></p>;
 }
 
-function ToolContent({ toolId }: { toolId: ToolId }) {
+function ToolContent({ toolId, capability }: { toolId: ToolId; capability: ToolboxCapability }) {
   switch (toolId) {
     case "json": return <JsonTool />;
     case "url": return <UrlTool />;
@@ -323,7 +324,7 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "file-occupancy": return <OccupancyTool />;
     case "keep-awake": return <KeepAwakeTool />;
     case "process-watch": return <ProcessWatchTool />;
-    case "keyboard-cleaning": return <KeyboardCleaningTool />;
+    case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability)} />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
     case "network-addresses": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} />;
@@ -348,6 +349,22 @@ function ToolContent({ toolId }: { toolId: ToolId }) {
     case "patch-planner": return <BinaryPatchToolbox toolId={toolId} />;
     default: return <UnavailableTool tool={getToolDefinition(toolId)} />;
   }
+}
+
+function toKeyboardCleaningCapability(capability: ToolboxCapability): KeyboardCleaningCapability {
+  if (!isDesktopRuntime()) {
+    return {
+      state: "unavailable",
+      platform: "unknown",
+      reason: "键盘清洁只在具备受限原生 helper 的桌面运行时提供。",
+    };
+  }
+  const platform = capability.platform?.toLowerCase();
+  return {
+    state: capability.state === "available" ? "available" : "unavailable",
+    platform: platform === "macos" || platform === "windows" || platform === "linux" ? platform : "unknown",
+    reason: capability.reason,
+  };
 }
 
 function JsonTool() {

@@ -19,6 +19,7 @@ export type KeyboardCleaningStatus = "idle" | "unavailable" | "preparing" | "act
 export type KeyboardCleaningHookStatus = "unconfirmed" | "confirmed" | "ineffective";
 export type KeyboardCleaningHookEffectiveness = "confirmed" | "unconfirmed" | "silently_ineffective";
 export type KeyboardCleaningHookFailure = "capability_unavailable" | "permission_revoked" | "host_disconnected" | "hook_stopped" | "hook_not_confirmed";
+export type KeyboardCleaningLifecycleReason = "mouse_activity" | "focus_lost" | "host_exited" | "sleeping" | "permission_revoked";
 export type KeyboardCleaningEndReason =
   | "cancelled"
   | "mouse_activity"
@@ -82,9 +83,16 @@ export interface KeyboardCleaningStopCommand {
   reason: KeyboardCleaningEndReason;
 }
 
+export interface KeyboardCleaningHeartbeatCommand {
+  protocolVersion: typeof KEYBOARD_CLEANING_PROTOCOL_VERSION;
+  requestId: string;
+  sequence: number;
+}
+
 export type KeyboardCleaningCommand =
   | { type: "start"; payload: KeyboardCleaningStartCommand }
-  | { type: "stop"; payload: KeyboardCleaningStopCommand };
+  | { type: "stop"; payload: KeyboardCleaningStopCommand }
+  | { type: "heartbeat"; payload: KeyboardCleaningHeartbeatCommand };
 
 export type KeyboardCleaningSignal =
   | {
@@ -107,6 +115,10 @@ export type KeyboardCleaningSignal =
   | {
       type: "released";
       payload: { protocolVersion: typeof KEYBOARD_CLEANING_PROTOCOL_VERSION; requestId: string; confirmed: boolean };
+    }
+  | {
+      type: "lifecycle";
+      payload: { protocolVersion: typeof KEYBOARD_CLEANING_PROTOCOL_VERSION; requestId: string; reason: KeyboardCleaningLifecycleReason };
     };
 
 export interface KeyboardCleaningTransition {
@@ -116,7 +128,8 @@ export interface KeyboardCleaningTransition {
 
 export type KeyboardCleaningEffect =
   | { type: "start_helper"; command: Extract<KeyboardCleaningCommand, { type: "start" }> }
-  | { type: "stop_helper"; command: Extract<KeyboardCleaningCommand, { type: "stop" }> };
+  | { type: "stop_helper"; command: Extract<KeyboardCleaningCommand, { type: "stop" }> }
+  | { type: "heartbeat_helper"; command: Extract<KeyboardCleaningCommand, { type: "heartbeat" }> };
 
 export class KeyboardCleaningError extends Error {
   constructor(public readonly code: "capability_unavailable" | "invalid_duration" | "invalid_request_id" | "clock_went_backward" | "invalid_state" | "wrong_request" | "heartbeat_out_of_order", message: string) {
@@ -198,6 +211,8 @@ export class KeyboardCleaningMachine {
         return this.dispatch({ type: "hook_ineffective", requestId: signal.payload.requestId, nowMs });
       case "released":
         return this.dispatch({ type: signal.payload.confirmed ? "release_confirmed" : "release_unconfirmed", requestId: signal.payload.requestId, nowMs });
+      case "lifecycle":
+        return this.dispatch({ type: signal.payload.reason === "mouse_activity" ? "mouse_activity" : signal.payload.reason, nowMs });
     }
   }
 

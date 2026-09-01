@@ -45,6 +45,21 @@ fn protocol_has_no_key_or_text_payload_surface() {
 }
 
 #[test]
+fn commands_round_trip_through_the_bounded_envelope() {
+    let command = HelperCommand::Stop(StopCommand {
+        protocol_version: PROTOCOL_VERSION.to_owned(),
+        request_id: "request-1".to_owned(),
+        reason: HelperStopReason::Cancelled,
+    });
+    let frame = encode_command(&command).expect("stop command should encode");
+    assert_eq!(decode_command(&frame), Ok(command));
+    assert!(matches!(
+        decode_command(br#"{"type":"stop","payload":{},"extra":true}"#),
+        Err(ProtocolError::InvalidEnvelope)
+    ));
+}
+
+#[test]
 fn newline_and_oversized_frames_are_rejected() {
     assert_eq!(
         decode_signal(b"{}\n"),

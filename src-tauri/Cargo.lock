@@ -682,6 +682,8 @@ dependencies = [
  "cap-std",
  "chrono",
  "chrono-tz",
+ "core-foundation",
+ "core-graphics",
  "dns-lookup",
  "getrandom 0.4.3",
  "libc",

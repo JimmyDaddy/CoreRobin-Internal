@@ -141,6 +141,9 @@
     "allow-write-toolbox-text-copy",
     "allow-scan-toolbox-file-occupancy",
     "allow-scan-toolbox-volume-occupancy",
-    "allow-cancel-toolbox-occupancy"
+    "allow-cancel-toolbox-occupancy",
+    "allow-start-keyboard-cleaning",
+    "allow-heartbeat-keyboard-cleaning",
+    "allow-stop-keyboard-cleaning"
   ]
 }

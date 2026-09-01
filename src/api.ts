@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import {
   createMockCleanupDeleteLease,
@@ -79,6 +80,12 @@ import type {
 import { productPageUrl, type ProductPage } from "./productSupport";
 import { DEFAULT_LANGUAGE, normalizeLanguage, type SupportedLanguage } from "./language";
 export type { ProductPage } from "./productSupport";
+import type {
+  KeyboardCleaningHeartbeatCommand,
+  KeyboardCleaningSignal,
+  KeyboardCleaningStartCommand,
+  KeyboardCleaningStopCommand,
+} from "./toolbox/system/keyboard-cleaning/keyboardCleaning";
 
 export interface ToolboxFileHashProgress {
   requestId: string;
@@ -217,6 +224,26 @@ export interface ToolboxOccupancyResult {
   coverage: string[];
   truncated: boolean;
   message: string | null;
+}
+
+export const KEYBOARD_CLEANING_EVENT = "core-robin:keyboard-cleaning";
+
+export function startKeyboardCleaning(request: KeyboardCleaningStartCommand): Promise<void> {
+  return invoke("start_keyboard_cleaning", { request });
+}
+
+export function stopKeyboardCleaning(request: KeyboardCleaningStopCommand): Promise<void> {
+  return invoke("stop_keyboard_cleaning", { request });
+}
+
+export function heartbeatKeyboardCleaning(request: KeyboardCleaningHeartbeatCommand): Promise<void> {
+  return invoke("heartbeat_keyboard_cleaning", { request });
+}
+
+export function subscribeKeyboardCleaning(
+  callback: (signal: KeyboardCleaningSignal) => void,
+): Promise<UnlistenFn> {
+  return listen<KeyboardCleaningSignal>(KEYBOARD_CLEANING_EVENT, (event) => callback(event.payload));
 }
 import type {
   HealthStateSnapshot,

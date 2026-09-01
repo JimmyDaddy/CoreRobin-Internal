@@ -17,12 +17,12 @@ mod health_state;
 mod history_export;
 mod history_storage;
 mod identity;
-// The safety controller and wire protocol are compiled and tested now, while
-// the signed platform helper adapter remains an explicitly unavailable
-// capability. Keep its intentionally uncalled production API visible to the
-// future adapter without weakening test-time lint coverage.
+// The safety controller and wire protocol are compiled and tested alongside
+// the parent-side adapter. Some controller entry points remain test-oriented;
+// keep them visible without weakening test-time lint coverage.
 #[cfg_attr(not(test), allow(dead_code))]
 pub(crate) mod keyboard_cleaning;
+mod keyboard_cleaning_adapter;
 mod models;
 mod monitor;
 mod native_uninstall;
@@ -56,6 +56,11 @@ pub use cleanup::{
 };
 pub fn maybe_run_cleanup_scan_worker() -> bool {
     cleanup_scan_job::maybe_run_worker()
+}
+
+/// Runs the restricted helper child mode before Tauri initializes any UI.
+pub fn run_keyboard_helper() -> i32 {
+    keyboard_cleaning::run_helper()
 }
 
 use std::sync::{
@@ -95,6 +100,8 @@ use history_storage::{
     clear_all as clear_all_history_segments, load as load_history_segment,
     save as save_history_segment, summary as history_storage_summary,
 };
+use keyboard_cleaning::{HeartbeatCommand, HelperStopReason, StartCommand, StopCommand};
+use keyboard_cleaning_adapter::KeyboardCleaningAdapter;
 use models::{
     ApplicationIcon, ApplicationIconRequest, ApplicationInventorySnapshot,
     ApplicationUninstallPlan, CleanupDeleteExecutionRequest, CleanupDeleteLease,
@@ -334,6 +341,7 @@ struct AppState {
     toolbox_scheduler: Arc<Mutex<ToolboxScheduler>>,
     toolbox_scheduler_stop: Arc<AtomicBool>,
     toolbox_storage: Arc<Mutex<Option<ToolboxStorage>>>,
+    keyboard_cleaning: Arc<Mutex<KeyboardCleaningAdapter>>,
 }
 
 impl AppState {
@@ -343,6 +351,8 @@ impl AppState {
         let process_controller = Arc::new(Mutex::new(process_controller));
         start_lease_reaper(Arc::downgrade(&process_controller));
         let toolbox_power = Arc::new(Mutex::new(PowerService::new()));
+        let keyboard_cleaning = KeyboardCleaningAdapter::new();
+        let keyboard_capability = keyboard_cleaning.capability();
         let toolbox_process_watch =
             ProcessWatchService::with_power_service(Arc::clone(&toolbox_power))
                 .expect("failed to start the process watch worker");
@@ -362,7 +372,9 @@ impl AppState {
             quick_clean: Arc::new(QuickCleanCoordinator::default()),
             file_insights: Arc::new(FileInsightsCoordinator::default()),
             startup_controller: Arc::new(Mutex::new(StartupController::default())),
-            toolbox: Arc::new(Mutex::new(ToolboxService::new())),
+            toolbox: Arc::new(Mutex::new(ToolboxService::with_keyboard_capability(
+                keyboard_capability,
+            ))),
             toolbox_file_hash: Arc::new(FileHashManager::default()),
             toolbox_power,
             toolbox_process_watch: Arc::new(Mutex::new(toolbox_process_watch)),
@@ -370,6 +382,7 @@ impl AppState {
             toolbox_scheduler: Arc::new(Mutex::new(ToolboxScheduler::default())),
             toolbox_scheduler_stop: Arc::new(AtomicBool::new(false)),
             toolbox_storage: Arc::new(Mutex::new(None)),
+            keyboard_cleaning: Arc::new(Mutex::new(keyboard_cleaning)),
         }
     }
 }
@@ -3377,6 +3390,54 @@ fn get_app_update_task(
     state.snapshot()
 }
 
+#[tauri::command]
+fn start_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: StartCommand,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    if !window.is_visible().unwrap_or(false) || !window.is_focused().unwrap_or(false) {
+        return Err(CommandError::new(
+            "keyboard_cleaning_window_not_foreground",
+            "Keyboard cleaning can start only while the main window is visible and focused.",
+        ));
+    }
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .start(window.app_handle(), request)
+}
+
+#[tauri::command]
+fn heartbeat_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: HeartbeatCommand,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .heartbeat(request)
+}
+
+#[tauri::command]
+fn stop_keyboard_cleaning(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    request: StopCommand,
+) -> Result<(), CommandError> {
+    require_main_window(&window)?;
+    state
+        .keyboard_cleaning
+        .lock()
+        .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
+        .stop(request)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let background_launch = std::env::args_os().any(|argument| argument == "--background");
@@ -3585,6 +3646,13 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main"
+                && matches!(event, WindowEvent::Focused(false))
+                && let Ok(mut keyboard_cleaning) =
+                    window.state::<AppState>().keyboard_cleaning.lock()
+            {
+                let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::FocusLost);
+            }
+            if window.label() == "main"
                 && let WindowEvent::CloseRequested { api, .. } = event
             {
                 api.prevent_close();
@@ -3724,17 +3792,28 @@ pub fn run() {
             scan_toolbox_volume_occupancy,
             cancel_toolbox_occupancy,
             start_app_update,
-            get_app_update_task
+            get_app_update_task,
+            start_keyboard_cleaning,
+            heartbeat_keyboard_cleaning,
+            stop_keyboard_cleaning
         ])
         .build(tauri::generate_context!())
         .expect("error while building CoreRobin")
         .run(move |app, event| {
             if matches!(event, tauri::RunEvent::Ready) {
                 let wake_app = app.clone();
+                let sleep_app = app.clone();
                 power_event_observer.install(
                     Arc::clone(&app.state::<AppState>().toolbox_power),
                     Arc::new(move || {
                         let _ = wake_app.emit(SYSTEM_WAKE_EVENT, ());
+                    }),
+                    Arc::new(move || {
+                        if let Ok(mut keyboard_cleaning) =
+                            sleep_app.state::<AppState>().keyboard_cleaning.lock()
+                        {
+                            let _ = keyboard_cleaning.stop_for_reason(HelperStopReason::Sleeping);
+                        }
                     }),
                 );
             }
@@ -3744,6 +3823,10 @@ pub fn run() {
             }
             if let tauri::RunEvent::Exit = event {
                 power_event_observer.shutdown();
+                if let Ok(mut keyboard_cleaning) = app.state::<AppState>().keyboard_cleaning.lock()
+                {
+                    keyboard_cleaning.shutdown();
+                }
                 app.state::<AppState>()
                     .toolbox_scheduler_stop
                     .store(true, Ordering::Release);

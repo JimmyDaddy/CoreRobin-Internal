@@ -8,10 +8,15 @@
 use serde::{Deserialize, Serialize};
 
 mod helper_protocol;
+mod helper_runtime;
 
-use helper_protocol::{
-    HelperCapability, HelperCommand, HelperLifecycleReason, HelperSignal, HelperStopReason,
-    HookEffectiveness, PROTOCOL_VERSION,
+#[allow(unused_imports)] // crate-callable integration surface for the future argument adapter.
+pub use helper_runtime::{helper_capability, run_helper};
+
+pub(crate) use helper_protocol::{
+    HeartbeatCommand, HelperCapability, HelperCommand, HelperLifecycleReason, HelperSignal,
+    HelperStopReason, HookEffectiveness, HookFailure, HookIneffectiveSignal, MAX_FRAME_BYTES,
+    PROTOCOL_VERSION, ReleasedSignal, StartCommand, StopCommand, decode_signal, encode_command,
 };
 
 pub const PREPARATION_WINDOW_MS: u64 = 3_000;
@@ -20,10 +25,11 @@ pub const HARD_LIMIT_MS: u64 = 180_000;
 pub const ALLOWED_DURATION_SECONDS: [u64; 3] = [30, 60, 120];
 const MAX_REQUEST_ID_BYTES: usize = 128;
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Capability {
     Available,
+    #[default]
     Unavailable,
 }
 

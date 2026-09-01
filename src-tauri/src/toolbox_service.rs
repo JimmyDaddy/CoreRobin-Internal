@@ -6,6 +6,7 @@ use std::sync::{
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::error::CommandError;
+use crate::keyboard_cleaning::Capability as KeyboardCleaningCapability;
 use crate::toolbox_contracts::{
     JobStatus, OutputValidation, TOOLBOX_CONTRACT_VERSION, TerminalReason, ToolboxCapability,
     ToolboxError, ToolboxJob, ToolboxJobRequest, ToolboxOutputToken, ToolboxResource,
@@ -150,6 +151,21 @@ const NATIVE_TOOL_IDS: &[&str] = &[
 const OUTPUT_TTL_MS: u64 = 10 * 60 * 1_000;
 const MAX_OUTPUT_BYTES: usize = 512 * 1024 * 1024;
 
+fn keyboard_cleaning_platform() -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        "macos"
+    }
+    #[cfg(target_os = "windows")]
+    {
+        "windows"
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        "linux"
+    }
+}
+
 fn is_heavy_tool(tool_id: &str) -> bool {
     matches!(
         tool_id,
@@ -185,14 +201,21 @@ pub struct ToolboxService {
     output_cancellations: HashMap<String, Arc<AtomicBool>>,
     inputs: Arc<ToolboxInputs>,
     clearing: bool,
+    keyboard_cleaning_capability: KeyboardCleaningCapability,
 }
 
 impl ToolboxService {
+    #[allow(dead_code)]
     pub fn new() -> Self {
+        Self::with_keyboard_capability(KeyboardCleaningCapability::Unavailable)
+    }
+
+    pub fn with_keyboard_capability(capability: KeyboardCleaningCapability) -> Self {
         Self {
             service_instance_id: format!("toolbox-{}", now_millis()),
             revision: 0,
             reset_epoch: 0,
+            keyboard_cleaning_capability: capability,
             ..Self::default()
         }
     }
@@ -201,17 +224,32 @@ impl ToolboxService {
         let capabilities = TOOL_IDS
             .iter()
             .map(|id| {
-                let (state, reason) = if LOCAL_TOOL_IDS.contains(id) || NATIVE_TOOL_IDS.contains(id) {
-                    ("available", None)
+                let (state, reason, platform) = if *id == "keyboard-cleaning" {
+                    match self.keyboard_cleaning_capability {
+                        KeyboardCleaningCapability::Available => (
+                            "available",
+                            None,
+                            Some(keyboard_cleaning_platform()),
+                        ),
+                        KeyboardCleaningCapability::Unavailable => (
+                            "unavailable",
+                            Some("This tool requires a restricted native helper that is not registered."),
+                            None,
+                        ),
+                    }
+                } else if LOCAL_TOOL_IDS.contains(id) || NATIVE_TOOL_IDS.contains(id) {
+                    ("available", None, None)
                 } else if WEB_MANAGED_TOOL_IDS.contains(id) {
                     (
                         "degraded",
                         Some("Web Worker provider is bounded, but some native input/output integration remains limited."),
+                        None,
                     )
                 } else {
                     (
                         "unavailable",
                         Some("This tool requires a restricted native helper that is not registered."),
+                        None,
                     )
                 };
                 (
@@ -219,7 +257,7 @@ impl ToolboxService {
                     ToolboxCapability {
                         state: state.to_owned(),
                         reason: reason.map(str::to_owned),
-                        platform: None,
+                        platform: platform.map(str::to_owned),
                     },
                 )
             })

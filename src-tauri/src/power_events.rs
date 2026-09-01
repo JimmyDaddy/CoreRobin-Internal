@@ -32,16 +32,17 @@ impl PowerEventObserver {
         &mut self,
         power: Arc<Mutex<PowerService>>,
         on_wake: Arc<dyn Fn() + Send + Sync>,
+        on_sleep: Arc<dyn Fn() + Send + Sync>,
     ) {
         #[cfg(target_os = "macos")]
         {
             self.shutdown();
-            self.observer = Some(MacPowerEventObserver::register(power, on_wake));
+            self.observer = Some(MacPowerEventObserver::register(power, on_wake, on_sleep));
         }
 
         #[cfg(not(target_os = "macos"))]
         {
-            let _ = (power, on_wake);
+            let _ = (power, on_wake, on_sleep);
         }
     }
 
@@ -92,17 +93,25 @@ struct MacPowerEventObserver {
 
 #[cfg(target_os = "macos")]
 impl MacPowerEventObserver {
-    fn register(power: Arc<Mutex<PowerService>>, on_wake: Arc<dyn Fn() + Send + Sync>) -> Self {
+    fn register(
+        power: Arc<Mutex<PowerService>>,
+        on_wake: Arc<dyn Fn() + Send + Sync>,
+        on_sleep: Arc<dyn Fn() + Send + Sync>,
+    ) -> Self {
         let workspace = NSWorkspace::sharedWorkspace();
         let notification_center = workspace.notificationCenter();
 
         let sleep_power = Arc::clone(&power);
+        let sleep_keyboard = Arc::clone(&on_sleep);
         let sleep_observer = unsafe {
             notification_center.addObserverForName_object_queue_usingBlock(
                 Some(NSWorkspaceWillSleepNotification),
                 None,
                 None,
-                &RcBlock::new(move |_| release_keep_awake_for_system_sleep(&sleep_power)),
+                &RcBlock::new(move |_| {
+                    release_keep_awake_for_system_sleep(&sleep_power);
+                    sleep_keyboard.as_ref()();
+                }),
             )
         };
         let wake_observer = unsafe {
