@@ -823,6 +823,7 @@ fn read_proc_maps_matches(
     truncated: &mut bool,
     permission_gap: &mut bool,
 ) -> bool {
+    use std::io::Read;
     use std::os::unix::fs::MetadataExt;
 
     let mut file = match fs::File::open(process_dir.join("maps")) {
