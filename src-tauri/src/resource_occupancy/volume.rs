@@ -309,7 +309,7 @@ fn read_volume_identity(path: &Path) -> Result<VolumeIdentity, crate::error::Com
     let metadata = fs::metadata(&canonical).map_err(|error| {
         crate::error::CommandError::new("volume_unavailable", format!("无法复验外盘身份：{error}"))
     })?;
-    #[cfg(unix)]
+    #[cfg(target_os = "macos")]
     let (device, root_inode, metadata_generation) = {
         use std::os::unix::fs::MetadataExt;
         (
@@ -319,15 +319,20 @@ fn read_volume_identity(path: &Path) -> Result<VolumeIdentity, crate::error::Com
                 + u128::from(metadata.ctime_nsec().unsigned_abs()),
         )
     };
+    #[cfg(target_os = "linux")]
+    let (device, root_inode) = {
+        use std::os::unix::fs::MetadataExt;
+        (metadata.dev(), metadata.ino())
+    };
     #[cfg(not(unix))]
-    let (device, root_inode, metadata_generation) = (0, 0, metadata.len() as u128);
+    let (device, root_inode) = (0, 0);
 
     #[cfg(target_os = "linux")]
     let (mount_generation, mount_source) = (linux_mount_generation(&canonical)?, None);
     #[cfg(target_os = "macos")]
     let (mount_generation, mount_source) = macos_mount_binding(&canonical, metadata_generation)?;
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let (mount_generation, mount_source) = (metadata_generation, None);
+    let (mount_generation, mount_source) = (metadata.len() as u128, None);
 
     Ok(VolumeIdentity {
         device,

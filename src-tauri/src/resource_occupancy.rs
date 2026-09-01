@@ -669,7 +669,7 @@ fn scan_linux(
     let mut truncated = false;
     let mut permission_gap = false;
     let Ok(entries) = fs::read_dir("/proc") else {
-        return unsupported_result(request_id, path_hint, captured_at_ms);
+        return linux_proc_unavailable_result(request_id, path_hint, captured_at_ms);
     };
     for entry in entries.flatten() {
         if cancellation.is_cancelled() {
@@ -822,6 +822,8 @@ fn read_proc_maps_matches(
     truncated: &mut bool,
     permission_gap: &mut bool,
 ) -> bool {
+    use std::os::unix::fs::MetadataExt;
+
     let mut file = match fs::File::open(process_dir.join("maps")) {
         Ok(file) => file,
         Err(error) => {
@@ -861,6 +863,26 @@ fn read_proc_maps_matches(
         }
     }
     false
+}
+
+#[cfg(target_os = "linux")]
+fn linux_proc_unavailable_result(
+    request_id: &str,
+    path_hint: &str,
+    captured_at_ms: u64,
+) -> OccupancyScanResult {
+    OccupancyScanResult {
+        request_id: request_id.to_owned(),
+        status: "partial".to_owned(),
+        path_hint: path_hint.to_owned(),
+        captured_at_ms,
+        processes: Vec::new(),
+        coverage: vec!["Linux /proc fd/cwd/root/maps 身份匹配".to_owned()],
+        truncated: true,
+        message: Some(
+            "Linux /proc 不可读取；无法完整判断文件占用，空结果不代表没有使用者。".to_owned(),
+        ),
+    }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]

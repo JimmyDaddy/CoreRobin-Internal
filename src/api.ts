@@ -223,7 +223,7 @@ export interface ToolboxOccupancyProcess {
 
 export interface ToolboxOccupancyResult {
   requestId: string;
-  status: "scoped_complete" | "truncated" | "timed_out" | "target_changed" | "unsupported";
+  status: "scoped_complete" | "partial" | "truncated" | "timed_out" | "target_changed" | "unsupported";
   pathHint: string;
   capturedAtMs: number;
   processes: ToolboxOccupancyProcess[];
