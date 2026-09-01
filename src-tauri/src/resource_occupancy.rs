@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Read};
+use std::io;
+#[cfg(target_os = "macos")]
+use std::io::Read;
 use std::path::{Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 
