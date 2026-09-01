@@ -2529,7 +2529,9 @@ export default interface Resources {
         "unavailable": "仅桌面应用可用"
       },
       "test": "发送测试提醒",
-      "title": "桌面提醒"
+      "title": "桌面提醒",
+      "toolboxHistory": "保存工具箱任务历史",
+      "toolboxHistoryDescription": "只保存工具箱任务的最小终态，按保留期自动清理。"
     },
     "onboarding": {
       "back": "上一步",

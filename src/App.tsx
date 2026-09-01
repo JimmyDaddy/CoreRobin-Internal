@@ -40,9 +40,11 @@ import {
 
 import {
   canRelaunchApplication,
+  configureToolboxPolicy,
   createProcessControlLease,
   executeProcessAction,
   getSystemSnapshot,
+  getToolboxStorageSnapshot,
   getLaunchAtLogin,
   getProcessDetail,
   isDesktopRuntime,
@@ -224,6 +226,8 @@ function App() {
     useState<SettingsOperationFailure | null>(null);
   const [settingsOperationRetryRevision, setSettingsOperationRetryRevision] =
     useState(0);
+  const toolboxPolicySyncQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const toolboxPolicySignatureRef = useRef<string | null>(null);
   const [companionVisible, setCompanionVisible] = useState(
     settings.companionShowOnStartup,
   );
@@ -843,6 +847,66 @@ function App() {
     saveAppSettings(settings);
     applyAppAppearance(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    const desired = {
+      globalHistoryEnabled: settings.historyPersistenceEnabled,
+      toolboxHistoryEnabled:
+        settings.historyPersistenceEnabled && settings.toolboxHistoryEnabled,
+      retentionDays: Math.min(7, settings.historyRetentionDays),
+      notificationsEnabled: settings.desktopNotificationsEnabled,
+      language: normalizeLanguage(settings.language),
+    };
+    const signature = JSON.stringify(desired);
+    if (toolboxPolicySignatureRef.current === signature) return;
+
+    let disposed = false;
+    const sync = async () => {
+      if (toolboxPolicySignatureRef.current === signature) return;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const current = await getToolboxStorageSnapshot();
+        const policy = current.policy;
+        if (
+          policy.globalHistoryEnabled === desired.globalHistoryEnabled
+          && policy.toolboxHistoryEnabled === desired.toolboxHistoryEnabled
+          && policy.retentionDays === desired.retentionDays
+          && policy.notificationsEnabled === desired.notificationsEnabled
+          && policy.language === desired.language
+        ) {
+          if (!disposed) toolboxPolicySignatureRef.current = signature;
+          return;
+        }
+        try {
+          await configureToolboxPolicy({
+            expectedPolicyRevision: policy.policyRevision,
+            ...desired,
+          });
+          if (!disposed) toolboxPolicySignatureRef.current = signature;
+          return;
+        } catch (caughtError) {
+          const normalized = normalizeCommandError(caughtError);
+          if (normalized.code !== "policy_revision_conflict" || attempt === 1) {
+            throw caughtError;
+          }
+        }
+      }
+    };
+
+    const queued = toolboxPolicySyncQueueRef.current.then(sync, sync);
+    toolboxPolicySyncQueueRef.current = queued.catch((caughtError) => {
+      if (!disposed) setNotice(normalizeCommandError(caughtError).message);
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [
+    settings.desktopNotificationsEnabled,
+    settings.historyPersistenceEnabled,
+    settings.historyRetentionDays,
+    settings.language,
+    settings.toolboxHistoryEnabled,
+  ]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;

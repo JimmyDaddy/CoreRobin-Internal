@@ -158,6 +158,8 @@
     "title": "桌面提醒",
     "description": "只提醒持續高負荷、真實記憶體壓力和磁碟空間不足；問題穩定恢復後 CoreRobin 會再告知一次。",
     "enable": "允許剋制提醒",
+    "toolboxHistory": "儲存工具箱工作歷史",
+    "toolboxHistoryDescription": "只儲存工具箱工作的最小終態，並依保留期限自動清理。",
     "openSettings": "開啟系統通知設定",
     "categories": "允許提醒的類別",
     "resources": {

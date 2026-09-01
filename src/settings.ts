@@ -62,6 +62,7 @@ export interface AppSettings {
   usageThresholds: UsageThresholds;
   defaultProcessView: ProcessViewMode;
   historyPersistenceEnabled: boolean;
+  toolboxHistoryEnabled: boolean;
   historyApplicationNamesEnabled: boolean;
   applicationImpactHistoryEnabled: boolean;
   historyRetentionDays: HistoryRetentionDays;
@@ -94,6 +95,7 @@ export function defaultAppSettings(
     usageThresholds: [35, 65, 85],
     defaultProcessView: "flat",
     historyPersistenceEnabled: true,
+    toolboxHistoryEnabled: false,
     historyApplicationNamesEnabled: false,
     applicationImpactHistoryEnabled: false,
     historyRetentionDays: 7,
@@ -156,6 +158,10 @@ export function parseAppSettings(
         typeof value.historyPersistenceEnabled === "boolean"
           ? value.historyPersistenceEnabled
           : fallback.historyPersistenceEnabled,
+      toolboxHistoryEnabled:
+        typeof value.toolboxHistoryEnabled === "boolean"
+          ? value.toolboxHistoryEnabled
+          : fallback.toolboxHistoryEnabled,
       historyApplicationNamesEnabled:
         typeof value.historyApplicationNamesEnabled === "boolean"
           ? value.historyApplicationNamesEnabled

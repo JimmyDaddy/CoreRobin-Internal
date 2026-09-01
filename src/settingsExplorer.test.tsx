@@ -77,6 +77,20 @@ describe("SettingsExplorer", () => {
     });
   });
 
+  it("exposes the toolbox history policy without changing the safe default", () => {
+    const onChange = vi.fn();
+    renderSettings(onChange);
+    fireEvent.click(screen.getByRole("button", { name: "桌面提醒" }));
+
+    const historySwitch = screen.getByRole("switch", {
+      name: "保存工具箱任务历史",
+    });
+    expect((historySwitch as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(historySwitch);
+
+    expect(onChange).toHaveBeenLastCalledWith({ toolboxHistoryEnabled: true });
+  });
+
   it("keeps a manually entered application as waiting instead of blocking it", () => {
     const onChange = vi.fn();
     renderSettings(onChange);

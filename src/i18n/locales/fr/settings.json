@@ -158,6 +158,8 @@
     "title": "Notifications sur le bureau",
     "description": "Seules les charges lourdes, la forte pression mémoire et l'espace disque insuffisant vous alertent. CoreRobin suit la situation une fois que le problème est durablement résolu.",
     "enable": "Activer les alertes limitées",
+    "toolboxHistory": "Enregistrer l’historique des tâches de la boîte à outils",
+    "toolboxHistoryDescription": "Enregistre uniquement les résultats minimaux de la boîte à outils et les supprime selon la durée de conservation.",
     "openSettings": "Ouvrir les réglages des notifications",
     "categories": "Catégories d'alertes autorisées",
     "resources": {

@@ -111,6 +111,8 @@
     "title": "Desktop notifications",
     "description": "Only sustained heavy load, real memory pressure, and low disk space interrupt you. CoreRobin follows up once after the problem has stably recovered.",
     "enable": "Allow restrained alerts",
+    "toolboxHistory": "Save toolbox task history",
+    "toolboxHistoryDescription": "Save only minimal toolbox outcomes and prune them by the retention period.",
     "openSettings": "Open notification settings",
     "categories": "Allowed alert categories",
     "resources": {

@@ -158,6 +158,8 @@
     "title": "デスクトップ通知",
     "description": "主に、高い負荷、実際のメモリ圧、および低いディスク容量が問題を引き起こした場合にのみ通知します。 CoreRobinは、問題が安定して回復した後、一度フォローアップします。",
     "enable": "控えめな通知を許可する",
+    "toolboxHistory": "ツールボックスのタスク履歴を保存",
+    "toolboxHistoryDescription": "ツールボックスの最小限の結果だけを保存し、保持期間に従って削除します。",
     "openSettings": "システムの通知設定を開く",
     "categories": "許可する通知の種類",
     "resources": {

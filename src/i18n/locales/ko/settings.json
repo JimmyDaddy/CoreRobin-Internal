@@ -158,6 +158,8 @@
     "title": "데스크톱 알림",
     "description": "지속적인 높은 부하, 실제 메모리 압력 및 낮은 디스크 공간이 발생할 때만 알립니다. CoreRobin는 문제가 안정적으로 복구된 후 한 번에 확인합니다.",
     "enable": "제한적인 알림 활성화",
+    "toolboxHistory": "도구 상자 작업 기록 저장",
+    "toolboxHistoryDescription": "도구 상자의 최소 결과만 저장하고 보관 기간에 따라 정리합니다.",
     "openSettings": "시스템 알림 설정 열기",
     "categories": "알림 설정 가능한 카테고리",
     "resources": {

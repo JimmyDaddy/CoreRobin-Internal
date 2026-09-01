@@ -158,6 +158,8 @@
     "title": "Notificaciones del escritorio",
     "description": "Solo una alta carga sostenida, presión real de memoria y bajo espacio en disco interrumpen el funcionamiento. CoreRobin realiza un seguimiento una vez después de que el problema se haya recuperado de forma estable.",
     "enable": "Activar alertas moderadas",
+    "toolboxHistory": "Guardar el historial de tareas de la caja de herramientas",
+    "toolboxHistoryDescription": "Guarda solo resultados mínimos de la caja de herramientas y elimínalos según el periodo de retención.",
     "openSettings": "Abrir ajustes de notificaciones",
     "categories": "Categorías de alertas permitidas",
     "resources": {
