@@ -538,6 +538,10 @@ fn drain_power_completions(state: &AppState) {
             return;
         }
     };
+    drain_power_completions_locked(state);
+}
+
+fn drain_power_completions_locked(state: &AppState) {
     let completions = match state.toolbox_power.lock() {
         Ok(power) => power.take_completions(),
         Err(_) => {
@@ -574,7 +578,7 @@ fn drain_power_completions(state: &AppState) {
     }
 }
 
-fn drain_process_watch_completions(state: &AppState) {
+fn drain_process_watch_completions(app: &AppHandle, state: &AppState) {
     // Keep a completion already taken by the reaper from being projected after
     // global clear. The process-watch reset itself stops and joins its worker.
     let _clear_barrier = match state.toolbox_scheduler_dispatch_lock.lock() {
@@ -584,6 +588,10 @@ fn drain_process_watch_completions(state: &AppState) {
             return;
         }
     };
+    drain_process_watch_completions_locked(app, state);
+}
+
+fn drain_process_watch_completions_locked(app: &AppHandle, state: &AppState) {
     let completions = match state.toolbox_process_watch.lock() {
         Ok(service) => service.take_completions(),
         Err(_) => {
@@ -609,14 +617,76 @@ fn drain_process_watch_completions(state: &AppState) {
         } else {
             now_ms.saturating_sub(now.duration_since(snapshot.started_at).as_millis() as u64)
         };
+        let notification_status = if snapshot.status == ProcessWatchStatus::Exited {
+            notify_process_exit(app, state, snapshot.key.pid)
+        } else {
+            ToolboxNotificationStatus::Unavailable
+        };
         record_toolbox_completion(
             state,
             format!("process-watch-{}", snapshot.watch_id),
             ToolboxSystemTool::ProcessWatch,
             started_at_ms,
             terminal_status,
-            ToolboxNotificationStatus::Unavailable,
+            notification_status,
         );
+    }
+}
+
+fn notify_process_exit(app: &AppHandle, state: &AppState, pid: u32) -> ToolboxNotificationStatus {
+    let policy = state
+        .toolbox_storage
+        .lock()
+        .ok()
+        .and_then(|storage| storage.as_ref().map(|storage| storage.snapshot().policy));
+    let Some(policy) = policy else {
+        return ToolboxNotificationStatus::Unavailable;
+    };
+    if !policy.notifications_enabled {
+        return ToolboxNotificationStatus::Unavailable;
+    }
+    match app
+        .notification()
+        .builder()
+        .title(process_watch_notification_title(&policy.language))
+        .body(process_watch_notification_body(&policy.language, pid))
+        .show()
+    {
+        Ok(()) => ToolboxNotificationStatus::Submitted,
+        Err(error) => {
+            eprintln!("process-watch notification was not delivered: {error}");
+            ToolboxNotificationStatus::Failed
+        }
+    }
+}
+
+fn process_watch_notification_title(language: &str) -> &'static str {
+    match language {
+        "zh-CN" => "进程退出提醒",
+        "zh-Hant" => "程序結束提醒",
+        "ja" => "プロセス終了通知",
+        "de" => "Prozess beendet",
+        "fr" => "Processus terminé",
+        "es" => "Proceso finalizado",
+        "pt-BR" => "Processo encerrado",
+        "ko" => "프로세스 종료 알림",
+        "ru" => "Процесс завершён",
+        _ => "Process exited",
+    }
+}
+
+fn process_watch_notification_body(language: &str, pid: u32) -> String {
+    match language {
+        "zh-CN" => format!("PID {pid} 已退出。"),
+        "zh-Hant" => format!("PID {pid} 已結束。"),
+        "ja" => format!("PID {pid} が終了しました。"),
+        "de" => format!("PID {pid} wurde beendet."),
+        "fr" => format!("Le PID {pid} s’est terminé."),
+        "es" => format!("El PID {pid} ha finalizado."),
+        "pt-BR" => format!("O PID {pid} foi encerrado."),
+        "ko" => format!("PID {pid} 프로세스가 종료되었습니다."),
+        "ru" => format!("Процесс с PID {pid} завершён."),
+        _ => format!("Process PID {pid} exited."),
     }
 }
 
@@ -686,7 +756,7 @@ fn start_toolbox_reaper(
                 let state = app.state::<AppState>();
                 let current_activity = toolbox_activity_fingerprint(&state);
                 drain_power_completions(&state);
-                drain_process_watch_completions(&state);
+                drain_process_watch_completions(&app, &state);
                 if current_activity.is_some() && current_activity != previous_activity {
                     let _ = app.emit(TOOLBOX_ACTIVITY_EVENT, ());
                 }
@@ -2754,7 +2824,11 @@ fn start_toolbox_process_watch(
     request: ProcessWatchRequest,
 ) -> Result<ProcessWatchSnapshotView, CommandError> {
     require_main_window(&window)?;
-    drain_process_watch_completions(&state);
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let expected_reset_epoch = state
         .toolbox
         .lock()
@@ -2767,7 +2841,7 @@ fn start_toolbox_process_watch(
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .start(request)?
         .snapshot;
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let now = Instant::now();
     let now_ms = now_millis();
     let view = ProcessWatchSnapshotView::from_snapshot(&snapshot, now, now_ms);
@@ -2787,13 +2861,17 @@ fn get_toolbox_process_watches(
     state: State<'_, AppState>,
 ) -> Result<Vec<ProcessWatchSnapshotView>, CommandError> {
     require_main_window(&window)?;
-    drain_process_watch_completions(&state);
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let snapshots = state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .snapshots()?;
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let now = Instant::now();
     let now_ms = now_millis();
     Ok(snapshots
@@ -2809,13 +2887,17 @@ fn cancel_toolbox_process_watch(
     request: ProcessWatchCancelRequest,
 ) -> Result<Option<ProcessWatchSnapshotView>, CommandError> {
     require_main_window(&window)?;
-    drain_process_watch_completions(&state);
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let snapshot = state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
         .cancel(request.watch_id)?;
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions_locked(window.app_handle(), &state);
     let now = Instant::now();
     let now_ms = now_millis();
     Ok(snapshot
@@ -2871,7 +2953,7 @@ fn get_toolbox_snapshot(
 ) -> Result<ToolboxSnapshot, CommandError> {
     require_main_window(&window)?;
     drain_power_completions(&state);
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
     if contract_version != toolbox_contracts::TOOLBOX_CONTRACT_VERSION {
         return Err(CommandError::new(
             "contract_mismatch",
@@ -3064,7 +3146,7 @@ fn get_toolbox_storage_snapshot(
 ) -> Result<ToolboxStorageSnapshot, CommandError> {
     require_main_window(&window)?;
     drain_power_completions(&state);
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
     state
         .toolbox_storage
         .lock()
@@ -3106,7 +3188,7 @@ fn list_toolbox_history(
 ) -> Result<ToolboxHistoryPage, CommandError> {
     require_main_window(&window)?;
     drain_power_completions(&state);
-    drain_process_watch_completions(&state);
+    drain_process_watch_completions(window.app_handle(), &state);
     state
         .toolbox_storage
         .lock()
@@ -3171,10 +3253,11 @@ fn clear_toolbox_data(
         .reset()?;
     let _ = state.toolbox_file_hash.cancel();
     let _ = resource_occupancy::cancel_active();
-    if let Ok(mut power) = state.toolbox_power.lock() {
-        let _ = power.cancel();
-        let _ = power.take_completions();
-    }
+    state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .clear_all();
     let snapshot = state
         .toolbox
         .lock()
@@ -3244,7 +3327,11 @@ fn start_toolbox_keep_awake(
     request: PowerRequest,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
-    drain_power_completions(&state);
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_power_completions_locked(&state);
     let expected_reset_epoch = state
         .toolbox
         .lock()
@@ -3267,7 +3354,7 @@ fn start_toolbox_keep_awake(
             started_at_ms,
         );
     }
-    drain_power_completions(&state);
+    drain_power_completions_locked(&state);
     result
 }
 
@@ -3277,13 +3364,17 @@ fn cancel_toolbox_keep_awake(
     state: State<'_, AppState>,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
-    drain_power_completions(&state);
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
+    drain_power_completions_locked(&state);
     let result = state
         .toolbox_power
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
         .cancel();
-    drain_power_completions(&state);
+    drain_power_completions_locked(&state);
     Ok(result)
 }
 
@@ -3293,12 +3384,16 @@ fn retry_toolbox_keep_awake_release(
     state: State<'_, AppState>,
 ) -> Result<PowerState, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let result = state
         .toolbox_power
         .lock()
         .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
         .retry_release()?;
-    drain_power_completions(&state);
+    drain_power_completions_locked(&state);
     Ok(result)
 }
 

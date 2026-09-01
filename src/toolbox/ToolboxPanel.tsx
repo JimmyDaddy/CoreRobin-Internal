@@ -32,7 +32,7 @@ import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, retryToolboxKeepAwakeRelease, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxPowerState, type ToolboxProcessWatchSnapshot, type ToolboxProcessWatchStatus, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, retryToolboxKeepAwakeRelease, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxPowerState, type ToolboxProcessWatchSnapshot, type ToolboxProcessWatchStatus, type ToolboxScheduleAction, type ToolboxScheduleSnapshot, type ToolboxScheduleTrigger } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
@@ -68,6 +68,15 @@ const CATEGORY_ICONS: Record<ToolboxCategory, typeof Wrench> = {
 };
 
 type ToolboxProcessWatchTarget = Pick<ProcessRow, "pid" | "birthToken" | "name" | "startTime">;
+type ScheduleMutationPayload = {
+  scheduleId?: string;
+  expectedRevision?: number;
+  timeZone?: string;
+  title?: string;
+  action?: ToolboxScheduleAction;
+  trigger?: ToolboxScheduleTrigger;
+};
+type PendingScheduleMutation = { requestId: string; payload: ScheduleMutationPayload };
 
 export function ToolboxPanel({
   onClose,
@@ -99,6 +108,10 @@ export function ToolboxPanel({
   const selectedTool = selected
     ? getToolDefinition(selected, nativeCapabilities, translateTool)
     : null;
+
+  useEffect(() => {
+    if (initialProcessWatchTarget?.birthToken) setSelected("process-watch");
+  }, [initialProcessWatchTarget]);
 
   useEffect(() => {
     if (!isDesktopRuntime()) return;
@@ -623,17 +636,19 @@ function ScheduleTool() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
-  const pendingMutationIds = useRef<Map<string, string>>(readPendingScheduleMutations());
+  const pendingMutations = useRef<Map<string, PendingScheduleMutation>>(readPendingScheduleMutations());
 
-  const requestIdFor = (signature: string) => {
-    const current = pendingMutationIds.current.get(signature) ?? crypto.randomUUID();
-    pendingMutationIds.current.set(signature, current);
-    persistPendingScheduleMutations(pendingMutationIds.current);
+  const requestFor = (mutationKey: string, payload: ScheduleMutationPayload) => {
+    const existing = pendingMutations.current.get(mutationKey);
+    if (existing) return existing;
+    const current = { requestId: crypto.randomUUID(), payload };
+    pendingMutations.current.set(mutationKey, current);
+    persistPendingScheduleMutations(pendingMutations.current);
     return current;
   };
-  const settleMutation = (signature: string) => {
-    pendingMutationIds.current.delete(signature);
-    persistPendingScheduleMutations(pendingMutationIds.current);
+  const settleMutation = (mutationKey: string) => {
+    pendingMutations.current.delete(mutationKey);
+    persistPendingScheduleMutations(pendingMutations.current);
   };
 
   useEffect(() => {
@@ -713,37 +728,72 @@ function ScheduleTool() {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (!timeZone) throw new ToolboxInputError("time_zone_unavailable", t("schedule.timeZoneUnavailable"));
       let trigger;
+      let mutationTrigger;
       if (kind === "once") {
         const atMs = new Date(onceAt).getTime();
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "once", atUtcMs: atMs } });
         if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("invalid_once_time", t("schedule.invalidOnce"));
         trigger = { kind: "once" as const, atMs };
+        mutationTrigger = { kind: "once" as const, atMs };
       } else if (kind === "daily") {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "daily", hour: numericHour, minute: numericMinute } });
         if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "daily" as const, hour: numericHour, minute: numericMinute, nextRunAtMs };
+        mutationTrigger = { kind: "daily" as const, hour: numericHour, minute: numericMinute };
       } else if (kind === "weekly") {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "weekly", weekday: numericWeekday, hour: numericHour, minute: numericMinute } });
         if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         const nextRunAtMs = preview.occurrenceAtMs[0];
         trigger = { kind: "weekly" as const, weekday: numericWeekday, hour: numericHour, minute: numericMinute, nextRunAtMs };
+        mutationTrigger = { kind: "weekly" as const, weekday: numericWeekday, hour: numericHour, minute: numericMinute };
       } else {
         const preview = await previewToolboxSchedule({ timeZone, trigger: { kind: "cron", expression: cron } });
         if (preview.status !== "ready" || preview.occurrenceAtMs.length === 0) throw new ToolboxInputError("cron_no_occurrence", t("schedule.noOccurrence"));
         trigger = { kind: "cron" as const, expression: cron, nextRunAtMs: preview.occurrenceAtMs[0] };
+        mutationTrigger = { kind: "cron" as const, expression: cron };
       }
       if (actionKind === "keepAwake" && (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 720)) {
         throw new ToolboxInputError("invalid_duration", t("schedule.invalidDuration"));
       }
       const action = actionKind === "reminder" ? { kind: "reminder" as const } : { kind: "keepAwake" as const, durationMinutes };
-      const mutation = { operation: editingScheduleId ? "update" : "create", scheduleId: editingScheduleId, timeZone, title: title || undefined, action, trigger };
-      const signature = JSON.stringify(mutation);
-      const request = { requestId: requestIdFor(signature), timeZone, title: title || undefined, action, trigger };
-      setSnapshot(editingScheduleId
-        ? await updateToolboxSchedule({ ...request, scheduleId: editingScheduleId, expectedRevision: snapshot?.revision })
-        : await createToolboxSchedule(request));
-      settleMutation(signature);
+      const mutationKey = JSON.stringify({
+        operation: editingScheduleId ? "update" : "create",
+        scheduleId: editingScheduleId,
+        timeZone,
+        title: title || undefined,
+        action,
+        trigger: mutationTrigger,
+      });
+      const pending = requestFor(mutationKey, {
+        ...(editingScheduleId ? { scheduleId: editingScheduleId, expectedRevision: snapshot?.revision } : {}),
+        timeZone,
+        title: title || undefined,
+        action,
+        trigger,
+      });
+      if (editingScheduleId) {
+        const payload = pending.payload;
+        setSnapshot(await updateToolboxSchedule({
+          requestId: pending.requestId,
+          scheduleId: payload.scheduleId ?? editingScheduleId,
+          expectedRevision: payload.expectedRevision,
+          timeZone: payload.timeZone ?? timeZone,
+          title: payload.title,
+          action: payload.action ?? action,
+          trigger: payload.trigger ?? trigger,
+        }));
+      } else {
+        const payload = pending.payload;
+        setSnapshot(await createToolboxSchedule({
+          requestId: pending.requestId,
+          timeZone: payload.timeZone ?? timeZone,
+          title: payload.title,
+          action: payload.action ?? action,
+          trigger: payload.trigger ?? trigger,
+        }));
+      }
+      settleMutation(mutationKey);
       setEditingScheduleId(null);
     } catch (reason) {
       setError(userFacingError(reason));
@@ -755,10 +805,15 @@ function ScheduleTool() {
   const pause = async (scheduleId: string) => {
     setRunning(true);
     setError("");
-    const signature = JSON.stringify({ operation: "pause", scheduleId, expectedRevision: snapshot?.revision });
+    const mutationKey = JSON.stringify({ operation: "pause", scheduleId });
     try {
-      setSnapshot(await pauseToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
-      settleMutation(signature);
+      const pending = requestFor(mutationKey, { scheduleId, expectedRevision: snapshot?.revision });
+      setSnapshot(await pauseToolboxSchedule({
+        requestId: pending.requestId,
+        scheduleId: pending.payload.scheduleId ?? scheduleId,
+        expectedRevision: pending.payload.expectedRevision,
+      }));
+      settleMutation(mutationKey);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -769,10 +824,15 @@ function ScheduleTool() {
   const resume = async (scheduleId: string) => {
     setRunning(true);
     setError("");
-    const signature = JSON.stringify({ operation: "resume", scheduleId, expectedRevision: snapshot?.revision });
+    const mutationKey = JSON.stringify({ operation: "resume", scheduleId });
     try {
-      setSnapshot(await resumeToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
-      settleMutation(signature);
+      const pending = requestFor(mutationKey, { scheduleId, expectedRevision: snapshot?.revision });
+      setSnapshot(await resumeToolboxSchedule({
+        requestId: pending.requestId,
+        scheduleId: pending.payload.scheduleId ?? scheduleId,
+        expectedRevision: pending.payload.expectedRevision,
+      }));
+      settleMutation(mutationKey);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -783,10 +843,15 @@ function ScheduleTool() {
   const remove = async (scheduleId: string) => {
     setRunning(true);
     setError("");
-    const signature = JSON.stringify({ operation: "delete", scheduleId, expectedRevision: snapshot?.revision });
+    const mutationKey = JSON.stringify({ operation: "delete", scheduleId });
     try {
-      setSnapshot(await deleteToolboxSchedule({ requestId: requestIdFor(signature), scheduleId, expectedRevision: snapshot?.revision }));
-      settleMutation(signature);
+      const pending = requestFor(mutationKey, { scheduleId, expectedRevision: snapshot?.revision });
+      setSnapshot(await deleteToolboxSchedule({
+        requestId: pending.requestId,
+        scheduleId: pending.payload.scheduleId ?? scheduleId,
+        expectedRevision: pending.payload.expectedRevision,
+      }));
+      settleMutation(mutationKey);
     } catch (reason) {
       setError(userFacingError(reason));
     } finally {
@@ -919,24 +984,29 @@ function localDateTimeInput(value: Date): string {
   return local.toISOString().slice(0, 16);
 }
 
-function readPendingScheduleMutations(): Map<string, string> {
+function readPendingScheduleMutations(): Map<string, PendingScheduleMutation> {
   try {
     const parsed: unknown = JSON.parse(sessionStorage.getItem(PENDING_SCHEDULE_MUTATIONS_KEY) ?? "[]");
     if (!Array.isArray(parsed)) return new Map();
-    return new Map(parsed.filter((entry): entry is [string, string] =>
-      Array.isArray(entry) && entry.length === 2 && typeof entry[0] === "string" && typeof entry[1] === "string",
-    ).slice(-8));
+    return new Map(parsed.filter((entry): entry is [string, PendingScheduleMutation] => {
+      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string" || !isRecord(entry[1])) return false;
+      return typeof entry[1].requestId === "string" && isRecord(entry[1].payload);
+    }).slice(-8));
   } catch {
     return new Map();
   }
 }
 
-function persistPendingScheduleMutations(mutations: Map<string, string>): void {
+function persistPendingScheduleMutations(mutations: Map<string, PendingScheduleMutation>): void {
   try {
     sessionStorage.setItem(PENDING_SCHEDULE_MUTATIONS_KEY, JSON.stringify([...mutations.entries()].slice(-8)));
   } catch {
     // Retry identity is best effort when storage is unavailable.
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 

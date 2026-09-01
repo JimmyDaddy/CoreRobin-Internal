@@ -640,6 +640,26 @@ impl PowerService {
         state
     }
 
+    /// Ends every toolbox-owned demand during the global clear barrier. Unlike
+    /// the user-facing cancel action this also removes scheduler and attached
+    /// process-watch demands, and drops all pre-clear completions so a late
+    /// worker transition cannot be projected into the new history epoch.
+    pub fn clear_all(&mut self) -> PowerState {
+        let mut book = self.lock_book();
+        book.end_all("toolbox_clear");
+        book.completions.clear();
+        if book.resource_status == ResourceStatus::ReleaseUnconfirmed {
+            book.resource_status = ResourceStatus::Releasing;
+            book.release_retry_requested = true;
+            book.release_confirmed = false;
+            book.reason = Some("release_retry_requested".to_owned());
+        }
+        let state = book.snapshot();
+        drop(book);
+        self.shared.changed.notify_all();
+        state
+    }
+
     /// Retries a failed release while the deadline worker still owns the
     /// platform assertion. The operation is intentionally narrow and
     /// idempotent: a confirmed or already-running release simply returns the
@@ -1559,6 +1579,27 @@ mod tests {
         assert_eq!(completions[0].owner, PowerCompletionOwner::Independent);
         assert_eq!(completions[0].status, PowerCompletionStatus::Cancelled);
         assert!(service.take_completions().is_empty());
+    }
+
+    #[test]
+    fn global_clear_ends_scheduler_demand_and_discards_old_completions() {
+        let backend = MockBackend::new(BatteryState::Unavailable);
+        let mut service = service_with_backend(backend.clone());
+        service.start(request("independent", 60)).unwrap();
+        service.cancel();
+        assert_eq!(service.take_completions().len(), 1);
+        wait_for_released(&service);
+        service
+            .start_if_vacant(request("schedule", 60))
+            .expect("scheduler demand starts when vacant");
+
+        let state = service.clear_all();
+
+        assert_eq!(state.active_demand_count, 0);
+        assert!(service.take_completions().is_empty());
+        let released = wait_for_released(&service);
+        assert_eq!(released.active_demand_count, 0);
+        assert_eq!(backend.releases.load(Ordering::SeqCst), 2);
     }
 
     #[test]
