@@ -15,7 +15,8 @@ import {
   planPatchesFromSources,
   patchInputLimit,
   generateVerifiedPatch,
-  PATCH_PLANNER_DEADLINE_MS,
+  isPatchTaskTimedOut,
+  patchDeadlineForTool,
   runWithPatchDeadline,
 } from "./binaryPatchTools";
 import { isTerminalJobStatus, type ToolboxError, type ToolboxJob, type ToolId } from "../contracts";
@@ -61,6 +62,11 @@ interface BinaryDiffPreview {
   omittedRows: number;
 }
 
+interface PendingNativeCleanup {
+  job: ToolboxJob;
+  outcome: "cancelled" | "deadline" | "failed";
+}
+
 export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const { t } = useTranslation("toolbox");
   const [baseline, setBaseline] = useState<File | null>(null);
@@ -76,6 +82,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
   const [notice, setNotice] = useState("");
   const [byteDiff, setByteDiff] = useState<BinaryDiffPreview | null>(null);
   const [running, setRunning] = useState(false);
+  const [pendingNativeCleanup, setPendingNativeCleanup] = useState<PendingNativeCleanup | null>(null);
   const [nativeOutput, setNativeOutput] = useState<ToolboxJob | null>(null);
   const nativeOutputRef = useRef<ToolboxJob | null>(null);
   const [nativeOutputName, setNativeOutputName] = useState("");
@@ -110,8 +117,40 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     setDownloadName("");
   };
 
+  const retainNativeCleanup = (job: ToolboxJob, outcome: PendingNativeCleanup["outcome"]) => {
+    setPendingNativeCleanup({ job, outcome });
+    const message = t("binaryPatch.errors.nativeLifecycleUnconfirmed", { message: t("binaryPatch.errors.unknownLifecycleState") });
+    setError(message);
+    setOutput(JSON.stringify({ state: "stopping", note: message }, null, 2));
+  };
+
+  const retryNativeCancellation = async () => {
+    const pending = pendingNativeCleanup;
+    if (!pending) return;
+    try {
+      const lifecycleJob = await cancelToolboxJob({ ...newToolboxRequest(), jobId: pending.job.jobId });
+      if (!isTerminalJobStatus(lifecycleJob.status)) {
+        retainNativeCleanup(pending.job, pending.outcome);
+        return;
+      }
+      setPendingNativeCleanup(null);
+      if (pending.outcome === "cancelled" && lifecycleJob.status === "cancelled") {
+        setOutput(JSON.stringify({ state: "cancelled", note: t("binaryPatch.output.cancelledNote") }, null, 2));
+        setError(t("binaryPatch.errors.cancelled"));
+      } else if (pending.outcome === "deadline") {
+        setOutput(JSON.stringify({ state: "deadline_exceeded", note: t("binaryPatch.errors.executionFailed") }, null, 2));
+        setError(t("binaryPatch.errors.executionFailed"));
+      } else {
+        setOutput("");
+        setError(t("binaryPatch.errors.executionFailed"));
+      }
+    } catch {
+      retainNativeCleanup(pending.job, pending.outcome);
+    }
+  };
+
   const run = async (task: (signal: AbortSignal, readInput: BinaryInputReader) => Promise<BinaryOutput | null>) => {
-    if (running || nativeOutputRef.current) return;
+    if (running || pendingNativeCleanup || nativeOutputRef.current) return;
     const controller = new AbortController();
     controllerRef.current = controller;
     setRunning(true);
@@ -152,7 +191,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       const formalOutput = await runWithPatchDeadline((signal) => {
         operationSignal = signal;
         return task(signal, readInput);
-      }, controller.signal, PATCH_PLANNER_DEADLINE_MS);
+      }, controller.signal, patchDeadlineForTool(toolId));
       if (nativeInputJob) {
         await revalidateToolboxInputs(nativeInputJob);
         if (nativeTokenList.length > 0) {
@@ -175,26 +214,39 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
         await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: true });
       }
     } catch (reason) {
+      const cancelled = isPatchTaskCancelled(reason);
+      const timedOut = isPatchTaskTimedOut(reason);
+      let lifecycleJob: ToolboxJob | null = null;
+      let lifecycleUnconfirmed = false;
       if (nativeJob) {
         try {
-          const lifecycleJob = isPatchTaskCancelled(reason)
+          lifecycleJob = cancelled
             ? await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId })
             : await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t("binaryPatch.errors.executionFailed")) });
           if (isTerminalJobStatus(lifecycleJob.status)) nativeTokenList.length = 0;
-        } catch (lifecycleReason) {
-          setError(t("binaryPatch.errors.nativeLifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("binaryPatch.errors.unknownLifecycleState") }));
+          else {
+            nativeTokenList.length = 0;
+            lifecycleUnconfirmed = true;
+            retainNativeCleanup(nativeJob, cancelled ? "cancelled" : timedOut ? "deadline" : "failed");
+          }
+        } catch {
+          nativeTokenList.length = 0;
+          lifecycleUnconfirmed = true;
+          retainNativeCleanup(nativeJob, cancelled ? "cancelled" : timedOut ? "deadline" : "failed");
         }
       }
-      if (isPatchTaskCancelled(reason)) {
+      if (cancelled && (!nativeJob || lifecycleJob?.status === "cancelled")) {
         setOutput(JSON.stringify({ state: "cancelled", note: t("binaryPatch.output.cancelledNote") }, null, 2));
         setError(t("binaryPatch.errors.cancelled"));
-      } else setError(localizedPatchError(reason, t));
+      } else if (!lifecycleUnconfirmed) setError(localizedPatchError(reason, t));
     } finally {
       if (nativeInputJob && nativeTokenList.length > 0) {
         try {
           await releaseToolboxInputs(nativeInputJob, nativeTokenList.map((token) => token.token));
-        } catch (releaseReason) {
-          setError(t("binaryPatch.errors.inputReleaseUnconfirmed", { message: releaseReason instanceof Error ? releaseReason.message : t("binaryPatch.errors.unknownReleaseState") }));
+        } catch {
+          nativeTokenList.length = 0;
+          if (nativeJob) retainNativeCleanup(nativeJob, "failed");
+          else setError(t("binaryPatch.errors.inputReleaseUnconfirmed", { message: t("binaryPatch.errors.unknownReleaseState") }));
         }
       }
       controllerRef.current = null;
@@ -213,8 +265,8 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       await exportToolboxOutput({ requestId: crypto.randomUUID(), jobId: job.jobId, outputToken: output.token, generation: job.generation, resetEpoch: job.resetEpoch, path: selected });
       setPreparedOutput(null);
       setNotice(t("binaryPatch.notices.savedAtomically"));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("binaryPatch.errors.saveFailed"));
+    } catch {
+      setError(t("binaryPatch.errors.saveFailed"));
     }
   };
 
@@ -227,8 +279,8 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       setPreparedOutput(null);
       clearDownload();
       setNotice(t("binaryPatch.notices.temporaryOutputCancelled"));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("binaryPatch.errors.cancelFailed"));
+    } catch {
+      setError(t("binaryPatch.errors.cancelFailed"));
     }
   };
 
@@ -360,7 +412,7 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
       {toolId === "binary-patch-apply" && isDesktopRuntime() ? <label className="binary-patch-toolbox__expected"><input type="checkbox" checked={nativeExpectedRequested} disabled={running} onChange={(event) => setNativeExpectedRequested(event.target.checked)} /> {t("binaryPatch.unverified.nativeExpected")}</label> : null}
     </section>
     {toolId === "binary-patch-apply" && !expected && !nativeExpectedRequested ? <p className="toolbox-error" role="alert">{t("binaryPatch.unverified.missingExpected")}</p> : null}
-    <div className="toolbox-inline-actions binary-patch-toolbox__actions"><button className="button button--primary" type="button" disabled={running || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? t("binaryPatch.actions.processing") : binaryActionLabel(toolId, t)}</button>{running ? <button className="button button--secondary" type="button" onClick={() => { controllerRef.current?.abort(); }}><Square size={14} />{t("binaryPatch.actions.stop")}</button> : null}<button className="button button--secondary" type="button" onClick={() => { void cancelNativeOutput(); setOutput(""); setByteDiff(null); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />{t("binaryPatch.actions.clear")}</button></div>
+    <div className="toolbox-inline-actions binary-patch-toolbox__actions"><button className="button button--primary" type="button" disabled={running || Boolean(pendingNativeCleanup) || Boolean(nativeOutput)} onClick={execute}><Play size={14} />{running ? t("binaryPatch.actions.processing") : binaryActionLabel(toolId, t)}</button>{running || pendingNativeCleanup ? <button className="button button--secondary" type="button" onClick={() => { if (pendingNativeCleanup) void retryNativeCancellation(); else controllerRef.current?.abort(); }}><Square size={14} />{t("binaryPatch.actions.stop")}</button> : null}<button className="button button--secondary" type="button" disabled={Boolean(pendingNativeCleanup)} onClick={() => { void cancelNativeOutput(); setOutput(""); setByteDiff(null); setNotice(""); setError(""); clearDownload(); }}><Trash2 size={14} />{t("binaryPatch.actions.clear")}</button></div>
     {error ? <p className="toolbox-error" role="alert">{error}</p> : null}{notice ? <p className="toolbox-hint">{notice}</p> : null}
     {output ? <BinaryPatchResult output={output} title={binaryActionLabel(toolId, t)} baselineLabel={binaryInputLabel("baseline", t)} targetLabel={binaryInputLabel("target", t)} byteDiff={byteDiff} /> : null}
     {nativeOutput?.outputToken ? <div className="toolbox-inline-actions binary-patch-toolbox__delivery"><button className="button button--secondary" type="button" onClick={() => void saveNativeOutput()}><Download size={14} />{t("binaryPatch.actions.saveNative")}</button><button className="button button--secondary" type="button" onClick={() => void cancelNativeOutput()}>{t("binaryPatch.actions.cancelNative")}</button><span className="toolbox-hint">{t("binaryPatch.nativeOutput.ttl", { size: Math.ceil(nativeOutput.outputToken.byteLength / 1024) })}</span></div> : null}
@@ -369,7 +421,11 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
 }
 
 function toToolboxError(reason: unknown, fallback: string): ToolboxError {
-  return { code: "web_tool_error", message: reason instanceof Error ? reason.message : fallback, retryable: false };
+  return {
+    code: isPatchTaskTimedOut(reason) ? "binary_patch_deadline" : "binary_patch_failed",
+    message: fallback,
+    retryable: isPatchTaskTimedOut(reason),
+  };
 }
 
 function FileInput({ t, label, file, files, onChange, multiple, optional, desktop }: { t: ToolboxTFunction; label: string; file?: File | null; files?: File[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void; multiple?: boolean; optional?: boolean; desktop?: boolean }) {

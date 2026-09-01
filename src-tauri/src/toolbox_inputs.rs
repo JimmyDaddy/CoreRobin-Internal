@@ -526,7 +526,8 @@ pub fn role_budget(tool: &str, role: InputRole) -> Result<(u64, usize, u64), Com
         ("binary-patch-apply", Patch | Expected) | ("binary-patch-inspector", Patch) => {
             (64 * MIB, 1, 64 * MIB)
         }
-        ("integrity-manifest", Input) => (64 * MIB, 1, 64 * MIB),
+        ("integrity-manifest", Input | Target) => (16 * MIB, 1, 16 * MIB),
+        ("integrity-manifest", Patch) => (64 * MIB, 1, 64 * MIB),
         ("image-batch-watermark", Input) => (12 * MIB, 20, 80 * MIB),
         (
             "image-watermark"

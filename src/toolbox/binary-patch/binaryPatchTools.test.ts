@@ -23,6 +23,7 @@ import {
   makePatchManifest,
   manifestJson,
   patchInputLimit,
+  patchDeadlineForTool,
   planPatches,
   planPatchesFromSources,
   runWithPatchDeadline,
@@ -118,6 +119,16 @@ describe("binary patch toolbox boundaries", () => {
     await expect(makePatchManifest(new Uint8Array(1), new Uint8Array(2), new Uint8Array(3), { baseline: "../../secret.bin" })).resolves.toMatchObject({ baseline: { name: "secret.bin" } });
   });
 
+  it("assigns 120-second item deadlines and a 600-second planner deadline", () => {
+    expect(patchDeadlineForTool("binary-patch-create")).toBe(120_000);
+    expect(patchDeadlineForTool("binary-patch-apply")).toBe(120_000);
+    expect(patchDeadlineForTool("binary-patch-inspector")).toBe(120_000);
+    expect(patchDeadlineForTool("integrity-manifest")).toBe(120_000);
+    expect(patchDeadlineForTool("transfer-savings")).toBe(120_000);
+    expect(patchDeadlineForTool("patch-errors")).toBe(120_000);
+    expect(patchDeadlineForTool("patch-planner")).toBe(600_000);
+  });
+
   it("never applies BSDIFF40 data", async () => {
     inspectPatch.mockResolvedValue({ format: "BSDIFF40", patchBytes: 24, headerBytes: 24, payloadBytes: 0, declaredTargetBytes: null, valid: false, issue: "LEGACY_FORMAT" });
     await expect(applyPatchAndVerify(new Uint8Array([0]), new Uint8Array(24), new Uint8Array([1]))).rejects.toMatchObject({ code: "EPATCH" });
@@ -140,6 +151,10 @@ describe("binary patch toolbox boundaries", () => {
 
     await expect(planned).rejects.toMatchObject({ name: "AbortError", code: "EABORTED" });
     await expect(runWithPatchDeadline(async (signal) => new Promise<never>((_resolve, reject) => signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true })), controller.signal)).rejects.toMatchObject({ name: "AbortError", code: "EABORTED" });
+  });
+
+  it("reports deadline expiry distinctly from caller cancellation", async () => {
+    await expect(runWithPatchDeadline(async () => new Promise<never>(() => undefined), undefined, 1)).rejects.toMatchObject({ name: "TimeoutError", code: "EDEADLINE" });
   });
 
   it("excludes patches that would exceed the cumulative artifact budget", async () => {

@@ -162,6 +162,56 @@ fn validates_per_role_and_combined_batch_budgets_before_registration() {
 }
 
 #[test]
+fn integrity_manifest_accepts_baseline_and_target_roles_at_16_mib_each() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("manifest-input.bin");
+    std::fs::File::create(&path)
+        .unwrap()
+        .set_len(16 * MIB)
+        .unwrap();
+    let (store, key) = registered("integrity-manifest");
+
+    assert_eq!(
+        role_budget("integrity-manifest", InputRole::Input).unwrap(),
+        (16 * MIB, 1, 16 * MIB)
+    );
+    assert_eq!(
+        role_budget("integrity-manifest", InputRole::Target).unwrap(),
+        (16 * MIB, 1, 16 * MIB)
+    );
+    assert_eq!(
+        role_budget("integrity-manifest", InputRole::Patch).unwrap(),
+        (64 * MIB, 1, 64 * MIB)
+    );
+    assert_eq!(
+        store
+            .prepare(&key, InputRole::Input, std::slice::from_ref(&path))
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        store
+            .prepare(&key, InputRole::Target, std::slice::from_ref(&path))
+            .unwrap()
+            .len(),
+        1
+    );
+
+    std::fs::File::create(&path)
+        .unwrap()
+        .set_len(16 * MIB + 1)
+        .unwrap();
+    assert_eq!(
+        store
+            .prepare(&key, InputRole::Target, &[path])
+            .unwrap_err()
+            .code,
+        "input_too_large"
+    );
+}
+
+#[test]
 fn rejects_directory_and_unselected_or_released_tokens() {
     let dir = tempfile::tempdir().unwrap();
     let (store, key) = registered("binary-patch-create");

@@ -30,6 +30,7 @@ export const PATCH_COLLECTION_FILENAME = "corerobin-patch-collection.zip";
 export const PATCH_COLLECTION_PLAN_NAME = "patch-plan.json";
 
 export type PatchInputRole = "baseline" | "target" | "patch" | "expected";
+export type PatchDeadlineToolId = "binary-patch-create" | "binary-patch-apply" | "binary-patch-inspector" | "integrity-manifest" | "transfer-savings" | "patch-errors" | "patch-planner";
 
 export const PATCH_INPUT_LIMITS: Readonly<Record<PatchInputRole, number>> = {
   baseline: MAX_GENERATE_INPUT_BYTES,
@@ -37,6 +38,10 @@ export const PATCH_INPUT_LIMITS: Readonly<Record<PatchInputRole, number>> = {
   patch: MAX_PATCH_INPUT_BYTES,
   expected: MAX_PATCH_OUTPUT_BYTES,
 };
+
+export function patchDeadlineForTool(toolId: PatchDeadlineToolId): number {
+  return toolId === "patch-planner" ? PATCH_PLANNER_DEADLINE_MS : PATCH_ITEM_DEADLINE_MS;
+}
 
 export interface VerifiedPatch {
   patch: Uint8Array;
@@ -182,19 +187,27 @@ export async function verifyPatchBytes(oldData: Uint8Array, patchData: Uint8Arra
 export async function runWithPatchDeadline<T>(operation: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal, deadlineMs = PATCH_ITEM_DEADLINE_MS): Promise<T> {
   if (!Number.isSafeInteger(deadlineMs) || deadlineMs <= 0) throw new Error("Patch deadline must be a positive safe integer.");
   const controller = new AbortController();
-  const abortFromCaller = () => controller.abort();
+  let abortKind: "caller" | "deadline" | null = null;
+  const abort = (kind: "caller" | "deadline") => {
+    if (controller.signal.aborted) return;
+    abortKind = kind;
+    controller.abort();
+  };
+  const abortFromCaller = () => abort("caller");
   signal?.addEventListener("abort", abortFromCaller, { once: true });
-  if (signal?.aborted) controller.abort();
-  const timer = setTimeout(() => controller.abort(), deadlineMs);
+  if (signal?.aborted) abort("caller");
+  const timer = setTimeout(() => abort("deadline"), deadlineMs);
   let rejectWhenCancelled: (reason: Error) => void = () => undefined;
   const cancelled = new Promise<never>((_resolve, reject) => { rejectWhenCancelled = reject; });
-  const abortOperation = () => rejectWhenCancelled(cancelledPatchTaskError());
+  const abortOperation = () => rejectWhenCancelled(abortKind === "deadline" ? deadlinePatchTaskError() : cancelledPatchTaskError());
   controller.signal.addEventListener("abort", abortOperation, { once: true });
   try {
-    if (controller.signal.aborted) throw cancelledPatchTaskError();
+    if (controller.signal.aborted) throw abortKind === "deadline" ? deadlinePatchTaskError() : cancelledPatchTaskError();
     return await Promise.race([operation(controller.signal), cancelled]);
   } catch (error) {
-    if (controller.signal.aborted || isPatchTaskCancelled(error)) throw cancelledPatchTaskError();
+    if (controller.signal.aborted || isPatchTaskCancelled(error) || isPatchTaskTimedOut(error)) {
+      throw abortKind === "deadline" || isPatchTaskTimedOut(error) ? deadlinePatchTaskError() : cancelledPatchTaskError();
+    }
     throw error;
   } finally {
     clearTimeout(timer);
@@ -207,6 +220,11 @@ export function isPatchTaskCancelled(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { code?: unknown; name?: unknown };
   return candidate.name === "AbortError" || candidate.code === "EABORTED" || candidate.code === "ECANCELLED";
+}
+
+export function isPatchTaskTimedOut(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  return (error as { code?: unknown }).code === "EDEADLINE";
 }
 
 export function calculateTransferSavings(full: number, patch: number, count: number): TransferSavings {
@@ -228,6 +246,13 @@ function cancelledPatchTaskError(): Error & { code: "EABORTED" } {
   const error = new Error("Binary patch task was cancelled.") as Error & { code: "EABORTED" };
   error.name = "AbortError";
   error.code = "EABORTED";
+  return error;
+}
+
+function deadlinePatchTaskError(): Error & { code: "EDEADLINE" } {
+  const error = new Error("Binary patch task exceeded its deadline.") as Error & { code: "EDEADLINE" };
+  error.name = "TimeoutError";
+  error.code = "EDEADLINE";
   return error;
 }
 

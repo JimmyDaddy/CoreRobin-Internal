@@ -156,6 +156,7 @@ it("marks an integrity manifest verified only after a byte-exact replay", async 
 
   await screen.findByRole("button", { name: "正式另存结果" });
   expect(mocks.applyPatchAndVerify).toHaveBeenCalledWith(new Uint8Array([6]), new Uint8Array([8]), new Uint8Array([7]), expect.any(AbortSignal));
+  expect(mocks.prepare.mock.calls.map(([, role]) => role)).toEqual(["input", "target", "patch"]);
   expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "verified" }));
   expect(screen.getByText(/replay_byte_exact/)).toBeTruthy();
 });
@@ -182,6 +183,46 @@ it("does not report a second input release after a terminal native failure alrea
   await waitFor(() => expect(mocks.finish).toHaveBeenCalledOnce());
   expect(mocks.release).not.toHaveBeenCalled();
   expect(screen.getByRole("alert").textContent).not.toContain("输入资源释放未确认");
+});
+
+it("keeps native cleanup as stopping until cancellation is confirmed", async () => {
+  mocks.desktopRuntime = true;
+  mocks.generateVerifiedPatch.mockImplementation(() => new Promise(() => undefined));
+  mocks.cancel.mockResolvedValueOnce({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "stopping", outputExpiresAtMs: null, outputToken: null, terminalReason: "release_unconfirmed", error: null });
+  render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+  await waitFor(() => expect(mocks.generateVerifiedPatch).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "停止" }));
+
+  expect((await screen.findByRole("alert")).textContent).toContain("原生任务生命周期未确认");
+  expect((screen.getByRole("button", { name: "生成并验证补丁" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByText(/"state": "cancelled"/)).toBeNull();
+
+  mocks.cancel.mockResolvedValueOnce({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
+  fireEvent.click(screen.getByRole("button", { name: "停止" }));
+
+  await waitFor(() => expect((screen.getByRole("button", { name: "生成并验证补丁" }) as HTMLButtonElement).disabled).toBe(false));
+  expect(screen.getByRole("alert").textContent).toContain("任务已取消");
+});
+
+it("does not present a deadline with unconfirmed native release as cancelled", async () => {
+  mocks.desktopRuntime = true;
+  mocks.generateVerifiedPatch.mockRejectedValueOnce(Object.assign(new Error("deadline"), { code: "EDEADLINE" }));
+  mocks.finish.mockResolvedValueOnce({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "stopping", outputExpiresAtMs: null, outputToken: null, terminalReason: "release_unconfirmed", error: null });
+  render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+
+  expect((await screen.findByRole("alert")).textContent).toContain("原生任务生命周期未确认");
+  expect(mocks.cancel).not.toHaveBeenCalled();
+  expect(screen.queryByText(/"state": "cancelled"/)).toBeNull();
+
+  mocks.cancel.mockResolvedValueOnce({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
+  fireEvent.click(screen.getByRole("button", { name: "停止" }));
+
+  await waitFor(() => expect(screen.queryAllByText(/deadline_exceeded/).length).toBeGreaterThan(0));
+  expect(screen.getByRole("alert").textContent).toContain("补丁工具执行失败");
 });
 
 it("rejects an oversized web baseline before reading it", async () => {
