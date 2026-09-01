@@ -3738,10 +3738,27 @@ export default interface Resources {
       "identityRequired": "请输入已选进程的 PID 与 birth token；不能用同名进程代替稳定身份。",
       "invalidDuration": "观察时长必须是 1 分钟到 12 小时。",
       "keepAwake": "观察期间附加限时保活（低电量独立释放）",
+      "keepAwakeStatus": {
+        "active": "保活中",
+        "cancelled": "保活已取消",
+        "expired": "保活已到期",
+        "lowBatteryEnded": "低电量已释放保活",
+        "notRequested": "未请求保活",
+        "unavailable": "保活不可用"
+      },
       "pid": "PID",
       "pidPlaceholder": "已选进程 PID",
       "refresh": "刷新状态",
-      "start": "开始只读观察"
+      "start": "开始只读观察",
+      "status": {
+        "cancelled": "观察已取消",
+        "exited": "进程已退出",
+        "expired": "观察已到期",
+        "identityChanged": "进程身份已变化",
+        "interrupted": "观察已中断",
+        "running": "观察中",
+        "unknown": "正在确认"
+      }
     },
     "schedule": {
       "cancelEdit": "取消编辑",

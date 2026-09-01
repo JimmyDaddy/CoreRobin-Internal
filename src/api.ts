@@ -197,7 +197,8 @@ export interface ToolboxProcessWatchKey {
   birthToken: string;
 }
 
-export type ToolboxProcessWatchStatus = "running" | "exited" | "unknown" | "identity_changed" | "expired" | "cancelled";
+export type ToolboxProcessWatchStatus = "running" | "exited" | "unknown" | "identity_changed" | "interrupted" | "expired" | "cancelled";
+export type ToolboxProcessWatchKeepAwakeStatus = "not_requested" | "active" | "low_battery_ended" | "expired" | "cancelled" | "unavailable";
 
 export interface ToolboxProcessWatchSnapshot {
   watchId: number;
@@ -206,6 +207,7 @@ export interface ToolboxProcessWatchSnapshot {
   startedAtMs: number;
   deadlineAtMs: number;
   lastCheckedAtMs: number;
+  keepAwakeStatus: ToolboxProcessWatchKeepAwakeStatus;
 }
 
 export interface ToolboxOccupancyProcess {

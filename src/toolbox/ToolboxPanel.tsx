@@ -32,7 +32,7 @@ import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, resumeToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxProcessWatchStatus, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
@@ -856,7 +856,7 @@ function ProcessWatchTool() {
     <label className="toolbox-checkbox"><input type="checkbox" checked={keepAwake} onChange={(event) => setKeepAwake(event.target.checked)} />{t("processWatch.keepAwake")}</label>
     <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running} type="button" onClick={() => void start()}><Timer size={14} />{t("processWatch.start")}</button><button className="button button--secondary" disabled={running || !isDesktopRuntime()} type="button" onClick={() => void refresh()}>{t("processWatch.refresh")}</button></div>
     <p className="toolbox-hint">{t("processWatch.hint")}</p>
-    {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {watch.status} · {t("processWatch.deadline")} {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>{t("processWatch.cancel")}</button></div>)}
+    {watches.map((watch) => <div className="toolbox-inline-actions" key={watch.watchId}><span>#{watch.watchId} PID {watch.key.pid} · {t(PROCESS_WATCH_STATUS_KEYS[watch.status] as never)}{watch.keepAwakeStatus !== "not_requested" ? ` · ${t(KEEP_AWAKE_STATUS_KEYS[watch.keepAwakeStatus] as never)}` : ""} · {t("processWatch.deadline")} {new Date(watch.deadlineAtMs).toLocaleString()}</span><button className="button button--secondary" disabled={running || ["exited", "identity_changed", "interrupted", "expired", "cancelled"].includes(watch.status)} type="button" onClick={() => void cancel(watch.watchId)}>{t("processWatch.cancel")}</button></div>)}
   </ToolLayout>;
 }
 
@@ -902,6 +902,23 @@ function highlightJsonLine(line: string): ReactNode[] {
 function ToolIcon({ id }: { id: ToolId }) { if (id.includes("image") || id.includes("watermark") || id === "c2pa-inspector" || id === "robustness-lab") return <FileImage size={18} />; if (id.includes("patch") || id === "integrity-manifest" || id === "transfer-savings") return <FileKey2 size={18} />; if (id.includes("sha")) return <Hash size={18} />; if (id === "qr-code") return <QrCode size={18} />; if (id.includes("network") || id.includes("occupancy")) return <Network size={18} />; if (id.includes("keep") || id.includes("schedule") || id === "time") return <Timer size={18} />; return <Wrench size={18} />; }
 
 type ToolboxTFunction = TFunction<"toolbox">;
+const PROCESS_WATCH_STATUS_KEYS: Record<ToolboxProcessWatchStatus, string> = {
+  running: "processWatch.status.running",
+  exited: "processWatch.status.exited",
+  unknown: "processWatch.status.unknown",
+  identity_changed: "processWatch.status.identityChanged",
+  interrupted: "processWatch.status.interrupted",
+  expired: "processWatch.status.expired",
+  cancelled: "processWatch.status.cancelled",
+};
+const KEEP_AWAKE_STATUS_KEYS: Record<NonNullable<ToolboxProcessWatchSnapshot["keepAwakeStatus"]>, string> = {
+  not_requested: "processWatch.keepAwakeStatus.notRequested",
+  active: "processWatch.keepAwakeStatus.active",
+  low_battery_ended: "processWatch.keepAwakeStatus.lowBatteryEnded",
+  expired: "processWatch.keepAwakeStatus.expired",
+  cancelled: "processWatch.keepAwakeStatus.cancelled",
+  unavailable: "processWatch.keepAwakeStatus.unavailable",
+};
 function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
 function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string {
   if (capability.reason === "This tool requires a restricted native helper that is not registered.") return t("overview.restrictedNativeHelperUnavailable.description");

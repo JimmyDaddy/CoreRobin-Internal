@@ -167,7 +167,24 @@
     "refresh": "Refresh status",
     "hint": "Only the user-selected ProcessKey is observed; termination permission is never requested. Up to 3 watches are allowed, with a default of 4 hours and a 12-hour limit. unknown is retried, PID reuse ends as identity_changed, and child processes, exit codes, or work success are not promised.",
     "deadline": "Deadline",
-    "cancel": "Cancel watch"
+    "cancel": "Cancel watch",
+    "status": {
+      "running": "Running",
+      "exited": "Exited",
+      "unknown": "Checking",
+      "identityChanged": "Process identity changed",
+      "interrupted": "Interrupted",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "keepAwakeStatus": {
+      "notRequested": "No keep-awake",
+      "active": "Keep-awake active",
+      "lowBatteryEnded": "Released for low battery",
+      "expired": "Keep-awake expired",
+      "cancelled": "Keep-awake cancelled",
+      "unavailable": "Keep-awake unavailable"
+    }
   },
   "errors": {
     "generic": "Processing failed. Check the input and try again.",

@@ -242,7 +242,24 @@
     "refresh": "刷新状态",
     "hint": "只观察用户已选择的 ProcessKey，不会请求终止权限；最多 3 个观察，默认 4 小时，上限 12 小时。unknown 会重试，PID 复用会终止为 identity_changed，不承诺子进程、退出码或工作成功。",
     "deadline": "截止",
-    "cancel": "取消观察"
+    "cancel": "取消观察",
+    "status": {
+      "running": "观察中",
+      "exited": "进程已退出",
+      "unknown": "正在确认",
+      "identityChanged": "进程身份已变化",
+      "interrupted": "观察已中断",
+      "expired": "观察已到期",
+      "cancelled": "观察已取消"
+    },
+    "keepAwakeStatus": {
+      "notRequested": "未请求保活",
+      "active": "保活中",
+      "lowBatteryEnded": "低电量已释放保活",
+      "expired": "保活已到期",
+      "cancelled": "保活已取消",
+      "unavailable": "保活不可用"
+    }
   },
   "errors": {
     "generic": "处理失败，请检查输入后重试。",
