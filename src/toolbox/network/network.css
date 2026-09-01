@@ -1,4 +1,4 @@
-.network-addresses-tool { display: grid; gap: 18px; max-width: 1040px; }
+.network-addresses-tool { display: grid; gap: 18px; max-width: 960px; margin-left: 164px; }
 .network-addresses-tool__intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .network-addresses-tool__intro h2 { margin: 4px 0 6px; font-size: 23px; letter-spacing: -.035em; }
 .network-addresses-tool__intro p { max-width: 700px; margin: 0; color: var(--text-secondary); line-height: 1.55; }
@@ -65,4 +65,5 @@
 @keyframes network-addresses-loading { 0%, 100% { background-position: 100% 0; opacity: .52; } 50% { background-position: 0 0; opacity: 1; } }
 @media (hover: hover) { .network-address-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; } .network-address-card:hover { border-color: color-mix(in srgb, var(--blue) 36%, var(--border)); box-shadow: 0 12px 28px color-mix(in srgb, var(--text-primary) 10%, transparent); transform: translateY(-1px); } }
 @media (max-width: 700px) { .network-addresses-tool__intro, .network-address-card__header, .network-addresses-tool__result-bar, .network-addresses-tool__summary { align-items: flex-start; flex-direction: column; } .network-addresses-tool__summary-metrics { text-align: left; } .network-addresses-tool__result-bar .button { width: 100%; justify-content: center; } .network-address-row__top { align-items: flex-start; flex-wrap: wrap; } .network-address-row__top .icon-button { margin-left: 0; } }
+@media (max-width: 820px) { .network-addresses-tool { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .network-addresses-tool *, .network-addresses-tool *::before, .network-addresses-tool *::after { animation: none !important; scroll-behavior: auto !important; transition: none !important; } }
