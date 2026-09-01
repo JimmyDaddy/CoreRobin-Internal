@@ -31,7 +31,7 @@ import { createBrowserImageInputs, createNativeImageInputs, strictImageMimeType,
 import { ImageRecipeEditor } from "./ImageRecipeEditor";
 import type { LocalImageEditor } from "./imageEditor";
 import { markerResultOutput, type ImageOutputDelivery, type ImageOutputPayload } from "./imageOutput";
-import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
+import { isTerminalJobStatus, type ToolboxError, type ToolboxJob, type ToolId } from "../contracts";
 import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, registerToolboxOutput, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
 import { fileJobKey, readBoundToolboxInput } from "../runtime/files";
@@ -344,11 +344,10 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     } catch (reason) {
       if (nativeJob) {
         try {
-          if (controller.signal.aborted || isAbortError(reason)) {
-            await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
-          } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
-          }
+          const lifecycleJob = controller.signal.aborted || isAbortError(reason)
+            ? await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId })
+            : await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
+          if (isTerminalJobStatus(lifecycleJob.status)) nativeInputTokens = [];
         } catch (lifecycleReason) {
           setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
         }
@@ -761,7 +760,13 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       const report = JSON.stringify(await inspectEmbeddedC2pa(file, format, controller.signal), null, 2);
       setManifestReport(report);
       publishManifestReport(report);
-      if (nativeInputJob) await revalidateToolboxInputs(nativeInputJob);
+      if (nativeInputJob) {
+        await revalidateToolboxInputs(nativeInputJob);
+        if (nativeInputTokens.length > 0) {
+          await releaseToolboxInputs(nativeInputJob, nativeInputTokens.map((token) => token.token));
+          nativeInputTokens = [];
+        }
+      }
       if (nativeJob) {
         const ready = await registerToolboxOutput({
           ...newToolboxRequest(),
@@ -779,11 +784,10 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     } catch (reason) {
       if (nativeJob) {
         try {
-          if (controller.signal.aborted) {
-            await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
-          } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
-          }
+          const lifecycleJob = controller.signal.aborted
+            ? await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId })
+            : await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
+          if (isTerminalJobStatus(lifecycleJob.status)) nativeInputTokens = [];
         } catch (lifecycleReason) {
           setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
         }

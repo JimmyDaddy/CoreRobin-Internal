@@ -5,13 +5,22 @@ import i18n from "../../i18n";
 
 const mocks = vi.hoisted(() => ({
   cancel: vi.fn(),
+  cancelJob: vi.fn(),
   createBrowserInputs: vi.fn(),
+  createNativeInputs: vi.fn(),
   createObjectUrl: vi.fn(() => "blob:zip"),
   createRuntime: vi.fn(),
+  desktopRuntime: false,
   detectInvisible: vi.fn(),
   embedInvisible: vi.fn(),
   getImageInfo: vi.fn(),
   mark: vi.fn(),
+  finishJob: vi.fn(),
+  prepareInputs: vi.fn(),
+  registerOutput: vi.fn(),
+  releaseInputs: vi.fn(),
+  revalidateInputs: vi.fn(),
+  startSession: vi.fn(),
   transformImage: vi.fn(),
 }));
 
@@ -22,21 +31,21 @@ vi.mock("@image-marker/web", () => ({
     bottomLeft: "bottomLeft", bottomCenter: "bottomCenter", bottomRight: "bottomRight",
   },
 }));
-vi.mock("../../api", () => ({ isDesktopRuntime: () => false }));
+vi.mock("../../api", () => ({ isDesktopRuntime: () => mocks.desktopRuntime }));
 vi.mock("../client", () => ({
-  cancelToolboxJob: vi.fn(),
+  cancelToolboxJob: mocks.cancelJob,
   cancelToolboxOutput: vi.fn(),
   exportToolboxOutput: vi.fn(),
-  finishToolboxJob: vi.fn(),
+  finishToolboxJob: mocks.finishJob,
   newToolboxRequest: () => ({ requestId: "request" }),
-  prepareToolboxInputs: vi.fn(),
-  registerToolboxOutput: vi.fn(),
-  releaseToolboxInputs: vi.fn(),
-  revalidateToolboxInputs: vi.fn(),
-  startToolboxSession: vi.fn(),
+  prepareToolboxInputs: mocks.prepareInputs,
+  registerToolboxOutput: mocks.registerOutput,
+  releaseToolboxInputs: mocks.releaseInputs,
+  revalidateToolboxInputs: mocks.revalidateInputs,
+  startToolboxSession: mocks.startSession,
 }));
 vi.mock("../runtime/files", () => ({
-  fileJobKey: vi.fn(),
+  fileJobKey: (job: { jobId: string; generation: number; resetEpoch: number }) => ({ jobId: job.jobId, generation: job.generation, resetEpoch: job.resetEpoch }),
   readBoundToolboxInput: vi.fn(),
 }));
 vi.mock("./ImageRecipeEditor", () => ({ ImageRecipeEditor: () => null }));
@@ -47,7 +56,7 @@ vi.mock("./imageExecution", () => ({
   transformImageInWorker: mocks.transformImage,
   withLocalImageFonts: (options: unknown) => options,
 }));
-vi.mock("./imageInputs", () => ({ createBrowserImageInputs: mocks.createBrowserInputs, createNativeImageInputs: vi.fn(), imageMimeType: vi.fn(() => "application/octet-stream"), strictImageMimeType: vi.fn(() => "application/octet-stream") }));
+vi.mock("./imageInputs", () => ({ createBrowserImageInputs: mocks.createBrowserInputs, createNativeImageInputs: mocks.createNativeInputs, imageMimeType: vi.fn(() => "application/octet-stream"), strictImageMimeType: vi.fn(() => "application/octet-stream") }));
 
 import { ImageToolbox } from "./ImageToolbox";
 
@@ -81,6 +90,7 @@ class FakeZipWorker {
 beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
   vi.clearAllMocks();
+  mocks.desktopRuntime = false;
   FakeZipWorker.instances = [];
   FakeZipWorker.acknowledgeAppendsByDefault = true;
   FakeZipWorker.errorCodeOnAppend = null;
@@ -125,6 +135,16 @@ beforeEach(async () => {
     count: files.length,
     read: async (index: number) => files[index]!,
   }));
+  mocks.createNativeInputs.mockReturnValue({
+    count: 1,
+    read: async () => new File([new Uint8Array([1, 2, 3])], "native.png", { type: "image/png" }),
+  });
+  mocks.startSession.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, outputToken: null, terminalReason: null, error: null });
+  mocks.prepareInputs.mockResolvedValue([{ token: "input", displayName: "native.png", role: "input", byteLength: 3 }]);
+  mocks.finishJob.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "failed", outputExpiresAtMs: null, outputToken: null, terminalReason: "failed", error: null });
+  mocks.cancelJob.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
+  mocks.releaseInputs.mockResolvedValue(undefined);
+  mocks.revalidateInputs.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -155,6 +175,18 @@ describe("image toolbox presentation states", () => {
     const preview = await screen.findByRole("region", { name: "结果" });
     expect(preview.querySelector(".image-toolbox__result-header")?.textContent).toContain("PNG");
     expect(preview.querySelector("img")?.getAttribute("alt")).toBe("本地水印结果预览");
+  });
+
+  it("does not report a second input release after a terminal native failure already released ownership", async () => {
+    mocks.desktopRuntime = true;
+    mocks.mark.mockRejectedValueOnce(new Error("image failed"));
+    render(<ImageToolbox toolId="image-watermark" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
+
+    await waitFor(() => expect(mocks.finishJob).toHaveBeenCalledOnce());
+    expect(mocks.releaseInputs).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).not.toContain("输入资源释放未确认");
   });
 });
 

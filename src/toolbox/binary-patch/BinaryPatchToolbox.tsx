@@ -18,7 +18,7 @@ import {
   PATCH_PLANNER_DEADLINE_MS,
   runWithPatchDeadline,
 } from "./binaryPatchTools";
-import type { ToolboxError, ToolboxJob, ToolId } from "../contracts";
+import { isTerminalJobStatus, type ToolboxError, type ToolboxJob, type ToolId } from "../contracts";
 import { cancelToolboxJob, cancelToolboxOutput, exportToolboxOutput, finishToolboxJob, newToolboxRequest, prepareToolboxInputs, registerToolboxOutput, releaseToolboxInputs, revalidateToolboxInputs, startToolboxSession } from "../client";
 import { isDesktopRuntime } from "../../api";
 import { fileJobKey, readBoundToolboxInput } from "../runtime/files";
@@ -177,11 +177,10 @@ export function BinaryPatchToolbox({ toolId }: { toolId: BinaryToolId }) {
     } catch (reason) {
       if (nativeJob) {
         try {
-          if (isPatchTaskCancelled(reason)) {
-            await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
-          } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t("binaryPatch.errors.executionFailed")) });
-          }
+          const lifecycleJob = isPatchTaskCancelled(reason)
+            ? await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId })
+            : await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t("binaryPatch.errors.executionFailed")) });
+          if (isTerminalJobStatus(lifecycleJob.status)) nativeTokenList.length = 0;
         } catch (lifecycleReason) {
           setError(t("binaryPatch.errors.nativeLifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("binaryPatch.errors.unknownLifecycleState") }));
         }

@@ -568,6 +568,16 @@ impl ToolboxService {
                 "Only a running job can publish a prepared output.",
             ));
         }
+        // Publishing a formal output is the ownership boundary for file inputs.
+        // Refuse the transition while a reader is still active, and remove the
+        // input owner before the job can become output-ready.  This keeps a
+        // forgotten web-side release from retaining file handles for the TTL.
+        if !self.inputs.cancel(&request.job_id) {
+            return Err(CommandError::new(
+                "release_unconfirmed",
+                "File inputs are still stopping; retry output registration after release is confirmed.",
+            ));
+        }
         let token = opaque_id()?;
         let expires_at_ms =
             (now_millis().min(u64::MAX as u128) as u64).saturating_add(OUTPUT_TTL_MS);
@@ -1154,6 +1164,7 @@ mod tests {
             })
             .unwrap();
         assert_eq!(ready.status, JobStatus::OutputReady);
+        assert!(service.snapshot().resources.is_empty());
         let output_token = ready.output_token.as_ref().unwrap().token.clone();
         let export = ExportToolboxOutputRequest {
             request_id: "output-export".into(),
@@ -1183,6 +1194,51 @@ mod tests {
         let completed = service.complete_output_export(&export, true, None).unwrap();
         assert_eq!(completed.status, JobStatus::Completed);
         assert!(completed.output_token.is_none());
+    }
+
+    #[test]
+    fn output_registration_waits_for_active_input_release() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "output-release-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        service.inputs.hold_operation_for_test(&job.job_id);
+
+        let error = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: "output-release-register-1".into(),
+                job_id: job.job_id.clone(),
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap_err();
+        assert_eq!(error.code, "release_unconfirmed");
+        assert_eq!(service.jobs[&job.job_id].status, JobStatus::Running);
+
+        service.inputs.release_operation_for_test(&job.job_id);
+        let ready = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: "output-release-register-2".into(),
+                job_id: job.job_id,
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+        assert_eq!(ready.status, JobStatus::OutputReady);
+        assert!(service.snapshot().resources.is_empty());
     }
 
     #[test]

@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   planPatches: vi.fn(),
   planPatchesFromSources: vi.fn(),
   createPatchCollection: vi.fn(),
+  cancel: vi.fn(),
   desktopRuntime: false,
+  finish: vi.fn(),
   generateVerifiedPatch: vi.fn(),
   prepare: vi.fn(),
   readBound: vi.fn(),
@@ -22,10 +24,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../api", () => ({ isDesktopRuntime: () => mocks.desktopRuntime }));
 vi.mock("../client", () => ({
-  cancelToolboxJob: vi.fn(),
+  cancelToolboxJob: mocks.cancel,
   cancelToolboxOutput: vi.fn(),
   exportToolboxOutput: vi.fn(),
-  finishToolboxJob: vi.fn(),
+  finishToolboxJob: mocks.finish,
   newToolboxRequest: () => ({ requestId: "request" }),
   prepareToolboxInputs: mocks.prepare,
   registerToolboxOutput: mocks.register,
@@ -63,6 +65,8 @@ beforeEach(async () => {
     },
   });
   mocks.start.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "running", outputExpiresAtMs: null, outputToken: null, terminalReason: null, error: null });
+  mocks.cancel.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
+  mocks.finish.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "failed", outputExpiresAtMs: null, outputToken: null, terminalReason: "failed", error: null });
   mocks.prepare.mockImplementation(async (_job, role) => [{ token: role, displayName: `${role}.bin` }]);
   mocks.readBound.mockImplementation(async (_job, token) => new Uint8Array(token.token === "input" ? [6] : token.token === "patch" ? [8] : [7]));
   mocks.applyPatchAndVerify.mockResolvedValue({ output: new Uint8Array([7]), verification: { verified: true }, byteExact: true });
@@ -166,6 +170,18 @@ it("keeps an integrity manifest unverified when replay cannot prove it", async (
   await screen.findByRole("button", { name: "正式另存结果" });
   expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ validation: "unverified" }));
   expect(screen.getByText(/EVERIFICATION/)).toBeTruthy();
+});
+
+it("does not report a second input release after a terminal native failure already released ownership", async () => {
+  mocks.desktopRuntime = true;
+  mocks.generateVerifiedPatch.mockRejectedValueOnce(new Error("patch failed"));
+  render(<BinaryPatchToolbox toolId="binary-patch-create" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "生成并验证补丁" }));
+
+  await waitFor(() => expect(mocks.finish).toHaveBeenCalledOnce());
+  expect(mocks.release).not.toHaveBeenCalled();
+  expect(screen.getByRole("alert").textContent).not.toContain("输入资源释放未确认");
 });
 
 it("rejects an oversized web baseline before reading it", async () => {
