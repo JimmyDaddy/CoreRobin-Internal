@@ -43,7 +43,7 @@ import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapsh
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
 import type { ProcessRow } from "../types";
-import type { KeyboardCleaningCapability } from "./system/keyboard-cleaning/keyboardCleaning";
+import { KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON, type KeyboardCleaningCapability } from "./system/keyboard-cleaning/keyboardCleaning";
 import "./toolbox.css";
 
 const ImageToolbox = lazy(async () => ({ default: (await import("./image/ImageToolbox")).ImageToolbox }));
@@ -449,7 +449,7 @@ function toKeyboardCleaningCapability(capability: ToolboxCapability, t: ToolboxT
   return {
     state: capability.state === "available" ? "available" : "unavailable",
     platform: platform === "macos" || platform === "windows" || platform === "linux" ? platform : "unknown",
-    reason: capability.reason === "This tool requires a restricted native helper that is not registered."
+    reason: capability.reason === KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON
       ? t("overview.restrictedNativeHelperUnavailable.description")
       : capability.reason,
   };
@@ -1118,7 +1118,7 @@ const KEEP_AWAKE_STATUS_KEYS: Record<NonNullable<ToolboxProcessWatchSnapshot["ke
 };
 function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
 function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string {
-  if (capability.reason === "This tool requires a restricted native helper that is not registered.") return t("overview.restrictedNativeHelperUnavailable.description");
+  if (capability.reason === KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON) return t("overview.restrictedNativeHelperUnavailable.description");
   return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason"));
 }
 const LOCAL_ERROR_KEYS: Record<string, string> = {

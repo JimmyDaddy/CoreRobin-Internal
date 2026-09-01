@@ -7,6 +7,7 @@
  */
 
 export const KEYBOARD_CLEANING_PROTOCOL_VERSION = "keyboard-cleaning-helper-v1" as const;
+export const KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON = "This tool requires a restricted native helper that is not registered.";
 export const PREPARATION_WINDOW_MS = 3_000;
 export const HEARTBEAT_GRACE_MS = 3_000;
 export const HARD_LIMIT_MS = 180_000;

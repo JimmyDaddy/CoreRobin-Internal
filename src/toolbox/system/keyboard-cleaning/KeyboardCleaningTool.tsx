@@ -15,6 +15,7 @@ import {
   type KeyboardCleaningState,
   type KeyboardCleaningStatus,
 } from "./keyboardCleaning";
+import { KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON } from "./keyboardCleaning";
 
 export interface KeyboardCleaningBridge {
   send(effect: KeyboardCleaningEffect): Promise<void>;
@@ -174,7 +175,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
     : t(STATUS_KEYS[state.status]);
   const capabilityText = capability.state === "available"
     ? t("keyboardCleaning.capability.available", { platform: capability.platform })
-    : capability.reason ?? t("keyboardCleaning.capability.unavailable");
+    : keyboardCapabilityReason(t, capability);
 
   const cleaning = state.status === "preparing" || state.status === "active";
   const maskVisible = cleaning || state.status === "releasing";
@@ -215,4 +216,9 @@ function keyboardErrorMessage(reason: unknown, t: ToolboxTFunction): string {
   if (reason instanceof KeyboardCleaningError) return t(ERROR_KEYS[reason.code]);
   if (reason instanceof Error) return reason.message;
   return t("keyboardCleaning.errors.start");
+}
+
+function keyboardCapabilityReason(t: ToolboxTFunction, capability: KeyboardCleaningCapability): string {
+  if (capability.reason === KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON) return t("overview.restrictedNativeHelperUnavailable.description");
+  return capability.reason ?? t("keyboardCleaning.capability.unavailable");
 }
