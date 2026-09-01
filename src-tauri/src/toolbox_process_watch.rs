@@ -301,11 +301,19 @@ impl ProcessWatchService {
     pub fn shutdown(&mut self) {
         let active = if let Ok(mut state) = self.shared.state.lock() {
             state.shutdown = true;
-            state
+            let active = state
                 .active
                 .iter()
                 .map(|entry| entry.snapshot.clone())
-                .collect()
+                .collect::<Vec<_>>();
+            // A stopped service must not retain process identity, terminal
+            // snapshots, or undelivered completions. In particular, reset()
+            // uses this as the clear barrier before a replacement worker is
+            // allowed to observe any new process.
+            state.active.clear();
+            state.terminal.clear();
+            state.completions.clear();
+            active
         } else {
             Vec::new()
         };
@@ -314,6 +322,25 @@ impl ProcessWatchService {
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }
+    }
+
+    /// Stops the current worker and starts a fresh, empty observation service.
+    ///
+    /// This is the global-clear barrier: it joins a worker that may be between
+    /// an identity read and its next state update, releases every attached
+    /// keep-awake demand, and drops all retained process identities, terminal
+    /// snapshots, and pending completions before new observations can begin.
+    pub fn reset(&mut self) -> Result<(), CommandError> {
+        let read_birth_token = Arc::clone(&self.shared.read_birth_token);
+        let timing = self.shared.timing;
+        let power = self.shared.power.clone();
+
+        self.shutdown();
+        let shared = Self::new_shared(read_birth_token, timing, power);
+        let worker = Self::spawn_worker(Arc::clone(&shared))?;
+        self.shared = shared;
+        self.worker = Some(worker);
+        Ok(())
     }
 
     fn start_result(&self, snapshot: ProcessWatchSnapshot) -> ProcessWatchStart {
@@ -349,25 +376,36 @@ impl ProcessWatchService {
         timing: WatchTiming,
         power: Option<Arc<dyn ProcessWatchPowerAttachment>>,
     ) -> Result<Self, CommandError> {
-        let shared = Arc::new(Shared {
-            read_birth_token,
-            power,
-            timing,
-            state: Mutex::new(WatchBook::default()),
-            wake: Condvar::new(),
-        });
-        let worker_shared = Arc::clone(&shared);
-        let worker = thread::Builder::new()
-            .name("core-robin-process-watch".to_owned())
-            .spawn(move || worker_loop(worker_shared))
-            .map_err(|error| {
-                CommandError::internal(format!("Could not start process watch worker: {error}"))
-            })?;
+        let shared = Self::new_shared(read_birth_token, timing, power);
+        let worker = Self::spawn_worker(Arc::clone(&shared))?;
 
         Ok(Self {
             shared,
             worker: Some(worker),
         })
+    }
+
+    fn new_shared(
+        read_birth_token: Arc<BirthTokenReader>,
+        timing: WatchTiming,
+        power: Option<Arc<dyn ProcessWatchPowerAttachment>>,
+    ) -> Arc<Shared> {
+        Arc::new(Shared {
+            read_birth_token,
+            power,
+            timing,
+            state: Mutex::new(WatchBook::default()),
+            wake: Condvar::new(),
+        })
+    }
+
+    fn spawn_worker(shared: Arc<Shared>) -> Result<JoinHandle<()>, CommandError> {
+        thread::Builder::new()
+            .name("core-robin-process-watch".to_owned())
+            .spawn(move || worker_loop(shared))
+            .map_err(|error| {
+                CommandError::internal(format!("Could not start process watch worker: {error}"))
+            })
     }
 }
 
@@ -885,6 +923,7 @@ fn wait_for_timeout<'a>(
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::mpsc;
     use std::thread;
 
     use super::*;
@@ -1230,6 +1269,91 @@ mod tests {
         assert_eq!(first.len(), 1);
         assert_eq!(first[0].watch_id, started.snapshot.watch_id);
         assert_eq!(first[0].status, ProcessWatchStatus::Exited);
+        assert!(service.take_completions().unwrap().is_empty());
+    }
+
+    #[test]
+    fn reset_releases_keep_awake_and_discards_watch_state() {
+        let power = Arc::new(MockPowerAttachment {
+            status: Mutex::new(ProcessWatchKeepAwakeStatus::Active),
+            ..Default::default()
+        });
+        let mut service = service_with_power(
+            |pid| match pid {
+                7 => Ok("birth".to_owned()),
+                8 => Err(CommandError::new("process_exited", "the process is gone")),
+                _ => unreachable!("unexpected process watch"),
+            },
+            Arc::clone(&power),
+        );
+        let active = service.start(keep_awake_request(7, "birth", 60)).unwrap();
+        let terminal = service.start(request(8, "gone", 60)).unwrap();
+        assert_eq!(terminal.snapshot.status, ProcessWatchStatus::Exited);
+        assert_eq!(service.snapshots().unwrap().len(), 2);
+
+        service.reset().unwrap();
+
+        assert_eq!(
+            *power.detached.lock().unwrap(),
+            vec![active.snapshot.watch_id]
+        );
+        assert!(service.snapshots().unwrap().is_empty());
+        assert!(service.take_completions().unwrap().is_empty());
+
+        let restarted = service.start(keep_awake_request(7, "birth", 60)).unwrap();
+        assert_eq!(restarted.snapshot.watch_id, 1);
+    }
+
+    #[test]
+    fn reset_waits_for_an_inflight_poll_without_retaining_its_late_completion() {
+        let reads = Arc::new(AtomicUsize::new(0));
+        let reader_reads = Arc::clone(&reads);
+        let (poll_started, poll_started_rx) = mpsc::channel();
+        let (release_poll, release_poll_rx) = mpsc::channel();
+        let release_poll_rx = Arc::new(Mutex::new(release_poll_rx));
+        let reader_release_poll_rx = Arc::clone(&release_poll_rx);
+        let service = Arc::new(Mutex::new(service_with_reader(move |_| {
+            if reader_reads.fetch_add(1, Ordering::SeqCst) == 0 {
+                Ok("birth".to_owned())
+            } else {
+                poll_started.send(()).unwrap();
+                reader_release_poll_rx.lock().unwrap().recv().unwrap();
+                Err(CommandError::new("process_exited", "the process is gone"))
+            }
+        })));
+        let started = service
+            .lock()
+            .unwrap()
+            .start(request(7, "birth", 60))
+            .unwrap();
+        poll_started_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("the worker must begin its poll");
+
+        let resetting = Arc::clone(&service);
+        let (reset_finished, reset_finished_rx) = mpsc::channel();
+        thread::spawn(move || {
+            resetting.lock().unwrap().reset().unwrap();
+            reset_finished.send(()).unwrap();
+        });
+        assert!(
+            reset_finished_rx
+                .recv_timeout(Duration::from_millis(20))
+                .is_err(),
+            "reset must wait for the in-flight worker before it returns"
+        );
+        release_poll.send(()).unwrap();
+        reset_finished_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("reset must finish after the poll releases");
+
+        let service = service.lock().unwrap();
+        assert!(
+            service
+                .snapshot(started.snapshot.watch_id)
+                .unwrap()
+                .is_none()
+        );
         assert!(service.take_completions().unwrap().is_empty());
     }
 

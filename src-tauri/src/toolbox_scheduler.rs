@@ -23,8 +23,8 @@ pub const MAX_SCHEDULE_RULES: usize = 32;
 const MAX_REQUEST_ID_BYTES: usize = 128;
 const MAX_SCHEDULE_ID_BYTES: usize = 64;
 const MAX_TITLE_CHARS: usize = 80;
-const MIN_KEEP_AWAKE_MINUTES: u16 = 1;
-const MAX_KEEP_AWAKE_MINUTES: u16 = 12 * 60;
+pub(super) const MIN_KEEP_AWAKE_MINUTES: u16 = 1;
+pub(super) const MAX_KEEP_AWAKE_MINUTES: u16 = 12 * 60;
 const ONE_DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 const MAX_ONCE_AHEAD_MS: u64 = 365 * ONE_DAY_MS;
 
@@ -180,6 +180,7 @@ pub struct ToolboxScheduler {
     rules: Vec<SchedulerRule>,
     mutation_receipts: Vec<PersistedMutationReceipt>,
     store: Option<SchedulerStore>,
+    dispatch_blocked: bool,
 }
 
 impl ToolboxScheduler {
@@ -191,6 +192,7 @@ impl ToolboxScheduler {
             rules: Vec::new(),
             mutation_receipts: Vec::new(),
             store: Some(store),
+            dispatch_blocked: false,
         };
         scheduler.reload_from_store()?;
         Ok(scheduler)
@@ -385,7 +387,7 @@ impl ToolboxScheduler {
     }
 
     pub fn poll_due(&mut self, now_ms: u64) -> Result<Vec<SchedulerActionIntent>, CommandError> {
-        if self.store.is_none() {
+        if self.store.is_none() || self.dispatch_blocked {
             return Ok(Vec::new());
         }
         let epoch = self
@@ -406,26 +408,35 @@ impl ToolboxScheduler {
                         .next_scheduled_at_utc_ms
                         .is_some_and(|scheduled| scheduled <= now_ms)
             })
-            .map(|rule| {
-                (
-                    rule.schedule_id.clone(),
-                    rule.revision,
-                    rule.next_scheduled_at_utc_ms.unwrap_or_default(),
-                    rule.action.clone(),
-                    rule.trigger.clone(),
-                    rule.time_zone.clone(),
-                )
-            })
+            .cloned()
             .collect::<Vec<_>>();
         let mut intents = Vec::new();
-        for (schedule_id, schedule_revision, scheduled_at_ms, action, trigger, time_zone) in due {
+        for rule in due {
+            let schedule_id = rule.schedule_id.clone();
+            let schedule_revision = rule.revision;
+            let scheduled_at_ms = rule.next_scheduled_at_utc_ms.unwrap_or_default();
+            let action = rule.action.clone();
+            let trigger = rule.trigger.clone();
+            let time_zone = rule.time_zone.clone();
+            if persist::validate_rule_for_activation(&rule).is_err() {
+                self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                continue;
+            }
             // A schedule that was missed while the app was stopped is advanced without
             // dispatch. The one-second grace window is only for an active runtime poll.
             if now_ms.saturating_sub(scheduled_at_ms) > 5_000 {
-                self.advance_persisted_rule(&schedule_id, now_ms)?;
+                if self.advance_persisted_rule(&schedule_id, now_ms).is_err() {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                }
                 continue;
             }
-            let local_key = local_calendar_key_for(&time_zone, scheduled_at_ms)?;
+            let local_key = match local_calendar_key_for(&time_zone, scheduled_at_ms) {
+                Ok(local_key) => local_key,
+                Err(_) => {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                    continue;
+                }
+            };
             let intent = PersistedExecutionIntent {
                 schedule_id: schedule_id.clone(),
                 schedule_revision,
@@ -436,17 +447,39 @@ impl ToolboxScheduler {
                 created_at_ms: now_ms,
                 updated_at_ms: now_ms,
             };
-            let intent_write = self
+            let intent_write = match self
                 .store
                 .as_mut()
                 .expect("persistent scheduler store")
                 .record_intent(intent, now_ms)
-                .map_err(storage_error)?;
+            {
+                Ok(intent_write) => intent_write,
+                Err(_) => {
+                    self.fail_closed_persisted_rule(&schedule_id, None, now_ms)?;
+                    continue;
+                }
+            };
             if intent_write == IntentWrite::AlreadyRecorded {
-                self.advance_persisted_rule(&schedule_id, now_ms)?;
+                if self.advance_persisted_rule(&schedule_id, now_ms).is_err() {
+                    self.fail_closed_persisted_rule(
+                        &schedule_id,
+                        Some((schedule_revision, scheduled_at_ms, epoch)),
+                        now_ms,
+                    )?;
+                }
                 continue;
             }
-            self.advance_persisted_rule_with_trigger(&schedule_id, now_ms, &trigger)?;
+            if self
+                .advance_persisted_rule_with_trigger(&schedule_id, now_ms, &trigger)
+                .is_err()
+            {
+                self.fail_closed_persisted_rule(
+                    &schedule_id,
+                    Some((schedule_revision, scheduled_at_ms, epoch)),
+                    now_ms,
+                )?;
+                continue;
+            }
             intents.push(SchedulerActionIntent {
                 schedule_id,
                 schedule_revision,
@@ -457,6 +490,19 @@ impl ToolboxScheduler {
         }
         self.reload_from_store()?;
         Ok(intents)
+    }
+
+    fn fail_closed_persisted_rule(
+        &mut self,
+        schedule_id: &str,
+        intent: Option<(u64, u64, u64)>,
+        now_ms: u64,
+    ) -> Result<(), CommandError> {
+        self.store
+            .as_mut()
+            .expect("persistent scheduler store")
+            .fail_closed_rule(schedule_id, intent, now_ms)
+            .map_err(storage_error)
     }
 
     pub fn mark_intent_outcome(
@@ -508,6 +554,18 @@ impl ToolboxScheduler {
             })
             .map_err(storage_error)?;
         self.reload_from_store()
+    }
+
+    /// Blocks scheduler mutations and action polling while the cross-module
+    /// toolbox clear barrier is committing its new reset epoch.
+    pub fn begin_reset(&mut self) {
+        self.dispatch_blocked = true;
+    }
+
+    pub fn complete_reset(&mut self, reset_epoch: u64) -> Result<(), CommandError> {
+        self.adopt_reset_epoch(reset_epoch)?;
+        self.dispatch_blocked = false;
+        Ok(())
     }
 
     pub fn pause(
@@ -1180,12 +1238,7 @@ fn public_rule(rule: &PersistedSchedule) -> Result<SchedulerRule, CommandError> 
         PersistedSchedulerTrigger::Daily { hour, minute } => SchedulerTrigger::Daily {
             hour: *hour,
             minute: *minute,
-            next_run_at_ms: rule.next_scheduled_at_utc_ms.ok_or_else(|| {
-                CommandError::new(
-                    "invalid_schedule",
-                    "A daily schedule has no next occurrence.",
-                )
-            })?,
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
         },
         PersistedSchedulerTrigger::Weekly {
             weekday,
@@ -1195,21 +1248,11 @@ fn public_rule(rule: &PersistedSchedule) -> Result<SchedulerRule, CommandError> 
             weekday: *weekday,
             hour: *hour,
             minute: *minute,
-            next_run_at_ms: rule.next_scheduled_at_utc_ms.ok_or_else(|| {
-                CommandError::new(
-                    "invalid_schedule",
-                    "A weekly schedule has no next occurrence.",
-                )
-            })?,
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
         },
         PersistedSchedulerTrigger::Cron { expression } => SchedulerTrigger::Cron {
             expression: expression.clone(),
-            next_run_at_ms: rule.next_scheduled_at_utc_ms.ok_or_else(|| {
-                CommandError::new(
-                    "invalid_schedule",
-                    "A Cron schedule has no next occurrence.",
-                )
-            })?,
+            next_run_at_ms: rule.next_scheduled_at_utc_ms.unwrap_or(rule.updated_at_ms),
         },
     };
     let action = match &rule.action {
@@ -1324,6 +1367,7 @@ fn next_for_trigger(
 }
 
 fn resume_persisted_trigger(rule: &PersistedSchedule, now_ms: u64) -> Result<u64, CommandError> {
+    persist::validate_rule_definition(rule).map_err(storage_error)?;
     match &rule.trigger {
         PersistedSchedulerTrigger::Once { at_utc_ms } => {
             if *at_utc_ms <= now_ms {
@@ -1555,6 +1599,10 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use serde_json::json;
+
     use super::*;
 
     const NOW_MS: u64 = 1_000_000;
@@ -2080,6 +2128,194 @@ mod tests {
         let snapshot = reopened.snapshot();
         assert_eq!(snapshot.rules.len(), 1);
         assert_eq!(snapshot.rules[0].status, SchedulerRuleStatus::Paused);
+    }
+
+    #[test]
+    fn loading_a_bad_rule_pauses_only_that_rule_and_keeps_other_due_rules_runnable() {
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let invalid = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "create-cron".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Cron {
+                        expression: "* * * * *".to_owned(),
+                        next_run_at_ms: NOW_MS + 1_000,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect("save valid Cron before corrupting its private fixture");
+        let valid = scheduler
+            .create_at(reminder_once(NOW_MS + 1_000), NOW_MS)
+            .expect("save valid one-time rule");
+        let invalid_id = invalid.rules[0].schedule_id.clone();
+        let valid_id = valid.rules[1].schedule_id.clone();
+        let revision_before_recovery = valid.revision;
+        drop(scheduler);
+
+        let path = directory.path().join(persist::SCHEDULE_FILE_NAME);
+        let mut state: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).expect("read private test state"))
+                .expect("decode private test state");
+        state["rules"][0]["trigger"] = json!({ "kind": "cron", "expression": "not a Cron" });
+        state["rules"][0]["nextScheduledAtUtcMs"] = json!(NOW_MS + 1_000);
+        state["rules"][0]["lastProcessedAtUtcMs"] = json!(NOW_MS - 100);
+        state["rules"][0]["lastProcessedLocalKey"] = json!({
+            "year": 1970,
+            "month": 1,
+            "day": 1,
+            "hour": 0,
+            "minute": 16
+        });
+        fs::write(
+            &path,
+            serde_json::to_vec(&state).expect("encode private test state"),
+        )
+        .expect("write private test state");
+
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("recover scheduler");
+        let recovered = scheduler.snapshot();
+        assert!(recovered.revision > revision_before_recovery);
+        assert_eq!(recovered.rules.len(), 2);
+        assert_eq!(
+            recovered
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == invalid_id)
+                .expect("bad rule remains visible")
+                .status,
+            SchedulerRuleStatus::Paused
+        );
+        assert_eq!(
+            recovered
+                .rules
+                .iter()
+                .find(|rule| rule.schedule_id == valid_id)
+                .expect("valid rule remains visible")
+                .status,
+            SchedulerRuleStatus::Scheduled
+        );
+
+        let intents = scheduler
+            .poll_due(NOW_MS + 1_000)
+            .expect("paused bad rule cannot block valid due rule");
+        assert_eq!(intents.len(), 1);
+        assert_eq!(intents[0].schedule_id, valid_id);
+        let bad_rule = scheduler
+            .store
+            .as_ref()
+            .expect("persistent store")
+            .state()
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == invalid_id)
+            .expect("bad rule remains persisted");
+        assert!(!bad_rule.enabled);
+        assert_eq!(bad_rule.last_processed_at_utc_ms, Some(NOW_MS - 100));
+        assert!(bad_rule.last_processed_local_key.is_some());
+    }
+
+    #[test]
+    fn failed_recalculation_marks_its_intent_failed_without_blocking_another_due_rule() {
+        let recalculation_at = millis_from_utc(
+            Utc.with_ymd_and_hms(2096, 3, 1, 0, 0, 0)
+                .single()
+                .expect("valid UTC test instant"),
+        );
+        let directory = tempfile::tempdir().expect("private test directory");
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open scheduler");
+        let sparse = scheduler
+            .create_at(
+                SchedulerCreateRequest {
+                    request_id: "create-sparse-cron".to_owned(),
+                    time_zone: "Etc/UTC".to_owned(),
+                    title: None,
+                    action: SchedulerAction::Reminder,
+                    trigger: SchedulerTrigger::Cron {
+                        expression: "0 0 29 2 *".to_owned(),
+                        next_run_at_ms: NOW_MS + 1_000,
+                    },
+                },
+                NOW_MS,
+            )
+            .expect("save sparse but valid Cron rule");
+        let valid = scheduler
+            .create_at(reminder_once(NOW_MS + 1_000), NOW_MS)
+            .expect("save valid one-time rule");
+        let sparse_id = sparse.rules[0].schedule_id.clone();
+        let valid_id = valid.rules[1].schedule_id.clone();
+        let revision_before_poll = valid.revision;
+        drop(scheduler);
+
+        let path = directory.path().join(persist::SCHEDULE_FILE_NAME);
+        let mut state: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).expect("read private test state"))
+                .expect("decode private test state");
+        state["rules"][0]["nextScheduledAtUtcMs"] = json!(recalculation_at);
+        state["rules"][0]["lastProcessedAtUtcMs"] = json!(NOW_MS);
+        state["rules"][0]["lastProcessedLocalKey"] = json!({
+            "year": 1970,
+            "month": 1,
+            "day": 1,
+            "hour": 0,
+            "minute": 16
+        });
+        state["rules"][1]["trigger"]["at_utc_ms"] = json!(recalculation_at);
+        state["rules"][1]["nextScheduledAtUtcMs"] = json!(recalculation_at);
+        fs::write(
+            &path,
+            serde_json::to_vec(&state).expect("encode private test state"),
+        )
+        .expect("write private test state");
+
+        let mut scheduler = ToolboxScheduler::open(directory.path()).expect("open test state");
+        let intents = scheduler
+            .poll_due(recalculation_at)
+            .expect("recalculation failure is isolated per rule");
+        assert_eq!(intents.len(), 1);
+        assert_eq!(intents[0].schedule_id, valid_id);
+        let state = scheduler.store.as_ref().expect("persistent store").state();
+        assert!(state.revision >= revision_before_poll.saturating_add(2));
+        let sparse_rule = state
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == sparse_id)
+            .expect("sparse rule remains visible");
+        assert!(!sparse_rule.enabled);
+        assert_eq!(sparse_rule.last_processed_at_utc_ms, Some(NOW_MS));
+        assert!(sparse_rule.last_processed_local_key.is_some());
+        assert_eq!(
+            state
+                .intents
+                .iter()
+                .find(|intent| intent.schedule_id == sparse_id)
+                .expect("failed recalculation intent is preserved")
+                .state,
+            PersistedIntentState::Failed
+        );
+        assert!(
+            scheduler
+                .poll_due(recalculation_at + 1)
+                .expect("failed rule stays fail-closed")
+                .is_empty()
+        );
+        drop(scheduler);
+
+        let reopened = ToolboxScheduler::open(directory.path()).expect("reopen durable failure");
+        let persisted_sparse = reopened
+            .store
+            .as_ref()
+            .expect("persistent store")
+            .state()
+            .rules
+            .iter()
+            .find(|rule| rule.schedule_id == sparse_id)
+            .expect("bad rule is durable");
+        assert!(!persisted_sparse.enabled);
     }
 
     #[test]

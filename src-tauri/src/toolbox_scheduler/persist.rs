@@ -1,10 +1,15 @@
+use std::collections::HashSet;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use super::scheduler_core::LocalCalendarKey;
-use super::{SchedulerAction, SchedulerSnapshot, SchedulerTrigger};
+use super::scheduler_core::{CronExpression, LocalCalendarKey, parse_time_zone};
+use super::{
+    MAX_KEEP_AWAKE_MINUTES, MIN_KEEP_AWAKE_MINUTES, SchedulerAction, SchedulerSnapshot,
+    SchedulerTrigger,
+};
 
 pub(crate) const SCHEDULE_FILE_NAME: &str = "toolbox-schedules-v1.json";
 const SCHEDULE_SCHEMA_VERSION: u16 = 1;
@@ -200,7 +205,11 @@ impl SchedulerStore {
             return Err(SchedulerStoreError::InvalidAppDataDir);
         }
         let path = app_data_dir.join(SCHEDULE_FILE_NAME);
-        let state = load_state(&path)?;
+        let mut state = load_state(&path)?;
+        if quarantine_invalid_enabled_rules(&mut state, now_millis()) {
+            validate_state(&state)?;
+            write_state(&path, &state)?;
+        }
         Ok(Self { path, state })
     }
 
@@ -350,6 +359,47 @@ impl SchedulerStore {
             Ok(())
         })
     }
+
+    /// A rule whose calculation fails must be durable before the next rule is considered. Its
+    /// existing deduplication watermarks remain untouched. If an intent was written before the
+    /// failed recalculation, make that not-dispatched intent terminal instead of replayable.
+    pub(crate) fn fail_closed_rule(
+        &mut self,
+        schedule_id: &str,
+        intent: Option<(u64, u64, u64)>,
+        now_ms: u64,
+    ) -> Result<(), SchedulerStoreError> {
+        self.transact(|state| {
+            let Some(rule) = state
+                .rules
+                .iter_mut()
+                .find(|rule| rule.schedule_id == schedule_id)
+            else {
+                return Err(SchedulerStoreError::InvalidState);
+            };
+            if rule.enabled {
+                let revision = state.revision.saturating_add(1);
+                rule.enabled = false;
+                rule.revision = revision;
+                rule.updated_at_ms = rule.updated_at_ms.max(now_ms);
+                state.revision = revision;
+            }
+
+            if let Some((schedule_revision, scheduled_at_utc_ms, epoch)) = intent
+                && let Some(intent) = state.intents.iter_mut().find(|intent| {
+                    intent.schedule_id == schedule_id
+                        && intent.schedule_revision == schedule_revision
+                        && intent.scheduled_at_utc_ms == scheduled_at_utc_ms
+                        && intent.epoch == epoch
+                })
+                && intent.state == PersistedIntentState::Intended
+            {
+                intent.state = PersistedIntentState::Failed;
+                intent.updated_at_ms = now_ms;
+            }
+            Ok(())
+        })
+    }
 }
 
 fn load_state(path: &Path) -> Result<SchedulerStoreState, SchedulerStoreError> {
@@ -365,7 +415,7 @@ fn load_state(path: &Path) -> Result<SchedulerStoreState, SchedulerStoreError> {
     };
     let state = serde_json::from_slice::<SchedulerStoreState>(&bytes)
         .map_err(|_| SchedulerStoreError::Corrupt)?;
-    validate_state(&state).map_err(|_| SchedulerStoreError::Corrupt)?;
+    validate_state_shape(&state).map_err(|_| SchedulerStoreError::Corrupt)?;
     Ok(state)
 }
 
@@ -378,6 +428,17 @@ fn write_state(path: &Path, state: &SchedulerStoreState) -> Result<(), Scheduler
 }
 
 fn validate_state(state: &SchedulerStoreState) -> Result<(), SchedulerStoreError> {
+    validate_state_shape(state)?;
+    for rule in state.rules.iter().filter(|rule| rule.enabled) {
+        validate_rule_for_activation(rule)?;
+    }
+    Ok(())
+}
+
+/// Validate state that cannot be repaired by disabling a single rule. Definition and next-run
+/// errors are intentionally handled separately so one persisted bad rule can be paused without
+/// hiding the other rules from the user.
+fn validate_state_shape(state: &SchedulerStoreState) -> Result<(), SchedulerStoreError> {
     if state.schema_version != SCHEDULE_SCHEMA_VERSION
         || state.rules.len() > MAX_SCHEDULE_RULES
         || state.intents.len() > MAX_RETAINED_INTENTS
@@ -385,27 +446,142 @@ fn validate_state(state: &SchedulerStoreState) -> Result<(), SchedulerStoreError
     {
         return Err(SchedulerStoreError::InvalidState);
     }
+    let mut schedule_ids = HashSet::new();
     for rule in &state.rules {
         if rule.schedule_id.is_empty()
             || rule.schedule_id.len() > 64
-            || rule.time_zone.is_empty()
             || rule.time_zone.len() > 128
             || rule
                 .title
                 .as_ref()
                 .is_some_and(|title| title.chars().count() > 80)
+            || rule.revision == 0
+            || rule.revision > state.revision
+            || rule.created_at_ms > rule.updated_at_ms
+            || !schedule_ids.insert(&rule.schedule_id)
         {
             return Err(SchedulerStoreError::InvalidState);
         }
     }
-    if state
-        .mutation_receipts
-        .iter()
-        .any(|receipt| receipt.request_id.trim().is_empty() || receipt.request_id.len() > 128)
+    let mut intent_keys = HashSet::new();
+    for intent in &state.intents {
+        if intent.schedule_id.is_empty()
+            || intent.schedule_id.len() > 64
+            || !timestamp_is_supported(intent.scheduled_at_utc_ms)
+            || intent.created_at_ms > intent.updated_at_ms
+            || !intent_keys.insert((
+                &intent.schedule_id,
+                intent.schedule_revision,
+                intent.scheduled_at_utc_ms,
+                intent.epoch,
+            ))
+        {
+            return Err(SchedulerStoreError::InvalidState);
+        }
+    }
+    let mut request_ids = HashSet::new();
+    if state.mutation_receipts.iter().any(|receipt| {
+        receipt.request_id.trim().is_empty()
+            || receipt.request_id.len() > 128
+            || receipt.acknowledged_revision > state.revision
+            || !request_ids.insert(&receipt.request_id)
+    }) {
+        return Err(SchedulerStoreError::InvalidState);
+    }
+    Ok(())
+}
+
+/// An enabled rule must be executable from its durable definition. A paused rule is allowed to
+/// retain the bad definition so it is visible, editable, and fail-closed after recovery.
+pub(crate) fn validate_rule_for_activation(
+    rule: &PersistedSchedule,
+) -> Result<(), SchedulerStoreError> {
+    validate_rule_definition(rule)?;
+    let Some(next_scheduled_at_utc_ms) = rule.next_scheduled_at_utc_ms else {
+        return Err(SchedulerStoreError::InvalidState);
+    };
+    if !timestamp_is_supported(next_scheduled_at_utc_ms)
+        || rule
+            .last_processed_at_utc_ms
+            .is_some_and(|at_ms| !timestamp_is_supported(at_ms))
+        || (rule.last_processed_at_utc_ms.is_some() != rule.last_processed_local_key.is_some())
+        || rule
+            .last_processed_local_key
+            .as_ref()
+            .is_some_and(|key| !local_calendar_key_is_valid(key))
+    {
+        return Err(SchedulerStoreError::InvalidState);
+    }
+    if let PersistedSchedulerTrigger::Once { at_utc_ms } = rule.trigger
+        && next_scheduled_at_utc_ms != at_utc_ms
     {
         return Err(SchedulerStoreError::InvalidState);
     }
     Ok(())
+}
+
+/// Resume reuses the definition checks but recomputes the next occurrence atomically, so a
+/// paused one-time rule with no next run still reaches its existing `schedule_expired` outcome.
+pub(crate) fn validate_rule_definition(
+    rule: &PersistedSchedule,
+) -> Result<(), SchedulerStoreError> {
+    parse_time_zone(&rule.time_zone).map_err(|_| SchedulerStoreError::InvalidState)?;
+    match rule.action {
+        PersistedSchedulerAction::Reminder => {}
+        PersistedSchedulerAction::KeepAwake { duration_minutes }
+            if (MIN_KEEP_AWAKE_MINUTES..=MAX_KEEP_AWAKE_MINUTES).contains(&duration_minutes) => {}
+        PersistedSchedulerAction::KeepAwake { .. } => {
+            return Err(SchedulerStoreError::InvalidState);
+        }
+    }
+    match &rule.trigger {
+        PersistedSchedulerTrigger::Once { at_utc_ms } if timestamp_is_supported(*at_utc_ms) => {}
+        PersistedSchedulerTrigger::Once { .. } => return Err(SchedulerStoreError::InvalidState),
+        PersistedSchedulerTrigger::Daily { hour, minute } if *hour <= 23 && *minute <= 59 => {}
+        PersistedSchedulerTrigger::Daily { .. } => return Err(SchedulerStoreError::InvalidState),
+        PersistedSchedulerTrigger::Weekly {
+            weekday,
+            hour,
+            minute,
+        } if *weekday <= 6 && *hour <= 23 && *minute <= 59 => {}
+        PersistedSchedulerTrigger::Weekly { .. } => return Err(SchedulerStoreError::InvalidState),
+        PersistedSchedulerTrigger::Cron { expression } => {
+            CronExpression::parse(expression).map_err(|_| SchedulerStoreError::InvalidState)?;
+        }
+    }
+    Ok(())
+}
+
+fn quarantine_invalid_enabled_rules(state: &mut SchedulerStoreState, now_ms: u64) -> bool {
+    let mut changed = false;
+    for rule in &mut state.rules {
+        if rule.enabled && validate_rule_for_activation(rule).is_err() {
+            let revision = state.revision.saturating_add(1);
+            rule.enabled = false;
+            rule.revision = revision;
+            rule.updated_at_ms = rule.updated_at_ms.max(now_ms);
+            state.revision = revision;
+            changed = true;
+        }
+    }
+    changed
+}
+
+fn timestamp_is_supported(timestamp_ms: u64) -> bool {
+    i64::try_from(timestamp_ms).is_ok()
+}
+
+fn local_calendar_key_is_valid(key: &LocalCalendarKey) -> bool {
+    chrono::NaiveDate::from_ymd_opt(key.year, key.month, key.day)
+        .is_some_and(|date| date.and_hms_opt(key.hour, key.minute, 0).is_some())
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
 }
 
 #[cfg(test)]
@@ -425,6 +601,67 @@ mod tests {
             created_at_ms: 0,
             updated_at_ms: 0,
         }
+    }
+
+    fn active_rule() -> PersistedSchedule {
+        PersistedSchedule {
+            schedule_id: "schedule-1".to_owned(),
+            revision: 1,
+            title: None,
+            time_zone: "Etc/UTC".to_owned(),
+            action: PersistedSchedulerAction::Reminder,
+            trigger: PersistedSchedulerTrigger::Daily {
+                hour: 9,
+                minute: 30,
+            },
+            enabled: true,
+            next_scheduled_at_utc_ms: Some(1_000),
+            last_processed_at_utc_ms: None,
+            last_processed_local_key: None,
+            created_at_ms: 0,
+            updated_at_ms: 0,
+        }
+    }
+
+    #[test]
+    fn rejects_enabled_rules_with_invalid_execution_semantics() {
+        let valid_state = || SchedulerStoreState {
+            revision: 1,
+            rules: vec![active_rule()],
+            ..SchedulerStoreState::default()
+        };
+
+        let mut missing_next_run = valid_state();
+        missing_next_run.rules[0].next_scheduled_at_utc_ms = None;
+        assert_eq!(
+            validate_state(&missing_next_run),
+            Err(SchedulerStoreError::InvalidState)
+        );
+
+        let mut invalid_zone = valid_state();
+        invalid_zone.rules[0].time_zone = "Not/AZone".to_owned();
+        assert_eq!(
+            validate_state(&invalid_zone),
+            Err(SchedulerStoreError::InvalidState)
+        );
+
+        let mut invalid_cron = valid_state();
+        invalid_cron.rules[0].trigger = PersistedSchedulerTrigger::Cron {
+            expression: "not cron".to_owned(),
+        };
+        assert_eq!(
+            validate_state(&invalid_cron),
+            Err(SchedulerStoreError::InvalidState)
+        );
+
+        let mut invalid_action = valid_state();
+        invalid_action.rules[0].action = PersistedSchedulerAction::KeepAwake {
+            duration_minutes: 0,
+        };
+        assert_eq!(
+            validate_state(&invalid_action),
+            Err(SchedulerStoreError::InvalidState)
+        );
     }
 
     #[test]

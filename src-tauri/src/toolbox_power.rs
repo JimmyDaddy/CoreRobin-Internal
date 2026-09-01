@@ -135,6 +135,7 @@ struct PowerBook {
     process_statuses: BTreeMap<u64, ProcessWatchPowerStatus>,
     resource_status: ResourceStatus,
     release_confirmed: bool,
+    release_retry_requested: bool,
     reason: Option<String>,
     battery_protection: BatteryProtection,
     closed: bool,
@@ -150,6 +151,7 @@ impl Default for PowerBook {
             process_statuses: BTreeMap::new(),
             resource_status: ResourceStatus::Released,
             release_confirmed: true,
+            release_retry_requested: false,
             reason: None,
             battery_protection: BatteryProtection::Unknown,
             closed: false,
@@ -627,10 +629,41 @@ impl PowerService {
                 "user_requested".to_owned()
             });
         }
+        if book.resource_status == ResourceStatus::ReleaseUnconfirmed {
+            book.resource_status = ResourceStatus::Releasing;
+            book.release_retry_requested = true;
+            book.reason = Some("release_retry_requested".to_owned());
+        }
         let state = book.snapshot();
         drop(book);
         self.shared.changed.notify_one();
         state
+    }
+
+    /// Retries a failed release while the deadline worker still owns the
+    /// platform assertion. The operation is intentionally narrow and
+    /// idempotent: a confirmed or already-running release simply returns the
+    /// current state, while only `release_unconfirmed` wakes the worker.
+    pub fn retry_release(&mut self) -> Result<PowerState, CommandError> {
+        let mut book = self.lock_book();
+        match book.resource_status {
+            ResourceStatus::ReleaseUnconfirmed => {
+                book.resource_status = ResourceStatus::Releasing;
+                book.release_retry_requested = true;
+                book.reason = Some("release_retry_requested".to_owned());
+            }
+            ResourceStatus::Releasing | ResourceStatus::Released => return Ok(book.snapshot()),
+            ResourceStatus::Active => {
+                return Err(CommandError::new(
+                    "power_release_not_needed",
+                    "The keep-awake resource is still active; stop it before retrying release.",
+                ));
+            }
+        }
+        let state = book.snapshot();
+        drop(book);
+        self.shared.changed.notify_all();
+        Ok(state)
     }
 
     /// Must be called from the application's power-sleep notification path.
@@ -767,7 +800,9 @@ impl PowerService {
     fn reap_finished_lease(&mut self) {
         let should_join = {
             let book = self.lock_book();
-            !book.has_demands() && self.lease.is_some()
+            !book.has_demands()
+                && book.resource_status == ResourceStatus::Released
+                && self.lease.is_some()
         };
         if should_join {
             self.shared.changed.notify_all();
@@ -847,7 +882,9 @@ fn power_worker(shared: Arc<PowerShared>, mut assertion: Box<dyn PowerAssertion>
         };
 
         if should_release {
-            finish_release(&shared, assertion.release());
+            if retry_release_after_failure(&shared, &mut assertion) {
+                continue;
+            }
             return;
         }
 
@@ -859,7 +896,9 @@ fn power_worker(shared: Arc<PowerShared>, mut assertion: Box<dyn PowerAssertion>
                     book.reason = Some(format!("timeout_update_failed:{}", error.code));
                     book.resource_status = ResourceStatus::Releasing;
                 }
-                finish_release(&shared, assertion.release());
+                if retry_release_after_failure(&shared, &mut assertion) {
+                    continue;
+                }
                 return;
             }
             last_timeout = timeout;
@@ -888,7 +927,9 @@ fn power_worker(shared: Arc<PowerShared>, mut assertion: Box<dyn PowerAssertion>
             if !book.has_demands() {
                 book.resource_status = ResourceStatus::Releasing;
                 drop(book);
-                finish_release(&shared, assertion.release());
+                if retry_release_after_failure(&shared, &mut assertion) {
+                    continue;
+                }
                 return;
             }
         }
@@ -909,6 +950,33 @@ fn finish_release(shared: &PowerShared, release: Result<(), CommandError>) {
             book.resource_status = ResourceStatus::ReleaseUnconfirmed;
             book.release_confirmed = false;
             book.reason = Some(format!("release_unconfirmed:{}", error.code));
+        }
+    }
+}
+
+fn retry_release_after_failure(
+    shared: &PowerShared,
+    assertion: &mut Box<dyn PowerAssertion>,
+) -> bool {
+    match assertion.release() {
+        Ok(()) => {
+            finish_release(shared, Ok(()));
+            false
+        }
+        Err(error) => {
+            finish_release(shared, Err(error));
+            let mut book = lock_book(shared);
+            while !book.release_retry_requested && !book.closed {
+                book = wait_for_change(shared, book, Duration::from_secs(60));
+            }
+            if book.closed {
+                return false;
+            }
+            book.release_retry_requested = false;
+            book.resource_status = ResourceStatus::Releasing;
+            book.release_confirmed = false;
+            drop(book);
+            true
         }
     }
 }
@@ -1058,11 +1126,12 @@ impl PowerAssertion for NativePowerAssertion {
     }
 
     fn release(&mut self) -> Result<(), CommandError> {
-        let Some(assertion_id) = self.assertion_id.take() else {
+        let Some(assertion_id) = self.assertion_id else {
             return Ok(());
         };
         let status = unsafe { IOPMAssertionRelease(assertion_id) };
         if status == 0 {
+            self.assertion_id = None;
             Ok(())
         } else {
             Err(CommandError::new(
@@ -1279,10 +1348,10 @@ impl PowerAssertion for NativePowerAssertion {
         use windows_sys::Win32::System::Power::{PowerClearRequest, PowerRequestSystemRequired};
 
         let cleared = unsafe { PowerClearRequest(self.handle, PowerRequestSystemRequired) } != 0;
-        unsafe {
-            windows_sys::Win32::Foundation::CloseHandle(self.handle);
-        }
         if cleared {
+            unsafe {
+                windows_sys::Win32::Foundation::CloseHandle(self.handle);
+            }
             Ok(())
         } else {
             Err(CommandError::new(
@@ -1539,6 +1608,27 @@ mod tests {
                 .unwrap()
                 .starts_with("release_unconfirmed:")
         );
+    }
+
+    #[test]
+    fn retry_release_wakes_the_release_worker_without_claiming_success() {
+        let backend = MockBackend::new(BatteryState::Unavailable).with_release_error();
+        let mut service = service_with_backend(backend.clone());
+        service.start(request("independent", 60)).unwrap();
+        service.cancel();
+        let state = wait_for_state(&service, "stopping");
+        assert_eq!(state.resource_status, "release_unconfirmed");
+
+        let retry_state = service.retry_release().expect("retry request is accepted");
+        assert_eq!(retry_state.resource_status, "releasing");
+        assert!(!retry_state.release_confirmed);
+        for _ in 0..100 {
+            if backend.releases.load(Ordering::SeqCst) >= 2 {
+                return;
+            }
+            thread::sleep(Duration::from_millis(2));
+        }
+        panic!("release retry was not delivered to the deadline worker");
     }
 
     #[cfg(target_os = "macos")]

@@ -131,6 +131,7 @@
     "allow-cancel-toolbox-file-hash",
     "allow-start-toolbox-keep-awake",
     "allow-cancel-toolbox-keep-awake",
+    "allow-retry-toolbox-keep-awake-release",
     "allow-get-toolbox-keep-awake-state",
     "allow-get-toolbox-schedule-snapshot",
     "allow-preview-toolbox-schedule",

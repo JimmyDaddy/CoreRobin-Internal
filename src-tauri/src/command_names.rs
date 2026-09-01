@@ -116,6 +116,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "cancel_toolbox_file_hash",
     "start_toolbox_keep_awake",
     "cancel_toolbox_keep_awake",
+    "retry_toolbox_keep_awake_release",
     "get_toolbox_keep_awake_state",
     "get_toolbox_schedule_snapshot",
     "preview_toolbox_schedule",

@@ -528,6 +528,16 @@ fn power_completion_terminal_status(status: PowerCompletionStatus) -> ToolboxTer
 }
 
 fn drain_power_completions(state: &AppState) {
+    // Completion projection shares the global-clear barrier. If clear wins,
+    // it drains the stopped services before this function can write history;
+    // if projection wins, clear removes the record immediately afterwards.
+    let _clear_barrier = match state.toolbox_scheduler_dispatch_lock.lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            eprintln!("toolbox clear barrier lock was poisoned");
+            return;
+        }
+    };
     let completions = match state.toolbox_power.lock() {
         Ok(power) => power.take_completions(),
         Err(_) => {
@@ -565,6 +575,15 @@ fn drain_power_completions(state: &AppState) {
 }
 
 fn drain_process_watch_completions(state: &AppState) {
+    // Keep a completion already taken by the reaper from being projected after
+    // global clear. The process-watch reset itself stops and joins its worker.
+    let _clear_barrier = match state.toolbox_scheduler_dispatch_lock.lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            eprintln!("toolbox clear barrier lock was poisoned");
+            return;
+        }
+    };
     let completions = match state.toolbox_process_watch.lock() {
         Ok(service) => service.take_completions(),
         Err(_) => {
@@ -726,6 +745,9 @@ fn start_toolbox_scheduler_runtime(
                 if stop.load(Ordering::Acquire) {
                     break;
                 }
+                let Ok(dispatch_guard) = dispatch_lock.lock() else {
+                    break;
+                };
                 let Some(scheduler_arc) = scheduler.upgrade() else {
                     break;
                 };
@@ -740,14 +762,10 @@ fn start_toolbox_scheduler_runtime(
                     Err(_) => break,
                 };
                 for intent in intents {
-                    let Ok(dispatch_guard) = dispatch_lock.lock() else {
-                        break;
-                    };
                     let current_epoch = scheduler.upgrade().and_then(|scheduler| {
                         scheduler.lock().ok().map(|scheduler| scheduler.epoch())
                     });
                     if current_epoch != Some(intent.epoch) {
-                        drop(dispatch_guard);
                         continue;
                     }
                     let outcome = dispatch_toolbox_schedule_intent(&app, &power, &storage, &intent);
@@ -758,8 +776,8 @@ fn start_toolbox_scheduler_runtime(
                     {
                         eprintln!("toolbox scheduler intent update failed: {error}");
                     }
-                    drop(dispatch_guard);
                 }
+                drop(dispatch_guard);
             }
         })
         .expect("failed to start the toolbox scheduler runtime");
@@ -3143,43 +3161,34 @@ fn clear_toolbox_data(
         .lock()
         .map_err(|_| CommandError::internal("keyboard helper state is unavailable"))?
         .stop_for_reason(HelperStopReason::Cancelled)?;
-    let watch_ids = state
+    // Reset joins the old polling worker before this barrier may advance. It
+    // releases attached keep-awake demands and discards retained snapshots,
+    // pending completions, and selected process identities as one operation.
+    state
         .toolbox_process_watch
         .lock()
         .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
-        .snapshots()?
-        .into_iter()
-        .filter(|snapshot| {
-            matches!(
-                snapshot.status,
-                ProcessWatchStatus::Running | ProcessWatchStatus::Unknown
-            )
-        })
-        .map(|snapshot| snapshot.watch_id)
-        .collect::<Vec<_>>();
-    for watch_id in watch_ids {
-        state
-            .toolbox_process_watch
-            .lock()
-            .map_err(|_| CommandError::internal("The process watch state lock was poisoned."))?
-            .cancel(watch_id)?;
-    }
+        .reset()?;
     let _ = state.toolbox_file_hash.cancel();
     let _ = resource_occupancy::cancel_active();
     if let Ok(mut power) = state.toolbox_power.lock() {
         let _ = power.cancel();
+        let _ = power.take_completions();
     }
-    let previous_epoch = state
-        .toolbox
-        .lock()
-        .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
-        .snapshot()
-        .reset_epoch;
     let snapshot = state
         .toolbox
         .lock()
         .map_err(|_| CommandError::internal("The toolbox state lock was poisoned."))?
         .clear(&request.request_id, request.expected_revision)?;
+    // Once ToolboxService has advanced its epoch, no scheduler action or
+    // mutation may proceed until the other durable stores have committed the
+    // same reset. If a write fails, the scheduler remains fail-closed and the
+    // next clear retry can finish the same barrier.
+    state
+        .toolbox_scheduler
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
+        .begin_reset();
     let mut storage = state
         .toolbox_storage
         .lock()
@@ -3187,14 +3196,15 @@ fn clear_toolbox_data(
     let storage = storage
         .as_mut()
         .ok_or_else(|| CommandError::new("storage_unavailable", "Toolbox storage is not ready."))?;
+    let storage_epoch = storage.reset_epoch();
     storage
-        .clear_all_after_stop(previous_epoch, snapshot.reset_epoch)
+        .clear_all_after_stop(storage_epoch, snapshot.reset_epoch)
         .map_err(toolbox_storage_error)?;
     state
         .toolbox_scheduler
         .lock()
         .map_err(|_| CommandError::internal("The toolbox scheduler state lock was poisoned."))?
-        .adopt_reset_epoch(snapshot.reset_epoch)?;
+        .complete_reset(snapshot.reset_epoch)?;
     emit_toolbox_snapshot(&app, &state);
     Ok(snapshot)
 }
@@ -3278,6 +3288,21 @@ fn cancel_toolbox_keep_awake(
 }
 
 #[tauri::command]
+fn retry_toolbox_keep_awake_release(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<PowerState, CommandError> {
+    require_main_window(&window)?;
+    let result = state
+        .toolbox_power
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox power state lock was poisoned."))?
+        .retry_release()?;
+    drain_power_completions(&state);
+    Ok(result)
+}
+
+#[tauri::command]
 fn get_toolbox_keep_awake_state(
     window: WebviewWindow,
     state: State<'_, AppState>,
@@ -3297,6 +3322,10 @@ fn get_toolbox_schedule_snapshot(
     state: State<'_, AppState>,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     state
         .toolbox_scheduler
         .lock()
@@ -3331,6 +3360,10 @@ fn create_toolbox_schedule(
     request: SchedulerCreateRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let mut scheduler = state
         .toolbox_scheduler
         .lock()
@@ -3346,6 +3379,10 @@ fn update_toolbox_schedule(
     request: SchedulerUpdateRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let mut scheduler = state
         .toolbox_scheduler
         .lock()
@@ -3361,6 +3398,10 @@ fn pause_toolbox_schedule(
     request: SchedulerRuleRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let mut scheduler = state
         .toolbox_scheduler
         .lock()
@@ -3376,6 +3417,10 @@ fn resume_toolbox_schedule(
     request: SchedulerRuleRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let mut scheduler = state
         .toolbox_scheduler
         .lock()
@@ -3391,6 +3436,10 @@ fn delete_toolbox_schedule(
     request: SchedulerRuleRequest,
 ) -> Result<SchedulerSnapshot, CommandError> {
     require_main_window(&window)?;
+    let _dispatch_guard = state
+        .toolbox_scheduler_dispatch_lock
+        .lock()
+        .map_err(|_| CommandError::internal("The toolbox scheduler dispatch lock was poisoned."))?;
     let mut scheduler = state
         .toolbox_scheduler
         .lock()
@@ -3894,6 +3943,7 @@ pub fn run() {
             cancel_toolbox_file_hash,
             start_toolbox_keep_awake,
             cancel_toolbox_keep_awake,
+            retry_toolbox_keep_awake_release,
             get_toolbox_keep_awake_state,
             get_toolbox_schedule_snapshot,
             preview_toolbox_schedule,
@@ -4222,6 +4272,7 @@ mod security_boundary_tests {
         "cancel_toolbox_file_hash",
         "start_toolbox_keep_awake",
         "cancel_toolbox_keep_awake",
+        "retry_toolbox_keep_awake_release",
         "get_toolbox_keep_awake_state",
         "get_toolbox_schedule_snapshot",
         "create_toolbox_schedule",
