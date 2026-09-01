@@ -15,7 +15,7 @@
     },
     "tray.html": {
       "javascriptBytes": 365000,
-      "javascriptGzipBytes": 115000,
+      "javascriptGzipBytes": 116000,
       "cssBytes": 10000,
       "cssGzipBytes": 3500
     },
@@ -27,8 +27,8 @@
     }
   },
   "totals": {
-    "javascriptBytes": 3450000,
-    "cssBytes": 450000
+    "javascriptBytes": 3600000,
+    "cssBytes": 500000
   },
   "c2pa": {
     "javascriptBytes": 75000,
