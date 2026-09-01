@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import i18n from "../../i18n";
-import { createC2paAbortError, inspectEmbeddedC2pa, summarizeManifestStore } from "./c2paReader";
+import { C2PA_READER_DEADLINE_MS, createC2paAbortError, inspectEmbeddedC2pa, summarizeManifestStore } from "./c2paReader";
 
-const { fromBlob, isSupportedReaderFormat } = vi.hoisted(() => ({
+const { dispose, fromBlob, isSupportedReaderFormat } = vi.hoisted(() => ({
+  dispose: vi.fn(),
   fromBlob: vi.fn(),
   isSupportedReaderFormat: vi.fn(() => true),
 }));
@@ -11,7 +12,7 @@ vi.mock("@contentauth/c2pa-web", () => ({
   isSupportedReaderFormat,
   createC2pa: async () => ({
     reader: { fromBlob },
-    dispose: vi.fn(),
+    dispose,
   }),
 }));
 
@@ -40,6 +41,26 @@ describe("C2PA reader boundary", () => {
 
     expect(result).toMatchObject({ parse: { status: "malformed" }, note: i18n.t("toolbox:image.errors.c2paMalformed") });
     expect(result.note).not.toContain("internal parser detail");
+  });
+
+  it("bounds a hanging parser and disposes the SDK when the deadline expires", async () => {
+    vi.useFakeTimers();
+    try {
+      dispose.mockClear();
+      fromBlob.mockImplementationOnce(() => new Promise(() => undefined));
+      const inspection = inspectEmbeddedC2pa(new Blob(["image"], { type: "image/jpeg" }), "image/jpeg", new AbortController().signal);
+      const assertion = expect(inspection).rejects.toMatchObject({
+        name: "AbortError",
+        message: i18n.t("toolbox:image.errors.c2paInspectionCancelled"),
+      });
+
+      await vi.advanceTimersByTimeAsync(C2PA_READER_DEADLINE_MS);
+
+      await assertion;
+      expect(dispose).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("separates local validation from trust and preserves the embedded store", () => {

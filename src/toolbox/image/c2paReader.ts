@@ -3,6 +3,7 @@ import type { ManifestStore, Reader, Settings, StatusCodes, ValidationStatus } f
 import i18n from "../../i18n";
 
 export const C2PA_READER_MAX_BYTES = 12 * 1024 * 1024;
+export const C2PA_READER_DEADLINE_MS = 30_000;
 
 const C2PA_READER_SETTINGS: Settings = {
   // A local desktop inspector must never fetch a trust list or certificate
@@ -68,45 +69,73 @@ export async function inspectEmbeddedC2pa(
   }
   if (signal.aborted) throw createC2paAbortError();
 
-  const { module, wasmSrc } = await loadC2paRuntime();
-  if (!module.isSupportedReaderFormat(format)) {
-    return emptyInspection(format, "unsupported", c2paNote("unsupportedFormat"));
-  }
-
-  const sdk = await module.createC2pa({ wasmSrc, settings: C2PA_READER_SETTINGS });
-  if (signal.aborted) {
-    sdk.dispose();
-    throw createC2paAbortError();
-  }
-  let disposed = false;
-  const dispose = () => {
-    if (disposed) return;
-    disposed = true;
-    sdk.dispose();
-  };
-  const abort = () => dispose();
-  signal.addEventListener("abort", abort, { once: true });
+  const operationController = new AbortController();
+  const forwardAbort = () => operationController.abort();
+  signal.addEventListener("abort", forwardAbort, { once: true });
+  const deadline = setTimeout(() => operationController.abort(), C2PA_READER_DEADLINE_MS);
+  const operationSignal = operationController.signal;
 
   try {
-    if (signal.aborted) throw createC2paAbortError();
-    let reader: Reader | null;
-    try {
-      reader = await abortable(signal, sdk.reader.fromBlob(format, source, C2PA_READER_SETTINGS));
-    } catch (error) {
-      if (signal.aborted) throw error;
-      return emptyInspection(format, "malformed", imageError("c2paMalformed").message);
+    const { module, wasmSrc } = await abortable(operationSignal, loadC2paRuntime());
+    if (!module.isSupportedReaderFormat(format)) {
+      return emptyInspection(format, "unsupported", c2paNote("unsupportedFormat"));
     }
-    if (!reader) return emptyInspection(format, "not_found", c2paNote("notFound"));
+
+    const sdk = await abortable(
+      operationSignal,
+      module.createC2pa({ wasmSrc, settings: C2PA_READER_SETTINGS }),
+      (lateSdk) => lateSdk.dispose(),
+    );
+    if (operationSignal.aborted) {
+      sdk.dispose();
+      throw createC2paAbortError();
+    }
+    let disposed = false;
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
+      sdk.dispose();
+    };
+    const abort = () => dispose();
+    operationSignal.addEventListener("abort", abort, { once: true });
 
     try {
-      const store = await abortable(signal, reader.manifestStore());
-      return summarizeManifestStore(format, store);
+      if (operationSignal.aborted) throw createC2paAbortError();
+      let reader: Reader | null;
+      try {
+        reader = await abortable(operationSignal, sdk.reader.fromBlob(format, source, C2PA_READER_SETTINGS));
+      } catch (error) {
+        if (operationSignal.aborted) throw error;
+        return emptyInspection(format, "malformed", imageError("c2paMalformed").message);
+      }
+      if (!reader) return emptyInspection(format, "not_found", c2paNote("notFound"));
+
+      let store: ManifestStore | undefined;
+      let failed = false;
+      let failure: unknown;
+      try {
+        store = await abortable(operationSignal, reader.manifestStore());
+      } catch (error) {
+        failed = true;
+        failure = error;
+      }
+      try {
+        await abortable(operationSignal, reader.free());
+      } catch (error) {
+        if (!failed && !operationSignal.aborted) {
+          failed = true;
+          failure = error;
+        }
+      }
+      if (failed) throw failure;
+      return summarizeManifestStore(format, store!);
     } finally {
-      await reader.free();
+      operationSignal.removeEventListener("abort", abort);
+      dispose();
     }
   } finally {
-    signal.removeEventListener("abort", abort);
-    dispose();
+    clearTimeout(deadline);
+    signal.removeEventListener("abort", forwardAbort);
   }
 }
 
@@ -180,7 +209,7 @@ function collectValidation(store: ManifestStore): EmbeddedManifestInspection["va
   };
 }
 
-function abortable<Result>(signal: AbortSignal, promise: Promise<Result>): Promise<Result> {
+function abortable<Result>(signal: AbortSignal, promise: Promise<Result>, onLateResolve?: (value: Result) => void): Promise<Result> {
   if (signal.aborted) return Promise.reject(createC2paAbortError());
   return new Promise<Result>((resolve, reject) => {
     let settled = false;
@@ -194,7 +223,14 @@ function abortable<Result>(signal: AbortSignal, promise: Promise<Result>): Promi
     signal.addEventListener("abort", abort, { once: true });
     promise.then(
       (value) => {
-        if (settled) return;
+        if (settled) {
+          try {
+            onLateResolve?.(value);
+          } catch {
+            // A late SDK must not turn a bounded cancellation into an unhandled rejection.
+          }
+          return;
+        }
         settled = true;
         cleanup();
         resolve(value);
