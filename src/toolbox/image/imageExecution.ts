@@ -10,13 +10,18 @@ import {
 import { createWebEditorAdapter } from "@image-marker/web/editor-adapter";
 import type { ImageMarkerEditorRenderAdapter } from "@image-marker/web/headless";
 
+import i18n from "../../i18n";
+
 export const IMAGE_OPERATION_DEADLINE_MS = 30_000;
 export const IMAGE_FONT_MAX_BYTES = 4 * 1024 * 1024;
 const IMAGE_FONT_RESOURCE_KEY = "corerobinFonts";
 
 type WorkerMessage =
   | { type: "result"; taskId: string; value: unknown }
-  | { type: "error"; taskId: string; code: "unsupported" | "invalid_input" | "execution_failed"; message: string };
+  | { type: "error"; taskId: string; code: ImageWorkerErrorCode; message: string };
+
+type ImageWorkerErrorCode = "unsupported" | "invalid_input" | "execution_failed";
+type ImageSourceLabel = "input" | "background" | "logo";
 
 interface ImageExecutionWorker extends Pick<Worker, "postMessage" | "terminate"> {
   onmessage: ((event: MessageEvent<unknown>) => void) | null;
@@ -73,9 +78,9 @@ export interface ImageToolRuntime {
  * that unit before its task settles, instead of merely ignoring a Promise.
  */
 export function getImageExecutionAvailability(): ImageExecutionAvailability {
-  if (typeof Worker !== "function") return { supported: false, reason: "当前 WebView 不支持 Dedicated Worker。" };
-  if (typeof OffscreenCanvas !== "function") return { supported: false, reason: "当前 WebView 不支持 OffscreenCanvas 隔离渲染。" };
-  if (typeof createImageBitmap !== "function") return { supported: false, reason: "当前 WebView 不支持 Worker 内图片解码。" };
+  if (typeof Worker !== "function") return { supported: false, reason: imageError("dedicatedWorkerUnavailable").message };
+  if (typeof OffscreenCanvas !== "function") return { supported: false, reason: imageError("offscreenCanvasUnavailable").message };
+  if (typeof createImageBitmap !== "function") return { supported: false, reason: imageError("workerImageDecodeUnavailable").message };
   return { supported: true, reason: null };
 }
 
@@ -86,19 +91,19 @@ export function createImageExecutionAdapter(options: ImageExecutionAdapterOption
 
   return {
     start<Result = unknown>(request: WebMarkerExecutionRequest): WebMarkerExecutionTask<Result> {
-      if (!availability.supported) return rejectedExecutionTask<Result>(new Error(availability.reason ?? "图片受限执行器不可用。"));
+      if (!availability.supported) return rejectedExecutionTask<Result>(new Error(availability.reason ?? imageError("executorUnavailable").message));
 
       try {
         assertExecutionInput(request);
       } catch (error) {
-        return rejectedExecutionTask<Result>(error instanceof Error ? error : new Error("图片执行输入无效。"));
+        return rejectedExecutionTask<Result>(error instanceof Error ? error : imageError("invalidExecutionInput"));
       }
 
       let worker: ImageExecutionWorker;
       try {
         worker = createWorker();
-      } catch (error) {
-        return rejectedExecutionTask<Result>(new Error(`图片执行 Worker 无法启动：${safeErrorMessage(error)}`));
+      } catch {
+        return rejectedExecutionTask<Result>(imageError("workerStartFailed"));
       }
 
       let settled = false;
@@ -173,10 +178,10 @@ export function createImageExecutionAdapter(options: ImageExecutionAdapterOption
           resolveResult(message.value as Result);
           return;
         }
-        fail(new Error(message.message));
+        fail(imageWorkerError(message.code));
       };
-      worker.onerror = () => fail(new Error("图片受限执行 Worker 意外退出。"));
-      worker.onmessageerror = () => fail(new Error("图片受限执行 Worker 返回了无效结果。"));
+      worker.onerror = () => fail(imageError("workerExited"));
+      worker.onmessageerror = () => fail(imageError("workerInvalidResult"));
 
       if (deadlineMs > 0) {
         timeout = setTimeout(() => {
@@ -192,8 +197,8 @@ export function createImageExecutionAdapter(options: ImageExecutionAdapterOption
           resultKind: request.resultKind,
           options: sanitizeExecutionOptions(request.options),
         });
-      } catch (error) {
-        fail(new Error(`图片执行请求无法传入隔离 Worker：${safeErrorMessage(error)}`));
+      } catch {
+        fail(imageError("workerRequestFailed"));
       }
 
       return { result, terminate, dispose };
@@ -214,15 +219,15 @@ export function transformImageInWorker(
   options: ImageTransformAdapterOptions = {},
 ): Promise<Blob> {
   const availability = options.availability ?? getImageExecutionAvailability();
-  if (!availability.supported) return Promise.reject(new Error(availability.reason ?? "图片受限执行器不可用。"));
+  if (!availability.supported) return Promise.reject(new Error(availability.reason ?? imageError("executorUnavailable").message));
   validateImageTransform(source, request);
   if (signal.aborted) return Promise.reject(createImageTransformAbortError());
 
   let worker: ImageExecutionWorker;
   try {
     worker = (options.createWorker ?? (() => new Worker(new URL("./image-execution.worker.ts", import.meta.url), { type: "module" })))();
-  } catch (error) {
-    return Promise.reject(new Error(`图片变换 Worker 无法启动：${safeErrorMessage(error)}`));
+  } catch {
+    return Promise.reject(imageError("transformWorkerStartFailed"));
   }
 
   const taskId = crypto.randomUUID();
@@ -278,18 +283,18 @@ export function transformImageInWorker(
     if (message.type === "transform-result" && message.blob instanceof Blob) {
       finish(message.blob);
     } else {
-      fail(new Error(typeof message.error === "string" ? message.error : "图片变换失败。"));
+      fail(imageError("transformFailed"));
     }
   };
-  worker.onerror = () => fail(new Error("图片变换 Worker 意外退出。"));
-  worker.onmessageerror = () => fail(new Error("图片变换 Worker 返回了无效结果。"));
+  worker.onerror = () => fail(imageError("transformWorkerExited"));
+  worker.onmessageerror = () => fail(imageError("transformWorkerInvalidResult"));
   signal.addEventListener("abort", abort, { once: true });
-  if (deadlineMs > 0) timeout = setTimeout(() => fail(new Error("图片稳健性样本超过单项 60 秒上限。")), deadlineMs);
+  if (deadlineMs > 0) timeout = setTimeout(() => fail(imageError("transformDeadlineExceeded")), deadlineMs);
 
   try {
     worker.postMessage({ type: "transform", taskId, source, ...request });
-  } catch (error) {
-    fail(new Error(`图片变换请求无法传入隔离 Worker：${safeErrorMessage(error)}`));
+  } catch {
+    fail(imageError("transformWorkerRequestFailed"));
   }
   return result;
 }
@@ -299,23 +304,23 @@ export function transformImageInWorker(
  * Worker. Aborting it terminates the transform Worker before the result settles.
  */
 export function createImageTransformAbortError(): Error {
-  const error = new Error("图片稳健性样本已停止。");
+  const error = imageError("transformCancelled");
   error.name = "AbortError";
   return error;
 }
 
 function validateImageTransform(source: Blob, request: ImageTransformRequest): void {
-  if (!(source instanceof Blob) || source.size > 12 * 1024 * 1024) throw new Error("图片变换输入必须是 12 MiB 以内的本地 Blob。");
+  if (!(source instanceof Blob) || source.size > 12 * 1024 * 1024) throw imageError("transformInputInvalid");
   if (request.mode === "jpeg-quality") {
     const quality = request.quality;
-    if (typeof quality !== "number" || !Number.isInteger(quality) || quality < 1 || quality > 100) throw new Error("JPEG 样本质量必须是 1 到 100 的整数。");
+    if (typeof quality !== "number" || !Number.isInteger(quality) || quality < 1 || quality > 100) throw imageError("jpegQualityInvalid");
     return;
   }
   if (request.mode === "scale") {
-    if (typeof request.scale !== "number" || !Number.isFinite(request.scale) || request.scale <= 0 || request.scale > 1) throw new Error("缩放样本比例必须大于 0 且不超过 1。");
+    if (typeof request.scale !== "number" || !Number.isFinite(request.scale) || request.scale <= 0 || request.scale > 1) throw imageError("scaleInvalid");
     return;
   }
-  if (typeof request.cropRatio !== "number" || !Number.isFinite(request.cropRatio) || request.cropRatio < 0 || request.cropRatio > 0.2) throw new Error("裁剪样本比例必须在 0 到 20% 之间。");
+  if (typeof request.cropRatio !== "number" || !Number.isFinite(request.cropRatio) || request.cropRatio < 0 || request.cropRatio > 0.2) throw imageError("cropInvalid");
 }
 
 /**
@@ -339,7 +344,7 @@ export function createImageToolRuntime(options: ImageExecutionAdapterOptions = {
 function createLocalResourceBoundary(): WebResourceAdapter {
   return {
     async readBlobBytes(source) {
-      if (source.size > 12 * 1024 * 1024) throw new Error("图片不能超过 12 MiB。");
+      if (source.size > 12 * 1024 * 1024) throw imageError("imageTooLarge", { maxMiB: 12 });
       return source.arrayBuffer();
     },
   };
@@ -356,31 +361,31 @@ function rejectedExecutionTask<Result>(error: Error): WebMarkerExecutionTask<Res
 function assertExecutionInput(request: WebMarkerExecutionRequest): void {
   const options = request.options;
   if (request.operation === "getImageInfo") {
-    assertLocalSource(options, "图片输入");
+    assertLocalSource(options, "input");
     return;
   }
-  if (!options || typeof options !== "object") throw new Error("图片执行参数无效。");
+  if (!options || typeof options !== "object") throw imageError("invalidExecutionInput");
   const record = options as Record<string, unknown>;
   if (request.operation === "embedInvisible" || request.operation === "detectInvisible") {
-    assertLocalSource(readSource(record.image), "图片输入");
+    assertLocalSource(readSource(record.image), "input");
     return;
   }
-  assertLocalSource(readSource(record.backgroundImage), "背景图片");
+  assertLocalSource(readSource(record.backgroundImage), "background");
   const watermarkImages = record.watermarkImages;
   if (Array.isArray(watermarkImages)) {
-    for (const watermark of watermarkImages) assertLocalSource(readSource(watermark), "Logo 图片");
+    for (const watermark of watermarkImages) assertLocalSource(readSource(watermark), "logo");
   }
   const watermarks = record.watermarks;
   if (Array.isArray(watermarks)) {
     for (const watermark of watermarks) {
       if (watermark && typeof watermark === "object" && (watermark as { type?: unknown }).type === "image") {
-        assertLocalSource(readSource(watermark), "Logo 图片");
+        assertLocalSource(readSource(watermark), "logo");
       }
     }
   }
   const fonts = record[IMAGE_FONT_RESOURCE_KEY];
   if (fonts !== undefined) {
-    if (!Array.isArray(fonts)) throw new Error("本地字体资源无效。");
+    if (!Array.isArray(fonts)) throw imageError("localFontInvalid");
     for (const font of fonts) assertLocalFont(font);
   }
 }
@@ -390,47 +395,57 @@ function readSource(value: unknown): unknown {
   return (value as Record<string, unknown>).src;
 }
 
-function assertLocalSource(source: unknown, label: string): void {
+function assertLocalSource(source: unknown, label: ImageSourceLabel): void {
   if (source instanceof Blob) {
-    if (source.size > 12 * 1024 * 1024) throw new Error(`${label}不能超过 12 MiB。`);
+    if (source.size > 12 * 1024 * 1024) throw imageError("localSourceTooLarge", { label: imageSourceLabel(label), maxMiB: 12 });
     return;
   }
   if (typeof source === "string" && /^data:image\/(?:png|jpeg|webp);base64,/iu.test(source)) return;
-  throw new Error(`${label}必须是当前操作明确选择的 PNG、JPEG 或 WebP 本地文件。`);
+  throw imageError("localSourceInvalid", { label: imageSourceLabel(label) });
 }
 
 function assertLocalFont(value: unknown): asserts value is LocalImageFontResource {
-  if (!value || typeof value !== "object") throw new Error("本地字体资源无效。");
+  if (!value || typeof value !== "object") throw imageError("localFontInvalid");
   const font = value as Partial<LocalImageFontResource>;
-  if (typeof font.family !== "string" || !font.family.trim() || font.family.length > 120) throw new Error("本地字体名称无效。");
+  if (typeof font.family !== "string" || !font.family.trim() || font.family.length > 120) throw imageError("localFontNameInvalid");
   if (!(font.source instanceof Blob) || font.source.size === 0 || font.source.size > IMAGE_FONT_MAX_BYTES) {
-    throw new Error("本地字体必须是当前操作选择且不超过 4 MiB 的文件。");
+    throw imageError("localFontTooLarge", { maxMiB: Math.round(IMAGE_FONT_MAX_BYTES / 1024 / 1024) });
   }
 }
 
 function sanitizeExecutionOptions(value: unknown): unknown {
   if (value instanceof Blob || value === null || value === undefined || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (Array.isArray(value)) return value.map(sanitizeExecutionOptions);
-  if (!value || typeof value !== "object") throw new Error("图片执行参数无法安全传输。" );
+  if (!value || typeof value !== "object") throw imageError("executionOptionsUnsafe");
   const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) throw new Error("图片执行参数只能包含普通数据和本地 Blob。" );
+  if (prototype !== Object.prototype && prototype !== null) throw imageError("executionOptionsNonPlain");
   const result: Record<string, unknown> = {};
   for (const [key, nested] of Object.entries(value)) {
     // AbortSignal and observer callbacks are intentionally represented by the
     // SDK host task lifecycle, never serialized into a Worker or Rust DTO.
     if (key === "signal" || key === "onProgress" || key === "worker") continue;
-    if (typeof nested === "function") throw new Error("图片执行参数不能包含回调函数。" );
+    if (typeof nested === "function") throw imageError("executionOptionsCallbacks");
     result[key] = sanitizeExecutionOptions(nested);
   }
   return result;
 }
 
 function createExecutionAbortError(reason: WebMarkerExecutionTermination["reason"]): Error {
-  const error = new Error(reason === "timeout" ? "图片处理超过 30 秒执行上限，已终止隔离执行器。" : "图片隔离执行器已终止并释放资源。");
+  const error = imageError(reason === "timeout" ? "executionDeadlineExceeded" : "executorTerminated");
   error.name = "AbortError";
   return error;
 }
 
-function safeErrorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message.slice(0, 180) : "未知错误";
+function imageWorkerError(code: ImageWorkerErrorCode): Error {
+  if (code === "unsupported") return imageError("workerUnsupported");
+  if (code === "invalid_input") return imageError("workerInvalidInput");
+  return imageError("workerExecutionFailed");
+}
+
+function imageSourceLabel(label: ImageSourceLabel): string {
+  return i18n.t(`toolbox:image.errors.labels.${label}`);
+}
+
+function imageError(key: string, options?: Record<string, unknown>): Error {
+  return new Error(i18n.t(`toolbox:image.errors.${key}` as never, options));
 }

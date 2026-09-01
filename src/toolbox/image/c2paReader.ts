@@ -1,5 +1,7 @@
 import type { ManifestStore, Reader, Settings, StatusCodes, ValidationStatus } from "@contentauth/c2pa-web";
 
+import i18n from "../../i18n";
+
 export const C2PA_READER_MAX_BYTES = 12 * 1024 * 1024;
 
 const C2PA_READER_SETTINGS: Settings = {
@@ -62,13 +64,13 @@ export async function inspectEmbeddedC2pa(
   signal: AbortSignal,
 ): Promise<EmbeddedManifestInspection> {
   if (!(source instanceof Blob) || source.size > C2PA_READER_MAX_BYTES) {
-    throw new Error("C2PA 图片输入必须是 12 MiB 以内的本地文件。");
+    throw imageError("c2paInputInvalid", { maxMiB: C2PA_READER_MAX_BYTES / 1024 / 1024 });
   }
   if (signal.aborted) throw createC2paAbortError();
 
   const { module, wasmSrc } = await loadC2paRuntime();
   if (!module.isSupportedReaderFormat(format)) {
-    return emptyInspection(format, "unsupported", "当前图片格式不在 C2PA reader 支持范围内。");
+    return emptyInspection(format, "unsupported", c2paNote("unsupportedFormat"));
   }
 
   const sdk = await module.createC2pa({ wasmSrc, settings: C2PA_READER_SETTINGS });
@@ -92,9 +94,9 @@ export async function inspectEmbeddedC2pa(
       reader = await abortable(signal, sdk.reader.fromBlob(format, source, C2PA_READER_SETTINGS));
     } catch (error) {
       if (signal.aborted) throw error;
-      return emptyInspection(format, "malformed", `C2PA reader 无法解析该图片：${error instanceof Error ? error.message : "未知解析错误"}`);
+      return emptyInspection(format, "malformed", imageError("c2paMalformed").message);
     }
-    if (!reader) return emptyInspection(format, "not_found", "图片内没有嵌入的 C2PA manifest。");
+    if (!reader) return emptyInspection(format, "not_found", c2paNote("notFound"));
 
     try {
       const store = await abortable(signal, reader.manifestStore());
@@ -127,15 +129,15 @@ export function summarizeManifestStore(format: string, store: ManifestStore): Em
     externalNetworkAccessed: false,
     manifestStore: store,
     note: validation.status === "invalid"
-      ? "已读取图片内嵌 manifest；C2PA 校验报告包含失败项。解析、校验和信任状态分开显示，未联网，信任状态为 unknown。"
+      ? c2paNote("validationInvalid")
       : validation.status === "valid"
-        ? "已读取图片内嵌 manifest 并完成本地结构/密码学校验。未联网或加载信任材料，信任状态为 unknown。"
-        : "已读取图片内嵌 manifest，但 SDK 没有给出完整校验状态。未联网或加载信任材料，信任状态为 unknown。",
+        ? c2paNote("validationValid")
+        : c2paNote("validationUnknown"),
   };
 }
 
 export function createC2paAbortError(): Error {
-  const error = new Error("C2PA manifest 检查已停止。");
+  const error = imageError("c2paInspectionCancelled");
   error.name = "AbortError";
   return error;
 }
@@ -205,4 +207,12 @@ function abortable<Result>(signal: AbortSignal, promise: Promise<Result>): Promi
       },
     );
   });
+}
+
+function imageError(key: string, options?: Record<string, unknown>): Error {
+  return new Error(i18n.t(`toolbox:image.errors.${key}` as never, options));
+}
+
+function c2paNote(key: string): string {
+  return i18n.t(`toolbox:c2paNotes.${key}` as never);
 }

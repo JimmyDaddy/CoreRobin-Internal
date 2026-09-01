@@ -397,8 +397,37 @@
       "failed": "failed",
       "cancelled": "cancelled"
     },
-    "recipientStatusLabel": "Delivery status"
+    "recipientStatusLabel": "Delivery status",
+    "cancellationReason": {
+      "abortError": "the operation was aborted",
+      "abortSignal": "a cancellation signal was received"
+    },
+    "executorAvailable": "available",
+    "executorUnavailable": "the isolated image executor is unavailable",
+    "emptyLocator": "(empty)",
+    "localFileRedaction": "local file",
+    "zipErrors": {
+      "inputBudgetExceeded": "The combined input size exceeds the 80 MiB limit.",
+      "outputFileLimitExceeded": "The ZIP output exceeds its allowed file count.",
+      "outputBudgetExceeded": "The ZIP output exceeds the 512 MiB limit.",
+      "appendAfterFinish": "Files cannot be added after ZIP finalization starts.",
+      "inputBytesRegressed": "The reported input size cannot decrease.",
+      "finishAlreadyStarted": "ZIP finalization has already started.",
+      "notInitialized": "The ZIP worker has not been initialized.",
+      "failed": "ZIP generation failed.",
+      "stopped": "ZIP generation was stopped.",
+      "workerStartFailed": "The ZIP worker could not start.",
+      "invalidComplete": "The ZIP worker returned an invalid completion state.",
+      "invalidChunk": "The ZIP worker returned an invalid chunk state.",
+      "closed": "ZIP generation has already ended.",
+      "pending": "The ZIP worker is still processing the previous output.",
+      "appendFailed": "The ZIP worker could not accept the output.",
+      "finishFailed": "The ZIP worker could not complete the archive.",
+      "released": "ZIP generation was released."
+    },
+    "errors": {"dedicatedWorkerUnavailable":"This WebView does not support dedicated Workers.","offscreenCanvasUnavailable":"This WebView does not support isolated OffscreenCanvas rendering.","workerImageDecodeUnavailable":"This WebView does not support image decoding in a Worker.","executorUnavailable":"The isolated image executor is unavailable.","invalidExecutionInput":"The image operation has invalid input.","workerStartFailed":"The isolated image worker could not start.","workerExited":"The isolated image worker stopped unexpectedly.","workerInvalidResult":"The isolated image worker returned an invalid result.","workerRequestFailed":"The image request could not be sent to the isolated worker.","transformWorkerStartFailed":"The image transform worker could not start.","transformFailed":"The image transform failed.","transformWorkerExited":"The image transform worker stopped unexpectedly.","transformWorkerInvalidResult":"The image transform worker returned an invalid result.","transformDeadlineExceeded":"The image transform exceeded its time limit.","transformWorkerRequestFailed":"The image transform request could not be sent to the isolated worker.","transformCancelled":"The image transform was cancelled.","transformInputInvalid":"Choose a local image Blob no larger than 12 MiB for this transform.","jpegQualityInvalid":"JPEG quality must be an integer from 1 to 100.","scaleInvalid":"The scale must be greater than 0 and no more than 1.","cropInvalid":"The crop ratio must be between 0 and 20%.","imageTooLarge":"Images cannot exceed {{maxMiB}} MiB.","localFontInvalid":"The local font resource is invalid.","localSourceTooLarge":"{{label}} cannot exceed {{maxMiB}} MiB.","localSourceInvalid":"{{label}} must be a PNG, JPEG, or WebP file selected for this operation.","localFontNameInvalid":"The local font name is invalid.","localFontTooLarge":"Choose a local font file no larger than {{maxMiB}} MiB for this operation.","executionOptionsUnsafe":"The image operation options cannot be transferred safely.","executionOptionsNonPlain":"The image operation options can contain only plain data and local Blobs.","executionOptionsCallbacks":"The image operation options cannot contain callbacks.","executionDeadlineExceeded":"The image operation exceeded its 30-second time limit and was terminated.","executorTerminated":"The isolated image executor was terminated and its resources were released.","workerUnsupported":"This image operation is not supported by the isolated worker.","workerInvalidInput":"The isolated worker rejected the image input.","workerExecutionFailed":"The isolated image operation failed.","unsupportedImageFormat":"Only PNG, JPEG, and WebP images are supported.","imagePixelLimit":"Decoded images cannot exceed {{maxPixels}} million pixels.","imageWorksetLimit":"Image decoding, rendering, and encoding would exceed the {{maxMiB}} MiB workset limit.","imageBudgetInvalid":"The image budget parameters are invalid.","imageWorksetOverflow":"The image workset estimate overflowed.","localFontEmpty":"The local font file cannot be empty.","localFontUnsupported":"Local fonts support TTF, OTF, WOFF, and WOFF2 only.","localFontSignatureMismatch":"The local font file signature does not match its extension.","inputByteLengthInvalid":"The image input size is invalid.","outputByteLengthInvalid":"The image output size is invalid.","zipInputBudgetExceeded":"Batch image input cannot exceed {{maxMiB}} MiB.","zipFileLimitExceeded":"A batch ZIP can contain at most {{maxInputFiles}} input files and {{maxOutputFiles}} output files.","zipOutputBudgetExceeded":"Batch ZIP output cannot exceed {{maxMiB}} MiB.","processingCancelled":"Image processing was cancelled.","recipientLocatorListInvalid":"Provide 1–{{maxFiles}} unique short locators and no personal data.","recipientLocatorTooLong":"Each recipient locator can contain at most {{maxBytes}} UTF-8 bytes.","recipientLocatorDuplicate":"Recipient locators cannot be duplicated.","recipientKeyRequired":"Provide a one-time delivery key; it remains only in this operation's memory.","recipientKeyTooShort":"The one-time delivery key must contain at least {{minBytes}} UTF-8 bytes.","recipeTextRequired":"Recipe text cannot be empty.","recipeTextTooLong":"Recipe text cannot exceed {{maxKiB}} KiB.","recipeTooLarge":"Recipe JSON cannot exceed {{maxKiB}} KiB.","recipeJsonInvalid":"Recipe JSON is invalid.","recipeValidationFailed":"Recipe validation failed.","localDataUrlRequired":"The image result must be a local data URL.","c2paInputInvalid":"Choose a local C2PA image no larger than {{maxMiB}} MiB.","c2paInspectionCancelled":"C2PA manifest inspection was cancelled.","c2paMalformed":"C2PA could not parse this image.","labels":{"input":"Image input","background":"Background image","logo":"Logo image"}}
   },
+  "c2paNotes": {"unsupportedFormat":"This image format is not supported by the C2PA reader.","notFound":"This image does not contain an embedded C2PA manifest.","validationInvalid":"The embedded C2PA manifest was read, but its validation report contains failures. Parsing, validation, and trust are shown separately; no network was used and trust is unknown.","validationValid":"The embedded C2PA manifest was read and passed local structure and cryptographic validation. No network or trust material was used, so trust is unknown.","validationUnknown":"The embedded C2PA manifest was read, but the SDK did not provide a complete validation state. No network or trust material was used, so trust is unknown."},
   "imageEditor": {
     "ariaLabel": "Image layer editor",
     "heading": "Interactive layer editor",
@@ -467,7 +496,23 @@
       "assetLimit": "An edit session can contain at most 4 local image assets.",
       "addAssetFailed": "Unable to add the local asset.",
       "exportFailed": "Unable to export the Recipe.",
-      "previewFailed": "Unable to prepare the Recipe preview."
+      "previewFailed": "Unable to prepare the Recipe preview.",
+      "textEmpty": "Text layers cannot be empty.",
+      "textTooLong": "Text layers cannot exceed 4 KiB.",
+      "noLayers": "Add a text or local asset layer first.",
+      "groupRequiresTwo": "Select at least two layers before grouping.",
+      "alignRequiresTwo": "Select at least two layers before aligning.",
+      "noSelection": "Select a layer first.",
+      "assetUnavailable": "Local assets are available only in the current editing session. Select the asset again.",
+      "recipeTooLarge": "Recipe JSON cannot exceed 64 KiB.",
+      "recipeJsonInvalid": "Recipe JSON is invalid.",
+      "recipeValidationFailed": "Recipe validation failed: {{message}}",
+      "exportAssetUnavailable": "The layer asset was not explicitly selected in this session and cannot be exported in the Recipe.",
+      "externalAssetForbidden": "Recipe image layers must refer to local assets explicitly selected in this session; URLs, data URLs, and unknown resources are not allowed.",
+      "assetReselectionRequired": "Recipe needs the local asset \"{{name}}\". Select it again in this session before importing.",
+      "localAssetRequired": "Choose a local image asset.",
+      "localAssetTooLarge": "Local assets cannot exceed 12 MiB.",
+      "localAssetUnsupported": "Local assets support PNG, JPEG, and WebP only."
     }
   }
 

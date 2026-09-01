@@ -7,6 +7,8 @@ import {
   type WebMarkerInstance,
 } from "@image-marker/web";
 
+import i18n from "../../i18n";
+
 export const IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 export const IMAGE_MAX_PIXELS = 16_000_000;
 export const IMAGE_MAX_OUTPUT_EDGE = 2048;
@@ -35,19 +37,19 @@ export interface ImageBudget {
 
 export async function inspectImageBudget(marker: WebMarkerInstance, file: File): Promise<ImageBudget> {
   if (file.size > IMAGE_MAX_BYTES) {
-    throw new Error(`图片不能超过 ${Math.round(IMAGE_MAX_BYTES / 1024 / 1024)} MiB。`);
+    throw imageError("imageTooLarge", { maxMiB: Math.round(IMAGE_MAX_BYTES / 1024 / 1024) });
   }
   if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-    throw new Error("只支持 PNG、JPEG 和 WebP 图片。");
+    throw imageError("unsupportedImageFormat");
   }
   const info = await marker.getImageInfo(file);
   const pixels = info.width * info.height;
   if (!Number.isSafeInteger(pixels) || pixels > IMAGE_MAX_PIXELS) {
-    throw new Error("图片解码像素不能超过 1600 万。");
+    throw imageError("imagePixelLimit", { maxPixels: IMAGE_MAX_PIXELS / 1_000_000 });
   }
   const estimatedWorksetBytes = estimateImageWorksetBytes(file.size, pixels);
   if (estimatedWorksetBytes > IMAGE_MAX_WORKSET_BYTES) {
-    throw new Error("图片在解码、渲染和编码阶段会超过 256 MiB 工作集预算。");
+    throw imageError("imageWorksetLimit", { maxMiB: IMAGE_MAX_WORKSET_BYTES / 1024 / 1024 });
   }
   return { file, info, pixels, estimatedWorksetBytes };
 }
@@ -60,13 +62,13 @@ export async function inspectImageBudget(marker: WebMarkerInstance, file: File):
  */
 export function estimateImageWorksetBytes(inputBytes: number, sourcePixels: number): number {
   if (!Number.isSafeInteger(inputBytes) || inputBytes < 0 || !Number.isSafeInteger(sourcePixels) || sourcePixels < 1) {
-    throw new Error("图片预算参数无效。");
+    throw imageError("imageBudgetInvalid");
   }
   const sourceRgbaBytes = sourcePixels * 4;
   const outputPixels = Math.min(sourcePixels, IMAGE_MAX_OUTPUT_EDGE * IMAGE_MAX_OUTPUT_EDGE);
   const outputRgbaBytes = outputPixels * 4;
   const estimate = sourceRgbaBytes * 3 + outputRgbaBytes * 3 + inputBytes;
-  if (!Number.isSafeInteger(estimate)) throw new Error("图片工作集预算溢出。");
+  if (!Number.isSafeInteger(estimate)) throw imageError("imageWorksetOverflow");
   return estimate;
 }
 
@@ -76,14 +78,14 @@ export function assertBatchBudget(files: readonly File[]): void {
 
 /** Validate the container signature before handing a selected font to a Worker. */
 export function inspectLocalFontBytes(name: string, bytes: Uint8Array): LocalFontMimeType {
-  if (bytes.byteLength === 0) throw new Error("本地字体不能为空。 ");
+  if (bytes.byteLength === 0) throw imageError("localFontEmpty");
   const extension = name.trim().toLowerCase().match(/\.([a-z0-9]+)$/u)?.[1];
   const mimeType = extension === "ttf" ? "font/ttf"
     : extension === "otf" ? "font/otf"
       : extension === "woff" ? "font/woff"
         : extension === "woff2" ? "font/woff2"
           : null;
-  if (!mimeType) throw new Error("本地字体只支持 TTF、OTF、WOFF 或 WOFF2。 ");
+  if (!mimeType) throw imageError("localFontUnsupported");
   const signature = String.fromCharCode(...bytes.subarray(0, 4));
   const isSfnt = (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0)
     || signature === "OTTO"
@@ -92,7 +94,7 @@ export function inspectLocalFontBytes(name: string, bytes: Uint8Array): LocalFon
   const kindMatches = mimeType === "font/woff" ? signature === "wOFF"
     : mimeType === "font/woff2" ? signature === "wOF2"
       : isSfnt;
-  if (!kindMatches) throw new Error("本地字体文件签名与扩展名不匹配。 ");
+  if (!kindMatches) throw imageError("localFontSignatureMismatch");
   return mimeType;
 }
 
@@ -111,7 +113,7 @@ export function createBatchZipBudget(files: readonly File[]): BatchZipBudget {
 
 /** Add one native-bound input immediately before it is decoded. */
 export function appendBatchInput(budget: BatchZipBudget, byteLength: number): BatchZipBudget {
-  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw new Error("图片输入大小无效。");
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw imageError("inputByteLengthInvalid");
   const next = {
     ...budget,
     inputFileCount: budget.inputFileCount + 1,
@@ -126,7 +128,7 @@ export function appendBatchInput(budget: BatchZipBudget, byteLength: number): Ba
  * lossy source image from expanding beyond the export cap after preflight.
  */
 export function appendBatchZipOutput(budget: BatchZipBudget, byteLength: number): BatchZipBudget {
-  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw new Error("图片输出大小无效。");
+  if (!Number.isSafeInteger(byteLength) || byteLength < 0) throw imageError("outputByteLengthInvalid");
   const next = {
     ...budget,
     outputFileCount: budget.outputFileCount + 1,
@@ -144,19 +146,19 @@ export function createRecipientZipBudget(file: File): BatchZipBudget {
     outputBytes: 0,
     maxOutputFiles: RECIPIENT_MAX_FILES,
   };
-  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw new Error("批量输入总大小不能超过 80 MiB。");
+  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw imageError("zipInputBudgetExceeded", { maxMiB: BATCH_MAX_INPUT_BYTES / 1024 / 1024 });
   return budget;
 }
 
 export function assertBatchZipBudget(budget: BatchZipBudget): void {
   if (budget.inputFileCount > BATCH_MAX_FILES || budget.outputFileCount > budget.maxOutputFiles) {
-    throw new Error(`批量 ZIP 最多包含 20 个输入和 ${budget.maxOutputFiles} 个输出文件。`);
+    throw imageError("zipFileLimitExceeded", { maxInputFiles: BATCH_MAX_FILES, maxOutputFiles: budget.maxOutputFiles });
   }
-  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw new Error("批量输入总大小不能超过 80 MiB。");
-  if (budget.outputBytes > IMAGE_MAX_EXPORT_BYTES) throw new Error("批量 ZIP 累计输出不能超过 512 MiB。");
+  if (budget.inputBytes > BATCH_MAX_INPUT_BYTES) throw imageError("zipInputBudgetExceeded", { maxMiB: BATCH_MAX_INPUT_BYTES / 1024 / 1024 });
+  if (budget.outputBytes > IMAGE_MAX_EXPORT_BYTES) throw imageError("zipOutputBudgetExceeded", { maxMiB: IMAGE_MAX_EXPORT_BYTES / 1024 / 1024 });
 }
 
-export function createImageAbortError(message = "图片处理已停止。"): Error {
+export function createImageAbortError(message = imageError("processingCancelled").message): Error {
   const error = new Error(message);
   error.name = "AbortError";
   return error;
@@ -169,12 +171,12 @@ export function isAbortError(reason: unknown): reason is Error {
 export function parseRecipientLocators(source: string): string[] {
   const values = source.split(",").map((value) => value.trim()).filter(Boolean);
   if (values.length === 0 || values.length > RECIPIENT_MAX_FILES) {
-    throw new Error("收件人最多 30 个，且必须使用短 locator；不要直接写入个人资料。");
+    throw imageError("recipientLocatorListInvalid", { maxFiles: RECIPIENT_MAX_FILES });
   }
   const seen = new Set<string>();
   for (const value of values) {
-    if (new TextEncoder().encode(value).byteLength > 12) throw new Error("每个收件人 locator 不能超过 12 UTF-8 字节。");
-    if (seen.has(value)) throw new Error("收件人 locator 不能重复。");
+    if (new TextEncoder().encode(value).byteLength > 12) throw imageError("recipientLocatorTooLong", { maxBytes: 12 });
+    if (seen.has(value)) throw imageError("recipientLocatorDuplicate");
     seen.add(value);
   }
   return values;
@@ -183,15 +185,15 @@ export function parseRecipientLocators(source: string): string[] {
 /** Accept a key only from the current interaction; callers must not persist it. */
 export function requireOneTimeRecipientKey(value: string | null): string {
   const key = value?.trim() ?? "";
-  if (!key) throw new Error("需要一次性分发密钥；它只保留在当前操作内存中。");
-  if (new TextEncoder().encode(key).byteLength < 16) throw new Error("一次性分发密钥至少需要 16 UTF-8 字节。");
+  if (!key) throw imageError("recipientKeyRequired");
+  if (new TextEncoder().encode(key).byteLength < 16) throw imageError("recipientKeyTooShort", { minBytes: 16 });
   return key;
 }
 
 export function createTextRecipe(text: string, color: string, alpha: number): WatermarkRecipeDefinition {
   const trimmed = text.trim();
-  if (!trimmed) throw new Error("Recipe 文字不能为空。");
-  if (new TextEncoder().encode(trimmed).byteLength > 4096) throw new Error("Recipe 文字不能超过 4 KiB。");
+  if (!trimmed) throw imageError("recipeTextRequired");
+  if (new TextEncoder().encode(trimmed).byteLength > 4096) throw imageError("recipeTextTooLong", { maxKiB: 4 });
   return createWatermarkRecipeDefinition({
     schemaVersion: 2,
     layers: [{
@@ -208,17 +210,17 @@ export function createTextRecipe(text: string, color: string, alpha: number): Wa
 }
 
 export function parseRecipeDocument(source: string): WatermarkRecipeDefinition {
-  if (new TextEncoder().encode(source).byteLength > 64 * 1024) throw new Error("Recipe JSON 不能超过 64 KiB。");
+  if (new TextEncoder().encode(source).byteLength > 64 * 1024) throw imageError("recipeTooLarge", { maxKiB: 64 });
   let value: unknown;
-  try { value = JSON.parse(source); } catch { throw new Error("Recipe JSON 格式无效。"); }
+  try { value = JSON.parse(source); } catch { throw imageError("recipeJsonInvalid"); }
   const validated = safeValidateWatermarkRecipe(value);
-  if (!validated.success) throw new Error(`Recipe 校验失败：${validated.error.message}`);
+  if (!validated.success) throw imageError("recipeValidationFailed");
   return validated.value;
 }
 
 export function dataUrlToBytes(uri: string): Uint8Array {
   const comma = uri.indexOf(",");
-  if (comma < 0 || !uri.startsWith("data:")) throw new Error("图片结果不是本地 data URL。");
+  if (comma < 0 || !uri.startsWith("data:")) throw imageError("localDataUrlRequired");
   const encoded = uri.slice(comma + 1);
   const binary = atob(encoded);
   const bytes = new Uint8Array(binary.length);
@@ -228,4 +230,8 @@ export function dataUrlToBytes(uri: string): Uint8Array {
 
 export function resultLabel(result: MarkerResult): string {
   return `${result.format.toUpperCase()} · ${result.durationMs} ms · ${result.metadata.policy} metadata`;
+}
+
+function imageError(key: string, options?: Record<string, unknown>): Error {
+  return new Error(i18n.t(`toolbox:image.errors.${key}` as never, options));
 }

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+
+import i18n from "../../i18n";
 import type { ToolboxInputToken } from "../contracts";
 
 const { readBound } = vi.hoisted(() => ({ readBound: vi.fn() }));
 vi.mock("../runtime/files", () => ({ readBoundToolboxInput: readBound }));
 
-import { createNativeImageInputs, imageMimeType, IMAGE_INPUT_MAX_BYTES, strictImageMimeType } from "./imageInputs";
+import { createBrowserImageInputs, createNativeImageInputs, imageMimeType, IMAGE_INPUT_MAX_BYTES, strictImageMimeType } from "./imageInputs";
 
 const job = { jobId: "image-job", generation: 3, resetEpoch: 9 };
 const token: ToolboxInputToken = {
@@ -47,5 +49,14 @@ describe("image native input transport", () => {
     expect(strictImageMimeType(new TextEncoder().encode("not-an-image"))).toBe("application/octet-stream");
     expect(strictImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe("application/octet-stream");
     expect(strictImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe("image/png");
+  });
+
+  it("localizes missing browser and native input references", async () => {
+    const signal = new AbortController().signal;
+    const browserInputs = createBrowserImageInputs(marker as unknown as Parameters<typeof createBrowserImageInputs>[0], [], signal);
+    const nativeInputs = createNativeImageInputs(marker as unknown as Parameters<typeof createNativeImageInputs>[0], job, [], signal);
+
+    await expect(browserInputs.read(0)).rejects.toThrow(i18n.t("toolbox:image.inputUnavailable"));
+    await expect(nativeInputs.read(0)).rejects.toThrow(i18n.t("toolbox:image.inputUnavailable"));
   });
 });

@@ -2,6 +2,14 @@ import { createWebMarker, type MarkerResult, type WebResourceAdapter } from "@im
 
 type WorkerOperation = "getImageInfo" | "markText" | "markImage" | "mark" | "embedInvisible" | "detectInvisible";
 type WorkerResultKind = "marker-result" | "blob" | "detection" | "image-info";
+type WorkerErrorCode = "unsupported" | "invalid_input" | "execution_failed";
+
+class WorkerExecutionError extends Error {
+  constructor(readonly code: WorkerErrorCode) {
+    super(code);
+    this.name = "WorkerExecutionError";
+  }
+}
 
 interface ExecuteMessage {
   type: "execute";
@@ -52,18 +60,16 @@ self.onmessage = (event: MessageEvent<ExecuteMessage | TransformMessage>) => {
   if (message.type === "transform") {
     void executeTransform(message).then(
       (blob) => self.postMessage({ type: "transform-result", taskId: message.taskId, blob }),
-      (error) => self.postMessage({ type: "transform-error", taskId: message.taskId, error: safeWorkerError(error) }),
+      (error) => self.postMessage({ type: "transform-error", taskId: message.taskId, error: workerErrorCode(error) }),
     );
     return;
   }
   void execute(message).then(
     (value) => self.postMessage({ type: "result", taskId: message.taskId, value }),
-    (error) => self.postMessage({
-      type: "error",
-      taskId: message.taskId,
-      code: error instanceof Error && error.message.includes("不支持") ? "unsupported" : "execution_failed",
-      message: safeWorkerError(error),
-    }),
+    (error) => {
+      const code = workerErrorCode(error);
+      self.postMessage({ type: "error", taskId: message.taskId, code, message: code });
+    },
   );
 };
 
@@ -88,20 +94,20 @@ async function executeTransform(request: TransformMessage): Promise<Blob> {
       sourceY = Math.floor(sourceHeight * ratio);
       sourceCropWidth = sourceWidth - sourceX * 2;
       sourceCropHeight = sourceHeight - sourceY * 2;
-      if (sourceCropWidth < 128 || sourceCropHeight < 88) throw new Error("裁剪后图片低于隐形 locator 的最小尺寸。");
+      if (sourceCropWidth < 128 || sourceCropHeight < 88) throw new WorkerExecutionError("invalid_input");
       outputWidth = sourceCropWidth;
       outputHeight = sourceCropHeight;
     }
     canvas = new OffscreenCanvas(outputWidth, outputHeight);
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("图片变换无法建立 2D Canvas。");
+    if (!context) throw new WorkerExecutionError("unsupported");
     context.drawImage(bitmap, sourceX, sourceY, sourceCropWidth, sourceCropHeight, 0, 0, outputWidth, outputHeight);
     const quality = request.quality ?? 75;
     const blob = await canvas.convertToBlob({
       type: request.mode === "jpeg-quality" ? "image/jpeg" : "image/png",
       quality: request.mode === "jpeg-quality" ? quality / 100 : undefined,
     });
-    if (!blob.size) throw new Error("图片变换没有生成输出。");
+    if (!blob.size) throw new WorkerExecutionError("execution_failed");
     return blob;
   } finally {
     bitmap.close();
@@ -145,13 +151,13 @@ async function prepareWorkerOptions(value: unknown): Promise<unknown> {
 }
 
 async function loadLocalFonts(value: unknown): Promise<void> {
-  if (!Array.isArray(value)) throw new Error("本地字体资源无效。");
-  if (typeof FontFace !== "function") throw new Error("当前 WebView 不支持隔离 Worker 本地字体加载。");
+  if (!Array.isArray(value)) throw new WorkerExecutionError("invalid_input");
+  if (typeof FontFace !== "function") throw new WorkerExecutionError("unsupported");
   const fontSet = (self as unknown as { fonts?: { add(face: FontFace): unknown } }).fonts;
-  if (!fontSet) throw new Error("当前 WebView 不支持隔离 Worker 字体集合。");
+  if (!fontSet) throw new WorkerExecutionError("unsupported");
   for (const candidate of value) {
     const font = candidate as Partial<WorkerFontResource>;
-    if (typeof font.family !== "string" || !(font.source instanceof Blob)) throw new Error("本地字体资源无效。");
+    if (typeof font.family !== "string" || !(font.source instanceof Blob)) throw new WorkerExecutionError("invalid_input");
     const face = new FontFace(font.family, await font.source.arrayBuffer());
     await face.load();
     fontSet.add(face);
@@ -188,10 +194,10 @@ function createWorkerCanvasResources(): WorkerCanvasResources {
   return {
     resources,
     async exportLatestCanvas(format, quality) {
-      if (!latestCanvas) throw new Error("隔离渲染没有生成 Canvas 输出。" );
+      if (!latestCanvas) throw new WorkerExecutionError("execution_failed");
       const mimeType = outputMimeType(format);
       const blob = await latestCanvas.convertToBlob({ type: mimeType, quality: normalizedQuality(quality) });
-      if (blob.type !== mimeType) throw new Error(`当前 WebView 不支持 ${mimeType} 编码。`);
+      if (blob.type !== mimeType) throw new WorkerExecutionError("unsupported");
       return blob;
     },
     dispose() {
@@ -220,7 +226,7 @@ function createEncodableCanvas(width: number, height: number): OffscreenCanvasWi
       },
     });
   } catch {
-    throw new Error("当前 WebView 无法为 OffscreenCanvas 建立受限编码资源。" );
+    throw new WorkerExecutionError("unsupported");
   }
   return canvas;
 }
@@ -257,7 +263,7 @@ function createWorkerImage(): WorkerImage {
           canvas.width = bitmap.width;
           canvas.height = bitmap.height;
           const context = canvas.getContext("2d");
-          if (!context) throw new Error("OffscreenCanvas 2D 不可用。" );
+          if (!context) throw new WorkerExecutionError("unsupported");
           context.drawImage(bitmap, 0, 0);
           naturalWidth = bitmap.width;
           naturalHeight = bitmap.height;
@@ -282,7 +288,7 @@ function createWorkerImage(): WorkerImage {
 
 async function loadWorkerImage(uri: string): Promise<ImageBitmap> {
   const response = await fetch(uri);
-  if (!response.ok) throw new Error("无法读取本地图片输入。" );
+  if (!response.ok) throw new WorkerExecutionError("invalid_input");
   return createImageBitmap(await response.blob(), { imageOrientation: "from-image" });
 }
 
@@ -312,8 +318,6 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   return `data:${blob.type};base64,${btoa(binary)}`;
 }
 
-function safeWorkerError(error: unknown): string {
-  if (!(error instanceof Error)) return "图片隔离执行失败。";
-  if (error.message.includes("不支持") || error.message.includes("不可用")) return error.message.slice(0, 180);
-  return "图片隔离执行失败。";
+function workerErrorCode(error: unknown): WorkerErrorCode {
+  return error instanceof WorkerExecutionError ? error.code : "execution_failed";
 }

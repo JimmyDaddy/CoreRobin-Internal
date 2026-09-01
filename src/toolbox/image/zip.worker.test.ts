@@ -72,7 +72,7 @@ describe("streaming ZIP worker", () => {
 
     expect(replies().filter((reply) => reply.type === "appended")).toHaveLength(30);
     const messages = replies();
-    expect(messages[messages.length - 1]).toMatchObject({ type: "error", error: "批量 ZIP 输出文件数超过允许上限。" });
+    expect(messages[messages.length - 1]).toMatchObject({ type: "error", code: "zip_output_file_limit_exceeded" });
     expect(replies().some((reply) => reply.type === "complete")).toBe(false);
   });
 
@@ -85,6 +85,6 @@ describe("streaming ZIP worker", () => {
       item: { name: "too-large.png", bytes: new ArrayBuffer(1) },
     });
 
-    expect(replies()).toEqual([{ type: "error", error: "批量输入总大小不能超过 80 MiB。" }]);
+    expect(replies()).toEqual([{ type: "error", code: "zip_input_budget_exceeded" }]);
   });
 });

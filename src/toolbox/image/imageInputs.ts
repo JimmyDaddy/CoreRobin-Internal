@@ -1,5 +1,6 @@
 import type { WebMarkerInstance } from "@image-marker/web";
 
+import i18n from "../../i18n";
 import type { ToolboxFileJobKey, ToolboxInputToken } from "../contracts";
 import { readBoundToolboxInput } from "../runtime/files";
 import { inspectImageBudget } from "./imageTools";
@@ -17,7 +18,7 @@ export function createBrowserImageInputs(marker: WebMarkerInstance, files: reado
     async read(index) {
       signal.throwIfAborted();
       const file = files[index];
-      if (!file) throw new Error("图片输入不存在。" );
+      if (!file) throw new Error(i18n.t("toolbox:image.inputUnavailable"));
       return (await inspectImageBudget(marker, file)).file;
     },
   };
@@ -33,7 +34,7 @@ export function createNativeImageInputs(marker: WebMarkerInstance, job: ToolboxF
     count: tokens.length,
     async read(index) {
       const token = tokens[index];
-      if (!token) throw new Error("图片输入 token 不存在。" );
+      if (!token) throw new Error(i18n.t("toolbox:image.inputUnavailable"));
       const bytes = await readBoundToolboxInput(job, token, signal, IMAGE_INPUT_MAX_BYTES);
       signal.throwIfAborted();
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

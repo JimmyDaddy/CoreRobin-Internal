@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import i18n from "../../i18n";
 import { LocalImageEditor, parseLocalEditorRecipe } from "./imageEditor";
 
 function localLogo(name = "logo.png"): File {
@@ -7,6 +8,15 @@ function localLogo(name = "logo.png"): File {
 }
 
 describe("local image editor interactions", () => {
+  it("uses the active UI locale for editor validation errors", async () => {
+    const editor = new LocalImageEditor();
+    await i18n.changeLanguage("en");
+    expect(() => editor.addText("")).toThrow("Text layers cannot be empty.");
+    await i18n.changeLanguage("zh-CN");
+    expect(() => editor.addText("")).toThrow("文字图层不能为空。");
+    editor.dispose();
+  });
+
   it("drives real SDK selection, transforms, grouping, alignment, stacking, visibility, locking and history", () => {
     const editor = new LocalImageEditor();
     const first = editor.addText("第一层", { x: 20, y: 30 });

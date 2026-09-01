@@ -18,6 +18,22 @@ const MAX_RECIPIENT_FILES = 30;
 const MAX_INPUT_BYTES = 80 * 1024 * 1024;
 const MAX_EXPORT_BYTES = 512 * 1024 * 1024;
 
+type ZipWorkerErrorCode =
+  | "zip_input_budget_exceeded"
+  | "zip_output_file_limit_exceeded"
+  | "zip_output_budget_exceeded"
+  | "zip_append_after_finish"
+  | "zip_input_bytes_regressed"
+  | "zip_finish_already_started"
+  | "zip_not_initialized"
+  | "zip_failed";
+
+class ZipWorkerError extends Error {
+  constructor(readonly code: ZipWorkerErrorCode) {
+    super(code);
+  }
+}
+
 interface ActiveZip {
   archive: Zip;
   chunks: BlobPart[];
@@ -34,18 +50,18 @@ let activeZip: ActiveZip | null = null;
 
 function assertInputBudget(inputBytes: number): void {
   if (!Number.isSafeInteger(inputBytes) || inputBytes < 0 || inputBytes > MAX_INPUT_BYTES) {
-    throw new Error("批量输入总大小不能超过 80 MiB。");
+    throw new ZipWorkerError("zip_input_budget_exceeded");
   }
 }
 
 function assertOutputFileBudget(outputFiles: number, maxOutputFiles: number): void {
   if (![MAX_FILES, MAX_RECIPIENT_FILES].includes(maxOutputFiles) || outputFiles > maxOutputFiles) {
-    throw new Error("批量 ZIP 输出文件数超过允许上限。");
+    throw new ZipWorkerError("zip_output_file_limit_exceeded");
   }
 }
 
 function postError(error: unknown): void {
-  self.postMessage({ type: "error", error: error instanceof Error ? error.message : "ZIP 生成失败。" });
+  self.postMessage({ type: "error", code: error instanceof ZipWorkerError ? error.code : "zip_failed" });
 }
 
 function fail(job: ActiveZip, error: unknown): void {
@@ -79,7 +95,7 @@ function startZip(maxOutputFiles = MAX_FILES): void {
     if (job.failed || !chunk) return;
     const nextBytes = job.archiveBytes + chunk.byteLength;
     if (!Number.isSafeInteger(nextBytes) || nextBytes > MAX_EXPORT_BYTES) {
-      fail(job, new Error("批量 ZIP 累计输出不能超过 512 MiB。"));
+      fail(job, new ZipWorkerError("zip_output_budget_exceeded"));
       return;
     }
     job.archiveBytes = nextBytes;
@@ -96,13 +112,13 @@ function startZip(maxOutputFiles = MAX_FILES): void {
 }
 
 function appendZipItem(job: ActiveZip, id: number, inputBytes: number, item: ZipItem): void {
-  if (job.finishing) throw new Error("ZIP 已开始收尾，不能继续添加文件。");
+  if (job.finishing) throw new ZipWorkerError("zip_append_after_finish");
   assertInputBudget(inputBytes);
-  if (inputBytes < job.inputBytes) throw new Error("批量输入大小不能倒退。");
+  if (inputBytes < job.inputBytes) throw new ZipWorkerError("zip_input_bytes_regressed");
   assertOutputFileBudget(job.outputFiles + 1, job.maxOutputFiles);
   const nextSourceBytes = job.sourceBytes + item.bytes.byteLength;
   if (!Number.isSafeInteger(nextSourceBytes) || nextSourceBytes > MAX_EXPORT_BYTES) {
-    throw new Error("批量 ZIP 累计输出不能超过 512 MiB。");
+    throw new ZipWorkerError("zip_output_budget_exceeded");
   }
   job.inputBytes = inputBytes;
   job.outputFiles += 1;
@@ -114,7 +130,7 @@ function appendZipItem(job: ActiveZip, id: number, inputBytes: number, item: Zip
 }
 
 function finishZip(job: ActiveZip): void {
-  if (job.finishing) throw new Error("ZIP 已开始收尾。");
+  if (job.finishing) throw new ZipWorkerError("zip_finish_already_started");
   job.finishing = true;
   job.archive.end();
 }
@@ -126,7 +142,7 @@ self.onmessage = (event: MessageEvent<ZipRequest>) => {
       startZip(message.maxOutputFiles);
       return;
     }
-    if (!activeZip) throw new Error("ZIP Worker 尚未初始化。");
+    if (!activeZip) throw new ZipWorkerError("zip_not_initialized");
     if (message.type === "append") {
       appendZipItem(activeZip, message.id, message.inputBytes, message.item);
       return;

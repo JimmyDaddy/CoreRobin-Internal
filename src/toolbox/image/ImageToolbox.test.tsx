@@ -54,10 +54,14 @@ import { ImageToolbox } from "./ImageToolbox";
 class FakeZipWorker {
   static instances: FakeZipWorker[] = [];
   static acknowledgeAppendsByDefault = true;
+  static errorCodeOnAppend: string | null = null;
 
   readonly postMessage = vi.fn((...args: [message: { type: string; id?: number }, transfer?: Transferable[]]) => {
     const [message] = args;
-    if (message.type === "append" && this.acknowledgeAppends) {
+    if (message.type === "append" && FakeZipWorker.errorCodeOnAppend) {
+      const code = FakeZipWorker.errorCodeOnAppend;
+      queueMicrotask(() => this.onmessage?.({ data: { type: "error", code } } as MessageEvent<unknown>));
+    } else if (message.type === "append" && this.acknowledgeAppends) {
       queueMicrotask(() => this.onmessage?.({ data: { type: "appended", id: message.id } } as MessageEvent<unknown>));
     }
     if (message.type === "finish") {
@@ -79,6 +83,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   FakeZipWorker.instances = [];
   FakeZipWorker.acknowledgeAppendsByDefault = true;
+  FakeZipWorker.errorCodeOnAppend = null;
   vi.stubGlobal("Worker", FakeZipWorker);
   class TestUrl extends globalThis.URL {
     static createObjectURL = mocks.createObjectUrl;
@@ -204,6 +209,17 @@ describe("batch image ZIP delivery", () => {
     await screen.findByText(/图片处理已取消/);
     expect(mocks.cancel).toHaveBeenCalledOnce();
     expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it("localizes stable ZIP Worker error codes before showing them in the UI", async () => {
+    FakeZipWorker.errorCodeOnAppend = "zip_input_budget_exceeded";
+    const view = render(<ImageToolbox toolId="image-batch-watermark" />);
+    await selectBatchFiles(view.container, ["first.png"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "批量处理并打包" }));
+
+    await screen.findByText("合计输入大小超过 80 MiB 上限。");
+    expect(screen.queryByText("zip_input_budget_exceeded")).toBeNull();
   });
 
   it("uses the same per-item transfer protocol for 30-file recipient delivery", async () => {

@@ -13,10 +13,30 @@ import {
   type EditorSize,
   type EditorState,
 } from "@image-marker/web/headless";
+import i18n from "../../i18n";
 
 export const IMAGE_RECIPE_MAX_BYTES = 64 * 1024;
 export const LOCAL_EDITOR_ASSET_KIND = "corerobin-local-image-asset";
 const EDITOR_BOOTSTRAP_LAYER_ID = "corerobin-editor-bootstrap";
+
+const editorErrorMessages = {
+  textEmpty: () => i18n.t("toolbox:imageEditor.errors.textEmpty"),
+  textTooLong: () => i18n.t("toolbox:imageEditor.errors.textTooLong"),
+  noLayers: () => i18n.t("toolbox:imageEditor.errors.noLayers"),
+  groupRequiresTwo: () => i18n.t("toolbox:imageEditor.errors.groupRequiresTwo"),
+  alignRequiresTwo: () => i18n.t("toolbox:imageEditor.errors.alignRequiresTwo"),
+  noSelection: () => i18n.t("toolbox:imageEditor.errors.noSelection"),
+  assetUnavailable: () => i18n.t("toolbox:imageEditor.errors.assetUnavailable"),
+  recipeTooLarge: () => i18n.t("toolbox:imageEditor.errors.recipeTooLarge"),
+  recipeJsonInvalid: () => i18n.t("toolbox:imageEditor.errors.recipeJsonInvalid"),
+  recipeValidationFailed: (message: string) => i18n.t("toolbox:imageEditor.errors.recipeValidationFailed", { message }),
+  exportAssetUnavailable: () => i18n.t("toolbox:imageEditor.errors.exportAssetUnavailable"),
+  externalAssetForbidden: () => i18n.t("toolbox:imageEditor.errors.externalAssetForbidden"),
+  assetReselectionRequired: (name: string) => i18n.t("toolbox:imageEditor.errors.assetReselectionRequired", { name }),
+  localAssetRequired: () => i18n.t("toolbox:imageEditor.errors.localAssetRequired"),
+  localAssetTooLarge: () => i18n.t("toolbox:imageEditor.errors.localAssetTooLarge"),
+  localAssetUnsupported: () => i18n.t("toolbox:imageEditor.errors.localAssetUnsupported"),
+} as const;
 
 export interface LocalEditorAsset {
   id: string;
@@ -91,8 +111,8 @@ export class LocalImageEditor {
 
   addText(text: string, point: EditorPoint = { x: 64, y: 64 }): string {
     const value = text.trim();
-    if (!value) throw new Error("文字图层不能为空。");
-    if (new TextEncoder().encode(value).byteLength > 4096) throw new Error("文字图层不能超过 4 KiB。");
+    if (!value) throw new Error(editorErrorMessages.textEmpty());
+    if (new TextEncoder().encode(value).byteLength > 4096) throw new Error(editorErrorMessages.textTooLong());
     this.removeBootstrapLayer();
     return this.controller.addLayer({
       type: "text",
@@ -127,7 +147,7 @@ export class LocalImageEditor {
   exportRecipe(): WatermarkRecipeDefinition {
     const recipe = this.controller.exportRecipe();
     const layers = recipe.layers.filter((layer) => layer.id !== EDITOR_BOOTSTRAP_LAYER_ID);
-    if (layers.length === 0) throw new Error("请先添加文字或本地素材图层。");
+    if (layers.length === 0) throw new Error(editorErrorMessages.noLayers());
     return { ...recipe, layers };
   }
 
@@ -149,7 +169,7 @@ export class LocalImageEditor {
 
   groupSelection(): string {
     const selected = this.getState().selectedLayerIds;
-    if (selected.length < 2) throw new Error("至少选择两个图层后才能分组。");
+    if (selected.length < 2) throw new Error(editorErrorMessages.groupRequiresTwo());
     return this.controller.groupLayers();
   }
 
@@ -173,7 +193,7 @@ export class LocalImageEditor {
 
   alignSelection(alignment: EditorAlignment, canvas: EditorSize): void {
     const bounds = editorLayerBounds(this.getState(), canvas, this.assets);
-    if (bounds.length < 2) throw new Error("至少选择两个图层后才能对齐。");
+    if (bounds.length < 2) throw new Error(editorErrorMessages.alignRequiresTwo());
     this.controller.alignLayers(alignment, bounds, canvas);
   }
 
@@ -195,8 +215,8 @@ export class LocalImageEditor {
   updatePrimaryText(text: string): void {
     const id = this.requirePrimaryLayer();
     const value = text.trim();
-    if (!value) throw new Error("文字图层不能为空。");
-    if (new TextEncoder().encode(value).byteLength > 4096) throw new Error("文字图层不能超过 4 KiB。");
+    if (!value) throw new Error(editorErrorMessages.textEmpty());
+    if (new TextEncoder().encode(value).byteLength > 4096) throw new Error(editorErrorMessages.textTooLong());
     this.controller.updateTextLayer(id, { text: value, name: value.slice(0, 48) });
   }
 
@@ -210,13 +230,13 @@ export class LocalImageEditor {
 
   private requirePrimaryLayer(): string {
     const id = this.getState().selectedLayerId;
-    if (!id) throw new Error("请先选择一个图层。");
+    if (!id) throw new Error(editorErrorMessages.noSelection());
     return id;
   }
 
   private requireAsset(id: string): LocalEditorAsset {
     const asset = this.assets.get(id);
-    if (!asset) throw new Error("本地素材只在当前编辑会话可用，请重新选择该素材。");
+    if (!asset) throw new Error(editorErrorMessages.assetUnavailable());
     return asset;
   }
 
@@ -244,17 +264,17 @@ function editorBootstrapRecipe(): WatermarkRecipeDefinition {
 }
 
 export function parseLocalEditorRecipe(source: string, assets: ReadonlyMap<string, LocalEditorAsset>): ImportedEditorRecipe {
-  if (new TextEncoder().encode(source).byteLength > IMAGE_RECIPE_MAX_BYTES) throw new Error("Recipe JSON 不能超过 64 KiB。");
+  if (new TextEncoder().encode(source).byteLength > IMAGE_RECIPE_MAX_BYTES) throw new Error(editorErrorMessages.recipeTooLarge());
   let value: unknown;
   try {
     value = JSON.parse(source);
   } catch {
-    throw new Error("Recipe JSON 格式无效。");
+    throw new Error(editorErrorMessages.recipeJsonInvalid());
   }
   const legacy = Boolean(value && typeof value === "object" && (value as { schemaVersion?: unknown }).schemaVersion === 1);
   const migrated = migrateWatermarkRecipe(value as WatermarkRecipeDocument);
   const validated = safeValidateWatermarkRecipe(migrated);
-  if (!validated.success) throw new Error(`Recipe 校验失败：${validated.error.message}`);
+  if (!validated.success) throw new Error(editorErrorMessages.recipeValidationFailed(validated.error.message));
   return { recipe: hydrateLocalEditorAssets(validated.value, assets), migrated: legacy };
 }
 
@@ -266,7 +286,7 @@ export function serializeLocalEditorRecipe(recipe: WatermarkRecipeDefinition, as
     layers: recipe.layers.map((layer) => {
       if (layer.type !== "image") return { ...layer, style: layer.style ? { ...layer.style } : layer.style };
       const asset = sourceToAsset.get(layer.src as File);
-      if (!asset) throw new Error("图层素材不是当前会话中明确选择的本地图片，不能导出 Recipe。");
+      if (!asset) throw new Error(editorErrorMessages.exportAssetUnavailable());
       return { ...layer, src: localAssetReference(asset) };
     }),
     output: { ...recipe.output },
@@ -280,10 +300,10 @@ export function hydrateLocalEditorAssets(recipe: WatermarkRecipeDefinition, asse
       if (layer.type !== "image") return { ...layer, style: layer.style ? { ...layer.style } : layer.style };
       if (layer.src instanceof Blob) return { ...layer };
       if (!isPersistedLocalAsset(layer.src)) {
-        throw new Error("Recipe 图片图层只能引用当前会话中明确选择的本地素材；已拒绝 URL、data URL 和未知资源。");
+        throw new Error(editorErrorMessages.externalAssetForbidden());
       }
       const asset = assets.get(layer.src.id);
-      if (!asset) throw new Error(`Recipe 需要本地素材“${layer.src.name}”，请在当前会话重新选择后再导入。`);
+      if (!asset) throw new Error(editorErrorMessages.assetReselectionRequired(layer.src.name));
       return { ...layer, src: asset.file };
     }),
     output: { ...recipe.output },
@@ -310,9 +330,9 @@ export function editorLayerBounds(state: EditorState, canvas: EditorSize, assets
 }
 
 function assertLocalEditorFile(file: File): void {
-  if (!file || !(file instanceof Blob)) throw new Error("请选择一个本地图片素材。");
-  if (file.size > 12 * 1024 * 1024) throw new Error("本地素材不能超过 12 MiB。");
-  if (!new Set(["image/png", "image/jpeg", "image/webp"]).has(file.type)) throw new Error("本地素材只支持 PNG、JPEG 和 WebP。");
+  if (!file || !(file instanceof Blob)) throw new Error(editorErrorMessages.localAssetRequired());
+  if (file.size > 12 * 1024 * 1024) throw new Error(editorErrorMessages.localAssetTooLarge());
+  if (!new Set(["image/png", "image/jpeg", "image/webp"]).has(file.type)) throw new Error(editorErrorMessages.localAssetUnsupported());
 }
 
 function localAssetReference(asset: LocalEditorAsset): PersistedLocalEditorAsset {

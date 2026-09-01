@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+
+import i18n from "../../i18n";
 import {
   BATCH_MAX_FILES,
   BATCH_MAX_INPUT_BYTES,
@@ -23,6 +25,7 @@ describe("image toolbox contracts", () => {
     const parsed = parseRecipeDocument(JSON.stringify(recipe));
     expect(parsed.schemaVersion).toBe(2);
     expect(parsed.layers).toHaveLength(1);
+    expect(() => parseRecipeDocument("not-json")).toThrow(i18n.t("toolbox:image.errors.recipeJsonInvalid"));
   });
 
   it("requires a matching local font container signature", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WebMarkerExecutionRequest } from "@image-marker/web";
 
+import i18n from "../../i18n";
 import { createImageExecutionAdapter, createImageToolRuntime, transformImageInWorker, withLocalImageFonts } from "./imageExecution";
 
 class FakeImageWorker {
@@ -57,6 +58,17 @@ describe("isolated image execution adapter", () => {
     await task.dispose?.();
     await task.dispose?.();
     expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps a stable Worker error code through the active toolbox locale without exposing the Worker message", async () => {
+    const worker = new FakeImageWorker();
+    const adapter = createImageExecutionAdapter({ availability: supported, createWorker: () => worker });
+    const task = adapter.start<{ uri: string }>(markTextRequest("task-worker-error"));
+
+    worker.emit({ type: "error", taskId: "task-worker-error", code: "unsupported", message: "internal SDK detail" });
+
+    await expect(task.result).rejects.toThrow(i18n.t("toolbox:image.errors.workerUnsupported"));
+    await expect(task.result).rejects.not.toThrow("internal SDK detail");
   });
 
   it("rejects remote sources before a Worker can be started", async () => {

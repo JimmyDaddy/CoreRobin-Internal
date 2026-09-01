@@ -347,7 +347,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           if (controller.signal.aborted || isAbortError(reason)) {
             await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
           } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
+            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
           }
         } catch (lifecycleReason) {
           setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
@@ -355,7 +355,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       }
       if (controller.signal.aborted || isAbortError(reason)) {
         releaseOutputs();
-        setNotice(t("image.cancelled", { reason: isAbortError(reason) ? "AbortError" : "abort signal" }));
+        setNotice(t("image.cancelled", { reason: t(isAbortError(reason) ? "image.cancellationReason.abortError" : "image.cancellationReason.abortSignal") }));
       } else {
         setError(reason instanceof Error ? reason.message : t("image.processingFailed"));
       }
@@ -417,7 +417,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     } catch (reason) {
       if (job) {
         try {
-          await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason) });
+          await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason, t) });
         } catch (lifecycleReason) {
           setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
         }
@@ -508,7 +508,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       setNotice(t("image.nativeOutputReady"));
     } catch (reason) {
       try {
-        await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason) });
+        await finishToolboxJob({ ...newToolboxRequest(), jobId: job.jobId, succeeded: false, error: toToolboxError(reason, t) });
       } catch (lifecycleReason) {
         setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
       }
@@ -531,7 +531,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const batch = toolId === "image-batch-watermark";
     const inputCount = batch ? selectedInputs.count : 1;
     let zipBudget = batch ? createBatchZipBudget([]) : null;
-    const zipWriter = batch ? createZipWriter(signal, BATCH_MAX_FILES) : null;
+    const zipWriter = batch ? createZipWriter(t, signal, BATCH_MAX_FILES) : null;
     let last: MarkerResult | null = null;
     try {
       for (let index = 0; index < inputCount; index += 1) {
@@ -617,7 +617,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     const key = promptValue(t("image.invisibleDetectionKeyPrompt"));
     if (!key) throw createImageAbortError(t("image.invisibleCancelled"));
     assertInvisibleKey(key, t("image.invisibleKeyInvalid"));
-    if (!hostExecutorAvailable) throw new Error(runtime.execution.reason ?? "当前 WebView 不支持可终止的图片隔离执行器。" );
+    if (!hostExecutorAvailable) throw new Error(runtime.execution.reason ?? t("image.executorUnavailable"));
     let detected;
     try {
       detected = await marker.detectInvisible({
@@ -632,7 +632,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
       throw reason;
     }
     setNotice(detected.detected
-      ? t("image.invisibleDetected", { payload: detected.payload ?? "(empty)", confidence: detected.confidence.toFixed(2) })
+      ? t("image.invisibleDetected", { payload: detected.payload ?? t("image.emptyLocator"), confidence: detected.confidence.toFixed(2) })
       : t("image.invisibleNotDetected"));
     publishOperationReport(JSON.stringify({
       algorithm: detected.algorithm,
@@ -782,7 +782,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           if (controller.signal.aborted) {
             await cancelToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId });
           } else {
-            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason) });
+            await finishToolboxJob({ ...newToolboxRequest(), jobId: nativeJob.jobId, succeeded: false, error: toToolboxError(reason, t) });
           }
         } catch (lifecycleReason) {
           setError(t("image.lifecycleUnconfirmed", { message: lifecycleReason instanceof Error ? lifecycleReason.message : t("image.lifecycleUnknown") }));
@@ -827,7 +827,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
     let delivered = 0;
     const mapping: Array<{ recipient: string; filename: string; locator: string }> = [];
     let zipBudget = createRecipientZipBudget(file);
-    const zipWriter = createZipWriter(signal, zipBudget.maxOutputFiles);
+    const zipWriter = createZipWriter(t, signal, zipBudget.maxOutputFiles);
     setRecipientDelivery({ status: "preparing", requested: values.length, delivered, detail: t("image.recipientPreparing") });
     try {
       for (const [index, value] of values.entries()) {
@@ -884,7 +884,7 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
 
   return <div className="toolbox-tool-layout image-toolbox">
     <div className="toolbox-tool-layout__body">
-      <div className="image-toolbox__boundary"><ShieldCheck size={18} /><span>{t("image.boundary", { executor: hostExecutorAvailable ? "available" : runtime.execution.reason ?? "unavailable" })}</span></div>
+      <div className="image-toolbox__boundary"><ShieldCheck size={18} /><span>{t("image.boundary", { executor: hostExecutorAvailable ? t("image.executorAvailable") : runtime.execution.reason ?? t("image.executorUnavailable") })}</span></div>
       {toolId !== "c2pa-inspector" && !desktopRuntime ? <label className="toolbox-file-pick button button--secondary"><Upload size={15} />{t("image.selectInput")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" multiple={toolId === "image-batch-watermark"} onChange={(event) => void selectFiles(Array.from(event.target.files ?? []))} /></label> : null}
       {toolId !== "c2pa-inspector" && desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />{t("image.nativeInputHint")}</p> : null}
       {files.length > 0 && !desktopRuntime ? <p className="toolbox-hint"><FileImage size={14} />{t("image.selectedInputSummary", { count: files.length, maxFiles: BATCH_MAX_FILES, maxInputMiB: Math.round(BATCH_MAX_INPUT_BYTES / 1024 / 1024), maxEdge: IMAGE_MAX_OUTPUT_EDGE })}</p> : null}
@@ -915,9 +915,9 @@ function actionLabel(toolId: ImageToolId, t: TFunction<"toolbox">): string {
   return toolId === "image-batch-watermark" ? t("image.actions.batch") : t("image.actions.watermark");
 }
 
-function toToolboxError(reason: unknown): ToolboxError {
-  const rawMessage = reason instanceof Error ? reason.message : "图片工具执行失败。";
-  const message = rawMessage.replace(/(?:[A-Za-z]:)?[\\/][^\s)]+/gu, "本地文件").slice(0, 180);
+function toToolboxError(reason: unknown, t: TFunction<"toolbox">): ToolboxError {
+  const rawMessage = reason instanceof Error ? reason.message : t("image.processingFailed");
+  const message = rawMessage.replace(/(?:[A-Za-z]:)?[\\/][^\s)]+/gu, t("image.localFileRedaction")).slice(0, 180);
   return { code: "image_execution_failed", message, retryable: false };
 }
 
@@ -988,7 +988,7 @@ type ZipWorkerReply = {
   blob: Blob;
 } | {
   type: "error";
-  error?: string;
+  code?: string;
 };
 
 type ZipWorkerPending = {
@@ -1002,13 +1002,42 @@ type ZipWorkerPending = {
   reject: (reason: Error) => void;
 };
 
-function createZipWriter(signal: AbortSignal, maxOutputFiles: number): ZipWriter {
-  if (signal.aborted) throw createImageAbortError("ZIP 生成已停止。");
+const ZIP_ERROR_KEYS = {
+  zip_input_budget_exceeded: "image.zipErrors.inputBudgetExceeded",
+  zip_output_file_limit_exceeded: "image.zipErrors.outputFileLimitExceeded",
+  zip_output_budget_exceeded: "image.zipErrors.outputBudgetExceeded",
+  zip_append_after_finish: "image.zipErrors.appendAfterFinish",
+  zip_input_bytes_regressed: "image.zipErrors.inputBytesRegressed",
+  zip_finish_already_started: "image.zipErrors.finishAlreadyStarted",
+  zip_not_initialized: "image.zipErrors.notInitialized",
+  zip_failed: "image.zipErrors.failed",
+  zip_stopped: "image.zipErrors.stopped",
+  zip_worker_start_failed: "image.zipErrors.workerStartFailed",
+  zip_invalid_complete: "image.zipErrors.invalidComplete",
+  zip_invalid_chunk: "image.zipErrors.invalidChunk",
+  zip_closed: "image.zipErrors.closed",
+  zip_pending: "image.zipErrors.pending",
+  zip_append_failed: "image.zipErrors.appendFailed",
+  zip_finish_failed: "image.zipErrors.finishFailed",
+  zip_released: "image.zipErrors.released",
+} as const;
+
+function zipErrorMessage(t: TFunction<"toolbox">, code: string): string {
+  if (code in ZIP_ERROR_KEYS) return t(ZIP_ERROR_KEYS[code as keyof typeof ZIP_ERROR_KEYS]);
+  return t("image.zipErrors.failed");
+}
+
+function zipError(t: TFunction<"toolbox">, code: string): Error {
+  return new Error(zipErrorMessage(t, code));
+}
+
+function createZipWriter(t: TFunction<"toolbox">, signal: AbortSignal, maxOutputFiles: number): ZipWriter {
+  if (signal.aborted) throw createImageAbortError(zipErrorMessage(t, "zip_stopped"));
   let worker: Worker;
   try {
     worker = new Worker(new URL("./zip.worker.ts", import.meta.url), { type: "module" });
-  } catch (reason) {
-    throw reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。");
+  } catch {
+    throw zipError(t, "zip_worker_start_failed");
   }
 
   let closed = false;
@@ -1028,11 +1057,11 @@ function createZipWriter(signal: AbortSignal, maxOutputFiles: number): ZipWriter
     cleanup();
     current?.reject(reason);
   };
-  const abort = () => fail(createImageAbortError("ZIP 生成已停止。"));
+  const abort = () => fail(createImageAbortError(zipErrorMessage(t, "zip_stopped")));
   const complete = (blob: Blob) => {
     if (closed) return;
     if (!pending || pending.kind !== "finish") {
-      fail(new Error("ZIP Worker 返回了无效的完成状态。"));
+      fail(zipError(t, "zip_invalid_complete"));
       return;
     }
     closed = true;
@@ -1046,56 +1075,57 @@ function createZipWriter(signal: AbortSignal, maxOutputFiles: number): ZipWriter
   worker.onmessage = (event: MessageEvent<ZipWorkerReply>) => {
     const reply = event.data;
     if (reply.type === "error") {
-      fail(new Error(reply.error ?? "ZIP 生成失败。"));
+      fail(zipError(t, reply.code ?? "zip_failed"));
     } else if (reply.type === "complete") {
       complete(reply.blob);
     } else if (!pending || pending.kind !== "append" || pending.id !== reply.id) {
-      fail(new Error("ZIP Worker 返回了无效的分块状态。"));
+      fail(zipError(t, "zip_invalid_chunk"));
     } else {
       const current = pending;
       pending = null;
       current.resolve();
     }
   };
-  worker.onerror = () => fail(new Error("ZIP Worker 无法启动。"));
+  worker.onerror = () => fail(zipError(t, "zip_worker_start_failed"));
   try {
     worker.postMessage({ type: "start", maxOutputFiles });
-  } catch (reason) {
-    fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。"));
-    throw reason instanceof Error ? reason : new Error("ZIP Worker 无法启动。");
+  } catch {
+    const error = zipError(t, "zip_worker_start_failed");
+    fail(error);
+    throw error;
   }
 
   return {
     append(item, inputBytes) {
-      if (signal.aborted) return Promise.reject(createImageAbortError("ZIP 生成已停止。"));
-      if (closed) return Promise.reject(new Error("ZIP 生成已结束。"));
-      if (pending) return Promise.reject(new Error("ZIP Worker 正在处理前一项输出。"));
+      if (signal.aborted) return Promise.reject(createImageAbortError(zipErrorMessage(t, "zip_stopped")));
+      if (closed) return Promise.reject(zipError(t, "zip_closed"));
+      if (pending) return Promise.reject(zipError(t, "zip_pending"));
       const id = nextId;
       nextId += 1;
       return new Promise((resolve, reject) => {
         pending = { kind: "append", id, resolve, reject };
         try {
           worker.postMessage({ type: "append", id, inputBytes, item }, [item.bytes]);
-        } catch (reason) {
-          fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法接收输出。"));
+        } catch {
+          fail(zipError(t, "zip_append_failed"));
         }
       });
     },
     finish() {
-      if (signal.aborted) return Promise.reject(createImageAbortError("ZIP 生成已停止。"));
-      if (closed) return Promise.reject(new Error("ZIP 生成已结束。"));
-      if (pending) return Promise.reject(new Error("ZIP Worker 正在处理前一项输出。"));
+      if (signal.aborted) return Promise.reject(createImageAbortError(zipErrorMessage(t, "zip_stopped")));
+      if (closed) return Promise.reject(zipError(t, "zip_closed"));
+      if (pending) return Promise.reject(zipError(t, "zip_pending"));
       return new Promise((resolve, reject) => {
         pending = { kind: "finish", resolve, reject };
         try {
           worker.postMessage({ type: "finish" });
-        } catch (reason) {
-          fail(reason instanceof Error ? reason : new Error("ZIP Worker 无法完成归档。"));
+        } catch {
+          fail(zipError(t, "zip_finish_failed"));
         }
       });
     },
     dispose() {
-      fail(new Error("ZIP 生成已释放。"));
+      fail(zipError(t, "zip_released"));
     },
   };
 }
