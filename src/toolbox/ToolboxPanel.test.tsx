@@ -38,6 +38,8 @@ const i18n = vi.hoisted(() => ({
       "tools.keep-awake.title": "限时保活",
       "tools.volume-occupancy.title": "外盘使用者",
       "tools.volume-occupancy.description": "诊断可移动卷占用并在确认后推出",
+      "tools.color-picker.title": "视觉取色器",
+      "tools.color-picker.description": "可视化调整颜色并复制常用颜色格式。",
       "tools.url.title": "URL",
       "tools.time.title": "时间转换",
       "local.textHash.placeholder": "输入文本",
@@ -49,6 +51,12 @@ const i18n = vi.hoisted(() => ({
       "local.time.placeholder": "Unix 时间或带时区的 ISO 时间",
       "local.convert": "转换",
       "local.run": "运行",
+      "local.colorPicker.title": "视觉取色器",
+      "local.colorPicker.inputLabel": "颜色值",
+      "local.colorPicker.apply": "应用颜色",
+      "local.colorPicker.formats": "颜色格式",
+      "local.colorPicker.contrast": "对比度",
+      "local.colorPicker.copy": "复制 {format}",
       "keepAwake.durationLabel": "时长",
       "keepAwake.start": "开始保活",
       "keepAwake.stop": "停止并释放",
@@ -187,6 +195,23 @@ it("filters cards by category and renders structured JSON output", () => {
   expect(document.querySelector(".toolbox-code-line__number")?.textContent).toBe("1");
   expect(document.querySelector(".toolbox-code-token--key")?.textContent).toBe('"name"');
   expect(document.querySelector(".toolbox-code-token--number")?.textContent).toBe("1");
+});
+
+it("opens the visual color picker with synchronized formats and contrast panels", () => {
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+
+  expect(screen.getByRole("heading", { name: "视觉取色器", level: 1 })).toBeTruthy();
+  expect(document.querySelector(".color-picker__sv")).toBeTruthy();
+  expect(screen.getByLabelText("颜色值")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "颜色格式" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "对比度" })).toBeTruthy();
+
+  fireEvent.change(screen.getByLabelText("颜色值"), { target: { value: "#ff000080" } });
+  fireEvent.click(screen.getByRole("button", { name: "应用颜色" }));
+  expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#ff000080");
 });
 
 it("keeps browser-local tools available even when an older native snapshot marks them unavailable", async () => {

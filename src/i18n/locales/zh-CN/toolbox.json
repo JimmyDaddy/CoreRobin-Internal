@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "转换颜色"
-    }
+    },"colorPicker":{"title":"视觉取色器","eyebrow":"可视化编辑","nativeInput":"系统颜色","saturationValue":"饱和度与明度","hue":"色相","alpha":"透明度","pickFromScreen":"从屏幕取色","screenUnavailable":"当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。","inputLabel":"颜色值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"应用颜色","applied":"颜色已应用","invalid":"颜色格式无效，请检查输入后重试。","copy":"复制 {{format}}","copied":"已复制 {{format}}","copyFailed":"当前环境不支持复制。","preview":"预览","currentColor":"当前颜色","outputEyebrow":"输出","formats":"颜色格式","gamutMapped":"已映射到 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"可访问性","contrast":"对比度","lightBackground":"浅色背景","darkBackground":"深色背景","contrastPass":"通过 AA","contrastFail":"低于 AA","reset":"重置颜色","privacy":"颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。"}
   },
   "occupancy": {
     "desktopOnly": "占用诊断需要桌面原生运行时。",
@@ -308,7 +308,7 @@
     "text-sha256": { "title": "文本 SHA-256", "aliases": "hash | 摘要", "description": "在本机内存中计算文本 SHA-256。" },
     "file-sha256": { "title": "文件 SHA-256", "aliases": "文件 hash | 校验", "description": "流式读取用户主动选择的单个普通文件。" },
     "regex": { "title": "正则诊断", "aliases": "RegExp | 匹配 | AST", "description": "诊断 ECMAScript 正则并查看结构。" },
-    "color": { "title": "颜色转换", "aliases": "HEX | OKLCH | P3", "description": "转换常见 CSS 颜色格式并提示色域变化。" },
+    "color": { "title": "颜色转换", "aliases": "HEX | OKLCH | P3", "description": "转换常见 CSS 颜色格式并提示色域变化。" },"color-picker":{"title":"视觉取色器","aliases":"吸管 | HEX | 对比度","description":"可视化调整颜色并复制常用颜色格式。"},
     "image-watermark": { "title": "图片水印", "aliases": "Logo | PNG | JPEG", "description": "给本地图片添加文字或 Logo 水印。" },
     "image-batch-watermark": { "title": "批量水印", "aliases": "ZIP | 批处理", "description": "顺序处理多张图片并导出受控 ZIP。" },
     "confidential-watermark": { "title": "保密水印", "aliases": "内部 | 预设", "description": "使用可编辑的保密水印预设。" },

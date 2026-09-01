@@ -9,6 +9,12 @@ export interface ColorValue {
   gamutMapped: boolean;
 }
 
+export interface HsvColor {
+  h: number;
+  s: number;
+  v: number;
+}
+
 export const MAX_COLOR_INPUT_BYTES = 4 * 1024;
 
 const NAMED: Readonly<Record<string, string>> = {
@@ -79,6 +85,30 @@ export function formatColor(color: ColorValue): Record<string, string> {
   };
 }
 
+export function colorFromHsv(h: number, s: number, v: number, a = 1, source = ""): ColorValue {
+  const normalizedHue = ((h % 360) + 360) % 360 / 360;
+  const rgb = hsvToRgb(normalizedHue, clamp(s, 0, 1), clamp(v, 0, 1));
+  return { ...rgb, a: clamp(a, 0, 1), source, gamutMapped: false };
+}
+
+export function colorToHsv(color: ColorValue): HsvColor {
+  const hsv = rgbToHsv(color.r, color.g, color.b);
+  return { h: hsv.h * 360, s: hsv.s, v: hsv.v };
+}
+
+export function contrastRatio(foreground: ColorValue, background: ColorValue): number {
+  const composited = {
+    r: foreground.r * foreground.a + background.r * (1 - foreground.a),
+    g: foreground.g * foreground.a + background.g * (1 - foreground.a),
+    b: foreground.b * foreground.a + background.b * (1 - foreground.a),
+  };
+  const foregroundLuminance = relativeLuminance(composited);
+  const backgroundLuminance = relativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 function parseHex(value: string, source: string): ColorValue {
   const hex = value.slice(1);
   if (![3, 4, 6, 8].includes(hex.length) || !/^[0-9a-f]+$/.test(hex)) throw new ToolboxInputError("invalid_color", "HEX 颜色格式无效。 ");
@@ -100,6 +130,10 @@ function hue(p: number, q: number, t: number): number { let v = t; if (v < 0) v 
 function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } { const i = Math.floor(h * 6); const f = h * 6 - i; const p = v * (1 - s); const q = v * (1 - f * s); const t = v * (1 - (1 - f) * s); const [r, g, b] = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6]; return { r, g, b }; }
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } { const max = Math.max(r, g, b); const min = Math.min(r, g, b); const l = (max + min) / 2; if (max === min) return { h: 0, s: 0, l }; const d = max - min; const s = l > .5 ? d / (2 - max - min) : d / (max + min); const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; return { h: h / 6, s, l }; }
 function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } { const max = Math.max(r, g, b); const min = Math.min(r, g, b); const d = max - min; if (!d) return { h: 0, s: 0, v: max }; const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; return { h: h / 6, s: d / max, v: max }; }
+function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const linear = [r, g, b].map((channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
 function oklabToRgb(l: number, a: number, b: number): { r: number; g: number; b: number } { const l1 = Math.cbrt(l + 0.3963377774 * a + 0.2158037573 * b); const m1 = Math.cbrt(l - 0.1055613458 * a - 0.0638541728 * b); const s1 = Math.cbrt(l - 0.0894841775 * a - 1.291485548 * b); return { r: 4.0767416621 * l1 ** 3 - 3.3077115913 * m1 ** 3 + 0.2309699292 * s1 ** 3, g: -1.2684380046 * l1 ** 3 + 2.6097574011 * m1 ** 3 - 0.3413193965 * s1 ** 3, b: -0.0041960863 * l1 ** 3 - 0.7034186147 * m1 ** 3 + 1.707614701 * s1 ** 3 }; }
 function rgbToOklch(r: number, g: number, b: number): { l: number; c: number; h: number } {
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);

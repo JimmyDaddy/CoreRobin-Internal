@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_COLOR_INPUT_BYTES, formatColor, parseColor } from "./colorTools";
+import { MAX_COLOR_INPUT_BYTES, colorFromHsv, colorToHsv, contrastRatio, formatColor, parseColor } from "./colorTools";
 import { ToolboxInputError } from "../local/toolboxErrors";
 
 function inputError(action: () => unknown): ToolboxInputError {
@@ -73,5 +73,20 @@ describe("color toolbox", () => {
     expect(color.g).toBeLessThanOrEqual(1);
     expect(color.b).toBeGreaterThanOrEqual(0);
     expect(color.b).toBeLessThanOrEqual(1);
+  });
+
+  it("round-trips picker HSV values and keeps hue stable for grayscale", () => {
+    const color = colorFromHsv(210, 0.72, 0.84, 0.65, "picker");
+    const hsv = colorToHsv(color);
+    expect(hsv.h).toBeCloseTo(210, 4);
+    expect(hsv.s).toBeCloseTo(0.72, 4);
+    expect(hsv.v).toBeCloseTo(0.84, 4);
+    expect(color.a).toBeCloseTo(0.65, 4);
+    expect(colorToHsv(parseColor("#808080")).h).toBe(0);
+  });
+
+  it("computes contrast after compositing transparent foregrounds", () => {
+    expect(contrastRatio(parseColor("#000"), parseColor("#fff"))).toBeCloseTo(21, 4);
+    expect(contrastRatio(parseColor("#00000080"), parseColor("#fff"))).toBeGreaterThan(3.9);
   });
 });

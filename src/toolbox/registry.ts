@@ -16,6 +16,7 @@ export const LOCAL_BROWSER_TOOL_IDS: readonly ToolId[] = [
   "text-sha256",
   "regex",
   "color",
+  "color-picker",
   "ifconfig-parser",
 ];
 
@@ -55,6 +56,7 @@ const definitions = ([
   ["text-development", "file-sha256", "文件 SHA-256", ["文件 hash", "校验"], "流式读取用户主动选择的单个普通文件"],
   ["text-development", "regex", "正则诊断", ["RegExp", "匹配", "AST"], "诊断 ECMAScript 正则并查看结构"],
   ["text-development", "color", "颜色转换", ["HEX", "OKLCH", "P3"], "转换常见 CSS 颜色格式并提示色域变化"],
+  ["text-development", "color-picker", "视觉取色", ["取色器", "HEX", "RGB", "对比度"], "可视化调整颜色并复制常用颜色格式"],
   ["image", "image-watermark", "图片水印", ["Logo", "PNG", "JPEG"], "给本地图片添加文字或 Logo 水印"],
   ["image", "image-batch-watermark", "批量水印", ["ZIP", "批处理"], "顺序处理多张图片并导出受控 ZIP"],
   ["image", "confidential-watermark", "保密水印", ["内部", "预设"], "使用可编辑的保密水印预设"],

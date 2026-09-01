@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "Convert color"
-    }
+    },"colorPicker":{"title":"Visual color picker","eyebrow":"Visual editor","nativeInput":"System color","saturationValue":"Saturation and value","hue":"Hue","alpha":"Opacity","pickFromScreen":"Pick from screen","screenUnavailable":"Screen sampling is not available in this WebView; use the color panel or system color input.","inputLabel":"Color value","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Apply color","applied":"Color applied","invalid":"Invalid color format. Check the value and try again.","copy":"Copy {{format}}","copied":"{{format}} copied","copyFailed":"Copy is not available in this environment.","preview":"Preview","currentColor":"Current color","outputEyebrow":"Output","formats":"Color formats","gamutMapped":"Mapped to sRGB","srgb":"sRGB","accessibilityEyebrow":"Accessibility","contrast":"Contrast","lightBackground":"Light background","darkBackground":"Dark background","contrastPass":"AA passes","contrastFail":"Below AA","reset":"Reset color","privacy":"Values stay in this page memory; copying happens only after your click."}
   },
   "occupancy": {
     "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
@@ -308,7 +308,7 @@
     "text-sha256": { "title": "Text SHA-256", "aliases": "hash | digest", "description": "Calculate a text SHA-256 in local memory." },
     "file-sha256": { "title": "File SHA-256", "aliases": "file hash | checksum", "description": "Stream one ordinary file you explicitly choose." },
     "regex": { "title": "Regex diagnostics", "aliases": "RegExp | match | AST", "description": "Inspect ECMAScript regular expressions and their structure." },
-    "color": { "title": "Color conversion", "aliases": "HEX | OKLCH | P3", "description": "Convert common CSS color formats and flag gamut changes." },
+    "color": { "title": "Color conversion", "aliases": "HEX | OKLCH | P3", "description": "Convert common CSS color formats and flag gamut changes." },"color-picker":{"title":"Visual color picker","aliases":"eyedropper | HEX | contrast","description":"Tune colors visually and copy common color formats."},
     "image-watermark": { "title": "Image watermark", "aliases": "logo | PNG | JPEG", "description": "Add text or logo watermarks to local images." },
     "image-batch-watermark": { "title": "Batch watermark", "aliases": "ZIP | batch", "description": "Process multiple images in order and export a controlled ZIP." },
     "confidential-watermark": { "title": "Confidential watermark", "aliases": "internal | preset", "description": "Use an editable confidential-watermark preset." },

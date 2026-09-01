@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "Преобразовать цвет"
-    }
+    },"colorPicker":{"title":"Визуальный выбор цвета","eyebrow":"Визуальный редактор","nativeInput":"Системный цвет","saturationValue":"Насыщенность и яркость","hue":"Тон","alpha":"Непрозрачность","pickFromScreen":"Взять цвет с экрана","screenUnavailable":"Выбор цвета с экрана недоступен в этой WebView; используйте панель цвета или системный ввод.","inputLabel":"Значение цвета","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Применить цвет","applied":"Цвет применён","invalid":"Недопустимый формат цвета. Проверьте значение и повторите попытку.","copy":"Копировать {{format}}","copied":"{{format}} скопирован","copyFailed":"Копирование недоступно в этой среде.","preview":"Предпросмотр","currentColor":"Текущий цвет","outputEyebrow":"Результат","formats":"Форматы цвета","gamutMapped":"Преобразовано в sRGB","srgb":"sRGB","accessibilityEyebrow":"Доступность","contrast":"Контраст","lightBackground":"Светлый фон","darkBackground":"Тёмный фон","contrastPass":"AA пройден","contrastFail":"Ниже AA","reset":"Сбросить цвет","privacy":"Значения остаются в памяти страницы; копирование выполняется только после нажатия."}
   },
   "occupancy": {
     "desktopOnly": "Для диагностики использования требуется нативная среда настольного приложения.",
@@ -380,7 +380,7 @@
       "title": "Преобразование цвета",
       "aliases": "HEX | OKLCH | P3",
       "description": "Преобразует распространённые форматы CSS-цветов и отмечает изменения цветового охвата."
-    },
+    },"color-picker":{"title":"Визуальный выбор цвета","aliases":"пипетка | HEX | контраст","description":"Настраивайте цвета визуально и копируйте распространённые форматы."},
     "image-watermark": {
       "title": "Водяной знак изображения",
       "aliases": "логотип | PNG | JPEG",

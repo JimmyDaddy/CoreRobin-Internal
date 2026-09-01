@@ -3532,6 +3532,38 @@ export default interface Resources {
         "convert": "转换颜色",
         "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)"
       },
+      "colorPicker": {
+        "accessibilityEyebrow": "可访问性",
+        "alpha": "透明度",
+        "applied": "颜色已应用",
+        "apply": "应用颜色",
+        "contrast": "对比度",
+        "contrastFail": "低于 AA",
+        "contrastPass": "通过 AA",
+        "copied": "已复制 {{format}}",
+        "copy": "复制 {{format}}",
+        "copyFailed": "当前环境不支持复制。",
+        "currentColor": "当前颜色",
+        "darkBackground": "深色背景",
+        "eyebrow": "可视化编辑",
+        "formats": "颜色格式",
+        "gamutMapped": "已映射到 sRGB",
+        "hue": "色相",
+        "inputLabel": "颜色值",
+        "inputPlaceholder": "#5b8def / rgb(...) / hsl(...) / oklch(...)",
+        "invalid": "颜色格式无效，请检查输入后重试。",
+        "lightBackground": "浅色背景",
+        "nativeInput": "系统颜色",
+        "outputEyebrow": "输出",
+        "pickFromScreen": "从屏幕取色",
+        "preview": "预览",
+        "privacy": "颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。",
+        "reset": "重置颜色",
+        "saturationValue": "饱和度与明度",
+        "screenUnavailable": "当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。",
+        "srgb": "sRGB 色域",
+        "title": "视觉取色器"
+      },
       "convert": "转换",
       "json": {
         "compact": "压缩",
@@ -3851,6 +3883,11 @@ export default interface Resources {
         "aliases": "HEX | OKLCH | P3",
         "description": "转换常见 CSS 颜色格式并提示色域变化。",
         "title": "颜色转换"
+      },
+      "color-picker": {
+        "aliases": "吸管 | HEX | 对比度",
+        "description": "可视化调整颜色并复制常用颜色格式。",
+        "title": "视觉取色器"
       },
       "confidential-watermark": {
         "aliases": "内部 | 预设",

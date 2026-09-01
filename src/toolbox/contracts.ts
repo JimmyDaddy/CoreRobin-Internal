@@ -21,6 +21,7 @@ export type ToolId =
   | "file-sha256"
   | "regex"
   | "color"
+  | "color-picker"
   | "keep-awake"
   | "process-watch"
   | "file-occupancy"

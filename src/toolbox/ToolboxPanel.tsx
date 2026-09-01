@@ -14,6 +14,7 @@ import {
   Heart,
   Image as ImageIcon,
   Network,
+  Pipette,
   Play,
   QrCode,
   Search,
@@ -39,6 +40,7 @@ import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlCom
 import { userFacingError, ToolboxInputError } from "./local/toolboxErrors";
 import { analyzeRegex, runRegexInWorker, type RegexAnalysis } from "./regex/regexTools";
 import { formatColor, parseColor } from "./color/colorTools";
+import { ColorPickerTool } from "./color/ColorPickerTool";
 import { getToolboxNetworkSnapshot, getToolboxSnapshot, selectNewerToolboxSnapshot, subscribeToolboxActivity, subscribeToolboxEvents } from "./client";
 import { getToolDefinition, searchTools, toolboxToolTranslationKey } from "./registry";
 import type { ToolDefinition, ToolId, ToolboxCapability, ToolboxCategory, ToolboxSnapshot } from "./contracts";
@@ -413,6 +415,7 @@ function ToolContent({
     case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability, t)} />;
     case "regex": return <RegexTool />;
     case "color": return <ColorTool />;
+    case "color-picker": return <ColorPickerTool />;
     case "network-addresses": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} />;
     case "ifconfig-parser": return <NetworkAddressesTool loadSnapshot={getToolboxNetworkSnapshot} initialView="ifconfig" />;
     case "schedules": return <ScheduleTool />;
@@ -1096,7 +1099,7 @@ function highlightJsonLine(line: string): ReactNode[] {
   return result;
 }
 
-function ToolIcon({ id }: { id: ToolId }) { if (id.includes("image") || id.includes("watermark") || id === "c2pa-inspector" || id === "robustness-lab") return <FileImage size={18} />; if (id.includes("patch") || id === "integrity-manifest" || id === "transfer-savings") return <FileKey2 size={18} />; if (id.includes("sha")) return <Hash size={18} />; if (id === "qr-code") return <QrCode size={18} />; if (id.includes("network") || id.includes("occupancy")) return <Network size={18} />; if (id.includes("keep") || id.includes("schedule") || id === "time") return <Timer size={18} />; return <Wrench size={18} />; }
+function ToolIcon({ id }: { id: ToolId }) { if (id === "color-picker") return <Pipette size={18} />; if (id.includes("image") || id.includes("watermark") || id === "c2pa-inspector" || id === "robustness-lab") return <FileImage size={18} />; if (id.includes("patch") || id === "integrity-manifest" || id === "transfer-savings") return <FileKey2 size={18} />; if (id.includes("sha")) return <Hash size={18} />; if (id === "qr-code") return <QrCode size={18} />; if (id.includes("network") || id.includes("occupancy")) return <Network size={18} />; if (id.includes("keep") || id.includes("schedule") || id === "time") return <Timer size={18} />; return <Wrench size={18} />; }
 
 type ToolboxTFunction = TFunction<"toolbox">;
 const PROCESS_WATCH_STATUS_KEYS: Record<ToolboxProcessWatchStatus, string> = {

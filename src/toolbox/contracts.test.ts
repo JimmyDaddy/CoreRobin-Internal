@@ -11,8 +11,8 @@ import { getToolDefinition, TOOL_DEFINITIONS, searchTools } from "./registry";
 describe("toolbox contract", () => {
   it("freezes the complete tool id inventory without duplicate ids", () => {
     expect(TOOLBOX_CONTRACT_VERSION).toBe("toolbox-v1");
-    expect(TOOL_DEFINITIONS).toHaveLength(35);
-    expect(new Set(TOOL_DEFINITIONS.map((tool) => tool.id)).size).toBe(35);
+    expect(TOOL_DEFINITIONS).toHaveLength(36);
+    expect(new Set(TOOL_DEFINITIONS.map((tool) => tool.id)).size).toBe(36);
   });
 
   it("matches only user-facing metadata, never a tool input", () => {
@@ -24,6 +24,7 @@ describe("toolbox contract", () => {
     const staleNativeCapability = { state: "unavailable" as const, reason: "Native helper missing.", platform: "macOS" };
     expect(getToolDefinition("json", { json: staleNativeCapability }).capability.state).toBe("available");
     expect(getToolDefinition("ifconfig-parser", { "ifconfig-parser": staleNativeCapability }).capability.state).toBe("available");
+    expect(getToolDefinition("color-picker", { "color-picker": staleNativeCapability }).capability.state).toBe("available");
     expect(getToolDefinition("keyboard-cleaning", { "keyboard-cleaning": staleNativeCapability }).capability).toEqual(staleNativeCapability);
   });
 
