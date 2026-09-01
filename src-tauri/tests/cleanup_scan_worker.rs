@@ -133,7 +133,9 @@ fn cleanup_scan_worker_exits_when_its_parent_control_pipe_closes() {
         .unwrap();
     drop(child.stdin.take());
 
-    let deadline = Instant::now() + Duration::from_secs(3);
+    // Debug binaries can take a few seconds to start on a loaded macOS host;
+    // the worker itself still receives EOF immediately after the pipe closes.
+    let deadline = Instant::now() + Duration::from_secs(5);
     loop {
         if child.try_wait().unwrap().is_some() {
             break;
