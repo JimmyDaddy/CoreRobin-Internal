@@ -32,7 +32,7 @@ import QRCode from "qrcode";
 
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
+import { cancelToolboxKeepAwake, cancelToolboxOccupancy, cancelToolboxProcessWatch, createToolboxSchedule, deleteToolboxSchedule, ejectRemovableVolume, getToolboxKeepAwakeState, getToolboxProcessWatches, getToolboxScheduleSnapshot, getToolboxStorageSnapshot, isDesktopRuntime, listToolboxHistory, pauseToolboxSchedule, prepareEjectRemovableVolume, previewToolboxSchedule, scanToolboxFileOccupancy, scanToolboxVolumeOccupancy, startToolboxKeepAwake, startToolboxProcessWatch, updateToolboxSchedule, type ToolboxHistoryRecord, type ToolboxHistoryPage, type ToolboxProcessWatchSnapshot, type ToolboxScheduleSnapshot } from "../api";
 import { FileHashTool } from "./local/FileHashTool";
 import { analyzeJson, assertTextLimit } from "./local/jsonTools";
 import { analyzeUrl, convertIsoTime, convertUnixTime, decodeBase64, decodeUrlComponent, encodeBase64, encodeUrlComponent, generateUuidV4 } from "./local/encodingTools";
@@ -352,7 +352,8 @@ function ToolContent({ toolId, capability }: { toolId: ToolId; capability: Toolb
     case "qr-code": return <QrTool />;
     case "text-sha256": return <TextHashTool />;
     case "file-sha256": return <FileHashTool />;
-    case "file-occupancy": return <OccupancyTool />;
+    case "file-occupancy": return <OccupancyTool initialScope="file" />;
+    case "volume-occupancy": return <OccupancyTool initialScope="volume" />;
     case "keep-awake": return <KeepAwakeTool />;
     case "process-watch": return <ProcessWatchTool />;
     case "keyboard-cleaning": return <KeyboardCleaningTool capability={toKeyboardCleaningCapability(capability, t)} />;
@@ -462,13 +463,69 @@ function TextHashTool() {
 }
 
 
-function OccupancyTool() {
+function OccupancyTool({ initialScope = "file" }: { initialScope?: "file" | "volume" }) {
   const { t } = useTranslation("toolbox");
-  const [targetName, setTargetName] = useState(""); const [path, setPath] = useState(""); const [scope, setScope] = useState<"file" | "volume">("file"); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [running, setRunning] = useState(false);
-  const choose = async (nextScope: "file" | "volume") => { setError(""); if (!isDesktopRuntime()) { setError(t("occupancy.desktopOnly")); return; } const selected = await open({ multiple: false, directory: nextScope === "volume" }); if (typeof selected === "string") { setScope(nextScope); setPath(selected); setTargetName(selected.split(/[\\/]/).filter(Boolean).pop() ?? selected); } };
-  const run = async () => { if (!path) { setError(t(scope === "file" ? "occupancy.fileRequired" : "occupancy.volumeRequired")); return; } setRunning(true); setError(""); setOutput(""); try { const result = scope === "file" ? await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path }) : await scanToolboxVolumeOccupancy({ requestId: crypto.randomUUID(), path }); setOutput(JSON.stringify(result, null, 2)); } catch (reason) { setError(userFacingError(reason)); } finally { setRunning(false); } };
+  const [targetName, setTargetName] = useState("");
+  const [path, setPath] = useState("");
+  const [scope, setScope] = useState<"file" | "volume">(initialScope);
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+  const [ejectConfirmation, setEjectConfirmation] = useState<string | null>(null);
+  const [ejecting, setEjecting] = useState(false);
+
+  useEffect(() => () => { void cancelToolboxOccupancy().catch(() => undefined); }, []);
+
+  const choose = async (nextScope: "file" | "volume") => {
+    setError("");
+    setEjectConfirmation(null);
+    if (!isDesktopRuntime()) { setError(t("occupancy.desktopOnly")); return; }
+    const selected = await open({ multiple: false, directory: nextScope === "volume" });
+    if (typeof selected === "string") {
+      setScope(nextScope);
+      setPath(selected);
+      setTargetName(selected.split(/[\\/]/).filter(Boolean).pop() ?? selected);
+    }
+  };
+
+  const run = async () => {
+    if (!path) { setError(t(scope === "file" ? "occupancy.fileRequired" : "occupancy.volumeRequired")); return; }
+    setRunning(true); setError(""); setOutput(""); setEjectConfirmation(null);
+    try {
+      const result = scope === "file"
+        ? await scanToolboxFileOccupancy({ requestId: crypto.randomUUID(), path })
+        : await scanToolboxVolumeOccupancy({ requestId: crypto.randomUUID(), path });
+      setOutput(JSON.stringify(result, null, 2));
+    } catch (reason) { setError(userFacingError(reason)); }
+    finally { setRunning(false); }
+  };
+
   const cancel = async () => { try { await cancelToolboxOccupancy(); } catch (reason) { setError(userFacingError(reason)); } };
-  return <ToolLayout error={error} onClear={() => { void cancel(); setTargetName(""); setPath(""); setScope("file"); setOutput(""); }}><div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose("file")}><FileCheck2 size={15} />{t("occupancy.selectFile")}</button><button className="button button--secondary" type="button" onClick={() => void choose("volume")}><FileCheck2 size={15} />{t("occupancy.selectVolume")}</button><span>{targetName || t("occupancy.noTarget")}</span></div><div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run()}><Network size={14} />{running ? t("occupancy.running") : scope === "file" ? t("occupancy.fileAction") : t("occupancy.volumeAction")}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancel()}>{t("occupancy.stop")}</button> : null}</div><p className="toolbox-hint">{t("occupancy.hint")}</p><ResultBox value={output} /></ToolLayout>;
+
+  const prepareEject = async () => {
+    if (!path || scope !== "volume") return;
+    setEjecting(true); setError(""); setEjectConfirmation(null);
+    try { setEjectConfirmation(await prepareEjectRemovableVolume(path)); }
+    catch (reason) { setError(userFacingError(reason)); }
+    finally { setEjecting(false); }
+  };
+
+  const eject = async () => {
+    if (!ejectConfirmation) return;
+    setEjecting(true); setError("");
+    try {
+      await ejectRemovableVolume(ejectConfirmation);
+      setEjectConfirmation(null); setTargetName(""); setPath(""); setOutput("");
+    } catch (reason) { setError(userFacingError(reason)); }
+    finally { setEjecting(false); }
+  };
+
+  return <ToolLayout error={error} onClear={() => { void cancel(); setTargetName(""); setPath(""); setScope(initialScope); setOutput(""); setEjectConfirmation(null); }}>
+    <div className="toolbox-file-pick"><button className="button button--secondary" type="button" onClick={() => void choose("file")}><FileCheck2 size={15} />{t("occupancy.selectFile")}</button><button className="button button--secondary" type="button" onClick={() => void choose("volume")}><FileCheck2 size={15} />{t("occupancy.selectVolume")}</button><span>{targetName || t("occupancy.noTarget")}</span></div>
+    <div className="toolbox-inline-actions"><button className="button button--primary" disabled={running || !path} type="button" onClick={() => void run()}><Network size={14} />{running ? t("occupancy.running") : scope === "file" ? t("occupancy.fileAction") : t("occupancy.volumeAction")}</button>{running ? <button className="button button--secondary" type="button" onClick={() => void cancel()}>{t("occupancy.stop")}</button> : null}</div>
+    {scope === "volume" && path && !running ? <div className="toolbox-inline-actions toolbox-occupancy-eject"><button className="button button--secondary" disabled={ejecting} type="button" onClick={() => void prepareEject()}><ShieldCheck size={14} />{ejecting ? t("occupancy.ejecting") : t("occupancy.prepareEject")}</button>{ejectConfirmation ? <button className="button button--primary" disabled={ejecting} type="button" onClick={() => void eject()}><CheckCircle2 size={14} />{t("occupancy.confirmEject")}</button> : null}</div> : null}
+    <p className="toolbox-hint">{t("occupancy.hint")}</p><ResultBox value={output} />
+  </ToolLayout>;
 }
 
 function KeepAwakeTool() {

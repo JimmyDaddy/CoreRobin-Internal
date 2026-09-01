@@ -74,6 +74,9 @@
     "fileAction": "Find file users",
     "volumeAction": "Find volume users",
     "stop": "Stop scan",
+    "prepareEject": "Vérifier avant éjection",
+    "confirmEject": "Éjecter le volume",
+    "ejecting": "Vérification…",
     "hint": "File diagnostics match only the selected file. Volume diagnostics match fixed process-reference coverage by mount identity. macOS uses fixed-argument lsof and Linux matches visible /proc; results include coverage, truncation, and identity revalidation. Processes are not closed and volumes are not ejected automatically."
   },
   "fileHash": {

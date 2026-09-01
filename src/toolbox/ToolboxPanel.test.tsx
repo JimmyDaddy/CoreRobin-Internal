@@ -36,6 +36,8 @@ const i18n = vi.hoisted(() => ({
       "tools.binary-patch-create.title": "生成补丁",
       "tools.text-sha256.title": "文本 SHA-256",
       "tools.keep-awake.title": "限时保活",
+      "tools.volume-occupancy.title": "外盘使用者",
+      "tools.volume-occupancy.description": "诊断可移动卷占用并在确认后推出",
       "tools.url.title": "URL",
       "tools.time.title": "时间转换",
       "local.textHash.placeholder": "输入文本",
@@ -50,6 +52,8 @@ const i18n = vi.hoisted(() => ({
       "keepAwake.durationLabel": "时长",
       "keepAwake.start": "开始保活",
       "keepAwake.stop": "停止并释放",
+      "occupancy.selectFile": "选择普通文件",
+      "occupancy.selectVolume": "选择外盘挂载点",
       "binaryPatch.inputs.expected": "期望摘要",
       "errors.invalidPercentEncoding": "百分号编码无效",
       "errors.invalidIso": "ISO 日期无效",
@@ -73,6 +77,11 @@ const modules = vi.hoisted(() => {
     listToolboxHistory: vi.fn(),
     startToolboxKeepAwake: vi.fn(),
     cancelToolboxKeepAwake: vi.fn(),
+    cancelToolboxOccupancy: vi.fn(),
+    scanToolboxFileOccupancy: vi.fn(),
+    scanToolboxVolumeOccupancy: vi.fn(),
+    prepareEjectRemovableVolume: vi.fn(),
+    ejectRemovableVolume: vi.fn(),
     imageReady,
     releaseImage,
     snapshotListener: null as ((event: { type: "snapshot"; snapshot: TestSnapshot }) => void) | null,
@@ -89,6 +98,11 @@ vi.mock("../api", () => ({
   listToolboxHistory: modules.listToolboxHistory,
   startToolboxKeepAwake: modules.startToolboxKeepAwake,
   cancelToolboxKeepAwake: modules.cancelToolboxKeepAwake,
+  cancelToolboxOccupancy: modules.cancelToolboxOccupancy,
+  scanToolboxFileOccupancy: modules.scanToolboxFileOccupancy,
+  scanToolboxVolumeOccupancy: modules.scanToolboxVolumeOccupancy,
+  prepareEjectRemovableVolume: modules.prepareEjectRemovableVolume,
+  ejectRemovableVolume: modules.ejectRemovableVolume,
 }));
 vi.mock("./client", () => ({
   getToolboxNetworkSnapshot: vi.fn(),
@@ -123,6 +137,11 @@ beforeEach(() => {
   modules.listToolboxHistory.mockResolvedValue(historyPage());
   modules.startToolboxKeepAwake.mockResolvedValue({ status: "active" });
   modules.cancelToolboxKeepAwake.mockResolvedValue({ status: "cancelled" });
+  modules.cancelToolboxOccupancy.mockResolvedValue(false);
+  modules.scanToolboxFileOccupancy.mockResolvedValue({ status: "scoped_complete", processes: [] });
+  modules.scanToolboxVolumeOccupancy.mockResolvedValue({ status: "scoped_complete", processes: [] });
+  modules.prepareEjectRemovableVolume.mockResolvedValue("confirmation-1");
+  modules.ejectRemovableVolume.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -266,6 +285,14 @@ it("routes ISO-like dates through the strict time converter", async () => {
   fireEvent.click(screen.getByRole("button", { name: "转换" }));
 
   expect((await screen.findByRole("alert")).textContent).toContain("ISO 日期无效");
+});
+
+it("routes the external-volume tool to its dedicated occupancy surface", () => {
+  render(<ToolboxPanel />);
+  fireEvent.click(screen.getByText("外盘使用者").closest("button")!);
+
+  expect(screen.getByRole("heading", { name: "外盘使用者" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "选择外盘挂载点" })).toBeTruthy();
 });
 
 it("loads further history pages with the opaque cursor and keeps the first page", async () => {

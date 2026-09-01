@@ -3694,11 +3694,14 @@ export default interface Resources {
       "title": "本机网络地址"
     },
     "occupancy": {
+      "confirmEject": "推出外盘",
       "desktopOnly": "占用诊断需要桌面原生运行时。",
+      "ejecting": "正在确认…",
       "fileAction": "查找文件使用者",
       "fileRequired": "请先选择一个普通文件。",
       "hint": "文件诊断仅匹配当前文件；外盘诊断只按挂载点身份匹配固定范围的进程引用。macOS 使用固定参数 lsof，Linux 匹配可见 /proc；结果带覆盖范围、截断和身份复验状态，不会关闭进程或自动推出外盘。",
       "noTarget": "未选择目标",
+      "prepareEject": "检查后准备推出",
       "running": "正在诊断…",
       "selectFile": "选择普通文件",
       "selectVolume": "选择外盘挂载点",
