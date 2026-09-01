@@ -23,6 +23,7 @@ describe("ifconfig parser", () => {
       classification: "documentation",
     });
     expect(parseSnapshotAddress("100.64.1.2/10").classification).toBe("shared");
+    expect(parseSnapshotAddress("::1/128")).toMatchObject({ family: "ipv6", classification: "loopback", network: "::1" });
     expect(() => parseIfconfig("en0: flags=1\n inet 999.1.1.1 netmask 255.255.255.0\n")).toThrow(ToolboxInputError);
     expect(() => parseIfconfig("en0: flags=1\n inet 10.0.0.1 netmask 255.0.255.0\n")).toThrow("连续掩码");
     expect(() => parseSnapshotAddress("2001:::1/64")).toThrow("IP 地址格式无效");

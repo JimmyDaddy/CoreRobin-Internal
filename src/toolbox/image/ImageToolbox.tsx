@@ -309,12 +309,12 @@ export function ImageToolbox({ toolId, deliverOutput: externalDeliverOutput }: {
           const fontTokens = await prepareToolboxInputs(nativeInputJob, "font");
           const fontToken = fontTokens[0];
           if (!fontToken) throw new Error(t("image.fontRequired"));
+          nativeInputTokens = [...nativeInputTokens, ...fontTokens];
           const fontBytes = await readBoundToolboxInput(nativeInputJob, fontToken, controller.signal, IMAGE_FONT_MAX_BYTES);
           const fontBuffer = fontBytes.buffer.slice(fontBytes.byteOffset, fontBytes.byteOffset + fontBytes.byteLength) as ArrayBuffer;
           const fontMimeType = inspectLocalFontBytes(fontToken.displayName, fontBytes);
           const source = new File([fontBuffer], fontToken.displayName, { type: fontMimeType });
           resources = { ...resources, font: { family: watermarkFont.trim() || fontFamilyFromFile(fontToken.displayName), source } };
-          nativeInputTokens = [...nativeInputTokens, ...fontTokens];
         }
       } else {
         if (files.length === 0) throw new Error(t("image.selectImageFirst"));

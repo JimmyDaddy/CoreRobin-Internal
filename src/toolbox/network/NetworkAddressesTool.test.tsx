@@ -82,6 +82,10 @@ it("keeps tabs keyboard-accessible with roving tab focus", async () => {
   expect(ifconfigTab.getAttribute("aria-selected")).toBe("true");
   expect(document.activeElement).toBe(ifconfigTab);
   expect(screen.getByRole("textbox", { name: "ifconfig 文本" })).toBeTruthy();
+
+  fireEvent.keyDown(ifconfigTab, { key: "ArrowRight" });
+  expect(liveTab.getAttribute("aria-selected")).toBe("true");
+  expect(document.activeElement).toBe(liveTab);
 });
 
 it("parses pasted BSD/Linux text and exposes unknown lines without executing input", async () => {
@@ -97,6 +101,17 @@ it("parses pasted BSD/Linux text and exposes unknown lines without executing inp
   expect(screen.getByText("未知行")).toBeTruthy();
   expect(screen.getAllByText("1").length).toBeGreaterThan(0);
   expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+});
+
+it("keeps actionable parser details visible after invalid pasted input", async () => {
+  const loadSnapshot = vi.fn(async () => ({ sampledAtMs: Date.now(), interfaces: [] }));
+  render(<NetworkAddressesTool loadSnapshot={loadSnapshot} initialView="ifconfig" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "ifconfig 文本" }), {
+    target: { value: "en0: flags=1\n inet 10.0.0.2 netmask 255.0.255.0\n" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "严格解析" }));
+
+  expect(screen.getByRole("alert").textContent).toContain("连续掩码");
 });
 
 it("does not read native addresses when opened as a paste-only parser", async () => {

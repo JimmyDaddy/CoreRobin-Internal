@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   finishJob: vi.fn(),
   prepareInputs: vi.fn(),
   registerOutput: vi.fn(),
+  readBoundInput: vi.fn(),
   releaseInputs: vi.fn(),
   revalidateInputs: vi.fn(),
   startSession: vi.fn(),
@@ -46,7 +47,7 @@ vi.mock("../client", () => ({
 }));
 vi.mock("../runtime/files", () => ({
   fileJobKey: (job: { jobId: string; generation: number; resetEpoch: number }) => ({ jobId: job.jobId, generation: job.generation, resetEpoch: job.resetEpoch }),
-  readBoundToolboxInput: vi.fn(),
+  readBoundToolboxInput: mocks.readBoundInput,
 }));
 vi.mock("./ImageRecipeEditor", () => ({ ImageRecipeEditor: () => null }));
 vi.mock("./imageExecution", () => ({
@@ -144,6 +145,7 @@ beforeEach(async () => {
   mocks.finishJob.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "failed", outputExpiresAtMs: null, outputToken: null, terminalReason: "failed", error: null });
   mocks.cancelJob.mockResolvedValue({ jobId: "job", sessionId: "session", generation: 1, resetEpoch: 3, status: "cancelled", outputExpiresAtMs: null, outputToken: null, terminalReason: "cancelled", error: null });
   mocks.releaseInputs.mockResolvedValue(undefined);
+  mocks.readBoundInput.mockResolvedValue(new Uint8Array([0, 1, 0, 0]));
   mocks.revalidateInputs.mockResolvedValue(undefined);
 });
 
@@ -187,6 +189,27 @@ describe("image toolbox presentation states", () => {
     await waitFor(() => expect(mocks.finishJob).toHaveBeenCalledOnce());
     expect(mocks.releaseInputs).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).not.toContain("输入资源释放未确认");
+  });
+
+  it("retains a prepared native font token for explicit release when lifecycle confirmation also fails", async () => {
+    mocks.desktopRuntime = true;
+    mocks.prepareInputs.mockImplementation(async (_job, role) => [{
+      token: role,
+      displayName: role === "font" ? "local.ttf" : "native.png",
+      role,
+      byteLength: 4,
+    }]);
+    mocks.readBoundInput.mockRejectedValueOnce(new Error("font read failed"));
+    mocks.finishJob.mockRejectedValueOnce(new Error("lifecycle unavailable"));
+    render(<ImageToolbox toolId="image-watermark" />);
+
+    fireEvent.click(screen.getByLabelText("本次操作选择一个本地字体"));
+    fireEvent.click(screen.getByRole("button", { name: "添加文字水印" }));
+
+    await waitFor(() => expect(mocks.releaseInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: "job" }),
+      ["input", "font"],
+    ));
   });
 });
 

@@ -70,6 +70,7 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<ToolboxCategory | null>(null);
   const [selected, setSelected] = useState<ToolId | null>(null);
+  const returnFocusTarget = useRef<string | null>(null);
   const [favorites, setFavorites] = useState<Set<ToolId>>(() => readFavorites());
   const [nativeCapabilities, setNativeCapabilities] = useState<Partial<Record<ToolId, ToolboxCapability>>>();
   const translateTool = useCallback(
@@ -151,9 +152,22 @@ export function ToolboxPanel({ onClose }: { onClose?: () => void }) {
     });
   };
 
-  const openTool = (tool: ToolDefinition) => {
-    if (tool.capability.state !== "unavailable") setSelected(tool.id);
+  const openTool = (tool: ToolDefinition, focusTarget: string) => {
+    if (tool.capability.state !== "unavailable") {
+      returnFocusTarget.current = focusTarget;
+      setSelected(tool.id);
+    }
   };
+
+  useEffect(() => {
+    if (selected !== null || returnFocusTarget.current === null) return;
+    const focusTarget = returnFocusTarget.current;
+    returnFocusTarget.current = null;
+    const timer = window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>(`[data-toolbox-open="${focusTarget}"]`)?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [selected]);
 
   return (
     <section className="toolbox-panel" aria-labelledby={selectedTool ? "toolbox-tool-title" : "toolbox-title"}>
@@ -291,7 +305,7 @@ function HistoryRow({ record }: { record: ToolboxHistoryRecord }) {
   return <div className="toolbox-history-row"><strong>{t(`history.tools.${record.tool}`)}</strong><span>{t(`history.statuses.${record.terminalStatus}`)}</span><small>{new Date(record.completedAtMs).toLocaleString()} · {t("history.notification", { status: t(`history.notifications.${record.notificationStatus}`) })}</small></div>;
 }
 
-function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }: { sectionId: string; title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition) => void; onFavorite: (id: ToolId) => void }) {
+function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }: { sectionId: string; title: string; tools: ToolDefinition[]; favorites: Set<ToolId>; onOpen: (tool: ToolDefinition, focusTarget: string) => void; onFavorite: (id: ToolId) => void }) {
   const { t } = useTranslation("toolbox");
   if (tools.length === 0) return null;
   const headingId = `toolbox-section-${sectionId}`;
@@ -300,7 +314,7 @@ function ToolSection({ sectionId, title, tools, favorites, onOpen, onFavorite }:
       <div className="toolbox-section__title"><h2 id={headingId}>{title}</h2><span>{tools.length}</span></div>
       <div className="toolbox-grid">
         {tools.map((tool, index) => <article className={`toolbox-card toolbox-card--${tool.capability.state} toolbox-card--${tool.category}`} key={tool.id} style={{ "--toolbox-card-index": index } as CSSProperties}>
-          <button className="toolbox-card__open" type="button" disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool)}>
+          <button className="toolbox-card__open" type="button" data-toolbox-open={`${sectionId}-${tool.id}`} disabled={tool.capability.state === "unavailable"} onClick={() => onOpen(tool, `${sectionId}-${tool.id}`)}>
             <span className="toolbox-card__icon"><ToolIcon id={tool.id} /></span>
             <span className="toolbox-card__content"><span className="toolbox-card__title"><strong>{tool.title}</strong>{tool.capability.state === "available" ? <CheckCircle2 size={14} aria-label={t("overview.availableCount", { count: 1 })} /> : null}</span><small>{tool.description}</small>{tool.capability.state !== "available" ? <small className="toolbox-card__capability"><span>{capabilityLabel(t, tool.capability)}：</span>{capabilityReason(t, tool.capability)}</small> : null}</span>
           </button>
@@ -373,7 +387,7 @@ function toKeyboardCleaningCapability(capability: ToolboxCapability, t: ToolboxT
     return {
       state: "unavailable",
       platform: "unknown",
-      reason: "键盘清洁只在具备受限原生 helper 的桌面运行时提供。",
+      reason: t("overview.restrictedNativeHelperUnavailable.description"),
     };
   }
   const platform = capability.platform?.toLowerCase();
@@ -390,7 +404,7 @@ function JsonTool() {
   const { t } = useTranslation("toolbox");
   const [input, setInput] = useState(""); const [indent, setIndent] = useState<2 | 4>(2); const [output, setOutput] = useState(""); const [error, setError] = useState(""); const [duplicates, setDuplicates] = useState<string[]>([]);
   const run = () => { try { const result = analyzeJson(input, indent); setOutput(result.formatted); setDuplicates(result.duplicateKeys); setError(""); } catch (reason) { setOutput(""); setError(localizedError(reason, t)); } };
-  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); setError(""); }}><textarea className="toolbox-input toolbox-input--code" value={input} onChange={(event) => setInput(event.target.value)} placeholder={'{"name":"CoreRobin","count":1}'} /><div className="toolbox-inline-actions"><label>{t("local.json.indent")} <select value={indent} onChange={(event) => setIndent(Number(event.target.value) as 2 | 4)}><option value="2">{t("local.json.spaces", { count: 2 })}</option><option value="4">{t("local.json.spaces", { count: 4 })}</option></select></label><button className="button button--primary" type="button" onClick={run}><Play size={14} />{t("local.json.format")}</button><button className="button button--secondary" type="button" onClick={() => { try { setOutput(analyzeJson(input, indent).compact); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}>{t("local.json.compact")}</button></div>{duplicates.length > 0 ? <p className="toolbox-warning"><CircleAlert size={15} />{t("local.json.duplicate", { keys: duplicates.join(", ") })}</p> : null}<ResultBox value={output} /></ToolLayout>;
+  return <ToolLayout error={error} onClear={() => { setInput(""); setOutput(""); setError(""); }}><textarea className="toolbox-input toolbox-input--code" aria-label={t("tools.json.title")} value={input} onChange={(event) => setInput(event.target.value)} placeholder={'{"name":"CoreRobin","count":1}'} /><div className="toolbox-inline-actions"><label>{t("local.json.indent")} <select value={indent} onChange={(event) => setIndent(Number(event.target.value) as 2 | 4)}><option value="2">{t("local.json.spaces", { count: 2 })}</option><option value="4">{t("local.json.spaces", { count: 4 })}</option></select></label><button className="button button--primary" type="button" onClick={run}><Play size={14} />{t("local.json.format")}</button><button className="button button--secondary" type="button" onClick={() => { try { setOutput(analyzeJson(input, indent).compact); setError(""); } catch (reason) { setError(localizedError(reason, t)); } }}>{t("local.json.compact")}</button></div>{duplicates.length > 0 ? <p className="toolbox-warning"><CircleAlert size={15} />{t("local.json.duplicate", { keys: duplicates.join(", ") })}</p> : null}<ResultBox value={output} /></ToolLayout>;
 }
 
 function UrlTool() {

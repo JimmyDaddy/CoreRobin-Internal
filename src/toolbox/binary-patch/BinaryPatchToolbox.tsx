@@ -541,19 +541,21 @@ function createBinaryDiffPreview(baseline: Uint8Array, target: Uint8Array): Bina
   const lines: BinaryDiffLine[] = [];
   let omittedRows = 0;
   for (let offset = 0; offset < Math.max(baseline.byteLength, target.byteLength); offset += rowBytes) {
-    const baselineRow = baseline.slice(offset, offset + rowBytes);
-    const targetRow = target.slice(offset, offset + rowBytes);
-    if (sameBytes(baselineRow, targetRow)) continue;
-    if (lines.length < maxRows) lines.push({ offset, baseline: baselineRow, target: targetRow });
+    if (!rowDiffers(baseline, target, offset, rowBytes)) continue;
+    if (lines.length < maxRows) lines.push({
+      offset,
+      baseline: baseline.slice(offset, offset + rowBytes),
+      target: target.slice(offset, offset + rowBytes),
+    });
     else omittedRows += 1;
   }
   return lines.length > 0 ? { lines, omittedRows } : null;
 }
 
-function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
-  if (left.byteLength !== right.byteLength) return false;
-  for (let index = 0; index < left.byteLength; index += 1) if (left[index] !== right[index]) return false;
-  return true;
+function rowDiffers(left: Uint8Array, right: Uint8Array, offset: number, rowBytes: number): boolean {
+  const end = Math.min(Math.max(left.byteLength, right.byteLength), offset + rowBytes);
+  for (let index = offset; index < end; index += 1) if (left[index] !== right[index]) return true;
+  return false;
 }
 
 function hexBytes(bytes: Uint8Array): string {

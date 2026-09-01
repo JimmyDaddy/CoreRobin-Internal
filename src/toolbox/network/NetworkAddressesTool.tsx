@@ -95,10 +95,10 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
       const next = await loadSnapshot();
       if (generation !== requestGeneration.current) return;
       if (!Number.isSafeInteger(next.sampledAtMs) || next.sampledAtMs <= 0) {
-        throw new ToolboxInputError("invalid_sampled_time", "本机地址快照的采样时间无效。 ");
+        throw new ToolboxInputError("invalid_sampled_time", "The network snapshot has an invalid sampling time.");
       }
       if (next.interfaces.length > 128) {
-        throw new ToolboxInputError("too_many_interfaces", "本机网卡数量超过 128 个上限。 ");
+        throw new ToolboxInputError("too_many_interfaces", "The network snapshot exceeds the interface limit.");
       }
       setSnapshot(next);
       setInterfaces(next.interfaces.map(parseNetworkInterfaceSnapshot));
@@ -108,11 +108,11 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
       setInterfaces([]);
       setError(!isDesktopRuntime() || reason instanceof TypeError && /invoke/.test(reason.message)
         ? t("capability.unavailableReason")
-        : userFacingError(reason));
+        : networkErrorMessage(reason, t, "live"));
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [loadSnapshot]);
+  }, [loadSnapshot, t]);
 
   useEffect(() => {
     if (view === "live") void refresh();
@@ -140,7 +140,7 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
       setIfconfigInterfaces(parseIfconfig(ifconfigInput));
     } catch (reason) {
       setIfconfigInterfaces(null);
-      setError(userFacingError(reason));
+      setError(networkErrorMessage(reason, t, "ifconfig"));
     }
   };
 
@@ -148,7 +148,13 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const nextView = event.key === "ArrowRight" || event.key === "End" ? "ifconfig" : "live";
+    const views: NetworkAddressesView[] = ["live", "ifconfig"];
+    const currentIndex = views.indexOf(view);
+    const nextView = event.key === "Home"
+      ? views[0]
+      : event.key === "End"
+        ? views[views.length - 1]
+        : views[(currentIndex + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length];
     selectView(nextView);
     (nextView === "live" ? liveTabRef : ifconfigTabRef).current?.focus();
   };
@@ -297,4 +303,11 @@ function interfaceSummary(item: ParsedInterface, t: ToolboxTFunction): string {
   ];
   for (const address of item.addresses) lines.push(`${t("networkAddresses.address.label")}: ${addressDisplay(address)} · ${t(CLASSIFICATION_KEYS[address.classification])}${address.network ? ` · ${t("networkAddresses.address.network")} ${address.network}` : ""}`);
   return lines.join("\n");
+}
+
+function networkErrorMessage(reason: unknown, t: ToolboxTFunction, source: "live" | "ifconfig"): string {
+  if (source === "live" && reason instanceof ToolboxInputError) {
+    return t("errors.generic", { source });
+  }
+  return userFacingError(reason);
 }

@@ -517,6 +517,19 @@ impl ToolboxService {
             request.generation,
             request.reset_epoch,
         )?;
+        if let Some(previous) = self.request_results.get(&request.request_id) {
+            if previous.job_id != request.job_id
+                || previous.generation != request.generation
+                || previous.reset_epoch != request.reset_epoch
+                || previous.output_token.is_none()
+            {
+                return Err(CommandError::new(
+                    "request_conflict",
+                    "The request ID was already used for a different operation.",
+                ));
+            }
+            return Ok(previous.clone());
+        }
         if request.bytes.is_empty() {
             return Err(CommandError::new(
                 "empty_output",
@@ -1239,6 +1252,48 @@ mod tests {
             .unwrap();
         assert_eq!(ready.status, JobStatus::OutputReady);
         assert!(service.snapshot().resources.is_empty());
+    }
+
+    #[test]
+    fn output_registration_retry_returns_the_original_formal_output() {
+        let mut service = ToolboxService::new();
+        let job = service
+            .start(ToolboxJobRequest {
+                common: ToolboxRequest {
+                    request_id: "output-retry-start".into(),
+                    expected_revision: None,
+                    generation: Some(1),
+                    reset_epoch: Some(0),
+                },
+                tool_id: "image-watermark".into(),
+                session_id: None,
+            })
+            .unwrap();
+        let request_id = "output-retry-register";
+        let ready = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: request_id.into(),
+                job_id: job.job_id.clone(),
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1, 2, 3],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+
+        let retried = service
+            .register_output(RegisterToolboxOutputRequest {
+                request_id: request_id.into(),
+                job_id: job.job_id,
+                generation: 1,
+                reset_epoch: 0,
+                bytes: vec![1, 2, 3],
+                validation: OutputValidation::Verified,
+            })
+            .unwrap();
+
+        assert_eq!(retried, ready);
+        assert_eq!(service.outputs.len(), 1);
     }
 
     #[test]

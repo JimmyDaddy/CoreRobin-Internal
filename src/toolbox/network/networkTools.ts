@@ -393,7 +393,7 @@ function classifyIpv4(value: number): Pick<ParsedAddress, "classification" | "ex
 
 function classifyIpv6(words: number[]): Pick<ParsedAddress, "classification" | "explanation"> {
   if (words.every((word) => word === 0)) return { classification: "unspecified", explanation: "未指定地址，不表示可访问的接口地址。" };
-  if (words[0] === 0 && words.slice(1).every((word) => word === 0) && words[7] === 1) return { classification: "loopback", explanation: "回环地址，只在本机内部使用。" };
+  if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return { classification: "loopback", explanation: "回环地址，只在本机内部使用。" };
   if (ipv6InRange(words, "fe80::", 10)) return { classification: "link-local", explanation: "IPv6 链路本地地址；zone/scope 只说明本地接口范围。" };
   if (ipv6InRange(words, "fc00::", 7)) return { classification: "unique-local", explanation: "IPv6 唯一本地地址（ULA），不等同于已确认的公网地址。" };
   if (ipv6InRange(words, "ff00::", 8)) return { classification: "multicast", explanation: "IPv6 多播地址，不是普通单播主机地址。" };
