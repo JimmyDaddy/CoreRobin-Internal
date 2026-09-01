@@ -116,6 +116,7 @@
     "allow-release-toolbox-inputs",
     "allow-revalidate-toolbox-inputs",
     "allow-get-toolbox-network-snapshot",
+    "allow-pick-toolbox-screen-color",
     "allow-start-toolbox-session",
     "allow-cancel-toolbox-job",
     "allow-finish-toolbox-job",

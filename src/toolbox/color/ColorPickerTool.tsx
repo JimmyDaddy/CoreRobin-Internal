@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { isDesktopRuntime, pickToolboxScreenColor } from "../../api";
 import { colorFromHsv, colorToHsv, contrastRatio, formatColor, parseColor, type ColorValue } from "./colorTools";
 import "./colorPicker.css";
 
@@ -27,6 +28,8 @@ export function ColorPickerTool() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eyeDropper] = useState(() => detectEyeDropper());
+  const [desktopRuntime] = useState(() => isDesktopRuntime());
+  const [pickingFromScreen, setPickingFromScreen] = useState(false);
   const formats = useMemo(() => formatColor(color), [color]);
   const hsv = colorToHsv(color);
   const hueStyle = { "--color-picker-hue": `hsl(${hsv.h} 100% 50%)` } as CSSProperties;
@@ -89,13 +92,27 @@ export function ColorPickerTool() {
   };
 
   const pickFromScreen = async () => {
-    if (!eyeDropper) return;
+    if (!eyeDropper && !desktopRuntime) return;
+    setPickingFromScreen(true);
+    setError("");
     try {
-      const result = await new eyeDropper().open();
-      applyColor(parseColor(result.sRGBHex));
-      setNotice(t("local.colorPicker.applied"));
-    } catch {
+      const sampledHex = eyeDropper
+        ? (await new eyeDropper().open()).sRGBHex
+        : desktopRuntime
+          ? await pickToolboxScreenColor()
+          : null;
+      if (sampledHex) {
+        applyColor(parseColor(sampledHex));
+        setNotice(t("local.colorPicker.applied"));
+      }
+    } catch (reason) {
       // Escape and browser cancellation are intentionally quiet: no color was changed.
+      if (!isScreenPickCancellation(reason)) {
+        setError(t("local.colorPicker.screenFailed"));
+        setNotice("");
+      }
+    } finally {
+      setPickingFromScreen(false);
     }
   };
 
@@ -149,7 +166,7 @@ export function ColorPickerTool() {
             </div>
 
             <div className="color-picker__actions">
-              {eyeDropper ? <button className="button button--secondary" type="button" onClick={() => void pickFromScreen()}><Pipette size={15} />{t("local.colorPicker.pickFromScreen")}</button> : <span className="color-picker__fallback"><Pipette size={14} />{t("local.colorPicker.screenUnavailable")}</span>}
+              {eyeDropper || desktopRuntime ? <button className="button button--secondary" disabled={pickingFromScreen} type="button" aria-busy={pickingFromScreen} onClick={() => void pickFromScreen()}><Pipette size={15} />{t("local.colorPicker.pickFromScreen")}</button> : <span className="color-picker__fallback"><Pipette size={14} />{t("local.colorPicker.screenUnavailable")}</span>}
             </div>
           </div>
 
@@ -224,6 +241,33 @@ function detectEyeDropper(): EyeDropperLike | null {
   if (typeof window === "undefined") return null;
   const candidate = (window as Window & { EyeDropper?: EyeDropperLike }).EyeDropper;
   return typeof candidate === "function" ? candidate : null;
+}
+
+function commandErrorCode(error: unknown): string | null {
+  if (typeof error === "object" && error !== null && !Array.isArray(error)) {
+    const record = error as Record<string, unknown>;
+    if (typeof record.code === "string") return record.code;
+  }
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : null;
+  if (!message) return null;
+  try {
+    const parsed: unknown = JSON.parse(message);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      return typeof record.code === "string" ? record.code : null;
+    }
+  } catch {
+    // Browser cancellation and ordinary errors do not carry command codes.
+  }
+  return null;
+}
+
+function isScreenPickCancellation(error: unknown): boolean {
+  if (commandErrorCode(error) === "screen_color_cancelled") return true;
+  return typeof error === "object"
+    && error !== null
+    && "name" in error
+    && (error as { name?: unknown }).name === "AbortError";
 }
 
 function clamp(value: number, min: number, max: number): number {

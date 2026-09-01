@@ -61,7 +61,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "轉換色彩"
-    },"colorPicker":{"title":"視覺取色器","eyebrow":"視覺化編輯","nativeInput":"系統色彩","saturationValue":"飽和度與明度","hue":"色相","alpha":"透明度","pickFromScreen":"從螢幕取色","screenUnavailable":"目前 WebView 不支援螢幕取色，可使用色彩面板或系統色彩輸入。","inputLabel":"色彩值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"套用色彩","applied":"色彩已套用","invalid":"色彩格式無效，請檢查輸入後重試。","copy":"複製 {{format}}","copied":"已複製 {{format}}","copyFailed":"目前環境不支援複製。","preview":"預覽","currentColor":"目前色彩","outputEyebrow":"輸出","formats":"色彩格式","gamutMapped":"已映射至 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"無障礙","contrast":"對比度","lightBackground":"淺色背景","darkBackground":"深色背景","contrastPass":"通過 AA","contrastFail":"低於 AA","reset":"重設色彩","privacy":"色彩值只保留在目前頁面記憶體中，只有點擊複製後才會寫入剪貼簿。"}
+    },"colorPicker":{"title":"視覺取色器","eyebrow":"視覺化編輯","nativeInput":"系統色彩","saturationValue":"飽和度與明度","hue":"色相","alpha":"透明度","pickFromScreen":"從螢幕取色","screenUnavailable":"目前 WebView 不支援螢幕取色，可使用色彩面板或系統色彩輸入。","screenFailed":"螢幕取色失敗，請重試。","inputLabel":"色彩值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"套用色彩","applied":"色彩已套用","invalid":"色彩格式無效，請檢查輸入後重試。","copy":"複製 {{format}}","copied":"已複製 {{format}}","copyFailed":"目前環境不支援複製。","preview":"預覽","currentColor":"目前色彩","outputEyebrow":"輸出","formats":"色彩格式","gamutMapped":"已映射至 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"無障礙","contrast":"對比度","lightBackground":"淺色背景","darkBackground":"深色背景","contrastPass":"通過 AA","contrastFail":"低於 AA","reset":"重設色彩","privacy":"色彩值只保留在目前頁面記憶體中，只有點擊複製後才會寫入剪貼簿。"}
   },
   "occupancy": {
     "desktopOnly": "檔案使用狀況診斷需要桌面原生執行環境。",

@@ -16,6 +16,26 @@ pub async fn get_toolbox_network_snapshot(
         .map_err(|_| unavailable())
 }
 
+#[tauri::command]
+pub async fn pick_toolbox_screen_color(
+    window: WebviewWindow,
+    app: AppHandle,
+) -> Result<Option<String>, CommandError> {
+    require_main_window(&window)?;
+    #[cfg(target_os = "macos")]
+    {
+        crate::toolbox_screen_color::pick_screen_color(window, app).await
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err(CommandError::new(
+            "screen_color_unsupported",
+            "Screen color sampling is currently available on macOS only.",
+        ))
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PrepareInputsRequest {

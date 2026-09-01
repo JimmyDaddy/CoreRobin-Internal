@@ -47,6 +47,8 @@ mod toolbox_power;
 mod toolbox_process_watch;
 #[path = "toolbox_scheduler.rs"]
 mod toolbox_scheduler;
+#[cfg(target_os = "macos")]
+mod toolbox_screen_color;
 mod toolbox_service;
 mod toolbox_storage;
 mod user_actions;
@@ -4023,6 +4025,7 @@ pub fn run() {
             toolbox_commands::release_toolbox_inputs,
             toolbox_commands::revalidate_toolbox_inputs,
             toolbox_commands::get_toolbox_network_snapshot,
+            toolbox_commands::pick_toolbox_screen_color,
             start_toolbox_session,
             cancel_toolbox_job,
             finish_toolbox_job,
@@ -4352,6 +4355,7 @@ mod security_boundary_tests {
         "release_toolbox_inputs",
         "revalidate_toolbox_inputs",
         "get_toolbox_network_snapshot",
+        "pick_toolbox_screen_color",
         "start_toolbox_session",
         "cancel_toolbox_job",
         "finish_toolbox_job",

@@ -101,6 +101,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "release_toolbox_inputs",
     "revalidate_toolbox_inputs",
     "get_toolbox_network_snapshot",
+    "pick_toolbox_screen_color",
     "start_toolbox_session",
     "cancel_toolbox_job",
     "finish_toolbox_job",

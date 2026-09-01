@@ -52,6 +52,8 @@ const i18n = vi.hoisted(() => ({
       "local.convert": "转换",
       "local.run": "运行",
       "local.colorPicker.title": "视觉取色器",
+      "local.colorPicker.pickFromScreen": "从屏幕取色",
+      "local.colorPicker.screenFailed": "屏幕取色失败，请重试。",
       "local.colorPicker.inputLabel": "颜色值",
       "local.colorPicker.apply": "应用颜色",
       "local.colorPicker.formats": "颜色格式",
@@ -93,6 +95,7 @@ const modules = vi.hoisted(() => {
     scanToolboxVolumeOccupancy: vi.fn(),
     prepareEjectRemovableVolume: vi.fn(),
     ejectRemovableVolume: vi.fn(),
+    pickToolboxScreenColor: vi.fn(),
     imageReady,
     releaseImage,
     snapshotListener: null as ((event: { type: "snapshot"; snapshot: TestSnapshot }) => void) | null,
@@ -115,6 +118,7 @@ vi.mock("../api", () => ({
   scanToolboxVolumeOccupancy: modules.scanToolboxVolumeOccupancy,
   prepareEjectRemovableVolume: modules.prepareEjectRemovableVolume,
   ejectRemovableVolume: modules.ejectRemovableVolume,
+  pickToolboxScreenColor: modules.pickToolboxScreenColor,
 }));
 vi.mock("./client", () => ({
   getToolboxNetworkSnapshot: vi.fn(),
@@ -155,6 +159,7 @@ beforeEach(() => {
   modules.scanToolboxVolumeOccupancy.mockResolvedValue({ status: "scoped_complete", processes: [] });
   modules.prepareEjectRemovableVolume.mockResolvedValue("confirmation-1");
   modules.ejectRemovableVolume.mockResolvedValue(undefined);
+  modules.pickToolboxScreenColor.mockResolvedValue("#00ff00");
 });
 
 afterEach(() => {
@@ -197,7 +202,7 @@ it("filters cards by category and renders structured JSON output", () => {
   expect(document.querySelector(".toolbox-code-token--number")?.textContent).toBe("1");
 });
 
-it("opens the visual color picker with synchronized formats and contrast panels", () => {
+it("opens the visual color picker with synchronized formats and contrast panels", async () => {
   render(<ToolboxPanel />);
 
   fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
@@ -212,6 +217,43 @@ it("opens the visual color picker with synchronized formats and contrast panels"
   fireEvent.change(screen.getByLabelText("颜色值"), { target: { value: "#ff000080" } });
   fireEvent.click(screen.getByRole("button", { name: "应用颜色" }));
   expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#ff000080");
+
+  fireEvent.click(screen.getByRole("button", { name: "从屏幕取色" }));
+  await waitFor(() => expect(modules.pickToolboxScreenColor).toHaveBeenCalledOnce());
+  await waitFor(() => expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#00ff00"));
+});
+
+it("keeps the current color when the native sampler is cancelled", async () => {
+  modules.pickToolboxScreenColor.mockResolvedValueOnce(null);
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+  fireEvent.click(screen.getByRole("button", { name: "从屏幕取色" }));
+
+  await waitFor(() => expect(modules.pickToolboxScreenColor).toHaveBeenCalledOnce());
+  expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#5b8def");
+  expect(screen.queryByText("屏幕取色失败，请重试。")).toBeNull();
+});
+
+it("reports native sampler failures and prevents duplicate picks while busy", async () => {
+  let resolvePick: (value: string | null) => void = () => undefined;
+  modules.pickToolboxScreenColor.mockReturnValueOnce(new Promise((resolve) => { resolvePick = resolve; }));
+  render(<ToolboxPanel />);
+
+  fireEvent.click(screen.getByRole("button", { name: "文本与开发" }));
+  fireEvent.click(screen.getByText("视觉取色器").closest("button")!);
+  const pickButton = screen.getByRole("button", { name: "从屏幕取色" });
+  fireEvent.click(pickButton);
+  expect((pickButton as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(pickButton);
+  expect(modules.pickToolboxScreenColor).toHaveBeenCalledOnce();
+  resolvePick("#112233");
+  await waitFor(() => expect(document.querySelector(".color-picker__format code")?.textContent).toBe("#112233"));
+
+  modules.pickToolboxScreenColor.mockRejectedValueOnce(new Error(JSON.stringify({ code: "screen_color_unavailable", message: "unavailable" })));
+  fireEvent.click(pickButton);
+  await waitFor(() => expect(screen.getByText("屏幕取色失败，请重试。")).toBeTruthy());
 });
 
 it("keeps browser-local tools available even when an older native snapshot marks them unavailable", async () => {

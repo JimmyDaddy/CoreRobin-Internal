@@ -80,6 +80,7 @@ const TOOL_IDS: &[&str] = &[
     "file-sha256",
     "regex",
     "color",
+    "color-picker",
     "keep-awake",
     "process-watch",
     "file-occupancy",
@@ -137,6 +138,7 @@ const LOCAL_TOOL_IDS: &[&str] = &[
     "text-sha256",
     "regex",
     "color",
+    "color-picker",
     "ifconfig-parser",
 ];
 const NATIVE_TOOL_IDS: &[&str] = &[

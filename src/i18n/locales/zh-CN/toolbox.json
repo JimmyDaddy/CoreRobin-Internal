@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "转换颜色"
-    },"colorPicker":{"title":"视觉取色器","eyebrow":"可视化编辑","nativeInput":"系统颜色","saturationValue":"饱和度与明度","hue":"色相","alpha":"透明度","pickFromScreen":"从屏幕取色","screenUnavailable":"当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。","inputLabel":"颜色值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"应用颜色","applied":"颜色已应用","invalid":"颜色格式无效，请检查输入后重试。","copy":"复制 {{format}}","copied":"已复制 {{format}}","copyFailed":"当前环境不支持复制。","preview":"预览","currentColor":"当前颜色","outputEyebrow":"输出","formats":"颜色格式","gamutMapped":"已映射到 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"可访问性","contrast":"对比度","lightBackground":"浅色背景","darkBackground":"深色背景","contrastPass":"通过 AA","contrastFail":"低于 AA","reset":"重置颜色","privacy":"颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。"}
+    },"colorPicker":{"title":"视觉取色器","eyebrow":"可视化编辑","nativeInput":"系统颜色","saturationValue":"饱和度与明度","hue":"色相","alpha":"透明度","pickFromScreen":"从屏幕取色","screenUnavailable":"当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。","screenFailed":"屏幕取色失败，请重试。","inputLabel":"颜色值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"应用颜色","applied":"颜色已应用","invalid":"颜色格式无效，请检查输入后重试。","copy":"复制 {{format}}","copied":"已复制 {{format}}","copyFailed":"当前环境不支持复制。","preview":"预览","currentColor":"当前颜色","outputEyebrow":"输出","formats":"颜色格式","gamutMapped":"已映射到 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"可访问性","contrast":"对比度","lightBackground":"浅色背景","darkBackground":"深色背景","contrastPass":"通过 AA","contrastFail":"低于 AA","reset":"重置颜色","privacy":"颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。"}
   },
   "occupancy": {
     "desktopOnly": "占用诊断需要桌面原生运行时。",

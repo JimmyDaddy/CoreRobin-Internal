@@ -336,6 +336,10 @@ export function isDesktopRuntime(): boolean {
   return typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
 }
 
+export function pickToolboxScreenColor(): Promise<string | null> {
+  return invoke<string | null>("pick_toolbox_screen_color");
+}
+
 export async function hashToolboxFile(
   request: { requestId: string; job: import("./toolbox/contracts").ToolboxFileJobKey; token: string },
   onProgress: (progress: ToolboxFileHashProgress) => void,

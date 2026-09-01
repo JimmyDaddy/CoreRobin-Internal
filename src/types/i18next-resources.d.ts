@@ -3560,6 +3560,7 @@ export default interface Resources {
         "privacy": "颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。",
         "reset": "重置颜色",
         "saturationValue": "饱和度与明度",
+        "screenFailed": "屏幕取色失败，请重试。",
         "screenUnavailable": "当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。",
         "srgb": "sRGB 色域",
         "title": "视觉取色器"
