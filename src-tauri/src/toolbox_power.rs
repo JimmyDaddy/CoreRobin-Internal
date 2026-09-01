@@ -425,7 +425,7 @@ impl PowerBackend for NativePowerBackend {
             Err(CommandError::new(
                 "power_backend_requires_logind",
                 "A Portal or logind idle-inhibitor backend must be configured for this Linux build.",
-            ));
+            ))
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
         {

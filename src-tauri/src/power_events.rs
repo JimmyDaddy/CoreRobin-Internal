@@ -190,7 +190,7 @@ impl Drop for MacPowerEventObserver {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
