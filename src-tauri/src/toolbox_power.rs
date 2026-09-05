@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::{Arc, Condvar, Mutex, OnceLock};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -1031,34 +1031,46 @@ fn now_millis() -> u64 {
 
 /// Uses clocks that continue across system suspend where the platform exposes
 /// one. The wall clock is intentionally used only for UI projection.
+#[cfg(target_os = "macos")]
 fn monotonic_now() -> Duration {
-    #[cfg(target_os = "macos")]
-    {
-        let mut timebase = MachTimebaseInfo { numer: 0, denom: 0 };
-        let status = unsafe { mach_timebase_info(&mut timebase) };
-        if status == 0 && timebase.denom != 0 {
-            let nanos = unsafe { mach_continuous_time() }.saturating_mul(u64::from(timebase.numer))
-                / u64::from(timebase.denom);
-            return Duration::from_nanos(nanos);
-        }
+    let mut timebase = MachTimebaseInfo { numer: 0, denom: 0 };
+    let status = unsafe { mach_timebase_info(&mut timebase) };
+    if status == 0 && timebase.denom != 0 {
+        let nanos = unsafe { mach_continuous_time() }.saturating_mul(u64::from(timebase.numer))
+            / u64::from(timebase.denom);
+        return Duration::from_nanos(nanos);
     }
-    #[cfg(windows)]
-    {
-        return Duration::from_millis(unsafe { GetTickCount64() });
+    static FALLBACK_EPOCH: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    FALLBACK_EPOCH
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+}
+
+#[cfg(windows)]
+fn monotonic_now() -> Duration {
+    Duration::from_millis(unsafe { GetTickCount64() })
+}
+
+#[cfg(target_os = "linux")]
+fn monotonic_now() -> Duration {
+    let mut timestamp = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    if unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut timestamp) } == 0 {
+        let seconds = u64::try_from(timestamp.tv_sec).unwrap_or_default();
+        let nanos = u32::try_from(timestamp.tv_nsec).unwrap_or_default();
+        return Duration::new(seconds, nanos);
     }
-    #[cfg(target_os = "linux")]
-    {
-        let mut timestamp = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        if unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut timestamp) } == 0 {
-            let seconds = u64::try_from(timestamp.tv_sec).unwrap_or_default();
-            let nanos = u32::try_from(timestamp.tv_nsec).unwrap_or_default();
-            return Duration::new(seconds, nanos);
-        }
-    }
-    static FALLBACK_EPOCH: OnceLock<std::time::Instant> = OnceLock::new();
+    static FALLBACK_EPOCH: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    FALLBACK_EPOCH
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+fn monotonic_now() -> Duration {
+    static FALLBACK_EPOCH: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     FALLBACK_EPOCH
         .get_or_init(std::time::Instant::now)
         .elapsed()
@@ -1338,7 +1350,7 @@ impl NativePowerAssertion {
             },
         };
         let handle = unsafe { PowerCreateRequest(&context) };
-        if handle == 0 {
+        if handle.is_null() {
             return Err(CommandError::new(
                 "power_unavailable",
                 "Windows could not create a system power request.",
@@ -1356,6 +1368,11 @@ impl NativePowerAssertion {
         Ok(Self { handle })
     }
 }
+
+#[cfg(windows)]
+// Windows HANDLE values are process-owned kernel handles. Moving the opaque
+// value to the deadline worker does not transfer access to any Rust memory.
+unsafe impl Send for NativePowerAssertion {}
 
 #[cfg(windows)]
 impl PowerAssertion for NativePowerAssertion {

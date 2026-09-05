@@ -173,7 +173,6 @@ pub(crate) fn scan_blocking_for_action(
 
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
-            let _ = (path, identity);
             volume_result(
                 &request.request_id,
                 &path_hint,

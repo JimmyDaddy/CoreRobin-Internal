@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Read};
+use std::io;
+#[cfg(target_os = "macos")]
+use std::io::Read;
 use std::path::{Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -822,6 +823,7 @@ fn read_proc_maps_matches(
     truncated: &mut bool,
     permission_gap: &mut bool,
 ) -> bool {
+    use std::io::Read;
     use std::os::unix::fs::MetadataExt;
 
     let mut file = match fs::File::open(process_dir.join("maps")) {
