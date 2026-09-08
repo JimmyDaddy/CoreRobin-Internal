@@ -100,3 +100,21 @@ bytes WASM，预算为 75,000 / 10,000,000 bytes；它不计入普通 JS/CSS 总
 这些字节预算用于拦截确定性的资源膨胀。真实 WebView 原生内存、冷启动和整机能耗仍按
 [发布冒烟与性能门禁](release-smoke-and-performance.md) 在固定设备保存证据，不能用 CI
 wall-clock 数字替代。
+
+2026-09-08 的 AI 磁盘卡片增加可键盘操作的 SVG 环形图、目录选择联动和十种语言文案。
+production JS 总量实测为 3,961,902 bytes，总量预算从 3,960,000 调整为 3,968,000 bytes。
+图表随已有 CapabilityResultCard 按需加载，没有引入图表依赖，也未放宽各 WebView 首屏预算。
+
+同日 AI 对话补上 Markdown 排版：使用精确锁定的 marked 18.0.12（MIT）进行词法分析，
+entities 8.1.0（BSD-2-Clause）处理文本实体，再生成受限的 React 元素；不直接注入 HTML，
+不加载模型图片或把模型链接接到原生动作。渲染器及样式单独懒加载，未提高任何首屏预算。
+production 普通 JS/CSS 总量为 4,030,897 / 500,801 bytes，总量预算分别调整为
+4,035,000 / 503,000 bytes。相对此次 Markdown 改动前的 3,961,311 / 499,157 bytes，
+增加 69,586 / 1,644 bytes；这是新增排版与解析能力的总量成本，不代表冷启动或内存实测。
+
+2026-09-08 UI 控件走查修复把主窗/Robin 的 token、按钮、选择器和 checkbox 收敛到共享源。
+controls CSS 通过 JS 模块导入去重，避免在 App/AI 两份 CSS 中展开同一段 @import。
+当前普通 JS/CSS 总量为 4,032,550 / 503,769 bytes；JS 总量预算仍为 4,035,000，
+CSS 总量预算调整为 505,000 bytes。Robin 首屏共享基础样式增加到 16,436 bytes
+（逐资源 gzip 合计 4,623 bytes），该入口 CSS 预算从 14,000 / 4,000 调整为
+17,000 / 4,900 bytes。其他入口预算、全部 JS 首屏预算与 C2PA 独立预算不变。

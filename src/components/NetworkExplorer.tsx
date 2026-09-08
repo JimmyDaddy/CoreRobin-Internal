@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { NetworkDiagnosticList } from "../capabilities/NetworkDiagnosticList";
 import {
   Activity,
@@ -774,9 +775,9 @@ function ConnectionHistoryPanel({
               ))}
             </div>
             <label>{t("network:history.retention")}
-              <select value={retentionDays} onChange={(event) => onRetentionChange(Number(event.target.value) as 1 | 7 | 30)}>
+              <Select value={retentionDays} onChange={(event) => onRetentionChange(Number(event.target.value) as 1 | 7 | 30)}>
                 {[1, 7, 30].map((days) => <option value={days} key={days}>{t("network:history.days", { count: days })}</option>)}
-              </select>
+              </Select>
             </label>
             <SourceDataClearAction category="connections" label={t("network:history.clear")} onClear={onClear} />
           </div>

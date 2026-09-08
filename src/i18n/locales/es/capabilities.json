@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "Uso del espacio por carpeta",
+  "diskChartHint": "Haz clic en un sector o marca una carpeta para limpiarla.",
+  "diskReturnedTotal": "Total de carpetas mostradas",
   "refresh": "Comprobar de nuevo",
   "sampledAt": "Medido a las {{time}}",
   "snapshot": "Resultado en ese momento",

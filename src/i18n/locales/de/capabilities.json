@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "Speicherbelegung nach Ordner",
+  "diskChartHint": "Wähle Segmente oder Ordner zum Bereinigen aus.",
+  "diskReturnedTotal": "Summe der angezeigten Ordner",
   "refresh": "Erneut prüfen",
   "sampledAt": "Erfasst um {{time}}",
   "snapshot": "Ergebnis zum Prüfzeitpunkt",

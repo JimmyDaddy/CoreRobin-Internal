@@ -1,5 +1,8 @@
+import { Select } from "../Select";
 import { useApplicationCapabilities } from "../../capabilities/useApplicationCapabilities";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -42,6 +45,8 @@ import { AiErrorNotice } from "./AiErrorNotice";
 import { AiResultCard } from "./AiResultCard";
 import { AiToolSteps } from "./AiToolSteps";
 import "../../styles/ai.css";
+
+const AiMarkdown = lazy(async () => ({ default: (await import("./AiMarkdown")).AiMarkdown }));
 
 export interface AiAssistantProps {
   compact?: boolean;
@@ -886,7 +891,7 @@ export function AiAssistant({
                   >
                     <label className="ai-field">
                       {t("renameName")}
-                      <input
+                      <input className="ai-input"
                         value={renaming.title}
                         maxLength={120}
                         autoFocus
@@ -1049,7 +1054,7 @@ export function AiAssistant({
             <div className="ai-model-form">
               <label className="ai-field">
                 {t("connections")}
-                <select
+                <Select density="compact"
                   value={selection.connectionId}
                   onChange={(event) =>
                     setSelection({
@@ -1064,11 +1069,11 @@ export function AiAssistant({
                       {connection.name} · {endpointLabel(connection.apiBaseUrl)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="ai-field">
                 {t("model")}
-                <input
+                <input className="ai-input"
                   value={selection.modelId}
                   onChange={(event) =>
                     setSelection({ ...selection, modelId: event.target.value })
@@ -1153,7 +1158,7 @@ export function AiAssistant({
             <div className="ai-empty">
               <MessageCircle size={30} />
               <h3>{t("emptyTitle")}</h3>
-              <p>{setupMessage ?? t("emptyDescription")}</p>
+              {setupMessage && <p>{setupMessage}</p>}
               {setupMessage && onOpenSettings && (
                 <Button
                   variant="primary"
@@ -1238,7 +1243,7 @@ export function AiAssistant({
                 />
               ) : (
                 <div className="ai-message-body">
-                  {message.content || (!message.toolSteps?.length &&
+                  {message.role === "assistant" && message.content ? <Suspense fallback={message.content}><AiMarkdown content={message.content} /></Suspense> : message.content || (!message.toolSteps?.length &&
                     (message.status === "pending" ||
                     message.status === "streaming"
                       ? t("waiting")
@@ -1282,19 +1287,6 @@ export function AiAssistant({
                     ` · ${t("usage", { input: message.usage.inputTokens ?? t("unknown"), output: message.usage.outputTokens ?? t("unknown") })}`}
                 </small>
               )}
-              {message.role === "assistant" && message.content && (
-                <small className="ai-message-status">
-                  {t("modelExplanation")}
-                </small>
-              )}
-              {message.role === "assistant" &&
-                message.status === "complete" &&
-                (Boolean(message.modelLabel) || !message.toolSteps?.length) &&
-                !message.validatedResult && (
-                  <small className="ai-message-status">
-                    {t("resultUnlinked")}
-                  </small>
-                )}
               {!message.reusableInContext &&
                 (Boolean(message.modelLabel) || !message.toolSteps?.length || message.role === "user") &&
                 message.sourceCategories.length > 0 &&
@@ -1469,7 +1461,7 @@ export function AiAssistant({
           )}
           {!prepared && (
             <>
-              <textarea
+              <textarea className="ai-input"
                 aria-label={t("input")}
                 placeholder={t("placeholder")}
                 value={draft}
@@ -1501,7 +1493,7 @@ export function AiAssistant({
               />
               <div className="ai-composer-controls">
                 <label className="ai-check">
-                  <input
+                  <input className="ai-input"
                     type="checkbox"
                     checked={includeContext}
                     disabled={busy || !!prepared}
@@ -1546,11 +1538,10 @@ export function AiAssistant({
                   </Button>
                 )}
               </div>
-              {includeContext && <p className="ai-tool-scope">{t("toolScope")}</p>}
               {includeContext && (
                 <label className="ai-history-period">
                   {t("contextScope")}
-                  <select
+                  <Select density="compact"
                     value={activeScenario}
                     disabled={busy || !!prepared || !session}
                     onChange={(event) => {
@@ -1563,13 +1554,13 @@ export function AiAssistant({
                     </option>
                     <option value="network">{t("scenarioNetwork")}</option>
                     <option value="history">{t("scenarioHistory")}</option>
-                  </select>
+                  </Select>
                 </label>
               )}
               {activeScenario === "history" && includeContext && (
                 <label className="ai-history-period">
                   {t("timeRange")}
-                  <select
+                  <Select density="compact"
                     value={fixedTimeRange ? "selected" : historyHours}
                     disabled={busy || !!prepared}
                     onChange={(event) => {
@@ -1608,12 +1599,10 @@ export function AiAssistant({
                     <option value={1}>{t("lastHour")}</option>
                     <option value={24}>{t("lastDay")}</option>
                     <option value={168}>{t("lastWeek")}</option>
-                  </select>
+                  </Select>
                 </label>
               )}
-              <small className="ai-muted">
-                {session?.temporary ? t("temporaryHint") : t("enterHint")}
-              </small>
+              {session?.temporary && <small className="ai-muted">{t("temporaryHint")}</small>}
             </>
           )}
         </div>

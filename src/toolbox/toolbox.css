@@ -43,6 +43,7 @@
 .toolbox-tool-page__header > button { order: 1; margin-top: 4px; white-space: nowrap; }
 .toolbox-tool-layout { max-width: 900px; }
 .toolbox-tool-layout__body { display: grid; gap: 14px; }
+.toolbox-tool-layout__body > .button { justify-self: start; max-width: 100%; white-space: normal; }
 .toolbox-input { width: 100%; min-height: 44px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; outline: 0; background: var(--surface); color: var(--text-primary); }
 textarea.toolbox-input { min-height: 150px; resize: vertical; }
 .toolbox-input--code, .toolbox-result pre { font-family: "SFMono-Regular", Consolas, monospace; }

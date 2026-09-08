@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, Download, FileJson, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import "./SettingsExplorer.css";
@@ -996,9 +997,9 @@ function SettingsSelect({
 }) {
   return (
     <span className={`settings-select${compact ? " settings-select--compact" : ""}`}>
-      <select value={value} onChange={onChange}>
+      <Select value={value} onChange={onChange}>
         {children}
-      </select>
+      </Select>
       <ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
     </span>
   );

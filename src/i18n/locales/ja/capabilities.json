@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "ディレクトリの使用量",
+  "diskChartHint": "扇形またはチェックボックスで削除する項目を選択します。",
+  "diskReturnedTotal": "取得したディレクトリの合計",
   "refresh": "再確認",
   "sampledAt": "取得日時 {{time}}",
   "snapshot": "取得時の結果",

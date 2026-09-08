@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "目录占用分布",
+  "diskChartHint": "点击扇区或勾选目录，选择要清理的项目。",
+  "diskReturnedTotal": "本次返回目录合计",
   "refresh": "重新检查",
   "sampledAt": "采样于 {{time}}",
   "snapshot": "当时的结果",

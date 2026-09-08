@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
+import "../styles/controls.css";
 
 export type ButtonVariant = "plain" | "primary" | "secondary" | "danger" | "dangerGhost";
 

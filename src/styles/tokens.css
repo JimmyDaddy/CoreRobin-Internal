@@ -1,0 +1,48 @@
+:root {
+  color-scheme: dark;
+  --control-radius: 9px;
+  --control-height: 36px;
+  --control-font-size: 12px;
+  --surface-subtle: var(--panel-soft);
+  color: #e8edf2;
+  background: #0b0f12;
+  font-family:
+    Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --background: #0b0f12;
+  --sidebar: #0d1216;
+  --panel: #11171c;
+  --panel-raised: #151c22;
+  --panel-soft: #171f26;
+  --border: #202a32;
+  --border-strong: #2b3741;
+  --text: #e8edf2;
+  --text-soft: #a7b1ba;
+  --text-muted: #6f7c86;
+  --brand-navy: #122038;
+  --brand-coral: #f15a43;
+  --brand-sand: #decdbb;
+  --blue: #63a8ff;
+  --blue-soft: rgba(99, 168, 255, 0.13);
+  --green: #56cf93;
+  --green-soft: rgba(86, 207, 147, 0.12);
+  --amber: #efb65e;
+  --amber-soft: rgba(239, 182, 94, 0.12);
+  --violet: #aa8dff;
+  --violet-soft: rgba(170, 141, 255, 0.12);
+  --danger: #ff7d73;
+  --danger-soft: rgba(255, 125, 115, 0.12);
+  --chart-cpu: #63a8ff;
+  --chart-memory: #aa8dff;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  --surface: var(--panel);
+  --surface-soft: var(--panel-soft);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-soft);
+  --accent: var(--blue);
+  --success: var(--green);
+  --warning: var(--amber);
+}

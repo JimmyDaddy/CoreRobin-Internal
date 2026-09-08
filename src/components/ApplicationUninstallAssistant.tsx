@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import {
   AlertTriangle,
   ArchiveRestore,
@@ -775,27 +776,27 @@ export function ApplicationUninstallAssistant({
               <div className="application-uninstall__filters">
                 <label>
                   <span>{t("applications:uninstall.filters.sort")}</span>
-                  <select value={sortBy} onChange={(event) =>
+                  <Select value={sortBy} onChange={(event) =>
                     setSortBy(event.target.value as typeof sortBy)}>
                     {(["size", "last_used", "source", "name"] as const).map((value) => (
                       <option key={value} value={value}>
                         {t(`applications:uninstall.filters.sortBy.${value}`)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label>
                   <span>{t("applications:uninstall.filters.unused")}</span>
-                  <select value={unusedDays} onChange={(event) =>
+                  <Select value={unusedDays} onChange={(event) =>
                     setUnusedDays(Number(event.target.value) as 0 | 90 | 180)}>
                     <option value={0}>{t("applications:uninstall.filters.all")}</option>
                     <option value={90}>{t("applications:uninstall.filters.days", { count: 90 })}</option>
                     <option value={180}>{t("applications:uninstall.filters.days", { count: 180 })}</option>
-                  </select>
+                  </Select>
                 </label>
                 <label>
                   <span>{t("applications:uninstall.filters.source")}</span>
-                  <select value={sourceFilter} onChange={(event) =>
+                  <Select value={sourceFilter} onChange={(event) =>
                     setSourceFilter(event.target.value as typeof sourceFilter)}>
                     <option value="all">{t("applications:uninstall.filters.all")}</option>
                     {installationSources.map((source) => (
@@ -803,7 +804,7 @@ export function ApplicationUninstallAssistant({
                         {t(`applications:nativeUninstall.source.${source}`)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
               </div>
               {applications.length === 0 ? (

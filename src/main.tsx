@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import "./i18n";
 import "./styles/feature-intelligence.css";
 import "./App.css";
+import "./styles/controls.css";
 import "./styles/product-support.css";
 import App from "./App";
 import {

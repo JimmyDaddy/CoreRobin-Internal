@@ -163,6 +163,7 @@ import {
   resourceUsageLevel,
 } from "./utils";
 import "./App.css";
+import "./styles/controls.css";
 import "./styles/daily-guide.css";
 
 const MAIN_SURFACE_STARTED_AT = performance.now();

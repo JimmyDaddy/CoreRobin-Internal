@@ -4,13 +4,13 @@
 
 .settings-interface-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 9px;
 }
 
 .settings-interface-control {
-  display: grid;
-  grid-template-columns: minmax(120px, auto) minmax(200px, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -21,6 +21,7 @@
 }
 
 .settings-interface-control > span {
+  flex: 1 1 120px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -34,7 +35,9 @@
 
 .settings-interface-control .settings-segmented,
 .settings-interface-control .locale-select {
-  width: 100%;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .settings-interface-control .settings-segmented button:disabled {
@@ -88,11 +91,4 @@
   display: flex;
   justify-content: flex-end;
   gap: 7px;
-}
-
-@media (max-width: 760px) {
-  .settings-interface-controls,
-  .settings-interface-control {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

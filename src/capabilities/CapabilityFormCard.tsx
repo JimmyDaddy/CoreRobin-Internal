@@ -1,4 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Maximize2, X } from "lucide-react";
 import { toolboxToolTranslationKey } from "../toolbox/registry";
@@ -38,10 +39,10 @@ function OperationDialog({ title, children, onClose }: { title: string; children
     const dialog = ref.current;
     return () => { dialog?.close?.(); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
   }, []);
-  return <dialog ref={ref} className="capability-form-dialog" aria-labelledby={titleId} onKeyDown={(event) => { if (event.key === "Escape" && ref.current?.querySelector('[role="alertdialog"]')) event.preventDefault(); }} onCancel={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }}>
+  return createPortal(<dialog ref={ref} className="capability-form-dialog" aria-labelledby={titleId} onKeyDown={(event) => { if (event.key === "Escape" && ref.current?.querySelector('[role="alertdialog"]')) event.preventDefault(); }} onCancel={(event) => { event.preventDefault(); event.stopPropagation(); onClose(); }}>
     <header><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" autoFocus aria-label={t("closeOperation")} onClick={onClose}><X size={18} /></button></header>
-    <div className="capability-form-body">{children}</div>
-  </dialog>;
+    <div className="capability-form-body" data-layout="embedded">{children}</div>
+  </dialog>, document.body);
 }
 
 class OperationBoundary extends Component<{ children: React.ReactNode; fallback: React.ReactNode }, { failed: boolean }> {
