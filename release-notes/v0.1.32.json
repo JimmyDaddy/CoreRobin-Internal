@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.32",
+  "title": {
+    "zh-CN": "AI 助手与能力中心上线",
+    "en": "Launch the AI assistant and capability center"
+  },
+  "items": [
+    {
+      "zh-CN": "新增 AI 助手，支持配置本地或云端模型服务、模型管理、流式回复、历史对话和发送前预览；你可以选择要分享的设备证据，再向 Robin 询问当前状态、网络检查或历史记录。",
+      "en": "Added an AI assistant with local or cloud model connections, model management, streaming replies, conversation history, and a preview before sending. Choose which device evidence to share before asking Robin about current status, network checks, or history."
+    },
+    {
+      "zh-CN": "Robin 现在可以按任务检查设备、进程、历史、网络和磁盘，并逐步展示实际执行结果；清理文件或结束进程等改变系统状态的操作会在执行前明确请求确认。",
+      "en": "Robin can now inspect device health, processes, history, network, and disk usage as task steps while showing the actual results. Actions that change system state, such as moving files to the Trash or ending a process, require explicit confirmation before execution."
+    },
+    {
+      "zh-CN": "新增能力中心，提供快速清理、进程操作、网络诊断和历史观察等本地操作入口；操作结果会保留隐私边界，不会自动将你填写的本地输入或操作结果发送给模型。",
+      "en": "Added a capability center for local operations such as quick cleanup, process actions, network diagnostics, and history observations. Results respect the privacy boundary: local input and operation results are not sent to the model automatically."
+    }
+  ]
+}
