@@ -1,6 +1,6 @@
 {
   "title": "Toolbox",
-  "description": "Handle small text, image, file, and system tasks locally. Ordinary input stays on this page.",
+  "description": "Handle small text, image, file, and system tasks locally.",
   "close": "Close toolbox",
   "loading": "Loading tool…",
   "search": {
@@ -75,7 +75,7 @@
   },
   "toolLayout": {
     "clear": "Clear",
-    "privacy": "Inputs and results stay only in this tool page's memory; copying and saving always require an explicit click.",
+    "privacy": "Inputs and results stay only in this application window's memory; copying and saving always require an explicit click.",
     "result": "Result",
     "copyResult": "Copy result"
   },
@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "Convert color"
-    },"colorPicker":{"title":"Visual color picker","eyebrow":"Visual editor","nativeInput":"System color","saturationValue":"Saturation and value","hue":"Hue","alpha":"Opacity","pickFromScreen":"Pick from screen","screenUnavailable":"Screen sampling is not available in this WebView; use the color panel or system color input.","screenFailed":"Screen sampling failed. Try again.","inputLabel":"Color value","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Apply color","applied":"Color applied","invalid":"Invalid color format. Check the value and try again.","copy":"Copy {{format}}","copied":"{{format}} copied","copyFailed":"Copy is not available in this environment.","preview":"Preview","currentColor":"Current color","outputEyebrow":"Output","formats":"Color formats","gamutMapped":"Mapped to sRGB","srgb":"sRGB","accessibilityEyebrow":"Accessibility","contrast":"Contrast","lightBackground":"Light background","darkBackground":"Dark background","contrastPass":"AA passes","contrastFail":"Below AA","reset":"Reset color","privacy":"Values stay in this page memory; copying happens only after your click."}
+    },"colorPicker":{"title":"Visual color picker","eyebrow":"Visual editor","nativeInput":"System color","saturationValue":"Saturation and value","hue":"Hue","alpha":"Opacity","pickFromScreen":"Pick from screen","screenUnavailable":"Screen sampling is not available in this WebView; use the color panel or system color input.","screenFailed":"Screen sampling failed. Try again.","inputLabel":"Color value","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Apply color","applied":"Color applied","invalid":"Invalid color format. Check the value and try again.","copy":"Copy {{format}}","copied":"{{format}} copied","copyFailed":"Copy is not available in this environment.","preview":"Preview","currentColor":"Current color","outputEyebrow":"Output","formats":"Color formats","gamutMapped":"Mapped to sRGB","srgb":"sRGB","accessibilityEyebrow":"Accessibility","contrast":"Contrast","lightBackground":"Light background","darkBackground":"Dark background","contrastPass":"AA passes","contrastFail":"Below AA","reset":"Reset color","privacy":"Values stay in this application window's memory; copying happens only after your click."}
   },
   "occupancy": {
     "desktopOnly": "Occupancy diagnostics require the desktop native runtime.",
@@ -295,7 +295,7 @@
     "process-watch": { "title": "Process exit watch", "aliases": "process | exit", "description": "Wait for a chosen process to exit and notify you." },
     "file-occupancy": { "title": "File usage", "aliases": "in use | handle", "description": "Find which process is using a file." },
     "volume-occupancy": { "title": "External drive usage", "aliases": "drive | eject", "description": "Identify use of a removable volume before ejecting it." },
-    "keyboard-cleaning": { "title": "Keyboard cleaning", "aliases": "keyboard | input", "description": "Check keyboard input safely while cleaning." },
+    "keyboard-cleaning": { "title": "Keyboard cleaning", "aliases": "keyboard | input", "description": "Pause keyboard input briefly while you clean the keys." },
     "schedules": { "title": "Scheduled tasks", "aliases": "reminder | cron", "description": "Create local rules that only remind you or keep the computer awake for a limited time." },
     "network-addresses": { "title": "Network addresses", "aliases": "adapter | IP | MAC", "description": "View local network interface addresses and status." },
     "ifconfig-parser": { "title": "ifconfig parser", "aliases": "network | netmask", "description": "Parse pasted BSD/Linux ifconfig text in this page." },
@@ -328,10 +328,10 @@
     "patch-planner": { "title": "Release planner", "aliases": "multiple baselines | release", "description": "Validate each baseline and choose a patch or full package." }
   },
   "keyboardCleaning": {
-    "eyebrow": "System safety PoC",
+    "eyebrow": "System & input",
     "title": "Keyboard cleaning",
-    "description": "Temporarily block accidental input; cleaning starts only after the restricted helper explicitly confirms that the hook is effective.",
-    "privacy": "Key values are never recorded, keyboard content is never sent to the WebView, and the WebView receives no full permissions. Mouse activity, focus loss, host exit, sleep, revoked permission, or a missed helper heartbeat releases the hook.",
+    "description": "Temporarily pause keyboard input while you wipe the keys. Move the mouse or click Stop to exit.",
+    "privacy": "Key contents are never recorded or saved. Input resumes if you switch windows, the system sleeps, permission is revoked, or the connection is lost.",
     "durationLabel": "Cleaning duration",
     "duration": "{{count}} seconds",
     "start": "Start cleaning",
@@ -349,7 +349,7 @@
       "unavailable": "Unavailable",
       "preparing": "Preparing (3 seconds)",
       "active": "Cleaning (up to {{count}} seconds)",
-      "releasing": "Releasing hook",
+      "releasing": "Restoring keyboard input",
       "ended": "Ended"
     },
     "reason": "Reason: {{reason}}",
@@ -369,9 +369,9 @@
     },
     "hardDeadline": "Independent hard deadline: {{time}}; the helper must keep sending heartbeats or the active state is released.",
     "noBridge": "The restricted helper bridge is not connected; this page stays unavailable and never simulates activation.",
-    "footer": "Platform capability must be provided by the host with least privilege; this page does not listen for DOM keyboard events. Real platform validation must use an isolated test environment.",
+    "footer": "Input is paused only during cleaning and resumes afterward. The mouse remains available.",
     "errors": {
-      "helper": "The restricted helper was not confirmed: {{reason}}",
+      "helper": "Keyboard cleaning could not continue: {{reason}}",
       "communication": "communication failed",
       "start": "Keyboard cleaning could not start.",
       "codes": {
@@ -383,7 +383,9 @@
         "wrong_request": "The helper event does not belong to the current task.",
         "heartbeat_out_of_order": "The helper heartbeat sequence did not increase."
       }
-    }
+    },
+    "permissionHint": "Before first use, allow CoreRobin in System Settings → Privacy & Security → Accessibility, then return and try again.",
+    "openSettings": "Open Accessibility settings"
   },
   "networkAddresses": {
     "eyebrow": "System & network",
@@ -391,7 +393,7 @@
     "description": "View addresses and ranges by interface. This tool does not probe the public internet, query DNS, test connectivity, or change network settings.",
     "refresh": "Refresh on demand",
     "refreshing": "Refreshing…",
-    "privacy": "IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this page's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.",
+    "privacy": "IP addresses, IPv6 zones, MAC addresses, interface names, and pasted text stay in this application window's memory. They are not written to history, diagnosis summaries, or URLs. Copying is user-initiated and sends network identifiers to the system clipboard.",
     "tabs": {
       "label": "Network address views",
       "live": "Local interfaces",

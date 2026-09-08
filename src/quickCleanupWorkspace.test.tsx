@@ -16,7 +16,7 @@ const quickCleanApi = vi.hoisted(() => ({
   cancelQuickCleanup: vi.fn(),
 }));
 
-vi.mock("./api", () => quickCleanApi);
+vi.mock("./api", () => ({ ...quickCleanApi, isDesktopRuntime: () => false }));
 
 const SUMMARIES: QuickCleanCategorySummary[] = [
   { category: "user_cache", byteSize: 1_240_000_000, itemCount: 4, skippedCount: 0, available: true },
@@ -81,6 +81,8 @@ describe("QuickCleanupPage", () => {
     await waitFor(() => expect(screen.getByText("应用缓存")).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: /清理/ }));
+    expect(quickCleanApi.runQuickCleanup).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "永久清理所选类别" }));
     await waitFor(() => expect(screen.getByText("清理完成")).toBeTruthy());
     await waitFor(() => {
       expect(screen.getAllByText(/1.2 GB/).length).toBeGreaterThan(0);

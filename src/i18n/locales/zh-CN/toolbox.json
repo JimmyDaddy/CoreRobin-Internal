@@ -1,6 +1,6 @@
 {
   "title": "工具箱",
-  "description": "在本机处理文本、图片、文件和系统小委托。普通输入只停留在当前页面。",
+  "description": "在本机处理文本、图片、文件和系统小委托。",
   "close": "关闭工具箱",
   "loading": "正在加载工具…",
   "search": {
@@ -75,7 +75,7 @@
   },
   "toolLayout": {
     "clear": "清空",
-    "privacy": "输入与结果只保留在当前工具页内存；复制和保存都需要明确点击。",
+    "privacy": "输入与结果只保留在当前应用窗口内存；复制和保存都需要明确点击。",
     "result": "结果",
     "copyResult": "复制结果"
   },
@@ -142,7 +142,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "转换颜色"
-    },"colorPicker":{"title":"视觉取色器","eyebrow":"可视化编辑","nativeInput":"系统颜色","saturationValue":"饱和度与明度","hue":"色相","alpha":"透明度","pickFromScreen":"从屏幕取色","screenUnavailable":"当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。","screenFailed":"屏幕取色失败，请重试。","inputLabel":"颜色值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"应用颜色","applied":"颜色已应用","invalid":"颜色格式无效，请检查输入后重试。","copy":"复制 {{format}}","copied":"已复制 {{format}}","copyFailed":"当前环境不支持复制。","preview":"预览","currentColor":"当前颜色","outputEyebrow":"输出","formats":"颜色格式","gamutMapped":"已映射到 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"可访问性","contrast":"对比度","lightBackground":"浅色背景","darkBackground":"深色背景","contrastPass":"通过 AA","contrastFail":"低于 AA","reset":"重置颜色","privacy":"颜色值只保留在当前页面内存中，只有点击复制后才会写入剪贴板。"}
+    },"colorPicker":{"title":"视觉取色器","eyebrow":"可视化编辑","nativeInput":"系统颜色","saturationValue":"饱和度与明度","hue":"色相","alpha":"透明度","pickFromScreen":"从屏幕取色","screenUnavailable":"当前 WebView 不支持屏幕取色，可使用颜色面板或系统颜色输入。","screenFailed":"屏幕取色失败，请重试。","inputLabel":"颜色值","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"应用颜色","applied":"颜色已应用","invalid":"颜色格式无效，请检查输入后重试。","copy":"复制 {{format}}","copied":"已复制 {{format}}","copyFailed":"当前环境不支持复制。","preview":"预览","currentColor":"当前颜色","outputEyebrow":"输出","formats":"颜色格式","gamutMapped":"已映射到 sRGB","srgb":"sRGB 色域","accessibilityEyebrow":"可访问性","contrast":"对比度","lightBackground":"浅色背景","darkBackground":"深色背景","contrastPass":"通过 AA","contrastFail":"低于 AA","reset":"重置颜色","privacy":"颜色值只保留在当前应用窗口内存中，只有点击复制后才会写入剪贴板。"}
   },
   "occupancy": {
     "desktopOnly": "占用诊断需要桌面原生运行时。",
@@ -295,7 +295,7 @@
     "process-watch": { "title": "进程退出提醒", "aliases": "进程 | 退出", "description": "等待选定进程退出并提醒。" },
     "file-occupancy": { "title": "文件使用者", "aliases": "占用 | 句柄", "description": "诊断谁正在使用文件。" },
     "volume-occupancy": { "title": "外盘使用者", "aliases": "磁盘 | 推出", "description": "诊断可移动卷占用并在确认后推出。" },
-    "keyboard-cleaning": { "title": "键盘清洁", "aliases": "键盘 | 输入", "description": "在安全边界内检查键盘输入状态。" },
+    "keyboard-cleaning": { "title": "键盘清洁", "aliases": "键盘 | 输入", "description": "短时暂停键盘输入，方便擦拭键盘。" },
     "schedules": { "title": "定时任务", "aliases": "提醒 | cron", "description": "创建只执行提醒或限时保活的本地规则。" },
     "network-addresses": { "title": "本机地址", "aliases": "网卡 | IP | MAC", "description": "查看本机网络接口地址和状态。" },
     "ifconfig-parser": { "title": "ifconfig 解析", "aliases": "网络 | 掩码", "description": "在页面内解析粘贴的 BSD/Linux ifconfig 文本。" },
@@ -328,10 +328,10 @@
     "patch-planner": { "title": "发布规划器", "aliases": "多基线 | 发布", "description": "逐个基线验证并选择补丁或完整包。" }
   },
   "keyboardCleaning": {
-    "eyebrow": "系统安全 PoC",
+    "eyebrow": "系统与输入",
     "title": "键盘清洁",
-    "description": "临时阻止误触输入；只有受限 helper 明确确认 hook 有效后才会进入清洁状态。",
-    "privacy": "不记录键值、不把键盘内容传给 WebView、不申请全权限 WebView；鼠标活动、失焦、宿主退出、睡眠、撤权或 helper 心跳中断都会释放 hook。",
+    "description": "短时暂停键盘输入，方便擦拭键盘。移动鼠标或点击停止即可退出。",
+    "privacy": "不记录或保存按键内容。切换窗口、系统睡眠、权限撤销或连接中断时会自动恢复输入。",
     "durationLabel": "清洁时长",
     "duration": "{{count}} 秒",
     "start": "开始清洁",
@@ -349,7 +349,7 @@
       "unavailable": "不可用",
       "preparing": "准备中（3 秒）",
       "active": "清洁中（最多 {{count}} 秒）",
-      "releasing": "正在释放 hook",
+      "releasing": "正在恢复键盘输入",
       "ended": "已结束"
     },
     "reason": "原因：{{reason}}",
@@ -369,9 +369,9 @@
     },
     "hardDeadline": "独立硬截止：{{time}}；helper 必须持续发送心跳，否则 active 状态会被释放。",
     "noBridge": "尚未接入受限 helper bridge；页面保持不可用，不会模拟激活。",
-    "footer": "平台能力必须由宿主以最小权限提供；本页面不监听 DOM 键盘事件，真实平台验证必须在隔离测试环境完成。",
+    "footer": "只在清洁期间暂停输入，结束后自动恢复；鼠标始终可以使用。",
     "errors": {
-      "helper": "受限 helper 未确认：{{reason}}",
+      "helper": "键盘清洁无法继续：{{reason}}",
       "communication": "通信失败",
       "start": "键盘清洁任务无法启动。",
       "codes": {
@@ -383,7 +383,9 @@
         "wrong_request": "helper 事件不属于当前任务。",
         "heartbeat_out_of_order": "helper 心跳序号没有递增。"
       }
-    }
+    },
+    "permissionHint": "首次使用需在“系统设置 → 隐私与安全性 → 辅助功能”中允许 CoreRobin，然后返回重试。",
+    "openSettings": "打开辅助功能设置"
   },
   "networkAddresses": {
     "eyebrow": "系统与网络",
@@ -391,7 +393,7 @@
     "description": "按接口查看地址与范围；本工具不会探测公网、查询 DNS、测试连通性或修改网络配置。",
     "refresh": "按需刷新",
     "refreshing": "正在刷新…",
-    "privacy": "IP、IPv6 zone、MAC、接口名称和粘贴原文只在当前页面内存中处理，不会写入历史、诊断摘要或 URL。复制是受用户点击触发的，并会把网络标识交给系统剪贴板。",
+    "privacy": "IP、IPv6 zone、MAC、接口名称和粘贴原文只在当前应用窗口内存中处理，不会写入历史、诊断摘要或 URL。复制是受用户点击触发的，并会把网络标识交给系统剪贴板。",
     "tabs": {
       "label": "网络地址视图",
       "live": "本机网卡",

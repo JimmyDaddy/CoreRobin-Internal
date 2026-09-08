@@ -93,7 +93,7 @@
   },
   "dataPrivacy": {
     "title": "Daten- und Datenschutzcenter",
-    "description": "Alle lokalen Datensätze an einer Stelle einsehen und steuern. CoreRobin lädt diese Daten nicht hoch und synchronisiert sie nicht.",
+    "description": "Lokale Daten verwalten: kein automatischer Upload oder Abgleich. Bei KI-Nutzung werden die zum Teilen gewählten Belege an Ihren konfigurierten Modelldienst gesendet.",
     "status": {
       "on": "Wird gespeichert",
       "off": "Aus"

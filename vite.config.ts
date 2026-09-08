@@ -18,6 +18,7 @@ export default defineConfig(async () => ({
         splash: "splash.html",
         tray: "tray.html",
         companion: "companion.html",
+        "robin-chat": "robin-chat.html",
       },
     },
   },

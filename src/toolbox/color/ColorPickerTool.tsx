@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { captureToolStateVersion, useSharedToolState } from "../local/sharedToolState";
 import { isMacOSDesktopRuntime, pickToolboxScreenColor } from "../../api";
 import { colorFromHsv, colorToHsv, contrastRatio, formatColor, parseColor, type ColorValue } from "./colorTools";
 import "./colorPicker.css";
@@ -23,8 +24,8 @@ const FORMAT_FIELDS: ReadonlyArray<{ key: FormatKey; label: string }> = [
 
 export function ColorPickerTool() {
   const { t } = useTranslation("toolbox");
-  const [color, setColor] = useState<ColorValue>(DEFAULT_COLOR);
-  const [draft, setDraft] = useState(formatColor(DEFAULT_COLOR).hex);
+  const [color, setColor] = useSharedToolState<ColorValue>("color-picker", "color", DEFAULT_COLOR);
+  const [draft, setDraft] = useSharedToolState("color-picker", "draft", formatColor(DEFAULT_COLOR).hex);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eyeDropper] = useState(() => detectEyeDropper());
@@ -93,6 +94,7 @@ export function ColorPickerTool() {
 
   const pickFromScreen = async () => {
     if (!eyeDropper && !nativeScreenPicker) return;
+    const version = captureToolStateVersion("color-picker");
     setPickingFromScreen(true);
     setError("");
     setNotice("");
@@ -102,6 +104,8 @@ export function ColorPickerTool() {
         : eyeDropper
           ? (await new eyeDropper().open()).sRGBHex
           : null;
+      const current = captureToolStateVersion("color-picker");
+      if (current.epoch !== version.epoch || current.revision !== version.revision) return;
       if (sampledHex) {
         applyColor(parseColor(sampledHex));
         setNotice(t("local.colorPicker.applied"));

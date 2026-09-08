@@ -312,6 +312,7 @@ export interface HistorySegmentStorage {
   payload: string | null;
   byteSize: number;
   updatedAtMs: number | null;
+  generation: number;
 }
 
 export interface HistoryStorageSummary {
@@ -1161,6 +1162,11 @@ export async function analyzeQuickCleanup(): Promise<QuickCleanCategorySummary[]
   return invoke<QuickCleanCategorySummary[]>("analyze_quick_cleanup_command");
 }
 
+export async function getQuickCleanupState(): Promise<import("./capabilities/useQuickCleanup").QuickCleanSnapshot> {
+  if (canUseDevelopmentMock()) return { revision: 0, phase: "idle", summaries: [], progress: null, result: null, error: null, cancelled: false };
+  return invoke("get_quick_cleanup_state");
+}
+
 export async function runQuickCleanup(
   categories: QuickCleanCategory[],
   onProgress: (progress: QuickCleanProgress) => void,
@@ -1240,7 +1246,7 @@ export async function loadHistoryStorage(
   category: HistoryStorageCategory,
 ): Promise<HistorySegmentStorage> {
   if (canUseDevelopmentMock()) {
-    return { payload: null, byteSize: 0, updatedAtMs: null };
+    return { payload: null, byteSize: 0, updatedAtMs: null, generation: 0 };
   }
   return invoke<HistorySegmentStorage>("load_history_storage", { category });
 }
@@ -1248,17 +1254,20 @@ export async function loadHistoryStorage(
 export async function saveHistoryStorage(
   category: HistoryStorageCategory,
   payload: string,
+  expectedGeneration: number,
 ): Promise<HistorySegmentStorage> {
   if (canUseDevelopmentMock()) {
     return {
       payload: null,
       byteSize: new TextEncoder().encode(payload).byteLength,
       updatedAtMs: Date.now(),
+      generation: expectedGeneration + 1,
     };
   }
   return invoke<HistorySegmentStorage>("save_history_storage", {
     category,
     payload,
+    expectedGeneration,
   });
 }
 
@@ -1266,7 +1275,7 @@ export async function clearHistoryStorage(
   category: HistoryStorageCategory,
 ): Promise<HistorySegmentStorage> {
   if (canUseDevelopmentMock()) {
-    return { payload: null, byteSize: 0, updatedAtMs: null };
+    return { payload: null, byteSize: 0, updatedAtMs: null, generation: 0 };
   }
   return invoke<HistorySegmentStorage>("clear_history_storage", { category });
 }

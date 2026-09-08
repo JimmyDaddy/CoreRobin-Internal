@@ -1,14 +1,13 @@
+import { ProcessActionButtons } from "../capabilities/ProcessActionButtons";
 import {
   Activity,
   AlertTriangle,
   CircleHelp,
   CircleDotDashed,
-  CircleStop,
   Clock3,
   FileTerminal,
   GitFork,
   LoaderCircle,
-  OctagonX,
   RotateCw,
   ShieldCheck,
   Timer,
@@ -261,30 +260,7 @@ export function ProcessInspector({
             ? <LoaderCircle className="is-spinning" size={16} />
             : <RotateCw size={16} />}
         </Button>
-        <button
-          type="button"
-          className="button button--secondary process-action-button"
-          disabled={!requestCloseEnabled || preparingAction}
-          aria-label={t("process:inspector.requestClose")}
-          title={control.requestClose.disabledReason ?? t("process:inspector.requestClose")}
-          data-tooltip={control.requestClose.disabledReason ?? t("process:inspector.requestClose")}
-          onClick={() => onAction("request_close")}
-        >
-          {preparingAction
-            ? <LoaderCircle className="is-spinning" size={16} />
-            : <CircleStop size={16} />}
-        </button>
-        <button
-          type="button"
-          className="button button--danger-ghost process-action-button"
-          disabled={!forceKillEnabled || preparingAction}
-          aria-label={t("process:inspector.forceKill")}
-          title={control.forceKill.disabledReason ?? t("process:inspector.forceKill")}
-          data-tooltip={control.forceKill.disabledReason ?? t("process:inspector.forceKill")}
-          onClick={() => onAction("force_kill")}
-        >
-          <OctagonX size={16} />
-        </button>
+        <ProcessActionButtons onAction={onAction} requestCloseEnabled={requestCloseEnabled} forceKillEnabled={forceKillEnabled} busy={preparingAction} requestCloseReason={control.requestClose.disabledReason} forceKillReason={control.forceKill.disabledReason} />
       </div>
     </aside>
   );

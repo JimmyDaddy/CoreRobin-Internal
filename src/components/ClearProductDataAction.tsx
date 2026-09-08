@@ -96,6 +96,7 @@ export function ClearProductDataAction({
               <li>{t("settings:about.clearScope.scans")}</li>
               <li>{t("settings:dataPrivacy.caches.title")}</li>
               <li>{t("settings:about.clearScope.preferences")}</li>
+              <li>{t("ai:clearProductScope")}</li>
             </ul>
             {failed ? (
               <p className="clear-product-data-dialog__error" role="alert">
@@ -109,6 +110,8 @@ export function ClearProductDataAction({
                     <span>
                       {result.scope === "preferences"
                         ? t("settings:about.clearScope.preferences")
+                        : result.scope === "ai"
+                          ? t("ai:clearProductScope")
                         : result.scope === "toolbox"
                           ? t("settings:dataPrivacy.caches.title")
                           : t(`settings:dataPrivacy.categories.${result.scope}.title`)}

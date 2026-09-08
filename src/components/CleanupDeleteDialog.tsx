@@ -1,3 +1,4 @@
+import { CleanupItemSummary } from "../capabilities/CleanupItemSummary";
 import { AlertTriangle, AppWindow, ArchiveRestore, CircleStop, LoaderCircle, RefreshCw, ShieldAlert, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -160,12 +161,7 @@ export function CleanupDeleteDialog({
         <ol className="cleanup-delete-dialog__items">
           {items.map((item) => (
             <li key={item.id} className={submitting && currentItem?.id === item.id ? "is-current" : undefined}>
-              <span className={`is-${item.safety}`}><i />{t(`cleanup:safety.${item.safety}`)}</span>
-              <div>
-                <strong>{item.name}</strong>
-                <code title={item.path ?? item.name}>{item.path}</code>
-              </div>
-              <b>{formatBytes(item.sizeBytes)}</b>
+              <CleanupItemSummary name={item.name} path={item.path} bytes={item.sizeBytes} safety={item.safety} />
               {item.path && changedPaths.has(item.path) ? (
                 <small><AlertTriangle size={12} />{t("cleanup:deleteDialog.changed")}</small>
               ) : null}

@@ -93,7 +93,7 @@
   },
   "dataPrivacy": {
     "title": "Données et confidentialité",
-    "description": "Consultez et contrôlez chaque jeu de données local au même endroit. CoreRobin ne les téléverse ni ne les synchronise.",
+    "description": "Gérez les données locales, sans envoi ni synchronisation automatiques. Avec l’IA, les éléments que vous choisissez de partager sont envoyés au service de modèle configuré.",
     "status": {
       "on": "Enregistré",
       "off": "Désactivé"

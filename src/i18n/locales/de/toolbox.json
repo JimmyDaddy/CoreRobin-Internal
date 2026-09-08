@@ -1,12 +1,12 @@
 {
-  "title": "Werkzeugkasten", "description": "Bearbeite kleine Text-, Bild-, Datei- und Systemaufgaben lokal. Normale Eingaben bleiben auf dieser Seite.", "close": "Werkzeugkasten schließen", "loading": "Tool wird geladen…",
+  "title": "Werkzeugkasten", "description": "Bearbeite kleine Text-, Bild-, Datei- und Systemaufgaben lokal.", "close": "Werkzeugkasten schließen", "loading": "Tool wird geladen…",
   "search": { "label": "Toolnamen durchsuchen", "placeholder": "Toolnamen, Aliase oder Beschreibungen durchsuchen…", "clear": "Suche leeren" },
   "categories": { "label": "Toolkategorien", "systemNetwork": "System & Netzwerk", "textDevelopment": "Text & Entwicklung", "image": "Bilder", "filePatch": "Dateien & Patches" },
   "favorites": { "title": "Favoriten", "add": "{{tool}} zu Favoriten hinzufügen", "remove": "{{tool}} aus Favoriten entfernen" },
   "empty": { "title": "Keine passenden Tools", "description": "Die Suche prüft nur Toolnamen, Aliase und Beschreibungen. Deine Eingabe wird nicht gelesen." }, "navigation": { "back": "Zum Werkzeugkasten" },
   "capability": { "degraded": "Eingeschränkt verfügbar", "unavailable": "Nicht verfügbar", "degradedReason": "Ein Teil der nativen Integration ist eingeschränkt, das Tool kann aber geöffnet werden.", "unavailableReason": "Auf dieser Plattform ist keine native Ausführung verfügbar.", "unavailableTitle": "{{tool}} ist derzeit nicht verfügbar", "unavailableHint": "Dieser Eintrag bleibt im Werkzeugkasten und kann genutzt werden, sobald die native Fähigkeit wieder verfügbar ist.","restrictedHelperUnavailable":"Dieses Tool benötigt einen eingeschränkten nativen Helper, der auf dieser Plattform nicht verfügbar ist."},
   "history": { "title": "Letzte Ausführungen", "count": "Einträge: {{count}}", "disabled": "Deaktiviert", "disabledDescription": "Der Werkzeugkasten-Verlauf ist durch die aktuelle Richtlinie deaktiviert; lokale Aufgaben zeigen weiterhin sofortige Ergebnisse.", "empty": "Es gibt noch keine abgeschlossenen Werkzeugkasten-Einträge.", "refresh": "Verlauf aktualisieren", "refreshing": "Wird aktualisiert…", "privacy": "Es werden nur die letzten 20 Einträge gezeigt; sie enthalten keine Eingaben, Pfade oder Geheimnisse.", "unavailable": "Der Werkzeugkasten-Verlauf ist vorübergehend nicht verfügbar.", "notification": "Benachrichtigung: {{status}}", "tools": { "keep-awake": "Zeitlich begrenztes Wachhalten", "process-watch": "Prozessende überwachen", "file-occupancy": "Dateibelegung prüfen", "volume-occupancy": "Datenträgerbelegung prüfen", "keyboard-cleaning": "Tastaturreinigung", "network-addresses": "Netzwerkadressen", "ifconfig-parser": "ifconfig-Parser" }, "statuses": { "completed": "Abgeschlossen", "cancelled": "Abgebrochen", "expired": "Abgelaufen", "failed": "Fehlgeschlagen", "interrupted": "Unterbrochen", "deadline": "Frist erreicht", "process_exited": "Prozess beendet", "low_battery": "Bei niedrigem Akkustand freigegeben", "release_unconfirmed": "Freigabe nicht bestätigt" }, "notifications": { "submitted": "Übermittelt", "failed": "Fehlgeschlagen", "unavailable": "Nicht verfügbar" } },
-  "toolLayout": { "clear": "Leeren", "privacy": "Eingaben und Ergebnisse bleiben nur im Speicher dieser Toolseite; Kopieren und Speichern benötigen immer einen ausdrücklichen Klick.", "result": "Ergebnis", "copyResult": "Ergebnis kopieren" },
+  "toolLayout": { "clear": "Leeren", "privacy": "Eingaben und Ergebnisse bleiben nur im Speicher dieses Anwendungsfensters; Kopieren und Speichern benötigen immer einen ausdrücklichen Klick.", "result": "Ergebnis", "copyResult": "Ergebnis kopieren" },
   "local": {
     "run": "Ausführen",
     "convert": "Konvertieren",
@@ -70,7 +70,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "Farbe konvertieren"
-    },"colorPicker":{"title":"Farbwähler","eyebrow":"Visueller Editor","nativeInput":"Systemfarbe","saturationValue":"Sättigung und Helligkeit","hue":"Farbton","alpha":"Deckkraft","pickFromScreen":"Farbe vom Bildschirm","screenUnavailable":"Bildschirm-Pipette ist in dieser WebView nicht verfügbar; nutze das Farbfeld.","screenFailed":"Die Bildschirmfarbe konnte nicht ermittelt werden. Bitte erneut versuchen.","inputLabel":"Farbwert","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Anwenden","applied":"Farbe angewendet","invalid":"Ungültiges Farbformat. Überprüfe deine Eingabe.","copy":"{{format}} kopieren","copied":"{{format}} kopiert","copyFailed":"Kopieren nicht möglich.","preview":"Vorschau","currentColor":"Aktuelle Farbe","outputEyebrow":"Ausgabe","formats":"Formate","gamutMapped":"Auf sRGB abgebildet","srgb":"sRGB","accessibilityEyebrow":"Barrierefreiheit","contrast":"Kontrast","lightBackground":"Heller Hintergrund","darkBackground":"Dunkler Hintergrund","contrastPass":"AA bestanden","contrastFail":"Unter AA","reset":"Zurücksetzen","privacy":"Werte bleiben im Seitenspeicher; kopiert wird nur nach deinem Klick."}
+    },"colorPicker":{"title":"Farbwähler","eyebrow":"Visueller Editor","nativeInput":"Systemfarbe","saturationValue":"Sättigung und Helligkeit","hue":"Farbton","alpha":"Deckkraft","pickFromScreen":"Farbe vom Bildschirm","screenUnavailable":"Bildschirm-Pipette ist in dieser WebView nicht verfügbar; nutze das Farbfeld.","screenFailed":"Die Bildschirmfarbe konnte nicht ermittelt werden. Bitte erneut versuchen.","inputLabel":"Farbwert","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Anwenden","applied":"Farbe angewendet","invalid":"Ungültiges Farbformat. Überprüfe deine Eingabe.","copy":"{{format}} kopieren","copied":"{{format}} kopiert","copyFailed":"Kopieren nicht möglich.","preview":"Vorschau","currentColor":"Aktuelle Farbe","outputEyebrow":"Ausgabe","formats":"Formate","gamutMapped":"Auf sRGB abgebildet","srgb":"sRGB","accessibilityEyebrow":"Barrierefreiheit","contrast":"Kontrast","lightBackground":"Heller Hintergrund","darkBackground":"Dunkler Hintergrund","contrastPass":"AA bestanden","contrastFail":"Unter AA","reset":"Zurücksetzen","privacy":"Werte bleiben im Speicher dieses Anwendungsfensters; kopiert wird nur nach deinem Klick."}
   },
   "occupancy": {
     "desktopOnly": "Die Belegungsdiagnose erfordert die native Desktop-Laufzeit.",
@@ -277,7 +277,9 @@
         "wrong_request": "Das Helper-Ereignis gehört nicht zur aktuellen Aufgabe.",
         "heartbeat_out_of_order": "Die Sequenz des Helper-Heartbeats wurde nicht erhöht."
       }
-    }
+    },
+    "permissionHint": "Erlaube CoreRobin vor der ersten Nutzung unter Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen. Kehre dann zurück und versuche es erneut.",
+    "openSettings": "Bedienungshilfen öffnen"
   },
   "networkAddresses": {
     "eyebrow": "System & Netzwerk",
@@ -285,7 +287,7 @@
     "description": "Zeigt Adressen und Bereiche nach Schnittstelle an. Dieses Tool prüft weder das öffentliche Internet noch DNS, testet keine Verbindung und ändert keine Netzwerkeinstellungen.",
     "refresh": "Auf Abruf aktualisieren",
     "refreshing": "Wird aktualisiert…",
-    "privacy": "IP-Adressen, IPv6-Zonen, MAC-Adressen, Schnittstellennamen und eingefügter Text bleiben im Speicher dieser Seite. Sie werden weder in den Verlauf noch in Diagnosesummaries oder URLs geschrieben. Das Kopieren wird vom Benutzer ausgelöst und überträgt Netzwerkkennungen erst nach dem Klick in die Systemzwischenablage.",
+    "privacy": "IP-Adressen, IPv6-Zonen, MAC-Adressen, Schnittstellennamen und eingefügter Text bleiben im Speicher dieses Anwendungsfensters. Sie werden weder in den Verlauf noch in Diagnosesummaries oder URLs geschrieben. Das Kopieren wird vom Benutzer ausgelöst und überträgt Netzwerkkennungen erst nach dem Klick in die Systemzwischenablage.",
     "tabs": {
       "label": "Ansichten der Netzwerkadressen",
       "live": "Lokale Schnittstellen",

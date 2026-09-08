@@ -3,6 +3,7 @@ import {
   BellRing,
   History,
   Languages,
+  MessageCircle,
   Rocket,
   Settings2,
   Type,
@@ -30,6 +31,7 @@ interface DailySettingsProps {
   onOpenNotificationSettings?: () => void;
   onOpenOnboarding: () => void;
   onClearAllData: () => Promise<void | ProductDataClearResult[]>;
+  onOpenAiSettings?: () => void;
 }
 
 export function DailySettings({
@@ -43,6 +45,7 @@ export function DailySettings({
   onOpenNotificationSettings = () => undefined,
   onOpenOnboarding,
   onClearAllData,
+  onOpenAiSettings,
 }: DailySettingsProps) {
   const { t } = useAppTranslation();
   return (
@@ -53,6 +56,11 @@ export function DailySettings({
       </header>
 
       <div className="daily-settings__list">
+        {onOpenAiSettings ? <section>
+          <span><MessageCircle size={19} /></span>
+          <div><strong>{t("ai:title")}</strong><small>{t("ai:privacyTitle")}</small></div>
+          <button className="button button--secondary" type="button" onClick={onOpenAiSettings}>{t("ai:openSettings")}</button>
+        </section> : null}
         <section>
           <span><Languages size={19} /></span>
           <div><strong>{t("daily:settings.language")}</strong><small>{t("daily:settings.languageDescription")}</small></div>

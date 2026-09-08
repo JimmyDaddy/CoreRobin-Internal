@@ -3,7 +3,7 @@ import type {
   ResourceAlertKind,
   ResourceAlertResource,
 } from "../resourceAlerts";
-import { loadCatalog, type TranslationTree } from "./catalogs";
+import type { TranslationTree } from "./catalogs";
 
 export type NotificationTranslationKey =
   | `${ResourceAlertKind}.${ResourceAlertResource}.${"title" | "body"}`
@@ -27,12 +27,15 @@ export async function translateNotification(
   key: NotificationTranslationKey,
   variables: Readonly<Record<string, string | number>> = {},
 ): Promise<string> {
-  const translated = lookup(await loadCatalog(language, "notifications"), key);
+  // The main window already has its full catalog map. Keep this small surface
+  // map lazy there, while auxiliary windows share their existing loaded map.
+  const { loadSurfaceCatalog } = await import("./surfaceCatalogs");
+  const translated = lookup(await loadSurfaceCatalog(language, "notifications"), key);
   if (translated !== undefined || language === FALLBACK_LANGUAGE) {
     return interpolate(translated ?? key, variables);
   }
   return interpolate(
-    lookup(await loadCatalog(FALLBACK_LANGUAGE, "notifications"), key) ?? key,
+    lookup(await loadSurfaceCatalog(FALLBACK_LANGUAGE, "notifications"), key) ?? key,
     variables,
   );
 }

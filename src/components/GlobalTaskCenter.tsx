@@ -6,6 +6,9 @@ import type { AppUpdaterController } from "../hooks/useAppUpdater";
 import type { FileInsightsScanController } from "../hooks/useFileInsightsScan";
 import type { CleanupScanJobStatus, CleanupScanProgress, CommandError } from "../types";
 import { useAppTranslation } from "../i18n/useAppTranslation";
+import { useAiState } from "../ai/useAiState";
+import { aiApi } from "../ai/api";
+import { isRunActive } from "../ai/types";
 import "./GlobalTaskCenter.css";
 
 export function GlobalTaskCenter({
@@ -16,6 +19,7 @@ export function GlobalTaskCenter({
   onOpenCleanup,
   onOpenStartup,
   onOpenUpdates,
+  onOpenAi,
 }: {
   cleanup: {
     loading: boolean;
@@ -33,8 +37,13 @@ export function GlobalTaskCenter({
   onOpenCleanup: () => void;
   onOpenStartup: () => void;
   onOpenUpdates: () => void;
+  onOpenAi: (sessionId: string) => void;
 }) {
   const { t } = useAppTranslation();
+  const { state: aiState } = useAiState();
+  const aiRun = aiState?.activeRun;
+  const aiActive = isRunActive(aiRun);
+  const [aiCancelError, setAiCancelError] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const directoryActive = Boolean(cleanup.directoryRefreshStatus && ![
@@ -50,7 +59,7 @@ export function GlobalTaskCenter({
         ? t("app:tasks.update.restartError")
         : t("app:tasks.update.installError");
   const taskCount = Number(cleanup.loading) + Number(directoryActive)
-    + Number(fileInsights.loading) + Number(startup.loading) + Number(updateActive);
+    + Number(fileInsights.loading) + Number(startup.loading) + Number(updateActive) + Number(aiActive);
   const hasFailure = Boolean(cleanup.error || fileInsights.error || startup.error
     || updater.action === "installError" || updater.action === "restartError");
   const label = useMemo(() => taskCount > 0
@@ -90,6 +99,10 @@ export function GlobalTaskCenter({
         <aside className="global-task-center__popover" aria-label={t("app:tasks.title")}>
           <header><div><small>{t("app:tasks.kicker")}</small><strong>{t("app:tasks.title")}</strong></div><button type="button" aria-label={t("common:close")} onClick={() => setOpen(false)}><X size={14} /></button></header>
           <div className="global-task-center__list">
+            {aiActive && aiRun && <TaskRow icon={<LoaderCircle className="is-spinning" size={16} />} title={t("ai:taskTitle")} detail={aiCancelError ? t("ai:taskError") : t("ai:toolRunning")}>
+              <button type="button" onClick={() => { setAiCancelError(false); void aiApi.cancel(aiRun.requestId).catch(() => setAiCancelError(true)); }}><CircleStop size={13} />{t("common:cancel")}</button>
+              <button type="button" onClick={() => openView(() => onOpenAi(aiRun.sessionId))}>{t("app:tasks.open")}</button>
+            </TaskRow>}
             {cleanup.loading ? (
               <TaskRow icon={<ScanSearch className="is-spinning" size={16} />} title={t("app:tasks.cleanup.title")} detail={cleanup.progress ? t("app:tasks.cleanup.progress", { count: cleanup.progress.scannedEntryCount }) : t("app:tasks.preparing")}>
                 <button type="button" disabled={cleanup.cancelling} onClick={() => void cleanup.cancel()}><CircleStop size={13} />{t("common:cancel")}</button>

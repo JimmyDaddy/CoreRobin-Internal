@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useSharedToolState } from "../local/sharedToolState";
 import { isDesktopRuntime } from "../../api";
 import { userFacingError, ToolboxInputError } from "../local/toolboxErrors";
 import {
@@ -80,8 +81,8 @@ export function NetworkAddressesTool({ loadSnapshot, initialView = "live" }: Net
   const requestGeneration = useRef(0);
   const [snapshot, setSnapshot] = useState<NetworkAddressesSnapshot | null>(null);
   const [interfaces, setInterfaces] = useState<ParsedInterface[]>([]);
-  const [ifconfigInput, setIfconfigInput] = useState("");
-  const [ifconfigInterfaces, setIfconfigInterfaces] = useState<ParsedInterface[] | null>(null);
+  const [ifconfigInput, setIfconfigInput] = useSharedToolState("ifconfig-parser", "input", "");
+  const [ifconfigInterfaces, setIfconfigInterfaces] = useSharedToolState<ParsedInterface[] | null>("ifconfig-parser", "result", null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");

@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "Robin zum Verschieben ziehen; doppelklicken, um das Hauptfenster zu öffnen; mit der Maus auf den Status zeigen; Rechtsklick für das Menü",
+  "dragHint": "Robin zum Verschieben ziehen; klicken, um den Chat zu öffnen; für den Status mit der Maus darauf zeigen; Rechtsklick für das Menü",
   "expand": "Robin öffnen",
   "collapse": "Robin einklappen",
   "menu": "Robin-Menü",

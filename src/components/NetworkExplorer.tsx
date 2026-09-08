@@ -1,3 +1,4 @@
+import { NetworkDiagnosticList } from "../capabilities/NetworkDiagnosticList";
 import {
   Activity,
   AlertTriangle,
@@ -13,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { SourceDataClearAction } from "./SourceDataClearAction";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import "./NetworkExplorer.css";
 import { processApplicationIconSource } from "../applicationIcon";
@@ -363,24 +365,7 @@ export function NetworkQualityPanel({
               })}
             />
           </div>
-          <div className="network-quality__diagnostics" aria-label={t("network:quality.diagnostics.title")}>
-            {result.diagnostics.map((diagnostic) => {
-              const StatusIcon = diagnostic.status === "passed"
-                ? CheckCircle2
-                : diagnostic.status === "failed"
-                  ? XCircle
-                  : MinusCircle;
-              return (
-                <div className={`is-${diagnostic.status}`} key={diagnostic.kind}>
-                  <StatusIcon size={14} />
-                  <span>{t(`network:quality.diagnostics.stages.${diagnostic.kind}`)}</span>
-                  <small>{diagnostic.latencyMs === null
-                    ? t(`network:quality.diagnostics.status.${diagnostic.status}`)
-                    : formatMilliseconds(diagnostic.latencyMs)}</small>
-                </div>
-              );
-            })}
-          </div>
+          <NetworkDiagnosticList diagnostics={result.diagnostics} />
         </>
       ) : (
         <div className="network-quality__starting" role="status">
@@ -427,13 +412,7 @@ export function NetworkQualityPanel({
           ))}
         </div>
         {historyEnabled && monitor.history.length > 0 ? (
-          <button
-            className="button button--plain"
-            type="button"
-            onClick={monitor.clearHistory}
-          >
-            {t("network:quality.history.clear")}
-          </button>
+          <SourceDataClearAction category="networkQuality" label={t("network:quality.history.clear")} onClear={monitor.clearHistory} />
         ) : null}
       </div>
       {samples.length > 0 ? (
@@ -799,7 +778,7 @@ function ConnectionHistoryPanel({
                 {[1, 7, 30].map((days) => <option value={days} key={days}>{t("network:history.days", { count: days })}</option>)}
               </select>
             </label>
-            <button className="button button--plain" type="button" onClick={onClear}>{t("network:history.clear")}</button>
+            <SourceDataClearAction category="connections" label={t("network:history.clear")} onClear={onClear} />
           </div>
           {error ? <p className="network-connections__notice">{t("network:history.lookupFallback")}</p> : null}
           {groups.length > 0 ? (
@@ -851,7 +830,7 @@ function ConnectionHistoryPanel({
   );
 }
 
-function NetworkConnectionsPanel({
+export function NetworkConnectionsPanel({
   snapshot,
   error,
   loading,

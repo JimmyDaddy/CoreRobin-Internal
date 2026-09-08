@@ -121,3 +121,14 @@ export function generateUuidV4(count: number): string[] {
   if (!Number.isInteger(count) || count < 1 || count > 100) throw new ToolboxInputError("invalid_count", "UUID 数量必须是 1 到 100。 ");
   return Array.from({ length: count }, () => crypto.randomUUID());
 }
+
+/** Shared by the original toolbox and the finite assistant computation bridge. */
+export function convertTime(input: string, unit: "seconds" | "milliseconds") {
+  const trimmed = input.trim();
+  return /[Tt]|[Zz]|^\d{4}-\d{2}-\d{2}/.test(trimmed) ? convertIsoTime(input) : convertUnixTime(input, unit);
+}
+export async function hashText(input: string): Promise<string> {
+  assertTextLimit(input);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}

@@ -66,10 +66,18 @@ export function useNativeHistoryStorage<T>({
   const pendingUpdatesRef = useRef<SetStateAction<T>[]>([]);
   const lastSerializedRef = useRef(desktop ? "" : serialize(value));
   const saveInFlightRef = useRef<Promise<void> | null>(null);
+  const hydrationInFlightRef = useRef<Promise<void> | null>(null);
+  const clearInFlightRef = useRef<Promise<HistorySegmentStorage> | null>(null);
+  const generationRef = useRef<number | null>(desktop ? null : 0);
+  const operationEpochRef = useRef(0);
+  const clearingRef = useRef(false);
+  // A failed clear remains write-blocked until the user explicitly retries it.
+  const writeBlockedRef = useRef(false);
   valueRef.current = value;
   enabledRef.current = enabled;
 
   const updateValue = useCallback<Dispatch<SetStateAction<T>>>((action) => {
+    if (clearingRef.current || writeBlockedRef.current) return;
     if (!hydratedRef.current) pendingUpdatesRef.current.push(action);
     setValue((current) => {
       const next = applyStateAction(current, action);
@@ -81,9 +89,12 @@ export function useNativeHistoryStorage<T>({
   useEffect(() => {
     if (!desktop) return;
     let active = true;
-    void loadHistoryStorage(category)
+    const operationEpoch = operationEpochRef.current;
+    const isCurrent = () => active && operationEpoch === operationEpochRef.current && !clearingRef.current;
+    const hydration = loadHistoryStorage(category)
       .then(async (stored) => {
-        if (!active) return;
+        if (!isCurrent()) return;
+        generationRef.current = stored.generation;
         const nativeValue = stored.payload === null
           ? null
           : parse(stored.payload);
@@ -106,21 +117,26 @@ export function useNativeHistoryStorage<T>({
           error: null,
         });
         if (stored.payload === null && serialized !== serialize(parse(null))) {
-          const receipt = await saveHistoryStorage(category, serialized);
-          clearLegacy?.();
-          if (active) {
-            lastSerializedRef.current = serialized;
-            setStorageStatus({
-              state: "ready",
-              byteSize: receipt.byteSize,
-              lastSavedAtMs: receipt.updatedAtMs,
-              error: null,
+          const migration = saveHistoryStorage(category, serialized, stored.generation)
+            .then((receipt) => {
+              generationRef.current = receipt.generation;
+              if (!isCurrent()) return;
+              clearLegacy?.();
+              lastSerializedRef.current = serialized;
+              setStorageStatus({
+                state: "ready",
+                byteSize: receipt.byteSize,
+                lastSavedAtMs: receipt.updatedAtMs,
+                error: null,
+              });
             });
-          }
+          saveInFlightRef.current = migration;
+          try { await migration; }
+          finally { if (saveInFlightRef.current === migration) saveInFlightRef.current = null; }
         }
       })
       .catch((reason) => {
-        if (!active) return;
+        if (!isCurrent()) return;
         hydratedRef.current = true;
         pendingUpdatesRef.current = [];
         setHydrated(true);
@@ -131,6 +147,7 @@ export function useNativeHistoryStorage<T>({
           error: errorMessage(reason),
         });
       });
+    hydrationInFlightRef.current = hydration;
     return () => {
       active = false;
     };
@@ -139,19 +156,28 @@ export function useNativeHistoryStorage<T>({
   }, [category, desktop]);
 
   const persistNow = useCallback(async () => {
-    if (!enabledRef.current || isProductDataResetInProgress()) return;
+    const operationEpoch = operationEpochRef.current;
+    const mayWrite = () => enabledRef.current && hydratedRef.current
+      && generationRef.current !== null && !isProductDataResetInProgress()
+      && !clearingRef.current && !writeBlockedRef.current
+      && operationEpoch === operationEpochRef.current;
+    if (!mayWrite()) return;
+    // Several lifecycle callbacks may await the same save. Recheck the slot
+    // after each wakeup and serialize the current value only when it is our turn.
+    while (saveInFlightRef.current) {
+      await saveInFlightRef.current;
+      if (!mayWrite()) return;
+    }
     const serialized = serialize(valueRef.current);
     if (serialized === lastSerializedRef.current) return;
     if (!desktop) {
       lastSerializedRef.current = serialized;
       return;
     }
-    if (saveInFlightRef.current) {
-      await saveInFlightRef.current;
-      if (serialize(valueRef.current) === lastSerializedRef.current) return;
-    }
-    const request = saveHistoryStorage(category, serialized)
+    const request = saveHistoryStorage(category, serialized, generationRef.current!)
       .then((receipt) => {
+        generationRef.current = receipt.generation;
+        if (!mayWrite()) return;
         lastSerializedRef.current = serialized;
         setStorageStatus({
           state: "ready",
@@ -161,6 +187,7 @@ export function useNativeHistoryStorage<T>({
         });
       })
       .catch((reason) => {
+        if (!mayWrite()) throw reason;
         setStorageStatus((current) => ({
           ...current,
           state: "failed",
@@ -204,39 +231,48 @@ export function useNativeHistoryStorage<T>({
   }, [enabled, hydrated, persistNow]);
 
   const clear = useCallback(async () => {
-    clearLegacy?.();
-    const empty = parse(null);
+    if (clearInFlightRef.current) return clearInFlightRef.current;
+    clearingRef.current = true;
+    writeBlockedRef.current = true;
+    operationEpochRef.current += 1;
     pendingUpdatesRef.current = [];
-    setValue(empty);
-    valueRef.current = empty;
-    lastSerializedRef.current = "";
-    if (!desktop) {
-      setStorageStatus({
-        state: "ready",
-        byteSize: 0,
-        lastSavedAtMs: null,
-        error: null,
-      });
-      return { payload: null, byteSize: 0, updatedAtMs: null };
-    }
-    try {
-      const receipt = await clearHistoryStorage(category);
+    const request = (async () => {
+      // Do not fail early: an old migration/save must finish before deleting.
+      // The epoch already prevents a late load from restoring its old payload.
+      await Promise.allSettled([hydrationInFlightRef.current, saveInFlightRef.current]);
+      clearLegacy?.();
+      const receipt = desktop
+        ? await clearHistoryStorage(category)
+        : { payload: null, byteSize: 0, updatedAtMs: null, generation: 0 };
+      const empty = parse(null);
+      generationRef.current = receipt.generation;
+      valueRef.current = empty;
+      lastSerializedRef.current = serialize(empty);
+      hydratedRef.current = true;
+      setValue(empty);
+      setHydrated(true);
       setStorageStatus({
         state: "ready",
         byteSize: receipt.byteSize,
         lastSavedAtMs: receipt.updatedAtMs,
         error: null,
       });
+      writeBlockedRef.current = false;
       return receipt;
-    } catch (reason) {
+    })().catch((reason) => {
       setStorageStatus((current) => ({
         ...current,
         state: "failed",
         error: errorMessage(reason),
       }));
       throw reason;
-    }
-  }, [category, clearLegacy, desktop, parse]);
+    }).finally(() => {
+      clearingRef.current = false;
+      if (clearInFlightRef.current === request) clearInFlightRef.current = null;
+    });
+    clearInFlightRef.current = request;
+    return request;
+  }, [category, clearLegacy, desktop, parse, serialize]);
 
   return {
     value,

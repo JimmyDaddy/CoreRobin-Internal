@@ -1,35 +1,28 @@
 import { Activity, ChevronDown, Cpu, RefreshCw, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { getGpuEnergySnapshot } from "../api";
+import { useGpuEnergyMonitor, type GpuEnergyController } from "../hooks/useGpuEnergyMonitor";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { processApplicationIconSource } from "../applicationIcon";
-import type { GpuEnergySnapshot, ProcessRow } from "../types";
-import { formatPercent, normalizeCommandError } from "../utils";
+import type { ProcessRow } from "../types";
+import { formatPercent } from "../utils";
 import { ApplicationAvatar } from "./ApplicationAvatar";
 import "./GpuEnergyPanel.css";
 
 const REFRESH_INTERVAL_MS = 15_000;
 const MINIMUM_VISIBLE_IMPACT = 0.05;
 
-export function GpuEnergyPanel({ processes }: { processes: ProcessRow[] }) {
+export function GpuEnergyPanel({ processes, controller }: { processes: ProcessRow[]; controller?: GpuEnergyController }) {
+  return controller ? <GpuEnergyView processes={processes} controller={controller} /> : <StandaloneGpuEnergyPanel processes={processes} />;
+}
+function StandaloneGpuEnergyPanel({ processes }: { processes: ProcessRow[] }) {
+  const controller = useGpuEnergyMonitor();
+  return <GpuEnergyView processes={processes} controller={controller} />;
+}
+function GpuEnergyView({ processes, controller }: { processes: ProcessRow[]; controller: GpuEnergyController }) {
   const { t } = useAppTranslation();
   const [expanded, setExpanded] = useState(false);
-  const [snapshot, setSnapshot] = useState<GpuEnergySnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      setSnapshot(await getGpuEnergySnapshot());
-      setError(null);
-    } catch (reason) {
-      setError(normalizeCommandError(reason).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { snapshot, loading, error, refresh } = controller;
 
   useEffect(() => {
     if (!expanded) return;

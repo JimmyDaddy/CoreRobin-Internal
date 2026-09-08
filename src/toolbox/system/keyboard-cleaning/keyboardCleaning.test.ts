@@ -84,6 +84,16 @@ describe("keyboard cleaning safety state machine", () => {
     expect(machine.dispatch({ type: "release_unconfirmed", requestId: "request-1", nowMs: PREPARATION_WINDOW_MS + 3 }).state.status).toBe("releasing");
   });
 
+  it("preserves native permission failures and permits retry after confirmed release", () => {
+    const machine = new KeyboardCleaningMachine(available);
+    start(machine);
+    const failure = machine.applySignal({ type: "hook_ineffective", payload: { protocolVersion: KEYBOARD_CLEANING_PROTOCOL_VERSION, requestId: "request-1", failure: "permission_revoked" } }, 1_000);
+    expect(failure.state.endReason).toBe("permission_revoked");
+    expect(failure.state.status).toBe("releasing");
+    machine.applySignal({ type: "released", payload: { protocolVersion: KEYBOARD_CLEANING_PROTOCOL_VERSION, requestId: "request-1", confirmed: true } }, 1_001);
+    expect(start(machine, 2_000).state.status).toBe("preparing");
+  });
+
   it("enforces selectable duration and the independent hard ceiling", () => {
     for (const duration of [30, 60, 120] as const) {
       const machine = new KeyboardCleaningMachine(available);

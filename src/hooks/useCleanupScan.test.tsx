@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCleanupScan } from "./useCleanupScan";
@@ -21,6 +21,9 @@ const cleanupApi = vi.hoisted(() => ({
 }));
 
 vi.mock("../api", () => cleanupApi);
+const capabilityChanges = vi.hoisted(() => ({ callback: null as null | (() => Promise<unknown>), read: vi.fn() }));
+vi.mock("../capabilities/useCapabilityChanges", () => ({ useCapabilityChanges: (_: string, callback: () => Promise<unknown>) => { capabilityChanges.callback = callback; } }));
+vi.mock("../capabilities/api", () => ({ readApplicationCapabilities: capabilityChanges.read }));
 vi.mock("./useNativeHistoryStorage", () => ({
   useNativeHistoryStorage: () => ({
     value: [],
@@ -44,6 +47,7 @@ function Harness() {
       <span>{scan.phase ?? "idle"}</span>
       <span>{scan.snapshot?.scanId ?? "no-snapshot"}</span>
       <span>{scan.snapshotStatus}</span>
+      <span>{scan.snapshot?.root.sizeBytes ?? 0} bytes</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
       <button type="button" onClick={() => void scan.clear()}>Clear</button>
@@ -86,6 +90,7 @@ describe("cleanup scan lifecycle", () => {
     cleanupApi.startCleanupScan.mockReset().mockResolvedValue(runningJob);
     cleanupApi.startCleanupDirectoryRefresh.mockReset();
     window.localStorage.clear();
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 1, diskRequiresRescan: false });
   });
 
   afterEach(() => {
@@ -185,6 +190,29 @@ describe("cleanup scan lifecycle", () => {
 
     await waitFor(() => expect(screen.getByText("updating")).toBeTruthy());
     expect(screen.getByText("cleanup-new")).toBeTruthy();
+  });
+  it("updates a mounted page after AI scans and adopts changes to the same native scan index", async () => {
+    render(<Harness />);
+    await waitFor(() => expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalled());
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(screen.getByText("cleanup-new")).toBeTruthy();
+    const changed = latestSnapshot(); changed.root.sizeBytes = 123;
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(changed);
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(screen.getByText("123 bytes")).toBeTruthy();
+    expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
+  });
+  it("removes an old map after native data clearing and marks unreconciled deletion stale", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 2, diskRequiresRescan: true });
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(screen.getByText("expired")).toBeTruthy();
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(null);
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(screen.getByText("no-snapshot")).toBeTruthy();
   });
 });
 

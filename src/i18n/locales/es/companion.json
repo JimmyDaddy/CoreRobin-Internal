@@ -1,6 +1,6 @@
 {
   "kicker": "Robin",
-  "dragHint": "Arrastra a Robin para moverlo; haz doble clic para abrir la ventana principal; pasa el puntero para ver el estado; haz clic derecho para abrir el menú",
+  "dragHint": "Arrastra a Robin para moverlo; haz clic para abrir el chat; pasa el puntero para ver el estado; haz clic derecho para abrir el menú",
   "expand": "Abrir Robin",
   "collapse": "Cerrar Robin",
   "menu": "Menú de Robin",

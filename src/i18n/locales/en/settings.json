@@ -64,7 +64,7 @@
   },
   "dataPrivacy": {
     "title": "Data & privacy center",
-    "description": "See what each local dataset contains and control it from one place. CoreRobin does not upload or synchronize these records.",
+    "description": "Manage local records here. They are not uploaded or synced automatically. When you use AI, the evidence you choose to share is sent to your configured model service.",
     "status": {
       "on": "Saving",
       "off": "Off"

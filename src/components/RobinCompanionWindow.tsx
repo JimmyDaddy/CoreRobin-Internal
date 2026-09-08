@@ -91,6 +91,10 @@ export function RobinCompanionWindow() {
     && new URLSearchParams(window.location.search).get("preview") === "expanded";
   const [expanded, setExpanded] = useState(previewExpanded);
   const expandedRef = useRef(previewExpanded);
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatOpenRef = useRef(false);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const draggedRef = useRef(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const contextMenuOpenRef = useRef(false);
   const hoverCollapseTimerRef = useRef<number | undefined>(undefined);
@@ -216,6 +220,12 @@ export function RobinCompanionWindow() {
     );
     listeners.register(listen("core-robin:companion-enter", playEntrance));
     listeners.register(listen("core-robin:companion-exit", playExit));
+    listeners.register(listen<boolean>("core-robin:ai-chat-visibility", ({ payload }) => {
+      if (listeners.disposed) return;
+      chatOpenRef.current = payload;
+      setChatOpen(payload);
+      if (payload) void updateExpanded(false);
+    }));
     void companionWindow.isVisible().then((visible) => {
       if (!listeners.disposed && visible) playEntrance();
     });
@@ -254,7 +264,7 @@ export function RobinCompanionWindow() {
 
   const expandFromHover = () => {
     clearHoverCollapseTimer();
-    if (!contextMenuOpenRef.current) void updateExpanded(true);
+    if (!contextMenuOpenRef.current && !chatOpenRef.current) void updateExpanded(true);
   };
 
   const collapseFromHover = () => {
@@ -279,11 +289,43 @@ export function RobinCompanionWindow() {
   };
 
   const beginDragging = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!desktopRuntime || event.button !== 0 || event.detail > 1) return;
+    if (event.button !== 0) return;
     event.preventDefault();
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    draggedRef.current = false;
     contextMenuOpenRef.current = false;
     setContextMenuOpen(false);
-    void getCurrentWindow().startDragging();
+  };
+
+  const moveMascot = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+    if (!start || draggedRef.current || !(event.buttons & 1)) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < 5) return;
+    draggedRef.current = true;
+    pointerStartRef.current = null;
+    clearHoverCollapseTimer();
+    if (desktopRuntime) void getCurrentWindow().startDragging();
+  };
+
+  const toggleChat = async () => {
+    clearHoverCollapseTimer();
+    contextMenuOpenRef.current = false;
+    setContextMenuOpen(false);
+    await updateExpanded(false);
+    const visible = desktopRuntime
+      ? await invoke<boolean>("toggle_ai_chat_window")
+      : !chatOpenRef.current;
+    chatOpenRef.current = visible;
+    setChatOpen(visible);
+  };
+
+  const clickMascot = (event: ReactMouseEvent<HTMLDivElement>) => {
+    pointerStartRef.current = null;
+    if (draggedRef.current || event.detail > 1) return;
+    void toggleChat().catch(() => {
+      chatOpenRef.current = false;
+      setChatOpen(false);
+    });
   };
 
   const openMainWindow = (event?: ReactMouseEvent<HTMLElement>) => {
@@ -295,13 +337,16 @@ export function RobinCompanionWindow() {
   };
 
   const handleMascotKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.nativeEvent.isComposing || event.repeat || (event.key !== "Enter" && event.key !== " ")) return;
     event.preventDefault();
-    void updateExpanded(!expandedRef.current);
+    void toggleChat().catch(() => undefined);
   };
 
   const openContextMenu = (event: ReactMouseEvent<HTMLElement>) => {
     event.preventDefault();
+    chatOpenRef.current = false;
+    setChatOpen(false);
+    if (desktopRuntime) void invoke("hide_ai_chat_window");
     contextMenuOpenRef.current = true;
     setContextMenuOpen(true);
     void updateExpanded(true);
@@ -326,19 +371,18 @@ export function RobinCompanionWindow() {
       >
         <div
           className="robin-buddy-mascot"
-          data-tauri-drag-region
           role="button"
           tabIndex={0}
-          aria-expanded={expanded}
+          aria-expanded={expanded || chatOpen}
           aria-label={t("companion:dragHint")}
           onMouseDown={beginDragging}
-          onDoubleClick={openMainWindow}
+          onMouseMove={moveMascot}
+          onClick={clickMascot}
           onKeyDown={handleMascotKeyDown}
         >
           <AnimatedRobin
             active={health === "loading"}
             className="robin-buddy-character"
-            dragRegion
             mood={health}
             size="100%"
           />

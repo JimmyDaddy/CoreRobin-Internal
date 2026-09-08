@@ -211,6 +211,10 @@ export class KeyboardCleaningMachine {
       case "heartbeat":
         return this.dispatch({ type: "heartbeat", requestId: signal.payload.requestId, sequence: signal.payload.sequence, nowMs });
       case "hook_ineffective":
+        if (signal.payload.failure === "permission_revoked") {
+          this.ensureRequest(signal.payload.requestId);
+          return this.dispatch({ type: "permission_revoked", nowMs });
+        }
         return this.dispatch({ type: "hook_ineffective", requestId: signal.payload.requestId, nowMs });
       case "released":
         return this.dispatch({ type: signal.payload.confirmed ? "release_confirmed" : "release_unconfirmed", requestId: signal.payload.requestId, nowMs });

@@ -1,3 +1,4 @@
+import { clearSharedToolState } from "../local/sharedToolState";
 /** @vitest-environment jsdom */
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -11,6 +12,7 @@ import i18n from "../../i18n";
 afterEach(cleanup);
 
 beforeEach(() => {
+  clearSharedToolState();
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },

@@ -14,6 +14,8 @@ export const MAIN_NAMESPACES = [
   "history",
   "format",
   "toolbox",
+  "ai",
+  "capabilities",
 ] as const;
 
 const AUXILIARY_ONLY_NAMESPACES = [

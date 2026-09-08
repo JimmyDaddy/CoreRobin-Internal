@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { withAiSourceClear } from "../aiSourcePrivacy";
 
 import {
   clearApplicationInventoryCache,
@@ -129,7 +130,7 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
     void refresh();
   }, [refresh]);
 
-  const clearCategory = useCallback(async (category: ProductDataCategory) => {
+  const clearCategory = useCallback(async (category: ProductDataCategory, deleteRelated = false) => {
     setReceipts((current) => ({
       ...current,
       [category]: {
@@ -139,6 +140,7 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
       },
     }));
     try {
+      await withAiSourceClear(category, deleteRelated, async () => {
       switch (category) {
         case "resourceHistory":
           await input.onClearResourceHistory();
@@ -164,6 +166,7 @@ export function useProductDataPrivacy(input: ProductDataPrivacyInput) {
       setStorageRevision((current) => current + 1);
       const summary = await refresh();
       verifyCategoryCleared(category, summary);
+      });
       setReceipts((current) => ({
         ...current,
         [category]: {

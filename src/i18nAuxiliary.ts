@@ -1,7 +1,7 @@
 import { createInstance, type ParseKeys } from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 
-import { loadI18nextCatalog } from "./i18n/catalogs";
+import { loadSurfaceCatalog } from "./i18n/surfaceCatalogs";
 import {
   AUXILIARY_NAMESPACES,
   DEFAULT_NAMESPACE,
@@ -27,7 +27,7 @@ const auxiliaryI18n = createInstance();
 await auxiliaryI18n
   .use(
     resourcesToBackend((language: string, namespace: string) =>
-      loadI18nextCatalog(language, namespace),
+      loadSurfaceCatalog(language, namespace),
     ),
   )
   .init({
