@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "Directory usage distribution",
+  "diskChartHint": "Click a slice or check a directory to select items for cleanup.",
+  "diskReturnedTotal": "Total of returned directories",
   "refresh": "Check again",
   "sampledAt": "Sampled at {{time}}",
   "snapshot": "Result at the time",

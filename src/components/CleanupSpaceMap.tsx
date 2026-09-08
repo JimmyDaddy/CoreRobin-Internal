@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { AlertTriangle, ArrowDownUp, ArrowLeft, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -1381,10 +1382,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                       </button>
                     ) : null}
                   </label>
-                  <select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
+                  <Select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
                     <option value="size">{t("cleanup:map.view.sortSize")}</option>
                     <option value="name">{t("cleanup:map.view.sortName")}</option>
-                  </select>
+                  </Select>
                   <button type="button" onClick={() => setListDescending((current) => !current)}>
                     <ArrowDownUp size={14} />
                     {t(listDescending ? "cleanup:map.view.descending" : "cleanup:map.view.ascending")}

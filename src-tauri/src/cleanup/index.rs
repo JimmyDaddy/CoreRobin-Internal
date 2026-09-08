@@ -2886,8 +2886,7 @@ pub(crate) fn resolve_indexed_delete_request(
         let stored = connection
             .query_row(
                 "SELECT logical_size_bytes, allocated_size_bytes, item_count,
-                        kind, deletion_protected,
-                        device_id, inode
+                        kind, deletion_protected
                  FROM nodes WHERE scan_id = ?1 AND id = ?2",
                 params![scan_id, node_id],
                 |row| {
@@ -2897,8 +2896,6 @@ pub(crate) fn resolve_indexed_delete_request(
                         row.get::<_, i64>(2)?,
                         row.get::<_, String>(3)?,
                         row.get::<_, i64>(4)?,
-                        row.get::<_, Option<i64>>(5)?,
-                        row.get::<_, Option<i64>>(6)?,
                     ))
                 },
             )
@@ -2916,26 +2913,10 @@ pub(crate) fn resolve_indexed_delete_request(
                 "This item is a protected or summarized scan result and cannot be deleted.",
             ));
         }
-        let (absolute_path, display_path) = resolve_node_paths(&connection, scan_id, node_id)?;
-        let metadata = fs::symlink_metadata(&absolute_path).map_err(|error| {
-            CommandError::new(
-                "cleanup_index_identity_changed",
-                format!("The selected item changed after the scan: {error}"),
-            )
-        })?;
-        if metadata.file_type().is_symlink()
-            || stored
-                .5
-                .is_some_and(|value| Some(value) != metadata_device_id(&metadata))
-            || stored
-                .6
-                .is_some_and(|value| Some(value) != metadata_inode(&metadata))
-        {
-            return Err(CommandError::new(
-                "cleanup_index_identity_changed",
-                "The selected item no longer matches the file identity recorded by the scan.",
-            ));
-        }
+        // The index establishes the user's selected path, not a requirement that
+        // the object still has its scan-time inode. Bind the current object in
+        // cleanup validation, where missing/unavailable items are handled alone.
+        let (_, display_path) = resolve_node_paths(&connection, scan_id, node_id)?;
         paths.push(display_path.clone());
         evidence.push(CleanupDeleteTargetEvidence {
             path: display_path,
@@ -6523,7 +6504,7 @@ mod tests {
     }
 
     #[test]
-    fn indexed_delete_requests_ignore_client_paths_and_verify_identity() {
+    fn indexed_delete_requests_ignore_client_paths_and_allow_replaced_or_missing_items() {
         let fixture = tempdir().unwrap();
         let file = fixture.path().join("large.bin");
         fs::write(&file, vec![3_u8; 2_048]).unwrap();
@@ -6574,12 +6555,14 @@ mod tests {
                 mode: crate::models::CleanupDeleteMode::Permanent,
                 application_uninstall: None,
             };
+            let replacement = resolve_indexed_delete_request(&index_path, stale.clone()).unwrap();
             assert_eq!(
-                resolve_indexed_delete_request(&index_path, stale)
-                    .unwrap_err()
-                    .code,
-                "cleanup_index_identity_changed",
+                replacement.paths,
+                vec![file.canonicalize().unwrap().to_string_lossy().into_owned()]
             );
+            fs::remove_file(&file).unwrap();
+            let missing = resolve_indexed_delete_request(&index_path, stale).unwrap();
+            assert_eq!(missing.paths, replacement.paths);
         }
     }
 }

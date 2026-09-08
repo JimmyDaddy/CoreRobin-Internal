@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "Uso de espaço por pasta",
+  "diskChartHint": "Clique em um setor ou marque uma pasta para limpar.",
+  "diskReturnedTotal": "Total das pastas retornadas",
   "refresh": "Verificar novamente",
   "sampledAt": "Coletado às {{time}}",
   "snapshot": "Resultado naquele momento",

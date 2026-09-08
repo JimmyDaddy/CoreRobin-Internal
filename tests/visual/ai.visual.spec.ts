@@ -3,6 +3,29 @@ import { expect, test, type Page } from "@playwright/test";
 import { mockAiForBrowser } from "./ai.fixture";
 
 const output = ".local-dev/ai-validation";
+for (const compact of [false, true]) {
+  test(`Markdown renders safely in ${compact ? "Robin" : "main"} conversation`, async ({ page }) => {
+    await mockAiForBrowser(page, compact);
+    await page.setViewportSize(compact ? { width: 400, height: 540 } : { width: 1180, height: 900 });
+    const requests: string[] = [];
+    page.on("request", (request) => { if (request.url().includes("model.invalid")) requests.push(request.url()); });
+    await page.goto(compact ? "/robin-chat.html" : "/");
+    if (!compact) await page.locator(".sidebar .nav-group button").filter({ hasText: "AI assistant" }).click();
+    await expect(page.getByRole("textbox", { name: "Message Robin" })).toBeEnabled();
+    const content = '### 总结\n\n**网络**健康，无需处理。\n\n**磁盘**需要关注，可回收约 **2.5 GB**。\n\n- 临时文件：1.37 GB\n- 开发缓存\n  - `_cache`：10.5 GB\n\n| 类别 | 大小 |\n| --- | ---: |\n| 日志 | 17 MB |\n\n```text\n' + 'long-local-output '.repeat(20) + '\n```\n\n[说明](https://model.invalid/action) ![本地预览](https://model.invalid/pixel.png)';
+    await page.evaluate((text) => (window as unknown as { __aiFixture: { setReply: (text: string) => void } }).__aiFixture.setReply(text), content);
+    const markdown = page.locator(".ai-markdown");
+    await expect(markdown.getByRole("heading", { name: "总结" })).toHaveCount(1);
+    await expect(markdown.locator("strong").first()).toHaveText("网络");
+    await expect(markdown.locator("ul ul code")).toHaveText("_cache");
+    await expect(markdown.getByRole("table")).toHaveCount(1);
+    await expect(markdown.locator("a, img, script")).toHaveCount(0);
+    expect(requests).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator(".ai-messages").evaluate((element) => { element.scrollTop = 0; });
+    await capture(page, compact ? "markdown-robin" : "markdown-main");
+  });
+}
 async function capture(page: Page, name: string) {
   await mkdir(output, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
@@ -25,13 +48,33 @@ for (const compact of [false, true]) {
     await input.fill("Inspect my device and storage.");
     await input.press("Enter");
     await expect(page.locator(".capability-result")).toHaveCount(5);
+    await expect(page.locator(".ai-tool-step > details")).toHaveCount(0);
+    await expect(page.locator(".ai-composer > .ai-tool-scope")).toHaveCount(0);
     const card = page.locator(".capability-result--disk");
     await card.scrollIntoViewIfNeeded();
     await expect(card.getByText("Downloads", { exact: true })).toBeVisible();
     expect(await card.locator("pre").count()).toBe(0);
     await capture(page, compact ? "capability-cards-robin-400" : "capability-cards-main");
+    if (!compact) {
+      await page.setViewportSize({ width: 1180, height: 1200 });
+      await card.screenshot({ path: `${output}/disk-chart-card.png`, animations: "disabled" });
+      await page.setViewportSize({ width: 1180, height: 900 });
+    }
     await input.fill("Keep this draft for my next question");
-    await card.getByRole("checkbox", { name: "Application caches" }).check();
+    const slice = card.getByRole("button", { name: /^Application caches ·/ });
+    await slice.focus();
+    await slice.press("Space");
+    await expect(slice).toHaveAttribute("aria-pressed", "true");
+    await expect(card.getByRole("checkbox", { name: "Application caches" })).toBeChecked();
+    expect(await page.evaluate(() => (window as unknown as { __aiFixture: { cardActions: unknown[] } }).__aiFixture.cardActions)).toHaveLength(0);
+    await card.getByRole("checkbox", { name: "Application caches" }).uncheck();
+    await expect(slice).toHaveAttribute("aria-pressed", "false");
+    // Click the painted left-hand ring, not the slice bounding box's empty hole.
+    const ring = card.locator("svg[role=group]");
+    const ringBounds = await ring.boundingBox();
+    expect(ringBounds).not.toBeNull();
+    await ring.click({ position: { x: ringBounds!.width * .15, y: ringBounds!.height * .5 } });
+    await expect(card.getByRole("checkbox", { name: "Application caches" })).toBeChecked();
     await card.getByRole("button", { name: "Move selected items to trash" }).click();
     await expect(page.getByText("/synthetic/Application caches", { exact: true })).toBeVisible();
     await expect(input).toHaveValue("Keep this draft for my next question");

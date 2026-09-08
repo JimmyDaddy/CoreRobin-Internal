@@ -16,6 +16,13 @@ const step = (overrides: Partial<AiToolStep> = {}): AiToolStep => ({
 beforeEach(async () => { vi.clearAllMocks(); await i18n.changeLanguage("zh-CN"); resolveToolConfirmation.mockResolvedValue(undefined); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 describe("native task confirmations", () => {
+  it("shows structured results without a duplicate JSON disclosure", async () => {
+    const result = JSON.stringify({ sampledAt: 1000, scanId: "scan", sourceRevision: 3, scannedEntries: 42, unreadableEntries: 0, items: [{ targetRef: "native-one", name: "Folder one", allocatedBytes: 1024, logicalBytes: 1024, itemCount: 2, safety: "review" }] });
+    const { container } = render(<AiToolSteps steps={[step({ name: "scan_disk_usage", state: "complete", confirmation: null, result })]} requestId={null} active={false} onResolved={vi.fn()} />);
+    await screen.findByText("Folder one");
+    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector("pre")).toBeNull();
+  });
   it("shows the native target and waits for an explicit, single-use decision", async () => {
     let finish: () => void = () => {};
     resolveToolConfirmation.mockImplementation(() => new Promise<void>((done) => { finish = done; }));

@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "目錄佔用分布",
+  "diskChartHint": "點選扇區或勾選目錄，選擇要清理的項目。",
+  "diskReturnedTotal": "本次傳回目錄合計",
   "refresh": "重新檢查",
   "sampledAt": "取樣於 {{time}}",
   "snapshot": "當時的結果",

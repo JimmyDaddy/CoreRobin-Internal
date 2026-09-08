@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { ChevronDown, Languages } from "lucide-react";
 
 import {
@@ -38,7 +39,7 @@ export function LocaleSelect({
           aria-hidden="true"
         />
       ) : null}
-      <select
+      <Select
         value={value}
         aria-label={label}
         title={label}
@@ -53,7 +54,7 @@ export function LocaleSelect({
             {compact ? locale.compactLabel : locale.nativeName}
           </option>
         ))}
-      </select>
+      </Select>
       <ChevronDown
         className="locale-select__chevron"
         size={14}

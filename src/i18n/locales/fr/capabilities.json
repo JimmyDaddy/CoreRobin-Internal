@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "Espace utilisé par dossier",
+  "diskChartHint": "Cliquez sur un secteur ou cochez un dossier à nettoyer.",
+  "diskReturnedTotal": "Total des dossiers retournés",
   "refresh": "Vérifier à nouveau",
   "sampledAt": "Relevé à {{time}}",
   "snapshot": "Résultat au moment du relevé",

@@ -73,6 +73,7 @@ let sessions = [{id:"chat-1",title:"Understanding my device",revision:1,createdA
 let prepared;
 window.__aiFixture={state,calls:{prepare:0,start:0,listModels:0,testModel:0},failNext:false,toolTask:false,toolCards:false,formIds:null,decisions:[],cardActions:[]};
 const find = id => {const session=sessions.find(item=>item.id===id);if(!session)throw {code:"not_found",message:"Conversation deleted"};return session;};
+window.__aiFixture.setReply = (content, status = "complete") => { const item = sessions[0]; item.messages = [{id:"markdown-answer",role:"assistant",content,createdAt:now,status,requestId:null,modelLabel:"my-local-model",sourceCategories:[],reusableInContext:true,usage:null}]; item.revision++; emit(); };
 export const aiApi = {
 getState:async()=>clone(state),onChange:async(callback)=>{listeners.add(callback);return()=>listeners.delete(callback);},onVisibility:async()=>()=>{},
 updateSettings:async(input)=>{state.settings=clone(input);emit();return clone(state);},

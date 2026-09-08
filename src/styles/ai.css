@@ -4,42 +4,6 @@
   color: var(--text);
   font-size: 13px;
 }
-.ai-assistant .button,
-.ai-settings .button {
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  padding: 7px 10px;
-}
-.ai-assistant .button:hover:not(:disabled),
-.ai-settings .button:hover:not(:disabled) {
-  background: var(--panel-soft);
-}
-.ai-assistant .button--primary,
-.ai-settings .button--primary {
-  background: var(--ai-accent);
-  color: #071522;
-}
-.ai-assistant .button--primary:hover:not(:disabled),
-.ai-settings .button--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ai-accent) 84%, white);
-}
-.ai-assistant .button--secondary,
-.ai-settings .button--secondary {
-  background: var(--panel-soft);
-  border-color: var(--border);
-}
-.ai-assistant .button--danger,
-.ai-settings .button--danger {
-  background: var(--danger);
-  color: #230500;
-}
-.ai-assistant .button--danger-ghost,
-.ai-settings .button--danger-ghost {
-  color: var(--danger);
-}
 .ai-assistant .ai-icon {
   padding: 0;
 }
@@ -99,26 +63,19 @@
 .ai-field--wide {
   grid-column: 1 / -1;
 }
-.ai-settings input:not([type="checkbox"]),
-.ai-settings select,
-.ai-assistant select,
-.ai-assistant textarea,
-.ai-assistant input:not([type="checkbox"]) {
+.ai-input:not([type="checkbox"]) {
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--control-radius);
   padding: 9px 10px;
   background: var(--panel-soft);
   color: var(--text);
   font: inherit;
 }
-.ai-settings input:focus-visible,
-.ai-settings select:focus-visible,
-.ai-assistant select:focus-visible,
-.ai-assistant textarea:focus-visible,
-.ai-assistant input:focus-visible {
-  outline: 2px solid var(--ai-accent);
+.ai-input:focus-visible {
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 .ai-field small,
@@ -467,10 +424,6 @@
   min-height: 0;
   margin-bottom: 0;
   overflow: auto;
-}
-.ai-assistant .button--danger:hover:not(:disabled),
-.ai-settings .button--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 84%, white);
 }
 .ai-evidence {
   margin-top: 8px;

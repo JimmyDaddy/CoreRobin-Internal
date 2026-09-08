@@ -69,6 +69,7 @@ export function AiToolSteps({ steps, requestId, active, onResolved, onAction, bu
       const result = step.result ? readCapabilityResult(step.name, step.result) : null;
       const title = toolNames[step.name as keyof typeof toolNames];
       const status = confirming ? t("toolNeedsConfirmation") : running ? t("toolRunning") : step.state === "complete" ? t("statusComplete") : step.state === "failed" ? t("statusFailed") : step.state === "cancelled" ? t("statusCancelled") : t("statusInterrupted");
+      const rawResult = step.result && <details><summary><Wrench size={12} />{t("toolResult")}</summary><pre>{formatResult(step.result)}</pre></details>;
       return <section key={step.id} className={`ai-tool-step ai-tool-step--${step.state}`}>
         <header>
           {confirming ? <ShieldAlert size={15} /> : running ? <LoaderCircle className="is-spinning" size={15} /> : step.state === "complete" ? <CheckCircle2 size={15} /> : <CircleStop size={15} />}
@@ -85,8 +86,7 @@ export function AiToolSteps({ steps, requestId, active, onResolved, onAction, bu
           {confirming && step.confirmation.expiresAt <= now && <small>{t("toolConfirmationExpired")}</small>}
         </div>}
         {step.error && <AiErrorNotice error={step.error} context="tool" />}
-        {result && <ResultBoundary key={`${step.id}-${step.result}`} fallback={<p role="alert">{t("toolResult")} · {tc("technicalDetails")}</p>}><Suspense fallback={<p role="status">{tc("loadingOperation")}</p>}><CapabilityResultCard result={result} onReady={active ? onResultReady : undefined} compact={compact} onExpand={onExpand} busy={busy} actionsEnabled={(step.actionsExpiresAt ?? 0) > now} stale={result.kind === "disk" && (diskRevision === undefined || result.sourceRevision !== diskRevision)} onAction={onAction ? (intent) => onAction(step.id, intent) : undefined} /></Suspense></ResultBoundary>}
-        {step.result && <details><summary><Wrench size={12} />{result ? tc("technicalDetails") : t("toolResult")}</summary><pre>{formatResult(step.result)}</pre></details>}
+        {result ? <ResultBoundary key={`${step.id}-${step.result}`} fallback={rawResult}><Suspense fallback={<p role="status">{tc("loadingOperation")}</p>}><CapabilityResultCard result={result} onReady={active ? onResultReady : undefined} compact={compact} onExpand={onExpand} busy={busy} actionsEnabled={(step.actionsExpiresAt ?? 0) > now} stale={result.kind === "disk" && (diskRevision === undefined || result.sourceRevision !== diskRevision)} onAction={onAction ? (intent) => onAction(step.id, intent) : undefined} /></Suspense></ResultBoundary> : rawResult}
       </section>;
     })}
     {failure && <AiErrorNotice error={failure} />}

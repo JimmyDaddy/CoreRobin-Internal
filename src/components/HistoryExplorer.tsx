@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import {
   Activity,
   BellRing,
@@ -153,7 +154,7 @@ export function HistoryExplorer({
         </label>
         <label className="history-controls__retention">
           <span>{t("history:retention")}</span>
-          <select
+          <Select
             value={retentionDays}
             onChange={(event) =>
               onRetentionDaysChange(
@@ -166,7 +167,7 @@ export function HistoryExplorer({
                 {t("history:retentionDays", { count: days })}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="history-controls__range">
           {range ?? t("history:noRange")} · {t("history:savedPoints", { count: storedPointCount })}

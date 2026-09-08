@@ -15,7 +15,7 @@ export function QuickCleanupPage({ onBack }: { onBack: () => void }) {
           <strong>{t("cleanup:quickClean.guideTitle")}</strong>
           <p>{t("cleanup:quickClean.guideDescription")}</p>
         </div>
-        <button className="button button--primary" type="button" onClick={onBack}>
+        <button className="button button--secondary" type="button" onClick={onBack}>
           {t("cleanup:quickClean.guideAction")}
           <ArrowRight size={14} />
         </button>

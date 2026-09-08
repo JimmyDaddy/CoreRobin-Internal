@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mockAiForBrowser } from "./ai.fixture";
 import { BUSINESS_FORM_IDS } from "../../src/capabilities/formCatalog";
 import { TOOLBOX_TOOL_IDS } from "../../src/toolbox/contracts";
+import { captureUiAudit } from "./ui-audit";
 
 // Browser/dev data, not native execution or platform availability proof.
 test("all catalog forms open shared operations without running model actions", async ({ page }) => {
@@ -28,6 +29,7 @@ test("all catalog forms open shared operations without running model actions", a
     // Do not silently accept an operation component crashing into the boundary.
     expect(await dialog.locator(".capability-form-body > [role=alert]").count(), id).toBe(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), id).toBe(true);
+    await captureUiAudit(page, `form-${id.replaceAll(".", "-")}`);
     if (["settings.privacy", "storage.file_insights", "toolbox.image-editor"].includes(id)) await page.screenshot({ path: `.local-dev/ai-validation/capability-form-${id.replaceAll(".", "-")}.png` });
     await dialog.getByRole("button", { name: "Close operation", exact: true }).click();
     await expect(dialog).toHaveCount(0);

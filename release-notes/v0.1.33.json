@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.33",
+  "title": {
+    "zh-CN": "更清晰的 AI 回复与更可靠的本地操作",
+    "en": "Clearer AI replies and more reliable local actions"
+  },
+  "items": [
+    {
+      "zh-CN": "AI 回复现在会正确显示标题、粗体、列表、表格和代码块，长内容也更容易阅读。",
+      "en": "AI replies now render headings, emphasis, lists, tables, and code blocks correctly, making long answers easier to read."
+    },
+    {
+      "zh-CN": "磁盘分析结果新增目录占用分布图，可以直接点击扇区或勾选目录来选择要清理的项目。",
+      "en": "Disk analysis results now include a directory usage chart, so you can select cleanup items by clicking a slice or checking a directory."
+    },
+    {
+      "zh-CN": "清理确认会重新核对当前选中的路径；某个项目被替换、删除或变成不安全链接时会单独跳过，其他项目仍可继续处理。",
+      "en": "Cleanup confirmation rechecks the selected paths. If one item was replaced, removed, or became an unsafe link, it is skipped individually while other selected items can still proceed."
+    },
+    {
+      "zh-CN": "设置、进程、能力和工具页面的控件样式更加统一，在较窄窗口和嵌入式操作表单中也能保持清晰布局。",
+      "en": "Controls are now more consistent across settings, processes, capabilities, and tools, with clearer layouts in narrow windows and embedded operation forms."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { Select } from "../Select";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, Plus, RefreshCw, Settings2 } from "lucide-react";
@@ -269,7 +270,7 @@ export function AiSettings({
           <Settings2 size={22} />
         </header>
         <label className="ai-check">
-          <input
+          <input className="ai-input"
             type="checkbox"
             role="switch"
             checked={state?.settings.enabled ?? false}
@@ -288,7 +289,7 @@ export function AiSettings({
         </label>
         <p className="ai-muted">{t("noAutoSwitch")}</p>
         <label className="ai-check">
-          <input
+          <input className="ai-input"
             type="checkbox"
             checked={state?.settings.localConnectionsOnly ?? false}
             disabled={!state || busy}
@@ -388,7 +389,7 @@ export function AiSettings({
                 {!editing.id && (
                   <label className="ai-field ai-field--wide">
                     {t("connections")}
-                    <select
+                    <Select
                       defaultValue="ollama"
                       onChange={(event) => {
                         const preset = AI_PRESETS.find(
@@ -412,12 +413,12 @@ export function AiSettings({
                           {preset.name || t("custom")}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 )}
                 <label className="ai-field">
                   {t("name")}
-                  <input
+                  <input className="ai-input"
                     required
                     maxLength={120}
                     value={editing.name}
@@ -428,7 +429,7 @@ export function AiSettings({
                 </label>
                 <label className="ai-field">
                   {t("protocol")}
-                  <select
+                  <Select
                     value={editing.protocol}
                     onChange={(event) =>
                       setEditing({
@@ -455,11 +456,11 @@ export function AiSettings({
                         {protocol.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label className="ai-field ai-field--wide">
                   {t("baseUrl")}
-                  <input
+                  <input className="ai-input"
                     aria-label={t("baseUrl")}
                     required
                     type="url"
@@ -475,7 +476,7 @@ export function AiSettings({
                 </label>
                 <label className="ai-field">
                   {t("network")}
-                  <select
+                  <Select
                     value={editing.networkPolicy}
                     onChange={(event) =>
                       setEditing({
@@ -488,7 +489,7 @@ export function AiSettings({
                     <option value="loopback">{t("loopback")}</option>
                     <option value="public">{t("public")}</option>
                     <option value="private">{t("private")}</option>
-                  </select>
+                  </Select>
                 </label>
                 {suggestedBase ? (
                   <div className="ai-field ai-field--wide ai-notice">
@@ -518,7 +519,7 @@ export function AiSettings({
                 )}
                 <label className="ai-field">
                   {t("auth")}
-                  <select
+                  <Select
                     value={editing.authKind}
                     onChange={(event) =>
                       setEditing({
@@ -536,12 +537,12 @@ export function AiSettings({
                     <option value="bearer">{t("bearer")}</option>
                     <option value="api_key">{t("apiKey")}</option>
                     <option value="custom_header">{t("customHeader")}</option>
-                  </select>
+                  </Select>
                 </label>
                 {editing.authKind === "custom_header" && (
                   <label className="ai-field ai-field--wide">
                     {t("headerName")}
-                    <input
+                    <input className="ai-input"
                       required
                       value={editing.authHeaderName ?? ""}
                       onChange={(event) =>
@@ -558,7 +559,7 @@ export function AiSettings({
                   <>
                     <label className="ai-field ai-field--wide">
                       {t("secret")}
-                      <input
+                      <input className="ai-input"
                         aria-label={t("secret")}
                         type="password"
                         autoComplete="new-password"
@@ -569,7 +570,7 @@ export function AiSettings({
                       <small>{t("secretHint")}</small>
                     </label>
                     <label className="ai-check ai-field--wide">
-                      <input
+                      <input className="ai-input"
                         type="checkbox"
                         checked={temporaryCredential}
                         onChange={(event) =>
@@ -589,7 +590,7 @@ export function AiSettings({
                 <div className="ai-fields" style={{ marginTop: 12 }}>
                   <label className="ai-field">
                     {t("timeout")}
-                    <input
+                    <input className="ai-input"
                       type="number"
                       min={10}
                       max={300}
@@ -604,7 +605,7 @@ export function AiSettings({
                   </label>
                   <label className="ai-field">
                     {t("outputLimit")}
-                    <input
+                    <input className="ai-input"
                       type="number"
                       min={32}
                       max={8192}
@@ -619,7 +620,7 @@ export function AiSettings({
                   </label>
                   <label className="ai-field ai-field--wide">
                     {t("proxy")}
-                    <input
+                    <input className="ai-input"
                       type="url"
                       value={editing.proxyUrl ?? ""}
                       onChange={(event) =>
@@ -638,7 +639,7 @@ export function AiSettings({
                     <>
                       <label className="ai-field ai-field--wide">
                         {t("proxyNetwork")}
-                        <select
+                        <Select
                           value={editing.proxyNetworkPolicy ?? "auto"}
                           onChange={(event) =>
                             setEditing({
@@ -655,12 +656,12 @@ export function AiSettings({
                           <option value="loopback">{t("loopback")}</option>
                           <option value="public">{t("public")}</option>
                           <option value="private">{t("private")}</option>
-                        </select>
+                        </Select>
                         <small>{t("proxyTargetUnverified")}</small>
                       </label>
                       <label className="ai-field">
                         {t("proxyUsername")}
-                        <input
+                        <input className="ai-input"
                           autoComplete="off"
                           value={proxyUsername}
                           onChange={(event) =>
@@ -670,7 +671,7 @@ export function AiSettings({
                       </label>
                       <label className="ai-field">
                         {t("proxyPassword")}
-                        <input
+                        <input className="ai-input"
                           type="password"
                           autoComplete="new-password"
                           value={proxyPassword}
@@ -698,7 +699,7 @@ export function AiSettings({
                   {editing.protocol === "anthropic_messages" && (
                     <label className="ai-field ai-field--wide">
                       {t("workspaceId")}
-                      <input
+                      <input className="ai-input"
                         value={editing.anthropicWorkspaceId ?? ""}
                         onChange={(event) =>
                           setEditing({
@@ -712,7 +713,7 @@ export function AiSettings({
                   {editing.protocol === "openai_chat" && (
                     <label className="ai-field ai-field--wide">
                       {t("tokenParameter")}
-                      <select
+                      <Select
                         value={editing.chatTokenLimitParameter}
                         onChange={(event) =>
                           setEditing({
@@ -727,11 +728,11 @@ export function AiSettings({
                         <option value="max_completion_tokens">
                           max_completion_tokens
                         </option>
-                      </select>
+                      </Select>
                     </label>
                   )}
                   <label className="ai-check">
-                    <input
+                    <input className="ai-input"
                       type="checkbox"
                       checked={editing.stream}
                       onChange={(event) =>
@@ -776,7 +777,7 @@ export function AiSettings({
               <div className="ai-notice">
                 <div className="ai-field">
                   <label htmlFor={`${fieldId}-model`}>{t("model")}</label>
-                  <input
+                  <input className="ai-input"
                     id={`${fieldId}-model`}
                     list={`${fieldId}-models`}
                     value={model}
@@ -922,7 +923,7 @@ export function AiSettings({
         <div className="ai-fields">
           <label className="ai-field">
             {t("connections")}
-            <select
+            <Select
               value={selection.connectionId}
               onChange={(event) =>
                 setSelection({ ...selection, connectionId: event.target.value })
@@ -934,11 +935,11 @@ export function AiSettings({
                   {connection.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="ai-field">
             {t("model")}
-            <input
+            <input className="ai-input"
               value={selection.modelId}
               onChange={(event) =>
                 setSelection({ ...selection, modelId: event.target.value })
@@ -992,7 +993,7 @@ export function AiSettings({
         <div className="ai-fields">
           <label className="ai-field">
             {t("storageBudget")}
-            <input
+            <input className="ai-input"
               type="number"
               min={8}
               max={2048}

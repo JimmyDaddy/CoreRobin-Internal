@@ -300,6 +300,7 @@ struct CleanupDeleteLeaseEntry {
     missing_paths: Vec<String>,
     unavailable_failures: Vec<CleanupDeleteFailure>,
     targets: Vec<CleanupDeleteTarget>,
+    basket_request: Option<(CleanupDeleteLeaseRequest, PathBuf)>,
 }
 
 #[derive(Debug)]
@@ -586,6 +587,10 @@ impl CleanupDeleteController {
                 missing_paths: missing_paths.clone(),
                 unavailable_failures: unavailable_failures.clone(),
                 targets: targets.clone(),
+                basket_request: request
+                    .application_uninstall
+                    .is_none()
+                    .then(|| (request.clone(), home.to_path_buf())),
             });
         }
         Ok(CleanupDeleteLease {
@@ -713,7 +718,45 @@ impl CleanupDeleteController {
                 )
             })?;
         // Consume first so every execution attempt is single-use, including failures.
-        let lease = self.leases.remove(position);
+        let mut lease = self.leases.remove(position);
+        if let Some((mut basket_request, home)) = lease.basket_request.take() {
+            // Confirmation authorizes selected paths, including ordinary objects
+            // replaced since preview. Rebind under the original cleanup boundary
+            // instead of comparing with stale handles; no-follow checks remain.
+            basket_request.mode = lease.mode;
+            let mut refreshed = CleanupTargetValidation {
+                targets: Vec::new(),
+                missing_paths: Vec::new(),
+                unavailable_failures: Vec::new(),
+            };
+            for path in &lease.paths {
+                let mut selected = basket_request.clone();
+                selected.paths = vec![path.clone()];
+                selected.expected_targets.retain(|item| item.path == *path);
+                match validate_cleanup_targets(&selected, &home) {
+                    Ok(result) => {
+                        refreshed.targets.extend(result.targets);
+                        refreshed.missing_paths.extend(result.missing_paths);
+                        refreshed
+                            .unavailable_failures
+                            .extend(result.unavailable_failures);
+                    }
+                    Err(error) => refreshed.unavailable_failures.push(CleanupDeleteFailure {
+                        path: path.clone(),
+                        message: error.message,
+                    }),
+                }
+            }
+            lease.targets = refreshed.targets;
+            lease.missing_paths = refreshed.missing_paths;
+            lease.unavailable_failures = refreshed.unavailable_failures;
+            if lease.mode == CleanupDeleteMode::Trash
+                && lease.trash_destination.is_none()
+                && !lease.targets.is_empty()
+            {
+                lease.trash_destination = Some(prepare_cleanup_trash_destination(&home)?);
+            }
+        }
         let mut targets = Vec::with_capacity(lease.targets.len());
         let mut deleted = lease
             .missing_paths
@@ -2821,18 +2864,11 @@ fn validate_cleanup_targets(
                 continue;
             }
             Err(error) => {
-                let message = error.to_string();
-                let code = if message.contains("volume") {
-                    "cleanup_cross_filesystem"
-                } else if message.contains("symbolic") || message.contains("special") {
-                    "unsupported_cleanup_target"
-                } else {
-                    "cleanup_target_unavailable"
-                };
-                return Err(CommandError::new(
-                    code,
-                    format!("CoreRobin could not safely bind {display}: {error}"),
-                ));
+                unavailable_failures.push(CleanupDeleteFailure {
+                    path: display.clone(),
+                    message: format!("CoreRobin could not safely access {display}: {error}"),
+                });
+                continue;
             }
         };
         let evidence = request
@@ -6675,6 +6711,107 @@ mod tests {
     }
 
     #[test]
+    fn cleanup_basket_deletes_current_objects_after_confirmation() {
+        for mode in [CleanupDeleteMode::Permanent, CleanupDeleteMode::Trash] {
+            let root = test_root("basket-replaced-objects");
+            let directory = root.join("Downloads/directory");
+            let file = root.join("Downloads/file");
+            let missing = root.join("Downloads/recreated");
+            fs::create_dir_all(&directory).unwrap();
+            fs::write(directory.join("old.txt"), b"old directory").unwrap();
+            fs::write(&file, b"old file").unwrap();
+            let mut request = cleanup_delete_request(
+                &root,
+                [&directory, &file, &missing]
+                    .into_iter()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect(),
+                0,
+            );
+            request.mode = mode;
+            let mut controller = CleanupDeleteController::default();
+            let lease = controller.create_lease_for_home(request, &root).unwrap();
+            assert!(lease.executable);
+
+            // Both identity and kind can change; only selected paths are removed.
+            let old_directory = root.join("Downloads/moved-directory");
+            let old_file = root.join("Downloads/moved-file");
+            fs::rename(&directory, &old_directory).unwrap();
+            fs::rename(&file, &old_file).unwrap();
+            fs::write(&directory, b"now a file").unwrap();
+            fs::create_dir(&file).unwrap();
+            fs::write(file.join("new.txt"), b"now a directory").unwrap();
+            fs::write(&missing, b"created after preview").unwrap();
+
+            let result = controller
+                .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+                .unwrap();
+            assert!(result.failed.is_empty(), "{:?}", result.failed);
+            assert_eq!(result.deleted.len(), 3);
+            assert!(!directory.exists());
+            assert!(!file.exists());
+            assert!(!missing.exists());
+            assert_eq!(
+                fs::read(old_directory.join("old.txt")).unwrap(),
+                b"old directory"
+            );
+            assert_eq!(fs::read(old_file).unwrap(), b"old file");
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cleanup_basket_skips_replacement_links_and_cleans_other_selections() {
+        use std::os::unix::fs::symlink;
+        for replace_after_preview in [false, true] {
+            let root = test_root("basket-replacement-link");
+            let selected = root.join("Downloads/selected");
+            let other = root.join("Downloads/other");
+            let outside = root.join("keep.txt");
+            fs::create_dir_all(selected.parent().unwrap()).unwrap();
+            fs::write(&selected, b"old").unwrap();
+            fs::write(&other, b"remove").unwrap();
+            fs::write(&outside, b"keep").unwrap();
+            let request = cleanup_delete_request(
+                &root,
+                [&selected, &other]
+                    .into_iter()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect(),
+                0,
+            );
+            let replace = || {
+                fs::remove_file(&selected).unwrap();
+                symlink(&outside, &selected).unwrap();
+            };
+            if !replace_after_preview {
+                replace();
+            }
+            let mut controller = CleanupDeleteController::default();
+            let lease = controller.create_lease_for_home(request, &root).unwrap();
+            assert!(lease.executable);
+            if replace_after_preview {
+                replace();
+            }
+            let result = controller
+                .execute(CleanupDeleteExecutionRequest { lease_id: lease.id })
+                .unwrap();
+            assert_eq!(result.failed.len(), 1);
+            assert_eq!(result.deleted.len(), 1);
+            assert!(!other.exists());
+            assert_eq!(fs::read(&outside).unwrap(), b"keep");
+            assert!(
+                fs::symlink_metadata(&selected)
+                    .unwrap()
+                    .file_type()
+                    .is_symlink()
+            );
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
+
+    #[test]
     fn cleanup_delete_keeps_processing_targets_that_changed_after_confirmation() {
         let root = test_root("trash-partial-revalidation");
         let changed = root.join("Downloads/changed.txt");
@@ -6757,7 +6894,6 @@ mod tests {
         fs::set_permissions(&locked_parent, fs::Permissions::from_mode(0o000)).unwrap();
         let mut controller = CleanupDeleteController::default();
         let lease_result = controller.create_lease_for_home(request, &root);
-        fs::set_permissions(&locked_parent, fs::Permissions::from_mode(0o700)).unwrap();
         let lease = lease_result.unwrap();
 
         assert!(lease.executable);
@@ -6775,6 +6911,7 @@ mod tests {
             )
             .unwrap();
 
+        fs::set_permissions(&locked_parent, fs::Permissions::from_mode(0o700)).unwrap();
         assert_eq!(attempted, vec![existing.canonicalize().unwrap()]);
         assert_eq!(result.deleted.len(), 1);
         assert_eq!(result.deleted[0].path, existing_display);

@@ -457,8 +457,10 @@ describe("AiAssistant native conversation lifecycle", () => {
     const { container } = render(
       <AiAssistant onOpenEvidenceSource={onOpenEvidenceSource} />,
     );
-    await screen.findByText(raw);
-    expect(screen.getByText(i18n.t("ai:resultUnlinked"))).toBeTruthy();
+    await waitFor(() => expect(container.querySelector(".ai-markdown")?.textContent).toBe(raw));
+    for (const key of ["resultUnlinked", "modelExplanation", "toolScope", "enterHint"] as const) {
+      expect(screen.queryByText(i18n.t(`ai:${key}`))).toBeNull();
+    }
     expect(
       screen.queryByRole("region", { name: i18n.t("ai:resultTitle") }),
     ).toBeNull();

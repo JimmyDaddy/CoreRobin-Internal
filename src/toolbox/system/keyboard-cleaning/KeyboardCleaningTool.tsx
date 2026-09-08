@@ -1,3 +1,4 @@
+import { Select } from "../../../components/Select";
 import { CircleAlert, ShieldCheck, Square, Timer } from "lucide-react";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -212,7 +213,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
           <button className="button button--secondary" type="button" disabled={maskVisible} onClick={() => { void openSystemSettings("accessibility").catch((reason: unknown) => setError(keyboardErrorMessage(reason, t))); }}>{t("keyboardCleaning.openSettings")}</button>
         </div> : null}
         <div className="toolbox-inline-actions keyboard-cleaning-tool__actions">
-          <label>{t("keyboardCleaning.durationLabel")}<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>{t("keyboardCleaning.duration", { count: 30 })}</option><option value={60}>{t("keyboardCleaning.duration", { count: 60 })}</option><option value={120}>{t("keyboardCleaning.duration", { count: 120 })}</option></select></label>
+          <label>{t("keyboardCleaning.durationLabel")}<Select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>{t("keyboardCleaning.duration", { count: 30 })}</option><option value={60}>{t("keyboardCleaning.duration", { count: 60 })}</option><option value={120}>{t("keyboardCleaning.duration", { count: 120 })}</option></Select></label>
           <button className="button button--primary" type="button" disabled={!canStart} onClick={() => apply({ type: "start", requestId: crypto.randomUUID(), durationSeconds, nowMs: clock() })}><Timer size={14} />{t("keyboardCleaning.start")}</button>
           {cleaning ? <button className="button button--secondary" type="button" onClick={() => apply({ type: "cancel", nowMs: clock() })}><Square size={14} />{t("keyboardCleaning.stop")}</button> : null}
         </div>

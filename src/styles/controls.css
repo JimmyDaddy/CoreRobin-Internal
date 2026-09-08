@@ -1,0 +1,129 @@
+.button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.button {
+  min-height: var(--control-height);
+  padding: 0 12px;
+  font-size: var(--control-font-size);
+  font-weight: 650;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  color: var(--text-soft);
+  border-color: var(--border);
+  background: var(--panel);
+}
+
+.button--plain {
+  color: var(--blue);
+  border-color: transparent;
+  background: transparent;
+}
+
+.button--secondary {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--panel-raised);
+}
+
+.button--primary {
+  color: #08111a;
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.button--danger {
+  color: #240605;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.button--danger-ghost {
+  color: var(--danger);
+  border-color: rgba(255, 125, 115, 0.2);
+  background: var(--danger-soft);
+}
+
+.button:not(:disabled):hover,
+.icon-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+/* Native select semantics with a shared visual treatment across all hosts. */
+.ui-select.ui-select {
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--control-height);
+  padding: 7px 32px 7px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--control-radius);
+  background-color: var(--panel-soft);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-soft) 50%), linear-gradient(135deg, var(--text-soft) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 11px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--control-font-size);
+  font-weight: 400;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.ui-select.ui-select--compact { min-height: 30px; padding-block: 4px; font-size: 11px; }
+.ui-select.ui-select:is([multiple], [size]) { background-image: none; padding-right: 11px; }
+.ui-select.ui-select:hover:not(:disabled) { border-color: var(--blue); }
+.ui-select.ui-select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ui-select.ui-select:disabled { opacity: .45; cursor: not-allowed; }
+.ui-select.ui-select[aria-invalid="true"] { border-color: var(--danger); }
+.settings-select:has(.ui-select) > svg:not(.locale-select__icon) { display: none; }
+.settings-select > .ui-select { width: 100%; }
+.locale-select--with-icon .ui-select { padding-left: 34px; }
+input[type="checkbox"]:not([role="switch"]) {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  vertical-align: middle;
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  min-height: 15px;
+  flex: 0 0 15px;
+  margin: 0;
+  border: 1px solid var(--text-muted);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--background);
+  cursor: pointer;
+}
+input[type="checkbox"]:not([role="switch"])::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  clip-path: polygon(14% 44%, 0 60%, 42% 100%, 100% 18%, 82% 0, 40% 68%);
+  transform: scale(0);
+}
+input[type="checkbox"]:not([role="switch"]):checked, input[type="checkbox"]:not([role="switch"]):indeterminate { border-color: var(--blue); background: var(--blue); }
+input[type="checkbox"]:not([role="switch"]):checked::before { transform: scale(1); }
+input[type="checkbox"]:not([role="switch"]):indeterminate::before { clip-path: inset(3px 0); transform: scale(1); }
+input[type="checkbox"]:not([role="switch"]):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+input[type="checkbox"]:not([role="switch"]):disabled { opacity: .45; cursor: not-allowed; }
+@media (forced-colors: active) {
+  .ui-select.ui-select { appearance: auto; background-image: none; }
+  input[type="checkbox"]:not([role="switch"]) { appearance: auto; }
+  input[type="checkbox"]:not([role="switch"])::before { display: none; }
+}

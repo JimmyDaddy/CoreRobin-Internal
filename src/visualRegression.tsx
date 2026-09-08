@@ -6,6 +6,7 @@ import "./i18n";
 import i18n from "./i18n";
 import "./styles/feature-intelligence.css";
 import "./App.css";
+import "./styles/controls.css";
 import "./styles/product-support.css";
 import "./visualRegression.css";
 import { Button } from "./components/Button";

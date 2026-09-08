@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getSystemSnapshot } from "../api";
@@ -19,7 +20,7 @@ export function ProcessTargetPicker({ value, onSelect }: { value: string; onSele
   };
   return <div className="toolbox-inline-actions">
     <button className="button button--secondary" type="button" disabled={loading} onClick={() => void load()}>{t("loadProcesses")}</button>
-    {targets.length > 0 && <label>{t("selectProcess")} <select value={value} onChange={(event) => { const target = targets.find((item) => `${item.pid}:${item.birthToken}` === event.target.value); if (target) onSelect(target); }}><option value="">{t("selectProcess")}</option>{targets.map((target) => <option key={`${target.pid}:${target.birthToken}`} value={`${target.pid}:${target.birthToken}`}>{target.name} · PID {target.pid}</option>)}</select></label>}
+    {targets.length > 0 && <label>{t("selectProcess")} <Select value={value} onChange={(event) => { const target = targets.find((item) => `${item.pid}:${item.birthToken}` === event.target.value); if (target) onSelect(target); }}><option value="">{t("selectProcess")}</option>{targets.map((target) => <option key={`${target.pid}:${target.birthToken}`} value={`${target.pid}:${target.birthToken}`}>{target.name} · PID {target.pid}</option>)}</Select></label>}
     {error && <p role="alert">{error}</p>}
   </div>;
 }

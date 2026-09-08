@@ -1,9 +1,9 @@
 import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { CapabilityActionIntent, CapabilityResult } from "./contracts";
 import { ProcessActionButtons } from "./ProcessActionButtons";
-import { CleanupItemSummary } from "./CleanupItemSummary";
+import { DiskUsageCard } from "./DiskUsageCard";
 import { NetworkDiagnosticList } from "./NetworkDiagnosticList";
 import { CapabilityFormCard } from "./CapabilityFormCard";
 import { HistoryObservations } from "./HistoryObservations";
@@ -21,7 +21,6 @@ export function CapabilityResultCard({ result, actionsEnabled, busy, stale = fal
   onReady?: () => void;
 }) {
   const { t, i18n } = useTranslation("capabilities");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState(false);
   useLayoutEffect(() => { onReady?.(); }, [onReady]);
   const readonly = result.kind !== "cleanup" && result.kind !== "process_action" && result.kind !== "form";
@@ -48,18 +47,7 @@ export function CapabilityResultCard({ result, actionsEnabled, busy, stale = fal
       {!expanded && result.items.length > 5 && <button type="button" className="button button--plain" onClick={() => setExpanded(true)}>{t("showMore", { count: result.items.length - 5 })}</button>}
       {!actionsEnabled && <p className="capability-hint">{t("expired")}</p>}
     </>}
-    {result.kind === "disk" && <>
-      <div className="capability-scan-summary"><strong>{t("scanned", { count: result.scannedEntries })}</strong>{result.unreadableEntries > 0 && <span className="capability-warning">{t("unreadable", { count: result.unreadableEntries })}</span>}</div>
-      <p className="capability-hint">{t("diskScope")}</p>
-      <ul className="capability-cleanup-list">{result.items.slice(0, expanded ? 12 : 5).map((item) => <li key={item.targetRef}>
-        <label className="capability-select"><input type="checkbox" aria-label={item.name} disabled={!canAct} checked={selected.has(item.targetRef)} onChange={(event) => { const checked = event.target.checked; setSelected((current) => { const next = new Set(current); if (checked) next.add(item.targetRef); else next.delete(item.targetRef); return next; }); }} /></label>
-        <CleanupItemSummary name={item.name} bytes={item.allocatedBytes} safety={item.safety} caption={t("items", { count: item.itemCount })} />
-      </li>)}</ul>
-      {result.items.length === 0 && <p>{t("noData")}</p>}
-      {!expanded && result.items.length > 5 && <button type="button" className="button button--plain" onClick={() => setExpanded(true)}>{t("showMore", { count: result.items.length - 5 })}</button>}
-      <div className="capability-actions"><span>{t("selected", { count: selected.size })}</span><button type="button" className="button button--secondary" disabled={!canAct || selected.size === 0} onClick={() => onAction?.({ action: "trash", targetRefs: [...selected] })}><Trash2 size={14} />{t("trashSelected")}</button></div>
-      {(stale || !actionsEnabled) && <p className="capability-warning" role="status">{t(stale ? "stale" : "expired")}</p>}
-    </>}
+    {result.kind === "disk" && <DiskUsageCard key={JSON.stringify([result.scanId, result.sourceRevision, result.sampledAt, result.items.map((item) => item.targetRef)])} result={result} canAct={canAct} stale={stale} actionsEnabled={actionsEnabled} onAction={onAction} />}
     {result.kind === "network" && <><NetworkDiagnosticList diagnostics={result.diagnostics} /><dl className="capability-metrics"><div><dt>{t("latency")}</dt><dd>{result.averageLatencyMs === null ? "—" : `${result.averageLatencyMs.toFixed(0)} ms`}</dd></div><div><dt>{t("probeFailure")}</dt><dd>{formatPercent(result.tcpProbeFailurePercent)}</dd></div></dl></>}
     {result.kind === "observations" && <HistoryObservations result={result} />}
     {result.kind === "cleanup" && <><strong>{t("moved", { count: result.deleted.length })}</strong><ul>{result.deleted.map((item, index) => <li key={index}>{item.name} · {formatBytes(item.deletedBytes)}</li>)}</ul>{result.failed.length > 0 && <p className="capability-warning">{t("failed", { count: result.failed.length })}: {result.failed.map((item) => item.name).join("、")}</p>}{result.cancelled && <p>{t("cancelled")}</p>}{!result.indexUpdated && <p className="capability-warning">{t("stale")}</p>}<p className="capability-hint">{t("diskScope")}</p></>}

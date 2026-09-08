@@ -1,4 +1,7 @@
 {
+  "diskChartTitle": "폴더별 사용량",
+  "diskChartHint": "차트 영역을 클릭하거나 폴더를 체크해 정리할 항목을 선택하세요.",
+  "diskReturnedTotal": "반환된 폴더 합계",
   "refresh": "다시 확인",
   "sampledAt": "수집 시간 {{time}}",
   "snapshot": "수집 당시 결과",
