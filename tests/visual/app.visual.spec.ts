@@ -271,6 +271,12 @@ async function prepareApp(
   experienceMode: "simple" | "professional",
   reduceMotion: boolean,
 ) {
+  await page.addInitScript(() => {
+    // Main-app fixtures use Date.now() for sampled timestamps. Keep visual
+    // output stable across reruns and CI runner time zones.
+    const visualNow = Date.UTC(2026, 8, 8, 9, 37, 0);
+    Date.now = () => visualNow;
+  });
   await page.addInitScript(({ language, experienceMode, reduceMotion }) => {
     window.localStorage.setItem("core-robin.onboarding.v1", "completed");
     window.localStorage.setItem("core-robin.update-check.checked-at.v1", String(Date.now()));
