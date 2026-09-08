@@ -27,13 +27,14 @@ export function useFileInsightsScan() {
   const snapshotRef = useRef<FileInsightsScan | null>(null);
   const inFlight = useRef(false);
   const stateTouched = useRef(false);
+  const epoch = useRef(0);
 
   useEffect(() => {
     let disposed = false;
     void loadPersistedFileInsightsScan()
       .then((serialized) => {
         const persisted = parseStoredFileInsightsScan(serialized);
-        if (serialized && !persisted) {
+        if (!disposed && !stateTouched.current && serialized && !persisted) {
           void clearPersistedFileInsightsScan().catch(() => undefined);
         }
         return persisted;
@@ -43,6 +44,7 @@ export function useFileInsightsScan() {
         let verified = persisted.snapshot;
         try {
           verified = await revalidateFileInsightsScan(persisted.snapshot);
+          if (disposed || stateTouched.current) return;
           await savePersistedFileInsightsScan(verified);
         } catch {
           // The bounded cached result remains available if revalidation is unavailable.
@@ -57,6 +59,7 @@ export function useFileInsightsScan() {
       });
     return () => {
       disposed = true;
+      ++epoch.current;
     };
   }, []);
 
@@ -64,11 +67,15 @@ export function useFileInsightsScan() {
     if (inFlight.current) return;
     inFlight.current = true;
     stateTouched.current = true;
+    const generation = epoch.current;
     setLoading(true);
     setError(null);
     setProgress(null);
     try {
-      const completed = await scanFileInsights(setProgress);
+      const completed = await scanFileInsights((value) => {
+        if (epoch.current === generation) setProgress(value);
+      });
+      if (epoch.current !== generation) return;
       snapshotRef.current = completed;
       setSnapshot(completed);
       setSnapshotStatus("current");
@@ -79,13 +86,12 @@ export function useFileInsightsScan() {
       }
     } catch (reason) {
       const commandError = normalizeCommandError(reason);
-      if (commandError.code !== "file_insights_scan_cancelled") {
+      if (epoch.current === generation && commandError.code !== "file_insights_scan_cancelled") {
         setError(commandError.message);
       }
     } finally {
       inFlight.current = false;
-      setLoading(false);
-      setProgress(null);
+      if (epoch.current === generation) { setLoading(false); setProgress(null); }
     }
   }, []);
 
@@ -111,15 +117,16 @@ export function useFileInsightsScan() {
 
   const clear = useCallback(async () => {
     stateTouched.current = true;
-    if (inFlight.current) {
-      await cancelFileInsightsScan();
-    }
+    ++epoch.current;
     snapshotRef.current = null;
     setSnapshot(null);
     setSnapshotStatus("current");
     setProgress(null);
     setLoading(false);
     setError(null);
+    // A cancellation failure must not skip clearing the existing cache. The
+    // generation still rejects late progress, results and persistence writes.
+    if (inFlight.current) await cancelFileInsightsScan().catch(() => {});
     await clearPersistedFileInsightsScan();
   }, []);
 

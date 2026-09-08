@@ -11,10 +11,10 @@ import {
   MemoryStick,
   Network,
   ShieldCheck,
-  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { SourceDataClearAction } from "./SourceDataClearAction";
 import {
   useAppTranslation,
   type AppTFunction,
@@ -191,19 +191,17 @@ export function HistoryExplorer({
                 })
               : t("history:storage.waiting")}
         </span>
-        <button
-          className="button button--danger-ghost"
-          type="button"
+        <SourceDataClearAction
+          category="resourceHistory"
+          label={t("history:clearSaved")}
           disabled={
             storedPointCount === 0 &&
             storedAlertEventCount === 0 &&
             storedApplicationWatchEventCount === 0 &&
             storedUserActionCount === 0
           }
-          onClick={onClear}
-        >
-          <Trash2 size={14} />{t("history:clearSaved")}
-        </button>
+          onClear={onClear}
+        />
       </section>
 
       {points.length === 0 ? (

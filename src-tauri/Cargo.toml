@@ -15,10 +15,12 @@ name = "core_robin_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-default = []
-# Enable only for a signed macOS build whose permission, effectiveness, and
-# abnormal-release matrix has been validated on an isolated test machine.
-keyboard-cleaning-validated = []
+default = ["keyboard-cleaning-macos"]
+# The bundled macOS helper checks Accessibility authorization at runtime.
+# --no-default-features remains available for builds without input filtering.
+keyboard-cleaning-macos = []
+# Compatibility alias for existing custom macOS build commands.
+keyboard-cleaning-validated = ["keyboard-cleaning-macos"]
 # Enable only for a signed Windows build whose hook, input-isolation, and
 # abnormal-release matrix has been validated on an isolated test machine.
 keyboard-cleaning-validated-windows = []
@@ -45,6 +47,8 @@ serde_json = "1"
 sha2 = "0.11"
 plist = "1.8"
 rusqlite = { version = "0.40.1", features = ["bundled"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "stream", "native-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
 sysinfo = { version = "=0.39.6", default-features = false, features = ["component", "disk", "network", "system", "user"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
@@ -54,6 +58,7 @@ tauri-plugin-dialog = "2"
 libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6.3", features = ["apple-native"] }
 block2 = "0.6"
 core-foundation = "0.10"
 core-graphics = "0.25"
@@ -69,10 +74,14 @@ netstat2 = "=0.11.2"
 tempfile = "3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6.3", features = ["sync-secret-service", "crypto-rust", "vendored"] }
 rustix = { version = "1", features = ["event", "fs", "process"] }
+zbus = { version = "5.17.0", default-features = false, features = ["tokio"] }
+futures-lite = "2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+keyring = { version = "3.6.3", features = ["windows-native"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Power", "Win32_System_RemoteDesktop", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-autostart = "2.5.1"

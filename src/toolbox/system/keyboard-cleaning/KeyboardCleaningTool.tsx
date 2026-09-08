@@ -2,7 +2,7 @@ import { CircleAlert, ShieldCheck, Square, Timer } from "lucide-react";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { heartbeatKeyboardCleaning, isDesktopRuntime, startKeyboardCleaning, stopKeyboardCleaning, subscribeKeyboardCleaning } from "../../../api";
+import { heartbeatKeyboardCleaning, isDesktopRuntime, openSystemSettings, startKeyboardCleaning, stopKeyboardCleaning, subscribeKeyboardCleaning } from "../../../api";
 
 import {
   KeyboardCleaningMachine,
@@ -19,7 +19,7 @@ import { KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON } from "./keyboardCleaning";
 
 export interface KeyboardCleaningBridge {
   send(effect: KeyboardCleaningEffect): Promise<void>;
-  subscribe(listener: (signal: KeyboardCleaningSignal) => void): () => void;
+  subscribe(listener: (signal: KeyboardCleaningSignal) => void): (() => void) | Promise<() => void>;
 }
 
 const NATIVE_BRIDGE: KeyboardCleaningBridge = {
@@ -28,18 +28,7 @@ const NATIVE_BRIDGE: KeyboardCleaningBridge = {
     if (effect.type === "stop_helper") return stopKeyboardCleaning(effect.command.payload);
     return heartbeatKeyboardCleaning(effect.command.payload);
   },
-  subscribe(listener) {
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-    void subscribeKeyboardCleaning(listener).then((nextUnlisten) => {
-      if (disposed) nextUnlisten();
-      else unlisten = nextUnlisten;
-    }).catch(() => undefined);
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  },
+  subscribe: subscribeKeyboardCleaning,
 };
 
 const DEFAULT_CAPABILITY: KeyboardCleaningCapability = {
@@ -87,8 +76,10 @@ const ERROR_KEYS = {
 export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }: { capability?: KeyboardCleaningCapability; bridge?: KeyboardCleaningBridge }) {
   const { t } = useTranslation("toolbox");
   const effectiveBridge = bridge ?? (isDesktopRuntime() ? NATIVE_BRIDGE : undefined);
-  const machine = useMemo(() => new KeyboardCleaningMachine(capability), [capability]);
+  const { state: capabilityState, platform, reason: capabilityReason } = capability;
+  const machine = useMemo(() => new KeyboardCleaningMachine({ state: capabilityState, platform, reason: capabilityReason }), [capabilityState, platform, capabilityReason]);
   const [state, setState] = useState<KeyboardCleaningState>(() => machine.snapshot());
+  const [bridgeReady, setBridgeReady] = useState(false);
   const [durationSeconds, setDurationSeconds] = useState<30 | 60 | 120>(60);
   const [error, setError] = useState("");
   const clock = useCallback(() => Date.now(), []);
@@ -103,8 +94,20 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
 
   const sendEffects = useCallback((effects: KeyboardCleaningEffect[]) => {
     if (!effectiveBridge) return;
-    for (const effect of effects) void effectiveBridge.send(effect).catch((reason: unknown) => setError(t("keyboardCleaning.errors.helper", { reason: reason instanceof Error ? reason.message : t("keyboardCleaning.errors.communication") })));
-  }, [effectiveBridge, t]);
+    for (const effect of effects) void effectiveBridge.send(effect).catch((reason: unknown) => {
+      if (effect.type === "start_helper" && isPermissionRequired(reason)
+        && machineRef.current.snapshot().requestId === effect.command.payload.requestId) {
+        // This native error is returned before spawning a child. There is no
+        // tap to release, so allow retry after the user authorizes the app.
+        const nowMs = clock();
+        machineRef.current.dispatch({ type: "permission_revoked", nowMs });
+        setState(machineRef.current.dispatch({ type: "release_confirmed", requestId: effect.command.payload.requestId, nowMs }).state);
+        setError(t("keyboardCleaning.permissionHint"));
+        return;
+      }
+      setError(t("keyboardCleaning.errors.helper", { reason: keyboardErrorMessage(reason, t) }));
+    });
+  }, [effectiveBridge, clock, t]);
 
   const apply = useCallback((action: Parameters<KeyboardCleaningMachine["dispatch"]>[0]) => {
     try {
@@ -118,8 +121,12 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
   }, [sendEffects, t]);
 
   useEffect(() => {
+    setBridgeReady(false);
     if (!effectiveBridge) return undefined;
-    return effectiveBridge.subscribe((signal) => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void Promise.resolve().then(() => effectiveBridge.subscribe((signal) => {
+      if (disposed) return;
       try {
         const transition = machineRef.current.applySignal(signal, clock());
         setState(transition.state);
@@ -127,7 +134,19 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
       } catch (reason) {
         setError(keyboardErrorMessage(reason, t));
       }
+    })).then((unsubscribe) => {
+      if (disposed) unsubscribe();
+      else {
+        unlisten = unsubscribe;
+        setBridgeReady(true);
+      }
+    }).catch((reason: unknown) => {
+      if (!disposed) setError(keyboardErrorMessage(reason, t));
     });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
   }, [effectiveBridge, clock, sendEffects, t]);
 
   useEffect(() => {
@@ -137,7 +156,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
   }, [apply, clock, state.status]);
 
   useEffect(() => {
-    if (!effectiveBridge || (state.status !== "preparing" && state.status !== "active") || !state.requestId) return undefined;
+    if (!effectiveBridge || state.hook !== "confirmed" || (state.status !== "preparing" && state.status !== "active") || !state.requestId) return undefined;
     const sendHeartbeat = () => {
       if (heartbeatSequenceRef.current.requestId !== state.requestId) {
         heartbeatSequenceRef.current = { requestId: state.requestId, sequence: 0 };
@@ -155,7 +174,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
     sendHeartbeat();
     const timer = window.setInterval(sendHeartbeat, 1_000);
     return () => window.clearInterval(timer);
-  }, [effectiveBridge, state.requestId, state.status, t]);
+  }, [effectiveBridge, state.hook, state.requestId, state.status, t]);
 
   useEffect(() => () => {
     if (machineRef.current.snapshot().status === "preparing" || machineRef.current.snapshot().status === "active") {
@@ -169,7 +188,7 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
     }
   }, [clock, sendEffects]);
 
-  const canStart = Boolean(effectiveBridge) && (state.status === "idle" || state.status === "ended") && capability.state === "available";
+  const canStart = bridgeReady && (state.status === "idle" || state.status === "ended") && capability.state === "available";
   const statusText = state.status === "active"
     ? t("keyboardCleaning.statuses.active", { count: state.durationSeconds ?? 0 })
     : t(STATUS_KEYS[state.status]);
@@ -188,6 +207,10 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
           <p>{t("keyboardCleaning.description")}</p>
         </header>
         <p className="toolbox-hint keyboard-cleaning-tool__privacy"><CircleAlert size={15} />{t("keyboardCleaning.privacy")}</p>
+        {capability.platform === "macos" && capability.state === "available" ? <div className="keyboard-cleaning-tool__permission">
+          <p className="toolbox-hint">{t("keyboardCleaning.permissionHint")}</p>
+          <button className="button button--secondary" type="button" disabled={maskVisible} onClick={() => { void openSystemSettings("accessibility").catch((reason: unknown) => setError(keyboardErrorMessage(reason, t))); }}>{t("keyboardCleaning.openSettings")}</button>
+        </div> : null}
         <div className="toolbox-inline-actions keyboard-cleaning-tool__actions">
           <label>{t("keyboardCleaning.durationLabel")}<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value) as 30 | 60 | 120)} disabled={!canStart}><option value={30}>{t("keyboardCleaning.duration", { count: 30 })}</option><option value={60}>{t("keyboardCleaning.duration", { count: 60 })}</option><option value={120}>{t("keyboardCleaning.duration", { count: 120 })}</option></select></label>
           <button className="button button--primary" type="button" disabled={!canStart} onClick={() => apply({ type: "start", requestId: crypto.randomUUID(), durationSeconds, nowMs: clock() })}><Timer size={14} />{t("keyboardCleaning.start")}</button>
@@ -213,9 +236,15 @@ export function KeyboardCleaningTool({ capability = DEFAULT_CAPABILITY, bridge }
 }
 
 function keyboardErrorMessage(reason: unknown, t: ToolboxTFunction): string {
+  if (isPermissionRequired(reason)) return t("keyboardCleaning.permissionHint");
   if (reason instanceof KeyboardCleaningError) return t(ERROR_KEYS[reason.code]);
   if (reason instanceof Error) return reason.message;
+  if (reason && typeof reason === "object" && "message" in reason && typeof reason.message === "string") return reason.message;
   return t("keyboardCleaning.errors.start");
+}
+
+function isPermissionRequired(reason: unknown): boolean {
+  return Boolean(reason && typeof reason === "object" && "code" in reason && reason.code === "keyboard_cleaning_permission_required");
 }
 
 function keyboardCapabilityReason(t: ToolboxTFunction, capability: KeyboardCleaningCapability): string {

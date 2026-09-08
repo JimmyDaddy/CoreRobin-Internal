@@ -32,12 +32,36 @@ describe("Robin companion interactions", () => {
     expect(calls).toEqual(["collapse", "show-main", "open-daily:overview"]);
   });
 
-  it("opens the main window directly when Robin is double-clicked", async () => {
+  it("retains the explicit main-window action for the context menu", async () => {
     const showMainWindow = vi.fn().mockResolvedValue(undefined);
 
     await openMainFromCompanion({ showMainWindow });
 
     expect(showMainWindow).toHaveBeenCalledOnce();
+  });
+
+  it("opens chat on a click, suppresses hover and ignores the second click of a double click", async () => {
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
+    await act(async () => fireEvent.click(mascot, { detail: 1 }));
+    expect(mascot.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.mouseEnter(mascot.parentElement!);
+    expect(document.querySelector(".robin-buddy-bubble")).toBeNull();
+    await act(async () => fireEvent.click(mascot, { detail: 2 }));
+    expect(mascot.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => fireEvent.click(mascot, { detail: 1 }));
+    expect(mascot.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("does not open chat after moving beyond the drag threshold", async () => {
+    render(<RobinCompanionWindow />);
+    const mascot = screen.getByRole("button", { name: /拖动 Robin 移动/ });
+    fireEvent.mouseDown(mascot, { button: 0, clientX: 20, clientY: 20 });
+    fireEvent.mouseMove(mascot, { buttons: 1, clientX: 27, clientY: 20 });
+    await act(async () => fireEvent.click(mascot, { detail: 1 }));
+    expect(mascot.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.keyDown(mascot, { key: "Enter", isComposing: true });
+    expect(mascot.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("opens the status bubble on hover without showing a close button", () => {

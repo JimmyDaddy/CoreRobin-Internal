@@ -885,6 +885,29 @@ pub struct QuickCleanResult {
     pub results: Vec<QuickCleanCategoryResult>,
 }
 
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanSnapshot {
+    pub revision: u64,
+    pub phase: QuickCleanPhase,
+    pub summaries: Vec<QuickCleanCategorySummary>,
+    pub progress: Option<QuickCleanProgress>,
+    pub result: Option<QuickCleanResult>,
+    pub error: Option<crate::error::CommandError>,
+    pub cancelled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QuickCleanPhase {
+    #[default]
+    Idle,
+    Analyzing,
+    Selection,
+    Cleaning,
+    Done,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupDeleteFailure {

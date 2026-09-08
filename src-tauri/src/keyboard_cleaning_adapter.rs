@@ -61,6 +61,8 @@ impl KeyboardCleaningAdapter {
             ));
         }
 
+        ensure_keyboard_permission()?;
+
         let executable = std::env::current_exe().map_err(|error| {
             CommandError::internal(format!(
                 "keyboard helper executable is unavailable: {error}"
@@ -186,6 +188,34 @@ impl Drop for KeyboardCleaningAdapter {
     fn drop(&mut self) {
         self.shutdown();
     }
+}
+
+fn ensure_keyboard_permission() -> Result<(), CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_foundation::base::TCFType;
+        use core_foundation::boolean::CFBoolean;
+        use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
+        use core_foundation::string::{CFString, CFStringRef};
+
+        #[link(name = "ApplicationServices", kind = "framework")]
+        unsafe extern "C" {
+            static kAXTrustedCheckOptionPrompt: CFStringRef;
+            fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
+        }
+
+        // Called only by the explicit Start action, before a child or tap exists.
+        // macOS owns the consent prompt; authorization is never changed here.
+        let prompt_key = unsafe { CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt) };
+        let options = CFDictionary::from_CFType_pairs(&[(prompt_key, CFBoolean::true_value())]);
+        if !unsafe { AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef()) } {
+            return Err(CommandError::new(
+                "keyboard_cleaning_permission_required",
+                "Allow CoreRobin in System Settings > Privacy & Security > Accessibility, then try again.",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn validate_start(request: &StartCommand, capability: Capability) -> Result<(), CommandError> {

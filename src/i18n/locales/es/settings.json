@@ -93,7 +93,7 @@
   },
   "dataPrivacy": {
     "title": "Centro de datos y privacidad",
-    "description": "Consulta y controla todos los datos locales desde un solo lugar. CoreRobin no los sube ni sincroniza.",
+    "description": "Gestiona los registros locales; no se suben ni sincronizan automáticamente. Al usar IA, las evidencias que elijas compartir se envían al servicio de modelo configurado.",
     "status": {
       "on": "Guardando",
       "off": "Desactivado"

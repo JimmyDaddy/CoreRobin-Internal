@@ -1,4 +1,11 @@
+mod ai;
+mod ai_chat_window;
+mod ai_commands;
+mod ai_context_bridge;
+mod ai_task_bridge;
 mod app_update;
+mod application_capabilities;
+mod application_capability_catalog;
 mod application_history;
 mod application_icon;
 mod application_metadata;
@@ -17,6 +24,8 @@ mod health_state;
 mod history_export;
 mod history_storage;
 mod identity;
+mod local_utility_bridge;
+mod quick_cleanup_capability;
 // The safety controller and wire protocol are compiled and tested alongside
 // the parent-side adapter. Some controller entry points remain test-oriented;
 // keep them visible without weakening test-time lint coverage.
@@ -71,6 +80,11 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use ai_chat_window::{
+    ai_chat_ack_navigation, ai_chat_continue_in_main, ai_chat_get_navigation, hide_ai_chat_window,
+    toggle_ai_chat_window,
+};
+use ai_commands::*;
 use app_update::{AppUpdateTaskManager, AppUpdateTaskSnapshot};
 use application_history::{
     APPLICATION_HISTORY_FILE_NAME, ApplicationHistoryStorage, load as load_application_history,
@@ -80,13 +94,12 @@ use application_icon::{load_application_bundle_icon, load_application_icon};
 use background_supervisor::BackgroundSupervisorConfig;
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, QuickCleanCoordinator,
-    analyze_quick_cleanup, apply_indexed_deletions, available_bytes_for_path,
-    cleanup_index_summary, cleanup_scan_access, inspect_cleanup_path, load_indexed_children,
-    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
-    load_or_scan_application_inventory, open_full_disk_access_settings,
+    apply_indexed_deletions, available_bytes_for_path, cleanup_index_summary, cleanup_scan_access,
+    inspect_cleanup_path, load_indexed_children, load_indexed_directory, load_indexed_scan,
+    load_latest_indexed_scan, load_or_scan_application_inventory, open_full_disk_access_settings,
     prepare_application_uninstall, prepare_trashed_application_residual_plan, remove_cleanup_index,
     remove_cleanup_scan_cache, resolve_indexed_delete_request, reveal_cleanup_application_bundle,
-    run_quick_cleanup, scan_trashed_applications,
+    scan_trashed_applications,
 };
 use cleanup_scan_job::CleanupScanJobManager;
 use error::CommandError;
@@ -99,8 +112,7 @@ use gpu_energy::sample_gpu_energy;
 use health_state::{HEALTH_STATE_EVENT, HealthStateSnapshot, HealthStateStore, HealthStateUpdate};
 use history_storage::{
     HistoryCategory, HistorySegmentStorage, HistoryStorageSummary,
-    clear_all as clear_all_history_segments, load as load_history_segment,
-    save as save_history_segment, summary as history_storage_summary,
+    clear_all as clear_all_history_segments, summary as history_storage_summary,
 };
 use keyboard_cleaning::{HeartbeatCommand, HelperStopReason, StartCommand, StopCommand};
 use keyboard_cleaning_adapter::KeyboardCleaningAdapter;
@@ -334,6 +346,7 @@ fn keyboard_cleaning_stop_is_emergency(label: &str) -> Result<bool, CommandError
 
 #[derive(Clone)]
 struct AppState {
+    application_results: Arc<application_capabilities::ApplicationResults>,
     background_launch: bool,
     launched_at_ms: u64,
     monitor: Arc<Mutex<SystemMonitor>>,
@@ -372,15 +385,23 @@ impl AppState {
                 .expect("failed to start the process watch worker");
         let monitor = Arc::new(Mutex::new(SystemMonitor::new(process_control_capabilities)));
         let sampler = Arc::new(SamplerService::new(Arc::clone(&monitor)));
+        let application_results = Arc::new(application_capabilities::ApplicationResults::default());
+        let cleanup_scan_jobs = Arc::new(CleanupScanJobManager::default());
+        let cleanup_refresh_jobs = Arc::new(CleanupScanJobManager::default());
+        for manager in [&cleanup_scan_jobs, &cleanup_refresh_jobs] {
+            let results = application_results.clone();
+            manager.set_result_notifier(Arc::new(move || results.disk_changed()));
+        }
         Self {
+            application_results,
             background_launch,
             launched_at_ms: now_millis(),
             monitor,
             sampler,
             health_state: Arc::new(HealthStateStore::default()),
             process_controller,
-            cleanup_scan_jobs: Arc::new(CleanupScanJobManager::default()),
-            cleanup_refresh_jobs: Arc::new(CleanupScanJobManager::default()),
+            cleanup_scan_jobs,
+            cleanup_refresh_jobs,
             cleanup_delete: Arc::new(CleanupDeleteCoordinator::default()),
             cleanup_delete_controller: Arc::new(Mutex::new(CleanupDeleteController::default())),
             quick_clean: Arc::new(QuickCleanCoordinator::default()),
@@ -1095,13 +1116,45 @@ async fn get_network_connections() -> Result<NetworkConnectionsSnapshot, Command
 }
 
 #[tauri::command]
+fn get_application_capability_state(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<application_capabilities::ApplicationCapabilityState, CommandError> {
+    if !matches!(window.label(), "main" | "robin-chat") {
+        return Err(CommandError::new(
+            "capability_window_forbidden",
+            "This window cannot read application results.",
+        ));
+    }
+    state.application_results.snapshot()
+}
+
+#[tauri::command]
 async fn run_network_quality_check(
     window: WebviewWindow,
+    app: AppHandle,
 ) -> Result<NetworkQualityResult, CommandError> {
     require_main_window(&window)?;
-    tauri::async_runtime::spawn_blocking(check_network_quality)
+    let ai = app.state::<AiRuntime>();
+    let started = ai.cleared_at.load(Ordering::Acquire);
+    let result = tauri::async_runtime::spawn_blocking(check_network_quality)
         .await
-        .map_err(|error| CommandError::internal(format!("Network quality check failed: {error}")))?
+        .map_err(|error| {
+            CommandError::internal(format!("Network quality check failed: {error}"))
+        })??;
+    let _gate = ai.context_gate.read().await;
+    if ai.cleared_at.load(Ordering::Acquire) != started {
+        return Err(CommandError::new(
+            "privacy_clear_in_progress",
+            "The check predates a source-data reset. Run a new check.",
+        ));
+    }
+    {
+        ai.require_source_ready()
+            .map_err(|error| CommandError::new(error.code, error.message))?;
+        ai.application_results.publish_network(result.clone())?;
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -1189,6 +1242,10 @@ async fn save_persisted_file_insights_scan(
 
 #[tauri::command]
 async fn clear_persisted_file_insights_scan(app: AppHandle) -> Result<(), CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    ai.invalidate(&["incidents"], false)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     let path = file_insights_cache_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || remove_file_insights_cache(&path))
         .await
@@ -1428,11 +1485,13 @@ async fn apply_cleanup_index_deletions(
 ) -> Result<CleanupScan, CommandError> {
     require_main_window(&window)?;
     let path = cleanup_scan_index_path(&app)?;
-    tauri::async_runtime::spawn_blocking(move || {
+    let result = tauri::async_runtime::spawn_blocking(move || {
         apply_indexed_deletions(&path, &request.scan_id, &request.node_ids)
     })
     .await
-    .map_err(|error| CommandError::internal(format!("Cleanup index update failed: {error}")))?
+    .map_err(|error| CommandError::internal(format!("Cleanup index update failed: {error}")))??;
+    app.state::<AppState>().application_results.disk_changed();
+    Ok(result)
 }
 
 #[tauri::command]
@@ -1440,6 +1499,10 @@ async fn clear_persisted_cleanup_scan(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    ai.invalidate(&["incidents"], false)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     state.cleanup_scan_jobs.terminate_active();
     state.cleanup_refresh_jobs.terminate_active();
     let directory = app.path().app_data_dir().map_err(|error| {
@@ -1453,36 +1516,38 @@ async fn clear_persisted_cleanup_scan(
         remove_legacy_cleanup_scan_caches(&directory)
     })
     .await
-    .map_err(|error| CommandError::internal(format!("Cleanup index removal failed: {error}")))?
+    .map_err(|error| CommandError::internal(format!("Cleanup index removal failed: {error}")))??;
+    state.application_results.disk_changed();
+    Ok(())
 }
 
 #[tauri::command]
-async fn analyze_quick_cleanup_command() -> Result<Vec<QuickCleanCategorySummary>, CommandError> {
-    tauri::async_runtime::spawn_blocking(analyze_quick_cleanup)
-        .await
-        .map_err(|error| {
-            CommandError::internal(format!("Quick cleanup analysis failed: {error}"))
-        })?
+async fn analyze_quick_cleanup_command(
+    app: AppHandle,
+    window: WebviewWindow,
+) -> Result<Vec<QuickCleanCategorySummary>, CommandError> {
+    require_main_window(&window)?;
+    quick_cleanup_capability::analyze(app, None).await
+}
+
+#[tauri::command]
+fn get_quick_cleanup_state(
+    state: State<'_, AppState>,
+    window: WebviewWindow,
+) -> Result<models::QuickCleanSnapshot, CommandError> {
+    require_main_window(&window)?;
+    state.quick_clean.snapshot()
 }
 
 #[tauri::command]
 async fn run_quick_cleanup_command(
-    state: State<'_, AppState>,
+    app: AppHandle,
+    window: WebviewWindow,
     request: QuickCleanRequest,
     on_progress: Channel<QuickCleanProgress>,
 ) -> Result<QuickCleanResult, CommandError> {
-    let cancelled = state.quick_clean.begin()?;
-    let finished_cancelled = Arc::clone(&cancelled);
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        let mut emit_progress = |progress: QuickCleanProgress| {
-            let _ = on_progress.send(progress);
-        };
-        run_quick_cleanup(&request, &cancelled, &mut emit_progress)
-    })
-    .await
-    .map_err(|error| CommandError::internal(format!("Quick cleanup failed: {error}")))?;
-    state.quick_clean.finish(&finished_cancelled);
-    result
+    require_main_window(&window)?;
+    quick_cleanup_capability::run(app, request, on_progress).await
 }
 
 #[tauri::command]
@@ -1540,6 +1605,10 @@ async fn save_persisted_application_history(
 
 #[tauri::command]
 async fn clear_persisted_application_history(app: AppHandle) -> Result<(), CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    ai.invalidate(&["applications"], false)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     let path = application_history_path(&app)?;
     tauri::async_runtime::spawn_blocking(move || remove_application_history(&path))
         .await
@@ -1575,8 +1644,16 @@ async fn load_history_storage(
     app: AppHandle,
     category: String,
 ) -> Result<HistorySegmentStorage, CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.read().await;
     let path = history_segment_path(&app, &category)?;
-    tauri::async_runtime::spawn_blocking(move || load_history_segment(&path))
+    let category = HistoryCategory::parse(&category)
+        .map_err(|error| CommandError::new("invalid_history_category", error.to_string()))?;
+    let epochs = app
+        .state::<history_storage::HistoryWriteEpochs>()
+        .inner()
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || epochs.load(category, &path))
         .await
         .map_err(|error| CommandError::internal(format!("History read task failed: {error}")))?
         .map_err(|error| {
@@ -1592,17 +1669,34 @@ async fn save_history_storage(
     app: AppHandle,
     category: String,
     payload: String,
+    expected_generation: u64,
 ) -> Result<HistorySegmentStorage, CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.read().await;
+    ai.require_source_write_ready(&category)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     let path = history_segment_path(&app, &category)?;
-    tauri::async_runtime::spawn_blocking(move || save_history_segment(&path, &payload))
-        .await
-        .map_err(|error| CommandError::internal(format!("History write task failed: {error}")))?
-        .map_err(|error| {
-            CommandError::new(
-                "history_write_failed",
-                format!("History could not be saved: {error}"),
-            )
-        })
+    let category = HistoryCategory::parse(&category)
+        .map_err(|error| CommandError::new("invalid_history_category", error.to_string()))?;
+    let epochs = app
+        .state::<history_storage::HistoryWriteEpochs>()
+        .inner()
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        epochs.save(category, &path, &payload, expected_generation)
+    })
+    .await
+    .map_err(|error| CommandError::internal(format!("History write task failed: {error}")))?
+    .map_err(|error| {
+        CommandError::new(
+            if error.kind() == std::io::ErrorKind::WouldBlock {
+                "history_revision_conflict"
+            } else {
+                "history_write_failed"
+            },
+            format!("History could not be saved: {error}"),
+        )
+    })
 }
 
 #[tauri::command]
@@ -1610,8 +1704,18 @@ async fn clear_history_storage(
     app: AppHandle,
     category: String,
 ) -> Result<HistorySegmentStorage, CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    ai.invalidate(ai_context_bridge::categories_for_history(&category), false)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     let path = history_segment_path(&app, &category)?;
-    tauri::async_runtime::spawn_blocking(move || history_storage::remove(&path))
+    let category = HistoryCategory::parse(&category)
+        .map_err(|error| CommandError::new("invalid_history_category", error.to_string()))?;
+    let epochs = app
+        .state::<history_storage::HistoryWriteEpochs>()
+        .inner()
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || epochs.remove(category, &path))
         .await
         .map_err(|error| CommandError::internal(format!("History removal task failed: {error}")))?
         .map_err(|error| {
@@ -1779,6 +1883,10 @@ async fn get_product_data_cache_summary(
 
 #[tauri::command]
 async fn clear_application_inventory_cache(app: AppHandle) -> Result<(), CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    ai.invalidate(&["applications"], false)
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     let directory = app.path().app_data_dir().map_err(|error| {
         CommandError::internal(format!(
             "Could not resolve the application data folder: {error}"
@@ -1798,6 +1906,29 @@ async fn clear_persisted_product_data(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), CommandError> {
+    let ai = app.state::<AiRuntime>();
+    let _gate = ai.context_gate.write().await;
+    state.quick_clean.clear_view();
+    state.application_results.quick_clean_changed();
+    ai.invalidate(
+        &[
+            "resources",
+            "incidents",
+            "applications",
+            "network_quality",
+            "connections",
+        ],
+        false,
+    )
+    .map_err(|error| CommandError::new(error.code, error.message))?;
+    let ai_service = std::sync::Arc::clone(
+        ai.get()
+            .map_err(|error| CommandError::new(error.code, error.message))?,
+    );
+    tauri::async_runtime::spawn_blocking(move || ai_service.clear_all())
+        .await
+        .map_err(|_| CommandError::internal("AI credential removal task failed."))?
+        .map_err(|error| CommandError::new(error.code, error.message))?;
     state.cleanup_scan_jobs.terminate_active();
     state.cleanup_refresh_jobs.terminate_active();
     let directory = app.path().app_data_dir().map_err(|error| {
@@ -1805,11 +1936,28 @@ async fn clear_persisted_product_data(
             "Could not resolve the application data folder: {error}"
         ))
     })?;
-    tauri::async_runtime::spawn_blocking(move || clear_persisted_product_data_at(&directory))
-        .await
-        .map_err(|error| {
-            CommandError::internal(format!("Product data removal task failed: {error}"))
-        })?
+    let epochs = app
+        .state::<history_storage::HistoryWriteEpochs>()
+        .inner()
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        for category in HistoryCategory::ALL {
+            epochs
+                .remove(category, &category.path(&directory))
+                .map_err(|error| {
+                    CommandError::internal(format!(
+                        "History segments could not be removed: {error}"
+                    ))
+                })?;
+        }
+        clear_persisted_product_data_at(&directory)
+    })
+    .await
+    .map_err(|error| {
+        CommandError::internal(format!("Product data removal task failed: {error}"))
+    })??;
+    state.application_results.disk_changed();
+    Ok(())
 }
 
 #[tauri::command]
@@ -2199,6 +2347,7 @@ async fn execute_cleanup_delete(
     let cancelled = coordinator.begin()?;
     let worker_cancelled = Arc::clone(&cancelled);
     let controller = Arc::clone(&state.cleanup_delete_controller);
+    let application_results = state.application_results.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut controller = controller
             .lock()
@@ -2215,6 +2364,12 @@ async fn execute_cleanup_delete(
         result.available_bytes_after = measurement_path
             .as_deref()
             .and_then(available_bytes_for_path);
+        drop(controller);
+        if !result.deleted.is_empty() {
+            // The page reconciles the scan index next. Until that succeeds,
+            // previous result cards must not offer stale delete targets.
+            application_results.disk_invalidated();
+        }
         Ok(result)
     })
     .await;
@@ -2692,6 +2847,7 @@ fn show_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
 }
 
 fn hide_companion(app: &AppHandle, window: &tauri::WebviewWindow) {
+    ai_chat_window::hide(app);
     let transition = COMPANION_TRANSITION_EPOCH
         .fetch_add(1, Ordering::SeqCst)
         .wrapping_add(1);
@@ -3708,14 +3864,31 @@ pub fn run() {
         MacosLauncher::LaunchAgent,
         Some(vec!["--background"]),
     ));
-    #[cfg(target_os = "macos")]
     let mut power_event_observer = PowerEventObserver::default();
-    #[cfg(not(target_os = "macos"))]
-    let mut power_event_observer = PowerEventObserver;
     builder
         .manage(AppState::new(background_launch))
         .manage(AppUpdateTaskManager::default())
+        .manage(ai_chat_window::ChatWindowState::default())
+        .manage(history_storage::HistoryWriteEpochs::default())
+        .manage(Arc::new(local_utility_bridge::UtilityBroker::default()))
         .setup(|app| {
+            app.manage(AiRuntime::open(app.handle()));
+            let result_app = app.handle().clone();
+            app.state::<AppState>()
+                .application_results
+                .set_notifier(Arc::new(move |capability| {
+                    // Payload carries no paths, process names, or private result data.
+                    let _ = result_app.emit_to(
+                        "main",
+                        application_capabilities::CHANGED_EVENT,
+                        capability,
+                    );
+                    let _ = result_app.emit_to(
+                        "robin-chat",
+                        application_capabilities::CHANGED_EVENT,
+                        capability,
+                    );
+                }));
             let state = app.state::<AppState>();
             if let Ok(app_data_dir) = app.path().app_data_dir() {
                 if let Ok(mut storage) = ToolboxStorage::open(app_data_dir.clone()) {
@@ -3903,6 +4076,20 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "companion"
+                && matches!(
+                    event,
+                    WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. }
+                )
+            {
+                let _ = ai_chat_window::reposition(window.app_handle());
+            }
+            if window.label() == "robin-chat"
+                && let WindowEvent::CloseRequested { api, .. } = event
+            {
+                api.prevent_close();
+                ai_chat_window::hide(window.app_handle());
+            }
             if window.label() == "main"
                 && matches!(event, WindowEvent::Focused(false))
                 && let Ok(mut keyboard_cleaning) =
@@ -3926,6 +4113,42 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            local_utility_bridge::ai_pending_utility_requests,
+            local_utility_bridge::ai_claim_utility_request,
+            local_utility_bridge::ai_complete_utility_request,
+            ai_get_state,
+            ai_open_help,
+            ai_update_settings,
+            ai_save_connection,
+            ai_delete_connection,
+            ai_set_credential,
+            ai_delete_credential,
+            ai_set_proxy_credential,
+            ai_delete_proxy_credential,
+            ai_list_models,
+            ai_test_model,
+            ai_create_session,
+            ai_list_sessions,
+            ai_get_session,
+            ai_rename_session,
+            ai_delete_session,
+            ai_clear_conversations,
+            ai_save_draft,
+            ai_set_session_context,
+            ai_select_session_model,
+            ai_prepare,
+            ai_start,
+            ai_cancel,
+            ai_run_capability_action,
+            ai_resolve_tool_confirmation,
+            ai_clear_all_data,
+            ai_invalidate_source,
+            ai_finish_source_clear,
+            toggle_ai_chat_window,
+            hide_ai_chat_window,
+            ai_chat_continue_in_main,
+            ai_chat_get_navigation,
+            ai_chat_ack_navigation,
             get_system_snapshot,
             get_system_summary,
             get_sampler_status,
@@ -3936,6 +4159,7 @@ pub fn run() {
             get_health_state,
             get_network_connections,
             run_network_quality_check,
+            get_application_capability_state,
             resolve_network_hosts,
             get_startup_context,
             get_gpu_energy_snapshot,
@@ -3965,6 +4189,7 @@ pub fn run() {
             load_persisted_cleanup_scan,
             clear_persisted_cleanup_scan,
             analyze_quick_cleanup_command,
+            get_quick_cleanup_state,
             run_quick_cleanup_command,
             cancel_quick_cleanup,
             load_persisted_application_history,
@@ -4075,6 +4300,7 @@ pub fn run() {
                         let _ = wake_app.emit(SYSTEM_WAKE_EVENT, ());
                     }),
                     Arc::new(move || {
+                        ai_chat_window::hide(&sleep_app);
                         if let Ok(mut keyboard_cleaning) =
                             sleep_app.state::<AppState>().keyboard_cleaning.lock()
                         {
@@ -4088,6 +4314,10 @@ pub fn run() {
                 show_main(app);
             }
             if let tauri::RunEvent::Exit = event {
+                if let Ok(service) = &app.state::<AiRuntime>().service {
+                    service.shutdown();
+                }
+                ai_chat_window::hide(app);
                 power_event_observer.shutdown();
                 if let Ok(mut keyboard_cleaning) = app.state::<AppState>().keyboard_cleaning.lock()
                 {

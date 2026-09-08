@@ -44,7 +44,7 @@ describe("production WebView bundle verification", () => {
     const output = verify();
     const report = JSON.parse(output.slice(0, output.lastIndexOf("}") + 1));
     expect(report.totals).toEqual({
-      javascriptBytes: 4 * "/* entry */".length + "/* shared */".length + "/* lazy */".length + "/* worker */".length,
+      javascriptBytes: Object.keys(budgets.entries).length * "/* entry */".length + "/* shared */".length + "/* lazy */".length + "/* worker */".length,
       cssBytes: ":root{}".length,
     });
     for (const entry of Object.keys(budgets.entries)) {
@@ -66,7 +66,7 @@ describe("production WebView bundle verification", () => {
 
   it("still enforces the separate initial entry budget", async () => {
     await writeFile(join(distRoot, "assets/index.html.js"), Buffer.alloc(budgets.entries["index.html"].javascriptBytes + 1));
-    expect(verify).toThrow(/index.html javascriptBytes.*over its 510000 byte budget/);
+    expect(verify).toThrow(new RegExp(`index.html javascriptBytes.*over its ${budgets.entries["index.html"].javascriptBytes} byte budget`));
   });
 
   it("accounts for lazy C2PA JavaScript and WASM separately from the general total", async () => {
@@ -81,7 +81,14 @@ describe("production WebView bundle verification", () => {
     const output = verify();
     const report = JSON.parse(output.slice(0, output.lastIndexOf("}") + 1));
     expect(report.c2pa).toEqual({ javascriptBytes: "/* c2pa */".length, wasmBytes: "wasm".length });
-    expect(report.totals.javascriptBytes).toBe(4 * "/* entry */".length + "/* shared */".length + "/* lazy */".length);
+    expect(report.totals.javascriptBytes).toBe(Object.keys(budgets.entries).length * "/* entry */".length + "/* shared */".length + "/* lazy */".length);
+  });
+
+  it("rejects chat entries that pull in the main application", async () => {
+    const manifest = JSON.parse(await readFile(join(distRoot, ".vite/manifest.json"), "utf8"));
+    manifest["robin-chat.html"].imports.push("index.html");
+    await writeFile(join(distRoot, ".vite/manifest.json"), JSON.stringify(manifest));
+    expect(verify).toThrow(/Robin chat must not eagerly import/);
   });
 
   it("rejects an oversized lazy C2PA asset", async () => {

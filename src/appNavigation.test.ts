@@ -32,7 +32,8 @@ describe("app navigation", () => {
     expect(parseOpenDailyRequest({ view: "unknown" })).toBeNull();
     expect(parseOpenDailyRequest({})).toBeNull();
     expect(parseOpenDailyRequest(null)).toBeNull();
-    expect(Object.keys(PROFESSIONAL_VIEW_EYEBROW)).toHaveLength(11);
+    expect(Object.keys(PROFESSIONAL_VIEW_EYEBROW)).toHaveLength(12);
+    expect(PROFESSIONAL_VIEW_EYEBROW.assistant).toBe("ai:title");
   });
 
   it("opens auxiliary entry points in the currently selected experience", () => {

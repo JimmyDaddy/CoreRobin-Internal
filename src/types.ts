@@ -997,7 +997,8 @@ export type SystemSettingsDestination =
   | "login_items"
   | "battery"
   | "network"
-  | "notifications";
+  | "notifications"
+  | "accessibility";
 
 export interface HistoryPoint {
   timestamp: number;

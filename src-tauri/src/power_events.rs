@@ -1,8 +1,14 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::toolbox_power::PowerService;
 
-/// Emitted after macOS reports that the system has resumed from sleep.
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(windows)]
+mod windows;
+
+/// Emitted after the operating system reports that it has resumed from sleep.
 ///
 /// The notification deliberately carries no system details. Consumers should
 /// refresh only on their usual cadence instead of starting work in the native
@@ -15,15 +21,48 @@ pub const SYSTEM_WAKE_EVENT: &str = "system-wake";
 /// held by the Tauri event-loop closure rather than managed application state.
 /// Tauri requires managed state to be Send + Sync, which those Objective-C
 /// tokens intentionally are not.
-#[cfg(target_os = "macos")]
 #[derive(Default)]
 pub struct PowerEventObserver {
+    #[cfg(target_os = "macos")]
     observer: Option<MacPowerEventObserver>,
+    #[cfg(windows)]
+    observer: Option<windows::WindowsPowerEventObserver>,
+    #[cfg(target_os = "linux")]
+    observer: Option<linux::LinuxPowerEventObserver>,
+    callbacks: Option<PowerEventCallbacks>,
 }
 
-#[cfg(not(target_os = "macos"))]
-#[derive(Default)]
-pub struct PowerEventObserver;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PowerEvent {
+    Sleep,
+    SessionInactive,
+    Wake,
+}
+
+#[derive(Clone)]
+struct PowerEventCallbacks {
+    power: Arc<Mutex<PowerService>>,
+    on_wake: Arc<dyn Fn() + Send + Sync>,
+    on_sleep: Arc<dyn Fn() + Send + Sync>,
+    active: Arc<AtomicBool>,
+}
+
+impl PowerEventCallbacks {
+    fn dispatch(&self, event: PowerEvent) {
+        if !self.active.load(Ordering::Acquire) {
+            return;
+        }
+        match event {
+            PowerEvent::Sleep | PowerEvent::SessionInactive => {
+                // Hide private content before touching the power-service mutex.
+                (self.on_sleep)();
+                release_keep_awake_for_system_sleep(&self.power);
+            }
+            // Wake/unlock notifications never restore the private chat window.
+            PowerEvent::Wake => notify_system_wake(self.on_wake.as_ref()),
+        }
+    }
+}
 
 impl PowerEventObserver {
     /// Registers the platform notifications. Reinstalling first removes any
@@ -34,33 +73,62 @@ impl PowerEventObserver {
         on_wake: Arc<dyn Fn() + Send + Sync>,
         on_sleep: Arc<dyn Fn() + Send + Sync>,
     ) {
+        self.shutdown();
+        let callbacks = PowerEventCallbacks {
+            power,
+            on_wake,
+            on_sleep,
+            active: Arc::new(AtomicBool::new(true)),
+        };
         #[cfg(target_os = "macos")]
         {
-            self.shutdown();
-            self.observer = Some(MacPowerEventObserver::register(power, on_wake, on_sleep));
+            self.observer = Some(MacPowerEventObserver::register(callbacks.clone()));
         }
-
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(windows)]
         {
-            let _ = (power, on_wake, on_sleep);
+            match windows::WindowsPowerEventObserver::register(callbacks.clone()) {
+                Ok(observer) => self.observer = Some(observer),
+                Err(error) => {
+                    callbacks.dispatch(PowerEvent::SessionInactive);
+                    eprintln!("Windows power/session observation unavailable: {error}");
+                }
+            }
         }
+        #[cfg(target_os = "linux")]
+        {
+            match linux::LinuxPowerEventObserver::register(callbacks.clone()) {
+                Ok(observer) => self.observer = Some(observer),
+                Err(error) => {
+                    callbacks.dispatch(PowerEvent::SessionInactive);
+                    eprintln!("Linux power/session observation unavailable: {error}");
+                }
+            }
+        }
+        self.callbacks = Some(callbacks);
     }
 
     /// Removes the platform registrations before the application exits.
     pub fn shutdown(&mut self) {
-        #[cfg(target_os = "macos")]
+        if let Some(callbacks) = self.callbacks.take() {
+            callbacks.active.store(false, Ordering::Release);
+        }
+        #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
         {
-            // Dropping the owner invokes removeObserver: for both tokens.
             self.observer.take();
         }
+    }
+}
+
+impl Drop for PowerEventObserver {
+    fn drop(&mut self) {
+        self.shutdown();
     }
 }
 
 /// This callback intentionally performs only the in-memory power-state
 /// transition. The PowerService worker releases the native assertion after
 /// being signalled; no filesystem, storage, scan, or wake-restart work occurs
-/// on the NSWorkspace notification stack.
-#[cfg(target_os = "macos")]
+/// on the native notification stack.
 fn release_keep_awake_for_system_sleep(power: &Arc<Mutex<PowerService>>) {
     let mut power = power
         .lock()
@@ -68,7 +136,6 @@ fn release_keep_awake_for_system_sleep(power: &Arc<Mutex<PowerService>>) {
     let _ = power.handle_system_sleep();
 }
 
-#[cfg(target_os = "macos")]
 fn notify_system_wake(on_wake: &dyn Fn()) {
     on_wake();
 }
@@ -98,28 +165,20 @@ struct MacPowerEventObserver {
 
 #[cfg(target_os = "macos")]
 impl MacPowerEventObserver {
-    fn register(
-        power: Arc<Mutex<PowerService>>,
-        on_wake: Arc<dyn Fn() + Send + Sync>,
-        on_sleep: Arc<dyn Fn() + Send + Sync>,
-    ) -> Self {
+    fn register(callbacks: PowerEventCallbacks) -> Self {
         let workspace = NSWorkspace::sharedWorkspace();
         let notification_center = workspace.notificationCenter();
 
-        let sleep_power = Arc::clone(&power);
-        let screens_sleep_power = Arc::clone(&power);
-        let session_resign_power = Arc::clone(&power);
-        let sleep_keyboard = Arc::clone(&on_sleep);
-        let screens_sleep_keyboard = Arc::clone(&on_sleep);
-        let session_resign_keyboard = Arc::clone(&on_sleep);
+        let sleep_callbacks = callbacks.clone();
+        let screens_sleep_callbacks = callbacks.clone();
+        let session_resign_callbacks = callbacks.clone();
         let sleep_observer = unsafe {
             notification_center.addObserverForName_object_queue_usingBlock(
                 Some(NSWorkspaceWillSleepNotification),
                 None,
                 None,
                 &RcBlock::new(move |_| {
-                    release_keep_awake_for_system_sleep(&sleep_power);
-                    sleep_keyboard.as_ref()();
+                    sleep_callbacks.dispatch(PowerEvent::Sleep);
                 }),
             )
         };
@@ -129,8 +188,7 @@ impl MacPowerEventObserver {
                 None,
                 None,
                 &RcBlock::new(move |_| {
-                    release_keep_awake_for_system_sleep(&screens_sleep_power);
-                    screens_sleep_keyboard.as_ref()();
+                    screens_sleep_callbacks.dispatch(PowerEvent::SessionInactive);
                 }),
             )
         };
@@ -140,8 +198,7 @@ impl MacPowerEventObserver {
                 None,
                 None,
                 &RcBlock::new(move |_| {
-                    release_keep_awake_for_system_sleep(&session_resign_power);
-                    session_resign_keyboard.as_ref()();
+                    session_resign_callbacks.dispatch(PowerEvent::SessionInactive);
                 }),
             )
         };
@@ -150,7 +207,7 @@ impl MacPowerEventObserver {
                 Some(NSWorkspaceDidWakeNotification),
                 None,
                 None,
-                &RcBlock::new(move |_| notify_system_wake(on_wake.as_ref())),
+                &RcBlock::new(move |_| callbacks.dispatch(PowerEvent::Wake)),
             )
         };
 
@@ -168,7 +225,7 @@ impl MacPowerEventObserver {
 impl Drop for MacPowerEventObserver {
     fn drop(&mut self) {
         // NSNotificationCenter retains the block-backed token. Explicitly
-        // removing both tokens prevents callbacks after Tauri has begun exit.
+        // removing every token prevents callbacks after Tauri has begun exit.
         unsafe {
             if let Some(observer) = self.sleep_observer.take() {
                 let observer: &AnyObject = (*observer).as_ref();
@@ -190,13 +247,12 @@ impl Drop for MacPowerEventObserver {
     }
 }
 
-#[cfg(all(test, target_os = "macos"))]
+#[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn sleep_handler_routes_to_the_existing_power_service() {
         let power = Arc::new(Mutex::new(PowerService::new()));
@@ -208,7 +264,6 @@ mod tests {
         assert_eq!(state.reason.as_deref(), Some("system_sleep"));
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn wake_handler_only_invokes_the_lightweight_notifier() {
         let notifications = Arc::new(AtomicUsize::new(0));
@@ -221,11 +276,44 @@ mod tests {
         assert_eq!(notifications.load(Ordering::SeqCst), 1);
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
-    fn macos_observer_has_a_safe_empty_lifecycle() {
+    fn observer_has_a_safe_empty_lifecycle() {
         let mut observer = PowerEventObserver::default();
         observer.shutdown();
+    }
+
+    #[test]
+    fn session_inactivity_hides_private_content_and_shutdown_blocks_late_callbacks() {
+        let hides = Arc::new(AtomicUsize::new(0));
+        let wakes = Arc::new(AtomicUsize::new(0));
+        let hide_count = Arc::clone(&hides);
+        let wake_count = Arc::clone(&wakes);
+        let callbacks = PowerEventCallbacks {
+            power: Arc::new(Mutex::new(PowerService::new())),
+            on_wake: Arc::new(move || {
+                wake_count.fetch_add(1, Ordering::SeqCst);
+            }),
+            on_sleep: Arc::new(move || {
+                hide_count.fetch_add(1, Ordering::SeqCst);
+            }),
+            active: Arc::new(AtomicBool::new(true)),
+        };
+        callbacks.dispatch(PowerEvent::SessionInactive);
+        assert_eq!(hides.load(Ordering::SeqCst), 1);
+        assert_eq!(wakes.load(Ordering::SeqCst), 0);
+        callbacks.dispatch(PowerEvent::Wake);
+        assert_eq!(hides.load(Ordering::SeqCst), 1);
+        assert_eq!(wakes.load(Ordering::SeqCst), 1);
+        callbacks.active.store(false, Ordering::Release);
+        for event in [
+            PowerEvent::Sleep,
+            PowerEvent::SessionInactive,
+            PowerEvent::Wake,
+        ] {
+            callbacks.dispatch(event);
+        }
+        assert_eq!(hides.load(Ordering::SeqCst), 1);
+        assert_eq!(wakes.load(Ordering::SeqCst), 1);
     }
 
     #[cfg(target_os = "macos")]

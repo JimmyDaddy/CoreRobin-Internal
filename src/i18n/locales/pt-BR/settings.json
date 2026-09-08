@@ -93,7 +93,7 @@
   },
   "dataPrivacy": {
     "title": "Central de dados e privacidade",
-    "description": "Veja e controle todos os dados locais em um só lugar. O CoreRobin não envia nem sincroniza esses registros.",
+    "description": "Gerencie os registros locais, sem envio ou sincronização automática. Ao usar IA, as evidências que você escolher compartilhar são enviadas ao serviço de modelo configurado.",
     "status": {
       "on": "Salvando",
       "off": "Desativado"

@@ -85,7 +85,9 @@ use protection::{
     cleanup_protection_for_path, cleanup_protection_for_selected_scan_path,
     temporary_cleanup_boundary_for_path,
 };
-pub(crate) use quick::{QuickCleanCoordinator, analyze_quick_cleanup, run_quick_cleanup};
+pub(crate) use quick::{
+    QuickCleanCoordinator, analyze_quick_cleanup_cancellable, run_quick_cleanup,
+};
 
 #[cfg(test)]
 use crate::models::CleanupLocationKind;

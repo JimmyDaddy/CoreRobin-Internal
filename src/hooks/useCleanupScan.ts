@@ -1,3 +1,5 @@
+import { readApplicationCapabilities } from "../capabilities/api";
+import { useCapabilityChanges } from "../capabilities/useCapabilityChanges";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -95,6 +97,8 @@ export function useCleanupScan() {
 
   const reloadLatestSnapshot = useCallback((): Promise<CleanupScan | null> => {
     if (snapshotSyncRef.current) return snapshotSyncRef.current;
+    const tracker = trackerRef.current;
+    const refreshTracker = refreshTrackerRef.current;
     const sync = (async () => {
       const job = await getCleanupScanJob().catch(() => null);
       if (job && (
@@ -108,19 +112,14 @@ export function useCleanupScan() {
         return snapshotRef.current;
       }
       const persisted = await loadPersistedCleanupScan();
-      if (!persisted) return null;
-      const current = snapshotRef.current;
-      if (
-        !current
-        || persisted.scanId !== current.scanId
-        || persisted.sampledAtMs > current.sampledAtMs
-      ) {
-        snapshotRef.current = persisted;
-        setSnapshot(persisted);
-        setSnapshotStatus("current");
-        setError(null);
-        scanHistory.setValue((history) =>
-          appendCleanupScanSnapshot(history, persisted));
+      if (tracker !== trackerRef.current || refreshTracker !== refreshTrackerRef.current) return snapshotRef.current;
+      stateTouched.current = true;
+      snapshotRef.current = persisted;
+      setSnapshot(persisted);
+      setSnapshotStatus("current");
+      setError(null);
+      if (persisted) {
+        scanHistory.setValue((history) => appendCleanupScanSnapshot(history, persisted));
       }
       return persisted;
     })().finally(() => {
@@ -130,21 +129,14 @@ export function useCleanupScan() {
     return sync;
   }, [scanHistory.setValue]);
 
-  useEffect(() => {
-    const reconcileWhenVisible = () => {
-      if (document.visibilityState === "visible") {
-        void reloadLatestSnapshot().catch(() => {
-          // The existing result stays usable if the native cache is briefly busy.
-        });
-      }
-    };
-    window.addEventListener("focus", reconcileWhenVisible);
-    document.addEventListener("visibilitychange", reconcileWhenVisible);
-    return () => {
-      window.removeEventListener("focus", reconcileWhenVisible);
-      document.removeEventListener("visibilitychange", reconcileWhenVisible);
-    };
-  }, [reloadLatestSnapshot]);
+  useCapabilityChanges("disk", async () => {
+    // A notification arriving during a read needs a fresh read after that one.
+    await snapshotSyncRef.current?.catch(() => null);
+    const snapshot = await reloadLatestSnapshot();
+    const shared = await readApplicationCapabilities().catch(() => null);
+    if (shared?.diskRequiresRescan && snapshot && snapshotRef.current?.scanId === snapshot.scanId) setSnapshotStatus("expired");
+    return snapshot;
+  });
 
   const followJob = useCallback(async (
     initialStatus: CleanupScanJobStatus,

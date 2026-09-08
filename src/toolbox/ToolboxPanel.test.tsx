@@ -1,3 +1,4 @@
+import { clearSharedToolState } from "./local/sharedToolState";
 /** @vitest-environment jsdom */
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -146,6 +147,7 @@ vi.mock("./binary-patch/BinaryPatchToolbox", () => {
 });
 
 beforeEach(() => {
+  clearSharedToolState();
   delete (window as Window & { EyeDropper?: unknown }).EyeDropper;
   modules.macOSDesktopRuntime = true;
   modules.snapshotListener = null;

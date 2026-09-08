@@ -23,6 +23,7 @@ import type {
 } from "../userActionHistory";
 import { formatBytes } from "../utils";
 import { Button } from "./Button";
+import { SourceDataClearAction } from "./SourceDataClearAction";
 
 interface UserActionTimelineProps {
   records: readonly UserActionRecord[];
@@ -135,9 +136,7 @@ export function UserActionTimeline({
         <footer>
           <span>{t("history:actions.saved", { count: storedCount })}</span>
           {onClearSaved && storedCount > 0 ? (
-            <Button variant="dangerGhost" onClick={onClearSaved}>
-              <Trash2 size={12} />{t("history:actions.clear")}
-            </Button>
+            <SourceDataClearAction category="userActions" label={t("history:actions.clear")} onClear={onClearSaved} />
           ) : null}
         </footer>
       ) : null}

@@ -10,43 +10,45 @@ export const TOOLBOX_CONTRACT_VERSION = "toolbox-v1" as const;
 
 export type ToolboxCategory = "system-network" | "text-development" | "image" | "file-patch";
 
-export type ToolId =
-  | "json"
-  | "url"
-  | "base64"
-  | "time"
-  | "uuid"
-  | "qr-code"
-  | "text-sha256"
-  | "file-sha256"
-  | "regex"
-  | "color"
-  | "color-picker"
-  | "keep-awake"
-  | "process-watch"
-  | "file-occupancy"
-  | "volume-occupancy"
-  | "keyboard-cleaning"
-  | "schedules"
-  | "network-addresses"
-  | "ifconfig-parser"
-  | "image-watermark"
-  | "image-batch-watermark"
-  | "confidential-watermark"
-  | "image-recipe"
-  | "image-editor"
-  | "invisible-watermark-write"
-  | "invisible-watermark-check"
-  | "recipient-tracking"
-  | "robustness-lab"
-  | "c2pa-inspector"
-  | "binary-patch-create"
-  | "binary-patch-apply"
-  | "binary-patch-inspector"
-  | "integrity-manifest"
-  | "transfer-savings"
-  | "patch-errors"
-  | "patch-planner";
+export const TOOLBOX_TOOL_IDS = [
+  "json",
+  "url",
+  "base64",
+  "time",
+  "uuid",
+  "qr-code",
+  "text-sha256",
+  "file-sha256",
+  "regex",
+  "color",
+  "color-picker",
+  "keep-awake",
+  "process-watch",
+  "file-occupancy",
+  "volume-occupancy",
+  "keyboard-cleaning",
+  "schedules",
+  "network-addresses",
+  "ifconfig-parser",
+  "image-watermark",
+  "image-batch-watermark",
+  "confidential-watermark",
+  "image-recipe",
+  "image-editor",
+  "invisible-watermark-write",
+  "invisible-watermark-check",
+  "recipient-tracking",
+  "robustness-lab",
+  "c2pa-inspector",
+  "binary-patch-create",
+  "binary-patch-apply",
+  "binary-patch-inspector",
+  "integrity-manifest",
+  "transfer-savings",
+  "patch-errors",
+  "patch-planner",
+] as const;
+export type ToolId = typeof TOOLBOX_TOOL_IDS[number];
 
 export type SessionStatus = "preparing" | "running" | "stopping" | "ended";
 export type ResourceStatus = "acquiring" | "active" | "releasing" | "released" | "release_unconfirmed";

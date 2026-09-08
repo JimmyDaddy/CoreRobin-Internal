@@ -23,6 +23,7 @@ pub enum SystemSettingsDestination {
     Battery,
     Network,
     Notifications,
+    Accessibility,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
@@ -72,7 +73,7 @@ pub fn open_product_issue(title: &str, body: &str) -> Result<(), CommandError> {
     open_external_url(&url)
 }
 
-fn open_external_url(url: &str) -> Result<(), CommandError> {
+pub(crate) fn open_external_url(url: &str) -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     return run_command(
         Command::new("/usr/bin/open").arg(url),
@@ -568,6 +569,9 @@ fn macos_settings_uri(destination: SystemSettingsDestination) -> &'static str {
         SystemSettingsDestination::Notifications => {
             "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
         }
+        SystemSettingsDestination::Accessibility => {
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        }
     }
 }
 
@@ -578,6 +582,7 @@ fn windows_settings_uri(destination: SystemSettingsDestination) -> &'static str 
         SystemSettingsDestination::Battery => "ms-settings:batterysaver",
         SystemSettingsDestination::Network => "ms-settings:network-status",
         SystemSettingsDestination::Notifications => "ms-settings:notifications",
+        SystemSettingsDestination::Accessibility => "ms-settings:easeofaccess",
     }
 }
 

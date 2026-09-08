@@ -25,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   loadRecentCleanupTargets,
   saveRecentCleanupTarget,
@@ -115,7 +115,47 @@ const LOCATION_ICONS = {
   hidden_data: FolderSearch,
 } satisfies Record<CleanupLocationKind, typeof Download>;
 
-export function CleanupAssistant({
+export function CleanupAssistant(props: CleanupAssistantProps) {
+  const { fileInsights, workspaceRequest = null, onWorkspaceChange = () => undefined,
+    onDeletionApplied, onUserActionStart, onUserActionComplete } = props;
+  const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files" | "quick">("space");
+  useEffect(() => {
+    if (workspaceRequest) {
+      setActiveWorkspace(workspaceRequest.workspace);
+    }
+  }, [workspaceRequest]);
+  useEffect(() => {
+    onWorkspaceChange(activeWorkspace === "quick" ? "quick" : "space");
+  }, [activeWorkspace, onWorkspaceChange]);
+  if (activeWorkspace === "quick") {
+    return (
+      <QuickCleanupPage onBack={() => setActiveWorkspace("space")} />
+    );
+  }
+
+  if (activeWorkspace === "files") {
+    return (
+      <FileInsightsExplorer
+        scan={fileInsights.snapshot}
+        snapshotStatus={fileInsights.snapshotStatus}
+        progress={fileInsights.progress}
+        loading={fileInsights.loading}
+        error={fileInsights.error}
+        onRun={() => void fileInsights.scan()}
+        onCancel={() => void fileInsights.cancel()}
+        onBack={() => setActiveWorkspace("space")}
+        onFilesRemoved={fileInsights.removePaths}
+        onDeletionApplied={onDeletionApplied}
+        onUserActionStart={onUserActionStart}
+        onUserActionComplete={onUserActionComplete}
+      />
+    );
+  }
+
+  return <CleanupOperation {...props} auxiliaryAction={<FileInsightsLauncher compact scan={fileInsights.snapshot} snapshotStatus={fileInsights.snapshotStatus} loading={fileInsights.loading} onOpen={() => setActiveWorkspace("files")} />} />;
+}
+
+export function CleanupOperation({
   snapshot,
   error,
   loading,
@@ -135,10 +175,8 @@ export function CleanupAssistant({
   onReloadLatestSnapshot = async () => null,
   onUserActionStart,
   onUserActionComplete,
-  workspaceRequest = null,
-  onWorkspaceChange = () => undefined,
-  fileInsights,
-}: CleanupAssistantProps) {
+  auxiliaryAction,
+}: Omit<CleanupAssistantProps, "workspaceRequest" | "onWorkspaceChange" | "fileInsights"> & { auxiliaryAction?: ReactNode }) {
   const { t, i18n } = useAppTranslation();
   const [accessGuideOpen, setAccessGuideOpen] = useState(false);
   const [scanAccess, setScanAccess] = useState<CleanupScanAccess | null>(null);
@@ -150,7 +188,6 @@ export function CleanupAssistant({
   const [preferAccessibleScan, setPreferAccessibleScan] = useState(
     readAccessibleScanPreference,
   );
-  const [activeWorkspace, setActiveWorkspace] = useState<"space" | "files" | "quick">("space");
   const [selectedTarget, setSelectedTarget] = useState<CleanupScanTarget>(
     () => snapshot
       ? {
@@ -174,14 +211,7 @@ export function CleanupAssistant({
     useState<CleanupSpaceMapCommand | null>(null);
   const mapCommandIdRef = useRef(0);
   const accessCheckInFlight = useRef(false);
-  useEffect(() => {
-    if (workspaceRequest) {
-      setActiveWorkspace(workspaceRequest.workspace);
-    }
-  }, [workspaceRequest]);
-  useEffect(() => {
-    onWorkspaceChange(activeWorkspace === "quick" ? "quick" : "space");
-  }, [activeWorkspace, onWorkspaceChange]);
+
   const reclaimableBytes = useMemo(
     () => snapshot?.locations.reduce(
       (total, location) =>
@@ -439,31 +469,6 @@ export function CleanupAssistant({
       });
     });
   };
-
-  if (activeWorkspace === "quick") {
-    return (
-      <QuickCleanupPage onBack={() => setActiveWorkspace("space")} />
-    );
-  }
-
-  if (activeWorkspace === "files") {
-    return (
-      <FileInsightsExplorer
-        scan={fileInsights.snapshot}
-        snapshotStatus={fileInsights.snapshotStatus}
-        progress={fileInsights.progress}
-        loading={fileInsights.loading}
-        error={fileInsights.error}
-        onRun={() => void fileInsights.scan()}
-        onCancel={() => void fileInsights.cancel()}
-        onBack={() => setActiveWorkspace("space")}
-        onFilesRemoved={fileInsights.removePaths}
-        onDeletionApplied={onDeletionApplied}
-        onUserActionStart={onUserActionStart}
-        onUserActionComplete={onUserActionComplete}
-      />
-    );
-  }
 
   return (
     <section className={`panel cleanup-assistant${loading ? " is-scanning" : ""}${pristine ? " is-pristine" : ""}`} aria-labelledby="cleanup-title">
@@ -932,13 +937,7 @@ export function CleanupAssistant({
             </div>
 
             <div className="cleanup-result-overview__actions">
-              <FileInsightsLauncher
-                compact
-                scan={fileInsights.snapshot}
-                snapshotStatus={fileInsights.snapshotStatus}
-                loading={fileInsights.loading}
-                onOpen={() => setActiveWorkspace("files")}
-              />
+              {auxiliaryAction}
               {snapshot.profile === "common_locations" ? (
                 <button
                   className="button button--secondary"

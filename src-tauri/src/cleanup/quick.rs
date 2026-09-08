@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::error::CommandError;
 use crate::models::{
-    QuickCleanCategory, QuickCleanCategoryResult, QuickCleanCategorySummary, QuickCleanProgress,
-    QuickCleanRequest, QuickCleanResult,
+    QuickCleanCategory, QuickCleanCategoryResult, QuickCleanCategorySummary, QuickCleanPhase,
+    QuickCleanProgress, QuickCleanRequest, QuickCleanResult, QuickCleanSnapshot,
 };
 use crate::safe_fs::DeleteRoot;
 
@@ -30,10 +30,18 @@ const QUICK_CLEAN_ORDER: [QuickCleanCategory; 4] = [
 #[derive(Debug, Default)]
 pub struct QuickCleanCoordinator {
     active: Mutex<Option<Arc<AtomicBool>>>,
+    view: Mutex<QuickCleanSnapshot>,
+    suppressed: AtomicBool,
 }
 
 impl QuickCleanCoordinator {
     pub fn begin(&self) -> Result<Arc<AtomicBool>, CommandError> {
+        self.begin_with_cancel(Arc::new(AtomicBool::new(false)))
+    }
+    pub fn begin_with_cancel(
+        &self,
+        cancelled: Arc<AtomicBool>,
+    ) -> Result<Arc<AtomicBool>, CommandError> {
         let mut active = self.active.lock().map_err(|_| {
             CommandError::internal("The quick cleanup coordinator lock was poisoned.")
         })?;
@@ -43,9 +51,68 @@ impl QuickCleanCoordinator {
                 "A quick cleanup is already in progress.",
             ));
         }
-        let cancelled = Arc::new(AtomicBool::new(false));
+        self.suppressed.store(false, Ordering::Release);
         *active = Some(Arc::clone(&cancelled));
         Ok(cancelled)
+    }
+
+    pub fn snapshot(&self) -> Result<QuickCleanSnapshot, CommandError> {
+        self.view
+            .lock()
+            .map(|view| view.clone())
+            .map_err(|_| CommandError::internal("Quick cleanup state is unavailable."))
+    }
+    pub fn update(
+        &self,
+        token: &Arc<AtomicBool>,
+        change: impl FnOnce(&mut QuickCleanSnapshot),
+    ) -> bool {
+        let Ok(active) = self.active.lock() else {
+            return false;
+        };
+        if self.suppressed.load(Ordering::Acquire)
+            || !active
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(current, token))
+        {
+            return false;
+        }
+        let Ok(mut view) = self.view.lock() else {
+            return false;
+        };
+        change(&mut view);
+        view.revision = view.revision.saturating_add(1);
+        true
+    }
+    pub fn start_view(&self, token: &Arc<AtomicBool>, analyzing: bool) {
+        self.update(token, |view| {
+            view.phase = if analyzing {
+                QuickCleanPhase::Analyzing
+            } else {
+                QuickCleanPhase::Cleaning
+            };
+            view.progress = None;
+            view.result = None;
+            view.error = None;
+            view.cancelled = false;
+        });
+    }
+    pub fn clear_view(&self) {
+        // Keep the worker's concurrency lock until it really exits, but never
+        // allow it to repopulate source data after a privacy clear.
+        if let Ok(active) = self.active.lock() {
+            self.suppressed.store(true, Ordering::Release);
+            if let Some(token) = active.as_ref() {
+                token.store(true, Ordering::Release);
+            }
+            if let Ok(mut view) = self.view.lock() {
+                let revision = view.revision.saturating_add(1);
+                *view = QuickCleanSnapshot {
+                    revision,
+                    ..Default::default()
+                };
+            }
+        }
     }
 
     pub fn cancel(&self) -> Result<bool, CommandError> {
@@ -88,15 +155,31 @@ impl QuickCleanRoots {
     }
 }
 
-pub(crate) fn analyze_quick_cleanup() -> Result<Vec<QuickCleanCategorySummary>, CommandError> {
+pub(crate) fn analyze_quick_cleanup_cancellable(
+    cancelled: &AtomicBool,
+) -> Result<Vec<QuickCleanCategorySummary>, CommandError> {
     let roots = QuickCleanRoots::resolve()?;
-    Ok(analyze_quick_cleanup_at(&roots))
+    let result = analyze_quick_cleanup_at_cancellable(&roots, cancelled);
+    if cancelled.load(Ordering::Acquire) {
+        return Err(CommandError::new(
+            "cleanup_cancelled",
+            "Quick cleanup analysis was cancelled.",
+        ));
+    }
+    Ok(result)
 }
 
+#[cfg(test)]
 fn analyze_quick_cleanup_at(roots: &QuickCleanRoots) -> Vec<QuickCleanCategorySummary> {
+    analyze_quick_cleanup_at_cancellable(roots, &AtomicBool::new(false))
+}
+fn analyze_quick_cleanup_at_cancellable(
+    roots: &QuickCleanRoots,
+    cancelled: &AtomicBool,
+) -> Vec<QuickCleanCategorySummary> {
     QUICK_CLEAN_ORDER
         .into_iter()
-        .map(|category| analyze_category(category, category_root(category, roots)))
+        .map(|category| analyze_category(category, category_root(category, roots), cancelled))
         .collect()
 }
 
@@ -109,7 +192,11 @@ fn category_root(category: QuickCleanCategory, roots: &QuickCleanRoots) -> PathB
     }
 }
 
-fn analyze_category(category: QuickCleanCategory, root: PathBuf) -> QuickCleanCategorySummary {
+fn analyze_category(
+    category: QuickCleanCategory,
+    root: PathBuf,
+    cancelled: &AtomicBool,
+) -> QuickCleanCategorySummary {
     let mut summary = QuickCleanCategorySummary {
         category,
         byte_size: 0,
@@ -124,7 +211,7 @@ fn analyze_category(category: QuickCleanCategory, root: PathBuf) -> QuickCleanCa
     let mut pending = Vec::new();
     let mut budget = QUICK_CLEAN_ANALYZE_ENTRY_CAP;
     for entry in entries.flatten() {
-        if budget == 0 {
+        if budget == 0 || cancelled.load(Ordering::Acquire) {
             break;
         }
         budget -= 1;
@@ -144,7 +231,7 @@ fn analyze_category(category: QuickCleanCategory, root: PathBuf) -> QuickCleanCa
         }
     }
     while let Some(directory) = pending.pop() {
-        if budget == 0 {
+        if budget == 0 || cancelled.load(Ordering::Acquire) {
             break;
         }
         let Ok(entries) = fs::read_dir(&directory) else {
@@ -643,6 +730,27 @@ mod tests {
         assert!(first.load(Ordering::Relaxed));
         coordinator.finish(&first);
         assert!(coordinator.begin().is_ok());
+    }
+
+    #[test]
+    fn clear_cancels_worker_and_rejects_late_results_without_releasing_its_slot() {
+        let coordinator = QuickCleanCoordinator::default();
+        let first = coordinator.begin().unwrap();
+        coordinator.start_view(&first, true);
+        let before = coordinator.snapshot().unwrap().revision;
+        coordinator.clear_view();
+        assert!(first.load(Ordering::Acquire));
+        assert!(coordinator.snapshot().unwrap().revision > before);
+        assert!(!coordinator.update(&first, |view| view.phase = QuickCleanPhase::Done));
+        assert!(coordinator.begin().is_err());
+        coordinator.finish(&first);
+        let second = coordinator.begin().unwrap();
+        coordinator.start_view(&second, false);
+        coordinator.finish(&first);
+        assert!(coordinator.begin().is_err());
+        assert!(!coordinator.update(&first, |view| view.phase = QuickCleanPhase::Done));
+        assert!(coordinator.update(&second, |view| view.phase = QuickCleanPhase::Done));
+        assert!(coordinator.snapshot().unwrap().summaries.is_empty());
     }
 }
 

@@ -1,3 +1,5 @@
+import { readApplicationCapabilities } from "../capabilities/api";
+import { useCapabilityChanges } from "../capabilities/useCapabilityChanges";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isDesktopRuntime, runNetworkQualityCheck } from "../api";
@@ -64,6 +66,7 @@ export function useNetworkQualityMonitor({
   const [error, setError] = useState<string | null>(null);
   const checkingRef = useRef(false);
   const latestSampledAtRef = useRef(0);
+  const sharedRevisionRef = useRef(-1);
   const mountedRef = useRef(true);
   const historyEnabledRef = useRef(historyEnabled);
   const historyHoursRef = useRef(historyHours);
@@ -91,6 +94,35 @@ export function useNetworkQualityMonitor({
     setHistory(loaded);
   }, [desktop, historyEnabled, historyHours]);
 
+  const adoptResult = useCallback((nextResult: NetworkQualityResult) => {
+    if (!mountedRef.current || nextResult.sampledAtMs <= latestSampledAtRef.current) return;
+    latestSampledAtRef.current = nextResult.sampledAtMs;
+    setResult(nextResult);
+    setError(null);
+    setSessionSamples((current) => appendNetworkQualitySample(current, nextResult));
+    if (historyEnabledRef.current) {
+      setHistory((current) => {
+        const next = mergeNetworkQualityHistory(current, nextResult, historyHoursRef.current, nextResult.sampledAtMs, networkSignatureRef.current);
+        if (!desktop) saveNetworkQualityHistory(next);
+        return next;
+      });
+    }
+  }, []);
+  const reloadSharedResult = useCallback(async () => {
+    if (!desktop) return;
+    const shared = await readApplicationCapabilities();
+    if (!mountedRef.current || shared.networkRevision < sharedRevisionRef.current) return;
+    sharedRevisionRef.current = shared.networkRevision;
+    if (shared.network) adoptResult(shared.network);
+    else {
+      latestSampledAtRef.current = 0;
+      setResult(null);
+      setSessionSamples([]);
+    }
+  }, [desktop, adoptResult]);
+  useCapabilityChanges("network", reloadSharedResult);
+  useEffect(() => { void reloadSharedResult().catch(() => {}); }, [reloadSharedResult]);
+
   const runCheck = useCallback(async () => {
     if (checkingRef.current) return false;
     checkingRef.current = true;
@@ -99,23 +131,8 @@ export function useNetworkQualityMonitor({
     try {
       const nextResult = await runNetworkQualityCheck();
       if (!mountedRef.current) return false;
-      latestSampledAtRef.current = nextResult.sampledAtMs;
-      setResult(nextResult);
-      setSessionSamples((current) =>
-        appendNetworkQualitySample(current, nextResult));
-      if (historyEnabledRef.current) {
-        setHistory((current) => {
-          const next = mergeNetworkQualityHistory(
-            current,
-            nextResult,
-            historyHoursRef.current,
-            nextResult.sampledAtMs,
-            networkSignatureRef.current,
-          );
-          if (!desktop) saveNetworkQualityHistory(next);
-          return next;
-        });
-      }
+      if (desktop) await reloadSharedResult();
+      else adoptResult(nextResult);
       return true;
     } catch (reason) {
       if (mountedRef.current) {

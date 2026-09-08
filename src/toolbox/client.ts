@@ -1,9 +1,11 @@
+import { clearSharedToolState } from "./local/sharedToolState";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { NetworkAddressesSnapshot } from "./network/networkTools";
 
 import {
   TOOLBOX_CONTRACT_VERSION,
+  TOOLBOX_TOOL_IDS,
   type ToolboxEvent,
   type ToolboxError,
   type ToolboxJob,
@@ -114,6 +116,7 @@ export async function cancelToolboxOutput(request: {
 }
 
 export async function clearToolboxData(request: ToolboxRequest): Promise<ToolboxSnapshot> {
+  clearSharedToolState();
   return invoke<ToolboxSnapshot>("clear_toolbox_data", { request });
 }
 
@@ -134,5 +137,5 @@ export async function subscribeToolboxActivity(callback: () => void): Promise<Un
 }
 
 export function isToolboxTool(value: string): value is ToolId {
-  return value.length > 0;
+  return (TOOLBOX_TOOL_IDS as readonly string[]).includes(value);
 }

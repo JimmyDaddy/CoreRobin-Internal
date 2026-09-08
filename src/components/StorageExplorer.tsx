@@ -81,6 +81,129 @@ export function StorageExplorer({
   onUserActionComplete,
 }: StorageExplorerProps) {
   const { t } = useAppTranslation();
+  const volumes = useMemo(() => sortVolumesByUsage(disk.volumes), [disk.volumes]);
+  const highestUsage = volumes[0];
+  const diskProcesses = useMemo(() => topDiskProcesses(processes), [processes]);
+
+  return (
+    <section className="storage-explorer" aria-labelledby="storage-title">
+      <section className="panel storage-overview">
+        <header className="storage-overview__heading">
+          <div>
+            <span className="eyebrow">{t("storage:local")}</span>
+            <h2 id="storage-title">{t("storage:title")}</h2>
+            <p>{t("storage:description")}</p>
+          </div>
+          <div className="storage-overview__actions">
+            <span className="storage-overview__badge">
+              <HardDrive size={14} />{t("storage:volumeCount", { count: volumes.length })}
+            </span>
+            <button className="button button--primary storage-overview__cleanup" type="button" onClick={onOpenCleanup}>
+              <Sparkles size={14} />{t("storage:openCleanup")}
+            </button>
+          </div>
+        </header>
+
+        <div className="storage-summary" aria-label={t("storage:summary")}>
+          <StorageSummaryItem
+            icon={ArrowDownToLine}
+            label={t("storage:currentRead")}
+            value={formatRate(disk.readBytesPerSecond)}
+            tone="read"
+          />
+          <StorageSummaryItem
+            icon={ArrowUpFromLine}
+            label={t("storage:currentWrite")}
+            value={formatRate(disk.writeBytesPerSecond)}
+            tone="write"
+          />
+          <StorageSummaryItem
+            icon={HardDrive}
+            label={t("storage:highestUsage")}
+            value={
+              highestUsage
+                ? `${highestUsage.usagePercent.toFixed(0)}%`
+                : t("storage:noVolume")
+            }
+            context={highestUsage?.volume.name}
+            tone={highestUsage?.lowSpace ? "warning" : "capacity"}
+            onClick={highestUsage ? onOpenCleanup : undefined}
+            actionLabel={`${t("storage:highestUsage")} · ${t("storage:openCleanup")}`}
+          />
+        </div>
+      </section>
+
+      <StorageThroughput history={history} disk={disk} />
+
+      <StorageVolumeOperations disk={disk} usageThresholds={usageThresholds}
+        onVolumeEjected={onVolumeEjected} onUserActionStart={onUserActionStart} onUserActionComplete={onUserActionComplete} />
+
+      <section
+        className="panel storage-process-panel"
+        aria-labelledby="storage-process-title"
+      >
+        <header className="storage-section-heading">
+          <div>
+            <span className="eyebrow">{t("storage:snapshot")}</span>
+            <h2 id="storage-process-title">{t("storage:topProcesses")}</h2>
+          </div>
+          <span>{t("storage:inspectHint")}</span>
+        </header>
+
+        {diskProcesses.length > 0 ? (
+          <ol className="storage-process-list">
+            {diskProcesses.map(({ process, totalBytesPerSecond }, index) => {
+              const identity = processIdentity(process);
+              return (
+                <li key={identity}>
+                  <button
+                    type="button"
+                    className={identity === selectedIdentity ? "is-selected" : ""}
+                    aria-pressed={identity === selectedIdentity}
+                    onClick={() => onSelectProcess(process)}
+                  >
+                    <span className="storage-process-rank">{index + 1}</span>
+                    <ApplicationAvatar
+                      name={process.name}
+                      source={processApplicationIconSource(process)}
+                      className="storage-process-avatar"
+                    />
+                    <span className="storage-process-name">
+                      <strong>{process.name || t("common:unnamedProcess")}</strong>
+                      <small>PID {process.pid}</small>
+                    </span>
+                    <span>
+                      <small>{t("common:read")}</small>
+                      <strong>{formatRate(process.diskReadBytesPerSecond)}</strong>
+                    </span>
+                    <span>
+                      <small>{t("common:write")}</small>
+                      <strong>{formatRate(process.diskWriteBytesPerSecond)}</strong>
+                    </span>
+                    <span className="storage-process-total">
+                      <small>{t("common:total")}</small>
+                      <strong>{formatRate(totalBytesPerSecond)}</strong>
+                    </span>
+                    <ChevronRight size={14} aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <div className="storage-empty">
+            <Activity size={20} />{t("storage:waitingProcessIo")}
+          </div>
+        )}
+      </section>
+    </section>
+  );
+}
+
+/** Shared volume identities, health checks and native eject confirmations. */
+export function StorageVolumeOperations({ disk, usageThresholds, onVolumeEjected, onUserActionStart, onUserActionComplete }:
+  Pick<StorageExplorerProps, "disk" | "usageThresholds" | "onVolumeEjected" | "onUserActionStart" | "onUserActionComplete">) {
+  const { t } = useAppTranslation();
   const [confirmingMountPoint, setConfirmingMountPoint] = useState<string | null>(null);
   const [ejectConfirmationId, setEjectConfirmationId] = useState<string | null>(null);
   const [preparingMountPoint, setPreparingMountPoint] = useState<string | null>(null);
@@ -98,11 +221,6 @@ export function StorageExplorer({
     () => sortVolumesByUsage(disk.volumes),
     [disk.volumes],
   );
-  const diskProcesses = useMemo(
-    () => topDiskProcesses(processes),
-    [processes],
-  );
-  const highestUsage = volumes[0];
   const mountPointSignature = disk.volumes
     .map((volume) => volume.mountPoint)
     .sort()
@@ -249,56 +367,7 @@ export function StorageExplorer({
     }
   };
 
-  return (
-    <section className="storage-explorer" aria-labelledby="storage-title">
-      <section className="panel storage-overview">
-        <header className="storage-overview__heading">
-          <div>
-            <span className="eyebrow">{t("storage:local")}</span>
-            <h2 id="storage-title">{t("storage:title")}</h2>
-            <p>{t("storage:description")}</p>
-          </div>
-          <div className="storage-overview__actions">
-            <span className="storage-overview__badge">
-              <HardDrive size={14} />{t("storage:volumeCount", { count: volumes.length })}
-            </span>
-            <button className="button button--primary storage-overview__cleanup" type="button" onClick={onOpenCleanup}>
-              <Sparkles size={14} />{t("storage:openCleanup")}
-            </button>
-          </div>
-        </header>
-
-        <div className="storage-summary" aria-label={t("storage:summary")}>
-          <StorageSummaryItem
-            icon={ArrowDownToLine}
-            label={t("storage:currentRead")}
-            value={formatRate(disk.readBytesPerSecond)}
-            tone="read"
-          />
-          <StorageSummaryItem
-            icon={ArrowUpFromLine}
-            label={t("storage:currentWrite")}
-            value={formatRate(disk.writeBytesPerSecond)}
-            tone="write"
-          />
-          <StorageSummaryItem
-            icon={HardDrive}
-            label={t("storage:highestUsage")}
-            value={
-              highestUsage
-                ? `${highestUsage.usagePercent.toFixed(0)}%`
-                : t("storage:noVolume")
-            }
-            context={highestUsage?.volume.name}
-            tone={highestUsage?.lowSpace ? "warning" : "capacity"}
-            onClick={highestUsage ? onOpenCleanup : undefined}
-            actionLabel={`${t("storage:highestUsage")} · ${t("storage:openCleanup")}`}
-          />
-        </div>
-      </section>
-
-      <StorageThroughput history={history} disk={disk} />
-
+  return <>
       <section className="panel volume-panel" aria-labelledby="volume-title">
         <header className="storage-section-heading">
           <div>
@@ -419,66 +488,7 @@ export function StorageExplorer({
         onRetry={(mountPoint) => void retryStorageDevice(mountPoint)}
       />
 
-      <section
-        className="panel storage-process-panel"
-        aria-labelledby="storage-process-title"
-      >
-        <header className="storage-section-heading">
-          <div>
-            <span className="eyebrow">{t("storage:snapshot")}</span>
-            <h2 id="storage-process-title">{t("storage:topProcesses")}</h2>
-          </div>
-          <span>{t("storage:inspectHint")}</span>
-        </header>
-
-        {diskProcesses.length > 0 ? (
-          <ol className="storage-process-list">
-            {diskProcesses.map(({ process, totalBytesPerSecond }, index) => {
-              const identity = processIdentity(process);
-              return (
-                <li key={identity}>
-                  <button
-                    type="button"
-                    className={identity === selectedIdentity ? "is-selected" : ""}
-                    aria-pressed={identity === selectedIdentity}
-                    onClick={() => onSelectProcess(process)}
-                  >
-                    <span className="storage-process-rank">{index + 1}</span>
-                    <ApplicationAvatar
-                      name={process.name}
-                      source={processApplicationIconSource(process)}
-                      className="storage-process-avatar"
-                    />
-                    <span className="storage-process-name">
-                      <strong>{process.name || t("common:unnamedProcess")}</strong>
-                      <small>PID {process.pid}</small>
-                    </span>
-                    <span>
-                      <small>{t("common:read")}</small>
-                      <strong>{formatRate(process.diskReadBytesPerSecond)}</strong>
-                    </span>
-                    <span>
-                      <small>{t("common:write")}</small>
-                      <strong>{formatRate(process.diskWriteBytesPerSecond)}</strong>
-                    </span>
-                    <span className="storage-process-total">
-                      <small>{t("common:total")}</small>
-                      <strong>{formatRate(totalBytesPerSecond)}</strong>
-                    </span>
-                    <ChevronRight size={14} aria-hidden="true" />
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <div className="storage-empty">
-            <Activity size={20} />{t("storage:waitingProcessIo")}
-          </div>
-        )}
-      </section>
-    </section>
-  );
+  </>;
 }
 
 function StorageHealthPanel({

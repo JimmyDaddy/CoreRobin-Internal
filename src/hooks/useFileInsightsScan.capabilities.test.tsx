@@ -1,0 +1,32 @@
+/** @vitest-environment jsdom */
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { useFileInsightsScan } from "./useFileInsightsScan";
+import type { FileInsightsProgress, FileInsightsScan } from "../types";
+const api = vi.hoisted(() => ({ scanFileInsights: vi.fn(), cancelFileInsightsScan: vi.fn(), revalidateFileInsightsScan: vi.fn() }));
+const persistence = vi.hoisted(() => ({ loadPersistedFileInsightsScan: vi.fn(), savePersistedFileInsightsScan: vi.fn(), clearPersistedFileInsightsScan: vi.fn() }));
+vi.mock("../api", () => api);
+vi.mock("../fileInsightsPersistence", () => persistence);
+const snapshot: FileInsightsScan = { sampledAtMs: 100, durationMs: 5, scannedEntryCount: 10, candidateFileCount: 2, hashedFileCount: 2, duplicateGroups: [], longUnmodifiedFiles: [], unreadableEntryCount: 0, truncated: false };
+beforeEach(() => { vi.clearAllMocks(); persistence.loadPersistedFileInsightsScan.mockResolvedValue(null); persistence.savePersistedFileInsightsScan.mockResolvedValue(undefined); persistence.clearPersistedFileInsightsScan.mockResolvedValue(undefined); });
+afterEach(cleanup);
+it("does not restore a cleared scan from late progress, completion or a cancellation failure", async () => {
+  let resolve!: (result: FileInsightsScan) => void;
+  let report!: (progress: FileInsightsProgress) => void;
+  api.scanFileInsights.mockImplementation((progress) => { report = progress; return new Promise((done) => { resolve = done; }); });
+  api.cancelFileInsightsScan.mockRejectedValue(new Error("worker unavailable"));
+  const hook = renderHook(useFileInsightsScan);
+  await waitFor(() => expect(persistence.loadPersistedFileInsightsScan).toHaveBeenCalled());
+  let work!: Promise<void>;
+  act(() => { work = hook.result.current.scan(); });
+  await act(async () => hook.result.current.clear());
+  expect(persistence.clearPersistedFileInsightsScan).toHaveBeenCalledTimes(1);
+  await act(async () => { report({ phase: "hashing", scannedEntryCount: 10, candidateFileCount: 2, hashedFileCount: 2, currentPath: "/synthetic/old" }); resolve(snapshot); await work; });
+  expect(hook.result.current.snapshot).toBeNull();
+  expect(hook.result.current.progress).toBeNull();
+  expect(hook.result.current.loading).toBe(false);
+  expect(persistence.savePersistedFileInsightsScan).not.toHaveBeenCalled();
+  api.scanFileInsights.mockResolvedValue(snapshot);
+  await act(async () => hook.result.current.scan());
+  expect(hook.result.current.snapshot).toEqual(snapshot);
+});

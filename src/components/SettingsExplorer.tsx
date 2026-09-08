@@ -1,4 +1,4 @@
-import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, Download, FileJson, HardDrive, History, Languages, LayoutDashboard, ListTree, LoaderCircle, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, AppWindow, BellRing, Check, ChevronDown, Cpu, Download, FileJson, HardDrive, History, Languages, LayoutDashboard, ListTree, MemoryStick, Minus, Network, PackageOpen, Plus, Rocket, ScanSearch, Search, Settings2, ShieldCheck, Timer, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEventHandler, type ComponentType, type ReactNode } from "react";
 import "./SettingsExplorer.css";
 import { useAppTranslation } from "../i18n/useAppTranslation";
@@ -39,6 +39,7 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 import { LocaleSelect } from "./LocaleSelect";
 import { RobinIcon } from "./RobinIcon";
 import { ClearProductDataAction } from "./ClearProductDataAction";
+import { SourceDataClearAction } from "./SourceDataClearAction";
 import {
   createSettingsTransferDocument,
   parseSettingsTransferDocument,
@@ -69,6 +70,8 @@ interface SettingsExplorerProps {
   onSendTestNotification?: () => Promise<boolean>;
   onOpenOnboarding: () => void;
   onClearAllData: () => Promise<void | ProductDataClearResult[]>;
+  onOpenAiSettings?: () => void;
+  onOpenAiAssistant?: () => void;
   activeApplicationWatchRuleIds?: readonly string[];
   updater: AppUpdaterController;
 }
@@ -98,14 +101,15 @@ export function SettingsExplorer({
   onSendTestNotification = async () => false,
   onOpenOnboarding,
   onClearAllData,
+  onOpenAiSettings,
+  onOpenAiAssistant,
   activeApplicationWatchRuleIds = [],
   updater,
 }: SettingsExplorerProps) {
-  const { t, i18n } = useAppTranslation();
+  const { t } = useAppTranslation();
   const [moderate, high, critical] = settings.usageThresholds;
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("general");
-  const cleanupAccess = useCleanupScanAccess(activeSection === "privacy");
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [settingsImportPreview, setSettingsImportPreview] =
     useState<SettingsTransferPreview | null>(null);
@@ -191,6 +195,12 @@ export function SettingsExplorer({
 
       {activeSection !== "about" ? (
       <div className="settings-grid" data-active-section={activeSection}>
+        {onOpenAiSettings ? <SettingsCard section="general" icon={Settings2} title={t("ai:title")} description={t("ai:privacyTitle")}>
+          <button className="button button--secondary" type="button" onClick={onOpenAiSettings}>{t("ai:openSettings")}</button>
+        </SettingsCard> : null}
+        {onOpenAiAssistant ? <SettingsCard section="privacy" icon={History} title={t("ai:history")} description={t("ai:sourceCopiesRemain")}>
+          <button className="button button--secondary" type="button" onClick={onOpenAiAssistant}>{t("ai:title")}</button>
+        </SettingsCard> : null}
         <SettingsCard
           section="general"
           className="settings-card--interface"
@@ -282,89 +292,7 @@ export function SettingsExplorer({
           </div>
         </SettingsCard>
 
-        <SettingsCard
-          section="privacy"
-          className="settings-card--privacy-center"
-          icon={ShieldCheck}
-          title={t("settings:dataPrivacy.title")}
-          description={t("settings:dataPrivacy.description")}
-        >
-          <div className="settings-data-boundaries">
-            {dataPrivacy ? (
-              <>
-                <ProductDataCategoryRow
-                  category="resourceHistory"
-                  icon={History}
-                  enabled={settings.historyPersistenceEnabled}
-                  summary={dataPrivacy.categories.resourceHistory}
-                  receipt={dataPrivacy.receipts.resourceHistory}
-                  language={i18n.resolvedLanguage}
-                  onClear={dataPrivacy.clearCategory}
-                />
-                <ProductDataCategoryRow
-                  category="connectionHistory"
-                  icon={Network}
-                  enabled={settings.networkConnectionHistoryEnabled}
-                  summary={dataPrivacy.categories.connectionHistory}
-                  receipt={dataPrivacy.receipts.connectionHistory}
-                  language={i18n.resolvedLanguage}
-                  onClear={dataPrivacy.clearCategory}
-                />
-                <ProductDataCategoryRow
-                  category="applicationInventory"
-                  icon={PackageOpen}
-                  summary={dataPrivacy.categories.applicationInventory}
-                  receipt={dataPrivacy.receipts.applicationInventory}
-                  language={i18n.resolvedLanguage}
-                  onClear={dataPrivacy.clearCategory}
-                />
-                <ProductDataCategoryRow
-                  category="scanCaches"
-                  icon={ScanSearch}
-                  summary={dataPrivacy.categories.scanCaches}
-                  receipt={dataPrivacy.receipts.scanCaches}
-                  language={i18n.resolvedLanguage}
-                  onClear={dataPrivacy.clearCategory}
-                />
-              </>
-            ) : null}
-            <div>
-              <span><ShieldCheck size={16} /></span>
-              <p>
-                <strong>{t("settings:dataPrivacy.diskAccess.title")}</strong>
-                <small>{t("settings:dataPrivacy.diskAccess.description")}</small>
-              </p>
-              <div className="settings-data-access-control">
-                <em className={cleanupAccess.access?.fullDiskAccess === "granted" ? "is-on" : ""}>
-                  {t(`settings:onboarding.controls.diskAccessStatus.${cleanupAccess.access?.fullDiskAccess ?? "unknown"}`)}
-                </em>
-                {cleanupAccess.access?.fullDiskAccessRecommended
-                  && cleanupAccess.access.fullDiskAccess !== "granted" ? (
-                    <button
-                      className="button button--secondary"
-                      type="button"
-                      disabled={cleanupAccess.checking}
-                      onClick={() => void openCleanupFullDiskAccessSettings()}
-                    >
-                      <Settings2 size={14} />
-                      {t("settings:dataPrivacy.diskAccess.open")}
-                    </button>
-                  ) : null}
-              </div>
-            </div>
-            <div className="settings-data-clear-all">
-              <span><Trash2 size={16} /></span>
-              <p>
-                <strong>{t("settings:dataPrivacy.clearAll.title")}</strong>
-                <small>{t("settings:dataPrivacy.clearAll.description")}</small>
-              </p>
-              <ClearProductDataAction
-                label={t("settings:dataPrivacy.clear")}
-                onClearAllData={onClearAllData}
-              />
-            </div>
-          </div>
-        </SettingsCard>
+        <PrivacyDataControls settings={settings} dataPrivacy={dataPrivacy} onClearAllData={onClearAllData} active={activeSection === "privacy"} />
 
         <SettingsCard
           section="background"
@@ -494,80 +422,7 @@ export function SettingsExplorer({
           </div>
         </SettingsCard>
 
-        <SettingsCard
-          section="privacy"
-          className="settings-card--half"
-          icon={History}
-          title={t("settings:history.title")}
-          description={t("settings:history.description")}
-        >
-          <div className="settings-history-controls">
-            <label className="settings-switch">
-              <input
-                type="checkbox"
-                role="switch"
-                checked={settings.historyPersistenceEnabled}
-                onChange={(event) =>
-                  onChange({ historyPersistenceEnabled: event.target.checked })
-                }
-              />
-              <span>{t("settings:history.persist")}</span>
-            </label>
-            <label className="settings-switch" title={t("settings:history.applicationNamesHint")}>
-              <input
-                type="checkbox"
-                role="switch"
-                disabled={!settings.historyPersistenceEnabled}
-                checked={settings.historyPersistenceEnabled && settings.historyApplicationNamesEnabled}
-                onChange={(event) =>
-                  onChange({ historyApplicationNamesEnabled: event.target.checked })
-                }
-              />
-              <span>{t("settings:history.applicationNames")}</span>
-            </label>
-            <label className="settings-switch" title={t("settings:applicationImpactHistory.hint")}>
-              <input
-                type="checkbox"
-                role="switch"
-                disabled={
-                  !settings.historyPersistenceEnabled
-                  || !settings.historyApplicationNamesEnabled
-                }
-                checked={
-                  settings.historyPersistenceEnabled
-                  && settings.historyApplicationNamesEnabled
-                  && settings.applicationImpactHistoryEnabled
-                }
-                onChange={(event) =>
-                  onChange({ applicationImpactHistoryEnabled: event.target.checked })
-                }
-              />
-              <span>{t("settings:applicationImpactHistory.label")}</span>
-            </label>
-            <label className="settings-field">
-              <span>{t("settings:history.retention")}</span>
-              <SettingsSelect
-                value={settings.historyRetentionDays}
-                onChange={(event) =>
-                  onChange({
-                    historyRetentionDays:
-                      event.target.value === "1"
-                        ? 1
-                        : event.target.value === "30"
-                          ? 30
-                          : 7,
-                  })
-                }
-              >
-                {HISTORY_RETENTION_OPTIONS.map((days) => (
-                  <option key={days} value={days}>
-                    {t("settings:history.days", { count: days })}
-                  </option>
-                ))}
-              </SettingsSelect>
-            </label>
-          </div>
-        </SettingsCard>
+        <HistoryRecordingControls settings={settings} onChange={onChange} />
 
         <SettingsCard
           section="alerts"
@@ -967,7 +822,7 @@ function ProductDataCategoryRow({
   summary: ProductDataCategorySummary;
   receipt: ProductDataClearReceipt;
   language?: string;
-  onClear: (category: ProductDataCategory) => Promise<boolean>;
+  onClear: (category: ProductDataCategory, deleteRelated?: boolean) => Promise<boolean>;
 }) {
   const { t } = useAppTranslation();
   const empty = summary.itemCount === 0 && summary.byteSize === 0;
@@ -1029,22 +884,15 @@ function ProductDataCategoryRow({
       </p>
       <div className="settings-data-category__actions">
         {status}
-        <button
-          className="button button--plain"
-          type="button"
+        <SourceDataClearAction
           disabled={empty || receipt.status === "clearing"}
-          title={receipt.error ?? undefined}
-          onClick={() => void onClear(category)}
-        >
-          {receipt.status === "clearing"
-            ? <LoaderCircle className="is-spinning" size={14} />
-            : <Trash2 size={14} />}
-          {t(
+          onClear={(deleteRelated) => onClear(category, deleteRelated)}
+          label={t(
             receipt.status === "failed"
               ? "settings:dataPrivacy.result.retry"
               : "settings:dataPrivacy.result.clear",
           )}
-        </button>
+        />
       </div>
     </div>
   );
@@ -1166,5 +1014,176 @@ function ThresholdPreview({ thresholds }: { thresholds: UsageThresholds }) {
       <span className="is-high" style={{ flex: critical - high }}>{t("settings:thresholds.high")}</span>
       <span className="is-critical" style={{ flex: 100 - critical }}>{t("settings:thresholds.critical")}</span>
     </div>
+  );
+}
+
+/** Shared controls, preserving the original explicit confirmation and category clearing. */
+export function PrivacyDataControls({ settings, dataPrivacy, onClearAllData, active = true }:
+  Pick<SettingsExplorerProps, "settings" | "dataPrivacy" | "onClearAllData"> & { active?: boolean }) {
+  const { t, i18n } = useAppTranslation();
+  const cleanupAccess = useCleanupScanAccess(active);
+  return (
+        <SettingsCard
+          section="privacy"
+          className="settings-card--privacy-center"
+          icon={ShieldCheck}
+          title={t("settings:dataPrivacy.title")}
+          description={t("settings:dataPrivacy.description")}
+        >
+          <div className="settings-data-boundaries">
+            {dataPrivacy ? (
+              <>
+                <ProductDataCategoryRow
+                  category="resourceHistory"
+                  icon={History}
+                  enabled={settings.historyPersistenceEnabled}
+                  summary={dataPrivacy.categories.resourceHistory}
+                  receipt={dataPrivacy.receipts.resourceHistory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="connectionHistory"
+                  icon={Network}
+                  enabled={settings.networkConnectionHistoryEnabled}
+                  summary={dataPrivacy.categories.connectionHistory}
+                  receipt={dataPrivacy.receipts.connectionHistory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="applicationInventory"
+                  icon={PackageOpen}
+                  summary={dataPrivacy.categories.applicationInventory}
+                  receipt={dataPrivacy.receipts.applicationInventory}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+                <ProductDataCategoryRow
+                  category="scanCaches"
+                  icon={ScanSearch}
+                  summary={dataPrivacy.categories.scanCaches}
+                  receipt={dataPrivacy.receipts.scanCaches}
+                  language={i18n.resolvedLanguage}
+                  onClear={dataPrivacy.clearCategory}
+                />
+              </>
+            ) : null}
+            <div>
+              <span><ShieldCheck size={16} /></span>
+              <p>
+                <strong>{t("settings:dataPrivacy.diskAccess.title")}</strong>
+                <small>{t("settings:dataPrivacy.diskAccess.description")}</small>
+              </p>
+              <div className="settings-data-access-control">
+                <em className={cleanupAccess.access?.fullDiskAccess === "granted" ? "is-on" : ""}>
+                  {t(`settings:onboarding.controls.diskAccessStatus.${cleanupAccess.access?.fullDiskAccess ?? "unknown"}`)}
+                </em>
+                {cleanupAccess.access?.fullDiskAccessRecommended
+                  && cleanupAccess.access.fullDiskAccess !== "granted" ? (
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={cleanupAccess.checking}
+                      onClick={() => void openCleanupFullDiskAccessSettings()}
+                    >
+                      <Settings2 size={14} />
+                      {t("settings:dataPrivacy.diskAccess.open")}
+                    </button>
+                  ) : null}
+              </div>
+            </div>
+            <div className="settings-data-clear-all">
+              <span><Trash2 size={16} /></span>
+              <p>
+                <strong>{t("settings:dataPrivacy.clearAll.title")}</strong>
+                <small>{t("settings:dataPrivacy.clearAll.description")}</small>
+              </p>
+              <ClearProductDataAction
+                label={t("settings:dataPrivacy.clear")}
+                onClearAllData={onClearAllData}
+              />
+            </div>
+          </div>
+        </SettingsCard>
+  );
+}
+export function HistoryRecordingControls({ settings, onChange }: Pick<SettingsExplorerProps, "settings" | "onChange">) {
+  const { t } = useAppTranslation();
+  return (
+        <SettingsCard
+          section="privacy"
+          className="settings-card--half"
+          icon={History}
+          title={t("settings:history.title")}
+          description={t("settings:history.description")}
+        >
+          <div className="settings-history-controls">
+            <label className="settings-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={settings.historyPersistenceEnabled}
+                onChange={(event) =>
+                  onChange({ historyPersistenceEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings:history.persist")}</span>
+            </label>
+            <label className="settings-switch" title={t("settings:history.applicationNamesHint")}>
+              <input
+                type="checkbox"
+                role="switch"
+                disabled={!settings.historyPersistenceEnabled}
+                checked={settings.historyPersistenceEnabled && settings.historyApplicationNamesEnabled}
+                onChange={(event) =>
+                  onChange({ historyApplicationNamesEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings:history.applicationNames")}</span>
+            </label>
+            <label className="settings-switch" title={t("settings:applicationImpactHistory.hint")}>
+              <input
+                type="checkbox"
+                role="switch"
+                disabled={
+                  !settings.historyPersistenceEnabled
+                  || !settings.historyApplicationNamesEnabled
+                }
+                checked={
+                  settings.historyPersistenceEnabled
+                  && settings.historyApplicationNamesEnabled
+                  && settings.applicationImpactHistoryEnabled
+                }
+                onChange={(event) =>
+                  onChange({ applicationImpactHistoryEnabled: event.target.checked })
+                }
+              />
+              <span>{t("settings:applicationImpactHistory.label")}</span>
+            </label>
+            <label className="settings-field">
+              <span>{t("settings:history.retention")}</span>
+              <SettingsSelect
+                value={settings.historyRetentionDays}
+                onChange={(event) =>
+                  onChange({
+                    historyRetentionDays:
+                      event.target.value === "1"
+                        ? 1
+                        : event.target.value === "30"
+                          ? 30
+                          : 7,
+                  })
+                }
+              >
+                {HISTORY_RETENTION_OPTIONS.map((days) => (
+                  <option key={days} value={days}>
+                    {t("settings:history.days", { count: days })}
+                  </option>
+                ))}
+              </SettingsSelect>
+            </label>
+          </div>
+        </SettingsCard>
   );
 }

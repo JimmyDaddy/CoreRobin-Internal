@@ -1,9 +1,9 @@
 {
-  "title": "Caja de herramientas", "description": "Gestiona localmente pequeñas tareas de texto, imagen, archivos y sistema. Las entradas normales permanecen en esta página.", "close": "Cerrar caja de herramientas", "loading": "Cargando herramienta…",
+  "title": "Caja de herramientas", "description": "Gestiona localmente pequeñas tareas de texto, imagen, archivos y sistema.", "close": "Cerrar caja de herramientas", "loading": "Cargando herramienta…",
   "search": { "label": "Buscar nombres de herramientas", "placeholder": "Buscar nombres, alias o descripciones…", "clear": "Limpiar búsqueda" }, "categories": { "label": "Categorías de herramientas", "systemNetwork": "Sistema y red", "textDevelopment": "Texto y desarrollo", "image": "Imágenes", "filePatch": "Archivos y parches" }, "favorites": { "title": "Favoritos", "add": "Añadir {{tool}} a favoritos", "remove": "Quitar {{tool}} de favoritos" }, "empty": { "title": "No hay herramientas coincidentes", "description": "La búsqueda solo revisa nombres, alias y descripciones; nunca examina tu entrada." }, "navigation": { "back": "Volver a la caja de herramientas" },
   "capability": { "degraded": "Disponible con limitaciones", "unavailable": "No disponible", "degradedReason": "Parte de la integración nativa está limitada, pero la herramienta aún puede abrirse.", "unavailableReason": "No hay ejecución nativa disponible en esta plataforma.", "unavailableTitle": "{{tool}} no está disponible ahora", "unavailableHint": "Esta entrada permanece en la caja de herramientas y podrá usarse cuando vuelva la capacidad nativa.","restrictedHelperUnavailable":"Esta herramienta requiere un helper nativo restringido que no está disponible en esta plataforma."},
   "history": { "title": "Actividad reciente", "count": "Registros: {{count}}", "disabled": "Desactivado", "disabledDescription": "El historial de la caja de herramientas está desactivado por la política actual; las tareas locales siguen mostrando resultados inmediatos.", "empty": "Aún no hay registros finales de herramientas para mostrar.", "refresh": "Actualizar historial", "refreshing": "Actualizando…", "privacy": "Solo se muestran los 20 registros más recientes; no incluyen entradas, rutas ni secretos.", "unavailable": "El historial de la caja de herramientas no está disponible temporalmente.", "notification": "Notificación: {{status}}", "tools": { "keep-awake": "Mantener activo temporalmente", "process-watch": "Vigilar salida de proceso", "file-occupancy": "Análisis de uso de archivo", "volume-occupancy": "Análisis de uso de volumen", "keyboard-cleaning": "Limpieza de teclado", "network-addresses": "Direcciones de red", "ifconfig-parser": "Analizador ifconfig" }, "statuses": { "completed": "Completado", "cancelled": "Cancelado", "expired": "Caducado", "failed": "Fallido", "interrupted": "Interrumpido", "deadline": "Plazo alcanzado", "process_exited": "El proceso terminó", "low_battery": "Liberado por batería baja", "release_unconfirmed": "Liberación sin confirmar" }, "notifications": { "submitted": "Enviada", "failed": "Fallida", "unavailable": "No disponible" } },
-  "toolLayout": { "clear": "Limpiar", "privacy": "Las entradas y resultados solo permanecen en la memoria de esta página; copiar y guardar siempre requieren un clic explícito.", "result": "Resultado", "copyResult": "Copiar resultado" },
+  "toolLayout": { "clear": "Limpiar", "privacy": "Las entradas y resultados solo permanecen en la memoria de esta ventana de la aplicación; copiar y guardar siempre requieren un clic explícito.", "result": "Resultado", "copyResult": "Copiar resultado" },
   "local": {
     "run": "Ejecutar",
     "convert": "Convertir",
@@ -67,7 +67,7 @@
     "color": {
       "placeholder": "#RRGGBB / rgb / hsl / hsv / oklch / color(display-p3 …)",
       "convert": "Convertir color"
-    },"colorPicker":{"title":"Selector visual de color","eyebrow":"Editor visual","nativeInput":"Color del sistema","saturationValue":"Saturación y valor","hue":"Tono","alpha":"Opacidad","pickFromScreen":"Tomar color de la pantalla","screenUnavailable":"La muestra de pantalla no está disponible en esta WebView; usa el panel de color o el selector del sistema.","screenFailed":"No se pudo tomar el color de la pantalla. Inténtalo de nuevo.","inputLabel":"Valor de color","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Aplicar color","applied":"Color aplicado","invalid":"Formato de color no válido. Comprueba el valor e inténtalo de nuevo.","copy":"Copiar {{format}}","copied":"{{format}} copiado","copyFailed":"La copia no está disponible en este entorno.","preview":"Vista previa","currentColor":"Color actual","outputEyebrow":"Salida","formats":"Formatos de color","gamutMapped":"Convertido a sRGB","srgb":"sRGB","accessibilityEyebrow":"Accesibilidad","contrast":"Contraste","lightBackground":"Fondo claro","darkBackground":"Fondo oscuro","contrastPass":"Supera AA","contrastFail":"Por debajo de AA","reset":"Restablecer color","privacy":"Los valores permanecen en la memoria de esta página; solo se copian al hacer clic."}
+    },"colorPicker":{"title":"Selector visual de color","eyebrow":"Editor visual","nativeInput":"Color del sistema","saturationValue":"Saturación y valor","hue":"Tono","alpha":"Opacidad","pickFromScreen":"Tomar color de la pantalla","screenUnavailable":"La muestra de pantalla no está disponible en esta WebView; usa el panel de color o el selector del sistema.","screenFailed":"No se pudo tomar el color de la pantalla. Inténtalo de nuevo.","inputLabel":"Valor de color","inputPlaceholder":"#5b8def / rgb(...) / hsl(...) / oklch(...)","apply":"Aplicar color","applied":"Color aplicado","invalid":"Formato de color no válido. Comprueba el valor e inténtalo de nuevo.","copy":"Copiar {{format}}","copied":"{{format}} copiado","copyFailed":"La copia no está disponible en este entorno.","preview":"Vista previa","currentColor":"Color actual","outputEyebrow":"Salida","formats":"Formatos de color","gamutMapped":"Convertido a sRGB","srgb":"sRGB","accessibilityEyebrow":"Accesibilidad","contrast":"Contraste","lightBackground":"Fondo claro","darkBackground":"Fondo oscuro","contrastPass":"Supera AA","contrastFail":"Por debajo de AA","reset":"Restablecer color","privacy":"Los valores permanecen en la memoria de esta ventana de la aplicación; solo se copian al hacer clic."}
   },
   "occupancy": {
     "desktopOnly": "Los diagnósticos de uso requieren el entorno nativo de escritorio.",
@@ -274,7 +274,9 @@
         "wrong_request": "El evento del helper no pertenece a la tarea actual.",
         "heartbeat_out_of_order": "La secuencia de latidos del helper no aumentó."
       }
-    }
+    },
+    "permissionHint": "Antes del primer uso, permite CoreRobin en Ajustes del Sistema → Privacidad y seguridad → Accesibilidad. Después, vuelve a intentarlo.",
+    "openSettings": "Abrir ajustes de accesibilidad"
   },
   "networkAddresses": {
     "eyebrow": "Sistema y red",
@@ -282,7 +284,7 @@
     "description": "Consulta direcciones y rangos por interfaz. Esta herramienta no sondea Internet pública, consulta DNS, prueba la conectividad ni cambia la configuración de red.",
     "refresh": "Actualizar bajo demanda",
     "refreshing": "Actualizando…",
-    "privacy": "Las direcciones IP, las zonas IPv6, las direcciones MAC, los nombres de interfaz y el texto pegado permanecen en la memoria de esta página. No se escriben en el historial, los resúmenes de diagnóstico ni las URL. Copiar es una acción iniciada por el usuario y envía los identificadores de red al portapapeles del sistema.",
+    "privacy": "Las direcciones IP, las zonas IPv6, las direcciones MAC, los nombres de interfaz y el texto pegado permanecen en la memoria de esta ventana de la aplicación. No se escriben en el historial, los resúmenes de diagnóstico ni las URL. Copiar es una acción iniciada por el usuario y envía los identificadores de red al portapapeles del sistema.",
     "tabs": {
       "label": "Vistas de direcciones de red",
       "live": "Interfaces locales",

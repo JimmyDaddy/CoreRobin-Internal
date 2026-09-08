@@ -76,8 +76,10 @@ struct CleanupScanFailureDiagnostic {
     error_message: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct CleanupScanJobManager {
+    result_notifier: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
+    dispatch: Mutex<()>,
     generation: AtomicU64,
     active: Mutex<Option<CleanupScanJobRuntime>>,
 }
@@ -163,7 +165,30 @@ fn spawn_worker_process(
     Ok((Arc::new(Mutex::new(child)), stdout, stderr))
 }
 
+impl std::fmt::Debug for CleanupScanJobManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CleanupScanJobManager")
+            .finish_non_exhaustive()
+    }
+}
+
 impl CleanupScanJobManager {
+    pub fn set_result_notifier(&self, callback: Arc<dyn Fn() + Send + Sync>) {
+        if let Ok(mut slot) = self.result_notifier.lock() {
+            *slot = Some(callback);
+        }
+    }
+    fn notify_result(&self) {
+        let callback = self
+            .result_notifier
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone());
+        if let Some(callback) = callback {
+            callback();
+        }
+    }
+
     pub fn start(
         self: &Arc<Self>,
         request: CleanupScanRequest,
@@ -175,11 +200,39 @@ impl CleanupScanJobManager {
                 request: request.clone(),
             },
             request,
-            "cleanup",
             true,
             job_directory,
             index_path,
         )
+    }
+
+    pub fn start_if_idle(
+        self: &Arc<Self>,
+        request: CleanupScanRequest,
+        job_directory: &Path,
+        index_path: &Path,
+    ) -> Result<CleanupScanJobStatus, CommandError> {
+        self.start_task(
+            CleanupIndexWorkerRequest::Scan {
+                request: request.clone(),
+            },
+            request,
+            false,
+            job_directory,
+            index_path,
+        )
+    }
+
+    pub fn cancel_job(self: &Arc<Self>, job_id: &str) -> Result<bool, CommandError> {
+        let _dispatch = self
+            .dispatch
+            .lock()
+            .map_err(|_| CommandError::internal("The scan dispatch lock is unavailable."))?;
+        if self.status()?.is_some_and(|job| job.job_id == job_id) {
+            self.cancel()
+        } else {
+            Ok(false)
+        }
     }
 
     pub fn start_directory_refresh(
@@ -196,8 +249,7 @@ impl CleanupScanJobManager {
         self.start_task(
             CleanupIndexWorkerRequest::RefreshDirectory { request },
             target,
-            "cleanup-refresh",
-            false,
+            true,
             job_directory,
             index_path,
         )
@@ -207,11 +259,27 @@ impl CleanupScanJobManager {
         self: &Arc<Self>,
         worker_request: CleanupIndexWorkerRequest,
         status_target: CleanupScanRequest,
-        job_prefix: &str,
-        allow_path_exclusions: bool,
+        replace_existing: bool,
         job_directory: &Path,
         index_path: &Path,
     ) -> Result<CleanupScanJobStatus, CommandError> {
+        let allow_path_exclusions =
+            matches!(worker_request, CleanupIndexWorkerRequest::Scan { .. });
+        let job_prefix = if allow_path_exclusions {
+            "cleanup"
+        } else {
+            "cleanup-refresh"
+        };
+        let _dispatch = self
+            .dispatch
+            .lock()
+            .map_err(|_| CommandError::internal("The scan dispatch lock is unavailable."))?;
+        if !replace_existing && self.status()?.is_some_and(|job| !job.phase.is_terminal()) {
+            return Err(CommandError::new(
+                "scan_busy",
+                "A disk scan is already running. Wait for it to finish; Robin will not replace it.",
+            ));
+        }
         self.terminate_active_for_replacement();
 
         let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
@@ -295,7 +363,7 @@ impl CleanupScanJobManager {
     }
 
     pub fn result(&self, job_id: &str) -> Result<CleanupScan, CommandError> {
-        let result_path = {
+        let (result_path, index_path) = {
             let active = self.active.lock().map_err(|_| {
                 CommandError::internal("The cleanup scan job state lock was poisoned.")
             })?;
@@ -317,7 +385,7 @@ impl CleanupScanJobManager {
                     "The cleanup scan result is not ready yet.",
                 ));
             }
-            job.result_path.clone()
+            (job.result_path.clone(), job.index_path.clone())
         };
         let bytes = private_storage::read_limited(&result_path, MAX_JOB_FILE_BYTES)
             .map_err(|error| {
@@ -329,9 +397,15 @@ impl CleanupScanJobManager {
                     "The completed cleanup scan result is no longer available.",
                 )
             })?;
-        serde_json::from_slice(&bytes).map_err(|error| {
+        let scan: CleanupScan = serde_json::from_slice(&bytes).map_err(|error| {
             CommandError::internal(format!("Could not decode the cleanup scan result: {error}"))
-        })
+        })?;
+        if scan.indexed {
+            // Directory refresh and deletion changes live in the shared index.
+            crate::cleanup::load_indexed_scan(&index_path, &scan.scan_id)
+        } else {
+            Ok(scan)
+        }
     }
 
     pub fn cancel(self: &Arc<Self>) -> Result<bool, CommandError> {
@@ -373,6 +447,9 @@ impl CleanupScanJobManager {
     }
 
     pub fn terminate_active(&self) {
+        let Ok(_dispatch) = self.dispatch.lock() else {
+            return;
+        };
         self.terminate_active_for_replacement();
     }
 
@@ -756,6 +833,11 @@ impl CleanupScanJobManager {
                     persist_failure_diagnostic(job);
                 }
             }
+        }
+        let completed = job.status.phase == CleanupScanJobPhase::Completed;
+        drop(active);
+        if completed {
+            self.notify_result();
         }
     }
 
@@ -1349,6 +1431,28 @@ mod tests {
             cancel_requested_at_ms: None,
         });
         manager
+    }
+
+    #[test]
+    fn robin_cannot_replace_or_cancel_another_active_scan() {
+        let manager = Arc::new(manager_with_phase(CleanupScanJobPhase::Scanning));
+        let directory = tempfile::tempdir().unwrap();
+        assert_eq!(
+            manager
+                .start_if_idle(
+                    CleanupScanRequest::default(),
+                    directory.path(),
+                    &directory.path().join("index.sqlite")
+                )
+                .unwrap_err()
+                .code,
+            "scan_busy"
+        );
+        assert!(!manager.cancel_job("old-robin-task").unwrap());
+        let status = manager.status().unwrap().unwrap();
+        assert_eq!(status.job_id, "fixture");
+        assert!(!status.phase.is_terminal());
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 0);
     }
 
     #[test]

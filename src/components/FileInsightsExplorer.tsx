@@ -75,7 +75,7 @@ interface FileInsightsExplorerProps {
   error: string | null;
   onRun: () => void;
   onCancel: () => void;
-  onBack: () => void;
+  onBack?: () => void;
   onFilesRemoved?: (paths: readonly string[]) => void;
   onDeletionApplied?: (
     targets: readonly CleanupDeletionTargetSnapshot[],
@@ -484,9 +484,9 @@ export function FileInsightsExplorer({
   return (
     <section className="panel file-insights-page" aria-labelledby="file-insights-page-title">
       <header className="file-insights-page__header">
-        <button className="file-insights-page__back" type="button" onClick={onBack}>
+        {onBack && <button className="file-insights-page__back" type="button" onClick={onBack}>
           <ArrowLeft size={15} />{t("cleanup:fileInsights.back")}
-        </button>
+        </button>}
         <span className="file-insights-page__icon" aria-hidden="true"><Fingerprint size={20} /></span>
         <div>
           <span className="eyebrow">{t("cleanup:fileInsights.workspaceKicker")}</span>
