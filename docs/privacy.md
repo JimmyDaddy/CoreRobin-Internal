@@ -1,6 +1,6 @@
 # CoreRobin Privacy Notice
 
-Last reviewed: 2026-07-31
+Last reviewed: 2026-09-08
 
 CoreRobin is a local desktop application. It reads system status, running applications, and the results of a space scan you explicitly start so it can show local status, diagnosis, and cleanup review. This notice covers the application itself. The website, GitHub Releases, and GitHub Issues are also subject to the policies of the services that host them.
 
@@ -11,7 +11,17 @@ CoreRobin is a local desktop application. It reads system status, running applic
 - A normal space scan does not read file contents. Only an explicit duplicate-file check reads candidate contents and calculates SHA-256 locally. Neither scan uploads, moves, or changes files.
 - CoreRobin never automatically stops processes, uninstalls applications, or deletes files.
 
-## Data processed and stored on this computer
+## AI assistant and model services
+
+AI is optional and requires you to configure and enable your own model service. Sending a message sends its text, included history, and the device context you choose to share to that service. An AI task may also provide allowed local check results to the model for further analysis. You can preview the recipient and outgoing content before sending, and inspect task steps and results during execution. Do not enter secrets or personal information you do not want the recipient to receive.
+
+Ollama, loopback, and local-network addresses do not guarantee offline processing: a service may forward requests to another provider. Cloud services process requests under their own privacy, retention, and billing policies, which CoreRobin does not control. Refreshing a model directory and testing a model also contact the configured service; test messages may incur charges.
+
+Conversations and drafts are saved locally by default. You can use temporary conversations, delete a conversation, or clear all conversations. Clearing conversations does not remove model connections or credentials, or erase data already received by a provider. Saved model credentials use the operating system's credential store; choosing to keep a credential only until the app exits uses it only in the current application process. Deleting a connection removes its credential while existing conversations remain available to view.
+
+Direct capability-center operations do not automatically send local inputs or results to a model; network diagnostics may contact probe targets. AI-initiated process stops and moves to Trash still require your explicit confirmation of the targets. Model text cannot directly execute arbitrary system commands.
+
+## Local data categories
 
 - **Live status**: local snapshots of CPU, memory, storage, network, applications, processes, startup items, and connections for the current interface and diagnosis. The native sampler continues at its configured interval when the main window is closed, so menu-bar status, alerts, and histories remain current; choosing **Quit app** stops it.
 - **Local history and action records**: resource trends, alerts, network quality, connections, application impact, app-watch events, startup measurements, cleanup-scan summaries, and confirmed action results are stored as bounded atomic segments in CoreRobin's private application-data directory when their corresponding features are enabled. The interface reports last successful save time, current bytes, and write failures, and verifies category clearing before claiming success. App and startup-item names persist only after the separate name opt-in. Application-impact history additionally requires its own opt-in and retains at most seven days of five-minute stable app identities and CPU, memory, and disk aggregates, never PIDs, command lines, or paths. Connection history is off by default; when enabled it stores application names, reverse-resolved hostnames or remote IPs, protocol, port, and five-minute observation counts locally, capped at 5,000 entries for 1, 7, or 30 days.
