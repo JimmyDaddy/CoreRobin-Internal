@@ -70,6 +70,9 @@ for (const [entry, budget] of Object.entries(budgets.entries)) {
 
 const c2pa = await measureC2paFiles(c2paFiles);
 assertBudget("C2PA lazy assets", c2pa, budgets.c2pa);
+if (collectInitialFiles("robin-chat.html").includes(manifest["index.html"].file)) {
+  throw new Error("Robin chat must not eagerly import the main application entry.");
+}
 
 const allOutputFiles = new Set(
   [
@@ -89,7 +92,7 @@ for (const relativePath of allOutputFiles) {
 assertBudget("all production chunks", totals, budgets.totals);
 
 console.log(JSON.stringify({ schemaVersion: budgets.schemaVersion, entries: report, c2pa, totals }, null, 2));
-console.log("Verified four production WebView entries, Tauri window mapping, and bundle budgets.");
+console.log("Verified production WebView entries, Tauri window mapping, and bundle budgets.");
 
 function collectC2paFiles() {
   const files = new Set();

@@ -19,6 +19,12 @@
       "cssBytes": 10000,
       "cssGzipBytes": 3500
     },
+    "robin-chat.html": {
+      "javascriptBytes": 340000,
+      "javascriptGzipBytes": 110000,
+      "cssBytes": 14000,
+      "cssGzipBytes": 4000
+    },
     "companion.html": {
       "javascriptBytes": 365000,
       "javascriptGzipBytes": 115000,
@@ -27,7 +33,7 @@
     }
   },
   "totals": {
-    "javascriptBytes": 3650000,
+    "javascriptBytes": 3960000,
     "cssBytes": 500000
   },
   "c2pa": {
