@@ -37,7 +37,7 @@ cap-std = "4.0.2"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10.4"
 getrandom = "0.4"
-dns-lookup = "3"
+dns-lookup = "4"
 tauri = { version = "2", features = ["macos-private-api", "image-png", "tray-icon"] }
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
