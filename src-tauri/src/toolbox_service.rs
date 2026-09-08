@@ -69,7 +69,7 @@ pub(crate) struct ToolboxOutputExport {
     pub(crate) cancel: Arc<AtomicBool>,
 }
 
-const TOOL_IDS: &[&str] = &[
+pub(crate) const TOOL_IDS: &[&str] = &[
     "json",
     "url",
     "base64",

@@ -6,7 +6,7 @@
 //! process communicates exclusively over bounded newline-delimited frames on
 //! stdin and stdout.
 
-#![allow(dead_code)] // The future --keyboard-helper argument adapter owns these entry points.
+#![allow(dead_code)] // Platform-specific backends share the same protocol runtime.
 
 use super::helper_protocol::{
     HelperCapability, HelperCommand, HelperLifecycleReason, HelperSignal, HookEffectiveness,
@@ -32,11 +32,10 @@ const HELPER_HARD_LIMIT: Duration = Duration::from_millis(HARD_LIMIT_MS);
 #[cfg(target_os = "windows")]
 const WINDOWS_MAX_MESSAGES_PER_PUMP: usize = 256;
 
-/// Returns the build-time helper capability without attempting to install an
-/// event hook. Ordinary builds remain disabled until an explicitly gated,
-/// signed platform build has passed the permission and abnormal-release matrix.
+/// Reports whether this build contains the helper. Permission is checked only
+/// when the user starts cleaning; listing tools never installs an event tap.
 pub const fn helper_capability() -> Capability {
-    #[cfg(all(target_os = "macos", feature = "keyboard-cleaning-validated"))]
+    #[cfg(all(target_os = "macos", feature = "keyboard-cleaning-macos"))]
     {
         Capability::Available
     }
@@ -47,7 +46,7 @@ pub const fn helper_capability() -> Capability {
     }
 
     #[cfg(not(any(
-        all(target_os = "macos", feature = "keyboard-cleaning-validated"),
+        all(target_os = "macos", feature = "keyboard-cleaning-macos"),
         all(target_os = "windows", feature = "keyboard-cleaning-validated-windows")
     )))]
     {
@@ -134,7 +133,11 @@ impl<B: TapBackend> HelperRuntime<B> {
         }
 
         let request_id = start.request_id.clone();
-        let callback_state = Arc::new(CallbackState::default());
+        let deadline = Instant::now() + session_limit(&start, self.timing.hard_limit);
+        let callback_state = Arc::new(CallbackState {
+            deadline: Some(deadline),
+            ..CallbackState::default()
+        });
         let mut tap = match self.backend.install(Arc::clone(&callback_state)) {
             Ok(tap) => {
                 emit(
@@ -168,7 +171,6 @@ impl<B: TapBackend> HelperRuntime<B> {
             }
         };
 
-        let deadline = Instant::now() + self.timing.hard_limit;
         let mut next_heartbeat = Instant::now();
         let mut sequence = 0_u64;
         let mut last_host_heartbeat = 0_u64;
@@ -379,6 +381,14 @@ fn valid_start(start: &StartCommand) -> bool {
         && valid_request_id(&start.request_id)
 }
 
+fn session_limit(start: &StartCommand, hard_limit: Duration) -> Duration {
+    // Enforce the selected duration in the child too, even if a live but stuck
+    // frontend keeps heartbeating without sending its completion command.
+    (Duration::from_millis(super::PREPARATION_WINDOW_MS)
+        + Duration::from_secs(start.duration_seconds))
+    .min(hard_limit)
+}
+
 fn valid_stop(stop: &super::helper_protocol::StopCommand, request_id: &str) -> bool {
     stop.protocol_version == PROTOCOL_VERSION && stop.request_id == request_id
 }
@@ -493,12 +503,18 @@ enum CallbackNotice {
 
 #[derive(Default)]
 struct CallbackState {
+    deadline: Option<Instant>,
     notice: AtomicU8,
     input_events: std::sync::atomic::AtomicU64,
     keyboard_events: std::sync::atomic::AtomicU64,
 }
 
 impl CallbackState {
+    fn deadline_reached(&self) -> bool {
+        self.deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    }
+
     /// This method is the complete callback-side state transition: one atomic
     /// max operation, no allocation, no locks, no IPC, and no key inspection.
     fn record(&self, notice: CallbackNotice) {
@@ -571,7 +587,7 @@ mod macos {
     use super::*;
     use core_foundation::base::TCFType;
     use core_foundation::mach_port::CFMachPortRef;
-    use core_foundation::runloop::{CFRunLoop, CFRunLoopSource, kCFRunLoopCommonModes};
+    use core_foundation::runloop::{CFRunLoop, CFRunLoopSource, kCFRunLoopDefaultMode};
     use core_graphics::event::{
         CGEventTap, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventType,
         CallbackResult,
@@ -609,10 +625,10 @@ mod macos {
                 .create_runloop_source(0)
                 .map_err(|_| HookFailure::HookStopped)?;
             let run_loop = CFRunLoop::get_current();
-            run_loop.add_source(&source, unsafe { kCFRunLoopCommonModes });
+            run_loop.add_source(&source, unsafe { kCFRunLoopDefaultMode });
             tap.enable();
             if !unsafe { cg_event_tap_is_enabled(tap.mach_port().as_concrete_TypeRef()) } {
-                run_loop.remove_source(&source, unsafe { kCFRunLoopCommonModes });
+                run_loop.remove_source(&source, unsafe { kCFRunLoopDefaultMode });
                 return Err(HookFailure::PermissionRevoked);
             }
             Ok(MacTap {
@@ -625,22 +641,35 @@ mod macos {
 
     impl InstalledTap for MacTap {
         fn pump(&mut self, wait: Duration) {
-            CFRunLoop::run_in_mode(unsafe { kCFRunLoopCommonModes }, wait, true);
+            pump_events(wait);
+        }
+
+        fn verify_effectiveness(&mut self, _callback_state: &CallbackState) -> bool {
+            unsafe { cg_event_tap_is_enabled(self.tap.mach_port().as_concrete_TypeRef()) }
         }
 
         fn release(self) -> bool {
             self.run_loop
-                .remove_source(&self.source, unsafe { kCFRunLoopCommonModes });
+                .remove_source(&self.source, unsafe { kCFRunLoopDefaultMode });
             // `self` drops next, invalidating the CFMachPort before the caller
             // can send a confirmed release acknowledgement.
             true
         }
     }
 
+    pub(super) fn pump_events(wait: Duration) {
+        // Common modes is a registration pseudo-mode, never a runnable mode.
+        CFRunLoop::run_in_mode(unsafe { kCFRunLoopDefaultMode }, wait, true);
+    }
+
     pub(super) fn callback(
         callback_state: &CallbackState,
         event_type: CGEventType,
     ) -> CallbackResult {
+        if callback_state.deadline_reached() {
+            callback_state.record(CallbackNotice::TapDisabled);
+            return CallbackResult::Keep;
+        }
         match event_type {
             CGEventType::KeyDown | CGEventType::KeyUp | CGEventType::FlagsChanged => {
                 CallbackResult::Drop

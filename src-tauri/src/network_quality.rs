@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -24,6 +25,23 @@ const ROUTE_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 const ROUTE_COMMAND_OUTPUT_LIMIT: usize = 128 * 1_024;
 
 pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError> {
+    run_network_quality_check_cancellable(&AtomicBool::new(false))
+}
+
+pub fn run_network_quality_check_cancellable(
+    cancelled: &AtomicBool,
+) -> Result<NetworkQualityResult, CommandError> {
+    let check_cancel = || {
+        if cancelled.load(Ordering::Acquire) {
+            Err(CommandError::new(
+                "cancelled",
+                "The network check was stopped.",
+            ))
+        } else {
+            Ok(())
+        }
+    };
+    check_cancel()?;
     let sampled_at_ms = now_millis();
     let dns_started = Instant::now();
     let target_addresses = QUALITY_TARGETS
@@ -59,6 +77,7 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
     let mut ipv6_successes = 0usize;
     let mut target_successes = vec![false; QUALITY_TARGETS.len()];
     for probe_index in 0..PROBE_COUNT {
+        check_cancel()?;
         let target_index = probe_index % QUALITY_TARGETS.len();
         let addresses = &target_addresses[target_index];
         let Some(address) =
@@ -92,7 +111,9 @@ pub fn run_network_quality_check() -> Result<NetworkQualityResult, CommandError>
         .filter(|address| address.is_ipv6())
         .count();
     let route_v4 = local_route_available(false);
+    check_cancel()?;
     let route_v6 = local_route_available(true);
+    check_cancel()?;
     let direct_v4_latency = ROUTE_PROBE_V4
         .parse::<SocketAddr>()
         .ok()

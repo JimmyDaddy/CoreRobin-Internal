@@ -255,6 +255,35 @@ impl SamplerService {
             })
     }
 
+    /// Read the retained sample without starting sampling on behalf of an AI request.
+    pub fn cached_summary(&self) -> Option<SystemSummary> {
+        self.state.lock().ok()?.latest_summary.clone()
+    }
+
+    /// One explicit inspection may refresh a stale full sample without changing
+    /// the user's continuous-recording or sampling preferences.
+    pub fn inspect_snapshot(&self) -> Result<SystemSnapshot, String> {
+        if let Some(snapshot) = self
+            .state
+            .lock()
+            .ok()
+            .and_then(|state| state.latest_snapshot.clone())
+            && now_millis().saturating_sub(snapshot.sampled_at_ms) <= 5_000
+        {
+            return Ok(snapshot);
+        }
+        sample_once(&self.monitor, &self.state, true)
+            .and_then(SamplerSample::into_full)
+            .ok_or_else(|| "The current device inspection did not produce a sample.".to_owned())
+    }
+
+    pub fn refresh_after_process_action(&self, app: &AppHandle) {
+        if let Some(SamplerSample::Full(snapshot)) = sample_once(&self.monitor, &self.state, true) {
+            self.supervisor.observe_snapshot(app, &snapshot);
+            let _ = app.emit_to("main", SYSTEM_SNAPSHOT_EVENT, &snapshot);
+        }
+    }
+
     pub fn status(&self) -> SamplerStatus {
         let state = self
             .state

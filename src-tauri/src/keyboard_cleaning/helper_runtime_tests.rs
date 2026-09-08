@@ -360,18 +360,31 @@ fn unavailable_platform_signals_capability_unavailable_and_never_installs_a_tap(
 }
 
 #[cfg(not(any(
-    all(target_os = "macos", feature = "keyboard-cleaning-validated"),
+    all(target_os = "macos", feature = "keyboard-cleaning-macos"),
     all(target_os = "windows", feature = "keyboard-cleaning-validated-windows")
 )))]
 #[test]
-fn ordinary_build_is_explicitly_unavailable() {
+fn builds_without_a_platform_backend_are_explicitly_unavailable() {
     assert_eq!(helper_capability(), Capability::Unavailable);
 }
 
-#[cfg(all(target_os = "macos", feature = "keyboard-cleaning-validated"))]
+#[cfg(all(target_os = "macos", feature = "keyboard-cleaning-macos"))]
 #[test]
-fn validated_macos_build_exposes_a_runtime_capability_without_installing_a_tap() {
+fn macos_build_exposes_a_runtime_capability_without_installing_a_tap() {
     assert_eq!(helper_capability(), Capability::Available);
+    let snapshot =
+        crate::toolbox_service::ToolboxService::with_keyboard_capability(helper_capability())
+            .snapshot();
+    assert_eq!(
+        snapshot.capabilities["keyboard-cleaning"].state,
+        "available"
+    );
+    assert_eq!(
+        snapshot.capabilities["keyboard-cleaning"]
+            .platform
+            .as_deref(),
+        Some("macos")
+    );
 }
 
 #[cfg(all(target_os = "windows", feature = "keyboard-cleaning-validated-windows"))]
@@ -415,4 +428,91 @@ fn macos_callback_only_drops_keyboard_events_and_never_consumes_mouse_events() {
         CallbackResult::Keep
     ));
     assert_eq!(callback_state.take(), CallbackNotice::MouseActivity);
+}
+
+#[test]
+fn helper_deadline_is_bounded_by_the_selected_duration_and_hard_limit() {
+    let HelperCommand::Start(mut start) = start_command() else {
+        unreachable!()
+    };
+    for seconds in [30, 60, 120] {
+        start.duration_seconds = seconds;
+        assert_eq!(
+            session_limit(&start, HELPER_HARD_LIMIT),
+            Duration::from_secs(seconds + 3)
+        );
+    }
+    assert_eq!(
+        session_limit(&start, Duration::from_secs(1)),
+        Duration::from_secs(1)
+    );
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[test]
+fn helper_accepts_its_own_executable_as_the_parent_without_installing_a_tap() {
+    const CHILD_MARKER: &str = "CORE_ROBIN_KEYBOARD_PARENT_TEST";
+    if std::env::var_os(CHILD_MARKER).is_some() {
+        assert!(trusted_parent_process());
+        return;
+    }
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "keyboard_cleaning::helper_runtime::tests::helper_accepts_its_own_executable_as_the_parent_without_installing_a_tap",
+        ])
+        .env(CHILD_MARKER, "1")
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_callback_passes_keys_after_its_deadline_even_before_the_control_loop_pumps() {
+    use core_graphics::event::{CGEventType, CallbackResult};
+
+    let state = CallbackState {
+        deadline: Some(Instant::now()),
+        ..CallbackState::default()
+    };
+    assert!(matches!(
+        super::macos::callback(&state, CGEventType::KeyDown),
+        CallbackResult::Keep
+    ));
+    assert_eq!(state.take(), CallbackNotice::TapDisabled);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_event_pump_services_the_registered_run_loop_mode_without_a_keyboard_tap() {
+    use core_foundation::date::CFDate;
+    use core_foundation::runloop::{
+        CFRunLoop, CFRunLoopTimer, CFRunLoopTimerContext, CFRunLoopTimerRef, kCFRunLoopDefaultMode,
+    };
+    use std::ffi::c_void;
+    use std::sync::atomic::AtomicBool;
+
+    extern "C" fn fired(_timer: CFRunLoopTimerRef, info: *mut c_void) {
+        unsafe { &*info.cast::<AtomicBool>() }.store(true, Ordering::Release);
+        CFRunLoop::get_current().stop();
+    }
+
+    let did_fire = AtomicBool::new(false);
+    let mut context = CFRunLoopTimerContext {
+        version: 0,
+        info: std::ptr::from_ref(&did_fire).cast_mut().cast(),
+        retain: None,
+        release: None,
+        copyDescription: None,
+    };
+    let timer = CFRunLoopTimer::new(CFDate::now().abs_time(), 0.0, 0, 0, fired, &mut context);
+    let run_loop = CFRunLoop::get_current();
+    run_loop.add_timer(&timer, unsafe { kCFRunLoopDefaultMode });
+    super::macos::pump_events(Duration::from_millis(100));
+    run_loop.remove_timer(&timer, unsafe { kCFRunLoopDefaultMode });
+    assert!(
+        did_fire.load(Ordering::Acquire),
+        "the helper must pump the actual registered mode"
+    );
 }

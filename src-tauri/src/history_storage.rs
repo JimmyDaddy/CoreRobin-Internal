@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -76,6 +78,78 @@ pub struct HistorySegmentStorage {
     pub payload: Option<String>,
     pub byte_size: u64,
     pub updated_at_ms: Option<u64>,
+    pub generation: u64,
+}
+
+/// Process-local generations are sufficient: no IPC write survives a process
+/// restart. Hold this mutex through the filesystem operation so a loaded payload
+/// and its generation always describe the same version of a category.
+#[derive(Clone, Default)]
+pub struct HistoryWriteEpochs {
+    generations: Arc<Mutex<HashMap<&'static str, u64>>>,
+}
+
+impl HistoryWriteEpochs {
+    pub fn load(
+        &self,
+        category: HistoryCategory,
+        path: &Path,
+    ) -> io::Result<HistorySegmentStorage> {
+        let generations = self
+            .generations
+            .lock()
+            .map_err(|_| io::Error::other("history generation lock unavailable"))?;
+        let mut receipt = load(path)?;
+        receipt.generation = *generations.get(category.file_name()).unwrap_or(&0);
+        Ok(receipt)
+    }
+
+    pub fn save(
+        &self,
+        category: HistoryCategory,
+        path: &Path,
+        payload: &str,
+        expected_generation: u64,
+    ) -> io::Result<HistorySegmentStorage> {
+        let mut generations = self
+            .generations
+            .lock()
+            .map_err(|_| io::Error::other("history generation lock unavailable"))?;
+        let generation = generations.entry(category.file_name()).or_default();
+        if *generation != expected_generation {
+            return Err(io::Error::new(
+                io::ErrorKind::WouldBlock,
+                "History changed or was cleared. Reload before saving another snapshot.",
+            ));
+        }
+        let next = generation
+            .checked_add(1)
+            .ok_or_else(|| io::Error::other("history generation exhausted"))?;
+        let mut receipt = save(path, payload)?;
+        *generation = next;
+        receipt.generation = next;
+        Ok(receipt)
+    }
+
+    pub fn remove(
+        &self,
+        category: HistoryCategory,
+        path: &Path,
+    ) -> io::Result<HistorySegmentStorage> {
+        let mut generations = self
+            .generations
+            .lock()
+            .map_err(|_| io::Error::other("history generation lock unavailable"))?;
+        let generation = generations.entry(category.file_name()).or_default();
+        // Invalidate queued writes even if deletion fails part-way. Retrying
+        // clear does not need an old generation and remains possible.
+        *generation = generation
+            .checked_add(1)
+            .ok_or_else(|| io::Error::other("history generation exhausted"))?;
+        let mut receipt = remove(path)?;
+        receipt.generation = *generation;
+        Ok(receipt)
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -104,6 +178,7 @@ pub fn load(path: &Path) -> io::Result<HistorySegmentStorage> {
         byte_size: metadata.len(),
         updated_at_ms: metadata.modified().ok().and_then(system_time_millis),
         payload: Some(payload),
+        generation: 0,
     })
 }
 
@@ -121,6 +196,7 @@ pub fn save(path: &Path, payload: &str) -> io::Result<HistorySegmentStorage> {
         payload: None,
         byte_size,
         updated_at_ms: Some(now_millis()),
+        generation: 0,
     })
 }
 
@@ -195,7 +271,88 @@ fn now_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{HistoryCategory, clear_all, load, save, summary};
+    use super::{HistoryCategory, HistoryWriteEpochs, clear_all, load, save, summary};
+
+    #[test]
+    fn delayed_old_writer_cannot_recreate_history_after_clear() {
+        let root = tempfile::tempdir().unwrap();
+        let path = HistoryCategory::Resource.path(root.path());
+        let epochs = HistoryWriteEpochs::default();
+        let initial = epochs.load(HistoryCategory::Resource, &path).unwrap();
+        let saved = epochs
+            .save(HistoryCategory::Resource, &path, "[1]", initial.generation)
+            .unwrap();
+        let writer_epochs = epochs.clone();
+        let writer_path = path.clone();
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let writer = std::thread::spawn(move || {
+            // Model an IPC payload prepared before removal but not dispatched
+            // to the filesystem until the clear has completed.
+            ready_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+            writer_epochs.save(
+                HistoryCategory::Resource,
+                &writer_path,
+                "[1,2]",
+                saved.generation,
+            )
+        });
+        ready_rx.recv().unwrap();
+        let cleared = epochs.remove(HistoryCategory::Resource, &path).unwrap();
+        release_tx.send(()).unwrap();
+        let error = writer.join().unwrap().unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::WouldBlock);
+        assert!(!path.exists());
+        let current = epochs.load(HistoryCategory::Resource, &path).unwrap();
+        assert_eq!(current.generation, cleared.generation);
+        assert!(current.payload.is_none());
+        epochs
+            .save(HistoryCategory::Resource, &path, "[3]", cleared.generation)
+            .unwrap();
+        assert_eq!(load(&path).unwrap().payload.as_deref(), Some("[3]"));
+    }
+
+    #[test]
+    fn failed_clear_invalidates_old_writes_and_can_be_retried() {
+        let root = tempfile::tempdir().unwrap();
+        let path = HistoryCategory::Resource.path(root.path());
+        let epochs = HistoryWriteEpochs::default();
+        std::fs::create_dir_all(&path).unwrap();
+        assert!(epochs.remove(HistoryCategory::Resource, &path).is_err());
+        std::fs::remove_dir(&path).unwrap();
+        assert_eq!(
+            epochs
+                .save(HistoryCategory::Resource, &path, "[1]", 0)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        let receipt = epochs.remove(HistoryCategory::Resource, &path).unwrap();
+        assert_eq!(receipt.generation, 2);
+        epochs
+            .save(HistoryCategory::Resource, &path, "[2]", receipt.generation)
+            .unwrap();
+    }
+
+    #[test]
+    fn generations_are_independent_for_each_history_category() {
+        let root = tempfile::tempdir().unwrap();
+        let resource = HistoryCategory::Resource.path(root.path());
+        let network = HistoryCategory::NetworkQuality.path(root.path());
+        let epochs = HistoryWriteEpochs::default();
+        epochs
+            .save(HistoryCategory::Resource, &resource, "[1]", 0)
+            .unwrap();
+        epochs
+            .save(HistoryCategory::NetworkQuality, &network, "[2]", 0)
+            .unwrap();
+        epochs.remove(HistoryCategory::Resource, &resource).unwrap();
+        let updated = epochs
+            .save(HistoryCategory::NetworkQuality, &network, "[2,3]", 1)
+            .unwrap();
+        assert_eq!(updated.generation, 2);
+    }
 
     #[test]
     fn stores_categories_in_separate_atomic_segments() {
