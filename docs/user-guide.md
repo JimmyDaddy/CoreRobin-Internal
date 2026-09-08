@@ -15,6 +15,22 @@ Download the package for your platform from [GitHub Releases](https://github.com
 
 ## Main pages
 
+### AI assistant
+
+Enable AI in **AI settings → AI connections and models** and add your own model service. Use Ollama, a service on this computer or your local network, or a cloud provider. Enter the API protocol, API Base URL, authentication method, and model ID from your provider's instructions, save, and choose a default model. Refreshing the model list or testing a model helps check the connection; a test sends a short message and may incur provider charges. A local address does not guarantee offline processing: check how the service handles data.
+
+Ask a question such as “What is slowing down my computer?” or “Help me check the network.” Choose device context as needed. Before sending, **Review message** lets you check the recipient, selected evidence, and included message history. This previews the initial request; later task checks may read process names and file usage, with actual results shown in the task steps. Replies stream as they arrive, and task steps show actual device, process, history, network, and disk check results. Model interpretations can be wrong; missing or stale data does not mean everything is healthy.
+
+Review the targets and explicitly confirm before stopping a process or moving files to Trash. Use the action receipt to check what happened; a model saying “done” does not prove execution. **Stop generation** cancels the request; hiding the conversation only hides the window and an active request can still finish. Use **Continue in main window** to carry on the same conversation from Robin's small window.
+
+Conversations are saved locally by default, with temporary conversations also available. Delete individual conversations or clear all conversations from history; clearing conversations preserves model connections and credentials. Delete a connection to remove its saved credential. Changing the model for an existing conversation starts a new one without automatically sharing the old history with the new model. See [AI data and privacy](privacy.md#ai-assistant-and-model-services).
+
+### Capability center
+
+The capability center brings together quick cleanup, process actions, network diagnostics, and history observations. Run local operations directly without asking a model first. Each capability shows availability, scope, and actual results; operations requiring the main window or system controls guide you there.
+
+Quick cleanup analysis checks common locations only. Completing an analysis does not delete anything, and a large file is not necessarily safe to remove. Moving selected items to Trash still requires confirmation. A process-close request also does not guarantee exit: check the result. Local inputs and results entered here are not automatically sent to a model; network diagnostics themselves may contact probe targets.
+
 ### Computer status
 
 - The Robin companion gives one current conclusion and one primary action. When no sustained issue is present, it simply says there is nothing to do.
@@ -199,6 +215,6 @@ Do not attach logs, local data folders, unredacted screenshots, or generated dia
 
 ## Privacy and support
 
-Monitoring, file, process, history, and connection data stay on this computer. They are not uploaded or synced. Normal space scans read metadata such as names, sizes, and locations. Only the duplicate-file check you explicitly start reads candidate contents to hash them locally. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
+Monitoring, file, process, history, and connection data are processed locally by default. When using AI, content you choose to share is sent to your configured model service. Normal space scans read metadata such as names, sizes, and locations. Only the duplicate-file check you explicitly start reads candidate contents to hash them locally. See the [Privacy Notice](privacy.md) for retention, Full Disk Access, and data-clearing details.
 
 For general problems, open a GitHub issue and copy the version and system details from Settings → About & Support. Include what you were doing and any visible error. Read the [Release Notes](https://monitor-app.corerobin.com/en/releases/) for version changes, and use GitHub private vulnerability reporting for security issues.
