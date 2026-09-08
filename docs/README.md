@@ -15,6 +15,12 @@
 - [CoreRobin 工具箱 v1：系统工具与本地工具实施方案](toolbox-v1.md)（两款 Web SDK 已发布并完成定向消费验证；工具箱仍待实施）
 - [image-marker Web SDK worker 原始需求与 Prompt](worker-prompts/image-marker-web-sdk.md)、[bs-diff-patch Web SDK worker 原始需求与 Prompt](worker-prompts/bs-diff-patch-web-sdk.md)（历史交接记录，已被发布结果取代，不重复派发、不公开同步）
 - [日常问题生命周期](daily-incident-lifecycle.md)
+- [用户自配 AI 接入方案](ai-model-integration-design.md)（消融后的最小方案；直接发送、共享会话和验证边界）
+- [应用能力与对话操作卡片](application-capabilities-design.md)、[55 项能力接入清单](application-capability-inventory.md)（共用结果、原生确认与逐项验收）
+- [Robin 任务执行增量](ai-task-execution-design.md)（真实检查、执行步骤与原生操作确认）
+- [Robin 任务执行验收](review/ai-task-execution-2026-09-08.md)（回归、真实模型工具调用与原生验收缺口）
+- [AI 方案与实现消融](review/ai-ablation-2026-09-08.md)（删减理由、反向试验、迁移及当前验证）
+- [AI 首批实现审查](review/ai-first-delivery-2026-09-08.md)（消融前的实现与真实服务验证历史）
 - [国际化说明](i18n.md)
 - [新手体验路线图](novice-experience-roadmap.md)（规划记录，实施时需重新核对）
 - [监控、清理、Canvas 与 WebView 基准](monitor-benchmark.md)、[cleanup-benchmark.md](cleanup-benchmark.md)、[cleanup-canvas-performance.md](cleanup-canvas-performance.md)、[webview-bundle-performance.md](webview-bundle-performance.md)
