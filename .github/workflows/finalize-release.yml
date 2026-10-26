@@ -43,7 +43,6 @@ jobs:
       has_source_updater_signatures: ${{ steps.source.outputs.has_source_updater_signatures }}
     env:
       GH_TOKEN: ${{ github.token }}
-      PUBLIC_RELEASE_READ_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
     steps:
       - name: Check out trusted release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -89,9 +88,11 @@ jobs:
           fi
 
           preview_tag="${RELEASE_TAG}-preview.1"
-          test -n "$PUBLIC_RELEASE_READ_TOKEN"
-          preview_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \
-            "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$preview_tag")"
+          # Preview is public; do not depend on a long-lived cross-repository token.
+          preview_json="$(curl --fail --silent --show-error --retry 3 --max-time 30 \
+            --header 'accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$preview_tag")"
+          test "$(jq -r .tag_name <<<"$preview_json")" = "$preview_tag"
           test "$(jq -r .draft <<<"$preview_json")" = "false"
           test "$(jq -r .prerelease <<<"$preview_json")" = "true"
 

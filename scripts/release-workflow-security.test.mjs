@@ -293,10 +293,11 @@ describe("release workflow privilege separation", () => {
     expect(resolve).toContain("refs/heads/main");
     expect(resolve).toContain("prerelease");
     expect(resolve).toContain("waiting for completion");
-    expect(resolve).toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
-    expect(resolve).toContain('preview_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" gh api \\');
-    expect(resolve).toContain('"repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$preview_tag")"');
-    expect(resolve).not.toContain("https://api.github.com/repos/$PUBLIC_RELEASE_REPOSITORY");
+    expect(resolve).not.toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
+    expect(resolve).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
+    expect(resolve).toContain('preview_json="$(curl --fail --silent --show-error --retry 3 --max-time 30 \\');
+    expect(resolve).toContain('"https://api.github.com/repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$preview_tag")"');
+    expect(resolve).toContain('test "$(jq -r .tag_name <<<"$preview_json")" = "$preview_tag"');
     expect(finalize).toContain("scripts/macos-notarization-state.mjs verify");
     expect(finalize).toContain("APPLE_TEAM_ID");
     expect(finalize).toContain("Accepted");
