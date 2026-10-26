@@ -75,6 +75,7 @@
     }
   },
   "progress": {
+    "completed": "扫描完成",
     "partialResult": "已扫描内容（未完成）",
     "noProgress": "扫描停滞，可查看结果或重试。",
     "scanningLocation": "正在分析{{location}}",
@@ -110,6 +111,8 @@
     "title": "这些空间大多用来做什么"
   },
   "map": {
+    "liveUpdatesPending": "有新结果，浏览结束后更新",
+    "liveUpdatesApply": "更新地图",
     "list": {
       "name": "名称",
       "share": "当前目录占比",

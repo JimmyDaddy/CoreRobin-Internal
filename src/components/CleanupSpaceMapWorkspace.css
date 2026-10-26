@@ -15,6 +15,8 @@
 }
 
 .cleanup-map .cleanup-map__canvas { width: 100%; padding-bottom: 0; }
+.cleanup-map__pending { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 5px 0; color: var(--text-muted); font-size: 11px; }
+.cleanup-map__pending .button { min-height: 26px; padding: 3px 7px; font-size: 11px; }
 .cleanup-map__chart-frame {
   display: flex;
   width: min(100%, clamp(300px, calc(100vh - 430px), 560px));

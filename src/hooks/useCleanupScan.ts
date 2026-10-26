@@ -219,7 +219,15 @@ export function useCleanupScan() {
         return;
       }
       if (status.phase === "cancelled") {
-        restorePrevious();
+        if (snapshotRef.current?.partial) {
+          activeJobIdRef.current = null;
+          setLoading(false);
+          setCancelling(false);
+          setProgress(null);
+          setSnapshotStatus("current");
+        } else {
+          restorePrevious();
+        }
         setPhase("cancelled");
         return;
       }

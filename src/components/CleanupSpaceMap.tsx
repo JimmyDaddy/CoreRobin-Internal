@@ -43,7 +43,7 @@ import {
   LEGACY_STORAGE_KEYS,
   readMigratedStorageItem,
 } from "../storageMigration";
-import type { CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CleanupScanJobStatus, CommandError } from "../types";
+import type { CleanupDeleteMode, CleanupDeleteProgress, CleanupScan, CleanupDeleteLease, CleanupProtectionReason, CleanupScanJobStatus, CleanupScanJobPhase, CleanupScanProgress, CommandError } from "../types";
 import { cleanupAvailableDelta, cleanupOutcomeStatus, type CleanupDeleteOutcome } from "../cleanupOutcome";
 import type {
   CompleteUserActionInput,
@@ -60,6 +60,9 @@ import "./CleanupSpaceMapWorkspace.css";
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
   snapshotStatus: CleanupSnapshotStatus;
+  scanActive?: boolean;
+  scanPhase?: CleanupScanJobPhase | null;
+  scanProgress?: CleanupScanProgress | null;
   command?: CleanupSpaceMapCommand | null;
   onCommandHandled?: (id: number) => void;
   onDeletionApplied: (
@@ -115,8 +118,11 @@ const CLEANUP_MAP_MODE_STORAGE_KEY = "core-robin.cleanup-map-mode.v1";
 const EMPTY_CLEANUP_NODES: CleanupMapNode[] = [];
 
 export const CleanupSpaceMap = memo(function CleanupSpaceMap({
-  snapshot,
+  snapshot: incomingSnapshot,
   snapshotStatus,
+  scanActive = false,
+  scanPhase = null,
+  scanProgress = null,
   command = null,
   onCommandHandled,
   onDeletionApplied,
@@ -129,15 +135,18 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   onUserActionComplete,
 }: CleanupSpaceMapProps) {
   const { t } = useAppTranslation();
+  const [retainedSnapshot, setRetainedSnapshot] = useState(incomingSnapshot);
+  const [pointerBrowsing, setPointerBrowsing] = useState(false);
+  const [keyboardBrowsing, setKeyboardBrowsing] = useState(false);
+  const snapshot = retainedSnapshot.scanId === incomingSnapshot.scanId ? retainedSnapshot : incomingSnapshot;
+  const snapshotPending = snapshot !== incomingSnapshot;
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(
     () => new Map(),
   );
-  // Drop cached preview branches when the completed map takes over.
-  useEffect(() => snapshot.partial ? () => setLoadedSubtrees(new Map()) : undefined, [snapshot.partial]);
   const [pagedChildren, setPagedChildren] = useState<Map<string, CleanupMapNode[]>>(
     () => new Map(),
   );
-  const [preferredMapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
+  const [preferredMapMode, setMapMode] = useState<CleanupMapMode>(() => snapshot.partial ? "path" : readCleanupMapMode());
   const mapMode = snapshot.partial ? "path" : preferredMapMode;
   const [categoryScope, setCategoryScope] = useState<CleanupCategoryScope>("all");
   const [presentation, setPresentation] = useState<CleanupPresentation>("map");
@@ -207,7 +216,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     const pathNodes = indexTree(pathRoot, pagedChildren).nodes;
     for (const [id, node] of indexTree(categoryRoot).nodes) pathNodes.set(id, node);
     for (const [id, node] of indexTree(reclaimableCategoryRoot).nodes) pathNodes.set(id, node);
-    for (const [id, node] of externalPlanNodes) pathNodes.set(id, node);
+    for (const [id, node] of externalPlanNodes) if (!pathNodes.has(id)) pathNodes.set(id, node);
     for (const node of listItems) pathNodes.set(node.id, node);
     return pathNodes;
   }, [categoryRoot, externalPlanNodes, listItems, pagedChildren, pathRoot, reclaimableCategoryRoot]);
@@ -256,6 +265,13 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const activeSampledAtRef = useRef(snapshot.sampledAtMs);
   const appliedRefreshJobRef = useRef<string | null>(null);
   const requestedFocusIdRef = useRef<string | null>(null);
+  const browsing = pointerBrowsing || keyboardBrowsing || detailsOpen || Boolean(dragState?.dragging);
+  useEffect(() => {
+    if (retainedSnapshot.scanId !== incomingSnapshot.scanId || !browsing || (!scanActive && !snapshot.partial)) {
+      setRetainedSnapshot(incomingSnapshot);
+    }
+  }, [incomingSnapshot, browsing, scanActive, retainedSnapshot.scanId, snapshot.partial]);
+  const deletionAvailable = snapshot.deletionAvailable && incomingSnapshot.deletionAvailable && !snapshotPending;
 
   const retainLoadedSubtree = useCallback((subtree: CleanupMapNode) => {
     setLoadedSubtrees((current) => new Map(current).set(subtree.id, subtree));
@@ -282,6 +298,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     activeSampledAtRef.current = snapshot.sampledAtMs;
     subtreeRequestIdRef.current += 1;
     setLoadedSubtrees(new Map());
+    if (snapshot.partial) setMapMode("path");
     setPagedChildren(new Map());
     setDetailsOpen(false);
     setNavigationHistory([]);
@@ -408,6 +425,23 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [mapMode, root.id]);
 
   const focus = nodes.get(focusId) ?? root;
+  useEffect(() => {
+    if (!snapshot.indexed || loadedSubtrees.size === 0) return;
+    // Refresh only the visible ancestry, keeping navigation intact as checkpoints
+    // replace the shallow root. Never reload every previously visited directory.
+    const ids: string[] = [];
+    let id: string | undefined = focusId;
+    while (id && id !== root.id) {
+      if (loadedSubtrees.has(id)) ids.push(id);
+      id = parents.get(id);
+    }
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void Promise.all(ids.map((directoryId) => getCleanupIndexedDirectory({ scanId: snapshot.scanId, directoryId })))
+      .then((directories) => { if (!cancelled) setLoadedSubtrees(new Map(directories.map((node) => [node.id, node as CleanupMapNode]))); })
+      .catch(() => { /* Retain readable branches if a checkpoint is temporarily unavailable. */ });
+    return () => { cancelled = true; };
+  }, [snapshot.root, snapshot.scanId]);
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
   const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
@@ -810,6 +844,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const addToPlan = (node: CleanupMapNode) => {
     if (node.id === root.id || !canCollectCleanupNode(node)) return;
     setDeleteOutcome(null);
+    setExternalPlanNodes((current) => new Map(current).set(node.id, node));
     setPlannedIds((current) => collectCleanupPlanNode(current, node.id, parents));
   };
 
@@ -1037,7 +1072,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   };
 
   const openDeleteDialog = async () => {
-    if (planned.length === 0 || !snapshot.deletionAvailable) return;
+    if (planned.length === 0 || !deletionAvailable) return;
     setSettlementOpen(false);
     const items = [...planned];
     const initialMode: CleanupDeleteMode = items.some((item) => isInsideTrashPath(item.path))
@@ -1277,8 +1312,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </label>
             {refreshableFocus ? <button type="button" className="button button--secondary" disabled={refreshingFocus} onClick={refreshFocusedFolder}>{refreshingFocus ? <LoaderCircle className="is-spinning" size={14} /> : <RefreshCw size={14} />}{t("cleanup:map.refreshCurrent")}</button> : null}
           </div>
-          <div className="cleanup-map__canvas" ref={canvasRef}>
-            {freshness !== "current" ? (
+          <div className="cleanup-map__canvas" ref={canvasRef}
+            onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
+            onFocusCapture={() => setKeyboardBrowsing(true)}
+            onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}
+            data-scan-phase={scanActive ? scanPhase ?? "preparing" : scanPhase ?? "idle"}
+            data-scanned-entries={scanProgress?.scannedEntryCount}
+          >
+            {freshness !== "current" && !snapshot.partial ? (
               <div className={`cleanup-map__freshness is-${freshness}`}>
                 {freshness === "changed" ? <AlertTriangle size={13} /> : <Clock3 size={13} />}
                 <span role="status">{t(`cleanup:map.freshness.${freshness}`)}</span>
@@ -1465,6 +1506,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
             )}
 
+            {snapshotPending ? <div className="cleanup-map__pending" role="status">
+              <span>{t("cleanup:map.liveUpdatesPending")}</span>
+              <button type="button" className="button button--plain" onClick={() => setRetainedSnapshot(incomingSnapshot)}>{t("cleanup:map.liveUpdatesApply")}</button>
+            </div> : null}
             <div
               className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}`}
               aria-live="polite"
@@ -1508,9 +1553,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   <button className="cleanup-map__basket-clear" type="button" onClick={() => setPlannedIds(new Set())}>
                     {t("cleanup:map.basket.clear")}
                   </button>
-                  <button className="button button--primary cleanup-map__basket-review" type="button" disabled={!snapshot.deletionAvailable} onClick={() => void openDeleteDialog()}>
+                  <button className="button button--primary cleanup-map__basket-review" type="button" disabled={!deletionAvailable} onClick={() => void openDeleteDialog()}>
                     <ChevronRight size={14} />
-                    {snapshot.deletionAvailable
+                    {deletionAvailable
                       ? t("cleanup:map.chooseDeleteMethod")
                       : t("cleanup:map.deletionUnavailable")}
                   </button>

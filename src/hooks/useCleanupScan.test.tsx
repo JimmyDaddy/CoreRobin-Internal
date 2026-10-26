@@ -202,6 +202,23 @@ describe("cleanup scan lifecycle", () => {
     await screen.findByText("failed");
   });
 
+  it("retains read-only partial results when the user stops a replacement scan", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "cancelled" });
+    await screen.findByText("cancelled");
+    expect(screen.getByText("cleanup-preview")).toBeTruthy();
+    expect(historyStorage.setValue).not.toHaveBeenCalled();
+  });
+
   it("shows committed partial maps while scanning and restores the complete map on failure", async () => {
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
     render(<Harness />);

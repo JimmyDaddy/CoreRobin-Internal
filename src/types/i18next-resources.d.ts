@@ -939,6 +939,8 @@ export default interface Resources {
         "shown": "已显示 {{count}} 项",
         "sort": "列表排序"
       },
+      "liveUpdatesApply": "更新地图",
+      "liveUpdatesPending": "有新结果，浏览结束后更新",
       "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
       "loadFailed": "无法读取目录索引",
       "loadMore": "再显示 50 项",
@@ -1023,6 +1025,7 @@ export default interface Resources {
       "recommended": "推荐"
     },
     "progress": {
+      "completed": "扫描完成",
       "discovered": "已发现",
       "elapsed": "已用时",
       "entries": "已检查",

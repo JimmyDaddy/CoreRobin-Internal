@@ -25,6 +25,11 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("cleanup scan scope selection", () => {
+  it("mounts the read-only result surface before the first checkpoint", () => {
+    const view = renderScope({ loading: true, phase: "preparing" });
+    expect(screen.getByTestId("scan-result")).toBeTruthy();
+    expect(view.container.querySelector(".cleanup-scan-orbit")).toBeNull();
+  });
   it("keeps the map visible during scanning and labels incomplete results", () => {
     const partial = { ...getMockCleanupScan(), partial: true, deletionAvailable: false };
     renderScope({ snapshot: partial, loading: true, phase: "scanning" });

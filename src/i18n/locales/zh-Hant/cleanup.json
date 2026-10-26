@@ -165,6 +165,7 @@
     }
   },
   "progress": {
+    "completed": "掃描完成",
     "partialResult": "已掃描內容（未完成）",
     "noProgress": "掃描停滯，可查看結果或重試。",
     "scanningLocation": "正在分析{{location}}",
@@ -200,6 +201,8 @@
     "title": "這些空間大多用來做什麼"
   },
   "map": {
+    "liveUpdatesPending": "有新結果，瀏覽結束後更新",
+    "liveUpdatesApply": "更新地圖",
     "list": {
       "name": "名稱",
       "share": "目前資料夾占比",

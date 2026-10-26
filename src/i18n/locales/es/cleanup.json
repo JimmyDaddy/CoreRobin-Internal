@@ -165,6 +165,7 @@
     }
   },
   "progress": {
+    "completed": "Escaneo completo",
     "partialResult": "Resultados parciales",
     "noProgress": "Análisis detenido. Ver resultado o reintentar.",
     "scanningLocation": "Analizando {{location}}",
@@ -200,6 +201,8 @@
     "title": "Para qué se utiliza este espacio comúnmente"
   },
   "map": {
+    "liveUpdatesPending": "Hay nuevos resultados; se actualizarán al terminar de explorar",
+    "liveUpdatesApply": "Actualizar mapa",
     "list": {
       "name": "Nombre",
       "share": "% de carpeta",

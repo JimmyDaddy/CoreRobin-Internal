@@ -165,6 +165,7 @@
     }
   },
   "progress": {
+    "completed": "Scan abgeschlossen",
     "partialResult": "Bisherige Scan-Ergebnisse",
     "noProgress": "Scan angehalten. Ergebnis ansehen oder wiederholen.",
     "scanningLocation": "Analysiere {{location}}",
@@ -200,6 +201,8 @@
     "title": "Für welchen Zweck dieser Bereich typischerweise verwendet wird"
   },
   "map": {
+    "liveUpdatesPending": "Neue Ergebnisse bereit; nach dem Browsen aktualisieren",
+    "liveUpdatesApply": "Karte aktualisieren",
     "list": {
       "name": "Name",
       "share": "Ordneranteil",

@@ -60,6 +60,7 @@ import type {
   StartUserActionInput,
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
+import { preparingCleanupScan } from "../cleanupScanPresentation";
 import { Button } from "./Button";
 import {
   CleanupSpaceMap,
@@ -222,9 +223,12 @@ export function CleanupOperation({
     ) ?? 0,
     [snapshot],
   );
-  const displayedSnapshot = useMemo(() => snapshot && loading
-    ? { ...snapshot, deletionAvailable: false }
-    : snapshot, [snapshot, loading]);
+  const preparingSnapshot = useMemo(() => preparingCleanupScan(
+    selectedTarget, targetLabel(selectedTarget, volumes, t),
+  ), [selectedTarget, volumes, t]);
+  const displayedSnapshot = useMemo(() => loading
+    ? snapshot ? { ...snapshot, deletionAvailable: false } : preparingSnapshot
+    : snapshot, [snapshot, loading, preparingSnapshot]);
   const visibleGrowthComparison = growthComparison && (
     growthComparison.growthBytes !== 0
     || growthComparison.fastestGrowing.length > 0
@@ -242,6 +246,7 @@ export function CleanupOperation({
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
   const scanFinalizing = phase === "finalizing";
+  const scanCompleted = !loading && phase === "completed" && snapshot && !snapshot.partial;
   const scanErrorMessage = error && ["cleanup_scan_preparation_stalled", "cleanup_scan_finalization_stalled", "cleanup_scan_worker_unresponsive"].includes(error.code)
     ? t("cleanup:progress.noProgress")
     : error && (
@@ -803,14 +808,16 @@ export function CleanupOperation({
         </section>
       ) : null}
 
-      {loading ? (
+      {loading || scanCompleted ? (
         <section
-          className={`cleanup-scan-stage${scanStalled ? " is-stalled" : ""}${scanPaused ? " is-paused" : ""}`}
+          className={`cleanup-scan-stage${scanStalled ? " is-stalled" : ""}${scanPaused ? " is-paused" : ""}${scanCompleted ? " is-complete" : ""}`}
           aria-labelledby="cleanup-scan-stage-title"
         >
           <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
             {t(
-              scanStalled
+              scanCompleted
+                ? "cleanup:progress.completed"
+                : scanStalled
                 ? "cleanup:progress.stalled"
                 : scanPaused
                   ? "cleanup:progress.paused"
@@ -819,25 +826,12 @@ export function CleanupOperation({
                     : "cleanup:progress.stageKicker",
             )}
           </span>
-          <div className="cleanup-scan-orbit" aria-hidden="true">
-            <div className="cleanup-scan-orbit__halo" />
-            <div className="cleanup-scan-orbit__ring is-outer" />
-            <div className="cleanup-scan-orbit__ring is-middle" />
-            <div className="cleanup-scan-orbit__ring is-inner" />
-            <div className="cleanup-scan-orbit__sweep" />
-            <i className="is-one" /><i className="is-two" /><i className="is-three" />
-            <div className="cleanup-scan-orbit__center">
-              <Sparkles size={19} />
-              <small>{t("cleanup:progress.foundSpace")}</small>
-              <strong>{formatBytes(progress?.discoveredBytes ?? 0)}</strong>
-            </div>
-          </div>
-
           <div className="cleanup-scan-stage__story">
-            <span className="eyebrow">{t("cleanup:progress.stageKicker")}</span>
-            <h3 id="cleanup-scan-stage-title">
+            <h3 id="cleanup-scan-stage-title" title={progress?.currentPath}>
               {t(
-                scanStalled
+                scanCompleted
+                  ? "cleanup:progress.completed"
+                  : scanStalled
                   ? "cleanup:progress.stalled"
                   : scanPaused
                     ? "cleanup:progress.paused"
@@ -847,26 +841,21 @@ export function CleanupOperation({
                 { location: progressLocation },
               )}
             </h3>
-            <p>{scanStalled
-              ? t("cleanup:progress.stalledDescription")
-              : scanFinalizing
-                ? t("cleanup:progress.finalizingDescription")
-                : t("cleanup:readOnlyDescription")}</p>
+            <p>{scanStalled ? t("cleanup:progress.stalledDescription") : scanFinalizing ? t("cleanup:progress.finalizingDescription") : t("cleanup:readOnlyDescription")}</p>
             <dl className="cleanup-scan-stage__metrics">
               <div>
                 <dt>{t("cleanup:progress.entries")}</dt>
-                <dd>{(progress?.scannedEntryCount ?? 0).toLocaleString(i18n.resolvedLanguage)}</dd>
+                <dd>{(loading ? progress?.scannedEntryCount ?? 0 : snapshot?.scannedEntryCount ?? 0).toLocaleString(i18n.resolvedLanguage)}</dd>
               </div>
               <div>
                 <dt>{t("cleanup:progress.discovered")}</dt>
-                <dd>{formatBytes(progress?.discoveredBytes ?? 0)}</dd>
+                <dd>{formatBytes(loading ? progress?.discoveredBytes ?? 0 : snapshot?.root.allocatedSizeBytes ?? 0)}</dd>
               </div>
               <div>
                 <dt>{t("cleanup:progress.elapsed")}</dt>
-                <dd>{Math.max(0.1, displayedElapsedMs / 1_000).toFixed(1)}s</dd>
+                <dd>{Math.max(0.1, (loading ? displayedElapsedMs : snapshot?.durationMs ?? 0) / 1_000).toFixed(1)}s</dd>
               </div>
             </dl>
-            <div className="cleanup-scan-stage__progress" aria-hidden="true"><i /></div>
           </div>
         </section>
       ) : null}
@@ -894,10 +883,30 @@ export function CleanupOperation({
         </div>
       ) : null}
 
-      {snapshot && displayedSnapshot ? (
+      {displayedSnapshot ? (
         <div className="cleanup-results">
-          {snapshot.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
-          {!snapshot.partial ? <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
+          {snapshot?.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
+          <CleanupSpaceMap
+            snapshot={displayedSnapshot}
+            snapshotStatus={visibleSnapshotStatus}
+            scanActive={loading}
+            scanPhase={phase}
+            scanProgress={progress}
+            command={mapCommand}
+            onCommandHandled={(id) => {
+              setMapCommand((current) => current?.id === id ? null : current);
+            }}
+            onDeletionApplied={onDeletionApplied}
+            directoryRefreshStatus={directoryRefreshStatus}
+            directoryRefreshError={directoryRefreshError}
+            onRefreshDirectory={loading ? undefined : onRefreshDirectory}
+            onCancelDirectoryRefresh={onCancelDirectoryRefresh}
+            onReloadLatestSnapshot={onReloadLatestSnapshot}
+            onUserActionStart={onUserActionStart}
+            onUserActionComplete={onUserActionComplete}
+          />
+
+          {snapshot && !snapshot.partial && !loading ? <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <button
               className="cleanup-result-overview__primary"
               type="button"
@@ -988,24 +997,7 @@ export function CleanupOperation({
             ) : null}
           </section> : null}
 
-          <CleanupSpaceMap
-            snapshot={displayedSnapshot}
-            snapshotStatus={visibleSnapshotStatus}
-            command={mapCommand}
-            onCommandHandled={(id) => {
-              setMapCommand((current) => current?.id === id ? null : current);
-            }}
-            onDeletionApplied={onDeletionApplied}
-            directoryRefreshStatus={directoryRefreshStatus}
-            directoryRefreshError={directoryRefreshError}
-            onRefreshDirectory={loading ? undefined : onRefreshDirectory}
-            onCancelDirectoryRefresh={onCancelDirectoryRefresh}
-            onReloadLatestSnapshot={onReloadLatestSnapshot}
-            onUserActionStart={onUserActionStart}
-            onUserActionComplete={onUserActionComplete}
-          />
-
-          {!snapshot.partial ? <details className="cleanup-results__more">
+          {snapshot && !snapshot.partial && !loading ? <details className="cleanup-results__more">
             <summary>
               <span>
                 <FolderSearch size={16} />
@@ -1109,7 +1101,7 @@ export function CleanupOperation({
             </div>
           </details> : null}
 
-          {snapshot.unreadableEntryCount > 0 ? (
+          {snapshot && snapshot.unreadableEntryCount > 0 ? (
             <div className="cleanup-assistant__notice">
               <AlertTriangle size={14} />
               <div>

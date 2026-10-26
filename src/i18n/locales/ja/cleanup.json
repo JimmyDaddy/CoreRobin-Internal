@@ -165,6 +165,7 @@
     }
   },
   "progress": {
+    "completed": "スキャン完了",
     "partialResult": "スキャン途中の結果",
     "noProgress": "スキャンが停止しました。結果を確認するか再試行してください。",
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
@@ -200,6 +201,8 @@
     "title": "この領域が通常使用される目的"
   },
   "map": {
+    "liveUpdatesPending": "新しい結果があります。閲覧後に更新します",
+    "liveUpdatesApply": "マップを更新",
     "list": {
       "name": "名前",
       "share": "フォルダ内の割合",

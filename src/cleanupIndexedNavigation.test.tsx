@@ -50,6 +50,47 @@ beforeEach(async () => {
 });
 
 describe("indexed cleanup navigation", () => {
+  it("defers live checkpoints while browsing and requires the current result before cleanup", async () => {
+    window.localStorage.setItem("core-robin.cleanup-map-mode.v1", "category");
+    const current = { ...snapshot(), partial: true, indexed: false, deletionAvailable: false };
+    current.root.children = [{ ...file("file", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null }];
+    const props = { snapshot: current, snapshotStatus: "updating" as const, scanActive: true, scanPhase: "scanning" as const, onDeletionApplied: vi.fn() };
+    const view = render(<CleanupSpaceMap {...props} />);
+    const canvas = view.container.querySelector(".cleanup-map__canvas")!;
+    fireEvent.mouseEnter(canvas);
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
+    const before = view.container.querySelector(".cleanup-map__center-control strong")?.textContent;
+    const completed = { ...current, partial: false, deletionAvailable: true, root: { ...current.root, allocatedSizeBytes: current.root.allocatedSizeBytes + 4096 } };
+    view.rerender(<CleanupSpaceMap {...props} snapshot={completed} scanActive={false} scanPhase="completed" />);
+    expect(view.container.querySelector(".cleanup-map__center-control strong")?.textContent).toBe(before);
+    expect(screen.getByRole("button", { name: "Update map" })).toBeTruthy();
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Update map" }));
+    await waitFor(() => expect(view.container.querySelector(".cleanup-map__center-control strong")?.textContent).not.toBe(before));
+    expect(view.container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "File paths" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("refreshes the visible indexed ancestry without losing the folder or basket on completion", async () => {
+    const current = { ...snapshot(), partial: true, deletionAvailable: false };
+    const child = { ...file("index:fixture:4", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null };
+    cleanupApi.getCleanupIndexedDirectory.mockResolvedValue({ ...current.root.children[0], children: [child] });
+    const props = { snapshot: current, snapshotStatus: "updating" as const, scanActive: true, onDeletionApplied: vi.fn() };
+    const view = render(<CleanupSpaceMap {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "First folder" }));
+    await screen.findByRole("button", { name: "Visible file" });
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
+    fireEvent.mouseLeave(view.container.querySelector(".cleanup-map__canvas")!);
+    view.rerender(<CleanupSpaceMap {...props} scanActive={false} snapshot={{ ...current, partial: false, deletionAvailable: true, sampledAtMs: 2000, root: { ...current.root } }} />);
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("button", { name: "First folder" }).getAttribute("aria-current")).toBe("page");
+    expect(view.container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("keeps map selection when leaving the canvas and opens details without losing keyboard focus", () => {
     const current = snapshot();
     current.root.children = [file("file", "/fixture/file.bin")];

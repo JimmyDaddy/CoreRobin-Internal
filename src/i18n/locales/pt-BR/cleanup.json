@@ -165,6 +165,7 @@
     }
   },
   "progress": {
+    "completed": "Varredura concluída",
     "partialResult": "Resultados parciais",
     "noProgress": "Verificação parada. Veja o resultado ou repita.",
     "scanningLocation": "Analisando {{location}}",
@@ -200,6 +201,8 @@
     "title": "Para que essa área é comumente utilizada"
   },
   "map": {
+    "liveUpdatesPending": "Novos resultados prontos; termine de navegar para atualizar",
+    "liveUpdatesApply": "Atualizar mapa",
     "list": {
       "name": "Nome",
       "share": "% da pasta",
