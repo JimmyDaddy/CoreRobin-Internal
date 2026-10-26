@@ -136,6 +136,8 @@ export function DailyGuide(props: DailyGuideProps) {
         </button>
       </header>
 
+      {props.intent === "heat" && props.expectedSleepNames && props.expectedSleepNames.size > 0 ? <p role="status">{t("wellbeing:sleepReview.plannedValue")} · {[...props.expectedSleepNames].join(", ")} — {t("wellbeing:sleepReview.plannedDescription")}</p> : null}
+
       {refreshing ? <RecheckLoadingCard intent={props.intent} /> : props.recheck?.intent === props.intent ? (
         <RecheckCard
           recheck={props.recheck}

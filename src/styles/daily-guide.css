@@ -7,9 +7,9 @@
 .daily-companion-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(400px, 0.82fr) minmax(420px, 1.18fr);
+  grid-template-columns: minmax(0, 1fr) 392px;
   align-items: center;
-  min-height: 390px;
+  min-height: 280px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 24px;
@@ -28,7 +28,10 @@
   position: relative;
   width: 392px;
   min-height: 280px;
-  margin: 32px auto;
+  margin: 0 auto;
+  grid-column: 2;
+  grid-row: 1;
+  transform: scale(0.85);
   isolation: isolate;
   perspective: 900px;
   perspective-origin: 50% 50%;
@@ -335,9 +338,10 @@
 .daily-companion-hero.is-checking .daily-companion__station:nth-child(2) { animation-delay: 0.2s; }
 .daily-companion-hero.is-checking .daily-companion__station:nth-child(3) { animation-delay: 0.4s; }
 .daily-companion-hero.is-checking .daily-companion__station:nth-child(4) { animation-delay: 0.6s; }
-.daily-companion-hero__message { position: relative; z-index: 2; padding: 44px 56px 44px 24px; }
+.daily-companion-hero__message { position: relative; z-index: 2; grid-column: 1; grid-row: 1; padding: 28px 12px 28px 32px; }
 .daily-companion-hero__message .eyebrow { color: var(--green); }
-.daily-companion-hero__message h1 { max-width: 720px; margin: 10px 0 15px; font-size: clamp(36px, 4.6vw, 64px); line-height: 1.01; letter-spacing: -0.055em; }
+.daily-companion-hero__message h1 { max-width: 720px; margin: 10px 0 12px; font-size: clamp(26px, 2.5vw, 38px); line-height: 1.2; letter-spacing: -0.035em; }
+.daily-home__attention-label { display: flex; align-items: center; gap: 8px; color: var(--text-soft); font-size: 12px; }
 .daily-companion-hero__message p { max-width: 660px; margin: 0; color: var(--text-soft); font-size: 15px; line-height: 1.7; }
 .daily-companion-hero__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
 .daily-companion-hero__actions .button { min-height: 43px; padding-inline: 17px; font-size: 12px; }
@@ -621,8 +625,9 @@
 
 @media (max-width: 940px) {
   .daily-companion-hero { grid-template-columns: minmax(0, 1fr); }
-  .daily-companion { width: min(88vw, 392px); margin-bottom: 4px; }
-  .daily-companion-hero__message { padding: 14px 28px 34px; text-align: center; }
+  .daily-companion { width: min(88vw, 392px); grid-column: 1; grid-row: 2; margin: -24px auto -16px; }
+  .daily-companion-hero__message { padding: 24px 28px 18px; text-align: center; }
+  .daily-home__attention-label { justify-content: center; }
   .daily-companion-hero__actions { justify-content: center; }
   .daily-companion-hero__time { justify-content: center; }
 }
