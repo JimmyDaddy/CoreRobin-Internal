@@ -165,6 +165,8 @@
     }
   },
   "progress": {
+    "partialResult": "掃描未完成，僅顯示已掃描內容。",
+    "noProgress": "掃描已停滯，可查看現有結果或重試。",
     "scanningLocation": "正在分析{{location}}",
     "paused": "Mac 已進入睡眠，喚醒後將繼續掃描",
     "stalled": "正在自動恢復掃描",

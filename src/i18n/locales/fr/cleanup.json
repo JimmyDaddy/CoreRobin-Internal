@@ -165,6 +165,8 @@
     }
   },
   "progress": {
+    "partialResult": "Analyse incomplète : éléments déjà vérifiés.",
+    "noProgress": "Analyse bloquée. Consultez le résultat ou réessayez.",
     "scanningLocation": "Analyse de {{location}} éléments",
     "paused": "Le Mac est en veille ; l’analyse reprendra au réveil",
     "stalled": "L’analyse reprend automatiquement",

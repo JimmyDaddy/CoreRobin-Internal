@@ -25,6 +25,13 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("cleanup scan scope selection", () => {
+  it("keeps the map visible during scanning and labels incomplete results", () => {
+    const partial = { ...getMockCleanupScan(), partial: true, deletionAvailable: false };
+    renderScope({ snapshot: partial, loading: true, phase: "scanning" });
+    expect(screen.getByTestId("scan-result")).toBeTruthy();
+    expect(screen.getByText("扫描未完成，仅显示已扫描内容。")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /停止/ })).toBeTruthy();
+  });
   it("keeps the folder card selected after adding it to recent locations", async () => {
     api.open.mockResolvedValue("/Users/demo/Projects");
     const onScan = vi.fn();

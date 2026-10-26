@@ -333,6 +333,8 @@ pub struct NetworkInterfaceSnapshot {
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScan {
     #[serde(default)]
+    pub partial: bool,
+    #[serde(default)]
     pub scan_id: String,
     #[serde(default)]
     pub profile: CleanupScanProfile,

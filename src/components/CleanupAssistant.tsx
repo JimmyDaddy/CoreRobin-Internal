@@ -222,6 +222,9 @@ export function CleanupOperation({
     ) ?? 0,
     [snapshot],
   );
+  const displayedSnapshot = useMemo(() => snapshot && loading
+    ? { ...snapshot, deletionAvailable: false }
+    : snapshot, [snapshot, loading]);
   const visibleGrowthComparison = growthComparison && (
     growthComparison.growthBytes !== 0
     || growthComparison.fastestGrowing.length > 0
@@ -239,7 +242,9 @@ export function CleanupOperation({
   const scanStalled = phase === "stalled";
   const scanPaused = phase === "paused";
   const scanFinalizing = phase === "finalizing";
-  const scanErrorMessage = error && (
+  const scanErrorMessage = error && ["cleanup_scan_preparation_stalled", "cleanup_scan_finalization_stalled", "cleanup_scan_worker_unresponsive"].includes(error.code)
+    ? t("cleanup:progress.noProgress")
+    : error && (
     error.code === "cleanup_scan_auto_recovery_exhausted"
     || error.code === "cleanup_scan_worker_restart_failed"
   )
@@ -889,8 +894,9 @@ export function CleanupOperation({
         </div>
       ) : null}
 
-      {snapshot && !loading ? (
+      {snapshot && displayedSnapshot ? (
         <div className="cleanup-results">
+          {snapshot.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
           <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <button
               className="cleanup-result-overview__primary"
@@ -983,7 +989,7 @@ export function CleanupOperation({
           </section>
 
           <CleanupSpaceMap
-            snapshot={snapshot}
+            snapshot={displayedSnapshot}
             snapshotStatus={visibleSnapshotStatus}
             command={mapCommand}
             onCommandHandled={(id) => {
@@ -992,7 +998,7 @@ export function CleanupOperation({
             onDeletionApplied={onDeletionApplied}
             directoryRefreshStatus={directoryRefreshStatus}
             directoryRefreshError={directoryRefreshError}
-            onRefreshDirectory={onRefreshDirectory}
+            onRefreshDirectory={loading ? undefined : onRefreshDirectory}
             onCancelDirectoryRefresh={onCancelDirectoryRefresh}
             onReloadLatestSnapshot={onReloadLatestSnapshot}
             onUserActionStart={onUserActionStart}

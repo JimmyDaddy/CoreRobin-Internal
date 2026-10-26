@@ -274,6 +274,7 @@ export type CleanupProtectionReason =
   | "restricted";
 
 export interface CleanupScan {
+  partial?: boolean;
   scanId: string;
   profile: CleanupScanProfile;
   scopePaths: string[];

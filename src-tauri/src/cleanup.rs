@@ -77,8 +77,8 @@ mod quick;
 pub(crate) use index::{
     apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, defer_discard_indexed_scan,
     load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
-    maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
-    resolve_indexed_delete_request, set_scan_activity_notifier,
+    load_progressive_scan, maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
+    resolve_indexed_delete_request, set_scan_activity_notifier, set_scan_checkpoint_notifier,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
@@ -1456,6 +1456,7 @@ pub fn assemble_cleanup_scan_segments(
         total.saturating_add(segment.duration_ms)
     });
     Ok(CleanupScan {
+        partial: false,
         scan_id: String::new(),
         profile: CleanupScanProfile::Complete,
         scope_paths: Vec::new(),
@@ -3579,6 +3580,7 @@ fn scan_filesystem(
 
     let sampled_at_ms = now_millis();
     Ok(CleanupScan {
+        partial: false,
         scan_id: String::new(),
         profile: CleanupScanProfile::Complete,
         scope_paths: Vec::new(),

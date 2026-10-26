@@ -64,6 +64,7 @@ export function useCleanupScan() {
   const refreshTrackerRef = useRef(0);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
+  const previousCompleteRef = useRef<CleanupScan | null>(null);
   const snapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const preScanSnapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const snapshotSyncRef = useRef<Promise<CleanupScan | null> | null>(null);
@@ -82,6 +83,7 @@ export function useCleanupScan() {
     let disposed = false;
     void loadPersistedCleanupScan()
       .then((persisted) => {
+        if (!disposed && persisted && !persisted.partial) previousCompleteRef.current = persisted;
         if (disposed || stateTouched.current || !persisted) return;
         snapshotRef.current = persisted;
         setSnapshot(persisted);
@@ -143,6 +145,8 @@ export function useCleanupScan() {
     tracker: number,
   ) => {
     let status: CleanupScanJobStatus | null = initialStatus;
+    let lastPreviewAt = 0;
+    let lastPreviewEntries = -1;
     activeJobIdRef.current = initialStatus.jobId;
     while (
       status
@@ -166,6 +170,7 @@ export function useCleanupScan() {
           const completed = await loadCleanupScanJobResult(status.jobId);
           if (trackerRef.current !== tracker) return;
           snapshotRef.current = completed;
+          previousCompleteRef.current = completed;
           setSnapshot(completed);
           setSnapshotStatus("current");
           scanHistory.setValue((current) =>
@@ -184,6 +189,10 @@ export function useCleanupScan() {
         return;
       }
       if (status.phase === "cancelled") {
+        if (previousCompleteRef.current) {
+          snapshotRef.current = previousCompleteRef.current;
+          setSnapshot(previousCompleteRef.current);
+        }
         activeJobIdRef.current = null;
         setLoading(false);
         setCancelling(false);
@@ -193,6 +202,10 @@ export function useCleanupScan() {
         return;
       }
       if (status.phase === "failed") {
+        if (previousCompleteRef.current) {
+          snapshotRef.current = previousCompleteRef.current;
+          setSnapshot(previousCompleteRef.current);
+        }
         activeJobIdRef.current = null;
         setLoading(false);
         setCancelling(false);
@@ -206,6 +219,24 @@ export function useCleanupScan() {
         return;
       }
 
+      if (status.resultAvailable && status.phase !== "cancelling"
+        && Date.now() - lastPreviewAt >= 2_000
+        && lastPreviewEntries !== status.progress.scannedEntryCount) {
+        lastPreviewAt = Date.now();
+        lastPreviewEntries = status.progress.scannedEntryCount;
+        try {
+          const preview = await loadCleanupScanJobResult(status.jobId);
+          if (trackerRef.current !== tracker || activeJobIdRef.current !== initialStatus.jobId) return;
+          // A preview is read-only and never becomes a historical completed scan.
+          if (preview.partial) {
+            snapshotRef.current = preview;
+            setSnapshot(preview);
+            setSnapshotStatus("updating");
+          }
+        } catch {
+          // A concurrent worker replacement may briefly hide its checkpoint.
+        }
+      }
       await waitForCleanupJobPoll();
       if (trackerRef.current !== tracker) return;
       try {
@@ -349,6 +380,7 @@ export function useCleanupScan() {
   ) => {
     const tracker = ++trackerRef.current;
     stateTouched.current = true;
+    if (snapshotRef.current && !snapshotRef.current.partial) previousCompleteRef.current = snapshotRef.current;
     preScanSnapshotStatusRef.current = snapshotStatusRef.current;
     if (snapshotRef.current) setSnapshotStatus("updating");
     setLoading(true);
@@ -435,6 +467,7 @@ export function useCleanupScan() {
     activeJobIdRef.current = null;
     activeRefreshJobIdRef.current = null;
     snapshotRef.current = null;
+    previousCompleteRef.current = null;
     setSnapshot(null);
     setSnapshotStatus("current");
     setError(null);

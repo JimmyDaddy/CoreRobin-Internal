@@ -191,6 +191,22 @@ describe("cleanup scan lifecycle", () => {
     await waitFor(() => expect(screen.getByText("updating")).toBeTruthy());
     expect(screen.getByText("cleanup-new")).toBeTruthy();
   });
+
+  it("shows committed partial maps while scanning and restores the complete map on failure", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    expect(screen.getByText("scanning")).toBeTruthy();
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "failed", errorCode: "cleanup_scan_finalization_stalled" });
+    await screen.findByText("failed");
+    expect(screen.getByText("cleanup-new")).toBeTruthy();
+  });
   it("updates a mounted page after AI scans and adopts changes to the same native scan index", async () => {
     render(<Harness />);
     await waitFor(() => expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalled());

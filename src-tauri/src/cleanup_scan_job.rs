@@ -91,6 +91,9 @@ pub struct CleanupScanJobManager {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum CleanupScanWorkerEvent {
+    Checkpoint {
+        at_ms: u64,
+    },
     Heartbeat {
         at_ms: u64,
     },
@@ -367,7 +370,7 @@ impl CleanupScanJobManager {
     }
 
     pub fn result(&self, job_id: &str) -> Result<CleanupScan, CommandError> {
-        let (result_path, index_path) = {
+        let (result_path, index_path, partial) = {
             let active = self.active.lock().map_err(|_| {
                 CommandError::internal("The cleanup scan job state lock was poisoned.")
             })?;
@@ -383,14 +386,21 @@ impl CleanupScanJobManager {
                     "A newer cleanup scan has replaced this scan.",
                 ));
             }
-            if job.status.phase != CleanupScanJobPhase::Completed || !job.status.result_available {
+            if !job.status.result_available {
                 return Err(CommandError::new(
                     "cleanup_scan_result_unavailable",
                     "The cleanup scan result is not ready yet.",
                 ));
             }
-            (job.result_path.clone(), job.index_path.clone())
+            (
+                job.result_path.clone(),
+                job.index_path.clone(),
+                job.status.phase != CleanupScanJobPhase::Completed,
+            )
         };
+        if partial {
+            return crate::cleanup::load_progressive_scan(&index_path, job_id);
+        }
         let bytes = private_storage::read_limited(&result_path, MAX_JOB_FILE_BYTES)
             .map_err(|error| {
                 CommandError::internal(format!("Could not read the cleanup scan result: {error}"))
@@ -778,6 +788,11 @@ impl CleanupScanJobManager {
             return;
         }
         match event {
+            CleanupScanWorkerEvent::Checkpoint { at_ms } => {
+                job.status.result_available = true;
+                job.status.updated_at_ms = at_ms;
+                job.status.last_progress_at_ms = Some(at_ms);
+            }
             CleanupScanWorkerEvent::Heartbeat { at_ms } => {
                 let resumed_without_progress = matches!(
                     job.status.phase,
@@ -1212,6 +1227,19 @@ pub fn maybe_run_worker() -> bool {
 
 fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclusions_path: &Path) {
     crate::cleanup::set_scan_activity_notifier(Arc::new(emit_worker_activity));
+    let expected_id = result_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_suffix(".result.json"))
+        .unwrap_or_default()
+        .to_owned();
+    crate::cleanup::set_scan_checkpoint_notifier(Arc::new(move |scan_id| {
+        if scan_id == expected_id {
+            emit_worker_event(&CleanupScanWorkerEvent::Checkpoint {
+                at_ms: now_millis(),
+            });
+        }
+    }));
     let cancelled = Arc::new(AtomicBool::new(false));
     let completed = Arc::new(AtomicBool::new(false));
     start_worker_control(Arc::clone(&cancelled), Arc::clone(&completed));
@@ -1526,6 +1554,22 @@ mod tests {
             decoded,
             CleanupScanWorkerEvent::Progress { at_ms: 42, .. }
         ));
+    }
+
+    #[test]
+    fn checkpoints_publish_a_read_only_preview_without_completing_the_job() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Scanning);
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Checkpoint {
+                at_ms: now_millis(),
+            },
+        );
+        let status = manager.status().unwrap().unwrap();
+        assert!(status.result_available);
+        assert_eq!(status.phase, CleanupScanJobPhase::Scanning);
     }
 
     #[test]

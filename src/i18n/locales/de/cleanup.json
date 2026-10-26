@@ -165,6 +165,8 @@
     }
   },
   "progress": {
+    "partialResult": "Unvollständiger Scan: bisher geprüfte Einträge.",
+    "noProgress": "Scan angehalten. Ergebnis ansehen oder erneut versuchen.",
     "scanningLocation": "Analysiere {{location}}",
     "paused": "Der Mac befindet sich im Ruhezustand; der Scan wird nach dem Aufwachen fortgesetzt",
     "stalled": "Der Scan wird automatisch fortgesetzt",

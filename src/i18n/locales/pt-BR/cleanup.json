@@ -165,6 +165,8 @@
     }
   },
   "progress": {
+    "partialResult": "Verificação incompleta: itens já verificados.",
+    "noProgress": "Verificação parada. Veja o resultado ou tente novamente.",
     "scanningLocation": "Analisando {{location}}",
     "paused": "O Mac está em repouso; a verificação continuará ao despertar",
     "stalled": "A verificação está se recuperando automaticamente",

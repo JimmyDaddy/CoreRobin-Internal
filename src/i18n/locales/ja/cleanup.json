@@ -165,6 +165,8 @@
     }
   },
   "progress": {
+    "partialResult": "未完了のスキャン：確認済みの項目のみ表示。",
+    "noProgress": "スキャンが停止しました。結果を確認するか再試行してください。",
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
     "paused": "Macはスリープ中です。復帰後にスキャンを続行します",
     "stalled": "スキャンを自動的に復旧しています",

@@ -57,6 +57,18 @@ type ActivityNotifier = Arc<dyn Fn() + Send + Sync>;
 // Installed only in the disposable scan worker, never in the desktop process.
 // Parallel quick-scan parts share this process-local, thread-safe notifier.
 static SCAN_ACTIVITY: OnceLock<ActivityNotifier> = OnceLock::new();
+type CheckpointNotifier = Arc<dyn Fn(&str) + Send + Sync>;
+static SCAN_CHECKPOINT: OnceLock<CheckpointNotifier> = OnceLock::new();
+
+pub(crate) fn set_scan_checkpoint_notifier(notifier: CheckpointNotifier) {
+    let _ = SCAN_CHECKPOINT.set(notifier);
+}
+
+fn report_scan_checkpoint(scan_id: &str) {
+    if let Some(notifier) = SCAN_CHECKPOINT.get() {
+        notifier(scan_id);
+    }
+}
 
 pub(crate) fn set_scan_activity_notifier(notifier: ActivityNotifier) {
     let _ = SCAN_ACTIVITY.set(notifier);
@@ -661,6 +673,7 @@ fn scan_directory_queue(
             .map_err(index_error)?;
         transaction.commit().map_err(index_error)?;
         stats.report(&last_path, home, on_progress, true);
+        report_scan_checkpoint(scan_id);
     }
     Ok(())
 }
@@ -1239,6 +1252,30 @@ pub(crate) fn load_indexed_scan(
     scan_id: &str,
 ) -> Result<CleanupScan, CommandError> {
     let connection = open_index_read_only(index_path)?;
+    let completed: bool = connection
+        .query_row(
+            "SELECT state='completed' FROM scans WHERE id=?1",
+            params![scan_id],
+            |row| row.get(0),
+        )
+        .map_err(index_error)?;
+    if !completed {
+        return Err(CommandError::new(
+            "cleanup_scan_result_unavailable",
+            "The scan has not completed.",
+        ));
+    }
+    load_scan(&connection, index_path, scan_id)
+}
+
+pub(crate) fn load_progressive_scan(
+    index_path: &Path,
+    scan_id: &str,
+) -> Result<CleanupScan, CommandError> {
+    let connection = open_index_read_only(index_path)?;
+    connection
+        .execute_batch("BEGIN DEFERRED")
+        .map_err(index_error)?;
     load_scan(&connection, index_path, scan_id)
 }
 
@@ -2429,7 +2466,7 @@ fn load_scan(
             "SELECT sampled_at_ms, duration_ms, profile, target_kind, target_path,
                     scope_paths_json, scanned_entry_count, unreadable_entry_count,
                     unreadable_paths_json, root_node_id
-             FROM scans WHERE id = ?1 AND state = 'completed'",
+             FROM scans WHERE id = ?1",
             params![scan_id],
             |row| {
                 Ok((
@@ -2447,16 +2484,28 @@ fn load_scan(
             },
         )
         .map_err(index_error)?;
+    let partial: bool = connection
+        .query_row(
+            "SELECT state!='completed' FROM scans WHERE id=?1",
+            params![scan_id],
+            |row| row.get(0),
+        )
+        .map_err(index_error)?;
     let root = materialize_node(connection, scan_id, root_node_id, 1)?;
     let locations = load_locations(connection, scan_id)?;
     let largest_files = load_largest_files(connection, scan_id)?;
     Ok(CleanupScan {
+        partial,
         scan_id: scan_id.to_owned(),
         profile: parse_profile(&profile),
         scope_paths: serde_json::from_str(&scope_paths_json).unwrap_or_default(),
         indexed: true,
         index_byte_size: index_file_size(index_path),
-        sampled_at_ms: u64::try_from(sampled_at_ms).unwrap_or(0),
+        sampled_at_ms: if partial {
+            now_millis_u64()
+        } else {
+            u64::try_from(sampled_at_ms).unwrap_or(0)
+        },
         duration_ms: u64::try_from(duration_ms).unwrap_or(0),
         root,
         locations,
@@ -2466,7 +2515,7 @@ fn load_scan(
         scanned_entry_count: usize::try_from(scanned_entry_count).unwrap_or(0),
         unreadable_entry_count: usize::try_from(unreadable_entry_count).unwrap_or(0),
         unreadable_paths: serde_json::from_str(&unreadable_paths_json).unwrap_or_default(),
-        deletion_available: true,
+        deletion_available: !partial,
         target_kind: parse_target_kind(&target_kind),
         target_path,
     })
@@ -5344,6 +5393,11 @@ mod tests {
             )
             .unwrap();
         assert!(remaining > 0 && remaining < 160);
+        let preview = load_progressive_scan(&index_path, "resume-batches").unwrap();
+        assert!(preview.partial);
+        assert!(!preview.deletion_available);
+        assert!(preview.root.allocated_size_bytes > 0);
+        assert!(load_indexed_scan(&index_path, "resume-batches").is_err());
         // The root's completed enumeration is durable. Removing a completed
         // sibling proves recovery does not enumerate it again or reset totals.
         fs::remove_file(fixture.path().join("folder-000/item.bin")).unwrap();
@@ -5363,6 +5417,8 @@ mod tests {
         );
         assert_eq!(resumed.root.item_count, expected.root.item_count);
         assert_eq!(resumed.scanned_entry_count, expected.scanned_entry_count);
+        assert!(!resumed.partial);
+        assert!(resumed.deletion_available);
     }
 
     #[test]

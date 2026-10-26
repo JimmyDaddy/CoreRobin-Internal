@@ -503,6 +503,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const focusChanged = changedIds.has(focus.id);
   const freshness = focusChanged ? "changed" : snapshotStatus;
   const refreshableFocus = Boolean(
+    !snapshot.partial &&
     snapshot.indexed &&
     focus.id.startsWith(`index:${snapshot.scanId}:`) &&
     (focus.kind === "folder" || focus.kind === "restricted") &&
@@ -704,7 +705,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   };
 
   const refreshFocusedFolder = () => {
-    if (!refreshableFocus || refreshingFocus) return;
+    if (!refreshableFocus || refreshingFocus || snapshot.partial) return;
     setSubtreeError(null);
     onRefreshDirectory(focus.id);
   };

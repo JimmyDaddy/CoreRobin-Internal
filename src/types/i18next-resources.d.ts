@@ -1024,6 +1024,8 @@ export default interface Resources {
         "systemDisk": "系统磁盘",
         "trash": "废纸篓"
       },
+      "noProgress": "扫描长时间没有进展。你可以查看现有结果，或重新扫描。",
+      "partialResult": "扫描尚未完成，当前地图仅展示已扫描的内容。",
       "paused": "电脑已休眠，唤醒后将继续扫描",
       "recoveryFailed": "扫描在自动恢复后仍未继续。你可以重新扫描，或选择较小的范围。",
       "rootStalled": "系统磁盘扫描长时间没有进展，CoreRobin 已结束本次任务。请重新扫描，或改为扫描指定文件夹。",
