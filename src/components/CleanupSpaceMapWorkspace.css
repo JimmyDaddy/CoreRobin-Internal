@@ -106,7 +106,8 @@
 }
 
 .cleanup-map__content.is-split {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  /* A track takes at least half the available width: two columns at most, one below 656px. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(320px, calc(50% - 8px))), 1fr));
   column-gap: 16px;
   align-items: start;
 }

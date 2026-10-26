@@ -14,7 +14,7 @@ async function openResult(page: Page, width: number, presentation: "map" | "list
   if (presentation === "list") await page.getByRole("button", { name: "列表", exact: true }).click();
 }
 
-for (const width of [1040, 1180]) {
+for (const width of [1040, 1180, 1440, 1920, 2560]) {
   test(`completed scan pairs the chart with a searchable browser at ${width}px`, async ({ page }) => {
     await openResult(page, width, "map");
     const chart = page.locator(".cleanup-map__scan-stage");
@@ -23,8 +23,12 @@ for (const width of [1040, 1180]) {
     await expect(list).toBeVisible();
     const plot = (await chart.boundingBox())!;
     const browser = (await list.boundingBox())!;
+    const basket = (await page.locator(".cleanup-map__dropzone").boundingBox())!;
     expect(browser.x).toBeGreaterThanOrEqual(plot.x + plot.width);
     expect(Math.abs(browser.y - plot.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(basket.x - plot.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(basket.width - plot.width)).toBeLessThanOrEqual(2);
+    expect(basket.y).toBeGreaterThanOrEqual(plot.y + plot.height);
     for (const name of ["Users", "demo", "Downloads", "Installers"]) {
       await list.getByRole("button", { name: `进入 ${name}`, exact: true }).click();
     }
