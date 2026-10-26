@@ -26,6 +26,8 @@ for (const width of [1040, 1180, 1440, 1920, 2560]) {
     const basket = page.locator(".cleanup-map__dropzone");
     expect(browser.x).toBeGreaterThanOrEqual(plot.x + plot.width);
     expect(Math.abs(browser.y - plot.y)).toBeLessThanOrEqual(2);
+    expect(browser.width).toBeLessThanOrEqual(340);
+    expect((await page.locator(".cleanup-map__content").boundingBox())!.width).toBeLessThanOrEqual(1020);
     await expect(basket).toHaveCSS("position", "fixed");
     await expect(basket).toHaveClass(/is-collapsed/);
     await expect(list.locator(".cleanup-map__legend")).toBeVisible();

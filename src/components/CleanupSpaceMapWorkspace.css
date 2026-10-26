@@ -104,19 +104,28 @@
 }
 
 .cleanup-map__content.is-split {
-  /* A track takes at least half the available width: two columns at most, one below 656px. */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(320px, calc(50% - 8px))), 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1020px;
+  margin-inline: auto;
   column-gap: 16px;
-  align-items: start;
+  align-items: flex-start;
 }
+.cleanup-map__content.is-split > .cleanup-map__scan-stage { flex: 1 1 360px; min-width: 0; }
 .cleanup-map__content.is-split > .cleanup-index-list {
+  flex: 0 1 340px;
+  width: 340px;
+  max-width: 100%;
+  margin-inline: auto;
   padding: 0 0 0 16px;
   border-left: 1px solid var(--border);
 }
+.cleanup-map__workspace.is-split .cleanup-map__browser-toolbar { width: 100%; max-width: 1020px; margin-inline: auto; }
 .cleanup-index-list.is-compact .cleanup-index-list__viewport { height: clamp(280px, calc(100vh - 370px), 520px); }
 .cleanup-index-list.is-compact .cleanup-index-list__frame { border: 0; border-radius: 0; background: transparent; }
 .cleanup-index-list.is-compact .cleanup-index-list__footer { min-height: 0; padding: 0; border: 0; background: transparent; }
-.cleanup-map__content.is-split > .cleanup-map__pending { grid-column: 1 / -1; }
+.cleanup-map__content.is-split > .cleanup-map__pending { flex-basis: 100%; }
 
 .cleanup-map__legend > div + div { border-top: 1px solid var(--border); }
 .cleanup-map__legend button { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 44px; padding: 6px 7px; color: var(--text); border: 1px solid transparent; border-radius: 9px; background: transparent; text-align: left; }
