@@ -48,14 +48,8 @@ const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
 // Delete scan rows in bounded batches so no single statement holds the WAL
 // write lock long enough to stall a concurrent scan worker.
 const INDEX_DELETE_BATCH: usize = 5_000;
-// Re-check the index byte budget every this many scanned entries and trim
-// recovery-only file identities so a large scan cannot hit the byte cap.
-const INDEX_SPACE_CHECK_INTERVAL: usize = 4_096;
-// Percent of MAX_INDEX_BYTES at which a new scan retires surplus generations
-// before writing, and the watermarks used by the mid-scan seen_files trim.
+// Retire surplus generations based on live pages, not reusable free pages.
 const INDEX_RETIRE_THRESHOLD_PERCENT: i64 = 75;
-const INDEX_TRIM_HIGH_PERCENT: i64 = 85;
-const INDEX_TRIM_LOW_PERCENT: i64 = 75;
 const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -1751,13 +1745,6 @@ fn scan_directory_into_index(
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context
-            .stats
-            .scanned_entry_count
-            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
-        {
-            trim_seen_files_for_index_space(transaction, context.scan_id)?;
-        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -2062,13 +2049,6 @@ fn scan_direct_files_into_index(
             continue;
         }
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context
-            .stats
-            .scanned_entry_count
-            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
-        {
-            trim_seen_files_for_index_space(transaction, context.scan_id)?;
-        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -4219,62 +4199,21 @@ fn retire_surplus_generations(
 
 fn index_bytes(connection: &Connection) -> Result<i64, CommandError> {
     let page_count = current_page_count(connection)?;
+    let free_pages: i64 = connection
+        .query_row("PRAGMA freelist_count", [], |row| row.get(0))
+        .map_err(index_error)?;
     let page_size: i64 = connection
         .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
         .map_err(index_error)?;
-    Ok(page_count.saturating_mul(page_size))
+    Ok(page_count
+        .saturating_sub(free_pages)
+        .saturating_mul(page_size))
 }
 
 fn current_page_count(connection: &Connection) -> Result<i64, CommandError> {
     connection
         .query_row("PRAGMA page_count", [], |row| row.get::<_, i64>(0))
         .map_err(index_error)
-}
-
-fn trim_seen_files_for_index_space(
-    transaction: &Transaction<'_>,
-    scan_id: &str,
-) -> Result<(), CommandError> {
-    let page_size: i64 = transaction
-        .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
-        .map_err(index_error)?;
-    let budget_pages = (MAX_INDEX_BYTES as i64)
-        .checked_div(page_size.max(1))
-        .unwrap_or(0);
-    trim_seen_files_to_budget(transaction, scan_id, budget_pages)
-}
-
-fn trim_seen_files_to_budget(
-    transaction: &Transaction<'_>,
-    scan_id: &str,
-    budget_pages: i64,
-) -> Result<(), CommandError> {
-    let high = budget_pages.saturating_mul(INDEX_TRIM_HIGH_PERCENT) / 100;
-    let low = budget_pages.saturating_mul(INDEX_TRIM_LOW_PERCENT) / 100;
-    if current_page_count(transaction)? < high {
-        return Ok(());
-    }
-    // seen_files only carries resume state for the current scan; the in-memory
-    // identity set keeps the running scan correct. Dropping the persisted rows
-    // frees pages for reuse so a very large scan keeps going instead of
-    // failing with SQLITE_FULL. A resumed worker may re-count some files.
-    loop {
-        let deleted = transaction
-            .execute(
-                "DELETE FROM seen_files WHERE scan_id = ?1 AND identity_a IN (
-                   SELECT identity_a FROM seen_files WHERE scan_id = ?1 LIMIT ?2
-                 )",
-                params![scan_id, INDEX_DELETE_BATCH as i64],
-            )
-            .map_err(index_error)?;
-        if deleted == 0 {
-            break;
-        }
-        if current_page_count(transaction)? < low {
-            break;
-        }
-    }
-    Ok(())
 }
 
 fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandError> {
@@ -5101,10 +5040,10 @@ mod tests {
     }
 
     #[test]
-    fn seen_files_are_trimmed_when_the_index_nears_its_byte_budget() {
+    fn reusable_pages_do_not_trigger_recovery_identity_eviction() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
-        let mut connection = open_index(&index_path).unwrap();
+        let connection = open_index(&index_path).unwrap();
         initialize_schema(&connection).unwrap();
         prepare_scan(
             &connection,
@@ -5126,11 +5065,15 @@ mod tests {
                 )
                 .unwrap();
         }
-        let pages = current_page_count(&connection).unwrap();
-        let transaction = connection.transaction().unwrap();
-        // A budget below the current page count forces the high watermark.
-        trim_seen_files_to_budget(&transaction, "trim", pages - 1).unwrap();
-        transaction.commit().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE ballast(data BLOB); INSERT INTO ballast VALUES(zeroblob(2097152));
+             DELETE FROM ballast;",
+            )
+            .unwrap();
+        let physical_bytes = current_page_count(&connection).unwrap() * 4096;
+        assert!(index_bytes(&connection).unwrap() < physical_bytes / 2);
+        retire_surplus_generations_when_index_full(&connection, "trim").unwrap();
 
         let remaining: i64 = connection
             .query_row(
@@ -5139,14 +5082,14 @@ mod tests {
                 |row| row.get::<_, i64>(0),
             )
             .unwrap();
-        assert_eq!(remaining, 0);
+        assert_eq!(remaining, 6_000);
     }
 
     #[test]
     fn seen_files_are_kept_while_the_index_has_room() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
-        let mut connection = open_index(&index_path).unwrap();
+        let connection = open_index(&index_path).unwrap();
         initialize_schema(&connection).unwrap();
         prepare_scan(
             &connection,
@@ -5166,9 +5109,7 @@ mod tests {
                 params!["keep"],
             )
             .unwrap();
-        let transaction = connection.transaction().unwrap();
-        trim_seen_files_to_budget(&transaction, "keep", i64::MAX).unwrap();
-        transaction.commit().unwrap();
+        retire_surplus_generations_when_index_full(&connection, "keep").unwrap();
 
         let remaining: i64 = connection
             .query_row(
