@@ -56,7 +56,7 @@ describe("indexed cleanup navigation", () => {
     current.root.children = [{ ...file("file", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null }];
     const props = { snapshot: current, snapshotStatus: "updating" as const, scanActive: true, scanPhase: "scanning" as const, onDeletionApplied: vi.fn() };
     const view = render(<CleanupSpaceMap {...props} />);
-    const canvas = view.container.querySelector(".cleanup-map__canvas")!;
+    const canvas = view.container.querySelector(".cleanup-map__scan-stage")!;
     fireEvent.mouseEnter(canvas);
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
     fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
@@ -83,7 +83,7 @@ describe("indexed cleanup navigation", () => {
     await screen.findByRole("button", { name: "Visible file" });
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
     fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
-    fireEvent.mouseLeave(view.container.querySelector(".cleanup-map__canvas")!);
+    fireEvent.mouseLeave(view.container.querySelector(".cleanup-map__scan-stage")!);
     view.rerender(<CleanupSpaceMap {...props} scanActive={false} snapshot={{ ...current, partial: false, deletionAvailable: true, sampledAtMs: 2000, root: { ...current.root } }} />);
     await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("button", { name: "First folder" }).getAttribute("aria-current")).toBe("page");

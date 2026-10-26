@@ -3835,7 +3835,7 @@ code,
 }
 .cleanup-map__center-control:disabled { cursor: default; opacity: 1; }
 .cleanup-map__center-control.is-changed { border-color: rgba(239, 182, 94, 0.56); background: var(--amber-soft); }
-.cleanup-map__center-control span {
+.cleanup-map__center-control > span {
   width: 100%;
   overflow: hidden;
   color: var(--text-muted);

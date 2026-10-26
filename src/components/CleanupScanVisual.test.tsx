@@ -9,13 +9,13 @@ import type { CleanupScanJobPhase } from "../types";
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("scan motion follows worker activity", () => {
-  it("stops after no new entries and restarts only on new data or a new phase", () => {
+  it("preserves worker activity until the worker pauses or the document hides", () => {
     vi.useFakeTimers();
     const props = { phase: "scanning" as CleanupScanJobPhase, entries: 100 };
-    const hook = renderHook(({ phase, entries }) => useCleanupScanMotion(phase, entries, "scan"), { initialProps: props });
+    const hook = renderHook(({ phase }) => useCleanupScanMotion(phase), { initialProps: props });
     expect(hook.result.current).toBe(true);
     act(() => vi.advanceTimersByTime(6_500));
-    expect(hook.result.current).toBe(false);
+    expect(hook.result.current).toBe(true);
     hook.rerender({ ...props, entries: 101 });
     expect(hook.result.current).toBe(true);
     const visibility = vi.spyOn(document, "visibilityState", "get");

@@ -180,7 +180,8 @@ export function useCleanupScan() {
       && trackerRef.current === tracker
       && activeJobIdRef.current === initialStatus.jobId
     ) {
-      setPhase(status.phase);
+      // Keep the current surface mounted until the completed index has loaded.
+      setPhase(status.phase === "completed" ? "finalizing" : status.phase);
       setProgress(status.progress);
       setCancelling(status.phase === "cancelling");
       setLoading(
@@ -189,7 +190,8 @@ export function useCleanupScan() {
         || status.phase === "finalizing"
         || status.phase === "paused"
         || status.phase === "cancelling"
-        || status.phase === "stalled",
+        || status.phase === "stalled"
+        || status.phase === "completed",
       );
 
       if (status.phase === "completed") {

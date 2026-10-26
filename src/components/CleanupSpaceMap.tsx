@@ -51,7 +51,7 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
-import { CleanupScanEffects, CleanupScanField, useCleanupScanMotion } from "./CleanupScanVisual";
+import { CleanupScanEffects, CleanupScanField, CleanupScanValue, useCleanupScanMotion } from "./CleanupScanVisual";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 import { CleanupSettlementDialog } from "./CleanupSettlementDialog";
 import { PathActions } from "./PathActions";
@@ -446,8 +446,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
   const visualPhase = snapshotPending && !scanActive ? "paused"
     : scanActive ? snapshot.partial ? scanPhase ?? "preparing" : "preparing"
-    : scanPhase === "completed" && !snapshot.partial ? "completed" : null;
-  const motionAvailable = useCleanupScanMotion(visualPhase, scanProgress?.scannedEntryCount ?? snapshot.scannedEntryCount, snapshot.scanId);
+    : (scanPhase === "completed" || scanPhase === null) && !snapshot.partial ? "completed" : null;
+  const motionAvailable = useCleanupScanMotion(visualPhase);
   const scanMoving = motionAvailable && !browsing;
   const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
@@ -1319,9 +1319,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             {refreshableFocus ? <button type="button" className="button button--secondary" disabled={refreshingFocus} onClick={refreshFocusedFolder}>{refreshingFocus ? <LoaderCircle className="is-spinning" size={14} /> : <RefreshCw size={14} />}{t("cleanup:map.refreshCurrent")}</button> : null}
           </div>
           <div className="cleanup-map__canvas" ref={canvasRef}
-            onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
-            onFocusCapture={() => setKeyboardBrowsing(true)}
-            onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}
             data-scan-phase={scanActive ? scanPhase ?? "preparing" : scanPhase ?? "idle"}
             data-scanned-entries={scanProgress?.scannedEntryCount}
           >
@@ -1368,8 +1365,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
             ) : null}
             {presentation === "map" ? (
-              <div className="cleanup-map__scan-stage" data-phase={visualPhase ?? "idle"} data-running={scanMoving} data-quiet={browsing}>
-              {visualPhase ? <CleanupScanField /> : null}
+              <div className="cleanup-map__scan-stage" data-phase={visualPhase ?? "idle"} data-running={scanMoving} data-quiet={browsing}
+                onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
+                onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
+                onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
+              {visualPhase ? <CleanupScanField revision={snapshot.scannedEntryCount} /> : null}
               <div className="cleanup-map__chart-frame" style={{ aspectRatio: chartFrameRatio }}>
               <div className="cleanup-map__surface">
                 {visualPhase ? <CleanupScanEffects arcs={arcs} phase={visualPhase} scanKey={snapshot.scanId} focusKey={focus.id} running={scanMoving} /> : null}
@@ -1404,14 +1404,16 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   }}
                 >
                   <span>{nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</span>
-                  <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
+                  <strong><CleanupScanValue key={focus.id} value={focus.allocatedSizeBytes} format={formatBytes} /></strong>
                   {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
                 </button>
               </div>
               </div>
               </div>
             ) : (
-              <div className="cleanup-index-list">
+              <div className="cleanup-index-list" onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
+                onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
+                onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
                 <div className="cleanup-index-list__toolbar">
                   <Select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
                     <option value="size">{t("cleanup:map.view.sortSize")}</option>

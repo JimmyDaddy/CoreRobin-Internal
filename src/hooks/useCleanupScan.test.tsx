@@ -48,6 +48,7 @@ function Harness() {
       <span>{scan.phase ?? "idle"}</span>
       <span>{scan.snapshot?.scanId ?? "no-snapshot"}</span>
       <span>{scan.snapshotStatus}</span>
+      <span data-testid="scan-loading">{String(scan.loading)}</span>
       <span>{scan.snapshot?.root.sizeBytes ?? 0} bytes</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
@@ -217,6 +218,26 @@ describe("cleanup scan lifecycle", () => {
     await screen.findByText("cancelled");
     expect(screen.getByText("cleanup-preview")).toBeTruthy();
     expect(historyStorage.setValue).not.toHaveBeenCalled();
+  });
+
+  it("keeps finalizing visible until the completed snapshot is ready", async () => {
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    let complete!: (value: CleanupScan) => void;
+    cleanupApi.loadCleanupScanJobResult.mockImplementation(() => new Promise((resolve) => { complete = resolve; }));
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "completed" });
+    await screen.findByText("finalizing");
+    expect(screen.getByTestId("scan-loading").textContent).toBe("true");
+    expect(screen.getByText("cleanup-preview")).toBeTruthy();
+    expect(screen.queryByText("completed")).toBeNull();
+    await act(async () => complete(latestSnapshot()));
+    await screen.findByText("completed");
+    expect(screen.getByTestId("scan-loading").textContent).toBe("false");
   });
 
   it("shows committed partial maps while scanning and restores the complete map on failure", async () => {

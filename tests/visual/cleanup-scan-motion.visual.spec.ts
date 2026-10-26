@@ -10,7 +10,10 @@ test("real scan states control motion, including stalled reads and reduced motio
   const orbit = page.locator(".scan-fx-orbit").first();
   await expect(scene).toHaveAttribute("data-running", "true");
   await expect.poll(() => orbit.evaluate((e) => getComputedStyle(e).animationName)).toBe("scan-orbit");
-  await expect(scene).toHaveAttribute("data-running", "false", { timeout: 9000 });
+  const clock = await orbit.evaluate((e) => { const a = e.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!; a.id = "continuous-orbit"; return a.currentTime as number; });
+  await page.waitForTimeout(6800);
+  await expect(scene).toHaveAttribute("data-running", "true");
+  expect(await orbit.evaluate((e) => e.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!.currentTime as number)).toBeGreaterThan(clock);
   await page.getByRole("button", { name: "New batch", exact: true }).click();
   await expect(scene).toHaveAttribute("data-running", "true");
   await expect(page.locator(".scan-fx-arrival")).toBeVisible();
@@ -18,8 +21,10 @@ test("real scan states control motion, including stalled reads and reduced motio
   for (const label of ["Pause", "Slow folder"]) {
     await page.getByRole("button", { name: label, exact: true }).click();
     await expect(scene).toHaveAttribute("data-running", "false");
-    await expect.poll(() => orbit.evaluate((e) => getComputedStyle(e).animationName)).toBe("none");
+    await expect.poll(() => orbit.evaluate((e) => getComputedStyle(e).animationPlayState)).toBe("paused");
   }
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  expect(await orbit.evaluate((e) => e.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!.id)).toBe("continuous-orbit");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByRole("button", { name: "Resume", exact: true }).click();
   await expect.poll(() => orbit.evaluate((e) => getComputedStyle(e).animationName)).toBe("none");
@@ -38,6 +43,20 @@ test("live discoveries share the original canvas and wait while the user is brow
   await expect(page.locator(".cleanup-map__center-control strong")).not.toHaveText(before);
   await expect(canvas).toHaveAttribute("data-original-canvas", "true");
   await page.screenshot({ path: test.info().outputPath("live-scan.png"), fullPage: true });
+});
+
+test("pointer navigation resumes the existing orbit instead of leaving it paused or restarting", async ({ page }) => {
+  const orbit = page.locator(".scan-fx-orbit").first();
+  await orbit.evaluate((element) => { element.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!.id = "navigation-orbit"; });
+  const canvas = page.locator("canvas.cleanup-map__sunburst");
+  const width = (await canvas.boundingBox())!.width;
+  await canvas.click({ position: { x: width / 2, y: width / 2 - 65 * width / 420 } });
+  const center = page.locator(".cleanup-map__center-control");
+  await expect(center).toBeEnabled();
+  await center.click();
+  await page.locator("#cleanup-title").hover();
+  await expect(page.locator(".cleanup-map__scan-stage")).toHaveAttribute("data-running", "true");
+  expect(await orbit.evaluate((element) => element.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!.id)).toBe("navigation-orbit");
 });
 
 test("completion preserves the folder and basket and leaves no continuing scan animations", async ({ page }) => {
