@@ -81,5 +81,23 @@
       "hours_one": "約1時間",
       "hours_other": "約{{count}}時間"
     }
+  },
+  "sleepReview": {
+    "details": "スリープを妨げているタスクを確認",
+    "markExpected": "このタスクは予定どおりです",
+    "expected": "予定どおり起動を維持（クリックで解除）",
+    "sessionNote": "今回の起動中のみ有効です。タスク終了またはプロセス再起動で解除されます。システム設定や元の測定値は変更しません。",
+    "plannedValue": "予定どおり起動を維持",
+    "plannedDescription": "確認したタスクは通知から除外されます。コンピュータは引き続き起動したままです。",
+    "kind": {
+      "system_sleep": "システムのスリープを防止",
+      "idle_sleep": "アイドル時のスリープを防止",
+      "display_sleep": "画面の点灯を維持"
+    },
+    "power": {
+      "ac": "電源に接続中",
+      "battery": "バッテリー使用中",
+      "unknown": "電源の状態は不明"
+    }
   }
 }

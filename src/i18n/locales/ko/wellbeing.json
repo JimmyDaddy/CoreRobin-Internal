@@ -81,5 +81,23 @@
       "hours_one": "약 1시간",
       "hours_other": "약 {{count}} 시간"
     }
+  },
+  "sleepReview": {
+    "details": "기기를 깨어 있게 하는 작업 보기",
+    "markExpected": "의도한 작업입니다",
+    "expected": "예정된 활성 작업 (클릭하여 취소)",
+    "sessionNote": "이 앱 세션에서 작업이 끝나거나 프로세스가 재시작될 때까지 적용됩니다. 시스템 설정과 원래 측정값은 유지됩니다.",
+    "plannedValue": "예정대로 활성 상태 유지",
+    "plannedDescription": "확인한 작업은 알림에서 제외됩니다. 컴퓨터는 계속 깨어 있습니다.",
+    "kind": {
+      "system_sleep": "시스템 절전 방지",
+      "idle_sleep": "유휴 절전 방지",
+      "display_sleep": "화면 켜짐 유지"
+    },
+    "power": {
+      "ac": "전원 연결됨",
+      "battery": "배터리 사용 중",
+      "unknown": "전원 상태 알 수 없음"
+    }
   }
 }

@@ -81,5 +81,23 @@
       "hours_one": "約 1 小時",
       "hours_other": "約 {{count}} 小時"
     }
+  },
+  "sleepReview": {
+    "details": "查看保持喚醒的工作",
+    "markExpected": "這是我計畫中的工作",
+    "expected": "已按計畫保持喚醒（點擊撤銷）",
+    "sessionNote": "僅本次開啟有效；工作結束或程序重啟後失效。不會更改系統設定，仍可查看原始資訊。",
+    "plannedValue": "按計畫保持喚醒",
+    "plannedDescription": "你已確認的工作不再提醒，電腦仍會保持喚醒。",
+    "kind": {
+      "system_sleep": "阻止系統睡眠",
+      "idle_sleep": "阻止閒置睡眠",
+      "display_sleep": "保持螢幕開啟"
+    },
+    "power": {
+      "ac": "正在連接電源",
+      "battery": "正在使用電池",
+      "unknown": "電源狀態未知"
+    }
   }
 }

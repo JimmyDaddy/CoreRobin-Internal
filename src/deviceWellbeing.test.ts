@@ -50,6 +50,7 @@ describe("device wellbeing", () => {
       durationSeconds: 1_800,
       kinds: ["idle_sleep", "display_sleep"],
       processIdentity: "46100:code",
+      reasons: ["Electron"],
     }]);
     expect(sleepWellbeingLevel(sleep, [application])).toBe("attention");
   });

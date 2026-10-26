@@ -1,0 +1,5 @@
+.sleep-details { margin-top: 12px; font-size: 12px; color: var(--text-soft); }
+.sleep-details summary { cursor: pointer; }
+.sleep-details ul { padding-left: 18px; }
+.sleep-details li { margin-block: 12px; overflow-wrap: anywhere; }
+.sleep-details li > strong, .sleep-details li > span { display: block; margin-bottom: 5px; }

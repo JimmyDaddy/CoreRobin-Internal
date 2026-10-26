@@ -14,6 +14,18 @@ beforeEach(async () => {
 });
 
 describe("DeviceWellbeing sleep actions", () => {
+  it("keeps raw reasons visible for intentional tasks and allows undo", () => {
+    const snapshot = getMockSnapshot();
+    snapshot.sensors.sleep = { available: true, sampledAtMs: 1, blockers: [sleepBlocker(41, "Video Encoder")] };
+    const toggle = vi.fn();
+    render(<DeviceWellbeing sensors={snapshot.sensors} applications={[application()]} expectedSleepNames={new Set(["Video Encoder"])} onToggleExpectedSleep={toggle} />);
+    fireEvent.click(screen.getByText("查看保持唤醒的任务"));
+    expect(screen.getByText("Active task")).toBeTruthy();
+    expect(screen.getByText("阻止空闲休眠")).toBeTruthy();
+    expect(screen.getByText("按计划保持唤醒")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /点击撤销/ }));
+    expect(toggle).toHaveBeenCalledWith("Video Encoder");
+  });
   it("opens the exact application process behind a sleep blocker", () => {
     const snapshot = getMockSnapshot();
     snapshot.sensors.sleep = {

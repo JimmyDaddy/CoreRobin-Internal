@@ -4523,6 +4523,24 @@ export default interface Resources {
       "unavailable": "当前平台没有向 CoreRobin 提供可靠的休眠阻止信息。",
       "unavailableValue": "无法读取"
     },
+    "sleepReview": {
+      "details": "查看保持唤醒的任务",
+      "expected": "已按计划保持唤醒（点击撤销）",
+      "kind": {
+        "display_sleep": "保持屏幕亮起",
+        "idle_sleep": "阻止空闲休眠",
+        "system_sleep": "阻止系统休眠"
+      },
+      "markExpected": "这是我计划中的任务",
+      "plannedDescription": "已将你确认的任务从提醒中排除，电脑仍会保持唤醒。",
+      "plannedValue": "按计划保持唤醒",
+      "power": {
+        "ac": "正在接通电源",
+        "battery": "正在使用电池",
+        "unknown": "电源状态未知"
+      },
+      "sessionNote": "仅本次打开有效；任务结束或进程重启后失效。不会更改系统设置，原始信息仍可查看。"
+    },
     "temperature": {
       "attention": "设备有些热；如果同时卡顿，可先减少高负荷任务。",
       "label": "设备温度",

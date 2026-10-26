@@ -81,5 +81,23 @@
       "hours_one": "ungefähr 1 Stunde",
       "hours_other": "ungefähr {{count}} Stunden"
     }
+  },
+  "sleepReview": {
+    "details": "Aktive Wachhalteaufgaben ansehen",
+    "markExpected": "Diese Aufgabe ist beabsichtigt",
+    "expected": "Beabsichtigt wach (zum Aufheben klicken)",
+    "sessionNote": "Gilt in dieser App-Sitzung bis zum Aufgabenende oder Prozessneustart. Systemeinstellungen und Rohdaten bleiben unverändert.",
+    "plannedValue": "Wie geplant wach",
+    "plannedDescription": "Bestätigte Aufgaben lösen keine Hinweise aus. Der Computer bleibt weiterhin wach.",
+    "kind": {
+      "system_sleep": "Verhindert Systemruhezustand",
+      "idle_sleep": "Verhindert Ruhezustand bei Inaktivität",
+      "display_sleep": "Hält den Bildschirm an"
+    },
+    "power": {
+      "ac": "Mit Strom verbunden",
+      "battery": "Akkubetrieb",
+      "unknown": "Stromquelle unbekannt"
+    }
   }
 }

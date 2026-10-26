@@ -81,5 +81,23 @@
       "hours_one": "about 1 hour",
       "hours_other": "about {{count}} hours"
     }
+  },
+  "sleepReview": {
+    "details": "View tasks keeping this device awake",
+    "markExpected": "This task is intentional",
+    "expected": "Expected awake task (click to undo)",
+    "sessionNote": "Applies during this app session, until the task ends or the process restarts. System settings and raw readings stay unchanged.",
+    "plannedValue": "Awake as intended",
+    "plannedDescription": "Tasks you marked intentional are excluded from reminders. The computer is still being kept awake.",
+    "kind": {
+      "system_sleep": "Prevents system sleep",
+      "idle_sleep": "Prevents idle sleep",
+      "display_sleep": "Keeps the display on"
+    },
+    "power": {
+      "ac": "Connected to power",
+      "battery": "Using battery",
+      "unknown": "Power source unknown"
+    }
   }
 }
