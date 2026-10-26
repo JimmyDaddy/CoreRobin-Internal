@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::os::unix::process::CommandExt;
 
 use crate::cleanup::{
-    build_indexed_scan, discard_indexed_scan, maintain_cleanup_index, refresh_indexed_directory,
+    build_indexed_scan, defer_discard_indexed_scan, maintain_cleanup_index,
+    refresh_indexed_directory,
 };
 use crate::error::CommandError;
 use crate::models::{
@@ -30,6 +31,9 @@ const WORKER_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 const MANAGER_WATCH_INTERVAL: Duration = Duration::from_millis(250);
 const HEARTBEAT_MISSING_AFTER: Duration = Duration::from_secs(5);
 const AUTO_RECOVER_AFTER: Duration = Duration::from_secs(30);
+const INDEX_NO_WORK_TIMEOUT: Duration = Duration::from_secs(120);
+const WORKER_UNRESPONSIVE_TIMEOUT: Duration = Duration::from_secs(30);
+const MAX_PATH_AUTO_RECOVERIES: u64 = 32;
 const MAX_BLIND_AUTO_RECOVERIES: usize = 12;
 const RECOVERY_SHARED_ANCESTOR_MIN_COMPONENTS: usize = 4;
 const FORCE_CANCEL_AFTER: Duration = Duration::from_secs(2);
@@ -87,6 +91,9 @@ pub struct CleanupScanJobManager {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum CleanupScanWorkerEvent {
+    Checkpoint {
+        at_ms: u64,
+    },
     Heartbeat {
         at_ms: u64,
     },
@@ -363,7 +370,7 @@ impl CleanupScanJobManager {
     }
 
     pub fn result(&self, job_id: &str) -> Result<CleanupScan, CommandError> {
-        let (result_path, index_path) = {
+        let (result_path, index_path, partial) = {
             let active = self.active.lock().map_err(|_| {
                 CommandError::internal("The cleanup scan job state lock was poisoned.")
             })?;
@@ -379,14 +386,21 @@ impl CleanupScanJobManager {
                     "A newer cleanup scan has replaced this scan.",
                 ));
             }
-            if job.status.phase != CleanupScanJobPhase::Completed || !job.status.result_available {
+            if !job.status.result_available {
                 return Err(CommandError::new(
                     "cleanup_scan_result_unavailable",
                     "The cleanup scan result is not ready yet.",
                 ));
             }
-            (job.result_path.clone(), job.index_path.clone())
+            (
+                job.result_path.clone(),
+                job.index_path.clone(),
+                job.status.phase != CleanupScanJobPhase::Completed,
+            )
         };
+        if partial {
+            return crate::cleanup::load_progressive_scan(&index_path, job_id);
+        }
         let bytes = private_storage::read_limited(&result_path, MAX_JOB_FILE_BYTES)
             .map_err(|error| {
                 CommandError::internal(format!("Could not read the cleanup scan result: {error}"))
@@ -521,6 +535,7 @@ impl CleanupScanJobManager {
     fn start_watchdog(self: &Arc<Self>, job_id: String, generation: u64, worker_attempt: u64) {
         let manager = Arc::clone(self);
         thread::spawn(move || {
+            let mut last_watch_at = now_millis();
             loop {
                 thread::sleep(MANAGER_WATCH_INTERVAL);
                 let action = {
@@ -540,6 +555,15 @@ impl CleanupScanJobManager {
                         return;
                     }
                     let now = now_millis();
+                    // A suspended computer cannot make progress. Start a fresh
+                    // observation window after the watchdog itself was suspended.
+                    if now.saturating_sub(last_watch_at)
+                        > HEARTBEAT_MISSING_AFTER.as_millis() as u64
+                    {
+                        job.status.last_heartbeat_at_ms = Some(now);
+                        job.status.last_progress_at_ms = Some(now);
+                    }
+                    last_watch_at = now;
                     if let Some(cancelled_at) = job.cancel_requested_at_ms
                         && now.saturating_sub(cancelled_at) >= FORCE_CANCEL_AFTER.as_millis() as u64
                     {
@@ -549,7 +573,14 @@ impl CleanupScanJobManager {
                             .status
                             .last_heartbeat_at_ms
                             .unwrap_or(job.status.started_at_ms);
-                        if now.saturating_sub(heartbeat_at)
+                        if let Some((code, message)) = stalled_worker_error(job, now) {
+                            job.status.phase = CleanupScanJobPhase::Failed;
+                            job.status.updated_at_ms = now;
+                            job.status.error_code = Some(code.to_owned());
+                            job.status.error_message = Some(message.to_owned());
+                            persist_failure_diagnostic(job);
+                            job.child.take().map(CleanupScanWatchdogAction::Exhausted)
+                        } else if now.saturating_sub(heartbeat_at)
                             >= HEARTBEAT_MISSING_AFTER.as_millis() as u64
                         {
                             job.status.phase = CleanupScanJobPhase::Paused;
@@ -558,11 +589,9 @@ impl CleanupScanJobManager {
                         } else if should_attempt_path_recovery(job, now) {
                             job.status.phase = CleanupScanJobPhase::Stalled;
                             job.status.updated_at_ms = now;
-                            let recovery_path = if job.allow_path_exclusions {
-                                // Every path recovery adds a distinct excluded subtree, so these
-                                // attempts make monotonic progress and do not need an arbitrary
-                                // retry cap. Repeating the same stall broadens toward its parent
-                                // until no safe recovery path remains.
+                            let recovery_path = if job.worker_attempt > MAX_PATH_AUTO_RECOVERIES {
+                                None
+                            } else if job.allow_path_exclusions {
                                 next_recovery_path(
                                     &job.status.progress.current_path,
                                     &job.skipped_paths,
@@ -759,6 +788,11 @@ impl CleanupScanJobManager {
             return;
         }
         match event {
+            CleanupScanWorkerEvent::Checkpoint { at_ms } => {
+                job.status.result_available = true;
+                job.status.updated_at_ms = at_ms;
+                job.status.last_progress_at_ms = Some(at_ms);
+            }
             CleanupScanWorkerEvent::Heartbeat { at_ms } => {
                 let resumed_without_progress = matches!(
                     job.status.phase,
@@ -920,7 +954,7 @@ impl CleanupScanJobManager {
 }
 
 fn discard_abandoned_scan(index_path: &Path, scan_id: &str) {
-    if let Err(error) = discard_indexed_scan(index_path, scan_id) {
+    if let Err(error) = defer_discard_indexed_scan(index_path, scan_id) {
         eprintln!(
             "Could not discard the abandoned cleanup scan index {scan_id}: {}",
             error.message
@@ -1024,6 +1058,40 @@ fn should_attempt_path_recovery(job: &CleanupScanJobRuntime, now: u64) -> bool {
         .unwrap_or(job.status.started_at_ms);
     worker_phase_allows_path_recovery(job.worker_phase)
         && now.saturating_sub(progress_at) >= AUTO_RECOVER_AFTER.as_millis() as u64
+}
+
+fn stalled_worker_error(
+    job: &CleanupScanJobRuntime,
+    now: u64,
+) -> Option<(&'static str, &'static str)> {
+    let heartbeat = job
+        .status
+        .last_heartbeat_at_ms
+        .unwrap_or(job.status.started_at_ms);
+    if now.saturating_sub(heartbeat) >= WORKER_UNRESPONSIVE_TIMEOUT.as_millis() as u64 {
+        return Some((
+            "cleanup_scan_worker_unresponsive",
+            "The scan worker stopped responding. Retry the scan to continue from its saved work.",
+        ));
+    }
+    let work = job
+        .status
+        .last_progress_at_ms
+        .unwrap_or(job.status.started_at_ms);
+    if now.saturating_sub(work) < INDEX_NO_WORK_TIMEOUT.as_millis() as u64 {
+        return None;
+    }
+    match job.worker_phase {
+        CleanupScanJobPhase::Preparing => Some((
+            "cleanup_scan_preparation_stalled",
+            "The scan could not finish preparing its directory index. Retry the scan.",
+        )),
+        CleanupScanJobPhase::Finalizing => Some((
+            "cleanup_scan_finalization_stalled",
+            "The scan stopped making progress while preparing its space map. Your previous result is still available.",
+        )),
+        _ => None,
+    }
 }
 
 fn worker_phase_allows_path_recovery(phase: CleanupScanJobPhase) -> bool {
@@ -1158,6 +1226,20 @@ pub fn maybe_run_worker() -> bool {
 }
 
 fn run_worker(request_path: &Path, result_path: &Path, index_path: &Path, exclusions_path: &Path) {
+    crate::cleanup::set_scan_activity_notifier(Arc::new(emit_worker_activity));
+    let expected_id = result_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_suffix(".result.json"))
+        .unwrap_or_default()
+        .to_owned();
+    crate::cleanup::set_scan_checkpoint_notifier(Arc::new(move |scan_id| {
+        if scan_id == expected_id {
+            emit_worker_event(&CleanupScanWorkerEvent::Checkpoint {
+                at_ms: now_millis(),
+            });
+        }
+    }));
     let cancelled = Arc::new(AtomicBool::new(false));
     let completed = Arc::new(AtomicBool::new(false));
     start_worker_control(Arc::clone(&cancelled), Arc::clone(&completed));
@@ -1475,6 +1557,22 @@ mod tests {
     }
 
     #[test]
+    fn checkpoints_publish_a_read_only_preview_without_completing_the_job() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Scanning);
+        manager.apply_worker_event(
+            "fixture",
+            1,
+            1,
+            CleanupScanWorkerEvent::Checkpoint {
+                at_ms: now_millis(),
+            },
+        );
+        let status = manager.status().unwrap().unwrap();
+        assert!(status.result_available);
+        assert_eq!(status.phase, CleanupScanJobPhase::Scanning);
+    }
+
+    #[test]
     fn terminal_job_phases_are_explicit() {
         assert!(CleanupScanJobPhase::Cancelled.is_terminal());
         assert!(CleanupScanJobPhase::Completed.is_terminal());
@@ -1698,6 +1796,36 @@ mod tests {
         assert_eq!(status.phase, CleanupScanJobPhase::Finalizing);
         assert_eq!(status.last_heartbeat_at_ms, Some(activity_at));
         assert_eq!(status.last_progress_at_ms, Some(activity_at));
+    }
+
+    #[test]
+    fn heartbeats_do_not_mask_stalled_preparation_or_finalization() {
+        for phase in [
+            CleanupScanJobPhase::Preparing,
+            CleanupScanJobPhase::Finalizing,
+        ] {
+            let manager = manager_with_phase(phase);
+            let now = now_millis();
+            let mut active = manager.active.lock().unwrap();
+            let job = active.as_mut().unwrap();
+            job.status.last_heartbeat_at_ms = Some(now);
+            job.status.last_progress_at_ms = Some(now.saturating_sub(121_000));
+            assert!(stalled_worker_error(job, now).is_some());
+            job.status.last_progress_at_ms = Some(now);
+            assert!(stalled_worker_error(job, now).is_none());
+        }
+    }
+
+    #[test]
+    fn missing_heartbeats_eventually_fail_instead_of_pausing_forever() {
+        let manager = manager_with_phase(CleanupScanJobPhase::Paused);
+        let active = manager.active.lock().unwrap();
+        assert_eq!(
+            stalled_worker_error(active.as_ref().unwrap(), now_millis())
+                .unwrap()
+                .0,
+            "cleanup_scan_worker_unresponsive"
+        );
     }
 
     #[test]

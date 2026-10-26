@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CleanupSpaceMap } from "./components/CleanupSpaceMap";
+import type { CleanupMapArc, CleanupMapNode } from "./cleanupMap";
 import i18n from "./i18n";
 import type { CleanupNode, CleanupScan, CleanupScanJobStatus } from "./types";
 
@@ -20,7 +21,9 @@ const cleanupApi = vi.hoisted(() => ({
 
 vi.mock("./api", () => cleanupApi);
 vi.mock("./components/CleanupSunburstCanvas", () => ({
-  CleanupSunburstCanvas: () => null,
+  CleanupSunburstCanvas: ({ arcs, onActivate, onSelect }: { arcs: CleanupMapArc[]; onActivate: (node: CleanupMapNode) => void; onSelect: (node: CleanupMapNode | null) => void }) => (
+    <div>{arcs.map(({ node }) => <button key={node.id} onMouseEnter={() => onSelect(node)} onMouseLeave={() => onSelect(null)} onClick={() => onActivate(node)}>{node.kind === "aggregate" ? "Other content" : node.name}</button>)}</div>
+  ),
 }));
 vi.mock("./components/CleanupDeleteDialog", () => ({
   CleanupDeleteDialog: () => null,
@@ -47,6 +50,93 @@ beforeEach(async () => {
 });
 
 describe("indexed cleanup navigation", () => {
+  it("defers live checkpoints while browsing and requires the current result before cleanup", async () => {
+    window.localStorage.setItem("core-robin.cleanup-map-mode.v1", "category");
+    const current = { ...snapshot(), partial: true, indexed: false, deletionAvailable: false };
+    current.root.children = [{ ...file("file", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null }];
+    const props = { snapshot: current, snapshotStatus: "updating" as const, scanActive: true, scanPhase: "scanning" as const, onDeletionApplied: vi.fn() };
+    const view = render(<CleanupSpaceMap {...props} />);
+    const canvas = view.container.querySelector(".cleanup-map__scan-stage")!;
+    fireEvent.mouseEnter(canvas);
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
+    const before = view.container.querySelector(".cleanup-map__center-control strong")?.textContent;
+    const completed = { ...current, partial: false, deletionAvailable: true, root: { ...current.root, allocatedSizeBytes: current.root.allocatedSizeBytes + 4096 } };
+    view.rerender(<CleanupSpaceMap {...props} snapshot={completed} scanActive={false} scanPhase="completed" />);
+    expect(view.container.querySelector(".cleanup-map__center-control strong")?.textContent).toBe(before);
+    expect(screen.getByRole("button", { name: "Update map" })).toBeTruthy();
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Update map" }));
+    await waitFor(() => expect(view.container.querySelector(".cleanup-map__center-control strong")?.textContent).not.toBe(before));
+    expect(view.container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "File paths" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("refreshes the visible indexed ancestry without losing the folder or basket on completion", async () => {
+    const current = { ...snapshot(), partial: true, deletionAvailable: false };
+    const child = { ...file("index:fixture:4", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null };
+    cleanupApi.getCleanupIndexedDirectory.mockResolvedValue({ ...current.root.children[0], children: [child] });
+    const props = { snapshot: current, snapshotStatus: "updating" as const, scanActive: true, onDeletionApplied: vi.fn() };
+    const view = render(<CleanupSpaceMap {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "First folder" }));
+    await screen.findByRole("button", { name: "Visible file" });
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
+    fireEvent.mouseLeave(view.container.querySelector(".cleanup-map__scan-stage")!);
+    view.rerender(<CleanupSpaceMap {...props} scanActive={false} snapshot={{ ...current, partial: false, deletionAvailable: true, sampledAtMs: 2000, root: { ...current.root } }} />);
+    await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("button", { name: "First folder" }).getAttribute("aria-current")).toBe("page");
+    expect(view.container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
+    expect((view.container.querySelector(".cleanup-map__basket-review") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps map selection when leaving the canvas and opens details without losing keyboard focus", () => {
+    const current = snapshot();
+    current.root.children = [file("file", "/fixture/file.bin")];
+    render(<CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+    const sector = screen.getByRole("button", { name: "Visible file" });
+    fireEvent.mouseEnter(sector);
+    fireEvent.mouseLeave(sector);
+    const details = screen.getByRole("button", { name: "Space details" });
+    fireEvent.click(details);
+    const dialog = screen.getByRole("dialog", { name: "Space details" });
+    expect(dialog.querySelector('[title="/fixture/file.bin"]')).not.toBeNull();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Close");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(details);
+  });
+
+  it("searches from the map and retains the selected file and basket across view switches", async () => {
+    vi.useFakeTimers();
+    const current = snapshot();
+    current.indexed = false;
+    current.root.children = [{ ...file("file", "/Users/demo/file.bin"), deletionProtected: false, protectionReason: null }];
+    const { container } = render(<CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Visible file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Visible" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    expect(container.querySelector(".cleanup-map__workspace.is-list")).not.toBeNull();
+    expect(screen.getByRole("checkbox").getAttribute("aria-label")).toContain("Remove from cleanup basket");
+    fireEvent.click(screen.getByRole("button", { name: "Space map" }));
+    expect(container.querySelector(".cleanup-map__selection")?.textContent).toContain("Visible file");
+    expect(container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
+    expect(screen.getByRole("button", { name: "Remove from cleanup basket" })).toBeTruthy();
+  });
+
+  it("returns through browsing history after entering a directory", () => {
+    const current = snapshot();
+    current.root.children[0].children = [file("file", "/fixture/first/file.bin")];
+    render(<CleanupSpaceMap snapshot={current} snapshotStatus="current" onDeletionApplied={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "First folder" }));
+    expect(screen.getByRole("button", { name: "Back" }).hasAttribute("disabled")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("button", { name: "Fixture" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: "Back" }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("opens a deep folder from the native index without a filesystem loading state", async () => {
     const current = snapshot();
     const first = current.root.children[0];
@@ -130,15 +220,15 @@ describe("indexed cleanup navigation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Show 50 more/ }));
-    const pagedButton = await screen.findByRole("button", { name: /Paged folder/ });
-    expect(screen.queryByRole("button", { name: /Other content/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+    const pagedButton = await screen.findByRole("button", { name: "Open Paged folder" });
     fireEvent.click(pagedButton);
 
     await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
       scanId: "fixture",
       directoryId: paged.id,
     }));
+    fireEvent.click(screen.getByRole("button", { name: "Space map" }));
     expect(await screen.findByRole("button", { name: /Visible file/ })).toBeTruthy();
   });
 
@@ -177,7 +267,7 @@ describe("indexed cleanup navigation", () => {
     ));
   });
 
-  it("opens a folder from the list with one click", async () => {
+  it("selects a list row before opening the folder with its explicit action", async () => {
     const current = snapshot();
     const indexed = folder("index:fixture:8", "Large Cache", "/fixture/cache");
     const nested = file("index:fixture:9", "/fixture/cache/file.bin");
@@ -201,8 +291,10 @@ describe("indexed cleanup navigation", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "List" }));
-    const row = await screen.findByRole("button", { name: /Large Cache/ });
+    const row = await screen.findByRole("button", { name: /^Large Cache/ });
     fireEvent.click(row);
+    expect(cleanupApi.getCleanupIndexedDirectory).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Open Large Cache" }));
 
     await waitFor(() => expect(cleanupApi.getCleanupIndexedDirectory).toHaveBeenCalledWith({
       scanId: "fixture",
@@ -258,7 +350,7 @@ describe("indexed cleanup navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "List" }));
     await act(async () => { await vi.advanceTimersByTimeAsync(200); });
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
-    fireEvent.click(screen.getByRole("button", { name: /Large Cache/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Large Cache" }));
     await act(async () => { await vi.advanceTimersByTimeAsync(200); });
     await act(async () => { oldPage.resolve({ items: [file("index:fixture:10", "/fixture/old-page.bin")], nextCursor: 120 }); });
 
@@ -363,9 +455,9 @@ describe("indexed cleanup navigation", () => {
     );
 
     expect(await screen.findByText("Showing potentially reclaimable categories")).toBeTruthy();
-    expect(container.querySelector(".cleanup-map__legend small")?.textContent).toContain("Summary · open");
+    expect(container.querySelector(".cleanup-map__selection small")?.textContent).toContain("Summary · open");
     expect(screen.queryByText("Protected")).toBeNull();
-    expect(container.querySelector(".cleanup-map__plan.is-collapsed")).not.toBeNull();
+    expect(container.querySelector(".cleanup-map__plan.is-collapsed")).toBeNull();
   });
 
   it("keeps stale data visible and starts an explicit background refresh", async () => {

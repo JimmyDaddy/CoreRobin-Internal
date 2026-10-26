@@ -86,6 +86,7 @@ import {
 import { buildHealthStateUpdate } from "./healthState";
 import { useNetworkConnections } from "./hooks/useNetworkConnections";
 import { useCleanupScan } from "./hooks/useCleanupScan";
+import { useExpectedSleep } from "./hooks/useExpectedSleep";
 import { useDesktopNotifications } from "./hooks/useDesktopNotifications";
 import { useDailyIncidents } from "./hooks/useDailyIncidents";
 import { usePublishHealthState } from "./hooks/usePublishHealthState";
@@ -700,10 +701,16 @@ function App() {
       : null,
     [diagnosticConnections, healthSnapshot, history],
   );
+  const expectedSleep = useExpectedSleep(snapshot, healthSnapshot, diagnosis?.applications ?? []);
+  const toggleExpectedSleep = (name: string) => {
+    expectedSleep.toggle(name);
+    setSelectedDailyIncident(null);
+  };
   const dailyIncidents = useDailyIncidents(
     diagnosis,
-    healthSnapshot,
+    expectedSleep.health,
     diagnosticConnections,
+    expectedSleep.suppressSleep,
   );
   const dailyIncidentsRef = useRef(dailyIncidents.retained);
   dailyIncidentsRef.current = dailyIncidents.retained;
@@ -711,7 +718,7 @@ function App() {
   const healthStateUpdate = useMemo(
     () => healthSnapshot && diagnosis
       ? buildHealthStateUpdate(
-          healthSnapshot,
+          expectedSleep.health ?? healthSnapshot,
           paused,
           dailyIncidents.active,
           dailyIncidents.pendingCount,
@@ -724,6 +731,7 @@ function App() {
       dailyIncidents.pendingCount,
       diagnosis,
       healthSnapshot,
+      expectedSleep.health,
       mainVisible,
       paused,
     ],
@@ -2374,7 +2382,10 @@ function App() {
                     incidents={dailyIncidents.active}
                     pendingIncidentCount={dailyIncidents.pendingCount}
                     diagnosis={activeDiagnosis}
-                    snapshot={snapshot}
+                    snapshot={expectedSleep.guideSnapshot ?? snapshot}
+                    rawSensors={snapshot.sensors}
+                    expectedSleepNames={expectedSleep.expectedNames}
+                    onToggleExpectedSleep={toggleExpectedSleep}
                     cleanupSnapshot={cleanupScan.snapshot}
                     cleanupLoading={cleanupScan.loading}
                     startupSnapshot={startupItems.snapshot}
@@ -2605,6 +2616,8 @@ function App() {
                   />
                   <DeviceWellbeing
                   sensors={snapshot.sensors}
+                  expectedSleepNames={expectedSleep.expectedNames}
+                  onToggleExpectedSleep={toggleExpectedSleep}
                   warmingUp={snapshot.warmingUp}
                   applications={diagnosis?.applications ?? []}
                   onInspectSleepBlocker={(identity) => {

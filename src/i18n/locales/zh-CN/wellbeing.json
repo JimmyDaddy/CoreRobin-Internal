@@ -81,5 +81,23 @@
       "hours_one": "约 1 小时",
       "hours_other": "约 {{count}} 小时"
     }
+  },
+  "sleepReview": {
+    "details": "查看保持唤醒的任务",
+    "markExpected": "这是我计划中的任务",
+    "expected": "已按计划保持唤醒（点击撤销）",
+    "sessionNote": "仅本次打开有效；任务结束或进程重启后失效。不会更改系统设置，原始信息仍可查看。",
+    "plannedValue": "按计划保持唤醒",
+    "plannedDescription": "已将你确认的任务从提醒中排除，电脑仍会保持唤醒。",
+    "kind": {
+      "system_sleep": "阻止系统休眠",
+      "idle_sleep": "阻止空闲休眠",
+      "display_sleep": "保持屏幕亮起"
+    },
+    "power": {
+      "ac": "正在接通电源",
+      "battery": "正在使用电池",
+      "unknown": "电源状态未知"
+    }
   }
 }

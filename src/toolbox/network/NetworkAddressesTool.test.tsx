@@ -70,7 +70,7 @@ it("localizes a missing native bridge instead of exposing the invoke error", asy
   const loadSnapshot = vi.fn(async () => { throw new TypeError("Cannot read properties of undefined (reading 'invoke')"); });
   render(<NetworkAddressesTool loadSnapshot={loadSnapshot} />);
 
-  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("原生执行能力"));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("当前系统上暂不可用"));
   expect(screen.getByRole("alert").textContent).not.toContain("invoke");
 });
 

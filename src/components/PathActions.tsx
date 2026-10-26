@@ -14,11 +14,12 @@ interface PathActionsProps {
   path: string;
   compact?: boolean;
   className?: string;
+  actions?: readonly PathAction[];
 }
 
 type PathAction = "reveal" | "preview" | "copy";
 
-export function PathActions({ path, compact = false, className }: PathActionsProps) {
+export function PathActions({ path, compact = false, className, actions = ["reveal", "preview", "copy"] }: PathActionsProps) {
   const { t } = useAppTranslation();
   const [running, setRunning] = useState<PathAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export function PathActions({ path, compact = false, className }: PathActionsPro
   return (
     <div className={["path-actions", compact ? "is-compact" : null, className].filter(Boolean).join(" ")}>
       <div className="path-actions__buttons">
-        {(["reveal", "preview", "copy"] as const).map((action) => (
+        {actions.map((action) => (
           <Button
             key={action}
             variant="secondary"

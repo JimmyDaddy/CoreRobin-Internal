@@ -77,7 +77,19 @@ pub async fn analyze_quick_cleanup(
         .map_err(AiError::storage)?
         .revision;
     let mut form = open_form("storage.quick_clean")?;
-    form["analysis"] = json!({"revision":revision,"categories":summaries});
+    // Source paths are for the local confirmation UI; do not add them to the
+    // provider's category-level analysis receipt.
+    let categories = summaries
+        .iter()
+        .map(|summary| {
+            json!({
+                "category":summary.category, "byteSize":summary.byte_size,
+                "itemCount":summary.item_count, "skippedCount":summary.skipped_count,
+                "available":summary.available, "limited":summary.limited
+            })
+        })
+        .collect::<Vec<_>>();
+    form["analysis"] = json!({"revision":revision,"categories":categories});
     form["note"] = json!(
         "Analysis completed in the shared Quick Cleanup feature. Nothing was deleted. The card lets the user select categories and explicitly confirm cleanup in the main window. The model cannot start quick cleanup."
     );

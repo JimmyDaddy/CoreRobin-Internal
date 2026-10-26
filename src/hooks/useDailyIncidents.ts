@@ -18,6 +18,7 @@ export function useDailyIncidents(
   diagnosis: SmartDiagnosisResult | null,
   snapshot: SystemHealthSnapshot | null,
   connections: NetworkConnectionsSnapshot | null,
+  suppressSleep = false,
 ) {
   const stateRef = useRef(createDailyIncidentEvaluationState());
   const [state, setState] = useState<DailyIncidentEvaluationState>(
@@ -26,14 +27,15 @@ export function useDailyIncidents(
 
   useEffect(() => {
     if (!diagnosis || !snapshot) return;
-    const next = evaluateDailyIncidents(stateRef.current, {
+    const current = suppressSleep ? { trackers: Object.fromEntries(Object.entries(stateRef.current.trackers).filter(([id]) => id !== "wellbeing:sleep")) } : stateRef.current;
+    const next = evaluateDailyIncidents(current, {
       diagnosis,
       snapshot,
       connections,
     });
     stateRef.current = next;
     setState(next);
-  }, [connections, diagnosis, snapshot]);
+  }, [connections, diagnosis, snapshot, suppressSleep]);
 
   return useMemo(() => ({
     active: activeDailyIncidents(state),

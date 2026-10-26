@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "Escaneo completo",
+    "partialResult": "Resultados parciales",
+    "noProgress": "Análisis detenido. Ver resultado o reintentar.",
     "scanningLocation": "Analizando {{location}}",
     "paused": "El Mac está en reposo; el escaneo continuará al reactivarlo",
     "stalled": "El escaneo se está recuperando automáticamente",
@@ -198,6 +201,8 @@
     "title": "Para qué se utiliza este espacio comúnmente"
   },
   "map": {
+    "liveUpdatesPending": "Hay nuevos resultados; se actualizarán al terminar de explorar",
+    "liveUpdatesApply": "Actualizar mapa",
     "list": {
       "name": "Nombre",
       "share": "% de carpeta",
@@ -216,7 +221,20 @@
       "path": "Rutas de archivos",
       "category": "Propósito"
     },
-    "view": { "label": "Ver como", "map": "Mapa de espacio", "list": "Lista", "search": "Buscar en esta carpeta", "clearSearch": "Borrar búsqueda", "sortSize": "Ordenar por tamaño", "sortName": "Ordenar por nombre", "descending": "Descendente", "ascending": "Ascendente", "loading": "Leyendo el índice…", "loadFailed": "No se pudo cargar la lista. Inténtalo de nuevo.", "empty": "No hay elementos coincidentes" },
+    "view": {
+      "label": "Ver como",
+      "map": "Mapa de espacio",
+      "list": "Lista",
+      "search": "Buscar en esta carpeta",
+      "clearSearch": "Borrar búsqueda",
+      "sortSize": "Ordenar por tamaño",
+      "sortName": "Ordenar por nombre",
+      "descending": "Descendente",
+      "ascending": "Ascendente",
+      "loading": "Leyendo el índice…",
+      "loadFailed": "No se pudo cargar la lista. Inténtalo de nuevo.",
+      "empty": "No hay elementos coincidentes"
+    },
     "ariaLabel": "Mapa circular para {{name}}",
     "back": "Regresar un nivel",
     "breadcrumbs": "Jerarquía del mapa de espacio",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "No se puede agrupar directorios en niveles inferiores en este nivel.",
     "loadDeeperHint": "Seleccione esta carpeta para abrir el siguiente nivel desde el índice local.",
-    "otherContentHint": "Este grupo contiene elementos que no se muestran por separado debido a la capacidad del índice o a la página actual; no tienen por qué ser pequeños. Continúa por la lista o abre la carpeta actual en Finder.",
+    "otherContentHint": "Este grupo contiene elementos que no se muestran por separado en el mapa. Cambia a la lista para explorar y buscar el contenido indexado.",
     "loadingFolder": "Cargando esta carpeta…",
     "loadFailed": "No se pudo leer el índice de directorios",
     "loadMore": "Mostrar 50 elementos más",
     "refreshProgress": "{{count}} elementos comprobados · {{time}} s",
     "refreshFailed": "No se pudo actualizar la carpeta",
-    "directActionHint": "Arrastra un sector o una carpeta de la lista a la cesta inferior",
+    "directActionHint": "Arrastra un sector o un elemento de la lista a la cesta inferior",
     "protectedSelectionHint": "Las rutas del sistema y la raíz del directorio de inicio son solo de visualización; los elementos específicos dentro de su carpeta de inicio pueden entrar al cesto",
     "trashRootProtected": "El propio cesto está protegido; acceda a él y seleccione el contenido específico que desea eliminar",
     "planSummary": "{{count}} elementos seleccionados · {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "Los archivos del sistema y los ajustes importantes están protegidos y no se añadieron",
       "protectedPreview": "Protegido · no se puede eliminar",
       "protectedBadge": "Protegido",
-      "empty": "Arrastra aquí un sector o una carpeta para recogerlo antes de limpiar",
+      "empty": "Arrastra aquí un sector o elemento de la lista y revísalo antes de limpiar",
       "release": "Liberar para añadir a la cesta",
       "collected": "En la cesta de limpieza",
       "collectedHint": "Ya ha sido recogido; elimínalo de la cesta de abajo o continúa revisando",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "Quitar de la cesta de limpieza",
     "includedByParent": "Incluido por una carpeta superior",
-    "addToBasket": "Añadir a la cesta de limpieza"
+    "addToBasket": "Añadir a la cesta de limpieza",
+    "historyBack": "Atrás",
+    "refreshCurrent": "Actualizar esta carpeta",
+    "enterFolder": "Abrir carpeta",
+    "openFolder": "Abrir {{name}}"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "No se encontró ningún directorio en crecimiento en la comparación compacta."
   },
   "quickClean": {
-    "kicker": "Sin escaneo",
+    "kicker": "Sin analizar todo el disco",
     "title": "Limpieza rápida",
-    "description": "Limpia cachés, registros, archivos temporales y la papelera con un toque. Tus documentos y fotos quedan intactos.",
+    "description": "Analiza ubicaciones habituales, revisa sus orígenes y elige qué conservar antes de confirmar.",
     "analyze": "Analizar",
     "analyzing": "Analizando…",
     "analyzeAgain": "Volver a analizar",
@@ -458,22 +480,29 @@
     "freedSummary": "{{size}} liberados en {{count}} elementos",
     "again": "Limpiar de nuevo",
     "close": "Hecho",
-    "total": "Total recuperable",
+    "total": "Espacio recuperable estimado",
     "unavailable": "No disponible",
     "empty": "No hay nada que limpiar: ¡tu disco está impecable!",
     "skippedNote": "{{count}} elementos estaban en uso y se omitieron.",
-    "noRiskNote": "Solo se eliminan cachés regenerables y el contenido de la papelera: nunca tus documentos, fotos ni credenciales.",
+    "noRiskNote": "Solo se procesan ubicaciones seleccionadas. Elige la papelera por separado; el borrado es permanente. Revisa los orígenes.",
     "category": {
       "user_cache": "Cachés de apps",
       "logs": "Registros",
       "temp_files": "Archivos temporales",
       "trash": "Papelera"
     },
-    "launcherDescription": "Sin escaneo: limpia cachés, registros, temporales y papelera con un toque.",
+    "launcherDescription": "Analiza ubicaciones habituales y elige qué conservar.",
     "open": "Abrir limpieza rápida",
-    "back": "Volver al escaneo de espacio",    "guideTitle": "¿Quieres una limpieza más profunda?",
+    "back": "Volver al escaneo de espacio",
+    "guideTitle": "¿Quieres una limpieza más profunda?",
     "guideDescription": "Escanea todo el disco, mira el uso por ruta real y decide qué limpiar.",
     "guideAction": "Ir al escaneo de disco",
     "analyzingHint": "Midiendo cachés, registros, temporales y papelera…"
+  },
+  "quickReview": {
+    "sources": "Revisar orígenes y elegir qué conservar",
+    "limited": "Muestra hasta 128 ubicaciones más grandes. Las carpetas grandes pueden contarse parcialmente. Las demás siguen incluidas; desmarca la categoría si tienes dudas.",
+    "trashWarning": "La papelera no se selecciona por defecto. Puede contener archivos personales y vaciarla es irreversible.",
+    "excluded": "Se conservan {{count}} ubicaciones y sus carpetas contenedoras"
   }
 }

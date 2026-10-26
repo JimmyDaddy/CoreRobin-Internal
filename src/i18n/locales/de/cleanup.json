@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "Scan abgeschlossen",
+    "partialResult": "Bisherige Scan-Ergebnisse",
+    "noProgress": "Scan angehalten. Ergebnis ansehen oder wiederholen.",
     "scanningLocation": "Analysiere {{location}}",
     "paused": "Der Mac befindet sich im Ruhezustand; der Scan wird nach dem Aufwachen fortgesetzt",
     "stalled": "Der Scan wird automatisch fortgesetzt",
@@ -198,6 +201,8 @@
     "title": "Für welchen Zweck dieser Bereich typischerweise verwendet wird"
   },
   "map": {
+    "liveUpdatesPending": "Neue Ergebnisse bereit; nach dem Browsen aktualisieren",
+    "liveUpdatesApply": "Karte aktualisieren",
     "list": {
       "name": "Name",
       "share": "Ordneranteil",
@@ -216,7 +221,20 @@
       "path": "Dateipfade",
       "category": "Zweck"
     },
-    "view": { "label": "Darstellung", "map": "Speicherkarte", "list": "Liste", "search": "Diesen Ordner durchsuchen", "clearSearch": "Suche leeren", "sortSize": "Nach Größe", "sortName": "Nach Name", "descending": "Absteigend", "ascending": "Aufsteigend", "loading": "Index wird gelesen…", "loadFailed": "Liste konnte nicht geladen werden. Erneut versuchen.", "empty": "Keine passenden Elemente" },
+    "view": {
+      "label": "Darstellung",
+      "map": "Speicherkarte",
+      "list": "Liste",
+      "search": "Diesen Ordner durchsuchen",
+      "clearSearch": "Suche leeren",
+      "sortSize": "Nach Größe",
+      "sortName": "Nach Name",
+      "descending": "Absteigend",
+      "ascending": "Aufsteigend",
+      "loading": "Index wird gelesen…",
+      "loadFailed": "Liste konnte nicht geladen werden. Erneut versuchen.",
+      "empty": "Keine passenden Elemente"
+    },
     "ariaLabel": "Speicherkarte für {{name}}",
     "back": "Zurück ein Level",
     "breadcrumbs": "Hierarchische Ansicht der Speicherkarte",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "Eine tiefere Verzeichnisstruktur ist auf dieser Ebene nicht verfügbar.",
     "loadDeeperHint": "Wählen Sie diesen Ordner, um die nächste Ebene aus dem lokalen Index zu öffnen.",
-    "otherContentHint": "Diese Gruppe enthält Inhalte, die wegen der Indexkapazität oder der aktuellen Seite nicht einzeln angezeigt werden; sie sind nicht unbedingt klein. Blättern Sie weiter oder öffnen Sie den aktuellen Ordner im Finder.",
+    "otherContentHint": "Diese Gruppe enthält Elemente, die in der Karte nicht einzeln angezeigt werden. Wechseln Sie zur Liste, um die indizierten Inhalte zu durchsuchen.",
     "loadingFolder": "Dieser Ordner wird geladen…",
     "loadFailed": "Verzeichnisindex konnte nicht gelesen werden",
     "loadMore": "Weitere 50 Elemente anzeigen",
     "refreshProgress": "{{count}} Elemente geprüft · {{time}} Sek.",
     "refreshFailed": "Ordner konnte nicht aktualisiert werden",
-    "directActionHint": "Ziehen Sie einen Sektor oder Ordner aus der Liste in den Korb am unteren Rand",
+    "directActionHint": "Ziehen Sie einen Sektor oder einen Listeneintrag in den Korb unten",
     "protectedSelectionHint": "Systempfade und das Home-Verzeichnis sind nur zum Anzeigen; konkrete Elemente innerhalb Ihres Home-Verzeichnisses können in den Korb gelangen",
     "trashRootProtected": "Der Papierkorb-Ordner selbst ist geschützt; öffnen Sie ihn und wählen Sie die spezifischen Inhalte aus, die Sie entfernen möchten",
     "planSummary": "{{count}} ausgewählte Elemente · {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "Systemdateien und wichtige Einstellungen sind geschützt und wurden nicht hinzugefügt",
       "protectedPreview": "Geschützt · nicht löschbar",
       "protectedBadge": "Geschützt",
-      "empty": "Ziehen Sie einen Sektor oder Ordner hierher, um ihn vor der Bereinigung zu sammeln",
+      "empty": "Sektor oder Listeneintrag hierher ziehen und vor dem Bereinigen prüfen",
       "release": "Zum Korb hinzufügen",
       "collected": "Im Löschkorb",
       "collectedHint": "Bereits gelöscht; entfernen Sie es aus dem Korb unten oder setzen Sie die Überprüfung fort",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "Aus dem Bereinigungskorb entfernen",
     "includedByParent": "Im übergeordneten Ordner enthalten",
-    "addToBasket": "Zum Bereinigungskorb hinzufügen"
+    "addToBasket": "Zum Bereinigungskorb hinzufügen",
+    "historyBack": "Zurück",
+    "refreshCurrent": "Diesen Ordner aktualisieren",
+    "enterFolder": "Ordner öffnen",
+    "openFolder": "{{name}} öffnen"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "Im kompakten Vergleich wurde kein wachsendes Verzeichnis gefunden."
   },
   "quickClean": {
-    "kicker": "Kein Scan nötig",
+    "kicker": "Kein vollständiger Laufwerksscan nötig",
     "title": "Schnelle Bereinigung",
-    "description": "Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren. Dokumente und Fotos bleiben unberührt.",
+    "description": "Übliche Bereinigungsorte analysieren, Quellen prüfen und Inhalte vor der Bestätigung zum Behalten auswählen.",
     "analyze": "Analysieren",
     "analyzing": "Analyse läuft…",
     "analyzeAgain": "Erneut analysieren",
@@ -458,22 +480,29 @@
     "freedSummary": "{{size}} bei {{count}} Elementen freigegeben",
     "again": "Erneut bereinigen",
     "close": "Schließen",
-    "total": "Gesamt freigebbar",
+    "total": "Voraussichtlich freigebbar",
     "unavailable": "Nicht verfügbar",
     "empty": "Nichts zu bereinigen – Ihre Festplatte ist sauber!",
     "skippedNote": "{{count}} Elemente waren in Benutzung und wurden übersprungen.",
-    "noRiskNote": "Nur regenerierbare Caches und Papierkorb-Inhalte werden entfernt – niemals Dokumente, Fotos oder Anmeldedaten.",
+    "noRiskNote": "Nur ausgewählte Orte werden verarbeitet. Papierkorb separat auswählen. Inhalte werden endgültig gelöscht; Quellen zuerst prüfen.",
     "category": {
       "user_cache": "App-Caches",
       "logs": "Logdateien",
       "temp_files": "Temporäre Dateien",
       "trash": "Papierkorb"
     },
-    "launcherDescription": "Ohne Scan: Caches, Logs, temporäre Dateien und Papierkorb mit einem Klick leeren.",
+    "launcherDescription": "Übliche Bereinigungsorte analysieren und Inhalte behalten.",
     "open": "Schnelle Bereinigung öffnen",
-    "back": "Zurück zum Speicher-Scan",    "guideTitle": "Gründlicher aufräumen?",
+    "back": "Zurück zum Speicher-Scan",
+    "guideTitle": "Gründlicher aufräumen?",
     "guideDescription": "Scannen Sie die ganze Festplatte, sehen Sie den Speicher pro Pfad und entscheiden Sie dann.",
     "guideAction": "Zum Festplatten-Scan",
     "analyzingHint": "Caches, Logs, Temp-Dateien und Papierkorb werden gemessen…"
+  },
+  "quickReview": {
+    "sources": "Quellen prüfen und Inhalte behalten",
+    "limited": "Zeigt bis zu 128 größte Speicherorte. Große Ordner werden ggf. nur teilweise gezählt. Weitere Orte gehören weiter zur Auswahl; im Zweifel die Kategorie abwählen.",
+    "trashWarning": "Der Papierkorb ist nicht vorausgewählt. Er kann persönliche Dateien enthalten; das Leeren ist unwiderruflich.",
+    "excluded": "{{count}} Speicherorte samt übergeordneten Ordnern behalten"
   }
 }

@@ -29,7 +29,6 @@ import {
 } from "../dailyExperience";
 import {
   buildStableDailyStatusItems,
-  dailyIncidentDisplayLevel,
   dailyIncidentLevel,
   type DailyIncident,
 } from "../dailyIncidents";
@@ -194,16 +193,18 @@ export function DailyHome({
         </div>
 
         <div className="daily-companion-hero__message">
+          {primary ? <div className="daily-home__attention-label"><AttentionIcon item={primary.item} /><span>{t(primary.phase === "recovering" ? "daily:attention.recovering" : "daily:attention.priority")}</span></div> : null}
           <h1 id="daily-home-title">
-            {t(checking ? "daily:home.checkingTitle" : `daily:status.${level}.title`, {
+            {primary && !checking ? attentionTitle(primary.item, t) : t(checking ? "daily:home.checkingTitle" : `daily:status.${level}.title`, {
               count: incidents.length,
             })}
           </h1>
-          <p>{t(checking ? "daily:home.checkingSummary" : `daily:status.${level}.summary`, {
+          <p>{primary && !checking ? primary.phase === "recovering" ? t("daily:incident.recoveringDescription") : attentionDescription(primary.item, t) : t(checking ? "daily:home.checkingSummary" : `daily:status.${level}.summary`, {
             count: incidents.length,
           })}</p>
           <div className="daily-companion-hero__actions">
-            <Button variant="primary" disabled={checking} onClick={() => void refresh()}>
+            {primary && !checking ? <Button variant="primary" onClick={() => onOpenIncident(primary)}>{t("daily:attention.open")}<ArrowRight size={14} /></Button> : null}
+            <Button variant={primary ? "secondary" : "primary"} disabled={checking} onClick={() => void refresh()}>
               {checking ? <LoaderCircle className="is-spinning" size={16} /> : <RefreshCw size={16} />}
               {t(checking ? "daily:home.checking" : "daily:home.checkNow")}
               {!checking ? <ArrowRight size={14} /> : null}
@@ -245,26 +246,6 @@ export function DailyHome({
           </span>
           <ArrowRight size={15} aria-hidden="true" />
         </button>
-      ) : null}
-
-      {primary ? (
-        <section className={`daily-priority is-${dailyIncidentDisplayLevel(primary)}`} aria-labelledby="daily-priority-title">
-          <span className="daily-priority__icon">
-            <AttentionIcon item={primary.item} />
-          </span>
-          <div>
-            <small>{t(primary.phase === "recovering"
-              ? "daily:attention.recovering"
-              : "daily:attention.priority")}</small>
-            <h2 id="daily-priority-title">{attentionTitle(primary.item, t)}</h2>
-            <p>{primary.phase === "recovering"
-              ? t("daily:incident.recoveringDescription")
-              : attentionDescription(primary.item, t)}</p>
-          </div>
-          <Button variant="secondary" onClick={() => onOpenIncident(primary)}>
-            {t("daily:attention.open")}<ArrowRight size={14} />
-          </Button>
-        </section>
       ) : null}
 
       <section className="daily-recent" aria-labelledby="daily-recent-title">

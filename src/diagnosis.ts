@@ -54,6 +54,7 @@ export interface ApplicationImpact {
   memoryBytes: number;
   diskBytesPerSecond: number;
   systemComponent: boolean;
+  kind?: "user" | "system" | "protected" | "self" | "unknown";
   representativeIdentity: string;
   actionIdentity: string | null;
   memberIdentities: string[];
@@ -148,7 +149,11 @@ export function aggregateApplications(
   const groups = new Map<string, { name: string; members: ProcessRow[] }>();
   for (const process of processes) {
     const name = applicationGroupName(process, processesByPid);
-    const stableId = process.applicationId ?? `name:${name.toLocaleLowerCase()}`;
+    // Shared WebKit executables are hosted by unrelated apps. Without a
+    // verified host binding, keep each process separate instead of blaming one app.
+    const sharedRuntime = process.name.startsWith("com.apple.WebKit.");
+    const stableId = sharedRuntime ? processIdentity(process)
+      : process.applicationId ?? `name:${name.toLocaleLowerCase()}`;
     const key = `${process.user ?? "system"}:${stableId}`;
     const group = groups.get(key) ?? { name, members: [] };
     group.members.push(process);
@@ -165,12 +170,19 @@ export function aggregateApplications(
       )[0];
       if (!representative) return null;
       const actionProcess = applicationActionProcess(members);
+      const systemComponent = members.every(isSystemProcess);
+      const kind = members.some((member) => /^(core-robin|CoreRobin)(\.exe)?$/.test(member.name))
+        ? "self" : members.some((member) => member.name.startsWith("com.apple.WebKit."))
+          ? "unknown" : members.every((member) => !member.user)
+            ? "unknown" : members.every((member) => isSystemAccount(member.user))
+              ? "system" : systemComponent ? "protected" : "user";
       return {
         id,
         applicationId:
           members.find((member) => member.applicationId)?.applicationId
           ?? `name:${name.toLocaleLowerCase()}`,
-        name,
+        name: name.startsWith("com.apple.WebKit.") ? `WebKit · ${representative.pid}`
+          : applicationGroupName(actionProcess ?? representative, processesByPid),
         processCount: members.length,
         cpuPercent: members.reduce(
           (total, process) => total + Math.max(0, process.cpuPercent ?? 0),
@@ -184,7 +196,8 @@ export function aggregateApplications(
           (total, process) => total + Math.max(0, processDiskRate(process) ?? 0),
           0,
         ),
-        systemComponent: members.every(isSystemProcess),
+        systemComponent,
+        kind,
         representativeIdentity: processIdentity(representative),
         actionIdentity: actionProcess ? processIdentity(actionProcess) : null,
         memberIdentities: members.map(processIdentity),
@@ -193,7 +206,7 @@ export function aggregateApplications(
           snapshotStartTime: representative.startTime,
           snapshotBirthToken: representative.birthToken,
         },
-      };
+      } satisfies ApplicationImpact;
     })
     .filter(
       (application): application is NonNullable<typeof application> =>
@@ -512,7 +525,8 @@ function compareFindings(
 }
 
 function applicationName(processName: string): string {
-  const normalized = processName.trim().replace(/\.exe$/i, "");
+  const normalized = processName.trim().replace(/\.exe$/i, "")
+    .replace(/\s+\((?:Renderer|Service|GPU|Plugin)\)$/i, "");
   const helper = normalized.match(/^(.+?) Helper(?: \(.+\))?$/i);
   return helper?.[1]?.trim() || normalized || "Unknown application";
 }
@@ -565,9 +579,12 @@ function applicationActionProcess(members: readonly ProcessRow[]): ProcessRow | 
 }
 
 function isSystemProcess(process: ProcessRow): boolean {
-  const user = process.user?.toLocaleLowerCase() ?? "";
+  return process.protected || isSystemAccount(process.user);
+}
+
+function isSystemAccount(account: string | null): boolean {
+  const user = account?.toLocaleLowerCase() ?? "";
   return (
-    process.protected ||
     user === "root" ||
     user === "system" ||
     user === "local service" ||

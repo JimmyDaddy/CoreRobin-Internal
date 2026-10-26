@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.34",
+  "title": {
+    "zh-CN": "边扫描边浏览，更流畅的空间清理体验",
+    "en": "Browse while scanning, with smoother disk cleanup"
+  },
+  "items": [
+    {
+      "zh-CN": "磁盘扫描现在会逐步显示已完成的空间分布，等待完整结果时也能浏览已扫描内容；停止扫描后仍可查看本次已完成的部分。",
+      "en": "Disk scans now reveal completed portions of the usage map as they progress. You can browse scanned content before the full result is ready and retain partial results after stopping."
+    },
+    {
+      "zh-CN": "改善大量文件扫描、扫描恢复和结果整理时长时间无进展的问题，减少未变化结果的重复读取，局部刷新时继续保留其他目录。",
+      "en": "Improved long pauses during large scans, recovery, and result preparation, with fewer repeated reads of unchanged results and other folders preserved during targeted refreshes."
+    },
+    {
+      "zh-CN": "扫描过程与原有扇形空间图融为一体，动效可稳定续播，完成后平滑进入结果；浏览目录时保持当前位置和清理篮。",
+      "en": "Scanning blends into the existing sunburst map with animations that resume consistently and transition smoothly into results, while preserving your folder position and cleanup basket."
+    },
+    {
+      "zh-CN": "重新整理磁盘扫描页面的导航与操作，在较窄窗口中也能切换空间图和列表、搜索与排序，并保留拖拽加入清理篮及删除动效。",
+      "en": "Disk scan navigation and actions are easier to use in narrower windows, including map/list switching, search, and sorting, with drag-to-basket interactions and deletion animations retained."
+    },
+    {
+      "zh-CN": "快速清理可展开查看来源与大小，并选择需要保留的位置；废纸篓默认不选，确认前会明确显示清理范围与预计释放空间。",
+      "en": "Quick Cleanup now lets you inspect sources and sizes and choose locations to keep. Trash is unchecked by default, and confirmation clearly shows the selected scope and estimated space savings."
+    },
+    {
+      "zh-CN": "首页优先展示当前问题与处理入口，跨天仍在持续的问题不会再被误报为已经恢复。",
+      "en": "The home page prioritizes current problems and relevant actions, and ongoing issues that cross midnight are no longer incorrectly reported as resolved."
+    },
+    {
+      "zh-CN": "应用中心在较长列表中保持浏览顺序，应用与后台任务的关联更准确，进程详情中的运行时间和状态会及时更新。",
+      "en": "The application center keeps long lists stable while browsing, improves app-to-background-task associations, and refreshes runtime and status in process details."
+    },
+    {
+      "zh-CN": "可以查看阻止休眠的任务、原因与电源状态，并暂时忽略计划中的任务提醒；工具箱优先展示可用、收藏和最近使用的工具，功能限制说明更清楚。",
+      "en": "Inspect tasks preventing sleep, their reasons, and power status, and temporarily dismiss reminders for planned tasks. The toolbox prioritizes available, favorite, and recently used tools with clearer explanations of limitations."
+    }
+  ]
+}

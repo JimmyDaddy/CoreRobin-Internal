@@ -66,6 +66,15 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
         String::from_utf8_lossy(&output.stderr)
     );
     let events = String::from_utf8(output.stdout).unwrap();
+    let kinds = events
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter_map(|event| event.get("kind").and_then(Value::as_str).map(str::to_owned))
+        .collect::<Vec<_>>();
+    assert!(
+        kinds.iter().position(|kind| kind == "checkpoint").unwrap()
+            < kinds.iter().position(|kind| kind == "completed").unwrap()
+    );
     assert!(events.lines().any(|line| {
         serde_json::from_str::<Value>(line)
             .ok()
@@ -77,6 +86,8 @@ fn cleanup_scan_worker_streams_progress_and_writes_a_result() {
     assert_eq!(result["scanId"], "cleanup-test");
     assert_eq!(result["profile"], "complete");
     assert_eq!(result["indexed"], true);
+    assert_eq!(result["partial"], false);
+    assert_eq!(result["deletionAvailable"], true);
     assert_eq!(result["targetKind"], "folder");
     assert_eq!(
         result["targetPath"],

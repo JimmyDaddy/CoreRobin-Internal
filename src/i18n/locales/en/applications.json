@@ -117,5 +117,16 @@
       "protected": "CoreRobin or a protected system component cannot be removed from this screen.",
       "portable": "No trusted package-manager identity was found. The item remains read-only."
     }
+  },
+  "experience": {
+    "self": "CoreRobin itself",
+    "protected": "Protected program",
+    "unknown": "Host app unconfirmed",
+    "notLoaded": "Not loaded or enabled",
+    "showSystem": "Include system and unconfirmed items",
+    "reorder": "Reorder",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} / {{total}}"
   }
 }

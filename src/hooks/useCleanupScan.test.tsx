@@ -24,10 +24,11 @@ vi.mock("../api", () => cleanupApi);
 const capabilityChanges = vi.hoisted(() => ({ callback: null as null | (() => Promise<unknown>), read: vi.fn() }));
 vi.mock("../capabilities/useCapabilityChanges", () => ({ useCapabilityChanges: (_: string, callback: () => Promise<unknown>) => { capabilityChanges.callback = callback; } }));
 vi.mock("../capabilities/api", () => ({ readApplicationCapabilities: capabilityChanges.read }));
+const historyStorage = vi.hoisted(() => ({ setValue: vi.fn() }));
 vi.mock("./useNativeHistoryStorage", () => ({
   useNativeHistoryStorage: () => ({
     value: [],
-    setValue: vi.fn(),
+    setValue: historyStorage.setValue,
     hydrated: true,
     storageStatus: {
       state: "ready",
@@ -47,6 +48,7 @@ function Harness() {
       <span>{scan.phase ?? "idle"}</span>
       <span>{scan.snapshot?.scanId ?? "no-snapshot"}</span>
       <span>{scan.snapshotStatus}</span>
+      <span data-testid="scan-loading">{String(scan.loading)}</span>
       <span>{scan.snapshot?.root.sizeBytes ?? 0} bytes</span>
       <button type="button" onClick={() => void scan.scan()}>Start</button>
       <button type="button" onClick={() => void scan.cancel()}>Stop</button>
@@ -91,6 +93,7 @@ describe("cleanup scan lifecycle", () => {
     cleanupApi.startCleanupDirectoryRefresh.mockReset();
     window.localStorage.clear();
     capabilityChanges.read.mockResolvedValue({ diskRevision: 1, diskRequiresRescan: false });
+    historyStorage.setValue.mockClear();
   });
 
   afterEach(() => {
@@ -191,14 +194,78 @@ describe("cleanup scan lifecycle", () => {
     await waitFor(() => expect(screen.getByText("updating")).toBeTruthy());
     expect(screen.getByText("cleanup-new")).toBeTruthy();
   });
+
+  it("stops loading if the native job disappears", async () => {
+    cleanupApi.startCleanupScan.mockResolvedValue(runningJob);
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("scanning");
+    await screen.findByText("failed");
+  });
+
+  it("retains read-only partial results when the user stops a replacement scan", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "cancelled" });
+    await screen.findByText("cancelled");
+    expect(screen.getByText("cleanup-preview")).toBeTruthy();
+    expect(historyStorage.setValue).not.toHaveBeenCalled();
+  });
+
+  it("keeps finalizing visible until the completed snapshot is ready", async () => {
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    let complete!: (value: CleanupScan) => void;
+    cleanupApi.loadCleanupScanJobResult.mockImplementation(() => new Promise((resolve) => { complete = resolve; }));
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "completed" });
+    await screen.findByText("finalizing");
+    expect(screen.getByTestId("scan-loading").textContent).toBe("true");
+    expect(screen.getByText("cleanup-preview")).toBeTruthy();
+    expect(screen.queryByText("completed")).toBeNull();
+    await act(async () => complete(latestSnapshot()));
+    await screen.findByText("completed");
+    expect(screen.getByTestId("scan-loading").textContent).toBe("false");
+  });
+
+  it("shows committed partial maps while scanning and restores the complete map on failure", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    const preview = { ...latestSnapshot(), scanId: "cleanup-preview", partial: true, deletionAvailable: false };
+    cleanupApi.startCleanupScan.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, resultAvailable: true });
+    cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("cleanup-preview");
+    expect(historyStorage.setValue).not.toHaveBeenCalled();
+    expect(screen.getByText("scanning")).toBeTruthy();
+    cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "failed", errorCode: "cleanup_scan_finalization_stalled" });
+    await screen.findByText("failed");
+    expect(screen.getByText("cleanup-new")).toBeTruthy();
+  });
   it("updates a mounted page after AI scans and adopts changes to the same native scan index", async () => {
     render(<Harness />);
     await waitFor(() => expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalled());
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 2, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("cleanup-new")).toBeTruthy();
     const changed = latestSnapshot(); changed.root.sizeBytes = 123;
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(changed);
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 3, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("123 bytes")).toBeTruthy();
     expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
@@ -211,8 +278,22 @@ describe("cleanup scan lifecycle", () => {
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("expired")).toBeTruthy();
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(null);
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 3, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("no-snapshot")).toBeTruthy();
+  });
+
+  it("does not reload a stable index during repeated focus and recovery notifications", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    for (let index = 0; index < 12; index += 1) {
+      await act(async () => { await capabilityChanges.callback?.(); });
+    }
+    expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalledOnce();
+    capabilityChanges.read.mockRejectedValueOnce(new Error("temporary transport error"));
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalledOnce();
   });
 });
 

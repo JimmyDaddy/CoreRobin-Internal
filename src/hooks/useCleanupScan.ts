@@ -64,9 +64,13 @@ export function useCleanupScan() {
   const refreshTrackerRef = useRef(0);
   const stateTouched = useRef(false);
   const snapshotRef = useRef<CleanupScan | null>(null);
+  const previousCompleteRef = useRef<CleanupScan | null>(null);
   const snapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const preScanSnapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const snapshotSyncRef = useRef<Promise<CleanupScan | null> | null>(null);
+  const initialReadRef = useRef<Promise<void> | null>(null);
+  const cachedRevisionRef = useRef<number | null>(null);
+  const cacheInitializedRef = useRef(false);
   const [refreshStatus, setRefreshStatus] = useState<CleanupScanJobStatus | null>(null);
   const [refreshError, setRefreshError] = useState<CommandError | null>(null);
 
@@ -80,13 +84,19 @@ export function useCleanupScan() {
 
   useEffect(() => {
     let disposed = false;
-    void loadPersistedCleanupScan()
-      .then((persisted) => {
+    initialReadRef.current = (async () => {
+      const shared = await readApplicationCapabilities().catch(() => null);
+      const persisted = await loadPersistedCleanupScan();
+      if (!disposed) {
+        cacheInitializedRef.current = true;
+        cachedRevisionRef.current = shared?.diskRevision ?? null;
+      }
+        if (!disposed && persisted && !persisted.partial) previousCompleteRef.current = persisted;
         if (disposed || stateTouched.current || !persisted) return;
         snapshotRef.current = persisted;
         setSnapshot(persisted);
         setSnapshotStatus("current");
-      })
+      })()
       .catch(() => {
         // A missing or unavailable disk cache is equivalent to no prior scan.
       });
@@ -115,6 +125,7 @@ export function useCleanupScan() {
       if (tracker !== trackerRef.current || refreshTracker !== refreshTrackerRef.current) return snapshotRef.current;
       stateTouched.current = true;
       snapshotRef.current = persisted;
+      previousCompleteRef.current = persisted;
       setSnapshot(persisted);
       setSnapshotStatus("current");
       setError(null);
@@ -130,10 +141,17 @@ export function useCleanupScan() {
   }, [scanHistory.setValue]);
 
   useCapabilityChanges("disk", async () => {
-    // A notification arriving during a read needs a fresh read after that one.
+    await initialReadRef.current;
     await snapshotSyncRef.current?.catch(() => null);
-    const snapshot = await reloadLatestSnapshot();
     const shared = await readApplicationCapabilities().catch(() => null);
+    // Focus and lost-event recovery poll only the cheap revision. A stable
+    // generation must not repeatedly materialize and validate millions of nodes.
+    let snapshot = snapshotRef.current;
+    if (!cacheInitializedRef.current || (shared && shared.diskRevision !== cachedRevisionRef.current)) {
+      snapshot = await reloadLatestSnapshot();
+      cacheInitializedRef.current = true;
+      cachedRevisionRef.current = shared?.diskRevision ?? null;
+    }
     if (shared?.diskRequiresRescan && snapshot && snapshotRef.current?.scanId === snapshot.scanId) setSnapshotStatus("expired");
     return snapshot;
   });
@@ -143,13 +161,27 @@ export function useCleanupScan() {
     tracker: number,
   ) => {
     let status: CleanupScanJobStatus | null = initialStatus;
+    let lastPreviewAt = 0;
+    let lastPreviewEntries = -1;
+    const restorePrevious = () => {
+      activeJobIdRef.current = null;
+      setLoading(false);
+      setCancelling(false);
+      setProgress(null);
+      setSnapshotStatus(preScanSnapshotStatusRef.current);
+      if (previousCompleteRef.current) {
+        snapshotRef.current = previousCompleteRef.current;
+        setSnapshot(previousCompleteRef.current);
+      }
+    };
     activeJobIdRef.current = initialStatus.jobId;
     while (
       status
       && trackerRef.current === tracker
       && activeJobIdRef.current === initialStatus.jobId
     ) {
-      setPhase(status.phase);
+      // Keep the current surface mounted until the completed index has loaded.
+      setPhase(status.phase === "completed" ? "finalizing" : status.phase);
       setProgress(status.progress);
       setCancelling(status.phase === "cancelling");
       setLoading(
@@ -158,7 +190,8 @@ export function useCleanupScan() {
         || status.phase === "finalizing"
         || status.phase === "paused"
         || status.phase === "cancelling"
-        || status.phase === "stalled",
+        || status.phase === "stalled"
+        || status.phase === "completed",
       );
 
       if (status.phase === "completed") {
@@ -166,6 +199,7 @@ export function useCleanupScan() {
           const completed = await loadCleanupScanJobResult(status.jobId);
           if (trackerRef.current !== tracker) return;
           snapshotRef.current = completed;
+          previousCompleteRef.current = completed;
           setSnapshot(completed);
           setSnapshotStatus("current");
           scanHistory.setValue((current) =>
@@ -173,8 +207,11 @@ export function useCleanupScan() {
           setError(null);
         } catch (caughtError) {
           if (trackerRef.current === tracker) {
+            restorePrevious();
+            setPhase("failed");
             setError(normalizeCommandError(caughtError));
           }
+          return;
         }
         activeJobIdRef.current = null;
         setLoading(false);
@@ -184,21 +221,21 @@ export function useCleanupScan() {
         return;
       }
       if (status.phase === "cancelled") {
-        activeJobIdRef.current = null;
-        setLoading(false);
-        setCancelling(false);
-        setProgress(null);
+        if (snapshotRef.current?.partial) {
+          activeJobIdRef.current = null;
+          setLoading(false);
+          setCancelling(false);
+          setProgress(null);
+          setSnapshotStatus("current");
+        } else {
+          restorePrevious();
+        }
         setPhase("cancelled");
-        setSnapshotStatus(preScanSnapshotStatusRef.current);
         return;
       }
       if (status.phase === "failed") {
-        activeJobIdRef.current = null;
-        setLoading(false);
-        setCancelling(false);
-        setProgress(null);
+        restorePrevious();
         setPhase("failed");
-        setSnapshotStatus(preScanSnapshotStatusRef.current);
         setError({
           code: status.errorCode ?? "cleanup_scan_failed",
           message: status.errorMessage ?? "The cleanup scan worker stopped unexpectedly.",
@@ -206,22 +243,42 @@ export function useCleanupScan() {
         return;
       }
 
+      if (status.resultAvailable && status.phase !== "cancelling"
+        && Date.now() - lastPreviewAt >= 2_000
+        && lastPreviewEntries !== status.progress.scannedEntryCount) {
+        lastPreviewAt = Date.now();
+        lastPreviewEntries = status.progress.scannedEntryCount;
+        try {
+          const preview = await loadCleanupScanJobResult(status.jobId);
+          if (trackerRef.current !== tracker || activeJobIdRef.current !== initialStatus.jobId) return;
+          // A preview is read-only and never becomes a historical completed scan.
+          if (preview.partial) {
+            snapshotRef.current = preview;
+            setSnapshot(preview);
+            setSnapshotStatus("updating");
+          }
+        } catch {
+          // A concurrent worker replacement may briefly hide its checkpoint.
+        }
+      }
       await waitForCleanupJobPoll();
       if (trackerRef.current !== tracker) return;
       try {
         status = await getCleanupScanJob();
       } catch (caughtError) {
         if (trackerRef.current === tracker) {
-          activeJobIdRef.current = null;
-          setLoading(false);
-          setCancelling(false);
+          restorePrevious();
           setPhase("failed");
-          setSnapshotStatus(preScanSnapshotStatusRef.current);
           setError(normalizeCommandError(caughtError));
         }
         return;
       }
-      if (status && status.jobId !== initialStatus.jobId) return;
+      if (!status || status.jobId !== initialStatus.jobId) {
+        restorePrevious();
+        setPhase("failed");
+        setError({ code: "cleanup_scan_job_missing", message: "Scan unavailable." });
+        return;
+      }
     }
   }, [scanHistory.setValue]);
 
@@ -349,6 +406,7 @@ export function useCleanupScan() {
   ) => {
     const tracker = ++trackerRef.current;
     stateTouched.current = true;
+    if (snapshotRef.current && !snapshotRef.current.partial) previousCompleteRef.current = snapshotRef.current;
     preScanSnapshotStatusRef.current = snapshotStatusRef.current;
     if (snapshotRef.current) setSnapshotStatus("updating");
     setLoading(true);
@@ -435,6 +493,7 @@ export function useCleanupScan() {
     activeJobIdRef.current = null;
     activeRefreshJobIdRef.current = null;
     snapshotRef.current = null;
+    previousCompleteRef.current = null;
     setSnapshot(null);
     setSnapshotStatus("current");
     setError(null);

@@ -284,7 +284,7 @@ describe("everyday component interactions", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "有 1 项情况值得留意" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(i18n.t("diagnosis:findings.sustained_cpu.title"));
     fireEvent.click(screen.getByRole("button", { name: /看看原因/ }));
     expect(onOpenIncident).toHaveBeenCalledWith(incident);
   });

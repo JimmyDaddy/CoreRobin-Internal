@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "スキャン完了",
+    "partialResult": "スキャン途中の結果",
+    "noProgress": "スキャンが停止しました。結果を確認するか再試行してください。",
     "scanningLocation": "スキャン中の場所を分析中 {{location}}",
     "paused": "Macはスリープ中です。復帰後にスキャンを続行します",
     "stalled": "スキャンを自動的に復旧しています",
@@ -198,6 +201,8 @@
     "title": "この領域が通常使用される目的"
   },
   "map": {
+    "liveUpdatesPending": "新しい結果があります。閲覧後に更新します",
+    "liveUpdatesApply": "マップを更新",
     "list": {
       "name": "名前",
       "share": "フォルダ内の割合",
@@ -216,7 +221,20 @@
       "path": "ファイルパス",
       "category": "目的"
     },
-    "view": { "label": "表示形式", "map": "スペースマップ", "list": "リスト", "search": "このフォルダを検索", "clearSearch": "検索をクリア", "sortSize": "サイズ順", "sortName": "名前順", "descending": "降順", "ascending": "昇順", "loading": "索引を読み込み中…", "loadFailed": "リストを読み込めません。再試行してください。", "empty": "一致する項目はありません" },
+    "view": {
+      "label": "表示形式",
+      "map": "スペースマップ",
+      "list": "リスト",
+      "search": "このフォルダを検索",
+      "clearSearch": "検索をクリア",
+      "sortSize": "サイズ順",
+      "sortName": "名前順",
+      "descending": "降順",
+      "ascending": "昇順",
+      "loading": "索引を読み込み中…",
+      "loadFailed": "リストを読み込めません。再試行してください。",
+      "empty": "一致する項目はありません"
+    },
     "ariaLabel": "スペース サンバースト {{name}}",
     "back": "階層に戻る",
     "breadcrumbs": "ファイルパスの階層構造",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "このレベルでは、さらに深い階層への整理はできません。",
     "loadDeeperHint": "このフォルダを選ぶと、ローカル索引から次の階層を開きます。",
-    "otherContentHint": "インデックス容量または現在のページのため個別表示されていない内容です。必ずしも小さい項目とは限りません。一覧を続けて表示するか、Finder で現在のフォルダを開いてください。",
+    "otherContentHint": "このグループにはマップに個別表示されない項目が含まれます。リストに切り替えると、索引に登録された内容を閲覧・検索できます。",
     "loadingFolder": "このフォルダの読み込み中…",
     "loadFailed": "ディレクトリ索引を読み込めませんでした",
     "loadMore": "さらに 50 項目を表示",
     "refreshProgress": "{{count}} 項目を確認 · {{time}} 秒",
     "refreshFailed": "フォルダを更新できませんでした",
-    "directActionHint": "セクターまたは一覧のフォルダを下部のバスケットへドラッグしてください",
+    "directActionHint": "セクターまたはリストの項目を下部のバスケットにドラッグします",
     "protectedSelectionHint": "システムパスとホームルートは閲覧のみです。ホームフォルダ内の具体的な項目はバケットに追加できます",
     "trashRootProtected": "ゴミ箱フォルダ自体は保護されています。開いて、削除したい特定のファイルを選択してください",
     "planSummary": "{{count}} 選択された項目 · {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "システムファイルと重要な設定は保護されているため追加されませんでした",
       "protectedPreview": "保護対象 · 削除不可",
       "protectedBadge": "保護対象",
-      "empty": "セクターまたはフォルダをここへドラッグしてから処理します",
+      "empty": "セクターやリスト項目をここにドラッグし、内容を確認してから整理します",
       "release": "バケツに追加する",
       "collected": "クリーンアップバケツに格納されています",
       "collectedHint": "すでに格納されています。下部のバケツから削除するか、引き続き確認してください",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "クリーンアップバスケットから外す",
     "includedByParent": "親フォルダに含まれています",
-    "addToBasket": "クリーンアップバスケットに追加"
+    "addToBasket": "クリーンアップバスケットに追加",
+    "historyBack": "戻る",
+    "refreshCurrent": "このフォルダーを更新",
+    "enterFolder": "フォルダーを開く",
+    "openFolder": "{{name}}を開く"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "簡易比較では増加したディレクトリが見つかりませんでした。"
   },
   "quickClean": {
-    "kicker": "スキャン不要",
+    "kicker": "ディスク全体のスキャンは不要",
     "title": "クイッククリーンアップ",
-    "description": "キャッシュ、ログ、一時ファイル、ゴミ箱をワンタップで削除。書類や写真には触れません。",
+    "description": "よく使う場所を分析し、削除元と保持する内容を確認してから実行します。",
     "analyze": "分析を開始",
     "analyzing": "分析中…",
     "analyzeAgain": "再分析",
@@ -458,22 +480,29 @@
     "freedSummary": "{{size}} を解放（{{count}} 項目）",
     "again": "もう一度",
     "close": "完了",
-    "total": "合計で解放可能",
+    "total": "解放できる容量の見積もり",
     "unavailable": "利用不可",
     "empty": "削除できるものはありません。ディスクはきれいです！",
     "skippedNote": "{{count}} 項目は使用中のため安全にスキップしました。",
-    "noRiskNote": "再生成可能なキャッシュとゴミ箱の中身だけを削除します。書類・写真・ログイン情報は対象外です。",
+    "noRiskNote": "選択した場所のみ処理します。ゴミ箱は個別に選択してください。完全に削除されるため、先に対象を確認してください。",
     "category": {
       "user_cache": "アプリキャッシュ",
       "logs": "ログファイル",
       "temp_files": "一時ファイル",
       "trash": "ゴミ箱"
     },
-    "launcherDescription": "スキャン不要。キャッシュ、ログ、一時ファイル、ゴミ箱を一括削除。",
+    "launcherDescription": "よく使う場所を分析し、保持する内容を選択します。",
     "open": "クイック削除を開く",
-    "back": "ディスクスキャンに戻る",    "guideTitle": "もっと徹底的に掃除する？",
+    "back": "ディスクスキャンに戻る",
+    "guideTitle": "もっと徹底的に掃除する？",
     "guideDescription": "ディスク全体をスキャンし、実際のファイルパスで容量を確認してから削除を決められます。",
     "guideAction": "ディスクスキャンへ",
     "analyzingHint": "キャッシュ・ログ・一時ファイル・ゴミ箱を集計中…"
+  },
+  "quickReview": {
+    "sources": "保存する場所と対象を確認",
+    "limited": "最大128か所をサイズ順に表示します。大きなフォルダの集計は途中で終了する場合があります。非表示の場所も選択したカテゴリに含まれるため、不明な場合はカテゴリを外してください。",
+    "trashWarning": "ゴミ箱は初期選択されません。個人ファイルが含まれる可能性があり、空にすると元に戻せません。",
+    "excluded": "{{count}}か所とその親フォルダを保持"
   }
 }

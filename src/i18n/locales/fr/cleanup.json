@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "Analyse terminée",
+    "partialResult": "Résultats partiels",
+    "noProgress": "Analyse bloquée. Consultez le résultat ou réessayez.",
     "scanningLocation": "Analyse de {{location}} éléments",
     "paused": "Le Mac est en veille ; l’analyse reprendra au réveil",
     "stalled": "L’analyse reprend automatiquement",
@@ -198,6 +201,8 @@
     "title": "Utilisation courante de cet espace"
   },
   "map": {
+    "liveUpdatesPending": "Nouveaux résultats disponibles ; mise à jour après navigation",
+    "liveUpdatesApply": "Actualiser la carte",
     "list": {
       "name": "Nom",
       "share": "% du dossier",
@@ -216,7 +221,20 @@
       "path": "Chemins de fichiers",
       "category": "Utilisation"
     },
-    "view": { "label": "Mode d’affichage", "map": "Carte d’espace", "list": "Liste", "search": "Rechercher dans ce dossier", "clearSearch": "Effacer la recherche", "sortSize": "Trier par taille", "sortName": "Trier par nom", "descending": "Décroissant", "ascending": "Croissant", "loading": "Lecture de l’index…", "loadFailed": "Impossible de charger la liste. Réessayez.", "empty": "Aucun élément correspondant" },
+    "view": {
+      "label": "Mode d’affichage",
+      "map": "Carte d’espace",
+      "list": "Liste",
+      "search": "Rechercher dans ce dossier",
+      "clearSearch": "Effacer la recherche",
+      "sortSize": "Trier par taille",
+      "sortName": "Trier par nom",
+      "descending": "Décroissant",
+      "ascending": "Croissant",
+      "loading": "Lecture de l’index…",
+      "loadFailed": "Impossible de charger la liste. Réessayez.",
+      "empty": "Aucun élément correspondant"
+    },
     "ariaLabel": "Carte en forme de soleil pour {{name}}",
     "back": "Revenir d'un niveau",
     "breadcrumbs": "Hiérarchie de la carte de l'espace",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "Aucun regroupement de dossiers supplémentaire n'est disponible à ce niveau.",
     "loadDeeperHint": "Sélectionnez ce dossier pour ouvrir le niveau suivant depuis l’index local.",
-    "otherContentHint": "Ce groupe contient les éléments non affichés séparément en raison de la capacité de l’index ou de la page actuelle ; ils ne sont pas nécessairement petits. Parcourez la suite ou ouvrez le dossier actuel dans Finder.",
+    "otherContentHint": "Ce groupe contient des éléments non détaillés sur la carte. Passez à la liste pour parcourir et rechercher le contenu indexé.",
     "loadingFolder": "Chargement de ce dossier…",
     "loadFailed": "Impossible de lire l’index des dossiers",
     "loadMore": "Afficher 50 éléments supplémentaires",
     "refreshProgress": "{{count}} éléments vérifiés · {{time}} s",
     "refreshFailed": "Impossible d’actualiser le dossier",
-    "directActionHint": "Faites glisser un secteur ou un dossier de la liste vers le panier en bas",
+    "directActionHint": "Faites glisser un secteur ou un élément de la liste vers le panier en bas",
     "protectedSelectionHint": "Les chemins système et le répertoire racine sont consultables uniquement ; les éléments précis de votre dossier personnel peuvent être ajoutés au bac",
     "trashRootProtected": "Le dossier Corbeille lui-même est protégé ; ouvrez-le et sélectionnez précisément le contenu à supprimer",
     "planSummary": "{{count}} éléments sélectionnés · {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "Les fichiers système et réglages importants sont protégés et n’ont pas été ajoutés",
       "protectedPreview": "Protégé · suppression impossible",
       "protectedBadge": "Protégé",
-      "empty": "Faites glisser un secteur ou un dossier ici avant le nettoyage",
+      "empty": "Glissez ici un secteur ou un élément de la liste, puis vérifiez avant le nettoyage",
       "release": "Libérer pour ajouter au panier",
       "collected": "Dans le panier de nettoyage",
       "collectedHint": "Déjà ajouté ; retirez-le du panier ci-dessous ou continuez l'examen",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "Retirer du panier de nettoyage",
     "includedByParent": "Inclus dans un dossier parent",
-    "addToBasket": "Ajouter au panier de nettoyage"
+    "addToBasket": "Ajouter au panier de nettoyage",
+    "historyBack": "Retour",
+    "refreshCurrent": "Actualiser ce dossier",
+    "enterFolder": "Ouvrir le dossier",
+    "openFolder": "Ouvrir {{name}}"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "Aucun dossier en croissance dans la comparaison compacte."
   },
   "quickClean": {
-    "kicker": "Aucune analyse requise",
+    "kicker": "Sans analyse complète du disque",
     "title": "Nettoyage rapide",
-    "description": "Videz caches, journaux, fichiers temporaires et corbeille en un geste. Vos documents et photos restent intacts.",
+    "description": "Analysez les emplacements habituels, vérifiez les sources et choisissez quoi conserver avant de confirmer.",
     "analyze": "Analyser",
     "analyzing": "Analyse…",
     "analyzeAgain": "Réanalyser",
@@ -458,22 +480,29 @@
     "freedSummary": "{{size}} libérés sur {{count}} éléments",
     "again": "Nettoyer à nouveau",
     "close": "Fermer",
-    "total": "Total récupérable",
+    "total": "Espace récupérable estimé",
     "unavailable": "Indisponible",
     "empty": "Rien à nettoyer — votre disque est impeccable !",
     "skippedNote": "{{count}} éléments en cours d'utilisation ont été ignorés.",
-    "noRiskNote": "Seuls les caches régénérables et le contenu de la corbeille sont supprimés — jamais vos documents, photos ou identifiants.",
+    "noRiskNote": "Seuls les emplacements choisis sont traités. Sélectionnez la corbeille séparément ; la suppression est définitive. Vérifiez les sources.",
     "category": {
       "user_cache": "Caches d'apps",
       "logs": "Journaux",
       "temp_files": "Fichiers temporaires",
       "trash": "Corbeille"
     },
-    "launcherDescription": "Sans analyse : videz caches, journaux, fichiers temporaires et corbeille en un geste.",
+    "launcherDescription": "Analysez les emplacements habituels et choisissez quoi conserver.",
     "open": "Ouvrir le nettoyage rapide",
-    "back": "Retour à l'analyse de l'espace",    "guideTitle": "Un nettoyage plus poussé ?",
+    "back": "Retour à l'analyse de l'espace",
+    "guideTitle": "Un nettoyage plus poussé ?",
     "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
     "guideAction": "Aller à l'analyse du disque",
     "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"
+  },
+  "quickReview": {
+    "sources": "Vérifier les sources et choisir quoi conserver",
+    "limited": "Affiche les 128 emplacements les plus volumineux. Les grands dossiers peuvent être comptés partiellement. Les autres restent inclus ; désélectionnez la catégorie en cas de doute.",
+    "trashWarning": "La corbeille est décochée par défaut. Elle peut contenir des fichiers personnels ; la vider est irréversible.",
+    "excluded": "{{count}} emplacements conservés avec leurs dossiers parents"
   }
 }

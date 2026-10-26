@@ -84,5 +84,23 @@
       "hours_one": "environ 1 heure",
       "hours_other": "environ {{count}} heures"
     }
+  },
+  "sleepReview": {
+    "details": "Voir les tâches empêchant la veille",
+    "markExpected": "Cette tâche est volontaire",
+    "expected": "Éveil prévu (cliquer pour annuler)",
+    "sessionNote": "Valable pour cette session, jusqu’à la fin de la tâche ou au redémarrage du processus. Les réglages et les mesures brutes restent inchangés.",
+    "plannedValue": "Éveil prévu",
+    "plannedDescription": "Les tâches confirmées sont exclues des rappels. L’ordinateur reste éveillé.",
+    "kind": {
+      "system_sleep": "Empêche la veille du système",
+      "idle_sleep": "Empêche la veille en cas d’inactivité",
+      "display_sleep": "Garde l’écran allumé"
+    },
+    "power": {
+      "ac": "Branché au secteur",
+      "battery": "Sur batterie",
+      "unknown": "Source d’alimentation inconnue"
+    }
   }
 }

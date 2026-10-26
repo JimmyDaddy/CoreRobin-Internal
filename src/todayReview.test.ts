@@ -8,6 +8,18 @@ import type { HistoryPoint } from "./types";
 import type { UserActionRecord } from "./userActionHistory";
 
 describe("today review", () => {
+  it("keeps an unresolved incident visible across midnight", () => {
+    const nowMs = new Date(2026, 9, 26, 12).getTime();
+    const startedAtMs = nowMs - 24 * 60 * 60_000;
+    const review = buildTodayReview({ nowMs, points: [], applicationImpactPoints: [],
+      networkQualityPoints: [], actions: [], alerts: [{
+        id: "volume:old", timestamp: startedAtMs, startedAtMs,
+        resource: "volume", kind: "triggered", severity: "high",
+        valuePercent: 96, thresholdPercent: 85, durationMs: 10_000,
+      }] });
+    expect(review.status).toBe("active");
+    expect(review.activeCount).toBe(1);
+  });
   it("describes an observed pressure drop without assigning causation", () => {
     const completedAtMs = 1_000_000;
     const action = actionRecord({ completedAtMs, startedAtMs: completedAtMs - 1 });

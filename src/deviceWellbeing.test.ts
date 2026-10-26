@@ -50,6 +50,7 @@ describe("device wellbeing", () => {
       durationSeconds: 1_800,
       kinds: ["idle_sleep", "display_sleep"],
       processIdentity: "46100:code",
+      reasons: ["Electron"],
     }]);
     expect(sleepWellbeingLevel(sleep, [application])).toBe("attention");
   });
@@ -61,6 +62,14 @@ describe("device wellbeing", () => {
       blockers: [{ pid: 88, processName: "powerd", reason: null, kind: "system_sleep" as const, durationSeconds: 30 }],
     };
     expect(sleepWellbeingLevel(systemSleep, [])).toBe("normal");
+    const uncertainApplication: ApplicationImpact = {
+      id: "powerd", name: "powerd", processCount: 1, cpuPercent: 0,
+      memoryBytes: 0, diskBytesPerSecond: 0, systemComponent: false,
+      representativeIdentity: "88:unknown", actionIdentity: null,
+      memberIdentities: ["88:unknown"],
+      iconProcess: { pid: 88, snapshotStartTime: 1, snapshotBirthToken: "unknown" },
+    };
+    expect(sleepWellbeingLevel(systemSleep, [uncertainApplication])).toBe("normal");
     expect(sleepWellbeingLevel({ ...systemSleep, available: false, blockers: [] }, [])).toBe("unavailable");
   });
 });

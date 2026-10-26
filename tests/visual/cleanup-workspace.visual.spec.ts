@@ -1,0 +1,77 @@
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+async function openResult(page: Page, width: number) {
+  await page.addInitScript(() => {
+    localStorage.setItem("core-robin.onboarding.v1", "completed");
+    localStorage.setItem("core-robin.update-check.checked-at.v1", String(Date.now()));
+    localStorage.setItem("core-robin.settings.v1", JSON.stringify({ version: 1, language: "zh-CN", experienceMode: "simple", reduceMotion: false }));
+  });
+  await page.setViewportSize({ width, height: 768 });
+  await page.goto("/");
+  await page.locator(".sidebar .nav-group button").filter({ hasText: "磁盘扫描" }).click();
+  await page.getByRole("button", { name: "开始只读扫描" }).click();
+  await expect(page.locator(".cleanup-results")).toBeVisible();
+  await page.getByRole("button", { name: "列表", exact: true }).click();
+}
+
+async function dragToBasket(page: Page, source: Locator, position?: { x: number; y: number }) {
+  await source.scrollIntoViewIfNeeded();
+  const from = (await source.boundingBox())!;
+  await page.mouse.move(from.x + (position?.x ?? from.width / 2), from.y + (position?.y ?? from.height / 2));
+  await page.mouse.down();
+  await page.mouse.move(from.x + (position?.x ?? from.width / 2) + 24, from.y + (position?.y ?? from.height / 2), { steps: 3 });
+  await expect(page.locator(".cleanup-map__dropzone")).toHaveClass(/is-dragging/);
+  const basket = (await page.locator(".cleanup-map__dropzone").boundingBox())!;
+  await page.mouse.move(basket.x + basket.width / 2, basket.y + basket.height / 2, { steps: 16 });
+}
+
+for (const width of [900, 1180]) {
+  test(`scan workspace preserves map and list dragging at ${width}px`, async ({ page }) => {
+    await openResult(page, width);
+    const map = page.locator(".cleanup-map");
+    const list = page.locator(".cleanup-index-list");
+    const basket = page.locator(".cleanup-map__dropzone");
+
+    await dragToBasket(page, list.locator(".cleanup-index-list__select").filter({ hasText: "System" }));
+    await expect(basket).toHaveClass(/is-protected-drag/);
+    await page.mouse.up();
+    await expect(basket).toHaveClass(/is-blocked/);
+    await expect(basket.locator(".cleanup-map__basket-items button")).toHaveCount(0);
+
+    for (const name of ["Users", "demo", "Downloads", "Installers"]) {
+      await list.getByRole("button", { name: `进入 ${name}`, exact: true }).click();
+    }
+    await list.locator(".cleanup-index-list__select").filter({ hasText: "macOS.dmg" }).click();
+    const selection = map.locator(".cleanup-map__selection");
+    await expect(selection).toContainText("macOS.dmg");
+    await selection.getByRole("button", { name: "空间明细", exact: true }).click();
+    const details = page.getByRole("dialog", { name: "空间明细", exact: true });
+    await expect(details).toContainText("macOS.dmg");
+    await page.keyboard.press("Escape");
+    await expect(details).toBeHidden();
+    await expect(selection.getByRole("button", { name: "空间明细", exact: true })).toBeFocused();
+
+    await dragToBasket(page, list.locator(".cleanup-index-list__select").filter({ hasText: "macOS.dmg" }));
+    await expect(basket).toHaveClass(/is-active/);
+    await page.mouse.up();
+    await expect(basket.locator(".cleanup-map__basket-items")).toContainText("macOS.dmg");
+    await basket.locator(".cleanup-map__basket-clear").click();
+
+    await map.getByRole("button", { name: "空间图", exact: true }).click();
+    const canvas = map.locator("canvas.cleanup-map__sunburst");
+    await expect(canvas).toBeVisible();
+    await map.locator(".cleanup-map__chart-frame").scrollIntoViewIfNeeded();
+    const bounds = (await canvas.boundingBox())!;
+    const angle = -Math.PI / 2 + 4.1 / 5.94 * Math.PI;
+    const radius = 67 * bounds.width / 420;
+    await dragToBasket(page, canvas, { x: bounds.width / 2 + radius * Math.cos(angle), y: bounds.width / 2 + radius * Math.sin(angle) });
+    await expect(basket).toHaveClass(/is-active/);
+    await page.mouse.up();
+    await expect(basket.locator(".cleanup-map__basket-items")).toContainText("macOS.dmg");
+    expect(await map.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const selectedBounds = (await selection.boundingBox())!;
+    const basketBounds = (await basket.boundingBox())!;
+    expect(selectedBounds.y + selectedBounds.height).toBeLessThanOrEqual(basketBounds.y - 4);
+    await page.screenshot({ path: test.info().outputPath(`workspace-${width}.png`), fullPage: true });
+  });
+}

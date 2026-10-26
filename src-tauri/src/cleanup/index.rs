@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -45,19 +45,59 @@ const INDEX_VACUUM_PAGES: usize = 8_192;
 // (e.g. discarding an old scan) instead of aborting the whole scan with
 // SQLITE_BUSY once the busy handler gives up.
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
+const SQLITE_READ_BUDGET: Duration = Duration::from_secs(5);
+const MISSING_ANCHOR_QUERY: &str = "SELECT EXISTS(
+  SELECT 1 FROM scan_segments AS segment WHERE segment.scan_id = ?1
+  AND NOT EXISTS(SELECT 1 FROM nodes INDEXED BY nodes_by_path
+    WHERE nodes.scan_id = ?1 AND nodes.absolute_path = segment.path
+    AND nodes.kind IN ('folder', 'restricted')))";
 // Delete scan rows in bounded batches so no single statement holds the WAL
 // write lock long enough to stall a concurrent scan worker.
 const INDEX_DELETE_BATCH: usize = 5_000;
-// Re-check the index byte budget every this many scanned entries and trim
-// recovery-only file identities so a large scan cannot hit the byte cap.
-const INDEX_SPACE_CHECK_INTERVAL: usize = 4_096;
-// Percent of MAX_INDEX_BYTES at which a new scan retires surplus generations
-// before writing, and the watermarks used by the mid-scan seen_files trim.
+// Retire surplus generations based on live pages, not reusable free pages.
 const INDEX_RETIRE_THRESHOLD_PERCENT: i64 = 75;
-const INDEX_TRIM_HIGH_PERCENT: i64 = 85;
-const INDEX_TRIM_LOW_PERCENT: i64 = 75;
 const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
+
+type ActivityNotifier = Arc<dyn Fn() + Send + Sync>;
+// Installed only in the disposable scan worker, never in the desktop process.
+// Parallel quick-scan parts share this process-local, thread-safe notifier.
+static SCAN_ACTIVITY: OnceLock<ActivityNotifier> = OnceLock::new();
+type CheckpointNotifier = Arc<dyn Fn(&str) + Send + Sync>;
+static SCAN_CHECKPOINT: OnceLock<CheckpointNotifier> = OnceLock::new();
+
+pub(crate) fn set_scan_checkpoint_notifier(notifier: CheckpointNotifier) {
+    let _ = SCAN_CHECKPOINT.set(notifier);
+}
+
+fn report_scan_checkpoint(scan_id: &str) {
+    if let Some(notifier) = SCAN_CHECKPOINT.get() {
+        notifier(scan_id);
+    }
+}
+
+pub(crate) fn set_scan_activity_notifier(notifier: ActivityNotifier) {
+    let _ = SCAN_ACTIVITY.set(notifier);
+}
+
+fn attach_index_activity(
+    connection: &Connection,
+    notifier: ActivityNotifier,
+) -> Result<(), CommandError> {
+    let mut last_report = Instant::now() - PROGRESS_TIME_INTERVAL;
+    connection
+        .progress_handler(
+            10_000,
+            Some(move || {
+                if last_report.elapsed() >= PROGRESS_TIME_INTERVAL {
+                    notifier();
+                    last_report = Instant::now();
+                }
+                false
+            }),
+        )
+        .map_err(index_error)
+}
 
 #[derive(Clone, Debug)]
 struct IndexedFile {
@@ -168,6 +208,7 @@ impl IndexScanStats {
         home: &Path,
         definitions: &[super::LocationDefinition],
         allocated_size_bytes: u64,
+        metadata: &Metadata,
     ) {
         self.discovered_bytes = self.discovered_bytes.saturating_add(allocated_size_bytes);
         if let Some((_, definition)) = matching_location_definition(definitions, path) {
@@ -176,10 +217,7 @@ impl IndexScanStats {
             totals.1 = totals.1.saturating_add(1);
         }
         if allocated_size_bytes >= LARGE_FILE_THRESHOLD_BYTES {
-            let modified_at_ms = fs::metadata(path)
-                .ok()
-                .and_then(|metadata| metadata.modified().ok())
-                .and_then(system_time_millis);
+            let modified_at_ms = metadata.modified().ok().and_then(system_time_millis);
             self.largest_files.push(CleanupFile {
                 name: cleanup_node_name(path),
                 path: path.to_string_lossy().into_owned(),
@@ -221,6 +259,7 @@ impl IndexScanStats {
 }
 
 struct ScanContext<'a> {
+    queue_children: bool,
     scan_id: &'a str,
     home: &'a Path,
     scan_root: &'a Path,
@@ -292,8 +331,6 @@ fn build_indexed_scan_with_shared_identities(
     }
     let mut connection = open_index(index_path)?;
     initialize_schema(&connection)?;
-    purge_expired_and_incomplete(&connection)?;
-    retire_surplus_generations_when_index_full(&connection, scan_id)?;
 
     let definitions = platform_paths(&home);
     let scope_paths = if request.profile == CleanupScanProfile::CommonLocations {
@@ -356,7 +393,6 @@ fn build_indexed_scan_with_shared_identities(
     );
 
     if request.profile == CleanupScanProfile::CommonLocations {
-        remove_quick_part_indexes(index_path)?;
         scan_quick_roots_parallel(
             &mut connection,
             index_path,
@@ -371,7 +407,15 @@ fn build_indexed_scan_with_shared_identities(
             &mut stats,
             on_progress,
         )?;
-    } else {
+    } else if connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM scan_segments WHERE scan_id = ?1)",
+            params![scan_id],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(index_error)?
+    {
+        // Resume indexes created by the previous top-level checkpoint format.
         for root in roots {
             scan_root_segment(
                 &mut connection,
@@ -392,11 +436,38 @@ fn build_indexed_scan_with_shared_identities(
                 on_progress,
             )?;
         }
+    } else {
+        scan_directory_queue(
+            &mut connection,
+            scan_id,
+            root_id,
+            &home,
+            &scan_root,
+            selected_cleanup_root,
+            boundary,
+            &definitions,
+            &scan_exclusions,
+            cancelled,
+            &mut seen_files,
+            shared_seen_files,
+            &mut detail_budget,
+            &mut stats,
+            on_progress,
+        )?;
     }
 
-    if request.profile == CleanupScanProfile::Complete {
+    if request.profile == CleanupScanProfile::Complete
+        && !connection
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM directory_scan_state WHERE scan_id = ?1)",
+                params![scan_id],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(index_error)?
+    {
         let transaction = connection.transaction().map_err(index_error)?;
         let mut context = ScanContext {
+            queue_children: false,
             scan_id,
             home: &home,
             scan_root: &scan_root,
@@ -455,24 +526,157 @@ fn build_indexed_scan_with_shared_identities(
             ],
         )
         .map_err(index_error)?;
-    // File identities are only required while a scan can still resume. Keep
-    // them in temporary quick-scan parts until the parent has merged them, but
-    // remove them from the committed top-level result instead of carrying
-    // recovery-only data for seven days.
-    if shared_seen_files.is_none() {
-        connection
+    // Recovery state and old generations are reclaimed only after the worker
+    // has delivered its result. They must not hold the map hostage.
+    enforce_private_index_permissions(index_path)?;
+    load_scan(&connection, index_path, scan_id)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_directory_queue(
+    connection: &mut Connection,
+    scan_id: &str,
+    root_id: i64,
+    home: &Path,
+    scan_root: &Path,
+    selected_cleanup_root: bool,
+    boundary: ScanFilesystemBoundary,
+    definitions: &[super::LocationDefinition],
+    excluded_paths: &[PathBuf],
+    cancelled: &AtomicBool,
+    seen_files: &mut HashSet<super::FileIdentity>,
+    shared_seen_files: Option<&Arc<Mutex<HashSet<super::FileIdentity>>>>,
+    detail_budget: &mut IndexDetailBudget,
+    stats: &mut IndexScanStats,
+    on_progress: &mut dyn FnMut(CleanupScanProgress),
+) -> Result<(), CommandError> {
+    let transaction = connection.transaction().map_err(index_error)?;
+    if transaction
+        .execute(
+            "INSERT OR IGNORE INTO directory_scan_state(scan_id) VALUES (?1)",
+            params![scan_id],
+        )
+        .map_err(index_error)?
+        > 0
+    {
+        transaction
             .execute(
-                "DELETE FROM seen_files WHERE scan_id = ?1",
-                params![scan_id],
+                "INSERT INTO pending_directories(scan_id, node_id) VALUES (?1, ?2)",
+                params![scan_id, root_id],
             )
             .map_err(index_error)?;
     }
-    // Publish the new generation before pruning older ones. Readers holding a
-    // result from the previous WebView generation can therefore finish their
-    // navigation while the frontend atomically switches to this scan.
-    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
-    enforce_private_index_permissions(index_path)?;
-    load_scan(&connection, index_path, scan_id)
+    transaction.commit().map_err(index_error)?;
+    let (entries, bytes, unreadable, paths): (i64, i64, i64, String) = connection.query_row(
+        "SELECT scanned_entry_count, COALESCE((SELECT allocated_size_bytes FROM nodes WHERE id=root_node_id),0),
+                unreadable_entry_count, unreadable_paths_json FROM scans WHERE id=?1", params![scan_id],
+        |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?)),
+    ).map_err(index_error)?;
+    stats.scanned_entry_count = entries as usize;
+    stats.last_reported_entry_count = stats.scanned_entry_count;
+    stats.discovered_bytes = from_i64(bytes);
+    stats.unreadable_entry_count = unreadable as usize;
+    stats.unreadable_paths = serde_json::from_str(&paths).unwrap_or_default();
+    loop {
+        ensure_scan_active(cancelled)?;
+        let transaction = connection.transaction().map_err(index_error)?;
+        let started = Instant::now();
+        let mut processed = 0;
+        let mut last_path = scan_root.to_path_buf();
+        while processed < 64 && (processed == 0 || started.elapsed() < Duration::from_millis(100)) {
+            ensure_scan_active(cancelled)?;
+            let pending = transaction
+                .prepare_cached(
+                    "SELECT nodes.id, nodes.parent_id, nodes.safety FROM pending_directories
+                 JOIN nodes ON nodes.id=pending_directories.node_id
+                 WHERE pending_directories.scan_id=?1 ORDER BY node_id LIMIT 1",
+                )
+                .map_err(index_error)?
+                .query_row(params![scan_id], |row| {
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, Option<i64>>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })
+                .optional()
+                .map_err(index_error)?;
+            let Some((node_id, parent_id, safety)) = pending else {
+                break;
+            };
+            let (absolute, _) = resolve_node_paths(&transaction, scan_id, node_id)?;
+            let directory = PathBuf::from(absolute);
+            let mut context = ScanContext {
+                queue_children: true,
+                scan_id,
+                home,
+                scan_root,
+                protection_root: scan_root,
+                selected_cleanup_root,
+                boundary,
+                definitions,
+                excluded_paths,
+                cancelled,
+                seen_files,
+                shared_seen_files,
+                detail_budget,
+                stats,
+                on_progress,
+            };
+            let result = scan_directory_into_index(
+                &transaction,
+                parent_id,
+                &directory,
+                parse_safety(&safety),
+                &mut context,
+                false,
+            )?;
+            if path_is_excluded(&directory, excluded_paths) {
+                context.stats.record_unreadable(&directory, home);
+            }
+            let mut ancestor = parent_id;
+            while let Some(parent) = ancestor {
+                transaction.prepare_cached(
+                    "UPDATE nodes SET logical_size_bytes=logical_size_bytes+?2,
+                     allocated_size_bytes=allocated_size_bytes+?3, item_count=item_count+?4, has_children=1
+                     WHERE id=?1",
+                ).map_err(index_error)?.execute(params![parent, to_i64(result.totals.logical_size_bytes),
+                    to_i64(result.totals.allocated_size_bytes), to_i64(result.totals.item_count as u64)]).map_err(index_error)?;
+                ancestor = transaction
+                    .prepare_cached("SELECT parent_id FROM nodes WHERE id=?1")
+                    .map_err(index_error)?
+                    .query_row(params![parent], |row| row.get(0))
+                    .map_err(index_error)?;
+            }
+            transaction
+                .prepare_cached("DELETE FROM pending_directories WHERE scan_id=?1 AND node_id=?2")
+                .map_err(index_error)?
+                .execute(params![scan_id, node_id])
+                .map_err(index_error)?;
+            last_path = directory;
+            processed += 1;
+        }
+        if processed == 0 {
+            break;
+        }
+        transaction
+            .execute(
+                "UPDATE scans SET scanned_entry_count=?2, unreadable_entry_count=?3,
+             unreadable_paths_json=?4, duration_ms=?5 WHERE id=?1",
+                params![
+                    scan_id,
+                    to_i64(stats.scanned_entry_count as u64),
+                    to_i64(stats.unreadable_entry_count as u64),
+                    serde_json::to_string(&stats.unreadable_paths).unwrap_or_default(),
+                    to_i64(stats.elapsed_ms())
+                ],
+            )
+            .map_err(index_error)?;
+        transaction.commit().map_err(index_error)?;
+        stats.report(&last_path, home, on_progress, true);
+        report_scan_checkpoint(scan_id);
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -507,6 +711,7 @@ fn scan_root_segment(
     let safety = matching_location_definition(definitions, root)
         .map_or(CleanupSafety::Review, |(_, definition)| definition.safety);
     let mut context = ScanContext {
+        queue_children: false,
         scan_id,
         home,
         scan_root,
@@ -639,8 +844,42 @@ fn scan_quick_roots_parallel(
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
-    for (wave_index, wave) in pending.chunks(parallelism).enumerate() {
+    for wave in pending.chunks(parallelism) {
         ensure_scan_active(cancelled)?;
+        // Stable slots survive a recovery after earlier roots were merged.
+        // Restore identities before starting any peer, so cached and newly
+        // scanned parts still count cross-root hard links exactly once.
+        for root in wave {
+            let slot = roots
+                .iter()
+                .position(|candidate| candidate == root)
+                .unwrap();
+            let part_path = quick_part_index_path(index_path, scan_id, slot);
+            if part_path.is_file() {
+                let source = open_index_read_only(&part_path)?;
+                let part_id = format!("quick-part-{slot}");
+                let target = source
+                    .query_row(
+                        "SELECT target_path FROM scans WHERE id=?1",
+                        params![part_id],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .optional()
+                    .map_err(index_error)?;
+                let canonical_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+                if target.as_deref() != Some(canonical_root.to_string_lossy().as_ref()) {
+                    drop(source);
+                    remove_cleanup_index(&part_path)?;
+                    continue;
+                }
+                shared_seen_files
+                    .lock()
+                    .map_err(|_| {
+                        CommandError::internal("The cleanup identity index became unavailable.")
+                    })?
+                    .extend(load_seen_files(&source, &format!("quick-part-{slot}"))?);
+            }
+        }
         let base_scanned = stats.scanned_entry_count;
         let base_discovered = stats.discovered_bytes;
         let parts = match thread::scope(|scope| -> QuickScanPartResults {
@@ -651,11 +890,11 @@ fn scan_quick_roots_parallel(
                 .map(|(slot, root)| {
                     let sender = sender.clone();
                     let root = root.clone();
-                    let part_path = quick_part_index_path(
-                        index_path,
-                        scan_id,
-                        wave_index.saturating_mul(parallelism).saturating_add(slot),
-                    );
+                    let original_slot = roots
+                        .iter()
+                        .position(|candidate| candidate == &root)
+                        .unwrap();
+                    let part_path = quick_part_index_path(index_path, scan_id, original_slot);
                     let shared_seen_files = Arc::clone(&shared_seen_files);
                     scope.spawn(move || {
                         let _ = sender.send(QuickScanPartEvent::Progress {
@@ -667,27 +906,31 @@ fn scan_quick_roots_parallel(
                                 elapsed_ms: 0,
                             },
                         });
-                        let outcome = (|| {
-                            remove_cleanup_index(&part_path)?;
-                            let part_scan_id = format!("quick-part-{wave_index}-{slot}");
-                            let scan = build_indexed_scan_with_shared_identities(
-                                CleanupScanRequest {
-                                    profile: CleanupScanProfile::Complete,
-                                    target_kind: CleanupScanTargetKind::Folder,
-                                    target_path: Some(root.to_string_lossy().into_owned()),
-                                },
-                                &part_scan_id,
-                                &part_path,
-                                cancelled,
-                                excluded_paths,
-                                &mut |progress| {
-                                    let _ = sender
-                                        .send(QuickScanPartEvent::Progress { slot, progress });
-                                },
-                                &mut || {},
-                                Some(&shared_seen_files),
-                                part_file_detail_limit,
-                            );
+                        let outcome = {
+                            let part_scan_id = format!("quick-part-{original_slot}");
+                            let cached = load_indexed_scan(&part_path, &part_scan_id).ok();
+                            let scan = if let Some(cached) = cached {
+                                Ok(cached)
+                            } else {
+                                build_indexed_scan_with_shared_identities(
+                                    CleanupScanRequest {
+                                        profile: CleanupScanProfile::Complete,
+                                        target_kind: CleanupScanTargetKind::Folder,
+                                        target_path: Some(root.to_string_lossy().into_owned()),
+                                    },
+                                    &part_scan_id,
+                                    &part_path,
+                                    cancelled,
+                                    excluded_paths,
+                                    &mut |progress| {
+                                        let _ = sender
+                                            .send(QuickScanPartEvent::Progress { slot, progress });
+                                    },
+                                    &mut || {},
+                                    Some(&shared_seen_files),
+                                    part_file_detail_limit,
+                                )
+                            };
                             match scan {
                                 Ok(scan) => Ok::<_, CommandError>(QuickScanPartOutcome::Indexed(
                                     Box::new(QuickScanPart {
@@ -704,7 +947,7 @@ fn scan_quick_roots_parallel(
                                 }
                                 Err(error) => Err(error),
                             }
-                        })();
+                        };
                         let _ = sender.send(QuickScanPartEvent::Finished { slot });
                         outcome
                     })
@@ -808,6 +1051,21 @@ fn scan_quick_roots_parallel(
                     )?;
                 }
             }
+            update_root_totals(connection, scan_id, root_id)?;
+            connection
+                .execute(
+                    "UPDATE scans SET scanned_entry_count=?2, duration_ms=?3,
+                unreadable_entry_count=?4, unreadable_paths_json=?5 WHERE id=?1",
+                    params![
+                        scan_id,
+                        to_i64(stats.scanned_entry_count as u64),
+                        to_i64(stats.elapsed_ms()),
+                        to_i64(stats.unreadable_entry_count as u64),
+                        serde_json::to_string(&stats.unreadable_paths).unwrap_or_default()
+                    ],
+                )
+                .map_err(index_error)?;
+            report_scan_checkpoint(scan_id);
         }
     }
     Ok(())
@@ -1048,6 +1306,30 @@ pub(crate) fn load_indexed_scan(
     scan_id: &str,
 ) -> Result<CleanupScan, CommandError> {
     let connection = open_index_read_only(index_path)?;
+    let completed: bool = connection
+        .query_row(
+            "SELECT state='completed' FROM scans WHERE id=?1",
+            params![scan_id],
+            |row| row.get(0),
+        )
+        .map_err(index_error)?;
+    if !completed {
+        return Err(CommandError::new(
+            "cleanup_scan_result_unavailable",
+            "The scan has not completed.",
+        ));
+    }
+    load_scan(&connection, index_path, scan_id)
+}
+
+pub(crate) fn load_progressive_scan(
+    index_path: &Path,
+    scan_id: &str,
+) -> Result<CleanupScan, CommandError> {
+    let connection = open_index_read_only(index_path)?;
+    connection
+        .execute_batch("BEGIN DEFERRED")
+        .map_err(index_error)?;
     load_scan(&connection, index_path, scan_id)
 }
 
@@ -1203,7 +1485,6 @@ pub(crate) fn refresh_indexed_directory(
             )
         })?;
     let staging_scan_id = format!("refresh:{refresh_id}");
-    delete_scan(&connection, &staging_scan_id)?;
     let old_target_file_details = count_subtree_file_details(&connection, scan_id, node_id)?;
     let retained_file_details =
         count_scan_file_details(&connection, scan_id)?.saturating_sub(old_target_file_details);
@@ -1226,55 +1507,59 @@ pub(crate) fn refresh_indexed_directory(
         &[],
     )?;
     let staging_root_id = root_node_id(&connection, &staging_scan_id)?;
+    connection
+        .execute(
+            "UPDATE nodes SET safety=?2, modified_at_ms=?3, device_id=?4, inode=?5,
+         deletion_protected=(SELECT deletion_protected FROM nodes WHERE id=?6),
+         protection_reason=(SELECT protection_reason FROM nodes WHERE id=?6) WHERE id=?1",
+            params![
+                staging_root_id,
+                safety,
+                metadata
+                    .modified()
+                    .ok()
+                    .and_then(system_time_millis)
+                    .map(to_i64),
+                metadata_device_id(&metadata),
+                metadata_inode(&metadata),
+                node_id
+            ],
+        )
+        .map_err(index_error)?;
     let boundary = ScanFilesystemBoundary::for_root(&target)?;
     let definitions = platform_paths(&home);
     let refresh_exclusions = cleanup_scan_exclusions(index_path, &target, excluded_paths);
-    let mut seen_files = HashSet::new();
-    let mut stats = IndexScanStats::new();
+    let mut seen_files = load_seen_files(&connection, &staging_scan_id)?;
+    let mut stats =
+        IndexScanStats::resuming_from(scan_started_at_ms(&connection, &staging_scan_id)?);
     let mut detail_budget = IndexDetailBudget::new(
         count_scan_file_details(&connection, &staging_scan_id)?,
         refresh_file_detail_limit,
     );
-    let transaction = connection.transaction().map_err(index_error)?;
-    let mut context = ScanContext {
-        scan_id: &staging_scan_id,
-        home: &home,
-        scan_root: &target,
-        protection_root: &target,
-        selected_cleanup_root: true,
-        boundary,
-        definitions: &definitions,
-        excluded_paths: &refresh_exclusions,
-        cancelled,
-        seen_files: &mut seen_files,
-        shared_seen_files: None,
-        detail_budget: &mut detail_budget,
-        stats: &mut stats,
-        on_progress,
-    };
-    scan_directory_into_index(
-        &transaction,
-        Some(staging_root_id),
+    scan_directory_queue(
+        &mut connection,
+        &staging_scan_id,
+        staging_root_id,
+        &home,
         &target,
-        parse_safety(&safety),
-        &mut context,
         true,
+        boundary,
+        &definitions,
+        &refresh_exclusions,
+        cancelled,
+        &mut seen_files,
+        None,
+        &mut detail_budget,
+        &mut stats,
+        on_progress,
     )?;
-    transaction.commit().map_err(index_error)?;
     ensure_scan_active(cancelled)?;
     on_finalizing();
-    let staged_target_id = connection
-        .query_row(
-            "SELECT id FROM nodes WHERE scan_id = ?1 AND parent_id = ?2 LIMIT 1",
-            params![staging_scan_id, staging_root_id],
-            |row| row.get::<_, i64>(0),
-        )
-        .map_err(index_error)?;
     let replacement = connection.transaction().map_err(index_error)?;
     replace_node_subtree_preserving_root(
         &replacement,
         &staging_scan_id,
-        staged_target_id,
+        staging_root_id,
         scan_id,
         node_id,
     )?;
@@ -1312,6 +1597,66 @@ pub(crate) fn maintain_cleanup_index(index_path: &Path) -> Result<(), CommandErr
     }
     let connection = open_index(index_path)?;
     initialize_schema(&connection)?;
+    if let Some(parent) = index_path.parent() {
+        let prefix = format!(
+            "{}.retired-",
+            index_path.file_name().unwrap_or_default().to_string_lossy()
+        );
+        for entry in
+            fs::read_dir(parent).map_err(|error| CommandError::internal(error.to_string()))?
+        {
+            let entry = entry.map_err(|error| CommandError::internal(error.to_string()))?;
+            if !entry.file_name().to_string_lossy().starts_with(&prefix) {
+                continue;
+            }
+            if let Some(bytes) = crate::private_storage::read_limited(&entry.path(), 1024)
+                .map_err(|error| CommandError::internal(error.to_string()))?
+            {
+                let scan_id: String = serde_json::from_slice(&bytes)
+                    .map_err(|error| CommandError::internal(error.to_string()))?;
+                delete_scan(&connection, &scan_id)?;
+                remove_quick_part_indexes_for_scan(index_path, &scan_id)?;
+                crate::private_storage::remove(&entry.path())
+                    .map_err(|error| CommandError::internal(error.to_string()))?;
+            }
+        }
+    }
+    purge_expired_and_incomplete(&connection)?;
+    let latest = connection
+        .query_row(
+            "SELECT id, target_kind, target_path FROM scans WHERE state = 'completed'
+         ORDER BY sampled_at_ms DESC, started_at_ms DESC LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(index_error)?;
+    if let Some((scan_id, kind, path)) = latest {
+        // DELETEs are bounded and interruptible by replacing the disposable
+        // worker. Preserve every running scan's hard-link recovery identities.
+        loop {
+            let deleted = connection
+                .execute(
+                    "DELETE FROM seen_files WHERE (scan_id, identity_a, identity_b) IN (
+                   SELECT seen_files.scan_id, identity_a, identity_b FROM seen_files
+                   JOIN scans ON scans.id = seen_files.scan_id
+                   WHERE scans.state = 'completed' LIMIT ?1)",
+                    params![INDEX_DELETE_BATCH as i64],
+                )
+                .map_err(index_error)?;
+            if deleted == 0 {
+                break;
+            }
+        }
+        retire_previous_detailed_scans(&connection, &scan_id, parse_target_kind(&kind), &path)?;
+        retire_surplus_generations_when_index_full(&connection, &scan_id)?;
+    }
     let page_size: i64 = connection
         .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
         .map_err(index_error)?;
@@ -1396,7 +1741,8 @@ pub(crate) fn remove_cleanup_index(index_path: &Path) -> Result<(), CommandError
     Ok(())
 }
 
-pub(crate) fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(), CommandError> {
+#[cfg(test)]
+fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(), CommandError> {
     if index_path.is_file() {
         let connection = open_index(index_path)?;
         initialize_schema(&connection)?;
@@ -1406,6 +1752,26 @@ pub(crate) fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(
         enforce_private_index_permissions(index_path)?;
     }
     remove_quick_part_indexes_for_scan(index_path, scan_id)
+}
+
+pub(crate) fn defer_discard_indexed_scan(
+    index_path: &Path,
+    scan_id: &str,
+) -> Result<(), CommandError> {
+    if !scan_id
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+        || scan_id.len() > 128
+    {
+        return Err(CommandError::internal("Invalid retired scan identifier."));
+    }
+    let marker = index_path.with_file_name(format!(
+        "{}.retired-{scan_id}",
+        index_path.file_name().unwrap_or_default().to_string_lossy()
+    ));
+    crate::private_storage::write_atomic(&marker, &serde_json::to_vec(scan_id).unwrap()).map_err(
+        |error| CommandError::internal(format!("Could not defer index maintenance: {error}")),
+    )
 }
 
 fn cleanup_scan_exclusions(
@@ -1699,7 +2065,9 @@ fn scan_directory_into_index(
         })
         .transpose()?
         .flatten();
-    let node_id = if let Some(node_id) = existing_node_id {
+    let node_id = if context.queue_children && parent_id.is_none() {
+        Some(root_node_id(transaction, context.scan_id)?)
+    } else if let Some(node_id) = existing_node_id {
         update_directory_placeholder(
             transaction,
             node_id,
@@ -1751,13 +2119,6 @@ fn scan_directory_into_index(
     for entry in entries {
         ensure_scan_active(context.cancelled)?;
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context
-            .stats
-            .scanned_entry_count
-            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
-        {
-            trim_seen_files_for_index_space(transaction, context.scan_id)?;
-        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -1820,9 +2181,13 @@ fn scan_directory_into_index(
         }
         let logical = metadata.len();
         let allocated = allocated_file_size(&path, &metadata);
-        context
-            .stats
-            .record_file(&path, context.home, context.definitions, allocated);
+        context.stats.record_file(
+            &path,
+            context.home,
+            context.definitions,
+            allocated,
+            &metadata,
+        );
         totals.logical_size_bytes = totals.logical_size_bytes.saturating_add(logical);
         totals.allocated_size_bytes = totals.allocated_size_bytes.saturating_add(allocated);
         totals.item_count = totals.item_count.saturating_add(1);
@@ -1909,6 +2274,23 @@ fn scan_directory_into_index(
     }
 
     for (path, _) in child_directories {
+        if context.queue_children {
+            if let Some(parent) = node_id
+                && let Some(child) = find_directory_node_id(
+                    transaction,
+                    context.scan_id,
+                    parent,
+                    &cleanup_node_name(&path),
+                )?
+            {
+                transaction.execute(
+                    "INSERT OR IGNORE INTO pending_directories(scan_id, node_id) VALUES (?1, ?2)",
+                    params![context.scan_id, child],
+                ).map_err(index_error)?;
+                totals.direct_child_count += 1;
+            }
+            continue;
+        }
         let child = scan_directory_into_index(
             transaction,
             node_id,
@@ -2062,13 +2444,6 @@ fn scan_direct_files_into_index(
             continue;
         }
         context.stats.scanned_entry_count = context.stats.scanned_entry_count.saturating_add(1);
-        if context
-            .stats
-            .scanned_entry_count
-            .is_multiple_of(INDEX_SPACE_CHECK_INTERVAL)
-        {
-            trim_seen_files_for_index_space(transaction, context.scan_id)?;
-        }
         context
             .stats
             .report(directory, context.home, context.on_progress, false);
@@ -2088,9 +2463,13 @@ fn scan_direct_files_into_index(
         }
         let logical = metadata.len();
         let allocated = allocated_file_size(&path, &metadata);
-        context
-            .stats
-            .record_file(&path, context.home, context.definitions, allocated);
+        context.stats.record_file(
+            &path,
+            context.home,
+            context.definitions,
+            allocated,
+            &metadata,
+        );
         totals.logical_size_bytes = totals.logical_size_bytes.saturating_add(logical);
         totals.allocated_size_bytes = totals.allocated_size_bytes.saturating_add(allocated);
         totals.item_count = totals.item_count.saturating_add(1);
@@ -2151,7 +2530,7 @@ fn load_scan(
             "SELECT sampled_at_ms, duration_ms, profile, target_kind, target_path,
                     scope_paths_json, scanned_entry_count, unreadable_entry_count,
                     unreadable_paths_json, root_node_id
-             FROM scans WHERE id = ?1 AND state = 'completed'",
+             FROM scans WHERE id = ?1",
             params![scan_id],
             |row| {
                 Ok((
@@ -2169,16 +2548,28 @@ fn load_scan(
             },
         )
         .map_err(index_error)?;
+    let partial: bool = connection
+        .query_row(
+            "SELECT state!='completed' FROM scans WHERE id=?1",
+            params![scan_id],
+            |row| row.get(0),
+        )
+        .map_err(index_error)?;
     let root = materialize_node(connection, scan_id, root_node_id, 1)?;
     let locations = load_locations(connection, scan_id)?;
     let largest_files = load_largest_files(connection, scan_id)?;
     Ok(CleanupScan {
+        partial,
         scan_id: scan_id.to_owned(),
         profile: parse_profile(&profile),
         scope_paths: serde_json::from_str(&scope_paths_json).unwrap_or_default(),
         indexed: true,
         index_byte_size: index_file_size(index_path),
-        sampled_at_ms: u64::try_from(sampled_at_ms).unwrap_or(0),
+        sampled_at_ms: if partial {
+            now_millis_u64()
+        } else {
+            u64::try_from(sampled_at_ms).unwrap_or(0)
+        },
         duration_ms: u64::try_from(duration_ms).unwrap_or(0),
         root,
         locations,
@@ -2188,7 +2579,7 @@ fn load_scan(
         scanned_entry_count: usize::try_from(scanned_entry_count).unwrap_or(0),
         unreadable_entry_count: usize::try_from(unreadable_entry_count).unwrap_or(0),
         unreadable_paths: serde_json::from_str(&unreadable_paths_json).unwrap_or_default(),
-        deletion_available: true,
+        deletion_available: !partial,
         target_kind: parse_target_kind(&target_kind),
         target_path,
     })
@@ -2545,6 +2936,11 @@ fn initialize_schema(connection: &Connection) -> Result<(), CommandError> {
               unreadable_paths_json TEXT NOT NULL DEFAULT '[]',
               PRIMARY KEY(scan_id, path)
             ) WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS directory_scan_state(scan_id TEXT PRIMARY KEY) WITHOUT ROWID;
+            CREATE TABLE IF NOT EXISTS pending_directories(
+              scan_id TEXT NOT NULL, node_id INTEGER NOT NULL,
+              PRIMARY KEY(scan_id, node_id)
+            ) WITHOUT ROWID;
             CREATE TABLE IF NOT EXISTS scan_locations(
               scan_id TEXT NOT NULL,
               kind TEXT NOT NULL,
@@ -2753,13 +3149,15 @@ fn find_directory_node_id(
     name: &str,
 ) -> Result<Option<i64>, CommandError> {
     transaction
-        .query_row(
+        .prepare_cached(
             "SELECT id FROM nodes
              WHERE scan_id = ?1 AND parent_id = ?2 AND name = ?3
                AND kind IN ('folder', 'restricted')",
-            params![scan_id, parent_id, name],
-            |row| row.get::<_, i64>(0),
         )
+        .map_err(index_error)?
+        .query_row(params![scan_id, parent_id, name], |row| {
+            row.get::<_, i64>(0)
+        })
         .optional()
         .map_err(index_error)
 }
@@ -2812,29 +3210,30 @@ fn insert_file(
     file: &IndexedFile,
 ) -> Result<(), CommandError> {
     transaction
-        .execute(
+        .prepare_cached(
             "INSERT OR REPLACE INTO nodes(
                scan_id, parent_id, name, absolute_path, display_path,
                logical_size_bytes, allocated_size_bytes, item_count, safety, kind,
                deletion_protected, protection_reason, has_children, modified_at_ms,
                device_id, inode
              ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, 'file', ?9, ?10, 0, ?11, ?12, ?13)",
-            params![
-                scan_id,
-                parent_id,
-                file.name,
-                Option::<String>::None,
-                Option::<String>::None,
-                to_i64(file.logical_size_bytes),
-                to_i64(file.allocated_size_bytes),
-                safety_text(file.safety),
-                i64::from(file.deletion_protected),
-                file.protection_reason.map(protection_reason_text),
-                file.modified_at_ms.map(to_i64),
-                file.device_id,
-                file.inode,
-            ],
         )
+        .map_err(index_error)?
+        .execute(params![
+            scan_id,
+            parent_id,
+            file.name,
+            Option::<String>::None,
+            Option::<String>::None,
+            to_i64(file.logical_size_bytes),
+            to_i64(file.allocated_size_bytes),
+            safety_text(file.safety),
+            i64::from(file.deletion_protected),
+            file.protection_reason.map(protection_reason_text),
+            file.modified_at_ms.map(to_i64),
+            file.device_id,
+            file.inode,
+        ])
         .map_err(index_error)?;
     Ok(())
 }
@@ -4026,20 +4425,9 @@ fn scan_has_missing_nodes(
         && target_kind == target_kind_text(CleanupScanTargetKind::SystemDisk)
     {
         let missing_anchor = connection
-            .query_row(
-                "SELECT EXISTS(
-                   SELECT 1 FROM scan_segments AS segment
-                   WHERE segment.scan_id = ?1
-                     AND NOT EXISTS(
-                       SELECT 1 FROM nodes
-                       WHERE nodes.scan_id = ?1
-                         AND nodes.absolute_path = segment.path
-                         AND nodes.kind IN ('folder', 'restricted')
-                     )
-                 )",
-                params![scan_id],
-                |row| row.get::<_, i64>(0),
-            )
+            .query_row(MISSING_ANCHOR_QUERY, params![scan_id], |row| {
+                row.get::<_, i64>(0)
+            })
             .map_err(index_error)?
             != 0;
         if missing_anchor {
@@ -4219,10 +4607,15 @@ fn retire_surplus_generations(
 
 fn index_bytes(connection: &Connection) -> Result<i64, CommandError> {
     let page_count = current_page_count(connection)?;
+    let free_pages: i64 = connection
+        .query_row("PRAGMA freelist_count", [], |row| row.get(0))
+        .map_err(index_error)?;
     let page_size: i64 = connection
         .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
         .map_err(index_error)?;
-    Ok(page_count.saturating_mul(page_size))
+    Ok(page_count
+        .saturating_sub(free_pages)
+        .saturating_mul(page_size))
 }
 
 fn current_page_count(connection: &Connection) -> Result<i64, CommandError> {
@@ -4231,55 +4624,10 @@ fn current_page_count(connection: &Connection) -> Result<i64, CommandError> {
         .map_err(index_error)
 }
 
-fn trim_seen_files_for_index_space(
-    transaction: &Transaction<'_>,
-    scan_id: &str,
-) -> Result<(), CommandError> {
-    let page_size: i64 = transaction
-        .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
-        .map_err(index_error)?;
-    let budget_pages = (MAX_INDEX_BYTES as i64)
-        .checked_div(page_size.max(1))
-        .unwrap_or(0);
-    trim_seen_files_to_budget(transaction, scan_id, budget_pages)
-}
-
-fn trim_seen_files_to_budget(
-    transaction: &Transaction<'_>,
-    scan_id: &str,
-    budget_pages: i64,
-) -> Result<(), CommandError> {
-    let high = budget_pages.saturating_mul(INDEX_TRIM_HIGH_PERCENT) / 100;
-    let low = budget_pages.saturating_mul(INDEX_TRIM_LOW_PERCENT) / 100;
-    if current_page_count(transaction)? < high {
-        return Ok(());
-    }
-    // seen_files only carries resume state for the current scan; the in-memory
-    // identity set keeps the running scan correct. Dropping the persisted rows
-    // frees pages for reuse so a very large scan keeps going instead of
-    // failing with SQLITE_FULL. A resumed worker may re-count some files.
-    loop {
-        let deleted = transaction
-            .execute(
-                "DELETE FROM seen_files WHERE scan_id = ?1 AND identity_a IN (
-                   SELECT identity_a FROM seen_files WHERE scan_id = ?1 LIMIT ?2
-                 )",
-                params![scan_id, INDEX_DELETE_BATCH as i64],
-            )
-            .map_err(index_error)?;
-        if deleted == 0 {
-            break;
-        }
-        if current_page_count(transaction)? < low {
-            break;
-        }
-    }
-    Ok(())
-}
-
 fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandError> {
     for (table, key) in [
         ("nodes", "id"),
+        ("pending_directories", "node_id"),
         ("scan_segments", "path"),
         ("scan_locations", "kind"),
         ("largest_files", "path"),
@@ -4302,6 +4650,12 @@ fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandErro
         }
     }
     connection
+        .execute(
+            "DELETE FROM directory_scan_state WHERE scan_id = ?1",
+            params![scan_id],
+        )
+        .map_err(index_error)?;
+    connection
         .execute("DELETE FROM scans WHERE id = ?1", params![scan_id])
         .map_err(index_error)?;
     Ok(())
@@ -4310,6 +4664,10 @@ fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandErro
 fn open_index(path: &Path) -> Result<Connection, CommandError> {
     reset_outdated_index(path)?;
     let connection = Connection::open(path).map_err(index_error)?;
+    connection.set_prepared_statement_cache_capacity(64);
+    if let Some(notifier) = SCAN_ACTIVITY.get() {
+        attach_index_activity(&connection, Arc::clone(notifier))?;
+    }
     connection
         .busy_timeout(SQLITE_BUSY_TIMEOUT)
         .map_err(index_error)?;
@@ -4356,9 +4714,17 @@ fn open_index_read_only(path: &Path) -> Result<Connection, CommandError> {
     let connection =
         Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(index_error)?;
     connection
-        .busy_timeout(SQLITE_BUSY_TIMEOUT)
+        .busy_timeout(Duration::from_secs(1))
         .map_err(index_error)?;
+    attach_read_budget(&connection, SQLITE_READ_BUDGET)?;
     Ok(connection)
+}
+
+fn attach_read_budget(connection: &Connection, budget: Duration) -> Result<(), CommandError> {
+    let started = Instant::now();
+    connection
+        .progress_handler(10_000, Some(move || started.elapsed() >= budget))
+        .map_err(index_error)
 }
 
 fn checkpoint_index(connection: &Connection) -> Result<(), CommandError> {
@@ -5014,6 +5380,59 @@ mod tests {
     }
 
     #[test]
+    fn quick_scan_reuses_a_completed_part_after_worker_recovery() {
+        let fixture = tempdir().unwrap();
+        let first = fixture.path().join("first");
+        let second = fixture.path().join("second");
+        fs::create_dir(&first).unwrap();
+        fs::create_dir(&second).unwrap();
+        fs::write(first.join("old.bin"), [1; 1024]).unwrap();
+        fs::write(second.join("new.bin"), [2; 1024]).unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let part_path = quick_part_index_path(&index_path, "resume-quick", 0);
+        scan_folder(&first, &part_path, "quick-part-0");
+        fs::remove_file(first.join("old.bin")).unwrap();
+        let mut connection = open_index(&index_path).unwrap();
+        initialize_schema(&connection).unwrap();
+        prepare_scan(
+            &connection,
+            "resume-quick",
+            CleanupScanProfile::CommonLocations,
+            CleanupScanTargetKind::SystemDisk,
+            &fixture.path().to_string_lossy(),
+            "Quick",
+            "/",
+            &[],
+        )
+        .unwrap();
+        let root_id = root_node_id(&connection, "resume-quick").unwrap();
+        let mut stats = IndexScanStats::new();
+        scan_quick_roots_parallel(
+            &mut connection,
+            &index_path,
+            "resume-quick",
+            root_id,
+            &[first, second],
+            fixture.path(),
+            fixture.path(),
+            &[],
+            &[],
+            &AtomicBool::new(false),
+            &mut stats,
+            &mut |_| {},
+        )
+        .unwrap();
+        assert_eq!(stats.scanned_entry_count, 2);
+        assert_eq!(
+            materialize_node(&connection, "resume-quick", root_id, 2)
+                .unwrap()
+                .item_count,
+            2
+        );
+    }
+
+    #[test]
     fn running_scan_recovery_keeps_the_completed_indexed_nodes() {
         let fixture = tempdir().unwrap();
         let folder = fixture.path().join("Downloads");
@@ -5049,6 +5468,75 @@ mod tests {
         .unwrap();
         assert_eq!(restored.allocated_size_bytes, root_before);
         assert!(!restored.children.is_empty());
+    }
+
+    #[test]
+    fn directory_checkpoints_resume_without_rewalking_completed_siblings() {
+        use std::sync::atomic::Ordering;
+        let fixture = tempdir().unwrap();
+        for index in 0..160 {
+            let directory = fixture.path().join(format!("folder-{index:03}"));
+            fs::create_dir(&directory).unwrap();
+            fs::write(directory.join("item.bin"), [1; 1024]).unwrap();
+        }
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let expected = scan_folder(fixture.path(), &index_path, "baseline");
+        let cancelled = AtomicBool::new(false);
+        let request = CleanupScanRequest {
+            profile: CleanupScanProfile::Complete,
+            target_kind: CleanupScanTargetKind::Folder,
+            target_path: Some(fixture.path().to_string_lossy().into_owned()),
+        };
+        let result = build_indexed_scan(
+            request.clone(),
+            "resume-batches",
+            &index_path,
+            &cancelled,
+            &[],
+            &mut |progress| {
+                if progress.scanned_entry_count >= 160 {
+                    cancelled.store(true, Ordering::Relaxed);
+                }
+            },
+            &mut || {},
+        );
+        assert_eq!(result.unwrap_err().code, "cleanup_scan_cancelled");
+        let connection = open_index_read_only(&index_path).unwrap();
+        let remaining: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM pending_directories WHERE scan_id='resume-batches'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(remaining > 0 && remaining < 160);
+        let preview = load_progressive_scan(&index_path, "resume-batches").unwrap();
+        assert!(preview.partial);
+        assert!(!preview.deletion_available);
+        assert!(preview.root.allocated_size_bytes > 0);
+        assert!(load_indexed_scan(&index_path, "resume-batches").is_err());
+        // The root's completed enumeration is durable. Removing a completed
+        // sibling proves recovery does not enumerate it again or reset totals.
+        fs::remove_file(fixture.path().join("folder-000/item.bin")).unwrap();
+        let resumed = build_indexed_scan(
+            request,
+            "resume-batches",
+            &index_path,
+            &AtomicBool::new(false),
+            &[],
+            &mut |_| {},
+            &mut || {},
+        )
+        .unwrap();
+        assert_eq!(
+            resumed.root.allocated_size_bytes,
+            expected.root.allocated_size_bytes
+        );
+        assert_eq!(resumed.root.item_count, expected.root.item_count);
+        assert_eq!(resumed.scanned_entry_count, expected.scanned_entry_count);
+        assert!(!resumed.partial);
+        assert!(resumed.deletion_available);
     }
 
     #[test]
@@ -5101,10 +5589,10 @@ mod tests {
     }
 
     #[test]
-    fn seen_files_are_trimmed_when_the_index_nears_its_byte_budget() {
+    fn reusable_pages_do_not_trigger_recovery_identity_eviction() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
-        let mut connection = open_index(&index_path).unwrap();
+        let connection = open_index(&index_path).unwrap();
         initialize_schema(&connection).unwrap();
         prepare_scan(
             &connection,
@@ -5126,11 +5614,15 @@ mod tests {
                 )
                 .unwrap();
         }
-        let pages = current_page_count(&connection).unwrap();
-        let transaction = connection.transaction().unwrap();
-        // A budget below the current page count forces the high watermark.
-        trim_seen_files_to_budget(&transaction, "trim", pages - 1).unwrap();
-        transaction.commit().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE ballast(data BLOB); INSERT INTO ballast VALUES(zeroblob(2097152));
+             DELETE FROM ballast;",
+            )
+            .unwrap();
+        let physical_bytes = current_page_count(&connection).unwrap() * 4096;
+        assert!(index_bytes(&connection).unwrap() < physical_bytes / 2);
+        retire_surplus_generations_when_index_full(&connection, "trim").unwrap();
 
         let remaining: i64 = connection
             .query_row(
@@ -5139,14 +5631,14 @@ mod tests {
                 |row| row.get::<_, i64>(0),
             )
             .unwrap();
-        assert_eq!(remaining, 0);
+        assert_eq!(remaining, 6_000);
     }
 
     #[test]
     fn seen_files_are_kept_while_the_index_has_room() {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
-        let mut connection = open_index(&index_path).unwrap();
+        let connection = open_index(&index_path).unwrap();
         initialize_schema(&connection).unwrap();
         prepare_scan(
             &connection,
@@ -5166,9 +5658,7 @@ mod tests {
                 params!["keep"],
             )
             .unwrap();
-        let transaction = connection.transaction().unwrap();
-        trim_seen_files_to_budget(&transaction, "keep", i64::MAX).unwrap();
-        transaction.commit().unwrap();
+        retire_surplus_generations_when_index_full(&connection, "keep").unwrap();
 
         let remaining: i64 = connection
             .query_row(
@@ -5353,7 +5843,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn completed_scans_drop_transient_hard_link_identities() {
+    fn completed_scans_reclaim_hard_link_identities_after_result_delivery() {
         let fixture = tempdir().unwrap();
         let original = fixture.path().join("original.bin");
         let linked = fixture.path().join("linked.bin");
@@ -5363,6 +5853,8 @@ mod tests {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
         let scan = scan_folder(fixture.path(), &index_path, "hard-link-cleanup");
+        assert_eq!(scan.root.allocated_size_bytes, expected);
+        maintain_cleanup_index(&index_path).unwrap();
         let connection = open_index_read_only(&index_path).unwrap();
         let identities = connection
             .query_row(
@@ -5507,6 +5999,31 @@ mod tests {
         );
 
         assert!(version_tuple >= (3, 51, 3), "SQLite version was {version}");
+    }
+
+    #[test]
+    fn legacy_anchor_validation_uses_path_lookups_and_reads_are_interruptible() {
+        let storage = tempdir().unwrap();
+        let connection = open_index(&storage.path().join("scan.sqlite")).unwrap();
+        initialize_schema(&connection).unwrap();
+        let plans = connection
+            .prepare(&format!("EXPLAIN QUERY PLAN {MISSING_ANCHOR_QUERY}"))
+            .unwrap()
+            .query_map(["scan"], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert!(plans.iter().any(|plan| plan.contains("nodes_by_path")));
+        assert!(!plans.iter().any(|plan| plan.contains("nodes_file_reclaim")));
+        attach_read_budget(&connection, Duration::ZERO).unwrap();
+        let result = connection.query_row(
+            "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1000000) SELECT SUM(x) FROM n",
+            [], |row| row.get::<_, i64>(0),
+        );
+        assert!(
+            matches!(result, Err(rusqlite::Error::SqliteFailure(error, _))
+            if error.code == rusqlite::ErrorCode::OperationInterrupted)
+        );
     }
 
     #[test]
@@ -5907,6 +6424,7 @@ mod tests {
         let transaction = connection.transaction().unwrap();
         let mut progress = |_| {};
         let mut context = ScanContext {
+            queue_children: false,
             scan_id: "layered-macos",
             home: &home,
             scan_root,
@@ -6082,6 +6600,7 @@ mod tests {
         let transaction = connection.transaction().unwrap();
         let mut progress = |_| {};
         let mut context = ScanContext {
+            queue_children: false,
             scan_id: "no-flattening",
             home: fixture.path(),
             scan_root: fixture.path(),
@@ -6271,6 +6790,7 @@ mod tests {
         let after = load_indexed_directory(&index_path, &scan.scan_id, &before.id).unwrap();
 
         assert_eq!(after.id, before.id);
+        assert_eq!(after.deletion_protected, before.deletion_protected);
         assert!(after.allocated_size_bytes > before.allocated_size_bytes);
         assert!(after.children.iter().any(|node| node.name == "after.bin"));
     }
@@ -6418,6 +6938,8 @@ mod tests {
         let latest = scan_folder(fixture.path(), &index_path, "latest");
 
         assert_eq!(latest.scan_id, "latest");
+        assert!(load_indexed_scan(&index_path, "oldest").is_ok());
+        maintain_cleanup_index(&index_path).unwrap();
         assert!(load_indexed_scan(&index_path, "oldest").is_err());
         assert!(load_indexed_scan(&index_path, "previous").is_ok());
         let summary = cleanup_index_summary(&index_path).unwrap();
@@ -6432,6 +6954,43 @@ mod tests {
 
         assert_eq!(scan.root.allocated_size_bytes, 0);
         assert_eq!(scan.root.item_count, 0);
+    }
+
+    #[test]
+    fn abandoned_index_cleanup_is_deferred_without_blocking_new_scans() {
+        let fixture = tempdir().unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        scan_folder(fixture.path(), &index_path, "old-job");
+        defer_discard_indexed_scan(&index_path, "old-job").unwrap();
+        assert!(load_indexed_scan(&index_path, "old-job").is_ok());
+        maintain_cleanup_index(&index_path).unwrap();
+        assert!(load_indexed_scan(&index_path, "old-job").is_err());
+    }
+
+    #[test]
+    fn sqlite_work_reports_activity_without_relying_on_a_heartbeat() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let connection = Connection::open_in_memory().unwrap();
+        let reports = Arc::new(AtomicUsize::new(0));
+        let observed = Arc::clone(&reports);
+        attach_index_activity(
+            &connection,
+            Arc::new(move || {
+                observed.fetch_add(1, Ordering::Relaxed);
+            }),
+        )
+        .unwrap();
+        let total: i64 = connection
+            .query_row(
+                "WITH RECURSIVE work(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM work WHERE n<10000)
+             SELECT SUM(n) FROM work",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(total, 50_005_000);
+        assert!(reports.load(Ordering::Relaxed) > 0);
     }
 
     #[test]

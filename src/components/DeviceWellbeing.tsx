@@ -23,22 +23,28 @@ import type { SensorsSnapshot } from "../types";
 import { useSensorReadiness, type SensorReadiness } from "../hooks/useSensorReadiness";
 import { formatPercent } from "../utils";
 import "./DeviceWellbeing.css";
+import { SleepBlockerDetails } from "./SleepBlockerDetails";
 
 export function DeviceWellbeing({
   sensors,
   warmingUp = false,
   applications = [],
   onInspectSleepBlocker,
+  expectedSleepNames,
+  onToggleExpectedSleep,
 }: {
   sensors: SensorsSnapshot;
   warmingUp?: boolean;
   applications?: readonly ApplicationImpact[];
   onInspectSleepBlocker?: (identity: string) => void;
+  expectedSleepNames?: ReadonlySet<string>;
+  onToggleExpectedSleep?: (name: string) => void;
 }) {
   const { t, i18n } = useAppTranslation();
   const temperatureLevel = temperatureWellbeingLevel(sensors.temperature);
   const batteryLevel = batteryWellbeingLevel(sensors.battery);
-  const sleepLevel = sleepWellbeingLevel(sensors.sleep, applications);
+  const activeSleep = { ...sensors.sleep, blockers: sensors.sleep.blockers.filter((blocker) => !expectedSleepNames?.has(summarizeSleepBlockers({ ...sensors.sleep, blockers: [blocker] }, applications)[0]?.name ?? "")) };
+  const sleepLevel = sleepWellbeingLevel(activeSleep, applications);
   const sleepBlockers = summarizeSleepBlockers(sensors.sleep, applications);
   const readiness = useSensorReadiness({
     sampledAtMs: sensors.sampledAtMs,
@@ -48,7 +54,7 @@ export function DeviceWellbeing({
     batteryPercent: sensors.battery.chargePercent,
     batteryDetailsAvailable: sensors.battery.healthPercent !== null || sensors.battery.cycleCount !== null,
   });
-  const userSleepBlockers = sleepBlockers.filter(({ systemComponent }) => !systemComponent);
+  const userSleepBlockers = sleepBlockers.filter(({ name, systemComponent }) => !systemComponent && !expectedSleepNames?.has(name));
   return (
     <section className="panel device-wellbeing" aria-labelledby="device-wellbeing-title">
       <header>
@@ -106,13 +112,13 @@ export function DeviceWellbeing({
           <WellbeingIcon level={sleepLevel} fallback="sleep" />
           <div>
             <small>{t("wellbeing:sleep.label")}</small>
-            <strong>{sleepValue(
+            <strong>{userSleepBlockers.length === 0 && expectedSleepNames && expectedSleepNames.size > 0 ? t("wellbeing:sleepReview.plannedValue") : sleepValue(
               sensors,
               userSleepBlockers.length,
               sleepBlockers.length,
               t,
             )}</strong>
-            <p>{sleepDescription(
+            <p>{userSleepBlockers.length === 0 && expectedSleepNames && expectedSleepNames.size > 0 ? t("wellbeing:sleepReview.plannedDescription") : sleepDescription(
               sensors,
               userSleepBlockers,
               sleepBlockers.length,
@@ -138,6 +144,7 @@ export function DeviceWellbeing({
                 ))}
               </div>
             ) : null}
+            <SleepBlockerDetails sensors={sensors} applications={applications} expectedNames={expectedSleepNames} onToggleExpected={onToggleExpectedSleep} />
           </div>
         </article>
       </div>

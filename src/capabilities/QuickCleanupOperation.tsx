@@ -62,15 +62,16 @@ function useAnimatedCount(target: number, active: boolean): number {
 
 export function QuickCleanupOperation() {
   const { t } = useAppTranslation();
-  const { phase, summaries, selected, progress, result, error, cancelled, toggleCategory, analyze, clean, cancel, reset } = useQuickCleanup();
+  const { phase, summaries, selected, excludedPaths, progress, result, error, cancelled, toggleCategory, togglePath, analyze, clean, cancel, reset } = useQuickCleanup();
 
   const titleId = useId();
   const [confirmation, setConfirmation] = useState<string | null>(null);
-  const selectionKey = JSON.stringify([summaries, [...selected].sort()]);
+  const selectionKey = JSON.stringify([summaries, [...selected].sort(), [...excludedPaths].sort()]);
+  const includedBytes = (summary: typeof summaries[number]) => Math.max(0, summary.byteSize - (summary.sources ?? []).reduce((total, source) => total + (excludedPaths.has(source.path) ? source.byteSize : 0), 0));
 
   const totalBytes = summaries.reduce(
     (total, summary) =>
-      selected.has(summary.category) ? total + summary.byteSize : total,
+      selected.has(summary.category) ? total + includedBytes(summary) : total,
     0,
   );
   const activeCategories = new Set(
@@ -154,6 +155,7 @@ export function QuickCleanupOperation() {
                   <button
                     className={isSelected ? "is-selected" : undefined}
                     type="button"
+                    aria-pressed={isSelected}
                     disabled={!summary.available}
                     onClick={() => toggleCategory(summary.category)}
                   >
@@ -170,10 +172,20 @@ export function QuickCleanupOperation() {
                         : t("cleanup:quickClean.unavailable")}
                     </em>
                   </button>
+                  {summary.available && summary.rootPath ? <details className="quick-clean__sources">
+                    <summary>{t("cleanup:quickReview.sources")}</summary>
+                    <code>{summary.rootPath}</code>
+                    {(summary.sources ?? []).map((source) => <label key={source.path}>
+                      <input type="checkbox" checked={excludedPaths.has(source.path)} disabled={!isSelected} onChange={() => togglePath(source.path)} />
+                      <span title={source.path}>{t("cleanup:fileInsights.processing.kept")} · {source.path}</span><small>{formatBytes(source.byteSize)}</small>
+                    </label>)}
+                    {summary.limited ? <p>{t("cleanup:quickReview.limited")}</p> : null}
+                  </details> : null}
                 </li>
               );
             })}
           </ul>
+          <p className="quick-clean__note">{t("cleanup:quickReview.trashWarning")}</p>
           <div className="quick-clean__total">
             <span>{t("cleanup:quickClean.total")}</span>
             <strong>{formatBytes(totalBytes)}</strong>
@@ -200,7 +212,8 @@ export function QuickCleanupOperation() {
           {confirmation === selectionKey && <section className="capability-confirm" role="alertdialog" aria-label={t("capabilities:quickConfirmTitle")}>
             <strong>{t("capabilities:quickConfirmTitle")}</strong>
             <p>{t("capabilities:quickConfirmRisk")}</p>
-            <ul>{summaries.filter((item) => selected.has(item.category)).map((item) => <li key={item.category}>{t(`cleanup:quickClean.category.${item.category}`)} · {formatBytes(item.byteSize)}</li>)}</ul>
+            <ul>{summaries.filter((item) => selected.has(item.category)).map((item) => <li key={item.category}>{t(`cleanup:quickClean.category.${item.category}`)} · {formatBytes(includedBytes(item))}</li>)}</ul>
+            {excludedPaths.size > 0 ? <p>{t("cleanup:quickReview.excluded", { count: excludedPaths.size })}</p> : null}
             <div className="quick-clean__actions">
               <button type="button" className="button button--secondary" onClick={() => setConfirmation(null)}>{t("common:cancel")}</button>
               <button type="button" className="button button--danger" onClick={() => { setConfirmation(null); void clean(); }}>{t("capabilities:quickConfirmAction")}</button>

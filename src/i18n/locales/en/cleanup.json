@@ -75,6 +75,9 @@
     }
   },
   "progress": {
+    "completed": "Scan complete",
+    "partialResult": "Partial scan results",
+    "noProgress": "Scan stalled. View the result or retry.",
     "scanningLocation": "Analyzing {{location}}",
     "paused": "This computer is asleep; scanning will continue after wake",
     "stalled": "The scan is recovering automatically",
@@ -108,6 +111,8 @@
     "title": "What this space is commonly used for"
   },
   "map": {
+    "liveUpdatesPending": "New results are ready; finish browsing to update",
+    "liveUpdatesApply": "Update map",
     "list": {
       "name": "Name",
       "share": "Folder share",
@@ -128,9 +133,18 @@
       "category": "Purpose"
     },
     "view": {
-      "label": "Browse as", "map": "Space map", "list": "List", "search": "Search this folder", "clearSearch": "Clear search",
-      "sortSize": "Sort by size", "sortName": "Sort by name", "descending": "Descending", "ascending": "Ascending",
-      "loading": "Reading the index…", "loadFailed": "Could not load the list. Try again.", "empty": "No matching items in this folder"
+      "label": "Browse as",
+      "map": "Space map",
+      "list": "List",
+      "search": "Search this folder",
+      "clearSearch": "Clear search",
+      "sortSize": "Sort by size",
+      "sortName": "Sort by name",
+      "descending": "Descending",
+      "ascending": "Ascending",
+      "loading": "Reading the index…",
+      "loadFailed": "Could not load the list. Try again.",
+      "empty": "No matching items in this folder"
     },
     "ariaLabel": "Space sunburst for {{name}}",
     "breadcrumbs": "Space map hierarchy",
@@ -157,13 +171,13 @@
     },
     "noDeeperBreakdown": "No deeper directory grouping is available at this level.",
     "loadDeeperHint": "Select this folder to open the next level from the local index.",
-    "otherContentHint": "This group contains only files omitted from the current page or individual file details. Every child folder is indexed; use Show 50 more items to continue browsing directories.",
+    "otherContentHint": "This group contains items omitted from the map. Switch to the list to browse and search the indexed contents.",
     "loadingFolder": "Reading the directory index…",
     "loadFailed": "Unable to read the directory index",
     "loadMore": "Show 50 more items",
     "refreshProgress": "{{count}} items checked · {{time}} sec",
     "refreshFailed": "Unable to refresh folder",
-    "directActionHint": "Drag a sector or a folder from the list into the basket at the bottom",
+    "directActionHint": "Drag a sector or a list item into the basket at the bottom",
     "addToBasket": "Add to cleanup basket",
     "removeFromBasket": "Remove from cleanup basket",
     "includedByParent": "Included by a parent folder",
@@ -178,7 +192,7 @@
       "protectedMessage": "System files and important settings are protected and were not added",
       "protectedPreview": "Protected · cannot delete",
       "protectedBadge": "Protected",
-      "empty": "Drag a sector or a folder here to collect it before cleanup",
+      "empty": "Drag a sector or list item here, then review before cleanup",
       "release": "Release to add to the basket",
       "collected": "In cleanup basket",
       "collectedHint": "Already collected; remove it from the basket below or continue reviewing",
@@ -208,7 +222,11 @@
       "changedShort": "Content changed",
       "refreshFolder": "Refresh {{name}}",
       "refreshingFolder": "Refreshing {{name}}…"
-    }
+    },
+    "historyBack": "Back",
+    "refreshCurrent": "Refresh this folder",
+    "enterFolder": "Open folder",
+    "openFolder": "Open {{name}}"
   },
   "settlement": {
     "status": {
@@ -312,24 +330,74 @@
   "pathUnavailable": "No scannable location",
   "morePaths": " and {{count}} more locations",
   "fileInsights": {
-    "eyebrow": "Explicit read-only check", "workspaceKicker": "File evidence workspace", "title": "Duplicate and long-unmodified files", "description": "Inspect common personal folders separately, filtering by size before content fingerprints are verified locally.",
-    "launcherDescription": "Open a dedicated workspace for scan progress, duplicate groups, and large long-unmodified files.", "running": "Checking now", "openWorkspace": "Open workspace", "back": "Back to space cleanup",
-    "scan": "Check files", "scanAgain": "Check again", "cancel": "Stop check",
-    "phase": { "discovering": "Finding candidates", "hashing": "Verifying duplicate content" },
-    "phaseDescription": { "discovering": "Reviewing names, sizes, and modification dates in common personal folders to narrow the content candidates.", "hashing": "Reading same-sized candidates and calculating SHA-256 locally; content never leaves this computer." },
-    "phaseLabel": "Check phases", "loadingKicker": "Local content radar", "loadingPrivacy": "Hashes are calculated locally. File names, paths, and contents are not uploaded.",
+    "eyebrow": "Explicit read-only check",
+    "workspaceKicker": "File evidence workspace",
+    "title": "Duplicate and long-unmodified files",
+    "description": "Inspect common personal folders separately, filtering by size before content fingerprints are verified locally.",
+    "launcherDescription": "Open a dedicated workspace for scan progress, duplicate groups, and large long-unmodified files.",
+    "running": "Checking now",
+    "openWorkspace": "Open workspace",
+    "back": "Back to space cleanup",
+    "scan": "Check files",
+    "scanAgain": "Check again",
+    "cancel": "Stop check",
+    "phase": {
+      "discovering": "Finding candidates",
+      "hashing": "Verifying duplicate content"
+    },
+    "phaseDescription": {
+      "discovering": "Reviewing names, sizes, and modification dates in common personal folders to narrow the content candidates.",
+      "hashing": "Reading same-sized candidates and calculating SHA-256 locally; content never leaves this computer."
+    },
+    "phaseLabel": "Check phases",
+    "loadingKicker": "Local content radar",
+    "loadingPrivacy": "Hashes are calculated locally. File names, paths, and contents are not uploaded.",
     "progress": "Reviewed {{scanned}} entries · {{candidates}} candidates · {{hashed}} hashed",
-    "metrics": { "scanned": "Entries reviewed", "candidates": "Candidate files", "hashed": "Contents verified" },
-    "duplicateGroups": "Duplicate groups", "possibleSavings": "Possible savings", "oldFiles": "Long-unmodified", "duration": "Check duration",
-    "truncated": "This scan reached its safety limit; completed results are shown.", "duplicates": "Identical content", "copies": "{{count}} copies",
-    "noDuplicates": "No duplicate content was found among checked candidates.", "longUnmodified": "Over 100 MB and unchanged for 180 days", "noOldFiles": "No matching large files were found.",
+    "metrics": {
+      "scanned": "Entries reviewed",
+      "candidates": "Candidate files",
+      "hashed": "Contents verified"
+    },
+    "duplicateGroups": "Duplicate groups",
+    "possibleSavings": "Possible savings",
+    "oldFiles": "Long-unmodified",
+    "duration": "Check duration",
+    "truncated": "This scan reached its safety limit; completed results are shown.",
+    "duplicates": "Identical content",
+    "copies": "{{count}} copies",
+    "noDuplicates": "No duplicate content was found among checked candidates.",
+    "longUnmodified": "Over 100 MB and unchanged for 180 days",
+    "noOldFiles": "No matching large files were found.",
     "boundary": "Evidence and path actions only; nothing is deleted automatically. Long-unused is approximated by modification time, not last access time.",
     "empty": "Candidate contents are read and SHA-256 hashed locally only after you start the check; nothing is uploaded.",
-    "localOnly": "Entirely on this computer", "welcomeTitle": "Surface identical content, not just matching file names", "welcomeDescription": "CoreRobin quickly filters same-sized files before verifying their content fingerprints, while separately organizing large long-unmodified files for your review.",
-    "scopeTitle": "Check scope", "scope": { "desktop": "Desktop", "documents": "Documents", "downloads": "Downloads", "movies": "Movies", "music": "Music", "pictures": "Pictures" },
-    "steps": { "filterTitle": "Fast filter", "filterDescription": "Compare size and metadata first", "hashTitle": "Content fingerprint", "hashDescription": "Calculate SHA-256 locally", "reviewTitle": "Review by group", "reviewDescription": "Keep path and date evidence" },
-    "completeKicker": "Check complete", "completeTitle": "Your file evidence is organized", "completeDescription": "Start with the duplicate groups offering the largest possible savings.", "resultNavigation": "Result categories",
-    "groupLabel": "Identical-content group", "groupSavings": "Savings after keeping one", "copyIndex": "Copy {{count}}", "oldFileLabel": "Long-unmodified file",
+    "localOnly": "Entirely on this computer",
+    "welcomeTitle": "Surface identical content, not just matching file names",
+    "welcomeDescription": "CoreRobin quickly filters same-sized files before verifying their content fingerprints, while separately organizing large long-unmodified files for your review.",
+    "scopeTitle": "Check scope",
+    "scope": {
+      "desktop": "Desktop",
+      "documents": "Documents",
+      "downloads": "Downloads",
+      "movies": "Movies",
+      "music": "Music",
+      "pictures": "Pictures"
+    },
+    "steps": {
+      "filterTitle": "Fast filter",
+      "filterDescription": "Compare size and metadata first",
+      "hashTitle": "Content fingerprint",
+      "hashDescription": "Calculate SHA-256 locally",
+      "reviewTitle": "Review by group",
+      "reviewDescription": "Keep path and date evidence"
+    },
+    "completeKicker": "Check complete",
+    "completeTitle": "Your file evidence is organized",
+    "completeDescription": "Start with the duplicate groups offering the largest possible savings.",
+    "resultNavigation": "Result categories",
+    "groupLabel": "Identical-content group",
+    "groupSavings": "Savings after keeping one",
+    "copyIndex": "Copy {{count}}",
+    "oldFileLabel": "Long-unmodified file",
     "processing": {
       "selectGroup": "Process extra copies",
       "selectedGroup": "Group selected",
@@ -398,9 +466,9 @@
     "cancelled": "Processing stopped after {{count}} files"
   },
   "quickClean": {
-    "kicker": "No scan needed",
+    "kicker": "No full-disk scan needed",
     "title": "Quick Cleanup",
-    "description": "Clear caches, logs, temporary files and Trash in one tap. Your documents and photos stay untouched.",
+    "description": "Analyze common cleanup locations, review their sources and choose what to keep before confirming.",
     "analyze": "Analyze",
     "analyzing": "Analyzing…",
     "analyzeAgain": "Analyze again",
@@ -412,22 +480,29 @@
     "freedSummary": "Freed {{size}} across {{count}} items",
     "again": "Clean again",
     "close": "Done",
-    "total": "Total reclaimable",
+    "total": "Estimated reclaimable",
     "unavailable": "Unavailable",
     "empty": "Nothing to clean — your disk is tidy!",
     "skippedNote": "{{count}} items were in use and safely skipped.",
-    "noRiskNote": "Only regenerable caches and discarded Trash content are removed — never your documents, photos or sign-in data.",
+    "noRiskNote": "Only selected locations are processed. Select Trash separately; cleanup permanently deletes content. Review sources first.",
     "category": {
       "user_cache": "App caches",
       "logs": "Log files",
       "temp_files": "Temporary files",
       "trash": "Trash"
     },
-    "launcherDescription": "No scan needed — clear caches, logs, temp files and Trash in one tap.",
+    "launcherDescription": "Analyze common cleanup locations and choose what to keep.",
     "open": "Open quick cleanup",
-    "back": "Back to space scan",    "guideTitle": "Want a deeper clean?",
+    "back": "Back to space scan",
+    "guideTitle": "Want a deeper clean?",
     "guideDescription": "Scan the whole disk, see space usage by real file path, then decide what to clean.",
     "guideAction": "Go to disk scan",
     "analyzingHint": "Measuring caches, logs, temp files and Trash…"
+  },
+  "quickReview": {
+    "sources": "Review sources and choose what to keep",
+    "limited": "Shows up to 128 largest locations. Large folders may be counted partially. Unlisted locations remain in the selected category; deselect the category if unsure.",
+    "trashWarning": "Trash is not selected by default. It may contain personal files; emptying it cannot be undone.",
+    "excluded": "Keeping {{count}} locations, including their containing folders"
   }
 }

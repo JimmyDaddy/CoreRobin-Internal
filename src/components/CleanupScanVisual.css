@@ -1,0 +1,74 @@
+.cleanup-map__scan-stage {
+  --scan-size: 400px;
+  --scan-play: paused;
+  --scan-color: light-dark(#3168bc, #7fb7fd);
+  --scan-violet: light-dark(#8161d3, #bca0ff);
+  --scan-soft: color-mix(in srgb, var(--scan-color) 18%, transparent);
+  --scan-faint: color-mix(in srgb, var(--scan-color) 12%, transparent);
+  --scan-line: color-mix(in srgb, var(--scan-color) 45%, transparent);
+  --scan-cyan: light-dark(#167d9c, #6fe3fa);
+  --scan-shine: light-dark(#557bc7, #c7e5ff);
+  position: relative; isolation: isolate; display: grid; height: var(--scan-size); place-items: center; overflow: clip;
+}
+.cleanup-map__scan-stage[data-phase="completed"] { --scan-color: var(--green); }
+.cleanup-map__scan-stage[data-phase="stalled"] { --scan-color: var(--amber); }
+.cleanup-map__scan-stage .cleanup-map__chart-frame { position: relative; z-index: 1; width: min(100%, var(--scan-size)); }
+.cleanup-map__scan-stage .cleanup-map__sunburst { position: relative; z-index: 1; }
+.cleanup-map__scan-stage .cleanup-map__center-control { z-index: 3; }
+.cleanup-scan-field, .cleanup-scan-effects { position: absolute; inset: 0; pointer-events: none; }
+.cleanup-scan-field { opacity: 1; transition: opacity 350ms ease; }
+[data-quiet="true"] > .cleanup-scan-field, [data-phase="paused"] > .cleanup-scan-field, [data-phase="stalled"] > .cleanup-scan-field { opacity: .25; }
+.scan-field-nebula { position: absolute; inset: 0; background: radial-gradient(ellipse at 39% 55%, var(--scan-soft), transparent 50%), radial-gradient(ellipse at 64% 36%, color-mix(in srgb, var(--scan-violet) 14%, transparent), transparent 48%); }
+.scan-field-projection { position: absolute; left: 50%; top: 28%; width: min(350px, 76%); height: 60%; transform: translateX(-50%); clip-path: polygon(10% 0, 90% 0, 58% 100%, 42% 100%); background: linear-gradient(0deg, var(--scan-soft), transparent 85%); mask: linear-gradient(90deg, transparent, #000 30% 70%, transparent); }
+.scan-field-platform { position: absolute; left: 50%; top: 82%; width: min(450px, 95%); aspect-ratio: 1; transform: translate(-50%, -50%) perspective(650px) rotateX(71deg); }
+.scan-field-lattice { position: absolute; inset: 0; border-radius: 50%; background: repeating-linear-gradient(0deg, transparent 0 28px, var(--scan-soft) 28px 29px), repeating-linear-gradient(90deg, transparent 0 28px, var(--scan-soft) 28px 29px); mask: radial-gradient(ellipse, #000 15%, transparent 70%); }
+.scan-field-ring, .scan-field-chase { position: absolute; inset: 12%; border-radius: 50%; }
+.scan-field-ring { border: 1px solid var(--scan-line); box-shadow: 0 0 35px var(--scan-soft), inset 0 0 45px var(--scan-faint); }
+.scan-field-chase, .scan-fx-orbit { background: conic-gradient(transparent 0deg 230deg, color-mix(in srgb, var(--scan-violet) 35%, transparent) 275deg, var(--scan-color) 325deg, var(--scan-cyan) 349deg, var(--scan-shine) 359deg, transparent 360deg); mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 0); opacity: .25; }
+.scan-fx-aurora, .scan-fx-sweep, .scan-fx-track, .scan-fx-core, .scan-fx-orbit, .scan-fx-seal, .scan-fx-wave { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); aspect-ratio: 1; border-radius: 50%; }
+.scan-fx-orbit { z-index: 2; filter: drop-shadow(0 0 4px var(--scan-cyan)); }
+.scan-fx-orbit.is-secondary { mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), #000 0); }
+.scan-fx-sweep { opacity: 0; background: conic-gradient(transparent 0deg 300deg, color-mix(in srgb, var(--scan-cyan) 14%, transparent) 346deg, color-mix(in srgb, var(--scan-cyan) 45%, transparent) 359deg, transparent 360deg); }
+.scan-fx-arrival { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; fill: none; pointer-events: none; }
+.scan-fx-shine { fill: var(--scan-shine); animation: scan-shine 1s var(--scan-delay) ease-out both; }
+.scan-fx-stream, .scan-fx-bloom { stroke: var(--scan-cyan); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 15 85; filter: drop-shadow(0 0 3px var(--scan-cyan)); animation: scan-stream 800ms var(--scan-delay) ease-out both; }
+.scan-fx-bloom { stroke-width: 7; filter: blur(3px); }
+.scan-fx-edge { stroke: var(--scan-shine); stroke-width: 2.6; filter: drop-shadow(0 0 5px var(--scan-cyan)); animation: scan-light 1s var(--scan-delay) ease-out both; }
+.scan-fx-seal, .scan-fx-wave { z-index: 2; border: 1px solid var(--scan-line); box-shadow: 0 0 14px var(--scan-faint); }
+.scan-fx-wave { border-width: 2px; animation: scan-resolve 1.3s ease-out both; }
+.cleanup-map__scan-stage[data-running="true"] { --scan-play: running; }
+.scan-field-chase { background: conic-gradient(transparent 0deg 230deg, var(--scan-soft) 285deg, var(--scan-color) 350deg, var(--scan-cyan) 357deg, transparent 360deg); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0); animation: scan-field-turn 3.8s linear infinite; animation-play-state: var(--scan-play); opacity: .8; }
+.scan-fx-orbit, .scan-fx-sweep { animation: scan-orbit 2.5s linear infinite; animation-play-state: var(--scan-play); }
+.scan-fx-orbit { opacity: 1; transition: width 240ms ease, opacity 240ms ease; }
+.scan-fx-orbit.is-secondary { animation-direction: reverse; animation-duration: 4.2s; opacity: .6; }
+.scan-fx-sweep { opacity: 1; }
+.scan-fx-track { z-index: 2; border: 1px solid var(--scan-soft); transition: width 240ms ease; }
+.scan-fx-aurora { background: radial-gradient(circle, var(--scan-soft), color-mix(in srgb, var(--scan-violet) 6%, transparent) 48%, transparent 71%); opacity: .6; }
+.scan-fx-core { width: 27%; box-shadow: 0 0 28px color-mix(in srgb, var(--scan-color) 32%, transparent), 0 0 65px color-mix(in srgb, var(--scan-violet) 12%, transparent); opacity: .85; }
+.scan-field-ring::after { position: absolute; content: ""; inset: 12%; border: 1px solid var(--scan-soft); border-radius: inherit; }
+.scan-field-light { position: absolute; top: 47%; width: 29%; height: 1px; opacity: .4; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--scan-color) 65%, transparent), transparent); }
+.scan-field-light.is-left { left: 0; transform: rotate(14deg); }
+.scan-field-light.is-right { right: 0; transform: rotate(-14deg); }
+.scan-field-surge, .scan-fx-flash { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 82%, var(--scan-soft), transparent 55%); animation: scan-flash 1.2s ease-out both; }
+.scan-fx-flash { background: radial-gradient(circle, color-mix(in srgb, var(--green) 28%, transparent), transparent 70%); }
+.scan-fx-spark { fill: var(--scan-shine); stroke: none; transform-origin: var(--scan-spark-x) var(--scan-spark-y); filter: drop-shadow(0 0 5px var(--scan-cyan)); animation: scan-impact 950ms var(--scan-delay) ease-out both; }
+.scan-fx-arrival * { animation-play-state: var(--scan-play); }
+[data-quiet="true"] .scan-fx-arrival { opacity: 0; }
+[data-quiet="true"] .scan-fx-orbit, [data-phase="paused"] .scan-fx-orbit, [data-phase="stalled"] .scan-fx-orbit { opacity: .3; }
+.cleanup-map__scan-stage .cleanup-map__center-control strong { font-size: clamp(11px, 1.8vw, 17px); }
+[data-phase="scanning"] .cleanup-map__center-control { background: radial-gradient(circle at 40% 20%, color-mix(in srgb, var(--scan-color) 13%, var(--panel-raised)), var(--panel-raised) 75%); box-shadow: 0 0 0 4px color-mix(in srgb, var(--scan-color) 6%, transparent), 0 0 28px color-mix(in srgb, var(--scan-cyan) 17%, transparent); }
+[data-phase="completed"] .scan-fx-orbit, [data-phase="completed"] .scan-fx-sweep, [data-phase="completed"] .scan-fx-track, [data-phase="completed"] .scan-fx-core, [data-phase="completed"] .scan-fx-arrival { opacity: 0; }
+@keyframes scan-flash { 0%, 100% { opacity: 0; } 20% { opacity: .9; } }
+@keyframes scan-impact { 0%, 40%, 100% { opacity: 0; transform: scale(.3); } 55% { opacity: 1; transform: scale(1.7); } 75% { opacity: .4; transform: scale(1); } }
+@keyframes scan-field-turn { to { transform: rotate(360deg); } }
+@keyframes scan-orbit { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes scan-shine { 0%, 100% { opacity: 0; } 30% { opacity: .26; } 62% { opacity: .05; } }
+@keyframes scan-stream { 0% { opacity: 0; stroke-dashoffset: 15; } 25%, 85% { opacity: .85; } 100% { opacity: 0; stroke-dashoffset: -100; } }
+@keyframes scan-light { 0%, 100% { opacity: 0; } 30% { opacity: .9; } 60% { opacity: .3; } }
+@keyframes scan-resolve { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.98); } 18% { opacity: .75; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); } }
+html[data-reduce-motion="true"] .cleanup-map__scan-stage * { animation: none !important; transition: none !important; }
+html[data-reduce-motion="true"] :is(.scan-fx-arrival, .scan-fx-wave, .scan-fx-flash, .scan-field-surge) { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cleanup-map__scan-stage * { animation: none !important; transition: none !important; }
+  .scan-fx-arrival, .scan-fx-wave, .scan-fx-flash, .scan-field-surge { display: none; }
+}

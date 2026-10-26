@@ -274,6 +274,7 @@ export type CleanupProtectionReason =
   | "restricted";
 
 export interface CleanupScan {
+  partial?: boolean;
   scanId: string;
   profile: CleanupScanProfile;
   scopePaths: string[];
@@ -518,6 +519,9 @@ export interface QuickCleanCategorySummary {
   itemCount: number;
   skippedCount: number;
   available: boolean;
+  rootPath?: string;
+  sources?: Array<{ path: string; byteSize: number }>;
+  limited?: boolean;
 }
 
 export interface QuickCleanProgress {

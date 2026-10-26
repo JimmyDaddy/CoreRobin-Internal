@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import type { ApplicationImpactHistoryPoint } from "../applicationImpactHistory";
 import type { ApplicationImpact } from "../diagnosis";
+import { applicationMatchesStartupItem } from "../applicationImpact";
 import type { ApplicationImpactHistoryStorageStatus } from "../hooks/useApplicationImpactHistory";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import type { CommandError, NetworkConnectionsSnapshot, ProcessRow, StartupItemsSnapshot, TrashedApplication } from "../types";
@@ -56,7 +57,9 @@ export function ApplicationCenter({
   const { t } = useAppTranslation();
   const [tab, setTab] = useState<ApplicationCenterTab>("activity");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = applications.find(({ id }) => id === selectedId) ?? applications[0] ?? null;
+  const selected = applications.find(({ id }) => id === selectedId)
+    ?? applications.find((application) => application.kind ? !["system", "unknown"].includes(application.kind) : !application.systemComponent)
+    ?? applications[0] ?? null;
   const memberPids = useMemo(() => new Set(
     selected
       ? processes
@@ -66,16 +69,7 @@ export function ApplicationCenter({
   ), [processes, selected]);
   const startupItems = useMemo(() => {
     if (!selected || !startupSnapshot) return [];
-    const identities = [selected.applicationId, selected.name]
-      .filter((value): value is string => Boolean(value))
-      .map((value) => value.toLocaleLowerCase());
-    return startupSnapshot.items.filter((item) => [
-      item.bundleId,
-      item.responsibleApplication,
-      item.name,
-    ].some((value) => value && identities.some((identity) =>
-      value.toLocaleLowerCase().includes(identity)
-      || identity.includes(value.toLocaleLowerCase()))));
+    return startupSnapshot.items.filter((item) => applicationMatchesStartupItem(selected, item));
   }, [selected, startupSnapshot]);
   const connectionCount = connectionsSnapshot?.connections.filter((connection) =>
     connection.associatedPids.some((pid) => memberPids.has(pid))).length ?? 0;
@@ -119,7 +113,7 @@ export function ApplicationCenter({
             <aside className="application-center__identity">
               <header>
                 <ApplicationAvatar name={selected.name} source={{ process: selected.iconProcess }} />
-                <div><small>{t("applications:center.selected")}</small><strong>{selected.name}</strong><span>{selected.applicationId ?? t("applications:center.localIdentity")}</span></div>
+                <div><small>{t("applications:center.selected")}</small><strong>{selected.name}</strong><small>{t("applications:center.localIdentity")}</small></div>
               </header>
               <div className="application-center__metrics">
                 <span><small>CPU</small><strong>{formatPercent(selected.cpuPercent)}</strong></span>
@@ -127,13 +121,13 @@ export function ApplicationCenter({
                 <span><small>{t("applications:disk")}</small><strong>{formatRate(selected.diskBytesPerSecond)}</strong></span>
               </div>
               <button type="button" onClick={onOpenStartup}>
-                <Power size={15} /><span><strong>{t("applications:center.startup")}</strong><small>{t("applications:center.startupCount", { count: startupItems.length })}</small></span>
+                <Power size={15} /><span><strong>{t("applications:center.startup")}</strong><small>{startupSnapshot ? t("applications:center.startupCount", { count: startupItems.length }) : t("applications:experience.notLoaded")}</small></span>
               </button>
               <button type="button" onClick={onOpenNetwork}>
-                <Network size={15} /><span><strong>{t("applications:center.network")}</strong><small>{t("applications:center.connectionCount", { count: connectionCount })}</small></span>
+                <Network size={15} /><span><strong>{t("applications:center.network")}</strong><small>{connectionsSnapshot ? t("applications:center.connectionCount", { count: connectionCount }) : t("applications:experience.notLoaded")}</small></span>
               </button>
               <button type="button" onClick={() => setTab("history")}>
-                <Clock3 size={15} /><span><strong>{t("applications:center.history")}</strong><small>{t("applications:center.historySamples", { count: historySampleCount })}</small></span>
+                <Clock3 size={15} /><span><strong>{t("applications:center.history")}</strong><small>{historyEnabled ? t("applications:center.historySamples", { count: historySampleCount }) : t("applications:experience.notLoaded")}</small></span>
               </button>
               <button type="button" onClick={() => setTab("manage")}>
                 <PackageX size={15} /><span><strong>{t("applications:center.manage")}</strong><small>{t("applications:center.manageHint")}</small></span>

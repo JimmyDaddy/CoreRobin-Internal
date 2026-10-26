@@ -378,6 +378,17 @@ export default interface Resources {
       "processUnavailable": "当前平台未提供按进程的能耗影响。",
       "title": "GPU 与相对能耗"
     },
+    "experience": {
+      "next": "下一页",
+      "notLoaded": "尚未读取或未开启",
+      "page": "第 {{page}} / {{total}} 页",
+      "previous": "上一页",
+      "protected": "受保护程序",
+      "reorder": "重新排序",
+      "self": "CoreRobin 自身",
+      "showSystem": "包括系统与归属未确认的项目",
+      "unknown": "所属应用未确认"
+    },
     "kicker": "应用级汇总",
     "level": {
       "critical": "影响明显",
@@ -876,7 +887,7 @@ export default interface Resources {
         "collected": "已在清理篮",
         "collectedHint": "已经收集；可在下方清理篮中移除或继续核对",
         "completed": "已处理 {{deletedCount}} 项",
-        "empty": "拖动扇区或右侧目录到这里，先收集再处理",
+        "empty": "将扇区或列表项目拖到这里，先核对再处理",
         "partial": "已处理 {{deletedCount}} 项，{{failedCount}} 项未能处理",
         "protectedBadge": "受保护",
         "protectedMessage": "系统文件与重要配置受到保护，未加入清理篮",
@@ -907,7 +918,8 @@ export default interface Resources {
       "descriptionCategory": "按常见用途重新汇总同一次扫描结果；分类是理解空间的辅助视角，不代表真实目录层级。",
       "descriptionPath": "按系统磁盘的真实文件路径展示：每一圈对应下一层目录，色块面积表示磁盘实际占用。",
       "details": "空间明细",
-      "directActionHint": "拖动扇区或右侧目录到底部清理篮",
+      "directActionHint": "拖动扇区或列表项目到底部清理篮",
+      "enterFolder": "进入文件夹",
       "freshness": {
         "cached": "正在显示上次扫描结果",
         "changed": "此目录内容已变化，大小可能不准确",
@@ -918,6 +930,7 @@ export default interface Resources {
         "updating": "正在更新扫描，上一次空间地图仍可使用"
       },
       "grouped": "汇总分类",
+      "historyBack": "后退",
       "includedByParent": "已随上级文件夹加入",
       "list": {
         "loadMore": "加载更多",
@@ -926,6 +939,8 @@ export default interface Resources {
         "shown": "已显示 {{count}} 项",
         "sort": "列表排序"
       },
+      "liveUpdatesApply": "更新地图",
+      "liveUpdatesPending": "有新结果，浏览结束后更新",
       "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
       "loadFailed": "无法读取目录索引",
       "loadMore": "再显示 50 项",
@@ -937,11 +952,13 @@ export default interface Resources {
         "path": "文件路径"
       },
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
+      "openFolder": "进入 {{name}}",
       "otherContent": "其余内容",
-      "otherContentHint": "这里仅汇总当前页未显示或未单独保存的文件；所有子文件夹都已收录，可用“再显示 50 项”继续浏览目录。",
+      "otherContentHint": "这里汇总空间图未单独显示的内容；切换到列表后可浏览和搜索已收录的项目。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
       "reclaimableFilter": "正在查看可能可回收的分类",
+      "refreshCurrent": "刷新此目录",
       "refreshFailed": "无法刷新文件夹",
       "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
       "removeFromBasket": "移出清理篮",
@@ -1008,6 +1025,7 @@ export default interface Resources {
       "recommended": "推荐"
     },
     "progress": {
+      "completed": "扫描完成",
       "discovered": "已发现",
       "elapsed": "已用时",
       "entries": "已检查",
@@ -1024,6 +1042,8 @@ export default interface Resources {
         "systemDisk": "系统磁盘",
         "trash": "废纸篓"
       },
+      "noProgress": "扫描停滞，可查看结果或重试。",
+      "partialResult": "已扫描内容（未完成）",
       "paused": "电脑已休眠，唤醒后将继续扫描",
       "recoveryFailed": "扫描在自动恢复后仍未继续。你可以重新扫描，或选择较小的范围。",
       "rootStalled": "系统磁盘扫描长时间没有进展，CoreRobin 已结束本次任务。请重新扫描，或改为扫描指定文件夹。",
@@ -1050,7 +1070,7 @@ export default interface Resources {
       "clean": "清理 {{size}}",
       "cleaning": "正在清理…",
       "close": "完成",
-      "description": "一键清理缓存、日志、临时文件和废纸篓，不触碰你的文档与照片。",
+      "description": "分析常用清理位置，查看来源并选择需要保留的内容，再确认清理。",
       "done": "清理完成",
       "empty": "没有可清理的内容，磁盘很干净！",
       "freedSoFar": "已释放 {{size}}",
@@ -1058,14 +1078,20 @@ export default interface Resources {
       "guideAction": "去磁盘扫描",
       "guideDescription": "深度扫描整个磁盘，按真实文件路径查看空间占用，再决定清理什么。",
       "guideTitle": "想清理得更彻底？",
-      "kicker": "无需扫描",
-      "launcherDescription": "不扫描，一键清理缓存、日志、临时文件与废纸篓。",
-      "noRiskNote": "只清理可再生的缓存与已丢弃的废纸篓内容，不含你的文档、照片和登录信息。",
+      "kicker": "无需整盘扫描",
+      "launcherDescription": "分析常用清理位置，选择要保留的内容。",
+      "noRiskNote": "只处理所选位置。废纸篓需单独选择；清理会永久删除内容，请先检查来源。",
       "open": "打开快速清理",
       "skippedNote": "{{count}} 个项目正在被占用，已安全跳过。",
       "title": "快速清理",
-      "total": "共可释放",
+      "total": "预计共可释放",
       "unavailable": "不可用"
+    },
+    "quickReview": {
+      "excluded": "保留 {{count}} 个位置（所在目录也会保留）",
+      "limited": "仅展示最大的 128 个位置；统计较大目录时可能提前停止。未展示的位置仍属于所选类别，不确定时请取消整个类别。",
+      "sources": "查看来源与选择保留",
+      "trashWarning": "废纸篓默认不选。里面可能有个人文件，清空后无法撤销。"
     },
     "readOnlyDescription": "扫描会在后台读取文件名、大小等元数据直至完成，不读取文件内容，也不会修改、移动或上传文件。",
     "readOnlyTitle": "先看清楚，再决定是否处理",
@@ -3355,12 +3381,12 @@ export default interface Resources {
       "validationValid": "已读取图片内嵌 manifest 并完成本地结构和密码学校验。未联网或加载信任材料，信任状态为 unknown。"
     },
     "capability": {
-      "degraded": "降级可用",
-      "degradedReason": "部分原生集成受限，但工具仍可打开。",
-      "restrictedHelperUnavailable": "此工具需要受限原生 helper，但当前平台无法提供。",
+      "degraded": "部分功能可用",
+      "degradedReason": "部分系统功能暂不可用，仍可使用此工具提供的其他功能。",
+      "restrictedHelperUnavailable": "当前系统未提供此操作所需的支持，请使用其他可用工具。",
       "unavailable": "不可用",
       "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。",
-      "unavailableReason": "当前平台没有可用的原生执行能力。",
+      "unavailableReason": "此工具在当前系统上暂不可用，可选择其他工具。",
       "unavailableTitle": "{{tool}} 当前不可用"
     },
     "categories": {
@@ -3402,6 +3428,11 @@ export default interface Resources {
       "timeZoneUnavailable": "系统未提供 IANA 时区。",
       "timestampOutOfRange": "Unix 时间超出安全范围。",
       "timezoneRequired": "ISO 时间必须明确包含时区。"
+    },
+    "experience": {
+      "filePickerLimited": "文件选择暂时受限，可打开工具后重试。",
+      "ready": "现在可用 · 收藏与最近使用优先",
+      "workerUnavailable": "当前环境无法安全运行这项文本处理，请在桌面应用中重试。"
     },
     "favorites": {
       "add": "收藏 {{tool}}",
@@ -4080,9 +4111,9 @@ export default interface Resources {
       "filteredCount": "匹配工具 {{count}} 个",
       "label": "工具箱概览",
       "restrictedNativeHelperUnavailable": {
-        "description": "当前平台未提供受限原生 helper，部分系统工具暂不可用。",
-        "hint": "未执行任何操作；helper 可用后，这些工具才会恢复。",
-        "title": "受限原生 helper 不可用"
+        "description": "当前系统未提供此操作所需的支持，请使用其他可用工具。",
+        "hint": "尚未执行操作；系统支持可用后可重试。",
+        "title": "部分系统工具暂不可用"
       },
       "title": "工具箱概览",
       "toolCount": "工具 {{count}} 个",
@@ -4503,6 +4534,24 @@ export default interface Resources {
       "systemValue": "系统活动",
       "unavailable": "当前平台没有向 CoreRobin 提供可靠的休眠阻止信息。",
       "unavailableValue": "无法读取"
+    },
+    "sleepReview": {
+      "details": "查看保持唤醒的任务",
+      "expected": "已按计划保持唤醒（点击撤销）",
+      "kind": {
+        "display_sleep": "保持屏幕亮起",
+        "idle_sleep": "阻止空闲休眠",
+        "system_sleep": "阻止系统休眠"
+      },
+      "markExpected": "这是我计划中的任务",
+      "plannedDescription": "已将你确认的任务从提醒中排除，电脑仍会保持唤醒。",
+      "plannedValue": "按计划保持唤醒",
+      "power": {
+        "ac": "正在接通电源",
+        "battery": "正在使用电池",
+        "unknown": "电源状态未知"
+      },
+      "sessionNote": "仅本次打开有效；任务结束或进程重启后失效。不会更改系统设置，原始信息仍可查看。"
     },
     "temperature": {
       "attention": "设备有些热；如果同时卡顿，可先减少高负荷任务。",

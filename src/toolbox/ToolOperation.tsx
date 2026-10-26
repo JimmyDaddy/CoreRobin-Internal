@@ -814,7 +814,9 @@ const KEEP_AWAKE_STATUS_KEYS: Record<NonNullable<ToolboxProcessWatchSnapshot["ke
 export function capabilityLabel(t: ToolboxTFunction, capability: ToolboxCapability): string { return capability.state === "degraded" ? t("capability.degraded") : t("capability.unavailable"); }
 export function capabilityReason(t: ToolboxTFunction, capability: ToolboxCapability): string {
   if (capability.reason === KEYBOARD_CLEANING_RESTRICTED_HELPER_REASON) return t("overview.restrictedNativeHelperUnavailable.description");
-  return capability.reason ?? (capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason"));
+  if (/web\s*worker/i.test(capability.reason ?? "")) return t("experience.workerUnavailable");
+  if (/file.?pick|file.?select|文件选择/i.test(capability.reason ?? "")) return t("experience.filePickerLimited");
+  return capability.state === "degraded" ? t("capability.degradedReason") : t("capability.unavailableReason");
 }
 const LOCAL_ERROR_KEYS: Record<string, string> = {
   input_too_large: "errors.inputTooLarge",

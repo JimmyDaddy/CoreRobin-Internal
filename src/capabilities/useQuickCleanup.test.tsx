@@ -56,3 +56,15 @@ it("recovers from a rejected start without leaving an optimistic busy state", as
   expect(hook.result.current.phase).toBe("idle");
   expect(hook.result.current.error).toBe("Source clearing is active");
 });
+
+it("leaves Trash unselected and retains exclusions across unchanged updates", async () => {
+  view = { ...view, phase: "selection", summaries: [...summaries, { ...summaries[0], category: "trash" }] };
+  const hook = renderHook(useQuickCleanup);
+  await waitFor(() => expect(hook.result.current.phase).toBe("selection"));
+  expect(hook.result.current.selected.has("trash")).toBe(false);
+  act(() => hook.result.current.togglePath("/private/logs/keep"));
+  await act(async () => { view = { ...view, revision: 2 }; emit(); });
+  expect(hook.result.current.excludedPaths.has("/private/logs/keep")).toBe(true);
+  await act(async () => hook.result.current.clean());
+  expect(api.runQuickCleanup).toHaveBeenCalledWith(["logs"], expect.any(Function), ["/private/logs/keep"]);
+});

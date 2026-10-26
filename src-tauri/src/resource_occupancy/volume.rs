@@ -750,6 +750,7 @@ fn cancelled_result(
 mod tests {
     use super::*;
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn volume_targets_must_be_current_mount_roots() {
         let root = Path::new("/");
@@ -768,6 +769,7 @@ mod tests {
         assert!(validate_volume_target(file.to_str().unwrap()).is_err());
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn only_clean_complete_empty_results_receive_an_action_lease() {
         let root = Path::new("/");
@@ -824,6 +826,7 @@ mod tests {
         assert!(action_lease_for(&truncated, root, identity).is_none());
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn second_confirmation_expiry_and_identity_change_never_return_a_mount_path() {
         let root = PathBuf::from("/");
@@ -857,6 +860,27 @@ mod tests {
             changed.confirm_at(true, Instant::now()).unwrap_err().code,
             "volume_identity_changed"
         );
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[test]
+    fn unsupported_volume_probe_never_grants_an_action_lease() {
+        let directory = tempfile::tempdir().expect("unsupported volume fixture");
+        let outcome = scan_blocking_for_action(
+            OccupancyVolumeScanRequest {
+                request_id: "unsupported-volume-fixture".to_owned(),
+                path: directory
+                    .path()
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned(),
+            },
+            OccupancyCancellation::default(),
+        )
+        .expect("unsupported probe returns an explicit result");
+        assert_eq!(outcome.result.status, "unsupported");
+        assert!(outcome.action_lease.is_none());
     }
 
     #[cfg(target_os = "linux")]

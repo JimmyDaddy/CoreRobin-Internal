@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "Varredura concluída",
+    "partialResult": "Resultados parciais",
+    "noProgress": "Verificação parada. Veja o resultado ou repita.",
     "scanningLocation": "Analisando {{location}}",
     "paused": "O Mac está em repouso; a verificação continuará ao despertar",
     "stalled": "A verificação está se recuperando automaticamente",
@@ -198,6 +201,8 @@
     "title": "Para que essa área é comumente utilizada"
   },
   "map": {
+    "liveUpdatesPending": "Novos resultados prontos; termine de navegar para atualizar",
+    "liveUpdatesApply": "Atualizar mapa",
     "list": {
       "name": "Nome",
       "share": "% da pasta",
@@ -216,7 +221,20 @@
       "path": "Caminhos de arquivos",
       "category": "Uso"
     },
-    "view": { "label": "Visualizar como", "map": "Mapa de espaço", "list": "Lista", "search": "Pesquisar nesta pasta", "clearSearch": "Limpar pesquisa", "sortSize": "Ordenar por tamanho", "sortName": "Ordenar por nome", "descending": "Decrescente", "ascending": "Crescente", "loading": "Lendo o índice…", "loadFailed": "Não foi possível carregar a lista. Tente novamente.", "empty": "Nenhum item correspondente" },
+    "view": {
+      "label": "Visualizar como",
+      "map": "Mapa de espaço",
+      "list": "Lista",
+      "search": "Pesquisar nesta pasta",
+      "clearSearch": "Limpar pesquisa",
+      "sortSize": "Ordenar por tamanho",
+      "sortName": "Ordenar por nome",
+      "descending": "Decrescente",
+      "ascending": "Crescente",
+      "loading": "Lendo o índice…",
+      "loadFailed": "Não foi possível carregar a lista. Tente novamente.",
+      "empty": "Nenhum item correspondente"
+    },
     "ariaLabel": "Mapa em formato de sol para {{name}}",
     "back": "Voltar um nível",
     "breadcrumbs": "Hierarquia do mapa de espaço",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "Não é possível agrupar diretórios em níveis mais profundos neste momento.",
     "loadDeeperHint": "Selecione esta pasta para abrir o próximo nível pelo índice local.",
-    "otherContentHint": "Este grupo contém itens que não são exibidos separadamente devido à capacidade do índice ou à página atual; eles não são necessariamente pequenos. Continue pela lista ou abra a pasta atual no Finder.",
+    "otherContentHint": "Este grupo contém itens que não aparecem individualmente no mapa. Alterne para a lista para explorar e pesquisar o conteúdo indexado.",
     "loadingFolder": "Carregando esta pasta…",
     "loadFailed": "Não foi possível ler o índice de pastas",
     "loadMore": "Mostrar mais 50 itens",
     "refreshProgress": "{{count}} itens verificados · {{time}} s",
     "refreshFailed": "Não foi possível atualizar a pasta",
-    "directActionHint": "Arraste um setor ou uma pasta da lista para a cesta na parte inferior.",
+    "directActionHint": "Arraste um setor ou um item da lista para a cesta na parte inferior",
     "protectedSelectionHint": "Pastas do sistema e a raiz da sua área pessoal são apenas para visualização; itens específicos dentro da sua pasta pessoal podem ser movidos para o cesto",
     "trashRootProtected": "A pasta de lixeira é protegida; entre nela e selecione os itens específicos que deseja remover",
     "planSummary": "{{count}} itens selecionados · {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "Arquivos do sistema e configurações importantes estão protegidos e não foram adicionados",
       "protectedPreview": "Protegido · não pode excluir",
       "protectedBadge": "Protegido",
-      "empty": "Arraste um setor ou uma pasta aqui antes da limpeza",
+      "empty": "Arraste um setor ou item da lista para cá e revise antes de limpar",
       "release": "Libere para adicionar à cesta",
       "collected": "Na cesta de limpeza",
       "collectedHint": "Já foi adicionado; remova-o da cesta abaixo ou continue revisando",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "Remover da cesta de limpeza",
     "includedByParent": "Incluído por uma pasta superior",
-    "addToBasket": "Adicionar à cesta de limpeza"
+    "addToBasket": "Adicionar à cesta de limpeza",
+    "historyBack": "Voltar",
+    "refreshCurrent": "Atualizar esta pasta",
+    "enterFolder": "Abrir pasta",
+    "openFolder": "Abrir {{name}}"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "Nenhum diretório em crescimento foi encontrado na comparação compacta."
   },
   "quickClean": {
-    "kicker": "Sem escaneamento",
+    "kicker": "Sem varredura completa do disco",
     "title": "Limpeza rápida",
-    "description": "Limpe caches, logs, arquivos temporários e a lixeira com um toque. Seus documentos e fotos ficam intactos.",
+    "description": "Analise locais comuns, revise suas origens e escolha o que manter antes de confirmar.",
     "analyze": "Analisar",
     "analyzing": "Analisando…",
     "analyzeAgain": "Analisar novamente",
@@ -458,22 +480,29 @@
     "freedSummary": "{{size}} liberados em {{count}} itens",
     "again": "Limpar novamente",
     "close": "Concluir",
-    "total": "Total recuperável",
+    "total": "Espaço recuperável estimado",
     "unavailable": "Indisponível",
     "empty": "Nada para limpar — seu disco está ótimo!",
     "skippedNote": "{{count}} itens estavam em uso e foram ignorados com segurança.",
-    "noRiskNote": "Apenas caches regeneráveis e o conteúdo da lixeira são removidos — nunca seus documentos, fotos ou credenciais.",
+    "noRiskNote": "Só os locais selecionados são processados. Selecione a lixeira separadamente; a exclusão é permanente. Revise as origens.",
     "category": {
       "user_cache": "Caches de apps",
       "logs": "Arquivos de log",
       "temp_files": "Arquivos temporários",
       "trash": "Lixeira"
     },
-    "launcherDescription": "Sem varredura: limpe caches, logs, temporários e lixeira com um toque.",
+    "launcherDescription": "Analise locais comuns e escolha o que manter.",
     "open": "Abrir limpeza rápida",
-    "back": "Voltar à verificação de espaço",    "guideTitle": "Quer uma limpeza mais profunda?",
+    "back": "Voltar à verificação de espaço",
+    "guideTitle": "Quer uma limpeza mais profunda?",
     "guideDescription": "Analise o disco inteiro, veja o uso por caminho real e decida o que limpar.",
     "guideAction": "Ir para a verificação do disco",
     "analyzingHint": "Medindo caches, logs, temporários e lixeira…"
+  },
+  "quickReview": {
+    "sources": "Revisar origens e escolher o que manter",
+    "limited": "Mostra até 128 locais maiores. Pastas grandes podem ser contadas parcialmente. Os demais locais continuam incluídos; desmarque a categoria em caso de dúvida.",
+    "trashWarning": "A lixeira não vem selecionada. Ela pode conter arquivos pessoais; esvaziá-la é irreversível.",
+    "excluded": "Mantendo {{count}} locais e suas pastas superiores"
   }
 }

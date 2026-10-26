@@ -165,6 +165,9 @@
     }
   },
   "progress": {
+    "completed": "掃描完成",
+    "partialResult": "已掃描內容（未完成）",
+    "noProgress": "掃描停滯，可查看結果或重試。",
     "scanningLocation": "正在分析{{location}}",
     "paused": "Mac 已進入睡眠，喚醒後將繼續掃描",
     "stalled": "正在自動恢復掃描",
@@ -198,6 +201,8 @@
     "title": "這些空間大多用來做什麼"
   },
   "map": {
+    "liveUpdatesPending": "有新結果，瀏覽結束後更新",
+    "liveUpdatesApply": "更新地圖",
     "list": {
       "name": "名稱",
       "share": "目前資料夾占比",
@@ -216,7 +221,20 @@
       "path": "檔案路徑",
       "category": "用途分類"
     },
-    "view": { "label": "瀏覽方式", "map": "空間圖", "list": "列表", "search": "搜尋目前資料夾", "clearSearch": "清除搜尋", "sortSize": "依大小", "sortName": "依名稱", "descending": "由大至小", "ascending": "由小至大", "loading": "正在讀取索引…", "loadFailed": "無法載入列表，請重試", "empty": "目前資料夾沒有相符內容" },
+    "view": {
+      "label": "瀏覽方式",
+      "map": "空間圖",
+      "list": "列表",
+      "search": "搜尋目前資料夾",
+      "clearSearch": "清除搜尋",
+      "sortSize": "依大小",
+      "sortName": "依名稱",
+      "descending": "由大至小",
+      "ascending": "由小至大",
+      "loading": "正在讀取索引…",
+      "loadFailed": "無法載入列表，請重試",
+      "empty": "目前資料夾沒有相符內容"
+    },
     "ariaLabel": "{{name}} 的空間扇形圖",
     "back": "返回上一級",
     "breadcrumbs": "空間圖層級",
@@ -243,13 +261,13 @@
     },
     "noDeeperBreakdown": "當前層級沒有更細的目錄分組。",
     "loadDeeperHint": "選取這個資料夾即可從本機索引開啟下一層。",
-    "otherContentHint": "這裡彙總因索引容量或目前分頁而未單獨顯示的內容；它們不一定較小。可繼續瀏覽清單，或在 Finder 中開啟目前資料夾。",
+    "otherContentHint": "這裡彙總空間圖未單獨顯示的內容；切換到清單後可瀏覽和搜尋已收錄的項目。",
     "loadingFolder": "正在讀取這個目錄…",
     "loadFailed": "無法讀取資料夾索引",
     "loadMore": "再顯示 50 個項目",
     "refreshProgress": "已檢查 {{count}} 項 · {{time}} 秒",
     "refreshFailed": "無法重新整理資料夾",
-    "directActionHint": "拖動扇區或右側目錄到底部清理籃",
+    "directActionHint": "將扇區或清單項目拖到底部清理籃",
     "protectedSelectionHint": "系統目錄和個人目錄根節點僅供檢視；個人目錄內的具體內容可以加入清理籃",
     "trashRootProtected": "廢紙簍目錄本身不會被刪除；進入裡面選擇需要清理的具體內容",
     "planSummary": "已選擇 {{count}} 項，共 {{size}}",
@@ -261,7 +279,7 @@
       "protectedMessage": "系統檔案與重要設定受到保護，未加入清理籃",
       "protectedPreview": "受保護，不能刪除",
       "protectedBadge": "受保護",
-      "empty": "拖動扇區或右側目錄到這裡，先收集再處理",
+      "empty": "將扇區或清單項目拖到這裡，先核對再處理",
       "release": "鬆手加入清理籃",
       "collected": "已在清理籃",
       "collectedHint": "已經收集；可在下方清理籃中移除或繼續核對",
@@ -294,7 +312,11 @@
     },
     "removeFromBasket": "從清理籃移除",
     "includedByParent": "已包含在父資料夾中",
-    "addToBasket": "加入清理籃"
+    "addToBasket": "加入清理籃",
+    "historyBack": "返回",
+    "refreshCurrent": "重新整理此目錄",
+    "enterFolder": "進入資料夾",
+    "openFolder": "進入 {{name}}"
   },
   "settlement": {
     "status": {
@@ -444,9 +466,9 @@
     "noGrowth": "精簡比較中未發現增長的目錄。"
   },
   "quickClean": {
-    "kicker": "無需掃描",
+    "kicker": "無需全碟掃描",
     "title": "快速清理",
-    "description": "一鍵清理快取、日誌、暫存檔案與資源回收筒，不會碰你的文件與相片。",
+    "description": "分析常用清理位置，查看來源並選擇需要保留的內容，再確認清理。",
     "analyze": "開始分析",
     "analyzing": "正在分析…",
     "analyzeAgain": "重新分析",
@@ -458,22 +480,29 @@
     "freedSummary": "釋放了 {{size}}，共 {{count}} 個項目",
     "again": "再清理一次",
     "close": "完成",
-    "total": "共可釋放",
+    "total": "預計共可釋放",
     "unavailable": "無法使用",
     "empty": "沒有可清理的內容，磁碟很乾淨！",
     "skippedNote": "{{count}} 個項目正在被占用，已安全跳過。",
-    "noRiskNote": "只清理可再生的快取與已丟棄的資源回收筒內容，不含你的文件、相片與登入資訊。",
+    "noRiskNote": "只處理所選位置。垃圾桶需單獨選擇；清理會永久刪除內容，請先檢查來源。",
     "category": {
       "user_cache": "應用程式快取",
       "logs": "日誌檔",
       "temp_files": "暫存檔",
       "trash": "資源回收筒"
     },
-    "launcherDescription": "不掃描，一鍵清理快取、日誌、暫存檔與資源回收筒。",
+    "launcherDescription": "分析常用清理位置，選擇要保留的內容。",
     "open": "開啟快速清理",
-    "back": "返回空間掃描",    "guideTitle": "想清理得更徹底？",
+    "back": "返回空間掃描",
+    "guideTitle": "想清理得更徹底？",
     "guideDescription": "深度掃描整個磁碟，按真實檔案路徑查看空間占用，再決定清理什麼。",
     "guideAction": "前往磁碟掃描",
     "analyzingHint": "正在統計快取、日誌、暫存檔與資源回收筒…"
+  },
+  "quickReview": {
+    "sources": "查看來源與選擇保留",
+    "limited": "僅顯示最大的 128 個位置；統計大型目錄時可能提前停止。未顯示的位置仍屬於所選類別，不確定時請取消整個類別。",
+    "trashWarning": "垃圾桶預設不選。裡面可能有個人檔案，清空後無法復原。",
+    "excluded": "保留 {{count}} 個位置（所在目錄也會保留）"
   }
 }

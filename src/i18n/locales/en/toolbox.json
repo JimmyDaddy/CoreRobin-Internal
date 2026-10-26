@@ -28,11 +28,11 @@
     "back": "Back to toolbox"
   },
   "capability": {
-    "degraded": "Available with limitations",
+    "degraded": "Partially available",
     "unavailable": "Unavailable",
-    "degradedReason": "Some native integration is limited, but the tool can still open.",
-    "unavailableReason": "Native execution is not available on this platform.",
-    "restrictedHelperUnavailable": "This tool requires a restricted native helper, which is not available on this platform.",
+    "degradedReason": "Some system features are unavailable. You can still use the other features offered by this tool.",
+    "unavailableReason": "This tool is currently unavailable on this system. Choose another available tool.",
+    "restrictedHelperUnavailable": "This system does not provide the support needed for this operation. Use another available tool.",
     "unavailableTitle": "{{tool}} is currently unavailable",
     "unavailableHint": "This entry stays in the toolbox and can be used when native capability returns."
   },
@@ -910,9 +910,14 @@
     "filterHint": "Filter tools by category or search",
     "filteredCount": "{{count}} matching tools",
     "restrictedNativeHelperUnavailable": {
-      "title": "Restricted native helper unavailable",
-      "description": "Some system tools are unavailable because this platform does not provide the restricted native helper.",
-      "hint": "No action was taken. These tools will remain unavailable until the helper is available."
+      "title": "Some system tools are unavailable",
+      "description": "This system does not provide the support needed for this operation. Use another available tool.",
+      "hint": "No operation has run. Try again when system support is available."
     }
+  },
+  "experience": {
+    "ready": "Ready now · favorites and recent tools first",
+    "workerUnavailable": "This environment cannot run this text operation safely. Try again in the desktop app.",
+    "filePickerLimited": "File selection is currently limited. Open the tool and try again."
   }
 }

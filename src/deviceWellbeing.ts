@@ -14,6 +14,7 @@ export interface SleepBlockerSummary {
   durationSeconds: number | null;
   kinds: SleepBlockerKind[];
   processIdentity: string | null;
+  reasons: string[];
 }
 
 export function temperatureWellbeingLevel(
@@ -54,7 +55,8 @@ export function summarizeSleepBlockers(
     const key = name.trim().toLocaleLowerCase();
     if (!key) continue;
     const existing = grouped.get(key);
-    const systemComponent = application?.systemComponent ?? isKnownSystemSleepBlocker(name);
+    const systemComponent = Boolean(application?.systemComponent)
+      || isKnownSystemSleepBlocker(blocker.processName);
     const processIdentity = application?.actionIdentity
       ?? application?.representativeIdentity
       ?? null;
@@ -66,6 +68,7 @@ export function summarizeSleepBlockers(
         blocker.durationSeconds,
       );
       if (!existing.kinds.includes(blocker.kind)) existing.kinds.push(blocker.kind);
+      if (blocker.reason && !existing.reasons.includes(blocker.reason)) existing.reasons.push(blocker.reason);
     } else {
       grouped.set(key, {
         name,
@@ -73,6 +76,7 @@ export function summarizeSleepBlockers(
         durationSeconds: blocker.durationSeconds,
         kinds: [blocker.kind],
         processIdentity,
+        reasons: blocker.reason ? [blocker.reason] : [],
       });
     }
   }

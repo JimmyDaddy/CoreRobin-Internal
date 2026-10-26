@@ -61,7 +61,8 @@ export function buildTodayReview({
   const todayPoints = points.filter(({ timestamp }) =>
     timestamp >= fromMs && timestamp <= nowMs);
   const stories = buildHistoryStories(alerts).filter((story) =>
-    story.startedAtMs >= fromMs
+    story.status === "active"
+    || story.startedAtMs >= fromMs
     || (story.endedAtMs !== null && story.endedAtMs >= fromMs));
   const activeCount = stories.filter(({ status }) => status === "active").length;
   const resolvedCount = stories.filter(({ status }) => status === "recovered").length;

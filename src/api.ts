@@ -1,25 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-import {
-  createMockCleanupDeleteLease,
-  getMockApplicationUninstallPlan,
-  getMockInstalledApplications,
-  createMockProcessControlLease,
-  createMockStartupManagementLease,
-  executeMockCleanupDelete,
-  executeMockProcessAction,
-  executeMockStartupManagement,
-  getMockCleanupScan,
-  getMockStartupItems,
-  getMockNetworkConnections,
-  getMockProcessDetail,
-  getMockSnapshot,
-  releaseMockProcessControlLease,
-  releaseMockCleanupDeleteLease,
-  setMockCleanupDeleteLeaseMode,
-  releaseMockStartupManagementLease,
-} from "./mockData";
 import type {
   ApplicationIcon,
   ApplicationIconRequest,
@@ -503,14 +484,14 @@ function canUseDevelopmentMock(): boolean {
 
 export async function getSystemSnapshot(): Promise<SystemSnapshot> {
   if (canUseDevelopmentMock()) {
-    return getMockSnapshot();
+    return (await import("./mockData")).getMockSnapshot();
   }
   return invoke<SystemSnapshot>("get_system_snapshot");
 }
 
 export async function getSystemSummary(): Promise<SystemSummary> {
   if (canUseDevelopmentMock()) {
-    const snapshot = getMockSnapshot();
+    const snapshot = (await import("./mockData")).getMockSnapshot();
     return {
       sequence: snapshot.sequence,
       sampledAtMs: snapshot.sampledAtMs,
@@ -583,7 +564,7 @@ export async function configureBackgroundSupervisor(
 
 export async function getNetworkConnections(): Promise<NetworkConnectionsSnapshot> {
   if (canUseDevelopmentMock()) {
-    return getMockNetworkConnections();
+    return (await import("./mockData")).getMockNetworkConnections();
   }
   return invoke<NetworkConnectionsSnapshot>("get_network_connections");
 }
@@ -645,7 +626,7 @@ export async function getStartupContext(): Promise<StartupContext> {
 
 export async function getGpuEnergySnapshot(): Promise<GpuEnergySnapshot> {
   if (canUseDevelopmentMock()) {
-    const snapshot = getMockSnapshot();
+    const snapshot = (await import("./mockData")).getMockSnapshot();
     return {
       sampledAtMs: Date.now(),
       gpuAvailable: true,
@@ -730,14 +711,14 @@ export async function revalidateFileInsightsScan(
 }
 
 export async function getStartupItems(): Promise<StartupItemsSnapshot> {
-  if (canUseDevelopmentMock()) return getMockStartupItems();
+  if (canUseDevelopmentMock()) return (await import("./mockData")).getMockStartupItems();
   return invoke<StartupItemsSnapshot>("get_startup_items");
 }
 
 export async function createStartupManagementLease(
   request: StartupManagementLeaseRequest,
 ): Promise<StartupManagementLease> {
-  if (canUseDevelopmentMock()) return createMockStartupManagementLease(request);
+  if (canUseDevelopmentMock()) return (await import("./mockData")).createMockStartupManagementLease(request);
   return invoke<StartupManagementLease>("create_startup_management_lease", { request });
 }
 
@@ -745,7 +726,7 @@ export async function releaseStartupManagementLease(
   request: StartupManagementLeaseReleaseRequest,
 ): Promise<void> {
   if (canUseDevelopmentMock()) {
-    releaseMockStartupManagementLease(request);
+    (await import("./mockData")).releaseMockStartupManagementLease(request);
     return;
   }
   return invoke<void>("release_startup_management_lease", { request });
@@ -754,7 +735,7 @@ export async function releaseStartupManagementLease(
 export async function executeStartupManagement(
   request: StartupManagementExecutionRequest,
 ): Promise<StartupManagementResult> {
-  if (canUseDevelopmentMock()) return executeMockStartupManagement(request);
+  if (canUseDevelopmentMock()) return (await import("./mockData")).executeMockStartupManagement(request);
   return invoke<StartupManagementResult>("execute_startup_management", { request });
 }
 
@@ -798,7 +779,7 @@ export async function getCleanupScanJob(): Promise<CleanupScanJobStatus | null> 
 }
 
 export async function loadCleanupScanJobResult(jobId: string): Promise<CleanupScan> {
-  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  if (canUseDevelopmentMock()) return (await import("./mockData")).getMockCleanupScan();
   return invoke<CleanupScan>("load_cleanup_scan_job_result", { jobId });
 }
 
@@ -984,7 +965,7 @@ async function fetchInstalledApplications(
 ): Promise<ApplicationInventorySnapshot> {
   if (import.meta.env.DEV && canUseDevelopmentMock()) {
     await new Promise((resolve) => window.setTimeout(resolve, 1_200));
-    return getMockInstalledApplications();
+    return (await import("./mockData")).getMockInstalledApplications();
   }
   return invoke<ApplicationInventorySnapshot>("get_installed_applications", {
     language,
@@ -1008,7 +989,7 @@ export async function getApplicationUninstallPlan(
   language: string | undefined = DEFAULT_LANGUAGE,
 ): Promise<ApplicationUninstallPlan> {
   if (import.meta.env.DEV && canUseDevelopmentMock()) {
-    return getMockApplicationUninstallPlan(applicationPath);
+    return (await import("./mockData")).getMockApplicationUninstallPlan(applicationPath);
   }
   return invoke<ApplicationUninstallPlan>("get_application_uninstall_plan", {
     applicationPath,
@@ -1030,7 +1011,7 @@ export async function getTrashedApplicationResidualPlan(
   language: string | undefined = DEFAULT_LANGUAGE,
 ): Promise<ApplicationUninstallPlan> {
   if (canUseDevelopmentMock()) {
-    return getMockApplicationUninstallPlan(applicationPath);
+    return (await import("./mockData")).getMockApplicationUninstallPlan(applicationPath);
   }
   return invoke<ApplicationUninstallPlan>(
     "get_trashed_application_residual_plan",
@@ -1081,7 +1062,7 @@ export async function getCleanupIndexedDirectory(
       }
       return null;
     };
-    const found = findNode([getMockCleanupScan().root]);
+    const found = findNode([(await import("./mockData")).getMockCleanupScan().root]);
     if (found) return found;
     throw { code: "cleanup_index_node_missing", message: "The folder is unavailable." };
   }
@@ -1096,14 +1077,14 @@ export async function getCleanupIndexedChildren(
 }
 
 export async function getCleanupScanOverview(scanId: string): Promise<CleanupScan> {
-  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  if (canUseDevelopmentMock()) return (await import("./mockData")).getMockCleanupScan();
   return invoke<CleanupScan>("get_cleanup_scan_overview", { scanId });
 }
 
 export async function applyCleanupIndexDeletions(
   request: CleanupIndexDeletionRequest,
 ): Promise<CleanupScan> {
-  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  if (canUseDevelopmentMock()) return (await import("./mockData")).getMockCleanupScan();
   return invoke<CleanupScan>("apply_cleanup_index_deletions", { request });
 }
 
@@ -1124,7 +1105,7 @@ export async function getCleanupDirectoryRefreshJob(): Promise<CleanupScanJobSta
 }
 
 export async function loadCleanupDirectoryRefreshResult(jobId: string): Promise<CleanupScan> {
-  if (canUseDevelopmentMock()) return getMockCleanupScan();
+  if (canUseDevelopmentMock()) return (await import("./mockData")).getMockCleanupScan();
   return invoke<CleanupScan>("load_cleanup_directory_refresh_result", { jobId });
 }
 
@@ -1153,10 +1134,10 @@ export async function clearPersistedCleanupScan(): Promise<void> {
 export async function analyzeQuickCleanup(): Promise<QuickCleanCategorySummary[]> {
   if (canUseDevelopmentMock()) {
     return [
-      { category: "user_cache", byteSize: 1_240_000_000, itemCount: 18_420, skippedCount: 3, available: true },
-      { category: "logs", byteSize: 96_000_000, itemCount: 2_104, skippedCount: 0, available: true },
-      { category: "temp_files", byteSize: 512_000_000, itemCount: 8_870, skippedCount: 12, available: true },
-      { category: "trash", byteSize: 230_000_000, itemCount: 96, skippedCount: 0, available: true },
+      { category: "user_cache", byteSize: 1_240_000_000, itemCount: 18_420, skippedCount: 3, available: true, rootPath: "/Users/demo/Library/Caches", sources: [{ path: "/Users/demo/Library/Caches/example.app", byteSize: 1240000000 }], limited: false },
+      { category: "logs", byteSize: 96_000_000, itemCount: 2_104, skippedCount: 0, available: true, rootPath: "/Users/demo/Library/Logs", sources: [{ path: "/Users/demo/Library/Logs/example.log", byteSize: 96000000 }], limited: false },
+      { category: "temp_files", byteSize: 512_000_000, itemCount: 8_870, skippedCount: 12, available: true, rootPath: "/private/var/folders/demo/T", sources: [{ path: "/private/var/folders/demo/T/example.tmp", byteSize: 512000000 }], limited: false },
+      { category: "trash", byteSize: 230_000_000, itemCount: 96, skippedCount: 0, available: true, rootPath: "/Users/demo/.Trash", sources: [{ path: "/Users/demo/.Trash/old-file", byteSize: 230000000 }], limited: false },
     ];
   }
   return invoke<QuickCleanCategorySummary[]>("analyze_quick_cleanup_command");
@@ -1170,36 +1151,25 @@ export async function getQuickCleanupState(): Promise<import("./capabilities/use
 export async function runQuickCleanup(
   categories: QuickCleanCategory[],
   onProgress: (progress: QuickCleanProgress) => void,
+  excludedPaths: string[] = [],
 ): Promise<QuickCleanResult> {
   if (canUseDevelopmentMock()) {
-    const ticks: QuickCleanCategory[] = ["user_cache", "logs", "temp_files", "trash"];
-    for (const category of ticks) {
+    const results = (await analyzeQuickCleanup()).filter((item) => categories.includes(item.category)).map((item) => {
+      const skipped = (item.sources ?? []).filter((source) => excludedPaths.includes(source.path));
+      return { category: item.category, freedBytes: Math.max(0, item.byteSize - skipped.reduce((sum, source) => sum + source.byteSize, 0)), freedItems: skipped.length ? 0 : 1, skippedItems: skipped.length };
+    });
+    let freedBytes = 0;
+    for (const item of results) {
       await new Promise((resolve) => window.setTimeout(resolve, 350));
-      onProgress({
-        category,
-        processedItemCount: 1,
-        totalItemCount: 1,
-        freedBytes: 1_000_000_000,
-        freedItems: 1,
-        skippedItems: 0,
-        currentPath: category,
-      });
+      freedBytes += item.freedBytes;
+      onProgress({ category: item.category, processedItemCount: 1, totalItemCount: 1, freedBytes, freedItems: 1, skippedItems: item.skippedItems, currentPath: item.category });
     }
-    return {
-      freedBytes: 2_078_000_000,
-      freedItems: 4,
-      skippedItems: 0,
-      results: [
-        { category: "user_cache", freedBytes: 1_240_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "logs", freedBytes: 96_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "temp_files", freedBytes: 512_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "trash", freedBytes: 230_000_000, freedItems: 1, skippedItems: 0 },
-      ],
-    };
+    return { freedBytes, freedItems: results.reduce((sum, item) => sum + item.freedItems, 0), skippedItems: results.reduce((sum, item) => sum + item.skippedItems, 0), results };
   }
+
   const progressChannel = new Channel<QuickCleanProgress>(onProgress);
   return invoke<QuickCleanResult>("run_quick_cleanup_command", {
-    request: { categories },
+    request: { categories, excludedPaths },
     onProgress: progressChannel,
   });
 }
@@ -1317,7 +1287,7 @@ export async function createCleanupDeleteLease(
   request: CleanupDeleteLeaseRequest,
 ): Promise<CleanupDeleteLease> {
   if (canUseDevelopmentMock()) {
-    const lease = createMockCleanupDeleteLease(request);
+    const lease = (await import("./mockData")).createMockCleanupDeleteLease(request);
     if (lease.executable) {
       mockCleanupDeletePaths.set(lease.id, lease.paths);
       mockCleanupDeleteModes.set(lease.id, lease.mode);
@@ -1331,7 +1301,7 @@ export async function releaseCleanupDeleteLease(
   request: CleanupDeleteLeaseReleaseRequest,
 ): Promise<void> {
   if (canUseDevelopmentMock()) {
-    releaseMockCleanupDeleteLease(request);
+    (await import("./mockData")).releaseMockCleanupDeleteLease(request);
     mockCleanupDeletePaths.delete(request.leaseId);
     mockCleanupDeleteModes.delete(request.leaseId);
     return;
@@ -1343,7 +1313,7 @@ export async function setCleanupDeleteLeaseMode(
   request: CleanupDeleteLeaseModeRequest,
 ): Promise<CleanupDeleteLease> {
   if (canUseDevelopmentMock()) {
-    const lease = setMockCleanupDeleteLeaseMode(request);
+    const lease = (await import("./mockData")).setMockCleanupDeleteLeaseMode(request);
     mockCleanupDeleteModes.set(lease.id, lease.mode);
     return lease;
   }
@@ -1373,7 +1343,7 @@ export async function executeCleanupDelete(
       await new Promise((resolve) => window.setTimeout(resolve, 260));
       for (const processedEntryCount of [180, 430, 760, 1_000]) {
         if (mockCleanupDeleteCancelled) {
-          releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
+          (await import("./mockData")).releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
           mockCleanupDeletePaths.delete(request.leaseId);
           mockCleanupDeleteModes.delete(request.leaseId);
           return { deleted: [], deletedBytes: 0, failed: [], cancelled: true, interruptedPath: null };
@@ -1390,14 +1360,14 @@ export async function executeCleanupDelete(
         await new Promise((resolve) => window.setTimeout(resolve, 140));
       }
       if (mockCleanupDeleteCancelled) {
-        releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
+        (await import("./mockData")).releaseMockCleanupDeleteLease({ leaseId: request.leaseId });
         mockCleanupDeletePaths.delete(request.leaseId);
         mockCleanupDeleteModes.delete(request.leaseId);
         return { deleted: [], deletedBytes: 0, failed: [], cancelled: true, interruptedPath: null };
       }
       mockCleanupDeletePaths.delete(request.leaseId);
       mockCleanupDeleteModes.delete(request.leaseId);
-      return executeMockCleanupDelete(request);
+      return (await import("./mockData")).executeMockCleanupDelete(request);
     } finally {
       mockCleanupDeleteInFlight = false;
     }
@@ -1419,7 +1389,7 @@ export async function getProcessDetail(
   request: ProcessDetailRequest,
 ): Promise<ProcessDetail> {
   if (canUseDevelopmentMock()) {
-    return getMockProcessDetail(request);
+    return (await import("./mockData")).getMockProcessDetail(request);
   }
   return invoke<ProcessDetail>("get_process_detail", { request });
 }
@@ -1435,7 +1405,7 @@ export async function executeProcessAction(
   request: ProcessActionRequest,
 ): Promise<ProcessActionResult> {
   if (canUseDevelopmentMock()) {
-    return executeMockProcessAction(request);
+    return (await import("./mockData")).executeMockProcessAction(request);
   }
   return invoke<ProcessActionResult>("execute_process_action", { request });
 }
@@ -1444,7 +1414,7 @@ export async function createProcessControlLease(
   request: ProcessControlLeaseRequest,
 ): Promise<ProcessControlLease> {
   if (canUseDevelopmentMock()) {
-    return createMockProcessControlLease(request);
+    return (await import("./mockData")).createMockProcessControlLease(request);
   }
   return invoke<ProcessControlLease>("create_process_control_lease", { request });
 }
@@ -1453,7 +1423,7 @@ export async function releaseProcessControlLease(
   request: ProcessControlLeaseReleaseRequest,
 ): Promise<void> {
   if (canUseDevelopmentMock()) {
-    releaseMockProcessControlLease(request);
+    (await import("./mockData")).releaseMockProcessControlLease(request);
     return;
   }
   return invoke<void>("release_process_control_lease", { request });

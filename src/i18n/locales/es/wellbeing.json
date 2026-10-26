@@ -84,5 +84,23 @@
       "hours_one": "aproximadamente 1 hora",
       "hours_other": "aproximadamente {{count}} horas"
     }
+  },
+  "sleepReview": {
+    "details": "Ver tareas que mantienen el equipo activo",
+    "markExpected": "Esta tarea es intencional",
+    "expected": "Actividad prevista (pulsa para deshacer)",
+    "sessionNote": "Válido en esta sesión hasta que termine la tarea o se reinicie el proceso. No cambia ajustes ni lecturas originales.",
+    "plannedValue": "Activo según lo previsto",
+    "plannedDescription": "Las tareas confirmadas se excluyen de los avisos. El equipo sigue activo.",
+    "kind": {
+      "system_sleep": "Impide la suspensión del sistema",
+      "idle_sleep": "Impide la suspensión por inactividad",
+      "display_sleep": "Mantiene la pantalla encendida"
+    },
+    "power": {
+      "ac": "Conectado a corriente",
+      "battery": "Usando batería",
+      "unknown": "Fuente de energía desconocida"
+    }
   }
 }

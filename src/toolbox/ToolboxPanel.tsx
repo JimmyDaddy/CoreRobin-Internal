@@ -61,6 +61,7 @@ export function ToolboxPanel({
   const [selected, setSelected] = useState<ToolId | null>(null);
   const returnFocusTarget = useRef<string | null>(null);
   const [favorites, setFavorites] = useState<Set<ToolId>>(() => readFavorites());
+  const [recentTools, setRecentTools] = useState<ToolId[]>([]);
   const nativeCapabilities = useToolboxCapabilities();
   const translateTool = useCallback(
     (id: ToolId, field: "title" | "description" | "aliases") =>
@@ -68,8 +69,13 @@ export function ToolboxPanel({
     [t],
   );
   const tools = useMemo(
-    () => searchTools(query, nativeCapabilities, translateTool),
-    [query, nativeCapabilities, translateTool],
+    () => searchTools(query, nativeCapabilities, translateTool).sort((left, right) => {
+      const rank = { available: 0, degraded: 1, unavailable: 2 };
+      return rank[left.capability.state] - rank[right.capability.state]
+        || Number(favorites.has(right.id)) - Number(favorites.has(left.id))
+        || (recentTools.includes(left.id) ? recentTools.indexOf(left.id) : 100) - (recentTools.includes(right.id) ? recentTools.indexOf(right.id) : 100);
+    }),
+    [query, nativeCapabilities, translateTool, favorites, recentTools],
   );
   const visibleTools = useMemo(
     () => activeCategory ? tools.filter((tool) => tool.category === activeCategory) : tools,
@@ -78,6 +84,8 @@ export function ToolboxPanel({
   const selectedTool = selected
     ? getToolDefinition(selected, nativeCapabilities, translateTool)
     : null;
+  const featuredTools = !query && activeCategory === null ? tools.filter((tool) => tool.capability.state === "available").slice(0, 6) : [];
+  const featuredIds = new Set(featuredTools.map(({ id }) => id));
 
   useEffect(() => {
     if (initialProcessWatchTarget?.birthToken) setSelected("process-watch");
@@ -98,6 +106,7 @@ export function ToolboxPanel({
     if (tool.capability.state !== "unavailable") {
       returnFocusTarget.current = focusTarget;
       setSelected(tool.id);
+      setRecentTools((current) => [tool.id, ...current.filter((id) => id !== tool.id)].slice(0, 6));
     }
   };
 
@@ -159,8 +168,9 @@ export function ToolboxPanel({
             })}
           </div>
           {favorites.size > 0 && !query && activeCategory === null ? <ToolSection sectionId="favorites" title={t("favorites.title")} tools={tools.filter((tool) => favorites.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} /> : null}
+          <ToolSection sectionId="ready" title={t("experience.ready")} tools={featuredTools} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           {(Object.keys(CATEGORY_LABEL_KEYS) as ToolboxCategory[]).filter((category) => activeCategory === null || activeCategory === category).map((category) => (
-            <ToolSection key={category} sectionId={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={visibleTools.filter((tool) => tool.category === category)} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
+            <ToolSection key={category} sectionId={category} title={t(CATEGORY_LABEL_KEYS[category])} tools={visibleTools.filter((tool) => tool.category === category && !featuredIds.has(tool.id))} favorites={favorites} onOpen={openTool} onFavorite={toggleFavorite} />
           ))}
           {visibleTools.length === 0 ? <div className="toolbox-empty"><Wrench size={22} /><strong>{t("empty.title")}</strong><span>{t("empty.description")}</span></div> : null}
           <ToolboxHistoryPanel />

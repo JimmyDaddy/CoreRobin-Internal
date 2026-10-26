@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use crate::error::CommandError;
 use crate::models::{
     QuickCleanCategory, QuickCleanCategoryResult, QuickCleanCategorySummary, QuickCleanPhase,
-    QuickCleanProgress, QuickCleanRequest, QuickCleanResult, QuickCleanSnapshot,
+    QuickCleanProgress, QuickCleanRequest, QuickCleanResult, QuickCleanSnapshot, QuickCleanSource,
 };
 use crate::safe_fs::DeleteRoot;
 
@@ -203,60 +203,87 @@ fn analyze_category(
         item_count: 0,
         skipped_count: 0,
         available: false,
+        root_path: root.to_string_lossy().into_owned(),
+        sources: Vec::new(),
+        limited: false,
     };
     let Ok(entries) = fs::read_dir(&root) else {
         return summary;
     };
     summary.available = true;
-    let mut pending = Vec::new();
     let mut budget = QUICK_CLEAN_ANALYZE_ENTRY_CAP;
-    for entry in entries.flatten() {
-        if budget == 0 || cancelled.load(Ordering::Acquire) {
-            break;
-        }
-        budget -= 1;
-        let path = entry.path();
-        match fs::symlink_metadata(&path) {
-            Ok(metadata) if !metadata.file_type().is_symlink() => {
-                summary.item_count = summary.item_count.saturating_add(1);
-                if metadata.is_dir() {
-                    pending.push(path);
-                } else if metadata.is_file() {
-                    summary.byte_size = summary.byte_size.saturating_add(allocated_size(&metadata));
-                }
-            }
-            _ => {
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => {
                 summary.skipped_count = summary.skipped_count.saturating_add(1);
+                summary.limited = true;
+                continue;
             }
-        }
-    }
-    while let Some(directory) = pending.pop() {
+        };
         if budget == 0 || cancelled.load(Ordering::Acquire) {
+            summary.limited = true;
             break;
         }
-        let Ok(entries) = fs::read_dir(&directory) else {
-            continue;
+        let source_path = entry.path();
+        let mut source = QuickCleanSource {
+            path: source_path.to_string_lossy().into_owned(),
+            byte_size: 0,
         };
-        for entry in entries.flatten() {
-            if budget == 0 {
+        let mut pending = vec![source_path];
+        while let Some(path) = pending.pop() {
+            if budget == 0 || cancelled.load(Ordering::Acquire) {
+                summary.limited = true;
                 break;
             }
             budget -= 1;
-            let path = entry.path();
             match fs::symlink_metadata(&path) {
                 Ok(metadata) if !metadata.file_type().is_symlink() => {
                     summary.item_count = summary.item_count.saturating_add(1);
                     if metadata.is_dir() {
-                        pending.push(path);
+                        if let Ok(children) = fs::read_dir(path) {
+                            for child in children {
+                                let child = match child {
+                                    Ok(child) => child,
+                                    Err(_) => {
+                                        summary.skipped_count =
+                                            summary.skipped_count.saturating_add(1);
+                                        summary.limited = true;
+                                        continue;
+                                    }
+                                };
+                                if pending.len() >= budget {
+                                    summary.limited = true;
+                                    break;
+                                }
+                                pending.push(child.path());
+                            }
+                        } else {
+                            summary.skipped_count = summary.skipped_count.saturating_add(1);
+                            summary.limited = true;
+                        }
                     } else if metadata.is_file() {
-                        summary.byte_size =
-                            summary.byte_size.saturating_add(allocated_size(&metadata));
+                        let bytes = allocated_size(&metadata);
+                        summary.byte_size = summary.byte_size.saturating_add(bytes);
+                        source.byte_size = source.byte_size.saturating_add(bytes);
                     }
                 }
                 _ => {
                     summary.skipped_count = summary.skipped_count.saturating_add(1);
+                    summary.limited = true;
                 }
             }
+        }
+        summary.sources.push(source);
+        summary.sources.sort_by(|left, right| {
+            right
+                .byte_size
+                .cmp(&left.byte_size)
+                .then_with(|| left.path.cmp(&right.path))
+        });
+        if summary.sources.len() > 128 {
+            summary.sources.truncate(128);
+            summary.limited = true;
         }
     }
     summary
@@ -277,6 +304,25 @@ fn run_quick_cleanup_at(
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(QuickCleanProgress),
 ) -> Result<QuickCleanResult, CommandError> {
+    if request.excluded_paths.len() > 512
+        || request.excluded_paths.iter().any(|path| {
+            let path = Path::new(path);
+            !path.is_absolute()
+                || path
+                    .components()
+                    .any(|part| matches!(part, std::path::Component::ParentDir))
+        })
+    {
+        return Err(CommandError::new(
+            "invalid_cleanup_exclusion",
+            "Cleanup exclusions must be absolute paths without parent traversal.",
+        ));
+    }
+    let excluded = request
+        .excluded_paths
+        .iter()
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
     let mut result = QuickCleanResult {
         freed_bytes: 0,
         freed_items: 0,
@@ -290,6 +336,7 @@ fn run_quick_cleanup_at(
         let category_result = clean_category(
             *category,
             &category_root(*category, &roots),
+            &excluded,
             cancelled,
             on_progress,
             result.freed_bytes,
@@ -310,9 +357,11 @@ fn run_quick_cleanup_at(
     Ok(result)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn clean_category(
     category: QuickCleanCategory,
     root: &Path,
+    excluded: &[PathBuf],
     cancelled: &AtomicBool,
     on_progress: &mut dyn FnMut(QuickCleanProgress),
     base_freed_bytes: u64,
@@ -345,6 +394,14 @@ fn clean_category(
             break;
         }
         processed_item_count += 1;
+        let candidate = root.join(&name);
+        if excluded
+            .iter()
+            .any(|path| candidate.starts_with(path) || path.starts_with(&candidate))
+        {
+            out.skipped_items += 1;
+            continue;
+        }
         let current_path = name.to_string_lossy().into_owned();
         let bound = match delete_root.bind(Path::new(&name)) {
             Ok(bound) => bound,
@@ -511,6 +568,9 @@ mod tests {
         assert!(caches.available);
         assert_eq!(caches.item_count, 4);
         assert!(caches.byte_size >= 6_144);
+        assert_eq!(caches.sources.len(), 1);
+        assert_eq!(caches.sources[0].byte_size, caches.byte_size);
+        assert!(caches.sources[0].path.ends_with("com.example"));
         let logs = by_category(QuickCleanCategory::Logs);
         assert_eq!(logs.item_count, 1);
         assert!(logs.byte_size >= 1_024);
@@ -531,6 +591,7 @@ mod tests {
         let result = run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: vec![QuickCleanCategory::UserCache, QuickCleanCategory::Trash],
             },
             &cancelled,
@@ -564,6 +625,47 @@ mod tests {
         assert_eq!(last.freed_items, result.freed_items);
     }
 
+    #[test]
+    fn exclusions_preserve_the_containing_source_and_reject_parent_traversal() {
+        let fixture = tempdir().unwrap();
+        let roots = seed_fixture(fixture.path());
+        let keep = roots
+            .home
+            .join("Library/Caches/com.example/deep/nested.bin");
+        let remove = roots.home.join("Library/Caches/removable.bin");
+        write_file(&remove, 1024);
+        let mut request = QuickCleanRequest {
+            categories: vec![QuickCleanCategory::UserCache],
+            excluded_paths: vec![keep.to_string_lossy().into_owned()],
+        };
+        let result = run_quick_cleanup_at(
+            roots.clone(),
+            &request,
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+        assert!(keep.exists());
+        assert!(
+            roots
+                .home
+                .join("Library/Caches/com.example/cache.bin")
+                .exists()
+        );
+        assert!(!remove.exists());
+        assert_eq!(result.skipped_items, 1);
+        request.excluded_paths = vec![
+            roots
+                .home
+                .join("Library/Caches/../Logs")
+                .to_string_lossy()
+                .into_owned(),
+        ];
+        assert!(
+            run_quick_cleanup_at(roots, &request, &AtomicBool::new(false), &mut |_| {}).is_err()
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn internal_symlinks_are_unlinked_without_following() {
@@ -587,6 +689,7 @@ mod tests {
         let result = run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: vec![QuickCleanCategory::UserCache],
             },
             &cancelled,
@@ -617,6 +720,7 @@ mod tests {
         let result = run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: vec![QuickCleanCategory::UserCache],
             },
             &cancelled,
@@ -657,12 +761,14 @@ mod tests {
             .find(|summary| summary.category == QuickCleanCategory::UserCache)
             .unwrap();
         assert_eq!(caches.skipped_count, 1);
+        assert!(caches.limited);
         assert_eq!(caches.item_count, 2);
 
         let cancelled = AtomicBool::new(false);
         run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: vec![QuickCleanCategory::UserCache],
             },
             &cancelled,
@@ -687,6 +793,7 @@ mod tests {
         let result = run_quick_cleanup_at(
             roots,
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: QUICK_CLEAN_ORDER.to_vec(),
             },
             &cancelled,
@@ -705,6 +812,7 @@ mod tests {
         let result = run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: QUICK_CLEAN_ORDER.to_vec(),
             },
             &cancelled,
@@ -797,6 +905,7 @@ mod bench {
         let result = run_quick_cleanup_at(
             roots.clone(),
             &QuickCleanRequest {
+                excluded_paths: Vec::new(),
                 categories: QUICK_CLEAN_ORDER.to_vec(),
             },
             &cancelled,

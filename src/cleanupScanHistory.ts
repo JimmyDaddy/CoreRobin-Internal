@@ -51,6 +51,7 @@ export function appendCleanupScanSnapshot(
   snapshots: readonly CleanupScanCompactSnapshot[],
   scan: CleanupScan,
 ): CleanupScanCompactSnapshot[] {
+  if (scan.partial) return [...snapshots];
   const next = compactCleanupScan(scan);
   const sameTarget = snapshots
     .filter((snapshot) =>
@@ -69,7 +70,7 @@ export function cleanupScanGrowthComparison(
   snapshots: readonly CleanupScanCompactSnapshot[],
   scan: CleanupScan | null,
 ): CleanupScanGrowthComparison | null {
-  if (!scan) return null;
+  if (!scan || scan.partial) return null;
   const key = cleanupScanTargetKey(scan.targetKind, scan.targetPath);
   const previous = snapshots
     .filter((snapshot) =>

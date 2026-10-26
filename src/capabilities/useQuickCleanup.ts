@@ -15,7 +15,8 @@ export interface QuickCleanSnapshot {
 export function useQuickCleanup() {
   const [phase, setPhase] = useState<QuickCleanPhase>("idle");
   const [summaries, setSummaries] = useState<QuickCleanCategorySummary[]>([]);
-  const [selected, setSelected] = useState<Set<QuickCleanCategory>>(new Set(QUICK_CLEAN_CATEGORIES));
+  const [selected, setSelected] = useState<Set<QuickCleanCategory>>(new Set(QUICK_CLEAN_CATEGORIES.filter((category) => category !== "trash")));
+  const [excludedPaths, setExcludedPaths] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<QuickCleanProgress | null>(null);
   const [result, setResult] = useState<QuickCleanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,8 @@ export function useQuickCleanup() {
     if (signature !== lastSummaries.current) {
       lastSummaries.current = signature;
       setSummaries(view.summaries);
-      setSelected(new Set(view.summaries.filter((item) => item.available).map((item) => item.category)));
+      setSelected(new Set(view.summaries.filter((item) => item.available && item.category !== "trash").map((item) => item.category)));
+      setExcludedPaths(new Set());
     }
     return view;
   }, [desktop]);
@@ -51,6 +53,9 @@ export function useQuickCleanup() {
   const toggleCategory = useCallback((category: QuickCleanCategory) => {
     setSelected((current) => { const next = new Set(current); if (next.has(category)) next.delete(category); else next.add(category); return next; });
   }, []);
+  const togglePath = useCallback((path: string) => {
+    setExcludedPaths((current) => { const next = new Set(current); if (next.has(path)) next.delete(path); else next.add(path); return next; });
+  }, []);
   const analyze = useCallback(async () => {
     if (running.current) return;
     const startedAtRevision = revision.current;
@@ -60,7 +65,7 @@ export function useQuickCleanup() {
       const next = await analyzeQuickCleanup();
       if (!mounted.current) return;
       if (desktop) await reload();
-      else { setSummaries(next); setSelected(new Set(next.filter((item) => item.available).map((item) => item.category))); setPhase(next.some((item) => item.available) ? "selection" : "done"); }
+      else { setSummaries(next); setSelected(new Set(next.filter((item) => item.available && item.category !== "trash").map((item) => item.category))); setExcludedPaths(new Set()); setPhase(next.some((item) => item.available) ? "selection" : "done"); }
     } catch (reason) {
       if (desktop) {
         const view = await reload().catch(() => undefined);
@@ -78,7 +83,7 @@ export function useQuickCleanup() {
     running.current = true; ++mutation.current;
     setError(null); setResult(null); setProgress(null); setPhase("cleaning"); setCancelled(false);
     try {
-      const outcome = await runQuickCleanup(QUICK_CLEAN_CATEGORIES.filter((category) => selected.has(category)), (value) => { if (mounted.current && !desktop) setProgress(value); });
+      const outcome = await runQuickCleanup(QUICK_CLEAN_CATEGORIES.filter((category) => selected.has(category)), (value) => { if (mounted.current && !desktop) setProgress(value); }, [...excludedPaths]);
       if (!mounted.current) return;
       if (desktop) await reload(); else { setResult(outcome); setPhase("done"); }
     } catch (reason) {
@@ -88,13 +93,13 @@ export function useQuickCleanup() {
       }
       else if (mounted.current) { setError(normalizeCommandError(reason).message); setPhase("selection"); }
     } finally { running.current = false; }
-  }, [desktop, phase, reload, selected]);
+  }, [desktop, phase, reload, selected, excludedPaths]);
   const cancel = useCallback(async () => {
     try { await cancelQuickCleanup(); await reload(); }
     catch (reason) { if (mounted.current) setError(normalizeCommandError(reason).message); }
   }, [reload]);
   const reset = useCallback(() => {
-    ++mutation.current; lastSummaries.current = ""; setResult(null); setProgress(null); setSummaries([]); setError(null); setPhase("idle");
+    ++mutation.current; lastSummaries.current = ""; setResult(null); setProgress(null); setSummaries([]); setExcludedPaths(new Set()); setError(null); setPhase("idle");
   }, []);
-  return { phase, summaries, selected, progress, result, error, cancelled, toggleCategory, analyze, clean, cancel, reset };
+  return { phase, summaries, selected, excludedPaths, progress, result, error, cancelled, toggleCategory, togglePath, analyze, clean, cancel, reset };
 }

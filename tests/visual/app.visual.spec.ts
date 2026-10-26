@@ -95,7 +95,7 @@ test("history export privacy preview at compact width", async ({ page }) => {
 
 test("disk scan result map at compact desktop width", async ({ page }) => {
   await openCleanupResult(page, 900);
-  await page.locator(".cleanup-result-overview").scrollIntoViewIfNeeded();
+  await page.locator(".cleanup-map__scan-stage").scrollIntoViewIfNeeded();
   await stabilize(page);
   await expect(page).toHaveScreenshot("cleanup-result-map-zh-900.png", {
     animations: "disabled",
@@ -118,14 +118,14 @@ for (const width of [900, 1180]) {
     });
 
     const height = await list.evaluate((element) => element.getBoundingClientRect().height);
-    await list.getByRole("searchbox").fill("no-such-file");
+    await page.getByRole("searchbox", { name: "搜索当前文件夹" }).fill("no-such-file");
     await expect(list.getByText("当前文件夹没有匹配内容")).toBeVisible();
     expect(await list.evaluate((element) => element.getBoundingClientRect().height)).toBe(height);
-    await list.getByRole("button", { name: "清空搜索" }).click();
+    await page.getByRole("button", { name: "清空搜索" }).click();
     await expect(list.getByRole("listitem")).toHaveCount(4);
-    await list.getByRole("button", { name: /^Users/ }).click();
+    await list.getByRole("button", { name: "进入 Users", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(1);
-    await list.getByRole("button", { name: "返回上一级" }).click();
+    await page.getByRole("button", { name: "返回上一级", exact: true }).click();
     await expect(list.getByRole("listitem")).toHaveCount(4);
   });
 }
@@ -251,7 +251,7 @@ test("cleanup basket transitions from confirmed work to a reusable receipt", asy
   await page.getByRole("button", { name: "列表" }).click();
   const list = page.locator(".cleanup-index-list");
   for (const name of ["Users", "demo", "Downloads", "Installers"]) {
-    await list.getByRole("button", { name: new RegExp(`^${name}`) }).click();
+    await list.getByRole("button", { name: `进入 ${name}`, exact: true }).click();
   }
   await list.getByRole("checkbox", { name: /加入清理篮: macOS.dmg/ }).check();
   await page.getByRole("button", { name: "选择删除方式" }).click();

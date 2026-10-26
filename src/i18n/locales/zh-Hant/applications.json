@@ -184,5 +184,16 @@
     "error": "目前無法檢查垃圾桶。",
     "empty": "此使用者的垃圾桶中沒有待處理的應用程式。",
     "planBoundary": "應用程式本身已在垃圾桶中。此計畫只包含仍存在且能夠明確確認歸屬的支援資料。"
+  },
+  "experience": {
+    "self": "CoreRobin 本身",
+    "protected": "受保護程式",
+    "unknown": "所屬應用程式未確認",
+    "notLoaded": "尚未讀取或未開啟",
+    "showSystem": "包含系統與歸屬未確認的項目",
+    "reorder": "重新排序",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "page": "第 {{page}} / {{total}} 頁"
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
 
@@ -10,6 +10,8 @@ import "./styles/controls.css";
 import "./styles/product-support.css";
 import "./visualRegression.css";
 import { Button } from "./components/Button";
+import { CleanupAssistant } from "./components/CleanupAssistant";
+import { getMockCleanupScan } from "./mockData";
 import { TimeSeriesChart } from "./components/TimeSeriesChart";
 import { TodayReview } from "./components/TodayReview";
 import { WeeklyReview } from "./components/WeeklyReview";
@@ -18,7 +20,7 @@ import { CleanupDeleteDialog } from "./components/CleanupDeleteDialog";
 import { CleanupSettlementDialog } from "./components/CleanupSettlementDialog";
 import type { CleanupDeleteOutcome } from "./cleanupOutcome";
 import "./components/HistoryExplorer.css";
-import type { HistoryPoint } from "./types";
+import type { CleanupNode, CleanupScanJobPhase, HistoryPoint } from "./types";
 import type { UserActionRecord } from "./userActionHistory";
 
 document.documentElement.dataset.surface = "main";
@@ -37,10 +39,58 @@ function VisualRegressionHarness() {
   }, [language]);
 
   if (!ready) return null;
+  if (scenario === "cleanup-progressive") return <CleanupProgressiveScenario />;
+  if (scenario === "cleanup-scan-motion") return <CleanupMotionScenario />;
   if (scenario === "cleanup-animation") return <CleanupAnimationScenario />;
   if (scenario === "review") return <ReviewScenario />;
   if (scenario === "export") return <ExportScenario />;
   return <StateScenario />;
+}
+
+function CleanupProgressiveScenario() {
+  const [running, setRunning] = useState(true);
+  const snapshot = { ...getMockCleanupScan(), partial: true, deletionAvailable: false, locations: [] };
+  return <main className="visual-harness"><CleanupAssistant
+    snapshot={snapshot} snapshotStatus="updating" error={null} loading={running} cancelling={false}
+    phase={running ? "scanning" : "cancelled"}
+    progress={{ scannedEntryCount: 6400, discoveredBytes: snapshot.root.allocatedSizeBytes,
+      currentPath: "~/Downloads", elapsedMs: 2400 }}
+    onScan={() => setRunning(true)} onCancel={() => setRunning(false)}
+    onDeletionApplied={async () => undefined}
+    fileInsights={{ snapshot: null, snapshotStatus: "current", progress: null, loading: false,
+      error: null, scan: async () => undefined, cancel: async () => undefined,
+      clear: async () => undefined, removePaths: () => undefined }}
+  /></main>;
+}
+
+function CleanupMotionScenario() {
+  const [phase, setPhase] = useState<CleanupScanJobPhase>("scanning");
+  const [fraction, setFraction] = useState(.35);
+  const snapshot = useMemo(() => {
+    const base = getMockCleanupScan();
+    function scale(node: CleanupNode): CleanupNode {
+      return { ...node, sizeBytes: node.sizeBytes * fraction, allocatedSizeBytes: node.allocatedSizeBytes * fraction,
+        logicalSizeBytes: node.logicalSizeBytes * fraction, children: node.children.map(scale) };
+    }
+    return { ...base, root: scale(base.root), locations: [], sampledAtMs: base.sampledAtMs + fraction * 1000,
+      scannedEntryCount: Math.round(base.scannedEntryCount * fraction), partial: phase !== "completed", deletionAvailable: phase === "completed" };
+  }, [fraction, phase]);
+  const loading = ["scanning", "paused", "stalled", "finalizing"].includes(phase);
+  return <main className="visual-harness">
+    <div className="visual-harness__buttons panel">
+      <Button onClick={() => { setFraction((value) => Math.min(.95, value + .15)); setPhase("scanning"); }}>New batch</Button>
+      <Button onClick={() => setPhase("paused")}>Pause</Button>
+      <Button onClick={() => setPhase("stalled")}>Slow folder</Button>
+      <Button onClick={() => setPhase("scanning")}>Resume</Button>
+      <Button onClick={() => { setFraction(1); setPhase("completed"); }}>Complete</Button>
+    </div>
+    <CleanupAssistant snapshot={snapshot} snapshotStatus={loading ? "updating" : "current"} error={null} loading={loading} cancelling={false} phase={phase}
+      progress={loading ? { scannedEntryCount: snapshot.scannedEntryCount, discoveredBytes: snapshot.root.allocatedSizeBytes, currentPath: "~/Downloads", elapsedMs: 2400 } : null}
+      onScan={() => { setFraction(.35); setPhase("scanning"); }} onCancel={() => setPhase("cancelled")}
+      onDeletionApplied={async () => undefined}
+      fileInsights={{ snapshot: null, snapshotStatus: "current", progress: null, loading: false, error: null,
+        scan: async () => undefined, cancel: async () => undefined, clear: async () => undefined, removePaths: () => undefined }} />
+  </main>;
 }
 
 function CleanupAnimationScenario() {

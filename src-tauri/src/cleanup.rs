@@ -75,10 +75,10 @@ mod protection;
 mod quick;
 
 pub(crate) use index::{
-    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, discard_indexed_scan,
+    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, defer_discard_indexed_scan,
     load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
-    maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
-    resolve_indexed_delete_request,
+    load_progressive_scan, maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
+    resolve_indexed_delete_request, set_scan_activity_notifier, set_scan_checkpoint_notifier,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
@@ -1456,6 +1456,7 @@ pub fn assemble_cleanup_scan_segments(
         total.saturating_add(segment.duration_ms)
     });
     Ok(CleanupScan {
+        partial: false,
         scan_id: String::new(),
         profile: CleanupScanProfile::Complete,
         scope_paths: Vec::new(),
@@ -3579,6 +3580,7 @@ fn scan_filesystem(
 
     let sampled_at_ms = now_millis();
     Ok(CleanupScan {
+        partial: false,
         scan_id: String::new(),
         profile: CleanupScanProfile::Complete,
         scope_paths: Vec::new(),
@@ -6710,6 +6712,9 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    // Replacing an open directory is a Unix operation; Windows keeps the
+    // preview's bound directory handle locked until the lease is released.
+    #[cfg(unix)]
     #[test]
     fn cleanup_basket_deletes_current_objects_after_confirmation() {
         for mode in [CleanupDeleteMode::Permanent, CleanupDeleteMode::Trash] {
@@ -6758,6 +6763,29 @@ mod tests {
             assert_eq!(fs::read(old_file).unwrap(), b"old file");
             fs::remove_dir_all(root).unwrap();
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn releasing_a_cleanup_preview_releases_its_windows_directory_handle() {
+        let root = test_root("basket-preview-handle");
+        let directory = root.join("Downloads/directory");
+        let moved = root.join("Downloads/moved-directory");
+        fs::create_dir_all(&directory).unwrap();
+        fs::write(directory.join("keep.txt"), b"keep").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![directory.to_string_lossy().into_owned()],
+            u64::MAX,
+        );
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller.create_lease_for_home(request, &root).unwrap();
+        assert!(lease.executable);
+        controller.release_lease(&lease.id);
+        fs::rename(&directory, &moved)
+            .expect("released preview must not retain a directory handle");
+        assert_eq!(fs::read(moved.join("keep.txt")).unwrap(), b"keep");
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]

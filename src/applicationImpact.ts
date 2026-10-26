@@ -1,4 +1,15 @@
 import type { ApplicationImpact } from "./diagnosis";
+import type { StartupItemsSnapshot } from "./types";
+
+export function applicationMatchesStartupItem(application: ApplicationImpact, item: Pick<StartupItemsSnapshot["items"][number], "name" | "bundleId" | "responsibleApplication">): boolean {
+  if (application.kind === "unknown") return false;
+  const normalize = (value: string) => value.trim().toLocaleLowerCase().replace(/^bundle:/, "");
+  if (application.applicationId?.startsWith("bundle:") && item.bundleId) {
+    return normalize(application.applicationId) === normalize(item.bundleId);
+  }
+  return [item.responsibleApplication, item.name].some((value) =>
+    value && normalize(value) === normalize(application.name));
+}
 
 const MEBIBYTE = 1_024 ** 2;
 

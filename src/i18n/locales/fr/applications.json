@@ -185,5 +185,16 @@
     "error": "Impossible de vérifier la corbeille pour le moment.",
     "empty": "Aucune app n’attend dans la corbeille de cet utilisateur.",
     "planBoundary": "L’app est déjà dans la corbeille. Ce plan contient uniquement les données d’assistance existantes qui peuvent lui être clairement attribuées."
+  },
+  "experience": {
+    "self": "CoreRobin lui-même",
+    "protected": "Programme protégé",
+    "unknown": "Application non confirmée",
+    "notLoaded": "Non chargé ou activé",
+    "showSystem": "Inclure les éléments système et non confirmés",
+    "reorder": "Retrier",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "page": "Page {{page}} / {{total}}"
   }
 }

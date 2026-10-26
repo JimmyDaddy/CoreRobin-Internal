@@ -58,6 +58,8 @@ import { ApplicationAvatar } from "./ApplicationAvatar";
 import { AnimatedRobin } from "./AnimatedRobin";
 import { Button } from "./Button";
 import { StartupExplorer } from "./StartupExplorer";
+import { SleepBlockerDetails } from "./SleepBlockerDetails";
+import type { SensorsSnapshot } from "../types";
 
 interface DailyGuideProps {
   intent: DailyIntent;
@@ -86,6 +88,9 @@ interface DailyGuideProps {
   onOpenIncident: (incident: DailyIncident) => void;
   onRefreshStartup: (verifiedSnapshot?: StartupItemsSnapshot) => unknown;
   onRequestClose: (identity: string, name: string) => void;
+  rawSensors?: SensorsSnapshot;
+  expectedSleepNames?: ReadonlySet<string>;
+  onToggleExpectedSleep?: (name: string) => void;
   onOpenSystemSettings: (destination: SystemSettingsDestination) => void;
   onUserActionStart?: (input: StartUserActionInput) => string;
   onUserActionComplete?: (id: string, input: CompleteUserActionInput) => void;
@@ -131,6 +136,8 @@ export function DailyGuide(props: DailyGuideProps) {
         </button>
       </header>
 
+      {props.intent === "heat" && props.expectedSleepNames && props.expectedSleepNames.size > 0 ? <p role="status">{t("wellbeing:sleepReview.plannedValue")} · {[...props.expectedSleepNames].join(", ")} — {t("wellbeing:sleepReview.plannedDescription")}</p> : null}
+
       {refreshing ? <RecheckLoadingCard intent={props.intent} /> : props.recheck?.intent === props.intent ? (
         <RecheckCard
           recheck={props.recheck}
@@ -158,6 +165,7 @@ export function DailyGuide(props: DailyGuideProps) {
       {!props.incident && !refreshing && !refreshedResult && props.intent === "heat" ? <HeatGuide {...props} /> : null}
       {!props.incident && !refreshing && !refreshedResult && props.intent === "network" ? <NetworkGuide {...props} /> : null}
       {!props.incident && !refreshing && !refreshedResult && props.intent === "checkup" ? <CheckupGuide {...props} /> : null}
+      {props.intent === "heat" ? <SleepBlockerDetails sensors={props.rawSensors ?? props.snapshot.sensors} applications={props.diagnosis.applications} expectedNames={props.expectedSleepNames} onToggleExpected={props.onToggleExpectedSleep} /> : null}
     </section>
   );
 }

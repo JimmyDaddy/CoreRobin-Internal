@@ -185,5 +185,16 @@
     "error": "No se puede comprobar la papelera ahora.",
     "empty": "No hay apps esperando en la papelera de este usuario.",
     "planBoundary": "La app ya está en la papelera. Este plan solo contiene datos auxiliares existentes que pueden atribuirse claramente a ella."
+  },
+  "experience": {
+    "self": "El propio CoreRobin",
+    "protected": "Programa protegido",
+    "unknown": "Aplicación sin confirmar",
+    "notLoaded": "Sin cargar o activar",
+    "showSystem": "Incluir sistema y elementos sin confirmar",
+    "reorder": "Reordenar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {{page}} / {{total}}"
   }
 }
