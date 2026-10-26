@@ -6712,6 +6712,9 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    // Replacing an open directory is a Unix operation; Windows keeps the
+    // preview's bound directory handle locked until the lease is released.
+    #[cfg(unix)]
     #[test]
     fn cleanup_basket_deletes_current_objects_after_confirmation() {
         for mode in [CleanupDeleteMode::Permanent, CleanupDeleteMode::Trash] {
@@ -6760,6 +6763,29 @@ mod tests {
             assert_eq!(fs::read(old_file).unwrap(), b"old file");
             fs::remove_dir_all(root).unwrap();
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn releasing_a_cleanup_preview_releases_its_windows_directory_handle() {
+        let root = test_root("basket-preview-handle");
+        let directory = root.join("Downloads/directory");
+        let moved = root.join("Downloads/moved-directory");
+        fs::create_dir_all(&directory).unwrap();
+        fs::write(directory.join("keep.txt"), b"keep").unwrap();
+        let request = cleanup_delete_request(
+            &root,
+            vec![directory.to_string_lossy().into_owned()],
+            u64::MAX,
+        );
+        let mut controller = CleanupDeleteController::default();
+        let lease = controller.create_lease_for_home(request, &root).unwrap();
+        assert!(lease.executable);
+        controller.release_lease(&lease.id);
+        fs::rename(&directory, &moved)
+            .expect("released preview must not retain a directory handle");
+        assert_eq!(fs::read(moved.join("keep.txt")).unwrap(), b"keep");
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]
