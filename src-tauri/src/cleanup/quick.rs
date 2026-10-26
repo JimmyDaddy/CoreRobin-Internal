@@ -212,7 +212,15 @@ fn analyze_category(
     };
     summary.available = true;
     let mut budget = QUICK_CLEAN_ANALYZE_ENTRY_CAP;
-    for entry in entries.flatten() {
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => {
+                summary.skipped_count = summary.skipped_count.saturating_add(1);
+                summary.limited = true;
+                continue;
+            }
+        };
         if budget == 0 || cancelled.load(Ordering::Acquire) {
             summary.limited = true;
             break;
@@ -234,13 +242,25 @@ fn analyze_category(
                     summary.item_count = summary.item_count.saturating_add(1);
                     if metadata.is_dir() {
                         if let Ok(children) = fs::read_dir(path) {
-                            for child in children.flatten() {
+                            for child in children {
+                                let child = match child {
+                                    Ok(child) => child,
+                                    Err(_) => {
+                                        summary.skipped_count =
+                                            summary.skipped_count.saturating_add(1);
+                                        summary.limited = true;
+                                        continue;
+                                    }
+                                };
                                 if pending.len() >= budget {
                                     summary.limited = true;
                                     break;
                                 }
                                 pending.push(child.path());
                             }
+                        } else {
+                            summary.skipped_count = summary.skipped_count.saturating_add(1);
+                            summary.limited = true;
                         }
                     } else if metadata.is_file() {
                         let bytes = allocated_size(&metadata);
@@ -250,6 +270,7 @@ fn analyze_category(
                 }
                 _ => {
                     summary.skipped_count = summary.skipped_count.saturating_add(1);
+                    summary.limited = true;
                 }
             }
         }
@@ -740,6 +761,7 @@ mod tests {
             .find(|summary| summary.category == QuickCleanCategory::UserCache)
             .unwrap();
         assert_eq!(caches.skipped_count, 1);
+        assert!(caches.limited);
         assert_eq!(caches.item_count, 2);
 
         let cancelled = AtomicBool::new(false);
