@@ -119,7 +119,7 @@ jobs:
           persist-credentials: false
 
       - name: Download pre-staple Apple Silicon artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: corerobin-macos-aarch64
           path: raw-macos/corerobin-macos-aarch64
@@ -128,7 +128,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Download pre-staple Intel artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: corerobin-macos-x86_64
           path: raw-macos/corerobin-macos-x86_64
@@ -282,7 +282,7 @@ jobs:
           persist-credentials: false
 
       - name: Download exact source updater package
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ matrix.source_artifact }}
           path: updater-package/${{ matrix.artifact }}
@@ -353,7 +353,7 @@ jobs:
           persist-credentials: false
 
       - name: Download Linux source-run artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: corerobin-linux-x86_64-*
           path: release-artifacts
@@ -362,7 +362,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Download Windows source-run artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: corerobin-windows-x86_64-*
           path: release-artifacts
@@ -371,14 +371,14 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Download finalized macOS artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: finalized-macos-${{ needs.resolve.outputs.commit }}
           path: release-artifacts
 
       - name: Download recovered updater signatures
         if: needs.recover_updater_signatures.result == 'success'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: corerobin-*-updater-signature-recovered-${{ needs.resolve.outputs.commit }}
           path: release-artifacts
@@ -457,7 +457,7 @@ jobs:
       id-token: write
     steps:
       - name: Download release-ready artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: finalized-release-ready-${{ needs.resolve.outputs.commit }}
           path: release-artifacts
@@ -515,7 +515,7 @@ jobs:
           persist-credentials: false
 
       - name: Download signed finalized release artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: finalized-release-signed-${{ needs.resolve.outputs.commit }}
           path: release-artifacts
