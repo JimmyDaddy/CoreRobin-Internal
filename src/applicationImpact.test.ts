@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ApplicationImpact } from "./diagnosis";
 import {
   applicationImpactLevel,
+  applicationMatchesStartupItem,
   applicationMemoryPercent,
   applicationPrimaryResource,
   reconcileApplicationOrder,
@@ -33,6 +34,13 @@ function application(
 }
 
 describe("application impact", () => {
+  it("requires an exact startup identity and rejects shared name prefixes", () => {
+    const selected = application("Code", { applicationId: "bundle:com.example.code" });
+    expect(applicationMatchesStartupItem(selected, { name: "Code", bundleId: "com.other.code", responsibleApplication: "Code" })).toBe(false);
+    expect(applicationMatchesStartupItem(selected, { name: "Updater", bundleId: "com.example.code", responsibleApplication: null })).toBe(true);
+    expect(applicationMatchesStartupItem(selected, { name: "Code Updater", bundleId: null, responsibleApplication: "Cod" })).toBe(false);
+    expect(applicationMatchesStartupItem(selected, { name: "Updater", bundleId: null, responsibleApplication: "Code" })).toBe(true);
+  });
   it("classifies impact without treating modest memory use as critical", () => {
     expect(applicationMemoryPercent(application("Code", { memoryBytes: 2 * GIBIBYTE }), 16 * GIBIBYTE)).toBe(12.5);
     expect(applicationImpactLevel(application("Code", { memoryBytes: 2 * GIBIBYTE }), 16 * GIBIBYTE)).toBe("moderate");

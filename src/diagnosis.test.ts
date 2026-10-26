@@ -140,6 +140,16 @@ function sustainedHistory(overrides: Partial<HistoryPoint>): HistoryPoint[] {
 }
 
 describe("application impact aggregation", () => {
+  it("combines verified helpers but keeps unbound shared WebKit processes separate", () => {
+    const applications = aggregateApplications([
+      processFixture(10, { name: "Codex (Renderer)", applicationId: "bundle:app.codex" }),
+      processFixture(11, { name: "Codex (Service)", applicationId: "bundle:app.codex" }),
+      processFixture(12, { name: "com.apple.WebKit.WebContent", applicationId: "executable:shared" }),
+      processFixture(13, { name: "com.apple.WebKit.WebContent", applicationId: "executable:shared" }),
+    ]);
+    expect(applications.find(({ name }) => name === "Codex")?.processCount).toBe(2);
+    expect(applications.filter(({ kind }) => kind === "unknown")).toHaveLength(2);
+  });
   it("groups helper processes under the application users recognize", () => {
     const applications = aggregateApplications([
       processFixture(1, { name: "Code", cpuPercent: 10, memoryBytes: 200 }),

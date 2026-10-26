@@ -185,5 +185,16 @@
     "error": "Não foi possível verificar o Lixo agora.",
     "empty": "Nenhum app aguarda no Lixo deste usuário.",
     "planBoundary": "O app já está no Lixo. Este plano contém apenas dados auxiliares existentes que podem ser claramente atribuídos a ele."
+  },
+  "experience": {
+    "self": "O próprio CoreRobin",
+    "protected": "Programa protegido",
+    "unknown": "Aplicativo não confirmado",
+    "notLoaded": "Não carregado ou ativado",
+    "showSystem": "Incluir sistema e itens não confirmados",
+    "reorder": "Reordenar",
+    "previous": "Anterior",
+    "next": "Próxima",
+    "page": "Página {{page}} / {{total}}"
   }
 }

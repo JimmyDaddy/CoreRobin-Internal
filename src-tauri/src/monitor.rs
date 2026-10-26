@@ -765,11 +765,15 @@ pub(crate) fn protected_reason(pid: u32, own_pid: u32) -> Option<&'static str> {
 
 fn application_identity_for_executable(executable: &Path) -> Option<String> {
     #[cfg(target_os = "macos")]
-    if let Some(bundle) = executable.ancestors().find(|candidate| {
-        candidate
-            .extension()
-            .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("app"))
-    }) && let Ok(value) = plist::Value::from_file(bundle.join("Contents/Info.plist"))
+    if let Some(bundle) = executable
+        .ancestors()
+        .filter(|candidate| {
+            candidate
+                .extension()
+                .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("app"))
+        })
+        .last()
+        && let Ok(value) = plist::Value::from_file(bundle.join("Contents/Info.plist"))
         && let Some(identifier) = value
             .as_dictionary()
             .and_then(|dictionary| dictionary.get("CFBundleIdentifier"))
@@ -841,6 +845,29 @@ mod tests {
         assert_eq!(
             stable_identity_hash(b"same-path"),
             stable_identity_hash(b"same-path")
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn nested_helpers_share_the_outer_application_identity() {
+        let root = tempfile::tempdir().unwrap();
+        let app = root.path().join("Tool.app");
+        let helper = app.join("Contents/Frameworks/Tool Helper.app");
+        for (bundle, identifier) in [(&app, "app.tool"), (&helper, "app.tool.helper")] {
+            std::fs::create_dir_all(bundle.join("Contents")).unwrap();
+            let mut dictionary = plist::Dictionary::new();
+            dictionary.insert(
+                "CFBundleIdentifier".into(),
+                plist::Value::String(identifier.into()),
+            );
+            plist::Value::Dictionary(dictionary)
+                .to_file_xml(bundle.join("Contents/Info.plist"))
+                .unwrap();
+        }
+        assert_eq!(
+            application_identity_for_executable(&helper.join("Contents/MacOS/helper")),
+            Some("bundle:app.tool".into())
         );
     }
 

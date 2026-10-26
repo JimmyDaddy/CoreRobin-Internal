@@ -185,5 +185,16 @@
     "error": "Der Papierkorb kann gerade nicht geprüft werden.",
     "empty": "Im Papierkorb dieses Benutzers wartet keine App.",
     "planBoundary": "Die App selbst liegt bereits im Papierkorb. Dieser Plan enthält nur vorhandene Supportdaten, die ihr eindeutig zugeordnet werden können."
+  },
+  "experience": {
+    "self": "CoreRobin selbst",
+    "protected": "Geschütztes Programm",
+    "unknown": "Zugehörige App unbestätigt",
+    "notLoaded": "Nicht geladen oder aktiviert",
+    "showSystem": "System und unbestätigte Einträge anzeigen",
+    "reorder": "Neu sortieren",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "page": "Seite {{page}} / {{total}}"
   }
 }

@@ -7187,3 +7187,6 @@ code,
   .daily-recheck__signal { grid-column: 1; height: 18px; }
   .daily-recheck__steps { justify-content: center; flex-wrap: wrap; }
 }
+.application-impact__pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px; }
+.application-impact__pagination button { min-height: 32px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); color: var(--text-soft); }
+.application-impact__pagination button:disabled { opacity: .45; }

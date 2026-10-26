@@ -117,5 +117,16 @@
       "protected": "不能从这里卸载 CoreRobin 自身或受保护的系统组件。",
       "portable": "没有找到可信的包管理器身份；该项目保持只读。"
     }
+  },
+  "experience": {
+    "self": "CoreRobin 自身",
+    "protected": "受保护程序",
+    "unknown": "所属应用未确认",
+    "notLoaded": "尚未读取或未开启",
+    "showSystem": "包括系统与归属未确认的项目",
+    "reorder": "重新排序",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "第 {{page}} / {{total}} 页"
   }
 }

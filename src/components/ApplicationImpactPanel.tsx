@@ -1,11 +1,12 @@
 import { AppWindow, ArrowRight, ChevronDown, ChevronUp, Search, ShieldCheck } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
   applicationImpactLevel,
   applicationPrimaryResource,
   sortApplications,
+  reconcileApplicationOrder,
   type ApplicationSortKey,
 } from "../applicationImpact";
 import type { ApplicationImpact } from "../diagnosis";
@@ -36,15 +37,33 @@ export function ApplicationImpactPanel({
   const { t } = useAppTranslation();
   const [sortKey, setSortKey] = useState<ApplicationSortKey>("impact");
   const [query, setQuery] = useState("");
+  const [showSystem, setShowSystem] = useState(false);
+  const [page, setPage] = useState(0);
+  const [order, setOrder] = useState(() => sortApplications(applications, "impact", totalMemoryBytes).map(({ id }) => id));
+  useEffect(() => {
+    setOrder((current) => {
+      const next = reconcileApplicationOrder(current, applications, totalMemoryBytes, false);
+      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+    });
+  }, [applications, totalMemoryBytes]);
+  const reorder = (key = sortKey) => {
+    setSortKey(key);
+    setOrder(sortApplications(applications, key, totalMemoryBytes).map(({ id }) => id));
+    setPage(0);
+  };
   const visibleApplications = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    const filtered = normalizedQuery
-      ? applications.filter(({ name }) =>
-          name.toLocaleLowerCase().includes(normalizedQuery))
-      : applications;
-    const sorted = sortApplications(filtered, sortKey, totalMemoryBytes);
+    const byId = new Map(applications.map((application) => [application.id, application]));
+    const filtered = order.map((id) => byId.get(id)).filter((application): application is ApplicationImpact => Boolean(application))
+      .filter((application) => (!normalizedQuery || application.name.toLocaleLowerCase().includes(normalizedQuery))
+        && (showSystem || normalizedQuery || (application.kind
+          ? !["system", "unknown"].includes(application.kind) : !application.systemComponent)));
+    const sorted = compact ? sortApplications(filtered, sortKey, totalMemoryBytes) : filtered;
     return compact ? sorted.slice(0, 5) : sorted;
-  }, [applications, compact, query, sortKey, totalMemoryBytes]);
+  }, [applications, compact, query, sortKey, totalMemoryBytes, order, showSystem]);
+  const pageCount = Math.max(1, Math.ceil(visibleApplications.length / 24));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageApplications = compact ? visibleApplications : visibleApplications.slice(currentPage * 24, (currentPage + 1) * 24);
 
   return (
     <section
@@ -75,7 +94,7 @@ export function ApplicationImpactPanel({
               type="search"
               value={query}
               placeholder={t("applications:searchPlaceholder")}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setPage(0); }}
             />
           </label>
           <div className="application-impact__sort" role="group" aria-label={t("applications:sortLabel")}>
@@ -85,17 +104,19 @@ export function ApplicationImpactPanel({
                 type="button"
                 key={key}
                 aria-pressed={sortKey === key}
-                onClick={() => setSortKey(key)}
+                onClick={() => reorder(key)}
               >
                 {t(`applications:sort.${key}`)}
               </button>
             ))}
+            <button type="button" onClick={() => reorder()}>{t("applications:experience.reorder")}</button>
           </div>
+          <label><input type="checkbox" checked={showSystem} onChange={(event) => { setShowSystem(event.target.checked); setPage(0); }} />{t("applications:experience.showSystem")}</label>
         </div>
       ) : null}
 
       <div className="application-impact__list">
-        {visibleApplications.map((application) => {
+        {pageApplications.map((application) => {
           const selected = !compact && selectedIdentity !== null &&
             application.memberIdentities.includes(selectedIdentity);
           const impact = applicationImpactLevel(application, totalMemoryBytes);
@@ -127,7 +148,9 @@ export function ApplicationImpactPanel({
                 <span className="application-impact-row__identity">
                   <strong>{application.name}</strong>
                   <small>
-                    {application.systemComponent ? (
+                    {application.kind && application.kind !== "user" ? (
+                      <><ShieldCheck size={11} />{application.kind === "system" ? t("applications:systemComponent") : t(`applications:experience.${application.kind}`)}</>
+                    ) : application.systemComponent ? (
                       <><ShieldCheck size={11} />{t("applications:systemComponent")}</>
                     ) : (
                       <><AppWindow size={11} />{t("applications:processCount", { count: application.processCount })}</>
@@ -181,6 +204,12 @@ export function ApplicationImpactPanel({
           </div>
         ) : null}
       </div>
+
+      {!compact && pageCount > 1 ? <nav className="application-impact__pagination">
+        <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t("applications:experience.previous")}</button>
+        <span>{t("applications:experience.page", { page: currentPage + 1, total: pageCount })}</span>
+        <button type="button" disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>{t("applications:experience.next")}</button>
+      </nav> : null}
 
       <footer className="application-impact__footer">
         <ShieldCheck size={13} />

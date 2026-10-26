@@ -378,6 +378,17 @@ export default interface Resources {
       "processUnavailable": "当前平台未提供按进程的能耗影响。",
       "title": "GPU 与相对能耗"
     },
+    "experience": {
+      "next": "下一页",
+      "notLoaded": "尚未读取或未开启",
+      "page": "第 {{page}} / {{total}} 页",
+      "previous": "上一页",
+      "protected": "受保护程序",
+      "reorder": "重新排序",
+      "self": "CoreRobin 自身",
+      "showSystem": "包括系统与归属未确认的项目",
+      "unknown": "所属应用未确认"
+    },
     "kicker": "应用级汇总",
     "level": {
       "critical": "影响明显",
@@ -1024,8 +1035,8 @@ export default interface Resources {
         "systemDisk": "系统磁盘",
         "trash": "废纸篓"
       },
-      "noProgress": "扫描长时间没有进展。你可以查看现有结果，或重新扫描。",
-      "partialResult": "扫描尚未完成，当前地图仅展示已扫描的内容。",
+      "noProgress": "扫描停滞，可查看结果或重试。",
+      "partialResult": "已扫描内容（未完成）",
       "paused": "电脑已休眠，唤醒后将继续扫描",
       "recoveryFailed": "扫描在自动恢复后仍未继续。你可以重新扫描，或选择较小的范围。",
       "rootStalled": "系统磁盘扫描长时间没有进展，CoreRobin 已结束本次任务。请重新扫描，或改为扫描指定文件夹。",
