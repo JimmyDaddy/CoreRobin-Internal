@@ -10,6 +10,8 @@ import "./styles/controls.css";
 import "./styles/product-support.css";
 import "./visualRegression.css";
 import { Button } from "./components/Button";
+import { CleanupAssistant } from "./components/CleanupAssistant";
+import { getMockCleanupScan } from "./mockData";
 import { TimeSeriesChart } from "./components/TimeSeriesChart";
 import { TodayReview } from "./components/TodayReview";
 import { WeeklyReview } from "./components/WeeklyReview";
@@ -37,10 +39,27 @@ function VisualRegressionHarness() {
   }, [language]);
 
   if (!ready) return null;
+  if (scenario === "cleanup-progressive") return <CleanupProgressiveScenario />;
   if (scenario === "cleanup-animation") return <CleanupAnimationScenario />;
   if (scenario === "review") return <ReviewScenario />;
   if (scenario === "export") return <ExportScenario />;
   return <StateScenario />;
+}
+
+function CleanupProgressiveScenario() {
+  const [running, setRunning] = useState(true);
+  const snapshot = { ...getMockCleanupScan(), partial: true, deletionAvailable: false, locations: [] };
+  return <main className="visual-harness"><CleanupAssistant
+    snapshot={snapshot} snapshotStatus="updating" error={null} loading={running} cancelling={false}
+    phase={running ? "scanning" : "cancelled"}
+    progress={{ scannedEntryCount: 6400, discoveredBytes: snapshot.root.allocatedSizeBytes,
+      currentPath: "~/Downloads", elapsedMs: 2400 }}
+    onScan={() => setRunning(true)} onCancel={() => setRunning(false)}
+    onDeletionApplied={async () => undefined}
+    fileInsights={{ snapshot: null, snapshotStatus: "current", progress: null, loading: false,
+      error: null, scan: async () => undefined, cancel: async () => undefined,
+      clear: async () => undefined, removePaths: () => undefined }}
+  /></main>;
 }
 
 function CleanupAnimationScenario() {

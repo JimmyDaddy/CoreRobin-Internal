@@ -897,7 +897,7 @@ export function CleanupOperation({
       {snapshot && displayedSnapshot ? (
         <div className="cleanup-results">
           {snapshot.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
-          <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
+          {!snapshot.partial ? <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <button
               className="cleanup-result-overview__primary"
               type="button"
@@ -986,7 +986,7 @@ export function CleanupOperation({
                 ) : null}
               </div>
             ) : null}
-          </section>
+          </section> : null}
 
           <CleanupSpaceMap
             snapshot={displayedSnapshot}
@@ -1005,7 +1005,7 @@ export function CleanupOperation({
             onUserActionComplete={onUserActionComplete}
           />
 
-          <details className="cleanup-results__more">
+          {!snapshot.partial ? <details className="cleanup-results__more">
             <summary>
               <span>
                 <FolderSearch size={16} />
@@ -1107,7 +1107,7 @@ export function CleanupOperation({
                 )}
               </section>
             </div>
-          </details>
+          </details> : null}
 
           {snapshot.unreadableEntryCount > 0 ? (
             <div className="cleanup-assistant__notice">
