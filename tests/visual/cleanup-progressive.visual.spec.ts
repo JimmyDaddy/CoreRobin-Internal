@@ -11,7 +11,7 @@ test("partial maps remain visible, navigable and read-only while scanning", asyn
   const list = page.locator(".cleanup-index-list");
   await expect(list.getByRole("listitem")).toHaveCount(4);
   for (const name of ["Users", "demo", "Downloads", "Installers"]) {
-    await list.getByRole("button", { name: new RegExp(`^${name}`) }).click();
+    await list.getByRole("button", { name: `Open ${name}`, exact: true }).click();
   }
   await list.locator('input[type="checkbox"]:enabled').first().check();
   await expect(page.locator(".cleanup-map__basket-review")).toBeDisabled();

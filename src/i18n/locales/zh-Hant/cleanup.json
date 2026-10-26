@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "當前層級沒有更細的目錄分組。",
     "loadDeeperHint": "選取這個資料夾即可從本機索引開啟下一層。",
-    "otherContentHint": "這裡彙總因索引容量或目前分頁而未單獨顯示的內容；它們不一定較小。可繼續瀏覽清單，或在 Finder 中開啟目前資料夾。",
+    "otherContentHint": "這裡彙總空間圖未單獨顯示的內容；切換到清單後可瀏覽和搜尋已收錄的項目。",
     "loadingFolder": "正在讀取這個目錄…",
     "loadFailed": "無法讀取資料夾索引",
     "loadMore": "再顯示 50 個項目",
     "refreshProgress": "已檢查 {{count}} 項 · {{time}} 秒",
     "refreshFailed": "無法重新整理資料夾",
-    "directActionHint": "拖動扇區或右側目錄到底部清理籃",
+    "directActionHint": "將扇區或清單項目拖到底部清理籃",
     "protectedSelectionHint": "系統目錄和個人目錄根節點僅供檢視；個人目錄內的具體內容可以加入清理籃",
     "trashRootProtected": "廢紙簍目錄本身不會被刪除；進入裡面選擇需要清理的具體內容",
     "planSummary": "已選擇 {{count}} 項，共 {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "系統檔案與重要設定受到保護，未加入清理籃",
       "protectedPreview": "受保護，不能刪除",
       "protectedBadge": "受保護",
-      "empty": "拖動扇區或右側目錄到這裡，先收集再處理",
+      "empty": "將扇區或清單項目拖到這裡，先核對再處理",
       "release": "鬆手加入清理籃",
       "collected": "已在清理籃",
       "collectedHint": "已經收集；可在下方清理籃中移除或繼續核對",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "從清理籃移除",
     "includedByParent": "已包含在父資料夾中",
-    "addToBasket": "加入清理籃"
+    "addToBasket": "加入清理籃",
+    "historyBack": "返回",
+    "refreshCurrent": "重新整理此目錄",
+    "enterFolder": "進入資料夾",
+    "openFolder": "進入 {{name}}"
   },
   "settlement": {
     "status": {

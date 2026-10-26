@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "Eine tiefere Verzeichnisstruktur ist auf dieser Ebene nicht verfügbar.",
     "loadDeeperHint": "Wählen Sie diesen Ordner, um die nächste Ebene aus dem lokalen Index zu öffnen.",
-    "otherContentHint": "Diese Gruppe enthält Inhalte, die wegen der Indexkapazität oder der aktuellen Seite nicht einzeln angezeigt werden; sie sind nicht unbedingt klein. Blättern Sie weiter oder öffnen Sie den aktuellen Ordner im Finder.",
+    "otherContentHint": "Diese Gruppe enthält Elemente, die in der Karte nicht einzeln angezeigt werden. Wechseln Sie zur Liste, um die indizierten Inhalte zu durchsuchen.",
     "loadingFolder": "Dieser Ordner wird geladen…",
     "loadFailed": "Verzeichnisindex konnte nicht gelesen werden",
     "loadMore": "Weitere 50 Elemente anzeigen",
     "refreshProgress": "{{count}} Elemente geprüft · {{time}} Sek.",
     "refreshFailed": "Ordner konnte nicht aktualisiert werden",
-    "directActionHint": "Ziehen Sie einen Sektor oder Ordner aus der Liste in den Korb am unteren Rand",
+    "directActionHint": "Ziehen Sie einen Sektor oder einen Listeneintrag in den Korb unten",
     "protectedSelectionHint": "Systempfade und das Home-Verzeichnis sind nur zum Anzeigen; konkrete Elemente innerhalb Ihres Home-Verzeichnisses können in den Korb gelangen",
     "trashRootProtected": "Der Papierkorb-Ordner selbst ist geschützt; öffnen Sie ihn und wählen Sie die spezifischen Inhalte aus, die Sie entfernen möchten",
     "planSummary": "{{count}} ausgewählte Elemente · {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "Systemdateien und wichtige Einstellungen sind geschützt und wurden nicht hinzugefügt",
       "protectedPreview": "Geschützt · nicht löschbar",
       "protectedBadge": "Geschützt",
-      "empty": "Ziehen Sie einen Sektor oder Ordner hierher, um ihn vor der Bereinigung zu sammeln",
+      "empty": "Sektor oder Listeneintrag hierher ziehen und vor dem Bereinigen prüfen",
       "release": "Zum Korb hinzufügen",
       "collected": "Im Löschkorb",
       "collectedHint": "Bereits gelöscht; entfernen Sie es aus dem Korb unten oder setzen Sie die Überprüfung fort",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "Aus dem Bereinigungskorb entfernen",
     "includedByParent": "Im übergeordneten Ordner enthalten",
-    "addToBasket": "Zum Bereinigungskorb hinzufügen"
+    "addToBasket": "Zum Bereinigungskorb hinzufügen",
+    "historyBack": "Zurück",
+    "refreshCurrent": "Diesen Ordner aktualisieren",
+    "enterFolder": "Ordner öffnen",
+    "openFolder": "{{name}} öffnen"
   },
   "settlement": {
     "status": {

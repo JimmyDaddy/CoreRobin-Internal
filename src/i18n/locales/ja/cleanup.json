@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "このレベルでは、さらに深い階層への整理はできません。",
     "loadDeeperHint": "このフォルダを選ぶと、ローカル索引から次の階層を開きます。",
-    "otherContentHint": "インデックス容量または現在のページのため個別表示されていない内容です。必ずしも小さい項目とは限りません。一覧を続けて表示するか、Finder で現在のフォルダを開いてください。",
+    "otherContentHint": "このグループにはマップに個別表示されない項目が含まれます。リストに切り替えると、索引に登録された内容を閲覧・検索できます。",
     "loadingFolder": "このフォルダの読み込み中…",
     "loadFailed": "ディレクトリ索引を読み込めませんでした",
     "loadMore": "さらに 50 項目を表示",
     "refreshProgress": "{{count}} 項目を確認 · {{time}} 秒",
     "refreshFailed": "フォルダを更新できませんでした",
-    "directActionHint": "セクターまたは一覧のフォルダを下部のバスケットへドラッグしてください",
+    "directActionHint": "セクターまたはリストの項目を下部のバスケットにドラッグします",
     "protectedSelectionHint": "システムパスとホームルートは閲覧のみです。ホームフォルダ内の具体的な項目はバケットに追加できます",
     "trashRootProtected": "ゴミ箱フォルダ自体は保護されています。開いて、削除したい特定のファイルを選択してください",
     "planSummary": "{{count}} 選択された項目 · {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "システムファイルと重要な設定は保護されているため追加されませんでした",
       "protectedPreview": "保護対象 · 削除不可",
       "protectedBadge": "保護対象",
-      "empty": "セクターまたはフォルダをここへドラッグしてから処理します",
+      "empty": "セクターやリスト項目をここにドラッグし、内容を確認してから整理します",
       "release": "バケツに追加する",
       "collected": "クリーンアップバケツに格納されています",
       "collectedHint": "すでに格納されています。下部のバケツから削除するか、引き続き確認してください",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "クリーンアップバスケットから外す",
     "includedByParent": "親フォルダに含まれています",
-    "addToBasket": "クリーンアップバスケットに追加"
+    "addToBasket": "クリーンアップバスケットに追加",
+    "historyBack": "戻る",
+    "refreshCurrent": "このフォルダーを更新",
+    "enterFolder": "フォルダーを開く",
+    "openFolder": "{{name}}を開く"
   },
   "settlement": {
     "status": {

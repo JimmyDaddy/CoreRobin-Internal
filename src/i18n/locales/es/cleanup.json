@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "No se puede agrupar directorios en niveles inferiores en este nivel.",
     "loadDeeperHint": "Seleccione esta carpeta para abrir el siguiente nivel desde el índice local.",
-    "otherContentHint": "Este grupo contiene elementos que no se muestran por separado debido a la capacidad del índice o a la página actual; no tienen por qué ser pequeños. Continúa por la lista o abre la carpeta actual en Finder.",
+    "otherContentHint": "Este grupo contiene elementos que no se muestran por separado en el mapa. Cambia a la lista para explorar y buscar el contenido indexado.",
     "loadingFolder": "Cargando esta carpeta…",
     "loadFailed": "No se pudo leer el índice de directorios",
     "loadMore": "Mostrar 50 elementos más",
     "refreshProgress": "{{count}} elementos comprobados · {{time}} s",
     "refreshFailed": "No se pudo actualizar la carpeta",
-    "directActionHint": "Arrastra un sector o una carpeta de la lista a la cesta inferior",
+    "directActionHint": "Arrastra un sector o un elemento de la lista a la cesta inferior",
     "protectedSelectionHint": "Las rutas del sistema y la raíz del directorio de inicio son solo de visualización; los elementos específicos dentro de su carpeta de inicio pueden entrar al cesto",
     "trashRootProtected": "El propio cesto está protegido; acceda a él y seleccione el contenido específico que desea eliminar",
     "planSummary": "{{count}} elementos seleccionados · {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "Los archivos del sistema y los ajustes importantes están protegidos y no se añadieron",
       "protectedPreview": "Protegido · no se puede eliminar",
       "protectedBadge": "Protegido",
-      "empty": "Arrastra aquí un sector o una carpeta para recogerlo antes de limpiar",
+      "empty": "Arrastra aquí un sector o elemento de la lista y revísalo antes de limpiar",
       "release": "Liberar para añadir a la cesta",
       "collected": "En la cesta de limpieza",
       "collectedHint": "Ya ha sido recogido; elimínalo de la cesta de abajo o continúa revisando",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "Quitar de la cesta de limpieza",
     "includedByParent": "Incluido por una carpeta superior",
-    "addToBasket": "Añadir a la cesta de limpieza"
+    "addToBasket": "Añadir a la cesta de limpieza",
+    "historyBack": "Atrás",
+    "refreshCurrent": "Actualizar esta carpeta",
+    "enterFolder": "Abrir carpeta",
+    "openFolder": "Abrir {{name}}"
   },
   "settlement": {
     "status": {

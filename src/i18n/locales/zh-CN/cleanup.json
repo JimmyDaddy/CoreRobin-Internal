@@ -168,13 +168,13 @@
     },
     "noDeeperBreakdown": "当前层级没有更细的目录分组。",
     "loadDeeperHint": "选择这个目录即可从本机索引打开下一层。",
-    "otherContentHint": "这里仅汇总当前页未显示或未单独保存的文件；所有子文件夹都已收录，可用“再显示 50 项”继续浏览目录。",
+    "otherContentHint": "这里汇总空间图未单独显示的内容；切换到列表后可浏览和搜索已收录的项目。",
     "loadingFolder": "正在读取目录索引…",
     "loadFailed": "无法读取目录索引",
     "loadMore": "再显示 50 项",
     "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
     "refreshFailed": "无法刷新文件夹",
-    "directActionHint": "拖动扇区或右侧目录到底部清理篮",
+    "directActionHint": "拖动扇区或列表项目到底部清理篮",
     "addToBasket": "加入清理篮",
     "removeFromBasket": "移出清理篮",
     "includedByParent": "已随上级文件夹加入",
@@ -189,7 +189,7 @@
       "protectedMessage": "系统文件与重要配置受到保护，未加入清理篮",
       "protectedPreview": "受保护，不能删除",
       "protectedBadge": "受保护",
-      "empty": "拖动扇区或右侧目录到这里，先收集再处理",
+      "empty": "将扇区或列表项目拖到这里，先核对再处理",
       "release": "松手加入清理篮",
       "collected": "已在清理篮",
       "collectedHint": "已经收集；可在下方清理篮中移除或继续核对",
@@ -219,7 +219,11 @@
       "changedShort": "内容已变化",
       "refreshFolder": "刷新 {{name}}",
       "refreshingFolder": "正在刷新 {{name}}…"
-    }
+    },
+    "historyBack": "后退",
+    "refreshCurrent": "刷新此目录",
+    "enterFolder": "进入文件夹",
+    "openFolder": "进入 {{name}}"
   },
   "settlement": {
     "status": {

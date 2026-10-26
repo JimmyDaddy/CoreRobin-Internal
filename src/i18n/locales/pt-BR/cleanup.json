@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "Não é possível agrupar diretórios em níveis mais profundos neste momento.",
     "loadDeeperHint": "Selecione esta pasta para abrir o próximo nível pelo índice local.",
-    "otherContentHint": "Este grupo contém itens que não são exibidos separadamente devido à capacidade do índice ou à página atual; eles não são necessariamente pequenos. Continue pela lista ou abra a pasta atual no Finder.",
+    "otherContentHint": "Este grupo contém itens que não aparecem individualmente no mapa. Alterne para a lista para explorar e pesquisar o conteúdo indexado.",
     "loadingFolder": "Carregando esta pasta…",
     "loadFailed": "Não foi possível ler o índice de pastas",
     "loadMore": "Mostrar mais 50 itens",
     "refreshProgress": "{{count}} itens verificados · {{time}} s",
     "refreshFailed": "Não foi possível atualizar a pasta",
-    "directActionHint": "Arraste um setor ou uma pasta da lista para a cesta na parte inferior.",
+    "directActionHint": "Arraste um setor ou um item da lista para a cesta na parte inferior",
     "protectedSelectionHint": "Pastas do sistema e a raiz da sua área pessoal são apenas para visualização; itens específicos dentro da sua pasta pessoal podem ser movidos para o cesto",
     "trashRootProtected": "A pasta de lixeira é protegida; entre nela e selecione os itens específicos que deseja remover",
     "planSummary": "{{count}} itens selecionados · {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "Arquivos do sistema e configurações importantes estão protegidos e não foram adicionados",
       "protectedPreview": "Protegido · não pode excluir",
       "protectedBadge": "Protegido",
-      "empty": "Arraste um setor ou uma pasta aqui antes da limpeza",
+      "empty": "Arraste um setor ou item da lista para cá e revise antes de limpar",
       "release": "Libere para adicionar à cesta",
       "collected": "Na cesta de limpeza",
       "collectedHint": "Já foi adicionado; remova-o da cesta abaixo ou continue revisando",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "Remover da cesta de limpeza",
     "includedByParent": "Incluído por uma pasta superior",
-    "addToBasket": "Adicionar à cesta de limpeza"
+    "addToBasket": "Adicionar à cesta de limpeza",
+    "historyBack": "Voltar",
+    "refreshCurrent": "Atualizar esta pasta",
+    "enterFolder": "Abrir pasta",
+    "openFolder": "Abrir {{name}}"
   },
   "settlement": {
     "status": {

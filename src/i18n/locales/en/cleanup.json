@@ -168,13 +168,13 @@
     },
     "noDeeperBreakdown": "No deeper directory grouping is available at this level.",
     "loadDeeperHint": "Select this folder to open the next level from the local index.",
-    "otherContentHint": "This group contains only files omitted from the current page or individual file details. Every child folder is indexed; use Show 50 more items to continue browsing directories.",
+    "otherContentHint": "This group contains items omitted from the map. Switch to the list to browse and search the indexed contents.",
     "loadingFolder": "Reading the directory index…",
     "loadFailed": "Unable to read the directory index",
     "loadMore": "Show 50 more items",
     "refreshProgress": "{{count}} items checked · {{time}} sec",
     "refreshFailed": "Unable to refresh folder",
-    "directActionHint": "Drag a sector or a folder from the list into the basket at the bottom",
+    "directActionHint": "Drag a sector or a list item into the basket at the bottom",
     "addToBasket": "Add to cleanup basket",
     "removeFromBasket": "Remove from cleanup basket",
     "includedByParent": "Included by a parent folder",
@@ -189,7 +189,7 @@
       "protectedMessage": "System files and important settings are protected and were not added",
       "protectedPreview": "Protected · cannot delete",
       "protectedBadge": "Protected",
-      "empty": "Drag a sector or a folder here to collect it before cleanup",
+      "empty": "Drag a sector or list item here, then review before cleanup",
       "release": "Release to add to the basket",
       "collected": "In cleanup basket",
       "collectedHint": "Already collected; remove it from the basket below or continue reviewing",
@@ -219,7 +219,11 @@
       "changedShort": "Content changed",
       "refreshFolder": "Refresh {{name}}",
       "refreshingFolder": "Refreshing {{name}}…"
-    }
+    },
+    "historyBack": "Back",
+    "refreshCurrent": "Refresh this folder",
+    "enterFolder": "Open folder",
+    "openFolder": "Open {{name}}"
   },
   "settlement": {
     "status": {

@@ -1,6 +1,6 @@
 import { Select } from "./Select";
-import { AlertTriangle, ArrowDownUp, ArrowLeft, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { AlertTriangle, ArrowDownUp, ArrowLeft, ArrowUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Info, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
@@ -27,10 +27,11 @@ import {
 } from "../cleanupDeleteFreshness";
 import {
   buildCleanupHueMap,
-  cleanupNodeVisual,
+  CLEANUP_MAP_SIZE,
   collectCleanupPlanNode,
   isCleanupNodeCoveredByPlan,
   layoutCleanupMap,
+  ringBounds,
   type CleanupMapNode,
 } from "../cleanupMap";
 import type { CleanupSnapshotStatus } from "../cleanupScanStore";
@@ -54,6 +55,7 @@ import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 import { CleanupSettlementDialog } from "./CleanupSettlementDialog";
 import { PathActions } from "./PathActions";
 import "./CleanupSpaceMapProtection.css";
+import "./CleanupSpaceMapWorkspace.css";
 
 interface CleanupSpaceMapProps {
   snapshot: CleanupScan;
@@ -135,10 +137,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [pagedChildren, setPagedChildren] = useState<Map<string, CleanupMapNode[]>>(
     () => new Map(),
   );
-  const [pageCursors, setPageCursors] = useState<Map<string, number | null>>(
-    () => new Map(),
-  );
-  const [pagingDirectoryId, setPagingDirectoryId] = useState<string | null>(null);
   const [preferredMapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
   const mapMode = snapshot.partial ? "path" : preferredMapMode;
   const [categoryScope, setCategoryScope] = useState<CleanupCategoryScope>("all");
@@ -201,7 +199,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     : categoryScope === "reclaimable"
       ? reclaimableCategoryRoot
       : categoryRoot;
-  const { nodes, parents, depths } = useMemo(
+  const { nodes, parents } = useMemo(
     () => indexTree(root, pagedChildren),
     [pagedChildren, root],
   );
@@ -216,6 +214,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const hueMap = useMemo(() => buildCleanupHueMap(root), [root]);
   const [focusId, setFocusId] = useState(root.id);
   const [selectedId, setSelectedId] = useState(root.id);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
   const [plannedIds, setPlannedIds] = useState<Set<string>>(() => new Set());
   const [changedIds, setChangedIds] = useState<Set<string>>(() => new Set());
   const [validationRevision, setValidationRevision] = useState(0);
@@ -247,6 +247,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const blockedDropTimerRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const detailsRef = useRef<HTMLElement | null>(null);
+  const detailsButtonRef = useRef<HTMLButtonElement | null>(null);
   const suppressNextClickRef = useRef(false);
   const deleteLeaseRef = useRef<CleanupDeleteLease | null>(null);
   const deleteRequestIdRef = useRef(0);
@@ -282,8 +283,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     subtreeRequestIdRef.current += 1;
     setLoadedSubtrees(new Map());
     setPagedChildren(new Map());
-    setPageCursors(new Map());
-    setPagingDirectoryId(null);
+    setDetailsOpen(false);
+    setNavigationHistory([]);
     setFocusId(root.id);
     setSelectedId(root.id);
     setPlannedIds(new Set());
@@ -309,8 +310,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     activeSampledAtRef.current = snapshot.sampledAtMs;
     subtreeRequestIdRef.current += 1;
     setPagedChildren(new Map());
-    setPageCursors(new Map());
-    setPagingDirectoryId(null);
   }, [snapshot.sampledAtMs]);
 
   useEffect(() => {
@@ -398,6 +397,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     requestedFocusIdRef.current = null;
     setFocusId(requestedFocusId ?? root.id);
     setSelectedId(requestedFocusId ?? root.id);
+    setNavigationHistory([]);
+    setDetailsOpen(false);
     setSubtreeError(null);
     try {
       window.localStorage.setItem(CLEANUP_MAP_MODE_STORAGE_KEY, mapMode);
@@ -408,6 +409,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
   const focus = nodes.get(focusId) ?? root;
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
+  const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
     () => {
       const focusCollected = isCleanupNodeCoveredByPlan(plannedIds, focus.id, parents);
@@ -473,19 +475,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       ...remainingAggregates,
     ];
   }, [directChildren, extraChildren]);
-  const implicitPageCursor = directChildren.some(
-    (child) => child.kind === "aggregate" && child.id.endsWith("#other-items"),
-  )
-    ? directChildren.filter((child) => child.kind !== "aggregate").length
-    : null;
-  const nextPageCursor = pageCursors.has(focus.id)
-    ? pageCursors.get(focus.id) ?? null
-    : implicitPageCursor;
-  const canPageFocus = Boolean(
-    snapshot.indexed
-    && focus.id.startsWith(`index:${snapshot.scanId}:`)
-    && nextPageCursor !== null,
-  );
   const planned = [...plannedIds]
     .map((id) => planNodes.get(id))
     .filter((node): node is CleanupMapNode => node !== undefined);
@@ -534,9 +523,31 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     }] : []);
   }, [focus, snapshot.sampledAtMs]);
   const selectMapNode = useCallback((node: CleanupMapNode | null) => {
-    const nextId = node?.id ?? focus.id;
-    setSelectedId((current) => current === nextId ? current : nextId);
-  }, [focus.id]);
+    if (!node || detailsOpen) return;
+    setSelectedId((current) => current === node.id ? current : node.id);
+  }, [detailsOpen]);
+
+  const closeDetails = useCallback(() => {
+    setDetailsOpen(false);
+    detailsButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const dialog = detailsRef.current;
+    dialog?.querySelector<HTMLButtonElement>("button")?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); closeDetails(); }
+      if (event.key !== "Tab") return;
+      const controls = dialog?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)");
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [closeDetails, detailsOpen]);
 
   // Native queries depend on the scan/directory, not on the map's materialized arrays.
   const localListChildren = snapshot.indexed && focus.id.startsWith(`index:${snapshot.scanId}:`)
@@ -698,13 +709,31 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   }, [focus.id, validationRevision, validationTargets]);
 
   const navigateTo = (node: CleanupMapNode) => {
+    subtreeRequestIdRef.current += 1;
     setSubtreeError(null);
+    setDetailsOpen(false);
     if (node.id === focus.id) {
       setSelectedId(node.id);
       return;
     }
+    setNavigationHistory((current) => [...current.slice(-63), focus.id]);
+    setListQuery("");
     setFocusId(node.id);
     setSelectedId(node.id);
+  };
+
+  const navigateBack = () => {
+    subtreeRequestIdRef.current += 1;
+    const history = [...navigationHistory];
+    let previous: CleanupMapNode | undefined;
+    while (history.length > 0 && !previous) previous = nodes.get(history.pop()!);
+    setNavigationHistory(history);
+    if (previous) {
+      setSubtreeError(null);
+      setListQuery("");
+      setFocusId(previous.id);
+      setSelectedId(previous.id);
+    }
   };
 
   const refreshFocusedFolder = () => {
@@ -775,31 +804,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         }
         setSubtreeError(normalized);
       }
-    }
-  };
-
-  const loadMoreChildren = async () => {
-    if (!canPageFocus || nextPageCursor === null || pagingDirectoryId) return;
-    setPagingDirectoryId(focus.id);
-    setSubtreeError(null);
-    try {
-      const page = await getCleanupIndexedChildren({
-        scanId: snapshot.scanId,
-        directoryId: focus.id,
-        cursor: nextPageCursor,
-        limit: 50,
-      });
-      setPagedChildren((current) => {
-        const existing = current.get(focus.id) ?? [];
-        const seen = new Set(existing.map((node) => node.id));
-        const appended = page.items.filter((node) => !seen.has(node.id));
-        return new Map(current).set(focus.id, [...existing, ...appended]);
-      });
-      setPageCursors((current) => new Map(current).set(focus.id, page.nextCursor));
-    } catch (caughtError) {
-      setSubtreeError(normalizeCommandError(caughtError));
-    } finally {
-      setPagingDirectoryId(null);
     }
   };
 
@@ -895,7 +899,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             setBlockedDropNodeId(null);
           }, 1_800);
         } else {
-          const node = nodes.get(current.nodeId);
+          const node = planNodes.get(current.nodeId) ?? visibleNodes.get(current.nodeId);
           if (node) addToPlan(node);
         }
       }
@@ -926,7 +930,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", cancel);
     };
-  }, [nodes, parents]);
+  }, [nodes, parents, planNodes, visibleNodes]);
 
   useEffect(() => () => {
     window.cancelAnimationFrame(dragPreviewFrameRef.current);
@@ -1214,6 +1218,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           <h3 id="cleanup-map-title">{t("cleanup:map.title")}</h3>
           {mapMode === "category" ? <p>{t("cleanup:map.descriptionCategory")}</p> : null}
           <nav className="cleanup-map__breadcrumbs" aria-label={t("cleanup:map.breadcrumbs")}>
+            <button type="button" className="cleanup-map__nav-button" aria-label={t("cleanup:map.historyBack")} title={t("cleanup:map.historyBack")} disabled={navigationHistory.length === 0} onClick={navigateBack}><ArrowLeft size={14} /></button>
+            <button type="button" className="cleanup-map__nav-button" aria-label={t("cleanup:map.back")} title={t("cleanup:map.back")} disabled={!parentId} onClick={() => { const parent = parentId ? nodes.get(parentId) : null; if (parent) navigateTo(parent); }}><ArrowUp size={14} /></button>
             {breadcrumbs.map((node, index) => (
               <span key={node.id}>
                 {index > 0 ? <ChevronRight size={11} /> : null}
@@ -1241,7 +1247,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </button>
           </div>
           <div className="cleanup-map__presentation" role="group" aria-label={t("cleanup:map.view.label")}>
-            <button type="button" className={presentation === "map" ? "is-active" : undefined} aria-pressed={presentation === "map"} onClick={() => setPresentation("map")}>
+            <button type="button" className={presentation === "map" ? "is-active" : undefined} aria-pressed={presentation === "map"} onClick={() => { setPresentation("map"); setListQuery(""); }}>
               <PieChart size={13} />{t("cleanup:map.view.map")}
             </button>
             <button type="button" className={presentation === "list" ? "is-active" : undefined} aria-pressed={presentation === "list"} onClick={() => setPresentation("list")}>
@@ -1263,18 +1269,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
 
       <div className={`cleanup-map__workspace${presentation === "list" ? " is-list" : ""}`}>
         <div className="cleanup-map__visual">
-          <button
-            className="cleanup-map__compact-inspector"
-            type="button"
-            onClick={() => detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
-          >
-            <span>
-              <small>{t("cleanup:map.selected")}</small>
-              <strong>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
-            </span>
-            <b>{formatBytes(selected.allocatedSizeBytes)}</b>
-            <ChevronRight size={14} />
-          </button>
+          <div className="cleanup-map__browser-toolbar">
+            <label className="cleanup-map__search">
+              <Search size={14} />
+              <input type="search" value={listQuery} onChange={(event) => { setListQuery(event.target.value); setPresentation("list"); }} placeholder={t("cleanup:map.view.search")} aria-label={t("cleanup:map.view.search")} />
+              {listQuery ? <button type="button" onClick={() => setListQuery("")} aria-label={t("cleanup:map.view.clearSearch")}><X size={13} /></button> : null}
+            </label>
+            {refreshableFocus ? <button type="button" className="button button--secondary" disabled={refreshingFocus} onClick={refreshFocusedFolder}>{refreshingFocus ? <LoaderCircle className="is-spinning" size={14} /> : <RefreshCw size={14} />}{t("cleanup:map.refreshCurrent")}</button> : null}
+          </div>
           <div className="cleanup-map__canvas" ref={canvasRef}>
             {freshness !== "current" ? (
               <div className={`cleanup-map__freshness is-${freshness}`}>
@@ -1319,6 +1321,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
             ) : null}
             {presentation === "map" ? (
+              <div className="cleanup-map__chart-frame" style={{ aspectRatio: chartFrameRatio }}>
               <div className="cleanup-map__surface">
                 <CleanupSunburstCanvas
                   arcs={arcs}
@@ -1355,37 +1358,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
                 </button>
               </div>
+              </div>
             ) : (
               <div className="cleanup-index-list">
                 <div className="cleanup-index-list__toolbar">
-                  <button
-                    type="button"
-                    className="cleanup-index-list__back"
-                    disabled={!parentId}
-                    aria-label={t("cleanup:map.back")}
-                    title={t("cleanup:map.back")}
-                    onClick={() => {
-                      const parent = parentId ? nodes.get(parentId) : null;
-                      if (parent) navigateTo(parent);
-                    }}
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <label>
-                    <Search size={14} />
-                    <input
-                      type="search"
-                      value={listQuery}
-                      onChange={(event) => setListQuery(event.target.value)}
-                      placeholder={t("cleanup:map.view.search")}
-                      aria-label={t("cleanup:map.view.search")}
-                    />
-                    {listQuery ? (
-                      <button type="button" onClick={() => setListQuery("")} aria-label={t("cleanup:map.view.clearSearch")}>
-                        <X size={13} />
-                      </button>
-                    ) : null}
-                  </label>
                   <Select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
                     <option value="size">{t("cleanup:map.view.sortSize")}</option>
                     <option value="name">{t("cleanup:map.view.sortName")}</option>
@@ -1449,7 +1425,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                                 title={includedByParent ? t("cleanup:map.includedByParent") : unavailableForCollection ? t("cleanup:map.basket.protectedBadge") : undefined}
                                 onChange={() => collected ? removeFromPlan(node.id) : addToPlan(node)}
                               />
-                              <button type="button" title={node.path ?? name} aria-current={selected.id === node.id ? "true" : undefined} onClick={() => void drillInto(node)}>
+                              <button type="button" className="cleanup-index-list__select" title={node.path ?? name} aria-current={selected.id === node.id ? "true" : undefined}
+                                onPointerDown={(event) => beginDrag(event, node)} onPointerCancel={(event) => cancelDragAt(event.pointerId)}
+                                onClick={() => { if (suppressNextClickRef.current) { suppressNextClickRef.current = false; return; } setSelectedId(node.id); }}
+                                onDoubleClick={() => { if (!suppressNextClickRef.current) void drillInto(node); }}>
                                 <span className={`cleanup-index-list__icon is-${node.kind}`} aria-hidden="true">
                                   {node.kind === "restricted" ? <LockKeyhole size={17} /> : node.kind === "aggregate" ? <Layers3 size={17} /> : node.kind === "file" ? <File size={17} /> : <FolderOpen size={17} />}
                                 </span>
@@ -1462,8 +1441,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                                   <span>{share === null ? "—" : percentage(node.allocatedSizeBytes, focus.allocatedSizeBytes)}</span>
                                   <i aria-hidden="true"><i style={{ width: `${share ?? 0}%` }} /></i>
                                 </span>
-                                {node.hasChildren && node.kind !== "aggregate" ? <ChevronRight className="cleanup-index-list__chevron" size={14} /> : <span />}
                               </button>
+                              {node.hasChildren && node.kind !== "aggregate" ? <button type="button" className="cleanup-index-list__open" aria-label={t("cleanup:map.openFolder", { name })} title={t("cleanup:map.openFolder", { name })} onClick={() => void drillInto(node)}><ChevronRight size={15} /></button> : null}
                             </div>
                           );
                         })}
@@ -1487,7 +1466,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             )}
 
             <div
-              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}${planned.length === 0 && !dragState?.dragging && !deleteOutcome ? " is-collapsed" : ""}`}
+              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}`}
               aria-live="polite"
             >
               <span className="cleanup-map__basket-attention" aria-hidden="true"><i /><i /></span>
@@ -1542,7 +1521,29 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
           </div>
         </div>
 
-        <aside ref={detailsRef} className="cleanup-map__details" aria-label={t("cleanup:map.details")}>
+        <section className="cleanup-map__selection" aria-label={t("cleanup:map.selected")}>
+          <div className="cleanup-map__selection-copy">
+            {selected.kind === "file" ? <File size={19} /> : <FolderOpen size={19} />}
+            <div><strong title={selected.name}>{nodeDisplayName(selected, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}<b>{formatBytes(selected.allocatedSizeBytes)}</b></strong>
+              <small title={selected.path ?? undefined}>{selected.protectionReason === "aggregate" ? t("cleanup:map.aggregateBadge") : !canCollectCleanupNode(selected) ? t("cleanup:map.basket.protectedBadge") : selected.path ?? t("cleanup:map.grouped")}</small>
+            </div>
+          </div>
+          <div className="cleanup-map__selection-actions">
+            {selected.path ? <PathActions path={selected.path} compact actions={["preview"]} /> : null}
+            {selected.hasChildren && selected.kind !== "aggregate" && selected.id !== focus.id ? <button type="button" className="button button--secondary" onClick={() => void drillInto(selected)}><FolderOpen size={14} />{t("cleanup:map.enterFolder")}</button> : null}
+            <button ref={detailsButtonRef} type="button" className="button button--secondary" onClick={() => setDetailsOpen(true)}><Info size={14} />{t("cleanup:map.details")}</button>
+            <button type="button" className={`button ${selectedDirectlyPlanned ? "button--secondary" : "button--primary"}`} disabled={!canCollectCleanupNode(selected) || (selectedCollected && !selectedDirectlyPlanned)} onClick={() => selectedDirectlyPlanned ? removeFromPlan(selected.id) : addToPlan(selected)}>
+              {selectedCollected ? <CheckCircle2 size={14} /> : <Plus size={14} />}{t(selectedDirectlyPlanned ? "cleanup:map.removeFromBasket" : selectedCollected ? "cleanup:map.includedByParent" : "cleanup:map.addToBasket")}
+            </button>
+          </div>
+        </section>
+        {subtreeError ? <div className="cleanup-map__subtree-error" role="alert">{t("cleanup:map.loadFailed")}{subtreeError.code === "cleanup_index_node_missing" || subtreeError.code === "cleanup_index_scan_missing" ? null : `: ${subtreeError.message}`}</div> : null}
+        {directoryRefreshError ? <div className="cleanup-map__subtree-error" role="alert">{t("cleanup:map.refreshFailed")}: {directoryRefreshError.message}</div> : null}
+      </div>
+
+      {detailsOpen ? <div className="dialog-backdrop cleanup-map__details-backdrop" role="presentation" onMouseDown={closeDetails}>
+        <aside ref={detailsRef} className="cleanup-map__details" role="dialog" aria-modal="true" aria-label={t("cleanup:map.details")} onMouseDown={(event) => event.stopPropagation()}>
+          <header className="cleanup-map__details-heading"><h3>{t("cleanup:map.details")}</h3><button className="icon-button" type="button" aria-label={t("common:close")} onClick={closeDetails}><X size={16} /></button></header>
           <div className={`cleanup-map__selected${selectedCollected ? " is-collected" : ""}`}>
             <span className={`cleanup-map__selected-icon is-${selected.kind}`}>
               {selected.protectionReason === "aggregate" ? <Layers3 size={17} /> : selected.kind === "file" ? <File size={17} /> : selected.kind === "aggregate" ? <Layers3 size={17} /> : selected.kind === "restricted" ? <LockKeyhole size={17} /> : <FolderOpen size={17} />}
@@ -1661,97 +1662,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             </div>
           ) : null}
 
-          {presentation === "list" ? null : directChildren.length > 0 ? (
-            <ol className="cleanup-map__legend">
-              {legendChildren.map((child) => {
-                const visual = cleanupNodeVisual(child, Math.max(1, (depths.get(child.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
-                const collected = isCleanupNodeCoveredByPlan(plannedIds, child.id, parents);
-                const protectionReason = cleanupNodeProtection(child);
-                const aggregateGroup = protectionReason === "aggregate";
-                const protectedNode = protectionReason !== null && !aggregateGroup;
-                const protectedDragSource = dragState?.dragging && dragState.nodeId === child.id && dragState.blocked;
-                return (
-                  <li key={child.id}>
-                    <button
-                      className={`${selected.id === child.id ? "is-selected" : ""}${collected ? " is-collected" : ""}${protectedDragSource ? " is-protected-drag-source" : ""}${child.path && failedPaths.has(child.path) ? " is-delete-failed" : ""}`.trim() || undefined}
-                      type="button"
-                      style={{ "--cleanup-node-color": visual.swatch } as CSSProperties}
-                      aria-current={selected.id === child.id ? "true" : undefined}
-                      onMouseEnter={() => setSelectedId(child.id)}
-                      onFocus={() => setSelectedId(child.id)}
-                      data-draggable={!collected && !aggregateGroup && child.kind !== "aggregate" ? "true" : undefined}
-                      data-drag-policy={aggregateGroup ? "drill" : protectedNode ? "protected" : "collect"}
-                      data-protection-reason={protectionReason ?? undefined}
-                      onPointerDown={aggregateGroup ? undefined : (event) => beginDrag(event, child)}
-                      onPointerCancel={(event) => cancelDragAt(event.pointerId)}
-                      onClick={() => {
-                        if (suppressNextClickRef.current) {
-                          suppressNextClickRef.current = false;
-                          return;
-                        }
-                        void drillInto(child);
-                      }}
-                    >
-                      <i className={visual.className} style={{ background: visual.swatch }}>
-                        {aggregateGroup ? <Layers3 size={8} /> : protectedNode ? <LockKeyhole size={8} /> : null}
-                      </i>
-                      <span>
-                        <strong>{nodeDisplayName(child, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects"))}</strong>
-                        <small>
-                          {t(`cleanup:map.types.${child.kind}`)} · {percentage(child.allocatedSizeBytes, focus.allocatedSizeBytes)}
-                          {collected ? ` · ${t("cleanup:map.basket.collected")}` : ""}
-                          {aggregateGroup
-                            ? ` · ${t("cleanup:map.aggregateBadge")}`
-                            : protectedNode
-                              ? ` · ${t("cleanup:map.basket.protectedBadge")}`
-                              : ""}
-                        </small>
-                      </span>
-                      <b>
-                        {child.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(child.allocatedSizeBytes)}
-                      </b>
-                    </button>
-                  </li>
-                );
-              })}
-              {canPageFocus ? (
-                <li className="cleanup-map__load-more">
-                  <button
-                    type="button"
-                    disabled={pagingDirectoryId === focus.id}
-                    onClick={() => void loadMoreChildren()}
-                  >
-                    {pagingDirectoryId === focus.id
-                      ? <LoaderCircle className="is-spinning" size={14} />
-                      : <Plus size={14} />}
-                    <span>
-                      <strong>{t("cleanup:map.loadMore")}</strong>
-                    </span>
-                  </button>
-                </li>
-              ) : null}
-            </ol>
-          ) : (
-            <div className="cleanup-map__leaf">
-              {focus.hasChildren ? t("cleanup:map.loadDeeperHint") : t("cleanup:map.noDeeperBreakdown")}
-            </div>
-          )}
-
-          {subtreeError ? (
-            <div className="cleanup-map__subtree-error" role="alert">
-              {t("cleanup:map.loadFailed")}
-              {subtreeError.code === "cleanup_index_node_missing"
-                || subtreeError.code === "cleanup_index_scan_missing"
-                ? null
-                : `: ${subtreeError.message}`}
-            </div>
-          ) : null}
-          {directoryRefreshError ? (
-            <div className="cleanup-map__subtree-error" role="alert">
-              {t("cleanup:map.refreshFailed")}: {directoryRefreshError.message}
-            </div>
-          ) : null}
-
           <div className="cleanup-map__review">
             <span><ShieldAlert size={14} />{t(`cleanup:safety.${selected.safety}`)}</span>
             <small>{selectedCollected
@@ -1769,7 +1679,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     : t("cleanup:map.protectedSelectionHint")}</small>
           </div>
         </aside>
-      </div>
+      </div> : null}
       {dragState?.dragging ? (
         <div
           ref={dragPreviewRef}

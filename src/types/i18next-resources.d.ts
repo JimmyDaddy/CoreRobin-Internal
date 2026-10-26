@@ -887,7 +887,7 @@ export default interface Resources {
         "collected": "已在清理篮",
         "collectedHint": "已经收集；可在下方清理篮中移除或继续核对",
         "completed": "已处理 {{deletedCount}} 项",
-        "empty": "拖动扇区或右侧目录到这里，先收集再处理",
+        "empty": "将扇区或列表项目拖到这里，先核对再处理",
         "partial": "已处理 {{deletedCount}} 项，{{failedCount}} 项未能处理",
         "protectedBadge": "受保护",
         "protectedMessage": "系统文件与重要配置受到保护，未加入清理篮",
@@ -918,7 +918,8 @@ export default interface Resources {
       "descriptionCategory": "按常见用途重新汇总同一次扫描结果；分类是理解空间的辅助视角，不代表真实目录层级。",
       "descriptionPath": "按系统磁盘的真实文件路径展示：每一圈对应下一层目录，色块面积表示磁盘实际占用。",
       "details": "空间明细",
-      "directActionHint": "拖动扇区或右侧目录到底部清理篮",
+      "directActionHint": "拖动扇区或列表项目到底部清理篮",
+      "enterFolder": "进入文件夹",
       "freshness": {
         "cached": "正在显示上次扫描结果",
         "changed": "此目录内容已变化，大小可能不准确",
@@ -929,6 +930,7 @@ export default interface Resources {
         "updating": "正在更新扫描，上一次空间地图仍可使用"
       },
       "grouped": "汇总分类",
+      "historyBack": "后退",
       "includedByParent": "已随上级文件夹加入",
       "list": {
         "loadMore": "加载更多",
@@ -948,11 +950,13 @@ export default interface Resources {
         "path": "文件路径"
       },
       "noDeeperBreakdown": "当前层级没有更细的目录分组。",
+      "openFolder": "进入 {{name}}",
       "otherContent": "其余内容",
-      "otherContentHint": "这里仅汇总当前页未显示或未单独保存的文件；所有子文件夹都已收录，可用“再显示 50 项”继续浏览目录。",
+      "otherContentHint": "这里汇总空间图未单独显示的内容；切换到列表后可浏览和搜索已收录的项目。",
       "planSummary": "已选择 {{count}} 项，共 {{size}}",
       "protectedSelectionHint": "系统目录和个人目录根节点仅供查看；个人目录内的具体内容可以加入清理篮",
       "reclaimableFilter": "正在查看可能可回收的分类",
+      "refreshCurrent": "刷新此目录",
       "refreshFailed": "无法刷新文件夹",
       "refreshProgress": "已检查 {{count}} 项 · {{time}} 秒",
       "removeFromBasket": "移出清理篮",

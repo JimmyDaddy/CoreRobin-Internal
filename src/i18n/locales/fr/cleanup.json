@@ -258,13 +258,13 @@
     },
     "noDeeperBreakdown": "Aucun regroupement de dossiers supplémentaire n'est disponible à ce niveau.",
     "loadDeeperHint": "Sélectionnez ce dossier pour ouvrir le niveau suivant depuis l’index local.",
-    "otherContentHint": "Ce groupe contient les éléments non affichés séparément en raison de la capacité de l’index ou de la page actuelle ; ils ne sont pas nécessairement petits. Parcourez la suite ou ouvrez le dossier actuel dans Finder.",
+    "otherContentHint": "Ce groupe contient des éléments non détaillés sur la carte. Passez à la liste pour parcourir et rechercher le contenu indexé.",
     "loadingFolder": "Chargement de ce dossier…",
     "loadFailed": "Impossible de lire l’index des dossiers",
     "loadMore": "Afficher 50 éléments supplémentaires",
     "refreshProgress": "{{count}} éléments vérifiés · {{time}} s",
     "refreshFailed": "Impossible d’actualiser le dossier",
-    "directActionHint": "Faites glisser un secteur ou un dossier de la liste vers le panier en bas",
+    "directActionHint": "Faites glisser un secteur ou un élément de la liste vers le panier en bas",
     "protectedSelectionHint": "Les chemins système et le répertoire racine sont consultables uniquement ; les éléments précis de votre dossier personnel peuvent être ajoutés au bac",
     "trashRootProtected": "Le dossier Corbeille lui-même est protégé ; ouvrez-le et sélectionnez précisément le contenu à supprimer",
     "planSummary": "{{count}} éléments sélectionnés · {{size}}",
@@ -276,7 +276,7 @@
       "protectedMessage": "Les fichiers système et réglages importants sont protégés et n’ont pas été ajoutés",
       "protectedPreview": "Protégé · suppression impossible",
       "protectedBadge": "Protégé",
-      "empty": "Faites glisser un secteur ou un dossier ici avant le nettoyage",
+      "empty": "Glissez ici un secteur ou un élément de la liste, puis vérifiez avant le nettoyage",
       "release": "Libérer pour ajouter au panier",
       "collected": "Dans le panier de nettoyage",
       "collectedHint": "Déjà ajouté ; retirez-le du panier ci-dessous ou continuez l'examen",
@@ -309,7 +309,11 @@
     },
     "removeFromBasket": "Retirer du panier de nettoyage",
     "includedByParent": "Inclus dans un dossier parent",
-    "addToBasket": "Ajouter au panier de nettoyage"
+    "addToBasket": "Ajouter au panier de nettoyage",
+    "historyBack": "Retour",
+    "refreshCurrent": "Actualiser ce dossier",
+    "enterFolder": "Ouvrir le dossier",
+    "openFolder": "Ouvrir {{name}}"
   },
   "settlement": {
     "status": {
