@@ -105,7 +105,7 @@ relay 收到 Apple 请求后，不负责判断是否 `Accepted`；它按 tag/run
 
 - Resource owner：`JimmyDaddy`
 - Repository access：Only select repositories → `corerobin-monitor`
-- `PUBLIC_RELEASE_READ_TOKEN`：Repository permissions → Contents → Read-only，只供 local macOS import job 读取 draft，以及 Finalize 校验公开 Preview；
+- `PUBLIC_RELEASE_READ_TOKEN`：Repository permissions → Contents → Read-only，供 local macOS import 读取 draft，以及定时公证补偿查询；Finalize 校验已公开 Preview 时使用公开只读接口，不依赖该长期令牌；
 - `PUBLIC_RELEASE_TOKEN`：Repository permissions → Contents → Read and write，只供受保护 publish/promotion job 写入 Release；
 - Expiration：按维护周期设置并在到期前轮换
 
