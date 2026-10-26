@@ -132,8 +132,7 @@ test("completion preserves the folder and basket and leaves no continuing scan a
   await expect(page.locator(".cleanup-map__basket-review")).toBeEnabled();
   await expect(page.locator(".scan-fx-seal")).toBeVisible();
   const after = await page.locator(".cleanup-map__scan-stage").boundingBox();
-  const basket = await page.locator(".cleanup-map__dropzone").boundingBox();
-  expect(basket!.y).toBeGreaterThanOrEqual(after!.y + after!.height);
+  await expect(page.locator(".cleanup-map__dropzone")).toHaveCSS("position", "fixed");
   expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(2);
   await expect(page.locator(".scan-fx-wave")).toHaveCount(0, { timeout: 2000 });
   expect(await page.locator(".cleanup-map__scan-stage").evaluate((e) => e.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length)).toBe(0);

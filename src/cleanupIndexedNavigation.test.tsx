@@ -120,7 +120,8 @@ describe("indexed cleanup navigation", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(200); });
     expect(container.querySelector(".cleanup-map__workspace.is-split")).not.toBeNull();
     expect(container.querySelector(".cleanup-map__scan-stage")).not.toBeNull();
-    expect(screen.getByRole("checkbox").getAttribute("aria-label")).toContain("Remove from cleanup basket");
+    expect(container.querySelector(".cleanup-map__legend button.is-collected")?.textContent).toContain("Visible file");
+    expect(container.querySelector(".cleanup-index-list__columns")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Space map" }));
     expect(container.querySelector(".cleanup-map__selection")?.textContent).toContain("Visible file");
     expect(container.querySelector(".cleanup-map__basket-copy")?.textContent).toContain("Visible file");
@@ -458,7 +459,7 @@ describe("indexed cleanup navigation", () => {
     expect(await screen.findByText("Showing potentially reclaimable categories")).toBeTruthy();
     expect(container.querySelector(".cleanup-map__selection small")?.textContent).toContain("Summary · open");
     expect(screen.queryByText("Protected")).toBeNull();
-    expect(container.querySelector(".cleanup-map__plan.is-collapsed")).toBeNull();
+    expect(container.querySelector(".cleanup-map__plan.is-collapsed")).not.toBeNull();
   });
 
   it("keeps stale data visible and starts an explicit background refresh", async () => {

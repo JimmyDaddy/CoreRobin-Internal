@@ -1,6 +1,6 @@
 import { Select } from "./Select";
 import { AlertTriangle, ArrowDownUp, ArrowLeft, ArrowUp, CheckCircle2, ChevronRight, CircleStop, Clock3, File, FolderOpen, Info, Layers3, List, LoaderCircle, LockKeyhole, PieChart, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 
 import {
@@ -27,6 +27,7 @@ import {
 } from "../cleanupDeleteFreshness";
 import {
   buildCleanupHueMap,
+  cleanupNodeVisual,
   CLEANUP_MAP_SIZE,
   collectCleanupPlanNode,
   isCleanupNodeCoveredByPlan,
@@ -215,7 +216,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     : categoryScope === "reclaimable"
       ? reclaimableCategoryRoot
       : categoryRoot;
-  const { nodes, parents } = useMemo(
+  const { nodes, parents, depths } = useMemo(
     () => indexTree(root, pagedChildren),
     [pagedChildren, root],
   );
@@ -1419,10 +1420,10 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
             ) : null}
             {browserVisible ? (
-              <div className="cleanup-index-list" onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
+              <div className={`cleanup-index-list${splitResult ? " is-compact" : ""}`} onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
                 onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
                 onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
-                <div className="cleanup-index-list__toolbar">
+                {!splitResult ? <><div className="cleanup-index-list__toolbar">
                   <Select aria-label={t("cleanup:map.list.sort")} value={listSort} onChange={(event) => setListSort(event.target.value as "size" | "name")}>
                     <option value="size">{t("cleanup:map.view.sortSize")}</option>
                     <option value="name">{t("cleanup:map.view.sortName")}</option>
@@ -1435,14 +1436,14 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 <div className="cleanup-index-list__summary">
                   <span title={focus.path ?? focus.name}><FolderOpen size={14} /><strong>{focus.name}</strong></span>
                   <b>{formatBytes(focus.allocatedSizeBytes)}</b>
-                </div>
+                </div></> : null}
                 <div className="cleanup-index-list__frame" aria-busy={listPending || listLoadingMore}>
                   <div className="cleanup-index-list__viewport">
-                    <div className="cleanup-index-list__columns" aria-hidden="true">
+                    {!splitResult ? <div className="cleanup-index-list__columns" aria-hidden="true">
                       <span>{t("cleanup:map.list.name")}</span>
                       <span>{t("cleanup:map.allocatedSize")}</span>
                       <span>{t("cleanup:map.list.share")}</span>
-                    </div>
+                    </div> : null}
                     {listPending ? (
                       <div className="cleanup-index-list__state" role="status">
                         <LoaderCircle className="is-spinning" size={18} />{t("cleanup:map.view.loading")}
@@ -1459,7 +1460,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                         <Search size={18} />{t("cleanup:map.view.empty")}
                       </div>
                     ) : (
-                      <div className="cleanup-index-list__table" role="list" aria-label={t("cleanup:map.view.list")}>
+                      <div className={`cleanup-index-list__table${splitResult ? " cleanup-map__legend" : ""}`} role="list" aria-label={t("cleanup:map.view.list")}>
                         {listItems.map((node) => {
                           const protectionReason = cleanupNodeProtection(node);
                           const unavailableForCollection = protectionReason !== null;
@@ -1472,6 +1473,34 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                           const share = node.kind === "restricted" || focus.allocatedSizeBytes === 0
                             ? null
                             : Math.min(100, node.allocatedSizeBytes / focus.allocatedSizeBytes * 100);
+                          if (splitResult) {
+                            const visual = cleanupNodeVisual(node, Math.max(1, (depths.get(node.id) ?? 1) - (depths.get(focus.id) ?? 0)), hueMap);
+                            return <div role="listitem" key={node.id}>
+                              <button
+                                type="button"
+                                className={`${selected.id === node.id ? "is-selected" : ""}${collected || includedByParent ? " is-collected" : ""}${dragState?.dragging && dragState.nodeId === node.id && dragState.blocked ? " is-protected-drag-source" : ""}${node.path && failedPaths.has(node.path) ? " is-delete-failed" : ""}`.trim() || undefined}
+                                style={{ "--cleanup-node-color": visual.swatch } as CSSProperties}
+                                aria-current={selected.id === node.id ? "true" : undefined}
+                                data-draggable={!collected && !includedByParent && node.kind !== "aggregate" ? "true" : undefined}
+                                data-drag-policy={protectionReason === "aggregate" ? "drill" : unavailableForCollection ? "protected" : "collect"}
+                                data-protection-reason={protectionReason ?? undefined}
+                                onMouseEnter={() => setSelectedId(node.id)}
+                                onFocus={() => setSelectedId(node.id)}
+                                onPointerDown={node.kind === "aggregate" ? undefined : (event) => beginDrag(event, node)}
+                                onPointerCancel={(event) => cancelDragAt(event.pointerId)}
+                                onClick={() => {
+                                  if (suppressNextClickRef.current) { suppressNextClickRef.current = false; return; }
+                                  void drillInto(node);
+                                }}
+                              >
+                                <i className={visual.className} style={{ background: visual.swatch }}>
+                                  {protectionReason === "aggregate" ? <Layers3 size={8} /> : unavailableForCollection ? <LockKeyhole size={8} /> : null}
+                                </i>
+                                <span><strong>{name}</strong><small>{t(`cleanup:map.types.${node.kind}`)} · {share === null ? "—" : percentage(node.allocatedSizeBytes, focus.allocatedSizeBytes)}{collected || includedByParent ? ` · ${t("cleanup:map.basket.collected")}` : ""}</small></span>
+                                <b>{node.kind === "restricted" ? t("cleanup:map.unreadable") : formatBytes(node.allocatedSizeBytes)}</b>
+                              </button>
+                            </div>;
+                          }
                           return (
                             <div className={`cleanup-index-list__row${selected.id === node.id ? " is-selected" : ""}${collected || includedByParent ? " is-collected" : ""}`} role="listitem" key={node.id}>
                               <input
@@ -1511,7 +1540,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                     )}
                   </div>
                   <div className="cleanup-index-list__footer">
-                    <span>{listPending ? "—" : t("cleanup:map.list.shown", { count: listItems.length })}</span>
+                    {!splitResult ? <span>{listPending ? "—" : t("cleanup:map.list.shown", { count: listItems.length })}</span> : null}
                     {!listPending && listCursor !== null ? (
                       <button className="cleanup-index-list__more" type="button" disabled={listLoadingMore} onClick={() => void loadMoreListItems()}>
                         {listLoadingMore ? <LoaderCircle className="is-spinning" size={14} /> : listError ? <RefreshCw size={14} /> : <Plus size={14} />}
@@ -1531,7 +1560,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               <button type="button" className="button button--plain" onClick={() => setRetainedSnapshot(incomingSnapshot)}>{t("cleanup:map.liveUpdatesApply")}</button>
             </div> : null}
             <div
-              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}`}
+              className={`cleanup-map__plan cleanup-map__dropzone${dragState?.dragging ? " is-dragging" : ""}${dragState?.overDropzone && !dragState.blocked ? " is-active" : ""}${dragState?.dragging && dragState.blocked ? " is-protected-drag" : ""}${blockedDropNodeId ? " is-blocked" : ""}${planned.length > 0 ? " has-items" : ""}${deleteOutcome ? ` has-outcome is-outcome-${cleanupOutcomeStatus(deleteOutcome)}` : ""}${planned.length === 0 && !dragState?.dragging && !deleteOutcome ? " is-collapsed" : ""}`}
               aria-live="polite"
             >
               <span className="cleanup-map__basket-attention" aria-hidden="true"><i /><i /></span>

@@ -23,22 +23,30 @@ for (const width of [1040, 1180, 1440, 1920, 2560]) {
     await expect(list).toBeVisible();
     const plot = (await chart.boundingBox())!;
     const browser = (await list.boundingBox())!;
-    const basket = (await page.locator(".cleanup-map__dropzone").boundingBox())!;
+    const basket = page.locator(".cleanup-map__dropzone");
     expect(browser.x).toBeGreaterThanOrEqual(plot.x + plot.width);
     expect(Math.abs(browser.y - plot.y)).toBeLessThanOrEqual(2);
-    expect(Math.abs(basket.x - plot.x)).toBeLessThanOrEqual(2);
-    expect(Math.abs(basket.width - plot.width)).toBeLessThanOrEqual(2);
-    expect(basket.y).toBeGreaterThanOrEqual(plot.y + plot.height);
+    await expect(basket).toHaveCSS("position", "fixed");
+    await expect(basket).toHaveClass(/is-collapsed/);
+    await expect(list.locator(".cleanup-map__legend")).toBeVisible();
+    await expect(list.locator(".cleanup-index-list__columns, .cleanup-index-list__summary, .cleanup-index-list__toolbar, input[type='checkbox']")).toHaveCount(0);
     for (const name of ["Users", "demo", "Downloads", "Installers"]) {
-      await list.getByRole("button", { name: `进入 ${name}`, exact: true }).click();
+      await list.getByRole("button", { name: new RegExp(`^${name} `) }).click();
     }
     await expect(page.locator(".cleanup-map__center-control")).toContainText("Installers");
     await page.getByRole("searchbox").fill("macOS");
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(chart).toBeVisible();
-    await list.locator('input[type="checkbox"]:enabled').check();
+    await dragToBasket(page, list.getByRole("button", { name: /^macOS.dmg / }));
+    await expect(basket).toHaveClass(/is-active/);
+    await page.mouse.up();
     await expect(page.locator(".cleanup-map__basket-items")).toContainText("macOS.dmg");
     await expect(page.locator(".cleanup-map__center-control")).toContainText("Installers");
+    await expect(basket).not.toHaveClass(/is-collapsed/);
+    const basketBeforeScroll = (await basket.boundingBox())!;
+    await page.mouse.move(plot.x + plot.width / 2, plot.y + 20);
+    await page.mouse.wheel(0, 240);
+    await expect.poll(async () => Math.abs((await basket.boundingBox())!.y - basketBeforeScroll.y)).toBeLessThanOrEqual(2);
     expect(await page.locator(".cleanup-map").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath(`completed-split-${width}.png`), fullPage: true });
   });
@@ -99,9 +107,7 @@ for (const width of [900, 1180]) {
     await page.mouse.up();
     await expect(basket.locator(".cleanup-map__basket-items")).toContainText("macOS.dmg");
     expect(await map.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
-    const selectedBounds = (await selection.boundingBox())!;
-    const basketBounds = (await basket.boundingBox())!;
-    expect(selectedBounds.y + selectedBounds.height).toBeLessThanOrEqual(basketBounds.y - 4);
+    await expect(basket).toHaveCSS("position", "fixed");
     await page.screenshot({ path: test.info().outputPath(`workspace-${width}.png`), fullPage: true });
   });
 }
