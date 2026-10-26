@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -52,6 +52,34 @@ const INDEX_DELETE_BATCH: usize = 5_000;
 const INDEX_RETIRE_THRESHOLD_PERCENT: i64 = 75;
 const PROGRESS_ENTRY_INTERVAL: usize = 4_096;
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
+
+type ActivityNotifier = Arc<dyn Fn() + Send + Sync>;
+// Installed only in the disposable scan worker, never in the desktop process.
+// Parallel quick-scan parts share this process-local, thread-safe notifier.
+static SCAN_ACTIVITY: OnceLock<ActivityNotifier> = OnceLock::new();
+
+pub(crate) fn set_scan_activity_notifier(notifier: ActivityNotifier) {
+    let _ = SCAN_ACTIVITY.set(notifier);
+}
+
+fn attach_index_activity(
+    connection: &Connection,
+    notifier: ActivityNotifier,
+) -> Result<(), CommandError> {
+    let mut last_report = Instant::now() - PROGRESS_TIME_INTERVAL;
+    connection
+        .progress_handler(
+            10_000,
+            Some(move || {
+                if last_report.elapsed() >= PROGRESS_TIME_INTERVAL {
+                    notifier();
+                    last_report = Instant::now();
+                }
+                false
+            }),
+        )
+        .map_err(index_error)
+}
 
 #[derive(Clone, Debug)]
 struct IndexedFile {
@@ -286,8 +314,6 @@ fn build_indexed_scan_with_shared_identities(
     }
     let mut connection = open_index(index_path)?;
     initialize_schema(&connection)?;
-    purge_expired_and_incomplete(&connection)?;
-    retire_surplus_generations_when_index_full(&connection, scan_id)?;
 
     let definitions = platform_paths(&home);
     let scope_paths = if request.profile == CleanupScanProfile::CommonLocations {
@@ -449,22 +475,8 @@ fn build_indexed_scan_with_shared_identities(
             ],
         )
         .map_err(index_error)?;
-    // File identities are only required while a scan can still resume. Keep
-    // them in temporary quick-scan parts until the parent has merged them, but
-    // remove them from the committed top-level result instead of carrying
-    // recovery-only data for seven days.
-    if shared_seen_files.is_none() {
-        connection
-            .execute(
-                "DELETE FROM seen_files WHERE scan_id = ?1",
-                params![scan_id],
-            )
-            .map_err(index_error)?;
-    }
-    // Publish the new generation before pruning older ones. Readers holding a
-    // result from the previous WebView generation can therefore finish their
-    // navigation while the frontend atomically switches to this scan.
-    retire_previous_detailed_scans(&connection, scan_id, target_kind, &root_absolute_path)?;
+    // Recovery state and old generations are reclaimed only after the worker
+    // has delivered its result. They must not hold the map hostage.
     enforce_private_index_permissions(index_path)?;
     load_scan(&connection, index_path, scan_id)
 }
@@ -1306,6 +1318,66 @@ pub(crate) fn maintain_cleanup_index(index_path: &Path) -> Result<(), CommandErr
     }
     let connection = open_index(index_path)?;
     initialize_schema(&connection)?;
+    if let Some(parent) = index_path.parent() {
+        let prefix = format!(
+            "{}.retired-",
+            index_path.file_name().unwrap_or_default().to_string_lossy()
+        );
+        for entry in
+            fs::read_dir(parent).map_err(|error| CommandError::internal(error.to_string()))?
+        {
+            let entry = entry.map_err(|error| CommandError::internal(error.to_string()))?;
+            if !entry.file_name().to_string_lossy().starts_with(&prefix) {
+                continue;
+            }
+            if let Some(bytes) = crate::private_storage::read_limited(&entry.path(), 1024)
+                .map_err(|error| CommandError::internal(error.to_string()))?
+            {
+                let scan_id: String = serde_json::from_slice(&bytes)
+                    .map_err(|error| CommandError::internal(error.to_string()))?;
+                delete_scan(&connection, &scan_id)?;
+                remove_quick_part_indexes_for_scan(index_path, &scan_id)?;
+                crate::private_storage::remove(&entry.path())
+                    .map_err(|error| CommandError::internal(error.to_string()))?;
+            }
+        }
+    }
+    purge_expired_and_incomplete(&connection)?;
+    let latest = connection
+        .query_row(
+            "SELECT id, target_kind, target_path FROM scans WHERE state = 'completed'
+         ORDER BY sampled_at_ms DESC, started_at_ms DESC LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(index_error)?;
+    if let Some((scan_id, kind, path)) = latest {
+        // DELETEs are bounded and interruptible by replacing the disposable
+        // worker. Preserve every running scan's hard-link recovery identities.
+        loop {
+            let deleted = connection
+                .execute(
+                    "DELETE FROM seen_files WHERE (scan_id, identity_a, identity_b) IN (
+                   SELECT seen_files.scan_id, identity_a, identity_b FROM seen_files
+                   JOIN scans ON scans.id = seen_files.scan_id
+                   WHERE scans.state = 'completed' LIMIT ?1)",
+                    params![INDEX_DELETE_BATCH as i64],
+                )
+                .map_err(index_error)?;
+            if deleted == 0 {
+                break;
+            }
+        }
+        retire_previous_detailed_scans(&connection, &scan_id, parse_target_kind(&kind), &path)?;
+        retire_surplus_generations_when_index_full(&connection, &scan_id)?;
+    }
     let page_size: i64 = connection
         .query_row("PRAGMA page_size", [], |row| row.get::<_, i64>(0))
         .map_err(index_error)?;
@@ -1390,7 +1462,8 @@ pub(crate) fn remove_cleanup_index(index_path: &Path) -> Result<(), CommandError
     Ok(())
 }
 
-pub(crate) fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(), CommandError> {
+#[cfg(test)]
+fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(), CommandError> {
     if index_path.is_file() {
         let connection = open_index(index_path)?;
         initialize_schema(&connection)?;
@@ -1400,6 +1473,26 @@ pub(crate) fn discard_indexed_scan(index_path: &Path, scan_id: &str) -> Result<(
         enforce_private_index_permissions(index_path)?;
     }
     remove_quick_part_indexes_for_scan(index_path, scan_id)
+}
+
+pub(crate) fn defer_discard_indexed_scan(
+    index_path: &Path,
+    scan_id: &str,
+) -> Result<(), CommandError> {
+    if !scan_id
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+        || scan_id.len() > 128
+    {
+        return Err(CommandError::internal("Invalid retired scan identifier."));
+    }
+    let marker = index_path.with_file_name(format!(
+        "{}.retired-{scan_id}",
+        index_path.file_name().unwrap_or_default().to_string_lossy()
+    ));
+    crate::private_storage::write_atomic(&marker, &serde_json::to_vec(scan_id).unwrap()).map_err(
+        |error| CommandError::internal(format!("Could not defer index maintenance: {error}")),
+    )
 }
 
 fn cleanup_scan_exclusions(
@@ -4249,6 +4342,9 @@ fn delete_scan(connection: &Connection, scan_id: &str) -> Result<(), CommandErro
 fn open_index(path: &Path) -> Result<Connection, CommandError> {
     reset_outdated_index(path)?;
     let connection = Connection::open(path).map_err(index_error)?;
+    if let Some(notifier) = SCAN_ACTIVITY.get() {
+        attach_index_activity(&connection, Arc::clone(notifier))?;
+    }
     connection
         .busy_timeout(SQLITE_BUSY_TIMEOUT)
         .map_err(index_error)?;
@@ -5294,7 +5390,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn completed_scans_drop_transient_hard_link_identities() {
+    fn completed_scans_reclaim_hard_link_identities_after_result_delivery() {
         let fixture = tempdir().unwrap();
         let original = fixture.path().join("original.bin");
         let linked = fixture.path().join("linked.bin");
@@ -5304,6 +5400,8 @@ mod tests {
         let storage = tempdir().unwrap();
         let index_path = storage.path().join("cleanup.sqlite");
         let scan = scan_folder(fixture.path(), &index_path, "hard-link-cleanup");
+        assert_eq!(scan.root.allocated_size_bytes, expected);
+        maintain_cleanup_index(&index_path).unwrap();
         let connection = open_index_read_only(&index_path).unwrap();
         let identities = connection
             .query_row(
@@ -6359,6 +6457,8 @@ mod tests {
         let latest = scan_folder(fixture.path(), &index_path, "latest");
 
         assert_eq!(latest.scan_id, "latest");
+        assert!(load_indexed_scan(&index_path, "oldest").is_ok());
+        maintain_cleanup_index(&index_path).unwrap();
         assert!(load_indexed_scan(&index_path, "oldest").is_err());
         assert!(load_indexed_scan(&index_path, "previous").is_ok());
         let summary = cleanup_index_summary(&index_path).unwrap();
@@ -6373,6 +6473,43 @@ mod tests {
 
         assert_eq!(scan.root.allocated_size_bytes, 0);
         assert_eq!(scan.root.item_count, 0);
+    }
+
+    #[test]
+    fn abandoned_index_cleanup_is_deferred_without_blocking_new_scans() {
+        let fixture = tempdir().unwrap();
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        scan_folder(fixture.path(), &index_path, "old-job");
+        defer_discard_indexed_scan(&index_path, "old-job").unwrap();
+        assert!(load_indexed_scan(&index_path, "old-job").is_ok());
+        maintain_cleanup_index(&index_path).unwrap();
+        assert!(load_indexed_scan(&index_path, "old-job").is_err());
+    }
+
+    #[test]
+    fn sqlite_work_reports_activity_without_relying_on_a_heartbeat() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let connection = Connection::open_in_memory().unwrap();
+        let reports = Arc::new(AtomicUsize::new(0));
+        let observed = Arc::clone(&reports);
+        attach_index_activity(
+            &connection,
+            Arc::new(move || {
+                observed.fetch_add(1, Ordering::Relaxed);
+            }),
+        )
+        .unwrap();
+        let total: i64 = connection
+            .query_row(
+                "WITH RECURSIVE work(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM work WHERE n<10000)
+             SELECT SUM(n) FROM work",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(total, 50_005_000);
+        assert!(reports.load(Ordering::Relaxed) > 0);
     }
 
     #[test]

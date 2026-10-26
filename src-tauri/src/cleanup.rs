@@ -75,10 +75,10 @@ mod protection;
 mod quick;
 
 pub(crate) use index::{
-    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, discard_indexed_scan,
+    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, defer_discard_indexed_scan,
     load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
     maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
-    resolve_indexed_delete_request,
+    resolve_indexed_delete_request, set_scan_activity_notifier,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
