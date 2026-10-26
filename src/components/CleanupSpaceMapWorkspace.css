@@ -15,6 +15,9 @@
 }
 
 .cleanup-map .cleanup-map__canvas { width: 100%; padding-bottom: 0; }
+.cleanup-map__content { display: grid; min-width: 0; gap: 12px; }
+.cleanup-map__content > .cleanup-map__dropzone { margin-top: 0; }
+.cleanup-map__content > .cleanup-index-list { min-width: 0; }
 .cleanup-map__pending { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 5px 0; color: var(--text-muted); font-size: 11px; }
 .cleanup-map__pending .button { min-height: 26px; padding: 3px 7px; font-size: 11px; }
 .cleanup-map__chart-frame {
@@ -100,4 +103,30 @@
   .cleanup-map .cleanup-index-list { --cleanup-list-size-width: 78px; --cleanup-list-share-width: 54px; }
   .cleanup-map .cleanup-index-list__select { column-gap: 7px; }
   .cleanup-map .cleanup-map__details { max-height: calc(100vh - 32px); }
+}
+
+.cleanup-map__content.is-split {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  column-gap: 16px;
+  align-items: start;
+}
+.cleanup-map__content.is-split > .cleanup-index-list {
+  grid-row: span 2;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  /* Containment stays off the basket's ancestors so its drag target remains viewport-fixed. */
+  container: cleanup-browser / inline-size;
+}
+.cleanup-map__content.is-split .cleanup-index-list__viewport { height: clamp(280px, calc(100vh - 480px), 460px); }
+.cleanup-map__content.is-split > .cleanup-map__dropzone:not(.is-dragging) { grid-template-columns: auto minmax(0, 1fr); }
+.cleanup-map__content.is-split > .cleanup-map__pending { grid-column: 1 / -1; }
+.cleanup-map__content.is-split .cleanup-map__basket-actions { display: flex; grid-column: 1 / -1; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+@container cleanup-browser (max-width: 440px) {
+  .cleanup-map__content.is-split .cleanup-index-list__select { grid-template-columns: 24px minmax(0, 1fr) 72px; column-gap: 8px; padding-right: 30px; }
+  .cleanup-index-list__icon { width: 24px; height: 28px; }
+  .cleanup-index-list__share { display: none; }
+  .cleanup-index-list__columns { grid-template-columns: minmax(0, 1fr) 72px; gap: 8px; padding-left: 66px; padding-right: 30px; }
+  .cleanup-index-list__columns > span:last-child { display: none; }
 }

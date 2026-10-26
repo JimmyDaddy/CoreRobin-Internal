@@ -186,8 +186,8 @@
 .cleanup-index-list__more { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 4px 10px; color: var(--blue); border: 1px solid var(--border); border-radius: 6px; background: var(--blue-soft); font-size: 11px; }
 .cleanup-index-list__more:disabled { opacity: 0.6; }
 .cleanup-index-list__page-error { display: flex; align-items: center; gap: 7px; color: var(--danger); font-size: 12px; }
-.cleanup-map__workspace.is-list .cleanup-map__freshness,
-.cleanup-map__workspace.is-list .cleanup-map__refresh-progress { position: static; max-width: 100%; margin: 4px 0 12px; transform: none; }
+.cleanup-map__workspace:is(.is-list, .is-split) .cleanup-map__freshness,
+.cleanup-map__workspace:is(.is-list, .is-split) .cleanup-map__refresh-progress { position: static; max-width: 100%; margin: 4px 0 12px; transform: none; }
 .cleanup-map__workspace.is-list .cleanup-map__canvas { padding-bottom: 0; }
 
 @media (max-width: 960px) {

@@ -151,6 +151,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const mapMode = snapshot.partial ? "path" : preferredMapMode;
   const [categoryScope, setCategoryScope] = useState<CleanupCategoryScope>("all");
   const [presentation, setPresentation] = useState<CleanupPresentation>("map");
+  const completedResult = !scanActive && !snapshot.partial;
+  const browserVisible = completedResult || presentation === "list";
+  const splitResult = completedResult && presentation === "map";
+  useEffect(() => {
+    if (scanActive || completedResult) setPresentation("map");
+  }, [scanActive, completedResult]);
   const [listQuery, setListQuery] = useState("");
   const [listSort, setListSort] = useState<"size" | "name">("size");
   const [listDescending, setListDescending] = useState(true);
@@ -599,7 +605,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const listPending = listLoading || listResultKey !== listRequestKey;
 
   useEffect(() => {
-    if (presentation !== "list") return;
+    if (!browserVisible) return;
     const requestId = ++listRequestIdRef.current;
     setListLoading(true);
     setListLoadingMore(false);
@@ -660,7 +666,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     listRequestKey,
     listRetryRevision,
     listSort,
-    presentation,
+    browserVisible,
     snapshot.scanId,
   ]);
 
@@ -1308,12 +1314,12 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
         </div>
       ) : null}
 
-      <div className={`cleanup-map__workspace${presentation === "list" ? " is-list" : ""}`}>
+      <div className={`cleanup-map__workspace${presentation === "list" ? " is-list" : ""}${splitResult ? " is-split" : ""}`}>
         <div className="cleanup-map__visual">
           <div className="cleanup-map__browser-toolbar">
             <label className="cleanup-map__search">
               <Search size={14} />
-              <input type="search" value={listQuery} onChange={(event) => { setListQuery(event.target.value); setPresentation("list"); }} placeholder={t("cleanup:map.view.search")} aria-label={t("cleanup:map.view.search")} />
+              <input type="search" value={listQuery} onChange={(event) => { setListQuery(event.target.value); if (!completedResult) setPresentation("list"); }} placeholder={t("cleanup:map.view.search")} aria-label={t("cleanup:map.view.search")} />
               {listQuery ? <button type="button" onClick={() => setListQuery("")} aria-label={t("cleanup:map.view.clearSearch")}><X size={13} /></button> : null}
             </label>
             {refreshableFocus ? <button type="button" className="button button--secondary" disabled={refreshingFocus} onClick={refreshFocusedFolder}>{refreshingFocus ? <LoaderCircle className="is-spinning" size={14} /> : <RefreshCw size={14} />}{t("cleanup:map.refreshCurrent")}</button> : null}
@@ -1364,6 +1370,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 </button>
               </div>
             ) : null}
+            <div className={`cleanup-map__content${splitResult ? " is-split" : ""}`}>
             {presentation === "map" ? (
               <div className="cleanup-map__scan-stage" data-phase={visualPhase ?? "idle"} data-running={scanMoving} data-quiet={browsing}
                 onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
@@ -1410,7 +1417,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
               </div>
               </div>
-            ) : (
+            ) : null}
+            {browserVisible ? (
               <div className="cleanup-index-list" onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
                 onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
                 onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
@@ -1516,7 +1524,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   <div className="cleanup-index-list__page-error" role="alert"><AlertTriangle size={14} />{t("cleanup:map.view.loadFailed")}</div>
                 ) : null}
               </div>
-            )}
+            ) : null}
 
             {snapshotPending ? <div className="cleanup-map__pending" role="status">
               <span>{t("cleanup:map.liveUpdatesPending")}</span>
@@ -1574,6 +1582,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   </> : null}
                 </div>
               ) : null}
+            </div>
             </div>
           </div>
         </div>

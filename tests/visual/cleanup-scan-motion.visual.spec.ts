@@ -93,6 +93,29 @@ test("pointer navigation resumes the existing orbit instead of leaving it paused
   expect(await orbit.evaluate((element) => element.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!.id)).toBe("navigation-orbit");
 });
 
+test("completion restores paired results even when scanning in list view", async ({ page }) => {
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  const list = page.locator(".cleanup-index-list");
+  for (const name of ["Users", "demo", "Downloads", "Installers"]) {
+    await list.getByRole("button", { name: `Open ${name}`, exact: true }).click();
+  }
+  await list.locator('input[type="checkbox"]:enabled').first().check();
+  await page.getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(page.locator(".cleanup-map__scan-stage")).toBeVisible();
+  await expect(list).toBeVisible();
+  await expect(page.locator('.cleanup-map__breadcrumbs [aria-current="page"]')).toHaveText("Installers");
+  await expect(page.locator(".cleanup-map__basket-items button")).toHaveCount(1);
+});
+
+test("paired results stack when the workspace becomes too narrow", async ({ page }) => {
+  await page.locator(".visual-harness").evaluate((element) => { element.style.maxWidth = "650px"; });
+  await page.getByRole("button", { name: "Complete", exact: true }).click();
+  const chart = (await page.locator(".cleanup-map__scan-stage").boundingBox())!;
+  const browser = (await page.locator(".cleanup-index-list").boundingBox())!;
+  expect(browser.y).toBeGreaterThanOrEqual(chart.y + chart.height);
+  expect(await page.locator(".cleanup-map").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test("completion preserves the folder and basket and leaves no continuing scan animations", async ({ page }) => {
   await page.getByRole("button", { name: "List", exact: true }).click();
   const list = page.locator(".cleanup-index-list");

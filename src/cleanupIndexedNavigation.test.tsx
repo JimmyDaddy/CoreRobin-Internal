@@ -118,7 +118,8 @@ describe("indexed cleanup navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add to cleanup basket" }));
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Visible" } });
     await act(async () => { await vi.advanceTimersByTimeAsync(200); });
-    expect(container.querySelector(".cleanup-map__workspace.is-list")).not.toBeNull();
+    expect(container.querySelector(".cleanup-map__workspace.is-split")).not.toBeNull();
+    expect(container.querySelector(".cleanup-map__scan-stage")).not.toBeNull();
     expect(screen.getByRole("checkbox").getAttribute("aria-label")).toContain("Remove from cleanup basket");
     fireEvent.click(screen.getByRole("button", { name: "Space map" }));
     expect(container.querySelector(".cleanup-map__selection")?.textContent).toContain("Visible file");
