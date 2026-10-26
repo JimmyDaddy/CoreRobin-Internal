@@ -165,7 +165,7 @@
     }
   },
   "progress": {
-    "partialResult": "미완료 스캔: 확인한 항목만 표시합니다.",
+    "partialResult": "스캔 중간 결과",
     "noProgress": "스캔이 멈췄습니다. 결과를 확인하거나 다시 시도하세요.",
     "scanningLocation": "스캔 중 {{location}}",
     "paused": "Mac이 잠자기 상태입니다. 깨어나면 스캔을 계속합니다",

@@ -24,10 +24,11 @@ vi.mock("../api", () => cleanupApi);
 const capabilityChanges = vi.hoisted(() => ({ callback: null as null | (() => Promise<unknown>), read: vi.fn() }));
 vi.mock("../capabilities/useCapabilityChanges", () => ({ useCapabilityChanges: (_: string, callback: () => Promise<unknown>) => { capabilityChanges.callback = callback; } }));
 vi.mock("../capabilities/api", () => ({ readApplicationCapabilities: capabilityChanges.read }));
+const historyStorage = vi.hoisted(() => ({ setValue: vi.fn() }));
 vi.mock("./useNativeHistoryStorage", () => ({
   useNativeHistoryStorage: () => ({
     value: [],
-    setValue: vi.fn(),
+    setValue: historyStorage.setValue,
     hydrated: true,
     storageStatus: {
       state: "ready",
@@ -91,6 +92,7 @@ describe("cleanup scan lifecycle", () => {
     cleanupApi.startCleanupDirectoryRefresh.mockReset();
     window.localStorage.clear();
     capabilityChanges.read.mockResolvedValue({ diskRevision: 1, diskRequiresRescan: false });
+    historyStorage.setValue.mockClear();
   });
 
   afterEach(() => {
@@ -192,6 +194,14 @@ describe("cleanup scan lifecycle", () => {
     expect(screen.getByText("cleanup-new")).toBeTruthy();
   });
 
+  it("stops loading if the native job disappears", async () => {
+    cleanupApi.startCleanupScan.mockResolvedValue(runningJob);
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    await screen.findByText("scanning");
+    await screen.findByText("failed");
+  });
+
   it("shows committed partial maps while scanning and restores the complete map on failure", async () => {
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
     render(<Harness />);
@@ -202,6 +212,7 @@ describe("cleanup scan lifecycle", () => {
     cleanupApi.loadCleanupScanJobResult.mockResolvedValue(preview);
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
     await screen.findByText("cleanup-preview");
+    expect(historyStorage.setValue).not.toHaveBeenCalled();
     expect(screen.getByText("scanning")).toBeTruthy();
     cleanupApi.getCleanupScanJob.mockResolvedValue({ ...runningJob, phase: "failed", errorCode: "cleanup_scan_finalization_stalled" });
     await screen.findByText("failed");

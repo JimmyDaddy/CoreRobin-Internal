@@ -130,6 +130,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const [loadedSubtrees, setLoadedSubtrees] = useState<Map<string, CleanupMapNode>>(
     () => new Map(),
   );
+  // Drop cached preview branches when the completed map takes over.
+  useEffect(() => snapshot.partial ? () => setLoadedSubtrees(new Map()) : undefined, [snapshot.partial]);
   const [pagedChildren, setPagedChildren] = useState<Map<string, CleanupMapNode[]>>(
     () => new Map(),
   );
@@ -137,7 +139,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     () => new Map(),
   );
   const [pagingDirectoryId, setPagingDirectoryId] = useState<string | null>(null);
-  const [mapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
+  const [preferredMapMode, setMapMode] = useState<CleanupMapMode>(readCleanupMapMode);
+  const mapMode = snapshot.partial ? "path" : preferredMapMode;
   const [categoryScope, setCategoryScope] = useState<CleanupCategoryScope>("all");
   const [presentation, setPresentation] = useState<CleanupPresentation>("map");
   const [listQuery, setListQuery] = useState("");
@@ -1230,7 +1233,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
             <button type="button" className={mapMode === "path" ? "is-active" : undefined} aria-pressed={mapMode === "path"} onClick={() => setMapMode("path")}>
               {t("cleanup:map.mode.path")}
             </button>
-            <button type="button" className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => {
+            <button type="button" disabled={snapshot.partial} className={mapMode === "category" ? "is-active" : undefined} aria-pressed={mapMode === "category"} onClick={() => {
               setCategoryScope("all");
               setMapMode("category");
             }}>

@@ -165,8 +165,8 @@
     }
   },
   "progress": {
-    "partialResult": "Análisis incompleto: elementos ya revisados.",
-    "noProgress": "Análisis detenido. Consulta el resultado o reinténtalo.",
+    "partialResult": "Resultados parciales",
+    "noProgress": "Análisis detenido. Ver resultado o reintentar.",
     "scanningLocation": "Analizando {{location}}",
     "paused": "El Mac está en reposo; el escaneo continuará al reactivarlo",
     "stalled": "El escaneo se está recuperando automáticamente",

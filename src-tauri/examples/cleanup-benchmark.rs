@@ -19,16 +19,21 @@ fn main() -> Result<(), String> {
             cancel(PathBuf::from(root), delay_ms)
         }
         [command, root] if command == "create-fixture" => {
-            create_fixture(Path::new(root), 100_000)
+            create_fixture(Path::new(root), 100_000, 1_000)
         }
         [command, root, entries] if command == "create-fixture" => {
             let entries = entries
                 .parse::<usize>()
                 .map_err(|_| "Fixture entry count must be a positive integer.")?;
-            create_fixture(Path::new(root), entries)
+            create_fixture(Path::new(root), entries, 1_000)
+        }
+        [command, root, entries, buckets] if command == "create-fixture" => {
+            let entries = entries.parse::<usize>().map_err(|_| "Invalid entry count.".to_owned())?;
+            let buckets = buckets.parse::<usize>().map_err(|_| "Invalid directory count.".to_owned())?;
+            create_fixture(Path::new(root), entries, buckets)
         }
         _ => Err(
-            "Usage: cargo run --example cleanup-benchmark -- <scan ROOT|cancel ROOT DELAY_MS|create-fixture ROOT [ENTRIES]>"
+            "Usage: cargo run --example cleanup-benchmark -- <scan ROOT|cancel ROOT DELAY_MS|create-fixture ROOT [ENTRIES [DIRECTORIES]]>"
                 .to_owned(),
         ),
     }
@@ -64,9 +69,12 @@ fn cancel(root: PathBuf, delay_ms: u64) -> Result<(), String> {
     Ok(())
 }
 
-fn create_fixture(root: &Path, entries: usize) -> Result<(), String> {
+fn create_fixture(root: &Path, entries: usize, directories: usize) -> Result<(), String> {
     if entries == 0 {
         return Err("Fixture entry count must be greater than zero.".to_owned());
+    }
+    if directories == 0 || directories > 1_000_000 {
+        return Err("Directory count must be between 1 and 1000000.".to_owned());
     }
     if root.exists() {
         let mut existing = fs::read_dir(root).map_err(|error| {
@@ -82,7 +90,7 @@ fn create_fixture(root: &Path, entries: usize) -> Result<(), String> {
     fs::create_dir_all(root)
         .map_err(|error| format!("Could not create fixture root {}: {error}", root.display()))?;
     for index in 0..entries {
-        let bucket = root.join(format!("bucket-{:04}", index % 1_000));
+        let bucket = root.join(format!("bucket-{:04}", index % directories));
         fs::create_dir_all(&bucket)
             .map_err(|error| format!("Could not create {}: {error}", bucket.display()))?;
         fs::write(bucket.join(format!("entry-{index:06}.bin")), [index as u8])

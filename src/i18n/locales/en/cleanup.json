@@ -75,8 +75,8 @@
     }
   },
   "progress": {
-    "partialResult": "Incomplete scan: showing checked items.",
-    "noProgress": "The scan stalled. View the available result or retry.",
+    "partialResult": "Partial scan results",
+    "noProgress": "Scan stalled. View the result or retry.",
     "scanningLocation": "Analyzing {{location}}",
     "paused": "This computer is asleep; scanning will continue after wake",
     "stalled": "The scan is recovering automatically",

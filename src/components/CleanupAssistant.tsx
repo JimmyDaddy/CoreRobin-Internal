@@ -285,7 +285,7 @@ export function CleanupOperation({
   }, [snapshot]);
 
   const targetSettingsCollapsed = Boolean(
-    snapshot && !loading && !targetSettingsExpanded,
+    snapshot && !targetSettingsExpanded,
   );
   const targetControlsBusy = loading || checkingAccess || selectingFolder;
   const targetChanged = Boolean(snapshot && !loading && (

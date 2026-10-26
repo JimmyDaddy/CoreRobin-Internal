@@ -75,8 +75,8 @@
     }
   },
   "progress": {
-    "partialResult": "扫描未完成，仅显示已扫描内容。",
-    "noProgress": "扫描已停滞，可查看现有结果或重试。",
+    "partialResult": "已扫描内容（未完成）",
+    "noProgress": "扫描停滞，可查看结果或重试。",
     "scanningLocation": "正在分析{{location}}",
     "paused": "电脑已休眠，唤醒后将继续扫描",
     "stalled": "正在自动恢复扫描",

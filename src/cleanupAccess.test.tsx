@@ -226,7 +226,7 @@ describe("cleanup full disk access guide", () => {
 
     expect(document.querySelector(".cleanup-scan-stage")).not.toBeNull();
     expect(document.querySelector(".cleanup-scan-orbit")).not.toBeNull();
-    expect(document.querySelector(".cleanup-results")).toBeNull();
+    expect(document.querySelector(".cleanup-results")).not.toBeNull();
     expect(document.querySelector(".cleanup-scan-stage[aria-live]")).toBeNull();
     expect(screen.getByRole("status").className).toContain("sr-only");
     expect(screen.getByText("正在分析下载文件")).toBeTruthy();
