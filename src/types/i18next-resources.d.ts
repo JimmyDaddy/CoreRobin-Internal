@@ -3374,12 +3374,12 @@ export default interface Resources {
       "validationValid": "已读取图片内嵌 manifest 并完成本地结构和密码学校验。未联网或加载信任材料，信任状态为 unknown。"
     },
     "capability": {
-      "degraded": "降级可用",
-      "degradedReason": "部分原生集成受限，但工具仍可打开。",
-      "restrictedHelperUnavailable": "此工具需要受限原生 helper，但当前平台无法提供。",
+      "degraded": "部分功能可用",
+      "degradedReason": "部分系统功能暂不可用，仍可使用此工具提供的其他功能。",
+      "restrictedHelperUnavailable": "当前系统未提供此操作所需的支持，请使用其他可用工具。",
       "unavailable": "不可用",
       "unavailableHint": "此入口会保留在工具箱中；原生能力恢复后可直接使用。",
-      "unavailableReason": "当前平台没有可用的原生执行能力。",
+      "unavailableReason": "此工具在当前系统上暂不可用，可选择其他工具。",
       "unavailableTitle": "{{tool}} 当前不可用"
     },
     "categories": {
@@ -3421,6 +3421,11 @@ export default interface Resources {
       "timeZoneUnavailable": "系统未提供 IANA 时区。",
       "timestampOutOfRange": "Unix 时间超出安全范围。",
       "timezoneRequired": "ISO 时间必须明确包含时区。"
+    },
+    "experience": {
+      "filePickerLimited": "文件选择暂时受限，可打开工具后重试。",
+      "ready": "现在可用 · 收藏与最近使用优先",
+      "workerUnavailable": "当前环境无法安全运行这项文本处理，请在桌面应用中重试。"
     },
     "favorites": {
       "add": "收藏 {{tool}}",
@@ -4099,9 +4104,9 @@ export default interface Resources {
       "filteredCount": "匹配工具 {{count}} 个",
       "label": "工具箱概览",
       "restrictedNativeHelperUnavailable": {
-        "description": "当前平台未提供受限原生 helper，部分系统工具暂不可用。",
-        "hint": "未执行任何操作；helper 可用后，这些工具才会恢复。",
-        "title": "受限原生 helper 不可用"
+        "description": "当前系统未提供此操作所需的支持，请使用其他可用工具。",
+        "hint": "尚未执行操作；系统支持可用后可重试。",
+        "title": "部分系统工具暂不可用"
       },
       "title": "工具箱概览",
       "toolCount": "工具 {{count}} 个",

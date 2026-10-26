@@ -29,6 +29,9 @@ const i18n = vi.hoisted(() => ({
       "overview.allCategories": "全部分类",
       "capability.degraded": "降级可用",
       "capability.unavailable": "不可用",
+      "capability.unavailableReason": "此工具在当前系统上暂不可用，可选择其他工具。",
+      "capability.degradedReason": "部分系统功能暂不可用，仍可使用此工具提供的其他功能。",
+      "experience.filePickerLimited": "文件选择暂时受限，可打开工具后重试。",
       "navigation.back": "返回工具箱",
       "tools.image-watermark.title": "图片水印",
       "tools.file-sha256.title": "文件 SHA-256",
@@ -333,7 +336,8 @@ it("keeps browser-local tools available even when an older native snapshot marks
 
   const keyboardCleaning = screen.getByText("键盘清洁").closest("button")!;
   expect((keyboardCleaning as HTMLButtonElement).disabled).toBe(true);
-  expect(keyboardCleaning.textContent).toContain("不可用：当前平台没有经过验证的受限键盘 hook。");
+  expect(keyboardCleaning.textContent).toContain("不可用：此工具在当前系统上暂不可用，可选择其他工具。");
+  expect(keyboardCleaning.textContent).not.toContain("hook");
 
   const json = screen.getByText("JSON").closest("button")!;
   expect((json as HTMLButtonElement).disabled).toBe(false);
@@ -351,10 +355,10 @@ it("shows a degraded notice but still opens the tool", async () => {
 
   const fileHash = screen.getByText("文件 SHA-256").closest("button")!;
   expect((fileHash as HTMLButtonElement).disabled).toBe(false);
-  expect(fileHash.textContent).toContain("降级可用：文件选择集成暂时受限。");
+  expect(fileHash.textContent).toContain("降级可用：文件选择暂时受限，可打开工具后重试。");
   fireEvent.click(fileHash);
   expect(screen.getByRole("heading", { name: "文件 SHA-256" })).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain("降级可用：文件选择集成暂时受限。");
+  expect(screen.getByRole("status").textContent).toContain("降级可用：文件选择暂时受限，可打开工具后重试。");
 });
 
 it("keeps the toolbox region labelled when entering a tool page", () => {
