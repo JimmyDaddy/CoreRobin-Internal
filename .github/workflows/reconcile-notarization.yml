@@ -75,7 +75,7 @@ jobs:
           persist-credentials: false
 
       - name: Download Apple Silicon notarization state
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: corerobin-macos-aarch64
           path: raw-macos/corerobin-macos-aarch64
@@ -84,7 +84,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Download Intel notarization state
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: corerobin-macos-x86_64
           path: raw-macos/corerobin-macos-x86_64
