@@ -193,11 +193,11 @@ export function ProcessInspector({
           </div>
           <div>
             <UserRound size={15} />
-            <span><small>{t("process:inspector.userStatus")}</small><strong>{detail.user ?? t("common:unknown")} · {statusLabel(detail.status)}</strong></span>
+            <span><small>{t("process:inspector.userStatus")}</small><strong>{selected.user ?? detail.user ?? t("common:unknown")} · {statusLabel(selected.status)}</strong></span>
           </div>
           <div>
             <Clock3 size={15} />
-            <span><small>{t("process:inspector.runtime")}</small><strong>{formatDuration(detail.runTimeSeconds)}</strong></span>
+            <span><small>{t("process:inspector.runtime")}</small><strong>{formatDuration(selected.runTimeSeconds)}</strong></span>
           </div>
           {selected.backgroundState ? (
             <div>

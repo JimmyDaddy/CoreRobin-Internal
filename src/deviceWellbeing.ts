@@ -54,7 +54,8 @@ export function summarizeSleepBlockers(
     const key = name.trim().toLocaleLowerCase();
     if (!key) continue;
     const existing = grouped.get(key);
-    const systemComponent = application?.systemComponent ?? isKnownSystemSleepBlocker(name);
+    const systemComponent = Boolean(application?.systemComponent)
+      || isKnownSystemSleepBlocker(blocker.processName);
     const processIdentity = application?.actionIdentity
       ?? application?.representativeIdentity
       ?? null;
