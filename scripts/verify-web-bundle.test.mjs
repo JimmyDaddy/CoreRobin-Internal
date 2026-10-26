@@ -37,6 +37,14 @@ function verify() {
 }
 
 describe("production WebView bundle verification", () => {
+  it("rejects development fixtures in the initial production graph", async () => {
+    const path = join(distRoot, ".vite/manifest.json");
+    const manifest = JSON.parse(await readFile(path, "utf8"));
+    manifest["src/mockData.ts"] = { file: "assets/lazy.js", src: "src/mockData.ts" };
+    manifest["index.html"].imports.push("src/mockData.ts");
+    await writeFile(path, JSON.stringify(manifest));
+    expect(verify).toThrow(/must not eagerly load development mock data/);
+  });
   it("counts unlisted workers and styles once, without adding them to initial entry budgets", async () => {
     await writeFile(join(distRoot, "assets/workers/standalone.js"), "/* worker */");
     await writeFile(join(distRoot, "assets/workers/standalone.css"), ":root{}");

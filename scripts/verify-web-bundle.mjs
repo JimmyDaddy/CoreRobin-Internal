@@ -45,6 +45,8 @@ for (const [entry, budget] of Object.entries(budgets.entries)) {
   }
 
   const files = collectInitialFiles(entry);
+  const mockFile = manifest["src/mockData.ts"]?.file;
+  if (mockFile && files.includes(mockFile)) throw new Error(`${entry} must not eagerly load development mock data.`);
   if (files.some((file) => c2paFiles.has(file))) {
     throw new Error(`${entry} must not eagerly load the C2PA reader assets.`);
   }
