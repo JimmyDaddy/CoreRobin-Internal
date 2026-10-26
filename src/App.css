@@ -3656,38 +3656,16 @@ code,
 .cleanup-map__breadcrumbs button:hover { color: var(--blue); background: var(--blue-soft); }
 .cleanup-map__breadcrumbs button[aria-current="page"] { color: var(--text-soft); background: rgba(255, 255, 255, 0.025); }
 
-.cleanup-map__workspace {
-  display: grid;
-  grid-template-columns: minmax(600px, 1.4fr) minmax(360px, 0.6fr);
-  min-height: 680px;
-}
-.cleanup-map__workspace.is-list {
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 0;
-}
-.cleanup-map__workspace.is-list .cleanup-map__visual {
-  align-items: stretch;
-  border-right: 0;
-  border-bottom: 1px solid var(--border);
-}
-.cleanup-map__workspace.is-list .cleanup-map__canvas { width: 100%; }
-.cleanup-map__workspace.is-list .cleanup-map__details {
-  max-height: none;
-}
-
 .cleanup-map__visual {
   display: flex;
   min-width: 0;
-  align-items: center;
   flex-direction: column;
   justify-content: center;
-  padding: 10px 14px 12px;
-  border-right: 1px solid var(--border);
   -webkit-user-select: none;
   user-select: none;
 }
 
-.cleanup-map__canvas { position: relative; width: min(100%, 720px); padding-bottom: 58px; -webkit-user-drag: none; }
+.cleanup-map__canvas { position: relative; -webkit-user-drag: none; }
 .cleanup-map__surface { position: relative; width: 100%; aspect-ratio: 1; contain: layout paint style; }
 .cleanup-map__sunburst {
   display: block;
@@ -3722,16 +3700,6 @@ code,
 .cleanup-map__tooltip small { width: max-content; margin-top: 2px; padding: 2px 5px; border-radius: 999px; font-size: 9px; font-weight: 700; }
 .cleanup-map__tooltip small.is-aggregate { color: var(--blue); background: var(--blue-soft); }
 .cleanup-map__tooltip small.is-protected { color: var(--amber); background: var(--amber-soft); }
-.cleanup-map__hints {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: -1px;
-  color: var(--text-muted);
-  font-size: 11px;
-}
 .cleanup-map__freshness {
   position: absolute;
   z-index: 2;
@@ -3982,13 +3950,12 @@ code,
 .cleanup-map__review > small { color: var(--text-muted); font-size: 11px; }
 
 .cleanup-map__plan {
-  position: fixed;
+  --basket-origin-x: 0%;
+  position: relative;
+  margin: 12px auto 0;
   z-index: 120;
-  right: auto;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  left: 50%;
   display: grid;
-  width: min(720px, calc(100vw - 36px));
+  width: 100%;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 11px;
@@ -4004,31 +3971,14 @@ code,
     0 22px 56px rgba(0, 0, 0, 0.42),
     0 2px 0 rgba(255, 255, 255, 0.035) inset,
     0 0 0 1px rgba(5, 10, 14, 0.64);
-  transform: translateX(-50%);
+  transform: translateX(var(--basket-origin-x));
   transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   backdrop-filter: blur(22px) saturate(1.2);
 }
 
-.main-content:has(.cleanup-map__plan) { padding-bottom: 64px; }
-.main-content:has(.cleanup-map__plan:not(.is-collapsed)) { padding-bottom: 92px; }
-
-.cleanup-map__plan.is-collapsed {
-  width: auto;
-  min-height: 44px;
-  grid-template-columns: auto auto;
-  gap: 8px;
-  padding: 6px 11px 6px 7px;
-  border-radius: 999px;
-}
-.cleanup-map__plan.is-collapsed .cleanup-map__basket-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-.cleanup-map__plan.is-collapsed .cleanup-map__basket-copy { gap: 0; }
-.cleanup-map__plan.is-collapsed .cleanup-map__basket-copy strong { display: none; }
-
 .cleanup-map__plan.is-dragging {
+  --basket-origin-x: -50%;
+  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); width: min(720px, calc(100vw - 36px));
   border-color: rgba(99, 168, 255, 0.62);
   background:
     radial-gradient(circle at 9% 10%, rgba(99, 168, 255, 0.25), transparent 38%),
@@ -4043,7 +3993,7 @@ code,
     radial-gradient(circle at 9% 10%, rgba(86, 207, 147, 0.28), transparent 40%),
     linear-gradient(135deg, rgba(19, 46, 39, 0.98), rgba(10, 24, 23, 0.98));
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48), 0 0 0 3px rgba(86, 207, 147, 0.12), 0 0 42px rgba(86, 207, 147, 0.18);
-  transform: translateX(-50%) translateY(-5px) scale(1.015);
+  transform: translateX(var(--basket-origin-x)) translateY(-5px) scale(1.015);
 }
 
 .cleanup-map__basket-attention { position: absolute; z-index: -1; inset: -8px; pointer-events: none; }
@@ -4083,8 +4033,8 @@ code,
 .cleanup-map__basket-review { min-height: 36px; padding-inline: 12px; border-radius: 10px; white-space: nowrap; }
 
 @keyframes cleanup-basket-attract {
-  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
-  50% { transform: translateX(-50%) translateY(-4px) scale(1.008); }
+  0%, 100% { transform: translateX(var(--basket-origin-x)) translateY(0) scale(1); }
+  50% { transform: translateX(var(--basket-origin-x)) translateY(-4px) scale(1.008); }
 }
 @keyframes cleanup-basket-ripple {
   0% { opacity: 0.5; transform: scale(0.985); }
@@ -6140,8 +6090,7 @@ code,
 }
 
 @media (max-width: 720px) {
-  .cleanup-map__plan { width: calc(100vw - 24px); grid-template-columns: auto minmax(0, 1fr) auto; bottom: 12px; }
-  .cleanup-map__plan.is-collapsed { width: auto; grid-template-columns: auto auto; }
+  .cleanup-map__plan.is-dragging { width: calc(100vw - 24px); bottom: 12px; }
   .cleanup-map__basket-clear { display: none; }
   .cleanup-map__basket-review { padding-inline: 10px; }
   .cleanup-delete-dialog__modes { grid-template-columns: minmax(0, 1fr); }

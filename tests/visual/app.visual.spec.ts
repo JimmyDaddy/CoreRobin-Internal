@@ -95,7 +95,7 @@ test("history export privacy preview at compact width", async ({ page }) => {
 
 test("disk scan result map at compact desktop width", async ({ page }) => {
   await openCleanupResult(page, 900);
-  await page.locator(".cleanup-result-overview").scrollIntoViewIfNeeded();
+  await page.locator(".cleanup-map__scan-stage").scrollIntoViewIfNeeded();
   await stabilize(page);
   await expect(page).toHaveScreenshot("cleanup-result-map-zh-900.png", {
     animations: "disabled",

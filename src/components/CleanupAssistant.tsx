@@ -885,7 +885,6 @@ export function CleanupOperation({
 
       {displayedSnapshot ? (
         <div className="cleanup-results">
-          {snapshot?.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
           <CleanupSpaceMap
             snapshot={displayedSnapshot}
             snapshotStatus={visibleSnapshotStatus}
@@ -906,6 +905,7 @@ export function CleanupOperation({
             onUserActionComplete={onUserActionComplete}
           />
 
+          {snapshot?.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
           {snapshot && !snapshot.partial && !loading ? <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <button
               className="cleanup-result-overview__primary"

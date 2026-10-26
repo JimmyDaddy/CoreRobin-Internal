@@ -17,9 +17,11 @@ async function openResult(page: Page, width: number) {
 async function dragToBasket(page: Page, source: Locator, position?: { x: number; y: number }) {
   await source.scrollIntoViewIfNeeded();
   const from = (await source.boundingBox())!;
-  const basket = (await page.locator(".cleanup-map__dropzone").boundingBox())!;
   await page.mouse.move(from.x + (position?.x ?? from.width / 2), from.y + (position?.y ?? from.height / 2));
   await page.mouse.down();
+  await page.mouse.move(from.x + (position?.x ?? from.width / 2) + 24, from.y + (position?.y ?? from.height / 2), { steps: 3 });
+  await expect(page.locator(".cleanup-map__dropzone")).toHaveClass(/is-dragging/);
+  const basket = (await page.locator(".cleanup-map__dropzone").boundingBox())!;
   await page.mouse.move(basket.x + basket.width / 2, basket.y + basket.height / 2, { steps: 16 });
 }
 

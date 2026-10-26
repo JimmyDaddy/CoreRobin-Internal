@@ -51,6 +51,7 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
+import { CleanupScanEffects, CleanupScanField, useCleanupScanMotion } from "./CleanupScanVisual";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 import { CleanupSettlementDialog } from "./CleanupSettlementDialog";
 import { PathActions } from "./PathActions";
@@ -443,6 +444,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     return () => { cancelled = true; };
   }, [snapshot.root, snapshot.scanId]);
   const arcs = useMemo(() => layoutCleanupMap(focus), [focus]);
+  const visualPhase = snapshotPending && !scanActive ? "paused"
+    : scanActive ? snapshot.partial ? scanPhase ?? "preparing" : "preparing"
+    : scanPhase === "completed" && !snapshot.partial ? "completed" : null;
+  const motionAvailable = useCleanupScanMotion(visualPhase, scanProgress?.scannedEntryCount ?? snapshot.scannedEntryCount, snapshot.scanId);
+  const scanMoving = motionAvailable && !browsing;
   const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
     () => {
@@ -1362,8 +1368,11 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
               </div>
             ) : null}
             {presentation === "map" ? (
+              <div className="cleanup-map__scan-stage" data-phase={visualPhase ?? "idle"} data-running={scanMoving} data-quiet={browsing}>
+              {visualPhase ? <CleanupScanField /> : null}
               <div className="cleanup-map__chart-frame" style={{ aspectRatio: chartFrameRatio }}>
               <div className="cleanup-map__surface">
+                {visualPhase ? <CleanupScanEffects arcs={arcs} phase={visualPhase} scanKey={snapshot.scanId} focusKey={focus.id} running={scanMoving} /> : null}
                 <CleanupSunburstCanvas
                   arcs={arcs}
                   hues={hueMap}
@@ -1398,6 +1407,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   <strong>{formatBytes(focus.allocatedSizeBytes)}</strong>
                   {focusChanged ? <small>{t("cleanup:map.freshness.changedShort")}</small> : null}
                 </button>
+              </div>
               </div>
               </div>
             ) : (
