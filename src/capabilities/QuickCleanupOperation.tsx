@@ -176,8 +176,8 @@ export function QuickCleanupOperation() {
                     <summary>{t("cleanup:quickReview.sources")}</summary>
                     <code>{summary.rootPath}</code>
                     {(summary.sources ?? []).map((source) => <label key={source.path}>
-                      <input type="checkbox" checked={!excludedPaths.has(source.path)} disabled={!isSelected} onChange={() => togglePath(source.path)} />
-                      <span title={source.path}>{source.path}</span><small>{formatBytes(source.byteSize)}</small>
+                      <input type="checkbox" checked={excludedPaths.has(source.path)} disabled={!isSelected} onChange={() => togglePath(source.path)} />
+                      <span title={source.path}>{t("cleanup:fileInsights.processing.kept")} · {source.path}</span><small>{formatBytes(source.byteSize)}</small>
                     </label>)}
                     {summary.limited ? <p>{t("cleanup:quickReview.limited")}</p> : null}
                   </details> : null}

@@ -28,17 +28,18 @@ test("the current problem and action fit a short desktop, and intentional sleep 
   await expect(page.getByRole("button", { name: "这是我计划中的任务", exact: true })).toBeVisible();
 });
 
-test("quick cleanup is opt-in for Trash and reviews kept sources before any deletion", async ({ page }) => {
+test("quick cleanup is opt-in for Trash and reviews kept sources before any deletion", async ({ page }, testInfo) => {
   await openApp(page);
   await page.locator(".sidebar .nav-group button").filter({ hasText: "快速清理" }).click();
   await page.getByRole("button", { name: "开始分析", exact: true }).click();
   await expect(page.getByRole("button", { name: /废纸篓.*219/ })).toHaveAttribute("aria-pressed", "false");
   await page.getByText("查看来源与选择保留", { exact: true }).first().click();
-  await page.getByRole("checkbox", { name: /example.app/ }).uncheck();
+  await page.getByRole("checkbox", { name: /保留.*example.app/ }).check();
   await page.getByRole("button", { name: "清理 579.8 MB", exact: true }).click();
   const confirmation = page.getByRole("alertdialog", { name: "确认快速清理" });
   await expect(confirmation.getByText("保留 1 个位置（所在目录也会保留）")).toBeVisible();
   await expect(confirmation.locator("li").filter({ hasText: "废纸篓" })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("quick-clean-review.png") });
   await confirmation.getByRole("button", { name: "取消", exact: true }).click();
   await expect(confirmation).toHaveCount(0);
   await expect(page.getByText("清理完成", { exact: true })).toHaveCount(0);

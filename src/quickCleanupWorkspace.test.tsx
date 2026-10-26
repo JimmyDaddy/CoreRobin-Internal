@@ -114,8 +114,10 @@ describe("QuickCleanupPage", () => {
     render(<QuickCleanupPage onBack={() => undefined} />);
     fireEvent.click(screen.getByRole("button", { name: "开始分析" }));
     await waitFor(() => expect(screen.getByRole("checkbox")).toBeTruthy());
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
     expect(screen.getByText("废纸篓").closest("button")?.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("checkbox"));
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /^清理 / }));
     expect(quickCleanApi.runQuickCleanup).not.toHaveBeenCalled();
     expect(screen.getByText(/保留 1 个位置/)).toBeTruthy();
