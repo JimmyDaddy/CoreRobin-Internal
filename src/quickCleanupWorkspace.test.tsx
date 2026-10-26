@@ -90,6 +90,7 @@ describe("QuickCleanupPage", () => {
     expect(quickCleanApi.runQuickCleanup).toHaveBeenCalledWith(
       ["user_cache", "logs", "temp_files"],
       expect.any(Function),
+      [],
     );
   });
 
@@ -103,5 +104,22 @@ describe("QuickCleanupPage", () => {
 
     await waitFor(() => expect(screen.getByText(/analysis exploded/)).toBeTruthy());
     expect(screen.getByRole("button", { name: "开始分析" })).toBeTruthy();
+  });
+
+  it("previews sources, keeps Trash opt-in and sends exclusions only after confirmation", async () => {
+    quickCleanApi.analyzeQuickCleanup.mockResolvedValue(SUMMARIES.map((item) => item.category === "user_cache"
+      ? { ...item, rootPath: "/home/demo/cache", sources: [{ path: "/home/demo/cache/keep", byteSize: item.byteSize }] }
+      : { ...item, available: true }));
+    quickCleanApi.runQuickCleanup.mockResolvedValue(RESULT);
+    render(<QuickCleanupPage onBack={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "开始分析" }));
+    await waitFor(() => expect(screen.getByRole("checkbox")).toBeTruthy());
+    expect(screen.getByText("废纸篓").closest("button")?.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /^清理 / }));
+    expect(quickCleanApi.runQuickCleanup).not.toHaveBeenCalled();
+    expect(screen.getByText(/保留 1 个位置/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "永久清理所选类别" }));
+    await waitFor(() => expect(quickCleanApi.runQuickCleanup).toHaveBeenCalledWith(["user_cache", "logs", "temp_files"], expect.any(Function), ["/home/demo/cache/keep"]));
   });
 });

@@ -519,6 +519,9 @@ export interface QuickCleanCategorySummary {
   itemCount: number;
   skippedCount: number;
   available: boolean;
+  rootPath?: string;
+  sources?: Array<{ path: string; byteSize: number }>;
+  limited?: boolean;
 }
 
 export interface QuickCleanProgress {

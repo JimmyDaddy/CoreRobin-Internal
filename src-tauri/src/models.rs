@@ -849,12 +849,24 @@ pub struct QuickCleanCategorySummary {
     pub item_count: u64,
     pub skipped_count: u64,
     pub available: bool,
+    pub root_path: String,
+    pub sources: Vec<QuickCleanSource>,
+    pub limited: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCleanSource {
+    pub path: String,
+    pub byte_size: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuickCleanRequest {
     pub categories: Vec<QuickCleanCategory>,
+    #[serde(default)]
+    pub excluded_paths: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -218,7 +218,20 @@
       "path": "파일 경로",
       "category": "목적"
     },
-    "view": { "label": "보기 방식", "map": "공간 맵", "list": "목록", "search": "이 폴더 검색", "clearSearch": "검색 지우기", "sortSize": "크기순", "sortName": "이름순", "descending": "내림차순", "ascending": "오름차순", "loading": "인덱스 읽는 중…", "loadFailed": "목록을 불러오지 못했습니다. 다시 시도하세요.", "empty": "일치하는 항목이 없습니다" },
+    "view": {
+      "label": "보기 방식",
+      "map": "공간 맵",
+      "list": "목록",
+      "search": "이 폴더 검색",
+      "clearSearch": "검색 지우기",
+      "sortSize": "크기순",
+      "sortName": "이름순",
+      "descending": "내림차순",
+      "ascending": "오름차순",
+      "loading": "인덱스 읽는 중…",
+      "loadFailed": "목록을 불러오지 못했습니다. 다시 시도하세요.",
+      "empty": "일치하는 항목이 없습니다"
+    },
     "ariaLabel": "공간에서 태양을 시각화합니다 {{name}}",
     "back": "한 단계 뒤로 이동",
     "breadcrumbs": "공간 지도 계층 구조",
@@ -446,9 +459,9 @@
     "noGrowth": "간단 비교에서 증가한 디렉터리를 찾지 못했습니다."
   },
   "quickClean": {
-    "kicker": "스캔 불필요",
+    "kicker": "전체 디스크 검사 불필요",
     "title": "빠른 정리",
-    "description": "캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다. 문서와 사진은 건드리지 않아요.",
+    "description": "일반적인 정리 위치를 분석하고 출처와 보관할 항목을 확인한 후 실행합니다.",
     "analyze": "분석 시작",
     "analyzing": "분석 중…",
     "analyzeAgain": "다시 분석",
@@ -460,22 +473,29 @@
     "freedSummary": "{{size}} 확보, 항목 {{count}}개",
     "again": "한 번 더 정리",
     "close": "완료",
-    "total": "확보 가능한 공간",
+    "total": "예상 확보 공간",
     "unavailable": "사용 불가",
     "empty": "정리할 내용이 없습니다. 디스크가 깨끗해요!",
     "skippedNote": "{{count}}개 항목이 사용 중이라 안전하게 건너뛰었습니다.",
-    "noRiskNote": "재생성 가능한 캐시와 버려진 휴지통 내용만 제거합니다. 문서, 사진, 로그인 정보는 제외됩니다.",
+    "noRiskNote": "선택한 위치만 처리합니다. 휴지통은 따로 선택하세요. 영구 삭제되므로 출처를 먼저 확인하세요.",
     "category": {
       "user_cache": "앱 캐시",
       "logs": "로그 파일",
       "temp_files": "임시 파일",
       "trash": "휴지통"
     },
-    "launcherDescription": "스캔 없이 캐시, 로그, 임시 파일, 휴지통을 한 번에 정리합니다.",
+    "launcherDescription": "일반적인 정리 위치를 분석하고 보관할 항목을 선택합니다.",
     "open": "빠른 정리 열기",
-    "back": "디스크 스캔으로 돌아가기",    "guideTitle": "더 철저하게 정리할까요?",
+    "back": "디스크 스캔으로 돌아가기",
+    "guideTitle": "더 철저하게 정리할까요?",
     "guideDescription": "전체 디스크를 스캔해 실제 파일 경로별 용량을 확인한 뒤 정리할 항목을 고를 수 있습니다.",
     "guideAction": "디스크 스캔하기",
     "analyzingHint": "캐시, 로그, 임시 파일, 휴지통을 집계하는 중…"
+  },
+  "quickReview": {
+    "sources": "출처 확인 및 보관할 항목 선택",
+    "limited": "가장 큰 위치를 최대 128개 표시합니다. 큰 폴더는 일부만 집계될 수 있습니다. 표시되지 않은 위치도 선택한 범주에 포함되므로 확실하지 않으면 범주를 해제하세요.",
+    "trashWarning": "휴지통은 기본 선택되지 않습니다. 개인 파일이 있을 수 있으며 비우면 되돌릴 수 없습니다.",
+    "excluded": "상위 폴더를 포함해 {{count}}개 위치 보관"
   }
 }

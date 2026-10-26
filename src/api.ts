@@ -1153,10 +1153,10 @@ export async function clearPersistedCleanupScan(): Promise<void> {
 export async function analyzeQuickCleanup(): Promise<QuickCleanCategorySummary[]> {
   if (canUseDevelopmentMock()) {
     return [
-      { category: "user_cache", byteSize: 1_240_000_000, itemCount: 18_420, skippedCount: 3, available: true },
-      { category: "logs", byteSize: 96_000_000, itemCount: 2_104, skippedCount: 0, available: true },
-      { category: "temp_files", byteSize: 512_000_000, itemCount: 8_870, skippedCount: 12, available: true },
-      { category: "trash", byteSize: 230_000_000, itemCount: 96, skippedCount: 0, available: true },
+      { category: "user_cache", byteSize: 1_240_000_000, itemCount: 18_420, skippedCount: 3, available: true, rootPath: "/Users/demo/Library/Caches", sources: [{ path: "/Users/demo/Library/Caches/example.app", byteSize: 1240000000 }], limited: false },
+      { category: "logs", byteSize: 96_000_000, itemCount: 2_104, skippedCount: 0, available: true, rootPath: "/Users/demo/Library/Logs", sources: [{ path: "/Users/demo/Library/Logs/example.log", byteSize: 96000000 }], limited: false },
+      { category: "temp_files", byteSize: 512_000_000, itemCount: 8_870, skippedCount: 12, available: true, rootPath: "/private/var/folders/demo/T", sources: [{ path: "/private/var/folders/demo/T/example.tmp", byteSize: 512000000 }], limited: false },
+      { category: "trash", byteSize: 230_000_000, itemCount: 96, skippedCount: 0, available: true, rootPath: "/Users/demo/.Trash", sources: [{ path: "/Users/demo/.Trash/old-file", byteSize: 230000000 }], limited: false },
     ];
   }
   return invoke<QuickCleanCategorySummary[]>("analyze_quick_cleanup_command");
@@ -1170,36 +1170,25 @@ export async function getQuickCleanupState(): Promise<import("./capabilities/use
 export async function runQuickCleanup(
   categories: QuickCleanCategory[],
   onProgress: (progress: QuickCleanProgress) => void,
+  excludedPaths: string[] = [],
 ): Promise<QuickCleanResult> {
   if (canUseDevelopmentMock()) {
-    const ticks: QuickCleanCategory[] = ["user_cache", "logs", "temp_files", "trash"];
-    for (const category of ticks) {
+    const results = (await analyzeQuickCleanup()).filter((item) => categories.includes(item.category)).map((item) => {
+      const skipped = (item.sources ?? []).filter((source) => excludedPaths.includes(source.path));
+      return { category: item.category, freedBytes: Math.max(0, item.byteSize - skipped.reduce((sum, source) => sum + source.byteSize, 0)), freedItems: skipped.length ? 0 : 1, skippedItems: skipped.length };
+    });
+    let freedBytes = 0;
+    for (const item of results) {
       await new Promise((resolve) => window.setTimeout(resolve, 350));
-      onProgress({
-        category,
-        processedItemCount: 1,
-        totalItemCount: 1,
-        freedBytes: 1_000_000_000,
-        freedItems: 1,
-        skippedItems: 0,
-        currentPath: category,
-      });
+      freedBytes += item.freedBytes;
+      onProgress({ category: item.category, processedItemCount: 1, totalItemCount: 1, freedBytes, freedItems: 1, skippedItems: item.skippedItems, currentPath: item.category });
     }
-    return {
-      freedBytes: 2_078_000_000,
-      freedItems: 4,
-      skippedItems: 0,
-      results: [
-        { category: "user_cache", freedBytes: 1_240_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "logs", freedBytes: 96_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "temp_files", freedBytes: 512_000_000, freedItems: 1, skippedItems: 0 },
-        { category: "trash", freedBytes: 230_000_000, freedItems: 1, skippedItems: 0 },
-      ],
-    };
+    return { freedBytes, freedItems: results.reduce((sum, item) => sum + item.freedItems, 0), skippedItems: results.reduce((sum, item) => sum + item.skippedItems, 0), results };
   }
+
   const progressChannel = new Channel<QuickCleanProgress>(onProgress);
   return invoke<QuickCleanResult>("run_quick_cleanup_command", {
-    request: { categories },
+    request: { categories, excludedPaths },
     onProgress: progressChannel,
   });
 }

@@ -5,6 +5,13 @@
   padding: 18px 22px;
 }
 
+.quick-clean__sources { padding: 8px; font-size: 11px; }
+.quick-clean__sources summary { cursor: pointer; color: var(--text-soft); }
+.quick-clean__sources code { display: block; overflow-wrap: anywhere; margin-block: 8px; }
+.quick-clean__sources label { display: flex; align-items: start; gap: 6px; margin-block: 8px; }
+.quick-clean__sources label span { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.quick-clean__sources small { white-space: nowrap; }
+
 .quick-clean-page .quick-clean {
   width: 100%;
   margin: 0;

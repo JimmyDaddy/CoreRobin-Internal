@@ -218,7 +218,20 @@
       "path": "Rutas de archivos",
       "category": "Propósito"
     },
-    "view": { "label": "Ver como", "map": "Mapa de espacio", "list": "Lista", "search": "Buscar en esta carpeta", "clearSearch": "Borrar búsqueda", "sortSize": "Ordenar por tamaño", "sortName": "Ordenar por nombre", "descending": "Descendente", "ascending": "Ascendente", "loading": "Leyendo el índice…", "loadFailed": "No se pudo cargar la lista. Inténtalo de nuevo.", "empty": "No hay elementos coincidentes" },
+    "view": {
+      "label": "Ver como",
+      "map": "Mapa de espacio",
+      "list": "Lista",
+      "search": "Buscar en esta carpeta",
+      "clearSearch": "Borrar búsqueda",
+      "sortSize": "Ordenar por tamaño",
+      "sortName": "Ordenar por nombre",
+      "descending": "Descendente",
+      "ascending": "Ascendente",
+      "loading": "Leyendo el índice…",
+      "loadFailed": "No se pudo cargar la lista. Inténtalo de nuevo.",
+      "empty": "No hay elementos coincidentes"
+    },
     "ariaLabel": "Mapa circular para {{name}}",
     "back": "Regresar un nivel",
     "breadcrumbs": "Jerarquía del mapa de espacio",
@@ -446,9 +459,9 @@
     "noGrowth": "No se encontró ningún directorio en crecimiento en la comparación compacta."
   },
   "quickClean": {
-    "kicker": "Sin escaneo",
+    "kicker": "Sin analizar todo el disco",
     "title": "Limpieza rápida",
-    "description": "Limpia cachés, registros, archivos temporales y la papelera con un toque. Tus documentos y fotos quedan intactos.",
+    "description": "Analiza ubicaciones habituales, revisa sus orígenes y elige qué conservar antes de confirmar.",
     "analyze": "Analizar",
     "analyzing": "Analizando…",
     "analyzeAgain": "Volver a analizar",
@@ -460,22 +473,29 @@
     "freedSummary": "{{size}} liberados en {{count}} elementos",
     "again": "Limpiar de nuevo",
     "close": "Hecho",
-    "total": "Total recuperable",
+    "total": "Espacio recuperable estimado",
     "unavailable": "No disponible",
     "empty": "No hay nada que limpiar: ¡tu disco está impecable!",
     "skippedNote": "{{count}} elementos estaban en uso y se omitieron.",
-    "noRiskNote": "Solo se eliminan cachés regenerables y el contenido de la papelera: nunca tus documentos, fotos ni credenciales.",
+    "noRiskNote": "Solo se procesan ubicaciones seleccionadas. Elige la papelera por separado; el borrado es permanente. Revisa los orígenes.",
     "category": {
       "user_cache": "Cachés de apps",
       "logs": "Registros",
       "temp_files": "Archivos temporales",
       "trash": "Papelera"
     },
-    "launcherDescription": "Sin escaneo: limpia cachés, registros, temporales y papelera con un toque.",
+    "launcherDescription": "Analiza ubicaciones habituales y elige qué conservar.",
     "open": "Abrir limpieza rápida",
-    "back": "Volver al escaneo de espacio",    "guideTitle": "¿Quieres una limpieza más profunda?",
+    "back": "Volver al escaneo de espacio",
+    "guideTitle": "¿Quieres una limpieza más profunda?",
     "guideDescription": "Escanea todo el disco, mira el uso por ruta real y decide qué limpiar.",
     "guideAction": "Ir al escaneo de disco",
     "analyzingHint": "Midiendo cachés, registros, temporales y papelera…"
+  },
+  "quickReview": {
+    "sources": "Revisar orígenes y elegir qué conservar",
+    "limited": "Muestra hasta 128 ubicaciones más grandes. Las carpetas grandes pueden contarse parcialmente. Las demás siguen incluidas; desmarca la categoría si tienes dudas.",
+    "trashWarning": "La papelera no se selecciona por defecto. Puede contener archivos personales y vaciarla es irreversible.",
+    "excluded": "Se conservan {{count}} ubicaciones y sus carpetas contenedoras"
   }
 }

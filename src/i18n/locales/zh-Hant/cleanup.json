@@ -218,7 +218,20 @@
       "path": "檔案路徑",
       "category": "用途分類"
     },
-    "view": { "label": "瀏覽方式", "map": "空間圖", "list": "列表", "search": "搜尋目前資料夾", "clearSearch": "清除搜尋", "sortSize": "依大小", "sortName": "依名稱", "descending": "由大至小", "ascending": "由小至大", "loading": "正在讀取索引…", "loadFailed": "無法載入列表，請重試", "empty": "目前資料夾沒有相符內容" },
+    "view": {
+      "label": "瀏覽方式",
+      "map": "空間圖",
+      "list": "列表",
+      "search": "搜尋目前資料夾",
+      "clearSearch": "清除搜尋",
+      "sortSize": "依大小",
+      "sortName": "依名稱",
+      "descending": "由大至小",
+      "ascending": "由小至大",
+      "loading": "正在讀取索引…",
+      "loadFailed": "無法載入列表，請重試",
+      "empty": "目前資料夾沒有相符內容"
+    },
     "ariaLabel": "{{name}} 的空間扇形圖",
     "back": "返回上一級",
     "breadcrumbs": "空間圖層級",
@@ -446,9 +459,9 @@
     "noGrowth": "精簡比較中未發現增長的目錄。"
   },
   "quickClean": {
-    "kicker": "無需掃描",
+    "kicker": "無需全碟掃描",
     "title": "快速清理",
-    "description": "一鍵清理快取、日誌、暫存檔案與資源回收筒，不會碰你的文件與相片。",
+    "description": "分析常用清理位置，查看來源並選擇需要保留的內容，再確認清理。",
     "analyze": "開始分析",
     "analyzing": "正在分析…",
     "analyzeAgain": "重新分析",
@@ -460,22 +473,29 @@
     "freedSummary": "釋放了 {{size}}，共 {{count}} 個項目",
     "again": "再清理一次",
     "close": "完成",
-    "total": "共可釋放",
+    "total": "預計共可釋放",
     "unavailable": "無法使用",
     "empty": "沒有可清理的內容，磁碟很乾淨！",
     "skippedNote": "{{count}} 個項目正在被占用，已安全跳過。",
-    "noRiskNote": "只清理可再生的快取與已丟棄的資源回收筒內容，不含你的文件、相片與登入資訊。",
+    "noRiskNote": "只處理所選位置。垃圾桶需單獨選擇；清理會永久刪除內容，請先檢查來源。",
     "category": {
       "user_cache": "應用程式快取",
       "logs": "日誌檔",
       "temp_files": "暫存檔",
       "trash": "資源回收筒"
     },
-    "launcherDescription": "不掃描，一鍵清理快取、日誌、暫存檔與資源回收筒。",
+    "launcherDescription": "分析常用清理位置，選擇要保留的內容。",
     "open": "開啟快速清理",
-    "back": "返回空間掃描",    "guideTitle": "想清理得更徹底？",
+    "back": "返回空間掃描",
+    "guideTitle": "想清理得更徹底？",
     "guideDescription": "深度掃描整個磁碟，按真實檔案路徑查看空間占用，再決定清理什麼。",
     "guideAction": "前往磁碟掃描",
     "analyzingHint": "正在統計快取、日誌、暫存檔與資源回收筒…"
+  },
+  "quickReview": {
+    "sources": "查看來源與選擇保留",
+    "limited": "僅顯示最大的 128 個位置；統計大型目錄時可能提前停止。未顯示的位置仍屬於所選類別，不確定時請取消整個類別。",
+    "trashWarning": "垃圾桶預設不選。裡面可能有個人檔案，清空後無法復原。",
+    "excluded": "保留 {{count}} 個位置（所在目錄也會保留）"
   }
 }

@@ -218,7 +218,20 @@
       "path": "Chemins de fichiers",
       "category": "Utilisation"
     },
-    "view": { "label": "Mode d’affichage", "map": "Carte d’espace", "list": "Liste", "search": "Rechercher dans ce dossier", "clearSearch": "Effacer la recherche", "sortSize": "Trier par taille", "sortName": "Trier par nom", "descending": "Décroissant", "ascending": "Croissant", "loading": "Lecture de l’index…", "loadFailed": "Impossible de charger la liste. Réessayez.", "empty": "Aucun élément correspondant" },
+    "view": {
+      "label": "Mode d’affichage",
+      "map": "Carte d’espace",
+      "list": "Liste",
+      "search": "Rechercher dans ce dossier",
+      "clearSearch": "Effacer la recherche",
+      "sortSize": "Trier par taille",
+      "sortName": "Trier par nom",
+      "descending": "Décroissant",
+      "ascending": "Croissant",
+      "loading": "Lecture de l’index…",
+      "loadFailed": "Impossible de charger la liste. Réessayez.",
+      "empty": "Aucun élément correspondant"
+    },
     "ariaLabel": "Carte en forme de soleil pour {{name}}",
     "back": "Revenir d'un niveau",
     "breadcrumbs": "Hiérarchie de la carte de l'espace",
@@ -446,9 +459,9 @@
     "noGrowth": "Aucun dossier en croissance dans la comparaison compacte."
   },
   "quickClean": {
-    "kicker": "Aucune analyse requise",
+    "kicker": "Sans analyse complète du disque",
     "title": "Nettoyage rapide",
-    "description": "Videz caches, journaux, fichiers temporaires et corbeille en un geste. Vos documents et photos restent intacts.",
+    "description": "Analysez les emplacements habituels, vérifiez les sources et choisissez quoi conserver avant de confirmer.",
     "analyze": "Analyser",
     "analyzing": "Analyse…",
     "analyzeAgain": "Réanalyser",
@@ -460,22 +473,29 @@
     "freedSummary": "{{size}} libérés sur {{count}} éléments",
     "again": "Nettoyer à nouveau",
     "close": "Fermer",
-    "total": "Total récupérable",
+    "total": "Espace récupérable estimé",
     "unavailable": "Indisponible",
     "empty": "Rien à nettoyer — votre disque est impeccable !",
     "skippedNote": "{{count}} éléments en cours d'utilisation ont été ignorés.",
-    "noRiskNote": "Seuls les caches régénérables et le contenu de la corbeille sont supprimés — jamais vos documents, photos ou identifiants.",
+    "noRiskNote": "Seuls les emplacements choisis sont traités. Sélectionnez la corbeille séparément ; la suppression est définitive. Vérifiez les sources.",
     "category": {
       "user_cache": "Caches d'apps",
       "logs": "Journaux",
       "temp_files": "Fichiers temporaires",
       "trash": "Corbeille"
     },
-    "launcherDescription": "Sans analyse : videz caches, journaux, fichiers temporaires et corbeille en un geste.",
+    "launcherDescription": "Analysez les emplacements habituels et choisissez quoi conserver.",
     "open": "Ouvrir le nettoyage rapide",
-    "back": "Retour à l'analyse de l'espace",    "guideTitle": "Un nettoyage plus poussé ?",
+    "back": "Retour à l'analyse de l'espace",
+    "guideTitle": "Un nettoyage plus poussé ?",
     "guideDescription": "Analysez tout le disque, consultez l'usage par chemin réel, puis décidez quoi nettoyer.",
     "guideAction": "Aller à l'analyse du disque",
     "analyzingHint": "Mesure des caches, journaux, temporaires et corbeille…"
+  },
+  "quickReview": {
+    "sources": "Vérifier les sources et choisir quoi conserver",
+    "limited": "Affiche les 128 emplacements les plus volumineux. Les grands dossiers peuvent être comptés partiellement. Les autres restent inclus ; désélectionnez la catégorie en cas de doute.",
+    "trashWarning": "La corbeille est décochée par défaut. Elle peut contenir des fichiers personnels ; la vider est irréversible.",
+    "excluded": "{{count}} emplacements conservés avec leurs dossiers parents"
   }
 }
