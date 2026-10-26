@@ -222,10 +222,12 @@ describe("cleanup scan lifecycle", () => {
     render(<Harness />);
     await waitFor(() => expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalled());
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 2, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("cleanup-new")).toBeTruthy();
     const changed = latestSnapshot(); changed.root.sizeBytes = 123;
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(changed);
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 3, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("123 bytes")).toBeTruthy();
     expect(cleanupApi.startCleanupScan).not.toHaveBeenCalled();
@@ -238,8 +240,22 @@ describe("cleanup scan lifecycle", () => {
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("expired")).toBeTruthy();
     cleanupApi.loadPersistedCleanupScan.mockResolvedValue(null);
+    capabilityChanges.read.mockResolvedValue({ diskRevision: 3, diskRequiresRescan: false });
     await act(async () => { await capabilityChanges.callback?.(); });
     expect(screen.getByText("no-snapshot")).toBeTruthy();
+  });
+
+  it("does not reload a stable index during repeated focus and recovery notifications", async () => {
+    cleanupApi.loadPersistedCleanupScan.mockResolvedValue(latestSnapshot());
+    render(<Harness />);
+    await screen.findByText("cleanup-new");
+    for (let index = 0; index < 12; index += 1) {
+      await act(async () => { await capabilityChanges.callback?.(); });
+    }
+    expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalledOnce();
+    capabilityChanges.read.mockRejectedValueOnce(new Error("temporary transport error"));
+    await act(async () => { await capabilityChanges.callback?.(); });
+    expect(cleanupApi.loadPersistedCleanupScan).toHaveBeenCalledOnce();
   });
 });
 

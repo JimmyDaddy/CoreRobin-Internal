@@ -45,6 +45,12 @@ const INDEX_VACUUM_PAGES: usize = 8_192;
 // (e.g. discarding an old scan) instead of aborting the whole scan with
 // SQLITE_BUSY once the busy handler gives up.
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
+const SQLITE_READ_BUDGET: Duration = Duration::from_secs(5);
+const MISSING_ANCHOR_QUERY: &str = "SELECT EXISTS(
+  SELECT 1 FROM scan_segments AS segment WHERE segment.scan_id = ?1
+  AND NOT EXISTS(SELECT 1 FROM nodes INDEXED BY nodes_by_path
+    WHERE nodes.scan_id = ?1 AND nodes.absolute_path = segment.path
+    AND nodes.kind IN ('folder', 'restricted')))";
 // Delete scan rows in bounded batches so no single statement holds the WAL
 // write lock long enough to stall a concurrent scan worker.
 const INDEX_DELETE_BATCH: usize = 5_000;
@@ -4419,20 +4425,9 @@ fn scan_has_missing_nodes(
         && target_kind == target_kind_text(CleanupScanTargetKind::SystemDisk)
     {
         let missing_anchor = connection
-            .query_row(
-                "SELECT EXISTS(
-                   SELECT 1 FROM scan_segments AS segment
-                   WHERE segment.scan_id = ?1
-                     AND NOT EXISTS(
-                       SELECT 1 FROM nodes
-                       WHERE nodes.scan_id = ?1
-                         AND nodes.absolute_path = segment.path
-                         AND nodes.kind IN ('folder', 'restricted')
-                     )
-                 )",
-                params![scan_id],
-                |row| row.get::<_, i64>(0),
-            )
+            .query_row(MISSING_ANCHOR_QUERY, params![scan_id], |row| {
+                row.get::<_, i64>(0)
+            })
             .map_err(index_error)?
             != 0;
         if missing_anchor {
@@ -4719,9 +4714,17 @@ fn open_index_read_only(path: &Path) -> Result<Connection, CommandError> {
     let connection =
         Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(index_error)?;
     connection
-        .busy_timeout(SQLITE_BUSY_TIMEOUT)
+        .busy_timeout(Duration::from_secs(1))
         .map_err(index_error)?;
+    attach_read_budget(&connection, SQLITE_READ_BUDGET)?;
     Ok(connection)
+}
+
+fn attach_read_budget(connection: &Connection, budget: Duration) -> Result<(), CommandError> {
+    let started = Instant::now();
+    connection
+        .progress_handler(10_000, Some(move || started.elapsed() >= budget))
+        .map_err(index_error)
 }
 
 fn checkpoint_index(connection: &Connection) -> Result<(), CommandError> {
@@ -5996,6 +5999,31 @@ mod tests {
         );
 
         assert!(version_tuple >= (3, 51, 3), "SQLite version was {version}");
+    }
+
+    #[test]
+    fn legacy_anchor_validation_uses_path_lookups_and_reads_are_interruptible() {
+        let storage = tempdir().unwrap();
+        let connection = open_index(&storage.path().join("scan.sqlite")).unwrap();
+        initialize_schema(&connection).unwrap();
+        let plans = connection
+            .prepare(&format!("EXPLAIN QUERY PLAN {MISSING_ANCHOR_QUERY}"))
+            .unwrap()
+            .query_map(["scan"], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert!(plans.iter().any(|plan| plan.contains("nodes_by_path")));
+        assert!(!plans.iter().any(|plan| plan.contains("nodes_file_reclaim")));
+        attach_read_budget(&connection, Duration::ZERO).unwrap();
+        let result = connection.query_row(
+            "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1000000) SELECT SUM(x) FROM n",
+            [], |row| row.get::<_, i64>(0),
+        );
+        assert!(
+            matches!(result, Err(rusqlite::Error::SqliteFailure(error, _))
+            if error.code == rusqlite::ErrorCode::OperationInterrupted)
+        );
     }
 
     #[test]

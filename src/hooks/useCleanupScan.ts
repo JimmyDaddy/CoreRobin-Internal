@@ -68,6 +68,9 @@ export function useCleanupScan() {
   const snapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const preScanSnapshotStatusRef = useRef<CleanupSnapshotStatus>("current");
   const snapshotSyncRef = useRef<Promise<CleanupScan | null> | null>(null);
+  const initialReadRef = useRef<Promise<void> | null>(null);
+  const cachedRevisionRef = useRef<number | null>(null);
+  const cacheInitializedRef = useRef(false);
   const [refreshStatus, setRefreshStatus] = useState<CleanupScanJobStatus | null>(null);
   const [refreshError, setRefreshError] = useState<CommandError | null>(null);
 
@@ -81,14 +84,19 @@ export function useCleanupScan() {
 
   useEffect(() => {
     let disposed = false;
-    void loadPersistedCleanupScan()
-      .then((persisted) => {
+    initialReadRef.current = (async () => {
+      const shared = await readApplicationCapabilities().catch(() => null);
+      const persisted = await loadPersistedCleanupScan();
+      if (!disposed) {
+        cacheInitializedRef.current = true;
+        cachedRevisionRef.current = shared?.diskRevision ?? null;
+      }
         if (!disposed && persisted && !persisted.partial) previousCompleteRef.current = persisted;
         if (disposed || stateTouched.current || !persisted) return;
         snapshotRef.current = persisted;
         setSnapshot(persisted);
         setSnapshotStatus("current");
-      })
+      })()
       .catch(() => {
         // A missing or unavailable disk cache is equivalent to no prior scan.
       });
@@ -133,10 +141,17 @@ export function useCleanupScan() {
   }, [scanHistory.setValue]);
 
   useCapabilityChanges("disk", async () => {
-    // A notification arriving during a read needs a fresh read after that one.
+    await initialReadRef.current;
     await snapshotSyncRef.current?.catch(() => null);
-    const snapshot = await reloadLatestSnapshot();
     const shared = await readApplicationCapabilities().catch(() => null);
+    // Focus and lost-event recovery poll only the cheap revision. A stable
+    // generation must not repeatedly materialize and validate millions of nodes.
+    let snapshot = snapshotRef.current;
+    if (!cacheInitializedRef.current || (shared && shared.diskRevision !== cachedRevisionRef.current)) {
+      snapshot = await reloadLatestSnapshot();
+      cacheInitializedRef.current = true;
+      cachedRevisionRef.current = shared?.diskRevision ?? null;
+    }
     if (shared?.diskRequiresRescan && snapshot && snapshotRef.current?.scanId === snapshot.scanId) setSnapshotStatus("expired");
     return snapshot;
   });
