@@ -447,8 +447,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   const visualPhase = snapshotPending && !scanActive ? "paused"
     : scanActive ? snapshot.partial ? scanPhase ?? "preparing" : "preparing"
     : (scanPhase === "completed" || scanPhase === null) && !snapshot.partial ? "completed" : null;
-  const motionAvailable = useCleanupScanMotion(visualPhase);
-  const scanMoving = motionAvailable && !browsing;
+  // Browsing holds incoming geometry; the worker and document own the motion clock.
+  const scanMoving = useCleanupScanMotion(visualPhase);
   const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
     () => {

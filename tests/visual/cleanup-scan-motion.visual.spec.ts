@@ -37,12 +37,46 @@ test("live discoveries share the original canvas and wait while the user is brow
   const before = await page.locator(".cleanup-map__center-control strong").innerText();
   await page.getByRole("button", { name: "New batch", exact: true }).evaluate((e) => (e as HTMLButtonElement).click());
   await expect(page.getByRole("button", { name: "Update map", exact: true })).toBeVisible();
-  await expect(page.locator(".cleanup-map__scan-stage")).toHaveAttribute("data-running", "false");
+  await expect(page.locator(".cleanup-map__scan-stage")).toHaveAttribute("data-running", "true");
   await expect(page.locator(".cleanup-map__center-control strong")).toHaveText(before);
   await page.locator("#cleanup-title").hover();
   await expect(page.locator(".cleanup-map__center-control strong")).not.toHaveText(before);
   await expect(canvas).toHaveAttribute("data-original-canvas", "true");
   await page.screenshot({ path: test.info().outputPath("live-scan.png"), fullPage: true });
+});
+
+test("scrolling the map under a stationary pointer keeps the existing scan clock running", async ({ page }) => {
+  // The desktop scrolls its content pane; the standalone harness clips its document.
+  await page.locator(".visual-harness").evaluate((element) => {
+    element.style.display = "block";
+    element.style.height = "100vh";
+    element.style.overflowY = "auto";
+  });
+  const scene = page.locator(".cleanup-map__scan-stage");
+  const orbit = page.locator(".scan-fx-orbit").first();
+  const before = (await scene.boundingBox())!;
+  const pointerY = Math.min(before.y - 16, 680);
+  await page.mouse.move(before.x + before.width / 2, pointerY);
+  await expect(scene).toHaveAttribute("data-quiet", "false");
+  const clock = await orbit.evaluate((element) => {
+    const animation = element.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!;
+    animation.id = "scroll-orbit";
+    return animation.currentTime as number;
+  });
+  await page.mouse.wheel(0, Math.max(180, before.y - pointerY + 40));
+  await expect.poll(async () => (await scene.boundingBox())!.y).toBeLessThan(before.y);
+  // Refresh Chromium's post-scroll hit test without changing the pointer position.
+  await page.mouse.move(before.x + before.width / 2, pointerY);
+  await expect(scene).toHaveAttribute("data-quiet", "true");
+  await expect(scene).toHaveAttribute("data-running", "true");
+  await expect.poll(() => orbit.evaluate((element) => getComputedStyle(element).animationPlayState)).toBe("running");
+  await page.waitForTimeout(350);
+  const after = await orbit.evaluate((element) => {
+    const animation = element.getAnimations().find((a) => a instanceof CSSAnimation && a.animationName === "scan-orbit")!;
+    return { id: animation.id, time: animation.currentTime as number };
+  });
+  expect(after.id).toBe("scroll-orbit");
+  expect(after.time).toBeGreaterThan(clock + 300);
 });
 
 test("pointer navigation resumes the existing orbit instead of leaving it paused or restarting", async ({ page }) => {
