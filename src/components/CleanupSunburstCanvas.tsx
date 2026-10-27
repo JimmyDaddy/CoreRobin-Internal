@@ -1,6 +1,5 @@
 import {
   memo,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -21,16 +20,19 @@ import { cleanupHatchPattern } from "../cleanupCanvasPatterns";
 import { cleanupNodeProtection } from "../cleanupProtection";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { formatBytes } from "../utils";
+import type { CleanupScanJobPhase } from "../types";
+import { CleanupScanScene, drawCleanupScanScene } from "../cleanupScanScene";
 
 interface DrawableArc {
   arc: CleanupMapArc;
   visual: CleanupNodeVisual;
 }
 
-interface CollectedLayerCacheEntry {
+interface PieLayerCacheEntry {
   arcs: readonly DrawableArc[];
   backingSize: number;
   collectedIds: ReadonlySet<string>;
+  changedIds: ReadonlySet<string>;
   layer: HTMLCanvasElement;
   pixelRatio: number;
   themeKey: string;
@@ -51,6 +53,9 @@ interface CleanupSunburstCanvasProps {
   collectedIds: ReadonlySet<string>;
   focusKey: string;
   ariaLabel: string;
+  scanKey?: string;
+  scanPhase?: CleanupScanJobPhase | null;
+  motionAllowed?: boolean;
   onSelect: (node: CleanupMapNode | null) => void;
   onActivate: (node: CleanupMapNode) => void;
   onCollect: (node: CleanupMapNode) => void;
@@ -66,6 +71,9 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   collectedIds,
   focusKey,
   ariaLabel,
+  scanKey = "",
+  scanPhase = null,
+  motionAllowed = false,
   onSelect,
   onActivate,
   onCollect,
@@ -75,10 +83,9 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   const { t } = useAppTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef(0);
-  const previousArcsRef = useRef<DrawableArc[]>([]);
-  const previousFocusRef = useRef(focusKey);
+  const sceneRef = useRef(new CleanupScanScene());
   const hoveredIdRef = useRef<string | null>(null);
-  const collectedLayerCacheRef = useRef<CollectedLayerCacheEntry[]>([]);
+  const pieLayerCacheRef = useRef<PieLayerCacheEntry[]>([]);
   const [canvasWidth, setCanvasWidth] = useState(CLEANUP_MAP_SIZE);
   const [tooltip, setTooltip] = useState<CleanupMapTooltip | null>(null);
   const firstRingBytes = useMemo(
@@ -105,7 +112,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
@@ -117,68 +124,35 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     const context = canvas.getContext("2d", { alpha: true });
     if (!context) return;
     const themeKey = cleanupCanvasThemeKey(canvas);
-
-    window.cancelAnimationFrame(animationFrameRef.current);
-    const previous = previousArcsRef.current;
-    const focusChanged = previousFocusRef.current !== focusKey;
-    const shouldAnimate = previous.length > 0 &&
-      (focusChanged || previous !== drawableArcs) &&
-      !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const currentCollectedLayer = collectedLayer(
-      collectedLayerCacheRef.current,
-      canvas,
-      drawableArcs,
-      collectedIds,
-      backingSize,
-      pixelRatio,
-      themeKey,
-    );
-    const previousCollectedLayer = shouldAnimate
-      ? collectedLayer(
-          collectedLayerCacheRef.current,
-          canvas,
-          previous,
-          collectedIds,
-          backingSize,
-          pixelRatio,
-          themeKey,
-        )
-      : null;
-    const restrictedPattern = cleanupHatchPattern(context, {
-      color: "rgba(232, 220, 255, 0.72)",
-      lineWidth: 2,
-      pixelRatio,
-      spacing: 8,
-      themeKey,
-    });
-
-    const paint = (progress: number) => {
+    const layer = pieLayer(pieLayerCacheRef.current, canvas, drawableArcs,
+      changedIds, collectedIds, backingSize, pixelRatio, themeKey);
+    const scene = sceneRef.current;
+    scene.update(arcs, scanKey, focusKey, scanPhase);
+    const selected = drawableArcs.find(({ arc }) => arc.node.id === selectedId);
+    const light = themeKey.includes("light");
+    let lastPaint = -Infinity;
+    const paint = (now: number) => {
+      const continuing = scene.advance(now, motionAllowed);
       resetCanvas(context, backingSize);
       configureLogicalCoordinates(context, canvasWidth, pixelRatio);
-      if (shouldAnimate) {
-        drawArcCollection(context, previous, 1 - progress, 1 - progress * 0.035, selectedId, changedIds, collectedIds, previousCollectedLayer, restrictedPattern);
-        drawArcCollection(context, drawableArcs, progress, 0.94 + progress * 0.06, selectedId, changedIds, collectedIds, currentCollectedLayer, restrictedPattern);
-      } else {
-        drawArcCollection(context, drawableArcs, 1, 1, selectedId, changedIds, collectedIds, currentCollectedLayer, restrictedPattern);
+      // Geometry commits atomically. The pie never zooms independently of its halo.
+      if (layer) context.drawImage(layer, 0, 0, CLEANUP_MAP_SIZE, CLEANUP_MAP_SIZE);
+      drawCleanupScanScene(context, arcs, scene, motionAllowed, light);
+      if (selected) drawArcState(context, selected, true, false);
+      lastPaint = now;
+      return continuing;
+    };
+    const tick = (now: number) => {
+      // Cache the expensive 640-sector pie; animate only its small overlay at 30fps.
+      if (now - lastPaint < 1_000 / 30 - 1) {
+        animationFrameRef.current = window.requestAnimationFrame(tick);
+      } else if (paint(now)) {
+        animationFrameRef.current = window.requestAnimationFrame(tick);
       }
     };
-
-    if (shouldAnimate) {
-      const startedAt = performance.now();
-      const tick = (now: number) => {
-        const linear = Math.min(1, (now - startedAt) / 240);
-        paint(easeOutCubic(linear));
-        if (linear < 1) animationFrameRef.current = window.requestAnimationFrame(tick);
-      };
-      animationFrameRef.current = window.requestAnimationFrame(tick);
-    } else {
-      paint(1);
-    }
-
-    previousArcsRef.current = drawableArcs;
-    previousFocusRef.current = focusKey;
+    if (paint(performance.now())) animationFrameRef.current = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(animationFrameRef.current);
-  }, [canvasWidth, changedIds, collectedIds, drawableArcs, focusKey, selectedId]);
+  }, [arcs, canvasWidth, changedIds, collectedIds, drawableArcs, focusKey, selectedId, scanKey, scanPhase, motionAllowed]);
 
   const arcAtPointer = (event: {
     currentTarget: HTMLCanvasElement;
@@ -303,52 +277,6 @@ function configureLogicalCoordinates(
   context.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
-function drawArcCollection(
-  context: CanvasRenderingContext2D,
-  arcs: readonly DrawableArc[],
-  alpha: number,
-  scale: number,
-  selectedId: string,
-  changedIds: ReadonlySet<string>,
-  collectedIds: ReadonlySet<string>,
-  collectedLayer: HTMLCanvasElement | null,
-  restrictedPattern: CanvasPattern | null,
-) {
-  if (alpha <= 0) return;
-  context.save();
-  context.globalAlpha = alpha;
-  context.translate(CLEANUP_MAP_CENTER, CLEANUP_MAP_CENTER);
-  context.scale(scale, scale);
-  context.translate(-CLEANUP_MAP_CENTER, -CLEANUP_MAP_CENTER);
-  for (const drawable of arcs) {
-    drawArcBase(
-      context,
-      drawable,
-      restrictedPattern,
-    );
-  }
-  if (collectedLayer) {
-    context.drawImage(
-      collectedLayer,
-      0,
-      0,
-      CLEANUP_MAP_SIZE,
-      CLEANUP_MAP_SIZE,
-    );
-  } else {
-    drawCollectedOverlays(context, arcs, collectedIds, null);
-  }
-  for (const drawable of arcs) {
-    drawArcState(
-      context,
-      drawable,
-      drawable.arc.node.id === selectedId,
-      changedIds.has(drawable.arc.node.id),
-    );
-  }
-  context.restore();
-}
-
 function drawArcBase(
   context: CanvasRenderingContext2D,
   { arc, visual }: DrawableArc,
@@ -429,20 +357,21 @@ function drawArcPath(
   context.closePath();
 }
 
-function collectedLayer(
-  cache: CollectedLayerCacheEntry[],
+function pieLayer(
+  cache: PieLayerCacheEntry[],
   canvas: HTMLCanvasElement,
   arcs: readonly DrawableArc[],
+  changedIds: ReadonlySet<string>,
   collectedIds: ReadonlySet<string>,
   backingSize: number,
   pixelRatio: number,
   themeKey: string,
 ): HTMLCanvasElement | null {
-  if (collectedIds.size === 0) return null;
   const cached = cache.find(
     (entry) =>
       entry.arcs === arcs &&
       entry.collectedIds === collectedIds &&
+      entry.changedIds === changedIds &&
       entry.backingSize === backingSize &&
       entry.pixelRatio === pixelRatio &&
       entry.themeKey === themeKey,
@@ -456,23 +385,29 @@ function collectedLayer(
   if (!context) return null;
   resetCanvas(context, backingSize);
   configureLogicalCoordinates(context, backingSize / pixelRatio, pixelRatio);
-  const pattern = cleanupHatchPattern(context, {
+  const restrictedPattern = cleanupHatchPattern(context, {
+    color: "rgba(232, 220, 255, 0.72)", lineWidth: 2, pixelRatio, spacing: 8, themeKey,
+  });
+  for (const drawable of arcs) drawArcBase(context, drawable, restrictedPattern);
+  const pattern = collectedIds.size ? cleanupHatchPattern(context, {
     color: "rgba(255, 125, 115, 0.62)",
     lineWidth: 2.4,
     pixelRatio,
     spacing: 11,
     themeKey,
-  });
+  }) : null;
   drawCollectedOverlays(context, arcs, collectedIds, pattern);
+  for (const drawable of arcs) drawArcState(context, drawable, false, changedIds.has(drawable.arc.node.id));
   cache.push({
     arcs,
     backingSize,
     collectedIds,
+    changedIds,
     layer,
     pixelRatio,
     themeKey,
   });
-  if (cache.length > 4) cache.splice(0, cache.length - 4);
+  if (cache.length > 2) cache.splice(0, cache.length - 2);
   return layer;
 }
 
@@ -511,8 +446,4 @@ function cleanupCanvasThemeKey(canvas: HTMLCanvasElement): string {
     canvas.ownerDocument.defaultView?.getComputedStyle(canvas).colorScheme ??
       "normal",
   ].join(":");
-}
-
-function easeOutCubic(value: number) {
-  return 1 - Math.pow(1 - value, 3);
 }
