@@ -28,11 +28,9 @@ import {
 import {
   buildCleanupHueMap,
   cleanupNodeVisual,
-  CLEANUP_MAP_SIZE,
   collectCleanupPlanNode,
   isCleanupNodeCoveredByPlan,
   layoutCleanupMap,
-  ringBounds,
   type CleanupMapNode,
 } from "../cleanupMap";
 import type { CleanupSnapshotStatus } from "../cleanupScanStore";
@@ -458,7 +456,6 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
   // Browsing holds incoming geometry; the worker and document own the motion clock.
   const motionAllowed = useCleanupMotionAllowed();
   const scanMoving = motionAllowed && cleanupScanIsActive(visualPhase);
-  const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
     () => {
       const focusCollected = isCleanupNodeCoveredByPlan(plannedIds, focus.id, parents);
@@ -1379,7 +1376,7 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
                 onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
                 onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
-              <div className="cleanup-map__chart-frame" style={{ aspectRatio: chartFrameRatio }}>
+              <div className="cleanup-map__chart-frame">
               <div className="cleanup-map__surface">
                 <CleanupSunburstCanvas
                   arcs={arcs}
