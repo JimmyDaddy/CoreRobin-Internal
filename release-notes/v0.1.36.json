@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.36",
+  "title": {
+    "zh-CN": "更协调的磁盘扫描动效",
+    "en": "Coherent disk scan animations"
+  },
+  "items": [
+    {
+      "zh-CN": "重做磁盘扫描光效，内外扫描光点保持对齐，中心按钮不再遮住内圈光点；更新结果、切换目录与调整窗口时仍保持协调。",
+      "en": "Redesigned disk scan effects keep the inner and outer scan lights aligned, with the inner light fully visible around the center button, even as results update, folders change, or the window is resized."
+    },
+    {
+      "zh-CN": "新发现的空间占用会在对应扇区亮起，扫描完成后光效收束为静态结果，继续使用左侧饼图和右侧目录浏览。",
+      "en": "Newly discovered space lights up its corresponding chart sectors. When scanning finishes, the effects settle into a static result with the pie chart on the left and folder browsing on the right."
+    },
+    {
+      "zh-CN": "改善持续扫描时的动效流畅度；暂停、读取停滞、隐藏窗口或启用减少动态效果时，停止持续播放扫描光效。",
+      "en": "Improved animation smoothness during ongoing scans. Continuous scan effects stop when scanning pauses or stalls, the window is hidden, or reduced motion is enabled."
+    }
+  ]
+}
