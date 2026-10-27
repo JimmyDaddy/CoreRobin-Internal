@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.35",
+  "title": {
+    "zh-CN": "更顺手的磁盘扫描结果浏览",
+    "en": "Easier browsing of disk scan results"
+  },
+  "items": [
+    {
+      "zh-CN": "修复向下滚动页面或将鼠标移入空间图时，扫描动画意外停止的问题。",
+      "en": "Fixed scan animations unexpectedly stopping when scrolling the page or moving the pointer over the usage map."
+    },
+    {
+      "zh-CN": "扫描完成后自动恢复左侧饼图、右侧简洁目录的浏览布局，继续保留当前目录、已选项目和清理篮。",
+      "en": "Completed scans now return to a pie chart on the left and a compact folder browser on the right, preserving your current folder, selection, and cleanup basket."
+    },
+    {
+      "zh-CN": "清理篮恢复在窗口底部悬浮，空篮时收起，拖入项目后展开；拖拽加入与删除动画继续保留。",
+      "en": "The cleanup basket floats at the bottom of the window again, collapsing when empty and expanding when items are added, with drag-to-basket and deletion animations retained."
+    },
+    {
+      "zh-CN": "扫描结果的目录栏保持紧凑并对齐面板右侧，改善宽窗口中的大片空白和窄窗口中的操作布局。",
+      "en": "The compact folder browser aligns with the right edge of the results panel, reducing excess space in wide windows and improving the layout in narrow windows."
+    }
+  ]
+}
