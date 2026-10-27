@@ -63,6 +63,9 @@ export function drawCleanupScanScene(
   light: boolean,
 ) {
   if (!scene.phase) return;
+  // The DOM center control covers radius 50 plus its border. Keep the entire
+  // inner head visible, rather than letting the button obscure its leading tip.
+  const inner = 55;
   const outer = Math.max(85, ...arcs.map((arc) => arc.outerRadius));
   const halo = outer + Math.min(7, (CLEANUP_MAP_CENTER - outer) / 2);
   const finished = scene.phase === "completed";
@@ -87,18 +90,18 @@ export function drawCleanupScanScene(
       context.stroke();
     }
     context.globalAlpha = .25;
-    circle(context, 51);
+    circle(context, inner);
     context.stroke();
     if (motionAllowed) {
       for (let index = 0; index < 12; index += 1) {
         const end = angle - index * .045;
         context.globalAlpha = (12 - index) / 12 * (light ? .055 : .075);
-        sector(context, 52, outer, end - .045, end);
+        sector(context, inner, outer, end - .045, end);
         context.fill();
       }
       context.globalAlpha = .4;
       context.lineWidth = 1;
-      line(context, 52, halo, angle);
+      line(context, inner, halo, angle);
       context.stroke();
       for (let index = 0; index < 16; index += 1) {
         const tail = 1 - index / 16;
@@ -106,7 +109,7 @@ export function drawCleanupScanScene(
         context.lineWidth = .5 + tail * 2;
         context.shadowColor = ink;
         context.shadowBlur = index < 4 ? 2 : 0;
-        for (const radius of [51, halo]) {
+        for (const radius of [inner, halo]) {
           context.beginPath();
           context.arc(CLEANUP_MAP_CENTER, CLEANUP_MAP_CENTER, radius, angle - index * .06 - .08, angle - index * .06);
           context.stroke();
@@ -114,7 +117,7 @@ export function drawCleanupScanScene(
       }
       context.shadowColor = ink;
       context.shadowBlur = 4;
-      for (const radius of [51, halo]) {
+      for (const radius of [inner, halo]) {
         context.globalAlpha = 1;
         dot(context, radius, angle, 2);
         context.fill();

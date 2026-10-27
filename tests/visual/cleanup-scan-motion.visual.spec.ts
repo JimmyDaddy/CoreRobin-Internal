@@ -112,11 +112,16 @@ test("every painted frame keeps the two heads coaxial with a cached unscaled pie
   }
   const painted = (await frames(page)).filter((frame) => frame.arcs.some((arc) => arc[2] === 2));
   expect(painted.length).toBeGreaterThan(15);
+  const centerRadius = await page.locator(".cleanup-map__center-control").evaluate((element) => {
+    const surface = element.closest(".cleanup-map__surface")!.getBoundingClientRect();
+    return element.getBoundingClientRect().width / surface.width * 210;
+  });
   for (const frame of painted) {
     const heads = frame.arcs.filter((arc) => arc[2] === 2);
     expect(heads).toHaveLength(2);
     const angles = heads.map(([x, y]) => Math.atan2(y - 210, x - 210));
     expect(angles[0]).toBeCloseTo(angles[1], 8);
+    expect(Math.hypot(heads[0][0] - 210, heads[0][1] - 210) - heads[0][2]).toBeGreaterThan(centerRadius);
     const halo = Math.hypot(heads[1][0] - 210, heads[1][1] - 210);
     expect(halo).toBeGreaterThan(frame.pieOuter);
     expect(halo - Math.max(85, frame.pieOuter)).toBeLessThanOrEqual(7.01);
