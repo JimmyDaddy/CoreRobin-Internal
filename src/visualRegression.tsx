@@ -66,11 +66,18 @@ function CleanupProgressiveScenario() {
 function CleanupMotionScenario() {
   const [phase, setPhase] = useState<CleanupScanJobPhase>("scanning");
   const [fraction, setFraction] = useState(.35);
+  const chinese = new URLSearchParams(window.location.search).get("language")?.startsWith("zh");
   const snapshot = useMemo(() => {
     const base = getMockCleanupScan();
     function scale(node: CleanupNode): CleanupNode {
-      return { ...node, sizeBytes: node.sizeBytes * fraction, allocatedSizeBytes: node.allocatedSizeBytes * fraction,
-        logicalSizeBytes: node.logicalSizeBytes * fraction, children: node.children.map(scale) };
+      // Uneven discoveries change sector angles as well as the total size.
+      const children = node.children.map(scale);
+      const seed = Array.from(node.id).reduce((value, char) => value + char.charCodeAt(0), 0) % 5;
+      const ratio = fraction * (.8 + seed * .2 * fraction);
+      const bytes = (key: "sizeBytes" | "allocatedSizeBytes" | "logicalSizeBytes") =>
+        Math.max(node[key] * ratio, children.reduce((total, child) => total + child[key], 0));
+      return { ...node, sizeBytes: bytes("sizeBytes"), allocatedSizeBytes: bytes("allocatedSizeBytes"),
+        logicalSizeBytes: bytes("logicalSizeBytes"), children };
     }
     return { ...base, root: scale(base.root), locations: [], sampledAtMs: base.sampledAtMs + fraction * 1000,
       scannedEntryCount: Math.round(base.scannedEntryCount * fraction), partial: phase !== "completed", deletionAvailable: phase === "completed" };
@@ -78,11 +85,11 @@ function CleanupMotionScenario() {
   const loading = ["scanning", "paused", "stalled", "finalizing"].includes(phase);
   return <main className="visual-harness">
     <div className="visual-harness__buttons panel">
-      <Button onClick={() => { setFraction((value) => Math.min(.95, value + .15)); setPhase("scanning"); }}>New batch</Button>
-      <Button onClick={() => setPhase("paused")}>Pause</Button>
-      <Button onClick={() => setPhase("stalled")}>Slow folder</Button>
-      <Button onClick={() => setPhase("scanning")}>Resume</Button>
-      <Button onClick={() => { setFraction(1); setPhase("completed"); }}>Complete</Button>
+      <Button onClick={() => { setFraction((value) => Math.min(.95, value + .15)); setPhase("scanning"); }}>{chinese ? "发现新文件" : "New batch"}</Button>
+      <Button onClick={() => setPhase("paused")}>{chinese ? "暂停" : "Pause"}</Button>
+      <Button onClick={() => setPhase("stalled")}>{chinese ? "模拟读取缓慢" : "Slow folder"}</Button>
+      <Button onClick={() => setPhase("scanning")}>{chinese ? "继续扫描" : "Resume"}</Button>
+      <Button onClick={() => { setFraction(1); setPhase("completed"); }}>{chinese ? "完成扫描" : "Complete"}</Button>
     </div>
     <CleanupAssistant snapshot={snapshot} snapshotStatus={loading ? "updating" : "current"} error={null} loading={loading} cancelling={false} phase={phase}
       progress={loading ? { scannedEntryCount: snapshot.scannedEntryCount, discoveredBytes: snapshot.root.allocatedSizeBytes, currentPath: "~/Downloads", elapsedMs: 2400 } : null}

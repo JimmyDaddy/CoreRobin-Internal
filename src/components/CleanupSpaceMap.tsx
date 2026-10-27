@@ -52,7 +52,8 @@ import type {
 } from "../userActionHistory";
 import { formatBytes, normalizeCommandError } from "../utils";
 import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
-import { CleanupScanEffects, CleanupScanField, CleanupScanValue, useCleanupScanMotion } from "./CleanupScanVisual";
+import { CleanupScanValue, useCleanupMotionAllowed } from "./CleanupScanVisual";
+import { cleanupScanIsActive } from "../cleanupScanScene";
 import { CleanupDeleteDialog } from "./CleanupDeleteDialog";
 import { CleanupSettlementDialog } from "./CleanupSettlementDialog";
 import { PathActions } from "./PathActions";
@@ -455,7 +456,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
     : scanActive ? snapshot.partial ? scanPhase ?? "preparing" : "preparing"
     : (scanPhase === "completed" || scanPhase === null) && !snapshot.partial ? "completed" : null;
   // Browsing holds incoming geometry; the worker and document own the motion clock.
-  const scanMoving = useCleanupScanMotion(visualPhase);
+  const motionAllowed = useCleanupMotionAllowed();
+  const scanMoving = motionAllowed && cleanupScanIsActive(visualPhase);
   const chartFrameRatio = CLEANUP_MAP_SIZE / (Math.max(ringBounds(1).outerRadius, ...arcs.map((arc) => arc.outerRadius)) * 2 + 36);
   const collectedIds = useMemo(
     () => {
@@ -1377,10 +1379,8 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                 onMouseEnter={() => setPointerBrowsing(true)} onMouseLeave={() => setPointerBrowsing(false)}
                 onFocusCapture={(event) => setKeyboardBrowsing(event.target.matches(":focus-visible"))}
                 onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardBrowsing(false); }}>
-              {visualPhase ? <CleanupScanField revision={snapshot.scannedEntryCount} /> : null}
               <div className="cleanup-map__chart-frame" style={{ aspectRatio: chartFrameRatio }}>
               <div className="cleanup-map__surface">
-                {visualPhase ? <CleanupScanEffects arcs={arcs} phase={visualPhase} scanKey={snapshot.scanId} focusKey={focus.id} running={scanMoving} /> : null}
                 <CleanupSunburstCanvas
                   arcs={arcs}
                   hues={hueMap}
@@ -1388,6 +1388,9 @@ export const CleanupSpaceMap = memo(function CleanupSpaceMap({
                   changedIds={changedIds}
                   collectedIds={collectedIds}
                   focusKey={focus.id}
+                  scanKey={snapshot.scanId}
+                  scanPhase={visualPhase}
+                  motionAllowed={motionAllowed}
                   ariaLabel={t("cleanup:map.ariaLabel", { name: nodeDisplayName(focus, t("cleanup:map.otherContent"), t("cleanup:map.restrictedObjects")) })}
                   onSelect={selectMapNode}
                   onActivate={(node) => {
