@@ -107,8 +107,6 @@
   display: flex;
   flex-wrap: wrap;
   width: 100%;
-  max-width: 1020px;
-  margin-inline: auto;
   column-gap: 16px;
   align-items: flex-start;
 }
@@ -117,11 +115,10 @@
   flex: 0 1 340px;
   width: 340px;
   max-width: 100%;
-  margin-inline: auto;
+  margin-left: auto;
   padding: 0 0 0 16px;
   border-left: 1px solid var(--border);
 }
-.cleanup-map__workspace.is-split .cleanup-map__browser-toolbar { width: 100%; max-width: 1020px; margin-inline: auto; }
 .cleanup-index-list.is-compact .cleanup-index-list__viewport { height: clamp(280px, calc(100vh - 370px), 520px); }
 .cleanup-index-list.is-compact .cleanup-index-list__frame { border: 0; border-radius: 0; background: transparent; }
 .cleanup-index-list.is-compact .cleanup-index-list__footer { min-height: 0; padding: 0; border: 0; background: transparent; }
