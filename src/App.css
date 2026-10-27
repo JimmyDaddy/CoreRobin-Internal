@@ -3950,12 +3950,14 @@ code,
 .cleanup-map__review > small { color: var(--text-muted); font-size: 11px; }
 
 .cleanup-map__plan {
-  --basket-origin-x: 0%;
-  position: relative;
-  margin: 12px auto 0;
+  --basket-origin-x: -50%;
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  margin: 0;
   z-index: 120;
   display: grid;
-  width: 100%;
+  width: min(720px, calc(100vw - 36px));
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 11px;
@@ -3976,9 +3978,14 @@ code,
   backdrop-filter: blur(22px) saturate(1.2);
 }
 
+.main-content:has(.cleanup-map__plan) { padding-bottom: 64px; }
+.main-content:has(.cleanup-map__plan:not(.is-collapsed)) { padding-bottom: 110px; }
+.cleanup-map__plan.is-collapsed { width: auto; min-height: 44px; grid-template-columns: auto auto; gap: 8px; padding: 6px 11px 6px 7px; border-radius: 999px; }
+.cleanup-map__plan.is-collapsed .cleanup-map__basket-icon { width: 32px; height: 32px; border-radius: 50%; }
+.cleanup-map__plan.is-collapsed .cleanup-map__basket-copy { gap: 0; }
+.cleanup-map__plan.is-collapsed .cleanup-map__basket-copy strong { display: none; }
+
 .cleanup-map__plan.is-dragging {
-  --basket-origin-x: -50%;
-  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); width: min(720px, calc(100vw - 36px));
   border-color: rgba(99, 168, 255, 0.62);
   background:
     radial-gradient(circle at 9% 10%, rgba(99, 168, 255, 0.25), transparent 38%),
