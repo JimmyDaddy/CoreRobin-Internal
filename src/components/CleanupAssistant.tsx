@@ -905,7 +905,6 @@ export function CleanupOperation({
             onUserActionComplete={onUserActionComplete}
           />
 
-          {snapshot?.partial ? <p className="muted" role="status">{t("cleanup:progress.partialResult")}</p> : null}
           {snapshot && !snapshot.partial && !loading ? <section className="cleanup-result-overview" aria-label={t("cleanup:coverage.title")}>
             <button
               className="cleanup-result-overview__primary"
