@@ -9,26 +9,26 @@ importers:
   .:
     dependencies:
       '@contentauth/c2pa-web':
-        specifier: 0.13.1
-        version: 0.13.1
+        specifier: 0.15.4
+        version: 0.15.4
       '@image-marker/web':
         specifier: 0.1.0
         version: 0.1.0
       '@tauri-apps/api':
         specifier: ^2
-        version: 2.11.1
+        version: 2.12.4
       '@tauri-apps/plugin-dialog':
-        specifier: ^2.7.2
-        version: 2.7.2
+        specifier: ^2.8.3
+        version: 2.8.3
       '@tauri-apps/plugin-notification':
         specifier: ^2
-        version: 2.3.3
+        version: 2.7.0
       '@tauri-apps/plugin-process':
-        specifier: ^2.3.1
-        version: 2.3.1
+        specifier: ^2.4.0
+        version: 2.4.0
       '@tauri-apps/plugin-updater':
-        specifier: ^2.10.1
-        version: 2.10.1
+        specifier: ^2.14.0
+        version: 2.14.0
       bs-diff-patch-web:
         specifier: 0.5.0
         version: 0.5.0
@@ -36,32 +36,32 @@ importers:
         specifier: 8.1.0
         version: 8.1.0
       fflate:
-        specifier: 0.8.2
-        version: 0.8.2
+        specifier: 0.8.3
+        version: 0.8.3
       i18next:
-        specifier: ^26.3.6
-        version: 26.3.6(typescript@5.9.3)
+        specifier: ^26.5.10
+        version: 26.5.10(typescript@5.9.3)
       i18next-resources-to-backend:
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: ^1.2.3
+        version: 1.2.3
       lucide-react:
-        specifier: ^1.27.0
-        version: 1.27.0(react@19.2.8)
+        specifier: ^1.61.0
+        version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
       marked:
-        specifier: 18.0.12
-        version: 18.0.12
+        specifier: 18.1.1
+        version: 18.1.1
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
       react:
-        specifier: ^19.2.8
-        version: 19.2.8
+        specifier: ^19.3.1
+        version: 19.3.1
       react-dom:
-        specifier: ^19.2.8
-        version: 19.2.8(react@19.2.8)
+        specifier: ^19.3.1
+        version: 19.3.1(react@19.3.1)
       react-i18next:
-        specifier: ^17.0.11
-        version: 17.0.11(i18next@26.3.6(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+        specifier: ^17.1.8
+        version: 17.1.8(i18next@26.5.10(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -74,16 +74,16 @@ importers:
         version: 2.11.4
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@types/qrcode':
         specifier: 1.5.5
         version: 1.5.5
       '@types/react':
-        specifier: ^19.1.8
-        version: 19.2.17
+        specifier: ^19.3.0
+        version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.1.6
-        version: 19.2.3(@types/react@19.2.17)
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.0.4
         version: 6.0.4(vite@8.1.5(@types/node@26.4.0)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
@@ -98,7 +98,7 @@ importers:
         version: 17.8.0
       i18next-cli:
         specifier: ^1.67.3
-        version: 1.67.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(typescript@5.9.3)
+        version: 1.67.3(@types/node@26.4.0)(react-dom@19.3.1(react@19.3.1))(typescript@5.9.3)
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1
@@ -180,6 +180,10 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
@@ -200,14 +204,17 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@contentauth/c2pa-types@0.7.2':
-    resolution: {integrity: sha512-SH+q4a6ZS2z2YhlqfTB2GzN1S4M9koLhJETGPxL5J4JVhJEFSyEQK52PnwOhee+ObiZdDZK18NI+s+1IrUSdTQ==}
+  '@contentauth/c2pa-types@0.7.6':
+    resolution: {integrity: sha512-C7khzKdmdXilaEHEtkjCMzRzu1js+/Uk+cTdcJtaYAY7+Zce5gfYn3S/hgjg0da4SsvH4kOMVqWwH4ZfnS1kvw==}
 
-  '@contentauth/c2pa-wasm@0.11.0':
-    resolution: {integrity: sha512-pL7tGZnM/qQz7JFCPB0hWSZM41L4aUEF/SV9B1fL+0L2sUZT1Zj7UGcUjSmiRWeXLagQ8Jds7RF+XQ9gxZiG7g==}
+  '@contentauth/c2pa-utilities@0.3.2':
+    resolution: {integrity: sha512-ZqFAUdSCID18cpfRWPwRRPG/p0cjSnt06IOmkUuQCGtStGm672ZucNk8xnrpV8dQuZwVW0DZWixgh5HMVQ96ug==}
 
-  '@contentauth/c2pa-web@0.13.1':
-    resolution: {integrity: sha512-K4GLdhqIdLE3DUdO0Ub2M6rnyopAnCtdOQhFx2ACayVXo6uLuYlMPRlBivqc4RlvuXMpvJcW2BMu6B1FZpbYhw==}
+  '@contentauth/c2pa-wasm@0.13.3':
+    resolution: {integrity: sha512-nAXRuOZ+I4+o+m69ZI49r12qoda5AxlzL2vCAJJuVdkybebQTUhUT3ruyhhINachKtP+nnQ+iJ40KJnjjZSwnA==}
+
+  '@contentauth/c2pa-web@0.15.4':
+    resolution: {integrity: sha512-i3bs67iNjovbBoIQwSUzdOQRU5+e/kJPWnIMSmn6tXF1WYWFKR8GhaX3ZyAM8EOLlefoNSmjztQr2wpGvJiCVg==}
 
   '@croct/json5-parser@0.2.2':
     resolution: {integrity: sha512-0NJMLrbeLbQ0eCVj3UoH/kG2QckUgOASfwmfDTjyW1xAYPyTNJXcWVT/dssJdTJd0pRchW+qF0VFWQHcxs1OVw==}
@@ -858,8 +865,8 @@ packages:
   '@swc/types@0.1.27':
     resolution: {integrity: sha512-K6h3iUlqeM946U4sXFYeahefR1YBbXJvko+hv8WS8/0BNJ4OHiHRywMnQUJCqkR7Y9+hqQ1TvEpiKqUhz7NEFg==}
 
-  '@tauri-apps/api@2.11.1':
-    resolution: {integrity: sha512-M2FPuYND2m+wh5hfW9ZpSdxMPdEJovPBWwoHJmwUpysTYNHaOkVFN419m/K0LIgjb/7KU2vBgsUepJWugQCvAA==}
+  '@tauri-apps/api@2.12.4':
+    resolution: {integrity: sha512-pVmfis+4zT8H0Qhp3xPZx9Ju7kpzvA6rr/PSJPyuwfvucTQ8sVt61NYU9KMkK703UFlYadFmjKA4HhybOtN0gg==}
 
   '@tauri-apps/cli-darwin-arm64@2.11.4':
     resolution: {integrity: sha512-1ryOF3ZhpZ/nemHV5zVwBQBz9jDGKmKPvWPADOhc83ig0P4bMc2iER4NbC6r9sjeIZ6RVQ4g3RZIYvezhcl4TQ==}
@@ -937,17 +944,17 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
-  '@tauri-apps/plugin-dialog@2.7.2':
-    resolution: {integrity: sha512-pX0IGm1I3I6wc+zeKYcq1GSqogK6okCNX5fOdaNU5ab1AjGS6l1E5wFNjEb7meg7ZFSp0JUs+0jQGQNyOvLrsg==}
+  '@tauri-apps/plugin-dialog@2.8.3':
+    resolution: {integrity: sha512-Hd/yBfk2R5v2MFrz/0VArSXeh8xKLLXGunqSiTtcHKn1zNZwaKujuA0VSwUvNfwC4hDoF1PveS+gBDNe3nHspw==}
 
-  '@tauri-apps/plugin-notification@2.3.3':
-    resolution: {integrity: sha512-Zw+ZH18RJb41G4NrfHgIuofJiymusqN+q8fGUIIV7vyCH+5sSn5coqRv/MWB9qETsUs97vmU045q7OyseCV3Qg==}
+  '@tauri-apps/plugin-notification@2.7.0':
+    resolution: {integrity: sha512-kgdHCPSY/3GIi4gSWuLfd3y555U0kwzP0PmnUjT+sGhgO7RdAM6goFjDqayRaKC8yA5oEYi7w2NnA3oQxIjldw==}
 
-  '@tauri-apps/plugin-process@2.3.1':
-    resolution: {integrity: sha512-nCa4fGVaDL/B9ai03VyPOjfAHRHSBz5v6F/ObsB73r/dA3MHHhZtldaDMIc0V/pnUw9ehzr2iEG+XkSEyC0JJA==}
+  '@tauri-apps/plugin-process@2.4.0':
+    resolution: {integrity: sha512-GddrmsSLAYrLa/yTXlXK/YRDzUgYeeOnUXTbiyvJWkmI424RmDPD3FVLeqcon7rv6O6ZfhBilcrHWnSo7o6hIQ==}
 
-  '@tauri-apps/plugin-updater@2.10.1':
-    resolution: {integrity: sha512-NFYMg+tWOZPJdzE/PpFj2qfqwAWwNS3kXrb1tm1gnBJ9mYzZ4WDRrwy8udzWoAnfGCHLuePNLY1WVCNHnh3eRA==}
+  '@tauri-apps/plugin-updater@2.14.0':
+    resolution: {integrity: sha512-gdylJ9tger4hkyOn24QZd6MNOKVo2Eh53iw5th2Qj1vKTR/+u4PIwJWuiis5hohYvobn6iOvlnALfrqIPSzh7Q==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -995,13 +1002,13 @@ packages:
   '@types/qrcode@1.5.5':
     resolution: {integrity: sha512-CdfBi/e3Qk+3Z/fXYShipBT13OJ2fDO2Q2w5CIP5anLTLIndQG9z6P1cnm+8zCWSpm5dnxMFd/uREtb0EXuQzg==}
 
-  '@types/react-dom@19.2.3':
-    resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
+  '@types/react-dom@19.3.0':
+    resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
     peerDependencies:
-      '@types/react': ^19.2.0
+      '@types/react': ^19.3.0
 
-  '@types/react@19.2.17':
-    resolution: {integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==}
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
   '@typescript-eslint/eslint-plugin@8.65.0':
     resolution: {integrity: sha512-IEgob78X12rHpUmtcwFsXhZdVGJtwTVP8FiCLZkR6GlYVrl2PcuB+KhCE5BlVC/eQpQnu8WXRtkHZuPar+gCRA==}
@@ -1375,8 +1382,8 @@ packages:
       picomatch:
         optional: true
 
-  fflate@0.8.2:
-    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   figures@6.1.0:
     resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
@@ -1468,11 +1475,11 @@ packages:
     resolution: {integrity: sha512-n5UexwEVt0OoIAhG2MWpSnAVJW1U8mQrQTmXyxc5DMAx+NLhcLZhSMJo/FnUsA5JQ3obTYqTgB7YIuZKWpDgow==}
     hasBin: true
 
-  i18next-resources-to-backend@1.2.2:
-    resolution: {integrity: sha512-1qDy4c67qurkyLKXoFncMBB0XmXJE0GHoPCx7ONbDoq9R3puhjOpfUERbtWcwfulbXvxwdqWRmB4DIud+nLpuw==}
+  i18next-resources-to-backend@1.2.3:
+    resolution: {integrity: sha512-8Y/LLAm5fqZc2ckQxtTWbu75ndjNLzF7mcYl6rhc4g+WBopIsG3YhdYqF5qhJy64tlYhlU2KSSnEgW3gGHLqwg==}
 
-  i18next@26.3.6:
-    resolution: {integrity: sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA==}
+  i18next@26.5.10:
+    resolution: {integrity: sha512-YS4EiLQhhk0wGThm4Zy+BL2c9rBNIK+kAbksi4l/B+D6kVRQLIFZgu2b/MU2LibJJHwWNTYoOYR52T+jfV8kPQ==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -1676,10 +1683,14 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@1.27.0:
-    resolution: {integrity: sha512-rJicGl/3Fly/E0rOH1YmPZ6e49JCnKknh1ox1vpHnkfjujAkKA6sqUZvH3MTAaXXjgexyUwgNwTJzTtYuAFYJw==}
+  lucide-react@1.61.0:
+    resolution: {integrity: sha512-v2SQPPPNjnr+BlhL9Spuzmo5yR+hLkftfuE4E3jaxdNPgSH0hJKPcLJBP7yAta87jQNPsSERS59PJjCJ/CorBA==}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -1688,8 +1699,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  marked@18.0.12:
-    resolution: {integrity: sha512-LEm4ga2YeI2T3GVHj9b0BaDPPk93LLTHMFeMyQbNIzPxc8vCI0y/scy0ZA6z6lXKyT9j9Nhl/OC6ZYKYGuFScA==}
+  marked@18.1.1:
+    resolution: {integrity: sha512-zEGgrtUG8crk+TrMacJSVABU4DYDDkS8uqgU3ohrn/2fW9C2AEfUrO3m6IhpIpQpl7YcVpiXXC9cSMWDANT3dg==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -1839,13 +1850,13 @@ packages:
     engines: {node: '>=10.13.0'}
     hasBin: true
 
-  react-dom@19.2.8:
-    resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
+  react-dom@19.3.1:
+    resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
-      react: ^19.2.8
+      react: ^19.3.1
 
-  react-i18next@17.0.11:
-    resolution: {integrity: sha512-cDtkXgxjuFTWUH6V+aQn1Ve5vDiUztCNPWW5GtSHDccsgRXO1nE6QFWCEmc1KAutrb3OUv87wFShJL5RhUwPXg==}
+  react-i18next@17.1.8:
+    resolution: {integrity: sha512-vGH+Tbhqbv5LdN9KvC9GEmQ6ATxJAjyxPEK0zSCSRlkeDqCPNxVtEOvDNRAz+51HTxc6QPwhnHaFD7ICu6pD1A==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -1863,8 +1874,8 @@ packages:
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
 
-  react@19.2.8:
-    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
+  react@19.3.1:
+    resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
     engines: {node: '>=0.10.0'}
 
   readdirp@5.0.0:
@@ -1902,8 +1913,8 @@ packages:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
 
-  scheduler@0.27.0:
-    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+  scheduler@0.28.0:
+    resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -2048,8 +2059,8 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
-  use-sync-external-store@1.6.0:
-    resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
+  use-sync-external-store@1.7.0:
+    resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -2315,6 +2326,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.7
 
+  '@babel/runtime@7.29.10': {}
+
   '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.29.7':
@@ -2344,16 +2357,21 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@contentauth/c2pa-types@0.7.2': {}
+  '@contentauth/c2pa-types@0.7.6': {}
 
-  '@contentauth/c2pa-wasm@0.11.0': {}
-
-  '@contentauth/c2pa-web@0.13.1':
+  '@contentauth/c2pa-utilities@0.3.2':
     dependencies:
-      '@contentauth/c2pa-types': 0.7.2
-      '@contentauth/c2pa-wasm': 0.11.0
-      highgain: 0.1.0
+      '@contentauth/c2pa-types': 0.7.6
       ts-deepmerge: 8.0.0
+
+  '@contentauth/c2pa-wasm@0.13.3': {}
+
+  '@contentauth/c2pa-web@0.15.4':
+    dependencies:
+      '@contentauth/c2pa-types': 0.7.6
+      '@contentauth/c2pa-utilities': 0.3.2
+      '@contentauth/c2pa-wasm': 0.13.3
+      highgain: 0.1.0
 
   '@croct/json5-parser@0.2.2':
     dependencies:
@@ -2805,7 +2823,7 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
-  '@tauri-apps/api@2.11.1': {}
+  '@tauri-apps/api@2.12.4': {}
 
   '@tauri-apps/cli-darwin-arm64@2.11.4':
     optional: true
@@ -2854,26 +2872,26 @@ snapshots:
       '@tauri-apps/cli-win32-ia32-msvc': 2.11.4
       '@tauri-apps/cli-win32-x64-msvc': 2.11.4
 
-  '@tauri-apps/plugin-dialog@2.7.2':
+  '@tauri-apps/plugin-dialog@2.8.3':
     dependencies:
-      '@tauri-apps/api': 2.11.1
+      '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-notification@2.3.3':
+  '@tauri-apps/plugin-notification@2.7.0':
     dependencies:
-      '@tauri-apps/api': 2.11.1
+      '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-process@2.3.1':
+  '@tauri-apps/plugin-process@2.4.0':
     dependencies:
-      '@tauri-apps/api': 2.11.1
+      '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-updater@2.10.1':
+  '@tauri-apps/plugin-updater@2.14.0':
     dependencies:
-      '@tauri-apps/api': 2.11.1
+      '@tauri-apps/api': 2.12.4
 
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -2881,15 +2899,15 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@testing-library/dom': 10.4.1
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
     optionalDependencies:
-      '@types/react': 19.2.17
-      '@types/react-dom': 19.2.3(@types/react@19.2.17)
+      '@types/react': 19.3.0
+      '@types/react-dom': 19.3.0(@types/react@19.3.0)
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -2919,11 +2937,11 @@ snapshots:
     dependencies:
       '@types/node': 26.4.0
 
-  '@types/react-dom@19.2.3(@types/react@19.2.17)':
+  '@types/react-dom@19.3.0(@types/react@19.3.0)':
     dependencies:
-      '@types/react': 19.2.17
+      '@types/react': 19.3.0
 
-  '@types/react@19.2.17':
+  '@types/react@19.3.0':
     dependencies:
       csstype: 3.2.3
 
@@ -3351,7 +3369,7 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.5
 
-  fflate@0.8.2: {}
+  fflate@0.8.3: {}
 
   figures@6.1.0:
     dependencies:
@@ -3425,7 +3443,7 @@ snapshots:
 
   human-signals@8.0.1: {}
 
-  i18next-cli@1.67.3(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(typescript@5.9.3):
+  i18next-cli@1.67.3(@types/node@26.4.0)(react-dom@19.3.1(react@19.3.1))(typescript@5.9.3):
     dependencies:
       '@croct/json5-parser': 0.2.2
       '@swc/core': 1.15.46
@@ -3433,7 +3451,7 @@ snapshots:
       commander: 14.0.3
       execa: 9.6.1
       glob: 13.0.6
-      i18next: 26.3.6(typescript@5.9.3)
+      i18next: 26.5.10(typescript@5.9.3)
       i18next-resources-for-ts: 2.1.0
       inquirer: 14.0.2(@types/node@26.4.0)
       jiti: 2.7.0
@@ -3441,8 +3459,8 @@ snapshots:
       magic-string: 0.30.21
       minimatch: 10.2.6
       ora: 9.4.1
-      react: 19.2.8
-      react-i18next: 17.0.11(i18next@26.3.6(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      react: 19.3.1
+      react-i18next: 17.1.8(i18next@26.5.10(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@swc/helpers'
@@ -3453,18 +3471,18 @@ snapshots:
 
   i18next-resources-for-ts@2.1.0:
     dependencies:
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
       '@swc/core': 1.15.46
       chokidar: 5.0.0
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  i18next-resources-to-backend@1.2.2:
+  i18next-resources-to-backend@1.2.3:
     dependencies:
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
 
-  i18next@26.3.6(typescript@5.9.3):
+  i18next@26.5.10(typescript@5.9.3):
     optionalDependencies:
       typescript: 5.9.3
 
@@ -3628,9 +3646,11 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@1.27.0(react@19.2.8):
+  lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      react: 19.2.8
+      react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   lz-string@1.5.0: {}
 
@@ -3638,7 +3658,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  marked@18.0.12: {}
+  marked@18.1.1: {}
 
   mdn-data@2.27.1: {}
 
@@ -3768,25 +3788,25 @@ snapshots:
       pngjs: 5.0.0
       yargs: 15.4.1
 
-  react-dom@19.2.8(react@19.2.8):
+  react-dom@19.3.1(react@19.3.1):
     dependencies:
-      react: 19.2.8
-      scheduler: 0.27.0
+      react: 19.3.1
+      scheduler: 0.28.0
 
-  react-i18next@17.0.11(i18next@26.3.6(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3):
+  react-i18next@17.1.8(i18next@26.5.10(typescript@5.9.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3):
     dependencies:
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.10
       html-parse-stringify: 4.0.1
-      i18next: 26.3.6(typescript@5.9.3)
-      react: 19.2.8
-      use-sync-external-store: 1.6.0(react@19.2.8)
+      i18next: 26.5.10(typescript@5.9.3)
+      react: 19.3.1
+      use-sync-external-store: 1.7.0(react@19.3.1)
     optionalDependencies:
-      react-dom: 19.2.8(react@19.2.8)
+      react-dom: 19.3.1(react@19.3.1)
       typescript: 5.9.3
 
   react-is@17.0.2: {}
 
-  react@19.2.8: {}
+  react@19.3.1: {}
 
   readdirp@5.0.0: {}
 
@@ -3830,7 +3850,7 @@ snapshots:
     dependencies:
       xmlchars: 2.2.0
 
-  scheduler@0.27.0: {}
+  scheduler@0.28.0: {}
 
   semver@6.3.1: {}
 
@@ -3946,9 +3966,9 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  use-sync-external-store@1.6.0(react@19.2.8):
+  use-sync-external-store@1.7.0(react@19.3.1):
     dependencies:
-      react: 19.2.8
+      react: 19.3.1
 
   vite@8.1.5(@types/node@26.4.0)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0):
     dependencies:
