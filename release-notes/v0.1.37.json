@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.37",
+  "title": {
+    "zh-CN": "更有层次的磁盘扫描光效",
+    "en": "Richer disk scan lighting"
+  },
+  "items": [
+    {
+      "zh-CN": "同心扫描增加蓝紫光晕、渐变拖尾和扇区受光，内外光点继续同步，扫描完成后平滑收束。",
+      "en": "Concentric scans gain blue-violet glow, gradient trails and illuminated sector edges. Inner and outer lights stay synchronized, then settle smoothly when scanning finishes."
+    },
+    {
+      "zh-CN": "移除空间图下方重复的未完成提示，扫描状态统一在顶部进度区显示，让结果区域更简洁。",
+      "en": "Removed the duplicate partial-scan caption below the space chart. Scan status stays in the progress area above, keeping results uncluttered."
+    }
+  ]
+}
