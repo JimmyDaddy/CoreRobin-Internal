@@ -39,14 +39,14 @@ cap-std = "4.0.2"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10.4"
 getrandom = "0.4"
-dns-lookup = "3"
+dns-lookup = "4"
 tauri = { version = "2", features = ["macos-private-api", "image-png", "tray-icon"] }
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
 plist = "1.8"
-rusqlite = { version = "0.40.1", features = ["bundled", "hooks"] }
+rusqlite = { version = "0.41.0", features = ["bundled", "hooks"] }
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "stream", "native-tls"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
 sysinfo = { version = "=0.39.6", default-features = false, features = ["component", "disk", "network", "system", "user"] }
