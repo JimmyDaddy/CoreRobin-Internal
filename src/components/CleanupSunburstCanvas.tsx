@@ -21,7 +21,7 @@ import { cleanupNodeProtection } from "../cleanupProtection";
 import { useAppTranslation } from "../i18n/useAppTranslation";
 import { formatBytes } from "../utils";
 import type { CleanupScanJobPhase } from "../types";
-import { CleanupScanScene, drawCleanupScanScene } from "../cleanupScanScene";
+import { CleanupScanScene, drawCleanupScanScene, drawCleanupScanBackdrop, type CleanupScanLighting } from "../cleanupScanScene";
 
 interface DrawableArc {
   arc: CleanupMapArc;
@@ -36,6 +36,7 @@ interface PieLayerCacheEntry {
   layer: HTMLCanvasElement;
   pixelRatio: number;
   themeKey: string;
+  lighting: CleanupScanLighting;
 }
 
 interface CleanupMapTooltip {
@@ -88,6 +89,8 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
   const pieLayerCacheRef = useRef<PieLayerCacheEntry[]>([]);
   const [canvasWidth, setCanvasWidth] = useState(CLEANUP_MAP_SIZE);
   const [tooltip, setTooltip] = useState<CleanupMapTooltip | null>(null);
+  const themeKeyRef = useRef("");
+  const [themeRevision, setThemeRevision] = useState(0);
   const firstRingBytes = useMemo(
     () => arcs
       .filter((arc) => arc.depth === 1)
@@ -109,7 +112,21 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
-    return () => observer.disconnect();
+    const updateTheme = () => {
+      const next = cleanupCanvasThemeKey(canvas);
+      if (themeKeyRef.current && themeKeyRef.current !== next) setThemeRevision((value) => value + 1);
+      themeKeyRef.current = next;
+    };
+    updateTheme();
+    const themeObserver = new MutationObserver(updateTheme);
+    themeObserver.observe(canvas.ownerDocument.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-interface-scale"] });
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    media?.addEventListener?.("change", updateTheme);
+    return () => {
+      observer.disconnect();
+      themeObserver.disconnect();
+      media?.removeEventListener?.("change", updateTheme);
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -124,8 +141,9 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     const context = canvas.getContext("2d", { alpha: true });
     if (!context) return;
     const themeKey = cleanupCanvasThemeKey(canvas);
+    const lighting = scanPhase ? scanPhase === "completed" ? "settled" : "active" : null;
     const layer = pieLayer(pieLayerCacheRef.current, canvas, drawableArcs,
-      changedIds, collectedIds, backingSize, pixelRatio, themeKey);
+      changedIds, collectedIds, backingSize, pixelRatio, themeKey, lighting);
     const scene = sceneRef.current;
     scene.update(arcs, scanKey, focusKey, scanPhase);
     const selected = drawableArcs.find(({ arc }) => arc.node.id === selectedId);
@@ -152,7 +170,7 @@ export const CleanupSunburstCanvas = memo(function CleanupSunburstCanvas({
     };
     if (paint(performance.now())) animationFrameRef.current = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(animationFrameRef.current);
-  }, [arcs, canvasWidth, changedIds, collectedIds, drawableArcs, focusKey, selectedId, scanKey, scanPhase, motionAllowed]);
+  }, [arcs, canvasWidth, changedIds, collectedIds, drawableArcs, focusKey, selectedId, scanKey, scanPhase, motionAllowed, themeRevision]);
 
   const arcAtPointer = (event: {
     currentTarget: HTMLCanvasElement;
@@ -366,6 +384,7 @@ function pieLayer(
   backingSize: number,
   pixelRatio: number,
   themeKey: string,
+  lighting: CleanupScanLighting,
 ): HTMLCanvasElement | null {
   const cached = cache.find(
     (entry) =>
@@ -374,7 +393,8 @@ function pieLayer(
       entry.changedIds === changedIds &&
       entry.backingSize === backingSize &&
       entry.pixelRatio === pixelRatio &&
-      entry.themeKey === themeKey,
+      entry.themeKey === themeKey &&
+      entry.lighting === lighting,
   );
   if (cached) return cached.layer;
 
@@ -385,6 +405,7 @@ function pieLayer(
   if (!context) return null;
   resetCanvas(context, backingSize);
   configureLogicalCoordinates(context, backingSize / pixelRatio, pixelRatio);
+  drawCleanupScanBackdrop(context, arcs.map(({ arc }) => arc), lighting, themeKey.includes("light"));
   const restrictedPattern = cleanupHatchPattern(context, {
     color: "rgba(232, 220, 255, 0.72)", lineWidth: 2, pixelRatio, spacing: 8, themeKey,
   });
@@ -406,6 +427,7 @@ function pieLayer(
     layer,
     pixelRatio,
     themeKey,
+    lighting,
   });
   if (cache.length > 2) cache.splice(0, cache.length - 2);
   return layer;

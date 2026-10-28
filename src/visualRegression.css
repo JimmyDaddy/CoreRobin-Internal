@@ -36,6 +36,14 @@ body {
   padding: 18px;
 }
 
+body:has(.visual-harness--scan-motion) { overflow-y: auto; }
+.visual-harness--scan-motion > .visual-harness__buttons {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  background: var(--panel);
+}
+
 .visual-harness__states {
   display: grid;
   gap: 14px;

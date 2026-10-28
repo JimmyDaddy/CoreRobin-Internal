@@ -83,7 +83,7 @@ function CleanupMotionScenario() {
       scannedEntryCount: Math.round(base.scannedEntryCount * fraction), partial: phase !== "completed", deletionAvailable: phase === "completed" };
   }, [fraction, phase]);
   const loading = ["scanning", "paused", "stalled", "finalizing"].includes(phase);
-  return <main className="visual-harness">
+  return <main className="visual-harness visual-harness--scan-motion">
     <div className="visual-harness__buttons panel">
       <Button onClick={() => { setFraction((value) => Math.min(.95, value + .15)); setPhase("scanning"); }}>{chinese ? "发现新文件" : "New batch"}</Button>
       <Button onClick={() => setPhase("paused")}>{chinese ? "暂停" : "Pause"}</Button>

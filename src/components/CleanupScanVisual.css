@@ -7,10 +7,15 @@
   place-items: center;
   overflow: clip;
 }
-.cleanup-map__scan-stage .cleanup-map__chart-frame { position: relative; width: min(100%, var(--scan-size)); }
+.cleanup-map__scan-stage .cleanup-map__chart-frame { position: relative; width: min(100%, var(--scan-size)); aspect-ratio: 1; }
 .cleanup-map__scan-stage .cleanup-map__sunburst { position: relative; z-index: 1; }
 .cleanup-map__scan-stage .cleanup-map__center-control { z-index: 3; }
 .cleanup-map__scan-stage .cleanup-map__center-control strong { font-size: clamp(11px, 1.8vw, 17px); }
+.cleanup-map__scan-stage[data-running="true"] .cleanup-map__center-control {
+  background: radial-gradient(circle at 34% 18%, color-mix(in srgb, var(--panel-raised) 83%, var(--blue)), var(--panel-raised) 75%);
+  border-color: color-mix(in srgb, var(--blue) 38%, var(--border-strong));
+  box-shadow: inset 0 1px 0 light-dark(#ffffffb3, #e4f6ff12), 0 8px 20px #00000038;
+}
 html[data-reduce-motion="true"] .cleanup-map__scan-stage * { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .cleanup-map__scan-stage * { animation: none !important; transition: none !important; }

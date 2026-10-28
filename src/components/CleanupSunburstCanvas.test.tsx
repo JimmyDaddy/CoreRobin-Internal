@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLEANUP_MAP_MAX_ARCS, type CleanupMapArc } from "../cleanupMap";
@@ -8,6 +8,7 @@ import { CleanupSunburstCanvas } from "./CleanupSunburstCanvas";
 
 const stroke = vi.fn();
 const drawImage = vi.fn();
+const createRadialGradient = vi.fn(() => ({ addColorStop: vi.fn() }));
 
 function contextFor(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   let globalAlpha = 1;
@@ -40,6 +41,7 @@ function contextFor(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     createPattern: vi.fn(() => ({ setTransform: vi.fn() }) as unknown as CanvasPattern),
+    createRadialGradient,
   } as unknown as CanvasRenderingContext2D;
 }
 
@@ -87,6 +89,7 @@ const baseProps = {
 beforeEach(() => {
   stroke.mockClear();
   drawImage.mockClear();
+  createRadialGradient.mockClear();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
     function getContext(this: HTMLCanvasElement) {
       return contextFor(this);
@@ -123,6 +126,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  delete document.documentElement.dataset.theme;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -151,5 +155,21 @@ describe("CleanupSunburstCanvas collected overlay", () => {
 
     expect(screen.getByText("Node 0")).toBeTruthy();
     expect(screen.getByText(/1 B · 0.2%/)).toBeTruthy();
+  });
+
+  it("caches the atmospheric light with 640 sectors and refreshes it when the theme changes", async () => {
+    const props = { ...baseProps, scanPhase: "scanning" as const, motionAllowed: false };
+    const view = render(<CleanupSunburstCanvas {...props} />);
+    const gradientCount = createRadialGradient.mock.calls.length;
+    const initialStrokes = stroke.mock.calls.length;
+    expect(gradientCount).toBeGreaterThan(0);
+    expect(initialStrokes).toBeLessThan(1_350);
+    view.rerender(<CleanupSunburstCanvas {...props} selectedId="node-42" />);
+    expect(createRadialGradient).toHaveBeenCalledTimes(gradientCount);
+    expect(stroke.mock.calls.length - initialStrokes).toBeLessThan(40);
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    await act(async () => { document.documentElement.dataset.theme = "light"; });
+    expect(createRadialGradient.mock.calls.length).toBeGreaterThan(gradientCount);
+    expect(drawImage).toHaveBeenCalledTimes(3);
   });
 });
