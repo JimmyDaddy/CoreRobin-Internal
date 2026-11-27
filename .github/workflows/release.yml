@@ -1,4 +1,5 @@
 name: Release
+run-name: Release CoreRobin ${{ github.event_name == 'push' && github.ref_name || (inputs.version != '' && format('v{0}', inputs.version) || 'from main') }}
 
 on:
   push:
@@ -6,14 +7,26 @@ on:
       - "v*.*.*"
   workflow_dispatch:
     inputs:
+      version:
+        description: Optional MAJOR.MINOR.PATCH version (defaults to package.json on main)
+        required: false
+        type: string
+      publish_mode:
+        description: Publish directly as Latest after approval, or stop at a public draft
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - draft
       macos_builder:
-        description: Submit GitHub-hosted macOS builds asynchronously, or import an explicitly prepared local build
+        description: Build & notarize macOS on GitHub (default), or import an explicitly prepared local build
         required: true
         default: github
         type: choice
         options:
-          - local
           - github
+          - local
 
 permissions:
   contents: read
@@ -33,12 +46,50 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    outputs:
+      tag: ${{ steps.source.outputs.tag }}
+      version: ${{ steps.source.outputs.version }}
+      commit: ${{ steps.source.outputs.commit }}
+      publish_mode: ${{ steps.source.outputs.publish_mode }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Resolve and verify trusted release source
+        id: source
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH_MODE: ${{ inputs.publish_mode }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            release_tag="$GITHUB_REF_NAME"
+            release_version="${release_tag#v}"
+            node scripts/verify-release-source.mjs "$release_tag" origin/main
+            publish_mode="latest"
+          else
+            test "$GITHUB_REF" = "refs/heads/main"
+            test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+            package_version="$(node -p 'require("./package.json").version')"
+            release_version="${INPUT_VERSION:-$package_version}"
+            [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            test "$release_version" = "$package_version"
+            release_tag="v${release_version}"
+            node scripts/verify-release-readiness.mjs
+            publish_mode="${INPUT_PUBLISH_MODE:-latest}"
+          fi
+          commit="$(git rev-parse HEAD)"
+          {
+            echo "tag=$release_tag"
+            echo "version=$release_version"
+            echo "commit=$commit"
+            echo "publish_mode=$publish_mode"
+          } >> "$GITHUB_OUTPUT"
+          echo "Verified release $release_tag at $commit (publish_mode=$publish_mode)."
 
       - name: Install Linux system dependencies
         run: |
@@ -65,10 +116,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify tag, versions, and trusted branch ancestry
-        run: node scripts/verify-release-source.mjs "$GITHUB_REF_NAME" origin/main
-
-      - name: Check frontend
+      - name: Check frontend and release readiness
         run: |
           pnpm lint
           pnpm typecheck
@@ -105,13 +153,11 @@ jobs:
         include:
           - label: Linux x64
             os: ubuntu-22.04
-            target: ""
             args: --bundles deb,appimage -- --locked
             artifact: corerobin-linux-x86_64
             updater_signature_path: src-tauri/target/release/bundle/appimage/*.AppImage.sig
           - label: Windows x64
             os: windows-latest
-            target: ""
             args: --bundles nsis,msi -- --locked
             artifact: corerobin-windows-x86_64
             updater_signature_path: src-tauri/target/release/bundle/nsis/*-setup.exe.sig
@@ -121,9 +167,10 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
-      - name: Check out repository
+      - name: Check out exact release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.verify.outputs.commit }}
           persist-credentials: false
 
       - name: Install Linux system dependencies
@@ -199,7 +246,7 @@ jobs:
         run: ./scripts/verify-packaged-windows.ps1 -BundleRoot src-tauri/target/release/bundle
 
   build_macos_github:
-    name: Build ${{ matrix.label }} on GitHub
+    name: Build and notarize ${{ matrix.label }}
     if: github.event_name == 'push' || inputs.macos_builder == 'github'
     needs: verify
     runs-on: macos-latest
@@ -213,20 +260,19 @@ jobs:
           - label: macOS Apple Silicon
             target: aarch64-apple-darwin
             expected_arch: arm64
-            public_arch: aarch64
             artifact: corerobin-macos-aarch64
           - label: macOS Intel
             target: x86_64-apple-darwin
             expected_arch: x86_64
-            public_arch: x64
             artifact: corerobin-macos-x86_64
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
-      - name: Check out repository
+      - name: Check out exact release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.verify.outputs.commit }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -294,14 +340,13 @@ jobs:
           uploadUpdaterJson: false
           uploadWorkflowArtifacts: false
 
-      - name: Submit macOS DMG for asynchronous notarization
+      - name: Notarize and staple macOS DMG
         shell: bash
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_NOTARY_WEBHOOK_URL: ${{ secrets.APPLE_NOTARY_WEBHOOK_URL }}
         run: |
+          set -euo pipefail
           shopt -s nullglob
           bundle_root="src-tauri/target/${{ matrix.target }}/release/bundle"
           dmgs=("$bundle_root/dmg/"*.dmg)
@@ -312,50 +357,33 @@ jobs:
           test "${#updater_signatures[@]}" -eq 1
           test -s "$COREROBIN_NOTARY_KEY_PATH"
 
-          json_field() {
-            node -e '
-              const fs = require("node:fs");
-              const value = JSON.parse(fs.readFileSync(0, "utf8"))[process.argv[1]];
-              if (typeof value !== "string" || value.length === 0) process.exit(1);
-              process.stdout.write(value);
-            ' "$1"
-          }
-
-          submit_args=("${dmgs[0]}" \
+          submit_json="$(xcrun notarytool submit "${dmgs[0]}" \
             --key "$COREROBIN_NOTARY_KEY_PATH" \
             --key-id "$APPLE_API_KEY" \
             --issuer "$APPLE_API_ISSUER" \
-            --output-format json)
-          if [[ -n "$APPLE_NOTARY_WEBHOOK_URL" ]]; then
-            separator='?'
-            [[ "$APPLE_NOTARY_WEBHOOK_URL" == *\?* ]] && separator='&'
-            callback_url="${APPLE_NOTARY_WEBHOOK_URL}${separator}tag=${GITHUB_REF_NAME}&run_id=${GITHUB_RUN_ID}&arch=${{ matrix.public_arch }}"
-            submit_args+=(--webhook "$callback_url")
-          else
-            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; scheduled notarization reconciliation will provide the fallback wake-up."
+            --wait \
+            --timeout 25m \
+            --output-format json)"
+          submission_id="$(jq -r '.id // empty' <<<"$submit_json")"
+          status="$(jq -r '.status // empty' <<<"$submit_json")"
+          echo "Apple notarization submission ${submission_id}: ${status}"
+          if [[ "$status" != "Accepted" ]]; then
+            if [[ -n "$submission_id" ]]; then
+              xcrun notarytool log "$submission_id" \
+                --key "$COREROBIN_NOTARY_KEY_PATH" \
+                --key-id "$APPLE_API_KEY" \
+                --issuer "$APPLE_API_ISSUER" || true
+            fi
+            echo "Apple notarization did not reach Accepted (status=${status:-unknown})." >&2
+            exit 1
           fi
 
-          submission_json=$(xcrun notarytool submit "${submit_args[@]}")
-          submission_id=$(printf '%s' "$submission_json" | json_field id)
-          echo "Apple notarization submission: $submission_id"
-          version="${GITHUB_REF_NAME#v}"
-          state_path="$bundle_root/CoreRobin_${version}_${{ matrix.public_arch }}_notarization.json"
-          node scripts/macos-notarization-state.mjs create \
-            "$GITHUB_REF_NAME" \
-            "$GITHUB_SHA" \
-            "$GITHUB_RUN_ID" \
-            "${{ matrix.target }}" \
-            "${{ matrix.public_arch }}" \
-            "${{ matrix.expected_arch }}" \
-            "$APPLE_TEAM_ID" \
-            "$submission_id" \
-            "$bundle_root" \
-            "$state_path"
+          xcrun stapler staple "${dmgs[0]}"
 
       - name: Verify embedded production WebView entries and size budgets
         run: pnpm verify:web-bundle
 
-      - name: Verify signed Preview app structure, identity, and architecture
+      - name: Verify notarized macOS app structure, identity, and Gatekeeper
         shell: bash
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -365,9 +393,9 @@ jobs:
             "${{ matrix.expected_arch }}" \
             "com.corerobin.monitor" \
             "$APPLE_TEAM_ID" \
-            signed-preview
+            notarized
 
-      - name: Upload pre-staple macOS installer, updater, and notarization state
+      - name: Upload notarized macOS installer and updater
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
@@ -375,9 +403,8 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
-            src-tauri/target/${{ matrix.target }}/release/bundle/*_notarization.json
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
 
   import_macos_local:
     name: Import locally notarized macOS assets
@@ -389,10 +416,13 @@ jobs:
       contents: read
     env:
       GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_READ_TOKEN }}
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
     steps:
-      - name: Check out release source
+      - name: Check out exact release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.verify.outputs.commit }}
           persist-credentials: false
 
       - name: Verify read-only public draft credential
@@ -402,7 +432,7 @@ jobs:
       - name: Download and verify locally built macOS assets
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           manifest="CoreRobin_${version}_macos-local.json"
           assets=(
             "CoreRobin_${version}_aarch64.dmg"
@@ -414,17 +444,17 @@ jobs:
             "$manifest"
           )
 
-          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
           mkdir -p imported-macos/all imported-macos/aarch64 imported-macos/x86_64
           for asset in "${assets[@]}"; do
-            gh release download "$GITHUB_REF_NAME" \
+            gh release download "$RELEASE_TAG" \
               --repo "$PUBLIC_RELEASE_REPOSITORY" \
               --dir imported-macos/all \
               --pattern "$asset"
           done
           node scripts/local-macos-release-manifest.mjs verify \
-            "$GITHUB_REF_NAME" \
-            "$GITHUB_SHA" \
+            "$RELEASE_TAG" \
+            "$RELEASE_COMMIT" \
             imported-macos/all
           cp imported-macos/all/*_aarch64.dmg imported-macos/all/*_aarch64.app.tar.gz* imported-macos/aarch64/
           cp imported-macos/all/*_x64.dmg imported-macos/all/*_x64.app.tar.gz* imported-macos/x86_64/
@@ -445,104 +475,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload local macOS build evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: corerobin-macos-local-evidence
-          path: imported-macos/all/CoreRobin_*_macos-local.json
-          if-no-files-found: error
-          retention-days: 14
-
-  preview:
-    name: Publish manual-download Preview prerelease
-    if: >-
-      ${{
-        always() &&
-        needs.build.result == 'success' &&
-        needs.build_macos_github.result == 'success'
-      }}
-    needs:
-      - build
-      - build_macos_github
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    environment:
-      name: release
-    permissions:
-      contents: read
-    env:
-      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
-      APPLE_NOTARY_WEBHOOK_URL: ${{ secrets.APPLE_NOTARY_WEBHOOK_URL }}
-    steps:
-      - name: Check out release source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Download signed installers from this run
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: corerobin-*
-          path: preview-source
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22
-
-      - name: Prepare manual-download Preview assets
-        run: |
-          node scripts/prepare-preview-assets.mjs "$GITHUB_REF_NAME" preview-source preview-assets
-          node scripts/render-preview-release-notes.mjs "$GITHUB_REF_NAME" preview-release-notes.md
-          (cd preview-assets && sha256sum --check PREVIEW-SHA256SUMS)
-          test ! -e preview-assets/latest.json
-          test -z "$(find preview-assets -type f \( -name '*.tar.gz' -o -name '*.sig' \) -print -quit)"
-
-      - name: Publish immutable Preview channel candidate
-        shell: bash
-        run: |
-          test -n "$GH_TOKEN"
-          preview_tag="${GITHUB_REF_NAME}-preview.1"
-          if gh release view "$preview_tag" --repo "$PUBLIC_RELEASE_REPOSITORY" >/dev/null 2>&1; then
-            echo "Refusing to replace already-published Preview release: $preview_tag" >&2
-            exit 1
-          fi
-          mapfile -d '' assets < <(find preview-assets -type f -print0 | sort -z)
-          gh release create "$preview_tag" "${assets[@]}" \
-            --prerelease \
-            --latest=false \
-            --target main \
-            --title "CoreRobin ${GITHUB_REF_NAME} Preview (未公证)" \
-            --notes-file preview-release-notes.md \
-            --repo "$PUBLIC_RELEASE_REPOSITORY"
-
-      - name: Notify notarization coordinator that Preview is ready
-        shell: bash
-        run: |
-          if [[ -z "$APPLE_NOTARY_WEBHOOK_URL" ]]; then
-            echo "::warning::APPLE_NOTARY_WEBHOOK_URL is not configured; use Finalize macOS release manually."
-            exit 0
-          fi
-          separator='?'
-          [[ "$APPLE_NOTARY_WEBHOOK_URL" == *\?* ]] && separator='&'
-          callback_url="${APPLE_NOTARY_WEBHOOK_URL}${separator}tag=${GITHUB_REF_NAME}&run_id=${GITHUB_RUN_ID}&signal=preview_ready"
-          if ! curl --fail --silent --show-error --location \
-            --retry 5 --retry-all-errors --request POST \
-            --header 'content-type: application/json' \
-            --data '{}' \
-            "$callback_url"; then
-            echo "::warning::Could not notify the notarization coordinator; use Finalize macOS release manually."
-          fi
-
   package:
-    name: Package release evidence
+    name: Package release assets and manifests
     if: >-
       ${{
         always() &&
+        !cancelled() &&
         needs.build.result == 'success' &&
-        needs.import_macos_local.result == 'success'
+        (needs.build_macos_github.result == 'success' || needs.import_macos_local.result == 'success')
       }}
     needs:
+      - verify
       - build
       - build_macos_github
       - import_macos_local
@@ -550,14 +493,18 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    env:
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
     steps:
-      - name: Check out release source
+      - name: Check out exact release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.verify.outputs.commit }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Download installers
+      - name: Download signed installers
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: corerobin-*
@@ -569,14 +516,14 @@ jobs:
           node-version: 22
 
       - name: Render structured user release notes
-        run: node scripts/render-release-notes.mjs "$GITHUB_REF_NAME" --output release-notes.md
+        run: node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
 
       - name: Generate signed updater manifest
         shell: bash
         run: |
-          pub_date="$(git show -s --format=%cI "$GITHUB_SHA")"
+          pub_date="$(git show -s --format=%cI "$RELEASE_COMMIT")"
           node scripts/generate-updater-manifest.mjs \
-            "$GITHUB_REF_NAME" \
+            "$RELEASE_TAG" \
             release-artifacts \
             release-notes.md \
             "$pub_date"
@@ -611,7 +558,7 @@ jobs:
       - name: Upload release-ready artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-ready-${{ github.sha }}
+          name: release-ready-${{ needs.verify.outputs.commit }}
           path: release-artifacts
           if-no-files-found: error
           retention-days: 14
@@ -619,7 +566,9 @@ jobs:
   sign:
     name: Sign release checksum manifest
     if: ${{ always() && !cancelled() && needs.package.result == 'success' }}
-    needs: package
+    needs:
+      - verify
+      - package
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
@@ -629,7 +578,7 @@ jobs:
       - name: Download release-ready artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: release-ready-${{ github.sha }}
+          name: release-ready-${{ needs.verify.outputs.commit }}
           path: release-artifacts
 
       - name: Install Cosign
@@ -651,40 +600,51 @@ jobs:
       - name: Upload signed release artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-signed-${{ github.sha }}
+          name: release-signed-${{ needs.verify.outputs.commit }}
           path: release-artifacts
           if-no-files-found: error
           retention-days: 14
 
   publish:
-    name: Stage public draft release
+    name: Publish public release
     if: ${{ always() && !cancelled() && needs.sign.result == 'success' }}
-    needs: sign
+    needs:
+      - verify
+      - sign
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment:
       name: release
     permissions:
-      contents: read
+      contents: write
     env:
-      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+      PUBLISH_MODE: ${{ needs.verify.outputs.publish_mode }}
     steps:
-      - name: Check out release source
+      - name: Check out exact release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.verify.outputs.commit }}
           persist-credentials: false
 
       - name: Download signed release artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: release-signed-${{ github.sha }}
+          name: release-signed-${{ needs.verify.outputs.commit }}
           path: release-artifacts
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
       - name: Render structured user release notes
-        run: node scripts/render-release-notes.mjs "$GITHUB_REF_NAME" --output release-notes.md
+        run: node scripts/render-release-notes.mjs "$RELEASE_TAG" --output release-notes.md
 
       - name: Verify checksums and signature
         shell: bash
@@ -696,46 +656,47 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             release-artifacts/SHA256SUMS
 
-      - name: Verify public release credential
+      - name: Ensure immutable release tag on internal repository
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ensure-stable-release-tag.sh
+
+      - name: Create or update public release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
         run: |
+          set -euo pipefail
           if [[ -z "$GH_TOKEN" ]]; then
             echo "PUBLIC_RELEASE_TOKEN is required to publish to $PUBLIC_RELEASE_REPOSITORY" >&2
             exit 1
           fi
-
-      - name: Create or update public draft release
-        shell: bash
-        run: |
           mapfile -d '' assets < <(find release-artifacts -type f -print0 | sort -z)
-          if gh release view "$GITHUB_REF_NAME" --repo "$PUBLIC_RELEASE_REPOSITORY" >/dev/null 2>&1; then
-            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
-            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
+          if gh release view "$RELEASE_TAG" --repo "$PUBLIC_RELEASE_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft --repo "$PUBLIC_RELEASE_REPOSITORY")" = "true"
+            gh release upload "$RELEASE_TAG" "${assets[@]}" \
               --clobber \
               --repo "$PUBLIC_RELEASE_REPOSITORY"
           else
-            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
               --draft \
               --target main \
-              --title "CoreRobin $GITHUB_REF_NAME" \
+              --title "CoreRobin $RELEASE_TAG" \
               --notes-file release-notes.md \
               --repo "$PUBLIC_RELEASE_REPOSITORY"
           fi
-          gh release edit "$GITHUB_REF_NAME" \
+          gh release edit "$RELEASE_TAG" \
             --notes-file release-notes.md \
             --repo "$PUBLIC_RELEASE_REPOSITORY"
 
-      - name: Verify staged public draft release
-        shell: bash
-        run: |
-          release_id="$(gh release view "$GITHUB_REF_NAME" \
+          release_id="$(gh release view "$RELEASE_TAG" \
             --repo "$PUBLIC_RELEASE_REPOSITORY" \
             --json databaseId \
             --jq .databaseId)"
           [[ "$release_id" =~ ^[0-9]+$ ]]
           release_json="$(gh api "repos/$PUBLIC_RELEASE_REPOSITORY/releases/$release_id")"
-          test "$(jq -r .tag_name <<<"$release_json")" = "$GITHUB_REF_NAME"
-          test "$(jq -r .draft <<<"$release_json")" = "true"
+          test "$(jq -r .tag_name <<<"$release_json")" = "$RELEASE_TAG"
           test "$(jq -r .prerelease <<<"$release_json")" = "false"
 
           find release-artifacts -maxdepth 1 -type f -exec basename {} \; \
@@ -744,56 +705,30 @@ jobs:
             | LC_ALL=C sort > "$RUNNER_TEMP/staged-release-assets"
           diff -u "$RUNNER_TEMP/expected-release-assets" "$RUNNER_TEMP/staged-release-assets"
 
-          release_url="$(jq -r .html_url <<<"$release_json")"
-          {
-            echo "### Public draft staged"
-            echo
-            echo "- Tag: \`$GITHUB_REF_NAME\`"
-            echo "- Draft: $release_url"
-            echo "- Assets: $(wc -l < "$RUNNER_TEMP/staged-release-assets" | tr -d ' ')"
-            echo "- Next gate: real-device smoke evidence, then Promote verified release"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  verify_completion:
-    name: Verify release stage completed
-    if: ${{ always() && !cancelled() }}
-    needs:
-      - verify
-      - build
-      - build_macos_github
-      - import_macos_local
-      - preview
-      - package
-      - sign
-      - publish
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    env:
-      VERIFY_RESULT: ${{ needs.verify.result }}
-      BUILD_RESULT: ${{ needs.build.result }}
-      HOSTED_MACOS_RESULT: ${{ needs.build_macos_github.result }}
-      LOCAL_MACOS_RESULT: ${{ needs.import_macos_local.result }}
-      PREVIEW_RESULT: ${{ needs.preview.result }}
-      PACKAGE_RESULT: ${{ needs.package.result }}
-      SIGN_RESULT: ${{ needs.sign.result }}
-      PUBLISH_RESULT: ${{ needs.publish.result }}
-      USE_HOSTED_MACOS: ${{ github.event_name == 'push' || inputs.macos_builder == 'github' }}
-    steps:
-      - name: Fail closed unless the selected release stage completed
+      - name: Validate and publish public website release data
+        if: needs.verify.outputs.publish_mode == 'latest'
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
         run: |
-          test "$VERIFY_RESULT" = "success"
-          test "$BUILD_RESULT" = "success"
-          if [[ "$USE_HOSTED_MACOS" == "true" ]]; then
-            test "$HOSTED_MACOS_RESULT" = "success"
-            test "$PREVIEW_RESULT" = "success"
-            echo "Hosted release reached the public Preview and asynchronous notarization stage." >> "$GITHUB_STEP_SUMMARY"
-          else
-            test "$LOCAL_MACOS_RESULT" = "success"
-            test "$PACKAGE_RESULT" = "success"
-            test "$SIGN_RESULT" = "success"
-            test "$PUBLISH_RESULT" = "success"
-            echo "Local-macOS release reached the finalized public draft stage." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          set -euo pipefail
+          node scripts/update-public-release-manifest.mjs "$RELEASE_TAG" "$PUBLIC_RELEASE_REPOSITORY" --check
+          gh release edit "$RELEASE_TAG" \
+            --draft=false \
+            --latest \
+            --repo "$PUBLIC_RELEASE_REPOSITORY"
+          node scripts/update-public-release-manifest.mjs "$RELEASE_TAG" "$PUBLIC_RELEASE_REPOSITORY"
+
+      - name: Write release summary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+        run: |
+          release_url="$(gh release view "$RELEASE_TAG" --repo "$PUBLIC_RELEASE_REPOSITORY" --json url --jq .url)"
+          {
+            echo "### CoreRobin $RELEASE_TAG ($PUBLISH_MODE)"
+            echo
+            echo "- Release: $release_url"
+            echo "- Commit: \`$RELEASE_COMMIT\`"
+            echo "- Assets verified against \`SHA256SUMS\` and Sigstore."
+          } >> "$GITHUB_STEP_SUMMARY"
