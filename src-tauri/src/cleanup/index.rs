@@ -17,14 +17,18 @@ use crate::models::{
 };
 use crate::private_storage;
 
+#[cfg(unix)]
+use super::scanner::{DirectoryTotals, ScannedFile};
 use super::scanner::{
-    DirectoryTotals, MemoryScanConfig, PreviewSnapshot, ReusedSubtree, ScanRootItem, ScannedDir,
-    ScannedDirKind, ScannedFile, ScannedTree, scan_tree_in_memory,
+    MemoryScanConfig, PreviewSnapshot, ReusedSubtree, ScanRootItem, ScannedDir, ScannedDirKind,
+    ScannedTree, scan_tree_in_memory,
 };
+#[cfg(unix)]
+use super::system_time_millis;
 use super::{
     MAX_LARGE_FILES, ScanFilesystemBoundary, cleanup_node_name, cleanup_protection_for_scan_path,
     display_path, ensure_scan_active, home_directory, matching_location_definition, platform_paths,
-    resolve_cleanup_scan_target, system_time_millis,
+    resolve_cleanup_scan_target,
 };
 
 const SCHEMA_VERSION: i64 = 7;
@@ -276,6 +280,22 @@ fn build_indexed_scan_with_limit(
     load_scan(&connection, index_path, scan_id)
 }
 
+#[cfg(not(unix))]
+#[allow(clippy::too_many_arguments)]
+fn load_reusable_subtrees(
+    _index_path: &Path,
+    _profile: CleanupScanProfile,
+    _target_kind: CleanupScanTargetKind,
+    _scan_root: &Path,
+    _home: &Path,
+    _root_absolute_path: &str,
+    _excluded_paths: &[PathBuf],
+    _definitions: &[super::LocationDefinition],
+) -> HashMap<PathBuf, ReusedSubtree> {
+    HashMap::new()
+}
+
+#[cfg(unix)]
 #[allow(clippy::too_many_arguments)]
 fn load_reusable_subtrees(
     index_path: &Path,
@@ -430,6 +450,7 @@ fn load_reusable_subtrees(
     reusable
 }
 
+#[cfg(unix)]
 #[derive(Clone, Debug)]
 struct IndexDirIdentity {
     id: i64,
@@ -439,6 +460,7 @@ struct IndexDirIdentity {
     inode: Option<i64>,
 }
 
+#[cfg(unix)]
 fn find_latest_matching_completed_scan(
     index_path: &Path,
     target_kind: CleanupScanTargetKind,
@@ -499,6 +521,7 @@ fn find_latest_matching_completed_scan(
     })
 }
 
+#[cfg(unix)]
 fn load_scan_largest_files(connection: &Connection, scan_id: &str) -> Vec<CleanupFile> {
     let Ok(mut stmt) = connection.prepare(
         "SELECT name, path, size_bytes, modified_at_ms
@@ -521,6 +544,7 @@ fn load_scan_largest_files(connection: &Connection, scan_id: &str) -> Vec<Cleanu
     .unwrap_or_default()
 }
 
+#[cfg(unix)]
 fn lookup_index_dir_by_components(
     connection: &Connection,
     scan_id: &str,
@@ -556,6 +580,7 @@ fn lookup_index_dir_by_components(
     last
 }
 
+#[cfg(unix)]
 fn list_index_app_bundle_children(
     connection: &Connection,
     scan_id: &str,
@@ -582,6 +607,7 @@ fn list_index_app_bundle_children(
     .unwrap_or_default()
 }
 
+#[cfg(unix)]
 fn verify_unchanged_app_bundle(
     connection: &Connection,
     scan_id: &str,
@@ -695,6 +721,7 @@ fn verify_unchanged_app_bundle(
     true
 }
 
+#[cfg(unix)]
 fn dir_identity_matches(
     path: &Path,
     expected_dev: Option<i64>,
@@ -707,6 +734,7 @@ fn dir_identity_matches(
     dir_metadata_matches(&meta, expected_dev, expected_ino, expected_mtime)
 }
 
+#[cfg(unix)]
 fn dir_metadata_matches(
     meta: &fs::Metadata,
     expected_dev: Option<i64>,
@@ -744,6 +772,7 @@ fn dir_metadata_matches(
     true
 }
 
+#[cfg(unix)]
 fn file_metadata_matches(
     meta: &fs::Metadata,
     expected_dev: Option<i64>,
@@ -800,6 +829,7 @@ fn is_read_only_mount(path: &Path) -> bool {
     (stat.f_flags & (libc::MNT_RDONLY as u32)) != 0
 }
 
+#[cfg(unix)]
 fn path_overlaps_exclusions_or_definitions(
     path: &Path,
     excluded_paths: &[PathBuf],
@@ -817,6 +847,7 @@ fn path_overlaps_exclusions_or_definitions(
         .any(|def_path| path.starts_with(def_path) || def_path.starts_with(path))
 }
 
+#[cfg(unix)]
 fn load_single_reused_subtree(
     connection: &Connection,
     scan_id: &str,
@@ -4760,6 +4791,7 @@ mod tests {
         assert_eq!(large_rows, 1, "deep directories >= 256 KiB must remain");
     }
 
+    #[cfg(unix)]
     #[test]
     fn rescan_reuses_unchanged_app_bundles_and_invalidates_on_change() {
         let fixture = tempdir().unwrap();

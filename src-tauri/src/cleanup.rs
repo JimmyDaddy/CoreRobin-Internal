@@ -47,14 +47,16 @@ use crate::error::CommandError;
 #[cfg(target_os = "macos")]
 use crate::models::{ApplicationArtifactKind, ApplicationUninstallArtifact, InstalledApplication};
 use crate::models::{
-    ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupApplication,
-    CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
-    CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseRequest, CleanupDeleteMode,
-    CleanupDeleteProgress, CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
+    ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupDeleteExecutionRequest,
+    CleanupDeleteFailure, CleanupDeleteLease, CleanupDeleteLeaseModeRequest,
+    CleanupDeleteLeaseRequest, CleanupDeleteMode, CleanupDeleteProgress,
+    CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
     CleanupDeleteTargetEvidence, CleanupFullDiskAccessStatus, CleanupPathState,
-    CleanupProtectionReason, CleanupSafety, CleanupScanAccess, CleanupScanProgress,
-    CleanupScanRequest, CleanupScanTargetKind,
+    CleanupProtectionReason, CleanupSafety, CleanupScanAccess, CleanupScanRequest,
+    CleanupScanTargetKind,
 };
+#[cfg(any(target_os = "macos", test))]
+use crate::models::{CleanupApplication, CleanupScanProgress};
 use crate::private_storage;
 #[cfg(all(target_os = "macos", not(test)))]
 use crate::safe_fs::BoundTargetKind;
@@ -3285,19 +3287,16 @@ fn is_windows_reparse_point(metadata: &Metadata) -> bool {
     metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug)]
 struct ScanStats {
-    #[cfg(any(target_os = "macos", test))]
     started: Instant,
-    #[cfg(any(target_os = "macos", test))]
     scanned_entry_count: usize,
-    #[cfg(any(target_os = "macos", test))]
     discovered_bytes: u64,
     #[cfg(test)]
     unreadable_entry_count: usize,
     #[cfg(test)]
     unreadable_paths: Vec<PathBuf>,
-    #[cfg(any(target_os = "macos", test))]
     last_reported_entry_count: usize,
 }
 
@@ -3440,7 +3439,7 @@ impl ScanFilesystemBoundary {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "macos")]
     fn allows_device(self, device: u64) -> bool {
         device == self.device
     }
@@ -3768,7 +3767,7 @@ fn scan_installed_applications(
     Ok((applications, inventory_available))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(test, not(target_os = "macos")))]
 fn scan_installed_applications(
     _home: &Path,
     cancelled: &AtomicBool,
@@ -4375,20 +4374,17 @@ fn scan_directory_summary(
     Ok(node)
 }
 
+#[cfg(any(target_os = "macos", test))]
 impl ScanStats {
     fn new() -> Self {
         Self {
-            #[cfg(any(target_os = "macos", test))]
             started: Instant::now(),
-            #[cfg(any(target_os = "macos", test))]
             scanned_entry_count: 0,
-            #[cfg(any(target_os = "macos", test))]
             discovered_bytes: 0,
             #[cfg(test)]
             unreadable_entry_count: 0,
             #[cfg(test)]
             unreadable_paths: Vec::new(),
-            #[cfg(any(target_os = "macos", test))]
             last_reported_entry_count: 0,
         }
     }
@@ -4406,12 +4402,10 @@ impl ScanStats {
         }
     }
 
-    #[cfg(any(target_os = "macos", test))]
     fn elapsed_ms(&self) -> u64 {
         u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)
     }
 
-    #[cfg(any(target_os = "macos", test))]
     fn report_progress(
         &mut self,
         path: &Path,

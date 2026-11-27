@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(target_os = "macos")]
+use std::time::UNIX_EPOCH;
+use std::time::{Duration, Instant, SystemTime};
 
 use sysinfo::{DiskKind, Disks};
 
@@ -83,6 +85,7 @@ pub(super) struct ScannedDir {
 /// scanned subtrees without double-counting. `dirs[0]` is the subtree root and
 /// all `parent_id` values are local indices into `dirs` (`parent < child`).
 #[derive(Clone, Debug)]
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(super) struct ReusedSubtree {
     pub(super) dirs: Vec<ScannedDir>,
     pub(super) largest_files: Vec<CleanupFile>,
@@ -1997,6 +2000,7 @@ pub(crate) struct FastDirEntry {
     pub(crate) modified_at: Option<SystemTime>,
     pub(crate) dev: u64,
     pub(crate) ino: u64,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub(crate) nlink: u32,
 }
 
@@ -2326,6 +2330,7 @@ fn timespec_to_system_time(tv_sec: i64, tv_nsec: i64) -> Option<SystemTime> {
 
 /// Measures allocated disk sizes for multiple independent root directories in
 /// parallel using `read_dir_fast`, deduplicating hard links per root.
+#[cfg(target_os = "macos")]
 pub(super) fn measure_directory_sizes_parallel(
     roots: &[PathBuf],
     cancelled: &AtomicBool,
