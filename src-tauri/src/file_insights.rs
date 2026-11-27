@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File, Metadata};
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -13,6 +14,7 @@ use sha2::{Digest, Sha256};
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 
+use crate::cleanup::{FastEntryKind, read_dir_fast};
 use crate::error::CommandError;
 use crate::models::{
     DuplicateFileGroup, FileInsightFile, FileInsightsPhase, FileInsightsProgress, FileInsightsScan,
@@ -20,6 +22,7 @@ use crate::models::{
 use crate::private_storage;
 
 const MIN_DUPLICATE_SIZE_BYTES: u64 = 1024 * 1024;
+const PARTIAL_HASH_WINDOW_BYTES: usize = 4 * 1024;
 const MIN_LONG_UNMODIFIED_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 const LONG_UNMODIFIED_AGE: Duration = Duration::from_secs(180 * 24 * 60 * 60);
 const MAX_SCANNED_ENTRIES: usize = 200_000;
@@ -94,7 +97,10 @@ impl FileInsightsCoordinator {
 struct CandidateFile {
     path: PathBuf,
     size_bytes: u64,
+    allocated_size_bytes: u64,
     modified_at: Option<SystemTime>,
+    device_id: Option<u64>,
+    inode: Option<u64>,
 }
 
 pub fn scan_file_insights(
@@ -124,7 +130,16 @@ pub fn scan_file_insights(
     })
     .collect::<Vec<_>>();
 
-    let mut stack = roots;
+    scan_file_insights_in_roots(&roots, started_at, cancellation, on_progress)
+}
+
+fn scan_file_insights_in_roots(
+    roots: &[PathBuf],
+    started_at: Instant,
+    cancellation: &AtomicBool,
+    on_progress: &mut impl FnMut(FileInsightsProgress),
+) -> Result<FileInsightsScan, CommandError> {
+    let mut stack = roots.to_vec();
     let mut candidates = Vec::new();
     let mut long_unmodified_files = Vec::new();
     let mut scanned_entry_count = 0usize;
@@ -133,66 +148,68 @@ pub fn scan_file_insights(
     let old_before = SystemTime::now()
         .checked_sub(LONG_UNMODIFIED_AGE)
         .unwrap_or(UNIX_EPOCH);
+    let mut bulk_buf = vec![0u8; 64 * 1024];
 
     while let Some(directory) = stack.pop() {
         ensure_not_cancelled(cancellation)?;
-        let entries = match fs::read_dir(&directory) {
-            Ok(entries) => entries,
-            Err(_) => {
-                unreadable_entry_count += 1;
-                continue;
+        let mut hit_cap = false;
+        let read_result = read_dir_fast(&directory, &mut bulk_buf, &mut |entry| {
+            if cancellation.load(Ordering::Acquire) {
+                return false;
             }
-        };
-        for entry in entries {
-            ensure_not_cancelled(cancellation)?;
             if scanned_entry_count >= MAX_SCANNED_ENTRIES {
                 truncated = true;
-                stack.clear();
-                break;
+                hit_cap = true;
+                return false;
             }
             scanned_entry_count += 1;
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(_) => {
-                    unreadable_entry_count += 1;
-                    continue;
+            match entry.kind {
+                FastEntryKind::Dir => {
+                    stack.push(directory.join(&entry.name));
                 }
-            };
-            let path = entry.path();
-            let metadata = match fs::symlink_metadata(&path) {
-                Ok(metadata) => metadata,
-                Err(_) => {
-                    unreadable_entry_count += 1;
-                    continue;
+                FastEntryKind::File => {
+                    let logical = entry.logical_size;
+                    let is_long_unmodified = logical >= MIN_LONG_UNMODIFIED_SIZE_BYTES
+                        && entry
+                            .modified_at
+                            .is_some_and(|modified| modified <= old_before);
+                    let is_dup_candidate = logical >= MIN_DUPLICATE_SIZE_BYTES;
+                    if is_long_unmodified || is_dup_candidate {
+                        let path = directory.join(&entry.name);
+                        #[cfg(unix)]
+                        let (device_id, inode) = (Some(entry.dev), Some(entry.ino));
+                        #[cfg(not(unix))]
+                        let (device_id, inode) = (None, None);
+                        if is_long_unmodified {
+                            long_unmodified_files.push(FileInsightFile {
+                                name: entry.name.to_string_lossy().into_owned(),
+                                path: path.to_string_lossy().into_owned(),
+                                size_bytes: logical,
+                                logical_size_bytes: logical,
+                                allocated_size_bytes: entry.allocated_size,
+                                modified_at_ms: entry.modified_at.and_then(system_time_millis),
+                                modified_at_us: entry.modified_at.and_then(system_time_micros),
+                                device_id,
+                                inode,
+                            });
+                        }
+                        if is_dup_candidate {
+                            if candidates.len() >= MAX_CANDIDATE_FILES {
+                                truncated = true;
+                            } else {
+                                candidates.push(CandidateFile {
+                                    path,
+                                    size_bytes: logical,
+                                    allocated_size_bytes: entry.allocated_size,
+                                    modified_at: entry.modified_at,
+                                    device_id,
+                                    inode,
+                                });
+                            }
+                        }
+                    }
                 }
-            };
-            if metadata.file_type().is_symlink() {
-                continue;
-            }
-            if metadata.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if !metadata.is_file() {
-                continue;
-            }
-
-            let modified_at = metadata.modified().ok();
-            if metadata.len() >= MIN_LONG_UNMODIFIED_SIZE_BYTES
-                && modified_at.is_some_and(|modified| modified <= old_before)
-            {
-                long_unmodified_files.push(to_file_insight(&path, &metadata));
-            }
-            if metadata.len() >= MIN_DUPLICATE_SIZE_BYTES {
-                if candidates.len() >= MAX_CANDIDATE_FILES {
-                    truncated = true;
-                } else {
-                    candidates.push(CandidateFile {
-                        path,
-                        size_bytes: metadata.len(),
-                        modified_at,
-                    });
-                }
+                FastEntryKind::Symlink | FastEntryKind::Other => {}
             }
 
             if scanned_entry_count.is_multiple_of(500) {
@@ -204,12 +221,27 @@ pub fn scan_file_insights(
                     current_path: directory.to_string_lossy().into_owned(),
                 });
             }
+            true
+        });
+        ensure_not_cancelled(cancellation)?;
+        match read_result {
+            Ok(entry_errors) => {
+                unreadable_entry_count = unreadable_entry_count.saturating_add(entry_errors);
+            }
+            Err(()) => {
+                unreadable_entry_count = unreadable_entry_count.saturating_add(1);
+            }
+        }
+        if hit_cap {
+            stack.clear();
+            break;
         }
     }
 
     long_unmodified_files.sort_by_key(|file| std::cmp::Reverse(file.size_bytes));
     long_unmodified_files.truncate(MAX_LONG_UNMODIFIED_FILES);
 
+    // Stage 1: Group by exact byte size.
     let mut by_size: HashMap<u64, Vec<CandidateFile>> = HashMap::new();
     for candidate in candidates.iter().cloned() {
         by_size
@@ -217,51 +249,49 @@ pub fn scan_file_insights(
             .or_default()
             .push(candidate);
     }
-    let mut hash_candidates = by_size
+    let size_collision_candidates = by_size
+        .into_values()
+        .filter(|group| group.len() > 1)
+        .flatten()
+        .collect::<Vec<_>>();
+
+    // Stage 2: Fast head+tail 4 KiB partial SHA-256 pre-filter (parallelized).
+    // Files that collide only on byte length are eliminated with <= 8 KiB of
+    // I/O instead of hashing gigabytes of content.
+    let (partial_groups, partial_unreadable) =
+        partial_filter_candidates(size_collision_candidates, cancellation)?;
+    unreadable_entry_count = unreadable_entry_count.saturating_add(partial_unreadable);
+
+    let mut hash_candidates = partial_groups
         .into_values()
         .filter(|group| group.len() > 1)
         .flatten()
         .collect::<Vec<_>>();
     hash_candidates.sort_by_key(|file| std::cmp::Reverse(file.size_bytes));
 
-    let mut hashed_file_count = 0usize;
-    let mut hashed_bytes = 0u64;
-    let mut by_digest: HashMap<(u64, String), Vec<FileInsightFile>> = HashMap::new();
+    // Stage 3: Full SHA-256 only on candidates that matched both size and
+    // head+tail partial digest, respecting MAX_HASHED_FILES & MAX_HASHED_BYTES.
+    let mut selected_for_full_hash = Vec::new();
+    let mut planned_bytes = 0u64;
     for candidate in hash_candidates {
-        ensure_not_cancelled(cancellation)?;
-        if hashed_file_count >= MAX_HASHED_FILES
-            || hashed_bytes.saturating_add(candidate.size_bytes) > MAX_HASHED_BYTES
+        if selected_for_full_hash.len() >= MAX_HASHED_FILES
+            || planned_bytes.saturating_add(candidate.size_bytes) > MAX_HASHED_BYTES
         {
             truncated = true;
             break;
         }
-        if let Ok(digest) = hash_candidate(&candidate) {
-            hashed_file_count += 1;
-            hashed_bytes = hashed_bytes.saturating_add(candidate.size_bytes);
-            let metadata = match fs::symlink_metadata(&candidate.path) {
-                Ok(metadata) => metadata,
-                Err(_) => {
-                    unreadable_entry_count += 1;
-                    continue;
-                }
-            };
-            by_digest
-                .entry((candidate.size_bytes, digest))
-                .or_default()
-                .push(to_file_insight(&candidate.path, &metadata));
-        } else {
-            unreadable_entry_count += 1;
-        }
-        if hashed_file_count.is_multiple_of(10) {
-            on_progress(FileInsightsProgress {
-                phase: FileInsightsPhase::Hashing,
-                scanned_entry_count,
-                candidate_file_count: candidates.len(),
-                hashed_file_count,
-                current_path: candidate.path.to_string_lossy().into_owned(),
-            });
-        }
+        planned_bytes = planned_bytes.saturating_add(candidate.size_bytes);
+        selected_for_full_hash.push(candidate);
     }
+
+    let (by_digest, hashed_file_count, full_hash_unreadable) = hash_candidates_parallel(
+        &selected_for_full_hash,
+        scanned_entry_count,
+        candidates.len(),
+        cancellation,
+        on_progress,
+    )?;
+    unreadable_entry_count = unreadable_entry_count.saturating_add(full_hash_unreadable);
 
     let mut duplicate_groups = by_digest
         .into_iter()
@@ -292,6 +322,201 @@ pub fn scan_file_insights(
         unreadable_entry_count,
         truncated,
     })
+}
+
+type PartialHashGroups = HashMap<(u64, [u8; 32]), Vec<CandidateFile>>;
+
+fn partial_filter_candidates(
+    candidates: Vec<CandidateFile>,
+    cancellation: &AtomicBool,
+) -> Result<(PartialHashGroups, usize), CommandError> {
+    if candidates.is_empty() {
+        return Ok((HashMap::new(), 0));
+    }
+    let worker_count = thread::available_parallelism()
+        .map(|n| n.get().clamp(2, 4))
+        .unwrap_or(2)
+        .min(candidates.len());
+    let next_idx = AtomicUsize::new(0);
+    let groups = Mutex::new(HashMap::<(u64, [u8; 32]), Vec<CandidateFile>>::new());
+    let unreadable = AtomicUsize::new(0);
+
+    thread::scope(|scope| {
+        for _ in 0..worker_count {
+            let candidates = &candidates;
+            let next_idx = &next_idx;
+            let groups = &groups;
+            let unreadable = &unreadable;
+            scope.spawn(move || {
+                loop {
+                    if cancellation.load(Ordering::Acquire) {
+                        break;
+                    }
+                    let idx = next_idx.fetch_add(1, Ordering::Relaxed);
+                    let Some(candidate) = candidates.get(idx) else {
+                        break;
+                    };
+                    match partial_hash_candidate(candidate) {
+                        Ok(partial_digest) => {
+                            if let Ok(mut map) = groups.lock() {
+                                map.entry((candidate.size_bytes, partial_digest))
+                                    .or_default()
+                                    .push(candidate.clone());
+                            }
+                        }
+                        Err(_) => {
+                            unreadable.fetch_add(1, Ordering::Relaxed);
+                        }
+                    }
+                }
+            });
+        }
+    });
+    ensure_not_cancelled(cancellation)?;
+    Ok((
+        groups.into_inner().unwrap_or_default(),
+        unreadable.load(Ordering::Relaxed),
+    ))
+}
+
+fn partial_hash_candidate(candidate: &CandidateFile) -> io::Result<[u8; 32]> {
+    let mut file = open_file_no_follow(&candidate.path)?;
+    let meta = file.metadata()?;
+    if !meta.is_file() || meta.len() != candidate.size_bytes {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "file changed before partial hashing",
+        ));
+    }
+    let mut digest = Sha256::new();
+    let mut buf = [0u8; PARTIAL_HASH_WINDOW_BYTES];
+    let head_len = read_up_to(&mut file, &mut buf)?;
+    digest.update(&buf[..head_len]);
+    if candidate.size_bytes > PARTIAL_HASH_WINDOW_BYTES as u64 {
+        let tail_offset = candidate
+            .size_bytes
+            .saturating_sub(PARTIAL_HASH_WINDOW_BYTES as u64);
+        file.seek(SeekFrom::Start(tail_offset))?;
+        let tail_len = read_up_to(&mut file, &mut buf)?;
+        digest.update(&buf[..tail_len]);
+    }
+    Ok(digest.finalize().into())
+}
+
+fn read_up_to(file: &mut File, buf: &mut [u8]) -> io::Result<usize> {
+    let mut filled = 0;
+    while filled < buf.len() {
+        let read = file.read(&mut buf[filled..])?;
+        if read == 0 {
+            break;
+        }
+        filled += read;
+    }
+    Ok(filled)
+}
+
+#[allow(clippy::type_complexity)]
+fn hash_candidates_parallel(
+    candidates: &[CandidateFile],
+    scanned_entry_count: usize,
+    candidate_file_count: usize,
+    cancellation: &AtomicBool,
+    on_progress: &mut impl FnMut(FileInsightsProgress),
+) -> Result<(HashMap<(u64, String), Vec<FileInsightFile>>, usize, usize), CommandError> {
+    if candidates.is_empty() {
+        return Ok((HashMap::new(), 0, 0));
+    }
+    let worker_count = thread::available_parallelism()
+        .map(|n| n.get().clamp(2, 4))
+        .unwrap_or(2)
+        .min(candidates.len());
+    let next_idx = AtomicUsize::new(0);
+    let hashed_count = AtomicUsize::new(0);
+    let unreadable = AtomicUsize::new(0);
+    let by_digest = Mutex::new(HashMap::<(u64, String), Vec<FileInsightFile>>::new());
+    let latest_path = Mutex::new(String::new());
+
+    thread::scope(|scope| {
+        let mut handles = Vec::with_capacity(worker_count);
+        for _ in 0..worker_count {
+            let next_idx = &next_idx;
+            let hashed_count = &hashed_count;
+            let unreadable = &unreadable;
+            let by_digest = &by_digest;
+            let latest_path = &latest_path;
+            handles.push(scope.spawn(move || {
+                loop {
+                    if cancellation.load(Ordering::Acquire) {
+                        break;
+                    }
+                    let idx = next_idx.fetch_add(1, Ordering::Relaxed);
+                    let Some(candidate) = candidates.get(idx) else {
+                        break;
+                    };
+                    if let Ok(mut slot) = latest_path.try_lock() {
+                        *slot = candidate.path.to_string_lossy().into_owned();
+                    }
+                    if let Ok(digest) = hash_candidate(candidate) {
+                        hashed_count.fetch_add(1, Ordering::Relaxed);
+                        let insight = FileInsightFile {
+                            name: candidate
+                                .path
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .into_owned(),
+                            path: candidate.path.to_string_lossy().into_owned(),
+                            size_bytes: candidate.size_bytes,
+                            logical_size_bytes: candidate.size_bytes,
+                            allocated_size_bytes: candidate.allocated_size_bytes,
+                            modified_at_ms: candidate.modified_at.and_then(system_time_millis),
+                            modified_at_us: candidate.modified_at.and_then(system_time_micros),
+                            device_id: candidate.device_id,
+                            inode: candidate.inode,
+                        };
+                        if let Ok(mut map) = by_digest.lock() {
+                            map.entry((candidate.size_bytes, digest))
+                                .or_default()
+                                .push(insight);
+                        }
+                    } else {
+                        unreadable.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }));
+        }
+
+        let mut last_reported = 0usize;
+        while handles.iter().any(|h| !h.is_finished()) {
+            if cancellation.load(Ordering::Acquire) {
+                break;
+            }
+            let current = hashed_count.load(Ordering::Relaxed);
+            if current.saturating_sub(last_reported) >= 10 {
+                last_reported = current;
+                let current_path = latest_path.lock().map(|p| p.clone()).unwrap_or_default();
+                on_progress(FileInsightsProgress {
+                    phase: FileInsightsPhase::Hashing,
+                    scanned_entry_count,
+                    candidate_file_count,
+                    hashed_file_count: current,
+                    current_path,
+                });
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        for handle in handles {
+            let _ = handle.join();
+        }
+    });
+
+    ensure_not_cancelled(cancellation)?;
+    Ok((
+        by_digest.into_inner().unwrap_or_default(),
+        hashed_count.load(Ordering::Relaxed),
+        unreadable.load(Ordering::Relaxed),
+    ))
 }
 
 pub fn load_file_insights_cache(path: &Path) -> Result<Option<String>, CommandError> {
@@ -416,7 +641,10 @@ fn revalidate_duplicate_file(
     let candidate = CandidateFile {
         path: path.to_path_buf(),
         size_bytes: metadata.len(),
+        allocated_size_bytes: file_allocated_size(&metadata),
         modified_at: metadata.modified().ok(),
+        device_id: file_device_id(&metadata),
+        inode: file_inode(&metadata),
     };
     (hash_candidate(&candidate).ok()?.as_str() == expected_digest).then_some(current)
 }
@@ -595,7 +823,10 @@ mod tests {
         let candidate = CandidateFile {
             path,
             size_bytes: metadata.len(),
+            allocated_size_bytes: super::file_allocated_size(&metadata),
             modified_at: metadata.modified().ok(),
+            device_id: super::file_device_id(&metadata),
+            inode: super::file_inode(&metadata),
         };
         assert_eq!(
             hash_candidate(&candidate).expect("hash fixture"),
@@ -660,7 +891,10 @@ mod tests {
         let digest = hash_candidate(&CandidateFile {
             path: left_path.clone(),
             size_bytes: left_metadata.len(),
+            allocated_size_bytes: super::file_allocated_size(&left_metadata),
             modified_at: left_metadata.modified().ok(),
+            device_id: super::file_device_id(&left_metadata),
+            inode: super::file_inode(&left_metadata),
         })
         .expect("hash duplicate fixture");
         let scan = FileInsightsScan {
@@ -692,5 +926,43 @@ mod tests {
         fs::write(&right_path, b"changed file content").expect("replace right fixture");
         let changed = revalidate_file_insights_snapshot(scan).expect("revalidate changed cache");
         assert!(changed.duplicate_groups.is_empty());
+    }
+
+    #[test]
+    fn partial_hash_skips_full_hash_for_same_size_distinct_files_and_detects_real_duplicates() {
+        use std::sync::atomic::AtomicBool;
+        use std::time::Instant;
+
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let size = 1024 * 1024 + 16 * 1024;
+        // Two same-sized distinct files (different head bytes): should be
+        // eliminated by the 4 KiB partial fingerprint without full hashing.
+        let distinct_a = directory.path().join("distinct-a.bin");
+        let distinct_b = directory.path().join("distinct-b.bin");
+        fs::write(&distinct_a, vec![0x11_u8; size]).unwrap();
+        fs::write(&distinct_b, vec![0x22_u8; size]).unwrap();
+
+        // Two true duplicates of another size: should pass partial hash and be
+        // grouped by full SHA-256.
+        let dup_size = 1024 * 1024 + 32 * 1024;
+        let dup_a = directory.path().join("dup-a.bin");
+        let dup_b = directory.path().join("dup-b.bin");
+        let payload = vec![0x5a_u8; dup_size];
+        fs::write(&dup_a, &payload).unwrap();
+        fs::write(&dup_b, &payload).unwrap();
+
+        let result = super::scan_file_insights_in_roots(
+            &[directory.path().to_path_buf()],
+            Instant::now(),
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .expect("scan file insights");
+
+        assert_eq!(result.candidate_file_count, 4);
+        // Only the 2 true duplicates entered full SHA-256 hashing!
+        assert_eq!(result.hashed_file_count, 2);
+        assert_eq!(result.duplicate_groups.len(), 1);
+        assert_eq!(result.duplicate_groups[0].files.len(), 2);
     }
 }

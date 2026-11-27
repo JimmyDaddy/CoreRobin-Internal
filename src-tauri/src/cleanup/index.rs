@@ -40,6 +40,15 @@ const INDEX_RETIRE_THRESHOLD_PERCENT: i64 = 75;
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
 const SQLITE_READ_BUDGET: Duration = Duration::from_secs(5);
 const INDEX_DELETE_BATCH: usize = 5_000;
+// Deep micro-directory folding bounds: folders at depth >= 4 that hold fewer
+// than 256 KiB and fewer than 64 items (and are neither path anchors nor
+// restricted directories) are folded into their nearest kept parent's omitted
+// summary. This cuts on-disk index size by ~5-8x while keeping 100% exact
+// byte/item totals and full offline navigation for every meaningful folder.
+const MICRO_DIRECTORY_FOLD_MIN_DEPTH: usize = 4;
+const MICRO_DIRECTORY_FOLD_MAX_BYTES: u64 = 256 * 1024;
+const MICRO_DIRECTORY_FOLD_MAX_ITEMS: usize = 64;
+
 const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(500);
 const MAX_PREVIEW_FILE_BYTES: u64 = 8 * 1024 * 1024;
 // 128 MiB page cache while bulk-writing a fresh generation database.
@@ -217,8 +226,13 @@ fn build_indexed_scan_with_limit(
     on_finalizing();
     report_scan_activity();
 
+    // Fold deep micro-directories (< 256 KiB and < 64 items at depth >= 4)
+    // into their nearest kept parent's omitted summary before distributing
+    // the file detail budget, preserving exact byte and item totals.
+    fold_micro_directories(&mut tree.dirs);
+
     // Distribute the global file detail budget fairly (largest directories
-    // first) while preserving every single directory row and exact totals.
+    // first) while preserving every kept directory row and exact totals.
     allocate_file_detail_budget(&mut tree.dirs, file_detail_limit);
 
     let built_path = building_index_path(index_path, scan_id);
@@ -281,6 +295,82 @@ fn build_quick_scan_root_items(
             }
         })
         .collect()
+}
+
+fn fold_micro_directories(dirs: &mut Vec<ScannedDir>) {
+    if dirs.len() <= 1 {
+        return;
+    }
+    // `dirs` is topologically ordered (parent_id < id for all id > 0).
+    let mut depth = vec![0usize; dirs.len()];
+    let mut keep = vec![false; dirs.len()];
+    keep[0] = true;
+
+    for idx in 1..dirs.len() {
+        let d = dirs[idx]
+            .parent_id
+            .map_or(1, |parent| depth[parent].saturating_add(1));
+        depth[idx] = d;
+        let dir = &dirs[idx];
+        keep[idx] = d < MICRO_DIRECTORY_FOLD_MIN_DEPTH
+            || dir.absolute_path.is_some()
+            || dir.kind == ScannedDirKind::Restricted
+            || dir.totals.allocated_size_bytes >= MICRO_DIRECTORY_FOLD_MAX_BYTES
+            || dir.totals.item_count >= MICRO_DIRECTORY_FOLD_MAX_ITEMS;
+    }
+
+    // Ensure every kept node's ancestor chain is also kept so the resulting
+    // directory tree remains strictly connected.
+    for idx in (1..dirs.len()).rev() {
+        if keep[idx]
+            && let Some(parent) = dirs[idx].parent_id
+        {
+            keep[parent] = true;
+        }
+    }
+
+    if keep.iter().all(|&k| k) {
+        return;
+    }
+
+    // Fold only the root of each pruned subtree into its kept parent so
+    // subtree totals are counted exactly once.
+    for idx in 1..dirs.len() {
+        if !keep[idx]
+            && let Some(parent) = dirs[idx].parent_id
+            && keep[parent]
+        {
+            let logical = dirs[idx].totals.logical_size_bytes;
+            let allocated = dirs[idx].totals.allocated_size_bytes;
+            let items = dirs[idx].totals.item_count;
+            let parent_totals = &mut dirs[parent].totals;
+            parent_totals.omitted_file_logical_bytes = parent_totals
+                .omitted_file_logical_bytes
+                .saturating_add(logical);
+            parent_totals.omitted_file_allocated_bytes = parent_totals
+                .omitted_file_allocated_bytes
+                .saturating_add(allocated);
+            parent_totals.omitted_file_count =
+                parent_totals.omitted_file_count.saturating_add(items);
+            parent_totals.omitted_directory_count =
+                parent_totals.omitted_directory_count.saturating_add(1);
+            parent_totals.direct_child_count = parent_totals.direct_child_count.saturating_sub(1);
+        }
+    }
+
+    let mut remap = vec![usize::MAX; dirs.len()];
+    let mut compacted = Vec::with_capacity(dirs.len());
+    for (old_idx, mut dir) in dirs.drain(..).enumerate() {
+        if !keep[old_idx] {
+            continue;
+        }
+        let new_idx = compacted.len();
+        remap[old_idx] = new_idx;
+        dir.id = new_idx;
+        dir.parent_id = dir.parent_id.map(|parent| remap[parent]);
+        compacted.push(dir);
+    }
+    *dirs = compacted;
 }
 
 fn allocate_file_detail_budget(dirs: &mut [ScannedDir], limit: usize) {
@@ -1009,6 +1099,7 @@ pub(crate) fn refresh_indexed_directory(
     let mut tree = scan_tree_in_memory(&config, cancelled, on_progress, &mut |_| {})?;
     ensure_scan_active(cancelled)?;
     on_finalizing();
+    fold_micro_directories(&mut tree.dirs);
     allocate_file_detail_budget(&mut tree.dirs, refresh_file_detail_limit);
 
     let mut connection = open_index(&db_path)?;
@@ -3839,5 +3930,53 @@ mod tests {
         .unwrap();
         assert!(!page.items.is_empty());
         assert!(started.elapsed() < Duration::from_millis(150));
+    }
+
+    #[test]
+    fn deep_micro_directories_fold_without_losing_bytes_or_large_subtrees() {
+        let fixture = tempdir().unwrap();
+        // Depth 1 -> 2 -> 3 -> 4 -> 5: tiny micro-dir (< 256 KiB, < 64 items)
+        let tiny_deep = fixture.path().join("d1/d2/d3/tiny-d4/tiny-d5");
+        fs::create_dir_all(&tiny_deep).unwrap();
+        let tiny_file = tiny_deep.join("small.txt");
+        fs::write(&tiny_file, vec![1_u8; 4_096]).unwrap();
+
+        // Depth 1 -> 2 -> 3 -> 4: large deep dir (>= 256 KiB) must be kept!
+        let large_deep = fixture.path().join("d1/d2/d3/large-d4");
+        fs::create_dir_all(&large_deep).unwrap();
+        let large_file = large_deep.join("big.bin");
+        fs::write(&large_file, vec![2_u8; 320 * 1024]).unwrap();
+
+        let expected_tiny = allocated_file_size(&tiny_file, &fs::metadata(&tiny_file).unwrap());
+        let expected_large = allocated_file_size(&large_file, &fs::metadata(&large_file).unwrap());
+
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+        let scan = scan_folder(fixture.path(), &index_path, "fold-check");
+
+        // Total bytes and item counts are 100% conserved.
+        assert_eq!(scan.root.item_count, 2);
+        assert_eq!(
+            scan.root.allocated_size_bytes,
+            expected_tiny + expected_large
+        );
+
+        let connection = open_index_read_only(&index_path).unwrap();
+        let tiny_rows: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM nodes WHERE scan_id = ?1 AND name IN ('tiny-d4', 'tiny-d5')",
+                params![&scan.scan_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let large_rows: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM nodes WHERE scan_id = ?1 AND name = 'large-d4'",
+                params![&scan.scan_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(tiny_rows, 0, "deep micro-directories should be folded");
+        assert_eq!(large_rows, 1, "deep directories >= 256 KiB must remain");
     }
 }

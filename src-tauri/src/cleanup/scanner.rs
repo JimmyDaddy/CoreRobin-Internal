@@ -1,11 +1,12 @@
 use std::cmp::Reverse;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sysinfo::{DiskKind, Disks};
 
@@ -373,8 +374,8 @@ pub(super) fn scan_parallelism(scan_root: &Path) -> usize {
         return 1;
     }
     thread::available_parallelism()
-        .map(|count| count.get().clamp(4, 8))
-        .unwrap_or(6)
+        .map(|count| count.get().saturating_mul(2).clamp(6, 12))
+        .unwrap_or(8)
 }
 
 pub(super) fn scan_tree_in_memory(
@@ -680,7 +681,7 @@ fn run_worker_loop(shared: &SharedScanState<'_>) -> (Vec<ScannedDir>, Vec<Cleanu
     let mut local_dirs = Vec::<ScannedDir>::with_capacity(1024);
     let mut local_largest = Vec::<CleanupFile>::with_capacity(MAX_LARGE_FILES * 2);
     #[cfg(target_os = "macos")]
-    let mut bulk_buffer = vec![0u8; 64 * 1024];
+    let mut bulk_buffer = vec![0u8; 128 * 1024];
 
     loop {
         if shared.is_aborted() {
@@ -1229,16 +1230,59 @@ fn record_regular_file(
     local_largest: &mut Vec<CleanupFile>,
     local_discovered: &mut u64,
 ) {
+    record_regular_file_opt_path(
+        shared,
+        Some(path),
+        name_str,
+        logical,
+        allocated,
+        modified_at_ms,
+        device_id,
+        inode,
+        owner_uid,
+        dir_safety,
+        dir_protection,
+        inherit_file_protection,
+        totals,
+        top_files,
+        min_kept_size,
+        local_largest,
+        local_discovered,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_regular_file_opt_path(
+    shared: &SharedScanState<'_>,
+    path: Option<&Path>,
+    name_str: &str,
+    logical: u64,
+    allocated: u64,
+    modified_at_ms: Option<u64>,
+    device_id: Option<i64>,
+    inode: Option<i64>,
+    owner_uid: Option<u32>,
+    dir_safety: CleanupSafety,
+    dir_protection: Option<CleanupProtectionReason>,
+    inherit_file_protection: bool,
+    totals: &mut DirectoryTotals,
+    top_files: &mut Vec<ScannedFile>,
+    min_kept_size: &mut u64,
+    local_largest: &mut Vec<CleanupFile>,
+    local_discovered: &mut u64,
+) {
     *local_discovered = local_discovered.saturating_add(allocated);
     totals.logical_size_bytes = totals.logical_size_bytes.saturating_add(logical);
     totals.allocated_size_bytes = totals.allocated_size_bytes.saturating_add(allocated);
     totals.item_count = totals.item_count.saturating_add(1);
     totals.direct_child_count = totals.direct_child_count.saturating_add(1);
 
-    if allocated >= LARGE_FILE_THRESHOLD_BYTES {
+    if allocated >= LARGE_FILE_THRESHOLD_BYTES
+        && let Some(full_path) = path
+    {
         local_largest.push(CleanupFile {
             name: name_str.to_owned(),
-            path: path.to_string_lossy().into_owned(),
+            path: full_path.to_string_lossy().into_owned(),
             size_bytes: allocated,
             modified_at_ms,
         });
@@ -1262,14 +1306,16 @@ fn record_regular_file(
 
     let protection_reason = if inherit_file_protection && !is_photos_library_name(name_str) {
         dir_protection
-    } else {
+    } else if let Some(full_path) = path {
         cleanup_protection_for_scan_path_with_uid(
-            path,
+            full_path,
             shared.config.home,
             shared.config.protection_root,
             shared.config.selected_cleanup_root,
             owner_uid,
         )
+    } else {
+        dir_protection
     };
 
     let candidate = ScannedFile {
@@ -1430,6 +1476,10 @@ fn enumerate_directory_macos_bulk(
     attr_list.fileattr = ATTR_FILE_LINKCOUNT | ATTR_FILE_ALLOCSIZE | ATTR_FILE_DATALENGTH;
 
     let config = shared.config;
+    let dir_has_excluded_descendant = config
+        .excluded_paths
+        .iter()
+        .any(|excluded| excluded.starts_with(directory));
     let mut processed_any_batch = false;
     let mut batch_entries = 0usize;
 
@@ -1609,14 +1659,16 @@ fn enumerate_directory_macos_bulk(
             *local_entries += 1;
 
             let name_os = OsStr::from_bytes(name_bytes);
-            let child_path = directory.join(name_os);
-            if path_is_excluded(&child_path, config.excluded_paths) {
+            if dir_has_excluded_descendant
+                && path_is_excluded(&directory.join(name_os), config.excluded_paths)
+            {
                 continue;
             }
 
             match obj_type {
                 Some(VLNK) => continue,
                 Some(VDIR) => {
+                    let child_path = directory.join(name_os);
                     if is_excluded_scan_namespace(&child_path, config.scan_root)
                         || is_cloud_backed_cleanup_root(&child_path, config.home)
                     {
@@ -1677,6 +1729,7 @@ fn enumerate_directory_macos_bulk(
                             owner_uid,
                         )
                     } else {
+                        let child_path = directory.join(name_os);
                         let Ok(meta) = fs::symlink_metadata(&child_path) else {
                             shared.record_unreadable(&child_path);
                             continue;
@@ -1697,10 +1750,41 @@ fn enumerate_directory_macos_bulk(
                     if nlink > 1 && !shared.mark_hardlink_seen((dev, ino)) {
                         continue;
                     }
+                    // Ultra-fast path: when this file is neither a large-file
+                    // candidate nor large enough to enter the directory's
+                    // Top-64 list, accumulate totals with zero PathBuf or
+                    // String heap allocations.
+                    if allocated < LARGE_FILE_THRESHOLD_BYTES
+                        && top_files.len() >= VISIBLE_FILES_PER_DIRECTORY
+                        && allocated <= *min_kept_size
+                    {
+                        *local_discovered = local_discovered.saturating_add(allocated);
+                        totals.logical_size_bytes =
+                            totals.logical_size_bytes.saturating_add(logical);
+                        totals.allocated_size_bytes =
+                            totals.allocated_size_bytes.saturating_add(allocated);
+                        totals.item_count = totals.item_count.saturating_add(1);
+                        totals.direct_child_count = totals.direct_child_count.saturating_add(1);
+                        totals.omitted_file_logical_bytes =
+                            totals.omitted_file_logical_bytes.saturating_add(logical);
+                        totals.omitted_file_allocated_bytes = totals
+                            .omitted_file_allocated_bytes
+                            .saturating_add(allocated);
+                        totals.omitted_file_count = totals.omitted_file_count.saturating_add(1);
+                        continue;
+                    }
                     let name_str = name_os.to_string_lossy();
-                    record_regular_file(
+                    let needs_path = allocated >= LARGE_FILE_THRESHOLD_BYTES
+                        || !inherit_file_protection
+                        || is_photos_library_name(&name_str);
+                    let child_path = if needs_path {
+                        Some(directory.join(name_os))
+                    } else {
+                        None
+                    };
+                    record_regular_file_opt_path(
                         shared,
-                        &child_path,
+                        child_path.as_deref(),
                         &name_str,
                         logical,
                         allocated,
@@ -1819,6 +1903,424 @@ fn hardlink_shard(identity: &FileIdentity) -> usize {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     identity.hash(&mut hasher);
     (hasher.finish() as usize) % SEEN_FILE_SHARDS
+}
+
+// ---------------------------------------------------------------------------
+// Reusable fast directory enumeration & parallel bundle size measurement
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FastEntryKind {
+    File,
+    Dir,
+    Symlink,
+    Other,
+}
+
+#[derive(Debug)]
+pub(crate) struct FastDirEntry {
+    pub(crate) name: OsString,
+    pub(crate) kind: FastEntryKind,
+    pub(crate) logical_size: u64,
+    pub(crate) allocated_size: u64,
+    pub(crate) modified_at: Option<SystemTime>,
+    pub(crate) dev: u64,
+    pub(crate) ino: u64,
+    pub(crate) nlink: u32,
+}
+
+/// Enumerates a single directory using macOS `getattrlistbulk(2)` (with
+/// transparent fallback to `fs::read_dir`) and invokes `on_entry` for each
+/// item. Returning `false` from `on_entry` stops enumeration early.
+pub(crate) fn read_dir_fast(
+    directory: &Path,
+    bulk_buf: &mut Vec<u8>,
+    on_entry: &mut dyn FnMut(FastDirEntry) -> bool,
+) -> Result<usize, ()> {
+    #[cfg(target_os = "macos")]
+    {
+        match read_dir_fast_macos(directory, bulk_buf, on_entry) {
+            Ok(errors) => return Ok(errors),
+            Err(true) => {} // ENOTSUP/EINVAL fallback
+            Err(false) => return Err(()),
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = bulk_buf;
+
+    let entries = fs::read_dir(directory).map_err(|_| ())?;
+    let mut entry_errors = 0usize;
+    for entry in entries {
+        let Ok(entry) = entry else {
+            entry_errors += 1;
+            continue;
+        };
+        let path = entry.path();
+        let Ok(meta) = fs::symlink_metadata(&path) else {
+            entry_errors += 1;
+            continue;
+        };
+        let ft = meta.file_type();
+        let kind = if ft.is_symlink() {
+            FastEntryKind::Symlink
+        } else if ft.is_dir() {
+            FastEntryKind::Dir
+        } else if ft.is_file() {
+            FastEntryKind::File
+        } else {
+            FastEntryKind::Other
+        };
+        #[cfg(unix)]
+        let (dev, ino, nlink) = {
+            use std::os::unix::fs::MetadataExt;
+            (meta.dev(), meta.ino(), meta.nlink() as u32)
+        };
+        #[cfg(not(unix))]
+        let (dev, ino, nlink) = (0, 0, 1);
+
+        let keep_going = on_entry(FastDirEntry {
+            name: entry.file_name(),
+            kind,
+            logical_size: meta.len(),
+            allocated_size: allocated_file_size(&path, &meta),
+            modified_at: meta.modified().ok(),
+            dev,
+            ino,
+            nlink,
+        });
+        if !keep_going {
+            break;
+        }
+    }
+    Ok(entry_errors)
+}
+
+#[cfg(target_os = "macos")]
+fn read_dir_fast_macos(
+    directory: &Path,
+    bulk_buf: &mut Vec<u8>,
+    on_entry: &mut dyn FnMut(FastDirEntry) -> bool,
+) -> Result<usize, bool> {
+    use std::ffi::{CString, OsStr};
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::MetadataExt;
+
+    const ATTR_CMN_NAME: u32 = 0x0000_0001;
+    const ATTR_CMN_DEVID: u32 = 0x0000_0002;
+    const ATTR_CMN_OBJTYPE: u32 = 0x0000_0008;
+    const ATTR_CMN_MODTIME: u32 = 0x0000_0400;
+    const ATTR_CMN_FILEID: u32 = 0x0200_0000;
+    const ATTR_CMN_ERROR: u32 = 0x2000_0000;
+    const ATTR_CMN_RETURNED_ATTRS: u32 = 0x8000_0000;
+    const ATTR_FILE_LINKCOUNT: u32 = 0x0000_0001;
+    const ATTR_FILE_ALLOCSIZE: u32 = 0x0000_0004;
+    const ATTR_FILE_DATALENGTH: u32 = 0x0000_0200;
+    const VREG: u32 = 1;
+    const VDIR: u32 = 2;
+    const VLNK: u32 = 5;
+
+    if bulk_buf.len() < 64 * 1024 {
+        bulk_buf.resize(64 * 1024, 0);
+    }
+
+    let c_path = CString::new(directory.as_os_str().as_bytes()).map_err(|_| false)?;
+    let fd = unsafe {
+        libc::open(
+            c_path.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+        )
+    };
+    if fd < 0 {
+        return Err(false);
+    }
+    struct FdGuard(libc::c_int);
+    impl Drop for FdGuard {
+        fn drop(&mut self) {
+            unsafe {
+                libc::close(self.0);
+            }
+        }
+    }
+    let _guard = FdGuard(fd);
+
+    let mut attr_list: libc::attrlist = unsafe { std::mem::zeroed() };
+    attr_list.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
+    attr_list.commonattr = ATTR_CMN_RETURNED_ATTRS
+        | ATTR_CMN_NAME
+        | ATTR_CMN_DEVID
+        | ATTR_CMN_OBJTYPE
+        | ATTR_CMN_MODTIME
+        | ATTR_CMN_FILEID
+        | ATTR_CMN_ERROR;
+    attr_list.fileattr = ATTR_FILE_LINKCOUNT | ATTR_FILE_ALLOCSIZE | ATTR_FILE_DATALENGTH;
+
+    let mut processed_any = false;
+    let mut entry_errors = 0usize;
+
+    loop {
+        let count = unsafe {
+            libc::getattrlistbulk(
+                fd,
+                (&mut attr_list as *mut libc::attrlist).cast(),
+                bulk_buf.as_mut_ptr().cast(),
+                bulk_buf.len(),
+                0,
+            )
+        };
+        if count == 0 {
+            return Ok(entry_errors);
+        }
+        if count < 0 {
+            let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+            if !processed_any && matches!(errno, libc::ENOTSUP | libc::EINVAL | libc::EOPNOTSUPP) {
+                return Err(true);
+            }
+            return Err(false);
+        }
+        processed_any = true;
+
+        let buf = bulk_buf.as_slice();
+        let mut offset = 0usize;
+        for _ in 0..count {
+            let Some(entry_len) = read_u32_ne(buf, offset).map(|v| v as usize) else {
+                break;
+            };
+            if entry_len < 24 || offset.saturating_add(entry_len) > buf.len() {
+                break;
+            }
+            let record = &buf[offset..offset + entry_len];
+            offset += entry_len;
+
+            let Some(ret_common) = read_u32_ne(record, 4) else {
+                continue;
+            };
+            let Some(ret_file) = read_u32_ne(record, 16) else {
+                continue;
+            };
+            let mut pos = 24usize;
+
+            if ret_common & ATTR_CMN_ERROR != 0 {
+                let err = read_u32_ne(record, pos).unwrap_or(1);
+                pos += 4;
+                if err != 0 {
+                    entry_errors += 1;
+                    continue;
+                }
+            }
+            let name_bytes = if ret_common & ATTR_CMN_NAME != 0 {
+                let ref_pos = pos;
+                let data_offset = read_i32_ne(record, pos).unwrap_or(0);
+                let data_len = read_u32_ne(record, pos + 4).unwrap_or(0) as usize;
+                pos += 8;
+                if data_offset < 0 || data_len == 0 {
+                    None
+                } else {
+                    let start = ref_pos.saturating_add(data_offset as usize);
+                    let end = start.saturating_add(data_len);
+                    record.get(start..end).map(|slice| {
+                        let mut trimmed = slice;
+                        while let Some((&0, rest)) = trimmed.split_last() {
+                            trimmed = rest;
+                        }
+                        trimmed
+                    })
+                }
+            } else {
+                None
+            };
+            let Some(name_bytes) = name_bytes else {
+                continue;
+            };
+            if name_bytes.is_empty() || name_bytes == b"." || name_bytes == b".." {
+                continue;
+            }
+
+            let dev_id = if ret_common & ATTR_CMN_DEVID != 0 {
+                let value = read_i32_ne(record, pos).map(|v| v as u64);
+                pos += 4;
+                value
+            } else {
+                None
+            };
+            let obj_type = if ret_common & ATTR_CMN_OBJTYPE != 0 {
+                let value = read_u32_ne(record, pos);
+                pos += 4;
+                value
+            } else {
+                None
+            };
+            let modified_at = if ret_common & ATTR_CMN_MODTIME != 0 {
+                let tv_sec = read_i64_ne(record, pos).unwrap_or(0);
+                let tv_nsec = read_i64_ne(record, pos + 8).unwrap_or(0);
+                pos += 16;
+                timespec_to_system_time(tv_sec, tv_nsec)
+            } else {
+                None
+            };
+            let file_id = if ret_common & ATTR_CMN_FILEID != 0 {
+                let value = read_u64_ne(record, pos);
+                pos += 8;
+                value
+            } else {
+                None
+            };
+            let link_count = if ret_file & ATTR_FILE_LINKCOUNT != 0 {
+                let value = read_u32_ne(record, pos);
+                pos += 4;
+                value
+            } else {
+                None
+            };
+            let alloc_size = if ret_file & ATTR_FILE_ALLOCSIZE != 0 {
+                let value = read_i64_ne(record, pos).and_then(|v| u64::try_from(v).ok());
+                pos += 8;
+                value
+            } else {
+                None
+            };
+            let data_length = if ret_file & ATTR_FILE_DATALENGTH != 0 {
+                let value = read_i64_ne(record, pos).and_then(|v| u64::try_from(v).ok());
+                let _ = pos + 8;
+                value
+            } else {
+                None
+            };
+
+            let name_os = OsStr::from_bytes(name_bytes);
+            let kind = match obj_type {
+                Some(VREG) => FastEntryKind::File,
+                Some(VDIR) => FastEntryKind::Dir,
+                Some(VLNK) => FastEntryKind::Symlink,
+                _ => FastEntryKind::Other,
+            };
+
+            let (logical_size, allocated_size, dev, ino, nlink, mtime) =
+                if kind == FastEntryKind::File {
+                    if let (Some(l), Some(a), Some(d), Some(i), Some(n)) =
+                        (data_length, alloc_size, dev_id, file_id, link_count)
+                    {
+                        (l, a, d, i, n, modified_at)
+                    } else {
+                        let full = directory.join(name_os);
+                        let Ok(meta) = fs::symlink_metadata(&full) else {
+                            entry_errors += 1;
+                            continue;
+                        };
+                        (
+                            meta.len(),
+                            allocated_file_size(&full, &meta),
+                            meta.dev(),
+                            meta.ino(),
+                            meta.nlink() as u32,
+                            meta.modified().ok(),
+                        )
+                    }
+                } else {
+                    (
+                        0,
+                        0,
+                        dev_id.unwrap_or(0),
+                        file_id.unwrap_or(0),
+                        1,
+                        modified_at,
+                    )
+                };
+
+            let keep_going = on_entry(FastDirEntry {
+                name: name_os.to_os_string(),
+                kind,
+                logical_size,
+                allocated_size,
+                modified_at: mtime,
+                dev,
+                ino,
+                nlink,
+            });
+            if !keep_going {
+                return Ok(entry_errors);
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn timespec_to_system_time(tv_sec: i64, tv_nsec: i64) -> Option<SystemTime> {
+    if tv_sec < 0 || tv_nsec < 0 {
+        return None;
+    }
+    let secs = u64::try_from(tv_sec).ok()?;
+    let nanos = u32::try_from(tv_nsec).ok()?;
+    UNIX_EPOCH.checked_add(Duration::new(secs, nanos))
+}
+
+/// Measures allocated disk sizes for multiple independent root directories in
+/// parallel using `read_dir_fast`, deduplicating hard links per root.
+pub(super) fn measure_directory_sizes_parallel(
+    roots: &[PathBuf],
+    cancelled: &AtomicBool,
+) -> HashMap<PathBuf, u64> {
+    if roots.is_empty() {
+        return HashMap::new();
+    }
+    let worker_count = thread::available_parallelism()
+        .map(|n| n.get().clamp(2, 8))
+        .unwrap_or(4)
+        .min(roots.len());
+    let next_index = AtomicUsize::new(0);
+    let results = Mutex::new(HashMap::with_capacity(roots.len()));
+
+    thread::scope(|scope| {
+        for _ in 0..worker_count {
+            let next_index = &next_index;
+            let results = &results;
+            scope.spawn(move || {
+                let mut bulk_buf = vec![0u8; 64 * 1024];
+                let mut stack = Vec::<PathBuf>::new();
+                let mut seen = HashSet::<(u64, u64)>::new();
+                loop {
+                    if cancelled.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let idx = next_index.fetch_add(1, Ordering::Relaxed);
+                    let Some(root) = roots.get(idx) else {
+                        break;
+                    };
+                    stack.clear();
+                    seen.clear();
+                    stack.push(root.clone());
+                    let mut total_bytes = 0_u64;
+                    while let Some(dir) = stack.pop() {
+                        if cancelled.load(Ordering::Relaxed) {
+                            break;
+                        }
+                        let _ = read_dir_fast(&dir, &mut bulk_buf, &mut |entry| {
+                            if cancelled.load(Ordering::Relaxed) {
+                                return false;
+                            }
+                            match entry.kind {
+                                FastEntryKind::Dir => {
+                                    stack.push(dir.join(&entry.name));
+                                }
+                                FastEntryKind::File => {
+                                    if entry.nlink > 1 && !seen.insert((entry.dev, entry.ino)) {
+                                        return true;
+                                    }
+                                    total_bytes = total_bytes.saturating_add(entry.allocated_size);
+                                }
+                                _ => {}
+                            }
+                            true
+                        });
+                    }
+                    if let Ok(mut map) = results.lock() {
+                        map.insert(root.clone(), total_bytes);
+                    }
+                }
+            });
+        }
+    });
+
+    results.into_inner().unwrap_or_default()
 }
 
 #[cfg(test)]

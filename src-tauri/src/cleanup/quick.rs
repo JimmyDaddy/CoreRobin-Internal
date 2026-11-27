@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 use crate::error::CommandError;
 use crate::models::{
@@ -11,6 +12,7 @@ use crate::models::{
 use crate::safe_fs::DeleteRoot;
 
 use super::home_directory;
+use super::scanner::{FastEntryKind, read_dir_fast};
 
 // Quick cleanup only touches regenerable or already-discarded user data in
 // well-known, user-owned locations. Everything else (documents, app data,
@@ -177,10 +179,19 @@ fn analyze_quick_cleanup_at_cancellable(
     roots: &QuickCleanRoots,
     cancelled: &AtomicBool,
 ) -> Vec<QuickCleanCategorySummary> {
-    QUICK_CLEAN_ORDER
-        .into_iter()
-        .map(|category| analyze_category(category, category_root(category, roots), cancelled))
-        .collect()
+    thread::scope(|scope| {
+        let handles = QUICK_CLEAN_ORDER
+            .into_iter()
+            .map(|category| {
+                let root = category_root(category, roots);
+                scope.spawn(move || analyze_category(category, root, cancelled))
+            })
+            .collect::<Vec<_>>();
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("quick cleanup analyzer thread"))
+            .collect()
+    })
 }
 
 fn category_root(category: QuickCleanCategory, roots: &QuickCleanRoots) -> PathBuf {
@@ -207,71 +218,99 @@ fn analyze_category(
         sources: Vec::new(),
         limited: false,
     };
-    let Ok(entries) = fs::read_dir(&root) else {
-        return summary;
-    };
-    summary.available = true;
-    let mut budget = QUICK_CLEAN_ANALYZE_ENTRY_CAP;
-    for entry in entries {
-        let entry = match entry {
-            Ok(entry) => entry,
-            Err(_) => {
-                summary.skipped_count = summary.skipped_count.saturating_add(1);
+    let mut bulk_buf = vec![0u8; 64 * 1024];
+    let mut top_entries = Vec::new();
+    match read_dir_fast(&root, &mut bulk_buf, &mut |entry| {
+        if cancelled.load(Ordering::Acquire) {
+            return false;
+        }
+        top_entries.push(entry);
+        true
+    }) {
+        Ok(top_errors) => {
+            summary.available = true;
+            if top_errors > 0 {
+                summary.skipped_count = summary.skipped_count.saturating_add(top_errors as u64);
                 summary.limited = true;
-                continue;
             }
-        };
+        }
+        Err(()) => return summary,
+    }
+
+    let mut budget = QUICK_CLEAN_ANALYZE_ENTRY_CAP;
+    let mut pending = Vec::<PathBuf>::new();
+    for entry in top_entries {
         if budget == 0 || cancelled.load(Ordering::Acquire) {
             summary.limited = true;
             break;
         }
-        let source_path = entry.path();
+        budget -= 1;
+        let source_path = root.join(&entry.name);
         let mut source = QuickCleanSource {
             path: source_path.to_string_lossy().into_owned(),
             byte_size: 0,
         };
-        let mut pending = vec![source_path];
-        while let Some(path) = pending.pop() {
-            if budget == 0 || cancelled.load(Ordering::Acquire) {
-                summary.limited = true;
-                break;
+        match entry.kind {
+            FastEntryKind::File => {
+                summary.item_count = summary.item_count.saturating_add(1);
+                summary.byte_size = summary.byte_size.saturating_add(entry.allocated_size);
+                source.byte_size = entry.allocated_size;
             }
-            budget -= 1;
-            match fs::symlink_metadata(&path) {
-                Ok(metadata) if !metadata.file_type().is_symlink() => {
-                    summary.item_count = summary.item_count.saturating_add(1);
-                    if metadata.is_dir() {
-                        if let Ok(children) = fs::read_dir(path) {
-                            for child in children {
-                                let child = match child {
-                                    Ok(child) => child,
-                                    Err(_) => {
-                                        summary.skipped_count =
-                                            summary.skipped_count.saturating_add(1);
-                                        summary.limited = true;
-                                        continue;
-                                    }
-                                };
+            FastEntryKind::Dir => {
+                summary.item_count = summary.item_count.saturating_add(1);
+                pending.clear();
+                pending.push(source_path);
+                while let Some(dir) = pending.pop() {
+                    if budget == 0 || cancelled.load(Ordering::Acquire) {
+                        summary.limited = true;
+                        break;
+                    }
+                    match read_dir_fast(&dir, &mut bulk_buf, &mut |child| {
+                        if budget == 0 || cancelled.load(Ordering::Acquire) {
+                            summary.limited = true;
+                            return false;
+                        }
+                        budget -= 1;
+                        match child.kind {
+                            FastEntryKind::File => {
+                                summary.item_count = summary.item_count.saturating_add(1);
+                                summary.byte_size =
+                                    summary.byte_size.saturating_add(child.allocated_size);
+                                source.byte_size =
+                                    source.byte_size.saturating_add(child.allocated_size);
+                            }
+                            FastEntryKind::Dir => {
+                                summary.item_count = summary.item_count.saturating_add(1);
                                 if pending.len() >= budget {
                                     summary.limited = true;
-                                    break;
+                                } else {
+                                    pending.push(dir.join(&child.name));
                                 }
-                                pending.push(child.path());
                             }
-                        } else {
+                            FastEntryKind::Symlink | FastEntryKind::Other => {
+                                summary.skipped_count = summary.skipped_count.saturating_add(1);
+                                summary.limited = true;
+                            }
+                        }
+                        true
+                    }) {
+                        Ok(child_errors) => {
+                            if child_errors > 0 {
+                                summary.skipped_count =
+                                    summary.skipped_count.saturating_add(child_errors as u64);
+                                summary.limited = true;
+                            }
+                        }
+                        Err(()) => {
                             summary.skipped_count = summary.skipped_count.saturating_add(1);
                             summary.limited = true;
                         }
-                    } else if metadata.is_file() {
-                        let bytes = allocated_size(&metadata);
-                        summary.byte_size = summary.byte_size.saturating_add(bytes);
-                        source.byte_size = source.byte_size.saturating_add(bytes);
                     }
                 }
-                _ => {
-                    summary.skipped_count = summary.skipped_count.saturating_add(1);
-                    summary.limited = true;
-                }
+            }
+            FastEntryKind::Symlink | FastEntryKind::Other => {
+                summary.skipped_count = summary.skipped_count.saturating_add(1);
+                summary.limited = true;
             }
         }
         summary.sources.push(source);
@@ -492,22 +531,6 @@ fn emit_progress(
         skipped_items,
         current_path: current_path.to_owned(),
     });
-}
-
-#[cfg(unix)]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt;
-    metadata.blocks().saturating_mul(512)
-}
-
-#[cfg(windows)]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    metadata.len()
-}
-
-#[cfg(not(any(unix, windows)))]
-fn allocated_size(metadata: &fs::Metadata) -> u64 {
-    metadata.len()
 }
 
 #[cfg(test)]

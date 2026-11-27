@@ -91,6 +91,7 @@ use protection::{
 pub(crate) use quick::{
     QuickCleanCoordinator, analyze_quick_cleanup_cancellable, run_quick_cleanup,
 };
+pub(crate) use scanner::{FastEntryKind, read_dir_fast};
 
 #[cfg(test)]
 use crate::models::CleanupLocationKind;
@@ -126,8 +127,6 @@ const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
 const APPLICATION_INVENTORY_CACHE_RETENTION_MS: u64 = 7 * 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
 const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
-#[cfg(target_os = "macos")]
-const APPLICATION_DU_DEADLINE: Duration = Duration::from_secs(30);
 #[cfg(target_os = "macos")]
 const APPLICATION_MDLS_DEADLINE: Duration = Duration::from_secs(15);
 #[cfg(target_os = "macos")]
@@ -3718,6 +3717,9 @@ fn application_sizes(
     observed_sizes: &HashMap<PathBuf, u64>,
     cancelled: &AtomicBool,
 ) -> Result<HashMap<PathBuf, u64>, ChildCommandFailure> {
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
     let mut sizes = paths
         .iter()
         .filter_map(|path| observed_sizes.get(path).map(|size| (path.clone(), *size)))
@@ -3725,18 +3727,20 @@ fn application_sizes(
     let missing_paths = paths
         .iter()
         .filter(|path| !sizes.contains_key(*path))
+        .cloned()
         .collect::<Vec<_>>();
     if missing_paths.is_empty() {
         return Ok(sizes);
     }
-    let mut command = Command::new("/usr/bin/du");
-    command.arg("-sk").args(missing_paths);
-    let output = run_bounded_child(&mut command, cancelled, APPLICATION_DU_DEADLINE)?;
-    sizes.extend(parse_application_sizes(&String::from_utf8_lossy(&output)));
+    let measured = scanner::measure_directory_sizes_parallel(&missing_paths, cancelled);
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
+    sizes.extend(measured);
     Ok(sizes)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", test))]
 fn parse_application_sizes(output: &str) -> HashMap<PathBuf, u64> {
     output
         .lines()
