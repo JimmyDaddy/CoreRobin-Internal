@@ -94,9 +94,10 @@ use application_icon::{load_application_bundle_icon, load_application_icon};
 use background_supervisor::BackgroundSupervisorConfig;
 use cleanup::{
     CleanupDeleteController, CleanupDeleteCoordinator, QuickCleanCoordinator,
-    apply_indexed_deletions, available_bytes_for_path, cleanup_index_summary, cleanup_scan_access,
-    inspect_cleanup_path, load_indexed_children, load_indexed_directory, load_indexed_scan,
-    load_latest_indexed_scan, load_or_scan_application_inventory, open_full_disk_access_settings,
+    apply_indexed_deletions, available_bytes_for_path, cleanup_index_storage_paths,
+    cleanup_index_summary, cleanup_scan_access, inspect_cleanup_path, load_indexed_children,
+    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
+    load_or_scan_application_inventory, open_full_disk_access_settings,
     prepare_application_uninstall, prepare_trashed_application_residual_plan, remove_cleanup_index,
     remove_cleanup_scan_cache, resolve_indexed_delete_request, reveal_cleanup_application_bundle,
     scan_trashed_applications,
@@ -1798,14 +1799,12 @@ fn product_data_cache_summary_at(
     directory: &std::path::Path,
 ) -> Result<ProductDataCacheSummary, CommandError> {
     let history_summary = history_storage_summary(directory);
+    let mut cleanup_paths =
+        cleanup_index_storage_paths(&directory.join("cleanup-scan-index-v1.sqlite"));
+    cleanup_paths.push(directory.join("cleanup-scan-v3.json"));
+    cleanup_paths.push(directory.join("cleanup-scan-v2.json"));
     Ok(ProductDataCacheSummary {
-        cleanup_scan: cache_item_summary([
-            directory.join("cleanup-scan-index-v1.sqlite"),
-            directory.join("cleanup-scan-index-v1.sqlite-wal"),
-            directory.join("cleanup-scan-index-v1.sqlite-shm"),
-            directory.join("cleanup-scan-v3.json"),
-            directory.join("cleanup-scan-v2.json"),
-        ]),
+        cleanup_scan: cache_item_summary(cleanup_paths),
         file_insights: cache_item_summary([directory.join("file-insights-v1.json")]),
         application_inventory: cache_item_summary(application_inventory_cache_paths(directory)?),
         application_history: cache_item_summary([directory.join(APPLICATION_HISTORY_FILE_NAME)]),

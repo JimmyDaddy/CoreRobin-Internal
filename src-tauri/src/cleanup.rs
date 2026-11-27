@@ -1,3 +1,4 @@
+#[cfg(test)]
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -46,15 +47,16 @@ use crate::error::CommandError;
 #[cfg(target_os = "macos")]
 use crate::models::{ApplicationArtifactKind, ApplicationUninstallArtifact, InstalledApplication};
 use crate::models::{
-    ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupApplication,
-    CleanupDeleteExecutionRequest, CleanupDeleteFailure, CleanupDeleteLease,
-    CleanupDeleteLeaseModeRequest, CleanupDeleteLeaseRequest, CleanupDeleteMode,
-    CleanupDeleteProgress, CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
-    CleanupDeleteTargetEvidence, CleanupFile, CleanupFullDiskAccessStatus, CleanupLocation,
-    CleanupNode, CleanupNodeKind, CleanupPathState, CleanupProtectionReason, CleanupSafety,
-    CleanupScan, CleanupScanAccess, CleanupScanProfile, CleanupScanProgress, CleanupScanRequest,
+    ApplicationInventorySnapshot, ApplicationUninstallPlan, CleanupDeleteExecutionRequest,
+    CleanupDeleteFailure, CleanupDeleteLease, CleanupDeleteLeaseModeRequest,
+    CleanupDeleteLeaseRequest, CleanupDeleteMode, CleanupDeleteProgress,
+    CleanupDeleteProgressPhase, CleanupDeleteResult, CleanupDeleteSuccess,
+    CleanupDeleteTargetEvidence, CleanupFullDiskAccessStatus, CleanupPathState,
+    CleanupProtectionReason, CleanupSafety, CleanupScanAccess, CleanupScanRequest,
     CleanupScanTargetKind,
 };
+#[cfg(any(target_os = "macos", test))]
+use crate::models::{CleanupApplication, CleanupScanProgress};
 use crate::private_storage;
 #[cfg(all(target_os = "macos", not(test)))]
 use crate::safe_fs::BoundTargetKind;
@@ -73,24 +75,31 @@ mod index;
 mod paths;
 mod protection;
 mod quick;
+mod scanner;
 
 pub(crate) use index::{
-    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, defer_discard_indexed_scan,
-    load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
-    load_progressive_scan, maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
+    apply_indexed_deletions, build_indexed_scan, cleanup_index_storage_paths,
+    cleanup_index_summary, defer_discard_indexed_scan, load_indexed_children,
+    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan, load_progressive_scan,
+    maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
     resolve_indexed_delete_request, set_scan_activity_notifier, set_scan_checkpoint_notifier,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
-    cleanup_protection_for_path, cleanup_protection_for_selected_scan_path,
+    can_inherit_file_protection, cleanup_protection_for_path, cleanup_protection_for_path_with_uid,
+    cleanup_protection_for_selected_scan_path, cleanup_protection_for_selected_scan_path_with_uid,
     temporary_cleanup_boundary_for_path,
 };
 pub(crate) use quick::{
     QuickCleanCoordinator, analyze_quick_cleanup_cancellable, run_quick_cleanup,
 };
+pub(crate) use scanner::{FastEntryKind, read_dir_fast};
 
 #[cfg(test)]
-use crate::models::CleanupLocationKind;
+use crate::models::{
+    CleanupFile, CleanupLocation, CleanupLocationKind, CleanupNode, CleanupNodeKind, CleanupScan,
+    CleanupScanProfile,
+};
 #[cfg(test)]
 use paths::hidden_user_paths;
 
@@ -100,16 +109,24 @@ const LARGE_FILE_THRESHOLD_BYTES: u64 = 500 * 1_024 * 1_024;
 const LARGE_FILE_THRESHOLD_BYTES: u64 = 512;
 const MAX_LARGE_FILES: usize = 12;
 const MAX_UNREADABLE_PATHS: usize = 12;
+#[cfg(test)]
 const MAX_CHART_CHILDREN: usize = 24;
+#[cfg(test)]
 const MIN_ALWAYS_VISIBLE_CHILDREN: usize = 8;
+#[cfg(test)]
 const MAX_RESTRICTED_CHILDREN: usize = 4;
+#[cfg(test)]
 const MAX_VISUAL_TREE_DEPTH: usize = 7;
+#[cfg(test)]
 const MAX_VISUAL_NODES_PER_SCAN: usize = 2_500;
+#[cfg(test)]
 const MAX_VISUAL_NODES_PER_LOCATION: usize = 2_500;
 // 0.5 degree of a full circle. Smaller siblings are still fully scanned, but
 // are consolidated so the WebView receives a useful hierarchy instead of
 // hundreds of thousands of unclickable slivers.
+#[cfg(test)]
 const MIN_CHART_FRACTION_DENOMINATOR: u128 = 720;
+#[cfg(any(target_os = "macos", test))]
 const PROGRESS_INTERVAL_ENTRIES: usize = 512;
 const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
@@ -123,8 +140,6 @@ const APPLICATION_INVENTORY_CACHE_STALE_AFTER_MS: u64 = 24 * 60 * 60 * 1_000;
 const APPLICATION_INVENTORY_CACHE_RETENTION_MS: u64 = 7 * 24 * 60 * 60 * 1_000;
 #[cfg(target_os = "macos")]
 const APPLICATION_CHILD_OUTPUT_LIMIT: usize = 4 * 1_024 * 1_024;
-#[cfg(target_os = "macos")]
-const APPLICATION_DU_DEADLINE: Duration = Duration::from_secs(30);
 #[cfg(target_os = "macos")]
 const APPLICATION_MDLS_DEADLINE: Duration = Duration::from_secs(15);
 #[cfg(target_os = "macos")]
@@ -1605,31 +1620,36 @@ pub fn benchmark_cleanup_root_with_cancel(
             canonical_root.display()
         ));
     }
+    let boundary = ScanFilesystemBoundary::for_root(&canonical_root)
+        .map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let root_display = canonical_root.to_string_lossy().into_owned();
     let resources_before = benchmark_resource_snapshot();
     let started_at = Instant::now();
-    let mut latest_progress = CleanupScanProgress {
-        scanned_entry_count: 0,
-        discovered_bytes: 0,
-        current_path: canonical_root.to_string_lossy().into_owned(),
-        elapsed_ms: 0,
+    let config = scanner::MemoryScanConfig {
+        scan_root: &canonical_root,
+        home: &canonical_root,
+        protection_root: &canonical_root,
+        selected_cleanup_root: false,
+        boundary,
+        definitions: &[],
+        excluded_paths: &[],
+        synthetic_root_name: None,
+        root_display_path: &root_display,
+        root_safety: CleanupSafety::Review,
+        root_protection_reason: None,
+        multi_roots: Vec::new(),
+        preserve_system_anchors: false,
+        reusable_subtrees: HashMap::new(),
     };
-    let scan = scan_filesystem(
-        ScanFilesystemOptions {
-            scan_root: &canonical_root,
-            home: &canonical_root,
-            protection_root: &canonical_root,
-            definitions: Vec::new(),
-            selected_cleanup_root: false,
-            include_application_inventory: false,
-            excluded_paths: &[],
-        },
-        cancelled,
-        &mut |progress| latest_progress = progress,
-    )
-    .map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let tree = scanner::scan_tree_in_memory(&config, cancelled, &mut |_| {}, &mut |_| {})
+        .map_err(|error| format!("{}: {}", error.code, error.message))?;
     let resources_after = benchmark_resource_snapshot();
+    let discovered_allocated_bytes = tree
+        .dirs
+        .first()
+        .map_or(0, |root| root.totals.allocated_size_bytes);
     Ok(CleanupBenchmarkResult {
-        root: canonical_root.to_string_lossy().into_owned(),
+        root: root_display,
         duration_ms: started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
         cpu_user_ms: resource_delta_millis(
             resources_before.user_time_ns,
@@ -1641,9 +1661,9 @@ pub fn benchmark_cleanup_root_with_cancel(
         ),
         peak_rss_bytes: resources_after.peak_rss_bytes,
         read_bytes: resource_delta(resources_before.read_bytes, resources_after.read_bytes),
-        scanned_entry_count: scan.scanned_entry_count,
-        unreadable_entry_count: scan.unreadable_entry_count,
-        discovered_allocated_bytes: latest_progress.discovered_bytes,
+        scanned_entry_count: tree.scanned_entry_count,
+        unreadable_entry_count: tree.unreadable_entry_count,
+        discovered_allocated_bytes,
     })
 }
 
@@ -2305,61 +2325,99 @@ pub fn prepare_application_uninstall(
             )
         })?;
         let application_root = open_application_delete_root(&bundle.root)?;
+        let candidates = application_uninstall_candidates(&canonical_home, &bundle);
+        enum CandidateOutcome {
+            Missing,
+            Skipped(String),
+            Artifact(ApplicationUninstallArtifact),
+            Fatal(CommandError),
+        }
+        let outcomes: Vec<CandidateOutcome> = std::thread::scope(|scope| {
+            let handles = candidates
+                .iter()
+                .map(|(kind, path, required)| {
+                    let kind = *kind;
+                    let required = *required;
+                    let canonical_home = &canonical_home;
+                    let home_root = &home_root;
+                    let application_root = &application_root;
+                    let bundle = &bundle;
+                    scope.spawn(move || {
+                        let display = path.to_string_lossy().into_owned();
+                        let bound = if required {
+                            application_root.bind(&bundle.relative_path)
+                        } else {
+                            let Ok(relative) = path.strip_prefix(canonical_home) else {
+                                return CandidateOutcome::Skipped(display);
+                            };
+                            home_root.bind(relative)
+                        };
+                        let bound = match bound {
+                            Ok(bound) => bound,
+                            Err(error)
+                                if !required && error.kind() == std::io::ErrorKind::NotFound =>
+                            {
+                                return CandidateOutcome::Missing;
+                            }
+                            Err(_) if !required => return CandidateOutcome::Skipped(display),
+                            Err(error) => {
+                                return CandidateOutcome::Fatal(CommandError::new(
+                                    "application_bundle_unavailable",
+                                    format!(
+                                        "CoreRobin could not safely inspect the application bundle: {error}"
+                                    ),
+                                ));
+                            }
+                        };
+                        let inspection_policy = if required {
+                            CleanupTargetInspectionPolicy::ApplicationBundle
+                        } else {
+                            CleanupTargetInspectionPolicy::Strict
+                        };
+                        let inspection = match inspection_policy.inspect(&bound) {
+                            Ok(inspection) => inspection,
+                            Err(_) if !required => return CandidateOutcome::Skipped(display),
+                            Err(message) => {
+                                return CandidateOutcome::Fatal(CommandError::new(
+                                    "application_bundle_unavailable",
+                                    format!(
+                                        "CoreRobin could not inspect the application bundle: {message}"
+                                    ),
+                                ));
+                            }
+                        };
+                        CandidateOutcome::Artifact(ApplicationUninstallArtifact {
+                            kind,
+                            path: display,
+                            logical_size_bytes: inspection.logical_size_bytes,
+                            allocated_size_bytes: inspection.allocated_size_bytes,
+                            item_count: inspection.item_count,
+                            required,
+                        })
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            handles
+                .into_iter()
+                .map(|handle| {
+                    handle.join().unwrap_or_else(|_| {
+                        CandidateOutcome::Fatal(CommandError::internal(
+                            "CoreRobin failed while inspecting application uninstall items.",
+                        ))
+                    })
+                })
+                .collect()
+        });
         let mut artifacts = Vec::new();
         let mut skipped_paths = Vec::new();
-        for (kind, path, required) in application_uninstall_candidates(&canonical_home, &bundle) {
-            let display = path.to_string_lossy().into_owned();
-            let bound = if required {
-                application_root.bind(&bundle.relative_path)
-            } else {
-                let Ok(relative) = path.strip_prefix(&canonical_home) else {
-                    skipped_paths.push(display);
-                    continue;
-                };
-                home_root.bind(relative)
-            };
-            let bound = match bound {
-                Ok(bound) => bound,
-                Err(error) if !required && error.kind() == std::io::ErrorKind::NotFound => continue,
-                Err(_) if !required => {
-                    skipped_paths.push(display);
-                    continue;
-                }
-                Err(error) => {
-                    return Err(CommandError::new(
-                        "application_bundle_unavailable",
-                        format!(
-                            "CoreRobin could not safely inspect the application bundle: {error}"
-                        ),
-                    ));
-                }
-            };
-            let inspection_policy = if required {
-                CleanupTargetInspectionPolicy::ApplicationBundle
-            } else {
-                CleanupTargetInspectionPolicy::Strict
-            };
-            let inspection = match inspection_policy.inspect(&bound) {
-                Ok(inspection) => inspection,
-                Err(_) if !required => {
-                    skipped_paths.push(display);
-                    continue;
-                }
-                Err(message) => {
-                    return Err(CommandError::new(
-                        "application_bundle_unavailable",
-                        format!("CoreRobin could not inspect the application bundle: {message}"),
-                    ));
-                }
-            };
-            artifacts.push(ApplicationUninstallArtifact {
-                kind,
-                path: display,
-                logical_size_bytes: inspection.logical_size_bytes,
-                allocated_size_bytes: inspection.allocated_size_bytes,
-                item_count: inspection.item_count,
-                required,
-            });
+        for outcome in outcomes {
+            match outcome {
+                CandidateOutcome::Missing => {}
+                CandidateOutcome::Skipped(path) => skipped_paths.push(path),
+                CandidateOutcome::Artifact(artifact) => artifacts.push(artifact),
+                CandidateOutcome::Fatal(error) => return Err(error),
+            }
         }
         let application_size = artifacts
             .iter()
@@ -3229,16 +3287,20 @@ fn is_windows_reparse_point(metadata: &Metadata) -> bool {
     metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug)]
 struct ScanStats {
     started: Instant,
     scanned_entry_count: usize,
     discovered_bytes: u64,
+    #[cfg(test)]
     unreadable_entry_count: usize,
+    #[cfg(test)]
     unreadable_paths: Vec<PathBuf>,
     last_reported_entry_count: usize,
 }
 
+#[cfg(test)]
 #[derive(Default)]
 struct LocationSummary {
     size_bytes: u64,
@@ -3247,6 +3309,7 @@ struct LocationSummary {
     nodes: Vec<CleanupNode>,
 }
 
+#[cfg(test)]
 #[derive(Default)]
 struct ChildAccumulator {
     max_candidates: usize,
@@ -3263,6 +3326,7 @@ struct ChildAccumulator {
     has_children: bool,
 }
 
+#[cfg(test)]
 #[derive(Clone, Copy)]
 struct CleanupNodeLayout {
     remaining_depth: usize,
@@ -3270,6 +3334,7 @@ struct CleanupNodeLayout {
     consolidate_small_children: bool,
 }
 
+#[cfg(test)]
 impl CleanupNodeLayout {
     fn standard(remaining_depth: usize) -> Self {
         Self {
@@ -3280,6 +3345,7 @@ impl CleanupNodeLayout {
     }
 }
 
+#[cfg(test)]
 struct ScanContext<'a> {
     stats: &'a mut ScanStats,
     largest_files: &'a mut Vec<CleanupFile>,
@@ -3296,6 +3362,7 @@ struct ScanContext<'a> {
     on_progress: &'a mut dyn FnMut(CleanupScanProgress),
 }
 
+#[cfg(test)]
 impl ScanContext<'_> {
     fn protection_for_path(&self, path: &Path) -> Option<CleanupProtectionReason> {
         cleanup_protection_for_scan_path(
@@ -3313,10 +3380,20 @@ fn cleanup_protection_for_scan_path(
     scan_root: &Path,
     selected_cleanup_root: bool,
 ) -> Option<CleanupProtectionReason> {
+    cleanup_protection_for_scan_path_with_uid(path, home, scan_root, selected_cleanup_root, None)
+}
+
+fn cleanup_protection_for_scan_path_with_uid(
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+    selected_cleanup_root: bool,
+    owner_uid: Option<u32>,
+) -> Option<CleanupProtectionReason> {
     if selected_cleanup_root && path.starts_with(scan_root) {
-        cleanup_protection_for_selected_scan_path(path, home, scan_root)
+        cleanup_protection_for_selected_scan_path_with_uid(path, home, scan_root, owner_uid)
     } else {
-        cleanup_protection_for_path(path, home)
+        cleanup_protection_for_path_with_uid(path, home, owner_uid)
     }
 }
 
@@ -3361,8 +3438,14 @@ impl ScanFilesystemBoundary {
             true
         }
     }
+
+    #[cfg(target_os = "macos")]
+    fn allows_device(self, device: u64) -> bool {
+        device == self.device
+    }
 }
 
+#[cfg(test)]
 impl ScanContext<'_> {
     fn safety_for_path(&self, path: &Path, fallback: CleanupSafety) -> CleanupSafety {
         matching_location_definition(self.definitions, path)
@@ -3399,7 +3482,7 @@ impl ScanContext<'_> {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(test, target_os = "macos"))]
 fn application_bundle_for_path(path: &Path, home: &Path) -> Option<PathBuf> {
     for application_root in [PathBuf::from("/Applications"), home.join("Applications")] {
         let Ok(relative) = path.strip_prefix(&application_root) else {
@@ -3418,7 +3501,7 @@ fn application_bundle_for_path(path: &Path, home: &Path) -> Option<PathBuf> {
     None
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(test, not(target_os = "macos")))]
 fn application_bundle_for_path(_path: &Path, _home: &Path) -> Option<PathBuf> {
     None
 }
@@ -3466,6 +3549,7 @@ fn scan_home(
     )
 }
 
+#[cfg(test)]
 struct ScanFilesystemOptions<'a> {
     scan_root: &'a Path,
     home: &'a Path,
@@ -3476,6 +3560,7 @@ struct ScanFilesystemOptions<'a> {
     excluded_paths: &'a [PathBuf],
 }
 
+#[cfg(test)]
 fn scan_filesystem(
     options: ScanFilesystemOptions<'_>,
     cancelled: &AtomicBool,
@@ -3682,7 +3767,7 @@ fn scan_installed_applications(
     Ok((applications, inventory_available))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(test, not(target_os = "macos")))]
 fn scan_installed_applications(
     _home: &Path,
     cancelled: &AtomicBool,
@@ -3700,6 +3785,9 @@ fn application_sizes(
     observed_sizes: &HashMap<PathBuf, u64>,
     cancelled: &AtomicBool,
 ) -> Result<HashMap<PathBuf, u64>, ChildCommandFailure> {
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
     let mut sizes = paths
         .iter()
         .filter_map(|path| observed_sizes.get(path).map(|size| (path.clone(), *size)))
@@ -3707,18 +3795,20 @@ fn application_sizes(
     let missing_paths = paths
         .iter()
         .filter(|path| !sizes.contains_key(*path))
+        .cloned()
         .collect::<Vec<_>>();
     if missing_paths.is_empty() {
         return Ok(sizes);
     }
-    let mut command = Command::new("/usr/bin/du");
-    command.arg("-sk").args(missing_paths);
-    let output = run_bounded_child(&mut command, cancelled, APPLICATION_DU_DEADLINE)?;
-    sizes.extend(parse_application_sizes(&String::from_utf8_lossy(&output)));
+    let measured = scanner::measure_directory_sizes_parallel(&missing_paths, cancelled);
+    if cancelled.load(Ordering::Relaxed) {
+        return Err(ChildCommandFailure::Cancelled);
+    }
+    sizes.extend(measured);
     Ok(sizes)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", test))]
 fn parse_application_sizes(output: &str) -> HashMap<PathBuf, u64> {
     output
         .lines()
@@ -3897,6 +3987,7 @@ fn days_from_civil(mut year: i64, month: i64, day: i64) -> i64 {
     era * 146_097 + day_of_era - 719_468
 }
 
+#[cfg(test)]
 fn scan_path(
     root: &Path,
     collect_large_files: bool,
@@ -3924,6 +4015,7 @@ type FileIdentity = (u32, u64);
 #[cfg(not(any(unix, windows)))]
 type FileIdentity = PathBuf;
 
+#[cfg(test)]
 fn scan_directory(
     directory: &Path,
     collect_large_files: bool,
@@ -4135,6 +4227,7 @@ fn is_cloud_backed_cleanup_root(_path: &Path, _home: &Path) -> bool {
     false
 }
 
+#[cfg(test)]
 fn scan_directory_summary(
     root: &Path,
     collect_large_files: bool,
@@ -4281,18 +4374,22 @@ fn scan_directory_summary(
     Ok(node)
 }
 
+#[cfg(any(target_os = "macos", test))]
 impl ScanStats {
     fn new() -> Self {
         Self {
             started: Instant::now(),
             scanned_entry_count: 0,
             discovered_bytes: 0,
+            #[cfg(test)]
             unreadable_entry_count: 0,
+            #[cfg(test)]
             unreadable_paths: Vec::new(),
             last_reported_entry_count: 0,
         }
     }
 
+    #[cfg(test)]
     fn record_unreadable(&mut self, path: &Path) {
         self.unreadable_entry_count += 1;
         if self.unreadable_paths.len() < MAX_UNREADABLE_PATHS
@@ -4345,6 +4442,7 @@ fn ensure_scan_active(cancelled: &AtomicBool) -> Result<(), CommandError> {
     }
 }
 
+#[cfg(test)]
 impl ChildAccumulator {
     fn new(max_candidates: usize, consolidate_small_candidates: bool) -> Self {
         Self {
@@ -4474,6 +4572,7 @@ impl ChildAccumulator {
     }
 }
 
+#[cfg(test)]
 fn prune_cleanup_nodes(nodes: &mut Vec<CleanupNode>, max_nodes: usize) {
     if max_nodes == 0 {
         nodes.clear();
@@ -4504,6 +4603,7 @@ fn prune_cleanup_nodes(nodes: &mut Vec<CleanupNode>, max_nodes: usize) {
     }
 }
 
+#[cfg(test)]
 fn prune_cleanup_node(node: &mut CleanupNode, remaining: &mut usize) {
     if *remaining == 0 {
         node.children.clear();
@@ -4521,6 +4621,7 @@ fn prune_cleanup_node(node: &mut CleanupNode, remaining: &mut usize) {
     *remaining = remaining.saturating_sub(count_cleanup_nodes(node));
 }
 
+#[cfg(test)]
 fn cleanup_forest_metrics(nodes: &[CleanupNode]) -> (usize, usize) {
     nodes.iter().fold((0, 0), |(count, depth), node| {
         let (node_count, node_depth) = cleanup_node_metrics(node);
@@ -4528,6 +4629,7 @@ fn cleanup_forest_metrics(nodes: &[CleanupNode]) -> (usize, usize) {
     })
 }
 
+#[cfg(test)]
 fn cleanup_node_metrics(node: &CleanupNode) -> (usize, usize) {
     node.children.iter().fold((1, 1), |(count, depth), child| {
         let (child_count, child_depth) = cleanup_node_metrics(child);
@@ -4538,10 +4640,12 @@ fn cleanup_node_metrics(node: &CleanupNode) -> (usize, usize) {
     })
 }
 
+#[cfg(test)]
 fn count_cleanup_nodes(node: &CleanupNode) -> usize {
     cleanup_node_metrics(node).0
 }
 
+#[cfg(test)]
 fn collapse_cleanup_children_at_depth(
     node: &mut CleanupNode,
     depth: usize,
@@ -4561,6 +4665,7 @@ fn collapse_cleanup_children_at_depth(
         .sum()
 }
 
+#[cfg(test)]
 fn restricted_cleanup_node(path: &Path, safety: CleanupSafety, home: &Path) -> CleanupNode {
     CleanupNode {
         id: format!("{}::restricted", display_path(path, home)),
@@ -4611,6 +4716,7 @@ fn file_identity(path: &Path, _metadata: &Metadata) -> Option<FileIdentity> {
     Some(path.to_path_buf())
 }
 
+#[cfg(test)]
 fn should_count_file(
     path: &Path,
     metadata: &Metadata,

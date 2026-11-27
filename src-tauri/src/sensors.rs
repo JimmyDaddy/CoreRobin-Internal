@@ -39,8 +39,14 @@ impl SensorSampler {
     pub fn new() -> Self {
         let components = Components::new_with_refreshed_list();
         let sleep = start_sleep_sampler();
-        let battery_details = sample_battery_details().unwrap_or_default();
-        let snapshot = sample_sensors(&components, &sleep, battery_details);
+        let mut battery = sample_battery();
+        let battery_details = if battery_needs_fallback_details(&battery) {
+            sample_battery_details().unwrap_or_default()
+        } else {
+            BatteryDetails::default()
+        };
+        apply_battery_details(&mut battery, battery_details);
+        let snapshot = build_sensors_snapshot(&components, &sleep, battery);
         Self {
             components,
             last_refresh: Instant::now(),
@@ -54,7 +60,10 @@ impl SensorSampler {
     pub fn sample(&mut self) -> SensorsSnapshot {
         if self.last_refresh.elapsed() >= SENSOR_REFRESH_INTERVAL {
             self.components.refresh(true);
-            if self.last_battery_details_refresh.elapsed() >= BATTERY_DETAILS_REFRESH_INTERVAL {
+            let mut battery = sample_battery();
+            if battery_needs_fallback_details(&battery)
+                && self.last_battery_details_refresh.elapsed() >= BATTERY_DETAILS_REFRESH_INTERVAL
+            {
                 if let Some(details) = sample_battery_details() {
                     self.battery_details.health_percent = details
                         .health_percent
@@ -64,7 +73,8 @@ impl SensorSampler {
                 }
                 self.last_battery_details_refresh = Instant::now();
             }
-            self.snapshot = sample_sensors(&self.components, &self.sleep, self.battery_details);
+            apply_battery_details(&mut battery, self.battery_details);
+            self.snapshot = build_sensors_snapshot(&self.components, &self.sleep, battery);
             self.last_refresh = Instant::now();
         }
         self.snapshot.sleep = cached_sleep_snapshot(&self.sleep);
@@ -72,16 +82,22 @@ impl SensorSampler {
     }
 }
 
-fn sample_sensors(
-    components: &Components,
-    sleep: &Arc<Mutex<SleepSnapshot>>,
-    battery_details: BatteryDetails,
-) -> SensorsSnapshot {
-    let mut battery = sample_battery();
+fn battery_needs_fallback_details(battery: &BatterySnapshot) -> bool {
+    battery.present && (battery.health_percent.is_none() || battery.cycle_count.is_none())
+}
+
+fn apply_battery_details(battery: &mut BatterySnapshot, battery_details: BatteryDetails) {
     if battery.present {
         battery.health_percent = battery.health_percent.or(battery_details.health_percent);
         battery.cycle_count = battery.cycle_count.or(battery_details.cycle_count);
     }
+}
+
+fn build_sensors_snapshot(
+    components: &Components,
+    sleep: &Arc<Mutex<SleepSnapshot>>,
+    battery: BatterySnapshot,
+) -> SensorsSnapshot {
     SensorsSnapshot {
         sampled_at_ms: now_millis(),
         temperature: hottest_temperature(components),
@@ -374,7 +390,40 @@ fn hottest_temperature(components: &Components) -> TemperatureSnapshot {
 }
 
 #[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Default)]
+struct IokitBatteryFields {
+    current_capacity: Option<i64>,
+    max_capacity: Option<i64>,
+    nominal_charge_capacity: Option<i64>,
+    apple_raw_max_capacity: Option<i64>,
+    design_capacity: Option<i64>,
+    cycle_count: Option<i64>,
+    external_connected: Option<bool>,
+    is_charging: Option<bool>,
+    fully_charged: Option<bool>,
+    time_remaining: Option<i64>,
+    avg_time_to_empty: Option<i64>,
+    avg_time_to_full: Option<i64>,
+}
+
+#[cfg(target_os = "macos")]
+enum IokitBatteryProbe {
+    Present(BatterySnapshot),
+    Absent,
+    Unavailable,
+}
+
+#[cfg(target_os = "macos")]
 fn sample_battery() -> BatterySnapshot {
+    match sample_battery_iokit() {
+        IokitBatteryProbe::Present(snapshot) => snapshot,
+        IokitBatteryProbe::Absent => unavailable_battery(),
+        IokitBatteryProbe::Unavailable => sample_battery_pmset(),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn sample_battery_pmset() -> BatterySnapshot {
     use std::process::Command;
 
     let output = bounded_command::output_with_circuit(
@@ -389,6 +438,223 @@ fn sample_battery() -> BatterySnapshot {
         .and_then(|output| String::from_utf8(output.stdout).ok())
         .and_then(|output| parse_pmset_battery(&output))
         .unwrap_or_else(unavailable_battery)
+}
+
+#[cfg(target_os = "macos")]
+fn sample_battery_iokit() -> IokitBatteryProbe {
+    use std::ffi::{CStr, c_char, c_void};
+    use std::ptr;
+
+    const K_IO_MAIN_PORT_DEFAULT: u32 = 0;
+    const KERN_SUCCESS: i32 = 0;
+    const K_CF_STRING_ENCODING_UTF8: u32 = 0x0800_0100;
+    const K_CF_NUMBER_SINT64_TYPE: isize = 4;
+
+    #[link(name = "IOKit", kind = "framework")]
+    unsafe extern "C" {
+        fn IOServiceMatching(name: *const c_char) -> *mut c_void;
+        fn IOServiceGetMatchingService(main_port: u32, matching: *mut c_void) -> u32;
+        fn IORegistryEntryCreateCFProperties(
+            entry: u32,
+            properties: *mut *mut c_void,
+            allocator: *const c_void,
+            options: u32,
+        ) -> i32;
+        fn IOObjectRelease(object: u32) -> i32;
+    }
+
+    #[link(name = "CoreFoundation", kind = "framework")]
+    unsafe extern "C" {
+        fn CFRelease(cf: *const c_void);
+        fn CFStringCreateWithCString(
+            alloc: *const c_void,
+            c_str: *const c_char,
+            encoding: u32,
+        ) -> *const c_void;
+        fn CFDictionaryGetValue(the_dict: *const c_void, key: *const c_void) -> *const c_void;
+        fn CFGetTypeID(cf: *const c_void) -> usize;
+        fn CFBooleanGetTypeID() -> usize;
+        fn CFBooleanGetValue(boolean: *const c_void) -> u8;
+        fn CFNumberGetTypeID() -> usize;
+        fn CFNumberGetValue(number: *const c_void, the_type: isize, value_ptr: *mut c_void) -> u8;
+    }
+
+    struct IoObjectGuard(u32);
+    impl Drop for IoObjectGuard {
+        fn drop(&mut self) {
+            if self.0 != 0 {
+                unsafe {
+                    let _ = IOObjectRelease(self.0);
+                }
+            }
+        }
+    }
+
+    struct CfObjectGuard(*const c_void);
+    impl Drop for CfObjectGuard {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    CFRelease(self.0);
+                }
+            }
+        }
+    }
+
+    fn dict_get_value(dict: *const c_void, key: &CStr) -> *const c_void {
+        let cf_key = unsafe {
+            CFStringCreateWithCString(ptr::null(), key.as_ptr(), K_CF_STRING_ENCODING_UTF8)
+        };
+        if cf_key.is_null() {
+            return ptr::null();
+        }
+        let _key_guard = CfObjectGuard(cf_key);
+        unsafe { CFDictionaryGetValue(dict, cf_key) }
+    }
+
+    fn dict_get_i64(dict: *const c_void, key: &CStr) -> Option<i64> {
+        let value = dict_get_value(dict, key);
+        if value.is_null() {
+            return None;
+        }
+        unsafe {
+            if CFGetTypeID(value) != CFNumberGetTypeID() {
+                return None;
+            }
+            let mut out: i64 = 0;
+            let ok = CFNumberGetValue(
+                value,
+                K_CF_NUMBER_SINT64_TYPE,
+                (&mut out as *mut i64).cast::<c_void>(),
+            );
+            (ok != 0).then_some(out)
+        }
+    }
+
+    fn dict_get_bool(dict: *const c_void, key: &CStr) -> Option<bool> {
+        let value = dict_get_value(dict, key);
+        if value.is_null() {
+            return None;
+        }
+        unsafe {
+            if CFGetTypeID(value) != CFBooleanGetTypeID() {
+                return None;
+            }
+            Some(CFBooleanGetValue(value) != 0)
+        }
+    }
+
+    let matching = unsafe { IOServiceMatching(c"AppleSmartBattery".as_ptr()) };
+    if matching.is_null() {
+        return IokitBatteryProbe::Unavailable;
+    }
+    // IOServiceGetMatchingService takes ownership of `matching`.
+    let service = unsafe { IOServiceGetMatchingService(K_IO_MAIN_PORT_DEFAULT, matching) };
+    if service == 0 {
+        return IokitBatteryProbe::Absent;
+    }
+    let _service_guard = IoObjectGuard(service);
+
+    let mut properties_ptr: *mut c_void = ptr::null_mut();
+    let status =
+        unsafe { IORegistryEntryCreateCFProperties(service, &mut properties_ptr, ptr::null(), 0) };
+    if status != KERN_SUCCESS || properties_ptr.is_null() {
+        return IokitBatteryProbe::Unavailable;
+    }
+    let _properties_guard = CfObjectGuard(properties_ptr.cast_const());
+    let dict = properties_ptr.cast_const();
+
+    let fields = IokitBatteryFields {
+        current_capacity: dict_get_i64(dict, c"CurrentCapacity"),
+        max_capacity: dict_get_i64(dict, c"MaxCapacity"),
+        nominal_charge_capacity: dict_get_i64(dict, c"NominalChargeCapacity"),
+        apple_raw_max_capacity: dict_get_i64(dict, c"AppleRawMaxCapacity"),
+        design_capacity: dict_get_i64(dict, c"DesignCapacity"),
+        cycle_count: dict_get_i64(dict, c"CycleCount"),
+        external_connected: dict_get_bool(dict, c"ExternalConnected"),
+        is_charging: dict_get_bool(dict, c"IsCharging"),
+        fully_charged: dict_get_bool(dict, c"FullyCharged"),
+        time_remaining: dict_get_i64(dict, c"TimeRemaining"),
+        avg_time_to_empty: dict_get_i64(dict, c"AvgTimeToEmpty"),
+        avg_time_to_full: dict_get_i64(dict, c"AvgTimeToFull"),
+    };
+
+    match battery_snapshot_from_iokit_fields(fields) {
+        Some(snapshot) => IokitBatteryProbe::Present(snapshot),
+        None => IokitBatteryProbe::Unavailable,
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn battery_snapshot_from_iokit_fields(fields: IokitBatteryFields) -> Option<BatterySnapshot> {
+    let charge_percent = match (fields.current_capacity, fields.max_capacity) {
+        (Some(current), Some(max)) if current >= 0 && max > 0 => {
+            Some((((current as f64) / (max as f64)) * 100.0).clamp(0.0, 100.0) as f32)
+        }
+        _ => return None,
+    };
+
+    let health_percent = iokit_battery_health(fields);
+    let cycle_count = fields
+        .cycle_count
+        .and_then(|value| u64::try_from(value).ok());
+    let power_source = match fields.external_connected {
+        Some(true) => PowerSource::Ac,
+        Some(false) => PowerSource::Battery,
+        None => PowerSource::Unknown,
+    };
+    let state = if fields.is_charging == Some(true) {
+        BatteryState::Charging
+    } else if fields.fully_charged == Some(true)
+        || (fields.external_connected == Some(true)
+            && charge_percent.is_some_and(|percent| percent >= 99.5))
+    {
+        BatteryState::Full
+    } else if fields.external_connected == Some(false) {
+        BatteryState::Discharging
+    } else if fields.external_connected == Some(true) {
+        BatteryState::NotCharging
+    } else {
+        BatteryState::Unknown
+    };
+    let time_remaining_minutes = match state {
+        BatteryState::Discharging => sanitize_iokit_minutes(fields.avg_time_to_empty)
+            .or_else(|| sanitize_iokit_minutes(fields.time_remaining)),
+        BatteryState::Charging => sanitize_iokit_minutes(fields.avg_time_to_full)
+            .or_else(|| sanitize_iokit_minutes(fields.time_remaining)),
+        _ => None,
+    };
+
+    Some(BatterySnapshot {
+        present: true,
+        charge_percent,
+        health_percent,
+        cycle_count,
+        state,
+        time_remaining_minutes,
+        power_source,
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn iokit_battery_health(fields: IokitBatteryFields) -> Option<f32> {
+    let design = fields.design_capacity.filter(|&value| value > 0)?;
+    let full = fields
+        .nominal_charge_capacity
+        .filter(|&value| value > 0)
+        .or_else(|| fields.apple_raw_max_capacity.filter(|&value| value > 0))
+        .or_else(|| fields.max_capacity.filter(|&value| value > 100))?;
+    let percent = (((full as f64) / (design as f64)) * 100.0)
+        .round()
+        .clamp(0.0, 100.0) as f32;
+    percent.is_finite().then_some(percent)
+}
+
+#[cfg(target_os = "macos")]
+fn sanitize_iokit_minutes(value: Option<i64>) -> Option<u64> {
+    let value = value?;
+    // IOKit uses 65535 (0xFFFF) as the sentinel for "unknown / calculating".
+    (0..65_535).contains(&value).then_some(value as u64)
 }
 
 #[cfg(target_os = "macos")]
@@ -625,9 +891,81 @@ fn now_millis() -> u64 {
 mod tests {
     #[cfg(target_os = "macos")]
     use super::{
-        BatteryDetails, BatteryState, PowerSource, SleepBlockerKind, merge_battery_details,
+        BatteryDetails, BatteryState, IokitBatteryFields, IokitBatteryProbe, PowerSource,
+        SleepBlockerKind, battery_snapshot_from_iokit_fields, merge_battery_details,
         parse_pmset_assertions, parse_pmset_battery, parse_system_profiler_battery_details,
+        sample_battery_iokit,
     };
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn maps_iokit_battery_fields_accurately() {
+        let apple_silicon = battery_snapshot_from_iokit_fields(IokitBatteryFields {
+            current_capacity: Some(100),
+            max_capacity: Some(100),
+            nominal_charge_capacity: Some(5362),
+            apple_raw_max_capacity: Some(5210),
+            design_capacity: Some(6249),
+            cycle_count: Some(194),
+            external_connected: Some(true),
+            is_charging: Some(false),
+            fully_charged: Some(true),
+            time_remaining: Some(65535),
+            avg_time_to_empty: Some(65535),
+            avg_time_to_full: Some(65535),
+        })
+        .expect("apple silicon fields should parse");
+        assert!(apple_silicon.present);
+        assert_eq!(apple_silicon.charge_percent, Some(100.0));
+        assert_eq!(apple_silicon.health_percent, Some(86.0));
+        assert_eq!(apple_silicon.cycle_count, Some(194));
+        assert_eq!(apple_silicon.state, BatteryState::Full);
+        assert_eq!(apple_silicon.power_source, PowerSource::Ac);
+        assert_eq!(apple_silicon.time_remaining_minutes, None);
+
+        let discharging = battery_snapshot_from_iokit_fields(IokitBatteryFields {
+            current_capacity: Some(4200),
+            max_capacity: Some(5000),
+            nominal_charge_capacity: None,
+            apple_raw_max_capacity: Some(4800),
+            design_capacity: Some(5200),
+            cycle_count: Some(88),
+            external_connected: Some(false),
+            is_charging: Some(false),
+            fully_charged: Some(false),
+            time_remaining: Some(215),
+            avg_time_to_empty: Some(192),
+            avg_time_to_full: Some(65535),
+        })
+        .expect("discharging fields should parse");
+        assert_eq!(discharging.charge_percent, Some(84.0));
+        assert_eq!(discharging.health_percent, Some(92.0));
+        assert_eq!(discharging.state, BatteryState::Discharging);
+        assert_eq!(discharging.power_source, PowerSource::Battery);
+        assert_eq!(discharging.time_remaining_minutes, Some(192));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn probes_macos_iokit_battery_without_spawning_subprocesses() {
+        let started = std::time::Instant::now();
+        let probe = sample_battery_iokit();
+        let elapsed = started.elapsed();
+        match probe {
+            IokitBatteryProbe::Present(snapshot) => {
+                assert!(snapshot.present);
+                assert!(snapshot.charge_percent.is_some());
+                assert!(snapshot.health_percent.is_some());
+                assert!(snapshot.cycle_count.is_some());
+            }
+            IokitBatteryProbe::Absent => {}
+            IokitBatteryProbe::Unavailable => panic!("IOKit battery probe unexpectedly failed"),
+        }
+        assert!(
+            elapsed < std::time::Duration::from_millis(200),
+            "IOKit battery probe took unexpectedly long: {elapsed:?}"
+        );
+    }
 
     #[cfg(target_os = "macos")]
     #[test]

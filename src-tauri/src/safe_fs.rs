@@ -997,7 +997,7 @@ impl BoundDeleteTarget {
             .dir_metadata()
             .map_err(|error| format!("Could not inspect the cleanup directory: {error}"))?;
         let root_modified_at = metadata_modified_at(&root_metadata);
-        let root_entries = read_entry_names(&root_directory, Path::new("."))?;
+        let root_entries = read_inspection_entries(&root_directory, Path::new("."))?;
         let mut frames = vec![InspectionFrame {
             directory: root_directory,
             name_in_parent: None,
@@ -1017,18 +1017,97 @@ impl BoundDeleteTarget {
         hash_modified_at(&mut fingerprint, root_modified_at);
 
         while !frames.is_empty() {
-            let next_name = {
+            let next_entry = {
                 let frame = frames.last_mut().expect("inspection stack is not empty");
-                let name = frame.entries.get(frame.next_entry).cloned();
-                if name.is_some() {
+                if frame.next_entry < frame.entries.len() {
+                    let index = frame.next_entry;
                     frame.next_entry = frame.next_entry.saturating_add(1);
+                    Some(std::mem::take(&mut frame.entries[index]))
+                } else {
+                    None
                 }
-                name
             };
-            if let Some(name) = next_name {
+            if let Some(entry) = next_entry {
                 let frame = frames.last().expect("inspection stack is not empty");
-                let display_path = frame.display_path.join(&name);
+                #[cfg(target_os = "macos")]
+                match entry.fast_info {
+                    Some(FastInspectInfo::RegularFile {
+                        identity,
+                        logical_size,
+                        allocated_size,
+                        modified_at,
+                        nlink,
+                    }) => {
+                        if identity.volume != self.volume {
+                            return Err(invalid_data(
+                                "cleanup traversal crossed into another filesystem volume",
+                            )
+                            .to_string());
+                        }
+                        hash_os_str(&mut fingerprint, &entry.name);
+                        fingerprint.update([b'f']);
+                        hash_identity(&mut fingerprint, identity);
+                        fingerprint.update(logical_size.to_le_bytes());
+                        hash_modified_at(&mut fingerprint, modified_at);
+                        if nlink <= 1 || seen_files.insert(identity) {
+                            logical_size_bytes = logical_size_bytes.saturating_add(logical_size);
+                            allocated_size_bytes =
+                                allocated_size_bytes.saturating_add(allocated_size);
+                            item_count = item_count.saturating_add(1);
+                        }
+                        continue;
+                    }
+                    Some(FastInspectInfo::Directory { identity }) => {
+                        let name = entry.name;
+                        let display_path = frame.display_path.join(&name);
+                        let child = frame.directory.open_dir_nofollow(&name).map_err(|error| {
+                            format!(
+                                "Refused to open {} as a no-follow directory: {error}",
+                                display_path.display()
+                            )
+                        })?;
+                        let child_metadata = child.dir_metadata().map_err(|error| {
+                            format!("Could not inspect {}: {error}", display_path.display())
+                        })?;
+                        ensure_same_volume(&child_metadata, self.volume)
+                            .map_err(|error| error.to_string())?;
+                        let child_identity = FileIdentity::from_metadata(&child_metadata);
+                        if identity != child_identity {
+                            return Err(format!(
+                                "Refused to refresh {} because it changed during traversal.",
+                                display_path.display()
+                            ));
+                        }
+                        let child_modified_at = metadata_modified_at(&child_metadata);
+                        hash_os_str(&mut fingerprint, &name);
+                        fingerprint.update([b'd']);
+                        hash_identity(&mut fingerprint, child_identity);
+                        hash_modified_at(&mut fingerprint, child_modified_at);
+                        let entries = read_inspection_entries(&child, &display_path)?;
+                        frames.push(InspectionFrame {
+                            directory: child,
+                            name_in_parent: Some(name),
+                            identity: child_identity,
+                            modified_at: child_modified_at,
+                            display_path,
+                            entries,
+                            next_entry: 0,
+                        });
+                        continue;
+                    }
+                    Some(FastInspectInfo::Special) => {
+                        let display_path = frame.display_path.join(&entry.name);
+                        return Err(format!(
+                            "Refused to refresh {} because it is a special filesystem object.",
+                            display_path.display()
+                        ));
+                    }
+                    None => {}
+                }
+
+                let name = entry.name;
                 let entry_metadata = frame.directory.symlink_metadata(&name).map_err(|error| {
+                    let display_path = frame.display_path.join(&name);
                     format!(
                         "Could not inspect {} while refreshing deletion evidence: {error}",
                         display_path.display()
@@ -1036,6 +1115,7 @@ impl BoundDeleteTarget {
                 })?;
                 if entry_metadata.file_type().is_symlink() {
                     if !allow_internal_symlinks {
+                        let display_path = frame.display_path.join(&name);
                         return Err(format!(
                             "Refused to refresh {} because it is a symbolic link or reparse point.",
                             display_path.display()
@@ -1046,6 +1126,7 @@ impl BoundDeleteTarget {
                     let identity = FileIdentity::from_metadata(&entry_metadata);
                     verify_symlink_identity(&frame.directory, &name, identity).map_err(
                         |error| {
+                            let display_path = frame.display_path.join(&name);
                             format!(
                                 "Refused to refresh {} because its link changed: {error}",
                                 display_path.display()
@@ -1066,6 +1147,7 @@ impl BoundDeleteTarget {
                 hash_os_str(&mut fingerprint, &name);
 
                 if entry_metadata.is_dir() {
+                    let display_path = frame.display_path.join(&name);
                     let child = frame.directory.open_dir_nofollow(&name).map_err(|error| {
                         format!(
                             "Refused to open {} as a no-follow directory: {error}",
@@ -1088,7 +1170,7 @@ impl BoundDeleteTarget {
                     fingerprint.update([b'd']);
                     hash_identity(&mut fingerprint, child_identity);
                     hash_modified_at(&mut fingerprint, child_modified_at);
-                    let entries = read_entry_names(&child, &display_path)?;
+                    let entries = read_inspection_entries(&child, &display_path)?;
                     frames.push(InspectionFrame {
                         directory: child,
                         name_in_parent: Some(name),
@@ -1099,41 +1181,22 @@ impl BoundDeleteTarget {
                         next_entry: 0,
                     });
                 } else if entry_metadata.is_file() {
-                    let file = open_regular_file(&frame.directory, &name).map_err(|error| {
-                        format!(
-                            "Refused to open {} as a no-follow file: {error}",
-                            display_path.display()
-                        )
-                    })?;
-                    let metadata = file.metadata().map_err(|error| {
-                        format!("Could not inspect {}: {error}", display_path.display())
-                    })?;
-                    ensure_same_volume(&metadata, self.volume)
+                    ensure_same_volume(&entry_metadata, self.volume)
                         .map_err(|error| error.to_string())?;
-                    let identity = FileIdentity::from_metadata(&metadata);
-                    if FileIdentity::from_metadata(&entry_metadata) != identity {
-                        return Err(format!(
-                            "Refused to refresh {} because it changed during traversal.",
-                            display_path.display()
-                        ));
-                    }
-                    verify_entry_identity(&frame.directory, &name, identity).map_err(|error| {
-                        format!(
-                            "Refused to refresh {} because it changed: {error}",
-                            display_path.display()
-                        )
-                    })?;
+                    let identity = FileIdentity::from_metadata(&entry_metadata);
                     fingerprint.update([b'f']);
                     hash_identity(&mut fingerprint, identity);
-                    fingerprint.update(metadata.len().to_le_bytes());
-                    hash_modified_at(&mut fingerprint, metadata_modified_at(&metadata));
-                    if seen_files.insert(identity) {
-                        logical_size_bytes = logical_size_bytes.saturating_add(metadata.len());
-                        allocated_size_bytes =
-                            allocated_size_bytes.saturating_add(allocated_file_size(&metadata));
+                    fingerprint.update(entry_metadata.len().to_le_bytes());
+                    hash_modified_at(&mut fingerprint, metadata_modified_at(&entry_metadata));
+                    if MetadataExt::nlink(&entry_metadata) <= 1 || seen_files.insert(identity) {
+                        logical_size_bytes =
+                            logical_size_bytes.saturating_add(entry_metadata.len());
+                        allocated_size_bytes = allocated_size_bytes
+                            .saturating_add(allocated_file_size(&entry_metadata));
                         item_count = item_count.saturating_add(1);
                     }
                 } else {
+                    let display_path = frame.display_path.join(&name);
                     return Err(format!(
                         "Refused to refresh {} because it is a special filesystem object.",
                         display_path.display()
@@ -1270,6 +1333,29 @@ struct DirectoryFrame {
     next_entry: usize,
 }
 
+#[cfg(target_os = "macos")]
+#[derive(Debug)]
+enum FastInspectInfo {
+    RegularFile {
+        identity: FileIdentity,
+        logical_size: u64,
+        allocated_size: u64,
+        modified_at: Option<SystemTime>,
+        nlink: u64,
+    },
+    Directory {
+        identity: FileIdentity,
+    },
+    Special,
+}
+
+#[derive(Debug, Default)]
+struct InspectDirEntry {
+    name: OsString,
+    #[cfg(target_os = "macos")]
+    fast_info: Option<FastInspectInfo>,
+}
+
 #[derive(Debug)]
 struct InspectionFrame {
     directory: Dir,
@@ -1277,7 +1363,7 @@ struct InspectionFrame {
     identity: FileIdentity,
     modified_at: Option<SystemTime>,
     display_path: PathBuf,
-    entries: Vec<OsString>,
+    entries: Vec<InspectDirEntry>,
     next_entry: usize,
 }
 
@@ -1420,6 +1506,327 @@ fn open_regular_file(directory: &Dir, name: &OsStr) -> io::Result<File> {
         return Err(invalid_data("cleanup entry is not a regular file"));
     }
     Ok(file)
+}
+
+fn read_inspection_entries(
+    directory: &Dir,
+    display_path: &Path,
+) -> Result<Vec<InspectDirEntry>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(entries) = read_inspection_entries_macos(directory) {
+            return Ok(entries);
+        }
+    }
+    let names = read_entry_names(directory, display_path)?;
+    Ok(names
+        .into_iter()
+        .map(|name| InspectDirEntry {
+            name,
+            #[cfg(target_os = "macos")]
+            fast_info: None,
+        })
+        .collect())
+}
+
+#[cfg(target_os = "macos")]
+fn read_inspection_entries_macos(directory: &Dir) -> Option<Vec<InspectDirEntry>> {
+    use std::ffi::OsStr;
+    use std::mem::size_of;
+    use std::os::unix::ffi::OsStrExt as _;
+    use std::ptr;
+
+    const ATTR_BIT_MAP_COUNT: u16 = 5;
+    const ATTR_CMN_RETURNED_ATTRS: u32 = 0x8000_0000;
+    const ATTR_CMN_NAME: u32 = 0x0000_0001;
+    const ATTR_CMN_DEVID: u32 = 0x0000_0002;
+    const ATTR_CMN_OBJTYPE: u32 = 0x0000_0008;
+    const ATTR_CMN_MODTIME: u32 = 0x0000_0400;
+    const ATTR_CMN_FILEID: u32 = 0x0200_0000;
+    const ATTR_FILE_LINKCOUNT: u32 = 0x0000_0001;
+    const ATTR_FILE_DATALENGTH: u32 = 0x0000_0200;
+    const ATTR_FILE_ALLOCSIZE: u32 = 0x0000_0400;
+    const FSOPT_NOFOLLOW: u64 = 0x0000_0001;
+    const VREG: u32 = 1;
+    const VDIR: u32 = 2;
+    const VLNK: u32 = 5;
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct AttrList {
+        bitmapcount: u16,
+        reserved: u16,
+        commonattr: u32,
+        volattr: u32,
+        dirattr: u32,
+        fileattr: u32,
+        forkattr: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct AttributeSet {
+        commonattr: u32,
+        volattr: u32,
+        dirattr: u32,
+        fileattr: u32,
+        forkattr: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct AttrReference {
+        attr_dataoffset: i32,
+        attr_length: u32,
+    }
+
+    unsafe extern "C" {
+        fn getattrlistbulk(
+            dirfd: libc::c_int,
+            alist: *mut AttrList,
+            attribute_buffer: *mut libc::c_void,
+            buffer_size: libc::size_t,
+            options: u64,
+        ) -> libc::c_int;
+    }
+
+    struct FdGuard(libc::c_int);
+    impl Drop for FdGuard {
+        fn drop(&mut self) {
+            if self.0 >= 0 {
+                unsafe {
+                    libc::close(self.0);
+                }
+            }
+        }
+    }
+
+    // Open an independent directory fd anchored to the bound Dir handle so
+    // getattrlistbulk never disturbs any seek position on `directory`.
+    let scan_fd = unsafe {
+        libc::openat(
+            directory.as_raw_fd(),
+            c".".as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+        )
+    };
+    if scan_fd < 0 {
+        return None;
+    }
+    let _fd_guard = FdGuard(scan_fd);
+
+    let mut attrlist = AttrList {
+        bitmapcount: ATTR_BIT_MAP_COUNT,
+        reserved: 0,
+        commonattr: ATTR_CMN_RETURNED_ATTRS
+            | ATTR_CMN_NAME
+            | ATTR_CMN_DEVID
+            | ATTR_CMN_OBJTYPE
+            | ATTR_CMN_MODTIME
+            | ATTR_CMN_FILEID,
+        volattr: 0,
+        dirattr: 0,
+        fileattr: ATTR_FILE_LINKCOUNT | ATTR_FILE_DATALENGTH | ATTR_FILE_ALLOCSIZE,
+        forkattr: 0,
+    };
+
+    let mut buffer = vec![0_u8; 64 * 1024];
+    let mut entries = Vec::new();
+
+    loop {
+        let count = unsafe {
+            getattrlistbulk(
+                scan_fd,
+                &mut attrlist,
+                buffer.as_mut_ptr().cast::<libc::c_void>(),
+                buffer.len(),
+                FSOPT_NOFOLLOW,
+            )
+        };
+        if count < 0 {
+            return None;
+        }
+        if count == 0 {
+            break;
+        }
+
+        let mut offset = 0_usize;
+        for _ in 0..count {
+            if offset + size_of::<u32>() > buffer.len() {
+                return None;
+            }
+            let record_len =
+                unsafe { ptr::read_unaligned(buffer.as_ptr().add(offset).cast::<u32>()) } as usize;
+            if record_len < size_of::<u32>() + size_of::<AttributeSet>()
+                || offset + record_len > buffer.len()
+            {
+                return None;
+            }
+            let record_end = offset + record_len;
+            let mut cursor = offset + size_of::<u32>();
+
+            let returned =
+                unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<AttributeSet>()) };
+            cursor += size_of::<AttributeSet>();
+
+            if returned.commonattr & ATTR_CMN_NAME == 0 {
+                return None;
+            }
+            if cursor + size_of::<AttrReference>() > record_end {
+                return None;
+            }
+            let name_ref_offset = cursor;
+            let name_ref =
+                unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<AttrReference>()) };
+            cursor += size_of::<AttrReference>();
+            let name_start =
+                name_ref_offset.checked_add_signed(name_ref.attr_dataoffset as isize)?;
+            let name_len = name_ref.attr_length as usize;
+            let name_end = name_start.checked_add(name_len)?;
+            if name_end > record_end {
+                return None;
+            }
+            let raw_name = &buffer[name_start..name_end];
+            let trimmed_name = raw_name.strip_suffix(&[0]).unwrap_or(raw_name);
+            if trimmed_name == b"." || trimmed_name == b".." {
+                offset = record_end;
+                continue;
+            }
+            let name = OsStr::from_bytes(trimmed_name).to_os_string();
+
+            let dev_id = if returned.commonattr & ATTR_CMN_DEVID != 0 {
+                if cursor + size_of::<i32>() > record_end {
+                    return None;
+                }
+                let dev = unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<i32>()) };
+                cursor += size_of::<i32>();
+                Some(dev as u64)
+            } else {
+                None
+            };
+
+            let obj_type = if returned.commonattr & ATTR_CMN_OBJTYPE != 0 {
+                if cursor + size_of::<u32>() > record_end {
+                    return None;
+                }
+                let kind =
+                    unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<u32>()) };
+                cursor += size_of::<u32>();
+                Some(kind)
+            } else {
+                None
+            };
+
+            let modified_at = if returned.commonattr & ATTR_CMN_MODTIME != 0 {
+                if cursor + size_of::<libc::timespec>() > record_end {
+                    return None;
+                }
+                let ts = unsafe {
+                    ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<libc::timespec>())
+                };
+                cursor += size_of::<libc::timespec>();
+                timespec_to_system_time(ts)
+            } else {
+                None
+            };
+
+            let file_id = if returned.commonattr & ATTR_CMN_FILEID != 0 {
+                if cursor + size_of::<u64>() > record_end {
+                    return None;
+                }
+                let ino = unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<u64>()) };
+                cursor += size_of::<u64>();
+                Some(ino)
+            } else {
+                None
+            };
+
+            let link_count = if returned.fileattr & ATTR_FILE_LINKCOUNT != 0 {
+                if cursor + size_of::<u32>() > record_end {
+                    return None;
+                }
+                let nlink =
+                    unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<u32>()) };
+                cursor += size_of::<u32>();
+                Some(u64::from(nlink))
+            } else {
+                None
+            };
+
+            let data_length = if returned.fileattr & ATTR_FILE_DATALENGTH != 0 {
+                if cursor + size_of::<i64>() > record_end {
+                    return None;
+                }
+                let len = unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<i64>()) };
+                cursor += size_of::<i64>();
+                u64::try_from(len).ok()
+            } else {
+                None
+            };
+
+            let alloc_size = if returned.fileattr & ATTR_FILE_ALLOCSIZE != 0 {
+                if cursor + size_of::<i64>() > record_end {
+                    return None;
+                }
+                let alloc =
+                    unsafe { ptr::read_unaligned(buffer.as_ptr().add(cursor).cast::<i64>()) };
+                u64::try_from(alloc).ok()
+            } else {
+                None
+            };
+
+            let fast_info = match (obj_type, dev_id, file_id) {
+                (Some(VREG), Some(volume), Some(file)) => {
+                    match (data_length, alloc_size, link_count) {
+                        (Some(logical_size), Some(allocated_size), Some(nlink)) => {
+                            Some(FastInspectInfo::RegularFile {
+                                identity: FileIdentity { volume, file },
+                                logical_size,
+                                allocated_size,
+                                modified_at,
+                                nlink,
+                            })
+                        }
+                        _ => None,
+                    }
+                }
+                (Some(VDIR), Some(volume), Some(file)) => Some(FastInspectInfo::Directory {
+                    identity: FileIdentity { volume, file },
+                }),
+                // Symlinks fall back to symlink_metadata + verify_symlink_identity.
+                (Some(VLNK), _, _) => None,
+                (Some(_), _, _) => Some(FastInspectInfo::Special),
+                _ => None,
+            };
+
+            entries.push(InspectDirEntry { name, fast_info });
+            offset = record_end;
+        }
+    }
+
+    entries.sort_by(|left, right| left.name.cmp(&right.name));
+    Some(entries)
+}
+
+#[cfg(target_os = "macos")]
+fn timespec_to_system_time(ts: libc::timespec) -> Option<SystemTime> {
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let nanos = u32::try_from(ts.tv_nsec).ok()?;
+    if ts.tv_sec >= 0 {
+        UNIX_EPOCH.checked_add(Duration::new(ts.tv_sec as u64, nanos))
+    } else {
+        // Negative Unix timestamps are represented by subtracting from UNIX_EPOCH.
+        let abs_secs = ts.tv_sec.unsigned_abs();
+        if nanos == 0 {
+            UNIX_EPOCH.checked_sub(Duration::from_secs(abs_secs))
+        } else {
+            UNIX_EPOCH.checked_sub(Duration::new(
+                abs_secs.saturating_sub(1),
+                1_000_000_000_u32.saturating_sub(nanos),
+            ))
+        }
+    }
 }
 
 fn read_entry_names(directory: &Dir, display_path: &Path) -> Result<Vec<OsString>, String> {
@@ -1967,6 +2374,34 @@ mod tests {
                 & 0o777,
             0o700
         );
+        fs::remove_dir_all(home).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fast_inspection_deduplicates_hard_links_and_detects_mutations() {
+        let home = test_root("fast-inspect");
+        let target = home.join("target");
+        let nested = target.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        let original = nested.join("alpha.bin");
+        fs::write(&original, vec![42_u8; 8_192]).unwrap();
+        fs::hard_link(&original, target.join("alpha-link.bin")).unwrap();
+        fs::write(target.join("beta.bin"), b"hello").unwrap();
+
+        let root = DeleteRoot::open(&home).unwrap();
+        let bound = root.bind(Path::new("target")).unwrap();
+        let first = bound.inspect().unwrap();
+        let second = bound.inspect().unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first.item_count, 2);
+        assert_eq!(first.logical_size_bytes, 8_192 + 5);
+
+        fs::write(target.join("beta.bin"), b"hello!").unwrap();
+        let mutated = bound.inspect().unwrap();
+        assert_ne!(first.fingerprint, mutated.fingerprint);
+        assert_eq!(mutated.logical_size_bytes, 8_192 + 6);
+
         fs::remove_dir_all(home).unwrap();
     }
 }

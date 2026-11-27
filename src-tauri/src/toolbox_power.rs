@@ -1313,7 +1313,7 @@ unsafe extern "C" {
     fn CFDictionaryGetValue(dictionary: CFDictionaryRef, key: *const std::ffi::c_void)
     -> CFTypeRef;
     fn CFEqual(left: CFTypeRef, right: CFTypeRef) -> u8;
-    fn CFNumberGetValue(number: CFTypeRef, number_type: i32, value: *mut std::ffi::c_void) -> u8;
+    fn CFNumberGetValue(number: CFTypeRef, number_type: isize, value: *mut std::ffi::c_void) -> u8;
 }
 
 #[cfg(target_os = "macos")]
