@@ -245,6 +245,8 @@ describe("release workflow privilege separation", () => {
     expect(discover).toContain("actions: read");
     expect(discover).toContain("Check out trusted reconciliation tooling");
     expect(discover).toContain("scripts/discover-pending-notarization.sh");
+    expect(discover).not.toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
+    expect(discover).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
     expect(notarizationDiscovery).toContain("stable_release_exists");
     expect(notarizationDiscovery).toContain("latest_stable_tag");
     expect(notarizationDiscovery).toContain("version_is_newer");
@@ -260,6 +262,8 @@ describe("release workflow privilege separation", () => {
     expect(dispatch).toContain("apple-notarization-complete");
     expect(dispatch).toContain('--repo "$GITHUB_REPOSITORY"');
     expect(dispatch).not.toContain("APPLE_API_PRIVATE_KEY_BASE64");
+    expect(dispatch).not.toContain("secrets.PUBLIC_RELEASE_READ_TOKEN");
+    expect(dispatch).not.toContain("secrets.PUBLIC_RELEASE_TOKEN");
     expect(finalizeWorkflow).toContain("run-name: Finalize");
   });
 
