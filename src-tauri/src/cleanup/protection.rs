@@ -18,6 +18,14 @@ pub(super) fn cleanup_protection_for_path(
     path: &Path,
     home: &Path,
 ) -> Option<CleanupProtectionReason> {
+    cleanup_protection_for_path_with_uid(path, home, None)
+}
+
+pub(super) fn cleanup_protection_for_path_with_uid(
+    path: &Path,
+    home: &Path,
+    owner_uid: Option<u32>,
+) -> Option<CleanupProtectionReason> {
     if path.starts_with(home) {
         let relative = path.strip_prefix(home).ok()?;
         if relative.as_os_str().is_empty() {
@@ -45,13 +53,30 @@ pub(super) fn cleanup_protection_for_path(
     if relative.as_os_str().is_empty() {
         return Some(CleanupProtectionReason::SystemLocation);
     }
-    let canonical_path = boundary.canonical_root.join(relative);
-    match ownership(&canonical_path) {
+    match ownership_with_uid(&boundary.canonical_root.join(relative), owner_uid) {
         FileOwnership::CurrentUser => None,
         FileOwnership::OtherUser | FileOwnership::Unavailable => {
             Some(CleanupProtectionReason::SystemLocation)
         }
     }
+}
+
+#[cfg(unix)]
+fn ownership_with_uid(path: &Path, owner_uid: Option<u32>) -> FileOwnership {
+    if let Some(uid) = owner_uid {
+        if uid == unsafe { libc::geteuid() } {
+            FileOwnership::CurrentUser
+        } else {
+            FileOwnership::OtherUser
+        }
+    } else {
+        ownership(path)
+    }
+}
+
+#[cfg(not(unix))]
+fn ownership_with_uid(path: &Path, _owner_uid: Option<u32>) -> FileOwnership {
+    ownership(path)
 }
 
 fn is_sensitive_cleanup_relative_path(relative: &Path) -> bool {
@@ -172,16 +197,25 @@ pub(super) fn cleanup_protection_for_selected_scan_path(
     home: &Path,
     scan_root: &Path,
 ) -> Option<CleanupProtectionReason> {
+    cleanup_protection_for_selected_scan_path_with_uid(path, home, scan_root, None)
+}
+
+pub(super) fn cleanup_protection_for_selected_scan_path_with_uid(
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+    owner_uid: Option<u32>,
+) -> Option<CleanupProtectionReason> {
     if path == scan_root || !path.starts_with(scan_root) {
         return Some(CleanupProtectionReason::SystemLocation);
     }
     if path.starts_with(home) || temporary_cleanup_boundary_for_path(path).is_some() {
-        return cleanup_protection_for_path(path, home);
+        return cleanup_protection_for_path_with_uid(path, home, owner_uid);
     }
     if is_system_managed_cleanup_path(path) {
         return Some(CleanupProtectionReason::SystemLocation);
     }
-    match ownership(path) {
+    match ownership_with_uid(path, owner_uid) {
         FileOwnership::CurrentUser => None,
         FileOwnership::OtherUser => Some(CleanupProtectionReason::SystemLocation),
         #[cfg(windows)]
@@ -189,6 +223,38 @@ pub(super) fn cleanup_protection_for_selected_scan_path(
         #[cfg(not(windows))]
         FileOwnership::Unavailable => Some(CleanupProtectionReason::SystemLocation),
     }
+}
+
+/// Returns whether a regular file inside `directory` can safely inherit
+/// `directory`'s protection reason without re-running full path analysis.
+pub(super) fn can_inherit_file_protection(
+    directory: &Path,
+    home: &Path,
+    selected_cleanup_root: bool,
+    dir_protection: Option<CleanupProtectionReason>,
+) -> bool {
+    // Only fast-inherit inside the user's home directory at depth >= 3, where
+    // top-level Library/AppData/Applications/Trash/profile-file special cases
+    // no longer apply, and outside protected subtrees unless already protected.
+    if let Ok(relative) = directory.strip_prefix(home) {
+        let depth = relative.components().count();
+        if depth >= 4 {
+            // All entries in PROTECTED_USER_SUBTREES have length <= 4 (e.g.
+            // AppData/Roaming/Microsoft/Credentials). Once at depth >= 4 inside
+            // home, every prefix has already either matched or missed, so
+            // regular files inherit the directory's protection unless named
+            // *.photoslibrary / *.photolibrary.
+            return dir_protection.is_none()
+                || dir_protection == Some(CleanupProtectionReason::SensitiveUserData);
+        }
+        return false;
+    }
+    // Outside home, non-selected system scans that are not under a temporary
+    // boundary are uniformly SystemLocation.
+    if !selected_cleanup_root && temporary_cleanup_boundary_for_path(directory).is_none() {
+        return dir_protection == Some(CleanupProtectionReason::SystemLocation);
+    }
+    false
 }
 
 #[cfg(target_os = "macos")]

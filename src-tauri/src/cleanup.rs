@@ -73,16 +73,19 @@ mod index;
 mod paths;
 mod protection;
 mod quick;
+mod scanner;
 
 pub(crate) use index::{
-    apply_indexed_deletions, build_indexed_scan, cleanup_index_summary, defer_discard_indexed_scan,
-    load_indexed_children, load_indexed_directory, load_indexed_scan, load_latest_indexed_scan,
-    load_progressive_scan, maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
+    apply_indexed_deletions, build_indexed_scan, cleanup_index_storage_paths,
+    cleanup_index_summary, defer_discard_indexed_scan, load_indexed_children,
+    load_indexed_directory, load_indexed_scan, load_latest_indexed_scan, load_progressive_scan,
+    maintain_cleanup_index, refresh_indexed_directory, remove_cleanup_index,
     resolve_indexed_delete_request, set_scan_activity_notifier, set_scan_checkpoint_notifier,
 };
 use paths::{LocationDefinition, platform_paths, trash_paths};
 use protection::{
-    cleanup_protection_for_path, cleanup_protection_for_selected_scan_path,
+    can_inherit_file_protection, cleanup_protection_for_path, cleanup_protection_for_path_with_uid,
+    cleanup_protection_for_selected_scan_path, cleanup_protection_for_selected_scan_path_with_uid,
     temporary_cleanup_boundary_for_path,
 };
 pub(crate) use quick::{
@@ -3313,10 +3316,20 @@ fn cleanup_protection_for_scan_path(
     scan_root: &Path,
     selected_cleanup_root: bool,
 ) -> Option<CleanupProtectionReason> {
+    cleanup_protection_for_scan_path_with_uid(path, home, scan_root, selected_cleanup_root, None)
+}
+
+fn cleanup_protection_for_scan_path_with_uid(
+    path: &Path,
+    home: &Path,
+    scan_root: &Path,
+    selected_cleanup_root: bool,
+    owner_uid: Option<u32>,
+) -> Option<CleanupProtectionReason> {
     if selected_cleanup_root && path.starts_with(scan_root) {
-        cleanup_protection_for_selected_scan_path(path, home, scan_root)
+        cleanup_protection_for_selected_scan_path_with_uid(path, home, scan_root, owner_uid)
     } else {
-        cleanup_protection_for_path(path, home)
+        cleanup_protection_for_path_with_uid(path, home, owner_uid)
     }
 }
 
@@ -3360,6 +3373,11 @@ impl ScanFilesystemBoundary {
             let _ = metadata;
             true
         }
+    }
+
+    #[cfg(unix)]
+    fn allows_device(self, device: u64) -> bool {
+        device == self.device
     }
 }
 
