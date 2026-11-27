@@ -57,7 +57,7 @@ pub(super) enum ScannedDirKind {
     Restricted,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct ScannedDir {
     pub(super) id: usize,
     pub(super) parent_id: Option<usize>,
@@ -73,6 +73,23 @@ pub(super) struct ScannedDir {
     pub(super) inode: Option<i64>,
     pub(super) totals: DirectoryTotals,
     pub(super) top_files: Vec<ScannedFile>,
+}
+
+/// A verified unchanged subtree loaded from the previous completed index.
+///
+/// Each entry in `dirs` holds only that directory's *own* contribution (direct
+/// files + omitted counts) so the final O(N) bottom-up rollup in
+/// `scan_tree_in_memory` produces exact totals across both reused and freshly
+/// scanned subtrees without double-counting. `dirs[0]` is the subtree root and
+/// all `parent_id` values are local indices into `dirs` (`parent < child`).
+#[derive(Clone, Debug)]
+pub(super) struct ReusedSubtree {
+    pub(super) dirs: Vec<ScannedDir>,
+    pub(super) largest_files: Vec<CleanupFile>,
+    pub(super) total_logical_bytes: u64,
+    pub(super) total_allocated_bytes: u64,
+    pub(super) total_item_count: usize,
+    pub(super) scanned_entry_count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -134,6 +151,7 @@ pub(super) struct MemoryScanConfig<'a> {
     /// `scan_root` itself is scanned as `dirs[0]`.
     pub(super) multi_roots: Vec<ScanRootItem>,
     pub(super) preserve_system_anchors: bool,
+    pub(super) reusable_subtrees: HashMap<PathBuf, ReusedSubtree>,
 }
 
 struct PendingDir {
@@ -963,10 +981,6 @@ fn scan_single_directory(
         });
     }
 
-    let base_id = shared
-        .next_dir_id
-        .fetch_add(child_candidates.len(), Ordering::Relaxed);
-
     // If this is the single-root scan's root (dir_id == 0), register each
     // direct child directory as a preview bucket so progressive preview shows
     // top-level folders growing live.
@@ -978,8 +992,65 @@ fn scan_single_directory(
     };
 
     let mut pending_children = Vec::with_capacity(child_candidates.len());
-    for (offset, child) in child_candidates.into_iter().enumerate() {
-        let child_id = base_id + offset;
+    for child in child_candidates {
+        if let Some(reused) = config.reusable_subtrees.get(&child.path)
+            && !reused.dirs.is_empty()
+        {
+            let subtree_base = shared
+                .next_dir_id
+                .fetch_add(reused.dirs.len(), Ordering::Relaxed);
+            for (local_idx, dir) in reused.dirs.iter().enumerate() {
+                let mut cloned = dir.clone();
+                cloned.id = subtree_base + local_idx;
+                cloned.parent_id = if local_idx == 0 {
+                    Some(task.dir_id)
+                } else {
+                    dir.parent_id.map(|parent| subtree_base + parent)
+                };
+                local_dirs.push(cloned);
+            }
+            if !reused.largest_files.is_empty() {
+                local_largest.extend(reused.largest_files.iter().cloned());
+            }
+            shared
+                .scanned_entries
+                .fetch_add(reused.scanned_entry_count, Ordering::Relaxed);
+            shared
+                .discovered_bytes
+                .fetch_add(reused.total_allocated_bytes, Ordering::Relaxed);
+            if register_buckets {
+                let root_dir = &reused.dirs[0];
+                new_buckets.push(Arc::new(TopBucketAtomics {
+                    dir_id: subtree_base,
+                    name: root_dir.name.clone(),
+                    display_path: root_dir
+                        .display_path
+                        .clone()
+                        .unwrap_or_else(|| display_path(&child.path, config.home)),
+                    safety: root_dir.safety,
+                    protection_reason: root_dir.protection_reason,
+                    logical_bytes: AtomicU64::new(reused.total_logical_bytes),
+                    allocated_bytes: AtomicU64::new(reused.total_allocated_bytes),
+                    item_count: AtomicU64::new(reused.total_item_count as u64),
+                }));
+            } else if let Some(bucket_idx) = task.top_bucket
+                && let Ok(buckets) = shared.top_buckets.lock()
+                && let Some(bucket) = buckets.get(bucket_idx)
+            {
+                bucket
+                    .logical_bytes
+                    .fetch_add(reused.total_logical_bytes, Ordering::Relaxed);
+                bucket
+                    .allocated_bytes
+                    .fetch_add(reused.total_allocated_bytes, Ordering::Relaxed);
+                bucket
+                    .item_count
+                    .fetch_add(reused.total_item_count as u64, Ordering::Relaxed);
+            }
+            continue;
+        }
+
+        let child_id = shared.next_dir_id.fetch_add(1, Ordering::Relaxed);
         let child_bucket = if register_buckets {
             let child_safety = matching_location_definition(config.definitions, &child.path)
                 .map_or(dir_safety, |(_, def)| def.safety);
@@ -2357,6 +2428,7 @@ mod tests {
             root_protection_reason: Some(CleanupProtectionReason::SystemLocation),
             multi_roots: Vec::new(),
             preserve_system_anchors: false,
+            reusable_subtrees: HashMap::new(),
         };
         let cancelled = AtomicBool::new(false);
         let mut previews = 0usize;
@@ -2405,6 +2477,7 @@ mod tests {
             root_protection_reason: None,
             multi_roots: Vec::new(),
             preserve_system_anchors: false,
+            reusable_subtrees: HashMap::new(),
         };
         let tree = scan_tree_in_memory(&config, &AtomicBool::new(false), &mut |_| {}, &mut |_| {})
             .unwrap();

@@ -34,7 +34,7 @@ pub fn bundle_display_name(
         .unwrap_or_else(|| bundle.to_string_lossy().into_owned())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(test, target_os = "macos"))]
 pub fn bundle_icon_path(bundle: &Path) -> Option<PathBuf> {
     let canonical_bundle = fs::canonicalize(bundle).ok()?;
     if !canonical_bundle.is_dir()
@@ -267,7 +267,7 @@ fn parse_quoted_value(value: &str) -> Option<String> {
     None
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(test, target_os = "macos"))]
 fn primary_icon_file(dictionary: &plist::Dictionary) -> Option<PathBuf> {
     dictionary
         .get("CFBundleIcons")?
@@ -282,7 +282,7 @@ fn primary_icon_file(dictionary: &plist::Dictionary) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(test, target_os = "macos"))]
 fn first_icns_file(resources: &Path) -> Option<PathBuf> {
     let mut icons = fs::read_dir(resources)
         .ok()?

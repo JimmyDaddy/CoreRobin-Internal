@@ -18,13 +18,13 @@ use crate::models::{
 use crate::private_storage;
 
 use super::scanner::{
-    MemoryScanConfig, PreviewSnapshot, ScanRootItem, ScannedDir, ScannedDirKind, ScannedTree,
-    scan_tree_in_memory,
+    DirectoryTotals, MemoryScanConfig, PreviewSnapshot, ReusedSubtree, ScanRootItem, ScannedDir,
+    ScannedDirKind, ScannedFile, ScannedTree, scan_tree_in_memory,
 };
 use super::{
     MAX_LARGE_FILES, ScanFilesystemBoundary, cleanup_node_name, cleanup_protection_for_scan_path,
     display_path, ensure_scan_active, home_directory, matching_location_definition, platform_paths,
-    resolve_cleanup_scan_target,
+    resolve_cleanup_scan_target, system_time_millis,
 };
 
 const SCHEMA_VERSION: i64 = 7;
@@ -176,6 +176,17 @@ fn build_indexed_scan_with_limit(
         Vec::new()
     };
 
+    let reusable_subtrees = load_reusable_subtrees(
+        index_path,
+        request.profile,
+        target_kind,
+        &scan_root,
+        &home,
+        &root_absolute_path,
+        &scan_exclusions,
+        &definitions,
+    );
+
     let root_protection = Some(CleanupProtectionReason::SystemLocation);
     let scan_config = MemoryScanConfig {
         scan_root: &scan_root,
@@ -193,6 +204,7 @@ fn build_indexed_scan_with_limit(
         multi_roots,
         preserve_system_anchors: request.profile == CleanupScanProfile::Complete
             && target_kind == CleanupScanTargetKind::SystemDisk,
+        reusable_subtrees,
     };
 
     let preview_path = preview_snapshot_path(index_path, scan_id);
@@ -262,6 +274,772 @@ fn build_indexed_scan_with_limit(
 
     let connection = open_index_read_only(index_path)?;
     load_scan(&connection, index_path, scan_id)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_reusable_subtrees(
+    index_path: &Path,
+    profile: CleanupScanProfile,
+    target_kind: CleanupScanTargetKind,
+    scan_root: &Path,
+    home: &Path,
+    root_absolute_path: &str,
+    excluded_paths: &[PathBuf],
+    definitions: &[super::LocationDefinition],
+) -> HashMap<PathBuf, ReusedSubtree> {
+    if profile != CleanupScanProfile::Complete {
+        return HashMap::new();
+    }
+    let Some((db_path, prev_scan_id, root_node_id, prev_started_at_ms)) =
+        find_latest_matching_completed_scan(index_path, target_kind, root_absolute_path)
+    else {
+        return HashMap::new();
+    };
+    let Ok(connection) = open_index_read_only(&db_path) else {
+        return HashMap::new();
+    };
+    let prev_largest_files = load_scan_largest_files(&connection, &prev_scan_id);
+
+    let mut verified_roots = HashMap::<PathBuf, i64>::new();
+
+    // Class A: sealed read-only OS system subtrees on macOS SSV.
+    #[cfg(target_os = "macos")]
+    if target_kind == CleanupScanTargetKind::SystemDisk {
+        const READ_ONLY_SYSTEM_SUBTREES: &[&[&str]] = &[
+            &["System", "Applications"],
+            &["System", "Library", "Frameworks"],
+            &["System", "Library", "PrivateFrameworks"],
+            &["System", "Library", "CoreServices"],
+            &["System", "Library", "Extensions"],
+            &["System", "Library", "Input Methods"],
+            &["System", "Library", "Fonts"],
+            &["System", "Library", "Audio"],
+            &["System", "Library", "Assets"],
+            &["System", "DriverKit"],
+            &["System", "iOSSupport"],
+            &["System", "Cryptexes"],
+            &["usr", "bin"],
+            &["usr", "lib"],
+            &["usr", "libexec"],
+            &["usr", "sbin"],
+            &["usr", "share"],
+            &["usr", "standalone"],
+            &["bin"],
+            &["sbin"],
+        ];
+        for components in READ_ONLY_SYSTEM_SUBTREES {
+            let mut full_path = scan_root.to_path_buf();
+            for component in *components {
+                full_path.push(component);
+            }
+            if path_overlaps_exclusions_or_definitions(&full_path, excluded_paths, definitions)
+                || !is_read_only_mount(&full_path)
+            {
+                continue;
+            }
+            let Some(node) = lookup_index_dir_by_components(
+                &connection,
+                &prev_scan_id,
+                root_node_id,
+                components,
+            ) else {
+                continue;
+            };
+            if dir_identity_matches(&full_path, node.device_id, node.inode, node.modified_at_ms) {
+                verified_roots.insert(full_path, node.id);
+            }
+        }
+    }
+
+    // Class B: application bundles (*.app) whose bundle root, Contents folder,
+    // standard sub-bundles, and Info.plist are strictly unchanged.
+    let mut bundle_parents = Vec::<(PathBuf, i64)>::new();
+    match target_kind {
+        CleanupScanTargetKind::SystemDisk => {
+            if let Some(apps_node) = lookup_index_dir_by_components(
+                &connection,
+                &prev_scan_id,
+                root_node_id,
+                &["Applications"],
+            ) {
+                bundle_parents.push((scan_root.join("Applications"), apps_node.id));
+            }
+            let user_apps = home.join("Applications");
+            if let Ok(rel) = user_apps.strip_prefix(scan_root) {
+                let rel_parts: Vec<String> = rel
+                    .components()
+                    .filter_map(|c| match c {
+                        std::path::Component::Normal(name) => {
+                            Some(name.to_string_lossy().into_owned())
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                let rel_refs: Vec<&str> = rel_parts.iter().map(String::as_str).collect();
+                if !rel_refs.is_empty()
+                    && let Some(node) = lookup_index_dir_by_components(
+                        &connection,
+                        &prev_scan_id,
+                        root_node_id,
+                        &rel_refs,
+                    )
+                {
+                    bundle_parents.push((user_apps, node.id));
+                }
+            }
+        }
+        CleanupScanTargetKind::Folder | CleanupScanTargetKind::Volume => {
+            bundle_parents.push((scan_root.to_path_buf(), root_node_id));
+        }
+    }
+
+    for (parent_path, parent_row_id) in bundle_parents {
+        let app_children =
+            list_index_app_bundle_children(&connection, &prev_scan_id, parent_row_id);
+        for app_node in app_children {
+            let app_path = parent_path.join(&app_node.name);
+            if verified_roots.contains_key(&app_path)
+                || path_overlaps_exclusions_or_definitions(&app_path, excluded_paths, definitions)
+            {
+                continue;
+            }
+            if verify_unchanged_app_bundle(
+                &connection,
+                &prev_scan_id,
+                &app_path,
+                &app_node,
+                prev_started_at_ms,
+            ) {
+                verified_roots.insert(app_path, app_node.id);
+            }
+        }
+    }
+
+    let mut reusable = HashMap::with_capacity(verified_roots.len());
+    for (subtree_path, subtree_root_id) in verified_roots {
+        if let Some(subtree) = load_single_reused_subtree(
+            &connection,
+            &prev_scan_id,
+            subtree_root_id,
+            &subtree_path,
+            &prev_largest_files,
+        ) {
+            reusable.insert(subtree_path, subtree);
+        }
+    }
+    reusable
+}
+
+#[derive(Clone, Debug)]
+struct IndexDirIdentity {
+    id: i64,
+    name: String,
+    modified_at_ms: Option<i64>,
+    device_id: Option<i64>,
+    inode: Option<i64>,
+}
+
+fn find_latest_matching_completed_scan(
+    index_path: &Path,
+    target_kind: CleanupScanTargetKind,
+    target_path: &str,
+) -> Option<(PathBuf, String, i64, i64)> {
+    let target_kind_str = target_kind_text(target_kind);
+    let mut best: Option<(PathBuf, String, i64, i64, i64)> = None;
+    for db_path in all_generation_db_paths(index_path) {
+        let Ok(connection) = open_index_read_only(&db_path) else {
+            continue;
+        };
+        let version: Option<String> = connection
+            .query_row(
+                "SELECT value FROM metadata WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()
+            .ok()
+            .flatten();
+        if version.as_deref() != Some("7") {
+            continue;
+        }
+        let candidate = connection
+            .query_row(
+                "SELECT id, root_node_id, started_at_ms, sampled_at_ms
+                 FROM scans
+                 WHERE state = 'completed'
+                   AND profile = 'complete'
+                   AND target_kind = ?1
+                   AND target_path = ?2
+                 ORDER BY sampled_at_ms DESC, started_at_ms DESC
+                 LIMIT 1",
+                params![target_kind_str, target_path],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, i64>(2)?,
+                        row.get::<_, i64>(3)?,
+                    ))
+                },
+            )
+            .optional()
+            .ok()
+            .flatten();
+        if let Some((scan_id, root_node_id, started_at_ms, sampled_at_ms)) = candidate {
+            let replace = best
+                .as_ref()
+                .is_none_or(|current| sampled_at_ms > current.4);
+            if replace {
+                best = Some((db_path, scan_id, root_node_id, started_at_ms, sampled_at_ms));
+            }
+        }
+    }
+    best.map(|(db_path, scan_id, root_node_id, started_at_ms, _)| {
+        (db_path, scan_id, root_node_id, started_at_ms)
+    })
+}
+
+fn load_scan_largest_files(connection: &Connection, scan_id: &str) -> Vec<CleanupFile> {
+    let Ok(mut stmt) = connection.prepare(
+        "SELECT name, path, size_bytes, modified_at_ms
+         FROM largest_files
+         WHERE scan_id = ?1
+         ORDER BY size_bytes DESC",
+    ) else {
+        return Vec::new();
+    };
+    stmt.query_map(params![scan_id], |row| {
+        Ok(CleanupFile {
+            name: row.get(0)?,
+            path: row.get(1)?,
+            size_bytes: row.get::<_, i64>(2)?.max(0) as u64,
+            modified_at_ms: row.get::<_, Option<i64>>(3)?.map(|v| v.max(0) as u64),
+        })
+    })
+    .ok()
+    .map(|rows| rows.flatten().collect())
+    .unwrap_or_default()
+}
+
+fn lookup_index_dir_by_components(
+    connection: &Connection,
+    scan_id: &str,
+    root_node_id: i64,
+    components: &[&str],
+) -> Option<IndexDirIdentity> {
+    let mut current_id = root_node_id;
+    let mut last: Option<IndexDirIdentity> = None;
+    for component in components {
+        let next = connection
+            .query_row(
+                "SELECT id, name, modified_at_ms, device_id, inode
+                 FROM nodes
+                 WHERE scan_id = ?1 AND parent_id = ?2 AND name = ?3 AND kind = 'folder'
+                 LIMIT 1",
+                params![scan_id, current_id, *component],
+                |row| {
+                    Ok(IndexDirIdentity {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        modified_at_ms: row.get(2)?,
+                        device_id: row.get(3)?,
+                        inode: row.get(4)?,
+                    })
+                },
+            )
+            .optional()
+            .ok()
+            .flatten()?;
+        current_id = next.id;
+        last = Some(next);
+    }
+    last
+}
+
+fn list_index_app_bundle_children(
+    connection: &Connection,
+    scan_id: &str,
+    parent_id: i64,
+) -> Vec<IndexDirIdentity> {
+    let Ok(mut stmt) = connection.prepare(
+        "SELECT id, name, modified_at_ms, device_id, inode
+         FROM nodes
+         WHERE scan_id = ?1 AND parent_id = ?2 AND kind = 'folder' AND name LIKE '%.app'",
+    ) else {
+        return Vec::new();
+    };
+    stmt.query_map(params![scan_id, parent_id], |row| {
+        Ok(IndexDirIdentity {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            modified_at_ms: row.get(2)?,
+            device_id: row.get(3)?,
+            inode: row.get(4)?,
+        })
+    })
+    .ok()
+    .map(|rows| rows.flatten().collect())
+    .unwrap_or_default()
+}
+
+fn verify_unchanged_app_bundle(
+    connection: &Connection,
+    scan_id: &str,
+    app_path: &Path,
+    app_node: &IndexDirIdentity,
+    prev_started_at_ms: i64,
+) -> bool {
+    if !dir_identity_matches(
+        app_path,
+        app_node.device_id,
+        app_node.inode,
+        app_node.modified_at_ms,
+    ) {
+        return false;
+    }
+
+    let contents_path = app_path.join("Contents");
+    let Some(contents_node) =
+        lookup_index_dir_by_components(connection, scan_id, app_node.id, &["Contents"])
+    else {
+        return false;
+    };
+    if !dir_identity_matches(
+        &contents_path,
+        contents_node.device_id,
+        contents_node.inode,
+        contents_node.modified_at_ms,
+    ) {
+        return false;
+    }
+
+    // Verify Info.plist inside Contents.
+    let info_plist_path = contents_path.join("Info.plist");
+    let Ok(plist_meta) = fs::symlink_metadata(&info_plist_path) else {
+        return false;
+    };
+    if !plist_meta.is_file() || plist_meta.file_type().is_symlink() {
+        return false;
+    }
+    let indexed_plist = connection
+        .query_row(
+            "SELECT logical_size_bytes, modified_at_ms, device_id, inode
+             FROM nodes
+             WHERE scan_id = ?1 AND parent_id = ?2 AND name = 'Info.plist' AND kind = 'file'
+             LIMIT 1",
+            params![scan_id, contents_node.id],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, Option<i64>>(1)?,
+                    row.get::<_, Option<i64>>(2)?,
+                    row.get::<_, Option<i64>>(3)?,
+                ))
+            },
+        )
+        .optional()
+        .ok()
+        .flatten();
+    match indexed_plist {
+        Some((expected_size, expected_mtime, expected_dev, expected_ino)) => {
+            if !file_metadata_matches(
+                &plist_meta,
+                expected_dev,
+                expected_ino,
+                expected_mtime,
+                expected_size.max(0) as u64,
+            ) {
+                return false;
+            }
+        }
+        None => {
+            let Some(mtime_ms) = plist_meta.modified().ok().and_then(system_time_millis) else {
+                return false;
+            };
+            if prev_started_at_ms <= 0 || mtime_ms >= prev_started_at_ms as u64 {
+                return false;
+            }
+        }
+    }
+
+    // Verify standard bundle subdirectories when present on disk.
+    for sub_name in ["MacOS", "Resources", "Frameworks"] {
+        let sub_path = contents_path.join(sub_name);
+        let Ok(sub_meta) = fs::symlink_metadata(&sub_path) else {
+            continue;
+        };
+        if !sub_meta.is_dir() || sub_meta.file_type().is_symlink() {
+            continue;
+        }
+        if let Some(sub_node) =
+            lookup_index_dir_by_components(connection, scan_id, contents_node.id, &[sub_name])
+        {
+            if !dir_metadata_matches(
+                &sub_meta,
+                sub_node.device_id,
+                sub_node.inode,
+                sub_node.modified_at_ms,
+            ) {
+                return false;
+            }
+        } else {
+            let Some(mtime_ms) = sub_meta.modified().ok().and_then(system_time_millis) else {
+                return false;
+            };
+            if prev_started_at_ms <= 0 || mtime_ms >= prev_started_at_ms as u64 {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+fn dir_identity_matches(
+    path: &Path,
+    expected_dev: Option<i64>,
+    expected_ino: Option<i64>,
+    expected_mtime: Option<i64>,
+) -> bool {
+    let Ok(meta) = fs::symlink_metadata(path) else {
+        return false;
+    };
+    dir_metadata_matches(&meta, expected_dev, expected_ino, expected_mtime)
+}
+
+fn dir_metadata_matches(
+    meta: &fs::Metadata,
+    expected_dev: Option<i64>,
+    expected_ino: Option<i64>,
+    expected_mtime: Option<i64>,
+) -> bool {
+    if !meta.is_dir() || meta.file_type().is_symlink() {
+        return false;
+    }
+    let Some(expected_mtime) = expected_mtime.and_then(|value| u64::try_from(value).ok()) else {
+        return false;
+    };
+    let Some(actual_mtime) = meta.modified().ok().and_then(system_time_millis) else {
+        return false;
+    };
+    if actual_mtime != expected_mtime {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        let (Some(exp_dev), Some(exp_ino)) = (expected_dev, expected_ino) else {
+            return false;
+        };
+        if i64::try_from(meta.dev()).ok() != Some(exp_dev)
+            || i64::try_from(meta.ino()).ok() != Some(exp_ino)
+        {
+            return false;
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (expected_dev, expected_ino);
+    }
+    true
+}
+
+fn file_metadata_matches(
+    meta: &fs::Metadata,
+    expected_dev: Option<i64>,
+    expected_ino: Option<i64>,
+    expected_mtime: Option<i64>,
+    expected_logical_size: u64,
+) -> bool {
+    if !meta.is_file() || meta.file_type().is_symlink() || meta.len() != expected_logical_size {
+        return false;
+    }
+    let Some(expected_mtime) = expected_mtime.and_then(|value| u64::try_from(value).ok()) else {
+        return false;
+    };
+    let Some(actual_mtime) = meta.modified().ok().and_then(system_time_millis) else {
+        return false;
+    };
+    if actual_mtime != expected_mtime {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        let (Some(exp_dev), Some(exp_ino)) = (expected_dev, expected_ino) else {
+            return false;
+        };
+        if i64::try_from(meta.dev()).ok() != Some(exp_dev)
+            || i64::try_from(meta.ino()).ok() != Some(exp_ino)
+        {
+            return false;
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (expected_dev, expected_ino);
+    }
+    true
+}
+
+#[cfg(target_os = "macos")]
+fn is_read_only_mount(path: &Path) -> bool {
+    use std::ffi::CString;
+    use std::mem::MaybeUninit;
+    use std::os::unix::ffi::OsStrExt as _;
+
+    let Ok(c_path) = CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    let mut stat = MaybeUninit::<libc::statfs>::uninit();
+    let rc = unsafe { libc::statfs(c_path.as_ptr(), stat.as_mut_ptr()) };
+    if rc != 0 {
+        return false;
+    }
+    let stat = unsafe { stat.assume_init() };
+    (stat.f_flags & (libc::MNT_RDONLY as u32)) != 0
+}
+
+fn path_overlaps_exclusions_or_definitions(
+    path: &Path,
+    excluded_paths: &[PathBuf],
+    definitions: &[super::LocationDefinition],
+) -> bool {
+    if excluded_paths
+        .iter()
+        .any(|excluded| path.starts_with(excluded) || excluded.starts_with(path))
+    {
+        return true;
+    }
+    definitions
+        .iter()
+        .flat_map(|def| def.paths.iter())
+        .any(|def_path| path.starts_with(def_path) || def_path.starts_with(path))
+}
+
+fn load_single_reused_subtree(
+    connection: &Connection,
+    scan_id: &str,
+    root_row_id: i64,
+    subtree_path: &Path,
+    prev_largest_files: &[CleanupFile],
+) -> Option<ReusedSubtree> {
+    struct RawRow {
+        id: i64,
+        parent_id: Option<i64>,
+        name: String,
+        absolute_path: Option<String>,
+        display_path: Option<String>,
+        logical: u64,
+        allocated: u64,
+        item_count: usize,
+        safety: CleanupSafety,
+        kind: String,
+        deletion_protected: bool,
+        protection_reason: Option<CleanupProtectionReason>,
+        modified_at_ms: Option<u64>,
+        device_id: Option<i64>,
+        inode: Option<i64>,
+        omitted_logical: u64,
+        omitted_allocated: u64,
+        omitted_files: usize,
+        omitted_dirs: usize,
+    }
+
+    let mut stmt = connection
+        .prepare_cached(
+            "WITH RECURSIVE sub(id) AS (
+               SELECT ?2
+               UNION ALL
+               SELECT n.id FROM nodes n JOIN sub s ON n.parent_id = s.id WHERE n.scan_id = ?1
+             )
+             SELECT n.id, n.parent_id, n.name, n.absolute_path, n.display_path,
+                    n.logical_size_bytes, n.allocated_size_bytes, n.item_count,
+                    n.safety, n.kind, n.deletion_protected, n.protection_reason,
+                    n.modified_at_ms, n.device_id, n.inode,
+                    n.omitted_file_logical_bytes, n.omitted_file_allocated_bytes,
+                    n.omitted_file_count, n.omitted_directory_count
+             FROM nodes n
+             JOIN sub s ON n.id = s.id
+             WHERE n.scan_id = ?1",
+        )
+        .ok()?;
+    let rows: Vec<RawRow> = stmt
+        .query_map(params![scan_id, root_row_id], |row| {
+            let safety_str: String = row.get(8)?;
+            let protection_str: Option<String> = row.get(11)?;
+            Ok(RawRow {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                absolute_path: row.get(3)?,
+                display_path: row.get(4)?,
+                logical: row.get::<_, i64>(5)?.max(0) as u64,
+                allocated: row.get::<_, i64>(6)?.max(0) as u64,
+                item_count: row.get::<_, i64>(7)?.max(0) as usize,
+                safety: parse_safety(&safety_str),
+                kind: row.get(9)?,
+                deletion_protected: row.get::<_, i64>(10)? != 0,
+                protection_reason: protection_str.as_deref().and_then(parse_protection_reason),
+                modified_at_ms: row.get::<_, Option<i64>>(12)?.map(|v| v.max(0) as u64),
+                device_id: row.get(13)?,
+                inode: row.get(14)?,
+                omitted_logical: row.get::<_, i64>(15)?.max(0) as u64,
+                omitted_allocated: row.get::<_, i64>(16)?.max(0) as u64,
+                omitted_files: row.get::<_, i64>(17)?.max(0) as usize,
+                omitted_dirs: row.get::<_, i64>(18)?.max(0) as usize,
+            })
+        })
+        .ok()?
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+
+    let mut folder_rows = HashMap::<i64, RawRow>::new();
+    let mut child_dirs_by_parent = HashMap::<i64, Vec<i64>>::new();
+    let mut files_by_parent = HashMap::<i64, Vec<ScannedFile>>::new();
+
+    for row in rows {
+        match row.kind.as_str() {
+            "folder" => {
+                if row.id != root_row_id
+                    && let Some(parent_id) = row.parent_id
+                {
+                    child_dirs_by_parent
+                        .entry(parent_id)
+                        .or_default()
+                        .push(row.id);
+                }
+                folder_rows.insert(row.id, row);
+            }
+            "file" => {
+                if let Some(parent_id) = row.parent_id {
+                    files_by_parent
+                        .entry(parent_id)
+                        .or_default()
+                        .push(ScannedFile {
+                            name: row.name,
+                            logical_size_bytes: row.logical,
+                            allocated_size_bytes: row.allocated,
+                            modified_at_ms: row.modified_at_ms,
+                            safety: row.safety,
+                            deletion_protected: row.deletion_protected,
+                            protection_reason: row.protection_reason,
+                            device_id: row.device_id,
+                            inode: row.inode,
+                        });
+                }
+            }
+            // Any restricted node inside the subtree disqualifies reuse so
+            // newly-granted permissions are immediately reflected on rescan.
+            _ => return None,
+        }
+    }
+
+    let root_row = folder_rows.get(&root_row_id)?;
+    let total_logical_bytes = root_row.logical;
+    let total_allocated_bytes = root_row.allocated;
+    let total_item_count = root_row.item_count;
+
+    // BFS topological ordering guarantees `parent_local_idx < child_local_idx`.
+    let mut queue = std::collections::VecDeque::new();
+    let mut ordered_ids = Vec::with_capacity(folder_rows.len());
+    let mut id_to_local = HashMap::<i64, usize>::with_capacity(folder_rows.len());
+    queue.push_back(root_row_id);
+    while let Some(id) = queue.pop_front() {
+        if id_to_local.contains_key(&id) || !folder_rows.contains_key(&id) {
+            continue;
+        }
+        let local_idx = ordered_ids.len();
+        id_to_local.insert(id, local_idx);
+        ordered_ids.push(id);
+        if let Some(children) = child_dirs_by_parent.get(&id) {
+            let mut sorted_children = children.clone();
+            sorted_children.sort_unstable();
+            for child_id in sorted_children {
+                queue.push_back(child_id);
+            }
+        }
+    }
+
+    // Precompute direct-child-directory total sums so we can store each
+    // directory's *own* contribution (direct files + omitted) and let
+    // `scan_tree_in_memory`'s final O(N) rollup reconstruct exact totals.
+    let mut child_dir_sums = HashMap::<i64, (u64, u64, usize)>::new();
+    for (&parent_id, children) in &child_dirs_by_parent {
+        let mut sum_logical = 0_u64;
+        let mut sum_allocated = 0_u64;
+        let mut sum_items = 0_usize;
+        for child_id in children {
+            if let Some(child) = folder_rows.get(child_id) {
+                sum_logical = sum_logical.saturating_add(child.logical);
+                sum_allocated = sum_allocated.saturating_add(child.allocated);
+                sum_items = sum_items.saturating_add(child.item_count);
+            }
+        }
+        child_dir_sums.insert(parent_id, (sum_logical, sum_allocated, sum_items));
+    }
+
+    let mut dirs = Vec::with_capacity(ordered_ids.len());
+    for (local_idx, row_id) in ordered_ids.iter().copied().enumerate() {
+        let row = folder_rows.remove(&row_id)?;
+        let (child_logical, child_allocated, child_items) =
+            child_dir_sums.get(&row_id).copied().unwrap_or((0, 0, 0));
+        let mut top_files = files_by_parent.remove(&row_id).unwrap_or_default();
+        top_files.sort_by(|left, right| {
+            right
+                .allocated_size_bytes
+                .cmp(&left.allocated_size_bytes)
+                .then_with(|| left.name.cmp(&right.name))
+        });
+        let parent_local = if local_idx == 0 {
+            None
+        } else {
+            row.parent_id
+                .and_then(|parent_id| id_to_local.get(&parent_id).copied())
+        };
+        let totals = DirectoryTotals {
+            logical_size_bytes: row.logical.saturating_sub(child_logical),
+            allocated_size_bytes: row.allocated.saturating_sub(child_allocated),
+            item_count: row.item_count.saturating_sub(child_items),
+            direct_child_count: top_files.len(),
+            omitted_file_logical_bytes: row.omitted_logical,
+            omitted_file_allocated_bytes: row.omitted_allocated,
+            omitted_file_count: row.omitted_files,
+            omitted_directory_count: row.omitted_dirs,
+        };
+        dirs.push(ScannedDir {
+            id: local_idx,
+            parent_id: parent_local,
+            name: row.name,
+            absolute_path: row.absolute_path,
+            display_path: row.display_path,
+            safety: row.safety,
+            kind: ScannedDirKind::Folder,
+            deletion_protected: row.deletion_protected,
+            protection_reason: row.protection_reason,
+            modified_at_ms: row.modified_at_ms,
+            device_id: row.device_id,
+            inode: row.inode,
+            totals,
+            top_files,
+        });
+    }
+
+    let largest_files = prev_largest_files
+        .iter()
+        .filter(|file| Path::new(&file.path).starts_with(subtree_path))
+        .cloned()
+        .collect();
+    let scanned_entry_count = total_item_count.saturating_add(dirs.len());
+
+    Some(ReusedSubtree {
+        dirs,
+        largest_files,
+        total_logical_bytes,
+        total_allocated_bytes,
+        total_item_count,
+        scanned_entry_count,
+    })
 }
 
 fn build_quick_scan_root_items(
@@ -1094,6 +1872,7 @@ pub(crate) fn refresh_indexed_directory(
             .and_then(parse_protection_reason),
         multi_roots: Vec::new(),
         preserve_system_anchors: false,
+        reusable_subtrees: HashMap::new(),
     };
 
     let mut tree = scan_tree_in_memory(&config, cancelled, on_progress, &mut |_| {})?;
@@ -3363,6 +4142,7 @@ mod tests {
             root_protection_reason: Some(CleanupProtectionReason::SystemLocation),
             multi_roots: items,
             preserve_system_anchors: false,
+            reusable_subtrees: HashMap::new(),
         };
         let tree = scan_tree_in_memory(&config, &AtomicBool::new(false), &mut |_| {}, &mut |_| {})
             .unwrap();
@@ -3978,5 +4758,84 @@ mod tests {
             .unwrap();
         assert_eq!(tiny_rows, 0, "deep micro-directories should be folded");
         assert_eq!(large_rows, 1, "deep directories >= 256 KiB must remain");
+    }
+
+    #[test]
+    fn rescan_reuses_unchanged_app_bundles_and_invalidates_on_change() {
+        let fixture = tempdir().unwrap();
+        let app_root = fixture.path().join("Fixture.app");
+        let contents = app_root.join("Contents");
+        let macos = contents.join("MacOS");
+        let resources = contents.join("Resources");
+        fs::create_dir_all(&macos).unwrap();
+        fs::create_dir_all(&resources).unwrap();
+        let info_plist = contents.join("Info.plist");
+        fs::write(
+            &info_plist,
+            b"<plist><dict><key>CFBundleVersion</key><string>1</string></dict></plist>",
+        )
+        .unwrap();
+        fs::write(macos.join("Fixture"), vec![1_u8; 64 * 1024]).unwrap();
+        fs::write(resources.join("asset.bin"), vec![2_u8; 128 * 1024]).unwrap();
+
+        let storage = tempdir().unwrap();
+        let index_path = storage.path().join("cleanup.sqlite");
+
+        let first = scan_folder(fixture.path(), &index_path, "first-scan");
+        let canonical_root = fixture.path().canonicalize().unwrap();
+        let reusable_before = load_reusable_subtrees(
+            &index_path,
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::Folder,
+            &canonical_root,
+            &canonical_root,
+            &canonical_root.to_string_lossy(),
+            &[],
+            &[],
+        );
+        assert!(
+            reusable_before.contains_key(&canonical_root.join("Fixture.app")),
+            "unchanged .app bundle should be eligible for subtree reuse"
+        );
+
+        std::thread::sleep(Duration::from_millis(5));
+        let second = scan_folder(fixture.path(), &index_path, "second-scan");
+        assert_eq!(second.root.item_count, first.root.item_count);
+        assert_eq!(
+            second.root.logical_size_bytes,
+            first.root.logical_size_bytes
+        );
+        assert_eq!(
+            second.root.allocated_size_bytes,
+            first.root.allocated_size_bytes
+        );
+
+        // Mutating Info.plist must immediately invalidate reuse and reflect the new size.
+        std::thread::sleep(Duration::from_millis(10));
+        fs::write(
+            &info_plist,
+            b"<plist><dict><key>CFBundleVersion</key><string>2-updated-version</string></dict></plist>",
+        )
+        .unwrap();
+        fs::write(resources.join("extra.bin"), vec![3_u8; 32 * 1024]).unwrap();
+
+        let reusable_after = load_reusable_subtrees(
+            &index_path,
+            CleanupScanProfile::Complete,
+            CleanupScanTargetKind::Folder,
+            &canonical_root,
+            &canonical_root,
+            &canonical_root.to_string_lossy(),
+            &[],
+            &[],
+        );
+        assert!(
+            !reusable_after.contains_key(&canonical_root.join("Fixture.app")),
+            "mutated .app bundle must not be reused"
+        );
+
+        let third = scan_folder(fixture.path(), &index_path, "third-scan");
+        assert_eq!(third.root.item_count, first.root.item_count + 1);
+        assert!(third.root.logical_size_bytes > first.root.logical_size_bytes);
     }
 }
