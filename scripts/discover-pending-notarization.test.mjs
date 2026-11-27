@@ -61,39 +61,65 @@ describe("pending notarization discovery", () => {
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(result.output).toEqual({ pending: "false" });
-    expect(result.calls).not.toContain(
-      "api repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.8-preview.1",
+    expect(result.publicCalls).not.toContain(
+      "https://api.github.com/repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.8-preview.1",
     );
     expectRunListCallsHaveExplicitRepository(result.calls);
   }, SCRIPT_TEST_TIMEOUT_MS);
+
+  it("discovers an explicitly requested pending release without a cross-repository token", () => {
+    const result = runScenario("pending-release", {
+      GITHUB_EVENT_NAME: "workflow_dispatch",
+      REQUESTED_TAG: "v0.1.25",
+      REQUESTED_RUN_ID: "425",
+    });
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.output).toEqual({
+      pending: "true",
+      tag: "v0.1.25",
+      run_id: "425",
+      commit: releaseCommit,
+    });
+    expect(result.publicCalls).toContain(
+      "https://api.github.com/repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.25-preview.1",
+    );
+  }, SCRIPT_TEST_TIMEOUT_MS);
 });
 
-function runScenario(scenario) {
+function runScenario(scenario, envOverrides = {}) {
   const directory = mkdtempSync(join(tmpdir(), "corerobin-notary-discovery-"));
   temporaryDirectories.push(directory);
   const fakeGhPath = join(directory, "gh");
+  const fakeCurlPath = join(directory, "curl");
   const outputPath = join(directory, "github-output");
   const callsPath = join(directory, "gh-calls.jsonl");
+  const curlCallsPath = join(directory, "curl-calls.jsonl");
   writeFileSync(fakeGhPath, fakeGhSource);
   chmodSync(fakeGhPath, 0o755);
+  writeFileSync(fakeCurlPath, fakeCurlSource);
+  chmodSync(fakeCurlPath, 0o755);
   writeFileSync(outputPath, "");
   writeFileSync(callsPath, "");
+  writeFileSync(curlCallsPath, "");
 
   const result = spawnSync("bash", [scriptPath], {
     cwd: resolve("."),
     encoding: "utf8",
     env: {
       ...process.env,
+      CURL_BIN: fakeCurlPath,
+      CURL_CALLS_PATH: curlCallsPath,
       FAKE_GH_SCENARIO: scenario,
       GH_BIN: fakeGhPath,
       GH_CALLS_PATH: callsPath,
       GITHUB_EVENT_NAME: "schedule",
       GITHUB_OUTPUT: outputPath,
       GITHUB_REPOSITORY: "JimmyDaddy/CoreRobin-Internal",
-      PUBLIC_RELEASE_READ_TOKEN: "test-public-read-token",
       PUBLIC_RELEASE_REPOSITORY: "JimmyDaddy/corerobin-monitor",
       REQUESTED_RUN_ID: "",
       REQUESTED_TAG: "",
+      ...envOverrides,
     },
   });
 
@@ -108,6 +134,10 @@ function runScenario(scenario) {
     .trim()
     .split("\n")
     .filter(Boolean);
+  const publicCalls = readFileSync(curlCallsPath, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean);
 
   return {
     status: result.status,
@@ -115,6 +145,7 @@ function runScenario(scenario) {
     stderr: result.stderr,
     output,
     calls,
+    publicCalls,
   };
 }
 
@@ -156,28 +187,41 @@ fi
 
 if [[ "$1" == "api" ]]; then
   case "$2" in
-    repos/JimmyDaddy/corerobin-monitor/releases/latest)
-      printf '%s\\n' '{"tag_name":"v0.1.24","draft":false,"prerelease":false}'
-      exit 0
-      ;;
     repos/JimmyDaddy/CoreRobin-Internal/actions/runs/425)
       printf '%s\\n' '{"path":".github/workflows/release.yml","head_branch":"v0.1.25","status":"completed","conclusion":"success","head_sha":"${releaseCommit}"}'
-      exit 0
-      ;;
-    repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.25)
-      if [[ "$FAKE_GH_SCENARIO" == "stable-release" ]]; then
-        printf '%s\\n' '{"draft":false,"prerelease":false}'
-        exit 0
-      fi
-      exit 1
-      ;;
-    repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.25-preview.1)
-      printf '%s\\n' '{"draft":false,"prerelease":true}'
       exit 0
       ;;
   esac
 fi
 
 echo "unexpected gh invocation: $*" >&2
+exit 1
+`;
+
+const fakeCurlSource = `#!/usr/bin/env bash
+set -euo pipefail
+
+url="\${@: -1}"
+printf '%s\\n' "$url" >> "$CURL_CALLS_PATH"
+
+case "$url" in
+  https://api.github.com/repos/JimmyDaddy/corerobin-monitor/releases/latest)
+    printf '%s\\n' '{"tag_name":"v0.1.24","draft":false,"prerelease":false}'
+    exit 0
+    ;;
+  https://api.github.com/repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.25)
+    if [[ "$FAKE_GH_SCENARIO" == "stable-release" ]]; then
+      printf '%s\\n' '{"draft":false,"prerelease":false}'
+      exit 0
+    fi
+    exit 22
+    ;;
+  https://api.github.com/repos/JimmyDaddy/corerobin-monitor/releases/tags/v0.1.25-preview.1)
+    printf '%s\\n' '{"draft":false,"prerelease":true}'
+    exit 0
+    ;;
+esac
+
+echo "unexpected curl invocation: $*" >&2
 exit 1
 `;

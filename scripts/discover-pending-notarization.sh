@@ -3,6 +3,7 @@
 set -euo pipefail
 
 GH_BIN="${GH_BIN:-gh}"
+CURL_BIN="${CURL_BIN:-curl}"
 REQUESTED_TAG="${REQUESTED_TAG:-}"
 REQUESTED_RUN_ID="${REQUESTED_RUN_ID:-}"
 
@@ -10,7 +11,13 @@ REQUESTED_RUN_ID="${REQUESTED_RUN_ID:-}"
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 : "${PUBLIC_RELEASE_REPOSITORY:?PUBLIC_RELEASE_REPOSITORY is required}"
-: "${PUBLIC_RELEASE_READ_TOKEN:?PUBLIC_RELEASE_READ_TOKEN is required}"
+
+public_release_api() {
+  local endpoint=$1
+  "$CURL_BIN" --fail --silent --retry 3 --max-time 30 \
+    --header 'accept: application/vnd.github+json' \
+    "https://api.github.com/$endpoint"
+}
 
 validate_source_run() {
   local tag=$1
@@ -30,7 +37,7 @@ validate_source_run() {
 preview_exists() {
   local tag=$1
   local preview_json
-  preview_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" "$GH_BIN" api \
+  preview_json="$(public_release_api \
     "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/${tag}-preview.1" 2>/dev/null)" \
     || return 1
   test "$(jq -r .draft <<<"$preview_json")" = "false"
@@ -38,13 +45,13 @@ preview_exists() {
 }
 
 stable_release_exists() {
-  GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" "$GH_BIN" api \
+  public_release_api \
     "repos/$PUBLIC_RELEASE_REPOSITORY/releases/tags/$1" >/dev/null 2>&1
 }
 
 latest_stable_tag() {
   local release_json
-  release_json="$(GH_TOKEN="$PUBLIC_RELEASE_READ_TOKEN" "$GH_BIN" api \
+  release_json="$(public_release_api \
     "repos/$PUBLIC_RELEASE_REPOSITORY/releases/latest" 2>/dev/null)" \
     || return 1
   jq -r '.tag_name // empty' <<<"$release_json"
