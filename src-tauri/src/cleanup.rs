@@ -124,6 +124,7 @@ const MAX_VISUAL_NODES_PER_LOCATION: usize = 2_500;
 // hundreds of thousands of unclickable slivers.
 #[cfg(test)]
 const MIN_CHART_FRACTION_DENOMINATOR: u128 = 720;
+#[cfg(any(target_os = "macos", test))]
 const PROGRESS_INTERVAL_ENTRIES: usize = 512;
 const MAX_CLEANUP_TARGETS: usize = 32;
 const MAX_CLEANUP_LEASES: usize = 8;
@@ -3286,13 +3287,17 @@ fn is_windows_reparse_point(metadata: &Metadata) -> bool {
 
 #[derive(Debug)]
 struct ScanStats {
+    #[cfg(any(target_os = "macos", test))]
     started: Instant,
+    #[cfg(any(target_os = "macos", test))]
     scanned_entry_count: usize,
+    #[cfg(any(target_os = "macos", test))]
     discovered_bytes: u64,
     #[cfg(test)]
     unreadable_entry_count: usize,
     #[cfg(test)]
     unreadable_paths: Vec<PathBuf>,
+    #[cfg(any(target_os = "macos", test))]
     last_reported_entry_count: usize,
 }
 
@@ -4373,13 +4378,17 @@ fn scan_directory_summary(
 impl ScanStats {
     fn new() -> Self {
         Self {
+            #[cfg(any(target_os = "macos", test))]
             started: Instant::now(),
+            #[cfg(any(target_os = "macos", test))]
             scanned_entry_count: 0,
+            #[cfg(any(target_os = "macos", test))]
             discovered_bytes: 0,
             #[cfg(test)]
             unreadable_entry_count: 0,
             #[cfg(test)]
             unreadable_paths: Vec::new(),
+            #[cfg(any(target_os = "macos", test))]
             last_reported_entry_count: 0,
         }
     }
@@ -4397,10 +4406,12 @@ impl ScanStats {
         }
     }
 
+    #[cfg(any(target_os = "macos", test))]
     fn elapsed_ms(&self) -> u64 {
         u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)
     }
 
+    #[cfg(any(target_os = "macos", test))]
     fn report_progress(
         &mut self,
         path: &Path,

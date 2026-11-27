@@ -1029,6 +1029,7 @@ impl BoundDeleteTarget {
             };
             if let Some(entry) = next_entry {
                 let frame = frames.last().expect("inspection stack is not empty");
+                #[cfg(target_os = "macos")]
                 match entry.fast_info {
                     Some(FastInspectInfo::RegularFile {
                         identity,
@@ -1332,6 +1333,7 @@ struct DirectoryFrame {
     next_entry: usize,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug)]
 enum FastInspectInfo {
     RegularFile {
@@ -1350,6 +1352,7 @@ enum FastInspectInfo {
 #[derive(Debug, Default)]
 struct InspectDirEntry {
     name: OsString,
+    #[cfg(target_os = "macos")]
     fast_info: Option<FastInspectInfo>,
 }
 
@@ -1520,6 +1523,7 @@ fn read_inspection_entries(
         .into_iter()
         .map(|name| InspectDirEntry {
             name,
+            #[cfg(target_os = "macos")]
             fast_info: None,
         })
         .collect())
