@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tagName": "v0.1.38",
+  "title": {
+    "zh-CN": "磁盘扫描大幅提速，应用加载与清理体验更轻快",
+    "en": "Much faster disk scans and snappier cleanup"
+  },
+  "items": [
+    {
+      "zh-CN": "大幅提升全盘与文件夹空间扫描速度，再次扫描时会自动复用未变化的系统目录与应用程序包，同时显著减少本机扫描索引的磁盘占用。",
+      "en": "Greatly sped up full-disk and folder space scans, reusing unchanged system directories and app bundles on repeat scans while significantly reducing local index storage usage."
+    },
+    {
+      "zh-CN": "修复部分完整扫描后大文件列表为空的问题，并加快重复文件排查、大文件洞察与快速清理的分析速度。",
+      "en": "Fixed an issue where the largest files list could appear empty after a full scan, and sped up duplicate file checks, file insights, and quick cleanup analysis."
+    },
+    {
+      "zh-CN": "优化应用列表大小统计、应用图标显示与大型应用卸载前的确认速度，同时降低 macOS 上电池与电源状态采集的系统开销，让界面打开和切换更流畅。",
+      "en": "Sped up app size calculation, app icon loading, and pre-uninstall verification for large apps, while lowering the overhead of reading battery and power status on macOS for a more responsive interface."
+    }
+  ]
+}
